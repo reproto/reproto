@@ -1,0 +1,90 @@
+use std::str::FromStr;
+use super::ast;
+
+grammar;
+
+pub File: ast::File = {
+    <package:Package> <decls:Decl*> => ast::File::new(package, decls)
+};
+
+pub Package: ast::Package = {
+    "package" <first:Identifier> <rest:("." <Identifier>)*> ";" => {
+        let mut v = Vec::new();
+        v.push(first);
+        v.extend(rest);
+        ast::Package::new(v)
+    }
+};
+
+pub Decl: ast::Decl = {
+    <message:MessageDecl> => ast::Decl::MessageDecl(message),
+    <interface:InterfaceDecl> => ast::Decl::InterfaceDecl(interface),
+    <typeDecl:TypeDecl> => ast::Decl::TypeDecl(typeDecl),
+};
+
+pub MessageDecl: ast::MessageDecl = {
+    "message" <name:Identifier> "{" <members:MessageMember*> "}" => {
+        ast::MessageDecl::new(name, members)
+    }
+};
+
+pub InterfaceDecl: ast::InterfaceDecl = {
+    "interface" <name:Identifier> "{" <members:InterfaceMember*> "}" => {
+        ast::InterfaceDecl::new(name, members)
+    }
+};
+
+pub TypeDecl: ast::TypeDecl = {
+    "type" <name:Identifier> "=" <typeValue:Type> => ast::TypeDecl::new(name, typeValue)
+};
+
+pub MessageMember: ast::MessageMember = {
+    <modifier:Modifier?> <typeValue:Type> <name:Identifier> "=" <id:Id> ";" => {
+        ast::MessageMember::Field(ast::Field::new(modifier.unwrap_or(ast::Modifier::None), name, typeValue, id))
+    },
+    "oneof" <name:Identifier> "{" <fields:(<OneOfField> ";")*> "}" => {
+        ast::MessageMember::OneOf(ast::OneOf::new(name, fields))
+    },
+};
+
+pub InterfaceMember: ast::InterfaceMember = {
+    <modifier:Modifier?> <typeValue:Type> <name:Identifier> "=" <id:Id> ";" => {
+        ast::InterfaceMember::Field(ast::Field::new(modifier.unwrap_or(ast::Modifier::None), name, typeValue, id))
+    },
+    "oneof" <name:Identifier> "{" <fields:(<OneOfField> ";")*> "}" => {
+        ast::InterfaceMember::OneOf(ast::OneOf::new(name, fields))
+    },
+};
+
+OneOfField: ast::Field = {
+    <typeValue:Type> <name:Identifier> "=" <id:Id> => {
+        ast::Field::new(ast::Modifier::None, name, typeValue, id)
+    }
+};
+
+Type: ast::Type = {
+    "double" => ast::Type::Double,
+    "float" => ast::Type::Float,
+    "int32" => ast::Type::I32,
+    "int64" => ast::Type::I64,
+    "uint32" => ast::Type::U32,
+    "uint64" => ast::Type::U64,
+    "bool" => ast::Type::Bool,
+    "string" => ast::Type::String,
+    "bytes" => ast::Type::Bytes,
+    <custom:Identifier> => ast::Type::Custom(custom),
+};
+
+Modifier: ast::Modifier = {
+    "optional" => ast::Modifier::Optional,
+    "required" => ast::Modifier::Required,
+    "repeated" => ast::Modifier::Repeated,
+};
+
+Id: u32 = {
+    r"(0|[1-9][0-9]*)" => u32::from_str(<>).unwrap()
+};
+
+Identifier: String = {
+    r"[a-zA-Z][a-zA-Z0-9_]*" => <>.to_string()
+};

@@ -1,0 +1,19 @@
+[package]
+name = "reproto"
+version = "0.1.0"
+authors = ["John-John Tedro <udoprog@tedro.se>"]
+build = "build.rs"
+
+[dependencies]
+error-chain = "*"
+log = "*"
+getopts = "*"
+
+[dependencies.regex]
+version = "*"
+
+[dependencies.lalrpop-util]
+version = "*"
+
+[build-dependencies.lalrpop]
+version = "*"
