@@ -1,8 +1,11 @@
 #![feature(proc_macro)]
+#![recursion_limit = "1000"]
 
 extern crate lalrpop_util;
 extern crate getopts;
 
+#[macro_use]
+extern crate pest;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]

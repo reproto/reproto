@@ -8,6 +8,7 @@ build = "build.rs"
 error-chain = "*"
 log = "*"
 getopts = "*"
+pest = "*"
 
 [dependencies.regex]
 version = "*"
