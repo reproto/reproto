@@ -8,8 +8,19 @@
   * Fairly advanced type system, allowing for better expressiveness.
   * Can provide statically compiled compiler for most major platforms.
   * LR(1) parser support is not very mature :(, I miss ANTLR.
+* Per-project (not definition) language extensions might be needed
+  * e.g. drop a heroic.reproto file in the project (in the right location), and pick up any extensions defined in it that allows the module to better integrate into the project.
 
 # reProto Specification
+
+## Introduction
+
+reProto is geared towards being an expressive and productive protocol specification.
+
+The choice of using a DSL over something existing like JSON or YAML is an attempt to improve the signal-to-noise ratio.
+Concise markup, and relatively intuitive syntax means that more effort can be spent on designing good models.
+
+A good benchmark for a DSL is to measure how easily it is to visualize both the JSON and the target source a given declaration corresponds to.
 
 A .reproto file has the following general syntax:
 
@@ -90,7 +101,7 @@ final byte[] message = /* aggregation as bytes */;
 final Aggregation aggregation = m.readValue(message, Aggregation.class);
 ```
 
-# Messages
+## Messages
 
 Messages are named types that are used to designate a data structure that is intended to be sent as
 a message.
@@ -106,7 +117,7 @@ message Foo {
 }
 ```
 
-## As JSON
+### As JSON
 
 Messages are encoded as objects.
 
@@ -118,14 +129,14 @@ For example (using `Foo`):
 }
 ```
 
-## Java
+### Java
 
 In Java, each message generates exactly one concrete class.
 
 This class then uses the configured serialization mechanism (depending on the backend) to determine
 how it will be generated.
 
-# Interfaces
+## Interfaces
 
 Interfaces are named types that designate a message, whose type is determined by some other method.
 
@@ -151,7 +162,7 @@ interface Instant {
 }
 ```
 
-## As JSON
+### As JSON
 
 An interface is encoded as an object, with a special `type` field.
 
@@ -164,7 +175,7 @@ For example (using `Instant.RelativeToNow`):
 }
 ```
 
-## Java
+### Java
 
 In Java, interfaces generate an `interface`, and zero or more implementations that implements that
 interface.
@@ -172,7 +183,7 @@ interface.
 This then uses a type-field resolution mechanism specific to the active backend to resolve which
 sub-type of that interface a given message belongs to.
 
-# Enums
+## Enums
 
 Enums can take on of a given set of constants.
 
@@ -196,7 +207,7 @@ enum StateNumeric(number) {
 }
 ```
 
-## As JSON
+### As JSON
 
 Enums are serialized as a string, or a number constant.
 
@@ -212,7 +223,7 @@ Or another example (using `StateNumeric.END`):
 2
 ```
 
-## Java
+### Java
 
 Enums are modelled using a regular Java `enum`.
 
@@ -220,7 +231,7 @@ Serialization might be affected depending on the type the enum has.
 
 # Backends
 
-## `fasterxml` (Java)
+### `fasterxml` (Java)
 
 Using the fasterxml (Java) backend would result in the following class being generated for
 `Aggregation`:
