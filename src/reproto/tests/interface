@@ -1,0 +1,8 @@
+interface Bar {
+    reserved "a", "b", "c";
+
+    A {
+        name "foo";
+        required string name;
+    }
+}

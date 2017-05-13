@@ -15,7 +15,7 @@ pub mod backend;
 pub mod backends;
 pub mod errors;
 pub mod logger;
-pub mod proto;
+pub mod reproto;
 
 #[cfg(test)]
 mod tests {

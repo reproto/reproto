@@ -1,11 +1,65 @@
 use std::fmt::{Debug, Formatter, Error};
+use std::collections::{HashSet, LinkedList};
 
 #[derive(Debug, PartialEq)]
+pub enum OptionValue {
+    String(String),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct OptionPair {
+    pub name: String,
+    pub values: Vec<OptionValue>,
+}
+
+impl OptionPair {
+    pub fn new(name: String, values: Vec<OptionValue>) -> OptionPair {
+        OptionPair {
+            name: name,
+            values: values,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Options {
+    options: Vec<OptionPair>,
+}
+
+impl Options {
+    pub fn new(options: Vec<OptionPair>) -> Options {
+        Options { options: options }
+    }
+
+    pub fn lookup(&self, name: &str) -> Vec<&OptionValue> {
+        self.options
+            .iter()
+            .filter(|o| o.name.as_str() == name)
+            .flat_map(|o| o.values.iter())
+            .collect()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Modifier {
     Required,
     Optional,
     Repeated,
-    None,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Modifiers {
+    modifiers: HashSet<Modifier>,
+}
+
+impl Modifiers {
+    pub fn new(modifiers: HashSet<Modifier>) -> Modifiers {
+        Modifiers { modifiers: modifiers }
+    }
+
+    pub fn test(&self, modifier: &Modifier) -> bool {
+        self.modifiers.contains(modifier)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -35,18 +89,18 @@ impl Package {
 
 #[derive(Debug, PartialEq)]
 pub struct Field {
-    pub modifier: Modifier,
+    pub modifiers: Modifiers,
     pub name: String,
-    pub fieldType: Type,
+    pub type_: Type,
     pub id: u32,
 }
 
 impl Field {
-    pub fn new(modifier: Modifier, name: String, fieldType: Type, id: u32) -> Field {
+    pub fn new(modifiers: Modifiers, name: String, type_: Type, id: u32) -> Field {
         Field {
-            modifier: modifier,
+            modifiers: modifiers,
             name: name,
-            fieldType: fieldType,
+            type_: type_,
             id: id,
         }
     }
@@ -77,13 +131,38 @@ pub enum MessageMember {
 #[derive(Debug, PartialEq)]
 pub struct MessageDecl {
     pub name: String,
+    pub options: Options,
     pub members: Vec<MessageMember>,
 }
 
 impl MessageDecl {
-    pub fn new(name: String, members: Vec<MessageMember>) -> MessageDecl {
+    pub fn new(name: String, options: Options, members: Vec<MessageMember>) -> MessageDecl {
         MessageDecl {
             name: name,
+            options: options,
+            members: members,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum SubTypeMember {
+    Field(Field),
+    OneOf(OneOf),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct SubType {
+    pub name: String,
+    pub options: Options,
+    pub members: Vec<SubTypeMember>,
+}
+
+impl SubType {
+    pub fn new(name: String, options: Options, members: Vec<SubTypeMember>) -> SubType {
+        SubType {
+            name: name,
+            options: options,
             members: members,
         }
     }
@@ -93,19 +172,22 @@ impl MessageDecl {
 pub enum InterfaceMember {
     Field(Field),
     OneOf(OneOf),
+    SubType(SubType),
 }
 
 /// interface <name> { <members>* }
 #[derive(Debug, PartialEq)]
 pub struct InterfaceDecl {
     pub name: String,
+    pub options: Options,
     pub members: Vec<InterfaceMember>,
 }
 
 impl InterfaceDecl {
-    pub fn new(name: String, members: Vec<InterfaceMember>) -> InterfaceDecl {
+    pub fn new(name: String, options: Options, members: Vec<InterfaceMember>) -> InterfaceDecl {
         InterfaceDecl {
             name: name,
+            options: options,
             members: members,
         }
     }
@@ -132,9 +214,9 @@ impl TypeDecl {
 
 #[derive(Debug, PartialEq)]
 pub enum Decl {
-    MessageDecl(MessageDecl),
-    InterfaceDecl(InterfaceDecl),
-    TypeDecl(TypeDecl),
+    Message(MessageDecl),
+    Interface(InterfaceDecl),
+    Type(TypeDecl),
 }
 
 #[derive(Debug, PartialEq)]
