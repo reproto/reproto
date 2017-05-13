@@ -11,6 +11,7 @@ extern crate error_chain;
 #[macro_use]
 extern crate log;
 
+pub mod codegen;
 pub mod backend;
 pub mod backends;
 pub mod errors;
