@@ -1,12 +1,11 @@
-use std::fmt::{Debug, Formatter, Error};
-use std::collections::{HashSet, LinkedList};
+use std::collections::HashSet;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum OptionValue {
     String(String),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct OptionPair {
     pub name: String,
     pub values: Vec<OptionValue>,
@@ -21,7 +20,7 @@ impl OptionPair {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Options {
     options: Vec<OptionPair>,
 }
@@ -40,14 +39,14 @@ impl Options {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Modifier {
     Required,
     Optional,
     Repeated,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Modifiers {
     modifiers: HashSet<Modifier>,
 }
@@ -62,7 +61,7 @@ impl Modifiers {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     Double,
     Float,
@@ -74,11 +73,13 @@ pub enum Type {
     String,
     Bytes,
     Custom(String),
+    Array(Box<Type>),
+    Tuple(Vec<Type>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Package {
-    parts: Vec<String>,
+    pub parts: Vec<String>,
 }
 
 impl Package {
@@ -87,7 +88,7 @@ impl Package {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Field {
     pub modifiers: Modifiers,
     pub name: String,
@@ -106,7 +107,7 @@ impl Field {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct OneOf {
     pub name: String,
     pub fields: Vec<Field>,
@@ -121,14 +122,14 @@ impl OneOf {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum MessageMember {
     Field(Field),
     OneOf(OneOf),
 }
 
 /// message <name> { <members>* }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessageDecl {
     pub name: String,
     pub options: Options,
@@ -145,13 +146,13 @@ impl MessageDecl {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum SubTypeMember {
     Field(Field),
     OneOf(OneOf),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct SubType {
     pub name: String,
     pub options: Options,
@@ -168,7 +169,7 @@ impl SubType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum InterfaceMember {
     Field(Field),
     OneOf(OneOf),
@@ -176,7 +177,7 @@ pub enum InterfaceMember {
 }
 
 /// interface <name> { <members>* }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct InterfaceDecl {
     pub name: String,
     pub options: Options,
@@ -197,7 +198,7 @@ impl InterfaceDecl {
 ///
 /// Example, simple type alias:
 /// type Foo = Bar;
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TypeDecl {
     pub name: String,
     pub value: Type,
@@ -212,7 +213,7 @@ impl TypeDecl {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Decl {
     Message(MessageDecl),
     Interface(InterfaceDecl),

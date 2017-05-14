@@ -57,18 +57,26 @@ fn decode_unicode4(it: &mut Iterator<Item = char>) -> Result<char> {
 impl_rdp! {
     grammar! {
         file = _{ package_decl ~ decl* ~ eoi }
-        decl = { message_decl | interface_decl }
+        decl = { message_decl | interface_decl | type_decl }
 
         package_decl = { ["package"] ~ package_identifier ~ [";"] }
         message_decl = { ["message"] ~ identifier ~ ["{"] ~ option* ~ message_member* ~ ["}"] }
         interface_decl = { ["interface"] ~ identifier ~ ["{"] ~ option* ~ interface_member* ~ ["}"] }
+        type_decl = { ["type"] ~ identifier ~ ["="] ~ type_spec ~ [";"] }
         sub_type = { identifier ~ ["{"] ~ option* ~ sub_type_member* ~ ["}"] }
 
         message_member = { field }
         interface_member = { sub_type | field }
         sub_type_member = { field }
 
-        field = { modifier* ~ identifier ~ identifier ~ [";"] }
+        field = { modifier* ~ type_spec ~ identifier ~ [";"] }
+
+        type_spec = { array | tuple | type_literal }
+        type_literal = { identifier }
+        tuple = { ["("] ~ ( tuple_element ~ ([","] ~ tuple_element)* ) ~ [")"] }
+        tuple_element = { type_spec }
+        array = { ["["] ~ array_argument ~ ["]"] }
+        array_argument = { type_spec }
 
         modifier = { ["optional"] | ["required"] }
 
@@ -131,6 +139,11 @@ impl_rdp! {
                 let members = members.into_iter().collect();
                 let m = ast::InterfaceDecl::new(name.to_owned(), options, members);
                 ast::Decl::Interface(m)
+            },
+
+            (_: type_decl, &name: identifier, type_: _type_spec()) => {
+                let t = ast::TypeDecl::new(name.to_owned(), type_);
+                ast::Decl::Type(t)
             },
         }
 
@@ -229,14 +242,14 @@ impl_rdp! {
         }
 
         _field(&self) -> ast::Field {
-            (modifiers: _modifiers(), type_: _type(), &name: identifier) => {
+            (modifiers: _modifiers(), type_: _type_spec(), &name: identifier) => {
                 let modifiers = ast::Modifiers::new(modifiers);
                 ast::Field::new(modifiers, name.to_owned(), type_, 0)
-            }
+            },
         }
 
-        _type(&self) -> ast::Type {
-            (&value: identifier) => {
+        _type_spec(&self) -> ast::Type {
+            (_: type_spec, _: type_literal, &value: identifier) => {
                 match value {
                     "double" => ast::Type::Double,
                     "float" => ast::Type::Float,
@@ -249,7 +262,27 @@ impl_rdp! {
                     "bytes" => ast::Type::Bytes,
                     name => ast::Type::Custom(name.to_owned()),
                 }
-            }
+            },
+
+            (_: type_spec, _: tuple, arguments: _tuple_elements()) => {
+                let arguments = arguments.into_iter().collect();
+                ast::Type::Tuple(arguments)
+            },
+
+            (_: type_spec, _: array, _: array_argument, argument: _type_spec()) => {
+                ast::Type::Array(Box::new(argument))
+            },
+        }
+
+        _tuple_elements(&self) -> LinkedList<ast::Type> {
+            (_: tuple_element, first: _type_spec(), mut tail: _tuple_elements()) => {
+                tail.push_front(first);
+                tail
+            },
+
+            () => {
+                LinkedList::new()
+            },
         }
 
         _modifiers(&self) -> HashSet<ast::Modifier> {
@@ -300,10 +333,15 @@ mod tests {
         let package = ast::Package::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
 
         assert_eq!(package, file.package);
-        assert_eq!(2, file.decls.len());
+        assert_eq!(4, file.decls.len());
 
-        assert_eq!(load_interface(), file.decls[1]);
+        assert_eq!(load_interface(), file.decls[2]);
+    }
 
-        println!("file = {:?}", file);
+    #[test]
+    fn test_array() {
+        let mut parser = Rdp::new(StringInput::new("(string, string)[]"));
+        assert!(parser.type_spec());
+        assert!(parser.end());
     }
 }

@@ -2,6 +2,8 @@
 
 use std::collections::BTreeSet;
 
+use errors::*;
+
 fn java_quote_string(input: &str) -> String {
     let mut out = String::new();
     let mut it = input.chars();
@@ -113,19 +115,6 @@ fn add_arguments<S>(arguments: &Vec<S>, target: &mut Statement) -> Result<()>
     Ok(())
 }
 
-error_chain! {
-    errors {
-        InvalidEscape {
-        }
-
-        InvalidVariable {
-        }
-
-        VariableUnderflow {
-        }
-    }
-}
-
 pub trait Imports {
     fn imports<I>(&self, &mut I) where I: ImportReceiver;
 }
@@ -171,7 +160,7 @@ pub enum Modifier {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Modifiers {
-    modifiers: BTreeSet<Modifier>,
+    pub modifiers: BTreeSet<Modifier>,
 }
 
 impl Modifiers {
@@ -323,6 +312,7 @@ impl Statement {
     }
 }
 
+#[macro_export]
 macro_rules! stmt {
     ($($fmt:expr, $vars:expr),*) => {{
         let mut s = Statement::new();
@@ -369,16 +359,17 @@ macro_rules! stmt {
     }};
 
     (string $var:expr) => {{
-        vec![Variable::String($var)]
+        vec![Variable::String($var.to_owned())]
     }};
 
     (string $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::String($var)];
+        let mut vars = vec![Variable::String($var.to_owned())];
         vars.extend(stmt!($($tail)*));
         vars
     }};
 }
 
+#[macro_export]
 macro_rules! mods {
     ($($modifier:expr),*) => {
         {
@@ -527,8 +518,8 @@ impl Block {
 /// Raw (importable) types.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Type {
-    package: String,
-    name: String,
+    pub package: String,
+    pub name: String,
 }
 
 impl Type {
@@ -580,8 +571,8 @@ pub trait AsName {
 /// Complete types, including generic arguments.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct TypeSpec {
-    raw: Type,
-    arguments: Vec<TypeSpec>,
+    pub raw: Type,
+    pub arguments: Vec<TypeSpec>,
 }
 
 impl TypeSpec {
@@ -633,14 +624,14 @@ impl AsTypeSpec for TypeSpec {
 
 #[derive(Debug, Clone)]
 pub struct MethodArgument {
-    modifiers: Modifiers,
+    pub modifiers: Modifiers,
 }
 
 #[derive(Debug, Clone)]
 pub struct FieldSpec {
-    modifiers: Modifiers,
-    type_: TypeSpec,
-    name: String,
+    pub modifiers: Modifiers,
+    pub type_: TypeSpec,
+    pub name: String,
 }
 
 impl FieldSpec {
@@ -684,10 +675,10 @@ impl AsName for FieldSpec {
 
 #[derive(Debug, Clone)]
 pub struct ConstructorSpec {
-    modifiers: Modifiers,
-    annotations: Vec<AnnotationSpec>,
-    arguments: Vec<ArgumentSpec>,
-    sections: Sections,
+    pub modifiers: Modifiers,
+    pub annotations: Vec<AnnotationSpec>,
+    pub arguments: Vec<ArgumentSpec>,
+    pub sections: Sections,
 }
 
 impl ConstructorSpec {
@@ -743,8 +734,8 @@ impl ConstructorSpec {
 
 #[derive(Debug, Clone)]
 pub struct AnnotationSpec {
-    type_: TypeSpec,
-    arguments: Vec<Statement>,
+    pub type_: TypeSpec,
+    pub arguments: Vec<Statement>,
 }
 
 impl AnnotationSpec {
@@ -791,10 +782,10 @@ impl Imports for AnnotationSpec {
 
 #[derive(Debug, Clone)]
 pub struct ArgumentSpec {
-    modifiers: Modifiers,
-    type_: TypeSpec,
-    name: String,
-    annotations: Vec<AnnotationSpec>,
+    pub modifiers: Modifiers,
+    pub type_: TypeSpec,
+    pub name: String,
+    pub annotations: Vec<AnnotationSpec>,
 }
 
 impl ArgumentSpec {
@@ -851,12 +842,12 @@ impl AsName for ArgumentSpec {
 
 #[derive(Debug, Clone)]
 pub struct MethodSpec {
-    modifiers: Modifiers,
-    name: String,
-    annotations: Vec<AnnotationSpec>,
-    arguments: Vec<ArgumentSpec>,
-    returns: Option<TypeSpec>,
-    sections: Sections,
+    pub modifiers: Modifiers,
+    pub name: String,
+    pub annotations: Vec<AnnotationSpec>,
+    pub arguments: Vec<ArgumentSpec>,
+    pub returns: Option<TypeSpec>,
+    pub sections: Sections,
 }
 
 impl MethodSpec {
@@ -949,13 +940,68 @@ impl MethodSpec {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct InterfaceSpec {
+    pub modifiers: Modifiers,
+    pub name: String,
+    pub elements: Vec<ElementSpec>,
+}
+
+impl InterfaceSpec {
+    pub fn new(modifiers: Modifiers, name: &str) -> InterfaceSpec {
+        InterfaceSpec {
+            modifiers: modifiers,
+            name: name.to_owned(),
+            elements: Vec::new(),
+        }
+    }
+
+    pub fn push_class(&mut self, class: &ClassSpec) {
+        self.elements.push(ElementSpec::Class(class.clone()))
+    }
+
+    pub fn push_interface(&mut self, interface: &InterfaceSpec) {
+        self.elements.push(ElementSpec::Interface(interface.clone()))
+    }
+
+    pub fn imports<I>(&self, receiver: &mut I) where I: ImportReceiver {}
+
+    pub fn as_block(&self) -> Result<Block> {
+        let mut open = Statement::new();
+
+        if !self.modifiers.is_empty() {
+            open.push("$L ", stmt!(literal self.modifiers.format()?));
+        }
+
+        open.push("interface $L", stmt!(literal self.name.clone()));
+
+        let mut block = Block::new();
+        block.open(open);
+
+        let mut first: bool = true;
+
+        for element in &self.elements {
+            if first {
+                first = false;
+            } else {
+                block.push_spacing();
+            }
+
+            block.push_block(&element.as_block()?);
+        }
+
+        Ok(block)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ClassSpec {
-    modifiers: Modifiers,
-    name: String,
-    fields: Vec<FieldSpec>,
-    constructors: Vec<ConstructorSpec>,
-    methods: Vec<MethodSpec>,
+    pub modifiers: Modifiers,
+    pub name: String,
+    pub fields: Vec<FieldSpec>,
+    pub constructors: Vec<ConstructorSpec>,
+    pub methods: Vec<MethodSpec>,
+    pub elements: Vec<ElementSpec>,
 }
 
 impl ClassSpec {
@@ -966,6 +1012,7 @@ impl ClassSpec {
             fields: Vec::new(),
             constructors: Vec::new(),
             methods: Vec::new(),
+            elements: Vec::new(),
         }
     }
 
@@ -979,6 +1026,14 @@ impl ClassSpec {
 
     pub fn push_method(&mut self, method: &MethodSpec) {
         self.methods.push(method.clone());
+    }
+
+    pub fn push_class(&mut self, class: &ClassSpec) {
+        self.elements.push(ElementSpec::Class(class.clone()))
+    }
+
+    pub fn push_interface(&mut self, interface: &InterfaceSpec) {
+        self.elements.push(ElementSpec::Interface(interface.clone()))
     }
 
     pub fn imports<I>(&self, receiver: &mut I)
@@ -1005,18 +1060,12 @@ impl ClassSpec {
         let mut block = Block::new();
         block.open(open);
 
-        /// TODO: figure out a better way...
-        let mut first = true;
-
         for field in &self.fields {
-            if first {
-                first = false;
-            } else {
-                block.push_spacing();
-            }
-
             block.push_statement(&field.as_statement()?);
         }
+
+        /// TODO: figure out a better way...
+        let mut first = self.fields.is_empty();
 
         for constructor in &self.constructors {
             if first {
@@ -1038,22 +1087,55 @@ impl ClassSpec {
             block.push_block(&method.as_block()?);
         }
 
+        for element in &self.elements {
+            if first {
+                first = false;
+            } else {
+                block.push_spacing();
+            }
+
+            block.push_block(&element.as_block()?);
+        }
+
         Ok(block)
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub enum ElementSpec {
+    Class(ClassSpec),
+    Interface(InterfaceSpec),
+}
+
+impl ElementSpec {
+    pub fn as_block(&self) -> Result<Block> {
+        match *self {
+            ElementSpec::Class(ref class) => class.as_block(),
+            ElementSpec::Interface(ref interface) => interface.as_block(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct FileSpec {
-    package: String,
-    class: ClassSpec,
+    pub package: String,
+    pub elements: Vec<ElementSpec>,
 }
 
 impl FileSpec {
-    pub fn new(package: &str, class: ClassSpec) -> FileSpec {
+    pub fn new(package: &str) -> FileSpec {
         FileSpec {
             package: package.to_owned(),
-            class: class,
+            elements: Vec::new(),
         }
+    }
+
+    pub fn push_class(&mut self, class: &ClassSpec) {
+        self.elements.push(ElementSpec::Class(class.clone()))
+    }
+
+    pub fn push_interface(&mut self, interface: &InterfaceSpec) {
+        self.elements.push(ElementSpec::Interface(interface.clone()))
     }
 
     pub fn format(&self) -> Result<String> {
@@ -1064,10 +1146,21 @@ impl FileSpec {
 
         let mut receiver: BTreeSet<Type> = BTreeSet::new();
 
-        self.class.imports(&mut receiver);
+        for element in &self.elements {
+            match *element {
+                ElementSpec::Class(ref class_spec) => {
+                    class_spec.imports(&mut receiver);
+                }
+                ElementSpec::Interface(ref interface_spec) => {
+                    interface_spec.imports(&mut receiver);
+                }
+            }
+        }
 
-        let imports: Vec<Type> =
-            receiver.into_iter().filter(|t| t.package != "java.lang").collect();
+        let imports: Vec<Type> = receiver.into_iter()
+            .filter(|t| t.package != "java.lang")
+            .filter(|t| t.package != self.package)
+            .collect();
 
         if !imports.is_empty() {
             for t in imports {
@@ -1077,7 +1170,9 @@ impl FileSpec {
             sections.push_spacing();
         }
 
-        sections.push_block(&self.class.as_block()?);
+        for element in &self.elements {
+            sections.push_block(&element.as_block()?);
+        }
 
         let mut out = String::new();
 
@@ -1122,7 +1217,8 @@ mod tests {
         class.push_constructor(&constructor);
         class.push_method(&values_getter);
 
-        let mut file = FileSpec::new("se.tedro", class);
+        let mut file = FileSpec::new("se.tedro");
+        file.push_class(&class);
 
         let result = file.format().unwrap();
 

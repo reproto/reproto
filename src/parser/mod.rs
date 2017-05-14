@@ -1,5 +1,6 @@
-mod ast;
 mod parser;
+
+pub mod ast;
 pub mod errors;
 
 use std::path::Path;

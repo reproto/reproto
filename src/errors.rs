@@ -1,4 +1,5 @@
 use parser::errors as parser;
+use codegen::errors as codegen;
 
 #[derive(Debug)]
 pub enum InternalError {
@@ -20,6 +21,7 @@ impl ::std::error::Error for InternalError {
 error_chain! {
     links {
         Parser(parser::Error, parser::ErrorKind);
+        Codegen(codegen::Error, codegen::ErrorKind);
     }
 
     foreign_links {

@@ -1,7 +1,6 @@
 #![feature(proc_macro)]
 #![recursion_limit = "1000"]
 
-extern crate lalrpop_util;
 extern crate getopts;
 
 #[macro_use]
@@ -10,13 +9,15 @@ extern crate pest;
 extern crate error_chain;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate codegen;
 
-pub mod codegen;
 pub mod backend;
 pub mod backends;
 pub mod errors;
 pub mod logger;
 pub mod parser;
+pub mod options;
 
 #[cfg(test)]
 mod tests {

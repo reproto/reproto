@@ -12,6 +12,7 @@ use reproto::errors::*;
 use reproto::logger;
 use reproto::backends;
 use reproto::parser;
+use reproto::options::Options;
 
 /// List the given directory recursively and pass each visited path to the visitor clojure.
 fn path_visitor<F>(path: &Path, mut visitor: F) -> Result<()>
@@ -48,12 +49,20 @@ fn path_visitor<F>(path: &Path, mut visitor: F) -> Result<()>
 fn setup_opts() -> getopts::Options {
     let mut opts = getopts::Options::new();
 
+    opts.reqopt("b",
+                "backend",
+                "Backend to used to emit code (required)",
+                "<backend>");
+
+    opts.reqopt("o", "out", "Path to write output to (required)", "<dir>");
+
     opts.optflag("h", "help", "Print help");
+
     opts.optflag("", "debug", "Enable debug logging");
+
     opts.optflag("r",
                  "recursive",
                  "Process the arguments recursively (looking for .reproto files)");
-    opts.reqopt("b", "backend", "Backend to used to emit code", "<backend>");
 
     opts
 }
@@ -101,18 +110,24 @@ fn entry() -> Result<()> {
 
     setup_logger(&matches)?;
 
-    let backend_name = matches.opt_str("backend").ok_or("--backend <name> is required")?;
-    let backend = backends::resolve(&backend_name)?;
+    let backend = matches.opt_str("backend").ok_or("--backend <backend> is required")?;
+    let mut backend = backends::resolve(&backend)?;
+
+    let out_path = matches.opt_str("out").ok_or("--out <dir> is required")?;
+    let out_path = Path::new(&out_path);
+
+    let options = Options { out_path: out_path.to_path_buf() };
+
+    fs::create_dir_all(&out_path)?;
 
     for argument in matches.free {
         path_visitor(Path::new(argument.as_str()), |path| {
-            let file = parser::parse_file(&path)
-                .chain_err(|| format!("failed to parse: {}", path.display()))?;
-            println!("{}: {:?}", path.display(), file);
-            Ok(())
+            backend.add_file(parser::parse_file(&path)
+                .chain_err(|| format!("failed to parse: {}", path.display()))?)
         })?;
     }
 
+    backend.process(&options)?;
     Ok(())
 }
 
