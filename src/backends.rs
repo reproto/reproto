@@ -1,16 +1,10 @@
 use backend::Backend;
-use backend::java;
+use backend::java::fasterxml::FasterXmlBackend;
+use errors::*;
 
-use std::path::PathBuf;
-
-pub struct Input {
-    path: PathBuf,
-}
-
-pub enum ResolveError {
-    Unknown,
-}
-
-pub fn resolve(input: &Input) -> Result<Box<Backend>, ResolveError> {
-    Err(ResolveError::Unknown)
+pub fn resolve(backend: &str) -> Result<Box<Backend>> {
+    match backend {
+        "fasterxml" => Ok(Box::new(FasterXmlBackend::new())),
+        _ => Err(ErrorKind::MissingBackend.into()),
+    }
 }

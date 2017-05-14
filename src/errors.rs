@@ -1,3 +1,5 @@
+use parser::errors as parser;
+
 #[derive(Debug)]
 pub enum InternalError {
     ParseError,
@@ -17,6 +19,7 @@ impl ::std::error::Error for InternalError {
 
 error_chain! {
     links {
+        Parser(parser::Error, parser::ErrorKind);
     }
 
     foreign_links {
@@ -27,5 +30,7 @@ error_chain! {
     }
 
     errors {
+        MissingBackend {
+        }
     }
 }

@@ -3,22 +3,8 @@
 use std::collections::{LinkedList, HashSet};
 
 use super::ast;
-
-error_chain! {
-    foreign_links {
-        ParseInt(::std::num::ParseIntError);
-    }
-
-    errors {
-        InvalidEscape {
-        }
-
-        Syntax(s: String) {
-            description("syntax error")
-            display("syntax error: {}", s)
-        }
-    }
-}
+use super::errors::*;
+use pest::prelude::*;
 
 /// Decode an escaped string.
 fn decode_escaped_string(input: &str) -> Result<String> {
@@ -68,8 +54,6 @@ fn decode_unicode4(it: &mut Iterator<Item = char>) -> Result<char> {
     Ok(::std::char::from_u32(res).ok_or("expected valid character")?)
 }
 
-use pest::prelude::*;
-
 impl_rdp! {
     grammar! {
         file = _{ package_decl ~ decl* ~ eoi }
@@ -105,6 +89,8 @@ impl_rdp! {
         exp    =  { (["E"] | ["e"]) ~ (["+"] | ["-"])? ~ int }
 
         whitespace = _{ [" "] | ["\t"] | ["\r"] | ["\n"] }
+
+        comment = _{ ["//"] ~ (!(["\r"] | ["\n"]) ~ any)* ~ (["\n"] | ["\r\n"] | ["\r"] | eoi) }
     }
 
     process! {

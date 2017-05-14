@@ -1095,9 +1095,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_class() {
-        let reference = ::std::str::from_utf8(include_bytes!("tests/Test.java")).unwrap();
-
+    fn test_Test_java() {
         let string_type = Type::new("java.lang", "String");
         let list_type = Type::new("java.util", "List");
         let json_creator_type = Type::new("com.fasterxml.jackson.annotation", "JsonCreator");
@@ -1128,8 +1126,7 @@ mod tests {
 
         let result = file.format().unwrap();
 
-        println!("{}", result);
-
+        let reference = ::std::str::from_utf8(include_bytes!("tests/Test.java")).unwrap();
         assert_eq!(reference, result);
     }
 }

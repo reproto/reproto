@@ -7,12 +7,15 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use std::env;
 
-use reproto::logger;
 use reproto::errors::*;
+
+use reproto::logger;
+use reproto::backends;
+use reproto::parser;
 
 /// List the given directory recursively and pass each visited path to the visitor clojure.
 fn path_visitor<F>(path: &Path, mut visitor: F) -> Result<()>
-    where F: FnMut(&Path) -> ()
+    where F: FnMut(&Path) -> Result<()>
 {
     let mut v: Vec<PathBuf> = Vec::new();
 
@@ -29,7 +32,7 @@ fn path_visitor<F>(path: &Path, mut visitor: F) -> Result<()>
                 if full.is_dir() {
                     v.push(full.to_owned());
                 } else {
-                    visitor(&full);
+                    visitor(&full)?;
                 }
             }
 
@@ -50,6 +53,7 @@ fn setup_opts() -> getopts::Options {
     opts.optflag("r",
                  "recursive",
                  "Process the arguments recursively (looking for .reproto files)");
+    opts.reqopt("b", "backend", "Backend to used to emit code", "<backend>");
 
     opts
 }
@@ -74,8 +78,6 @@ fn setup_logger(matches: &getopts::Matches) -> Result<()> {
 }
 
 fn entry() -> Result<()> {
-    logger::init(log::LogLevelFilter::Info)?;
-
     let args: Vec<String> = env::args().collect();
     let opts = setup_opts();
 
@@ -99,13 +101,15 @@ fn entry() -> Result<()> {
 
     setup_logger(&matches)?;
 
-    // if matches.opt_present("recursive") {
-    // } else {
-    // }
+    let backend_name = matches.opt_str("backend").ok_or("--backend <name> is required")?;
+    let backend = backends::resolve(&backend_name)?;
 
     for argument in matches.free {
         path_visitor(Path::new(argument.as_str()), |path| {
-            println!("path: {}", path.display());
+            let file = parser::parse_file(&path)
+                .chain_err(|| format!("failed to parse: {}", path.display()))?;
+            println!("{}: {:?}", path.display(), file);
+            Ok(())
         })?;
     }
 

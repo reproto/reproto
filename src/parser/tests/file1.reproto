@@ -1,5 +1,7 @@
 package foo.bar.baz;
 
+// hello
+
 message Foo {
     reserved "foo";
 

@@ -1,20 +1,20 @@
 package heroic;
 
-type Point = (i64, double);
-type Event = (i64, any);
+// type Point = (i64, double);
+// type Event = (i64, any);
 
 interface Samples {
   Points {
     // default: heroic/Samples.Points
     name "points";
 
-    required Point[] data;
+    required Point data;
   }
 
   Events {
     // default: heroic/Samples.Events
     name "events";
 
-    required Event[] data;
+    required Event data;
   }
 }
