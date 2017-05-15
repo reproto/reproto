@@ -1,6 +1,6 @@
 #![recursion_limit = "80"]
 
-use std::collections::{LinkedList, HashSet};
+use std::collections::LinkedList;
 
 use super::ast;
 use super::errors::*;
@@ -69,7 +69,7 @@ impl_rdp! {
         interface_member = { sub_type | field }
         sub_type_member = { field }
 
-        field = { modifier* ~ type_spec ~ identifier ~ [";"] }
+        field = { identifier ~ modifier? ~ [":"] ~ type_spec ~ [";"] }
 
         type_spec = { array | tuple | type_literal }
         type_literal = { identifier }
@@ -78,14 +78,14 @@ impl_rdp! {
         array = { ["["] ~ array_argument ~ ["]"] }
         array_argument = { type_spec }
 
-        modifier = { ["optional"] | ["required"] }
+        modifier = { ["?"] }
 
         option = { identifier ~ (option_value ~ ([","] ~ option_value)*) ~ [";"] }
 
         option_value = { string | number }
 
         package_identifier = @{ identifier ~ (["."] ~ identifier)* }
-        identifier =  @{ (['a'..'z'] | ['A'..'z']) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'z'])* }
+        identifier =  @{ (['a'..'z'] | ['A'..'Z']) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'])* }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
         escape  =  { ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
@@ -242,9 +242,8 @@ impl_rdp! {
         }
 
         _field(&self) -> ast::Field {
-            (modifiers: _modifiers(), type_: _type_spec(), &name: identifier) => {
-                let modifiers = ast::Modifiers::new(modifiers);
-                ast::Field::new(modifiers, name.to_owned(), type_, 0)
+            (&name: identifier, modifier: _modifier(), type_: _type_spec()) => {
+                ast::Field::new(modifier, name.to_owned(), type_, 0)
             },
         }
 
@@ -285,17 +284,14 @@ impl_rdp! {
             },
         }
 
-        _modifiers(&self) -> HashSet<ast::Modifier> {
-            (&first: modifier, mut tail: _modifiers()) => {
-                tail.insert(match first {
-                    "required" => ast::Modifier::Required,
-                    "optional" => ast::Modifier::Optional,
-                    _ => unreachable!(),
-                });
-                tail
+        _modifier(&self) -> ast::Modifier {
+            (_: modifier) => {
+                ast::Modifier::Optional
             },
 
-            () => HashSet::new(),
+            () => {
+                ast::Modifier::Required
+            },
         }
 
         _identifiers(&self) -> LinkedList<String> {
@@ -340,8 +336,9 @@ mod tests {
 
     #[test]
     fn test_array() {
-        let mut parser = Rdp::new(StringInput::new("(string, string)[]"));
+        let mut parser = Rdp::new(StringInput::new("[(string, string)]"));
         assert!(parser.type_spec());
         assert!(parser.end());
+        parser._type_spec();
     }
 }

@@ -530,7 +530,7 @@ impl Type {
         }
     }
 
-    fn with_arguments<I>(&self, arguments: Vec<I>) -> TypeSpec
+    pub fn with_arguments<I>(&self, arguments: Vec<I>) -> TypeSpec
         where I: AsTypeSpec
     {
         let arguments: Vec<TypeSpec> = arguments.iter().map(AsTypeSpec::as_type_spec).collect();

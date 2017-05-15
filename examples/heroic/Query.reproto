@@ -1,6 +1,6 @@
 package heroic;
 
 message Query {
-  optional string query;
-  optional Aggregation aggregation;
+  query?: string;
+  aggregation?: Aggregation;
 }

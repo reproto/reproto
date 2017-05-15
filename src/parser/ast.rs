@@ -90,16 +90,16 @@ impl Package {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Field {
-    pub modifiers: Modifiers,
+    pub modifier: Modifier,
     pub name: String,
     pub type_: Type,
     pub id: u32,
 }
 
 impl Field {
-    pub fn new(modifiers: Modifiers, name: String, type_: Type, id: u32) -> Field {
+    pub fn new(modifier: Modifier, name: String, type_: Type, id: u32) -> Field {
         Field {
-            modifiers: modifiers,
+            modifier: modifier,
             name: name,
             type_: type_,
             id: id,

@@ -19,6 +19,10 @@ pub trait Listeners {
 pub struct Processor {
     files: Vec<ast::File>,
     types: HashMap<(ast::Package, String), ast::Decl>,
+    object: Type,
+    list: Type,
+    string: Type,
+    integer: Type,
 }
 
 impl Processor {
@@ -26,19 +30,27 @@ impl Processor {
         Processor {
             files: Vec::new(),
             types: HashMap::new(),
+            object: Type::new("java.lang", "Object"),
+            list: Type::new("java.util", "List"),
+            string: Type::new("java.lang", "String"),
+            integer: Type::new("java.lang", "Integer"),
         }
     }
 
     fn convert_type(&self, package: &ast::Package, type_: &ast::Type) -> Result<TypeSpec> {
         let type_ = match *type_ {
-            ast::Type::String => Type::new("java.lang", "String").as_type_spec(),
-            ast::Type::I32 => Type::new("java.lang", "Integer").as_type_spec(),
+            ast::Type::String => self.string.as_type_spec(),
+            ast::Type::I32 => self.integer.as_type_spec(),
+            ast::Type::Array(ref type_) => {
+                let argument = self.convert_type(package, type_)?;
+                self.list.with_arguments(vec![argument])
+            }
             ast::Type::Custom(ref string) => {
                 let key = &(package.clone(), string.clone());
-                let _type = self.types.get(key).ok_or(format!("No such type: {}", string))?;
+                // let _type = self.types.get(key).ok_or(format!("No such type: {}", string))?;
                 Type::new(&package.parts.join("."), string).as_type_spec()
             }
-            _ => Type::new("java.lang", "Void").as_type_spec(),
+            _ => self.object.as_type_spec(),
         };
 
         Ok(type_)

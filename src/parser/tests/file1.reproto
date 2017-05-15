@@ -7,7 +7,7 @@ type Tuple = (double, double);
 message Foo {
     reserved "foo";
 
-    required string name;
+    name: string;
 }
 
 interface Bar {
@@ -15,8 +15,8 @@ interface Bar {
 
     A {
         name "foo";
-        required string name;
+        name: string;
     }
 }
 
-type Array = [ (double, double) ];
+type ArrayOfTuples = [(double, double)];

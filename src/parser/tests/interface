@@ -3,6 +3,6 @@ interface Bar {
 
     A {
         name "foo";
-        required string name;
+        name: string;
     }
 }

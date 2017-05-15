@@ -40,12 +40,12 @@ type Event = (u64, any);
 interface Samples {
     Points {
         name "points";
-        required Point[] data;
+        data: [Point];
     }
 
     Events {
         name "events";
-        required Event[] data;
+        data: [Event];
     }
 }
 
@@ -71,7 +71,7 @@ interface Aggregation {
 
     Quantile {
         name "quantile";
-        optional float q;
+        q: float;
     }
 }
 
@@ -84,14 +84,14 @@ interface Range {
 
     Absolute {
         name "absolute";
-        required Instant start;
-        required Instant end;
+        start: Instant;
+        end: Instant;
     }
 }
 
 message Query {
-    optional Aggregation aggregation;
-    optional Range range;
+    aggregation: Aggregation;
+    range: Range;
 }
 ```
 
@@ -114,8 +114,8 @@ The following is an example message declaration:
 
 ```
 message Foo {
-    required string foo;
-    required i32 bar;
+    foo: string;
+    bar: i32;
 }
 ```
 
@@ -154,12 +154,12 @@ interface Instant {
 
     RelativeToNow {
         name "relative", "r";
-        required u32 offset;
+        offset: u32;
     }
 
     Absolute {
         name "absolute", "a";
-        required u64 timestamp;
+        timestamp: u64;
     }
 }
 ```

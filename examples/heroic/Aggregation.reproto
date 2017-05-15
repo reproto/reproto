@@ -5,17 +5,17 @@ interface Aggregation {
     // default: heroic/Aggregation.Sum
     name "sum";
 
-    optional Sampling sampling;
-    optional Duration size;
-    optional Duration extent;
+    sampling?: Sampling;
+    size?: Duration;
+    extent?: Duration;
   }
 
   Average {
     // default: heroic/Aggregation.Average
     name "average";
 
-    optional Sampling sampling;
-    optional Duration size;
-    optional Duration extent;
+    sampling?: Sampling;
+    size?: Duration;
+    extent?: Duration;
   }
 }

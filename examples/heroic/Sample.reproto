@@ -8,13 +8,13 @@ interface Samples {
     // default: heroic/Samples.Points
     name "points";
 
-    // required Point[] data;
+    data: [Point];
   }
 
   Events {
     // default: heroic/Samples.Events
     name "events";
 
-    // required Event[] data;
+    data: [Event];
   }
 }
