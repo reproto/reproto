@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use errors::*;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum OptionValue {
     String(String),
@@ -37,6 +39,10 @@ impl Options {
             .flat_map(|o| o.values.iter())
             .collect()
     }
+
+    pub fn merge(&mut self, other: &Options) {
+        self.options.extend(other.options.clone());
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -72,6 +78,7 @@ pub enum Type {
     Bool,
     String,
     Bytes,
+    Any,
     Custom(String),
     Array(Box<Type>),
     Tuple(Vec<Type>),
@@ -144,6 +151,16 @@ impl MessageDecl {
             members: members,
         }
     }
+
+    pub fn merge(&mut self, other: &Decl) -> Result<()> {
+        if let Decl::Message(ref other) = *other {
+            self.options.merge(&other.options);
+            self.members.extend(other.members.clone());
+            return Ok(());
+        }
+
+        return Err("unexpected declaration".into());
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -192,6 +209,16 @@ impl InterfaceDecl {
             members: members,
         }
     }
+
+    pub fn merge(&mut self, other: &Decl) -> Result<()> {
+        if let Decl::Interface(ref other) = *other {
+            self.options.merge(&other.options);
+            self.members.extend(other.members.clone());
+            return Ok(());
+        }
+
+        return Err("unexpected declaration".into());
+    }
 }
 
 /// type <name> = <value>;
@@ -211,6 +238,10 @@ impl TypeDecl {
             value: value,
         }
     }
+
+    pub fn merge(&mut self, _: &Decl) -> Result<()> {
+        return Err("cannot merge type declarations".into());
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -218,6 +249,24 @@ pub enum Decl {
     Message(MessageDecl),
     Interface(InterfaceDecl),
     Type(TypeDecl),
+}
+
+impl Decl {
+    pub fn name(&self) -> String {
+        match *self {
+            Decl::Message(ref message) => message.name.clone(),
+            Decl::Interface(ref interface) => interface.name.clone(),
+            Decl::Type(ref type_) => type_.name.clone(),
+        }
+    }
+
+    pub fn merge(&mut self, other: &Decl) -> Result<()> {
+        match *self {
+            Decl::Message(ref mut message) => message.merge(other),
+            Decl::Interface(ref mut interface) => interface.merge(other),
+            Decl::Type(ref mut type_) => type_.merge(other),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]

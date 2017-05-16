@@ -259,6 +259,7 @@ impl_rdp! {
                     "bool" => ast::Type::Bool,
                     "string" => ast::Type::String,
                     "bytes" => ast::Type::Bytes,
+                    "any" => ast::Type::Any,
                     name => ast::Type::Custom(name.to_owned()),
                 }
             },
