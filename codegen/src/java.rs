@@ -69,7 +69,14 @@ fn format_statement_part_format(format: &String, variables: &Vec<Variable>) -> R
                             return Err(ErrorKind::InvalidVariable.into());
                         }
                     }
-                    '$' => out.push('$'),
+                    '$' => {
+                        if let Variable::Statement(ref stmt) = *var {
+                            let lines = stmt.format()?;
+                            out.push_str(&lines.join(" "));
+                        } else {
+                            return Err(ErrorKind::InvalidVariable.into());
+                        }
+                    }
                     _ => return Err(ErrorKind::InvalidEscape.into()),
                 }
             }
@@ -85,14 +92,10 @@ fn add_annotations(annotations: &Vec<AnnotationSpec>, target: &mut Statement) ->
         return Ok(());
     }
 
-    let mut out = Statement::new();
-
     for a in annotations {
-        out.push_statement(a.as_statement()?);
+        target.push_statement(a.as_statement()?);
+        target.push_spacing();
     }
-
-    target.push_statement(out.join(" "));
-    target.push_literal(" ");
 
     Ok(())
 }
@@ -200,8 +203,8 @@ pub enum Section {
     Spacing,
 }
 
-impl Section {
-    pub fn imports<I>(&self, receiver: &mut I)
+impl Imports for Section {
+    fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {
         match *self {
@@ -218,6 +221,7 @@ pub enum Variable {
     TypeSpec(TypeSpec),
     String(String),
     Name(String),
+    Statement(Statement),
 }
 
 #[derive(Debug, Clone)]
@@ -228,6 +232,8 @@ pub enum StatementPart {
     Format(String, Vec<Variable>),
     // nested statement
     Statement(Statement),
+    // spacing
+    Spacing,
 }
 
 #[derive(Debug, Clone)]
@@ -238,6 +244,10 @@ pub struct Statement {
 impl Statement {
     pub fn new() -> Statement {
         Statement { parts: Vec::new() }
+    }
+
+    pub fn push_spacing(&mut self) {
+        self.parts.push(StatementPart::Spacing);
     }
 
     pub fn push_literal(&mut self, literal: &str) {
@@ -291,24 +301,34 @@ impl Statement {
         }
     }
 
-    pub fn format(&self) -> Result<String> {
-        let mut result: Vec<String> = Vec::new();
+    pub fn format(&self) -> Result<Vec<String>> {
+        let mut out: Vec<String> = Vec::new();
+        let mut current: Vec<String> = Vec::new();
 
         for part in &self.parts {
             match *part {
                 StatementPart::Format(ref format, ref variables) => {
-                    result.push(format_statement_part_format(format, variables)?);
+                    current.push(format_statement_part_format(format, variables)?);
                 }
                 StatementPart::Statement(ref stmt) => {
-                    result.push(stmt.format()?);
+                    current.push(stmt.format()?.join(" "));
                 }
                 StatementPart::Literal(ref string) => {
-                    result.push(string.clone());
+                    current.push(string.clone());
+                }
+                StatementPart::Spacing => {
+                    out.push(current.join(""));
+                    current.clear();
                 }
             }
         }
 
-        Ok(result.join(""))
+        if !current.is_empty() {
+            out.push(current.join(""));
+            current.clear();
+        }
+
+        Ok(out)
     }
 }
 
@@ -367,6 +387,16 @@ macro_rules! stmt {
         vars.extend(stmt!($($tail)*));
         vars
     }};
+
+    (stmt $var:expr) => {{
+        vec![Variable::Statement($var.clone())]
+    }};
+
+    (stmt $var:expr, $($tail:tt)*) => {{
+        let mut vars = vec![Variable::Statement($var.clone())];
+        vars.extend(stmt!($($tail)*));
+        vars
+    }};
 }
 
 #[macro_export]
@@ -394,14 +424,6 @@ impl Sections {
         Sections { sections: Vec::new() }
     }
 
-    pub fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        for section in &self.sections {
-            section.imports(receiver);
-        }
-    }
-
     pub fn push_statement(&mut self, statement: &Statement) {
         self.sections.push(Section::Statement(statement.clone()));
     }
@@ -424,7 +446,9 @@ impl Sections {
         for section in &self.sections {
             match *section {
                 Section::Statement(ref statement) => {
-                    out.push(format!("{}{};", current, statement.format()?));
+                    for line in statement.format()? {
+                        out.push(format!("{}{};", current, line));
+                    }
                 }
                 Section::Block(ref block) => {
                     out.extend(block.format(current, indent)?);
@@ -437,6 +461,14 @@ impl Sections {
 
         Ok(out)
     }
+}
+
+impl Imports for Sections {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
+        receiver.import_all(&self.sections);
+   }
 }
 
 #[derive(Debug, Clone)]
@@ -497,7 +529,15 @@ impl Block {
         let mut out = Vec::new();
 
         if let Some(ref open) = self.open {
-            out.push(format!("{}{} {{", current, open.format()?).to_owned());
+            let mut it = open.format()?.into_iter().peekable();
+
+            while let Some(line) = it.next() {
+                if it.peek().is_none() {
+                    out.push(format!("{}{} {{", current, line).to_owned());
+                } else {
+                    out.push(format!("{}{}", current, line).to_owned());
+                }
+            }
         } else {
             out.push(format!("{}{{", current).to_owned());
         }
@@ -505,7 +545,8 @@ impl Block {
         out.extend(self.sections.format(&format!("{}{}", current, indent), indent)?);
 
         if let Some(ref close) = self.close {
-            out.push(format!("{}{} {{", current, close.format()?).to_owned());
+            let close = close.format()?.join(" ");
+            out.push(format!("{}}} {};", current, close).to_owned());
         } else {
             out.push(format!("{}}}", current).to_owned());
         }
@@ -703,14 +744,6 @@ impl ConstructorSpec {
         self.sections.push_statement(statement);
     }
 
-    pub fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        self.sections.imports(receiver);
-        receiver.import_all(&self.annotations);
-        receiver.import_all(&self.arguments);
-    }
-
     pub fn as_block(&self, enclosing: &str) -> Result<Block> {
         let mut open = Statement::new();
 
@@ -729,6 +762,16 @@ impl ConstructorSpec {
         block.extend(&self.sections);
 
         Ok(block)
+    }
+}
+
+impl Imports for ConstructorSpec {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
+        self.sections.imports(receiver);
+        receiver.import_all(&self.annotations);
+        receiver.import_all(&self.arguments);
     }
 }
 
@@ -880,33 +923,10 @@ impl MethodSpec {
         self.sections.push_statement(statement);
     }
 
-    pub fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        if let Some(ref type_) = self.returns {
-            type_.imports(receiver);
-        }
-
-        for a in &self.arguments {
-            a.imports(receiver);
-        }
-
-        self.sections.imports(receiver);
-    }
-
     pub fn as_block(&self) -> Result<Block> {
         let mut open = Statement::new();
 
-        if !self.annotations.is_empty() {
-            let mut annotations = Statement::new();
-
-            for a in &self.annotations {
-                annotations.push_statement(a.as_statement()?);
-            }
-
-            open.push_statement(annotations.join(" "));
-            open.push_literal(" ");
-        }
+        add_annotations(&self.annotations, &mut open)?;
 
         if !self.modifiers.is_empty() {
             open.push("$L ", stmt!(literal self.modifiers.format()?));
@@ -940,10 +960,24 @@ impl MethodSpec {
     }
 }
 
+impl Imports for MethodSpec {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
+        if let Some(ref type_) = self.returns {
+            type_.imports(receiver);
+        }
+
+        receiver.import_all(&self.arguments);
+        self.sections.imports(receiver);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct InterfaceSpec {
     pub modifiers: Modifiers,
     pub name: String,
+    pub annotations: Vec<AnnotationSpec>,
     pub elements: Vec<ElementSpec>,
 }
 
@@ -952,8 +986,13 @@ impl InterfaceSpec {
         InterfaceSpec {
             modifiers: modifiers,
             name: name.to_owned(),
+            annotations: Vec::new(),
             elements: Vec::new(),
         }
+    }
+
+    pub fn push_annotation(&mut self, annotation: &AnnotationSpec) {
+        self.annotations.push(annotation.clone());
     }
 
     pub fn push_class(&mut self, class: &ClassSpec) {
@@ -964,10 +1003,15 @@ impl InterfaceSpec {
         self.elements.push(ElementSpec::Interface(interface.clone()))
     }
 
-    pub fn imports<I>(&self, receiver: &mut I) where I: ImportReceiver {}
+    pub fn imports<I>(&self, receiver: &mut I) where I: ImportReceiver {
+        receiver.import_all(&self.annotations);
+        receiver.import_all(&self.elements);
+    }
 
     pub fn as_block(&self) -> Result<Block> {
         let mut open = Statement::new();
+
+        add_annotations(&self.annotations, &mut open)?;
 
         if !self.modifiers.is_empty() {
             open.push("$L ", stmt!(literal self.modifiers.format()?));
@@ -998,6 +1042,7 @@ impl InterfaceSpec {
 pub struct ClassSpec {
     pub modifiers: Modifiers,
     pub name: String,
+    pub annotations: Vec<AnnotationSpec>,
     pub fields: Vec<FieldSpec>,
     pub constructors: Vec<ConstructorSpec>,
     pub methods: Vec<MethodSpec>,
@@ -1009,11 +1054,16 @@ impl ClassSpec {
         ClassSpec {
             modifiers: modifiers,
             name: name.to_owned(),
+            annotations: Vec::new(),
             fields: Vec::new(),
             constructors: Vec::new(),
             methods: Vec::new(),
             elements: Vec::new(),
         }
+    }
+
+    pub fn push_annotation(&mut self, annotation: &AnnotationSpec) {
+        self.annotations.push(annotation.clone());
     }
 
     pub fn push_field(&mut self, field: &FieldSpec) {
@@ -1039,17 +1089,15 @@ impl ClassSpec {
     pub fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {
-        for constructor in &self.constructors {
-            constructor.imports(receiver);
-        }
-
-        for method in &self.methods {
-            method.imports(receiver);
-        }
+        receiver.import_all(&self.annotations);
+        receiver.import_all(&self.constructors);
+        receiver.import_all(&self.methods);
     }
 
     pub fn as_block(&self) -> Result<Block> {
         let mut open = Statement::new();
+
+        add_annotations(&self.annotations, &mut open)?;
 
         if !self.modifiers.is_empty() {
             open.push("$L ", stmt!(literal self.modifiers.format()?));
@@ -1112,6 +1160,17 @@ impl ElementSpec {
         match *self {
             ElementSpec::Class(ref class) => class.as_block(),
             ElementSpec::Interface(ref interface) => interface.as_block(),
+        }
+    }
+}
+
+impl Imports for ElementSpec {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
+        match *self {
+            ElementSpec::Class(ref class) => class.imports(receiver),
+            ElementSpec::Interface(ref interface) => interface.imports(receiver),
         }
     }
 }

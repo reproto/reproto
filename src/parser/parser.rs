@@ -1,6 +1,7 @@
 #![recursion_limit = "80"]
 
 use std::collections::LinkedList;
+use std::collections::BTreeMap;
 
 use super::ast;
 use super::errors::*;
@@ -56,23 +57,26 @@ fn decode_unicode4(it: &mut Iterator<Item = char>) -> Result<char> {
 
 impl_rdp! {
     grammar! {
-        file = _{ package_decl ~ decl* ~ eoi }
+        file = _{ package_decl ~ imports ~ decl* ~ eoi }
         decl = { message_decl | interface_decl | type_decl }
 
+        imports = { import_decl* }
+        import_decl = { ["use"] ~ package_identifier ~ [";"] }
         package_decl = { ["package"] ~ package_identifier ~ [";"] }
         message_decl = { ["message"] ~ identifier ~ ["{"] ~ option* ~ message_member* ~ ["}"] }
-        interface_decl = { ["interface"] ~ identifier ~ ["{"] ~ option* ~ interface_member* ~ ["}"] }
+        interface_decl = { ["interface"] ~ identifier ~ ["{"] ~ option* ~ interface_member* ~ sub_type* ~ ["}"] }
         type_decl = { ["type"] ~ identifier ~ ["="] ~ type_spec ~ [";"] }
         sub_type = { identifier ~ ["{"] ~ option* ~ sub_type_member* ~ ["}"] }
 
         message_member = { field }
-        interface_member = { sub_type | field }
+        interface_member = { field }
         sub_type_member = { field }
 
         field = { identifier ~ modifier? ~ [":"] ~ type_spec ~ [";"] }
 
-        type_spec = { array | tuple | type_literal }
+        type_spec = { array | tuple | used_type | type_literal }
         type_literal = { identifier }
+        used_type = { identifier ~ ["."] ~ identifier }
         tuple = { ["("] ~ ( tuple_element ~ ([","] ~ tuple_element)* ) ~ [")"] }
         tuple_element = { type_spec }
         array = { ["["] ~ array_argument ~ ["]"] }
@@ -103,14 +107,32 @@ impl_rdp! {
 
     process! {
         process_file(&self) -> Result<ast::File> {
-            (package: _package(), decls: _decls()) => {
+            (package: _package(), imports: _imports(), decls: _decls()) => {
+                let imports = imports.into_iter().collect();
                 let decls = decls.into_iter().collect();
-                Ok(ast::File::new(package, decls))
+                Ok(ast::File::new(package, imports, decls))
             },
         }
 
         _package(&self) -> ast::Package {
             (_: package_decl, _: package_identifier, identifiers: _identifiers()) => {
+                ast::Package::new(identifiers.into_iter().collect())
+            },
+        }
+
+        _imports(&self) -> LinkedList<ast::Package> {
+            (_: imports, first: _import(), mut tail: _imports()) => {
+                tail.push_front(first);
+                tail
+            },
+
+            () => {
+                LinkedList::new()
+            },
+        }
+
+        _import(&self) -> ast::Package {
+            (_: import_decl, _: package_identifier, identifiers: _identifiers()) => {
                 ast::Package::new(identifiers.into_iter().collect())
             },
         }
@@ -134,10 +156,10 @@ impl_rdp! {
                 ast::Decl::Message(m)
             },
 
-            (_: interface_decl, &name: identifier, options: _options(), members: _interface_members()) => {
+            (_: interface_decl, &name: identifier, options: _options(), members: _interface_members(), sub_types: _sub_types()) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                let m = ast::InterfaceDecl::new(name.to_owned(), options, members);
+                let m = ast::InterfaceDecl::new(name.to_owned(), options, members, sub_types);
                 ast::Decl::Interface(m)
             },
 
@@ -216,6 +238,26 @@ impl_rdp! {
             },
         }
 
+        _sub_types(&self) -> BTreeMap<String, ast::SubType> {
+            (_: sub_type, first: _sub_type(), mut tail: _sub_types()) => {
+                tail.insert(first.name.clone(), first);
+                tail
+            },
+
+            () => {
+                BTreeMap::new()
+            },
+        }
+
+        _sub_type(&self) -> ast::SubType {
+            (&name: identifier, options: _options(), members: _sub_type_members()) => {
+                let name = name.to_owned();
+                let options = ast::Options::new(options.into_iter().collect());
+                let members = members.into_iter().collect();
+                ast::SubType::new(name, options, members)
+            },
+        }
+
         _interface_members(&self) -> LinkedList<ast::InterfaceMember> {
             (_: interface_member, first: _interface_member(), mut tail: _interface_members()) => {
                 tail.push_front(first);
@@ -228,14 +270,6 @@ impl_rdp! {
         }
 
         _interface_member(&self) -> ast::InterfaceMember {
-            (_: sub_type, &name: identifier, options: _options(), members: _sub_type_members()) => {
-                let name = name.to_owned();
-                let options = ast::Options::new(options.into_iter().collect());
-                let members = members.into_iter().collect();
-                let s = ast::SubType::new(name, options, members);
-                ast::InterfaceMember::SubType(s)
-            },
-
             (_: field, field: _field()) => {
                 ast::InterfaceMember::Field(field)
             },
@@ -262,6 +296,10 @@ impl_rdp! {
                     "any" => ast::Type::Any,
                     name => ast::Type::Custom(name.to_owned()),
                 }
+            },
+
+            (_: type_spec, _: used_type, &used: identifier, &value: identifier) => {
+                ast::Type::UsedType(used.to_owned(), value.to_owned())
             },
 
             (_: type_spec, _: tuple, arguments: _tuple_elements()) => {

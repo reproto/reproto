@@ -1,7 +1,7 @@
-# Examples using rePROTO
+# Examples using reProto
 
 ## [Heroic](heroic)
 
-This models the [heroic][heroic] API using rePROTO.
+This models the [heroic][heroic] API using reProto.
 
 [heroic]: https://github.com/spotify/heroic

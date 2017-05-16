@@ -1,0 +1,5 @@
+package common;
+
+message Date {
+  field: u32;
+}

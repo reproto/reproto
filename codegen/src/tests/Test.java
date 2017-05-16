@@ -6,7 +6,8 @@ import java.util.List;
 public class Test {
   private final List<String> values;
 
-  @JsonCreator public Test(final List<String> values) {
+  @JsonCreator
+  public Test(final List<String> values) {
     this.values = values;
   }
 

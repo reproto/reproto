@@ -1,0 +1,50 @@
+package heroic.v1;
+
+use common;
+
+interface Sampling {
+}
+
+type Point = (i64, double);
+type Event = (i64, any);
+
+interface Samples {
+  Points {
+    name "points";
+
+    data: [Point];
+  }
+
+  Events {
+    name "events";
+
+    data: [Event];
+  }
+}
+
+message Query {
+  query?: string;
+  aggregation?: Aggregation;
+  date?: common.Date;
+}
+
+interface Duration {
+}
+
+interface Aggregation {
+  Sum {
+    name "sum";
+
+    sampling?: Sampling;
+    size?: Duration;
+    extent?: Duration;
+  }
+
+  Average {
+    name "average";
+
+    sampling?: Sampling;
+    size?: Duration;
+    extent?: Duration;
+  }
+}

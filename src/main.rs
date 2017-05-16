@@ -3,66 +3,45 @@ extern crate reproto;
 extern crate log;
 extern crate getopts;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 use std::env;
 
 use reproto::errors::*;
 
-use reproto::logger;
 use reproto::backends;
-use reproto::parser;
+use reproto::logger;
 use reproto::options::Options;
-
-/// List the given directory recursively and pass each visited path to the visitor clojure.
-fn path_visitor<F>(path: &Path, mut visitor: F) -> Result<()>
-    where F: FnMut(&Path) -> Result<()>
-{
-    let mut v: Vec<PathBuf> = Vec::new();
-
-    v.push(path.to_owned());
-
-    loop {
-        if let Some(path) = v.pop() {
-            let children = fs::read_dir(path.as_path())?;
-
-            for child in children {
-                let child = child?;
-                let full = child.path();
-
-                if full.is_dir() {
-                    v.push(full.to_owned());
-                } else {
-                    visitor(&full)?;
-                }
-            }
-
-            continue;
-        }
-
-        break;
-    }
-
-    Ok(())
-}
+use reproto::parser::ast;
+use reproto::environment::Environment;
 
 fn setup_opts() -> getopts::Options {
     let mut opts = getopts::Options::new();
 
     opts.reqopt("b",
                 "backend",
-                "Backend to used to emit code (required)",
+                "Backend to used to emit code (required).",
                 "<backend>");
 
-    opts.reqopt("o", "out", "Path to write output to (required)", "<dir>");
+    opts.optmulti("",
+                  "path",
+                  "Paths to look for definitions. Can be used multiple times.",
+                  "<dir>");
 
-    opts.optflag("h", "help", "Print help");
+    opts.reqopt("o", "out", "Path to write output to (required).", "<dir>");
 
-    opts.optflag("", "debug", "Enable debug logging");
+    opts.optflag("h", "help", "Print help.");
+
+    opts.optflag("", "debug", "Enable debug logging.");
 
     opts.optflag("r",
                  "recursive",
-                 "Process the arguments recursively (looking for .reproto files)");
+                 "Process the arguments recursively (looking for .reproto files).");
+
+    opts.optopt("",
+                "package-prefix",
+                "Package prefix to use when generating classes.",
+                "<package>");
 
     opts
 }
@@ -111,23 +90,30 @@ fn entry() -> Result<()> {
     setup_logger(&matches)?;
 
     let backend = matches.opt_str("backend").ok_or("--backend <backend> is required")?;
-    let mut backend = backends::resolve(&backend)?;
+    let backend = backends::resolve(&backend)?;
 
     let out_path = matches.opt_str("out").ok_or("--out <dir> is required")?;
     let out_path = Path::new(&out_path);
 
-    let options = Options { out_path: out_path.to_path_buf() };
+    let package_prefix = matches.opt_str("package-prefix");
+
+    let paths = matches.opt_strs("path").iter().map(Path::new).map(ToOwned::to_owned).collect();
+
+    let options = Options {
+        out_path: out_path.to_path_buf(),
+        package_prefix: package_prefix,
+    };
 
     fs::create_dir_all(&out_path)?;
 
-    for argument in matches.free {
-        path_visitor(Path::new(argument.as_str()), |path| {
-            backend.add_file(parser::parse_file(&path)
-                .chain_err(|| format!("failed to parse: {}", path.display()))?)
-        })?;
+    let mut env = Environment::new(paths);
+
+    for package in matches.free {
+        let package = ast::Package::new(package.split(".").map(ToOwned::to_owned).collect());
+        env.import(&package)?;
     }
 
-    backend.process(&options)?;
+    backend.process(&options, &env)?;
     Ok(())
 }
 

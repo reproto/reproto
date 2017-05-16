@@ -1,12 +1,13 @@
 pub mod java;
 
-use parser::ast;
+use environment::Environment;
 use options::Options;
+use parser::ast;
 
 use errors::*;
 
-pub trait Backend {
-    fn add_file(&mut self, file: ast::File) -> Result<()>;
+pub type TypeId = (ast::Package, String);
 
-    fn process(&self, options: &Options) -> Result<()>;
+pub trait Backend {
+    fn process(&self, options: &Options, env: &Environment) -> Result<()>;
 }

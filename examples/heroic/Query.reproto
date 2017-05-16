@@ -1,6 +1,0 @@
-package heroic;
-
-message Query {
-  query?: string;
-  aggregation?: Aggregation;
-}

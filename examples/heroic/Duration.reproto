@@ -1,4 +1,0 @@
-package heroic;
-
-interface Duration {
-}

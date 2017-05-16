@@ -1,4 +1,6 @@
 use std::collections::HashSet;
+use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 use errors::*;
 
@@ -40,6 +42,25 @@ impl Options {
             .collect()
     }
 
+    pub fn lookup_nth(&self, name: &str, n: usize) -> Option<&OptionValue> {
+        self.options
+            .iter()
+            .filter(|o| o.name.as_str() == name)
+            .flat_map(|o| o.values.iter())
+            .nth(n)
+    }
+
+    pub fn lookup_string_nth(&self, name: &str, n: usize) -> Option<&String> {
+        self.options
+            .iter()
+            .filter(|o| o.name.as_str() == name)
+            .flat_map(|o| o.values.iter())
+            .flat_map(|v| match *v {
+                OptionValue::String(ref s) => Some(s).into_iter(),
+            })
+            .nth(n)
+    }
+
     pub fn merge(&mut self, other: &Options) {
         self.options.extend(other.options.clone());
     }
@@ -79,12 +100,13 @@ pub enum Type {
     String,
     Bytes,
     Any,
+    UsedType(String, String),
     Custom(String),
     Array(Box<Type>),
     Tuple(Vec<Type>),
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub struct Package {
     pub parts: Vec<String>,
 }
@@ -92,6 +114,18 @@ pub struct Package {
 impl Package {
     pub fn new(parts: Vec<String>) -> Package {
         Package { parts: parts }
+    }
+
+    pub fn join(&self, other: &Package) -> Package {
+        let mut parts = self.parts.clone();
+        parts.extend(other.parts.clone());
+        Package::new(parts)
+    }
+}
+
+impl ::std::fmt::Display for Package {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{}", self.parts.join("."))
     }
 }
 
@@ -184,13 +218,18 @@ impl SubType {
             members: members,
         }
     }
+
+    pub fn merge(&mut self, other: &SubType) -> Result<()> {
+        self.options.merge(&other.options);
+        self.members.extend(other.members.clone());
+        Ok(())
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum InterfaceMember {
     Field(Field),
     OneOf(OneOf),
-    SubType(SubType),
 }
 
 /// interface <name> { <members>* }
@@ -199,14 +238,20 @@ pub struct InterfaceDecl {
     pub name: String,
     pub options: Options,
     pub members: Vec<InterfaceMember>,
+    pub sub_types: BTreeMap<String, SubType>,
 }
 
 impl InterfaceDecl {
-    pub fn new(name: String, options: Options, members: Vec<InterfaceMember>) -> InterfaceDecl {
+    pub fn new(name: String,
+               options: Options,
+               members: Vec<InterfaceMember>,
+               sub_types: BTreeMap<String, SubType>)
+               -> InterfaceDecl {
         InterfaceDecl {
             name: name,
             options: options,
             members: members,
+            sub_types: sub_types,
         }
     }
 
@@ -214,6 +259,18 @@ impl InterfaceDecl {
         if let Decl::Interface(ref other) = *other {
             self.options.merge(&other.options);
             self.members.extend(other.members.clone());
+
+            for (key, sub_type) in &other.sub_types {
+                match self.sub_types.entry(key.to_owned()) {
+                    Entry::Vacant(entry) => {
+                        entry.insert(sub_type.clone());
+                    }
+                    Entry::Occupied(entry) => {
+                        entry.into_mut().merge(sub_type)?;
+                    }
+                }
+            }
+
             return Ok(());
         }
 
@@ -272,13 +329,15 @@ impl Decl {
 #[derive(Debug, PartialEq)]
 pub struct File {
     pub package: Package,
+    pub imports: Vec<Package>,
     pub decls: Vec<Decl>,
 }
 
 impl File {
-    pub fn new(package: Package, decls: Vec<Decl>) -> File {
+    pub fn new(package: Package, imports: Vec<Package>, decls: Vec<Decl>) -> File {
         File {
             package: package,
+            imports: imports,
             decls: decls,
         }
     }

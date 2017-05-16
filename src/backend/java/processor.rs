@@ -1,10 +1,9 @@
+use environment::Environment;
 use options::Options;
 use parser::ast;
 use std::fs::File;
 use std::fs;
 use std::io::Write;
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
 
 #[macro_use]
 use codegen::java::*;
@@ -15,27 +14,60 @@ pub trait Listeners {
     fn class_added(&self, _class: &mut ClassSpec) -> Result<()> {
         Ok(())
     }
+
+    fn interface_added(&self,
+                       _interface: &ast::InterfaceDecl,
+                       _interface_spec: &mut InterfaceSpec)
+                       -> Result<()> {
+        Ok(())
+    }
+
+    fn sub_type_added(&self,
+                      _interface: &ast::InterfaceDecl,
+                      _sub_type: &ast::SubType,
+                      _class: &mut ClassSpec)
+                      -> Result<()> {
+        Ok(())
+    }
 }
 
-pub struct Processor {
-    types: HashMap<(ast::Package, String), ast::Decl>,
+pub struct Processor<'a> {
+    options: &'a Options,
+    env: &'a Environment,
+    package_prefix: Option<ast::Package>,
     object: Type,
     list: Type,
     string: Type,
     integer: Type,
     long: Type,
+    float: Type,
+    double: Type,
 }
 
-impl Processor {
-    pub fn new() -> Processor {
+impl<'a> Processor<'a> {
+    pub fn new(options: &'a Options,
+               env: &'a Environment,
+               package_prefix: Option<ast::Package>)
+               -> Processor<'a> {
         Processor {
-            types: HashMap::new(),
+            options: options,
+            env: env,
+            package_prefix: package_prefix,
             object: Type::new("java.lang", "Object"),
             list: Type::new("java.util", "List"),
             string: Type::new("java.lang", "String"),
             integer: Type::new("java.lang", "Integer"),
             long: Type::new("java.lang", "Long"),
+            float: Type::new("java.lang", "Float"),
+            double: Type::new("java.lang", "Double"),
         }
+    }
+
+    fn build_package(&self, package: ast::Package) -> ast::Package {
+        self.package_prefix
+            .clone()
+            .map(|prefix| prefix.join(&package))
+            .unwrap_or(package)
     }
 
     fn convert_type(&self, package: &ast::Package, type_: &ast::Type) -> Result<TypeSpec> {
@@ -50,20 +82,37 @@ impl Processor {
                 self.list.with_arguments(vec![argument])
             }
             ast::Type::Custom(ref string) => {
-                let key = &(package.clone(), string.clone());
-                let _type = self.types.get(key).ok_or(format!("No such type: {}", string))?;
-                Type::new(&package.parts.join("."), string).as_type_spec()
+                let key = (package.clone(), string.clone());
+                let _ = self.env.types.get(&key);
+                let package_name = self.build_package(package.clone()).parts.join(".");
+                Type::new(&package_name, string).as_type_spec()
             }
-            _ => self.object.as_type_spec(),
+            ast::Type::Any => self.object.as_type_spec(),
+            ast::Type::Float => self.float.as_type_spec(),
+            ast::Type::Double => self.double.as_type_spec(),
+            ast::Type::UsedType(ref used, ref custom) => {
+                let package = self.env
+                    .used
+                    .get(&(package.clone(), used.clone()))
+                    .ok_or(format!("Missing use for ({})", used))?;
+
+                let key = (package.clone(), custom.clone());
+                let _ = self.env.types.get(&key);
+                let package_name = self.build_package(package.clone()).parts.join(".");
+                Type::new(&package_name, custom).as_type_spec()
+            }
+            ref t => {
+                return Err(format!("Unsupported type: {:?}", t).into());
+            }
         };
 
         Ok(type_)
     }
 
-    fn build_constructor(&self, fields: &Vec<FieldSpec>) -> ConstructorSpec {
+    fn build_constructor(&self, class: &ClassSpec) -> ConstructorSpec {
         let mut constructor = ConstructorSpec::new(mods![Modifier::Public]);
 
-        for field in fields {
+        for field in &class.fields {
             let argument = ArgumentSpec::new(mods![Modifier::Final], &field.type_, &field.name);
             constructor.push_argument(&argument);
             constructor.push_statement(&stmt!["this.$L = $N", literal field.name.clone(), name argument]);
@@ -79,11 +128,9 @@ impl Processor {
                        -> Result<FileSpec>
         where L: Listeners
     {
-        let package_name = package.parts.join(".");
+        let package_name = self.build_package(package.clone()).parts.join(".");
 
         let mut class = ClassSpec::new(mods![Modifier::Public], &type_.name);
-
-        let mut fields: Vec<FieldSpec> = Vec::new();
 
         match type_.value {
             ast::Type::Tuple(ref arguments) => {
@@ -104,13 +151,13 @@ impl Processor {
 
                     let field = FieldSpec::new(mods, &field_type, &name);
                     class.push_field(&field);
-                    fields.push(field);
                 }
             }
             _ => {}
         }
 
-        class.push_constructor(&self.build_constructor(&fields));
+        let constructor = self.build_constructor(&class);
+        class.push_constructor(&constructor);
 
         listeners.class_added(&mut class)?;
 
@@ -127,19 +174,18 @@ impl Processor {
                           -> Result<FileSpec>
         where L: Listeners
     {
-        let package_name = package.parts.join(".");
+        let package_name = self.build_package(package.clone()).parts.join(".");
 
         let mut class = ClassSpec::new(mods![Modifier::Public], &message.name);
 
-        let mut fields: Vec<FieldSpec> = Vec::new();
-
         for member in &message.members {
             if let ast::MessageMember::Field(ref field) = *member {
-                fields.push(self.push_field(&package, &mut class, field)?);
+                class.push_field(&self.push_field(&package, field)?);
             }
         }
 
-        class.push_constructor(&self.build_constructor(&fields));
+        let constructor = &self.build_constructor(&class);
+        class.push_constructor(constructor);
 
         listeners.class_added(&mut class)?;
 
@@ -156,96 +202,83 @@ impl Processor {
                             -> Result<FileSpec>
         where L: Listeners
     {
-        let package_name = package.parts.join(".");
+        let package_name = self.build_package(package.clone()).parts.join(".");
 
         let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
 
+        let mut interface_fields: Vec<FieldSpec> = Vec::new();
+
         for member in &interface.members {
-            if let ast::InterfaceMember::SubType(ref sub_type) = *member {
-                let mods = mods![Modifier::Public, Modifier::Static];
-                let mut class = ClassSpec::new(mods, &sub_type.name);
-
-                let mut fields: Vec<FieldSpec> = Vec::new();
-
-                for m in &sub_type.members {
-                    if let ast::SubTypeMember::Field(ref field) = *m {
-                        fields.push(self.push_field(&package, &mut class, field)?);
-                    }
-                }
-
-                class.push_constructor(&self.build_constructor(&fields));
-
-                listeners.class_added(&mut class)?;
-
-                interface_spec.push_class(&class);
+            if let ast::InterfaceMember::Field(ref field) = *member {
+                let field = self.push_field(&package, field)?;
+                interface_fields.push(field);
             }
         }
 
+        for (_, ref sub_type) in &interface.sub_types {
+            let mods = mods![Modifier::Public, Modifier::Static];
+            let mut class = ClassSpec::new(mods, &sub_type.name);
+
+            for interface_field in &interface_fields {
+                class.push_field(&interface_field);
+            }
+
+            for member in &sub_type.members {
+                if let ast::SubTypeMember::Field(ref field) = *member {
+                    let field = self.push_field(&package, field)?;
+                    class.push_field(&field);
+                }
+            }
+
+            let constructor = self.build_constructor(&class);
+            class.push_constructor(&constructor);
+
+            listeners.class_added(&mut class)?;
+            listeners.sub_type_added(interface, sub_type, &mut class)?;
+
+            interface_spec.push_class(&class);
+        }
+
         let mut file_spec = FileSpec::new(&package_name);
+
+        listeners.interface_added(interface, &mut interface_spec)?;
+
         file_spec.push_interface(&interface_spec);
         Ok(file_spec)
     }
 
-    fn push_field(&self,
-                  package: &ast::Package,
-                  class: &mut ClassSpec,
-                  field: &ast::Field)
-                  -> Result<FieldSpec> {
+    fn push_field(&self, package: &ast::Package, field: &ast::Field) -> Result<FieldSpec> {
         let field_type = self.convert_type(package, &field.type_)?;
         let mods = mods![Modifier::Private, Modifier::Final];
         let field = FieldSpec::new(mods, &field_type, &field.name);
 
-        class.push_field(&field);
-
         Ok(field)
     }
 
-    pub fn add_file(&mut self, file: ast::File) -> Result<()> {
-        {
-            let package = &file.package;
-
-            for decl in &file.decls {
-                let key = (package.clone(), decl.name());
-
-                match self.types.entry(key.clone()) {
-                    Entry::Vacant(entry) => {
-                        entry.insert(decl.clone());
-                    }
-                    Entry::Occupied(entry) => {
-                        entry.into_mut().merge(decl)?;
-                    }
-                };
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn process<L>(&self, options: &Options, listeners: &L) -> Result<()>
+    pub fn process<L>(&self, listeners: &L) -> Result<()>
         where L: Listeners
     {
-        let root = options.out_path.clone();
+        let root = self.options.out_path.clone();
 
-        for (&(ref package, _), decl) in &self.types {
-            let out_dir =
-                package.parts.iter().fold(root.clone(), |current, next| current.join(next));
+        for (&(ref package, _), decl) in &self.env.types {
+            let out_dir = self.build_package(package.clone())
+                .parts
+                .iter()
+                .fold(root.clone(), |current, next| current.join(next));
 
             fs::create_dir_all(&out_dir)?;
 
             let res = match *decl {
                 ast::Decl::Interface(ref interface) => {
                     let full_path = out_dir.join(format!("{}.java", interface.name));
-                    info!("Processing: {}", full_path.display());
                     Some((full_path, self.process_interface(package, interface, listeners)?))
                 }
                 ast::Decl::Message(ref message) => {
                     let full_path = out_dir.join(format!("{}.java", message.name));
-                    info!("Processing: {}", full_path.display());
                     Some((full_path, self.process_message(package, message, listeners)?))
                 }
                 ast::Decl::Type(ref type_) => {
                     let full_path = out_dir.join(format!("{}.java", type_.name));
-                    info!("Processing: {}", full_path.display());
                     Some((full_path, self.process_type(package, type_, listeners)?))
                 }
             };
