@@ -89,7 +89,7 @@ impl_rdp! {
         option_value = { string | number }
 
         package_ident = @{ ident ~ (["."] ~ ident)* }
-        ident =  @{ (['a'..'z'] | ['A'..'Z']) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'])* }
+        ident =  @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
         escape  =  _{ ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
