@@ -4,6 +4,9 @@ use std::collections::btree_map::Entry;
 
 use errors::*;
 
+/// Position relative in file where the declaration is present.
+type Pos = (usize, usize);
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum OptionValue {
     String(String),
@@ -165,8 +168,8 @@ impl OneOf {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum MessageMember {
-    Field(Field),
-    OneOf(OneOf),
+    Field(Field, Pos),
+    OneOf(OneOf, Pos),
 }
 
 /// message <name> { <members>* }
@@ -175,14 +178,20 @@ pub struct MessageDecl {
     pub name: String,
     pub options: Options,
     pub members: Vec<MessageMember>,
+    pub pos: Pos,
 }
 
 impl MessageDecl {
-    pub fn new(name: String, options: Options, members: Vec<MessageMember>) -> MessageDecl {
+    pub fn new(name: String,
+               options: Options,
+               members: Vec<MessageMember>,
+               pos: Pos)
+               -> MessageDecl {
         MessageDecl {
             name: name,
             options: options,
             members: members,
+            pos: pos,
         }
     }
 
@@ -208,14 +217,16 @@ pub struct SubType {
     pub name: String,
     pub options: Options,
     pub members: Vec<SubTypeMember>,
+    pub pos: Pos,
 }
 
 impl SubType {
-    pub fn new(name: String, options: Options, members: Vec<SubTypeMember>) -> SubType {
+    pub fn new(name: String, options: Options, members: Vec<SubTypeMember>, pos: Pos) -> SubType {
         SubType {
             name: name,
             options: options,
             members: members,
+            pos: pos,
         }
     }
 
@@ -228,8 +239,8 @@ impl SubType {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum InterfaceMember {
-    Field(Field),
-    OneOf(OneOf),
+    Field(Field, Pos),
+    OneOf(OneOf, Pos),
 }
 
 /// interface <name> { <members>* }
@@ -239,19 +250,22 @@ pub struct InterfaceDecl {
     pub options: Options,
     pub members: Vec<InterfaceMember>,
     pub sub_types: BTreeMap<String, SubType>,
+    pub pos: Pos,
 }
 
 impl InterfaceDecl {
     pub fn new(name: String,
                options: Options,
                members: Vec<InterfaceMember>,
-               sub_types: BTreeMap<String, SubType>)
+               sub_types: BTreeMap<String, SubType>,
+               pos: Pos)
                -> InterfaceDecl {
         InterfaceDecl {
             name: name,
             options: options,
             members: members,
             sub_types: sub_types,
+            pos: pos,
         }
     }
 
@@ -286,13 +300,15 @@ impl InterfaceDecl {
 pub struct TypeDecl {
     pub name: String,
     pub value: Type,
+    pub pos: Pos,
 }
 
 impl TypeDecl {
-    pub fn new(name: String, value: Type) -> TypeDecl {
+    pub fn new(name: String, value: Type, pos: Pos) -> TypeDecl {
         TypeDecl {
             name: name,
             value: value,
+            pos: pos,
         }
     }
 

@@ -63,8 +63,9 @@ impl_rdp! {
         use_decl = { ["use"] ~ package_ident ~ [";"] }
         package_decl = { ["package"] ~ package_ident ~ [";"] }
         message_decl = { ["message"] ~ ident ~ ["{"] ~ option_decl* ~ message_member* ~ ["}"] }
-        interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ interface_member* ~ sub_type* ~ ["}"] }
+        interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ interface_member* ~ sub_type_decl* ~ ["}"] }
         type_decl = { ["type"] ~ ident ~ ["="] ~ type_spec ~ [";"] }
+        sub_type_decl = { sub_type }
         sub_type = { ident ~ ["{"] ~ option_decl* ~ sub_type_member* ~ ["}"] }
 
         message_member = { field }
@@ -142,22 +143,31 @@ impl_rdp! {
         }
 
         _decl(&self) -> ast::Decl {
-            (_: message_decl, &name: ident, options: _option_list(), members: _message_member_list()) => {
+            (token: message_decl, &name: ident, options: _option_list(), members: _message_member_list()) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                let message_decl = ast::MessageDecl::new(name.to_owned(), options, members);
+                let pos = (token.start, token.end);
+                let message_decl = ast::MessageDecl::new(name.to_owned(), options, members, pos);
                 ast::Decl::Message(message_decl)
             },
 
-            (_: interface_decl, &name: ident, options: _option_list(), members: _interface_member_list(), sub_types: _sub_type_list()) => {
+            (
+                token: interface_decl,
+                &name: ident,
+                options: _option_list(),
+                members: _interface_member_list(),
+                sub_types: _sub_type_list()
+            ) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                let interface_decl = ast::InterfaceDecl::new(name.to_owned(), options, members, sub_types);
+                let pos = (token.start, token.end);
+                let interface_decl = ast::InterfaceDecl::new(name.to_owned(), options, members, sub_types, pos);
                 ast::Decl::Interface(interface_decl)
             },
 
-            (_: type_decl, &name: ident, type_spec: _type_spec()) => {
-                let type_decl = ast::TypeDecl::new(name.to_owned(), type_spec);
+            (token: type_decl, &name: ident, type_spec: _type_spec()) => {
+                let pos = (token.start, token.end);
+                let type_decl = ast::TypeDecl::new(name.to_owned(), type_spec, pos);
                 ast::Decl::Type(type_decl)
             },
         }
@@ -172,8 +182,9 @@ impl_rdp! {
         }
 
         _message_member(&self) -> ast::MessageMember {
-            (_: field, field: _field()) => {
-                ast::MessageMember::Field(field)
+            (token: field, field: _field()) => {
+                let pos = (token.start, token.end);
+                ast::MessageMember::Field(field, pos)
             },
         }
 
@@ -226,7 +237,7 @@ impl_rdp! {
         }
 
         _sub_type_list(&self) -> BTreeMap<String, ast::SubType> {
-            (_: sub_type, first: _sub_type(), mut tail: _sub_type_list()) => {
+            (_: sub_type_decl, first: _sub_type(), mut tail: _sub_type_list()) => {
                 tail.insert(first.name.clone(), first);
                 tail
             },
@@ -237,11 +248,12 @@ impl_rdp! {
         }
 
         _sub_type(&self) -> ast::SubType {
-            (&name: ident, options: _option_list(), members: _sub_type_member_list()) => {
+            (token: sub_type, &name: ident, options: _option_list(), members: _sub_type_member_list()) => {
                 let name = name.to_owned();
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                ast::SubType::new(name, options, members)
+                let pos = (token.start, token.end);
+                ast::SubType::new(name, options, members, pos)
             },
         }
 
@@ -255,8 +267,9 @@ impl_rdp! {
         }
 
         _interface_member(&self) -> ast::InterfaceMember {
-            (_: field, field: _field()) => {
-                ast::InterfaceMember::Field(field)
+            (token: field, field: _field()) => {
+                let pos = (token.start, token.end);
+                ast::InterfaceMember::Field(field, pos)
             },
         }
 
@@ -328,15 +341,6 @@ mod tests {
 
     const FILE1: &[u8] = include_bytes!("tests/file1.reproto");
 
-    fn load_interface() -> ast::Decl {
-        let input = ::std::str::from_utf8(include_bytes!("tests/interface")).unwrap();
-        let mut parser = Rdp::new(StringInput::new(input));
-
-        assert!(parser.decl());
-
-        parser._decl_list().into_iter().next().unwrap()
-    }
-
     #[test]
     fn test_file1() {
         let input = ::std::str::from_utf8(FILE1).unwrap();
@@ -351,8 +355,6 @@ mod tests {
 
         assert_eq!(package, file.package);
         assert_eq!(4, file.decls.len());
-
-        assert_eq!(load_interface(), file.decls[2]);
     }
 
     #[test]

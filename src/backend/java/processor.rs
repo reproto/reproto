@@ -179,7 +179,7 @@ impl<'a> Processor<'a> {
         let mut class = ClassSpec::new(mods![Modifier::Public], &message.name);
 
         for member in &message.members {
-            if let ast::MessageMember::Field(ref field) = *member {
+            if let ast::MessageMember::Field(ref field, _) = *member {
                 class.push_field(&self.push_field(&package, field)?);
             }
         }
@@ -209,7 +209,7 @@ impl<'a> Processor<'a> {
         let mut interface_fields: Vec<FieldSpec> = Vec::new();
 
         for member in &interface.members {
-            if let ast::InterfaceMember::Field(ref field) = *member {
+            if let ast::InterfaceMember::Field(ref field, _) = *member {
                 let field = self.push_field(&package, field)?;
                 interface_fields.push(field);
             }
