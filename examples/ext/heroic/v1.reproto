@@ -1,0 +1,5 @@
+package heroic.v1;
+
+message Query {
+    query_id?: string;
+}

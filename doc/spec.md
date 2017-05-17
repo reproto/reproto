@@ -10,6 +10,8 @@
   * ~~LR(1) parser support is not very mature :(, I miss ANTLR.~~ [pest][pest] works really well!
 * Per-project (not definition) language extensions might be needed
   * e.g. drop a heroic.reproto file in the project (in the right location), and pick up any extensions defined in it that allows the module to better integrate into the project.
+  * This is now supported! Add a local directory to your path, and match the package you'd like to
+      extend.
 
 [pest]: https://github.com/pest-parser/pest
 

@@ -17,3 +17,9 @@ Try out the FasterXML backend:
 ```bash
 $> cargo run -- --debug --backend fasterxml --out target/generated-sources --path examples heroic.v1
 ```
+
+You can also include one of the extensions:
+
+```bash
+$> cargo run -- --debug --backend fasterxml --out target/generated-sources --path examples --path examples/ext heroic.v1
+```
