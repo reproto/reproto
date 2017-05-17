@@ -10,6 +10,27 @@ use codegen::java::*;
 
 use errors::*;
 
+fn lower_to_upper_camel(input: &str) -> String {
+    let mut out = String::new();
+
+    let mut first = true;
+
+    for c in input.chars() {
+        if first {
+            for out_c in c.to_uppercase() {
+                out.push(out_c);
+            }
+
+            first = false;
+            continue;
+        }
+
+        out.push(c);
+    }
+
+    out
+}
+
 pub trait Listeners {
     fn class_added(&self, _class: &mut ClassSpec) -> Result<()> {
         Ok(())
@@ -169,6 +190,21 @@ impl<'a> Processor<'a> {
         Ok(file_spec)
     }
 
+    fn build_getters(&self, class: &ClassSpec) -> Result<Vec<MethodSpec>> {
+        let mut result = Vec::new();
+
+        for field in &class.fields {
+            let return_type = &field.type_;
+            let name = format!("get{}", lower_to_upper_camel(&field.name));
+            let mut method_spec = MethodSpec::new(mods![Modifier::Public], &name);
+            method_spec.returns(return_type);
+            method_spec.push_statement(&stmt!["return this.$N", name field]);
+            result.push(method_spec);
+        }
+
+        Ok(result)
+    }
+
     fn process_message<L>(&self,
                           package: &ast::Package,
                           message: &ast::MessageDecl,
@@ -186,6 +222,10 @@ impl<'a> Processor<'a> {
 
         let constructor = &self.build_constructor(&class);
         class.push_constructor(constructor);
+
+        for getter in self.build_getters(&class)? {
+            class.push_method(&getter);
+        }
 
         listeners.class_added(&mut class)?;
 
