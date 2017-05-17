@@ -73,6 +73,7 @@ impl_rdp! {
         sub_type_member = { field }
 
         field = { identifier ~ modifier? ~ [":"] ~ type_spec ~ [";"] }
+        modifier = { ["?"] }
 
         type_spec = { array | tuple | used_type | type_literal }
         type_literal = { identifier }
@@ -82,8 +83,6 @@ impl_rdp! {
         array = { ["["] ~ array_argument ~ ["]"] }
         array_argument = { type_spec }
 
-        modifier = { ["?"] }
-
         option = { identifier ~ (option_value ~ ([","] ~ option_value)*) ~ [";"] }
 
         option_value = { string | number }
@@ -92,17 +91,22 @@ impl_rdp! {
         identifier =  @{ (['a'..'z'] | ['A'..'Z']) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'])* }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
-        escape  =  { ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
-        unicode =  { ["u"] ~ hex ~ hex ~ hex ~ hex }
-        hex     =  { ['0'..'9'] | ['a'..'f'] | ['A'..'F'] }
+        escape  =  _{ ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
+        unicode =  _{ ["u"] ~ hex ~ hex ~ hex ~ hex }
+        hex     =  _{ ['0'..'9'] | ['a'..'f'] }
 
         number = @{ ["-"]? ~ int ~ (["."] ~ ['0'..'9']+ ~ exp? | exp)? }
-        int    =  { ["0"] | ['1'..'9'] ~ ['0'..'9']* }
-        exp    =  { (["E"] | ["e"]) ~ (["+"] | ["-"])? ~ int }
+        int    =  _{ ["0"] | ['1'..'9'] ~ ['0'..'9']* }
+        exp    =  _{ (["E"] | ["e"]) ~ (["+"] | ["-"])? ~ int }
 
         whitespace = _{ [" "] | ["\t"] | ["\r"] | ["\n"] }
 
-        comment = _{ ["//"] ~ (!(["\r"] | ["\n"]) ~ any)* ~ (["\n"] | ["\r\n"] | ["\r"] | eoi) }
+        comment = _{
+            // line comment
+            ( ["//"] ~ (!(["\r"] | ["\n"]) ~ any)* ~ (["\n"] | ["\r\n"] | ["\r"] | eoi) ) |
+            // block comment
+            ( ["/*"] ~ (!(["*/"]) ~ any)* ~ ["*/"] )
+        }
     }
 
     process! {
@@ -348,6 +352,8 @@ impl_rdp! {
 mod tests {
     use super::*;
 
+    const FILE1: &[u8] = include_bytes!("tests/file1.reproto");
+
     fn load_interface() -> ast::Decl {
         let input = ::std::str::from_utf8(include_bytes!("tests/interface")).unwrap();
         let mut parser = Rdp::new(StringInput::new(input));
@@ -359,10 +365,12 @@ mod tests {
 
     #[test]
     fn test_file1() {
-        let input = ::std::str::from_utf8(include_bytes!("tests/file1.reproto")).unwrap();
+        let input = ::std::str::from_utf8(FILE1).unwrap();
         let mut parser = Rdp::new(StringInput::new(input));
+
         assert!(parser.file());
         assert!(parser.end());
+
         let file = parser.process_file().unwrap();
 
         let package = ast::Package::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
@@ -376,8 +384,24 @@ mod tests {
     #[test]
     fn test_array() {
         let mut parser = Rdp::new(StringInput::new("[(string, string)]"));
+
         assert!(parser.type_spec());
         assert!(parser.end());
+
         parser._type_spec();
+    }
+
+    #[test]
+    fn test_block_comment() {
+        let mut parser = Rdp::new(StringInput::new("/* hello \n world */"));
+
+        assert!(parser.comment());
+    }
+
+    #[test]
+    fn test_line_comment() {
+        let mut parser = Rdp::new(StringInput::new("// hello world\n"));
+
+        assert!(parser.comment());
     }
 }

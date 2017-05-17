@@ -10,6 +10,10 @@ message Foo {
     name: string;
 }
 
+/**
+ * Hello World.
+ */
+
 interface Bar {
     reserved "a", "b", "c";
 
