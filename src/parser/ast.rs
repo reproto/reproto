@@ -5,7 +5,7 @@ use std::collections::btree_map::Entry;
 use errors::*;
 
 /// Position relative in file where the declaration is present.
-type Pos = (usize, usize);
+pub type Pos = (usize, usize);
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum OptionValue {
@@ -202,7 +202,7 @@ impl MessageDecl {
             return Ok(());
         }
 
-        return Err("unexpected declaration".into());
+        return Err(format!("Expected Decl::Message, but got {:?}", other).into());
     }
 }
 
@@ -330,6 +330,14 @@ impl Decl {
             Decl::Message(ref message) => message.name.clone(),
             Decl::Interface(ref interface) => interface.name.clone(),
             Decl::Type(ref type_) => type_.name.clone(),
+        }
+    }
+
+    pub fn pos(&self) -> Pos {
+        match *self {
+            Decl::Message(ref message) => message.pos.clone(),
+            Decl::Interface(ref interface) => interface.pos.clone(),
+            Decl::Type(ref type_) => type_.pos.clone(),
         }
     }
 

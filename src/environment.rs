@@ -2,7 +2,10 @@ use parser::ast;
 use std::path::PathBuf;
 use std::collections::BTreeMap;
 use std::collections::HashSet;
-use std::collections::btree_map::Entry;
+use std::collections::btree_map::{Entry, OccupiedEntry};
+use std::fs::File;
+use std::io::BufReader;
+use std::io::BufRead;
 
 use backend::TypeId;
 use parser;
@@ -16,6 +19,61 @@ pub struct Environment {
     visited: HashSet<ast::Package>,
     pub types: BTreeMap<TypeId, ast::Decl>,
     pub used: BTreeMap<(ast::Package, String), ast::Package>,
+}
+
+fn find_line(path: &PathBuf, pos: ast::Pos) -> Result<(String, usize)> {
+    let file = File::open(path)?;
+    let mut current_pos: usize = 0;
+    let mut lines: usize = 0;
+    let reader = BufReader::new(&file);
+
+    for line in reader.lines() {
+        let line = line?;
+        lines += 1;
+
+        if current_pos >= pos.0 {
+            return Ok((line, lines));
+        }
+
+        current_pos += line.len() + 1;
+    }
+
+    Err("bad file position".into())
+}
+
+fn handle_occupied<'a>(path: &PathBuf,
+                       entry: OccupiedEntry<'a, TypeId, ast::Decl>,
+                       decl: &ast::Decl)
+                       -> Result<()> {
+    if let ast::Decl::Type(_) = *entry.get() {
+        let (line_string, line) = find_line(path, decl.pos())?;
+
+        let error = ErrorKind::ConflictingTypeDecl(path.to_owned(),
+                                                   line_string,
+                                                   line,
+                                                   entry.get().clone(),
+                                                   decl.clone())
+            .into();
+
+        return Err(error);
+    }
+
+    if let ast::Decl::Type(ref type_decl) = *decl {
+        let (line_string, line) = find_line(path, type_decl.pos)?;
+
+        let error = ErrorKind::ConflictingTypeDecl(path.to_owned(),
+                                                   line_string,
+                                                   line,
+                                                   entry.get().clone(),
+                                                   decl.clone())
+            .into();
+
+        return Err(error);
+    }
+
+    entry.into_mut().merge(decl)?;
+
+    Ok(())
 }
 
 impl Environment {
@@ -35,7 +93,7 @@ impl Environment {
 
         self.visited.insert(package.clone());
 
-        let mut files: Vec<ast::File> = Vec::new();
+        let mut files: Vec<(PathBuf, ast::File)> = Vec::new();
 
         for path in &self.paths {
             let mut path = path.clone();
@@ -67,14 +125,14 @@ impl Environment {
                 }
             }
 
-            files.push(file);
+            files.push((path, file));
         }
 
         if files.len() == 0 {
             return Err(format!("No files matching package ({})", *package).into());
         }
 
-        for file in &files {
+        for &(ref path, ref file) in &files {
             for import in &file.imports {
                 self.import(&import)?;
             }
@@ -87,7 +145,7 @@ impl Environment {
                         entry.insert(decl.clone());
                     }
                     Entry::Occupied(entry) => {
-                        entry.into_mut().merge(decl)?;
+                        handle_occupied(path, entry, decl)?;
                     }
                 };
             }

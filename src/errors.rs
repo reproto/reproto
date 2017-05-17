@@ -1,5 +1,9 @@
+use std::path::PathBuf;
+
 use parser::errors as parser;
 use codegen::errors as codegen;
+
+use parser::ast;
 
 #[derive(Debug)]
 pub enum InternalError {
@@ -33,6 +37,11 @@ error_chain! {
 
     errors {
         MissingBackend {
+        }
+
+        ConflictingTypeDecl(path: PathBuf, line_string: String, line: usize, existing: ast::Decl, conflicting: ast::Decl) {
+            description("Conflicting type declared")
+            display("Conflicting type declared: {}:{}: {}", path.display(), line, line_string)
         }
     }
 }
