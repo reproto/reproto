@@ -15,5 +15,5 @@ See [Examples][examples] for some example API specifications.
 Try out the FasterXML backend:
 
 ```bash
-$> cargo run -- --backend fasterxml --out target/generated-sources --path examples/heroic heroic.v1
+$> cargo run -- --debug --backend fasterxml --out target/generated-sources --path examples heroic.v1
 ```

@@ -149,18 +149,26 @@ impl Environment {
 
         let mut files: Vec<(PathBuf, ast::File)> = Vec::new();
 
-        for path in &self.paths {
-            let mut path = path.clone();
+        let candidates: Vec<PathBuf> = self.paths
+            .iter()
+            .map(|p| {
+                let mut path = p.clone();
 
-            for part in &package.parts {
-                path.push(part);
-            }
+                for part in &package.parts {
+                    path.push(part);
+                }
 
-            path.set_extension(EXT);
+                path.set_extension(EXT);
+                path
+            })
+            .collect();
 
+        for path in &candidates {
             if !path.is_file() {
                 continue;
             }
+
+            debug!("Processing: {}", path.display());
 
             let file = parser::parse_file(&path)
                     .chain_err(|| format!("Failed to parse: {}", path.display()))?;
@@ -173,11 +181,20 @@ impl Environment {
                     .into());
             }
 
-            files.push((path, file));
+            files.push((path.clone(), file));
         }
 
         if files.len() == 0 {
-            return Err(format!("No files matching package ({})", *package).into());
+            let candidates_format: Vec<String> = candidates.iter()
+                .map(|c| format!("{}", c.display()))
+                .collect();
+
+            let candidates_format = candidates_format.join(", ");
+
+            return Err(format!("No files matching package ({}), expected one of: {}",
+                               *package,
+                               candidates_format)
+                .into());
         }
 
         for &(ref path, ref file) in &files {

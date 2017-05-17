@@ -4,7 +4,6 @@ extern crate log;
 extern crate getopts;
 
 use std::path::Path;
-use std::fs;
 use std::env;
 
 use reproto::errors::*;
@@ -103,8 +102,6 @@ fn entry() -> Result<()> {
         out_path: out_path.to_path_buf(),
         package_prefix: package_prefix,
     };
-
-    fs::create_dir_all(&out_path)?;
 
     let mut env = Environment::new(paths);
 

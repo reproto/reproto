@@ -256,13 +256,20 @@ impl<'a> Processor<'a> {
     pub fn process<L>(&self, listeners: &L) -> Result<()>
         where L: Listeners
     {
-        let root = self.options.out_path.clone();
+        let root_dir = &self.options.out_path;
 
+        // Create target directory.
+        if !root_dir.is_dir() {
+            info!("Creating: {}", root_dir.display());
+            fs::create_dir_all(root_dir)?;
+        }
+
+        // Process all types discovered so far.
         for (&(ref package, _), decl) in &self.env.types {
             let out_dir = self.java_package(package)
                 .parts
                 .iter()
-                .fold(root.clone(), |current, next| current.join(next));
+                .fold(root_dir.clone(), |current, next| current.join(next));
 
             fs::create_dir_all(&out_dir)?;
 
@@ -278,7 +285,7 @@ impl<'a> Processor<'a> {
                 ast::Decl::Type(ref type_) => self.process_type(package, type_, listeners),
             }?;
 
-            info!("Writing: {}", full_path.display());
+            debug!("Writing: {}", full_path.display());
 
             let out = file_spec.format()?;
             let mut f = File::create(full_path)?;
