@@ -10,14 +10,14 @@ pub enum OptionValue {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct OptionPair {
+pub struct OptionDecl {
     pub name: String,
     pub values: Vec<OptionValue>,
 }
 
-impl OptionPair {
-    pub fn new(name: String, values: Vec<OptionValue>) -> OptionPair {
-        OptionPair {
+impl OptionDecl {
+    pub fn new(name: String, values: Vec<OptionValue>) -> OptionDecl {
+        OptionDecl {
             name: name,
             values: values,
         }
@@ -26,11 +26,11 @@ impl OptionPair {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Options {
-    options: Vec<OptionPair>,
+    options: Vec<OptionDecl>,
 }
 
 impl Options {
-    pub fn new(options: Vec<OptionPair>) -> Options {
+    pub fn new(options: Vec<OptionDecl>) -> Options {
         Options { options: options }
     }
 

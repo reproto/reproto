@@ -57,38 +57,37 @@ fn decode_unicode4(it: &mut Iterator<Item = char>) -> Result<char> {
 
 impl_rdp! {
     grammar! {
-        file = _{ package_decl ~ imports ~ decl* ~ eoi }
+        file = _{ package_decl ~ use_decl* ~ decl* ~ eoi }
         decl = { message_decl | interface_decl | type_decl }
 
-        imports = { import_decl* }
-        import_decl = { ["use"] ~ package_identifier ~ [";"] }
-        package_decl = { ["package"] ~ package_identifier ~ [";"] }
-        message_decl = { ["message"] ~ identifier ~ ["{"] ~ option* ~ message_member* ~ ["}"] }
-        interface_decl = { ["interface"] ~ identifier ~ ["{"] ~ option* ~ interface_member* ~ sub_type* ~ ["}"] }
-        type_decl = { ["type"] ~ identifier ~ ["="] ~ type_spec ~ [";"] }
-        sub_type = { identifier ~ ["{"] ~ option* ~ sub_type_member* ~ ["}"] }
+        use_decl = { ["use"] ~ package_ident ~ [";"] }
+        package_decl = { ["package"] ~ package_ident ~ [";"] }
+        message_decl = { ["message"] ~ ident ~ ["{"] ~ option_decl* ~ message_member* ~ ["}"] }
+        interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ interface_member* ~ sub_type* ~ ["}"] }
+        type_decl = { ["type"] ~ ident ~ ["="] ~ type_spec ~ [";"] }
+        sub_type = { ident ~ ["{"] ~ option_decl* ~ sub_type_member* ~ ["}"] }
 
         message_member = { field }
         interface_member = { field }
         sub_type_member = { field }
 
-        field = { identifier ~ modifier? ~ [":"] ~ type_spec ~ [";"] }
+        field = { ident ~ modifier? ~ [":"] ~ type_spec ~ [";"] }
         modifier = { ["?"] }
 
         type_spec = { array | tuple | used_type | type_literal }
-        type_literal = { identifier }
-        used_type = { identifier ~ ["."] ~ identifier }
+        type_literal = { ident }
+        used_type = { ident ~ ["."] ~ ident }
         tuple = { ["("] ~ ( tuple_element ~ ([","] ~ tuple_element)* ) ~ [")"] }
         tuple_element = { type_spec }
         array = { ["["] ~ array_argument ~ ["]"] }
         array_argument = { type_spec }
 
-        option = { identifier ~ (option_value ~ ([","] ~ option_value)*) ~ [";"] }
+        option_decl = { ident ~ (option_value ~ ([","] ~ option_value)*) ~ [";"] }
 
         option_value = { string | number }
 
-        package_identifier = @{ identifier ~ (["."] ~ identifier)* }
-        identifier =  @{ (['a'..'z'] | ['A'..'Z']) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'])* }
+        package_ident = @{ ident ~ (["."] ~ ident)* }
+        ident =  @{ (['a'..'z'] | ['A'..'Z']) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'])* }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
         escape  =  _{ ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
@@ -110,78 +109,66 @@ impl_rdp! {
     }
 
     process! {
-        process_file(&self) -> Result<ast::File> {
-            (package: _package(), imports: _imports(), decls: _decls()) => {
+        _file(&self) -> Result<ast::File> {
+            (_: package_decl, package: _package(), imports: _use_list(), decls: _decl_list()) => {
                 let imports = imports.into_iter().collect();
                 let decls = decls.into_iter().collect();
                 Ok(ast::File::new(package, imports, decls))
             },
         }
 
+        _use_list(&self) -> LinkedList<ast::Package> {
+            (_: use_decl, package: _package(), mut tail: _use_list()) => {
+                tail.push_front(package);
+                tail
+            },
+
+            () => LinkedList::new(),
+        }
+
         _package(&self) -> ast::Package {
-            (_: package_decl, _: package_identifier, identifiers: _identifiers()) => {
-                ast::Package::new(identifiers.into_iter().collect())
+            (_: package_ident, idents: _ident_list()) => {
+                ast::Package::new(idents.into_iter().collect())
             },
         }
 
-        _imports(&self) -> LinkedList<ast::Package> {
-            (_: imports, first: _import(), mut tail: _imports()) => {
+        _decl_list(&self) -> LinkedList<ast::Decl> {
+            (_: decl, first: _decl(), mut tail: _decl_list()) => {
                 tail.push_front(first);
                 tail
             },
 
-            () => {
-                LinkedList::new()
-            },
-        }
-
-        _import(&self) -> ast::Package {
-            (_: import_decl, _: package_identifier, identifiers: _identifiers()) => {
-                ast::Package::new(identifiers.into_iter().collect())
-            },
-        }
-
-        _decls(&self) -> LinkedList<ast::Decl> {
-            (_: decl, first: _decl(), mut tail: _decls()) => {
-                tail.push_front(first);
-                tail
-            },
-
-            () => {
-                LinkedList::new()
-            },
+            () => LinkedList::new(),
         }
 
         _decl(&self) -> ast::Decl {
-            (_: message_decl, &name: identifier, options: _options(), members: _message_members()) => {
+            (_: message_decl, &name: ident, options: _option_list(), members: _message_member_list()) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                let m = ast::MessageDecl::new(name.to_owned(), options, members);
-                ast::Decl::Message(m)
+                let message_decl = ast::MessageDecl::new(name.to_owned(), options, members);
+                ast::Decl::Message(message_decl)
             },
 
-            (_: interface_decl, &name: identifier, options: _options(), members: _interface_members(), sub_types: _sub_types()) => {
+            (_: interface_decl, &name: ident, options: _option_list(), members: _interface_member_list(), sub_types: _sub_type_list()) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                let m = ast::InterfaceDecl::new(name.to_owned(), options, members, sub_types);
-                ast::Decl::Interface(m)
+                let interface_decl = ast::InterfaceDecl::new(name.to_owned(), options, members, sub_types);
+                ast::Decl::Interface(interface_decl)
             },
 
-            (_: type_decl, &name: identifier, type_: _type_spec()) => {
-                let t = ast::TypeDecl::new(name.to_owned(), type_);
-                ast::Decl::Type(t)
+            (_: type_decl, &name: ident, type_spec: _type_spec()) => {
+                let type_decl = ast::TypeDecl::new(name.to_owned(), type_spec);
+                ast::Decl::Type(type_decl)
             },
         }
 
-        _message_members(&self) -> LinkedList<ast::MessageMember> {
-            (_: message_member, first: _message_member(), mut tail: _message_members()) => {
+        _message_member_list(&self) -> LinkedList<ast::MessageMember> {
+            (_: message_member, first: _message_member(), mut tail: _message_member_list()) => {
                 tail.push_front(first);
                 tail
             },
 
-            () => {
-                LinkedList::new()
-            },
+            () => LinkedList::new(),
         }
 
         _message_member(&self) -> ast::MessageMember {
@@ -190,26 +177,24 @@ impl_rdp! {
             },
         }
 
-        _options(&self) -> LinkedList<ast::OptionPair> {
-            (_: option, first: _option(), mut tail: _options()) => {
+        _option_list(&self) -> LinkedList<ast::OptionDecl> {
+            (_: option_decl, first: _option_decl(), mut tail: _option_list()) => {
                 tail.push_front(first);
                 tail
             },
 
-            () => {
-                LinkedList::new()
-            },
+            () => LinkedList::new(),
         }
 
-        _option(&self) -> ast::OptionPair {
-            (&name: identifier, values: _option_values()) => {
+        _option_decl(&self) -> ast::OptionDecl {
+            (&name: ident, values: _option_value_list()) => {
                 let values = values.into_iter().collect();
-                ast::OptionPair::new(name.to_owned(), values)
+                ast::OptionDecl::new(name.to_owned(), values)
             },
         }
 
-        _option_values(&self) -> LinkedList<ast::OptionValue> {
-            (_: option_value, first: _option_value(), mut tail: _option_values()) => {
+        _option_value_list(&self) -> LinkedList<ast::OptionValue> {
+            (_: option_value, first: _option_value(), mut tail: _option_value_list()) => {
                 tail.push_front(first);
                 tail
             },
@@ -225,15 +210,13 @@ impl_rdp! {
             },
         }
 
-        _sub_type_members(&self) -> LinkedList<ast::SubTypeMember> {
-            (_: sub_type_member, first: _sub_type_member(), mut tail: _sub_type_members()) => {
+        _sub_type_member_list(&self) -> LinkedList<ast::SubTypeMember> {
+            (_: sub_type_member, first: _sub_type_member(), mut tail: _sub_type_member_list()) => {
                 tail.push_front(first);
                 tail
             },
 
-            () => {
-                LinkedList::new()
-            },
+            () => LinkedList::new(),
         }
 
         _sub_type_member(&self) -> ast::SubTypeMember {
@@ -242,8 +225,8 @@ impl_rdp! {
             },
         }
 
-        _sub_types(&self) -> BTreeMap<String, ast::SubType> {
-            (_: sub_type, first: _sub_type(), mut tail: _sub_types()) => {
+        _sub_type_list(&self) -> BTreeMap<String, ast::SubType> {
+            (_: sub_type, first: _sub_type(), mut tail: _sub_type_list()) => {
                 tail.insert(first.name.clone(), first);
                 tail
             },
@@ -254,7 +237,7 @@ impl_rdp! {
         }
 
         _sub_type(&self) -> ast::SubType {
-            (&name: identifier, options: _options(), members: _sub_type_members()) => {
+            (&name: ident, options: _option_list(), members: _sub_type_member_list()) => {
                 let name = name.to_owned();
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
@@ -262,15 +245,13 @@ impl_rdp! {
             },
         }
 
-        _interface_members(&self) -> LinkedList<ast::InterfaceMember> {
-            (_: interface_member, first: _interface_member(), mut tail: _interface_members()) => {
+        _interface_member_list(&self) -> LinkedList<ast::InterfaceMember> {
+            (_: interface_member, first: _interface_member(), mut tail: _interface_member_list()) => {
                 tail.push_front(first);
                 tail
             },
 
-            () => {
-                LinkedList::new()
-            },
+            () => LinkedList::new(),
         }
 
         _interface_member(&self) -> ast::InterfaceMember {
@@ -280,13 +261,13 @@ impl_rdp! {
         }
 
         _field(&self) -> ast::Field {
-            (&name: identifier, modifier: _modifier(), type_: _type_spec()) => {
-                ast::Field::new(modifier, name.to_owned(), type_, 0)
+            (&name: ident, modifier: _modifier(), type_spec: _type_spec()) => {
+                ast::Field::new(modifier, name.to_owned(), type_spec, 0)
             },
         }
 
         _type_spec(&self) -> ast::Type {
-            (_: type_spec, _: type_literal, &value: identifier) => {
+            (_: type_spec, _: type_literal, &value: ident) => {
                 match value {
                     "double" => ast::Type::Double,
                     "float" => ast::Type::Float,
@@ -302,11 +283,11 @@ impl_rdp! {
                 }
             },
 
-            (_: type_spec, _: used_type, &used: identifier, &value: identifier) => {
+            (_: type_spec, _: used_type, &used: ident, &value: ident) => {
                 ast::Type::UsedType(used.to_owned(), value.to_owned())
             },
 
-            (_: type_spec, _: tuple, arguments: _tuple_elements()) => {
+            (_: type_spec, _: tuple, arguments: _tuple_element_list()) => {
                 let arguments = arguments.into_iter().collect();
                 ast::Type::Tuple(arguments)
             },
@@ -316,29 +297,22 @@ impl_rdp! {
             },
         }
 
-        _tuple_elements(&self) -> LinkedList<ast::Type> {
-            (_: tuple_element, first: _type_spec(), mut tail: _tuple_elements()) => {
+        _tuple_element_list(&self) -> LinkedList<ast::Type> {
+            (_: tuple_element, first: _type_spec(), mut tail: _tuple_element_list()) => {
                 tail.push_front(first);
                 tail
             },
 
-            () => {
-                LinkedList::new()
-            },
+            () => LinkedList::new(),
         }
 
         _modifier(&self) -> ast::Modifier {
-            (_: modifier) => {
-                ast::Modifier::Optional
-            },
-
-            () => {
-                ast::Modifier::Required
-            },
+            (_: modifier) => ast::Modifier::Optional,
+            () => ast::Modifier::Required,
         }
 
-        _identifiers(&self) -> LinkedList<String> {
-            (&first: identifier, mut tail: _identifiers()) => {
+        _ident_list(&self) -> LinkedList<String> {
+            (&first: ident, mut tail: _ident_list()) => {
                 tail.push_front(first.to_owned());
                 tail
             },
@@ -360,7 +334,7 @@ mod tests {
 
         assert!(parser.decl());
 
-        parser._decls().into_iter().next().unwrap()
+        parser._decl_list().into_iter().next().unwrap()
     }
 
     #[test]
@@ -371,7 +345,7 @@ mod tests {
         assert!(parser.file());
         assert!(parser.end());
 
-        let file = parser.process_file().unwrap();
+        let file = parser._file().unwrap();
 
         let package = ast::Package::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
 

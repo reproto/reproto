@@ -1,5 +1,8 @@
 package foo.bar.baz;
 
+use foo.bar;
+use foo;
+
 type Tuple = (double, double);
 
 // hello
