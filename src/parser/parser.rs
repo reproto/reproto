@@ -76,11 +76,12 @@ impl_rdp! {
         field = { ident ~ modifier? ~ [":"] ~ type_spec ~ [";"] }
         modifier = { ["?"] }
 
-        type_spec = { array | tuple | used_type | type_literal }
+        type_spec = { map | array | tuple | used_type | type_literal }
         type_literal = { ident }
         used_type = { ident ~ ["."] ~ ident }
         tuple = { ["("] ~ ( tuple_element ~ ([","] ~ tuple_element)* ) ~ [")"] }
         tuple_element = { type_spec }
+        map = { ["{"] ~ type_spec ~ [":"] ~ type_spec ~ ["}"] }
         array = { ["["] ~ array_argument ~ ["]"] }
         array_argument = { type_spec }
 
@@ -316,6 +317,10 @@ impl_rdp! {
 
             (_: type_spec, _: array, _: array_argument, argument: _type_spec()) => {
                 ast::Type::Array(Box::new(argument))
+            },
+
+            (_: type_spec, _: map, key: _type_spec(), value: _type_spec()) => {
+                ast::Type::Map(Box::new(key), Box::new(value))
             },
         }
 

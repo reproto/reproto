@@ -39,6 +39,7 @@ pub struct Processor<'a> {
     lower_to_upper_camel: Box<naming::Naming>,
     object: ClassType,
     list: ClassType,
+    map: ClassType,
     string: ClassType,
     integer: PrimitiveType,
     long: PrimitiveType,
@@ -58,6 +59,7 @@ impl<'a> Processor<'a> {
             lower_to_upper_camel: naming::CamelCase::new().to_upper_camel(),
             object: Type::class("java.lang", "Object"),
             list: Type::class("java.util", "List"),
+            map: Type::class("java.util", "Map"),
             string: Type::class("java.lang", "String"),
             integer: Type::primitive("int", "Integer"),
             long: Type::primitive("long", "Long"),
@@ -107,6 +109,11 @@ impl<'a> Processor<'a> {
                 let package = self.env.lookup_used(package, used)?;
                 let package_name = self.java_package(package).parts.join(".");
                 Type::class(&package_name, custom).as_type()
+            }
+            ast::Type::Map(ref key, ref value) => {
+                let key = self.convert_type(package, key)?;
+                let value = self.convert_type(package, value)?;
+                self.map.with_arguments(vec![key, value]).as_type()
             }
             ref t => {
                 return Err(format!("Unsupported type: {:?}", t).into());
@@ -164,6 +171,10 @@ impl<'a> Processor<'a> {
         let constructor = self.build_constructor(&class);
         class.push_constructor(&constructor);
 
+        for getter in self.build_getters(&class)? {
+            class.push_method(&getter);
+        }
+
         listeners.class_added(&mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
@@ -202,8 +213,8 @@ impl<'a> Processor<'a> {
             }
         }
 
-        let constructor = &self.build_constructor(&class);
-        class.push_constructor(constructor);
+        let constructor = self.build_constructor(&class);
+        class.push_constructor(&constructor);
 
         for getter in self.build_getters(&class)? {
             class.push_method(&getter);
@@ -252,6 +263,10 @@ impl<'a> Processor<'a> {
 
             let constructor = self.build_constructor(&class);
             class.push_constructor(&constructor);
+
+            for getter in self.build_getters(&class)? {
+                class.push_method(&getter);
+            }
 
             listeners.class_added(&mut class)?;
             listeners.sub_type_added(interface, sub_type, &mut class)?;

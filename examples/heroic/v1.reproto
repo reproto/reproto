@@ -26,6 +26,7 @@ message Query {
   query?: string;
   aggregation?: Aggregation;
   date?: c.Date;
+  parameters?: {string: string};
 }
 
 interface Duration {

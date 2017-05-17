@@ -107,6 +107,7 @@ pub enum Type {
     Custom(String),
     Array(Box<Type>),
     Tuple(Vec<Type>),
+    Map(Box<Type>, Box<Type>),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
