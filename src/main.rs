@@ -13,6 +13,7 @@ use reproto::logger;
 use reproto::options::Options;
 use reproto::parser::ast;
 use reproto::environment::Environment;
+use reproto::naming;
 
 fn setup_opts() -> getopts::Options {
     let mut opts = getopts::Options::new();
@@ -33,14 +34,15 @@ fn setup_opts() -> getopts::Options {
 
     opts.optflag("", "debug", "Enable debug logging.");
 
-    opts.optflag("r",
-                 "recursive",
-                 "Process the arguments recursively (looking for .reproto files).");
-
     opts.optopt("",
                 "package-prefix",
                 "Package prefix to use when generating classes.",
                 "<package>");
+
+    opts.optopt("",
+                "id-converter",
+                "ID conversion to perform.",
+                "<snake/camel>:<lower/upper>_<snake/camel>");
 
     opts
 }
@@ -62,6 +64,32 @@ fn setup_logger(matches: &getopts::Matches) -> Result<()> {
     logger::init(level)?;
 
     Ok(())
+}
+
+fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
+    let mut parts = input.split(":");
+
+    if let Some(first) = parts.next() {
+        if let Some(second) = parts.next() {
+            let naming: Box<naming::FromNaming> = match first {
+                "camel" => Box::new(naming::CamelCase::new()),
+                "snake" => Box::new(naming::SnakeCase::new()),
+                _ => return Err(format!("Not a valid source: {}", first).into()),
+            };
+
+            let naming = match second {
+                "lower_camel" => naming.to_lower_camel(),
+                "upper_camel" => naming.to_upper_camel(),
+                "lower_snake" => naming.to_lower_snake(),
+                "upper_snake" => naming.to_upper_snake(),
+                _ => return Err(format!("Not a valid target: {}", second).into()),
+            };
+
+            return Ok(naming);
+        }
+    }
+
+    return Err(format!("Invalid --id-conversion argument: {}", input).into());
 }
 
 fn entry() -> Result<()> {
@@ -98,9 +126,16 @@ fn entry() -> Result<()> {
 
     let paths = matches.opt_strs("path").iter().map(Path::new).map(ToOwned::to_owned).collect();
 
+    let id_converter = if let Some(id_converter) = matches.opt_str("id-converter") {
+        Some(parse_id_converter(&id_converter)?)
+    } else {
+        None
+    };
+
     let options = Options {
         out_path: out_path.to_path_buf(),
         package_prefix: package_prefix,
+        id_converter: id_converter,
     };
 
     let mut env = Environment::new(paths);

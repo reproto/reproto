@@ -4,32 +4,12 @@ use parser::ast;
 use std::fs::File;
 use std::fs;
 use std::io::Write;
+use naming::{self, FromNaming};
 
 #[macro_use]
 use codegen::java::*;
 
 use errors::*;
-
-fn lower_to_upper_camel(input: &str) -> String {
-    let mut out = String::new();
-
-    let mut first = true;
-
-    for c in input.chars() {
-        if first {
-            for out_c in c.to_uppercase() {
-                out.push(out_c);
-            }
-
-            first = false;
-            continue;
-        }
-
-        out.push(c);
-    }
-
-    out
-}
 
 pub trait Listeners {
     fn class_added(&self, _class: &mut ClassSpec) -> Result<()> {
@@ -56,6 +36,7 @@ pub struct Processor<'a> {
     options: &'a Options,
     env: &'a Environment,
     package_prefix: Option<ast::Package>,
+    lower_to_upper_camel: Box<naming::Naming>,
     object: Type,
     list: Type,
     string: Type,
@@ -74,6 +55,7 @@ impl<'a> Processor<'a> {
             options: options,
             env: env,
             package_prefix: package_prefix,
+            lower_to_upper_camel: naming::CamelCase::new().to_upper_camel(),
             object: Type::new("java.lang", "Object"),
             list: Type::new("java.util", "List"),
             string: Type::new("java.lang", "String"),
@@ -195,7 +177,7 @@ impl<'a> Processor<'a> {
 
         for field in &class.fields {
             let return_type = &field.type_;
-            let name = format!("get{}", lower_to_upper_camel(&field.name));
+            let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
             let mut method_spec = MethodSpec::new(mods![Modifier::Public], &name);
             method_spec.returns(return_type);
             method_spec.push_statement(&stmt!["return this.$N", name field]);
@@ -288,7 +270,14 @@ impl<'a> Processor<'a> {
     fn push_field(&self, package: &ast::Package, field: &ast::Field) -> Result<FieldSpec> {
         let field_type = self.convert_type(package, &field.type_)?;
         let mods = mods![Modifier::Private, Modifier::Final];
-        let field = FieldSpec::new(mods, &field_type, &field.name);
+
+        let name = if let Some(ref id_converter) = self.options.id_converter {
+            id_converter.convert(&field.name)
+        } else {
+            field.name.clone()
+        };
+
+        let field = FieldSpec::new(mods, &field_type, &name);
 
         Ok(field)
     }

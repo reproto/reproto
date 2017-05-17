@@ -19,9 +19,4 @@ pub mod logger;
 pub mod parser;
 pub mod options;
 pub mod environment;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {}
-}
+pub mod naming;
