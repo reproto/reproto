@@ -12,6 +12,12 @@ message Foo {
 
     name: string;
     map: {string: u32};
+
+    @@
+      public int hello() {
+        return 42;
+      }
+    @@
 }
 
 /**
@@ -20,6 +26,12 @@ message Foo {
 
 interface Bar {
     reserved "a", "b", "c";
+
+    @@
+      default int hello() {
+        return 42;
+      }
+    @@
 
     A {
         name "foo";

@@ -1,5 +1,10 @@
 package heroic.v1;
 
 message Query {
-    query_id?: string;
+  // added method
+  @@
+    public boolean hasAggregation() {
+      return this.aggregation.isPresent();
+    }
+  @@
 }

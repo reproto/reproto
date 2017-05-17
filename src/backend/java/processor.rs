@@ -41,6 +41,7 @@ pub struct Processor<'a> {
     list: ClassType,
     map: ClassType,
     string: ClassType,
+    optional: ClassType,
     integer: PrimitiveType,
     long: PrimitiveType,
     float: PrimitiveType,
@@ -61,6 +62,7 @@ impl<'a> Processor<'a> {
             list: Type::class("java.util", "List"),
             map: Type::class("java.util", "Map"),
             string: Type::class("java.lang", "String"),
+            optional: Type::class("java.util", "Optional"),
             integer: Type::primitive("int", "Integer"),
             long: Type::primitive("long", "Long"),
             float: Type::primitive("float", "Float"),
@@ -210,6 +212,12 @@ impl<'a> Processor<'a> {
         for member in &message.members {
             if let ast::MessageMember::Field(ref field, _) = *member {
                 class.push_field(&self.push_field(&package, field)?);
+                continue;
+            }
+
+            if let ast::MessageMember::Code(ref content, _) = *member {
+                class.push_literal(content);
+                continue;
             }
         }
 
@@ -284,6 +292,13 @@ impl<'a> Processor<'a> {
 
     fn push_field(&self, package: &ast::Package, field: &ast::Field) -> Result<FieldSpec> {
         let field_type = self.convert_type(package, &field.ty)?;
+
+        let field_type = if field.is_optional() {
+            self.optional.with_arguments(vec![field_type]).as_type()
+        } else {
+            field_type
+        };
+
         let mods = mods![Modifier::Private, Modifier::Final];
 
         let name = if let Some(ref id_converter) = self.options.id_converter {

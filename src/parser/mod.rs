@@ -23,7 +23,7 @@ pub fn parse_file(path: &Path) -> Result<ast::File> {
     }
 
     if !parser.end() {
-        return Err("not parsed until eof".into());
+        return Err("not parsed until end".into());
     }
 
     Ok(parser._file()?)

@@ -1,7 +1,0 @@
-package heroic;
-
-interface Aggregation {
-    Extra {
-        name "extra";
-    }
-}

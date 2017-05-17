@@ -7,6 +7,71 @@ use super::ast;
 use super::errors::*;
 use pest::prelude::*;
 
+fn find_indent(input: &str) -> Option<usize> {
+    let mut it = input.chars();
+
+    let mut index = 0usize;
+
+    while let Some(c) = it.next() {
+        match c {
+            ' ' | '\t' => {}
+            _ => {
+                return Some(index);
+            }
+        }
+
+        index += 1;
+    }
+
+    None
+}
+
+fn strip_code_block(input: &str) -> Vec<String> {
+    let mut indent: Option<usize> = None;
+
+    let mut current_line = 0;
+    let mut first_line = false;
+    let mut empty_start = 0;
+    let mut empty_end = 0;
+    let mut it = input.lines();
+
+    while let Some(line) = it.next() {
+        current_line += 1;
+
+        if let Some(current) = find_indent(line) {
+            empty_end = current_line;
+
+            if indent.map(|i| i > current).unwrap_or(true) {
+                indent = Some(current);
+            }
+
+            first_line = true;
+        } else {
+            if !first_line {
+                empty_start += 1;
+            }
+        }
+    }
+
+    if let Some(indent) = indent {
+        let mut out: Vec<String> = Vec::new();
+        let mut it = input.lines().skip(empty_start).take(empty_end - empty_start);
+
+        while let Some(line) = it.next() {
+            if line.len() < indent {
+                out.push(line.to_owned());
+            } else {
+                let stripped = &line[indent..];
+                out.push(stripped.to_owned());
+            }
+        }
+
+        return out;
+    }
+
+    return input.lines().map(ToOwned::to_owned).collect();
+}
+
 /// Decode an escaped string.
 fn decode_escaped_string(input: &str) -> Result<String> {
     let mut out = String::new();
@@ -69,11 +134,14 @@ impl_rdp! {
         sub_type_decl = { sub_type }
         sub_type = { ident ~ ["{"] ~ option_decl* ~ sub_type_member* ~ ["}"] }
 
-        message_member = { field }
-        interface_member = { field }
-        sub_type_member = { field }
+        message_member = { field | code_block }
+        interface_member = { field | code_block }
+        sub_type_member = { field | code_block }
 
         field = { ident ~ modifier? ~ [":"] ~ type_spec ~ [";"] }
+        code_block = @{ ["@@"] ~ code_body ~ ["@@"] }
+        code_body = { (!(["@@"]) ~ any)* }
+        // body of a code block, either another balanced block, or anything but brackets
         modifier = { ["?"] }
 
         type_spec = { map | array | tuple | used_type | type_literal }
@@ -196,6 +264,11 @@ impl_rdp! {
                 let pos = (token.start, token.end);
                 ast::MessageMember::Field(field, pos)
             },
+
+            (token: code_block, &content: code_body) => {
+                let pos = (token.start, token.end);
+                ast::MessageMember::Code(strip_code_block(content), pos)
+            },
         }
 
         _option_list(&self) -> LinkedList<ast::OptionDecl> {
@@ -244,6 +317,11 @@ impl_rdp! {
             (_: field, field: _field()) => {
                 ast::SubTypeMember::Field(field)
             },
+
+            (token: code_block, &content: code_body) => {
+                let pos = (token.start, token.end);
+                ast::SubTypeMember::Code(strip_code_block(content), pos)
+            },
         }
 
         _sub_type_list(&self) -> BTreeMap<String, ast::SubType> {
@@ -280,6 +358,11 @@ impl_rdp! {
             (token: field, field: _field()) => {
                 let pos = (token.start, token.end);
                 ast::InterfaceMember::Field(field, pos)
+            },
+
+            (token: code_block, &content: code_body) => {
+                let pos = (token.start, token.end);
+                ast::InterfaceMember::Code(strip_code_block(content), pos)
             },
         }
 
@@ -393,5 +476,27 @@ mod tests {
         let mut parser = Rdp::new(StringInput::new("// hello world\n"));
 
         assert!(parser.comment());
+    }
+
+    #[test]
+    fn test_code_block() {
+        let mut parser = Rdp::new(StringInput::new("a { b { c } d } e"));
+
+        assert!(parser.code_body());
+        assert!(parser.end());
+    }
+
+    #[test]
+    fn test_code() {
+        let mut parser = Rdp::new(StringInput::new("@{\na { b { c } d } e\n@}"));
+
+        assert!(parser.code_block());
+        assert!(parser.end());
+    }
+
+    #[test]
+    fn test_strip_code_block() {
+        let result = strip_code_block("\n   hello\n  world\n\n\n again\n\n\n");
+        assert_eq!(vec!["  hello", " world", "", "", "again"], result);
     }
 }

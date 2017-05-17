@@ -4,6 +4,90 @@ use std::collections::BTreeSet;
 
 use errors::*;
 
+/// Build modifier lists.
+#[macro_export]
+macro_rules! mods {
+    ($($modifier:expr),*) => {
+        {
+            let mut tmp_modifiers = Modifiers::new();
+
+            $(
+                tmp_modifiers.insert($modifier);
+            )*
+
+            tmp_modifiers
+        }
+    }
+}
+
+/// Tool to build statements.
+#[macro_export]
+macro_rules! stmt {
+    ($($fmt:expr, $vars:expr),*) => {{
+        let mut s = Statement::new();
+        $(s.push($fmt, $vars);)*
+        s
+    }};
+
+    ($fmt:expr, $($tail:tt)*) => {{
+        let mut s = Statement::new();
+        let mut vars = Vec::new();
+        vars.extend(stmt!($($tail)*));
+        s.push($fmt, vars);
+        s
+    }};
+
+    (ty $var:expr) => {{
+        vec![Variable::Type($var.as_type())]
+    }};
+
+    (ty $var:expr, $($tail:tt)*) => {{
+        let mut vars = vec![Variable::Type($var.as_type())];
+        vars.extend(stmt!($($tail)*));
+        vars
+    }};
+
+    (name $var:expr) => {{
+        vec![Variable::Name($var.as_name())]
+    }};
+
+    (name $var:expr, $($tail:tt)*) => {{
+        let mut vars = vec![Variable::Name($var.as_name())];
+        vars.extend(stmt!($($tail)*));
+        vars
+    }};
+
+    (literal $var:expr) => {{
+        vec![Variable::Literal($var)]
+    }};
+
+    (literal $var:expr, $($tail:tt)*) => {{
+        let mut vars = vec![Variable::Literal($var)];
+        vars.extend(stmt!($($tail)*));
+        vars
+    }};
+
+    (string $var:expr) => {{
+        vec![Variable::String($var.to_owned())]
+    }};
+
+    (string $var:expr, $($tail:tt)*) => {{
+        let mut vars = vec![Variable::String($var.to_owned())];
+        vars.extend(stmt!($($tail)*));
+        vars
+    }};
+
+    (stmt $var:expr) => {{
+        vec![Variable::Statement($var.clone())]
+    }};
+
+    (stmt $var:expr, $($tail:tt)*) => {{
+        let mut vars = vec![Variable::Statement($var.clone())];
+        vars.extend(stmt!($($tail)*));
+        vars
+    }};
+}
+
 fn java_quote_string(input: &str) -> String {
     let mut out = String::new();
     let mut it = input.chars();
@@ -203,6 +287,7 @@ impl Modifiers {
 pub enum Section {
     Block(Block),
     Statement(Statement),
+    Literal(Vec<String>),
     Spacing,
 }
 
@@ -296,8 +381,8 @@ impl Statement {
                 StatementPart::Statement(ref stmt) => {
                     current.push(stmt.format(level)?.join(" "));
                 }
-                StatementPart::Literal(ref string) => {
-                    current.push(string.clone());
+                StatementPart::Literal(ref content) => {
+                    current.push(content.to_owned());
                 }
                 StatementPart::Spacing => {
                     out.push(current.join(""));
@@ -337,88 +422,6 @@ impl Imports for Statement {
     }
 }
 
-#[macro_export]
-macro_rules! stmt {
-    ($($fmt:expr, $vars:expr),*) => {{
-        let mut s = Statement::new();
-        $(s.push($fmt, $vars);)*
-        s
-    }};
-
-    ($fmt:expr, $($tail:tt)*) => {{
-        let mut s = Statement::new();
-        let mut vars = Vec::new();
-        vars.extend(stmt!($($tail)*));
-        s.push($fmt, vars);
-        s
-    }};
-
-    (ty $var:expr) => {{
-        vec![Variable::Type($var.as_type())]
-    }};
-
-    (ty $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::Type($var.as_type())];
-        vars.extend(stmt!($($tail)*));
-        vars
-    }};
-
-    (name $var:expr) => {{
-        vec![Variable::Name($var.as_name())]
-    }};
-
-    (name $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::Name($var.as_name())];
-        vars.extend(stmt!($($tail)*));
-        vars
-    }};
-
-    (literal $var:expr) => {{
-        vec![Variable::Literal($var)]
-    }};
-
-    (literal $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::Literal($var)];
-        vars.extend(stmt!($($tail)*));
-        vars
-    }};
-
-    (string $var:expr) => {{
-        vec![Variable::String($var.to_owned())]
-    }};
-
-    (string $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::String($var.to_owned())];
-        vars.extend(stmt!($($tail)*));
-        vars
-    }};
-
-    (stmt $var:expr) => {{
-        vec![Variable::Statement($var.clone())]
-    }};
-
-    (stmt $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::Statement($var.clone())];
-        vars.extend(stmt!($($tail)*));
-        vars
-    }};
-}
-
-#[macro_export]
-macro_rules! mods {
-    ($($modifier:expr),*) => {
-        {
-            let mut tmp_modifiers = Modifiers::new();
-
-            $(
-                tmp_modifiers.insert($modifier);
-            )*
-
-            tmp_modifiers
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Sections {
     sections: Vec<Section>,
@@ -441,6 +444,10 @@ impl Sections {
         self.sections.push(Section::Block(block.clone()));
     }
 
+    pub fn push_literal(&mut self, content: &Vec<String>) {
+        self.sections.push(Section::Literal(content.clone()));
+    }
+
     pub fn extend(&mut self, sections: &Sections) {
         self.sections.extend(sections.sections.iter().map(Clone::clone));
     }
@@ -460,6 +467,11 @@ impl Sections {
                 }
                 Section::Spacing => {
                     out.push("".to_owned());
+                }
+                Section::Literal(ref content) => {
+                    for line in content {
+                        out.push(format!("{}{}", current, line));
+                    }
                 }
             }
         }
@@ -510,6 +522,10 @@ impl Block {
 
     pub fn push_block(&mut self, block: &Block) {
         self.sections.push_block(block);
+    }
+
+    pub fn push_literal(&mut self, content: &Vec<String>) {
+        self.sections.push_literal(content);
     }
 
     pub fn extend(&mut self, sections: &Sections) {
@@ -584,6 +600,10 @@ impl ClassType {
     {
         let arguments = arguments.iter().map(AsType::as_type).collect();
         ClassType::new(&self.package, &self.name, arguments)
+    }
+
+    pub fn to_raw(&self) -> ClassType {
+        ClassType::new(&self.package, &self.name, vec![])
     }
 
     pub fn format(&self, level: usize) -> Result<String> {
@@ -1070,6 +1090,14 @@ impl InterfaceSpec {
         self.elements.push(ElementSpec::Interface(interface.clone()))
     }
 
+    pub fn push_statement(&mut self, statement: &Statement) {
+        self.elements.push(ElementSpec::Statement(statement.clone()))
+    }
+
+    pub fn push_literal(&mut self, content: &Vec<String>) {
+        self.elements.push(ElementSpec::Literal(content.clone()))
+    }
+
     pub fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {
@@ -1100,7 +1128,7 @@ impl InterfaceSpec {
                 block.push_spacing();
             }
 
-            block.push_block(&element.as_block()?);
+            element.add_to_block(&mut block)?;
         }
 
         Ok(block)
@@ -1155,6 +1183,14 @@ impl ClassSpec {
         self.elements.push(ElementSpec::Interface(interface.clone()))
     }
 
+    pub fn push_statement(&mut self, statement: &Statement) {
+        self.elements.push(ElementSpec::Statement(statement.clone()))
+    }
+
+    pub fn push_literal(&mut self, content: &Vec<String>) {
+        self.elements.push(ElementSpec::Literal(content.clone()))
+    }
+
     pub fn as_block(&self) -> Result<Block> {
         let mut open = Statement::new();
 
@@ -1203,7 +1239,7 @@ impl ClassSpec {
                 block.push_spacing();
             }
 
-            block.push_block(&element.as_block()?);
+            element.add_to_block(&mut block)?;
         }
 
         Ok(block)
@@ -1224,14 +1260,47 @@ impl Imports for ClassSpec {
 pub enum ElementSpec {
     Class(ClassSpec),
     Interface(InterfaceSpec),
+    Statement(Statement),
+    Literal(Vec<String>),
 }
 
 impl ElementSpec {
-    pub fn as_block(&self) -> Result<Block> {
+    pub fn add_to_block(&self, target: &mut Block) -> Result<()> {
         match *self {
-            ElementSpec::Class(ref class) => class.as_block(),
-            ElementSpec::Interface(ref interface) => interface.as_block(),
-        }
+            ElementSpec::Class(ref class) => {
+                target.push_block(&class.as_block()?);
+            }
+            ElementSpec::Interface(ref interface) => {
+                target.push_block(&interface.as_block()?);
+            }
+            ElementSpec::Statement(ref statement) => {
+                target.push_statement(statement);
+            }
+            ElementSpec::Literal(ref content) => {
+                target.push_literal(content);
+            }
+        };
+
+        Ok(())
+    }
+
+    pub fn add_to_sections(&self, target: &mut Sections) -> Result<()> {
+        match *self {
+            ElementSpec::Class(ref class) => {
+                target.push_block(&class.as_block()?);
+            }
+            ElementSpec::Interface(ref interface) => {
+                target.push_block(&interface.as_block()?);
+            }
+            ElementSpec::Statement(ref statement) => {
+                target.push_statement(statement);
+            }
+            ElementSpec::Literal(ref content) => {
+                target.push_literal(content);
+            }
+        };
+
+        Ok(())
     }
 }
 
@@ -1242,6 +1311,8 @@ impl Imports for ElementSpec {
         match *self {
             ElementSpec::Class(ref class) => class.imports(receiver),
             ElementSpec::Interface(ref interface) => interface.imports(receiver),
+            ElementSpec::Statement(ref statement) => statement.imports(receiver),
+            _ => {}
         }
     }
 }
@@ -1276,20 +1347,12 @@ impl FileSpec {
 
         let mut receiver: BTreeSet<ClassType> = BTreeSet::new();
 
-        for element in &self.elements {
-            match *element {
-                ElementSpec::Class(ref class_spec) => {
-                    class_spec.imports(&mut receiver);
-                }
-                ElementSpec::Interface(ref interface_spec) => {
-                    interface_spec.imports(&mut receiver);
-                }
-            }
-        }
+        receiver.import_all(&self.elements);
 
-        let imports: Vec<ClassType> = receiver.into_iter()
+        let imports: BTreeSet<ClassType> = receiver.into_iter()
             .filter(|t| t.package != "java.lang")
             .filter(|t| t.package != self.package)
+            .map(|t| t.to_raw())
             .collect();
 
         if !imports.is_empty() {
@@ -1301,7 +1364,7 @@ impl FileSpec {
         }
 
         for element in &self.elements {
-            sections.push_block(&element.as_block()?);
+            element.add_to_sections(&mut sections)?;
         }
 
         let mut out = String::new();

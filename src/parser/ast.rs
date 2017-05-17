@@ -150,6 +150,13 @@ impl Field {
             id: id,
         }
     }
+
+    pub fn is_optional(&self) -> bool {
+        match self.modifier {
+            Modifier::Optional => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -170,6 +177,7 @@ impl OneOf {
 #[derive(Debug, PartialEq, Clone)]
 pub enum MessageMember {
     Field(Field, Pos),
+    Code(Vec<String>, Pos),
     OneOf(OneOf, Pos),
 }
 
@@ -210,6 +218,7 @@ impl MessageDecl {
 #[derive(Debug, PartialEq, Clone)]
 pub enum SubTypeMember {
     Field(Field),
+    Code(Vec<String>, Pos),
     OneOf(OneOf),
 }
 
@@ -241,6 +250,7 @@ impl SubType {
 #[derive(Debug, PartialEq, Clone)]
 pub enum InterfaceMember {
     Field(Field, Pos),
+    Code(Vec<String>, Pos),
     OneOf(OneOf, Pos),
 }
 
