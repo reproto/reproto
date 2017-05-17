@@ -8,21 +8,21 @@ use super::processor;
 use errors::*;
 
 pub struct FasterXmlBackend {
-    json_creator: Type,
-    json_property: Type,
-    json_type_name: Type,
-    json_sub_types: Type,
-    json_type_info: Type,
+    json_creator: ClassType,
+    json_property: ClassType,
+    json_type_name: ClassType,
+    json_sub_types: ClassType,
+    json_type_info: ClassType,
 }
 
 impl FasterXmlBackend {
     pub fn new() -> FasterXmlBackend {
         FasterXmlBackend {
-            json_creator: Type::new("com.fasterxml.jackson.annotation", "JsonCreator"),
-            json_property: Type::new("com.fasterxml.jackson.annotation", "JsonProperty"),
-            json_type_name: Type::new("com.fasterxml.jackson.annotation", "JsonTypeName"),
-            json_sub_types: Type::new("com.fasterxml.jackson.annotation", "JsonSubTypes"),
-            json_type_info: Type::new("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
+            json_creator: Type::class("com.fasterxml.jackson.annotation", "JsonCreator"),
+            json_property: Type::class("com.fasterxml.jackson.annotation", "JsonProperty"),
+            json_type_name: Type::class("com.fasterxml.jackson.annotation", "JsonTypeName"),
+            json_sub_types: Type::class("com.fasterxml.jackson.annotation", "JsonSubTypes"),
+            json_type_info: Type::class("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
         }
     }
 }
@@ -55,10 +55,10 @@ impl processor::Listeners for FasterXmlBackend {
             let mut arguments = Statement::new();
 
             arguments.push("use=$T.Id.NAME",
-                           vec![Variable::TypeSpec(self.json_type_info.as_type_spec())]);
+                           vec![Variable::Type(self.json_type_info.as_type())]);
 
             arguments.push("include=$T.As.PROPERTY",
-                           vec![Variable::TypeSpec(self.json_type_info.as_type_spec())]);
+                           vec![Variable::Type(self.json_type_info.as_type())]);
 
             arguments.push("property=$S", vec![Variable::String("type".to_owned())]);
 
@@ -73,7 +73,7 @@ impl processor::Listeners for FasterXmlBackend {
 
             for (key, _sub_type) in &interface.sub_types {
                 arguments.push("@$T.Type($L.$L.class)",
-                               vec![Variable::TypeSpec(self.json_sub_types.as_type_spec()),
+                               vec![Variable::Type(self.json_sub_types.as_type()),
                                     Variable::Literal(interface_spec.name.clone()),
                                     Variable::Literal(key.to_owned())]);
             }

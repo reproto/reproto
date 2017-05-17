@@ -28,7 +28,10 @@ fn java_quote_string(input: &str) -> String {
     out
 }
 
-fn format_statement_part_format(format: &String, variables: &Vec<Variable>) -> Result<String> {
+fn format_statement_part_format(format: &String,
+                                level: usize,
+                                variables: &Vec<Variable>)
+                                -> Result<String> {
     let mut out = String::new();
 
     let mut it = format.chars();
@@ -49,8 +52,8 @@ fn format_statement_part_format(format: &String, variables: &Vec<Variable>) -> R
                         }
                     }
                     'T' => {
-                        if let Variable::TypeSpec(ref type_) = *var {
-                            out.push_str(&type_.format()?);
+                        if let Variable::Type(ref ty) = *var {
+                            out.push_str(&ty.format(level)?);
                         } else {
                             return Err(ErrorKind::InvalidVariable.into());
                         }
@@ -71,7 +74,7 @@ fn format_statement_part_format(format: &String, variables: &Vec<Variable>) -> R
                     }
                     '$' => {
                         if let Variable::Statement(ref stmt) = *var {
-                            let lines = stmt.format()?;
+                            let lines = stmt.format(level)?;
                             out.push_str(&lines.join(" "));
                         } else {
                             return Err(ErrorKind::InvalidVariable.into());
@@ -123,7 +126,7 @@ pub trait Imports {
 }
 
 pub trait ImportReceiver {
-    fn receive(&mut self, type_: &Type);
+    fn receive(&mut self, ty: &ClassType);
 
     fn import_all<T>(&mut self, sources: &Vec<T>)
         where T: Imports,
@@ -146,9 +149,9 @@ impl AsStatement for Statement {
     }
 }
 
-impl ImportReceiver for BTreeSet<Type> {
-    fn receive(&mut self, type_: &Type) {
-        self.insert(type_.clone());
+impl ImportReceiver for BTreeSet<ClassType> {
+    fn receive(&mut self, ty: &ClassType) {
+        self.insert(ty.clone());
     }
 }
 
@@ -218,7 +221,7 @@ impl Imports for Section {
 #[derive(Debug, Clone)]
 pub enum Variable {
     Literal(String),
-    TypeSpec(TypeSpec),
+    Type(Type),
     String(String),
     Name(String),
     Statement(Statement),
@@ -281,37 +284,17 @@ impl Statement {
         Statement { parts: parts }
     }
 
-    pub fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        for part in &self.parts {
-            match *part {
-                StatementPart::Format(_, ref variables) => {
-                    for var in variables {
-                        if let Variable::TypeSpec(ref type_) = *var {
-                            type_.imports(receiver);
-                        }
-                    }
-                }
-                StatementPart::Statement(ref stmt) => {
-                    stmt.imports(receiver);
-                }
-                _ => {}
-            }
-        }
-    }
-
-    pub fn format(&self) -> Result<Vec<String>> {
+    pub fn format(&self, level: usize) -> Result<Vec<String>> {
         let mut out: Vec<String> = Vec::new();
         let mut current: Vec<String> = Vec::new();
 
         for part in &self.parts {
             match *part {
                 StatementPart::Format(ref format, ref variables) => {
-                    current.push(format_statement_part_format(format, variables)?);
+                    current.push(format_statement_part_format(format, level, variables)?);
                 }
                 StatementPart::Statement(ref stmt) => {
-                    current.push(stmt.format()?.join(" "));
+                    current.push(stmt.format(level)?.join(" "));
                 }
                 StatementPart::Literal(ref string) => {
                     current.push(string.clone());
@@ -332,6 +315,28 @@ impl Statement {
     }
 }
 
+impl Imports for Statement {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
+        for part in &self.parts {
+            match *part {
+                StatementPart::Format(_, ref variables) => {
+                    for var in variables {
+                        if let Variable::Type(ref ty) = *var {
+                            ty.imports(receiver);
+                        }
+                    }
+                }
+                StatementPart::Statement(ref stmt) => {
+                    stmt.imports(receiver);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! stmt {
     ($($fmt:expr, $vars:expr),*) => {{
@@ -348,12 +353,12 @@ macro_rules! stmt {
         s
     }};
 
-    (type_spec $var:expr) => {{
-        vec![Variable::TypeSpec($var.as_type_spec())]
+    (ty $var:expr) => {{
+        vec![Variable::Type($var.as_type())]
     }};
 
-    (type_spec $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::TypeSpec($var.as_type_spec())];
+    (ty $var:expr, $($tail:tt)*) => {{
+        let mut vars = vec![Variable::Type($var.as_type())];
         vars.extend(stmt!($($tail)*));
         vars
     }};
@@ -440,18 +445,18 @@ impl Sections {
         self.sections.extend(sections.sections.iter().map(Clone::clone));
     }
 
-    pub fn format(&self, current: &str, indent: &str) -> Result<Vec<String>> {
+    pub fn format(&self, level: usize, current: &str, indent: &str) -> Result<Vec<String>> {
         let mut out = Vec::new();
 
         for section in &self.sections {
             match *section {
                 Section::Statement(ref statement) => {
-                    for line in statement.format()? {
+                    for line in statement.format(level)? {
                         out.push(format!("{}{};", current, line));
                     }
                 }
                 Section::Block(ref block) => {
-                    out.extend(block.format(current, indent)?);
+                    out.extend(block.format(level, current, indent)?);
                 }
                 Section::Spacing => {
                     out.push("".to_owned());
@@ -468,7 +473,7 @@ impl Imports for Sections {
         where I: ImportReceiver
     {
         receiver.import_all(&self.sections);
-   }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -511,25 +516,11 @@ impl Block {
         self.sections.extend(sections);
     }
 
-    pub fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        if let Some(ref open) = self.open {
-            open.imports(receiver);
-        }
-
-        if let Some(ref close) = self.close {
-            close.imports(receiver);
-        }
-
-        self.sections.imports(receiver);
-    }
-
-    pub fn format(&self, current: &str, indent: &str) -> Result<Vec<String>> {
+    pub fn format(&self, level: usize, current: &str, indent: &str) -> Result<Vec<String>> {
         let mut out = Vec::new();
 
         if let Some(ref open) = self.open {
-            let mut it = open.format()?.into_iter().peekable();
+            let mut it = open.format(level)?.into_iter().peekable();
 
             while let Some(line) = it.next() {
                 if it.peek().is_none() {
@@ -542,10 +533,10 @@ impl Block {
             out.push(format!("{}{{", current).to_owned());
         }
 
-        out.extend(self.sections.format(&format!("{}{}", current, indent), indent)?);
+        out.extend(self.sections.format(level, &format!("{}{}", current, indent), indent)?);
 
         if let Some(ref close) = self.close {
-            let close = close.format()?.join(" ");
+            let close = close.format(level)?.join(" ");
             out.push(format!("{}}} {};", current, close).to_owned());
         } else {
             out.push(format!("{}}}", current).to_owned());
@@ -555,95 +546,58 @@ impl Block {
     }
 }
 
-
-/// Raw (importable) types.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-pub struct Type {
-    pub package: String,
-    pub name: String,
-}
-
-impl Type {
-    pub fn new(package: &str, name: &str) -> Type {
-        Type {
-            package: package.to_owned(),
-            name: name.to_owned(),
-        }
-    }
-
-    pub fn with_arguments<I>(&self, arguments: Vec<I>) -> TypeSpec
-        where I: AsTypeSpec
+impl Imports for Block {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
     {
-        let arguments: Vec<TypeSpec> = arguments.iter().map(AsTypeSpec::as_type_spec).collect();
-        TypeSpec::new(self.clone(), arguments)
+        if let Some(ref open) = self.open {
+            open.imports(receiver);
+        }
+
+        if let Some(ref close) = self.close {
+            close.imports(receiver);
+        }
+
+        self.sections.imports(receiver);
     }
-}
-
-/// Implementation for TypeSpec reference (&TypeSpec) to TypeSpec conversion.
-impl<'a> AsTypeSpec for &'a TypeSpec {
-    fn as_type_spec(&self) -> TypeSpec {
-        (*self).clone()
-    }
-}
-
-/// Implementation for Type reference (&Type) to TypeSpec conversion.
-impl<'a> AsTypeSpec for &'a Type {
-    fn as_type_spec(&self) -> TypeSpec {
-        TypeSpec::new((*self).clone(), vec![])
-    }
-}
-
-/// Implementation for Type to TypeSpec conversion.
-impl AsTypeSpec for Type {
-    fn as_type_spec(&self) -> TypeSpec {
-        TypeSpec::new(self.clone(), vec![])
-    }
-}
-
-/// Trait for types that can be converted into TypeSpec's
-pub trait AsTypeSpec {
-    fn as_type_spec(&self) -> TypeSpec;
-}
-
-pub trait AsName {
-    fn as_name(&self) -> String;
 }
 
 /// Complete types, including generic arguments.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-pub struct TypeSpec {
-    pub raw: Type,
-    pub arguments: Vec<TypeSpec>,
+pub struct ClassType {
+    pub package: String,
+    pub name: String,
+    pub arguments: Vec<Type>,
 }
 
-impl TypeSpec {
-    pub fn new(raw: Type, arguments: Vec<TypeSpec>) -> TypeSpec {
-        TypeSpec {
-            raw: raw,
+impl ClassType {
+    pub fn new(package: &str, name: &str, arguments: Vec<Type>) -> ClassType {
+        ClassType {
+            package: package.to_owned(),
+            name: name.to_owned(),
             arguments: arguments,
         }
     }
 
-    pub fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
+    pub fn with_arguments<I>(&self, arguments: Vec<I>) -> ClassType
+        where I: AsType
     {
-        receiver.receive(&self.raw);
-
-        for t in &self.arguments {
-            t.imports(receiver);
-        }
+        let arguments = arguments.iter().map(AsType::as_type).collect();
+        ClassType::new(&self.package, &self.name, arguments)
     }
 
-    pub fn format(&self) -> Result<String> {
+    pub fn format(&self, level: usize) -> Result<String> {
         let mut out = String::new();
 
-        out.push_str(&self.raw.name);
+        out.push_str(&self.name);
 
         if !self.arguments.is_empty() {
             let mut arguments = Vec::new();
 
+            let level = level + 1;
+
             for g in &self.arguments {
-                arguments.push(g.format()?);
+                arguments.push(g.format(level)?);
             }
 
             let joined = arguments.join(", ");
@@ -657,10 +611,121 @@ impl TypeSpec {
     }
 }
 
-impl AsTypeSpec for TypeSpec {
-    fn as_type_spec(&self) -> TypeSpec {
+impl Imports for ClassType {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
+        receiver.receive(self);
+        receiver.import_all(&self.arguments);
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+pub struct PrimitiveType {
+    pub primitive: String,
+    pub boxed: String,
+}
+
+impl PrimitiveType {
+    pub fn new(primitive: &str, boxed: &str) -> PrimitiveType {
+        PrimitiveType {
+            primitive: primitive.to_owned(),
+            boxed: boxed.to_owned(),
+        }
+    }
+
+    pub fn format(&self, level: usize) -> Result<String> {
+        let result = if level <= 0 {
+            self.primitive.clone()
+        } else {
+            self.boxed.clone()
+        };
+
+        Ok(result)
+    }
+}
+
+/// Raw (importable) types.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+pub enum Type {
+    Primitive(PrimitiveType),
+    Class(ClassType),
+}
+
+impl Type {
+    pub fn primitive(primitive: &str, boxed: &str) -> PrimitiveType {
+        PrimitiveType::new(primitive, boxed)
+    }
+
+    pub fn class(package: &str, name: &str) -> ClassType {
+        ClassType::new(package, name, vec![])
+    }
+
+    pub fn format(&self, level: usize) -> Result<String> {
+        match *self {
+            Type::Primitive(ref primitive) => primitive.format(level),
+            Type::Class(ref class) => class.format(level),
+        }
+    }
+}
+
+impl Imports for Type {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
+        match *self {
+            Type::Primitive(_) => {}
+            Type::Class(ref class) => class.imports(receiver),
+        };
+    }
+}
+
+/// Implementation for Type reference (&Type) to Type conversion.
+impl AsType for Type {
+    fn as_type(&self) -> Type {
         self.clone()
     }
+}
+
+impl<'a> AsType for &'a Type {
+    fn as_type(&self) -> Type {
+        (*self).clone()
+    }
+}
+
+/// Implementation for ClassType to Type conversion.
+impl AsType for ClassType {
+    fn as_type(&self) -> Type {
+        Type::Class(self.clone())
+    }
+}
+
+impl<'a> AsType for &'a ClassType {
+    fn as_type(&self) -> Type {
+        Type::Class((*self).clone())
+    }
+}
+
+/// Implementation for PrimitiveType to Type conversion.
+impl AsType for PrimitiveType {
+    fn as_type(&self) -> Type {
+        Type::Primitive(self.clone())
+    }
+}
+
+impl<'a> AsType for &'a PrimitiveType {
+    fn as_type(&self) -> Type {
+        Type::Primitive((*self).clone())
+    }
+}
+
+/// Trait for types that can be converted into Type's
+pub trait AsType {
+    fn as_type(&self) -> Type;
+}
+
+pub trait AsName {
+    fn as_name(&self) -> String;
 }
 
 #[derive(Debug, Clone)]
@@ -671,25 +736,27 @@ pub struct MethodArgument {
 #[derive(Debug, Clone)]
 pub struct FieldSpec {
     pub modifiers: Modifiers,
-    pub type_: TypeSpec,
+    pub ty: Type,
     pub name: String,
 }
 
 impl FieldSpec {
-    pub fn new<I>(modifiers: Modifiers, type_: I, name: &str) -> FieldSpec
-        where I: AsTypeSpec
+    pub fn new<I>(modifiers: Modifiers, ty: I, name: &str) -> FieldSpec
+        where I: AsType
     {
         FieldSpec {
             modifiers: modifiers,
-            type_: type_.as_type_spec(),
+            ty: ty.as_type(),
             name: name.to_owned(),
         }
     }
+}
 
-    pub fn imports<I>(&self, receiver: &mut I)
+impl Imports for FieldSpec {
+    fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {
-        self.type_.imports(receiver);
+        self.ty.imports(receiver);
     }
 }
 
@@ -701,7 +768,7 @@ impl AsStatement for FieldSpec {
             s.push("$L ", stmt!(literal self.modifiers.format()?));
         }
 
-        s.push("$T ", stmt![type_spec self.type_]);
+        s.push("$T ", stmt![ty self.ty]);
         s.push("$L", stmt!(literal self.name.clone()));
 
         Ok(s)
@@ -777,16 +844,16 @@ impl Imports for ConstructorSpec {
 
 #[derive(Debug, Clone)]
 pub struct AnnotationSpec {
-    pub type_: TypeSpec,
+    pub ty: Type,
     pub arguments: Vec<Statement>,
 }
 
 impl AnnotationSpec {
-    pub fn new<I>(type_: I) -> AnnotationSpec
-        where I: AsTypeSpec
+    pub fn new<I>(ty: I) -> AnnotationSpec
+        where I: AsType
     {
         AnnotationSpec {
-            type_: type_.as_type_spec(),
+            ty: ty.as_type(),
             arguments: Vec::new(),
         }
     }
@@ -799,7 +866,7 @@ impl AnnotationSpec {
 impl AsStatement for AnnotationSpec {
     fn as_statement(&self) -> Result<Statement> {
         let mut s = Statement::new();
-        s.push("@$T", stmt![type_spec self.type_]);
+        s.push("@$T", stmt![ty self.ty]);
 
         if !self.arguments.is_empty() {
             s.push_literal("(");
@@ -815,7 +882,7 @@ impl Imports for AnnotationSpec {
     fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {
-        self.type_.imports(receiver);
+        self.ty.imports(receiver);
 
         for a in &self.arguments {
             a.imports(receiver);
@@ -826,18 +893,18 @@ impl Imports for AnnotationSpec {
 #[derive(Debug, Clone)]
 pub struct ArgumentSpec {
     pub modifiers: Modifiers,
-    pub type_: TypeSpec,
+    pub ty: Type,
     pub name: String,
     pub annotations: Vec<AnnotationSpec>,
 }
 
 impl ArgumentSpec {
-    pub fn new<I>(modifiers: Modifiers, type_: I, name: &str) -> ArgumentSpec
-        where I: AsTypeSpec
+    pub fn new<I>(modifiers: Modifiers, ty: I, name: &str) -> ArgumentSpec
+        where I: AsType
     {
         ArgumentSpec {
             modifiers: modifiers,
-            type_: type_.as_type_spec(),
+            ty: ty.as_type(),
             name: name.to_owned(),
             annotations: Vec::new(),
         }
@@ -858,7 +925,7 @@ impl AsStatement for ArgumentSpec {
             s.push("$L ", stmt!(literal self.modifiers.format()?));
         }
 
-        s.push("$T ", stmt![type_spec self.type_.clone()]);
+        s.push("$T ", stmt![ty self.ty.clone()]);
         s.push("$L", stmt!(literal self.name.clone()));
 
         Ok(s)
@@ -869,7 +936,7 @@ impl Imports for ArgumentSpec {
     fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {
-        self.type_.imports(receiver);
+        self.ty.imports(receiver);
 
         for a in &self.annotations {
             a.imports(receiver);
@@ -889,7 +956,7 @@ pub struct MethodSpec {
     pub name: String,
     pub annotations: Vec<AnnotationSpec>,
     pub arguments: Vec<ArgumentSpec>,
-    pub returns: Option<TypeSpec>,
+    pub returns: Option<Type>,
     pub sections: Sections,
 }
 
@@ -914,9 +981,9 @@ impl MethodSpec {
     }
 
     pub fn returns<I>(&mut self, returns: I)
-        where I: AsTypeSpec
+        where I: AsType
     {
-        self.returns = Some(returns.as_type_spec())
+        self.returns = Some(returns.as_type())
     }
 
     pub fn push_statement(&mut self, statement: &Statement) {
@@ -934,7 +1001,7 @@ impl MethodSpec {
 
         match self.returns {
             None => open.push("void ", vec![]),
-            Some(ref returns) => open.push("$T ", stmt![type_spec returns]),
+            Some(ref returns) => open.push("$T ", stmt![ty returns]),
         }
 
         open.push("$L(", stmt!(literal self.name.clone()));
@@ -964,8 +1031,8 @@ impl Imports for MethodSpec {
     fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {
-        if let Some(ref type_) = self.returns {
-            type_.imports(receiver);
+        if let Some(ref ty) = self.returns {
+            ty.imports(receiver);
         }
 
         receiver.import_all(&self.arguments);
@@ -1003,7 +1070,9 @@ impl InterfaceSpec {
         self.elements.push(ElementSpec::Interface(interface.clone()))
     }
 
-    pub fn imports<I>(&self, receiver: &mut I) where I: ImportReceiver {
+    pub fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
         receiver.import_all(&self.annotations);
         receiver.import_all(&self.elements);
     }
@@ -1086,14 +1155,6 @@ impl ClassSpec {
         self.elements.push(ElementSpec::Interface(interface.clone()))
     }
 
-    pub fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        receiver.import_all(&self.annotations);
-        receiver.import_all(&self.constructors);
-        receiver.import_all(&self.methods);
-    }
-
     pub fn as_block(&self) -> Result<Block> {
         let mut open = Statement::new();
 
@@ -1146,6 +1207,16 @@ impl ClassSpec {
         }
 
         Ok(block)
+    }
+}
+
+impl Imports for ClassSpec {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
+        receiver.import_all(&self.annotations);
+        receiver.import_all(&self.constructors);
+        receiver.import_all(&self.methods);
     }
 }
 
@@ -1203,7 +1274,7 @@ impl FileSpec {
         sections.push_statement(&stmt!("package $L", literal self.package.clone()));
         sections.push_spacing();
 
-        let mut receiver: BTreeSet<Type> = BTreeSet::new();
+        let mut receiver: BTreeSet<ClassType> = BTreeSet::new();
 
         for element in &self.elements {
             match *element {
@@ -1216,7 +1287,7 @@ impl FileSpec {
             }
         }
 
-        let imports: Vec<Type> = receiver.into_iter()
+        let imports: Vec<ClassType> = receiver.into_iter()
             .filter(|t| t.package != "java.lang")
             .filter(|t| t.package != self.package)
             .collect();
@@ -1235,7 +1306,7 @@ impl FileSpec {
 
         let mut out = String::new();
 
-        for line in sections.format("", "  ")? {
+        for line in sections.format(0usize, "", "  ")? {
             out.push_str(&line);
             out.push('\n');
         }
@@ -1249,18 +1320,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_Test_java() {
-        let string_type = Type::new("java.lang", "String");
-        let list_type = Type::new("java.util", "List");
-        let json_creator_type = Type::new("com.fasterxml.jackson.annotation", "JsonCreator");
+    fn test_test_java() {
+        let string_type = Type::class("java.lang", "String");
+        let list_type = Type::class("java.util", "List");
+        let json_creator_type = Type::class("com.fasterxml.jackson.annotation", "JsonCreator");
         let list_of_strings = list_type.with_arguments(vec![&string_type]);
 
         let values_field = FieldSpec::new(mods![Modifier::Private, Modifier::Final],
                                           &list_of_strings,
                                           "values");
 
-        let mut values_argument =
-            ArgumentSpec::new(mods![Modifier::Final], &list_of_strings, "values");
+        let values_argument = ArgumentSpec::new(mods![Modifier::Final], &list_of_strings, "values");
 
         let mut constructor = ConstructorSpec::new(mods![Modifier::Public]);
         constructor.push_annotation(&AnnotationSpec::new(json_creator_type));

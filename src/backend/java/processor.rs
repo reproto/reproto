@@ -37,13 +37,13 @@ pub struct Processor<'a> {
     env: &'a Environment,
     package_prefix: Option<ast::Package>,
     lower_to_upper_camel: Box<naming::Naming>,
-    object: Type,
-    list: Type,
-    string: Type,
-    integer: Type,
-    long: Type,
-    float: Type,
-    double: Type,
+    object: ClassType,
+    list: ClassType,
+    string: ClassType,
+    integer: PrimitiveType,
+    long: PrimitiveType,
+    float: PrimitiveType,
+    double: PrimitiveType,
 }
 
 impl<'a> Processor<'a> {
@@ -56,13 +56,13 @@ impl<'a> Processor<'a> {
             env: env,
             package_prefix: package_prefix,
             lower_to_upper_camel: naming::CamelCase::new().to_upper_camel(),
-            object: Type::new("java.lang", "Object"),
-            list: Type::new("java.util", "List"),
-            string: Type::new("java.lang", "String"),
-            integer: Type::new("java.lang", "Integer"),
-            long: Type::new("java.lang", "Long"),
-            float: Type::new("java.lang", "Float"),
-            double: Type::new("java.lang", "Double"),
+            object: Type::class("java.lang", "Object"),
+            list: Type::class("java.util", "List"),
+            string: Type::class("java.lang", "String"),
+            integer: Type::primitive("int", "Integer"),
+            long: Type::primitive("long", "Long"),
+            float: Type::primitive("float", "Float"),
+            double: Type::primitive("double", "Double"),
         }
     }
 
@@ -83,44 +83,44 @@ impl<'a> Processor<'a> {
     }
 
     /// Convert the given type to a java type.
-    fn convert_type(&self, package: &ast::Package, type_: &ast::Type) -> Result<TypeSpec> {
-        let type_ = match *type_ {
-            ast::Type::String => self.string.as_type_spec(),
-            ast::Type::I32 => self.integer.as_type_spec(),
-            ast::Type::U32 => self.integer.as_type_spec(),
-            ast::Type::I64 => self.long.as_type_spec(),
-            ast::Type::U64 => self.long.as_type_spec(),
-            ast::Type::Array(ref type_) => {
-                let argument = self.convert_type(package, type_)?;
-                self.list.with_arguments(vec![argument])
+    fn convert_type(&self, package: &ast::Package, ty: &ast::Type) -> Result<Type> {
+        let ty = match *ty {
+            ast::Type::String => self.string.as_type(),
+            ast::Type::I32 => self.integer.as_type(),
+            ast::Type::U32 => self.integer.as_type(),
+            ast::Type::I64 => self.long.as_type(),
+            ast::Type::U64 => self.long.as_type(),
+            ast::Type::Array(ref ty) => {
+                let argument = self.convert_type(package, ty)?;
+                self.list.with_arguments(vec![argument]).as_type()
             }
             ast::Type::Custom(ref string) => {
                 let key = (package.clone(), string.clone());
                 let _ = self.env.types.get(&key);
                 let package_name = self.java_package(package).parts.join(".");
-                Type::new(&package_name, string).as_type_spec()
+                Type::class(&package_name, string).as_type()
             }
-            ast::Type::Any => self.object.as_type_spec(),
-            ast::Type::Float => self.float.as_type_spec(),
-            ast::Type::Double => self.double.as_type_spec(),
+            ast::Type::Any => self.object.as_type(),
+            ast::Type::Float => self.float.as_type(),
+            ast::Type::Double => self.double.as_type(),
             ast::Type::UsedType(ref used, ref custom) => {
                 let package = self.env.lookup_used(package, used)?;
                 let package_name = self.java_package(package).parts.join(".");
-                Type::new(&package_name, custom).as_type_spec()
+                Type::class(&package_name, custom).as_type()
             }
             ref t => {
                 return Err(format!("Unsupported type: {:?}", t).into());
             }
         };
 
-        Ok(type_)
+        Ok(ty)
     }
 
     fn build_constructor(&self, class: &ClassSpec) -> ConstructorSpec {
         let mut constructor = ConstructorSpec::new(mods![Modifier::Public]);
 
         for field in &class.fields {
-            let argument = ArgumentSpec::new(mods![Modifier::Final], &field.type_, &field.name);
+            let argument = ArgumentSpec::new(mods![Modifier::Final], &field.ty, &field.name);
             constructor.push_argument(&argument);
             constructor.push_statement(&stmt!["this.$L = $N", literal field.name.clone(), name argument]);
         }
@@ -130,14 +130,14 @@ impl<'a> Processor<'a> {
 
     fn process_type<L>(&self,
                        package: &ast::Package,
-                       type_: &ast::TypeDecl,
+                       ty: &ast::TypeDecl,
                        listeners: &L)
                        -> Result<FileSpec>
         where L: Listeners
     {
-        let mut class = ClassSpec::new(mods![Modifier::Public], &type_.name);
+        let mut class = ClassSpec::new(mods![Modifier::Public], &ty.name);
 
-        match type_.value {
+        match ty.value {
             ast::Type::Tuple(ref arguments) => {
                 let mut index = 0;
 
@@ -176,7 +176,7 @@ impl<'a> Processor<'a> {
         let mut result = Vec::new();
 
         for field in &class.fields {
-            let return_type = &field.type_;
+            let return_type = &field.ty;
             let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
             let mut method_spec = MethodSpec::new(mods![Modifier::Public], &name);
             method_spec.returns(return_type);
@@ -268,7 +268,7 @@ impl<'a> Processor<'a> {
     }
 
     fn push_field(&self, package: &ast::Package, field: &ast::Field) -> Result<FieldSpec> {
-        let field_type = self.convert_type(package, &field.type_)?;
+        let field_type = self.convert_type(package, &field.ty)?;
         let mods = mods![Modifier::Private, Modifier::Final];
 
         let name = if let Some(ref id_converter) = self.options.id_converter {
@@ -311,7 +311,7 @@ impl<'a> Processor<'a> {
                 ast::Decl::Message(ref message) => {
                     self.process_message(package, message, listeners)
                 }
-                ast::Decl::Type(ref type_) => self.process_type(package, type_, listeners),
+                ast::Decl::Type(ref ty) => self.process_type(package, ty, listeners),
             }?;
 
             debug!("Writing: {}", full_path.display());

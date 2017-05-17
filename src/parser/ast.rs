@@ -136,16 +136,16 @@ impl ::std::fmt::Display for Package {
 pub struct Field {
     pub modifier: Modifier,
     pub name: String,
-    pub type_: Type,
+    pub ty: Type,
     pub id: u32,
 }
 
 impl Field {
-    pub fn new(modifier: Modifier, name: String, type_: Type, id: u32) -> Field {
+    pub fn new(modifier: Modifier, name: String, ty: Type, id: u32) -> Field {
         Field {
             modifier: modifier,
             name: name,
-            type_: type_,
+            ty: ty,
             id: id,
         }
     }
@@ -329,7 +329,7 @@ impl Decl {
         match *self {
             Decl::Message(ref message) => message.name.clone(),
             Decl::Interface(ref interface) => interface.name.clone(),
-            Decl::Type(ref type_) => type_.name.clone(),
+            Decl::Type(ref ty) => ty.name.clone(),
         }
     }
 
@@ -337,7 +337,7 @@ impl Decl {
         match *self {
             Decl::Message(ref message) => message.pos.clone(),
             Decl::Interface(ref interface) => interface.pos.clone(),
-            Decl::Type(ref type_) => type_.pos.clone(),
+            Decl::Type(ref ty) => ty.pos.clone(),
         }
     }
 
@@ -345,7 +345,7 @@ impl Decl {
         match *self {
             Decl::Message(ref mut message) => message.merge(other),
             Decl::Interface(ref mut interface) => interface.merge(other),
-            Decl::Type(ref mut type_) => type_.merge(other),
+            Decl::Type(ref mut ty) => ty.merge(other),
         }
     }
 }
