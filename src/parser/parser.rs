@@ -60,7 +60,8 @@ impl_rdp! {
         file = _{ package_decl ~ use_decl* ~ decl* ~ eoi }
         decl = { message_decl | interface_decl | type_decl }
 
-        use_decl = { ["use"] ~ package_ident ~ [";"] }
+        use_decl = { ["use"] ~ package_ident ~ use_as? ~ [";"] }
+        use_as = { ["as"] ~ ident }
         package_decl = { ["package"] ~ package_ident ~ [";"] }
         message_decl = { ["message"] ~ ident ~ ["{"] ~ option_decl* ~ message_member* ~ ["}"] }
         interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ interface_member* ~ sub_type_decl* ~ ["}"] }
@@ -118,13 +119,21 @@ impl_rdp! {
             },
         }
 
-        _use_list(&self) -> LinkedList<ast::Package> {
-            (_: use_decl, package: _package(), mut tail: _use_list()) => {
-                tail.push_front(package);
+        _use_list(&self) -> LinkedList<ast::UseDecl> {
+            (_: use_decl, package: _package(), alias: _use_as(), mut tail: _use_list()) => {
+                tail.push_front(ast::UseDecl::new(package, alias));
                 tail
             },
 
             () => LinkedList::new(),
+        }
+
+        _use_as(&self) -> Option<String> {
+            (_: use_as, &alias: ident) => {
+                Some(alias.to_owned())
+            },
+
+            () => None,
         }
 
         _package(&self) -> ast::Package {

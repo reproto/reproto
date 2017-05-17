@@ -86,6 +86,60 @@ impl Environment {
         }
     }
 
+    fn register_type(&mut self,
+                     path: &PathBuf,
+                     package: &ast::Package,
+                     decl: &ast::Decl)
+                     -> Result<()> {
+        let key = (package.clone(), decl.name());
+
+        match self.types.entry(key) {
+            Entry::Vacant(entry) => {
+                entry.insert(decl.clone());
+            }
+            Entry::Occupied(entry) => {
+                handle_occupied(path, entry, decl)?;
+            }
+        };
+
+        Ok(())
+    }
+
+    fn register_alias(&mut self, package: &ast::Package, use_decl: &ast::UseDecl) -> Result<()> {
+        if let Some(used) = use_decl.package.parts.iter().last() {
+            let alias = if let Some(ref next) = use_decl.alias {
+                next
+            } else {
+                used
+            };
+
+            let key = (package.clone(), alias.clone());
+
+            match self.used.entry(key) {
+                Entry::Vacant(entry) => {
+                    entry.insert(use_decl.package.clone());
+                }
+                Entry::Occupied(_) => return Err(format!("alias {} already in used", alias).into()),
+            };
+        }
+
+        Ok(())
+    }
+
+    /// Lookup the package declaration a used alias refers to.
+    pub fn lookup_used(&self, package: &ast::Package, used: &String) -> Result<&ast::Package> {
+        // resolve alias
+        let package = self.used
+            .get(&(package.clone(), used.clone()))
+            .ok_or(format!("Missing import alias for ({})", used))?;
+
+        // check that type actually exists?
+        let key = (package.clone(), used.clone());
+        let _ = self.types.get(&key);
+
+        Ok(package)
+    }
+
     pub fn import(&mut self, package: &ast::Package) -> Result<()> {
         if self.visited.contains(package) {
             return Ok(());
@@ -119,12 +173,6 @@ impl Environment {
                     .into());
             }
 
-            for import in &file.imports {
-                if let Some(used) = import.parts.iter().last().map(Clone::clone) {
-                    self.used.insert((package.clone(), used), import.clone());
-                }
-            }
-
             files.push((path, file));
         }
 
@@ -133,21 +181,13 @@ impl Environment {
         }
 
         for &(ref path, ref file) in &files {
-            for import in &file.imports {
-                self.import(&import)?;
+            for use_decl in &file.uses {
+                self.register_alias(package, use_decl)?;
+                self.import(&use_decl.package)?;
             }
 
             for decl in &file.decls {
-                let key = (package.clone(), decl.name());
-
-                match self.types.entry(key) {
-                    Entry::Vacant(entry) => {
-                        entry.insert(decl.clone());
-                    }
-                    Entry::Occupied(entry) => {
-                        handle_occupied(path, entry, decl)?;
-                    }
-                };
+                self.register_type(path, package, decl)?;
             }
         }
 

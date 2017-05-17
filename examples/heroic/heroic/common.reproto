@@ -1,4 +1,4 @@
-package common;
+package heroic.common;
 
 message Date {
   field: u32;

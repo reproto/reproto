@@ -351,17 +351,32 @@ impl Decl {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct UseDecl {
+    pub package: Package,
+    pub alias: Option<String>,
+}
+
+impl UseDecl {
+    pub fn new(package: Package, alias: Option<String>) -> UseDecl {
+        UseDecl {
+            package: package,
+            alias: alias,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct File {
     pub package: Package,
-    pub imports: Vec<Package>,
+    pub uses: Vec<UseDecl>,
     pub decls: Vec<Decl>,
 }
 
 impl File {
-    pub fn new(package: Package, imports: Vec<Package>, decls: Vec<Decl>) -> File {
+    pub fn new(package: Package, uses: Vec<UseDecl>, decls: Vec<Decl>) -> File {
         File {
             package: package,
-            imports: imports,
+            uses: uses,
             decls: decls,
         }
     }

@@ -1,6 +1,6 @@
 package heroic.v1;
 
-use common;
+use heroic.common as c;
 
 interface Sampling {
 }
@@ -25,7 +25,7 @@ interface Samples {
 message Query {
   query?: string;
   aggregation?: Aggregation;
-  date?: common.Date;
+  date?: c.Date;
 }
 
 interface Duration {

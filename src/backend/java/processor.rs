@@ -63,13 +63,23 @@ impl<'a> Processor<'a> {
         }
     }
 
-    fn build_package(&self, package: ast::Package) -> ast::Package {
-        self.package_prefix
-            .clone()
-            .map(|prefix| prefix.join(&package))
-            .unwrap_or(package)
+    /// Create a new FileSpec from the given package.
+    fn new_file_spec(&self, package: &ast::Package) -> FileSpec {
+        let package_name = self.java_package(package).parts.join(".");
+        FileSpec::new(&package_name)
     }
 
+    /// Build the java package of a given package.
+    ///
+    /// This includes the prefixed configured in `self.options`, if specified.
+    fn java_package(&self, package: &ast::Package) -> ast::Package {
+        self.package_prefix
+            .clone()
+            .map(|prefix| prefix.join(package))
+            .unwrap_or_else(|| package.clone())
+    }
+
+    /// Convert the given type to a java type.
     fn convert_type(&self, package: &ast::Package, type_: &ast::Type) -> Result<TypeSpec> {
         let type_ = match *type_ {
             ast::Type::String => self.string.as_type_spec(),
@@ -84,21 +94,15 @@ impl<'a> Processor<'a> {
             ast::Type::Custom(ref string) => {
                 let key = (package.clone(), string.clone());
                 let _ = self.env.types.get(&key);
-                let package_name = self.build_package(package.clone()).parts.join(".");
+                let package_name = self.java_package(package).parts.join(".");
                 Type::new(&package_name, string).as_type_spec()
             }
             ast::Type::Any => self.object.as_type_spec(),
             ast::Type::Float => self.float.as_type_spec(),
             ast::Type::Double => self.double.as_type_spec(),
             ast::Type::UsedType(ref used, ref custom) => {
-                let package = self.env
-                    .used
-                    .get(&(package.clone(), used.clone()))
-                    .ok_or(format!("Missing use for ({})", used))?;
-
-                let key = (package.clone(), custom.clone());
-                let _ = self.env.types.get(&key);
-                let package_name = self.build_package(package.clone()).parts.join(".");
+                let package = self.env.lookup_used(package, used)?;
+                let package_name = self.java_package(package).parts.join(".");
                 Type::new(&package_name, custom).as_type_spec()
             }
             ref t => {
@@ -128,8 +132,6 @@ impl<'a> Processor<'a> {
                        -> Result<FileSpec>
         where L: Listeners
     {
-        let package_name = self.build_package(package.clone()).parts.join(".");
-
         let mut class = ClassSpec::new(mods![Modifier::Public], &type_.name);
 
         match type_.value {
@@ -161,7 +163,7 @@ impl<'a> Processor<'a> {
 
         listeners.class_added(&mut class)?;
 
-        let mut file_spec = FileSpec::new(&package_name);
+        let mut file_spec = self.new_file_spec(package);
         file_spec.push_class(&class);
 
         Ok(file_spec)
@@ -174,8 +176,6 @@ impl<'a> Processor<'a> {
                           -> Result<FileSpec>
         where L: Listeners
     {
-        let package_name = self.build_package(package.clone()).parts.join(".");
-
         let mut class = ClassSpec::new(mods![Modifier::Public], &message.name);
 
         for member in &message.members {
@@ -189,7 +189,7 @@ impl<'a> Processor<'a> {
 
         listeners.class_added(&mut class)?;
 
-        let mut file_spec = FileSpec::new(&package_name);
+        let mut file_spec = self.new_file_spec(package);
         file_spec.push_class(&class);
 
         Ok(file_spec)
@@ -202,8 +202,6 @@ impl<'a> Processor<'a> {
                             -> Result<FileSpec>
         where L: Listeners
     {
-        let package_name = self.build_package(package.clone()).parts.join(".");
-
         let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
 
         let mut interface_fields: Vec<FieldSpec> = Vec::new();
@@ -239,7 +237,7 @@ impl<'a> Processor<'a> {
             interface_spec.push_class(&class);
         }
 
-        let mut file_spec = FileSpec::new(&package_name);
+        let mut file_spec = self.new_file_spec(package);
 
         listeners.interface_added(interface, &mut interface_spec)?;
 
@@ -261,38 +259,33 @@ impl<'a> Processor<'a> {
         let root = self.options.out_path.clone();
 
         for (&(ref package, _), decl) in &self.env.types {
-            let out_dir = self.build_package(package.clone())
+            let out_dir = self.java_package(package)
                 .parts
                 .iter()
                 .fold(root.clone(), |current, next| current.join(next));
 
             fs::create_dir_all(&out_dir)?;
 
-            let res = match *decl {
+            let full_path = out_dir.join(format!("{}.java", decl.name()));
+
+            let file_spec = match *decl {
                 ast::Decl::Interface(ref interface) => {
-                    let full_path = out_dir.join(format!("{}.java", interface.name));
-                    Some((full_path, self.process_interface(package, interface, listeners)?))
+                    self.process_interface(package, interface, listeners)
                 }
                 ast::Decl::Message(ref message) => {
-                    let full_path = out_dir.join(format!("{}.java", message.name));
-                    Some((full_path, self.process_message(package, message, listeners)?))
+                    self.process_message(package, message, listeners)
                 }
-                ast::Decl::Type(ref type_) => {
-                    let full_path = out_dir.join(format!("{}.java", type_.name));
-                    Some((full_path, self.process_type(package, type_, listeners)?))
-                }
-            };
+                ast::Decl::Type(ref type_) => self.process_type(package, type_, listeners),
+            }?;
 
-            if let Some((full_path, file_spec)) = res {
-                info!("Writing: {}", full_path.display());
+            info!("Writing: {}", full_path.display());
 
-                let out = file_spec.format()?;
-                let mut f = File::create(full_path)?;
-                let bytes = out.into_bytes();
+            let out = file_spec.format()?;
+            let mut f = File::create(full_path)?;
+            let bytes = out.into_bytes();
 
-                f.write_all(&bytes)?;
-                f.flush()?;
-            }
+            f.write_all(&bytes)?;
+            f.flush()?;
         }
 
         Ok(())
