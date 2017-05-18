@@ -145,7 +145,7 @@ impl AsBlock for ClassSpec {
                 block.push(Section::Spacing);
             }
 
-            element.add_to_block(&mut block);
+            block.push(element);
         }
 
         block
@@ -226,7 +226,7 @@ impl AsBlock for InterfaceSpec {
                 block.push(Section::Spacing);
             }
 
-            element.add_to_block(&mut block);
+            block.push(element);
         }
 
         block

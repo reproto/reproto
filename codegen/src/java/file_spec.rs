@@ -64,7 +64,7 @@ impl FileSpec {
         }
 
         for element in &self.elements {
-            element.add_to_sections(&mut sections);
+            sections.push(element);
         }
 
         let mut out = String::new();

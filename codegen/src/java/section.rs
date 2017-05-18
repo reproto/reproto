@@ -1,6 +1,10 @@
+use super::block::AsBlock;
 use super::block::Block;
-use super::statement::Statement;
+use super::class_spec::ClassSpec;
+use super::interface_spec::InterfaceSpec;
 use super::modifier::Modifiers;
+use super::statement::Statement;
+use super::element_spec::ElementSpec;
 
 #[derive(Debug, Clone)]
 pub enum Section {
@@ -61,6 +65,29 @@ impl AsSection for Vec<String> {
 impl AsSection for Modifiers {
     fn as_section(self) -> Section {
         Section::Literal(vec![self.format()])
+    }
+}
+
+impl AsSection for ClassSpec {
+    fn as_section(self) -> Section {
+        self.as_block().as_section()
+    }
+}
+
+impl AsSection for InterfaceSpec {
+    fn as_section(self) -> Section {
+        self.as_block().as_section()
+    }
+}
+
+impl AsSection for ElementSpec {
+    fn as_section(self) -> Section {
+        match self {
+            ElementSpec::Class(class) => class.as_section(),
+            ElementSpec::Interface(interface) => interface.as_section(),
+            ElementSpec::Statement(statement) => statement.as_section(),
+            ElementSpec::Literal(content) => content.as_section(),
+        }
     }
 }
 
