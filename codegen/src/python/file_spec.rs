@@ -39,11 +39,12 @@ impl FileSpec {
             out.push('\n');
         }
 
-        for element in &self.elements {
-            for line in element.format("", "  ") {
-                out.push_str(&line);
-                out.push('\n');
-            }
+        let elements = &self.elements;
+        let element = elements.as_element_spec().join(ElementSpec::Spacing);
+
+        for line in element.format("", "  ") {
+            out.push_str(&line);
+            out.push('\n');
         }
 
         out

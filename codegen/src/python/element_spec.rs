@@ -8,7 +8,8 @@ pub enum ElementSpec {
     Statement(Statement),
     Literal(Vec<String>),
     Elements(Vec<ElementSpec>),
-    Nested(Vec<ElementSpec>),
+    Nested(Box<ElementSpec>),
+    Spacing,
 }
 
 impl ElementSpec {
@@ -31,16 +32,43 @@ impl ElementSpec {
                     out.extend(element.format(current, indent));
                 }
             }
-            ElementSpec::Nested(ref elements) => {
+            ElementSpec::Nested(ref element) => {
                 let next_current = format!("{}{}", current, indent);
-
-                for element in elements {
-                    out.extend(element.format(&next_current, indent));
-                }
+                out.extend(element.format(&next_current, indent));
+            }
+            ElementSpec::Spacing => {
+                out.push(current.to_owned());
             }
         };
 
         out
+    }
+
+    pub fn join<S>(self, separator: S) -> ElementSpec
+        where S: AsElementSpec + Clone
+    {
+        if let ElementSpec::Elements(elements) = self {
+            let mut it = elements.into_iter();
+
+            let part = match it.next() {
+                Some(part) => part,
+                None => return ElementSpec::Elements(vec![]),
+            };
+
+            let mut parts: Vec<ElementSpec> = Vec::new();
+            parts.push(part);
+
+            let sep = &separator;
+
+            while let Some(part) = it.next() {
+                parts.push(sep.as_element_spec());
+                parts.push(part);
+            }
+
+            return ElementSpec::Elements(parts);
+        }
+
+        return self;
     }
 }
 
@@ -93,9 +121,11 @@ impl AsElementSpec for MethodSpec {
         out.push(decl.as_element_spec());
 
         if self.elements.is_empty() {
-            out.push(ElementSpec::Nested(vec!["pass".as_element_spec()]));
+            out.push(ElementSpec::Nested(Box::new("pass".as_element_spec())));
         } else {
-            out.push(ElementSpec::Nested(self.elements.clone()));
+            out.push(ElementSpec::Nested(Box::new(self.elements
+                .as_element_spec()
+                .join(ElementSpec::Spacing))));
         }
 
         ElementSpec::Elements(out)
@@ -118,9 +148,11 @@ impl AsElementSpec for ClassSpec {
         out.push(decl.as_element_spec());
 
         if self.elements.is_empty() {
-            out.push(ElementSpec::Nested(vec!["pass".as_element_spec()]));
+            out.push(ElementSpec::Nested(Box::new("pass".as_element_spec())));
         } else {
-            out.push(ElementSpec::Nested(self.elements.clone()));
+            out.push(ElementSpec::Nested(Box::new(self.elements
+                .as_element_spec()
+                .join(ElementSpec::Spacing))));
         }
 
         ElementSpec::Elements(out)
@@ -140,5 +172,11 @@ impl AsElementSpec for DecoratorSpec {
 impl AsElementSpec for Statement {
     fn as_element_spec(self) -> ElementSpec {
         ElementSpec::Statement(self)
+    }
+}
+
+impl AsElementSpec for Vec<ElementSpec> {
+    fn as_element_spec(self) -> ElementSpec {
+        ElementSpec::Elements(self)
     }
 }

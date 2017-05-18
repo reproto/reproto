@@ -67,8 +67,8 @@ impl Imports for ElementSpec {
             ElementSpec::Elements(ref elements) => {
                 receiver.import_all(elements);
             }
-            ElementSpec::Nested(ref elements) => {
-                receiver.import_all(elements);
+            ElementSpec::Nested(ref element) => {
+                element.imports(receiver);
             }
             _ => {}
         };
