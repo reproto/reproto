@@ -11,6 +11,7 @@ type Event = (i64, any);
 interface Samples {
   Points {
     name "points";
+    name "points_backwards";
 
     data: [Point];
   }

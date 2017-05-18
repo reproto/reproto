@@ -37,7 +37,7 @@ impl ElementSpec {
                 out.extend(element.format(&next_current, indent));
             }
             ElementSpec::Spacing => {
-                out.push(current.to_owned());
+                out.push("".to_owned());
             }
         };
 
@@ -123,9 +123,7 @@ impl AsElementSpec for MethodSpec {
         if self.elements.is_empty() {
             out.push(ElementSpec::Nested(Box::new("pass".as_element_spec())));
         } else {
-            out.push(ElementSpec::Nested(Box::new(self.elements
-                .as_element_spec()
-                .join(ElementSpec::Spacing))));
+            out.push(ElementSpec::Nested(Box::new(self.elements.as_element_spec())));
         }
 
         ElementSpec::Elements(out)
@@ -143,6 +141,20 @@ impl AsElementSpec for ClassSpec {
         let mut decl = Statement::new();
         decl.push("class ");
         decl.push(self.name);
+
+        if !self.extends.is_empty() {
+            decl.push("(");
+
+            let mut extends = Statement::new();
+
+            for extend in self.extends {
+                extends.push(extend);
+            }
+
+            decl.push(extends.join(", "));
+            decl.push(")");
+        }
+
         decl.push(":");
 
         out.push(decl.as_element_spec());

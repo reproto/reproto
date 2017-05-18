@@ -8,15 +8,76 @@ use super::processor;
 use errors::*;
 
 pub struct PlainPythonBackend {
+    staticmethod: BuiltInName,
 }
 
 impl PlainPythonBackend {
     pub fn new() -> PlainPythonBackend {
-        PlainPythonBackend {}
+        PlainPythonBackend { staticmethod: Name::built_in("staticmethod") }
     }
 }
 
-impl processor::Listeners for PlainPythonBackend {}
+impl processor::Listeners for PlainPythonBackend {
+    fn class_added(&self, fields: &Vec<ast::Field>, class: &mut ClassSpec) {
+        let mut decode = MethodSpec::new("decode");
+        decode.push_decorator(&self.staticmethod);
+        decode.push_argument(python_stmt!["_data"]);
+
+        let mut arguments = Statement::new();
+
+        for field in fields {
+            let var_name = format!("f_{}", &field.name);
+
+            decode.push(python_stmt![&var_name,
+                                     " = _data[",
+                                     Variable::String(field.name.to_owned()),
+                                     "]"]);
+
+            arguments.push(&var_name);
+        }
+
+        let arguments = arguments.join(", ");
+        decode.push(python_stmt!["return ", &class.name, "(", arguments, ")"]);
+
+        class.push(decode);
+    }
+
+    fn interface_added(&self, interface: &ast::InterfaceDecl, interface_spec: &mut ClassSpec) {
+        let mut decode = MethodSpec::new("decode");
+        decode.push_decorator(&self.staticmethod);
+        decode.push_argument(python_stmt!["_data"]);
+
+        let mut decode_body = Vec::new();
+
+        decode_body.push(python_stmt!["_type = _data[", Variable::String("type".to_owned()), "]"]
+            .as_element_spec());
+
+        for (_, ref sub_type) in &interface.sub_types {
+            for name in sub_type.options.lookup_string("name") {
+                let if_stmt = python_stmt!["if _type == ", Variable::String(name.to_owned()), ":"];
+
+                let name = Name::local(&sub_type.name).as_name();
+
+                let if_body = python_stmt!["return ", name, ".decode(_data)"];
+
+                let mut check: Vec<ElementSpec> = Vec::new();
+
+                check.push(if_stmt.as_element_spec());
+                check.push(ElementSpec::Nested(Box::new(if_body.as_element_spec())));
+
+                decode_body.push(check.as_element_spec());
+            }
+        }
+
+        let raise =
+            python_stmt!["raise Exception(", Variable::String("bad type".to_owned()), " + _type)"]
+                .as_element_spec();
+        decode_body.push(raise);
+
+        decode.push(decode_body.as_element_spec().join(ElementSpec::Spacing));
+        interface_spec.push(decode);
+    }
+}
 
 impl Backend for PlainPythonBackend {
     fn process(&self, options: &Options, env: &Environment) -> Result<()> {

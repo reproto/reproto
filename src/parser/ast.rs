@@ -53,6 +53,17 @@ impl Options {
             .nth(n)
     }
 
+    pub fn lookup_string(&self, name: &str) -> Vec<&String> {
+        self.options
+            .iter()
+            .filter(|o| o.name.as_str() == name)
+            .flat_map(|o| o.values.iter())
+            .flat_map(|v| match *v {
+                OptionValue::String(ref s) => Some(s).into_iter(),
+            })
+            .collect()
+    }
+
     pub fn lookup_string_nth(&self, name: &str, n: usize) -> Option<&String> {
         self.options
             .iter()

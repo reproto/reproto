@@ -13,7 +13,11 @@ use codegen::python::*;
 
 use errors::*;
 
-pub trait Listeners {}
+pub trait Listeners {
+    fn class_added(&self, fields: &Vec<ast::Field>, class: &mut ClassSpec);
+
+    fn interface_added(&self, interface: &ast::InterfaceDecl, interface_spec: &mut ClassSpec);
+}
 
 pub struct Processor<'a> {
     options: &'a Options,
@@ -36,6 +40,11 @@ impl<'a> Processor<'a> {
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
         }
     }
+
+    pub fn convert_name(&self, ty: &ast::Type, name: String) -> Name {
+        Name::built_in("float").as_name()
+    }
+
 
     /// Build the java package of a given package.
     ///
@@ -118,6 +127,7 @@ impl<'a> Processor<'a> {
             }
         }
 
+        listeners.class_added(&fields, &mut class);
         Ok(class)
     }
 
@@ -125,10 +135,16 @@ impl<'a> Processor<'a> {
                             package: &ast::Package,
                             interface: &ast::InterfaceDecl,
                             listeners: &L)
-                            -> Result<ClassSpec>
+                            -> Result<Vec<ClassSpec>>
         where L: Listeners
     {
+        let mut classes = Vec::new();
+
         let mut interface_spec = ClassSpec::new(&interface.name);
+
+        listeners.interface_added(interface, &mut interface_spec);
+
+        classes.push(interface_spec);
 
         let mut interface_fields: Vec<ast::Field> = Vec::new();
 
@@ -140,6 +156,8 @@ impl<'a> Processor<'a> {
 
         for (_, ref sub_type) in &interface.sub_types {
             let mut class = ClassSpec::new(&sub_type.name);
+            class.extends(Name::local(&interface.name));
+
             let mut fields = interface_fields.clone();
 
             for member in &sub_type.members {
@@ -155,10 +173,11 @@ impl<'a> Processor<'a> {
                 class.push(&getter);
             }
 
-            interface_spec.push(&class);
+            listeners.class_added(&fields, &mut class);
+            classes.push(class);
         }
 
-        Ok(interface_spec)
+        Ok(classes)
     }
 
     pub fn process<L>(&self, listeners: &L) -> Result<()>
@@ -176,24 +195,32 @@ impl<'a> Processor<'a> {
 
         // Process all types discovered so far.
         for (&(ref package, _), decl) in &self.env.types {
-            let class_spec = match *decl {
+            let class_specs = match *decl {
                 ast::Decl::Interface(ref interface) => {
-                    self.process_interface(package, interface, listeners)
+                    self.process_interface(package, interface, listeners)?
                 }
                 ast::Decl::Message(ref message) => {
-                    self.process_message(package, message, listeners)
+                    vec![self.process_message(package, message, listeners)?]
                 }
-                ast::Decl::Type(ref ty) => self.process_type(package, ty, listeners),
-            }?;
+                ast::Decl::Type(ref ty) => vec![self.process_type(package, ty, listeners)?],
+            };
 
             match files.entry(package) {
                 Entry::Vacant(entry) => {
                     let mut file_spec = FileSpec::new();
-                    file_spec.push(class_spec);
+
+                    for class_spec in class_specs {
+                        file_spec.push(class_spec);
+                    }
+
                     entry.insert(file_spec);
                 }
                 Entry::Occupied(entry) => {
-                    entry.into_mut().push(class_spec);
+                    let mut file_spec = entry.into_mut();
+
+                    for class_spec in class_specs {
+                        file_spec.push(class_spec);
+                    }
                 }
             }
         }

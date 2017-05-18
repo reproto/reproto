@@ -2,6 +2,7 @@
 pub enum Name {
     Imported(ImportedName),
     BuiltIn(BuiltInName),
+    Local(LocalName),
 }
 
 impl Name {
@@ -16,12 +17,17 @@ impl Name {
         BuiltInName { name: name.to_owned() }
     }
 
+    pub fn local(name: &str) -> LocalName {
+        LocalName { name: name.to_owned() }
+    }
+
     pub fn format(&self) -> String {
         match *self {
             Name::Imported(ref imported) => {
                 format!("{}.{}", imported.module, imported.name.clone())
             }
             Name::BuiltIn(ref built_in) => built_in.name.clone(),
+            Name::Local(ref local) => local.name.clone(),
         }
     }
 }
@@ -34,6 +40,11 @@ pub struct ImportedName {
 
 #[derive(Debug, Clone)]
 pub struct BuiltInName {
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct LocalName {
     pub name: String,
 }
 
@@ -64,5 +75,11 @@ impl AsName for ImportedName {
 impl AsName for BuiltInName {
     fn as_name(self) -> Name {
         Name::BuiltIn(self)
+    }
+}
+
+impl AsName for LocalName {
+    fn as_name(self) -> Name {
+        Name::Local(self)
     }
 }
