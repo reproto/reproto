@@ -2,10 +2,15 @@ package heroic.v1;
 
 message Query {
   // added method
-  @@
+  java @@
     /* do something with aggregation */
     public boolean hasAggregation() {
       return this.aggregation.isPresent();
     }
+  @@
+
+  python @@
+    def hello(self):
+      return "hello"
   @@
 }

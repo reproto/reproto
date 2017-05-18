@@ -11,6 +11,8 @@ use codegen::java::*;
 
 use errors::*;
 
+const JAVA_CONTEXT: &str = "java";
+
 pub trait Listeners {
     fn class_added(&self, _class: &mut ClassSpec) -> Result<()> {
         Ok(())
@@ -215,8 +217,11 @@ impl<'a> Processor<'a> {
                 continue;
             }
 
-            if let ast::MessageMember::Code(ref content, _) = *member {
-                class.push_literal(content);
+            if let ast::MessageMember::Code(ref context, ref content, _) = *member {
+                if context == JAVA_CONTEXT {
+                    class.push_literal(content);
+                }
+
                 continue;
             }
         }

@@ -139,7 +139,7 @@ impl_rdp! {
         sub_type_member = { field | code_block }
 
         field = { ident ~ modifier? ~ [":"] ~ type_spec ~ [";"] }
-        code_block = @{ ["@@"] ~ code_body ~ ["@@"] }
+        code_block = @{ ident ~ whitespace* ~ ["@@"] ~ code_body ~ ["@@"] }
         code_body = { (!(["@@"]) ~ any)* }
         // body of a code block, either another balanced block, or anything but brackets
         modifier = { ["?"] }
@@ -265,9 +265,9 @@ impl_rdp! {
                 ast::MessageMember::Field(field, pos)
             },
 
-            (token: code_block, &content: code_body) => {
+            (token: code_block, &context: ident, &content: code_body) => {
                 let pos = (token.start, token.end);
-                ast::MessageMember::Code(strip_code_block(content), pos)
+                ast::MessageMember::Code(context.to_owned(), strip_code_block(content), pos)
             },
         }
 
@@ -318,9 +318,9 @@ impl_rdp! {
                 ast::SubTypeMember::Field(field)
             },
 
-            (token: code_block, &content: code_body) => {
+            (token: code_block, &context: ident, &content: code_body) => {
                 let pos = (token.start, token.end);
-                ast::SubTypeMember::Code(strip_code_block(content), pos)
+                ast::SubTypeMember::Code(context.to_owned(), strip_code_block(content), pos)
             },
         }
 
@@ -360,9 +360,9 @@ impl_rdp! {
                 ast::InterfaceMember::Field(field, pos)
             },
 
-            (token: code_block, &content: code_body) => {
+            (token: code_block, &context: ident, &content: code_body) => {
                 let pos = (token.start, token.end);
-                ast::InterfaceMember::Code(strip_code_block(content), pos)
+                ast::InterfaceMember::Code(context.to_owned(), strip_code_block(content), pos)
             },
         }
 
@@ -488,7 +488,7 @@ mod tests {
 
     #[test]
     fn test_code() {
-        let mut parser = Rdp::new(StringInput::new("@@\na { b { c } d } e\n@@"));
+        let mut parser = Rdp::new(StringInput::new("java@@\na { b { c } d } e\n@@"));
 
         assert!(parser.code_block());
         assert!(parser.end());

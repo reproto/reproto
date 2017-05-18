@@ -177,7 +177,7 @@ impl OneOf {
 #[derive(Debug, PartialEq, Clone)]
 pub enum MessageMember {
     Field(Field, Pos),
-    Code(Vec<String>, Pos),
+    Code(String, Vec<String>, Pos),
     OneOf(OneOf, Pos),
 }
 
@@ -218,7 +218,7 @@ impl MessageDecl {
 #[derive(Debug, PartialEq, Clone)]
 pub enum SubTypeMember {
     Field(Field),
-    Code(Vec<String>, Pos),
+    Code(String, Vec<String>, Pos),
     OneOf(OneOf),
 }
 
@@ -250,7 +250,7 @@ impl SubType {
 #[derive(Debug, PartialEq, Clone)]
 pub enum InterfaceMember {
     Field(Field, Pos),
-    Code(Vec<String>, Pos),
+    Code(String, Vec<String>, Pos),
     OneOf(OneOf, Pos),
 }
 

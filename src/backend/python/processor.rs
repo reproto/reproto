@@ -22,6 +22,8 @@ pub struct Processor<'a> {
     to_lower_snake: Box<naming::Naming>,
 }
 
+const PYTHON_CONTEXT: &str = "python";
+
 impl<'a> Processor<'a> {
     pub fn new(options: &'a Options,
                env: &'a Environment,
@@ -109,9 +111,10 @@ impl<'a> Processor<'a> {
         }
 
         for member in &message.members {
-            if let ast::MessageMember::Code(ref content, _) = *member {
-                class.push(ElementSpec::Literal(content.clone()));
-                continue;
+            if let ast::MessageMember::Code(ref context, ref content, _) = *member {
+                if context == PYTHON_CONTEXT {
+                    class.push(ElementSpec::Literal(content.clone()));
+                }
             }
         }
 
