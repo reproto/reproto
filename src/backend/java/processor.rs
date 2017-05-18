@@ -89,11 +89,11 @@ impl<'a> Processor<'a> {
     /// Convert the given type to a java type.
     fn convert_type(&self, package: &ast::Package, ty: &ast::Type) -> Result<Type> {
         let ty = match *ty {
-            ast::Type::String => self.string.as_type(),
-            ast::Type::I32 => self.integer.as_type(),
-            ast::Type::U32 => self.integer.as_type(),
-            ast::Type::I64 => self.long.as_type(),
-            ast::Type::U64 => self.long.as_type(),
+            ast::Type::String => self.string.clone().as_type(),
+            ast::Type::I32 => self.integer.clone().as_type(),
+            ast::Type::U32 => self.integer.clone().as_type(),
+            ast::Type::I64 => self.long.clone().as_type(),
+            ast::Type::U64 => self.long.clone().as_type(),
             ast::Type::Array(ref ty) => {
                 let argument = self.convert_type(package, ty)?;
                 self.list.with_arguments(vec![argument]).as_type()
@@ -104,9 +104,9 @@ impl<'a> Processor<'a> {
                 let package_name = self.java_package(package).parts.join(".");
                 Type::class(&package_name, string).as_type()
             }
-            ast::Type::Any => self.object.as_type(),
-            ast::Type::Float => self.float.as_type(),
-            ast::Type::Double => self.double.as_type(),
+            ast::Type::Any => self.object.clone().as_type(),
+            ast::Type::Float => self.float.clone().as_type(),
+            ast::Type::Double => self.double.clone().as_type(),
             ast::Type::UsedType(ref used, ref custom) => {
                 let package = self.env.lookup_used(package, used)?;
                 let package_name = self.java_package(package).parts.join(".");

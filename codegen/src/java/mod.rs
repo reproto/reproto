@@ -31,6 +31,28 @@ macro_rules! stmt {
     }};
 }
 
+macro_rules! as_converter {
+    ($as_type:ident, $type:ty, $method:ident) => {
+        pub trait $as_type {
+            fn $method(self) -> $type;
+        }
+
+        impl<'a, A> $as_type for &'a A
+            where A: $as_type + Clone
+        {
+            fn $method(self) -> $type {
+                self.clone().$method()
+            }
+        }
+
+        impl $as_type for $type {
+            fn $method(self) -> $type {
+                self
+            }
+        }
+    }
+}
+
 fn java_quote_string(input: &str) -> String {
     let mut out = String::new();
     let mut it = input.chars();
@@ -53,73 +75,6 @@ fn java_quote_string(input: &str) -> String {
 
     out.push('"');
     out
-}
-
-/// Trait allowing a type to be converted to a statement.
-pub trait AsStatement {
-    fn as_statement(self) -> Statement;
-}
-
-impl<'a, T> AsStatement for &'a T
-    where T: AsStatement + Clone
-{
-    fn as_statement(self) -> Statement {
-        self.clone().as_statement()
-    }
-}
-
-impl AsStatement for Statement {
-    fn as_statement(self) -> Statement {
-        self
-    }
-}
-
-impl AsStatement for FieldSpec {
-    fn as_statement(self) -> Statement {
-        let mut s = Statement::new();
-
-        if !self.modifiers.is_empty() {
-            s.push(stmt![self.modifiers.format(), " "]);
-        }
-
-        s.push(stmt![self.ty, " ", self.name]);
-
-        s
-    }
-}
-
-impl AsStatement for AnnotationSpec {
-    fn as_statement(self) -> Statement {
-        let mut s = Statement::new();
-        s.push(stmt!["@", self.ty]);
-
-        if !self.arguments.is_empty() {
-            s.push("(");
-            s.push_arguments(&self.arguments, ", ");
-            s.push(")");
-        }
-
-        s
-    }
-}
-
-impl AsStatement for ArgumentSpec {
-    fn as_statement(self) -> Statement {
-        let mut s = Statement::new();
-
-        for a in &self.annotations {
-            s.push(a.as_statement());
-            s.push(Variable::Spacing);
-        }
-
-        if !self.modifiers.is_empty() {
-            s.push(stmt!(self.modifiers.format(), " "));
-        }
-
-        s.push(stmt![self.ty, " ", self.name]);
-
-        s
-    }
 }
 
 impl ImportReceiver for BTreeSet<ClassType> {
@@ -180,23 +135,7 @@ pub enum Section {
     Spacing,
 }
 
-pub trait AsSection {
-    fn as_section(self) -> Section;
-}
-
-impl<'a, T> AsSection for &'a T
-    where T: AsSection + Clone
-{
-    fn as_section(self) -> Section {
-        self.clone().as_section()
-    }
-}
-
-impl AsSection for Section {
-    fn as_section(self) -> Section {
-        self
-    }
-}
+as_converter!(AsSection, Section, as_section);
 
 impl AsSection for Block {
     fn as_section(self) -> Section {
@@ -225,19 +164,9 @@ pub enum Variable {
     Spacing,
 }
 
-pub trait AsVariable {
-    fn as_variable(self) -> Variable;
-}
+as_converter!(AsVariable, Variable, as_variable);
 
-impl<'a, T> AsVariable for &'a T
-    where T: AsVariable + Clone
-{
-    fn as_variable(self) -> Variable {
-        self.clone().as_variable()
-    }
-}
-
-impl<'a> AsVariable for &'a str {
+impl AsVariable for &'static str {
     fn as_variable(self) -> Variable {
         Variable::Literal(self.to_owned())
     }
@@ -276,12 +205,6 @@ impl AsVariable for FieldSpec {
 impl AsVariable for ArgumentSpec {
     fn as_variable(self) -> Variable {
         Variable::Literal(self.name)
-    }
-}
-
-impl AsVariable for Variable {
-    fn as_variable(self) -> Variable {
-        self
     }
 }
 
@@ -375,6 +298,56 @@ impl Statement {
     }
 }
 
+as_converter!(AsStatement, Statement, as_statement);
+
+impl AsStatement for FieldSpec {
+    fn as_statement(self) -> Statement {
+        let mut s = Statement::new();
+
+        if !self.modifiers.is_empty() {
+            s.push(stmt![self.modifiers.format(), " "]);
+        }
+
+        s.push(stmt![self.ty, " ", self.name]);
+
+        s
+    }
+}
+
+impl AsStatement for AnnotationSpec {
+    fn as_statement(self) -> Statement {
+        let mut s = Statement::new();
+        s.push(stmt!["@", self.ty]);
+
+        if !self.arguments.is_empty() {
+            s.push("(");
+            s.push_arguments(&self.arguments, ", ");
+            s.push(")");
+        }
+
+        s
+    }
+}
+
+impl AsStatement for ArgumentSpec {
+    fn as_statement(self) -> Statement {
+        let mut s = Statement::new();
+
+        for a in &self.annotations {
+            s.push(a.as_statement());
+            s.push(Variable::Spacing);
+        }
+
+        if !self.modifiers.is_empty() {
+            s.push(stmt!(self.modifiers.format(), " "));
+        }
+
+        s.push(stmt![self.ty, " ", self.name]);
+
+        s
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Sections {
     sections: Vec<Section>,
@@ -439,12 +412,16 @@ impl Block {
         }
     }
 
-    pub fn open(&mut self, open: Statement) {
-        self.open = Some(open)
+    pub fn open<S>(&mut self, open: S)
+        where S: AsStatement
+    {
+        self.open = Some(open.as_statement())
     }
 
-    pub fn close(&mut self, close: Statement) {
-        self.close = Some(close)
+    pub fn close<S>(&mut self, close: S)
+        where S: AsStatement
+    {
+        self.close = Some(close.as_statement())
     }
 
     pub fn push<S>(&mut self, section: S)
@@ -504,10 +481,10 @@ impl ClassType {
         }
     }
 
-    pub fn with_arguments<I>(&self, arguments: Vec<I>) -> ClassType
-        where I: AsType
+    pub fn with_arguments<A>(&self, arguments: Vec<A>) -> ClassType
+        where A: AsType
     {
-        let arguments = arguments.iter().map(AsType::as_type).collect();
+        let arguments = arguments.into_iter().map(AsType::as_type).collect();
         ClassType::new(&self.package, &self.name, arguments)
     }
 
@@ -587,48 +564,20 @@ impl Type {
     }
 }
 
-/// Implementation for Type reference (&Type) to Type conversion.
-impl AsType for Type {
-    fn as_type(&self) -> Type {
-        self.clone()
-    }
-}
-
-impl<'a> AsType for &'a Type {
-    fn as_type(&self) -> Type {
-        (*self).clone()
-    }
-}
+as_converter!(AsType, Type, as_type);
 
 /// Implementation for ClassType to Type conversion.
 impl AsType for ClassType {
-    fn as_type(&self) -> Type {
-        Type::Class(self.clone())
-    }
-}
-
-impl<'a> AsType for &'a ClassType {
-    fn as_type(&self) -> Type {
-        Type::Class((*self).clone())
+    fn as_type(self) -> Type {
+        Type::Class(self)
     }
 }
 
 /// Implementation for PrimitiveType to Type conversion.
 impl AsType for PrimitiveType {
-    fn as_type(&self) -> Type {
-        Type::Primitive(self.clone())
+    fn as_type(self) -> Type {
+        Type::Primitive(self)
     }
-}
-
-impl<'a> AsType for &'a PrimitiveType {
-    fn as_type(&self) -> Type {
-        Type::Primitive((*self).clone())
-    }
-}
-
-/// Trait for types that can be converted into Type's
-pub trait AsType {
-    fn as_type(&self) -> Type;
 }
 
 #[derive(Debug, Clone)]
@@ -673,12 +622,16 @@ impl ConstructorSpec {
         }
     }
 
-    pub fn push_annotation(&mut self, annotation: &AnnotationSpec) {
-        self.annotations.push(annotation.clone());
+    pub fn push_annotation<A>(&mut self, annotation: A)
+        where A: AsAnnotationSpec
+    {
+        self.annotations.push(annotation.as_annotation_spec());
     }
 
-    pub fn push_argument(&mut self, argument: &ArgumentSpec) {
-        self.arguments.push(argument.clone());
+    pub fn push_argument<A>(&mut self, argument: A)
+        where A: AsArgumentSpec
+    {
+        self.arguments.push(argument.as_argument_spec());
     }
 
     pub fn push<S>(&mut self, section: S)
@@ -727,10 +680,14 @@ impl AnnotationSpec {
         }
     }
 
-    pub fn push_argument(&mut self, statement: &Statement) {
-        self.arguments.push(statement.clone());
+    pub fn push_argument<S>(&mut self, statement: S)
+        where S: AsStatement
+    {
+        self.arguments.push(statement.as_statement());
     }
 }
+
+as_converter!(AsAnnotationSpec, AnnotationSpec, as_annotation_spec);
 
 #[derive(Debug, Clone)]
 pub struct ArgumentSpec {
@@ -756,6 +713,8 @@ impl ArgumentSpec {
         self.annotations.push(annotation.clone());
     }
 }
+
+as_converter!(AsArgumentSpec, ArgumentSpec, as_argument_spec);
 
 #[derive(Debug, Clone)]
 pub struct MethodSpec {
@@ -783,8 +742,10 @@ impl MethodSpec {
         self.annotations.push(annotation.clone());
     }
 
-    pub fn push_argument(&mut self, argument: &ArgumentSpec) {
-        self.arguments.push(argument.clone());
+    pub fn push_argument<A>(&mut self, argument: A)
+        where A: AsArgumentSpec
+    {
+        self.arguments.push(argument.as_argument_spec());
     }
 
     pub fn returns<I>(&mut self, returns: I)
@@ -1146,9 +1107,9 @@ mod tests {
         let values_argument = ArgumentSpec::new(mods![Modifier::Final], &list_of_strings, "values");
 
         let mut constructor = ConstructorSpec::new(mods![Modifier::Public]);
-        constructor.push_annotation(&AnnotationSpec::new(json_creator_type));
+        constructor.push_annotation(AnnotationSpec::new(json_creator_type));
         constructor.push_argument(&values_argument);
-        constructor.push(stmt!["this.values = ", &values_argument]);
+        constructor.push(stmt!["this.values = ", values_argument]);
 
         let mut values_getter = MethodSpec::new(mods![Modifier::Public], "getValues");
         values_getter.returns(&list_of_strings);
