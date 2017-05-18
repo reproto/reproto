@@ -23,68 +23,10 @@ macro_rules! mods {
 /// Tool to build statements.
 #[macro_export]
 macro_rules! stmt {
-    ($($fmt:expr, $vars:expr),*) => {{
-        let mut s = Statement::new();
-        $(s.push($fmt, $vars);)*
-        s
-    }};
-
-    ($fmt:expr, $($tail:tt)*) => {{
-        let mut s = Statement::new();
-        let mut vars = Vec::new();
-        vars.extend(stmt!($($tail)*));
-        s.push($fmt, vars);
-        s
-    }};
-
-    (ty $var:expr) => {{
-        vec![Variable::Type($var.as_type())]
-    }};
-
-    (ty $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::Type($var.as_type())];
-        vars.extend(stmt!($($tail)*));
-        vars
-    }};
-
-    (name $var:expr) => {{
-        vec![Variable::Name($var.as_name())]
-    }};
-
-    (name $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::Name($var.as_name())];
-        vars.extend(stmt!($($tail)*));
-        vars
-    }};
-
-    (literal $var:expr) => {{
-        vec![Variable::Literal($var)]
-    }};
-
-    (literal $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::Literal($var)];
-        vars.extend(stmt!($($tail)*));
-        vars
-    }};
-
-    (string $var:expr) => {{
-        vec![Variable::String($var.to_owned())]
-    }};
-
-    (string $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::String($var.to_owned())];
-        vars.extend(stmt!($($tail)*));
-        vars
-    }};
-
-    (stmt $var:expr) => {{
-        vec![Variable::Statement($var.clone())]
-    }};
-
-    (stmt $var:expr, $($tail:tt)*) => {{
-        let mut vars = vec![Variable::Statement($var.clone())];
-        vars.extend(stmt!($($tail)*));
-        vars
+    ($($var:expr),*) => {{
+        let mut statement = Statement::new();
+        $(statement.push($var);)*
+        statement
     }};
 }
 
@@ -112,76 +54,14 @@ fn java_quote_string(input: &str) -> String {
     out
 }
 
-fn format_statement_part_format(format: &String,
-                                level: usize,
-                                variables: &Vec<Variable>)
-                                -> Result<String> {
-    let mut out = String::new();
-
-    let mut it = format.chars();
-    let mut var_it = variables.iter();
-
-    while let Some(c) = it.next() {
-        match c {
-            '$' => {
-                let kind: char = it.next().ok_or(ErrorKind::InvalidEscape)?;
-                let var = var_it.next().ok_or(ErrorKind::VariableUnderflow)?;
-
-                match kind {
-                    'L' => {
-                        if let Variable::Literal(ref literal) = *var {
-                            out.push_str(literal);
-                        } else {
-                            return Err(ErrorKind::InvalidVariable.into());
-                        }
-                    }
-                    'T' => {
-                        if let Variable::Type(ref ty) = *var {
-                            out.push_str(&ty.format(level)?);
-                        } else {
-                            return Err(ErrorKind::InvalidVariable.into());
-                        }
-                    }
-                    'S' => {
-                        if let Variable::String(ref string) = *var {
-                            out.push_str(&java_quote_string(string));
-                        } else {
-                            return Err(ErrorKind::InvalidVariable.into());
-                        }
-                    }
-                    'N' => {
-                        if let Variable::Name(ref name) = *var {
-                            out.push_str(name);
-                        } else {
-                            return Err(ErrorKind::InvalidVariable.into());
-                        }
-                    }
-                    '$' => {
-                        if let Variable::Statement(ref stmt) = *var {
-                            let lines = stmt.format(level)?;
-                            out.push_str(&lines.join(" "));
-                        } else {
-                            return Err(ErrorKind::InvalidVariable.into());
-                        }
-                    }
-                    _ => return Err(ErrorKind::InvalidEscape.into()),
-                }
-            }
-            c => out.push(c),
-        }
-    }
-
-    Ok(out)
-}
-
 fn add_annotations(annotations: &Vec<AnnotationSpec>, target: &mut Statement) -> Result<()> {
     if annotations.is_empty() {
         return Ok(());
     }
 
     for a in annotations {
-        target.push_statement(a.as_statement()?);
-        target.push_spacing();
+        target.push(a.as_statement()?);
+        target.push(Variable::Spacing);
     }
 
     Ok(())
@@ -197,10 +77,10 @@ fn add_arguments<S>(arguments: &Vec<S>, target: &mut Statement) -> Result<()>
     let mut out: Statement = Statement::new();
 
     for a in arguments {
-        out.push_statement(a.as_statement()?);
+        out.push(a.as_statement()?);
     }
 
-    target.push_statement(out.join(", "));
+    target.push(out.join(", "));
 
     Ok(())
 }
@@ -291,6 +171,42 @@ pub enum Section {
     Spacing,
 }
 
+pub trait AsSection {
+    fn as_section(self) -> Section;
+}
+
+impl<'a, T> AsSection for &'a T
+    where T: AsSection + Clone
+{
+    fn as_section(self) -> Section {
+        self.clone().as_section()
+    }
+}
+
+impl AsSection for Section {
+    fn as_section(self) -> Section {
+        self
+    }
+}
+
+impl AsSection for Block {
+    fn as_section(self) -> Section {
+        Section::Block(self)
+    }
+}
+
+impl AsSection for Statement {
+    fn as_section(self) -> Section {
+        Section::Statement(self)
+    }
+}
+
+impl AsSection for Vec<String> {
+    fn as_section(self) -> Section {
+        Section::Literal(self)
+    }
+}
+
 impl Imports for Section {
     fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
@@ -308,25 +224,89 @@ pub enum Variable {
     Literal(String),
     Type(Type),
     String(String),
-    Name(String),
     Statement(Statement),
+    Spacing,
 }
 
-#[derive(Debug, Clone)]
-pub enum StatementPart {
-    // literal part
-    Literal(String),
-    // formatted part
-    Format(String, Vec<Variable>),
-    // nested statement
-    Statement(Statement),
-    // spacing
-    Spacing,
+pub trait AsVariable {
+    fn as_variable(self) -> Variable;
+}
+
+impl<'a, T> AsVariable for &'a T
+    where T: AsVariable + Clone
+{
+    fn as_variable(self) -> Variable {
+        self.clone().as_variable()
+    }
+}
+
+impl<'a> AsVariable for &'a str {
+    fn as_variable(self) -> Variable {
+        Variable::Literal(self.to_owned())
+    }
+}
+
+impl AsVariable for String {
+    fn as_variable(self) -> Variable {
+        Variable::Literal(self)
+    }
+}
+
+impl AsVariable for Type {
+    fn as_variable(self) -> Variable {
+        Variable::Type(self)
+    }
+}
+
+impl AsVariable for ClassType {
+    fn as_variable(self) -> Variable {
+        Variable::Type(self.as_type())
+    }
+}
+
+impl AsVariable for Statement {
+    fn as_variable(self) -> Variable {
+        Variable::Statement(self)
+    }
+}
+
+impl AsVariable for FieldSpec {
+    fn as_variable(self) -> Variable {
+        Variable::Literal(self.name)
+    }
+}
+
+impl AsVariable for ArgumentSpec {
+    fn as_variable(self) -> Variable {
+        Variable::Literal(self.name)
+    }
+}
+
+impl AsVariable for Variable {
+    fn as_variable(self) -> Variable {
+        self
+    }
+}
+
+impl Imports for Variable {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
+        match *self {
+            Variable::Type(ref ty) => {
+                ty.imports(receiver);
+            }
+            Variable::Statement(ref stmt) => {
+                stmt.imports(receiver);
+            }
+            _ => {}
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Statement {
-    parts: Vec<StatementPart>,
+    parts: Vec<Variable>,
 }
 
 impl Statement {
@@ -334,20 +314,10 @@ impl Statement {
         Statement { parts: Vec::new() }
     }
 
-    pub fn push_spacing(&mut self) {
-        self.parts.push(StatementPart::Spacing);
-    }
-
-    pub fn push_literal(&mut self, literal: &str) {
-        self.parts.push(StatementPart::Literal(literal.to_owned()));
-    }
-
-    pub fn push_statement(&mut self, statement: Statement) {
-        self.parts.push(StatementPart::Statement(statement));
-    }
-
-    pub fn push(&mut self, format: &str, variables: Vec<Variable>) {
-        self.parts.push(StatementPart::Format(format.to_owned(), variables));
+    pub fn push<V>(&mut self, variable: V)
+        where V: AsVariable
+    {
+        self.parts.push(variable.as_variable());
     }
 
     pub fn join(self, literal: &str) -> Statement {
@@ -358,11 +328,11 @@ impl Statement {
             None => return Statement::new(),
         };
 
-        let mut parts: Vec<StatementPart> = Vec::new();
+        let mut parts: Vec<Variable> = Vec::new();
         parts.push(part);
 
         while let Some(part) = it.next() {
-            parts.push(StatementPart::Literal(literal.to_owned()));
+            parts.push(Variable::Literal(literal.to_owned()));
             parts.push(part);
         }
 
@@ -375,16 +345,19 @@ impl Statement {
 
         for part in &self.parts {
             match *part {
-                StatementPart::Format(ref format, ref variables) => {
-                    current.push(format_statement_part_format(format, level, variables)?);
+                Variable::Type(ref ty) => {
+                    current.push(ty.format(level)?);
                 }
-                StatementPart::Statement(ref stmt) => {
+                Variable::String(ref string) => {
+                    current.push(java_quote_string(string));
+                }
+                Variable::Statement(ref stmt) => {
                     current.push(stmt.format(level)?.join(" "));
                 }
-                StatementPart::Literal(ref content) => {
+                Variable::Literal(ref content) => {
                     current.push(content.to_owned());
                 }
-                StatementPart::Spacing => {
+                Variable::Spacing => {
                     out.push(current.join(""));
                     current.clear();
                 }
@@ -404,21 +377,7 @@ impl Imports for Statement {
     fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {
-        for part in &self.parts {
-            match *part {
-                StatementPart::Format(_, ref variables) => {
-                    for var in variables {
-                        if let Variable::Type(ref ty) = *var {
-                            ty.imports(receiver);
-                        }
-                    }
-                }
-                StatementPart::Statement(ref stmt) => {
-                    stmt.imports(receiver);
-                }
-                _ => {}
-            }
-        }
+        receiver.import_all(&self.parts);
     }
 }
 
@@ -432,20 +391,10 @@ impl Sections {
         Sections { sections: Vec::new() }
     }
 
-    pub fn push_statement(&mut self, statement: &Statement) {
-        self.sections.push(Section::Statement(statement.clone()));
-    }
-
-    pub fn push_spacing(&mut self) {
-        self.sections.push(Section::Spacing);
-    }
-
-    pub fn push_block(&mut self, block: &Block) {
-        self.sections.push(Section::Block(block.clone()));
-    }
-
-    pub fn push_literal(&mut self, content: &Vec<String>) {
-        self.sections.push(Section::Literal(content.clone()));
+    pub fn push<S>(&mut self, section: S)
+        where S: AsSection
+    {
+        self.sections.push(section.as_section());
     }
 
     pub fn extend(&mut self, sections: &Sections) {
@@ -512,20 +461,10 @@ impl Block {
         self.close = Some(close)
     }
 
-    pub fn push_statement(&mut self, statement: &Statement) {
-        self.sections.push_statement(statement);
-    }
-
-    pub fn push_spacing(&mut self) {
-        self.sections.push_spacing();
-    }
-
-    pub fn push_block(&mut self, block: &Block) {
-        self.sections.push_block(block);
-    }
-
-    pub fn push_literal(&mut self, content: &Vec<String>) {
-        self.sections.push_literal(content);
+    pub fn push<S>(&mut self, section: S)
+        where S: AsSection
+    {
+        self.sections.push(section);
     }
 
     pub fn extend(&mut self, sections: &Sections) {
@@ -744,10 +683,6 @@ pub trait AsType {
     fn as_type(&self) -> Type;
 }
 
-pub trait AsName {
-    fn as_name(&self) -> String;
-}
-
 #[derive(Debug, Clone)]
 pub struct MethodArgument {
     pub modifiers: Modifiers,
@@ -785,19 +720,11 @@ impl AsStatement for FieldSpec {
         let mut s = Statement::new();
 
         if !self.modifiers.is_empty() {
-            s.push("$L ", stmt!(literal self.modifiers.format()?));
+            s.push(stmt![self.modifiers.format()?, " "]);
         }
 
-        s.push("$T ", stmt![ty self.ty]);
-        s.push("$L", stmt!(literal self.name.clone()));
-
+        s.push(stmt![&self.ty, " ", &self.name]);
         Ok(s)
-    }
-}
-
-impl AsName for FieldSpec {
-    fn as_name(&self) -> String {
-        self.name.clone()
     }
 }
 
@@ -827,8 +754,10 @@ impl ConstructorSpec {
         self.arguments.push(argument.clone());
     }
 
-    pub fn push_statement(&mut self, statement: &Statement) {
-        self.sections.push_statement(statement);
+    pub fn push<S>(&mut self, section: S)
+        where S: AsSection
+    {
+        self.sections.push(section);
     }
 
     pub fn as_block(&self, enclosing: &str) -> Result<Block> {
@@ -837,12 +766,12 @@ impl ConstructorSpec {
         add_annotations(&self.annotations, &mut open)?;
 
         if !self.modifiers.is_empty() {
-            open.push("$L ", stmt!(literal self.modifiers.format()?));
+            open.push(stmt![self.modifiers.format()?, " "]);
         }
 
-        open.push("$L(", stmt![literal enclosing.to_owned()]);
+        open.push(stmt![enclosing.to_owned(), "("]);
         add_arguments(&self.arguments, &mut open)?;
-        open.push(")", vec![]);
+        open.push(stmt![")"]);
 
         let mut block = Block::new();
         block.open(open);
@@ -886,12 +815,12 @@ impl AnnotationSpec {
 impl AsStatement for AnnotationSpec {
     fn as_statement(&self) -> Result<Statement> {
         let mut s = Statement::new();
-        s.push("@$T", stmt![ty self.ty]);
+        s.push(stmt!["@", &self.ty]);
 
         if !self.arguments.is_empty() {
-            s.push_literal("(");
+            s.push("(");
             add_arguments(&self.arguments, &mut s)?;
-            s.push_literal(")");
+            s.push(")");
         }
 
         Ok(s)
@@ -942,11 +871,11 @@ impl AsStatement for ArgumentSpec {
         add_annotations(&self.annotations, &mut s)?;
 
         if !self.modifiers.is_empty() {
-            s.push("$L ", stmt!(literal self.modifiers.format()?));
+            s.push(stmt!(self.modifiers.format()?, " "));
         }
 
-        s.push("$T ", stmt![ty self.ty.clone()]);
-        s.push("$L", stmt!(literal self.name.clone()));
+        s.push(stmt![&self.ty, " "]);
+        s.push(stmt!(&self.name));
 
         Ok(s)
     }
@@ -961,12 +890,6 @@ impl Imports for ArgumentSpec {
         for a in &self.annotations {
             a.imports(receiver);
         }
-    }
-}
-
-impl AsName for ArgumentSpec {
-    fn as_name(&self) -> String {
-        self.name.clone()
     }
 }
 
@@ -1006,8 +929,10 @@ impl MethodSpec {
         self.returns = Some(returns.as_type())
     }
 
-    pub fn push_statement(&mut self, statement: &Statement) {
-        self.sections.push_statement(statement);
+    pub fn push<S>(&mut self, section: S)
+        where S: AsSection
+    {
+        self.sections.push(section);
     }
 
     pub fn as_block(&self) -> Result<Block> {
@@ -1016,28 +941,27 @@ impl MethodSpec {
         add_annotations(&self.annotations, &mut open)?;
 
         if !self.modifiers.is_empty() {
-            open.push("$L ", stmt!(literal self.modifiers.format()?));
+            open.push(stmt!(self.modifiers.format()?, " "));
         }
 
         match self.returns {
-            None => open.push("void ", vec![]),
-            Some(ref returns) => open.push("$T ", stmt![ty returns]),
+            None => open.push("void "),
+            Some(ref returns) => open.push(stmt![returns, " "]),
         }
 
-        open.push("$L(", stmt!(literal self.name.clone()));
+        open.push(stmt![&self.name, "("]);
 
         if !self.arguments.is_empty() {
             let mut arguments: Statement = Statement::new();
 
             for a in &self.arguments {
-                arguments.push_statement(a.as_statement()?);
+                arguments.push(a.as_statement()?);
             }
 
-            let arguments: Statement = arguments.join(", ");
-            open.push_statement(arguments);
+            open.push(arguments.join(", "));
         }
 
-        open.push(")", vec![]);
+        open.push(stmt![")"]);
 
         let mut block = Block::new();
         block.open(open);
@@ -1111,10 +1035,10 @@ impl InterfaceSpec {
         add_annotations(&self.annotations, &mut open)?;
 
         if !self.modifiers.is_empty() {
-            open.push("$L ", stmt!(literal self.modifiers.format()?));
+            open.push(stmt!(self.modifiers.format()?, " "));
         }
 
-        open.push("interface $L", stmt!(literal self.name.clone()));
+        open.push(stmt!["interface ", &self.name]);
 
         let mut block = Block::new();
         block.open(open);
@@ -1125,7 +1049,7 @@ impl InterfaceSpec {
             if first {
                 first = false;
             } else {
-                block.push_spacing();
+                block.push(Section::Spacing);
             }
 
             element.add_to_block(&mut block)?;
@@ -1197,16 +1121,16 @@ impl ClassSpec {
         add_annotations(&self.annotations, &mut open)?;
 
         if !self.modifiers.is_empty() {
-            open.push("$L ", stmt!(literal self.modifiers.format()?));
+            open.push(stmt![self.modifiers.format()?, " "]);
         }
 
-        open.push("class $L", stmt!(literal self.name.clone()));
+        open.push(stmt!["class ", &self.name]);
 
         let mut block = Block::new();
         block.open(open);
 
         for field in &self.fields {
-            block.push_statement(&field.as_statement()?);
+            block.push(field.as_statement()?);
         }
 
         /// TODO: figure out a better way...
@@ -1216,27 +1140,27 @@ impl ClassSpec {
             if first {
                 first = false;
             } else {
-                block.push_spacing();
+                block.push(Section::Spacing);
             }
 
-            block.push_block(&constructor.as_block(&self.name)?);
+            block.push(constructor.as_block(&self.name)?);
         }
 
         for method in &self.methods {
             if first {
                 first = false;
             } else {
-                block.push_spacing();
+                block.push(Section::Spacing);
             }
 
-            block.push_block(&method.as_block()?);
+            block.push(method.as_block()?);
         }
 
         for element in &self.elements {
             if first {
                 first = false;
             } else {
-                block.push_spacing();
+                block.push(Section::Spacing);
             }
 
             element.add_to_block(&mut block)?;
@@ -1268,16 +1192,16 @@ impl ElementSpec {
     pub fn add_to_block(&self, target: &mut Block) -> Result<()> {
         match *self {
             ElementSpec::Class(ref class) => {
-                target.push_block(&class.as_block()?);
+                target.push(class.as_block()?);
             }
             ElementSpec::Interface(ref interface) => {
-                target.push_block(&interface.as_block()?);
+                target.push(interface.as_block()?);
             }
             ElementSpec::Statement(ref statement) => {
-                target.push_statement(statement);
+                target.push(statement);
             }
             ElementSpec::Literal(ref content) => {
-                target.push_literal(content);
+                target.push(content);
             }
         };
 
@@ -1287,16 +1211,16 @@ impl ElementSpec {
     pub fn add_to_sections(&self, target: &mut Sections) -> Result<()> {
         match *self {
             ElementSpec::Class(ref class) => {
-                target.push_block(&class.as_block()?);
+                target.push(&class.as_block()?);
             }
             ElementSpec::Interface(ref interface) => {
-                target.push_block(&interface.as_block()?);
+                target.push(&interface.as_block()?);
             }
             ElementSpec::Statement(ref statement) => {
-                target.push_statement(statement);
+                target.push(statement);
             }
             ElementSpec::Literal(ref content) => {
-                target.push_literal(content);
+                target.push(content);
             }
         };
 
@@ -1342,8 +1266,8 @@ impl FileSpec {
     pub fn format(&self) -> Result<String> {
         let mut sections = Sections::new();
 
-        sections.push_statement(&stmt!("package $L", literal self.package.clone()));
-        sections.push_spacing();
+        sections.push(&stmt!["package ", &self.package]);
+        sections.push(Section::Spacing);
 
         let mut receiver: BTreeSet<ClassType> = BTreeSet::new();
 
@@ -1357,10 +1281,10 @@ impl FileSpec {
 
         if !imports.is_empty() {
             for t in imports {
-                sections.push_statement(&stmt!("import $L.$L", literal t.package.clone(), literal t.name.clone()));
+                sections.push(&stmt!["import ", t.package, ".", t.name]);
             }
 
-            sections.push_spacing();
+            sections.push(Section::Spacing);
         }
 
         for element in &self.elements {
@@ -1398,11 +1322,11 @@ mod tests {
         let mut constructor = ConstructorSpec::new(mods![Modifier::Public]);
         constructor.push_annotation(&AnnotationSpec::new(json_creator_type));
         constructor.push_argument(&values_argument);
-        constructor.push_statement(&stmt!("this.values = $N", name values_argument));
+        constructor.push(stmt!["this.values = ", &values_argument]);
 
         let mut values_getter = MethodSpec::new(mods![Modifier::Public], "getValues");
         values_getter.returns(&list_of_strings);
-        values_getter.push_statement(&stmt!("return this.$N", name values_field));
+        values_getter.push(stmt!["return this.", &values_field]);
 
         let mut class = ClassSpec::new(mods![Modifier::Public], "Test");
         class.push_field(&values_field);

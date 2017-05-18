@@ -131,7 +131,7 @@ impl<'a> Processor<'a> {
         for field in &class.fields {
             let argument = ArgumentSpec::new(mods![Modifier::Final], &field.ty, &field.name);
             constructor.push_argument(&argument);
-            constructor.push_statement(&stmt!["this.$L = $N", literal field.name.clone(), name argument]);
+            constructor.push(stmt!["this.", &field.name, " = ", argument]);
         }
 
         constructor
@@ -193,7 +193,7 @@ impl<'a> Processor<'a> {
             let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
             let mut method_spec = MethodSpec::new(mods![Modifier::Public], &name);
             method_spec.returns(return_type);
-            method_spec.push_statement(&stmt!["return this.$N", name field]);
+            method_spec.push(stmt!["return this.", &field]);
             result.push(method_spec);
         }
 

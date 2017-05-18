@@ -488,7 +488,7 @@ mod tests {
 
     #[test]
     fn test_code() {
-        let mut parser = Rdp::new(StringInput::new("@{\na { b { c } d } e\n@}"));
+        let mut parser = Rdp::new(StringInput::new("@@\na { b { c } d } e\n@@"));
 
         assert!(parser.code_block());
         assert!(parser.end());
