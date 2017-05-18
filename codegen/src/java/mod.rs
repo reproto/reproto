@@ -1,6 +1,9 @@
 /// A code generator inspired by JavaPoet (https://github.com/square/javapoet)
 
+mod imports;
+
 use std::collections::BTreeSet;
+use self::imports::ImportReceiver;
 
 use errors::*;
 
@@ -68,7 +71,7 @@ fn add_annotations(annotations: &Vec<AnnotationSpec>, target: &mut Statement) ->
 }
 
 fn add_arguments<S>(arguments: &Vec<S>, target: &mut Statement) -> Result<()>
-    where S: AsStatement
+    where S: AsStatement + Clone
 {
     if arguments.is_empty() {
         return Ok(());
@@ -85,31 +88,65 @@ fn add_arguments<S>(arguments: &Vec<S>, target: &mut Statement) -> Result<()>
     Ok(())
 }
 
-pub trait Imports {
-    fn imports<I>(&self, &mut I) where I: ImportReceiver;
+/// Trait allowing a type to be converted to a statement.
+pub trait AsStatement {
+    fn as_statement(self) -> Result<Statement>;
 }
 
-pub trait ImportReceiver {
-    fn receive(&mut self, ty: &ClassType);
-
-    fn import_all<T>(&mut self, sources: &Vec<T>)
-        where T: Imports,
-              Self: Sized
-    {
-        for source in sources {
-            source.imports(self);
-        }
+impl<'a, T> AsStatement for &'a T
+    where T: AsStatement + Clone
+{
+    fn as_statement(self) -> Result<Statement> {
+        self.clone().as_statement()
     }
 }
 
-/// Trait allowing a type to be converted to a statement.
-pub trait AsStatement {
-    fn as_statement(&self) -> Result<Statement>;
+impl AsStatement for Statement {
+    fn as_statement(self) -> Result<Statement> {
+        Ok(self)
+    }
 }
 
-impl AsStatement for Statement {
-    fn as_statement(&self) -> Result<Statement> {
-        Ok(self.clone())
+impl AsStatement for FieldSpec {
+    fn as_statement(self) -> Result<Statement> {
+        let mut s = Statement::new();
+
+        if !self.modifiers.is_empty() {
+            s.push(stmt![self.modifiers.format()?, " "]);
+        }
+
+        s.push(stmt![self.ty, " ", self.name]);
+        Ok(s)
+    }
+}
+
+impl AsStatement for AnnotationSpec {
+    fn as_statement(self) -> Result<Statement> {
+        let mut s = Statement::new();
+        s.push(stmt!["@", self.ty]);
+
+        if !self.arguments.is_empty() {
+            s.push("(");
+            add_arguments(&self.arguments, &mut s)?;
+            s.push(")");
+        }
+
+        Ok(s)
+    }
+}
+
+impl AsStatement for ArgumentSpec {
+    fn as_statement(self) -> Result<Statement> {
+        let mut s = Statement::new();
+
+        add_annotations(&self.annotations, &mut s)?;
+
+        if !self.modifiers.is_empty() {
+            s.push(stmt!(self.modifiers.format()?, " "));
+        }
+
+        s.push(stmt![self.ty, " ", self.name]);
+        Ok(s)
     }
 }
 
@@ -207,18 +244,6 @@ impl AsSection for Vec<String> {
     }
 }
 
-impl Imports for Section {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        match *self {
-            Section::Block(ref block) => block.imports(receiver),
-            Section::Statement(ref statement) => statement.imports(receiver),
-            _ => {}
-        };
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum Variable {
     Literal(String),
@@ -285,22 +310,6 @@ impl AsVariable for ArgumentSpec {
 impl AsVariable for Variable {
     fn as_variable(self) -> Variable {
         self
-    }
-}
-
-impl Imports for Variable {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        match *self {
-            Variable::Type(ref ty) => {
-                ty.imports(receiver);
-            }
-            Variable::Statement(ref stmt) => {
-                stmt.imports(receiver);
-            }
-            _ => {}
-        }
     }
 }
 
@@ -373,14 +382,6 @@ impl Statement {
     }
 }
 
-impl Imports for Statement {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        receiver.import_all(&self.parts);
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Sections {
     sections: Vec<Section>,
@@ -426,14 +427,6 @@ impl Sections {
         }
 
         Ok(out)
-    }
-}
-
-impl Imports for Sections {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        receiver.import_all(&self.sections);
     }
 }
 
@@ -501,22 +494,6 @@ impl Block {
     }
 }
 
-impl Imports for Block {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        if let Some(ref open) = self.open {
-            open.imports(receiver);
-        }
-
-        if let Some(ref close) = self.close {
-            close.imports(receiver);
-        }
-
-        self.sections.imports(receiver);
-    }
-}
-
 /// Complete types, including generic arguments.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct ClassType {
@@ -570,15 +547,6 @@ impl ClassType {
     }
 }
 
-impl Imports for ClassType {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        receiver.receive(self);
-        receiver.import_all(&self.arguments);
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct PrimitiveType {
     pub primitive: String,
@@ -625,17 +593,6 @@ impl Type {
             Type::Primitive(ref primitive) => primitive.format(level),
             Type::Class(ref class) => class.format(level),
         }
-    }
-}
-
-impl Imports for Type {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        match *self {
-            Type::Primitive(_) => {}
-            Type::Class(ref class) => class.imports(receiver),
-        };
     }
 }
 
@@ -707,27 +664,6 @@ impl FieldSpec {
     }
 }
 
-impl Imports for FieldSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        self.ty.imports(receiver);
-    }
-}
-
-impl AsStatement for FieldSpec {
-    fn as_statement(&self) -> Result<Statement> {
-        let mut s = Statement::new();
-
-        if !self.modifiers.is_empty() {
-            s.push(stmt![self.modifiers.format()?, " "]);
-        }
-
-        s.push(stmt![&self.ty, " ", &self.name]);
-        Ok(s)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ConstructorSpec {
     pub modifiers: Modifiers,
@@ -781,16 +717,6 @@ impl ConstructorSpec {
     }
 }
 
-impl Imports for ConstructorSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        self.sections.imports(receiver);
-        receiver.import_all(&self.annotations);
-        receiver.import_all(&self.arguments);
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct AnnotationSpec {
     pub ty: Type,
@@ -809,33 +735,6 @@ impl AnnotationSpec {
 
     pub fn push_argument(&mut self, statement: &Statement) {
         self.arguments.push(statement.clone());
-    }
-}
-
-impl AsStatement for AnnotationSpec {
-    fn as_statement(&self) -> Result<Statement> {
-        let mut s = Statement::new();
-        s.push(stmt!["@", &self.ty]);
-
-        if !self.arguments.is_empty() {
-            s.push("(");
-            add_arguments(&self.arguments, &mut s)?;
-            s.push(")");
-        }
-
-        Ok(s)
-    }
-}
-
-impl Imports for AnnotationSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        self.ty.imports(receiver);
-
-        for a in &self.arguments {
-            a.imports(receiver);
-        }
     }
 }
 
@@ -861,35 +760,6 @@ impl ArgumentSpec {
 
     pub fn push_annotation(&mut self, annotation: &AnnotationSpec) {
         self.annotations.push(annotation.clone());
-    }
-}
-
-impl AsStatement for ArgumentSpec {
-    fn as_statement(&self) -> Result<Statement> {
-        let mut s = Statement::new();
-
-        add_annotations(&self.annotations, &mut s)?;
-
-        if !self.modifiers.is_empty() {
-            s.push(stmt!(self.modifiers.format()?, " "));
-        }
-
-        s.push(stmt![&self.ty, " "]);
-        s.push(stmt!(&self.name));
-
-        Ok(s)
-    }
-}
-
-impl Imports for ArgumentSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        self.ty.imports(receiver);
-
-        for a in &self.annotations {
-            a.imports(receiver);
-        }
     }
 }
 
@@ -971,19 +841,6 @@ impl MethodSpec {
     }
 }
 
-impl Imports for MethodSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        if let Some(ref ty) = self.returns {
-            ty.imports(receiver);
-        }
-
-        receiver.import_all(&self.arguments);
-        self.sections.imports(receiver);
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct InterfaceSpec {
     pub modifiers: Modifiers,
@@ -1020,13 +877,6 @@ impl InterfaceSpec {
 
     pub fn push_literal(&mut self, content: &Vec<String>) {
         self.elements.push(ElementSpec::Literal(content.clone()))
-    }
-
-    pub fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        receiver.import_all(&self.annotations);
-        receiver.import_all(&self.elements);
     }
 
     pub fn as_block(&self) -> Result<Block> {
@@ -1170,16 +1020,6 @@ impl ClassSpec {
     }
 }
 
-impl Imports for ClassSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        receiver.import_all(&self.annotations);
-        receiver.import_all(&self.constructors);
-        receiver.import_all(&self.methods);
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum ElementSpec {
     Class(ClassSpec),
@@ -1211,10 +1051,10 @@ impl ElementSpec {
     pub fn add_to_sections(&self, target: &mut Sections) -> Result<()> {
         match *self {
             ElementSpec::Class(ref class) => {
-                target.push(&class.as_block()?);
+                target.push(class.as_block()?);
             }
             ElementSpec::Interface(ref interface) => {
-                target.push(&interface.as_block()?);
+                target.push(interface.as_block()?);
             }
             ElementSpec::Statement(ref statement) => {
                 target.push(statement);
@@ -1225,19 +1065,6 @@ impl ElementSpec {
         };
 
         Ok(())
-    }
-}
-
-impl Imports for ElementSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        match *self {
-            ElementSpec::Class(ref class) => class.imports(receiver),
-            ElementSpec::Interface(ref interface) => interface.imports(receiver),
-            ElementSpec::Statement(ref statement) => statement.imports(receiver),
-            _ => {}
-        }
     }
 }
 
