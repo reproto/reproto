@@ -1,4 +1,4 @@
-use super::argument_spec::{AsArgumentSpec, ArgumentSpec};
+use super::statement::{AsStatement, Statement};
 use super::element_spec::{AsElementSpec, ElementSpec};
 use super::decorator_spec::{AsDecoratorSpec, DecoratorSpec};
 
@@ -6,7 +6,7 @@ use super::decorator_spec::{AsDecoratorSpec, DecoratorSpec};
 pub struct MethodSpec {
     pub name: String,
     pub decorators: Vec<DecoratorSpec>,
-    pub arguments: Vec<ArgumentSpec>,
+    pub arguments: Vec<Statement>,
     pub elements: Vec<ElementSpec>,
 }
 
@@ -26,10 +26,10 @@ impl MethodSpec {
         self.decorators.push(decorator.as_decorator_spec());
     }
 
-    pub fn push_argument<A>(&mut self, argument: A)
-        where A: AsArgumentSpec
+    pub fn push_argument<S>(&mut self, argument: S)
+        where S: AsStatement
     {
-        self.arguments.push(argument.as_argument_spec());
+        self.arguments.push(argument.as_statement());
     }
 
     pub fn push<E>(&mut self, element: E)

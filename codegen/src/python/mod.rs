@@ -1,4 +1,3 @@
-mod argument_spec;
 mod class_spec;
 mod decorator_spec;
 mod element_spec;
@@ -9,7 +8,6 @@ mod name;
 mod statement;
 mod variable;
 
-pub use self::argument_spec::*;
 pub use self::class_spec::*;
 pub use self::decorator_spec::*;
 pub use self::element_spec::*;

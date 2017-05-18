@@ -56,6 +56,12 @@ impl<'a, A> AsElementSpec for &'a A
     }
 }
 
+impl<'a> AsElementSpec for &'a str {
+    fn as_element_spec(self) -> ElementSpec {
+        ElementSpec::Literal(vec![self.to_owned()])
+    }
+}
+
 impl AsElementSpec for ElementSpec {
     fn as_element_spec(self) -> ElementSpec {
         self
@@ -74,10 +80,23 @@ impl AsElementSpec for MethodSpec {
         decl.push("def ");
         decl.push(self.name);
         decl.push("(");
+
+        let mut arguments = Statement::new();
+
+        for argument in self.arguments {
+            arguments.push(argument);
+        }
+
+        decl.push(arguments.join(", "));
         decl.push("):");
 
         out.push(decl.as_element_spec());
-        out.push(ElementSpec::Nested(self.elements.clone()));
+
+        if self.elements.is_empty() {
+            out.push(ElementSpec::Nested(vec!["pass".as_element_spec()]));
+        } else {
+            out.push(ElementSpec::Nested(self.elements.clone()));
+        }
 
         ElementSpec::Elements(out)
     }
@@ -97,7 +116,12 @@ impl AsElementSpec for ClassSpec {
         decl.push(":");
 
         out.push(decl.as_element_spec());
-        out.push(ElementSpec::Nested(self.elements.clone()));
+
+        if self.elements.is_empty() {
+            out.push(ElementSpec::Nested(vec!["pass".as_element_spec()]));
+        } else {
+            out.push(ElementSpec::Nested(self.elements.clone()));
+        }
 
         ElementSpec::Elements(out)
     }
