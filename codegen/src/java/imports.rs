@@ -1,4 +1,16 @@
-use super::*;
+use super::_type::{Type, ClassType};
+use super::annotation_spec::AnnotationSpec;
+use super::argument_spec::ArgumentSpec;
+use super::block::Block;
+use super::class_spec::ClassSpec;
+use super::constructor_spec::ConstructorSpec;
+use super::element_spec::ElementSpec;
+use super::field_spec::FieldSpec;
+use super::interface_spec::InterfaceSpec;
+use super::method_spec::MethodSpec;
+use super::section::{Section, Sections};
+use super::statement::Statement;
+use super::variable::Variable;
 
 pub trait ImportReceiver {
     fn receive(&mut self, ty: &ClassType);
