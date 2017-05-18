@@ -18,7 +18,12 @@ impl PlainPythonBackend {
 }
 
 impl processor::Listeners for PlainPythonBackend {
-    fn class_added(&self, fields: &Vec<ast::Field>, class: &mut ClassSpec) {
+    fn class_added(&self,
+                   processor: &processor::Processor,
+                   package: &ast::Package,
+                   fields: &Vec<ast::Field>,
+                   class: &mut ClassSpec)
+                   -> Result<()> {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
         decode.push_argument(python_stmt!["_data"]);
@@ -28,21 +33,39 @@ impl processor::Listeners for PlainPythonBackend {
         for field in fields {
             let var_name = format!("f_{}", &field.name);
 
-            decode.push(python_stmt![&var_name,
-                                     " = _data[",
-                                     Variable::String(field.name.to_owned()),
-                                     "]"]);
+            let mut stmt = Statement::new();
+            stmt.push(&var_name);
+            stmt.push(" = ");
 
-            arguments.push(&var_name);
+            if let Some(name) = processor.convert_name(package, &field.ty)? {
+                stmt.push(name);
+                stmt.push(".decode(_data[");
+                stmt.push(Variable::String(field.name.to_owned()));
+                stmt.push("])");
+            } else {
+                stmt.push("_data[");
+                stmt.push(Variable::String(field.name.to_owned()));
+                stmt.push("]");
+            }
+
+            decode.push(stmt);
+            arguments.push(var_name);
         }
 
         let arguments = arguments.join(", ");
         decode.push(python_stmt!["return ", &class.name, "(", arguments, ")"]);
 
         class.push(decode);
+
+        Ok(())
     }
 
-    fn interface_added(&self, interface: &ast::InterfaceDecl, interface_spec: &mut ClassSpec) {
+    fn interface_added(&self,
+                       _processor: &processor::Processor,
+                       _package: &ast::Package,
+                       interface: &ast::InterfaceDecl,
+                       interface_spec: &mut ClassSpec)
+                       -> Result<()> {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
         decode.push_argument(python_stmt!["_data"]);
@@ -76,6 +99,8 @@ impl processor::Listeners for PlainPythonBackend {
 
         decode.push(decode_body.as_element_spec().join(ElementSpec::Spacing));
         interface_spec.push(decode);
+
+        Ok(())
     }
 }
 

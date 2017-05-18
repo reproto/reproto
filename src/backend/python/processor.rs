@@ -14,9 +14,19 @@ use codegen::python::*;
 use errors::*;
 
 pub trait Listeners {
-    fn class_added(&self, fields: &Vec<ast::Field>, class: &mut ClassSpec);
+    fn class_added(&self,
+                   processor: &Processor,
+                   package: &ast::Package,
+                   fields: &Vec<ast::Field>,
+                   class: &mut ClassSpec)
+                   -> Result<()>;
 
-    fn interface_added(&self, interface: &ast::InterfaceDecl, interface_spec: &mut ClassSpec);
+    fn interface_added(&self,
+                       processor: &Processor,
+                       package: &ast::Package,
+                       interface: &ast::InterfaceDecl,
+                       interface_spec: &mut ClassSpec)
+                       -> Result<()>;
 }
 
 pub struct Processor<'a> {
@@ -41,8 +51,21 @@ impl<'a> Processor<'a> {
         }
     }
 
-    pub fn convert_name(&self, ty: &ast::Type, name: String) -> Name {
-        Name::built_in("float").as_name()
+    pub fn convert_name(&self, package: &ast::Package, ty: &ast::Type) -> Result<Option<Name>> {
+        let name = match *ty {
+            ast::Type::Custom(ref string) => {
+                let key = (package.clone(), string.clone());
+                let _ = self.env.types.get(&key);
+                Some(Name::local(string).as_name())
+            }
+            ast::Type::UsedType(ref used, ref custom) => {
+                let package = self.env.lookup_used(package, used)?.parts.join(".");
+                Some(Name::imported(&package, custom).as_name())
+            }
+            _ => None,
+        };
+
+        Ok(name)
     }
 
 
@@ -115,8 +138,11 @@ impl<'a> Processor<'a> {
         let constructor = self.build_constructor(&fields);
         class.push(&constructor);
 
-        for getter in self.build_getters(&fields)? {
-            class.push(getter);
+        // TODO: make configurable
+        if false {
+            for getter in self.build_getters(&fields)? {
+                class.push(getter);
+            }
         }
 
         for member in &message.members {
@@ -127,7 +153,7 @@ impl<'a> Processor<'a> {
             }
         }
 
-        listeners.class_added(&fields, &mut class);
+        listeners.class_added(self, package, &fields, &mut class)?;
         Ok(class)
     }
 
@@ -142,7 +168,7 @@ impl<'a> Processor<'a> {
 
         let mut interface_spec = ClassSpec::new(&interface.name);
 
-        listeners.interface_added(interface, &mut interface_spec);
+        listeners.interface_added(self, package, interface, &mut interface_spec)?;
 
         classes.push(interface_spec);
 
@@ -169,11 +195,14 @@ impl<'a> Processor<'a> {
             let constructor = self.build_constructor(&fields);
             class.push(&constructor);
 
-            for getter in self.build_getters(&fields)? {
-                class.push(&getter);
+            // TODO: make configurable
+            if false {
+                for getter in self.build_getters(&fields)? {
+                    class.push(&getter);
+                }
             }
 
-            listeners.class_added(&fields, &mut class);
+            listeners.class_added(self, package, &fields, &mut class)?;
             classes.push(class);
         }
 

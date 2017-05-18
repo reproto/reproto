@@ -12,6 +12,10 @@
   * e.g. drop a heroic.reproto file in the project (in the right location), and pick up any extensions defined in it that allows the module to better integrate into the project.
   * This is now supported! Add a local directory to your path, and match the package you'd like to
       extend.
+* Python
+  * Encode support (e.g. `instance.encode()`)
+  * Relative import, especially with package prefixes.
+  * Create missing `__init__.py` files.
 
 [pest]: https://github.com/pest-parser/pest
 
