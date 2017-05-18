@@ -40,7 +40,7 @@ impl processor::Listeners for FasterXmlBackend {
 
         for argument in &mut constructor.arguments {
             let mut property = AnnotationSpec::new(&self.json_property);
-            property.push_argument(stmt![Variable::String(argument.name.clone())]);
+            property.push_argument(java_stmt![Variable::String(argument.name.clone())]);
             argument.push_annotation(&property);
         }
 
@@ -54,9 +54,9 @@ impl processor::Listeners for FasterXmlBackend {
         {
             let mut arguments = Statement::new();
 
-            arguments.push(stmt!["use=", &self.json_type_info, ".Id.NAME"]);
-            arguments.push(stmt!["include=", &self.json_type_info, ".As.PROPERTY"]);
-            arguments.push(stmt!["property=", Variable::String("type".to_owned())]);
+            arguments.push(java_stmt!["use=", &self.json_type_info, ".Id.NAME"]);
+            arguments.push(java_stmt!["include=", &self.json_type_info, ".As.PROPERTY"]);
+            arguments.push(java_stmt!["property=", Variable::String("type".to_owned())]);
 
             let mut type_info = AnnotationSpec::new(&self.json_type_info);
             type_info.push_argument(arguments.join(", "));
@@ -68,17 +68,17 @@ impl processor::Listeners for FasterXmlBackend {
             let mut arguments = Statement::new();
 
             for (key, _sub_type) in &interface.sub_types {
-                arguments.push(stmt!["@",
-                                     &self.json_sub_types,
-                                     ".Type(",
-                                     &interface_spec.name,
-                                     ".",
-                                     key,
-                                     ".class)"]);
+                arguments.push(java_stmt!["@",
+                                          &self.json_sub_types,
+                                          ".Type(",
+                                          &interface_spec.name,
+                                          ".",
+                                          key,
+                                          ".class)"]);
             }
 
             let mut sub_types = AnnotationSpec::new(&self.json_sub_types);
-            sub_types.push_argument(stmt!["{", arguments.join(", "), "}"]);
+            sub_types.push_argument(java_stmt!["{", arguments.join(", "), "}"]);
 
             interface_spec.push_annotation(&sub_types);
         }
@@ -94,7 +94,7 @@ impl processor::Listeners for FasterXmlBackend {
 
         if let Some(name) = sub_type.options.lookup_string_nth("name", 0) {
             let mut type_name = AnnotationSpec::new(&self.json_type_name);
-            type_name.push_argument(stmt![Variable::String(name.clone())]);
+            type_name.push_argument(java_stmt![Variable::String(name.clone())]);
             class.push_annotation(&type_name);
         }
 

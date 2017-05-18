@@ -126,12 +126,12 @@ impl<'a> Processor<'a> {
     }
 
     fn build_constructor(&self, class: &ClassSpec) -> ConstructorSpec {
-        let mut constructor = ConstructorSpec::new(mods![Modifier::Public]);
+        let mut constructor = ConstructorSpec::new(java_mods![Modifier::Public]);
 
         for field in &class.fields {
-            let argument = ArgumentSpec::new(mods![Modifier::Final], &field.ty, &field.name);
+            let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
             constructor.push_argument(&argument);
-            constructor.push(stmt!["this.", &field.name, " = ", argument]);
+            constructor.push(java_stmt!["this.", &field.name, " = ", argument]);
         }
 
         constructor
@@ -144,7 +144,7 @@ impl<'a> Processor<'a> {
                        -> Result<FileSpec>
         where L: Listeners
     {
-        let mut class = ClassSpec::new(mods![Modifier::Public], &ty.name);
+        let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
 
         match ty.value {
             ast::Type::Tuple(ref arguments) => {
@@ -152,7 +152,7 @@ impl<'a> Processor<'a> {
 
                 for argument in arguments {
                     let field_type = self.convert_type(package, argument)?;
-                    let mods = mods![Modifier::Private, Modifier::Final];
+                    let mods = java_mods![Modifier::Private, Modifier::Final];
 
                     let name = match index {
                         0 => "first".to_owned(),
@@ -191,9 +191,9 @@ impl<'a> Processor<'a> {
         for field in &class.fields {
             let return_type = &field.ty;
             let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
-            let mut method_spec = MethodSpec::new(mods![Modifier::Public], &name);
+            let mut method_spec = MethodSpec::new(java_mods![Modifier::Public], &name);
             method_spec.returns(return_type);
-            method_spec.push(stmt!["return this.", &field]);
+            method_spec.push(java_stmt!["return this.", &field]);
             result.push(method_spec);
         }
 
@@ -207,7 +207,7 @@ impl<'a> Processor<'a> {
                           -> Result<FileSpec>
         where L: Listeners
     {
-        let mut class = ClassSpec::new(mods![Modifier::Public], &message.name);
+        let mut class = ClassSpec::new(java_mods![Modifier::Public], &message.name);
 
         for member in &message.members {
             if let ast::MessageMember::Field(ref field, _) = *member {
@@ -243,7 +243,7 @@ impl<'a> Processor<'a> {
                             -> Result<FileSpec>
         where L: Listeners
     {
-        let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
+        let mut interface_spec = InterfaceSpec::new(java_mods![Modifier::Public], &interface.name);
 
         let mut interface_fields: Vec<FieldSpec> = Vec::new();
 
@@ -255,7 +255,7 @@ impl<'a> Processor<'a> {
         }
 
         for (_, ref sub_type) in &interface.sub_types {
-            let mods = mods![Modifier::Public, Modifier::Static];
+            let mods = java_mods![Modifier::Public, Modifier::Static];
             let mut class = ClassSpec::new(mods, &sub_type.name);
 
             for interface_field in &interface_fields {
@@ -299,7 +299,7 @@ impl<'a> Processor<'a> {
             field_type
         };
 
-        let mods = mods![Modifier::Private, Modifier::Final];
+        let mods = java_mods![Modifier::Private, Modifier::Final];
 
         let name = if let Some(ref id_converter) = self.options.id_converter {
             id_converter.convert(&field.name)
