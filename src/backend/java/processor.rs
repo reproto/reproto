@@ -346,7 +346,7 @@ impl<'a> Processor<'a> {
 
             debug!("Writing: {}", full_path.display());
 
-            let out = file_spec.format()?;
+            let out = file_spec.format();
             let mut f = File::create(full_path)?;
             let bytes = out.into_bytes();
 

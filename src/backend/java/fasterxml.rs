@@ -54,9 +54,9 @@ impl processor::Listeners for FasterXmlBackend {
         {
             let mut arguments = Statement::new();
 
-            arguments.push(stmt!["use=", &self.json_type_info, ".Id.NAME"]);
-            arguments.push(stmt!["include=", &self.json_type_info, ".As.PROPERTY"]);
-            arguments.push(stmt!["property=", Variable::String("type".to_owned())]);
+            arguments.push(stmt!["use = ", &self.json_type_info, ".Id.NAME"]);
+            arguments.push(stmt!["include = ", &self.json_type_info, ".As.PROPERTY"]);
+            arguments.push(stmt!["property = ", Variable::String("type".to_owned())]);
 
             let mut type_info = AnnotationSpec::new(&self.json_type_info);
             type_info.push_argument(&stmt![arguments.join(", ")]);

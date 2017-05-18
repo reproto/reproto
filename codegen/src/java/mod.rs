@@ -5,8 +5,6 @@ mod imports;
 use std::collections::BTreeSet;
 use self::imports::ImportReceiver;
 
-use errors::*;
-
 /// Build modifier lists.
 #[macro_export]
 macro_rules! mods {
@@ -57,96 +55,70 @@ fn java_quote_string(input: &str) -> String {
     out
 }
 
-fn add_annotations(annotations: &Vec<AnnotationSpec>, target: &mut Statement) -> Result<()> {
-    if annotations.is_empty() {
-        return Ok(());
-    }
-
-    for a in annotations {
-        target.push(a.as_statement()?);
-        target.push(Variable::Spacing);
-    }
-
-    Ok(())
-}
-
-fn add_arguments<S>(arguments: &Vec<S>, target: &mut Statement) -> Result<()>
-    where S: AsStatement + Clone
-{
-    if arguments.is_empty() {
-        return Ok(());
-    }
-
-    let mut out: Statement = Statement::new();
-
-    for a in arguments {
-        out.push(a.as_statement()?);
-    }
-
-    target.push(out.join(", "));
-
-    Ok(())
-}
-
 /// Trait allowing a type to be converted to a statement.
 pub trait AsStatement {
-    fn as_statement(self) -> Result<Statement>;
+    fn as_statement(self) -> Statement;
 }
 
 impl<'a, T> AsStatement for &'a T
     where T: AsStatement + Clone
 {
-    fn as_statement(self) -> Result<Statement> {
+    fn as_statement(self) -> Statement {
         self.clone().as_statement()
     }
 }
 
 impl AsStatement for Statement {
-    fn as_statement(self) -> Result<Statement> {
-        Ok(self)
+    fn as_statement(self) -> Statement {
+        self
     }
 }
 
 impl AsStatement for FieldSpec {
-    fn as_statement(self) -> Result<Statement> {
+    fn as_statement(self) -> Statement {
         let mut s = Statement::new();
 
         if !self.modifiers.is_empty() {
-            s.push(stmt![self.modifiers.format()?, " "]);
+            s.push(stmt![self.modifiers.format(), " "]);
         }
 
         s.push(stmt![self.ty, " ", self.name]);
-        Ok(s)
+
+        s
     }
 }
 
 impl AsStatement for AnnotationSpec {
-    fn as_statement(self) -> Result<Statement> {
+    fn as_statement(self) -> Statement {
         let mut s = Statement::new();
         s.push(stmt!["@", self.ty]);
 
         if !self.arguments.is_empty() {
             s.push("(");
-            add_arguments(&self.arguments, &mut s)?;
+            s.push_arguments(&self.arguments, ", ");
             s.push(")");
         }
 
-        Ok(s)
+        s
     }
 }
 
 impl AsStatement for ArgumentSpec {
-    fn as_statement(self) -> Result<Statement> {
+    fn as_statement(self) -> Statement {
         let mut s = Statement::new();
 
-        add_annotations(&self.annotations, &mut s)?;
+        for a in &self.annotations {
+            s.push(a.as_statement());
+            s.push(Variable::Spacing);
+        }
 
         if !self.modifiers.is_empty() {
-            s.push(stmt!(self.modifiers.format()?, " "));
+            s.push(stmt!(self.modifiers.format(), " "));
         }
 
         s.push(stmt![self.ty, " ", self.name]);
-        Ok(s)
+
+        s
     }
 }
 
@@ -179,7 +151,7 @@ impl Modifiers {
         self.modifiers.insert(modifier);
     }
 
-    pub fn format(&self) -> Result<String> {
+    pub fn format(&self) -> String {
         let mut out: Vec<String> = Vec::new();
 
         for m in &self.modifiers {
@@ -192,7 +164,7 @@ impl Modifiers {
             });
         }
 
-        Ok(out.join(" "))
+        out.join(" ")
     }
 
     pub fn is_empty(&self) -> bool {
@@ -329,7 +301,26 @@ impl Statement {
         self.parts.push(variable.as_variable());
     }
 
-    pub fn join(self, literal: &str) -> Statement {
+    pub fn push_arguments<S, A>(&mut self, arguments: &Vec<S>, separator: A)
+        where S: AsStatement + Clone,
+              A: AsVariable + Clone
+    {
+        if arguments.is_empty() {
+            return;
+        }
+
+        let mut out: Statement = Statement::new();
+
+        for a in arguments {
+            out.push(a.as_statement());
+        }
+
+        self.push(out.join(separator));
+    }
+
+    pub fn join<A>(self, separator: A) -> Statement
+        where A: AsVariable + Clone
+    {
         let mut it = self.parts.into_iter();
 
         let part = match it.next() {
@@ -340,28 +331,30 @@ impl Statement {
         let mut parts: Vec<Variable> = Vec::new();
         parts.push(part);
 
+        let sep = &separator;
+
         while let Some(part) = it.next() {
-            parts.push(Variable::Literal(literal.to_owned()));
+            parts.push(sep.as_variable());
             parts.push(part);
         }
 
         Statement { parts: parts }
     }
 
-    pub fn format(&self, level: usize) -> Result<Vec<String>> {
+    pub fn format(&self, level: usize) -> Vec<String> {
         let mut out: Vec<String> = Vec::new();
         let mut current: Vec<String> = Vec::new();
 
         for part in &self.parts {
             match *part {
                 Variable::Type(ref ty) => {
-                    current.push(ty.format(level)?);
+                    current.push(ty.format(level));
                 }
                 Variable::String(ref string) => {
                     current.push(java_quote_string(string));
                 }
                 Variable::Statement(ref stmt) => {
-                    current.push(stmt.format(level)?.join(" "));
+                    current.push(stmt.format(level).join(" "));
                 }
                 Variable::Literal(ref content) => {
                     current.push(content.to_owned());
@@ -378,7 +371,7 @@ impl Statement {
             current.clear();
         }
 
-        Ok(out)
+        out
     }
 }
 
@@ -402,18 +395,18 @@ impl Sections {
         self.sections.extend(sections.sections.iter().map(Clone::clone));
     }
 
-    pub fn format(&self, level: usize, current: &str, indent: &str) -> Result<Vec<String>> {
+    pub fn format(&self, level: usize, current: &str, indent: &str) -> Vec<String> {
         let mut out = Vec::new();
 
         for section in &self.sections {
             match *section {
                 Section::Statement(ref statement) => {
-                    for line in statement.format(level)? {
+                    for line in statement.format(level) {
                         out.push(format!("{}{};", current, line));
                     }
                 }
                 Section::Block(ref block) => {
-                    out.extend(block.format(level, current, indent)?);
+                    out.extend(block.format(level, current, indent));
                 }
                 Section::Spacing => {
                     out.push("".to_owned());
@@ -426,7 +419,7 @@ impl Sections {
             }
         }
 
-        Ok(out)
+        out
     }
 }
 
@@ -464,11 +457,11 @@ impl Block {
         self.sections.extend(sections);
     }
 
-    pub fn format(&self, level: usize, current: &str, indent: &str) -> Result<Vec<String>> {
+    pub fn format(&self, level: usize, current: &str, indent: &str) -> Vec<String> {
         let mut out = Vec::new();
 
         if let Some(ref open) = self.open {
-            let mut it = open.format(level)?.into_iter().peekable();
+            let mut it = open.format(level).into_iter().peekable();
 
             while let Some(line) = it.next() {
                 if it.peek().is_none() {
@@ -481,16 +474,16 @@ impl Block {
             out.push(format!("{}{{", current).to_owned());
         }
 
-        out.extend(self.sections.format(level, &format!("{}{}", current, indent), indent)?);
+        out.extend(self.sections.format(level, &format!("{}{}", current, indent), indent));
 
         if let Some(ref close) = self.close {
-            let close = close.format(level)?.join(" ");
+            let close = close.format(level).join(" ");
             out.push(format!("{}}} {};", current, close).to_owned());
         } else {
             out.push(format!("{}}}", current).to_owned());
         }
 
-        Ok(out)
+        out
     }
 }
 
@@ -522,7 +515,7 @@ impl ClassType {
         ClassType::new(&self.package, &self.name, vec![])
     }
 
-    pub fn format(&self, level: usize) -> Result<String> {
+    pub fn format(&self, level: usize) -> String {
         let mut out = String::new();
 
         out.push_str(&self.name);
@@ -533,7 +526,7 @@ impl ClassType {
             let level = level + 1;
 
             for g in &self.arguments {
-                arguments.push(g.format(level)?);
+                arguments.push(g.format(level));
             }
 
             let joined = arguments.join(", ");
@@ -543,7 +536,7 @@ impl ClassType {
             out.push('>');
         }
 
-        Ok(out)
+        out
     }
 }
 
@@ -561,14 +554,12 @@ impl PrimitiveType {
         }
     }
 
-    pub fn format(&self, level: usize) -> Result<String> {
-        let result = if level <= 0 {
+    pub fn format(&self, level: usize) -> String {
+        if level <= 0 {
             self.primitive.clone()
         } else {
             self.boxed.clone()
-        };
-
-        Ok(result)
+        }
     }
 }
 
@@ -588,7 +579,7 @@ impl Type {
         ClassType::new(package, name, vec![])
     }
 
-    pub fn format(&self, level: usize) -> Result<String> {
+    pub fn format(&self, level: usize) -> String {
         match *self {
             Type::Primitive(ref primitive) => primitive.format(level),
             Type::Class(ref class) => class.format(level),
@@ -696,24 +687,27 @@ impl ConstructorSpec {
         self.sections.push(section);
     }
 
-    pub fn as_block(&self, enclosing: &str) -> Result<Block> {
+    pub fn as_block(&self, enclosing: &str) -> Block {
         let mut open = Statement::new();
 
-        add_annotations(&self.annotations, &mut open)?;
+        for a in &self.annotations {
+            open.push(a.as_statement());
+            open.push(Variable::Spacing);
+        }
 
         if !self.modifiers.is_empty() {
-            open.push(stmt![self.modifiers.format()?, " "]);
+            open.push(stmt![self.modifiers.format(), " "]);
         }
 
         open.push(stmt![enclosing.to_owned(), "("]);
-        add_arguments(&self.arguments, &mut open)?;
+        open.push_arguments(&self.arguments, ", ");
         open.push(stmt![")"]);
 
         let mut block = Block::new();
         block.open(open);
         block.extend(&self.sections);
 
-        Ok(block)
+        block
     }
 }
 
@@ -805,13 +799,16 @@ impl MethodSpec {
         self.sections.push(section);
     }
 
-    pub fn as_block(&self) -> Result<Block> {
+    pub fn as_block(&self) -> Block {
         let mut open = Statement::new();
 
-        add_annotations(&self.annotations, &mut open)?;
+        for a in &self.annotations {
+            open.push(a.as_statement());
+            open.push(Variable::Spacing);
+        }
 
         if !self.modifiers.is_empty() {
-            open.push(stmt!(self.modifiers.format()?, " "));
+            open.push(stmt!(self.modifiers.format(), " "));
         }
 
         match self.returns {
@@ -825,7 +822,7 @@ impl MethodSpec {
             let mut arguments: Statement = Statement::new();
 
             for a in &self.arguments {
-                arguments.push(a.as_statement()?);
+                arguments.push(a.as_statement());
             }
 
             open.push(arguments.join(", "));
@@ -837,7 +834,7 @@ impl MethodSpec {
         block.open(open);
         block.extend(&self.sections);
 
-        Ok(block)
+        block
     }
 }
 
@@ -879,13 +876,16 @@ impl InterfaceSpec {
         self.elements.push(ElementSpec::Literal(content.clone()))
     }
 
-    pub fn as_block(&self) -> Result<Block> {
+    pub fn as_block(&self) -> Block {
         let mut open = Statement::new();
 
-        add_annotations(&self.annotations, &mut open)?;
+        for a in &self.annotations {
+            open.push(a.as_statement());
+            open.push(Variable::Spacing);
+        }
 
         if !self.modifiers.is_empty() {
-            open.push(stmt!(self.modifiers.format()?, " "));
+            open.push(stmt!(self.modifiers.format(), " "));
         }
 
         open.push(stmt!["interface ", &self.name]);
@@ -902,10 +902,10 @@ impl InterfaceSpec {
                 block.push(Section::Spacing);
             }
 
-            element.add_to_block(&mut block)?;
+            element.add_to_block(&mut block);
         }
 
-        Ok(block)
+        block
     }
 }
 
@@ -965,13 +965,16 @@ impl ClassSpec {
         self.elements.push(ElementSpec::Literal(content.clone()))
     }
 
-    pub fn as_block(&self) -> Result<Block> {
+    pub fn as_block(&self) -> Block {
         let mut open = Statement::new();
 
-        add_annotations(&self.annotations, &mut open)?;
+        for a in &self.annotations {
+            open.push(a.as_statement());
+            open.push(Variable::Spacing);
+        }
 
         if !self.modifiers.is_empty() {
-            open.push(stmt![self.modifiers.format()?, " "]);
+            open.push(stmt![self.modifiers.format(), " "]);
         }
 
         open.push(stmt!["class ", &self.name]);
@@ -980,7 +983,7 @@ impl ClassSpec {
         block.open(open);
 
         for field in &self.fields {
-            block.push(field.as_statement()?);
+            block.push(field.as_statement());
         }
 
         /// TODO: figure out a better way...
@@ -993,7 +996,7 @@ impl ClassSpec {
                 block.push(Section::Spacing);
             }
 
-            block.push(constructor.as_block(&self.name)?);
+            block.push(constructor.as_block(&self.name));
         }
 
         for method in &self.methods {
@@ -1003,7 +1006,7 @@ impl ClassSpec {
                 block.push(Section::Spacing);
             }
 
-            block.push(method.as_block()?);
+            block.push(method.as_block());
         }
 
         for element in &self.elements {
@@ -1013,10 +1016,10 @@ impl ClassSpec {
                 block.push(Section::Spacing);
             }
 
-            element.add_to_block(&mut block)?;
+            element.add_to_block(&mut block);
         }
 
-        Ok(block)
+        block
     }
 }
 
@@ -1029,13 +1032,13 @@ pub enum ElementSpec {
 }
 
 impl ElementSpec {
-    pub fn add_to_block(&self, target: &mut Block) -> Result<()> {
+    pub fn add_to_block(&self, target: &mut Block) {
         match *self {
             ElementSpec::Class(ref class) => {
-                target.push(class.as_block()?);
+                target.push(class.as_block());
             }
             ElementSpec::Interface(ref interface) => {
-                target.push(interface.as_block()?);
+                target.push(interface.as_block());
             }
             ElementSpec::Statement(ref statement) => {
                 target.push(statement);
@@ -1044,17 +1047,15 @@ impl ElementSpec {
                 target.push(content);
             }
         };
-
-        Ok(())
     }
 
-    pub fn add_to_sections(&self, target: &mut Sections) -> Result<()> {
+    pub fn add_to_sections(&self, target: &mut Sections) {
         match *self {
             ElementSpec::Class(ref class) => {
-                target.push(class.as_block()?);
+                target.push(class.as_block());
             }
             ElementSpec::Interface(ref interface) => {
-                target.push(interface.as_block()?);
+                target.push(interface.as_block());
             }
             ElementSpec::Statement(ref statement) => {
                 target.push(statement);
@@ -1063,8 +1064,6 @@ impl ElementSpec {
                 target.push(content);
             }
         };
-
-        Ok(())
     }
 }
 
@@ -1090,7 +1089,7 @@ impl FileSpec {
         self.elements.push(ElementSpec::Interface(interface.clone()))
     }
 
-    pub fn format(&self) -> Result<String> {
+    pub fn format(&self) -> String {
         let mut sections = Sections::new();
 
         sections.push(&stmt!["package ", &self.package]);
@@ -1115,17 +1114,17 @@ impl FileSpec {
         }
 
         for element in &self.elements {
-            element.add_to_sections(&mut sections)?;
+            element.add_to_sections(&mut sections);
         }
 
         let mut out = String::new();
 
-        for line in sections.format(0usize, "", "  ")? {
+        for line in sections.format(0usize, "", "  ") {
             out.push_str(&line);
             out.push('\n');
         }
 
-        Ok(out)
+        out
     }
 }
 
@@ -1163,7 +1162,7 @@ mod tests {
         let mut file = FileSpec::new("se.tedro");
         file.push_class(&class);
 
-        let result = file.format().unwrap();
+        let result = file.format();
 
         let reference = ::std::str::from_utf8(include_bytes!("tests/Test.java")).unwrap();
         assert_eq!(reference, result);
