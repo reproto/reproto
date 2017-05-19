@@ -169,25 +169,9 @@ impl Field {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct OneOf {
-    pub name: String,
-    pub fields: Vec<Field>,
-}
-
-impl OneOf {
-    pub fn new(name: String, fields: Vec<Field>) -> OneOf {
-        OneOf {
-            name: name,
-            fields: fields,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
 pub enum MessageMember {
     Field(Field, Pos),
     Code(String, Vec<String>, Pos),
-    OneOf(OneOf, Pos),
 }
 
 /// message <name> { <members>* }
@@ -228,7 +212,6 @@ impl MessageDecl {
 pub enum SubTypeMember {
     Field(Field),
     Code(String, Vec<String>, Pos),
-    OneOf(OneOf),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -260,7 +243,6 @@ impl SubType {
 pub enum InterfaceMember {
     Field(Field, Pos),
     Code(String, Vec<String>, Pos),
-    OneOf(OneOf, Pos),
 }
 
 /// interface <name> { <members>* }
