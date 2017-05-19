@@ -376,7 +376,7 @@ impl<'a> Processor<'a> {
                 if !init.is_file() {
                     if let Some(parent) = init.parent() {
                         if !parent.is_dir() {
-                            debug!("Creating directory: {}", init.display());
+                            debug!("Creating directory: {}", parent.display());
                             fs::create_dir_all(&parent)?;
                         }
                     }
