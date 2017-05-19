@@ -1,17 +1,16 @@
 use super::annotation_spec::{AsAnnotationSpec, AnnotationSpec};
 use super::argument_spec::{AsArgumentSpec, ArgumentSpec};
-use super::block::Block;
+use super::element_spec::{AsElementSpec, ElementSpec};
+use super::elements::Elements;
 use super::modifier::Modifiers;
-use super::section::{AsSection, Sections};
-use super::statement::{AsStatement, Statement};
-use super::variable::Variable;
+use super::statement::Statement;
 
 #[derive(Debug, Clone)]
 pub struct ConstructorSpec {
     pub modifiers: Modifiers,
     pub annotations: Vec<AnnotationSpec>,
     pub arguments: Vec<ArgumentSpec>,
-    pub sections: Sections,
+    pub elements: Elements,
 }
 
 impl ConstructorSpec {
@@ -20,7 +19,7 @@ impl ConstructorSpec {
             modifiers: modifiers,
             annotations: Vec::new(),
             arguments: Vec::new(),
-            sections: Sections::new(),
+            elements: Elements::new(),
         }
     }
 
@@ -36,18 +35,19 @@ impl ConstructorSpec {
         self.arguments.push(argument.as_argument_spec());
     }
 
-    pub fn push<S>(&mut self, section: S)
-        where S: AsSection
+    pub fn push<E>(&mut self, element: E)
+        where E: AsElementSpec
     {
-        self.sections.push(section);
+        self.elements.push(element);
     }
 
-    pub fn as_block(&self, enclosing: &str) -> Block {
+    pub fn as_element_spec(&self, enclosing: &str) -> ElementSpec {
+        let mut elements = Elements::new();
+
         let mut open = Statement::new();
 
         for a in &self.annotations {
-            open.push(a.as_statement());
-            open.push(Variable::Spacing);
+            elements.push(a);
         }
 
         if !self.modifiers.is_empty() {
@@ -57,13 +57,31 @@ impl ConstructorSpec {
 
         open.push(enclosing);
         open.push("(");
-        open.push_arguments(&self.arguments, ", ");
-        open.push(")");
+        open.push(Statement::join_statements(&self.arguments, ", "));
+        open.push(") {");
 
-        let mut block = Block::new();
-        block.open(open);
-        block.extend(&self.sections);
+        elements.push(open);
+        elements.push_nested(&self.elements);
+        elements.push("}");
 
-        block
+        elements.as_element_spec()
+    }
+}
+
+pub trait AsConstructorSpec {
+    fn as_constructor_spec(self) -> ConstructorSpec;
+}
+
+impl<'a, A> AsConstructorSpec for &'a A
+    where A: AsConstructorSpec + Clone
+{
+    fn as_constructor_spec(self) -> ConstructorSpec {
+        self.clone().as_constructor_spec()
+    }
+}
+
+impl AsConstructorSpec for ConstructorSpec {
+    fn as_constructor_spec(self) -> ConstructorSpec {
+        self
     }
 }

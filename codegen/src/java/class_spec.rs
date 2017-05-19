@@ -1,11 +1,9 @@
 use super::annotation_spec::AnnotationSpec;
-use super::constructor_spec::ConstructorSpec;
-use super::element_spec::ElementSpec;
-use super::field_spec::FieldSpec;
-use super::interface_spec::InterfaceSpec;
-use super::method_spec::MethodSpec;
+use super::constructor_spec::{AsConstructorSpec, ConstructorSpec};
+use super::element_spec::AsElementSpec;
+use super::elements::Elements;
+use super::field_spec::{AsFieldSpec, FieldSpec};
 use super::modifier::Modifiers;
-use super::statement::Statement;
 
 #[derive(Debug, Clone)]
 pub struct ClassSpec {
@@ -14,8 +12,7 @@ pub struct ClassSpec {
     pub annotations: Vec<AnnotationSpec>,
     pub fields: Vec<FieldSpec>,
     pub constructors: Vec<ConstructorSpec>,
-    pub methods: Vec<MethodSpec>,
-    pub elements: Vec<ElementSpec>,
+    pub elements: Elements,
 }
 
 impl ClassSpec {
@@ -26,8 +23,7 @@ impl ClassSpec {
             annotations: Vec::new(),
             fields: Vec::new(),
             constructors: Vec::new(),
-            methods: Vec::new(),
-            elements: Vec::new(),
+            elements: Elements::new(),
         }
     }
 
@@ -35,31 +31,21 @@ impl ClassSpec {
         self.annotations.push(annotation.clone());
     }
 
-    pub fn push_field(&mut self, field: &FieldSpec) {
-        self.fields.push(field.clone());
+    pub fn push_field<F>(&mut self, field: F)
+        where F: AsFieldSpec
+    {
+        self.fields.push(field.as_field_spec());
     }
 
-    pub fn push_constructor(&mut self, constructor: &ConstructorSpec) {
-        self.constructors.push(constructor.clone());
+    pub fn push_constructor<C>(&mut self, constructor: C)
+        where C: AsConstructorSpec
+    {
+        self.constructors.push(constructor.as_constructor_spec());
     }
 
-    pub fn push_method(&mut self, method: &MethodSpec) {
-        self.methods.push(method.clone());
-    }
-
-    pub fn push_class(&mut self, class: &ClassSpec) {
-        self.elements.push(ElementSpec::Class(class.clone()))
-    }
-
-    pub fn push_interface(&mut self, interface: &InterfaceSpec) {
-        self.elements.push(ElementSpec::Interface(interface.clone()))
-    }
-
-    pub fn push_statement(&mut self, statement: &Statement) {
-        self.elements.push(ElementSpec::Statement(statement.clone()))
-    }
-
-    pub fn push_literal(&mut self, content: &Vec<String>) {
-        self.elements.push(ElementSpec::Literal(content.clone()))
+    pub fn push<E>(&mut self, element: E)
+        where E: AsElementSpec
+    {
+        self.elements.push(element);
     }
 }

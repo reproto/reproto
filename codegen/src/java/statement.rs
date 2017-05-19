@@ -43,27 +43,17 @@ impl Statement {
         self.parts.push(variable.as_variable());
     }
 
-    pub fn push_arguments<S, A>(&mut self, arguments: &Vec<S>, separator: A)
-        where S: AsStatement + Clone,
-              A: AsVariable + Clone
-    {
-        if arguments.is_empty() {
-            return;
-        }
-
-        let mut out: Statement = Statement::new();
-
-        for a in arguments {
-            out.push(a.as_statement());
-        }
-
-        self.push(out.join(separator));
-    }
-
-    pub fn join<A>(self, separator: A) -> Statement
+    pub fn join<A>(&self, separator: A) -> Statement
         where A: AsVariable + Clone
     {
-        let mut it = self.parts.into_iter();
+        Statement::join_with(&self.parts, separator)
+    }
+
+    pub fn join_with<S, A>(parts: &Vec<S>, separator: A) -> Statement
+        where S: AsVariable + Clone,
+              A: AsVariable + Clone
+    {
+        let mut it = parts.iter().map(AsVariable::as_variable);
 
         let part = match it.next() {
             Some(part) => part,
@@ -81,6 +71,30 @@ impl Statement {
         }
 
         Statement { parts: parts }
+    }
+
+    pub fn join_statements<S, A>(parts: &Vec<S>, separator: A) -> Statement
+        where S: AsStatement + Clone,
+              A: AsVariable + Clone
+    {
+        let mut it = parts.iter().map(AsStatement::as_statement);
+
+        let part = match it.next() {
+            Some(part) => part,
+            None => return Statement::new(),
+        };
+
+        let mut stmt = Statement::new();
+        stmt.push(part);
+
+        let sep = &separator;
+
+        while let Some(part) = it.next() {
+            stmt.push(sep.as_variable());
+            stmt.push(part);
+        }
+
+        stmt
     }
 
     pub fn format(&self, level: usize) -> Vec<String> {
@@ -152,29 +166,13 @@ impl AsStatement for FieldSpec {
     }
 }
 
-impl AsStatement for AnnotationSpec {
-    fn as_statement(self) -> Statement {
-        let mut s = Statement::new();
-        s.push("@");
-        s.push(self.ty);
-
-        if !self.arguments.is_empty() {
-            s.push("(");
-            s.push_arguments(&self.arguments, ", ");
-            s.push(")");
-        }
-
-        s
-    }
-}
-
 impl AsStatement for ArgumentSpec {
     fn as_statement(self) -> Statement {
         let mut s = Statement::new();
 
         for a in &self.annotations {
-            s.push(a.as_statement());
-            s.push(Variable::Spacing);
+            s.push(a);
+            s.push(" ");
         }
 
         if !self.modifiers.is_empty() {
@@ -187,5 +185,26 @@ impl AsStatement for ArgumentSpec {
         s.push(self.name);
 
         s
+    }
+}
+
+impl AsStatement for AnnotationSpec {
+    fn as_statement(self) -> Statement {
+        let mut stmt = Statement::new();
+
+        let mut annotation = Statement::new();
+        annotation.push("@");
+        annotation.push(self.ty);
+
+        if !self.arguments.is_empty() {
+            stmt.push(annotation);
+            stmt.push("(");
+            stmt.push(Statement::join_with(&self.arguments, ", "));
+            stmt.push(")");
+        } else {
+            stmt.push(annotation);
+        }
+
+        stmt
     }
 }

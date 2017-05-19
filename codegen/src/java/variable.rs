@@ -1,8 +1,9 @@
 use super::_type::{AsType, Type, ClassType};
-use super::statement::Statement;
+use super::annotation_spec::AnnotationSpec;
 use super::argument_spec::ArgumentSpec;
 use super::field_spec::FieldSpec;
 use super::modifier::Modifiers;
+use super::statement::{AsStatement, Statement};
 
 #[derive(Debug, Clone)]
 pub enum Variable {
@@ -76,5 +77,11 @@ impl AsVariable for Type {
 impl AsVariable for ClassType {
     fn as_variable(self) -> Variable {
         Variable::Type(self.as_type())
+    }
+}
+
+impl AsVariable for AnnotationSpec {
+    fn as_variable(self) -> Variable {
+        Variable::Statement(self.as_statement())
     }
 }

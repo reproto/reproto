@@ -1,9 +1,7 @@
 use super::_type::ClassType;
-use super::class_spec::ClassSpec;
-use super::element_spec::ElementSpec;
-use super::interface_spec::InterfaceSpec;
-use super::section::{Section, Sections};
-use super::imports::ImportReceiver;
+use super::element_spec::{AsElementSpec, ElementSpec};
+use super::elements::Elements;
+use super::imports::{Imports, ImportReceiver};
 use super::statement::Statement;
 
 use std::collections::BTreeSet;
@@ -11,38 +9,36 @@ use std::collections::BTreeSet;
 #[derive(Debug, Clone)]
 pub struct FileSpec {
     pub package: String,
-    pub elements: Vec<ElementSpec>,
+    pub elements: Elements,
 }
 
 impl FileSpec {
     pub fn new(package: &str) -> FileSpec {
         FileSpec {
             package: package.to_owned(),
-            elements: Vec::new(),
+            elements: Elements::new(),
         }
     }
 
-    pub fn push_class(&mut self, class: &ClassSpec) {
-        self.elements.push(ElementSpec::Class(class.clone()))
-    }
-
-    pub fn push_interface(&mut self, interface: &InterfaceSpec) {
-        self.elements.push(ElementSpec::Interface(interface.clone()))
+    pub fn push<E>(&mut self, element: E)
+        where E: AsElementSpec
+    {
+        self.elements.push(element);
     }
 
     pub fn format(&self) -> String {
-        let mut sections = Sections::new();
+        let mut file = Elements::new();
 
         let mut package = Statement::new();
         package.push("package ");
         package.push(&self.package);
+        package.push(";");
 
-        sections.push(package);
-        sections.push(Section::Spacing);
+        file.push(package);
 
         let mut receiver: BTreeSet<ClassType> = BTreeSet::new();
 
-        receiver.import_all(&self.elements);
+        self.elements.imports(&mut receiver);
 
         let imports: BTreeSet<ClassType> = receiver.into_iter()
             .filter(|t| t.package != "java.lang")
@@ -51,25 +47,32 @@ impl FileSpec {
             .collect();
 
         if !imports.is_empty() {
+            let mut imported = Elements::new();
+
             for t in imports {
                 let mut import = Statement::new();
+
                 import.push("import ");
                 import.push(t.package);
                 import.push(".");
                 import.push(t.name);
-                sections.push(import);
+                import.push(";");
+
+                imported.push(import);
             }
 
-            sections.push(Section::Spacing);
+            file.push(imported);
         }
 
-        for element in &self.elements {
-            sections.push(element);
+        for element in &self.elements.elements {
+            file.push(element);
         }
+
+        let file = file.join(ElementSpec::Spacing).as_element_spec();
 
         let mut out = String::new();
 
-        for line in sections.format(0usize, "", "  ") {
+        for line in file.format("", "  ") {
             out.push_str(&line);
             out.push('\n');
         }

@@ -151,7 +151,7 @@ impl<'a> Processor<'a> {
         for field in &class.fields {
             let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
             constructor.push_argument(&argument);
-            constructor.push(java_stmt!["this.", &field.name, " = ", argument]);
+            constructor.push(java_stmt!["this.", &field.name, " = ", argument, ";"]);
         }
 
         constructor
@@ -193,13 +193,13 @@ impl<'a> Processor<'a> {
         class.push_constructor(&constructor);
 
         for getter in self.build_getters(&class)? {
-            class.push_method(&getter);
+            class.push(&getter);
         }
 
         listeners.class_added(&fields, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
-        file_spec.push_class(&class);
+        file_spec.push(&class);
 
         Ok(file_spec)
     }
@@ -212,7 +212,7 @@ impl<'a> Processor<'a> {
             let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
             let mut method_spec = MethodSpec::new(java_mods![Modifier::Public], &name);
             method_spec.returns(return_type);
-            method_spec.push(java_stmt!["return this.", &field]);
+            method_spec.push(java_stmt!["return this.", &field, ";"]);
             result.push(method_spec);
         }
 
@@ -239,7 +239,7 @@ impl<'a> Processor<'a> {
 
             if let ast::MessageMember::Code(ref context, ref content, _) = *member {
                 if context == JAVA_CONTEXT {
-                    class.push_literal(content);
+                    class.push(content);
                 }
 
                 continue;
@@ -250,13 +250,13 @@ impl<'a> Processor<'a> {
         class.push_constructor(&constructor);
 
         for getter in self.build_getters(&class)? {
-            class.push_method(&getter);
+            class.push(&getter);
         }
 
         listeners.class_added(&fields, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
-        file_spec.push_class(&class);
+        file_spec.push(&class);
 
         Ok(file_spec)
     }
@@ -280,7 +280,7 @@ impl<'a> Processor<'a> {
 
             if let ast::InterfaceMember::Code(ref context, ref content, _) = *member {
                 if context == JAVA_CONTEXT {
-                    interface_spec.push_literal(content);
+                    interface_spec.push(content);
                 }
 
                 continue;
@@ -306,7 +306,7 @@ impl<'a> Processor<'a> {
 
                 if let ast::SubTypeMember::Code(ref context, ref content, _) = *member {
                     if context == JAVA_CONTEXT {
-                        class.push_literal(content);
+                        class.push(content);
                     }
 
                     continue;
@@ -317,20 +317,20 @@ impl<'a> Processor<'a> {
             class.push_constructor(&constructor);
 
             for getter in self.build_getters(&class)? {
-                class.push_method(&getter);
+                class.push(&getter);
             }
 
             listeners.class_added(&fields, &mut class)?;
             listeners.sub_type_added(&fields, interface, sub_type, &mut class)?;
 
-            interface_spec.push_class(&class);
+            interface_spec.push(&class);
         }
 
         let mut file_spec = self.new_file_spec(package);
 
         listeners.interface_added(interface, &mut interface_spec)?;
 
-        file_spec.push_interface(&interface_spec);
+        file_spec.push(&interface_spec);
         Ok(file_spec)
     }
 

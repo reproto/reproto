@@ -1,8 +1,9 @@
 use super::_type::{AsType, Type};
 use super::annotation_spec::AnnotationSpec;
 use super::argument_spec::{AsArgumentSpec, ArgumentSpec};
+use super::element_spec::AsElementSpec;
+use super::elements::Elements;
 use super::modifier::Modifiers;
-use super::section::{AsSection, Sections};
 
 #[derive(Debug, Clone)]
 pub struct MethodSpec {
@@ -11,7 +12,7 @@ pub struct MethodSpec {
     pub annotations: Vec<AnnotationSpec>,
     pub arguments: Vec<ArgumentSpec>,
     pub returns: Option<Type>,
-    pub sections: Sections,
+    pub elements: Elements,
 }
 
 impl MethodSpec {
@@ -22,7 +23,7 @@ impl MethodSpec {
             annotations: Vec::new(),
             arguments: Vec::new(),
             returns: None,
-            sections: Sections::new(),
+            elements: Elements::new(),
         }
     }
 
@@ -36,15 +37,15 @@ impl MethodSpec {
         self.arguments.push(argument.as_argument_spec());
     }
 
-    pub fn returns<I>(&mut self, returns: I)
-        where I: AsType
+    pub fn returns<T>(&mut self, returns: T)
+        where T: AsType
     {
         self.returns = Some(returns.as_type())
     }
 
-    pub fn push<S>(&mut self, section: S)
-        where S: AsSection
+    pub fn push<E>(&mut self, element: E)
+        where E: AsElementSpec
     {
-        self.sections.push(section);
+        self.elements.push(element);
     }
 }

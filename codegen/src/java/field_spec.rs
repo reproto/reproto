@@ -19,3 +19,21 @@ impl FieldSpec {
         }
     }
 }
+
+pub trait AsFieldSpec {
+    fn as_field_spec(self) -> FieldSpec;
+}
+
+impl<'a, A> AsFieldSpec for &'a A
+    where A: AsFieldSpec + Clone
+{
+    fn as_field_spec(self) -> FieldSpec {
+        self.clone().as_field_spec()
+    }
+}
+
+impl AsFieldSpec for FieldSpec {
+    fn as_field_spec(self) -> FieldSpec {
+        self
+    }
+}

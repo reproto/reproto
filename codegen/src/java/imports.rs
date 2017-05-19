@@ -1,14 +1,6 @@
 use super::_type::{Type, ClassType};
-use super::annotation_spec::AnnotationSpec;
-use super::argument_spec::ArgumentSpec;
-use super::block::Block;
-use super::class_spec::ClassSpec;
-use super::constructor_spec::ConstructorSpec;
 use super::element_spec::ElementSpec;
-use super::field_spec::FieldSpec;
-use super::interface_spec::InterfaceSpec;
-use super::method_spec::MethodSpec;
-use super::section::{Section, Sections};
+use super::elements::Elements;
 use super::statement::Statement;
 use super::variable::Variable;
 
@@ -29,47 +21,18 @@ pub trait Imports {
     fn imports<I>(&self, &mut I) where I: ImportReceiver;
 }
 
-impl Imports for ClassSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        receiver.import_all(&self.annotations);
-        receiver.import_all(&self.constructors);
-        receiver.import_all(&self.methods);
-    }
-}
-
-impl Imports for InterfaceSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        receiver.import_all(&self.annotations);
-        receiver.import_all(&self.elements);
-    }
-}
-
 impl Imports for ElementSpec {
     fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {
         match *self {
-            ElementSpec::Class(ref class) => class.imports(receiver),
-            ElementSpec::Interface(ref interface) => interface.imports(receiver),
+            ElementSpec::Elements(ref elements) => receiver.import_all(elements),
             ElementSpec::Statement(ref statement) => statement.imports(receiver),
+            ElementSpec::Nested(ref nested) => {
+                (*nested).imports(receiver);
+            }
             _ => {}
         }
-    }
-}
-
-impl Imports for Section {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        match *self {
-            Section::Block(ref block) => block.imports(receiver),
-            Section::Statement(ref statement) => statement.imports(receiver),
-            _ => {}
-        };
     }
 }
 
@@ -97,27 +60,11 @@ impl Imports for Statement {
     }
 }
 
-impl Imports for Sections {
+impl Imports for Elements {
     fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {
-        receiver.import_all(&self.sections);
-    }
-}
-
-impl Imports for Block {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        if let Some(ref open) = self.open {
-            open.imports(receiver);
-        }
-
-        if let Some(ref close) = self.close {
-            close.imports(receiver);
-        }
-
-        self.sections.imports(receiver);
+        receiver.import_all(&self.elements);
     }
 }
 
@@ -138,60 +85,5 @@ impl Imports for Type {
             Type::Primitive(_) => {}
             Type::Class(ref class) => class.imports(receiver),
         };
-    }
-}
-
-impl Imports for FieldSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        self.ty.imports(receiver);
-    }
-}
-
-impl Imports for ConstructorSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        self.sections.imports(receiver);
-        receiver.import_all(&self.annotations);
-        receiver.import_all(&self.arguments);
-    }
-}
-
-impl Imports for AnnotationSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        self.ty.imports(receiver);
-
-        for a in &self.arguments {
-            a.imports(receiver);
-        }
-    }
-}
-
-impl Imports for ArgumentSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        self.ty.imports(receiver);
-
-        for a in &self.annotations {
-            a.imports(receiver);
-        }
-    }
-}
-
-impl Imports for MethodSpec {
-    fn imports<I>(&self, receiver: &mut I)
-        where I: ImportReceiver
-    {
-        if let Some(ref ty) = self.returns {
-            ty.imports(receiver);
-        }
-
-        receiver.import_all(&self.arguments);
-        self.sections.imports(receiver);
     }
 }
