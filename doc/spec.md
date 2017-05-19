@@ -27,9 +27,16 @@
 
 # Missing Features
 
+* Maven Plugin + Maven Artifacts w/ Static Builds
+  * For clean integration into Java ecosystem.
+
+* HTML
+  * Generate static documentation.
+
 * Java
   * Type aliases.
   * Tuple decoding.
+  * Generate _good_ builder.
 
 * Python
   * ~~Encode support (e.g. `instance.encode()`)~~
@@ -43,8 +50,9 @@
   * Strict decoding/encoding where types are deeply verified.
 
 * General
-  * Enum support
   * ~~Treat named types as (named) simple types, like tuples.~~
+  * Enum support.
+  * Documentation syntax (preferably not comments).
 
 ## Introduction
 
