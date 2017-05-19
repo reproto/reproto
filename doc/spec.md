@@ -38,8 +38,8 @@
   * ~~Array decoding.~~
   * ~~Map decoding.~~
   * ~~Tuple decoding.~~
+  * ~~Optional support~~.
   * Type aliases.
-  * Optional support.
   * Strict decoding/encoding where types are deeply verified.
 
 * General

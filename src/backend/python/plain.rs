@@ -34,9 +34,25 @@ impl PlainPythonBackend {
         encode.push(python_stmt!["data = ", builder, "()"]);
 
         for field in fields {
-            let stmt = python_stmt!["self.", &field.name];
-            let stmt = processor.encode(package, &field.ty, stmt)?;
-            encode.push(field_set(&field.name, stmt));
+            match field.modifier {
+                ast::Modifier::Optional => {
+                    let mut check_if_none = Vec::new();
+                    let stmt = python_stmt!["self.", &field.name];
+
+                    check_if_none.push(python_stmt!["if ", &stmt, " is not None:"].as_element_spec());
+
+                    let stmt = processor.encode(package, &field.ty, stmt.clone())?;
+                    let stmt = field_set(&field.name, stmt);
+                    check_if_none.push(ElementSpec::Nested(Box::new(stmt.as_element_spec())));
+
+                    encode.push(check_if_none);
+                }
+                _ => {
+                    let stmt = python_stmt!["self.", &field.name];
+                    let stmt = processor.encode(package, &field.ty, stmt)?;
+                    encode.push(field_set(&field.name, stmt));
+                }
+            }
         }
 
         encode.push(python_stmt!["return data"]);
@@ -62,6 +78,34 @@ impl PlainPythonBackend {
         Ok(encode)
     }
 
+    fn optional_check(&self, var_name: &str, index: &Variable, stmt: &Statement) -> ElementSpec {
+        let mut check = Vec::new();
+
+        let mut none_check = Vec::new();
+        none_check.push(python_stmt![var_name, " = data[", index, "]"].as_element_spec());
+
+        let mut none_check_if = Vec::new();
+
+        let assign_var = python_stmt![var_name, " = ", stmt].as_element_spec();
+
+        none_check_if.push(python_stmt!["if ", var_name, " is not None:"].as_element_spec());
+        none_check_if.push(ElementSpec::Nested(Box::new(assign_var)));
+
+        none_check.push(none_check_if.as_element_spec());
+
+        let none_check = none_check.as_element_spec().join(ElementSpec::Spacing);
+
+        check.push(python_stmt!["if ", index, " in data:"].as_element_spec());
+        check.push(ElementSpec::Nested(Box::new(none_check)));
+
+        let assign_none = python_stmt![var_name, " = None"].as_element_spec();
+
+        check.push(python_stmt!["else:"].as_element_spec());
+        check.push(ElementSpec::Nested(Box::new(assign_none)));
+
+        check.as_element_spec()
+    }
+
     fn decode_method<F>(&self,
                         processor: &processor::Processor,
                         package: &ast::Package,
@@ -75,23 +119,37 @@ impl PlainPythonBackend {
         decode.push_decorator(&self.staticmethod);
         decode.push_argument(python_stmt!["data"]);
 
+        let mut decode_body = Vec::new();
+
         let mut arguments = Statement::new();
 
         for (i, field) in fields.iter().enumerate() {
-            let var_name = format!("f_{}", field.name);
+            let var_name = format!("f_{}", field.ident);
+            let var = variable_fn(i, &field.name);
 
-            let var_stmt = python_stmt!["data[", variable_fn(i, &field.name), "]"];
+            let stmt = match field.modifier {
+                ast::Modifier::Optional => {
+                    let var_stmt = python_stmt![&var_name];
+                    let var_stmt = processor.decode(package, &field.ty, var_stmt)?;
 
-            let mut stmt = Statement::new();
-            stmt.push(&var_name);
-            stmt.push(" = ");
-            stmt.push(processor.decode(package, &field.ty, var_stmt)?);
-            decode.push(stmt);
+                    self.optional_check(&var_name, &var, &var_stmt)
+                }
+                _ => {
+                    let var_stmt = python_stmt!["data[", &var, "]"];
+                    let var_stmt = processor.decode(package, &field.ty, var_stmt)?;
+
+                    python_stmt![&var_name, " = ", &var_stmt].as_element_spec()
+                }
+            };
+
+            decode_body.push(stmt);
             arguments.push(var_name);
         }
 
         let arguments = arguments.join(", ");
-        decode.push(python_stmt!["return ", &class.name, "(", arguments, ")"]);
+        decode_body.push(python_stmt!["return ", &class.name, "(", arguments, ")"].as_element_spec());
+
+        decode.push(decode_body.as_element_spec().join(ElementSpec::Spacing));
 
         Ok(decode)
     }

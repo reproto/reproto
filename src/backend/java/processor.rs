@@ -169,9 +169,7 @@ impl<'a> Processor<'a> {
 
         match ty.value {
             ast::Type::Tuple(ref elements) => {
-                let mut index = 0;
-
-                for element in elements {
+                for (index, element) in elements.iter().enumerate() {
                     let field_type = self.convert_type(package, &element.ty)?;
                     let mods = java_mods![Modifier::Private, Modifier::Final];
 
@@ -181,8 +179,6 @@ impl<'a> Processor<'a> {
                         2 => "third".to_owned(),
                         n => format!("field{}", n),
                     };
-
-                    index += 1;
 
                     let name = element.name.clone().unwrap_or(index_name);
                     let field_spec = FieldSpec::new(mods, &field_type, &name);

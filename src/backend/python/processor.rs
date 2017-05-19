@@ -41,14 +41,16 @@ pub struct Field {
     pub modifier: ast::Modifier,
     pub ty: ast::Type,
     pub name: String,
+    pub ident: String,
 }
 
 impl Field {
-    pub fn new(modifier: ast::Modifier, ty: ast::Type, name: String) -> Field {
+    pub fn new(modifier: ast::Modifier, ty: ast::Type, name: String, ident: String) -> Field {
         Field {
             modifier: modifier,
             ty: ty,
             name: name,
+            ident: ident,
         }
     }
 }
@@ -85,6 +87,14 @@ impl<'a> Processor<'a> {
             ast::Type::Tuple(ref elements) => elements.iter().all(|e| self.is_native(&e.ty)),
             ast::Type::Array(ref inner) => self.is_native(inner),
             _ => false,
+        }
+    }
+
+    fn ident(&self, name: &str) -> String {
+        if let Some(ref id_converter) = self.options.id_converter {
+            id_converter.convert(name)
+        } else {
+            name.to_owned()
         }
     }
 
@@ -180,8 +190,8 @@ impl<'a> Processor<'a> {
         constructor.push_argument(python_stmt!["self"]);
 
         for field in fields {
-            constructor.push_argument(python_stmt![&field.name]);
-            constructor.push(python_stmt!["self.", &field.name, " = ", &field.name]);
+            constructor.push_argument(python_stmt![&field.ident]);
+            constructor.push(python_stmt!["self.", &field.ident, " = ", &field.ident]);
         }
 
         constructor
@@ -199,9 +209,7 @@ impl<'a> Processor<'a> {
                 let mut class = ClassSpec::new(&ty.name);
                 let mut fields: Vec<Field> = Vec::new();
 
-                let mut index = 0;
-
-                for element in elements {
+                for (index, element) in elements.iter().enumerate() {
                     let index_name = match index {
                         0 => "first".to_owned(),
                         1 => "second".to_owned(),
@@ -210,8 +218,8 @@ impl<'a> Processor<'a> {
                     };
 
                     let name = element.name.clone().unwrap_or(index_name);
-                    fields.push(Field::new(ast::Modifier::Required, element.ty.clone(), name));
-                    index += 1;
+                    let ident = self.ident(&name);
+                    fields.push(Field::new(ast::Modifier::Required, element.ty.clone(), name, ident));
                 }
 
                 class.push(self.build_constructor(&fields));
@@ -257,7 +265,12 @@ impl<'a> Processor<'a> {
 
         for member in &message.members {
             if let ast::MessageMember::Field(ref field, _) = *member {
-                fields.push(Field::new(field.modifier.clone(), field.ty.clone(), field.name.clone()));
+                let ident = self.ident(&field.name);
+
+                fields.push(Field::new(field.modifier.clone(),
+                                       field.ty.clone(),
+                                       field.name.clone(),
+                                       ident));
                 continue;
             }
         }
@@ -303,7 +316,12 @@ impl<'a> Processor<'a> {
 
         for member in &interface.members {
             if let ast::InterfaceMember::Field(ref field, _) = *member {
-                interface_fields.push(Field::new(field.modifier.clone(), field.ty.clone(), field.name.clone()));
+                let ident = self.ident(&field.name);
+
+                interface_fields.push(Field::new(field.modifier.clone(),
+                                                 field.ty.clone(),
+                                                 field.name.clone(),
+                                                 ident));
             }
         }
 
@@ -315,9 +333,12 @@ impl<'a> Processor<'a> {
 
             for member in &sub_type.members {
                 if let ast::SubTypeMember::Field(ref field) = *member {
+                    let ident = self.ident(&field.name);
+
                     fields.push(Field::new(field.modifier.clone(),
                                            field.ty.clone(),
-                                           field.name.clone()));
+                                           field.name.clone(),
+                                           ident));
                 }
             }
 
