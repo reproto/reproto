@@ -275,6 +275,15 @@ impl<'a> Processor<'a> {
             if let ast::InterfaceMember::Field(ref field, _) = *member {
                 let field_spec = self.push_field(&package, field)?;
                 interface_fields.push(Field::new(field.modifier.clone(), field.name.clone(), field_spec));
+                continue;
+            }
+
+            if let ast::InterfaceMember::Code(ref context, ref content, _) = *member {
+                if context == JAVA_CONTEXT {
+                    interface_spec.push_literal(content);
+                }
+
+                continue;
             }
         }
 
@@ -292,6 +301,15 @@ impl<'a> Processor<'a> {
                     let field_spec = self.push_field(&package, field)?;
                     class.push_field(&field_spec);
                     fields.push(Field::new(field.modifier.clone(), field.name.clone(), field_spec));
+                    continue;
+                }
+
+                if let ast::SubTypeMember::Code(ref context, ref content, _) = *member {
+                    if context == JAVA_CONTEXT {
+                        class.push_literal(content);
+                    }
+
+                    continue;
                 }
             }
 

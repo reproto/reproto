@@ -2,6 +2,7 @@ use environment::Environment;
 use options::Options;
 use parser::ast;
 use std::fs::File;
+use std::path::PathBuf;
 use std::fs;
 use std::io::Write;
 use naming::{self, FromNaming};
@@ -12,6 +13,9 @@ use std::collections::hash_map::Entry;
 use codegen::python::*;
 
 use errors::*;
+
+const INIT_PY: &str = "__init__.py";
+const EXT: &str = "py";
 
 pub trait Listeners {
     fn class_added(&self,
@@ -271,6 +275,7 @@ impl<'a> Processor<'a> {
                                        field.ty.clone(),
                                        field.name.clone(),
                                        ident));
+
                 continue;
             }
         }
@@ -290,6 +295,8 @@ impl<'a> Processor<'a> {
                 if context == PYTHON_CONTEXT {
                     class.push(ElementSpec::Literal(content.clone()));
                 }
+
+                continue;
             }
         }
 
@@ -310,8 +317,6 @@ impl<'a> Processor<'a> {
 
         listeners.interface_added(self, package, interface, &mut interface_spec)?;
 
-        classes.push(interface_spec);
-
         let mut interface_fields: Vec<Field> = Vec::new();
 
         for member in &interface.members {
@@ -322,8 +327,20 @@ impl<'a> Processor<'a> {
                                                  field.ty.clone(),
                                                  field.name.clone(),
                                                  ident));
+
+                continue;
+            }
+
+            if let ast::InterfaceMember::Code(ref context, ref content, _) = *member {
+                if context == PYTHON_CONTEXT {
+                    interface_spec.push(ElementSpec::Literal(content.clone()));
+                }
+
+                continue;
             }
         }
+
+        classes.push(interface_spec);
 
         for (_, ref sub_type) in &interface.sub_types {
             let mut class = ClassSpec::new(&sub_type.name);
@@ -339,6 +356,8 @@ impl<'a> Processor<'a> {
                                            field.ty.clone(),
                                            field.name.clone(),
                                            ident));
+
+                    continue;
                 }
             }
 
@@ -352,6 +371,16 @@ impl<'a> Processor<'a> {
                 }
             }
 
+            for member in &sub_type.members {
+                if let ast::SubTypeMember::Code(ref context, ref content, _) = *member {
+                    if context == PYTHON_CONTEXT {
+                        class.push(ElementSpec::Literal(content.clone()));
+                    }
+
+                    continue;
+                }
+            }
+
             listeners.class_added(self, package, &fields, &mut class)?;
             classes.push(class);
         }
@@ -359,11 +388,9 @@ impl<'a> Processor<'a> {
         Ok(classes)
     }
 
-    pub fn process<L>(&self, listeners: &L) -> Result<()>
+    fn populate_files<L>(&self, listeners: &L) -> Result<HashMap<&ast::Package, FileSpec>>
         where L: Listeners
     {
-        let root_dir = &self.options.out_path;
-
         let mut files = HashMap::new();
 
         // Process all types discovered so far.
@@ -398,34 +425,45 @@ impl<'a> Processor<'a> {
             }
         }
 
-        for (package, file_spec) in files.into_iter() {
-            let package = self.package(package);
+        Ok(files)
+    }
 
-            let mut full_path = root_dir.to_owned();
-            let mut it = package.parts.iter().peekable();
+    fn setup_module_path(&self, root_dir: &PathBuf, package: &ast::Package) -> Result<PathBuf> {
+        let package = self.package(package);
 
-            while let Some(part) = it.next() {
-                full_path = full_path.join(part);
+        let mut full_path = root_dir.to_owned();
+        let mut iter = package.parts.iter().peekable();
 
-                if it.peek().is_none() {
-                    continue;
-                }
+        while let Some(part) = iter.next() {
+            full_path = full_path.join(part);
 
-                let init_path = full_path.join("__init__.py");
-
-                if !init_path.is_file() {
-                    if !full_path.is_dir() {
-                        debug!("+dir: {}", full_path.display());
-                        fs::create_dir_all(&full_path)?;
-                    }
-
-                    debug!("+init: {}", init_path.display());
-                    File::create(init_path)?;
-                }
+            if iter.peek().is_none() {
+                continue;
             }
 
-            // path to final file
-            full_path.set_extension("py");
+            let init_path = full_path.join(INIT_PY);
+
+            if !init_path.is_file() {
+                if !full_path.is_dir() {
+                    debug!("+dir: {}", full_path.display());
+                    fs::create_dir_all(&full_path)?;
+                }
+
+                debug!("+init: {}", init_path.display());
+                File::create(init_path)?;
+            }
+        }
+
+        // path to final file
+        full_path.set_extension(EXT);
+        Ok(full_path)
+    }
+
+    fn write_files(&self, files: HashMap<&ast::Package, FileSpec>) -> Result<()> {
+        let root_dir = &self.options.out_path;
+
+        for (package, file_spec) in files {
+            let full_path = self.setup_module_path(root_dir, package)?;
 
             debug!("+module: {}", full_path.display());
 
@@ -438,5 +476,12 @@ impl<'a> Processor<'a> {
         }
 
         Ok(())
+    }
+
+    pub fn process<L>(&self, listeners: &L) -> Result<()>
+        where L: Listeners
+    {
+        let files = self.populate_files(listeners)?;
+        self.write_files(files)
     }
 }
