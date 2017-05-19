@@ -5,10 +5,12 @@ import heroic.v1 as v1
 q = v1.Query.decode({
   "query": "hello world",
   "aggregation": {
-    "type": "sum"
+    "type": "sum",
   }
 })
 
-print(q.query)
-print(q.aggregation)
-print(json.dumps(q.encode()))
+d = json.loads(json.dumps(q.encode()))
+
+q2 = v1.Query.decode(d)
+
+print(q2.encode())
