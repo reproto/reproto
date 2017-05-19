@@ -75,14 +75,11 @@ impl<'a> Processor<'a> {
         raise_if_none
     }
 
-    fn encode_method<F>(&self,
-                        package: &ast::Package,
-                        fields: &Vec<Field>,
-                        builder: &BuiltInName,
-                        field_set: F)
-                        -> Result<MethodSpec>
-        where F: Fn(&str, Statement) -> Statement
-    {
+    fn encode_method(&self,
+                     package: &ast::Package,
+                     fields: &Vec<Field>,
+                     builder: &BuiltInName)
+                     -> Result<MethodSpec> {
         let mut encode = MethodSpec::new("encode");
         encode.push_argument(python_stmt!["self"]);
 
@@ -91,29 +88,30 @@ impl<'a> Processor<'a> {
         encode_body.push(python_stmt!["data = ", builder, "()"]);
 
         for field in fields {
+            let var_string = Variable::String(field.name.to_owned());
+
             match field.modifier {
                 ast::Modifier::Optional => {
                     let mut check_if_none = Elements::new();
-                    let stmt = python_stmt!["self.", &field.ident];
+                    let field_stmt = python_stmt!["self.", &field.ident];
 
-                    check_if_none.push(python_stmt!["if ", &stmt, " is not None:"]);
+                    check_if_none.push(python_stmt!["if ", &field_stmt, " is not None:"]);
 
-                    let stmt = self.encode(package, &field.ty, stmt.clone())?;
-                    let stmt = field_set(&field.name, stmt);
+                    let stmt = self.encode(package, &field.ty, field_stmt)?;
+                    let stmt = python_stmt!["data[", var_string, "] = ", stmt];
 
                     check_if_none.push_nested(stmt);
 
                     encode_body.push(check_if_none);
                 }
                 _ => {
-                    let stmt = python_stmt!["self.", &field.ident];
+                    let field_stmt = python_stmt!["self.", &field.ident];
 
                     // TODO: make configurable
-                    encode_body.push(self.raise_if_none(&stmt, field));
+                    encode_body.push(self.raise_if_none(&field_stmt, field));
 
-                    let stmt = python_stmt!["self.", &field.name];
-                    let stmt = self.encode(package, &field.ty, stmt)?;
-                    let stmt = field_set(&field.name, stmt);
+                    let stmt = self.encode(package, &field.ty, field_stmt)?;
+                    let stmt = python_stmt!["data[", var_string, "] = ", stmt];
 
                     encode_body.push(stmt);
                 }
@@ -437,9 +435,7 @@ impl<'a> Processor<'a> {
 
         class.push(decode);
 
-        let encode = self.encode_method(package, &fields, &self.dict, |name, stmt| {
-                python_stmt!["data[", Variable::String(name.to_owned()), "] = ", stmt]
-            })?;
+        let encode = self.encode_method(package, &fields, &self.dict)?;
 
         class.push(encode);
 
@@ -530,9 +526,7 @@ impl<'a> Processor<'a> {
 
             class.push(decode);
 
-            let encode = self.encode_method(package, &fields, &self.dict, |name, stmt| {
-                    python_stmt!["data[", Variable::String(name.to_owned()), "] = ", stmt]
-                })?;
+            let encode = self.encode_method(package, &fields, &self.dict)?;
 
             class.push(encode);
 
