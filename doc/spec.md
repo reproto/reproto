@@ -1,3 +1,10 @@
+# reProto Specification
+
+* [Introduction](#introduction)
+* [Messages](#messages)
+* [Interfaces](#interfaces)
+* [Enums](#enums)
+* [Custom Code](#custom-code)
 * [Extensions](#extensions)
 * [Tuples](#tuples)
 
@@ -16,17 +23,19 @@
   * This is now supported! Add a local directory to your path, and match the package you'd like to
       extend.
 
+[pest]: https://github.com/pest-parser/pest
+
 # Missing Features
 
 * Java
-  * Tuple decoding.
   * Type aliases.
+  * Tuple decoding.
 
 * Python
   * ~~Encode support (e.g. `instance.encode()`)~~
   * ~~Relative import, especially with package prefixes.~~ (not needed with aliases)
   * ~~Create missing `__init__.py` files.~~
-  * Array decoding.
+  * ~~Array decoding.~~
   * ~~Map decoding.~~
   * ~~Tuple decoding.~~
   * Type aliases.
@@ -35,13 +44,7 @@
 
 * General
   * Enum support
-    * Needs new syntax.
   * ~~Treat named types as (named) simple types, like tuples.~~
-    * Needs new syntax.
-
-[pest]: https://github.com/pest-parser/pest
-
-# reProto Specification
 
 ## Introduction
 
@@ -57,41 +60,19 @@ A .reproto file has the following general syntax:
 ```
 package proto.v1;
 
+use common as c;
+
 // A single point.
-type Point = (u64, double);
-
-// A single event.
-type Event = (u64, any);
-
-// An interface for samples.
-// Note that conflicting field names are fine as long as they belong to different sub types.
-interface Samples {
-    Points {
-        name "points";
-        data: [Point];
-    }
-
-    Events {
-        name "events";
-        data: [Event];
-    }
-}
+type Sample = (timestamp: u64, value: double);
 
 // Inferred based on type of argument.
 // Only one of each type may be present.
 type Instant = string | number;
 
-// Inferred based on type of argument.
-type Duration = string | number;
-
 // Aggregation, inferred based on objects with a 'type' field.
-//
 // Aggregations have a single shared field (size).
-//
-// Example: {"type", "sum"}
-// Example 2: {"type", "quantile", "q": 0.1}
 interface Aggregation {
-    optional Duration size;
+    size?: c.Duration;
 
     Sum {
         name "sum";
@@ -107,7 +88,8 @@ interface Aggregation {
 interface Range {
     Relative {
         name "relative";
-        required Duration duration;
+
+        duration: c.Duration;
     }
 
     Absolute {
@@ -117,18 +99,19 @@ interface Range {
     }
 }
 
+// A single message.
 message Query {
-    aggregation: Aggregation;
     range: Range;
+    aggregation?: Aggregation;
 }
 ```
 
-This could then be used to straight up serialize or deserialize an `Aggregation` in Java:
+This could then be used to straight up serialize or deserialize an `Query` in Java:
 
 ```java
 final ObjectMapper m = new ObjectMapper();
 final byte[] message = /* aggregation as bytes */;
-final Aggregation aggregation = m.readValue(message, Aggregation.class);
+final Query aggregation = m.readValue(message, Query.class);
 ```
 
 ## Messages
@@ -147,8 +130,6 @@ message Foo {
 }
 ```
 
-### As JSON
-
 Messages are encoded as objects.
 
 For example (using `Foo`):
@@ -158,13 +139,6 @@ For example (using `Foo`):
     "bar": 42
 }
 ```
-
-### Java
-
-In Java, each message generates exactly one concrete class.
-
-This class then uses the configured serialization mechanism (depending on the backend) to determine
-how it will be generated.
 
 ## Interfaces
 
@@ -192,11 +166,9 @@ interface Instant {
 }
 ```
 
-### As JSON
-
 An interface is encoded as an object, with a special `type` field.
 
-For example (using `Instant.RelativeToNow`):
+For example (using `Instant.RelativeToNow(offset: -1000)`):
 
 ```json
 {
@@ -204,14 +176,6 @@ For example (using `Instant.RelativeToNow`):
     "offset": -1000
 }
 ```
-
-### Java
-
-In Java, interfaces generate an `interface`, and zero or more implementations that implements that
-interface.
-
-This then uses a type-field resolution mechanism specific to the active backend to resolve which
-sub-type of that interface a given message belongs to.
 
 ## Enums
 
@@ -237,8 +201,6 @@ enum StateNumeric(number) {
 }
 ```
 
-### As JSON
-
 Enums are serialized as a string, or a number constant.
 
 For example (using `State.START`):
@@ -253,16 +215,10 @@ Or another example (using `StateNumeric.END`):
 2
 ```
 
-### Java
-
-Enums are modelled using a regular Java `enum`.
-
-Serialization might be affected depending on the type the enum has.
-
-## Embedded code
+## Custom Code
 
 A powerful mechanism for modifying the behaviour of your protocols is to embed code snippets.
-This _only_ be done in [extensions][extensions], to adapt a given set of protocols into your
+This _only_ be done in [extensions](extensions), to adapt a given set of protocols into your
 application.
 
 ```
@@ -283,8 +239,6 @@ message Foo {
   @@
 }
 ```
-
-[extensions]: #extensions
 
 ## Extensions
 
