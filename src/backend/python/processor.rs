@@ -14,6 +14,7 @@ use codegen::python::*;
 
 use errors::*;
 
+const TYPE: &str = "type";
 const INIT_PY: &str = "__init__.py";
 const EXT: &str = "py";
 
@@ -45,6 +46,7 @@ pub struct Processor<'a> {
     to_lower_snake: Box<naming::Naming>,
     staticmethod: BuiltInName,
     dict: BuiltInName,
+    type_var: Variable,
 }
 
 const PYTHON_CONTEXT: &str = "python";
@@ -61,6 +63,7 @@ impl<'a> Processor<'a> {
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             staticmethod: Name::built_in("staticmethod"),
             dict: Name::built_in("dict"),
+            type_var: Variable::String(TYPE.to_owned()),
         }
     }
 
@@ -75,17 +78,22 @@ impl<'a> Processor<'a> {
         raise_if_none
     }
 
-    fn encode_method(&self,
-                     package: &ast::Package,
-                     fields: &Vec<Field>,
-                     builder: &BuiltInName)
-                     -> Result<MethodSpec> {
+    fn encode_method<E>(&self,
+                        package: &ast::Package,
+                        fields: &Vec<Field>,
+                        builder: &BuiltInName,
+                        extra: E)
+                        -> Result<MethodSpec>
+        where E: FnOnce(&mut Elements) -> ()
+    {
         let mut encode = MethodSpec::new("encode");
         encode.push_argument(python_stmt!["self"]);
 
         let mut encode_body = Elements::new();
 
         encode_body.push(python_stmt!["data = ", builder, "()"]);
+
+        extra(&mut encode_body);
 
         for field in fields {
             let var_string = Variable::String(field.name.to_owned());
@@ -437,7 +445,7 @@ impl<'a> Processor<'a> {
 
         class.push(decode);
 
-        let encode = self.encode_method(package, &fields, &self.dict)?;
+        let encode = self.encode_method(package, &fields, &self.dict, |_| {})?;
 
         class.push(encode);
 
@@ -486,6 +494,13 @@ impl<'a> Processor<'a> {
             let mut class = ClassSpec::new(&sub_type.name);
             class.extends(Name::local(&interface.name));
 
+            let name = sub_type.options
+                .lookup_string_nth("name", 0)
+                .map(Clone::clone)
+                .unwrap_or_else(|| interface.name.clone());
+
+            class.push(python_stmt!["TYPE = ", Variable::String(name.clone())]);
+
             let mut fields = interface_fields.clone();
 
             for member in &sub_type.members {
@@ -528,7 +543,12 @@ impl<'a> Processor<'a> {
 
             class.push(decode);
 
-            let encode = self.encode_method(package, &fields, &self.dict)?;
+            let type_stmt =
+                python_stmt!["data[", &self.type_var, "] = ", Variable::String(name.clone())];
+
+            let encode = self.encode_method(package, &fields, &self.dict, move |elements| {
+                    elements.push(type_stmt);
+                })?;
 
             class.push(encode);
 
@@ -653,7 +673,9 @@ impl<'a> Processor<'a> {
 
         let mut decode_body = Elements::new();
 
-        decode_body.push(python_stmt!["type = data[", Variable::String("type".to_owned()), "]"]);
+        let type_field = Variable::Literal("f_type".to_owned());
+
+        decode_body.push(python_stmt![&type_field, " = data[", &self.type_var, "]"]);
 
         for (_, ref sub_type) in &interface.sub_types {
             for name in sub_type.options.lookup_string("name") {
@@ -661,7 +683,11 @@ impl<'a> Processor<'a> {
 
                 let mut check = Elements::new();
 
-                check.push(python_stmt!["if type == ", Variable::String(name.to_owned()), ":"]);
+                check.push(python_stmt!["if ",
+                                        &type_field,
+                                        " == ",
+                                        Variable::String(name.to_owned()),
+                                        ":"]);
                 check.push_nested(python_stmt!["return ", type_name, ".decode(data)"]);
 
                 decode_body.push(check);
@@ -670,7 +696,9 @@ impl<'a> Processor<'a> {
 
         decode_body.push(python_stmt!["raise Exception(",
                                       Variable::String("bad type".to_owned()),
-                                      " + type)"]);
+                                      " + ",
+                                      &type_field,
+                                      ")"]);
 
         decode.push(decode_body.join(ElementSpec::Spacing));
 
