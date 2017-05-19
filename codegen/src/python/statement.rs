@@ -131,3 +131,15 @@ impl AsStatement for Statement {
         self
     }
 }
+
+impl AsStatement for Variable {
+    fn as_statement(self) -> Statement {
+        Statement { parts: vec![self] }
+    }
+}
+
+impl AsStatement for String {
+    fn as_statement(self) -> Statement {
+        Statement { parts: vec![Variable::Literal(self)] }
+    }
+}

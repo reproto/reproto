@@ -89,29 +89,25 @@ impl<'a> Processor<'a> {
 
         for field in fields {
             let var_string = Variable::String(field.name.to_owned());
+            let field_stmt = python_stmt!["self.", &field.ident];
+            let value_stmt = self.encode(package, &field.ty, &field_stmt)?;
 
             match field.modifier {
                 ast::Modifier::Optional => {
                     let mut check_if_none = Elements::new();
-                    let field_stmt = python_stmt!["self.", &field.ident];
 
                     check_if_none.push(python_stmt!["if ", &field_stmt, " is not None:"]);
 
-                    let stmt = self.encode(package, &field.ty, field_stmt)?;
-                    let stmt = python_stmt!["data[", var_string, "] = ", stmt];
+                    let stmt = python_stmt!["data[", var_string, "] = ", value_stmt];
 
                     check_if_none.push_nested(stmt);
 
                     encode_body.push(check_if_none);
                 }
                 _ => {
-                    let field_stmt = python_stmt!["self.", &field.ident];
-
-                    // TODO: make configurable
                     encode_body.push(self.raise_if_none(&field_stmt, field));
 
-                    let stmt = self.encode(package, &field.ty, field_stmt)?;
-                    let stmt = python_stmt!["data[", var_string, "] = ", stmt];
+                    let stmt = python_stmt!["data[", var_string, "] = ", value_stmt];
 
                     encode_body.push(stmt);
                 }
@@ -176,7 +172,7 @@ impl<'a> Processor<'a> {
                         class: &ClassSpec,
                         variable_fn: F)
                         -> Result<MethodSpec>
-        where F: Fn(usize, &str) -> Variable
+        where F: Fn(usize, &Field) -> Variable
     {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
@@ -188,19 +184,16 @@ impl<'a> Processor<'a> {
 
         for (i, field) in fields.iter().enumerate() {
             let var_name = format!("f_{}", field.ident);
-            let var = variable_fn(i, &field.name);
+            let var = variable_fn(i, field);
 
             let stmt = match field.modifier {
                 ast::Modifier::Optional => {
-                    let var_stmt = python_stmt![&var_name];
-                    let var_stmt = self.decode(package, &field.ty, var_stmt)?;
-
+                    let var_stmt = self.decode(package, &field.ty, &var_name)?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
                 _ => {
                     let var_stmt = python_stmt!["data[", &var, "]"];
                     let var_stmt = self.decode(package, &field.ty, var_stmt)?;
-
                     python_stmt![&var_name, " = ", &var_stmt].as_element_spec()
                 }
             };
@@ -252,58 +245,67 @@ impl<'a> Processor<'a> {
         Ok(Name::imported_alias(&package, &custom, used).as_name())
     }
 
-    fn encode(&self, package: &ast::Package, ty: &ast::Type, stmt: Statement) -> Result<Statement> {
+    fn encode<S>(&self, package: &ast::Package, ty: &ast::Type, value_stmt: S) -> Result<Statement>
+        where S: AsStatement
+    {
+        let value_stmt = value_stmt.as_statement();
+
         // TODO: do not skip conversion if strict type checking is enabled
         if self.is_native(ty) {
-            return Ok(stmt);
+            return Ok(value_stmt);
         }
 
-        let stmt = match *ty {
-            ast::Type::I32 | ast::Type::U32 => stmt,
-            ast::Type::I64 | ast::Type::U64 => stmt,
-            ast::Type::Float | ast::Type::Double => stmt,
-            ast::Type::String => stmt,
-            ast::Type::Any => stmt,
-            ast::Type::Custom(ref _custom) => python_stmt![stmt, ".encode()"],
-            ast::Type::UsedType(ref _used, ref _custom) => python_stmt![stmt, ".encode()"],
+        let value_stmt = match *ty {
+            ast::Type::I32 | ast::Type::U32 => value_stmt,
+            ast::Type::I64 | ast::Type::U64 => value_stmt,
+            ast::Type::Float | ast::Type::Double => value_stmt,
+            ast::Type::String => value_stmt,
+            ast::Type::Any => value_stmt,
+            ast::Type::Custom(ref _custom) => python_stmt![value_stmt, ".encode()"],
+            ast::Type::UsedType(ref _used, ref _custom) => python_stmt![value_stmt, ".encode()"],
             ast::Type::Array(ref inner) => {
-                let inner = self.encode(package, inner, python_stmt!["v"])?;
-                python_stmt!["map(lambda v: ", inner, ", ", stmt, ")"]
+                let v = python_stmt!["v"];
+                let inner = self.encode(package, inner, v)?;
+                python_stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
             }
-            _ => stmt,
+            _ => value_stmt,
         };
 
-        Ok(stmt)
+        Ok(value_stmt)
     }
 
-    fn decode(&self, package: &ast::Package, ty: &ast::Type, stmt: Statement) -> Result<Statement> {
+    fn decode<S>(&self, package: &ast::Package, ty: &ast::Type, value_stmt: S) -> Result<Statement>
+        where S: AsStatement
+    {
+        let value_stmt = value_stmt.as_statement();
+
         // TODO: do not skip conversion if strict type checking is enabled
         if self.is_native(ty) {
-            return Ok(stmt);
+            return Ok(value_stmt);
         }
 
-        let stmt = match *ty {
-            ast::Type::I32 | ast::Type::U32 => stmt,
-            ast::Type::I64 | ast::Type::U64 => stmt,
-            ast::Type::Float | ast::Type::Double => stmt,
-            ast::Type::String => stmt,
-            ast::Type::Any => stmt,
+        let value_stmt = match *ty {
+            ast::Type::I32 | ast::Type::U32 => value_stmt,
+            ast::Type::I64 | ast::Type::U64 => value_stmt,
+            ast::Type::Float | ast::Type::Double => value_stmt,
+            ast::Type::String => value_stmt,
+            ast::Type::Any => value_stmt,
             ast::Type::Custom(ref custom) => {
                 let name = self.custom_name(package, custom);
-                python_stmt![name, ".decode(", stmt, ")"]
+                python_stmt![name, ".decode(", value_stmt, ")"]
             }
             ast::Type::UsedType(ref used, ref custom) => {
                 let name = self.used_name(package, used, custom)?;
-                python_stmt![name, ".decode(", stmt, ")"]
+                python_stmt![name, ".decode(", value_stmt, ")"]
             }
             ast::Type::Array(ref inner) => {
                 let inner = self.decode(package, inner, python_stmt!["v"])?;
-                python_stmt!["map(lambda v: ", inner, ", ", stmt, ")"]
+                python_stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
             }
-            _ => stmt,
+            _ => value_stmt,
         };
 
-        Ok(stmt)
+        Ok(value_stmt)
     }
 
 
@@ -431,7 +433,7 @@ impl<'a> Processor<'a> {
         let decode = self.decode_method(package,
                            &fields,
                            &class,
-                           |_, name| Variable::String(name.to_owned()))?;
+                           |_, field| Variable::String(field.name.to_owned()))?;
 
         class.push(decode);
 
@@ -522,7 +524,7 @@ impl<'a> Processor<'a> {
             let decode = self.decode_method(package,
                                &fields,
                                &class,
-                               |_, name| Variable::String(name.to_owned()))?;
+                               |_, field| Variable::String(field.name.to_owned()))?;
 
             class.push(decode);
 
