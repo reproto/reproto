@@ -7,7 +7,7 @@ use super::statement::Statement;
 #[derive(Debug, Clone)]
 pub enum ElementSpec {
     Statement(Statement),
-    Literal(Vec<String>),
+    Literal(String),
     Elements(Vec<ElementSpec>),
     Nested(Box<ElementSpec>),
     Spacing,
@@ -23,10 +23,8 @@ impl ElementSpec {
                     out.push(format!("{}{}", current, line));
                 }
             }
-            ElementSpec::Literal(ref literal) => {
-                for line in literal {
-                    out.push(format!("{}{}", current, line));
-                }
+            ElementSpec::Literal(ref line) => {
+                out.push(format!("{}{}", current, line));
             }
             ElementSpec::Elements(ref elements) => {
                 for element in elements {
@@ -60,7 +58,7 @@ impl<'a, A> AsElementSpec for &'a A
 
 impl<'a> AsElementSpec for &'a str {
     fn as_element_spec(self) -> ElementSpec {
-        ElementSpec::Literal(vec![self.to_owned()])
+        ElementSpec::Literal(self.to_owned())
     }
 }
 
@@ -162,5 +160,11 @@ impl AsElementSpec for Statement {
 impl AsElementSpec for Elements {
     fn as_element_spec(self) -> ElementSpec {
         ElementSpec::Elements(self.elements)
+    }
+}
+
+impl AsElementSpec for Vec<String> {
+    fn as_element_spec(self) -> ElementSpec {
+        ElementSpec::Elements(self.into_iter().map(ElementSpec::Literal).collect())
     }
 }

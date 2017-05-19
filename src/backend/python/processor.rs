@@ -431,7 +431,7 @@ impl<'a> Processor<'a> {
         for member in &message.members {
             if let ast::MessageMember::Code(ref context, ref content, _) = *member {
                 if context == PYTHON_CONTEXT {
-                    class.push(ElementSpec::Literal(content.clone()));
+                    class.push(content.clone());
                 }
 
                 continue;
@@ -481,7 +481,7 @@ impl<'a> Processor<'a> {
 
             if let ast::InterfaceMember::Code(ref context, ref content, _) = *member {
                 if context == PYTHON_CONTEXT {
-                    interface_spec.push(ElementSpec::Literal(content.clone()));
+                    interface_spec.push(content.clone());
                 }
 
                 continue;
@@ -529,7 +529,7 @@ impl<'a> Processor<'a> {
             for member in &sub_type.members {
                 if let ast::SubTypeMember::Code(ref context, ref content, _) = *member {
                     if context == PYTHON_CONTEXT {
-                        class.push(ElementSpec::Literal(content.clone()));
+                        class.push(content.clone());
                     }
 
                     continue;
