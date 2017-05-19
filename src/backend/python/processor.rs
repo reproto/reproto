@@ -41,8 +41,6 @@ pub struct Processor<'a> {
     env: &'a Environment,
     package_prefix: Option<ast::Package>,
     to_lower_snake: Box<naming::Naming>,
-    int: Name,
-    float: Name,
 }
 
 const PYTHON_CONTEXT: &str = "python";
@@ -57,24 +55,62 @@ impl<'a> Processor<'a> {
             env: env,
             package_prefix: package_prefix,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
-            int: Name::built_in("int").as_name(),
-            float: Name::built_in("float").as_name(),
         }
     }
 
-    pub fn encode(&self, package: &ast::Package, ty: &ast::Type, stmt: Statement) -> Statement {
+    pub fn is_native(&self, ty: &ast::Type) -> bool {
         match *ty {
-            ast::Type::I32 | ast::Type::U32 => python_stmt![&self.float, "(", stmt, ")"],
-            ast::Type::I64 | ast::Type::U64 => python_stmt![&self.int, "(", stmt, ")"],
-            ast::Type::Float | ast::Type::Double => python_stmt![&self.float, "(", stmt, ")"],
+            ast::Type::I32 | ast::Type::U32 => true,
+            ast::Type::I64 | ast::Type::U64 => true,
+            ast::Type::Float | ast::Type::Double => true,
+            ast::Type::String => true,
+            ast::Type::Any => true,
+            ast::Type::Tuple(ref arguments) => arguments.iter().all(|a| self.is_native(a)),
+            ast::Type::Array(ref inner) => self.is_native(inner),
+            _ => false,
+        }
+    }
+
+    fn custom_name(&self, package: &ast::Package, custom: &str) -> Name {
+        let package = self.package(package);
+        let key = &(package.clone(), custom.to_owned());
+        let _ = self.env.types.get(key);
+        Name::local(&custom).as_name()
+    }
+
+    fn used_name(&self, package: &ast::Package, used: &str, custom: &str) -> Result<Name> {
+        let package = self.env.lookup_used(package, used)?;
+        let package = self.package(package);
+        let package = package.parts.join(".");
+        Ok(Name::imported_alias(&package, &custom, used).as_name())
+    }
+
+    pub fn encode(&self,
+                  package: &ast::Package,
+                  ty: &ast::Type,
+                  stmt: Statement)
+                  -> Result<Statement> {
+        // TODO: do not skip conversion if strict type checking is enabled
+        if self.is_native(ty) {
+            return Ok(stmt);
+        }
+
+        let stmt = match *ty {
+            ast::Type::I32 | ast::Type::U32 => stmt,
+            ast::Type::I64 | ast::Type::U64 => stmt,
+            ast::Type::Float | ast::Type::Double => stmt,
+            ast::Type::String => stmt,
+            ast::Type::Any => stmt,
             ast::Type::Custom(ref _custom) => python_stmt![stmt, ".encode()"],
             ast::Type::UsedType(ref _used, ref _custom) => python_stmt![stmt, ".encode()"],
             ast::Type::Array(ref inner) => {
-                let inner = self.encode(package, inner, python_stmt!["v"]);
+                let inner = self.encode(package, inner, python_stmt!["v"])?;
                 python_stmt!["map(lambda v: ", inner, ", ", stmt, ")"]
             }
             _ => stmt,
-        }
+        };
+
+        Ok(stmt)
     }
 
     pub fn decode(&self,
@@ -82,22 +118,23 @@ impl<'a> Processor<'a> {
                   ty: &ast::Type,
                   stmt: Statement)
                   -> Result<Statement> {
+        // TODO: do not skip conversion if strict type checking is enabled
+        if self.is_native(ty) {
+            return Ok(stmt);
+        }
+
         let stmt = match *ty {
-            ast::Type::I32 | ast::Type::U32 => python_stmt![&self.float, "(", stmt, ")"],
-            ast::Type::I64 | ast::Type::U64 => python_stmt![&self.int, "(", stmt, ")"],
-            ast::Type::Float | ast::Type::Double => python_stmt![&self.float, "(", stmt, ")"],
+            ast::Type::I32 | ast::Type::U32 => stmt,
+            ast::Type::I64 | ast::Type::U64 => stmt,
+            ast::Type::Float | ast::Type::Double => stmt,
+            ast::Type::String => stmt,
+            ast::Type::Any => stmt,
             ast::Type::Custom(ref custom) => {
-                let package = self.package(package);
-                let key = (package.clone(), custom.clone());
-                let _ = self.env.types.get(&key);
-                let name = Name::local(&custom).as_name();
+                let name = self.custom_name(package, custom);
                 python_stmt![name, ".decode(", stmt, ")"]
             }
             ast::Type::UsedType(ref used, ref custom) => {
-                let package = self.env.lookup_used(package, used)?;
-                let package = self.package(package);
-                let package = package.parts.join(".");
-                let name = Name::imported_alias(&package, &custom, used).as_name();
+                let name = self.used_name(package, used, custom)?;
                 python_stmt![name, ".decode(", stmt, ")"]
             }
             ast::Type::Array(ref inner) => {

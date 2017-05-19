@@ -127,14 +127,14 @@ impl Environment {
     }
 
     /// Lookup the package declaration a used alias refers to.
-    pub fn lookup_used(&self, package: &ast::Package, used: &String) -> Result<&ast::Package> {
+    pub fn lookup_used(&self, package: &ast::Package, used: &str) -> Result<&ast::Package> {
         // resolve alias
         let package = self.used
-            .get(&(package.clone(), used.clone()))
+            .get(&(package.clone(), used.to_owned()))
             .ok_or(format!("Missing import alias for ({})", used))?;
 
         // check that type actually exists?
-        let key = (package.clone(), used.clone());
+        let key = (package.clone(), used.to_owned());
         let _ = self.types.get(&key);
 
         Ok(package)

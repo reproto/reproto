@@ -28,6 +28,11 @@
   * ~~Tuple decoding.~~
   * Type aliases.
   * Optional support.
+  * Strict decoding/encoding where types are deeply verified.
+
+* General
+  * Treat named types as (named) simple types, like tuples.
+    * Needs new syntax.
 
 [pest]: https://github.com/pest-parser/pest
 

@@ -38,7 +38,7 @@ impl PlainPythonBackend {
 
         for &(ref field_type, ref field_name) in fields {
             let stmt = python_stmt!["self.", field_name];
-            let stmt = processor.encode(package, field_type, stmt);
+            let stmt = processor.encode(package, field_type, stmt)?;
             encode.push(field_set(field_name, stmt));
         }
 
