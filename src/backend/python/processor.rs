@@ -17,9 +17,16 @@ pub trait Listeners {
     fn class_added(&self,
                    processor: &Processor,
                    package: &ast::Package,
-                   fields: &Vec<ast::Field>,
+                   fields: &Vec<(ast::Type, String)>,
                    class: &mut ClassSpec)
                    -> Result<()>;
+
+    fn type_added(&self,
+                  processor: &Processor,
+                  package: &ast::Package,
+                  fields: &Vec<(ast::Type, String)>,
+                  class: &mut ClassSpec)
+                  -> Result<()>;
 
     fn interface_added(&self,
                        processor: &Processor,
@@ -55,40 +62,52 @@ impl<'a> Processor<'a> {
         }
     }
 
-    pub fn encode_name(&self, _package: &ast::Package, ty: &ast::Type) -> bool {
+    pub fn encode(&self, package: &ast::Package, ty: &ast::Type, stmt: Statement) -> Statement {
         match *ty {
-            ast::Type::Custom(ref _custom) => true,
-            ast::Type::UsedType(ref _used, ref _custom) => true,
-            _ => false,
+            ast::Type::I32 | ast::Type::U32 => python_stmt![&self.float, "(", stmt, ")"],
+            ast::Type::I64 | ast::Type::U64 => python_stmt![&self.int, "(", stmt, ")"],
+            ast::Type::Float | ast::Type::Double => python_stmt![&self.float, "(", stmt, ")"],
+            ast::Type::Custom(ref _custom) => python_stmt![stmt, ".encode()"],
+            ast::Type::UsedType(ref _used, ref _custom) => python_stmt![stmt, ".encode()"],
+            ast::Type::Array(ref inner) => {
+                let inner = self.encode(package, inner, python_stmt!["v"]);
+                python_stmt!["map(lambda v: ", inner, ", ", stmt, ")"]
+            }
+            _ => stmt,
         }
     }
 
-    pub fn decode_name(&self, package: &ast::Package, ty: &ast::Type) -> Result<Option<Name>> {
-        let name = match *ty {
-            ast::Type::I32 => Some(self.int.clone()),
-            ast::Type::U32 => Some(self.int.clone()),
-            ast::Type::I64 => Some(self.int.clone()),
-            ast::Type::U64 => Some(self.int.clone()),
-            ast::Type::Float => Some(self.float.clone()),
-            ast::Type::Double => Some(self.float.clone()),
+    pub fn decode(&self,
+                  package: &ast::Package,
+                  ty: &ast::Type,
+                  stmt: Statement)
+                  -> Result<Statement> {
+        let stmt = match *ty {
+            ast::Type::I32 | ast::Type::U32 => python_stmt![&self.float, "(", stmt, ")"],
+            ast::Type::I64 | ast::Type::U64 => python_stmt![&self.int, "(", stmt, ")"],
+            ast::Type::Float | ast::Type::Double => python_stmt![&self.float, "(", stmt, ")"],
             ast::Type::Custom(ref custom) => {
                 let package = self.package(package);
                 let key = (package.clone(), custom.clone());
                 let _ = self.env.types.get(&key);
-                let custom = &format!("{}.decode", custom);
-                Some(Name::local(&custom).as_name())
+                let name = Name::local(&custom).as_name();
+                python_stmt![name, ".decode(", stmt, ")"]
             }
             ast::Type::UsedType(ref used, ref custom) => {
                 let package = self.env.lookup_used(package, used)?;
                 let package = self.package(package);
                 let package = package.parts.join(".");
-                let custom = format!("{}.decode", custom);
-                Some(Name::imported_alias(&package, &custom, used).as_name())
+                let name = Name::imported_alias(&package, &custom, used).as_name();
+                python_stmt![name, ".decode(", stmt, ")"]
             }
-            _ => None,
+            ast::Type::Array(ref inner) => {
+                let inner = self.decode(package, inner, python_stmt!["v"])?;
+                python_stmt!["map(lambda v: ", inner, ", ", stmt, ")"]
+            }
+            _ => stmt,
         };
 
-        Ok(name)
+        Ok(stmt)
     }
 
 
@@ -102,34 +121,65 @@ impl<'a> Processor<'a> {
             .unwrap_or_else(|| package.clone())
     }
 
-    fn build_constructor(&self, fields: &Vec<ast::Field>) -> MethodSpec {
+    fn build_constructor(&self, fields: &Vec<(ast::Type, String)>) -> MethodSpec {
         let mut constructor = MethodSpec::new("__init__");
         constructor.push_argument(python_stmt!["self"]);
 
-        for field in fields {
-            constructor.push_argument(python_stmt![&field.name]);
-            constructor.push(python_stmt!["self.", &field.name, " = ", &field.name]);
+        for &(_, ref field_name) in fields {
+            constructor.push_argument(python_stmt![field_name]);
+            constructor.push(python_stmt!["self.", field_name, " = ", field_name]);
         }
 
         constructor
     }
 
     fn process_type<L>(&self,
-                       _package: &ast::Package,
+                       package: &ast::Package,
                        ty: &ast::TypeDecl,
-                       _listeners: &L)
+                       listeners: &L)
                        -> Result<ClassSpec>
         where L: Listeners
     {
-        let class = ClassSpec::new(&ty.name);
+        let mut class = ClassSpec::new(&ty.name);
+        let mut fields: Vec<(ast::Type, String)> = Vec::new();
+
+        match ty.value {
+            ast::Type::Tuple(ref arguments) => {
+                let mut index = 0;
+
+                for argument in arguments {
+                    let name = match index {
+                        0 => "first".to_owned(),
+                        1 => "second".to_owned(),
+                        2 => "third".to_owned(),
+                        n => format!("field{}", n),
+                    };
+
+                    fields.push((argument.clone(), name));
+                    index += 1;
+                }
+            }
+            _ => {}
+        }
+
+        class.push(self.build_constructor(&fields));
+
+        // TODO: make configurable
+        if false {
+            for getter in self.build_getters(&fields)? {
+                class.push(&getter);
+            }
+        }
+
+        listeners.type_added(self, package, &fields, &mut class)?;
         Ok(class)
     }
 
-    fn build_getters(&self, fields: &Vec<ast::Field>) -> Result<Vec<MethodSpec>> {
+    fn build_getters(&self, fields: &Vec<(ast::Type, String)>) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
-        for field in fields {
-            let name = self.to_lower_snake.convert(&field.name);
+        for &(_, ref field_name) in fields {
+            let name = self.to_lower_snake.convert(field_name);
             let getter_name = format!("get_{}", name);
             let mut method_spec = MethodSpec::new(&getter_name);
             method_spec.push_argument(python_stmt!["self"]);
@@ -148,12 +198,11 @@ impl<'a> Processor<'a> {
         where L: Listeners
     {
         let mut class = ClassSpec::new(&message.name);
-
         let mut fields = Vec::new();
 
         for member in &message.members {
             if let ast::MessageMember::Field(ref field, _) = *member {
-                fields.push(field.clone());
+                fields.push((field.ty.clone(), field.name.clone()));
                 continue;
             }
         }
@@ -195,11 +244,11 @@ impl<'a> Processor<'a> {
 
         classes.push(interface_spec);
 
-        let mut interface_fields: Vec<ast::Field> = Vec::new();
+        let mut interface_fields: Vec<(ast::Type, String)> = Vec::new();
 
         for member in &interface.members {
             if let ast::InterfaceMember::Field(ref field, _) = *member {
-                interface_fields.push(field.clone());
+                interface_fields.push((field.ty.clone(), field.name.clone()));
             }
         }
 
@@ -211,7 +260,7 @@ impl<'a> Processor<'a> {
 
             for member in &sub_type.members {
                 if let ast::SubTypeMember::Field(ref field) = *member {
-                    fields.push(field.clone());
+                    fields.push((field.ty.clone(), field.name.clone()));
                 }
             }
 

@@ -96,6 +96,8 @@ impl<'a> Processor<'a> {
             ast::Type::U32 => self.integer.clone().as_type(),
             ast::Type::I64 => self.long.clone().as_type(),
             ast::Type::U64 => self.long.clone().as_type(),
+            ast::Type::Float => self.float.clone().as_type(),
+            ast::Type::Double => self.double.clone().as_type(),
             ast::Type::Array(ref ty) => {
                 let argument = self.convert_type(package, ty)?;
                 self.list.with_arguments(vec![argument]).as_type()
@@ -107,8 +109,6 @@ impl<'a> Processor<'a> {
                 Type::class(&package_name, string).as_type()
             }
             ast::Type::Any => self.object.clone().as_type(),
-            ast::Type::Float => self.float.clone().as_type(),
-            ast::Type::Double => self.double.clone().as_type(),
             ast::Type::UsedType(ref used, ref custom) => {
                 let package = self.env.lookup_used(package, used)?;
                 let package_name = self.java_package(package).parts.join(".");

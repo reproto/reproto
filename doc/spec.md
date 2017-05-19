@@ -24,9 +24,10 @@
   * ~~Relative import, especially with package prefixes.~~ (not needed with aliases)
   * ~~Create missing `__init__.py` files.~~
   * Array decoding.
-  * Map decoding.
-  * Tuple decoding.
+  * ~~Map decoding.~~
+  * ~~Tuple decoding.~~
   * Type aliases.
+  * Optional support.
 
 [pest]: https://github.com/pest-parser/pest
 

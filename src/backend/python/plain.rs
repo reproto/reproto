@@ -9,6 +9,7 @@ use errors::*;
 
 pub struct PlainPythonBackend {
     staticmethod: BuiltInName,
+    list: BuiltInName,
     dict: BuiltInName,
 }
 
@@ -16,70 +17,59 @@ impl PlainPythonBackend {
     pub fn new() -> PlainPythonBackend {
         PlainPythonBackend {
             staticmethod: Name::built_in("staticmethod"),
+            list: Name::built_in("list"),
             dict: Name::built_in("dict"),
         }
     }
 
-    fn encode_method(&self,
-                     processor: &processor::Processor,
-                     package: &ast::Package,
-                     fields: &Vec<ast::Field>,
-                     _class: &ClassSpec)
-                     -> Result<MethodSpec> {
+    fn encode_method<F>(&self,
+                        processor: &processor::Processor,
+                        package: &ast::Package,
+                        fields: &Vec<(ast::Type, String)>,
+                        _class: &ClassSpec,
+                        builder: &BuiltInName,
+                        field_set: F)
+                        -> Result<MethodSpec>
+        where F: Fn(&str, Statement) -> Statement
+    {
         let mut encode = MethodSpec::new("encode");
         encode.push_argument(python_stmt!["self"]);
-        encode.push(python_stmt!["data = ", &self.dict, "()"]);
+        encode.push(python_stmt!["data = ", builder, "()"]);
 
-        for field in fields {
-            let mut stmt = Statement::new();
-
-            stmt.push("data[");
-            stmt.push(Variable::String(field.name.to_owned()));
-            stmt.push("] = self.");
-
-            if processor.encode_name(package, &field.ty) {
-                stmt.push(python_stmt![&field.name, ".encode()"]);
-            } else {
-                stmt.push(&field.name);
-            }
-
-            encode.push(stmt);
+        for &(ref field_type, ref field_name) in fields {
+            let stmt = python_stmt!["self.", field_name];
+            let stmt = processor.encode(package, field_type, stmt);
+            encode.push(field_set(field_name, stmt));
         }
 
         encode.push(python_stmt!["return data"]);
         Ok(encode)
     }
 
-    fn decode_method(&self,
-                     processor: &processor::Processor,
-                     package: &ast::Package,
-                     fields: &Vec<ast::Field>,
-                     class: &ClassSpec)
-                     -> Result<MethodSpec> {
+    fn decode_method<F>(&self,
+                        processor: &processor::Processor,
+                        package: &ast::Package,
+                        fields: &Vec<(ast::Type, String)>,
+                        class: &ClassSpec,
+                        variable_fn: F)
+                        -> Result<MethodSpec>
+        where F: Fn(usize, &str) -> Variable
+    {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
-        decode.push_argument(python_stmt!["_data"]);
+        decode.push_argument(python_stmt!["data"]);
 
         let mut arguments = Statement::new();
 
-        for field in fields {
-            let var_name = format!("f_{}", &field.name);
+        for (i, &(ref field_ty, ref field_name)) in fields.iter().enumerate() {
+            let var_name = format!("f_{}", field_name);
+
+            let var_stmt = python_stmt!["data[", variable_fn(i, field_name), "]"];
 
             let mut stmt = Statement::new();
             stmt.push(&var_name);
             stmt.push(" = ");
-
-            if let Some(name) = processor.decode_name(package, &field.ty)? {
-                stmt.push(name);
-                stmt.push("(_data[");
-                stmt.push(Variable::String(field.name.to_owned()));
-                stmt.push("])");
-            } else {
-                stmt.push("_data[");
-                stmt.push(Variable::String(field.name.to_owned()));
-                stmt.push("]");
-            }
-
+            stmt.push(processor.decode(package, field_ty, var_stmt)?);
             decode.push(stmt);
             arguments.push(var_name);
         }
@@ -95,11 +85,53 @@ impl processor::Listeners for PlainPythonBackend {
     fn class_added(&self,
                    processor: &processor::Processor,
                    package: &ast::Package,
-                   fields: &Vec<ast::Field>,
+                   fields: &Vec<(ast::Type, String)>,
                    class: &mut ClassSpec)
                    -> Result<()> {
-        let decode = self.decode_method(processor, package, fields, class)?;
-        let encode = self.encode_method(processor, package, fields, class)?;
+
+        let decode = self.decode_method(processor,
+                           package,
+                           fields,
+                           class,
+                           |_, name| Variable::String(name.to_owned()))?;
+
+        let encode = self.encode_method(processor,
+                           package,
+                           fields,
+                           class,
+                           &self.dict,
+                           |name, stmt| {
+                               python_stmt!["data[",
+                                            Variable::String(name.to_owned()),
+                                            "] = ",
+                                            stmt]
+                           })?;
+
+        class.push(decode);
+        class.push(encode);
+        Ok(())
+    }
+
+    fn type_added(&self,
+                  processor: &processor::Processor,
+                  package: &ast::Package,
+                  fields: &Vec<(ast::Type, String)>,
+                  class: &mut ClassSpec)
+                  -> Result<()> {
+
+        let decode = self.decode_method(processor,
+                           package,
+                           fields,
+                           class,
+                           |i, _| Variable::Literal(i.to_string()))?;
+
+        let encode = self.encode_method(processor,
+                           package,
+                           fields,
+                           class,
+                           &self.list,
+                           |_, stmt| python_stmt!["data.append(", stmt, ")"])?;
+
         class.push(decode);
         class.push(encode);
         Ok(())
