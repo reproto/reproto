@@ -148,7 +148,7 @@ impl_rdp! {
         type_literal = { ident }
         used_type = { ident ~ ["."] ~ ident }
         tuple = { ["("] ~ ( tuple_element ~ ([","] ~ tuple_element)* ) ~ [")"] }
-        tuple_element = { type_spec }
+        tuple_element = { (ident ~ [":"])? ~ type_spec }
         map = { ["{"] ~ type_spec ~ [":"] ~ type_spec ~ ["}"] }
         array = { ["["] ~ array_argument ~ ["]"] }
         array_argument = { type_spec }
@@ -407,13 +407,23 @@ impl_rdp! {
             },
         }
 
-        _tuple_element_list(&self) -> LinkedList<ast::Type> {
-            (_: tuple_element, first: _type_spec(), mut tail: _tuple_element_list()) => {
+        _tuple_element_list(&self) -> LinkedList<ast::TupleElement> {
+            (_: tuple_element, first: _tuple_element(), mut tail: _tuple_element_list()) => {
                 tail.push_front(first);
                 tail
             },
 
             () => LinkedList::new(),
+        }
+
+        _tuple_element(&self) -> ast::TupleElement {
+            (&name: ident, ty: _type_spec()) => {
+                let name = Some(name.to_owned());
+                ast::TupleElement::new(name, ty)
+            },
+            (ty: _type_spec()) => {
+                ast::TupleElement::new(None, ty)
+            },
         }
 
         _modifier(&self) -> ast::Modifier {
@@ -498,5 +508,24 @@ mod tests {
     fn test_strip_code_block() {
         let result = strip_code_block("\n   hello\n  world\n\n\n again\n\n\n");
         assert_eq!(vec!["  hello", " world", "", "", "again"], result);
+    }
+
+    #[test]
+    fn test_tuple() {
+        let mut elements = Vec::new();
+        elements.push(ast::TupleElement::new(Some("foo".to_owned()), ast::Type::String));
+        elements.push(ast::TupleElement::new(Some("bar".to_owned()), ast::Type::String));
+        elements.push(ast::TupleElement::new(None, ast::Type::U32));
+
+        let reference = ast::Type::Tuple(elements);
+
+        let mut parser = Rdp::new(StringInput::new("(foo: string, bar: string, u32)"));
+
+        assert!(parser.type_spec());
+        assert!(parser.end());
+
+        let result = parser._type_spec();
+
+        assert_eq!(reference, result);
     }
 }

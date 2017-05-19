@@ -9,7 +9,6 @@ use errors::*;
 
 pub struct PlainPythonBackend {
     staticmethod: BuiltInName,
-    list: BuiltInName,
     dict: BuiltInName,
 }
 
@@ -17,7 +16,6 @@ impl PlainPythonBackend {
     pub fn new() -> PlainPythonBackend {
         PlainPythonBackend {
             staticmethod: Name::built_in("staticmethod"),
-            list: Name::built_in("list"),
             dict: Name::built_in("dict"),
         }
     }
@@ -26,7 +24,6 @@ impl PlainPythonBackend {
                         processor: &processor::Processor,
                         package: &ast::Package,
                         fields: &Vec<(ast::Type, String)>,
-                        _class: &ClassSpec,
                         builder: &BuiltInName,
                         field_set: F)
                         -> Result<MethodSpec>
@@ -43,6 +40,25 @@ impl PlainPythonBackend {
         }
 
         encode.push(python_stmt!["return data"]);
+        Ok(encode)
+    }
+
+    fn encode_tuple_method(&self,
+                           processor: &processor::Processor,
+                           package: &ast::Package,
+                           fields: &Vec<(ast::Type, String)>)
+                           -> Result<MethodSpec> {
+        let mut values = Statement::new();
+
+        let mut encode = MethodSpec::new("encode");
+        encode.push_argument(python_stmt!["self"]);
+
+        for &(ref field_type, ref field_name) in fields {
+            let stmt = python_stmt!["self.", field_name];
+            values.push(processor.encode(package, field_type, stmt)?);
+        }
+
+        encode.push(python_stmt!["return (", values.join(", "), ")"]);
         Ok(encode)
     }
 
@@ -95,29 +111,21 @@ impl processor::Listeners for PlainPythonBackend {
                            class,
                            |_, name| Variable::String(name.to_owned()))?;
 
-        let encode = self.encode_method(processor,
-                           package,
-                           fields,
-                           class,
-                           &self.dict,
-                           |name, stmt| {
-                               python_stmt!["data[",
-                                            Variable::String(name.to_owned()),
-                                            "] = ",
-                                            stmt]
-                           })?;
+        let encode = self.encode_method(processor, package, fields, &self.dict, |name, stmt| {
+                python_stmt!["data[", Variable::String(name.to_owned()), "] = ", stmt]
+            })?;
 
         class.push(decode);
         class.push(encode);
         Ok(())
     }
 
-    fn type_added(&self,
-                  processor: &processor::Processor,
-                  package: &ast::Package,
-                  fields: &Vec<(ast::Type, String)>,
-                  class: &mut ClassSpec)
-                  -> Result<()> {
+    fn tuple_added(&self,
+                   processor: &processor::Processor,
+                   package: &ast::Package,
+                   fields: &Vec<(ast::Type, String)>,
+                   class: &mut ClassSpec)
+                   -> Result<()> {
 
         let decode = self.decode_method(processor,
                            package,
@@ -125,12 +133,7 @@ impl processor::Listeners for PlainPythonBackend {
                            class,
                            |i, _| Variable::Literal(i.to_string()))?;
 
-        let encode = self.encode_method(processor,
-                           package,
-                           fields,
-                           class,
-                           &self.list,
-                           |_, stmt| python_stmt!["data.append(", stmt, ")"])?;
+        let encode = self.encode_tuple_method(processor, package, fields)?;
 
         class.push(decode);
         class.push(encode);

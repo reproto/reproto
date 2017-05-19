@@ -3,7 +3,7 @@ package foo.bar.baz;
 use foo.bar;
 use foo as bar2;
 
-type Tuple = (double, double);
+type Tuple = (double, arg: double);
 
 // hello
 

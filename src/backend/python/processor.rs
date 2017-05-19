@@ -21,12 +21,12 @@ pub trait Listeners {
                    class: &mut ClassSpec)
                    -> Result<()>;
 
-    fn type_added(&self,
-                  processor: &Processor,
-                  package: &ast::Package,
-                  fields: &Vec<(ast::Type, String)>,
-                  class: &mut ClassSpec)
-                  -> Result<()>;
+    fn tuple_added(&self,
+                   processor: &Processor,
+                   package: &ast::Package,
+                   fields: &Vec<(ast::Type, String)>,
+                   class: &mut ClassSpec)
+                   -> Result<()>;
 
     fn interface_added(&self,
                        processor: &Processor,
@@ -65,7 +65,7 @@ impl<'a> Processor<'a> {
             ast::Type::Float | ast::Type::Double => true,
             ast::Type::String => true,
             ast::Type::Any => true,
-            ast::Type::Tuple(ref arguments) => arguments.iter().all(|a| self.is_native(a)),
+            ast::Type::Tuple(ref elements) => elements.iter().all(|e| self.is_native(&e.ty)),
             ast::Type::Array(ref inner) => self.is_native(inner),
             _ => false,
         }
@@ -177,39 +177,40 @@ impl<'a> Processor<'a> {
                        -> Result<ClassSpec>
         where L: Listeners
     {
-        let mut class = ClassSpec::new(&ty.name);
-        let mut fields: Vec<(ast::Type, String)> = Vec::new();
-
         match ty.value {
-            ast::Type::Tuple(ref arguments) => {
+            ast::Type::Tuple(ref elements) => {
+                let mut class = ClassSpec::new(&ty.name);
+                let mut fields: Vec<(ast::Type, String)> = Vec::new();
+
                 let mut index = 0;
 
-                for argument in arguments {
-                    let name = match index {
+                for element in elements {
+                    let index_name = match index {
                         0 => "first".to_owned(),
                         1 => "second".to_owned(),
                         2 => "third".to_owned(),
                         n => format!("field{}", n),
                     };
 
-                    fields.push((argument.clone(), name));
+                    let name = element.name.clone().unwrap_or(index_name);
+                    fields.push((element.ty.clone(), name));
                     index += 1;
                 }
+
+                class.push(self.build_constructor(&fields));
+
+                // TODO: make configurable
+                if false {
+                    for getter in self.build_getters(&fields)? {
+                        class.push(&getter);
+                    }
+                }
+
+                listeners.tuple_added(self, package, &fields, &mut class)?;
+                Ok(class)
             }
-            _ => {}
+            _ => Err(format!("unsupported type: {:?}", ty).into()),
         }
-
-        class.push(self.build_constructor(&fields));
-
-        // TODO: make configurable
-        if false {
-            for getter in self.build_getters(&fields)? {
-                class.push(&getter);
-            }
-        }
-
-        listeners.type_added(self, package, &fields, &mut class)?;
-        Ok(class)
     }
 
     fn build_getters(&self, fields: &Vec<(ast::Type, String)>) -> Result<Vec<MethodSpec>> {

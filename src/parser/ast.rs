@@ -8,6 +8,21 @@ use errors::*;
 pub type Pos = (usize, usize);
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct TupleElement {
+    pub name: Option<String>,
+    pub ty: Type,
+}
+
+impl TupleElement {
+    pub fn new(name: Option<String>, ty: Type) -> TupleElement {
+        TupleElement {
+            name: name,
+            ty: ty,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum OptionValue {
     String(String),
 }
@@ -117,7 +132,7 @@ pub enum Type {
     UsedType(String, String),
     Custom(String),
     Array(Box<Type>),
-    Tuple(Vec<Type>),
+    Tuple(Vec<TupleElement>),
     Map(Box<Type>, Box<Type>),
 }
 

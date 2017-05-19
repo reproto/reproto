@@ -5,8 +5,8 @@ use heroic.common as c;
 interface Sampling {
 }
 
-type Point = (i64, double);
-type Event = (i64, any);
+type Point = (timestamp: i64, value: double);
+type Event = (timestamp: i64, payload: any);
 
 interface Samples {
   Points {

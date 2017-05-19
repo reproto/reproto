@@ -1,3 +1,6 @@
+* [Extensions](#extensions)
+* [Tuples](#tuples)
+
 # TODO
 
 * Support validation?
@@ -31,7 +34,9 @@
   * Strict decoding/encoding where types are deeply verified.
 
 * General
-  * Treat named types as (named) simple types, like tuples.
+  * Enum support
+    * Needs new syntax.
+  * ~~Treat named types as (named) simple types, like tuples.~~
     * Needs new syntax.
 
 [pest]: https://github.com/pest-parser/pest
@@ -317,6 +322,39 @@ message Foo {
     }
   @@
 }
+```
+
+## Tuples
+
+Tuples are sequences of data, where each element has a known type.
+
+```
+type Sample = (time: u64, value: double);
+```
+
+A single sample (e.g. `Sample(1, 2.0)`) would be encoded like this in JSON:
+
+```json
+[1, 2.0]
+```
+
+The naming is optional, but will be used when generating classes for languages which do not
+natively support tuples, like Python:
+
+```python
+class Sample:
+  def __init__(self, time, value):
+    self.time = time
+    self.value = value
+
+  @staticmethod
+  def decode(data):
+    time = data[0]
+    value = data[1]
+    return Sample(time, value)
+
+  def encode(self):
+    return (self.time, self.value)
 ```
 
 # Backends

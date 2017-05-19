@@ -149,14 +149,14 @@ impl<'a> Processor<'a> {
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
 
         match ty.value {
-            ast::Type::Tuple(ref arguments) => {
+            ast::Type::Tuple(ref elements) => {
                 let mut index = 0;
 
-                for argument in arguments {
-                    let field_type = self.convert_type(package, argument)?;
+                for element in elements {
+                    let field_type = self.convert_type(package, &element.ty)?;
                     let mods = java_mods![Modifier::Private, Modifier::Final];
 
-                    let name = match index {
+                    let index_name = match index {
                         0 => "first".to_owned(),
                         1 => "second".to_owned(),
                         2 => "third".to_owned(),
@@ -165,6 +165,7 @@ impl<'a> Processor<'a> {
 
                     index += 1;
 
+                    let name = element.name.clone().unwrap_or(index_name);
                     let field = FieldSpec::new(mods, &field_type, &name);
                     class.push_field(&field);
                 }
