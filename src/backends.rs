@@ -5,8 +5,8 @@ use errors::*;
 
 pub fn resolve(backend: &str) -> Result<Box<Backend>> {
     match backend {
-        "fasterxml" => Ok(Box::new(FasterXmlBackend::new())),
-        "plain_python" => Ok(Box::new(PlainPythonBackend::new())),
+        "java" | "java/fasterxml" => Ok(Box::new(FasterXmlBackend::new())),
+        "python" | "python/plain" => Ok(Box::new(PlainPythonBackend::new())),
         _ => Err(ErrorKind::MissingBackend.into()),
     }
 }
