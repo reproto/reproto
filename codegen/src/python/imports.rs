@@ -1,8 +1,9 @@
 use super::class_spec::ClassSpec;
 use super::element_spec::ElementSpec;
+use super::elements::Elements;
+use super::name::{Name, ImportedName};
 use super::statement::Statement;
 use super::variable::Variable;
-use super::name::{Name, ImportedName};
 
 pub trait ImportReceiver {
     fn receive(&mut self, name: &ImportedName);
@@ -76,6 +77,14 @@ impl Imports for ElementSpec {
 }
 
 impl Imports for ClassSpec {
+    fn imports<I>(&self, receiver: &mut I)
+        where I: ImportReceiver
+    {
+        self.elements.imports(receiver);
+    }
+}
+
+impl Imports for Elements {
     fn imports<I>(&self, receiver: &mut I)
         where I: ImportReceiver
     {

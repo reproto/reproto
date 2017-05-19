@@ -1,5 +1,6 @@
 use super::class_spec::ClassSpec;
 use super::decorator_spec::DecoratorSpec;
+use super::elements::Elements;
 use super::method_spec::MethodSpec;
 use super::statement::Statement;
 
@@ -42,33 +43,6 @@ impl ElementSpec {
         };
 
         out
-    }
-
-    pub fn join<S>(self, separator: S) -> ElementSpec
-        where S: AsElementSpec + Clone
-    {
-        if let ElementSpec::Elements(elements) = self {
-            let mut it = elements.into_iter();
-
-            let part = match it.next() {
-                Some(part) => part,
-                None => return ElementSpec::Elements(vec![]),
-            };
-
-            let mut parts: Vec<ElementSpec> = Vec::new();
-            parts.push(part);
-
-            let sep = &separator;
-
-            while let Some(part) = it.next() {
-                parts.push(sep.as_element_spec());
-                parts.push(part);
-            }
-
-            return ElementSpec::Elements(parts);
-        }
-
-        return self;
     }
 }
 
@@ -132,10 +106,10 @@ impl AsElementSpec for MethodSpec {
 
 impl AsElementSpec for ClassSpec {
     fn as_element_spec(self) -> ElementSpec {
-        let mut out = Vec::new();
+        let mut out = Elements::new();
 
         for decorator in self.decorators {
-            out.push(decorator.as_element_spec());
+            out.push(decorator);
         }
 
         let mut decl = Statement::new();
@@ -157,17 +131,15 @@ impl AsElementSpec for ClassSpec {
 
         decl.push(":");
 
-        out.push(decl.as_element_spec());
+        out.push(decl);
 
         if self.elements.is_empty() {
-            out.push(ElementSpec::Nested(Box::new("pass".as_element_spec())));
+            out.push_nested("pass");
         } else {
-            out.push(ElementSpec::Nested(Box::new(self.elements
-                .as_element_spec()
-                .join(ElementSpec::Spacing))));
+            out.push_nested(self.elements.join(ElementSpec::Spacing));
         }
 
-        ElementSpec::Elements(out)
+        out.as_element_spec()
     }
 }
 
@@ -187,8 +159,8 @@ impl AsElementSpec for Statement {
     }
 }
 
-impl AsElementSpec for Vec<ElementSpec> {
+impl AsElementSpec for Elements {
     fn as_element_spec(self) -> ElementSpec {
-        ElementSpec::Elements(self)
+        ElementSpec::Elements(self.elements)
     }
 }

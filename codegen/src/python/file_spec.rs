@@ -1,22 +1,23 @@
 use super::element_spec::{AsElementSpec, ElementSpec};
-use super::imports::ImportReceiver;
+use super::elements::Elements;
+use super::imports::{Imports, ImportReceiver};
 use super::name::ImportedName;
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct FileSpec {
-    pub elements: Vec<ElementSpec>,
+    pub elements: Elements,
 }
 
 impl FileSpec {
     pub fn new() -> FileSpec {
-        FileSpec { elements: Vec::new() }
+        FileSpec { elements: Elements::new() }
     }
 
     pub fn push<E>(&mut self, element: E)
         where E: AsElementSpec
     {
-        self.elements.push(element.as_element_spec());
+        self.elements.push(element);
     }
 
     pub fn format(&self) -> String {
@@ -24,7 +25,7 @@ impl FileSpec {
 
         let mut imports = BTreeSet::new();
 
-        imports.import_all(&self.elements);
+        self.elements.imports(&mut imports);
 
         let modules: BTreeSet<(String, Option<String>)> =
             imports.into_iter().map(|imported| (imported.module, imported.alias)).collect();
@@ -45,10 +46,9 @@ impl FileSpec {
             out.push('\n');
         }
 
-        let elements = &self.elements;
-        let element = elements.as_element_spec().join(ElementSpec::Spacing);
+        let elements = self.elements.clone().join(ElementSpec::Spacing).as_element_spec();
 
-        for line in element.format("", "  ") {
+        for line in elements.format("", "  ") {
             out.push_str(&line);
             out.push('\n');
         }

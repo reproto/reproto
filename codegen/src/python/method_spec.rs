@@ -1,13 +1,14 @@
-use super::statement::{AsStatement, Statement};
-use super::element_spec::{AsElementSpec, ElementSpec};
 use super::decorator_spec::{AsDecoratorSpec, DecoratorSpec};
+use super::element_spec::AsElementSpec;
+use super::elements::Elements;
+use super::statement::{AsStatement, Statement};
 
 #[derive(Debug, Clone)]
 pub struct MethodSpec {
     pub name: String,
     pub decorators: Vec<DecoratorSpec>,
     pub arguments: Vec<Statement>,
-    pub elements: Vec<ElementSpec>,
+    pub elements: Elements,
 }
 
 impl MethodSpec {
@@ -16,7 +17,7 @@ impl MethodSpec {
             name: name.to_owned(),
             decorators: Vec::new(),
             arguments: Vec::new(),
-            elements: Vec::new(),
+            elements: Elements::new(),
         }
     }
 
@@ -35,6 +36,6 @@ impl MethodSpec {
     pub fn push<E>(&mut self, element: E)
         where E: AsElementSpec
     {
-        self.elements.push(element.as_element_spec());
+        self.elements.push(element);
     }
 }

@@ -46,6 +46,7 @@
   * ~~Map decoding.~~
   * ~~Tuple decoding.~~
   * ~~Optional support~~.
+  * Encode `type` field.
   * Type aliases.
   * Strict decoding/encoding where types are deeply verified.
 
