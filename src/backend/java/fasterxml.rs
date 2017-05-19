@@ -28,7 +28,7 @@ impl FasterXmlBackend {
 }
 
 impl processor::Listeners for FasterXmlBackend {
-    fn class_added(&self, class: &mut ClassSpec) -> Result<()> {
+    fn class_added(&self, fields: &Vec<processor::Field>, class: &mut ClassSpec) -> Result<()> {
         if class.constructors.len() != 1 {
             return Err("Expected exactly one constructor".into());
         }
@@ -38,10 +38,16 @@ impl processor::Listeners for FasterXmlBackend {
 
         constructor.push_annotation(&creator_annotation);
 
+        let mut field_it = fields.iter();
+
         for argument in &mut constructor.arguments {
-            let mut property = AnnotationSpec::new(&self.json_property);
-            property.push_argument(java_stmt![Variable::String(argument.name.clone())]);
-            argument.push_annotation(&property);
+            if let Some(field) = field_it.next() {
+                let mut property = AnnotationSpec::new(&self.json_property);
+                property.push_argument(java_stmt![Variable::String(field.name.clone())]);
+                argument.push_annotation(&property);
+            } else {
+                return Err("missing field".into());
+            }
         }
 
         Ok(())
@@ -87,6 +93,7 @@ impl processor::Listeners for FasterXmlBackend {
     }
 
     fn sub_type_added(&self,
+                      _fields: &Vec<processor::Field>,
                       _interface: &ast::InterfaceDecl,
                       sub_type: &ast::SubType,
                       class: &mut ClassSpec)

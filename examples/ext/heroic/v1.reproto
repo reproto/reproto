@@ -1,6 +1,8 @@
 package heroic.v1;
 
 message Query {
+  query_id?: string;
+
   // added method
   java @@
     /* do something with aggregation */

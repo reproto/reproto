@@ -14,7 +14,7 @@ use errors::*;
 const JAVA_CONTEXT: &str = "java";
 
 pub trait Listeners {
-    fn class_added(&self, _class: &mut ClassSpec) -> Result<()> {
+    fn class_added(&self, _fields: &Vec<Field>, _class: &mut ClassSpec) -> Result<()> {
         Ok(())
     }
 
@@ -26,11 +26,29 @@ pub trait Listeners {
     }
 
     fn sub_type_added(&self,
+                      _fields: &Vec<Field>,
                       _interface: &ast::InterfaceDecl,
                       _sub_type: &ast::SubType,
                       _class: &mut ClassSpec)
                       -> Result<()> {
         Ok(())
+    }
+}
+
+#[derive(Clone)]
+pub struct Field {
+    pub modifier: ast::Modifier,
+    pub name: String,
+    pub field_spec: FieldSpec,
+}
+
+impl Field {
+    pub fn new(modifier: ast::Modifier, name: String, field_spec: FieldSpec) -> Field {
+        Field {
+            modifier: modifier,
+            name: name,
+            field_spec: field_spec,
+        }
     }
 }
 
@@ -147,6 +165,7 @@ impl<'a> Processor<'a> {
         where L: Listeners
     {
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
+        let mut fields = Vec::new();
 
         match ty.value {
             ast::Type::Tuple(ref elements) => {
@@ -166,8 +185,9 @@ impl<'a> Processor<'a> {
                     index += 1;
 
                     let name = element.name.clone().unwrap_or(index_name);
-                    let field = FieldSpec::new(mods, &field_type, &name);
-                    class.push_field(&field);
+                    let field_spec = FieldSpec::new(mods, &field_type, &name);
+                    class.push_field(&field_spec);
+                    fields.push(Field::new(ast::Modifier::Required, name, field_spec));
                 }
             }
             _ => {}
@@ -180,7 +200,7 @@ impl<'a> Processor<'a> {
             class.push_method(&getter);
         }
 
-        listeners.class_added(&mut class)?;
+        listeners.class_added(&fields, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push_class(&class);
@@ -211,10 +231,13 @@ impl<'a> Processor<'a> {
         where L: Listeners
     {
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &message.name);
+        let mut fields = Vec::new();
 
         for member in &message.members {
             if let ast::MessageMember::Field(ref field, _) = *member {
-                class.push_field(&self.push_field(&package, field)?);
+                let field_spec = self.push_field(&package, field)?;
+                class.push_field(&field_spec);
+                fields.push(Field::new(field.modifier.clone(), field.name.clone(), field_spec));
                 continue;
             }
 
@@ -234,7 +257,7 @@ impl<'a> Processor<'a> {
             class.push_method(&getter);
         }
 
-        listeners.class_added(&mut class)?;
+        listeners.class_added(&fields, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push_class(&class);
@@ -250,28 +273,29 @@ impl<'a> Processor<'a> {
         where L: Listeners
     {
         let mut interface_spec = InterfaceSpec::new(java_mods![Modifier::Public], &interface.name);
-
-        let mut interface_fields: Vec<FieldSpec> = Vec::new();
+        let mut interface_fields = Vec::new();
 
         for member in &interface.members {
             if let ast::InterfaceMember::Field(ref field, _) = *member {
-                let field = self.push_field(&package, field)?;
-                interface_fields.push(field);
+                let field_spec = self.push_field(&package, field)?;
+                interface_fields.push(Field::new(field.modifier.clone(), field.name.clone(), field_spec));
             }
         }
 
         for (_, ref sub_type) in &interface.sub_types {
             let mods = java_mods![Modifier::Public, Modifier::Static];
             let mut class = ClassSpec::new(mods, &sub_type.name);
+            let mut fields = interface_fields.clone();
 
             for interface_field in &interface_fields {
-                class.push_field(&interface_field);
+                class.push_field(&interface_field.field_spec);
             }
 
             for member in &sub_type.members {
                 if let ast::SubTypeMember::Field(ref field) = *member {
-                    let field = self.push_field(&package, field)?;
-                    class.push_field(&field);
+                    let field_spec = self.push_field(&package, field)?;
+                    class.push_field(&field_spec);
+                    fields.push(Field::new(field.modifier.clone(), field.name.clone(), field_spec));
                 }
             }
 
@@ -282,8 +306,8 @@ impl<'a> Processor<'a> {
                 class.push_method(&getter);
             }
 
-            listeners.class_added(&mut class)?;
-            listeners.sub_type_added(interface, sub_type, &mut class)?;
+            listeners.class_added(&fields, &mut class)?;
+            listeners.sub_type_added(&fields, interface, sub_type, &mut class)?;
 
             interface_spec.push_class(&class);
         }
