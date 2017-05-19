@@ -10,7 +10,6 @@ use errors::*;
 pub struct FasterXmlBackend {
     json_creator: ClassType,
     json_property: ClassType,
-    json_type_name: ClassType,
     json_sub_types: ClassType,
     json_type_info: ClassType,
 }
@@ -20,7 +19,6 @@ impl FasterXmlBackend {
         FasterXmlBackend {
             json_creator: Type::class("com.fasterxml.jackson.annotation", "JsonCreator"),
             json_property: Type::class("com.fasterxml.jackson.annotation", "JsonProperty"),
-            json_type_name: Type::class("com.fasterxml.jackson.annotation", "JsonTypeName"),
             json_sub_types: Type::class("com.fasterxml.jackson.annotation", "JsonSubTypes"),
             json_type_info: Type::class("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
         }
@@ -73,14 +71,20 @@ impl processor::Listeners for FasterXmlBackend {
         {
             let mut arguments = Statement::new();
 
-            for (key, _sub_type) in &interface.sub_types {
+            for (key, sub_type) in &interface.sub_types {
+                let mut type_args = Statement::new();
+
+                for name in &sub_type.options.lookup_string("name") {
+                    let name: String = (*name).clone();
+                    type_args.push(java_stmt!["name=", Variable::String(name)]);
+                    type_args.push(java_stmt!["value=", &interface_spec.name, ".", key, ".class"]);
+                }
+
                 arguments.push(java_stmt!["@",
                                           &self.json_sub_types,
                                           ".Type(",
-                                          &interface_spec.name,
-                                          ".",
-                                          key,
-                                          ".class)"]);
+                                          type_args.join(", "),
+                                          ")"]);
             }
 
             let mut sub_types = AnnotationSpec::new(&self.json_sub_types);
@@ -95,15 +99,14 @@ impl processor::Listeners for FasterXmlBackend {
     fn sub_type_added(&self,
                       _fields: &Vec<processor::Field>,
                       _interface: &ast::InterfaceDecl,
-                      sub_type: &ast::SubType,
-                      class: &mut ClassSpec)
+                      _sub_type: &ast::SubType,
+                      _class: &mut ClassSpec)
                       -> Result<()> {
-
-        if let Some(name) = sub_type.options.lookup_string_nth("name", 0) {
-            let mut type_name = AnnotationSpec::new(&self.json_type_name);
-            type_name.push_argument(java_stmt![Variable::String(name.clone())]);
-            class.push_annotation(&type_name);
-        }
+        // if let Some(name) = sub_type.options.lookup_string_nth("name", 0) {
+        // let mut type_name = AnnotationSpec::new(&self.json_type_name);
+        // type_name.push_argument(java_stmt![Variable::String(name.clone())]);
+        // class.push_annotation(&type_name);
+        // }
 
         Ok(())
     }
