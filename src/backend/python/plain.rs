@@ -23,7 +23,7 @@ impl PlainPythonBackend {
     fn encode_method<F>(&self,
                         processor: &processor::Processor,
                         package: &ast::Package,
-                        fields: &Vec<(ast::Type, String)>,
+                        fields: &Vec<processor::Field>,
                         builder: &BuiltInName,
                         field_set: F)
                         -> Result<MethodSpec>
@@ -33,10 +33,10 @@ impl PlainPythonBackend {
         encode.push_argument(python_stmt!["self"]);
         encode.push(python_stmt!["data = ", builder, "()"]);
 
-        for &(ref field_type, ref field_name) in fields {
-            let stmt = python_stmt!["self.", field_name];
-            let stmt = processor.encode(package, field_type, stmt)?;
-            encode.push(field_set(field_name, stmt));
+        for field in fields {
+            let stmt = python_stmt!["self.", &field.name];
+            let stmt = processor.encode(package, &field.ty, stmt)?;
+            encode.push(field_set(&field.name, stmt));
         }
 
         encode.push(python_stmt!["return data"]);
@@ -46,16 +46,16 @@ impl PlainPythonBackend {
     fn encode_tuple_method(&self,
                            processor: &processor::Processor,
                            package: &ast::Package,
-                           fields: &Vec<(ast::Type, String)>)
+                           fields: &Vec<processor::Field>)
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
 
         let mut encode = MethodSpec::new("encode");
         encode.push_argument(python_stmt!["self"]);
 
-        for &(ref field_type, ref field_name) in fields {
-            let stmt = python_stmt!["self.", field_name];
-            values.push(processor.encode(package, field_type, stmt)?);
+        for field in fields {
+            let stmt = python_stmt!["self.", &field.name];
+            values.push(processor.encode(package, &field.ty, stmt)?);
         }
 
         encode.push(python_stmt!["return (", values.join(", "), ")"]);
@@ -65,7 +65,7 @@ impl PlainPythonBackend {
     fn decode_method<F>(&self,
                         processor: &processor::Processor,
                         package: &ast::Package,
-                        fields: &Vec<(ast::Type, String)>,
+                        fields: &Vec<processor::Field>,
                         class: &ClassSpec,
                         variable_fn: F)
                         -> Result<MethodSpec>
@@ -77,15 +77,15 @@ impl PlainPythonBackend {
 
         let mut arguments = Statement::new();
 
-        for (i, &(ref field_ty, ref field_name)) in fields.iter().enumerate() {
-            let var_name = format!("f_{}", field_name);
+        for (i, field) in fields.iter().enumerate() {
+            let var_name = format!("f_{}", field.name);
 
-            let var_stmt = python_stmt!["data[", variable_fn(i, field_name), "]"];
+            let var_stmt = python_stmt!["data[", variable_fn(i, &field.name), "]"];
 
             let mut stmt = Statement::new();
             stmt.push(&var_name);
             stmt.push(" = ");
-            stmt.push(processor.decode(package, field_ty, var_stmt)?);
+            stmt.push(processor.decode(package, &field.ty, var_stmt)?);
             decode.push(stmt);
             arguments.push(var_name);
         }
@@ -101,7 +101,7 @@ impl processor::Listeners for PlainPythonBackend {
     fn class_added(&self,
                    processor: &processor::Processor,
                    package: &ast::Package,
-                   fields: &Vec<(ast::Type, String)>,
+                   fields: &Vec<processor::Field>,
                    class: &mut ClassSpec)
                    -> Result<()> {
 
@@ -123,7 +123,7 @@ impl processor::Listeners for PlainPythonBackend {
     fn tuple_added(&self,
                    processor: &processor::Processor,
                    package: &ast::Package,
-                   fields: &Vec<(ast::Type, String)>,
+                   fields: &Vec<processor::Field>,
                    class: &mut ClassSpec)
                    -> Result<()> {
 

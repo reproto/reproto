@@ -17,14 +17,14 @@ pub trait Listeners {
     fn class_added(&self,
                    processor: &Processor,
                    package: &ast::Package,
-                   fields: &Vec<(ast::Type, String)>,
+                   fields: &Vec<Field>,
                    class: &mut ClassSpec)
                    -> Result<()>;
 
     fn tuple_added(&self,
                    processor: &Processor,
                    package: &ast::Package,
-                   fields: &Vec<(ast::Type, String)>,
+                   fields: &Vec<Field>,
                    class: &mut ClassSpec)
                    -> Result<()>;
 
@@ -34,6 +34,23 @@ pub trait Listeners {
                        interface: &ast::InterfaceDecl,
                        interface_spec: &mut ClassSpec)
                        -> Result<()>;
+}
+
+#[derive(Clone)]
+pub struct Field {
+    pub modifier: ast::Modifier,
+    pub ty: ast::Type,
+    pub name: String,
+}
+
+impl Field {
+    pub fn new(modifier: ast::Modifier, ty: ast::Type, name: String) -> Field {
+        Field {
+            modifier: modifier,
+            ty: ty,
+            name: name,
+        }
+    }
 }
 
 pub struct Processor<'a> {
@@ -158,13 +175,13 @@ impl<'a> Processor<'a> {
             .unwrap_or_else(|| package.clone())
     }
 
-    fn build_constructor(&self, fields: &Vec<(ast::Type, String)>) -> MethodSpec {
+    fn build_constructor(&self, fields: &Vec<Field>) -> MethodSpec {
         let mut constructor = MethodSpec::new("__init__");
         constructor.push_argument(python_stmt!["self"]);
 
-        for &(_, ref field_name) in fields {
-            constructor.push_argument(python_stmt![field_name]);
-            constructor.push(python_stmt!["self.", field_name, " = ", field_name]);
+        for field in fields {
+            constructor.push_argument(python_stmt![&field.name]);
+            constructor.push(python_stmt!["self.", &field.name, " = ", &field.name]);
         }
 
         constructor
@@ -180,7 +197,7 @@ impl<'a> Processor<'a> {
         match ty.value {
             ast::Type::Tuple(ref elements) => {
                 let mut class = ClassSpec::new(&ty.name);
-                let mut fields: Vec<(ast::Type, String)> = Vec::new();
+                let mut fields: Vec<Field> = Vec::new();
 
                 let mut index = 0;
 
@@ -193,7 +210,7 @@ impl<'a> Processor<'a> {
                     };
 
                     let name = element.name.clone().unwrap_or(index_name);
-                    fields.push((element.ty.clone(), name));
+                    fields.push(Field::new(ast::Modifier::Required, element.ty.clone(), name));
                     index += 1;
                 }
 
@@ -213,11 +230,11 @@ impl<'a> Processor<'a> {
         }
     }
 
-    fn build_getters(&self, fields: &Vec<(ast::Type, String)>) -> Result<Vec<MethodSpec>> {
+    fn build_getters(&self, fields: &Vec<Field>) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
-        for &(_, ref field_name) in fields {
-            let name = self.to_lower_snake.convert(field_name);
+        for field in fields {
+            let name = self.to_lower_snake.convert(&field.name);
             let getter_name = format!("get_{}", name);
             let mut method_spec = MethodSpec::new(&getter_name);
             method_spec.push_argument(python_stmt!["self"]);
@@ -240,7 +257,7 @@ impl<'a> Processor<'a> {
 
         for member in &message.members {
             if let ast::MessageMember::Field(ref field, _) = *member {
-                fields.push((field.ty.clone(), field.name.clone()));
+                fields.push(Field::new(field.modifier.clone(), field.ty.clone(), field.name.clone()));
                 continue;
             }
         }
@@ -282,11 +299,11 @@ impl<'a> Processor<'a> {
 
         classes.push(interface_spec);
 
-        let mut interface_fields: Vec<(ast::Type, String)> = Vec::new();
+        let mut interface_fields: Vec<Field> = Vec::new();
 
         for member in &interface.members {
             if let ast::InterfaceMember::Field(ref field, _) = *member {
-                interface_fields.push((field.ty.clone(), field.name.clone()));
+                interface_fields.push(Field::new(field.modifier.clone(), field.ty.clone(), field.name.clone()));
             }
         }
 
@@ -298,7 +315,9 @@ impl<'a> Processor<'a> {
 
             for member in &sub_type.members {
                 if let ast::SubTypeMember::Field(ref field) = *member {
-                    fields.push((field.ty.clone(), field.name.clone()));
+                    fields.push(Field::new(field.modifier.clone(),
+                                           field.ty.clone(),
+                                           field.name.clone()));
                 }
             }
 
@@ -371,18 +390,16 @@ impl<'a> Processor<'a> {
                     continue;
                 }
 
-                let init = full_path.join("__init__.py");
+                let init_path = full_path.join("__init__.py");
 
-                if !init.is_file() {
-                    if let Some(parent) = init.parent() {
-                        if !parent.is_dir() {
-                            debug!("+dir: {}", parent.display());
-                            fs::create_dir_all(&parent)?;
-                        }
+                if !init_path.is_file() {
+                    if !full_path.is_dir() {
+                        debug!("+dir: {}", full_path.display());
+                        fs::create_dir_all(&full_path)?;
                     }
 
-                    debug!("+init: {}", init.display());
-                    File::create(init)?;
+                    debug!("+init: {}", init_path.display());
+                    File::create(init_path)?;
                 }
             }
 

@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
@@ -99,22 +98,6 @@ impl Options {
 pub enum Modifier {
     Required,
     Optional,
-    Repeated,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Modifiers {
-    modifiers: HashSet<Modifier>,
-}
-
-impl Modifiers {
-    pub fn new(modifiers: HashSet<Modifier>) -> Modifiers {
-        Modifiers { modifiers: modifiers }
-    }
-
-    pub fn test(&self, modifier: &Modifier) -> bool {
-        self.modifiers.contains(modifier)
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
