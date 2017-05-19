@@ -34,6 +34,8 @@ pub struct Processor<'a> {
     env: &'a Environment,
     package_prefix: Option<ast::Package>,
     to_lower_snake: Box<naming::Naming>,
+    int: Name,
+    float: Name,
 }
 
 const PYTHON_CONTEXT: &str = "python";
@@ -48,19 +50,40 @@ impl<'a> Processor<'a> {
             env: env,
             package_prefix: package_prefix,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
+            int: Name::built_in("int").as_name(),
+            float: Name::built_in("float").as_name(),
         }
     }
 
-    pub fn convert_name(&self, package: &ast::Package, ty: &ast::Type) -> Result<Option<Name>> {
+    pub fn encode_name(&self, _package: &ast::Package, ty: &ast::Type) -> bool {
+        match *ty {
+            ast::Type::Custom(ref _custom) => true,
+            ast::Type::UsedType(ref _used, ref _custom) => true,
+            _ => false,
+        }
+    }
+
+    pub fn decode_name(&self, package: &ast::Package, ty: &ast::Type) -> Result<Option<Name>> {
         let name = match *ty {
-            ast::Type::Custom(ref string) => {
-                let key = (package.clone(), string.clone());
+            ast::Type::I32 => Some(self.int.clone()),
+            ast::Type::U32 => Some(self.int.clone()),
+            ast::Type::I64 => Some(self.int.clone()),
+            ast::Type::U64 => Some(self.int.clone()),
+            ast::Type::Float => Some(self.float.clone()),
+            ast::Type::Double => Some(self.float.clone()),
+            ast::Type::Custom(ref custom) => {
+                let package = self.package(package);
+                let key = (package.clone(), custom.clone());
                 let _ = self.env.types.get(&key);
-                Some(Name::local(string).as_name())
+                let custom = &format!("{}.decode", custom);
+                Some(Name::local(&custom).as_name())
             }
             ast::Type::UsedType(ref used, ref custom) => {
-                let package = self.env.lookup_used(package, used)?.parts.join(".");
-                Some(Name::imported(&package, custom).as_name())
+                let package = self.env.lookup_used(package, used)?;
+                let package = self.package(package);
+                let package = package.parts.join(".");
+                let custom = format!("{}.decode", custom);
+                Some(Name::imported_alias(&package, &custom, used).as_name())
             }
             _ => None,
         };
@@ -72,7 +95,7 @@ impl<'a> Processor<'a> {
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn java_package(&self, package: &ast::Package) -> ast::Package {
+    fn package(&self, package: &ast::Package) -> ast::Package {
         self.package_prefix
             .clone()
             .map(|prefix| prefix.join(package))
@@ -92,13 +115,13 @@ impl<'a> Processor<'a> {
     }
 
     fn process_type<L>(&self,
-                       package: &ast::Package,
+                       _package: &ast::Package,
                        ty: &ast::TypeDecl,
-                       listeners: &L)
+                       _listeners: &L)
                        -> Result<ClassSpec>
         where L: Listeners
     {
-        let mut class = ClassSpec::new(&ty.name);
+        let class = ClassSpec::new(&ty.name);
         Ok(class)
     }
 
@@ -214,12 +237,6 @@ impl<'a> Processor<'a> {
     {
         let root_dir = &self.options.out_path;
 
-        // Create target directory.
-        if !root_dir.is_dir() {
-            info!("Creating: {}", root_dir.display());
-            fs::create_dir_all(root_dir)?;
-        }
-
         let mut files = HashMap::new();
 
         // Process all types discovered so far.
@@ -255,15 +272,34 @@ impl<'a> Processor<'a> {
         }
 
         for (package, file_spec) in files.into_iter() {
-            let mut full_path = self.java_package(package)
-                .parts
-                .iter()
-                .fold(root_dir.clone(), |current, next| current.join(next));
+            let package = self.package(package);
 
-            if let Some(parent) = full_path.parent() {
-                fs::create_dir_all(parent)?;
+            let mut full_path = root_dir.to_owned();
+            let mut it = package.parts.iter().peekable();
+
+            while let Some(part) = it.next() {
+                full_path = full_path.join(part);
+
+                if it.peek().is_none() {
+                    continue;
+                }
+
+                let init = full_path.join("__init__.py");
+
+                if !init.is_file() {
+                    if let Some(parent) = init.parent() {
+                        if !parent.is_dir() {
+                            debug!("Creating directory: {}", init.display());
+                            fs::create_dir_all(&parent)?;
+                        }
+                    }
+
+                    debug!("Writing: {}", init.display());
+                    File::create(init)?;
+                }
             }
 
+            // path to final file
             full_path.set_extension("py");
 
             debug!("Writing: {}", full_path.display());

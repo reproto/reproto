@@ -10,6 +10,15 @@ impl Name {
         ImportedName {
             module: module.to_owned(),
             name: name.to_owned(),
+            alias: None,
+        }
+    }
+
+    pub fn imported_alias(module: &str, name: &str, alias: &str) -> ImportedName {
+        ImportedName {
+            module: module.to_owned(),
+            name: name.to_owned(),
+            alias: Some(alias.to_owned()),
         }
     }
 
@@ -24,7 +33,11 @@ impl Name {
     pub fn format(&self) -> String {
         match *self {
             Name::Imported(ref imported) => {
-                format!("{}.{}", imported.module, imported.name.clone())
+                if let Some(ref alias) = imported.alias {
+                    format!("{}.{}", alias, imported.name.clone())
+                } else {
+                    format!("{}.{}", imported.module, imported.name.clone())
+                }
             }
             Name::BuiltIn(ref built_in) => built_in.name.clone(),
             Name::Local(ref local) => local.name.clone(),
@@ -36,6 +49,7 @@ impl Name {
 pub struct ImportedName {
     pub module: String,
     pub name: String,
+    pub alias: Option<String>,
 }
 
 #[derive(Debug, Clone)]

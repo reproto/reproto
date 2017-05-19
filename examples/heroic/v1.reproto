@@ -31,6 +31,12 @@ message Query {
 }
 
 interface Duration {
+  Absolute {
+    name "absolute";
+
+    start: u64;
+    end: u64;
+  }
 }
 
 interface Aggregation {

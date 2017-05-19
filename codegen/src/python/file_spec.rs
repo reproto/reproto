@@ -26,13 +26,19 @@ impl FileSpec {
 
         imports.import_all(&self.elements);
 
-        let modules: BTreeSet<String> =
-            imports.into_iter().map(|imported| imported.module).collect();
+        let modules: BTreeSet<(String, Option<String>)> =
+            imports.into_iter().map(|imported| (imported.module, imported.alias)).collect();
 
         if !modules.is_empty() {
-            for module in modules {
+            for (module, alias) in modules {
                 out.push_str("import ");
                 out.push_str(&module);
+
+                if let Some(ref alias) = alias {
+                    out.push_str(" as ");
+                    out.push_str(alias);
+                }
+
                 out.push('\n');
             }
 

@@ -12,10 +12,21 @@
   * e.g. drop a heroic.reproto file in the project (in the right location), and pick up any extensions defined in it that allows the module to better integrate into the project.
   * This is now supported! Add a local directory to your path, and match the package you'd like to
       extend.
+
+# Missing Features
+
+* Java
+  * Tuple decoding.
+  * Type aliases.
+
 * Python
-  * Encode support (e.g. `instance.encode()`)
-  * Relative import, especially with package prefixes.
-  * Create missing `__init__.py` files.
+  * ~~Encode support (e.g. `instance.encode()`)~~
+  * ~~Relative import, especially with package prefixes.~~ (not needed with aliases)
+  * ~~Create missing `__init__.py` files.~~
+  * Array decoding.
+  * Map decoding.
+  * Tuple decoding.
+  * Type aliases.
 
 [pest]: https://github.com/pest-parser/pest
 
@@ -236,6 +247,71 @@ Or another example (using `StateNumeric.END`):
 Enums are modelled using a regular Java `enum`.
 
 Serialization might be affected depending on the type the enum has.
+
+## Embedded code
+
+A powerful mechanism for modifying the behaviour of your protocols is to embed code snippets.
+This _only_ be done in [extensions][extensions], to adapt a given set of protocols into your
+application.
+
+```
+package foo;
+
+message Foo {
+  field: string;
+
+  java @@
+    public boolean isFieldOk() {
+      return this.field.equals("ok");
+    }
+  @@
+
+  python @@
+    def is_field_ok(self):
+      return self.field == "ok"
+  @@
+}
+```
+
+[extensions]: #extensions
+
+## Extensions
+
+reProto allows all messages and interfaces to be extended.
+
+Extensions allow for additions, and is typically used to adapt a protocol specification to
+your local environment.
+
+An extension is loaded when a when an identical package and type declaration is present in the
+path.
+
+Assume you have a type called `Foo` in the `foo` package.
+
+```
+// file: protos/foo.reproto
+package foo;
+
+message Foo {
+  field: string;
+}
+```
+
+You can now add additional fields or custom code snippets by doing the following:
+
+```
+// file: ext/foo.reproto
+package foo;
+
+message Foo {
+  other?: string;
+
+  java @@
+    public boolean hasOther() {
+      return this.other.isPresent();
+    }
+  @@
+}
+```
 
 # Backends
 

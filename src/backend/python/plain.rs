@@ -9,21 +9,53 @@ use errors::*;
 
 pub struct PlainPythonBackend {
     staticmethod: BuiltInName,
+    dict: BuiltInName,
 }
 
 impl PlainPythonBackend {
     pub fn new() -> PlainPythonBackend {
-        PlainPythonBackend { staticmethod: Name::built_in("staticmethod") }
+        PlainPythonBackend {
+            staticmethod: Name::built_in("staticmethod"),
+            dict: Name::built_in("dict"),
+        }
     }
-}
 
-impl processor::Listeners for PlainPythonBackend {
-    fn class_added(&self,
-                   processor: &processor::Processor,
-                   package: &ast::Package,
-                   fields: &Vec<ast::Field>,
-                   class: &mut ClassSpec)
-                   -> Result<()> {
+    fn encode_method(&self,
+                     processor: &processor::Processor,
+                     package: &ast::Package,
+                     fields: &Vec<ast::Field>,
+                     _class: &ClassSpec)
+                     -> Result<MethodSpec> {
+        let mut encode = MethodSpec::new("encode");
+        encode.push_argument(python_stmt!["self"]);
+        encode.push(python_stmt!["data = ", &self.dict, "()"]);
+
+        for field in fields {
+            let mut stmt = Statement::new();
+
+            stmt.push("data[");
+            stmt.push(Variable::String(field.name.to_owned()));
+            stmt.push("] = self.");
+
+            if processor.encode_name(package, &field.ty) {
+                stmt.push(python_stmt![&field.name, ".encode()"]);
+            } else {
+                stmt.push(&field.name);
+            }
+
+            encode.push(stmt);
+        }
+
+        encode.push(python_stmt!["return data"]);
+        Ok(encode)
+    }
+
+    fn decode_method(&self,
+                     processor: &processor::Processor,
+                     package: &ast::Package,
+                     fields: &Vec<ast::Field>,
+                     class: &ClassSpec)
+                     -> Result<MethodSpec> {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
         decode.push_argument(python_stmt!["_data"]);
@@ -37,9 +69,9 @@ impl processor::Listeners for PlainPythonBackend {
             stmt.push(&var_name);
             stmt.push(" = ");
 
-            if let Some(name) = processor.convert_name(package, &field.ty)? {
+            if let Some(name) = processor.decode_name(package, &field.ty)? {
                 stmt.push(name);
-                stmt.push(".decode(_data[");
+                stmt.push("(_data[");
                 stmt.push(Variable::String(field.name.to_owned()));
                 stmt.push("])");
             } else {
@@ -55,8 +87,21 @@ impl processor::Listeners for PlainPythonBackend {
         let arguments = arguments.join(", ");
         decode.push(python_stmt!["return ", &class.name, "(", arguments, ")"]);
 
-        class.push(decode);
+        Ok(decode)
+    }
+}
 
+impl processor::Listeners for PlainPythonBackend {
+    fn class_added(&self,
+                   processor: &processor::Processor,
+                   package: &ast::Package,
+                   fields: &Vec<ast::Field>,
+                   class: &mut ClassSpec)
+                   -> Result<()> {
+        let decode = self.decode_method(processor, package, fields, class)?;
+        let encode = self.encode_method(processor, package, fields, class)?;
+        class.push(decode);
+        class.push(encode);
         Ok(())
     }
 
@@ -68,20 +113,20 @@ impl processor::Listeners for PlainPythonBackend {
                        -> Result<()> {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
-        decode.push_argument(python_stmt!["_data"]);
+        decode.push_argument(python_stmt!["data"]);
 
         let mut decode_body = Vec::new();
 
-        decode_body.push(python_stmt!["_type = _data[", Variable::String("type".to_owned()), "]"]
+        decode_body.push(python_stmt!["type = data[", Variable::String("type".to_owned()), "]"]
             .as_element_spec());
 
         for (_, ref sub_type) in &interface.sub_types {
             for name in sub_type.options.lookup_string("name") {
-                let if_stmt = python_stmt!["if _type == ", Variable::String(name.to_owned()), ":"];
+                let if_stmt = python_stmt!["if type == ", Variable::String(name.to_owned()), ":"];
 
                 let name = Name::local(&sub_type.name).as_name();
 
-                let if_body = python_stmt!["return ", name, ".decode(_data)"];
+                let if_body = python_stmt!["return ", name, ".decode(data)"];
 
                 let mut check: Vec<ElementSpec> = Vec::new();
 
@@ -93,7 +138,7 @@ impl processor::Listeners for PlainPythonBackend {
         }
 
         let raise =
-            python_stmt!["raise Exception(", Variable::String("bad type".to_owned()), " + _type)"]
+            python_stmt!["raise Exception(", Variable::String("bad type".to_owned()), " + type)"]
                 .as_element_spec();
         decode_body.push(raise);
 

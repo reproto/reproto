@@ -1,4 +1,4 @@
-# rePROTO
+# reProto
 
 This project extends protobuf messages with interfaces to improve how polymorphic types can be
 represented and described.
@@ -27,5 +27,5 @@ $> cargo run -- --debug --backend fasterxml --out target/java --path examples --
 Plain Python Backend:
 
 ```bash
-$> cargo run -- --debug --backend plain_python --out target/python --path examples --path examples/ext heroic.v1
+$> cargo run -- --debug --backend plain_python --out target/python --path examples heroic.v1
 ```
