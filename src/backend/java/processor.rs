@@ -323,12 +323,6 @@ impl<'a> Processor<'a> {
     {
         let root_dir = &self.options.out_path;
 
-        // Create target directory.
-        if !root_dir.is_dir() {
-            info!("Creating: {}", root_dir.display());
-            fs::create_dir_all(root_dir)?;
-        }
-
         // Process all types discovered so far.
         for (&(ref package, _), decl) in &self.env.types {
             let out_dir = self.java_package(package)
@@ -336,7 +330,10 @@ impl<'a> Processor<'a> {
                 .iter()
                 .fold(root_dir.clone(), |current, next| current.join(next));
 
-            fs::create_dir_all(&out_dir)?;
+            if !out_dir.is_dir() {
+                debug!("+dir: {}", out_dir.display());
+                fs::create_dir_all(&out_dir)?;
+            }
 
             let full_path = out_dir.join(format!("{}.java", decl.name()));
 
@@ -350,7 +347,7 @@ impl<'a> Processor<'a> {
                 ast::Decl::Type(ref ty) => self.process_type(package, ty, listeners),
             }?;
 
-            debug!("Writing: {}", full_path.display());
+            debug!("+class: {}", full_path.display());
 
             let out = file_spec.format();
             let mut f = File::create(full_path)?;

@@ -376,12 +376,12 @@ impl<'a> Processor<'a> {
                 if !init.is_file() {
                     if let Some(parent) = init.parent() {
                         if !parent.is_dir() {
-                            debug!("Creating directory: {}", parent.display());
+                            debug!("+dir: {}", parent.display());
                             fs::create_dir_all(&parent)?;
                         }
                     }
 
-                    debug!("Writing: {}", init.display());
+                    debug!("+init: {}", init.display());
                     File::create(init)?;
                 }
             }
@@ -389,7 +389,7 @@ impl<'a> Processor<'a> {
             // path to final file
             full_path.set_extension("py");
 
-            debug!("Writing: {}", full_path.display());
+            debug!("+module: {}", full_path.display());
 
             let out = file_spec.format();
             let mut f = File::create(full_path)?;

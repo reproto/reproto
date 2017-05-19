@@ -168,7 +168,7 @@ impl Environment {
                 continue;
             }
 
-            debug!("Processing: {}", path.display());
+            debug!("in: {}", path.display());
 
             let file = parser::parse_file(&path)
                     .chain_err(|| format!("Failed to parse: {}", path.display()))?;
