@@ -82,8 +82,8 @@ impl Imports for Type {
         where I: ImportReceiver
     {
         match *self {
-            Type::Primitive(_) => {}
             Type::Class(ref class) => class.imports(receiver),
+            _ => {}
         };
     }
 }

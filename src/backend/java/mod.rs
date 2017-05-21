@@ -1,3 +1,4 @@
+pub mod builder;
 pub mod constructor_properties;
 pub mod fasterxml;
 pub mod lombok;
@@ -14,6 +15,7 @@ fn setup_module(module: &str) -> Result<Box<processor::Listeners>> {
         "fasterxml" => Box::new(fasterxml::Module::new()),
         "constructor_properties" => Box::new(constructor_properties::Module::new()),
         "lombok" => Box::new(lombok::Module::new()),
+        "builder" => Box::new(builder::Module::new()),
         _ => return Err(format!("No such module: {}", module).into()),
     };
 

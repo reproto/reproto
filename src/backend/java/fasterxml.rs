@@ -24,7 +24,11 @@ impl Module {
 }
 
 impl processor::Listeners for Module {
-    fn class_added(&self, fields: &Vec<processor::Field>, class: &mut ClassSpec) -> Result<()> {
+    fn class_added(&self,
+                   fields: &Vec<processor::Field>,
+                   _class_type: &ClassType,
+                   class: &mut ClassSpec)
+                   -> Result<()> {
         if class.constructors.len() != 1 {
             return Err("Expected exactly one constructor".into());
         }

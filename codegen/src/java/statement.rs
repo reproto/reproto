@@ -162,6 +162,11 @@ impl AsStatement for FieldSpec {
         s.push(" ");
         s.push(self.name);
 
+        if let Some(initialize) = self.initialize {
+            s.push(" = ");
+            s.push(initialize);
+        }
+
         s
     }
 }

@@ -23,7 +23,11 @@ impl processor::Listeners for Module {
         Ok(())
     }
 
-    fn class_added(&self, _fields: &Vec<processor::Field>, class: &mut ClassSpec) -> Result<()> {
+    fn class_added(&self,
+                   _fields: &Vec<processor::Field>,
+                   _class_type: &ClassType,
+                   class: &mut ClassSpec)
+                   -> Result<()> {
         class.push_annotation(&self.data);
         Ok(())
     }

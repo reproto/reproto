@@ -39,7 +39,11 @@ impl Module {
 }
 
 impl processor::Listeners for Module {
-    fn class_added(&self, fields: &Vec<processor::Field>, class: &mut ClassSpec) -> Result<()> {
+    fn class_added(&self,
+                   fields: &Vec<processor::Field>,
+                   _class_type: &ClassType,
+                   class: &mut ClassSpec)
+                   -> Result<()> {
         self.add_constructor_properties(fields, class)?;
         Ok(())
     }

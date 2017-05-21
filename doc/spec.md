@@ -34,9 +34,10 @@
   * Generate static documentation.
 
 * Java
+  * ~~Generate _good_ builder.~~
   * Type aliases.
   * Tuple decoding.
-  * Generate _good_ builder.
+  * Generated equals/hashCode (disabled when using lombok).
 
 * Python
   * ~~Encode support (e.g. `instance.encode()`)~~

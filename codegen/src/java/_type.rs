@@ -22,6 +22,12 @@ impl ClassType {
         ClassType::new(&self.package, &self.name, arguments)
     }
 
+    pub fn extend(&self, part: &str) -> ClassType {
+        ClassType::new(&self.package,
+                       &format!("{}.{}", self.name, part),
+                       self.arguments.clone())
+    }
+
     pub fn to_raw(&self) -> ClassType {
         ClassType::new(&self.package, &self.name, vec![])
     }
@@ -70,6 +76,21 @@ impl AsClassType for ClassType {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+pub struct Local {
+    pub name: String,
+}
+
+impl Local {
+    pub fn new(name: &str) -> Local {
+        Local { name: name.to_owned() }
+    }
+
+    pub fn format(&self, _level: usize) -> String {
+        self.name.clone()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct PrimitiveType {
     pub primitive: String,
     pub boxed: String,
@@ -97,6 +118,7 @@ impl PrimitiveType {
 pub enum Type {
     Primitive(PrimitiveType),
     Class(ClassType),
+    Local(Local),
 }
 
 impl Type {
@@ -108,10 +130,15 @@ impl Type {
         ClassType::new(package, name, vec![])
     }
 
+    pub fn local(name: &str) -> Local {
+        Local::new(name)
+    }
+
     pub fn format(&self, level: usize) -> String {
         match *self {
             Type::Primitive(ref primitive) => primitive.format(level),
             Type::Class(ref class) => class.format(level),
+            Type::Local(ref local) => local.format(level),
         }
     }
 }
@@ -145,5 +172,11 @@ impl AsType for ClassType {
 impl AsType for PrimitiveType {
     fn as_type(self) -> Type {
         Type::Primitive(self)
+    }
+}
+
+impl AsType for Local {
+    fn as_type(self) -> Type {
+        Type::Local(self)
     }
 }
