@@ -8,7 +8,7 @@ use std::env;
 
 use reproto::errors::*;
 
-use reproto::backends;
+use reproto::backend;
 use reproto::logger;
 use reproto::options::Options;
 use reproto::parser::ast;
@@ -22,6 +22,11 @@ fn setup_opts() -> getopts::Options {
                 "backend",
                 "Backend to used to emit code (required).",
                 "<backend>");
+
+    opts.optmulti("m",
+                  "module",
+                  "Modules to load for a given backend",
+                  "<module>");
 
     opts.optmulti("",
                   "path",
@@ -117,7 +122,6 @@ fn entry() -> Result<()> {
     setup_logger(&matches)?;
 
     let backend = matches.opt_str("backend").ok_or("--backend <backend> is required")?;
-    let backend = backends::resolve(&backend)?;
 
     let out_path = matches.opt_str("out").ok_or("--out <dir> is required")?;
     let out_path = Path::new(&out_path);
@@ -125,6 +129,7 @@ fn entry() -> Result<()> {
     let package_prefix = matches.opt_str("package-prefix");
 
     let paths = matches.opt_strs("path").iter().map(Path::new).map(ToOwned::to_owned).collect();
+    let modules = matches.opt_strs("module").iter().map(ToOwned::to_owned).collect();
 
     let id_converter = if let Some(id_converter) = matches.opt_str("id-converter") {
         Some(parse_id_converter(&id_converter)?)
@@ -136,6 +141,7 @@ fn entry() -> Result<()> {
         out_path: out_path.to_path_buf(),
         package_prefix: package_prefix,
         id_converter: id_converter,
+        modules: modules,
     };
 
     let mut env = Environment::new(paths);
@@ -145,7 +151,8 @@ fn entry() -> Result<()> {
         env.import(&package)?;
     }
 
-    backend.process(&options, &env)?;
+    let backend = backend::resolve(&backend, options, env)?;
+    backend.process()?;
     Ok(())
 }
 

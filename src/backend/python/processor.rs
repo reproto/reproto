@@ -1,13 +1,14 @@
+use backend;
 use environment::Environment;
+use naming::{self, FromNaming};
 use options::Options;
 use parser::ast;
-use std::fs::File;
-use std::path::PathBuf;
-use std::fs;
-use std::io::Write;
-use naming::{self, FromNaming};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::fs::File;
+use std::fs;
+use std::io::Write;
+use std::path::PathBuf;
 
 #[macro_use]
 use codegen::python::*;
@@ -18,7 +19,11 @@ const TYPE: &str = "type";
 const INIT_PY: &str = "__init__.py";
 const EXT: &str = "py";
 
-pub trait Listeners {}
+pub trait Listeners {
+    fn configure(&self, _processor: &mut Processor) -> Result<()> {
+        Ok(())
+    }
+}
 
 #[derive(Clone)]
 pub struct Field {
@@ -39,10 +44,11 @@ impl Field {
     }
 }
 
-pub struct Processor<'a> {
-    options: &'a Options,
-    env: &'a Environment,
+pub struct Processor {
+    options: Options,
+    env: Environment,
     package_prefix: Option<ast::Package>,
+    listeners: Box<Listeners>,
     to_lower_snake: Box<naming::Naming>,
     staticmethod: BuiltInName,
     dict: BuiltInName,
@@ -51,15 +57,17 @@ pub struct Processor<'a> {
 
 const PYTHON_CONTEXT: &str = "python";
 
-impl<'a> Processor<'a> {
-    pub fn new(options: &'a Options,
-               env: &'a Environment,
-               package_prefix: Option<ast::Package>)
-               -> Processor<'a> {
+impl Processor {
+    pub fn new(options: Options,
+               env: Environment,
+               package_prefix: Option<ast::Package>,
+               listeners: Box<Listeners>)
+               -> Processor {
         Processor {
             options: options,
             env: env,
             package_prefix: package_prefix,
+            listeners: listeners,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             staticmethod: Name::built_in("staticmethod"),
             dict: Name::built_in("dict"),
@@ -339,13 +347,7 @@ impl<'a> Processor<'a> {
         constructor
     }
 
-    fn process_type<L>(&self,
-                       package: &ast::Package,
-                       ty: &ast::TypeDecl,
-                       _listeners: &L)
-                       -> Result<ClassSpec>
-        where L: Listeners
-    {
+    fn process_type(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<ClassSpec> {
         match ty.value {
             ast::Type::Tuple(ref elements) => {
                 let mut class = ClassSpec::new(&ty.name);
@@ -395,13 +397,10 @@ impl<'a> Processor<'a> {
         Ok(result)
     }
 
-    fn process_message<L>(&self,
-                          package: &ast::Package,
-                          message: &ast::MessageDecl,
-                          _listeners: &L)
-                          -> Result<ClassSpec>
-        where L: Listeners
-    {
+    fn process_message(&self,
+                       package: &ast::Package,
+                       message: &ast::MessageDecl)
+                       -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&message.name);
         let mut fields = Vec::new();
 
@@ -452,13 +451,10 @@ impl<'a> Processor<'a> {
         Ok(class)
     }
 
-    fn process_interface<L>(&self,
-                            package: &ast::Package,
-                            interface: &ast::InterfaceDecl,
-                            _listeners: &L)
-                            -> Result<Vec<ClassSpec>>
-        where L: Listeners
-    {
+    fn process_interface(&self,
+                         package: &ast::Package,
+                         interface: &ast::InterfaceDecl)
+                         -> Result<Vec<ClassSpec>> {
         let mut classes = Vec::new();
 
         let mut interface_spec = ClassSpec::new(&interface.name);
@@ -558,21 +554,15 @@ impl<'a> Processor<'a> {
         Ok(classes)
     }
 
-    fn populate_files<L>(&self, listeners: &L) -> Result<HashMap<&ast::Package, FileSpec>>
-        where L: Listeners
-    {
+    fn populate_files(&self) -> Result<HashMap<&ast::Package, FileSpec>> {
         let mut files = HashMap::new();
 
         // Process all types discovered so far.
         for (&(ref package, _), decl) in &self.env.types {
             let class_specs = match *decl {
-                ast::Decl::Interface(ref interface) => {
-                    self.process_interface(package, interface, listeners)?
-                }
-                ast::Decl::Message(ref message) => {
-                    vec![self.process_message(package, message, listeners)?]
-                }
-                ast::Decl::Type(ref ty) => vec![self.process_type(package, ty, listeners)?],
+                ast::Decl::Interface(ref interface) => self.process_interface(package, interface)?,
+                ast::Decl::Message(ref message) => vec![self.process_message(package, message)?],
+                ast::Decl::Type(ref ty) => vec![self.process_type(package, ty)?],
             };
 
             match files.entry(package) {
@@ -704,11 +694,22 @@ impl<'a> Processor<'a> {
 
         Ok(decode)
     }
+}
 
-    pub fn process<L>(&self, listeners: &L) -> Result<()>
-        where L: Listeners
-    {
-        let files = self.populate_files(listeners)?;
+impl backend::Backend for Processor {
+    fn process(&self) -> Result<()> {
+        let files = self.populate_files()?;
         self.write_files(files)
+    }
+}
+
+/// A vector of listeners is a valid listener.
+impl Listeners for Vec<Box<Listeners>> {
+    fn configure(&self, processor: &mut Processor) -> Result<()> {
+        for listeners in self {
+            listeners.configure(processor)?;
+        }
+
+        Ok(())
     }
 }

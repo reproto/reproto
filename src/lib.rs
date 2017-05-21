@@ -13,7 +13,6 @@ extern crate log;
 extern crate codegen;
 
 pub mod backend;
-pub mod backends;
 pub mod errors;
 pub mod logger;
 pub mod parser;

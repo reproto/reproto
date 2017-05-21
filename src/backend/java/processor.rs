@@ -1,10 +1,11 @@
+use backend::Backend;
 use environment::Environment;
+use naming::{self, FromNaming};
 use options::Options;
 use parser::ast;
 use std::fs::File;
 use std::fs;
 use std::io::Write;
-use naming::{self, FromNaming};
 
 #[macro_use]
 use codegen::java::*;
@@ -14,6 +15,10 @@ use errors::*;
 const JAVA_CONTEXT: &str = "java";
 
 pub trait Listeners {
+    fn configure(&self, _processor: &mut Processor) -> Result<()> {
+        Ok(())
+    }
+
     fn class_added(&self, _fields: &Vec<Field>, _class: &mut ClassSpec) -> Result<()> {
         Ok(())
     }
@@ -52,9 +57,10 @@ impl Field {
     }
 }
 
-pub struct Processor<'a> {
-    options: &'a Options,
-    env: &'a Environment,
+pub struct Processor {
+    options: Options,
+    env: Environment,
+    listeners: Box<Listeners>,
     package_prefix: Option<ast::Package>,
     lower_to_upper_camel: Box<naming::Naming>,
     object: ClassType,
@@ -68,16 +74,18 @@ pub struct Processor<'a> {
     double: PrimitiveType,
 }
 
-impl<'a> Processor<'a> {
-    pub fn new(options: &'a Options,
-               env: &'a Environment,
-               package_prefix: Option<ast::Package>)
-               -> Processor<'a> {
+impl Processor {
+    pub fn new(options: Options,
+               env: Environment,
+               package_prefix: Option<ast::Package>,
+               listeners: Box<Listeners>)
+               -> Processor {
         Processor {
             options: options,
             env: env,
             package_prefix: package_prefix,
             lower_to_upper_camel: naming::CamelCase::new().to_upper_camel(),
+            listeners: listeners,
             object: Type::class("java.lang", "Object"),
             list: Type::class("java.util", "List"),
             map: Type::class("java.util", "Map"),
@@ -157,13 +165,7 @@ impl<'a> Processor<'a> {
         constructor
     }
 
-    fn process_type<L>(&self,
-                       package: &ast::Package,
-                       ty: &ast::TypeDecl,
-                       listeners: &L)
-                       -> Result<FileSpec>
-        where L: Listeners
-    {
+    fn process_type(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<FileSpec> {
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
         let mut fields = Vec::new();
 
@@ -196,7 +198,7 @@ impl<'a> Processor<'a> {
             class.push(&getter);
         }
 
-        listeners.class_added(&fields, &mut class)?;
+        self.listeners.class_added(&fields, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push(&class);
@@ -219,13 +221,10 @@ impl<'a> Processor<'a> {
         Ok(result)
     }
 
-    fn process_message<L>(&self,
-                          package: &ast::Package,
-                          message: &ast::MessageDecl,
-                          listeners: &L)
-                          -> Result<FileSpec>
-        where L: Listeners
-    {
+    fn process_message(&self,
+                       package: &ast::Package,
+                       message: &ast::MessageDecl)
+                       -> Result<FileSpec> {
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &message.name);
         let mut fields = Vec::new();
 
@@ -253,7 +252,7 @@ impl<'a> Processor<'a> {
             class.push(&getter);
         }
 
-        listeners.class_added(&fields, &mut class)?;
+        self.listeners.class_added(&fields, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push(&class);
@@ -261,13 +260,10 @@ impl<'a> Processor<'a> {
         Ok(file_spec)
     }
 
-    fn process_interface<L>(&self,
-                            package: &ast::Package,
-                            interface: &ast::InterfaceDecl,
-                            listeners: &L)
-                            -> Result<FileSpec>
-        where L: Listeners
-    {
+    fn process_interface(&self,
+                         package: &ast::Package,
+                         interface: &ast::InterfaceDecl)
+                         -> Result<FileSpec> {
         let mut interface_spec = InterfaceSpec::new(java_mods![Modifier::Public], &interface.name);
         let mut interface_fields = Vec::new();
 
@@ -320,15 +316,15 @@ impl<'a> Processor<'a> {
                 class.push(&getter);
             }
 
-            listeners.class_added(&fields, &mut class)?;
-            listeners.sub_type_added(&fields, interface, sub_type, &mut class)?;
+            self.listeners.class_added(&fields, &mut class)?;
+            self.listeners.sub_type_added(&fields, interface, sub_type, &mut class)?;
 
             interface_spec.push(&class);
         }
 
         let mut file_spec = self.new_file_spec(package);
 
-        listeners.interface_added(interface, &mut interface_spec)?;
+        self.listeners.interface_added(interface, &mut interface_spec)?;
 
         file_spec.push(&interface_spec);
         Ok(file_spec)
@@ -355,10 +351,10 @@ impl<'a> Processor<'a> {
 
         Ok(field)
     }
+}
 
-    pub fn process<L>(&self, listeners: &L) -> Result<()>
-        where L: Listeners
-    {
+impl Backend for Processor {
+    fn process(&self) -> Result<()> {
         let root_dir = &self.options.out_path;
 
         // Process all types discovered so far.
@@ -376,13 +372,9 @@ impl<'a> Processor<'a> {
             let full_path = out_dir.join(format!("{}.java", decl.name()));
 
             let file_spec = match *decl {
-                ast::Decl::Interface(ref interface) => {
-                    self.process_interface(package, interface, listeners)
-                }
-                ast::Decl::Message(ref message) => {
-                    self.process_message(package, message, listeners)
-                }
-                ast::Decl::Type(ref ty) => self.process_type(package, ty, listeners),
+                ast::Decl::Interface(ref interface) => self.process_interface(package, interface),
+                ast::Decl::Message(ref message) => self.process_message(package, message),
+                ast::Decl::Type(ref ty) => self.process_type(package, ty),
             }?;
 
             debug!("+class: {}", full_path.display());
@@ -393,6 +385,49 @@ impl<'a> Processor<'a> {
 
             f.write_all(&bytes)?;
             f.flush()?;
+        }
+
+        Ok(())
+    }
+}
+
+/// A vector of listeners is a valid listener.
+impl Listeners for Vec<Box<Listeners>> {
+    fn configure(&self, processor: &mut Processor) -> Result<()> {
+        for listeners in self {
+            listeners.configure(processor)?;
+        }
+
+        Ok(())
+    }
+
+    fn class_added(&self, fields: &Vec<Field>, class: &mut ClassSpec) -> Result<()> {
+        for listeners in self {
+            listeners.class_added(fields, class)?;
+        }
+
+        Ok(())
+    }
+
+    fn interface_added(&self,
+                       interface: &ast::InterfaceDecl,
+                       interface_spec: &mut InterfaceSpec)
+                       -> Result<()> {
+        for listeners in self {
+            listeners.interface_added(interface, interface_spec)?;
+        }
+
+        Ok(())
+    }
+
+    fn sub_type_added(&self,
+                      fields: &Vec<Field>,
+                      interface: &ast::InterfaceDecl,
+                      sub_type: &ast::SubType,
+                      class: &mut ClassSpec)
+                      -> Result<()> {
+        for listeners in self {
+            listeners.sub_type_added(fields, interface, sub_type, class)?;
         }
 
         Ok(())

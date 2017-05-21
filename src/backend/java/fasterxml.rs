@@ -1,22 +1,20 @@
-use backend::Backend;
-use codegen::java::*;
-use environment::Environment;
-use options::Options;
+/// Module that adds fasterxml annotations to generated classes.
 use parser::ast;
 use super::processor;
 
+use codegen::java::*;
 use errors::*;
 
-pub struct FasterXmlBackend {
+pub struct Module {
     json_creator: ClassType,
     json_property: ClassType,
     json_sub_types: ClassType,
     json_type_info: ClassType,
 }
 
-impl FasterXmlBackend {
-    pub fn new() -> FasterXmlBackend {
-        FasterXmlBackend {
+impl Module {
+    pub fn new() -> Module {
+        Module {
             json_creator: Type::class("com.fasterxml.jackson.annotation", "JsonCreator"),
             json_property: Type::class("com.fasterxml.jackson.annotation", "JsonProperty"),
             json_sub_types: Type::class("com.fasterxml.jackson.annotation", "JsonSubTypes"),
@@ -25,7 +23,7 @@ impl FasterXmlBackend {
     }
 }
 
-impl processor::Listeners for FasterXmlBackend {
+impl processor::Listeners for Module {
     fn class_added(&self, fields: &Vec<processor::Field>, class: &mut ClassSpec) -> Result<()> {
         if class.constructors.len() != 1 {
             return Err("Expected exactly one constructor".into());
@@ -109,16 +107,5 @@ impl processor::Listeners for FasterXmlBackend {
         // }
 
         Ok(())
-    }
-}
-
-impl Backend for FasterXmlBackend {
-    fn process(&self, options: &Options, env: &Environment) -> Result<()> {
-        let package_prefix = options.package_prefix
-            .clone()
-            .map(|prefix| ast::Package::new(prefix.split(".").map(ToOwned::to_owned).collect()));
-
-        let processor = processor::Processor::new(options, env, package_prefix);
-        processor.process(self)
     }
 }
