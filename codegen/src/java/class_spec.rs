@@ -1,3 +1,4 @@
+use super::_type::{AsClassType, ClassType};
 use super::annotation_spec::{AsAnnotationSpec, AnnotationSpec};
 use super::constructor_spec::{AsConstructorSpec, ConstructorSpec};
 use super::element_spec::AsElementSpec;
@@ -13,6 +14,7 @@ pub struct ClassSpec {
     pub fields: Vec<FieldSpec>,
     pub constructors: Vec<ConstructorSpec>,
     pub elements: Elements,
+    pub implements: Vec<ClassType>,
 }
 
 impl ClassSpec {
@@ -24,7 +26,14 @@ impl ClassSpec {
             fields: Vec::new(),
             constructors: Vec::new(),
             elements: Elements::new(),
+            implements: Vec::new(),
         }
+    }
+
+    pub fn implements<T>(&mut self, ty: T)
+        where T: AsClassType
+    {
+        self.implements.push(ty.as_class_type());
     }
 
     pub fn push_annotation<A>(&mut self, annotation: A)

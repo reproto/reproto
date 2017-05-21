@@ -51,6 +51,24 @@ impl ClassType {
     }
 }
 
+pub trait AsClassType {
+    fn as_class_type(self) -> ClassType;
+}
+
+impl<'a, A> AsClassType for &'a A
+    where A: AsClassType + Clone
+{
+    fn as_class_type(self) -> ClassType {
+        self.clone().as_class_type()
+    }
+}
+
+impl AsClassType for ClassType {
+    fn as_class_type(self) -> ClassType {
+        self
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct PrimitiveType {
     pub primitive: String,

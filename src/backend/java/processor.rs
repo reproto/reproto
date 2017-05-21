@@ -159,8 +159,7 @@ impl Processor {
 
     /// Create a new FileSpec from the given package.
     fn new_file_spec(&self, package: &ast::Package) -> FileSpec {
-        let package_name = self.java_package(package).parts.join(".");
-        FileSpec::new(&package_name)
+        FileSpec::new(&self.java_package_name(package))
     }
 
     /// Build the java package of a given package.
@@ -171,6 +170,10 @@ impl Processor {
             .clone()
             .map(|prefix| prefix.join(package))
             .unwrap_or_else(|| package.clone())
+    }
+
+    fn java_package_name(&self, package: &ast::Package) -> String {
+        self.java_package(package).parts.join(".")
     }
 
     /// Convert the given type to a java type.
@@ -190,13 +193,13 @@ impl Processor {
             ast::Type::Custom(ref string) => {
                 let key = (package.clone(), string.clone());
                 let _ = self.env.types.get(&key);
-                let package_name = self.java_package(package).parts.join(".");
+                let package_name = self.java_package_name(package);
                 Type::class(&package_name, string).as_type()
             }
             ast::Type::Any => self.object.clone().as_type(),
             ast::Type::UsedType(ref used, ref custom) => {
                 let package = self.env.lookup_used(package, used)?;
-                let package_name = self.java_package(package).parts.join(".");
+                let package_name = self.java_package_name(package);
                 Type::class(&package_name, custom).as_type()
             }
             ast::Type::Map(ref key, ref value) => {
@@ -331,6 +334,8 @@ impl Processor {
                          package: &ast::Package,
                          interface: &ast::InterfaceDecl)
                          -> Result<FileSpec> {
+        let parent_type = Type::class(&self.java_package_name(package), &interface.name);
+
         let mut interface_spec = InterfaceSpec::new(java_mods![Modifier::Public], &interface.name);
         let mut interface_fields = Vec::new();
 
@@ -354,6 +359,8 @@ impl Processor {
             let mods = java_mods![Modifier::Public, Modifier::Static];
             let mut class = ClassSpec::new(mods, &sub_type.name);
             let mut fields = interface_fields.clone();
+
+            class.implements(&parent_type);
 
             for interface_field in &interface_fields {
                 class.push_field(&interface_field.field_spec);

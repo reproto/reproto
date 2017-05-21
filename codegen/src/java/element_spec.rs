@@ -104,6 +104,18 @@ impl AsElementSpec for ClassSpec {
 
         open.push("class ");
         open.push(&self.name);
+
+        if !self.implements.is_empty() {
+            let mut arguments = Statement::new();
+
+            for implements in &self.implements {
+                arguments.push(implements);
+            }
+
+            open.push(" implements ");
+            open.push(arguments.join(", "));
+        }
+
         open.push(" {");
 
         elements.push(open);
