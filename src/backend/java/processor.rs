@@ -15,7 +15,7 @@ use errors::*;
 const JAVA_CONTEXT: &str = "java";
 
 pub trait Listeners {
-    fn configure(&self, _processor: &mut Processor) -> Result<()> {
+    fn configure(&self, _options: &mut ProcessorOptions) -> Result<()> {
         Ok(())
     }
 
@@ -40,6 +40,49 @@ pub trait Listeners {
     }
 }
 
+/// A vector of listeners is a valid listener.
+impl Listeners for Vec<Box<Listeners>> {
+    fn configure(&self, processor: &mut ProcessorOptions) -> Result<()> {
+        for listeners in self {
+            listeners.configure(processor)?;
+        }
+
+        Ok(())
+    }
+
+    fn class_added(&self, fields: &Vec<Field>, class: &mut ClassSpec) -> Result<()> {
+        for listeners in self {
+            listeners.class_added(fields, class)?;
+        }
+
+        Ok(())
+    }
+
+    fn interface_added(&self,
+                       interface: &ast::InterfaceDecl,
+                       interface_spec: &mut InterfaceSpec)
+                       -> Result<()> {
+        for listeners in self {
+            listeners.interface_added(interface, interface_spec)?;
+        }
+
+        Ok(())
+    }
+
+    fn sub_type_added(&self,
+                      fields: &Vec<Field>,
+                      interface: &ast::InterfaceDecl,
+                      sub_type: &ast::SubType,
+                      class: &mut ClassSpec)
+                      -> Result<()> {
+        for listeners in self {
+            listeners.sub_type_added(fields, interface, sub_type, class)?;
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Clone)]
 pub struct Field {
     pub modifier: ast::Modifier,
@@ -57,8 +100,24 @@ impl Field {
     }
 }
 
+pub struct ProcessorOptions {
+    parent: Options,
+    pub build_getters: bool,
+    pub build_constructor: bool,
+}
+
+impl ProcessorOptions {
+    pub fn new(options: Options) -> ProcessorOptions {
+        ProcessorOptions {
+            parent: options,
+            build_getters: true,
+            build_constructor: true,
+        }
+    }
+}
+
 pub struct Processor {
-    options: Options,
+    options: ProcessorOptions,
     env: Environment,
     listeners: Box<Listeners>,
     package_prefix: Option<ast::Package>,
@@ -75,7 +134,7 @@ pub struct Processor {
 }
 
 impl Processor {
-    pub fn new(options: Options,
+    pub fn new(options: ProcessorOptions,
                env: Environment,
                package_prefix: Option<ast::Package>,
                listeners: Box<Listeners>)
@@ -191,11 +250,15 @@ impl Processor {
             _ => {}
         }
 
-        let constructor = self.build_constructor(&class);
-        class.push_constructor(&constructor);
+        if self.options.build_constructor {
+            let constructor = self.build_constructor(&class);
+            class.push_constructor(&constructor);
+        }
 
-        for getter in self.build_getters(&class)? {
-            class.push(&getter);
+        if self.options.build_getters {
+            for getter in self.build_getters(&class)? {
+                class.push(&getter);
+            }
         }
 
         self.listeners.class_added(&fields, &mut class)?;
@@ -245,11 +308,15 @@ impl Processor {
             }
         }
 
-        let constructor = self.build_constructor(&class);
-        class.push_constructor(&constructor);
+        if self.options.build_constructor {
+            let constructor = self.build_constructor(&class);
+            class.push_constructor(&constructor);
+        }
 
-        for getter in self.build_getters(&class)? {
-            class.push(&getter);
+        if self.options.build_getters {
+            for getter in self.build_getters(&class)? {
+                class.push(&getter);
+            }
         }
 
         self.listeners.class_added(&fields, &mut class)?;
@@ -309,11 +376,15 @@ impl Processor {
                 }
             }
 
-            let constructor = self.build_constructor(&class);
-            class.push_constructor(&constructor);
+            if self.options.build_constructor {
+                let constructor = self.build_constructor(&class);
+                class.push_constructor(&constructor);
+            }
 
-            for getter in self.build_getters(&class)? {
-                class.push(&getter);
+            if self.options.build_getters {
+                for getter in self.build_getters(&class)? {
+                    class.push(&getter);
+                }
             }
 
             self.listeners.class_added(&fields, &mut class)?;
@@ -341,7 +412,7 @@ impl Processor {
 
         let mods = java_mods![Modifier::Private, Modifier::Final];
 
-        let name = if let Some(ref id_converter) = self.options.id_converter {
+        let name = if let Some(ref id_converter) = self.options.parent.id_converter {
             id_converter.convert(&field.name)
         } else {
             field.name.clone()
@@ -355,7 +426,7 @@ impl Processor {
 
 impl Backend for Processor {
     fn process(&self) -> Result<()> {
-        let root_dir = &self.options.out_path;
+        let root_dir = &self.options.parent.out_path;
 
         // Process all types discovered so far.
         for (&(ref package, _), decl) in &self.env.types {
@@ -385,49 +456,6 @@ impl Backend for Processor {
 
             f.write_all(&bytes)?;
             f.flush()?;
-        }
-
-        Ok(())
-    }
-}
-
-/// A vector of listeners is a valid listener.
-impl Listeners for Vec<Box<Listeners>> {
-    fn configure(&self, processor: &mut Processor) -> Result<()> {
-        for listeners in self {
-            listeners.configure(processor)?;
-        }
-
-        Ok(())
-    }
-
-    fn class_added(&self, fields: &Vec<Field>, class: &mut ClassSpec) -> Result<()> {
-        for listeners in self {
-            listeners.class_added(fields, class)?;
-        }
-
-        Ok(())
-    }
-
-    fn interface_added(&self,
-                       interface: &ast::InterfaceDecl,
-                       interface_spec: &mut InterfaceSpec)
-                       -> Result<()> {
-        for listeners in self {
-            listeners.interface_added(interface, interface_spec)?;
-        }
-
-        Ok(())
-    }
-
-    fn sub_type_added(&self,
-                      fields: &Vec<Field>,
-                      interface: &ast::InterfaceDecl,
-                      sub_type: &ast::SubType,
-                      class: &mut ClassSpec)
-                      -> Result<()> {
-        for listeners in self {
-            listeners.sub_type_added(fields, interface, sub_type, class)?;
         }
 
         Ok(())

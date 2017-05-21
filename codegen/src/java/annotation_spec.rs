@@ -1,4 +1,4 @@
-use super::_type::{AsType, Type};
+use super::_type::{AsType, Type, ClassType};
 use super::statement::{AsStatement, Statement};
 
 #[derive(Debug, Clone)]
@@ -39,5 +39,11 @@ impl<'a, A> AsAnnotationSpec for &'a A
 impl AsAnnotationSpec for AnnotationSpec {
     fn as_annotation_spec(self) -> AnnotationSpec {
         self
+    }
+}
+
+impl AsAnnotationSpec for ClassType {
+    fn as_annotation_spec(self) -> AnnotationSpec {
+        AnnotationSpec::new(self)
     }
 }

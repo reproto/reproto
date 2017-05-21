@@ -1,6 +1,7 @@
-pub mod processor;
-pub mod fasterxml;
 pub mod constructor_properties;
+pub mod fasterxml;
+pub mod lombok;
+pub mod processor;
 
 use environment::Environment;
 use options::Options;
@@ -12,6 +13,7 @@ fn setup_module(module: &str) -> Result<Box<processor::Listeners>> {
     let module: Box<processor::Listeners> = match module {
         "fasterxml" => Box::new(fasterxml::Module::new()),
         "constructor_properties" => Box::new(constructor_properties::Module::new()),
+        "lombok" => Box::new(lombok::Module::new()),
         _ => return Err(format!("No such module: {}", module).into()),
     };
 
@@ -27,6 +29,12 @@ pub fn resolve(options: Options, env: Environment) -> Result<processor::Processo
 
     for module in &options.modules {
         listeners.push(setup_module(module)?);
+    }
+
+    let mut options = processor::ProcessorOptions::new(options);
+
+    for listener in &listeners {
+        listener.configure(&mut options)?;
     }
 
     Ok(processor::Processor::new(options, env, package_prefix, Box::new(listeners)))

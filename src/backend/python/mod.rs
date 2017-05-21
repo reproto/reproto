@@ -23,5 +23,11 @@ pub fn resolve(options: Options, env: Environment) -> Result<processor::Processo
         listeners.push(setup_module(module)?);
     }
 
+    let mut options = processor::ProcessorOptions::new(options);
+
+    for listener in &listeners {
+        listener.configure(&mut options)?;
+    }
+
     return Ok(processor::Processor::new(options, env, package_prefix, Box::new(listeners)));
 }

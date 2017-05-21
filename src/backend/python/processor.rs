@@ -20,7 +20,18 @@ const INIT_PY: &str = "__init__.py";
 const EXT: &str = "py";
 
 pub trait Listeners {
-    fn configure(&self, _processor: &mut Processor) -> Result<()> {
+    fn configure(&self, _processor: &mut ProcessorOptions) -> Result<()> {
+        Ok(())
+    }
+}
+
+/// A vector of listeners is a valid listener.
+impl Listeners for Vec<Box<Listeners>> {
+    fn configure(&self, processor: &mut ProcessorOptions) -> Result<()> {
+        for listeners in self {
+            listeners.configure(processor)?;
+        }
+
         Ok(())
     }
 }
@@ -44,8 +55,24 @@ impl Field {
     }
 }
 
+pub struct ProcessorOptions {
+    parent: Options,
+    pub build_getters: bool,
+    pub build_constructor: bool,
+}
+
+impl ProcessorOptions {
+    pub fn new(options: Options) -> ProcessorOptions {
+        ProcessorOptions {
+            parent: options,
+            build_getters: true,
+            build_constructor: true,
+        }
+    }
+}
+
 pub struct Processor {
-    options: Options,
+    options: ProcessorOptions,
     env: Environment,
     package_prefix: Option<ast::Package>,
     listeners: Box<Listeners>,
@@ -58,7 +85,7 @@ pub struct Processor {
 const PYTHON_CONTEXT: &str = "python";
 
 impl Processor {
-    pub fn new(options: Options,
+    pub fn new(options: ProcessorOptions,
                env: Environment,
                package_prefix: Option<ast::Package>,
                listeners: Box<Listeners>)
@@ -240,7 +267,7 @@ impl Processor {
     }
 
     fn ident(&self, name: &str) -> String {
-        if let Some(ref id_converter) = self.options.id_converter {
+        if let Some(ref id_converter) = self.options.parent.id_converter {
             id_converter.convert(name)
         } else {
             name.to_owned()
@@ -620,7 +647,7 @@ impl Processor {
     }
 
     fn write_files(&self, files: HashMap<&ast::Package, FileSpec>) -> Result<()> {
-        let root_dir = &self.options.out_path;
+        let root_dir = &self.options.parent.out_path;
 
         for (package, file_spec) in files {
             let full_path = self.setup_module_path(root_dir, package)?;
@@ -700,16 +727,5 @@ impl backend::Backend for Processor {
     fn process(&self) -> Result<()> {
         let files = self.populate_files()?;
         self.write_files(files)
-    }
-}
-
-/// A vector of listeners is a valid listener.
-impl Listeners for Vec<Box<Listeners>> {
-    fn configure(&self, processor: &mut Processor) -> Result<()> {
-        for listeners in self {
-            listeners.configure(processor)?;
-        }
-
-        Ok(())
     }
 }
