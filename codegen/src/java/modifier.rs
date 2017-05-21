@@ -42,4 +42,8 @@ impl Modifiers {
     pub fn is_empty(&self) -> bool {
         self.modifiers.is_empty()
     }
+
+    pub fn contains(&self, modifier: &Modifier) -> bool {
+        self.modifiers.contains(modifier)
+    }
 }

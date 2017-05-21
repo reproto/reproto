@@ -112,6 +112,9 @@ impl Field {
 
 pub struct ProcessorOptions {
     parent: Options,
+    pub nullable: bool,
+    pub immutable: bool,
+    pub build_setters: bool,
     pub build_getters: bool,
     pub build_constructor: bool,
     pub build_hash_code: bool,
@@ -123,6 +126,9 @@ impl ProcessorOptions {
     pub fn new(options: Options) -> ProcessorOptions {
         ProcessorOptions {
             parent: options,
+            nullable: false,
+            immutable: true,
+            build_setters: true,
             build_getters: true,
             build_constructor: true,
             build_hash_code: true,
@@ -138,14 +144,17 @@ pub struct Processor {
     listeners: Box<Listeners>,
     package_prefix: Option<ast::Package>,
     lower_to_upper_camel: Box<naming::Naming>,
+    null_string: Variable,
     suppress_warnings: ClassType,
     string_builder: ClassType,
     override_: ClassType,
+    objects: ClassType,
     object: ClassType,
     list: ClassType,
     map: ClassType,
     string: ClassType,
     optional: ClassType,
+    void: PrimitiveType,
     integer: PrimitiveType,
     boolean: PrimitiveType,
     long: PrimitiveType,
@@ -164,8 +173,10 @@ impl Processor {
             env: env,
             package_prefix: package_prefix,
             lower_to_upper_camel: naming::CamelCase::new().to_upper_camel(),
+            null_string: Variable::String("null".to_owned()),
             listeners: listeners,
             override_: Type::class("java.lang", "Override"),
+            objects: Type::class("java.util", "Objects"),
             suppress_warnings: Type::class("java.lang", "SuppressWarnings"),
             string_builder: Type::class("java.lang", "StringBuilder"),
             object: Type::class("java.lang", "Object"),
@@ -173,6 +184,7 @@ impl Processor {
             map: Type::class("java.util", "Map"),
             string: Type::class("java.lang", "String"),
             optional: Type::class("java.util", "Optional"),
+            void: Type::primitive("void", "Void"),
             integer: Type::primitive("int", "Integer"),
             boolean: Type::primitive("boolean", "Boolean"),
             long: Type::primitive("long", "Long"),
@@ -181,9 +193,24 @@ impl Processor {
         }
     }
 
+    fn field_mods(&self) -> Modifiers {
+        let mut modifiers = java_mods![Modifier::Private];
+
+        if self.options.immutable {
+            modifiers.insert(Modifier::Final);
+        }
+
+        modifiers
+    }
+
     /// Create a new FileSpec from the given package.
     fn new_file_spec(&self, package: &ast::Package) -> FileSpec {
         FileSpec::new(&self.java_package_name(package))
+    }
+
+    fn new_field_spec(&self, ty: &Type, name: &str) -> FieldSpec {
+        let mods = self.field_mods();
+        FieldSpec::new(mods, ty, name)
     }
 
     /// Build the java package of a given package.
@@ -245,25 +272,65 @@ impl Processor {
         for field in &class.fields {
             let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
             constructor.push_argument(&argument);
+
+            if !self.options.nullable {
+                if let Some(non_null) = self.require_non_null(&field, &argument) {
+                    constructor.push(non_null);
+                }
+            }
+
             constructor.push(java_stmt!["this.", &field.name, " = ", argument, ";"]);
         }
 
         constructor
     }
 
-    fn build_getters(&self, class: &ClassSpec) -> Result<Vec<MethodSpec>> {
-        let mut result = Vec::new();
+    /// Build a require-non-null check.
+    fn require_non_null(&self, field: &FieldSpec, argument: &ArgumentSpec) -> Option<Statement> {
+        match field.ty {
+            Type::Primitive(_) => None,
+            _ => {
+                let require_non_null = java_stmt![&self.objects, ".requireNonNull"];
+                let string = Variable::String(field.name.clone());
+                Some(java_stmt![require_non_null, "(", &argument, ", ", string, ");"])
+            }
+        }
+    }
 
-        for field in &class.fields {
-            let return_type = &field.ty;
-            let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
-            let mut method_spec = MethodSpec::new(java_mods![Modifier::Public], &name);
-            method_spec.returns(return_type);
-            method_spec.push(java_stmt!["return this.", &field, ";"]);
-            result.push(method_spec);
+    fn build_setter(&self, field: &FieldSpec) -> Result<MethodSpec> {
+        let name = format!("set{}", self.lower_to_upper_camel.convert(&field.name));
+        let mut method_spec = MethodSpec::new(java_mods![Modifier::Public], &name);
+
+        let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
+
+        method_spec.push_argument(&argument);
+
+        method_spec.returns(&self.void);
+
+        let mut method_body = Elements::new();
+
+        if !self.options.nullable {
+            if let Some(non_null) = self.require_non_null(&field, &argument) {
+                method_body.push(non_null);
+            }
         }
 
-        Ok(result)
+        method_body.push(java_stmt!["this.", field, " = ", &argument, ";"]);
+
+        method_spec.push(method_body);
+
+        Ok(method_spec)
+    }
+
+    fn build_getter(&self, field: &FieldSpec) -> Result<MethodSpec> {
+        let return_type = &field.ty;
+        let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
+        let mut method_spec = MethodSpec::new(java_mods![Modifier::Public], &name);
+
+        method_spec.returns(return_type);
+        method_spec.push(java_stmt!["return this.", field, ";"]);
+
+        Ok(method_spec)
     }
 
     fn build_hash_code(&self, class: &ClassSpec) -> MethodSpec {
@@ -271,9 +338,10 @@ impl Processor {
 
         hash_code.push_annotation(&self.override_);
         hash_code.returns(&self.integer);
-        hash_code.push("int result = 17;");
 
-        let mut mutations = Elements::new();
+        let mut method_body = Elements::new();
+
+        method_body.push("int result = 1;");
 
         for field in &class.fields {
             let field_stmt = java_stmt!["this.", field];
@@ -281,19 +349,29 @@ impl Processor {
             let value = match field.ty {
                 Type::Primitive(ref primitive) => {
                     if *primitive == self.integer {
-                        field_stmt
+                        field_stmt.clone()
                     } else {
-                        java_stmt![primitive.as_boxed(), ".hashCode(", field_stmt, ")"]
+                        java_stmt![primitive.as_boxed(), ".hashCode(", &field_stmt, ")"]
                     }
                 }
-                _ => java_stmt![field_stmt, ".hashCode()"],
+                _ => java_stmt![&field_stmt, ".hashCode()"],
             };
 
-            mutations.push(java_stmt!["result = 31 * ", value, ";"]);
+            let value = if self.options.nullable {
+                match field.ty {
+                    Type::Primitive(_) => value,
+                    _ => java_stmt!["(", &field_stmt, " != null ? 0 : ", value, ")"],
+                }
+            } else {
+                value
+            };
+
+            method_body.push(java_stmt!["result = result * 31 + ", value, ";"]);
         }
 
-        hash_code.push(&mutations);
-        hash_code.push("return result;");
+        method_body.push("return result;");
+
+        hash_code.push(&method_body);
 
         hash_code
     }
@@ -345,21 +423,39 @@ impl Processor {
         equals.push(cast);
 
         for field in &class.fields {
-            let mut field_check = Elements::new();
-
             let field_stmt = java_stmt!["this.", field];
-            let other_arg = java_stmt![&o, ".", &field.name];
+            let o = java_stmt![&o, ".", &field.name];
 
-            let condition = match field.ty {
-                Type::Primitive(_) => java_stmt![field_stmt, " != ", other_arg],
-                _ => java_stmt!["!", field_stmt, ".equals(", other_arg, ")"],
+            let equals_condition = match field.ty {
+                Type::Primitive(_) => java_stmt![&field_stmt, " != ", &o],
+                _ => java_stmt!["!", &field_stmt, ".equals(", &o, ")"],
             };
 
-            field_check.push(java_stmt!["if (", condition, ") {"]);
-            field_check.push_nested("return false;");
-            field_check.push("}");
+            let mut equals_check = Elements::new();
 
-            equals.push(field_check);
+            equals_check.push(java_stmt!["if (", equals_condition, ") {"]);
+            equals_check.push_nested("return false;");
+            equals_check.push("}");
+
+            if self.options.nullable {
+                let mut null_check = Elements::new();
+
+                null_check.push(java_stmt!["if (", &o, " != null) {"]);
+                null_check.push_nested("return false;");
+                null_check.push("}");
+
+                let mut field_check = Elements::new();
+
+                field_check.push(java_stmt!["if (", &field_stmt, " == null) {"]);
+                field_check.push_nested(null_check);
+                field_check.push("} else {");
+                field_check.push_nested(equals_check);
+                field_check.push("}");
+
+                equals.push(field_check);
+            } else {
+                equals.push(equals_check);
+            }
         }
 
         equals.push("return true;");
@@ -392,9 +488,17 @@ impl Processor {
 
             let format = match field.ty {
                 Type::Primitive(ref primitive) => {
-                    java_stmt![primitive.as_boxed(), ".toString(", field_stmt, ")"]
+                    java_stmt![primitive.as_boxed(), ".toString(", &field_stmt, ")"]
                 }
-                _ => java_stmt![field_stmt, ".toString()"],
+                _ => {
+                    let format = java_stmt![&field_stmt, ".toString()"];
+
+                    if self.options.nullable {
+                        java_stmt![&field_stmt, " == null ? ", &self.null_string, " : ", format]
+                    } else {
+                        format
+                    }
+                }
             };
 
             let field_key = Variable::String(format!("{} = ", &field.name));
@@ -431,9 +535,17 @@ impl Processor {
             class.push_constructor(constructor);
         }
 
-        if self.options.build_getters {
-            for getter in self.build_getters(&class)? {
+        for field in class.fields.clone() {
+            if self.options.build_getters {
+                let getter = self.build_getter(&field)?;
                 class.push(getter);
+            }
+
+            if self.options.build_setters {
+                if !field.modifiers.contains(&Modifier::Final) {
+                    let setter = self.build_setter(&field)?;
+                    class.push(setter);
+                }
             }
         }
 
@@ -467,7 +579,6 @@ impl Processor {
             ast::Type::Tuple(ref elements) => {
                 for (index, element) in elements.iter().enumerate() {
                     let field_type = self.convert_type(package, &element.ty)?;
-                    let mods = java_mods![Modifier::Private, Modifier::Final];
 
                     let index_name = match index {
                         0 => "first".to_owned(),
@@ -477,7 +588,8 @@ impl Processor {
                     };
 
                     let name = element.name.clone().unwrap_or(index_name);
-                    let field_spec = FieldSpec::new(mods, &field_type, &name);
+
+                    let field_spec = self.new_field_spec(&field_type, &name);
                     class.push_field(&field_spec);
                     fields.push(Field::new(ast::Modifier::Required, name, field_type, field_spec));
                 }
@@ -620,17 +732,13 @@ impl Processor {
             field_type.clone()
         };
 
-        let mods = java_mods![Modifier::Private, Modifier::Final];
-
         let name = if let Some(ref id_converter) = self.options.parent.id_converter {
             id_converter.convert(&field.name)
         } else {
             field.name.clone()
         };
 
-        let field = FieldSpec::new(mods, &field_type, &name);
-
-        Ok(field)
+        Ok(self.new_field_spec(&field_type, &name))
     }
 }
 

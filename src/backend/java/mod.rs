@@ -2,6 +2,8 @@ pub mod builder;
 pub mod constructor_properties;
 pub mod fasterxml;
 pub mod lombok;
+pub mod mutable;
+pub mod nullable;
 pub mod processor;
 
 use environment::Environment;
@@ -12,10 +14,12 @@ use errors::*;
 
 fn setup_module(module: &str) -> Result<Box<processor::Listeners>> {
     let module: Box<processor::Listeners> = match module {
-        "fasterxml" => Box::new(fasterxml::Module::new()),
-        "constructor_properties" => Box::new(constructor_properties::Module::new()),
-        "lombok" => Box::new(lombok::Module::new()),
         "builder" => Box::new(builder::Module::new()),
+        "constructor_properties" => Box::new(constructor_properties::Module::new()),
+        "fasterxml" => Box::new(fasterxml::Module::new()),
+        "lombok" => Box::new(lombok::Module::new()),
+        "mutable" => Box::new(mutable::Module::new()),
+        "nullable" => Box::new(nullable::Module::new()),
         _ => return Err(format!("No such module: {}", module).into()),
     };
 
