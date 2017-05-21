@@ -114,6 +114,9 @@ pub struct ProcessorOptions {
     parent: Options,
     pub build_getters: bool,
     pub build_constructor: bool,
+    pub build_hash_code: bool,
+    pub build_equals: bool,
+    pub build_to_string: bool,
 }
 
 impl ProcessorOptions {
@@ -122,6 +125,9 @@ impl ProcessorOptions {
             parent: options,
             build_getters: true,
             build_constructor: true,
+            build_hash_code: true,
+            build_equals: true,
+            build_to_string: true,
         }
     }
 }
@@ -132,12 +138,16 @@ pub struct Processor {
     listeners: Box<Listeners>,
     package_prefix: Option<ast::Package>,
     lower_to_upper_camel: Box<naming::Naming>,
+    suppress_warnings: ClassType,
+    string_builder: ClassType,
+    override_: ClassType,
     object: ClassType,
     list: ClassType,
     map: ClassType,
     string: ClassType,
     optional: ClassType,
     integer: PrimitiveType,
+    boolean: PrimitiveType,
     long: PrimitiveType,
     float: PrimitiveType,
     double: PrimitiveType,
@@ -155,12 +165,16 @@ impl Processor {
             package_prefix: package_prefix,
             lower_to_upper_camel: naming::CamelCase::new().to_upper_camel(),
             listeners: listeners,
+            override_: Type::class("java.lang", "Override"),
+            suppress_warnings: Type::class("java.lang", "SuppressWarnings"),
+            string_builder: Type::class("java.lang", "StringBuilder"),
             object: Type::class("java.lang", "Object"),
             list: Type::class("java.util", "List"),
             map: Type::class("java.util", "Map"),
             string: Type::class("java.lang", "String"),
             optional: Type::class("java.util", "Optional"),
             integer: Type::primitive("int", "Integer"),
+            boolean: Type::primitive("boolean", "Boolean"),
             long: Type::primitive("long", "Long"),
             float: Type::primitive("float", "Float"),
             double: Type::primitive("double", "Double"),
@@ -237,6 +251,212 @@ impl Processor {
         constructor
     }
 
+    fn build_getters(&self, class: &ClassSpec) -> Result<Vec<MethodSpec>> {
+        let mut result = Vec::new();
+
+        for field in &class.fields {
+            let return_type = &field.ty;
+            let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
+            let mut method_spec = MethodSpec::new(java_mods![Modifier::Public], &name);
+            method_spec.returns(return_type);
+            method_spec.push(java_stmt!["return this.", &field, ";"]);
+            result.push(method_spec);
+        }
+
+        Ok(result)
+    }
+
+    fn build_hash_code(&self, class: &ClassSpec) -> MethodSpec {
+        let mut hash_code = MethodSpec::new(java_mods![Modifier::Public], "hashCode");
+
+        hash_code.push_annotation(&self.override_);
+        hash_code.returns(&self.integer);
+        hash_code.push("int result = 17;");
+
+        let mut mutations = Elements::new();
+
+        for field in &class.fields {
+            let field_stmt = java_stmt!["this.", field];
+
+            let value = match field.ty {
+                Type::Primitive(ref primitive) => {
+                    if *primitive == self.integer {
+                        field_stmt
+                    } else {
+                        java_stmt![primitive.as_boxed(), ".hashCode(", field_stmt, ")"]
+                    }
+                }
+                _ => java_stmt![field_stmt, ".hashCode()"],
+            };
+
+            mutations.push(java_stmt!["result = 31 * ", value, ";"]);
+        }
+
+        hash_code.push(&mutations);
+        hash_code.push("return result;");
+
+        hash_code
+    }
+
+    fn build_equals(&self, class_type: &ClassType, class: &ClassSpec) -> MethodSpec {
+        let mut equals = MethodSpec::new(java_mods![Modifier::Public], "equals");
+
+        equals.push_annotation(&self.override_);
+        equals.returns(&self.boolean);
+
+        let argument = ArgumentSpec::new(java_mods![Modifier::Final], &self.object, "other");
+
+        equals.push_argument(&argument);
+
+        // check if argument is null.
+        {
+            let mut null_check = Elements::new();
+
+            null_check.push(java_stmt!["if (", &argument, " == null) {"]);
+            null_check.push_nested("return false;");
+            null_check.push("}");
+
+            equals.push(null_check);
+        }
+
+        // check that argument is expected type.
+        {
+            let mut instanceof_check = Elements::new();
+
+            instanceof_check.push(java_stmt!["if (!(", &argument, " instanceof ", class_type, ")) {"]);
+            instanceof_check.push_nested("return false;");
+            instanceof_check.push("}");
+
+            equals.push(instanceof_check);
+        }
+
+        // cast argument.
+        let o = java_stmt!["o"];
+
+        let mut cast = Elements::new();
+
+        let mut suppress_warnings = AnnotationSpec::new(&self.suppress_warnings);
+        suppress_warnings.push_argument(Variable::String("unchecked".to_owned()));
+
+        cast.push(suppress_warnings);
+        cast.push(java_stmt!["final ", class_type, " ", &o, " = (", class_type, ") ", argument,
+                             ";"]);
+
+        equals.push(cast);
+
+        for field in &class.fields {
+            let mut field_check = Elements::new();
+
+            let field_stmt = java_stmt!["this.", field];
+            let other_arg = java_stmt![&o, ".", &field.name];
+
+            let condition = match field.ty {
+                Type::Primitive(_) => java_stmt![field_stmt, " != ", other_arg],
+                _ => java_stmt!["!", field_stmt, ".equals(", other_arg, ")"],
+            };
+
+            field_check.push(java_stmt!["if (", condition, ") {"]);
+            field_check.push_nested("return false;");
+            field_check.push("}");
+
+            equals.push(field_check);
+        }
+
+        equals.push("return true;");
+
+        equals
+    }
+
+    fn build_to_string(&self, class_type: &ClassType, class: &ClassSpec) -> MethodSpec {
+        let mut to_string = MethodSpec::new(java_mods![Modifier::Public], "toString");
+
+        to_string.push_annotation(&self.override_);
+        to_string.returns(&self.string);
+
+        let b = java_stmt!["b"];
+
+        let new_string_builder = java_stmt!["new ", &self.string_builder, "();"];
+
+        to_string.push(java_stmt!["final ",
+                                  &self.string_builder,
+                                  " ",
+                                  &b,
+                                  " = ", &new_string_builder]);
+
+        let mut fields = Elements::new();
+
+        for field in &class.fields {
+            let mut field_append = Elements::new();
+
+            let field_stmt = java_stmt!["this.", field];
+
+            let format = match field.ty {
+                Type::Primitive(ref primitive) => {
+                    java_stmt![primitive.as_boxed(), ".toString(", field_stmt, ")"]
+                }
+                _ => java_stmt![field_stmt, ".toString()"],
+            };
+
+            let field_key = Variable::String(format!("{} = ", &field.name));
+
+            field_append.push(java_stmt![&b, ".append(", field_key, ");"]);
+            field_append.push(java_stmt![&b, ".append(", format, ");"]);
+
+            fields.push(field_append);
+        }
+
+        /// join each field with ", "
+        let field_joiner = java_stmt![&b, ".append(", Variable::String(", ".to_owned()), ");"];
+
+        let mut class_appends = Elements::new();
+
+        class_appends.push(java_stmt![&b, ".append(", Variable::String(class_type.name.clone()), ");"]);
+        class_appends.push(java_stmt![&b, ".append(", Variable::String("(".to_owned()), ");"]);
+        class_appends.push(fields.join(field_joiner));
+        class_appends.push(java_stmt![&b, ".append(", Variable::String(")".to_owned()), ");"]);
+
+        to_string.push(class_appends);
+        to_string.push(java_stmt!["return ", &b, ".toString();"]);
+
+        to_string
+    }
+
+    fn add_class(&self,
+                 fields: &Vec<Field>,
+                 class_type: &ClassType,
+                 class: &mut ClassSpec)
+                 -> Result<()> {
+        if self.options.build_constructor {
+            let constructor = self.build_constructor(class);
+            class.push_constructor(constructor);
+        }
+
+        if self.options.build_getters {
+            for getter in self.build_getters(&class)? {
+                class.push(getter);
+            }
+        }
+
+        if self.options.build_hash_code {
+            let hash_code = self.build_hash_code(class);
+            class.push(hash_code);
+        }
+
+        if self.options.build_equals {
+            let equals = self.build_equals(class_type, class);
+            class.push(equals);
+        }
+
+        if self.options.build_to_string {
+            let to_string = self.build_to_string(class_type, class);
+            class.push(to_string);
+        }
+
+        self.listeners.class_added(&fields, &class_type, class)?;
+
+        Ok(())
+    }
+
     fn process_type(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
@@ -265,38 +485,12 @@ impl Processor {
             _ => {}
         }
 
-        if self.options.build_constructor {
-            let constructor = self.build_constructor(&class);
-            class.push_constructor(&constructor);
-        }
-
-        if self.options.build_getters {
-            for getter in self.build_getters(&class)? {
-                class.push(&getter);
-            }
-        }
-
-        self.listeners.class_added(&fields, &class_type, &mut class)?;
+        self.add_class(&fields, &class_type, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push(&class);
 
         Ok(file_spec)
-    }
-
-    fn build_getters(&self, class: &ClassSpec) -> Result<Vec<MethodSpec>> {
-        let mut result = Vec::new();
-
-        for field in &class.fields {
-            let return_type = &field.ty;
-            let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
-            let mut method_spec = MethodSpec::new(java_mods![Modifier::Public], &name);
-            method_spec.returns(return_type);
-            method_spec.push(java_stmt!["return this.", &field, ";"]);
-            result.push(method_spec);
-        }
-
-        Ok(result)
     }
 
     fn process_message(&self,
@@ -332,18 +526,7 @@ impl Processor {
             }
         }
 
-        if self.options.build_constructor {
-            let constructor = self.build_constructor(&class);
-            class.push_constructor(&constructor);
-        }
-
-        if self.options.build_getters {
-            for getter in self.build_getters(&class)? {
-                class.push(&getter);
-            }
-        }
-
-        self.listeners.class_added(&fields, &class_type, &mut class)?;
+        self.add_class(&fields, &class_type, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push(&class);
@@ -416,20 +599,9 @@ impl Processor {
                 }
             }
 
-            if self.options.build_constructor {
-                let constructor = self.build_constructor(&class);
-                class.push_constructor(&constructor);
-            }
+            self.add_class(&fields, &class_type, &mut class)?;
 
-            if self.options.build_getters {
-                for getter in self.build_getters(&class)? {
-                    class.push(&getter);
-                }
-            }
-
-            self.listeners.class_added(&fields, &class_type, &mut class)?;
             self.listeners.sub_type_added(&fields, interface, sub_type, &mut class)?;
-
             interface_spec.push(&class);
         }
 

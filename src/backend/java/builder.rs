@@ -75,16 +75,14 @@ impl processor::Listeners for Module {
             let value = match field.modifier {
                 ast::Modifier::Required => {
                     let message = Variable::String(format!("{}: is required", source.name));
+                    let throw_stmt = java_stmt!["new ", &self.runtime_exception, "(", message, ")"];
 
-                    let throw_stmt =
-                        java_stmt!["throw new ", &self.runtime_exception, "(", message, ")"];
-
-                    java_stmt!["this.", &source.name, ".orElseThrow(() => ", throw_stmt, ")"]
+                    java_stmt!["this.", &source.name, ".orElseThrow(() -> ", throw_stmt, ")"]
                 }
                 _ => java_stmt!["this.", &source.name],
             };
 
-            build_variable_assign.push(java_stmt!["final ", &source.ty, " ", &source.name, " = ", value]);
+            build_variable_assign.push(java_stmt!["final ", &source.ty, " ", &source.name, " = ", value, ";"]);
             build_constructor_arguments.push(&source.name);
         }
 

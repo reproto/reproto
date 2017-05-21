@@ -16,10 +16,12 @@ impl Module {
 
 impl processor::Listeners for Module {
     fn configure(&self, options: &mut processor::ProcessorOptions) -> Result<()> {
-        // lombok builds getters
+        // lombok builds these automatically.
         options.build_getters = false;
-        // lombok builds constructor
         options.build_constructor = false;
+        options.build_hash_code = false;
+        options.build_equals = false;
+        options.build_to_string = false;
         Ok(())
     }
 

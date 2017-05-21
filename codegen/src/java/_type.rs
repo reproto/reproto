@@ -111,6 +111,10 @@ impl PrimitiveType {
             self.boxed.clone()
         }
     }
+
+    pub fn as_boxed(&self) -> ClassType {
+        ClassType::new("java.lang", &self.boxed, vec![])
+    }
 }
 
 /// Raw (importable) types.

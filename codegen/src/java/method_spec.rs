@@ -1,5 +1,5 @@
 use super::_type::{AsType, Type};
-use super::annotation_spec::AnnotationSpec;
+use super::annotation_spec::{AsAnnotationSpec, AnnotationSpec};
 use super::argument_spec::{AsArgumentSpec, ArgumentSpec};
 use super::element_spec::AsElementSpec;
 use super::elements::Elements;
@@ -27,8 +27,10 @@ impl MethodSpec {
         }
     }
 
-    pub fn push_annotation(&mut self, annotation: &AnnotationSpec) {
-        self.annotations.push(annotation.clone());
+    pub fn push_annotation<A>(&mut self, annotation: A)
+        where A: AsAnnotationSpec
+    {
+        self.annotations.push(annotation.as_annotation_spec());
     }
 
     pub fn push_argument<A>(&mut self, argument: A)

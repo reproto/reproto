@@ -213,3 +213,11 @@ impl AsStatement for AnnotationSpec {
         stmt
     }
 }
+
+impl AsStatement for Variable {
+    fn as_statement(self) -> Statement {
+        let mut stmt = Statement::new();
+        stmt.push(self);
+        stmt
+    }
+}
