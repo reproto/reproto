@@ -15,17 +15,24 @@ See [Examples][examples] for some example API specifications.
 FasterXML Backend:
 
 ```bash
-$> cargo run -- --debug --backend java/fasterxml --out target/java --path examples heroic.v1
+$> cargo run -- --debug --b java -m fasterxml -o target/java \
+  --path examples \
+  heroic.v1
 ```
 
 You can also include one of the extensions:
 
 ```bash
-$> cargo run -- --debug --backend java/fasterxml --out target/java --path examples --path examples/ext heroic.v1
+$> cargo run -- --debug -b java -m fasterxml -o target/java \
+  --path examples \
+  --path examples/ext \
+  heroic.v1
 ```
 
 Plain Python Backend:
 
 ```bash
-$> cargo run -- --debug --backend python/plain --out target/python --path examples heroic.v1
+$> cargo run -- --debug -b python -o target/python \
+  --path examples \
+  heroic.v1
 ```

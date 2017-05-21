@@ -28,7 +28,7 @@ fn setup_opts() -> getopts::Options {
                   "Modules to load for a given backend",
                   "<module>");
 
-    opts.optmulti("",
+    opts.optmulti("p",
                   "path",
                   "Paths to look for definitions. Can be used multiple times.",
                   "<dir>");
@@ -37,7 +37,7 @@ fn setup_opts() -> getopts::Options {
 
     opts.optflag("h", "help", "Print help.");
 
-    opts.optflag("", "debug", "Enable debug logging.");
+    opts.optflag("D", "debug", "Enable debug logging.");
 
     opts.optopt("",
                 "package-prefix",
