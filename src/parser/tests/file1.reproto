@@ -16,11 +16,11 @@ type Foo {
     name: string;
     map: {string: u32};
 
-    java @@
+    java {{
       public int hello() {
         return 42;
       }
-    @@
+    }}
 }
 
 /**
@@ -30,11 +30,11 @@ type Foo {
 interface Bar {
     reserved "a", "b", "c";
 
-    java @@
+    java {{
       default int hello() {
         return 42;
       }
-    @@
+    }}
 
     A {
         name "foo";

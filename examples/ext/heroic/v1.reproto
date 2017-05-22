@@ -4,15 +4,15 @@ type Query {
   query_id?: string;
 
   // added method
-  java @@
+  java {{
     /* do something with aggregation */
     public boolean hasAggregation() {
       return this.aggregation.isPresent();
     }
-  @@
+  }}
 
-  python @@
+  python {{
     def hello(self):
       return "hello"
-  @@
+  }}
 }

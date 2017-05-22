@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
-use errors::*;
+use super::errors::*;
 
 /// Position relative in file where the declaration is present.
 pub type Pos = (usize, usize);
@@ -266,30 +266,34 @@ impl Decl {
         }
     }
 
+    pub fn display(&self) -> String {
+        match *self {
+            Decl::Interface(ref body, _) => format!("interface {}", body.name),
+            Decl::Type(ref body, _) => format!("type {}", body.name),
+            Decl::Tuple(ref body, _) => format!("tuple {}", body.name),
+        }
+    }
+
     pub fn merge(&mut self, other: &Decl) -> Result<()> {
         match *self {
             Decl::Interface(ref mut body, _) => {
                 if let Decl::Interface(ref other, _) = *other {
-                    body.merge(other)
-                } else {
-                    Err("cannot merge type and tuple".into())
+                    return body.merge(other);
                 }
             }
             Decl::Type(ref mut body, _) => {
                 if let Decl::Type(ref other, _) = *other {
-                    body.merge(other)
-                } else {
-                    Err("cannot merge type and tuple".into())
+                    return body.merge(other);
                 }
             }
             Decl::Tuple(ref mut body, _) => {
                 if let Decl::Tuple(ref other, _) = *other {
-                    body.merge(other)
-                } else {
-                    Err("cannot merge tuple and type".into())
+                    return body.merge(other);
                 }
             }
         }
+
+        Err(ErrorKind::InvalidMerge(self.clone(), other.clone()).into())
     }
 }
 

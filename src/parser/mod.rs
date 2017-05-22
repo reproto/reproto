@@ -3,12 +3,35 @@ mod parser;
 pub mod ast;
 pub mod errors;
 
-use std::path::Path;
-use std::fs::File;
-use std::io::Read;
-use pest::prelude::StringInput;
 use pest::Parser;
-use errors::*;
+use pest::prelude::StringInput;
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Read;
+use std::path::Path;
+
+use self::errors::*;
+
+pub fn find_line(path: &Path, pos: usize) -> Result<(String, usize)> {
+    let file = File::open(path)?;
+    let mut current_pos: usize = 0;
+    let mut lines: usize = 0;
+    let reader = BufReader::new(&file);
+
+    for line in reader.lines() {
+        let line = line?;
+        lines += 1;
+
+        if current_pos >= pos {
+            return Ok((line, lines));
+        }
+
+        current_pos += line.len() + 1;
+    }
+
+    Err("bad file position".into())
+}
 
 pub fn parse_file(path: &Path) -> Result<ast::File> {
     let mut f = File::open(path)?;
@@ -19,8 +42,9 @@ pub fn parse_file(path: &Path) -> Result<ast::File> {
     let mut parser = parser::Rdp::new(StringInput::new(&content));
 
     if !parser.file() {
-        println!("queue = {:?}", parser.tracked_len_pos());
-        return Err("invalid syntax".into());
+        let (_, pos) = parser.tracked_len_pos();
+        let (line_string, line) = find_line(path, pos)?;
+        return Err(ErrorKind::Syntax("unexpected input".to_owned(), line_string, line).into());
     }
 
     if !parser.end() {

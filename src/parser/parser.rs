@@ -137,8 +137,8 @@ impl_rdp! {
         member = { field | code_block }
 
         field = { ident ~ modifier? ~ [":"] ~ type_spec ~ [";"] }
-        code_block = @{ ident ~ whitespace* ~ ["@@"] ~ code_body ~ ["@@"] }
-        code_body = { (!(["@@"]) ~ any)* }
+        code_block = @{ ident ~ whitespace* ~ ["{{"] ~ code_body ~ ["}}"] }
+        code_body = { (!(["}}"]) ~ any)* }
         // body of a code block, either another balanced block, or anything but brackets
         modifier = { ["?"] }
 
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_code() {
-        let mut parser = Rdp::new(StringInput::new("java@@\na { b { c } d } e\n@@"));
+        let mut parser = Rdp::new(StringInput::new("java{{\na { b { c } d } e\n}}"));
 
         assert!(parser.code_block());
         assert!(parser.end());

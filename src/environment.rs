@@ -1,14 +1,10 @@
+use backend::TypeId;
 use parser::ast;
-use std::path::PathBuf;
+use parser;
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::collections::btree_map::{Entry, OccupiedEntry};
-use std::fs::File;
-use std::io::BufReader;
-use std::io::BufRead;
-
-use backend::TypeId;
-use parser;
+use std::path::PathBuf;
 
 use errors::*;
 
@@ -21,32 +17,24 @@ pub struct Environment {
     pub used: BTreeMap<(ast::Package, String), ast::Package>,
 }
 
-fn _find_line(path: &PathBuf, pos: ast::Pos) -> Result<(String, usize)> {
-    let file = File::open(path)?;
-    let mut current_pos: usize = 0;
-    let mut lines: usize = 0;
-    let reader = BufReader::new(&file);
-
-    for line in reader.lines() {
-        let line = line?;
-        lines += 1;
-
-        if current_pos >= pos.0 {
-            return Ok((line, lines));
-        }
-
-        current_pos += line.len() + 1;
-    }
-
-    Err("bad file position".into())
-}
-
-fn handle_occupied<'a>(_path: &PathBuf,
+fn handle_occupied<'a>(path: &PathBuf,
                        entry: OccupiedEntry<'a, TypeId, ast::Decl>,
                        decl: &ast::Decl)
                        -> Result<()> {
-    entry.into_mut().merge(decl)?;
-    Ok(())
+    let existing = entry.get().clone();
+
+    let result = entry.into_mut()
+        .merge(decl);
+
+    result.chain_err(move || {
+        let pos = decl.pos();
+
+        parser::find_line(path, pos.0)
+            .map(|(line_string, line)| {
+                ErrorKind::DeclConflict(path.clone(), line_string, line, existing, decl.clone())
+            })
+            .unwrap_or_else(|e| ErrorKind::Parser(e.into()).into())
+    })
 }
 
 impl Environment {
@@ -59,11 +47,32 @@ impl Environment {
         }
     }
 
+    fn validate_tuple(&self, body: &ast::TypeBody) -> Result<()> {
+        for member in &body.members {
+            if let ast::Member::Field(ref field, _) = *member {
+                if field.modifier == ast::Modifier::Optional {
+                    return Err("Tuples must not have optional fields".into());
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn validate_decl(&self, decl: &ast::Decl) -> Result<()> {
+        match *decl {
+            ast::Decl::Tuple(ref body, _) => self.validate_tuple(body),
+            _ => Ok(()),
+        }
+    }
+
     fn register_type(&mut self,
                      path: &PathBuf,
                      package: &ast::Package,
                      decl: &ast::Decl)
                      -> Result<()> {
+        self.validate_decl(decl)?;
+
         let key = (package.clone(), decl.name());
 
         match self.types.entry(key) {
@@ -177,7 +186,16 @@ impl Environment {
             }
 
             for decl in &file.decls {
-                self.register_type(path, package, decl)?;
+                self.register_type(path, package, decl)
+                    .chain_err(|| {
+                        let pos = decl.pos();
+
+                        parser::find_line(path, pos.0)
+                            .map(|(line_string, line)| {
+                                ErrorKind::DeclError(path.clone(), line_string, line, decl.clone())
+                            })
+                            .unwrap_or_else(|e| ErrorKind::Parser(e.into()).into())
+                    })?;
             }
         }
 

@@ -236,16 +236,16 @@ package foo;
 type Foo {
   field: string;
 
-  java @@
+  java {{
     public boolean isFieldOk() {
       return this.field.equals("ok");
     }
-  @@
+  }}
 
-  python @@
+  python {{
     def is_field_ok(self):
       return self.field == "ok"
-  @@
+  }}
 }
 ```
 

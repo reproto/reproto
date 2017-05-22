@@ -29,7 +29,7 @@ error_chain! {
     }
 
     foreign_links {
-        Io(::std::io::Error) #[cfg(unix)];
+        Io(::std::io::Error);
         Log(::log::SetLoggerError);
         Getopts(::getopts::Fail);
         ParseError(InternalError);
@@ -39,9 +39,14 @@ error_chain! {
         MissingBackend {
         }
 
-        ConflictingTypeDecl(path: PathBuf, line_string: String, line: usize, existing: ast::Decl, conflicting: ast::Decl) {
+        DeclError(path: PathBuf, line_string: String, line: usize, decl: ast::Decl) {
+            description("Error in declaration")
+            display("Error in declaration `{}`: {}:{}: `{}`", decl.display(), path.display(), line, line_string)
+        }
+
+        DeclConflict(path: PathBuf, line_string: String, line: usize, existing: ast::Decl, conflicting: ast::Decl) {
             description("Conflicting type declared")
-            display("Conflicting type declared: {}:{}: {}", path.display(), line, line_string)
+            display("Conflicting type declared: {}:{}: `{}`", path.display(), line, line_string)
         }
     }
 }
