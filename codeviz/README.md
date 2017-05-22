@@ -1,6 +1,6 @@
-# codegen
+# codeviz
 
-codegen is a simple code generator for rust, specifically written for use in [reproto][reproto].
+codeviz is a simple code generator for rust, specifically written for use in [reproto][reproto].
 
 This project is inspired by JavaPoet (https://github.com/square/javapoet)
 
@@ -10,9 +10,9 @@ This project is inspired by JavaPoet (https://github.com/square/javapoet)
 
 ```rust
 #[macro_use]
-extern crate codegen;
+extern crate codeviz;
 
-use codegen::java::*;
+use codeviz::java::*;
 
 fn main() {
   let string_type = Type::class("java.lang", "String");

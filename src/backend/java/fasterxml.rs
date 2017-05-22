@@ -2,7 +2,7 @@
 use parser::ast;
 use super::processor;
 
-use codegen::java::*;
+use codeviz::java::*;
 use errors::*;
 
 pub struct Module {

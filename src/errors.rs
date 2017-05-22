@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use parser::errors as parser;
-use codegen::errors as codegen;
+use codeviz::errors as codeviz;
 
 use parser::ast;
 
@@ -25,7 +25,7 @@ impl ::std::error::Error for InternalError {
 error_chain! {
     links {
         Parser(parser::Error, parser::ErrorKind);
-        Codegen(codegen::Error, codegen::ErrorKind);
+        Codeviz(codeviz::Error, codeviz::ErrorKind);
     }
 
     foreign_links {

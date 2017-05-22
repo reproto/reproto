@@ -1,7 +1,7 @@
 /// Module that adds lombok annotations to generated classes.
 use super::processor;
 
-use codegen::java::*;
+use codeviz::java::*;
 use errors::*;
 
 pub struct Module {

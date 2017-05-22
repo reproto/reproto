@@ -1,5 +1,5 @@
 [package]
-name = "reproto"
+name = "codeviz"
 version = "0.1.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "Apache-2.0"
@@ -13,10 +13,3 @@ Rethinking Protocol Generators
 
 [dependencies]
 error-chain = "*"
-log = "*"
-getopts = "*"
-pest = "*"
-
-[dependencies.codeviz]
-path = "codeviz"
-version = "0.1.0"

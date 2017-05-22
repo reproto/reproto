@@ -11,7 +11,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 #[macro_use]
-use codegen::python::*;
+use codeviz::python::*;
 
 use errors::*;
 

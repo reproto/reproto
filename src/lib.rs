@@ -10,7 +10,7 @@ extern crate error_chain;
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate codegen;
+extern crate codeviz;
 
 pub mod backend;
 pub mod errors;
