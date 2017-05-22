@@ -1,4 +1,3 @@
-#![feature(proc_macro)]
 #![recursion_limit = "1000"]
 
 extern crate getopts;

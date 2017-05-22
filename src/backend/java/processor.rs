@@ -7,7 +7,6 @@ use std::fs::File;
 use std::fs;
 use std::io::Write;
 
-#[macro_use]
 use codeviz::java::*;
 
 use errors::*;

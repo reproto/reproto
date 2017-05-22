@@ -1,5 +1,3 @@
-#![recursion_limit = "80"]
-
 use std::collections::LinkedList;
 use std::collections::BTreeMap;
 
