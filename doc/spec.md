@@ -38,7 +38,7 @@
   * ~~Generated equals/hashCode (disabled when using lombok).~~
   * ~~Generated toString (disabled when using lombok).~~
   * Type aliases.
-  * Tuple decoding.
+  * Tuple decoding (in `fasterxml`).
 
 * Python
   * ~~Encode support (e.g. `instance.encode()`)~~
@@ -279,11 +279,11 @@ package foo;
 type Foo {
   other?: string;
 
-  java @@
+  java {{
     public boolean hasOther() {
       return this.other.isPresent();
     }
-  @@
+  }}
 }
 ```
 
@@ -304,8 +304,7 @@ A single sample (e.g. `Sample(time: 1, value: 2.0)`) would be encoded like this 
 [1, 2.0]
 ```
 
-The naming is optional, but will be used when generating classes for languages which do not
-natively support tuples, like Python:
+The naming is used for languages which do not natively support tuples, like python:
 
 ```python
 class Sample:
@@ -325,85 +324,11 @@ class Sample:
 
 # Backends
 
-### `fasterxml` (Java)
+## java (`-b java`)
 
-Using the fasterxml (Java) backend would result in the following class being generated for
-`Aggregation`:
+Supported modules:
 
-```java
-package com.company.proto.v1;
+* `fasterxml` - Generates annotations and serializers suitable for FasterXML Jackson.
+* `mutable` - Generates classes where fields can be mutated (default is immutable).
 
-@JsonSubTypes({
-  @JsonSubTypes.Type(Aggregation.Sum.class),
-  @JsonSubTypes.Type(Aggregation.Quantile.class)
-})
-interface Aggregation {
-    Sampling getSampling();
-
-    <T> accept(Visitor<T> visitor);
-
-    @JsonTypeName("sum")
-    class Sum implements Aggregation {
-        private final Sampling sampling;
-
-        @JsonCreator
-        public Quantile(
-            @JsonProperty("sampling") final Sampling sampling
-        ) {
-            this.sampling = sampling;
-        }
-
-        @Override
-        public Sampling getSampling() {
-            return this.sampling;
-        }
-
-        @Override
-        public <T> T accept(final Visitor<T> visitor) {
-            return visitor.visitSum(this);
-        }
-    }
-
-    @JsonTypeName("quantile")
-    class Quantile implements Aggregation {
-        private final Sampling sampling;
-        private final float q;
-
-        @JsonCreator
-        public Quantile(
-            @JsonProperty("sampling") final Sampling sampling,
-            @JsonProperty("q") final float q
-        ) {
-            this.sampling = sampling;
-            this.q = q;
-        }
-
-        @Override
-        public Sampling getSampling() {
-            return this.sampling;
-        }
-
-        @Override
-        public float getQ() {
-            return this.q;
-        }
-
-        @Override
-        public <T> T accept(final Visitor<T> visitor) {
-            return visitor.visitQuantile(this);
-        }
-    }
-
-    interface Visitor<T> {
-        default T visitSum(Sum sum) {
-            return defaultAction();
-        }
-
-        default T visitQuantile(Quantile quantile) {
-            return defaultAction();
-        }
-
-        T defaultAction();
-    }
-}
-```
+## Python (`-b python`)
