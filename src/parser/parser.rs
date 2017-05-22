@@ -128,15 +128,13 @@ impl_rdp! {
         use_decl = { ["use"] ~ package_ident ~ use_as? ~ [";"] }
         use_as = { ["as"] ~ ident }
         package_decl = { ["package"] ~ package_ident ~ [";"] }
-        type_decl = { ["type"] ~ ident ~ ["{"] ~ option_decl* ~ type_member* ~ ["}"] }
-        tuple_decl = { ["tuple"] ~ ident ~ ["{"] ~ option_decl* ~ type_member* ~ ["}"] }
-        interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ interface_member* ~ sub_type_decl* ~ ["}"] }
+        type_decl = { ["type"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
+        tuple_decl = { ["tuple"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
+        interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ sub_type_decl* ~ ["}"] }
         sub_type_decl = { sub_type }
-        sub_type = { ident ~ ["{"] ~ option_decl* ~ sub_type_member* ~ ["}"] }
+        sub_type = { ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
 
-        type_member = { field | code_block }
-        interface_member = { field | code_block }
-        sub_type_member = { field | code_block }
+        member = { field | code_block }
 
         field = { ident ~ modifier? ~ [":"] ~ type_spec ~ [";"] }
         code_block = @{ ident ~ whitespace* ~ ["@@"] ~ code_body ~ ["@@"] }
@@ -218,21 +216,21 @@ impl_rdp! {
             () => LinkedList::new(),
         }
 
-        _type_decl(&self) -> ast::TypeDecl {
-            (&name: ident, options: _option_list(), members: _type_member_list()) => {
+        _type_body(&self) -> ast::TypeBody {
+            (&name: ident, options: _option_list(), members: _member_list()) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                ast::TypeDecl::new(name.to_owned(), options, members)
+                ast::TypeBody::new(name.to_owned(), options, members, BTreeMap::new())
             },
         }
 
         _decl(&self) -> ast::Decl {
-            (token: type_decl, ty: _type_decl()) => {
+            (token: type_decl, ty: _type_body()) => {
                 let pos = (token.start, token.end);
                 ast::Decl::Type(ty, pos)
             },
 
-            (token: tuple_decl, ty: _type_decl()) => {
+            (token: tuple_decl, ty: _type_body()) => {
                 let pos = (token.start, token.end);
                 ast::Decl::Tuple(ty, pos)
             },
@@ -241,35 +239,14 @@ impl_rdp! {
                 token: interface_decl,
                 &name: ident,
                 options: _option_list(),
-                members: _interface_member_list(),
+                members: _member_list(),
                 sub_types: _sub_type_list()
             ) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
                 let pos = (token.start, token.end);
-                let interface_decl = ast::InterfaceDecl::new(name.to_owned(), options, members, sub_types);
-                ast::Decl::Interface(interface_decl, pos)
-            },
-        }
-
-        _type_member_list(&self) -> LinkedList<ast::MessageMember> {
-            (_: type_member, first: _type_member(), mut tail: _type_member_list()) => {
-                tail.push_front(first);
-                tail
-            },
-
-            () => LinkedList::new(),
-        }
-
-        _type_member(&self) -> ast::MessageMember {
-            (token: field, field: _field()) => {
-                let pos = (token.start, token.end);
-                ast::MessageMember::Field(field, pos)
-            },
-
-            (token: code_block, &context: ident, &content: code_body) => {
-                let pos = (token.start, token.end);
-                ast::MessageMember::Code(context.to_owned(), strip_code_block(content), pos)
+                let body = ast::TypeBody::new(name.to_owned(), options, members, sub_types);
+                ast::Decl::Interface(body, pos)
             },
         }
 
@@ -306,8 +283,8 @@ impl_rdp! {
             },
         }
 
-        _sub_type_member_list(&self) -> LinkedList<ast::SubTypeMember> {
-            (_: sub_type_member, first: _sub_type_member(), mut tail: _sub_type_member_list()) => {
+        _member_list(&self) -> LinkedList<ast::Member> {
+            (_: member, first: _member(), mut tail: _member_list()) => {
                 tail.push_front(first);
                 tail
             },
@@ -315,14 +292,15 @@ impl_rdp! {
             () => LinkedList::new(),
         }
 
-        _sub_type_member(&self) -> ast::SubTypeMember {
-            (_: field, field: _field()) => {
-                ast::SubTypeMember::Field(field)
+        _member(&self) -> ast::Member {
+            (token: field, field: _field()) => {
+                let pos = (token.start, token.end);
+                ast::Member::Field(field, pos)
             },
 
             (token: code_block, &context: ident, &content: code_body) => {
                 let pos = (token.start, token.end);
-                ast::SubTypeMember::Code(context.to_owned(), strip_code_block(content), pos)
+                ast::Member::Code(context.to_owned(), strip_code_block(content), pos)
             },
         }
 
@@ -338,33 +316,12 @@ impl_rdp! {
         }
 
         _sub_type(&self) -> ast::SubType {
-            (token: sub_type, &name: ident, options: _option_list(), members: _sub_type_member_list()) => {
+            (token: sub_type, &name: ident, options: _option_list(), members: _member_list()) => {
                 let name = name.to_owned();
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
                 let pos = (token.start, token.end);
                 ast::SubType::new(name, options, members, pos)
-            },
-        }
-
-        _interface_member_list(&self) -> LinkedList<ast::InterfaceMember> {
-            (_: interface_member, first: _interface_member(), mut tail: _interface_member_list()) => {
-                tail.push_front(first);
-                tail
-            },
-
-            () => LinkedList::new(),
-        }
-
-        _interface_member(&self) -> ast::InterfaceMember {
-            (token: field, field: _field()) => {
-                let pos = (token.start, token.end);
-                ast::InterfaceMember::Field(field, pos)
-            },
-
-            (token: code_block, &context: ident, &content: code_body) => {
-                let pos = (token.start, token.end);
-                ast::InterfaceMember::Code(context.to_owned(), strip_code_block(content), pos)
             },
         }
 

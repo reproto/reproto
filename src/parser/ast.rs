@@ -170,68 +170,21 @@ impl Field {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct OneOf {
-    pub name: String,
-    pub fields: Vec<Field>,
-}
-
-impl OneOf {
-    pub fn new(name: String, fields: Vec<Field>) -> OneOf {
-        OneOf {
-            name: name,
-            fields: fields,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum MessageMember {
+pub enum Member {
     Field(Field, Pos),
     Code(String, Vec<String>, Pos),
-    OneOf(OneOf, Pos),
-}
-
-/// message <name> { <members>* }
-#[derive(Debug, PartialEq, Clone)]
-pub struct TypeDecl {
-    pub name: String,
-    pub options: Options,
-    pub members: Vec<MessageMember>,
-}
-
-impl TypeDecl {
-    pub fn new(name: String, options: Options, members: Vec<MessageMember>) -> TypeDecl {
-        TypeDecl {
-            name: name,
-            options: options,
-            members: members,
-        }
-    }
-
-    pub fn merge(&mut self, other: &TypeDecl) -> Result<()> {
-        self.options.merge(&other.options);
-        self.members.extend(other.members.clone());
-        Ok(())
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum SubTypeMember {
-    Field(Field),
-    Code(String, Vec<String>, Pos),
-    OneOf(OneOf),
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct SubType {
     pub name: String,
     pub options: Options,
-    pub members: Vec<SubTypeMember>,
+    pub members: Vec<Member>,
     pub pos: Pos,
 }
 
 impl SubType {
-    pub fn new(name: String, options: Options, members: Vec<SubTypeMember>, pos: Pos) -> SubType {
+    pub fn new(name: String, options: Options, members: Vec<Member>, pos: Pos) -> SubType {
         SubType {
             name: name,
             options: options,
@@ -247,29 +200,22 @@ impl SubType {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum InterfaceMember {
-    Field(Field, Pos),
-    Code(String, Vec<String>, Pos),
-    OneOf(OneOf, Pos),
-}
-
 /// interface <name> { <members>* }
 #[derive(Debug, PartialEq, Clone)]
-pub struct InterfaceDecl {
+pub struct TypeBody {
     pub name: String,
     pub options: Options,
-    pub members: Vec<InterfaceMember>,
+    pub members: Vec<Member>,
     pub sub_types: BTreeMap<String, SubType>,
 }
 
-impl InterfaceDecl {
+impl TypeBody {
     pub fn new(name: String,
                options: Options,
-               members: Vec<InterfaceMember>,
+               members: Vec<Member>,
                sub_types: BTreeMap<String, SubType>)
-               -> InterfaceDecl {
-        InterfaceDecl {
+               -> TypeBody {
+        TypeBody {
             name: name,
             options: options,
             members: members,
@@ -277,7 +223,7 @@ impl InterfaceDecl {
         }
     }
 
-    pub fn merge(&mut self, other: &InterfaceDecl) -> Result<()> {
+    pub fn merge(&mut self, other: &TypeBody) -> Result<()> {
         self.options.merge(&other.options);
         self.members.extend(other.members.clone());
 
@@ -298,9 +244,9 @@ impl InterfaceDecl {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Decl {
-    Type(TypeDecl, Pos),
-    Tuple(TypeDecl, Pos),
-    Interface(InterfaceDecl, Pos),
+    Type(TypeBody, Pos),
+    Tuple(TypeBody, Pos),
+    Interface(TypeBody, Pos),
 }
 
 impl Decl {
@@ -322,23 +268,23 @@ impl Decl {
 
     pub fn merge(&mut self, other: &Decl) -> Result<()> {
         match *self {
-            Decl::Interface(ref mut interface, _) => {
+            Decl::Interface(ref mut body, _) => {
                 if let Decl::Interface(ref other, _) = *other {
-                    interface.merge(other)
+                    body.merge(other)
                 } else {
                     Err("cannot merge type and tuple".into())
                 }
             }
-            Decl::Type(ref mut ty, _) => {
+            Decl::Type(ref mut body, _) => {
                 if let Decl::Type(ref other, _) = *other {
-                    ty.merge(other)
+                    body.merge(other)
                 } else {
                     Err("cannot merge type and tuple".into())
                 }
             }
-            Decl::Tuple(ref mut ty, _) => {
+            Decl::Tuple(ref mut body, _) => {
                 if let Decl::Tuple(ref other, _) = *other {
-                    ty.merge(other)
+                    body.merge(other)
                 } else {
                     Err("cannot merge tuple and type".into())
                 }

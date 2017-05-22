@@ -28,7 +28,7 @@ pub trait Listeners {
     }
 
     fn interface_added(&self,
-                       _interface: &ast::InterfaceDecl,
+                       _interface: &ast::TypeBody,
                        _interface_spec: &mut InterfaceSpec)
                        -> Result<()> {
         Ok(())
@@ -36,7 +36,7 @@ pub trait Listeners {
 
     fn sub_type_added(&self,
                       _fields: &Vec<Field>,
-                      _interface: &ast::InterfaceDecl,
+                      _interface: &ast::TypeBody,
                       _sub_type: &ast::SubType,
                       _class: &mut ClassSpec)
                       -> Result<()> {
@@ -67,7 +67,7 @@ impl Listeners for Vec<Box<Listeners>> {
     }
 
     fn interface_added(&self,
-                       interface: &ast::InterfaceDecl,
+                       interface: &ast::TypeBody,
                        interface_spec: &mut InterfaceSpec)
                        -> Result<()> {
         for listeners in self {
@@ -79,7 +79,7 @@ impl Listeners for Vec<Box<Listeners>> {
 
     fn sub_type_added(&self,
                       fields: &Vec<Field>,
-                      interface: &ast::InterfaceDecl,
+                      interface: &ast::TypeBody,
                       sub_type: &ast::SubType,
                       class: &mut ClassSpec)
                       -> Result<()> {
@@ -569,14 +569,14 @@ impl Processor {
         Ok(())
     }
 
-    fn process_tuple(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<FileSpec> {
+    fn process_tuple(&self, package: &ast::Package, ty: &ast::TypeBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
         let mut fields = Vec::new();
 
         for member in &ty.members {
-            if let ast::MessageMember::Field(ref field, _) = *member {
+            if let ast::Member::Field(ref field, _) = *member {
                 let field_type = self.convert_type(package, &field.ty)?;
                 let field_spec = self.push_field(&field_type, field)?;
 
@@ -597,14 +597,14 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_type(&self, package: &ast::Package, message: &ast::TypeDecl) -> Result<FileSpec> {
+    fn process_type(&self, package: &ast::Package, message: &ast::TypeBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &message.name);
 
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &message.name);
         let mut fields = Vec::new();
 
         for member in &message.members {
-            if let ast::MessageMember::Field(ref field, _) = *member {
+            if let ast::Member::Field(ref field, _) = *member {
                 let field_type = self.convert_type(package, &field.ty)?;
                 let field_spec = self.push_field(&field_type, field)?;
 
@@ -618,7 +618,7 @@ impl Processor {
                 continue;
             }
 
-            if let ast::MessageMember::Code(ref context, ref content, _) = *member {
+            if let ast::Member::Code(ref context, ref content, _) = *member {
                 if context == JAVA_CONTEXT {
                     class.push(content);
                 }
@@ -637,7 +637,7 @@ impl Processor {
 
     fn process_interface(&self,
                          package: &ast::Package,
-                         interface: &ast::InterfaceDecl)
+                         interface: &ast::TypeBody)
                          -> Result<FileSpec> {
         let parent_type = Type::class(&self.java_package_name(package), &interface.name);
 
@@ -645,7 +645,7 @@ impl Processor {
         let mut interface_fields = Vec::new();
 
         for member in &interface.members {
-            if let ast::InterfaceMember::Field(ref field, _) = *member {
+            if let ast::Member::Field(ref field, _) = *member {
                 let field_type = self.convert_type(package, &field.ty)?;
                 let field_spec = self.push_field(&field_type, field)?;
 
@@ -656,7 +656,7 @@ impl Processor {
                 continue;
             }
 
-            if let ast::InterfaceMember::Code(ref context, ref content, _) = *member {
+            if let ast::Member::Code(ref context, ref content, _) = *member {
                 if context == JAVA_CONTEXT {
                     interface_spec.push(content);
                 }
@@ -679,7 +679,7 @@ impl Processor {
             }
 
             for member in &sub_type.members {
-                if let ast::SubTypeMember::Field(ref field) = *member {
+                if let ast::Member::Field(ref field, _) = *member {
                     let field_type = self.convert_type(package, &field.ty)?;
                     let field_spec = self.push_field(&field_type, field)?;
 
@@ -691,7 +691,7 @@ impl Processor {
                     continue;
                 }
 
-                if let ast::SubTypeMember::Code(ref context, ref content, _) = *member {
+                if let ast::Member::Code(ref context, ref content, _) = *member {
                     if context == JAVA_CONTEXT {
                         class.push(content);
                     }

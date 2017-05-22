@@ -373,12 +373,12 @@ impl Processor {
         constructor
     }
 
-    fn process_tuple(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<ClassSpec> {
+    fn process_tuple(&self, package: &ast::Package, ty: &ast::TypeBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&ty.name);
         let mut fields: Vec<Field> = Vec::new();
 
         for member in &ty.members {
-            if let ast::MessageMember::Field(ref field, _) = *member {
+            if let ast::Member::Field(ref field, _) = *member {
                 let ident = self.ident(&field.name);
 
                 fields.push(Field::new(ast::Modifier::Required,
@@ -416,12 +416,12 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<ClassSpec> {
+    fn process_type(&self, package: &ast::Package, ty: &ast::TypeBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&ty.name);
         let mut fields = Vec::new();
 
         for member in &ty.members {
-            if let ast::MessageMember::Field(ref field, _) = *member {
+            if let ast::Member::Field(ref field, _) = *member {
                 let ident = self.ident(&field.name);
 
                 fields.push(Field::new(field.modifier.clone(),
@@ -444,7 +444,7 @@ impl Processor {
         }
 
         for member in &ty.members {
-            if let ast::MessageMember::Code(ref context, ref content, _) = *member {
+            if let ast::Member::Code(ref context, ref content, _) = *member {
                 if context == PYTHON_CONTEXT {
                     class.push(content.clone());
                 }
@@ -469,7 +469,7 @@ impl Processor {
 
     fn process_interface(&self,
                          package: &ast::Package,
-                         interface: &ast::InterfaceDecl)
+                         interface: &ast::TypeBody)
                          -> Result<Vec<ClassSpec>> {
         let mut classes = Vec::new();
 
@@ -480,7 +480,7 @@ impl Processor {
         let mut interface_fields: Vec<Field> = Vec::new();
 
         for member in &interface.members {
-            if let ast::InterfaceMember::Field(ref field, _) = *member {
+            if let ast::Member::Field(ref field, _) = *member {
                 let ident = self.ident(&field.name);
 
                 interface_fields.push(Field::new(field.modifier.clone(),
@@ -491,7 +491,7 @@ impl Processor {
                 continue;
             }
 
-            if let ast::InterfaceMember::Code(ref context, ref content, _) = *member {
+            if let ast::Member::Code(ref context, ref content, _) = *member {
                 if context == PYTHON_CONTEXT {
                     interface_spec.push(content.clone());
                 }
@@ -516,7 +516,7 @@ impl Processor {
             let mut fields = interface_fields.clone();
 
             for member in &sub_type.members {
-                if let ast::SubTypeMember::Field(ref field) = *member {
+                if let ast::Member::Field(ref field, _) = *member {
                     let ident = self.ident(&field.name);
 
                     fields.push(Field::new(field.modifier.clone(),
@@ -539,7 +539,7 @@ impl Processor {
             }
 
             for member in &sub_type.members {
-                if let ast::SubTypeMember::Code(ref context, ref content, _) = *member {
+                if let ast::Member::Code(ref context, ref content, _) = *member {
                     if context == PYTHON_CONTEXT {
                         class.push(content.clone());
                     }
@@ -674,7 +674,7 @@ impl Processor {
         Ok(())
     }
 
-    fn interface_decode_method(&self, interface: &ast::InterfaceDecl) -> Result<MethodSpec> {
+    fn interface_decode_method(&self, interface: &ast::TypeBody) -> Result<MethodSpec> {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
         decode.push_argument(python_stmt!["data"]);

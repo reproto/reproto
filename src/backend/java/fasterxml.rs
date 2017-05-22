@@ -54,7 +54,7 @@ impl processor::Listeners for Module {
     }
 
     fn interface_added(&self,
-                       interface: &ast::InterfaceDecl,
+                       interface: &ast::TypeBody,
                        interface_spec: &mut InterfaceSpec)
                        -> Result<()> {
         {
@@ -100,7 +100,7 @@ impl processor::Listeners for Module {
 
     fn sub_type_added(&self,
                       _fields: &Vec<processor::Field>,
-                      _interface: &ast::InterfaceDecl,
+                      _interface: &ast::TypeBody,
                       _sub_type: &ast::SubType,
                       _class: &mut ClassSpec)
                       -> Result<()> {
