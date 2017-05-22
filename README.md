@@ -1,5 +1,6 @@
 # reProto
 
+[![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
 [![crates.io](https://img.shields.io/crates/v/reproto.svg?maxAge=2592000)](https://crates.io/crates/reproto)
 
 This project is a language-neutral protocol specification geared towards describing and generating
