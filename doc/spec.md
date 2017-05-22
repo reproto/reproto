@@ -1,46 +1,38 @@
-# reProto Specification
+# ReProto File Specification
 
 * [Introduction](#introduction)
+* [Built-In Types](#built-in-types)
 * [Types](#types)
 * [Interfaces](#interfaces)
+* [Tuples](#tuples)
 * [Enums](#enums)
 * [Custom Code](#custom-code)
 * [Extensions](#extensions)
-* [Tuples](#tuples)
 
 # TODO
 
-* Support validation?
-  * How do we support complex stringy types without it?
-  * Defer to external validator (keyword: `validate <from> <to>`)?
-* Is Rust a suitable language?
-  * Less bugs are nice.
-  * Fairly advanced type system, allowing for better expressiveness.
-  * Can provide statically compiled compiler for most major platforms.
-  * ~~LR(1) parser support is not very mature :(, I miss ANTLR.~~ [pest][pest] works really well!
-* Per-project (not definition) language extensions might be needed
-  * e.g. drop a heroic.reproto file in the project (in the right location), and pick up any extensions defined in it that allows the module to better integrate into the project.
-  * This is now supported! Add a local directory to your path, and match the package you'd like to
-      extend.
+* General
+  * ~~Treat named types as (named) simple types, like tuples.~~
+  * Enums.
+  * Documentation syntax (preferably not comments).
+  * Type aliases.
+    * *Question:* Are they useful?
+  * Validators
+    * Tricky, too many extensions to DSL to be useful. Might just skip for now but push towards `2.0`.
 
-[pest]: https://github.com/pest-parser/pest
-
-# Missing Features
-
-* Maven Plugin + Maven Artifacts w/ Static Builds
+* ~~Maven Plugin + Maven Artifacts w/ Static Builds~~~
   * For clean integration into Java ecosystem.
 
-* HTML
+* HTML Backend
   * Generate static documentation.
 
-* Java
+* Java Backend
   * ~~Generate _good_ builder.~~
   * ~~Generated equals/hashCode (disabled when using lombok).~~
   * ~~Generated toString (disabled when using lombok).~~
-  * Type aliases.
   * Tuple decoding (in `fasterxml`).
 
-* Python
+* Python Backend
   * ~~Encode support (e.g. `instance.encode()`)~~
   * ~~Relative import, especially with package prefixes.~~ (not needed with aliases)
   * ~~Create missing `__init__.py` files.~~
@@ -49,71 +41,73 @@
   * ~~Tuple decoding.~~
   * ~~Optional support.~~
   * ~~Encode `type` field.~~
-  * Type aliases.
   * Strict decoding/encoding where types are deeply verified.
 
-* General
-  * ~~Treat named types as (named) simple types, like tuples.~~
-  * Enum support.
-  * Documentation syntax (preferably not comments).
+## Built-In Types
+
+There are a number of built-in types available:
+
+| Type               | Description |
+|--------------------|-------------|
+| `u32`, `u64`       | Unsigned integer values which can store a given number of bits |
+| `i32`, `u64`       | Signed integer values which can store a given number of bits |
+| `double`, `float`  | Floating point precision numbers |
+| `string`           | UTF-8 encoded strings |
+| `bytes`            | Arbitrary byte-arrays, are encoded as base64-strings in JSON |
+| `[<type>]`         | Arrays which store the given type  |
+| `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` |
 
 ## Introduction
 
-reProto is geared towards being an expressive and productive protocol specification.
+ReProto is geared towards being an expressive and productive protocol specification.
 
-The choice of using a DSL over something existing like JSON or YAML is an attempt to improve the signal-to-noise ratio.
-Concise markup, and relatively intuitive syntax means that more effort can be spent on designing good models.
-
-A good benchmark for a DSL is to measure how easily it is to visualize both the JSON and the target source a given declaration corresponds to.
+The choice of using a DSL over something existing like JSON or YAML is an attempt to improve signal-to-noise ratio.
+Concise markup, and relatively intuitive syntax should hopefully mean that more effort can be spent on designing good data models.
 
 A .reproto file has the following general syntax:
 
-```
+```reproto
 package proto.v1;
 
+// Importing types from other module.
 use common as c;
 
-// A single point.
-type Sample = (timestamp: u64, value: double);
-
-// Inferred based on type of argument.
-// Only one of each type may be present.
-type Instant = string | number;
-
-// Aggregation, inferred based on objects with a 'type' field.
-// Aggregations have a single shared field (size).
-interface Aggregation {
-    size?: c.Duration;
-
-    Sum {
-        name "sum";
-    }
-
-    Quantile {
-        name "quantile";
-        q: float;
-    }
+// A tuple.
+tuple Sample {
+  timestamp: u64;
+  value: double;
 }
 
-// Range, inferred based on objects with a 'type' field.
+// An interface.
 interface Range {
-    Relative {
-        name "relative";
+  // A field that is inherited in all sub-types.
+  unit: c.Unit;
 
-        duration: c.Duration;
-    }
+  Relative {
+    name "relative";
+    duration: c.Duration;
+  }
 
-    Absolute {
-        name "absolute";
-        start: Instant;
-        end: Instant;
-    }
+  Absolute {
+    name "absolute";
+    start: Instant;
+    end: Instant;
+  }
 }
 
-// A single type.
+// A plain type.
 type Query {
-    range: Range;
-    aggregation?: Aggregation;
+  // A field with a custom type.
+  range: Range;
+  // An association (a.k.a. Map).
+  extra: {string: string};
+  // An optional field.
+  id?: string;
+}
+
+type QueryResponse {
+  // An array.
+  samples: [Sample];
 }
 ```
 
@@ -134,7 +128,7 @@ Types have a name which must be unique for the package in which it is defined.
 
 The following is an example type declaration:
 
-```
+```reproto
 type Foo {
     foo: string;
     bar: i32;
@@ -145,10 +139,8 @@ Types are encoded as objects.
 
 For example (using `Foo`):
 
-```
-{
-    "bar": 42
-}
+```json
+{"bar": 42}
 ```
 
 ## Interfaces
@@ -159,7 +151,7 @@ Each interface lists all the types that it contains in the declaration.
 
 The following is an example interface with two sub-types.
 
-```
+```reproto
 interface Instant {
     reserved "deprecated", SomethingOld;
 
@@ -186,43 +178,28 @@ For example (using `Instant.RelativeToNow(offset: -1000)`):
 }
 ```
 
+## Tuples
+
+Tuples are sequences of data, where each element has a known type.
+
+```reproto
+tuple Sample {
+  time: u64;
+  value: double;
+}
+```
+
+All fields in a tuple are required, and are presented in the order that the field occurs in the sequence.
+
+A single sample (e.g. `Sample(time: 1, value: 2.0)`) would be encoded like this in JSON:
+
+```json
+[1, 2.0]
+```
+
 ## Enums
 
-Enums can take on of a given set of constants.
-
-It can be serialized either as a string, or as a number.
-
-```
-enum State(string) {
-    UNKNOWN = "unknown";
-    START = "start";
-    END = "end";
-}
-```
-
-For numerical enums:
-
-```
-enum StateNumeric(number) {
-    UNKNOWN = 0;
-    START = 1;
-    END = 2;
-}
-```
-
-Enums are serialized as a string, or a number constant.
-
-For example (using `State.START`):
-
-```json
-"start"
-```
-
-Or another example (using `StateNumeric.END`):
-
-```json
-2
-```
+**Not implemented yet**
 
 ## Custom Code
 
@@ -230,7 +207,7 @@ A powerful mechanism for modifying the behaviour of your protocols is to embed c
 This _only_ be done in [extensions](extensions), to adapt a given set of protocols into your
 application.
 
-```
+```reproto
 package foo;
 
 type Foo {
@@ -261,7 +238,7 @@ path.
 
 Assume you have a type called `Foo` in the `foo` package.
 
-```
+```reproto
 // file: protos/foo.reproto
 package foo;
 
@@ -272,7 +249,7 @@ type Foo {
 
 You can now add additional fields or custom code snippets by doing the following:
 
-```
+```reproto
 // file: ext/foo.reproto
 package foo;
 
@@ -285,23 +262,6 @@ type Foo {
     }
   }}
 }
-```
-
-## Tuples
-
-Tuples are sequences of data, where each element has a known type.
-
-```
-tuple Sample {
-  time: u64;
-  value: double;
-}
-```
-
-A single sample (e.g. `Sample(time: 1, value: 2.0)`) would be encoded like this in JSON:
-
-```json
-[1, 2.0]
 ```
 
 The naming is used for languages which do not natively support tuples, like python:
@@ -321,14 +281,3 @@ class Sample:
   def encode(self):
     return (self.time, self.value)
 ```
-
-# Backends
-
-## java (`-b java`)
-
-Supported modules:
-
-* `fasterxml` - Generates annotations and serializers suitable for FasterXML Jackson.
-* `mutable` - Generates classes where fields can be mutated (default is immutable).
-
-## Python (`-b python`)
