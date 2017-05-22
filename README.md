@@ -9,6 +9,8 @@ code for handling messages exchanged through JSON-based APIs.
 See [Specification][spec] for details on what the syntax of `.reproto` files is.
 See [Examples][examples] for some example API specifications.
 
+**Note:** This project is in an Alpha-stage.
+
 [spec]: /doc/spec.md
 [examples]: /examples
 
