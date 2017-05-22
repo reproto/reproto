@@ -41,4 +41,4 @@ $> cargo run -- --debug -b python -o target/python \
 
 A Maven plugin that integrates reproto into the build lifecycle of a maven project.
 
-[maven-plugin]: /reproto-maven-plugin
+[maven-plugin]: https://github.com/reproto/reproto-maven-plugin
