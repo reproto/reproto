@@ -74,19 +74,19 @@ impl processor::Listeners for Module {
             let mut arguments = Statement::new();
 
             for (key, sub_type) in &interface.sub_types {
-                let mut type_args = Statement::new();
-
                 for name in &sub_type.options.lookup_string("name") {
                     let name: String = (*name).clone();
+
+                    let mut type_args = Statement::new();
+
                     type_args.push(java_stmt!["name=", Variable::String(name)]);
                     type_args.push(java_stmt!["value=", &interface_spec.name, ".", key, ".class"]);
-                }
 
-                arguments.push(java_stmt!["@",
-                                          &self.json_sub_types,
-                                          ".Type(",
-                                          type_args.join(", "),
-                                          ")"]);
+                    let a =
+                        java_stmt!["@", &self.json_sub_types, ".Type(", type_args.join(", "), ")"];
+
+                    arguments.push(a);
+                }
             }
 
             let mut sub_types = AnnotationSpec::new(&self.json_sub_types);

@@ -1,0 +1,5 @@
+!/.idea/codeStyleSettings.xml
+/.idea
+*.iml
+/examples/*/src/main/reproto
+/examples/*/.idea

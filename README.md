@@ -36,3 +36,9 @@ $> cargo run -- --debug -b python -o target/python \
   --path examples \
   heroic.v1
 ```
+
+# [Maven Plugin][maven-plugin]
+
+A Maven plugin that integrates reproto into the build lifecycle of a maven project.
+
+[maven-plugin]: /reproto-maven-plugin
