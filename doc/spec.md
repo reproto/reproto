@@ -43,20 +43,6 @@
   * ~~Encode `type` field.~~
   * Strict decoding/encoding where types are deeply verified.
 
-## Built-In Types
-
-There are a number of built-in types available:
-
-| Type               | Description |
-|--------------------|-------------|
-| `u32`, `u64`       | Unsigned integer values which can store a given number of bits |
-| `i32`, `u64`       | Signed integer values which can store a given number of bits |
-| `double`, `float`  | Floating point precision numbers |
-| `string`           | UTF-8 encoded strings |
-| `bytes`            | Arbitrary byte-arrays, are encoded as base64-strings in JSON |
-| `[<type>]`         | Arrays which store the given type  |
-| `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` |
-
 ## Introduction
 
 ReProto is geared towards being an expressive and productive protocol specification.
@@ -118,6 +104,20 @@ final ObjectMapper m = new ObjectMapper();
 final byte[] message = /* aggregation as bytes */;
 final Query aggregation = m.readValue(message, Query.class);
 ```
+
+## Built-In Types
+
+There are a number of built-in types available:
+
+| Type               | Description |
+|--------------------|-------------|
+| `u32`, `u64`       | Unsigned integer values which can store a given number of bits |
+| `i32`, `u64`       | Signed integer values which can store a given number of bits |
+| `double`, `float`  | Floating point precision numbers |
+| `string`           | UTF-8 encoded strings |
+| `bytes`            | Arbitrary byte-arrays, are encoded as base64-strings in JSON |
+| `[<type>]`         | Arrays which store the given type  |
+| `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` |
 
 ## Types
 
