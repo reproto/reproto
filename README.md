@@ -1,5 +1,7 @@
 # reProto
 
+[![crates.io](https://img.shields.io/crates/v/reproto.svg?maxAge=2592000)](https://crates.io/crates/reproto)
+
 This project extends protobuf messages with interfaces to improve how polymorphic types can be
 represented and described.
 
