@@ -2,6 +2,14 @@
 name = "reproto"
 version = "0.1.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/reproto/reproto"
+homepage = "https://github.com/reproto/reproto"
+documentation = "https://docs.rs/futures"
+description = """
+Rethinking Protocol Generators
+"""
 
 [dependencies]
 error-chain = "*"
@@ -11,3 +19,4 @@ pest = "*"
 
 [dependencies.codegen]
 path = 'codegen'
+version = "0.1.0"
