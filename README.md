@@ -2,8 +2,8 @@
 
 [![crates.io](https://img.shields.io/crates/v/reproto.svg?maxAge=2592000)](https://crates.io/crates/reproto)
 
-This project extends protobuf messages with interfaces to improve how polymorphic types can be
-represented and described.
+This project is a language-neutral protocol specification geared towards describing and generating
+code for handling JSON-based APIs.
 
 See [Specification][spec] for details on what the syntax of `.reproto` files is.
 
@@ -14,10 +14,20 @@ See [Examples][examples] for some example API specifications.
 
 # Example
 
+Make you have [gotten started with Rust][rust-get-started].
+
+Install reproto through cargo:
+
+```bash
+$> cargo install reproto
+```
+
+This will install the command into `~/.cargo/bin`.
+
 FasterXML Backend:
 
 ```bash
-$> cargo run -- --debug --b java -m fasterxml -o target/java \
+$> reproto --debug --b java -m fasterxml -o target/java \
   --path examples \
   heroic.v1
 ```
@@ -25,7 +35,7 @@ $> cargo run -- --debug --b java -m fasterxml -o target/java \
 You can also include one of the extensions:
 
 ```bash
-$> cargo run -- --debug -b java -m fasterxml -o target/java \
+$> reproto --debug -b java -m fasterxml -o target/java \
   --path examples \
   --path examples/ext \
   heroic.v1
@@ -34,7 +44,7 @@ $> cargo run -- --debug -b java -m fasterxml -o target/java \
 Plain Python Backend:
 
 ```bash
-$> cargo run -- --debug -b python -o target/python \
+$> reproto --debug -b python -o target/python \
   --path examples \
   heroic.v1
 ```
@@ -45,6 +55,9 @@ A Maven plugin that integrates reproto into the build lifecycle of a maven proje
 
 [maven-plugin]: https://github.com/reproto/reproto-maven-plugin
 
-# [Vim Plugin][vim]
+# [VIM Plugin][vim]
+
+A VIM plugin that provides syntax highlighting.
 
 [vim]: https://github.com/reproto/reproto-vim
+[rust-get-started]: https://doc.rust-lang.org/book/getting-started.html
