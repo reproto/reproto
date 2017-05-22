@@ -260,7 +260,6 @@ impl Processor {
             ast::Type::Float | ast::Type::Double => true,
             ast::Type::String => true,
             ast::Type::Any => true,
-            ast::Type::Tuple(ref elements) => elements.iter().all(|e| self.is_native(&e.ty)),
             ast::Type::Array(ref inner) => self.is_native(inner),
             _ => false,
         }
@@ -374,39 +373,32 @@ impl Processor {
         constructor
     }
 
-    fn process_type(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<ClassSpec> {
-        match ty.value {
-            ast::Type::Tuple(ref elements) => {
-                let mut class = ClassSpec::new(&ty.name);
-                let mut fields: Vec<Field> = Vec::new();
+    fn process_tuple(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<ClassSpec> {
+        let mut class = ClassSpec::new(&ty.name);
+        let mut fields: Vec<Field> = Vec::new();
 
-                for (index, element) in elements.iter().enumerate() {
-                    let index_name = match index {
-                        0 => "first".to_owned(),
-                        1 => "second".to_owned(),
-                        2 => "third".to_owned(),
-                        n => format!("field{}", n),
-                    };
+        for member in &ty.members {
+            if let ast::MessageMember::Field(ref field, _) = *member {
+                let ident = self.ident(&field.name);
 
-                    let name = element.name.clone().unwrap_or(index_name);
-                    let ident = self.ident(&name);
-                    fields.push(Field::new(ast::Modifier::Required, element.ty.clone(), name, ident));
-                }
-
-                class.push(self.build_constructor(&fields));
-
-                // TODO: make configurable
-                if false {
-                    for getter in self.build_getters(&fields)? {
-                        class.push(&getter);
-                    }
-                }
-
-                self.tuple_added(package, &fields, &mut class)?;
-                Ok(class)
+                fields.push(Field::new(ast::Modifier::Required,
+                                       field.ty.clone(),
+                                       field.name.clone(),
+                                       ident));
             }
-            _ => Err(format!("unsupported type: {:?}", ty).into()),
         }
+
+        class.push(self.build_constructor(&fields));
+
+        // TODO: make configurable
+        if false {
+            for getter in self.build_getters(&fields)? {
+                class.push(&getter);
+            }
+        }
+
+        self.tuple_added(package, &fields, &mut class)?;
+        Ok(class)
     }
 
     fn build_getters(&self, fields: &Vec<Field>) -> Result<Vec<MethodSpec>> {
@@ -424,14 +416,11 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_message(&self,
-                       package: &ast::Package,
-                       message: &ast::MessageDecl)
-                       -> Result<ClassSpec> {
-        let mut class = ClassSpec::new(&message.name);
+    fn process_type(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<ClassSpec> {
+        let mut class = ClassSpec::new(&ty.name);
         let mut fields = Vec::new();
 
-        for member in &message.members {
+        for member in &ty.members {
             if let ast::MessageMember::Field(ref field, _) = *member {
                 let ident = self.ident(&field.name);
 
@@ -454,7 +443,7 @@ impl Processor {
             }
         }
 
-        for member in &message.members {
+        for member in &ty.members {
             if let ast::MessageMember::Code(ref context, ref content, _) = *member {
                 if context == PYTHON_CONTEXT {
                     class.push(content.clone());
@@ -587,9 +576,11 @@ impl Processor {
         // Process all types discovered so far.
         for (&(ref package, _), decl) in &self.env.types {
             let class_specs = match *decl {
-                ast::Decl::Interface(ref interface) => self.process_interface(package, interface)?,
-                ast::Decl::Message(ref message) => vec![self.process_message(package, message)?],
-                ast::Decl::Type(ref ty) => vec![self.process_type(package, ty)?],
+                ast::Decl::Interface(ref interface, _) => {
+                    self.process_interface(package, interface)?
+                }
+                ast::Decl::Type(ref ty, _) => vec![self.process_type(package, ty)?],
+                ast::Decl::Tuple(ref tuple, _) => vec![self.process_tuple(package, tuple)?],
             };
 
             match files.entry(package) {

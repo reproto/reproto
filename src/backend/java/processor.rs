@@ -569,32 +569,24 @@ impl Processor {
         Ok(())
     }
 
-    fn process_type(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<FileSpec> {
+    fn process_tuple(&self, package: &ast::Package, ty: &ast::TypeDecl) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
         let mut fields = Vec::new();
 
-        match ty.value {
-            ast::Type::Tuple(ref elements) => {
-                for (index, element) in elements.iter().enumerate() {
-                    let field_type = self.convert_type(package, &element.ty)?;
+        for member in &ty.members {
+            if let ast::MessageMember::Field(ref field, _) = *member {
+                let field_type = self.convert_type(package, &field.ty)?;
+                let field_spec = self.push_field(&field_type, field)?;
 
-                    let index_name = match index {
-                        0 => "first".to_owned(),
-                        1 => "second".to_owned(),
-                        2 => "third".to_owned(),
-                        n => format!("field{}", n),
-                    };
+                class.push_field(&field_spec);
 
-                    let name = element.name.clone().unwrap_or(index_name);
-
-                    let field_spec = self.new_field_spec(&field_type, &name);
-                    class.push_field(&field_spec);
-                    fields.push(Field::new(ast::Modifier::Required, name, field_type, field_spec));
-                }
+                fields.push(Field::new(field.modifier.clone(),
+                                       field.name.clone(),
+                                       field_type,
+                                       field_spec));
             }
-            _ => {}
         }
 
         self.add_class(&fields, &class_type, &mut class)?;
@@ -605,10 +597,7 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_message(&self,
-                       package: &ast::Package,
-                       message: &ast::MessageDecl)
-                       -> Result<FileSpec> {
+    fn process_type(&self, package: &ast::Package, message: &ast::TypeDecl) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &message.name);
 
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &message.name);
@@ -761,9 +750,11 @@ impl Backend for Processor {
             let full_path = out_dir.join(format!("{}.java", decl.name()));
 
             let file_spec = match *decl {
-                ast::Decl::Interface(ref interface) => self.process_interface(package, interface),
-                ast::Decl::Message(ref message) => self.process_message(package, message),
-                ast::Decl::Type(ref ty) => self.process_type(package, ty),
+                ast::Decl::Interface(ref interface, _) => {
+                    self.process_interface(package, interface)
+                }
+                ast::Decl::Type(ref ty, _) => self.process_type(package, ty),
+                ast::Decl::Tuple(ref ty, _) => self.process_tuple(package, ty),
             }?;
 
             debug!("+class: {}", full_path.display());

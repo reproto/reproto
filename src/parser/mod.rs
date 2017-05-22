@@ -19,6 +19,7 @@ pub fn parse_file(path: &Path) -> Result<ast::File> {
     let mut parser = parser::Rdp::new(StringInput::new(&content));
 
     if !parser.file() {
+        println!("queue = {:?}", parser.tracked_len_pos());
         return Err("invalid syntax".into());
     }
 

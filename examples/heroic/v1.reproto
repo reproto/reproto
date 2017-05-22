@@ -5,8 +5,15 @@ use heroic.common as c;
 interface Sampling {
 }
 
-type Point = (timestamp: i64, value: double);
-type Event = (timestamp: i64, payload: any);
+tuple Point {
+  timestamp: i64;
+  value: double;
+}
+
+tuple Event {
+  timestamp: i64;
+  payload: any;
+}
 
 interface Samples {
   Points {
@@ -23,7 +30,7 @@ interface Samples {
   }
 }
 
-message Query {
+type Query {
   query?: string;
   aggregation?: Aggregation;
   date?: c.Date;

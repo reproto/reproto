@@ -1,5 +1,5 @@
 package heroic.common;
 
-message Date {
+type Date {
   field: u32;
 }

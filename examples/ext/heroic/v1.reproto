@@ -1,6 +1,6 @@
 package heroic.v1;
 
-message Query {
+type Query {
   query_id?: string;
 
   // added method

@@ -1,7 +1,7 @@
 # reProto Specification
 
 * [Introduction](#introduction)
-* [Messages](#messages)
+* [Types](#types)
 * [Interfaces](#interfaces)
 * [Enums](#enums)
 * [Custom Code](#custom-code)
@@ -110,8 +110,8 @@ interface Range {
     }
 }
 
-// A single message.
-message Query {
+// A single type.
+type Query {
     range: Range;
     aggregation?: Aggregation;
 }
@@ -125,23 +125,23 @@ final byte[] message = /* aggregation as bytes */;
 final Query aggregation = m.readValue(message, Query.class);
 ```
 
-## Messages
+## Types
 
-Messages are named types that are used to designate a data structure that is intended to be sent as
-a message.
+Types are named types that are used to designate a data structure that is intended to be
+serialized.
 
-Messages have a name which must be unique for the package in which it is defined.
+Types have a name which must be unique for the package in which it is defined.
 
-The following is an example message declaration:
+The following is an example type declaration:
 
 ```
-message Foo {
+type Foo {
     foo: string;
     bar: i32;
 }
 ```
 
-Messages are encoded as objects.
+Types are encoded as objects.
 
 For example (using `Foo`):
 
@@ -153,13 +153,11 @@ For example (using `Foo`):
 
 ## Interfaces
 
-Interfaces are named types that designate a message, whose type is determined by some other method.
-
-These provide polymorphism, since they refer to instances that share a common type.
+Interfaces are special types providing field-based polymorphism.
 
 Each interface lists all the types that it contains in the declaration.
 
-The following is an example interface with two subtypes.
+The following is an example interface with two sub-types.
 
 ```
 interface Instant {
@@ -235,7 +233,7 @@ application.
 ```
 package foo;
 
-message Foo {
+type Foo {
   field: string;
 
   java @@
@@ -253,7 +251,7 @@ message Foo {
 
 ## Extensions
 
-reProto allows all messages and interfaces to be extended.
+reProto allows all types and interfaces to be extended.
 
 Extensions allow for additions, and is typically used to adapt a protocol specification to
 your local environment.
@@ -267,7 +265,7 @@ Assume you have a type called `Foo` in the `foo` package.
 // file: protos/foo.reproto
 package foo;
 
-message Foo {
+type Foo {
   field: string;
 }
 ```
@@ -278,7 +276,7 @@ You can now add additional fields or custom code snippets by doing the following
 // file: ext/foo.reproto
 package foo;
 
-message Foo {
+type Foo {
   other?: string;
 
   java @@
@@ -294,10 +292,13 @@ message Foo {
 Tuples are sequences of data, where each element has a known type.
 
 ```
-type Sample = (time: u64, value: double);
+tuple Sample {
+  time: u64;
+  value: double;
+}
 ```
 
-A single sample (e.g. `Sample(1, 2.0)`) would be encoded like this in JSON:
+A single sample (e.g. `Sample(time: 1, value: 2.0)`) would be encoded like this in JSON:
 
 ```json
 [1, 2.0]

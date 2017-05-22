@@ -123,18 +123,18 @@ fn decode_unicode4(it: &mut Iterator<Item = char>) -> Result<char> {
 impl_rdp! {
     grammar! {
         file = _{ package_decl ~ use_decl* ~ decl* ~ eoi }
-        decl = { message_decl | interface_decl | type_decl }
+        decl = { type_decl | interface_decl | tuple_decl }
 
         use_decl = { ["use"] ~ package_ident ~ use_as? ~ [";"] }
         use_as = { ["as"] ~ ident }
         package_decl = { ["package"] ~ package_ident ~ [";"] }
-        message_decl = { ["message"] ~ ident ~ ["{"] ~ option_decl* ~ message_member* ~ ["}"] }
+        type_decl = { ["type"] ~ ident ~ ["{"] ~ option_decl* ~ type_member* ~ ["}"] }
+        tuple_decl = { ["tuple"] ~ ident ~ ["{"] ~ option_decl* ~ type_member* ~ ["}"] }
         interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ interface_member* ~ sub_type_decl* ~ ["}"] }
-        type_decl = { ["type"] ~ ident ~ ["="] ~ type_spec ~ [";"] }
         sub_type_decl = { sub_type }
         sub_type = { ident ~ ["{"] ~ option_decl* ~ sub_type_member* ~ ["}"] }
 
-        message_member = { field | code_block }
+        type_member = { field | code_block }
         interface_member = { field | code_block }
         sub_type_member = { field | code_block }
 
@@ -144,11 +144,9 @@ impl_rdp! {
         // body of a code block, either another balanced block, or anything but brackets
         modifier = { ["?"] }
 
-        type_spec = { map | array | tuple | used_type | type_literal }
+        type_spec = { map | array | used_type | type_literal }
         type_literal = { ident }
         used_type = { ident ~ ["."] ~ ident }
-        tuple = { ["("] ~ ( tuple_element ~ ([","] ~ tuple_element)* ) ~ [")"] }
-        tuple_element = { (ident ~ [":"])? ~ type_spec }
         map = { ["{"] ~ type_spec ~ [":"] ~ type_spec ~ ["}"] }
         array = { ["["] ~ array_argument ~ ["]"] }
         array_argument = { type_spec }
@@ -220,13 +218,23 @@ impl_rdp! {
             () => LinkedList::new(),
         }
 
-        _decl(&self) -> ast::Decl {
-            (token: message_decl, &name: ident, options: _option_list(), members: _message_member_list()) => {
+        _type_decl(&self) -> ast::TypeDecl {
+            (&name: ident, options: _option_list(), members: _type_member_list()) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
+                ast::TypeDecl::new(name.to_owned(), options, members)
+            },
+        }
+
+        _decl(&self) -> ast::Decl {
+            (token: type_decl, ty: _type_decl()) => {
                 let pos = (token.start, token.end);
-                let message_decl = ast::MessageDecl::new(name.to_owned(), options, members, pos);
-                ast::Decl::Message(message_decl)
+                ast::Decl::Type(ty, pos)
+            },
+
+            (token: tuple_decl, ty: _type_decl()) => {
+                let pos = (token.start, token.end);
+                ast::Decl::Tuple(ty, pos)
             },
 
             (
@@ -239,19 +247,13 @@ impl_rdp! {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
                 let pos = (token.start, token.end);
-                let interface_decl = ast::InterfaceDecl::new(name.to_owned(), options, members, sub_types, pos);
-                ast::Decl::Interface(interface_decl)
-            },
-
-            (token: type_decl, &name: ident, type_spec: _type_spec()) => {
-                let pos = (token.start, token.end);
-                let type_decl = ast::TypeDecl::new(name.to_owned(), type_spec, pos);
-                ast::Decl::Type(type_decl)
+                let interface_decl = ast::InterfaceDecl::new(name.to_owned(), options, members, sub_types);
+                ast::Decl::Interface(interface_decl, pos)
             },
         }
 
-        _message_member_list(&self) -> LinkedList<ast::MessageMember> {
-            (_: message_member, first: _message_member(), mut tail: _message_member_list()) => {
+        _type_member_list(&self) -> LinkedList<ast::MessageMember> {
+            (_: type_member, first: _type_member(), mut tail: _type_member_list()) => {
                 tail.push_front(first);
                 tail
             },
@@ -259,7 +261,7 @@ impl_rdp! {
             () => LinkedList::new(),
         }
 
-        _message_member(&self) -> ast::MessageMember {
+        _type_member(&self) -> ast::MessageMember {
             (token: field, field: _field()) => {
                 let pos = (token.start, token.end);
                 ast::MessageMember::Field(field, pos)
@@ -393,36 +395,12 @@ impl_rdp! {
                 ast::Type::UsedType(used.to_owned(), value.to_owned())
             },
 
-            (_: type_spec, _: tuple, arguments: _tuple_element_list()) => {
-                let arguments = arguments.into_iter().collect();
-                ast::Type::Tuple(arguments)
-            },
-
             (_: type_spec, _: array, _: array_argument, argument: _type_spec()) => {
                 ast::Type::Array(Box::new(argument))
             },
 
             (_: type_spec, _: map, key: _type_spec(), value: _type_spec()) => {
                 ast::Type::Map(Box::new(key), Box::new(value))
-            },
-        }
-
-        _tuple_element_list(&self) -> LinkedList<ast::TupleElement> {
-            (_: tuple_element, first: _tuple_element(), mut tail: _tuple_element_list()) => {
-                tail.push_front(first);
-                tail
-            },
-
-            () => LinkedList::new(),
-        }
-
-        _tuple_element(&self) -> ast::TupleElement {
-            (&name: ident, ty: _type_spec()) => {
-                let name = Some(name.to_owned());
-                ast::TupleElement::new(name, ty)
-            },
-            (ty: _type_spec()) => {
-                ast::TupleElement::new(None, ty)
             },
         }
 
@@ -461,12 +439,12 @@ mod tests {
         let package = ast::Package::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
 
         assert_eq!(package, file.package);
-        assert_eq!(4, file.decls.len());
+        assert_eq!(3, file.decls.len());
     }
 
     #[test]
     fn test_array() {
-        let mut parser = Rdp::new(StringInput::new("[(string, string)]"));
+        let mut parser = Rdp::new(StringInput::new("[string]"));
 
         assert!(parser.type_spec());
         assert!(parser.end());
@@ -508,24 +486,5 @@ mod tests {
     fn test_strip_code_block() {
         let result = strip_code_block("\n   hello\n  world\n\n\n again\n\n\n");
         assert_eq!(vec!["  hello", " world", "", "", "again"], result);
-    }
-
-    #[test]
-    fn test_tuple() {
-        let mut elements = Vec::new();
-        elements.push(ast::TupleElement::new(Some("foo".to_owned()), ast::Type::String));
-        elements.push(ast::TupleElement::new(Some("bar".to_owned()), ast::Type::String));
-        elements.push(ast::TupleElement::new(None, ast::Type::U32));
-
-        let reference = ast::Type::Tuple(elements);
-
-        let mut parser = Rdp::new(StringInput::new("(foo: string, bar: string, u32)"));
-
-        assert!(parser.type_spec());
-        assert!(parser.end());
-
-        let result = parser._type_spec();
-
-        assert_eq!(reference, result);
     }
 }

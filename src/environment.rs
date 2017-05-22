@@ -21,7 +21,7 @@ pub struct Environment {
     pub used: BTreeMap<(ast::Package, String), ast::Package>,
 }
 
-fn find_line(path: &PathBuf, pos: ast::Pos) -> Result<(String, usize)> {
+fn _find_line(path: &PathBuf, pos: ast::Pos) -> Result<(String, usize)> {
     let file = File::open(path)?;
     let mut current_pos: usize = 0;
     let mut lines: usize = 0;
@@ -41,38 +41,11 @@ fn find_line(path: &PathBuf, pos: ast::Pos) -> Result<(String, usize)> {
     Err("bad file position".into())
 }
 
-fn handle_occupied<'a>(path: &PathBuf,
+fn handle_occupied<'a>(_path: &PathBuf,
                        entry: OccupiedEntry<'a, TypeId, ast::Decl>,
                        decl: &ast::Decl)
                        -> Result<()> {
-    if let ast::Decl::Type(_) = *entry.get() {
-        let (line_string, line) = find_line(path, decl.pos())?;
-
-        let error = ErrorKind::ConflictingTypeDecl(path.to_owned(),
-                                                   line_string,
-                                                   line,
-                                                   entry.get().clone(),
-                                                   decl.clone())
-            .into();
-
-        return Err(error);
-    }
-
-    if let ast::Decl::Type(ref type_decl) = *decl {
-        let (line_string, line) = find_line(path, type_decl.pos)?;
-
-        let error = ErrorKind::ConflictingTypeDecl(path.to_owned(),
-                                                   line_string,
-                                                   line,
-                                                   entry.get().clone(),
-                                                   decl.clone())
-            .into();
-
-        return Err(error);
-    }
-
     entry.into_mut().merge(decl)?;
-
     Ok(())
 }
 

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
@@ -5,21 +6,6 @@ use errors::*;
 
 /// Position relative in file where the declaration is present.
 pub type Pos = (usize, usize);
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct TupleElement {
-    pub name: Option<String>,
-    pub ty: Type,
-}
-
-impl TupleElement {
-    pub fn new(name: Option<String>, ty: Type) -> TupleElement {
-        TupleElement {
-            name: name,
-            ty: ty,
-        }
-    }
-}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum OptionValue {
@@ -98,6 +84,22 @@ impl Options {
 pub enum Modifier {
     Required,
     Optional,
+    Repeated,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Modifiers {
+    modifiers: HashSet<Modifier>,
+}
+
+impl Modifiers {
+    pub fn new(modifiers: HashSet<Modifier>) -> Modifiers {
+        Modifiers { modifiers: modifiers }
+    }
+
+    pub fn test(&self, modifier: &Modifier) -> bool {
+        self.modifiers.contains(modifier)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -115,7 +117,6 @@ pub enum Type {
     UsedType(String, String),
     Custom(String),
     Array(Box<Type>),
-    Tuple(Vec<TupleElement>),
     Map(Box<Type>, Box<Type>),
 }
 
@@ -169,42 +170,48 @@ impl Field {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct OneOf {
+    pub name: String,
+    pub fields: Vec<Field>,
+}
+
+impl OneOf {
+    pub fn new(name: String, fields: Vec<Field>) -> OneOf {
+        OneOf {
+            name: name,
+            fields: fields,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum MessageMember {
     Field(Field, Pos),
     Code(String, Vec<String>, Pos),
+    OneOf(OneOf, Pos),
 }
 
 /// message <name> { <members>* }
 #[derive(Debug, PartialEq, Clone)]
-pub struct MessageDecl {
+pub struct TypeDecl {
     pub name: String,
     pub options: Options,
     pub members: Vec<MessageMember>,
-    pub pos: Pos,
 }
 
-impl MessageDecl {
-    pub fn new(name: String,
-               options: Options,
-               members: Vec<MessageMember>,
-               pos: Pos)
-               -> MessageDecl {
-        MessageDecl {
+impl TypeDecl {
+    pub fn new(name: String, options: Options, members: Vec<MessageMember>) -> TypeDecl {
+        TypeDecl {
             name: name,
             options: options,
             members: members,
-            pos: pos,
         }
     }
 
-    pub fn merge(&mut self, other: &Decl) -> Result<()> {
-        if let Decl::Message(ref other) = *other {
-            self.options.merge(&other.options);
-            self.members.extend(other.members.clone());
-            return Ok(());
-        }
-
-        return Err(format!("Expected Decl::Message, but got {:?}", other).into());
+    pub fn merge(&mut self, other: &TypeDecl) -> Result<()> {
+        self.options.merge(&other.options);
+        self.members.extend(other.members.clone());
+        Ok(())
     }
 }
 
@@ -212,6 +219,7 @@ impl MessageDecl {
 pub enum SubTypeMember {
     Field(Field),
     Code(String, Vec<String>, Pos),
+    OneOf(OneOf),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -243,6 +251,7 @@ impl SubType {
 pub enum InterfaceMember {
     Field(Field, Pos),
     Code(String, Vec<String>, Pos),
+    OneOf(OneOf, Pos),
 }
 
 /// interface <name> { <members>* }
@@ -252,102 +261,88 @@ pub struct InterfaceDecl {
     pub options: Options,
     pub members: Vec<InterfaceMember>,
     pub sub_types: BTreeMap<String, SubType>,
-    pub pos: Pos,
 }
 
 impl InterfaceDecl {
     pub fn new(name: String,
                options: Options,
                members: Vec<InterfaceMember>,
-               sub_types: BTreeMap<String, SubType>,
-               pos: Pos)
+               sub_types: BTreeMap<String, SubType>)
                -> InterfaceDecl {
         InterfaceDecl {
             name: name,
             options: options,
             members: members,
             sub_types: sub_types,
-            pos: pos,
         }
     }
 
-    pub fn merge(&mut self, other: &Decl) -> Result<()> {
-        if let Decl::Interface(ref other) = *other {
-            self.options.merge(&other.options);
-            self.members.extend(other.members.clone());
+    pub fn merge(&mut self, other: &InterfaceDecl) -> Result<()> {
+        self.options.merge(&other.options);
+        self.members.extend(other.members.clone());
 
-            for (key, sub_type) in &other.sub_types {
-                match self.sub_types.entry(key.to_owned()) {
-                    Entry::Vacant(entry) => {
-                        entry.insert(sub_type.clone());
-                    }
-                    Entry::Occupied(entry) => {
-                        entry.into_mut().merge(sub_type)?;
-                    }
+        for (key, sub_type) in &other.sub_types {
+            match self.sub_types.entry(key.to_owned()) {
+                Entry::Vacant(entry) => {
+                    entry.insert(sub_type.clone());
+                }
+                Entry::Occupied(entry) => {
+                    entry.into_mut().merge(sub_type)?;
                 }
             }
-
-            return Ok(());
         }
 
-        return Err("unexpected declaration".into());
-    }
-}
-
-/// type <name> = <value>;
-///
-/// Example, simple type alias:
-/// type Foo = Bar;
-#[derive(Debug, PartialEq, Clone)]
-pub struct TypeDecl {
-    pub name: String,
-    pub value: Type,
-    pub pos: Pos,
-}
-
-impl TypeDecl {
-    pub fn new(name: String, value: Type, pos: Pos) -> TypeDecl {
-        TypeDecl {
-            name: name,
-            value: value,
-            pos: pos,
-        }
-    }
-
-    pub fn merge(&mut self, _: &Decl) -> Result<()> {
-        return Err("cannot merge type declarations".into());
+        return Ok(());
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Decl {
-    Message(MessageDecl),
-    Interface(InterfaceDecl),
-    Type(TypeDecl),
+    Type(TypeDecl, Pos),
+    Tuple(TypeDecl, Pos),
+    Interface(InterfaceDecl, Pos),
 }
 
 impl Decl {
     pub fn name(&self) -> String {
         match *self {
-            Decl::Message(ref message) => message.name.clone(),
-            Decl::Interface(ref interface) => interface.name.clone(),
-            Decl::Type(ref ty) => ty.name.clone(),
+            Decl::Interface(ref interface, _) => interface.name.clone(),
+            Decl::Type(ref ty, _) => ty.name.clone(),
+            Decl::Tuple(ref ty, _) => ty.name.clone(),
         }
     }
 
     pub fn pos(&self) -> Pos {
         match *self {
-            Decl::Message(ref message) => message.pos.clone(),
-            Decl::Interface(ref interface) => interface.pos.clone(),
-            Decl::Type(ref ty) => ty.pos.clone(),
+            Decl::Interface(_, pos) => pos.clone(),
+            Decl::Type(_, pos) => pos.clone(),
+            Decl::Tuple(_, pos) => pos.clone(),
         }
     }
 
     pub fn merge(&mut self, other: &Decl) -> Result<()> {
         match *self {
-            Decl::Message(ref mut message) => message.merge(other),
-            Decl::Interface(ref mut interface) => interface.merge(other),
-            Decl::Type(ref mut ty) => ty.merge(other),
+            Decl::Interface(ref mut interface, _) => {
+                if let Decl::Interface(ref other, _) = *other {
+                    interface.merge(other)
+                } else {
+                    Err("cannot merge type and tuple".into())
+                }
+            }
+            Decl::Type(ref mut ty, _) => {
+                if let Decl::Type(ref other, _) = *other {
+                    ty.merge(other)
+                } else {
+                    Err("cannot merge type and tuple".into())
+                }
+            }
+            Decl::Tuple(ref mut ty, _) => {
+                if let Decl::Tuple(ref other, _) = *other {
+                    ty.merge(other)
+                } else {
+                    Err("cannot merge tuple and type".into())
+                }
+            }
         }
     }
 }

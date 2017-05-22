@@ -3,11 +3,14 @@ package foo.bar.baz;
 use foo.bar;
 use foo as bar2;
 
-type Tuple = (double, arg: double);
+tuple Tuple {
+    arg: double;
+    second: double;
+}
 
 // hello
 
-message Foo {
+type Foo {
     reserved "foo";
 
     name: string;
@@ -39,4 +42,5 @@ interface Bar {
     }
 }
 
-type ArrayOfTuples = [(double, double)];
+// Support type aliases?
+// type ArrayOfTuples = [Tuple];
