@@ -1,22 +1,22 @@
 [package]
 name = "reproto"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
-documentation = "https://docs.rs/futures"
+documentation = "https://docs.rs/reproto"
 description = """
 Rethinking Protocol Generators
 """
 
 [dependencies]
-error-chain = "*"
-log = "*"
-getopts = "*"
-pest = "*"
+error-chain = "0.10.0"
+log = "0.3.7"
+getopts = "0.2.14"
+pest = "0.4.1"
 
 [dependencies.codeviz]
 path = "codeviz"
-version = "0.1.0"
+version = "0.0.1"

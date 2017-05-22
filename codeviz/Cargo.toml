@@ -1,15 +1,15 @@
 [package]
 name = "codeviz"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
-documentation = "https://docs.rs/futures"
+documentation = "https://docs.rs/codeviz"
 description = """
-Rethinking Protocol Generators
+Code generator for Rust
 """
 
 [dependencies]
-error-chain = "*"
+error-chain = "0.10.0"
