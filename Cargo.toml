@@ -18,5 +18,4 @@ getopts = "0.2.14"
 pest = "0.4.1"
 
 [dependencies.codeviz]
-path = "codeviz"
 version = "0.0.1"
