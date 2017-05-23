@@ -199,7 +199,24 @@ A single sample (e.g. `Sample(time: 1, value: 2.0)`) would be encoded like this 
 
 ## Enums
 
-**Not implemented yet**
+Enums can take on of a given set of constant values.
+
+```
+enum State {
+    UNKNOWN("unknown"),
+    START("start"),
+    END("end");
+
+    value: string;
+}
+```
+
+`State` would be serialized as a given value, for example `State.END` would become the following in
+JSON:
+
+```json
+"end"
+```
 
 ## Custom Code
 

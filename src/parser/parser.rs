@@ -115,7 +115,7 @@ fn decode_unicode4(it: &mut Iterator<Item = char>) -> Result<char> {
 impl_rdp! {
     grammar! {
         file = _{ package_decl ~ use_decl* ~ decl* ~ eoi }
-        decl = { type_decl | interface_decl | tuple_decl }
+        decl = { type_decl | interface_decl | tuple_decl | enum_decl }
 
         use_decl = { ["use"] ~ package_ident ~ use_as? ~ [";"] }
         use_as = { ["as"] ~ ident }
@@ -123,6 +123,9 @@ impl_rdp! {
         type_decl = { ["type"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
         tuple_decl = { ["tuple"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
         interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ sub_type_decl* ~ ["}"] }
+        enum_decl = {
+            ["enum"] ~ ident ~ ["{"] ~ (enum_value ~ [","])* ~ enum_value ~ [";"] ~ option_decl* ~ member* ~ ["}"]
+        }
         sub_type_decl = { sub_type }
         sub_type = { ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
 
@@ -141,12 +144,15 @@ impl_rdp! {
         array = { ["["] ~ array_argument ~ ["]"] }
         array_argument = { type_spec }
 
+        enum_value = { ident ~ (["("] ~ (literal ~ ([","] ~ literal)*) ~ [")"])? }
         option_decl = { ident ~ (option_value ~ ([","] ~ option_value)*) ~ [";"] }
 
         option_value = { string | number }
 
         package_ident = @{ ident ~ (["."] ~ ident)* }
         ident =  @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
+
+        literal = { string | number }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
         escape  =  _{ ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
@@ -240,6 +246,57 @@ impl_rdp! {
                 let body = ast::TypeBody::new(name.to_owned(), options, members, sub_types);
                 ast::Decl::Interface(body, pos)
             },
+
+            (
+                token: enum_decl,
+                &name: ident,
+                enum_values: _enum_value_list(),
+                options: _option_list(),
+                members: _member_list(),
+            ) => {
+                let enum_values = enum_values.into_iter().collect();
+                let options = ast::Options::new(options.into_iter().collect());
+                let members = members.into_iter().collect();
+                let pos = (token.start, token.end);
+                let body = ast::TypeBody::new(name.to_owned(), options, members, BTreeMap::new());
+                ast::Decl::Enum(body, enum_values, pos)
+            },
+        }
+
+        _enum_value_list(&self) -> LinkedList<ast::EnumValue> {
+            (_: enum_value, first: _enum_value(), mut tail: _enum_value_list()) => {
+                tail.push_front(first);
+                tail
+            },
+
+            () => LinkedList::new(),
+        }
+
+        _enum_value(&self) -> ast::EnumValue {
+            (&name: ident, values: _literal_list()) => {
+                let values = values.into_iter().collect();
+                ast::EnumValue::new(name.to_owned(), values)
+            },
+        }
+
+        _literal_list(&self) -> LinkedList<ast::Literal> {
+            (_: literal, first: _literal(), mut tail: _literal_list()) => {
+                tail.push_front(first);
+                tail
+            },
+
+            () => LinkedList::new(),
+        }
+
+        _literal(&self) -> ast::Literal {
+            (&value: string) => {
+                ast::Literal::String(value.to_owned())
+            },
+
+            (&value: number) => {
+                let value = value.parse::<i64>().unwrap();
+                ast::Literal::Number(value)
+            },
         }
 
         _option_list(&self) -> LinkedList<ast::OptionDecl> {
@@ -271,7 +328,8 @@ impl_rdp! {
 
         _option_value(&self) -> ast::OptionValue {
             (&string: string) => {
-                ast::OptionValue::String(decode_escaped_string(string).unwrap())
+                let string = decode_escaped_string(string).unwrap();
+                ast::OptionValue::String(string)
             },
         }
 
@@ -389,7 +447,7 @@ mod tests {
         let package = ast::Package::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
 
         assert_eq!(package, file.package);
-        assert_eq!(3, file.decls.len());
+        assert_eq!(4, file.decls.len());
     }
 
     #[test]

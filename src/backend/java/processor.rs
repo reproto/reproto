@@ -754,6 +754,7 @@ impl Backend for Processor {
                 }
                 ast::Decl::Type(ref ty, _) => self.process_type(package, ty),
                 ast::Decl::Tuple(ref ty, _) => self.process_tuple(package, ty),
+                _ => continue,
             }?;
 
             debug!("+class: {}", full_path.display());

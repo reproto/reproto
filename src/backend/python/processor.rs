@@ -580,6 +580,7 @@ impl Processor {
                 }
                 ast::Decl::Type(ref ty, _) => vec![self.process_type(package, ty)?],
                 ast::Decl::Tuple(ref tuple, _) => vec![self.process_tuple(package, tuple)?],
+                _ => continue,
             };
 
             match files.entry(package) {

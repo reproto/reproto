@@ -120,6 +120,12 @@ pub enum Type {
     Map(Box<Type>, Box<Type>),
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum Literal {
+    String(String),
+    Number(i64),
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub struct Package {
     pub parts: Vec<String>,
@@ -243,10 +249,26 @@ impl TypeBody {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct EnumValue {
+    pub name: String,
+    pub values: Vec<Literal>,
+}
+
+impl EnumValue {
+    pub fn new(name: String, values: Vec<Literal>) -> EnumValue {
+        EnumValue {
+            name: name,
+            values: values,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Decl {
     Type(TypeBody, Pos),
     Tuple(TypeBody, Pos),
     Interface(TypeBody, Pos),
+    Enum(TypeBody, Vec<EnumValue>, Pos),
 }
 
 impl Decl {
@@ -255,6 +277,7 @@ impl Decl {
             Decl::Interface(ref interface, _) => interface.name.clone(),
             Decl::Type(ref ty, _) => ty.name.clone(),
             Decl::Tuple(ref ty, _) => ty.name.clone(),
+            Decl::Enum(ref ty, _, _) => ty.name.clone(),
         }
     }
 
@@ -263,6 +286,7 @@ impl Decl {
             Decl::Interface(_, pos) => pos.clone(),
             Decl::Type(_, pos) => pos.clone(),
             Decl::Tuple(_, pos) => pos.clone(),
+            Decl::Enum(_, _, pos) => pos.clone(),
         }
     }
 
@@ -271,6 +295,7 @@ impl Decl {
             Decl::Interface(ref body, _) => format!("interface {}", body.name),
             Decl::Type(ref body, _) => format!("type {}", body.name),
             Decl::Tuple(ref body, _) => format!("tuple {}", body.name),
+            Decl::Enum(ref body, _, _) => format!("enum {}", body.name),
         }
     }
 
@@ -291,6 +316,7 @@ impl Decl {
                     return body.merge(other);
                 }
             }
+            _ => {}
         }
 
         Err(ErrorKind::InvalidMerge(self.clone(), other.clone()).into())
