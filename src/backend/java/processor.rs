@@ -26,6 +26,15 @@ pub trait Listeners {
         Ok(())
     }
 
+    fn enum_added(&self,
+                  _enum_body: &ast::EnumBody,
+                  _fields: &Vec<Field>,
+                  _class_type: &ClassType,
+                  _class: &mut EnumSpec)
+                  -> Result<()> {
+        Ok(())
+    }
+
     fn interface_added(&self,
                        _interface: &ast::InterfaceBody,
                        _interface_spec: &mut InterfaceSpec)
@@ -65,6 +74,19 @@ impl Listeners for Vec<Box<Listeners>> {
         Ok(())
     }
 
+    fn enum_added(&self,
+                  enum_body: &ast::EnumBody,
+                  fields: &Vec<Field>,
+                  class_type: &ClassType,
+                  class: &mut EnumSpec)
+                  -> Result<()> {
+        for listeners in self {
+            listeners.enum_added(enum_body, fields, class_type, class)?;
+        }
+
+        Ok(())
+    }
+
     fn interface_added(&self,
                        interface: &ast::InterfaceBody,
                        interface_spec: &mut InterfaceSpec)
@@ -90,7 +112,7 @@ impl Listeners for Vec<Box<Listeners>> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Field {
     pub modifier: ast::Modifier,
     pub name: String,
@@ -265,10 +287,12 @@ impl Processor {
         Ok(ty)
     }
 
-    fn build_constructor(&self, class: &ClassSpec) -> ConstructorSpec {
+    fn build_constructor<C>(&self, class: &C) -> ConstructorSpec
+        where C: ClassLike
+    {
         let mut constructor = ConstructorSpec::new(java_mods![Modifier::Public]);
 
-        for field in &class.fields {
+        for field in class.fields() {
             let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
             constructor.push_argument(&argument);
 
@@ -321,7 +345,7 @@ impl Processor {
         Ok(method_spec)
     }
 
-    fn build_getter(&self, field: &FieldSpec) -> Result<MethodSpec> {
+    pub fn build_getter(&self, field: &FieldSpec) -> Result<MethodSpec> {
         let return_type = &field.ty;
         let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
         let mut method_spec = MethodSpec::new(java_mods![Modifier::Public], &name);
@@ -332,7 +356,9 @@ impl Processor {
         Ok(method_spec)
     }
 
-    fn build_hash_code(&self, class: &ClassSpec) -> MethodSpec {
+    fn build_hash_code<C>(&self, class: &C) -> MethodSpec
+        where C: ClassLike
+    {
         let mut hash_code = MethodSpec::new(java_mods![Modifier::Public], "hashCode");
 
         hash_code.push_annotation(&self.override_);
@@ -342,7 +368,7 @@ impl Processor {
 
         method_body.push("int result = 1;");
 
-        for field in &class.fields {
+        for field in class.fields() {
             let field_stmt = java_stmt!["this.", field];
 
             let value = match field.ty {
@@ -375,7 +401,9 @@ impl Processor {
         hash_code
     }
 
-    fn build_equals(&self, class_type: &ClassType, class: &ClassSpec) -> MethodSpec {
+    fn build_equals<C>(&self, class_type: &ClassType, class: &C) -> MethodSpec
+        where C: ClassLike
+    {
         let mut equals = MethodSpec::new(java_mods![Modifier::Public], "equals");
 
         equals.push_annotation(&self.override_);
@@ -421,7 +449,7 @@ impl Processor {
 
         equals.push(cast);
 
-        for field in &class.fields {
+        for field in class.fields() {
             let field_stmt = java_stmt!["this.", field];
             let o = java_stmt![&o, ".", &field.name];
 
@@ -462,7 +490,9 @@ impl Processor {
         equals
     }
 
-    fn build_to_string(&self, class_type: &ClassType, class: &ClassSpec) -> MethodSpec {
+    fn build_to_string<C>(&self, class_type: &ClassType, class: &C) -> MethodSpec
+        where C: ClassLike
+    {
         let mut to_string = MethodSpec::new(java_mods![Modifier::Public], "toString");
 
         to_string.push_annotation(&self.override_);
@@ -480,7 +510,7 @@ impl Processor {
 
         let mut fields = Elements::new();
 
-        for field in &class.fields {
+        for field in class.fields() {
             let mut field_append = Elements::new();
 
             let field_stmt = java_stmt!["this.", field];
@@ -524,17 +554,10 @@ impl Processor {
         to_string
     }
 
-    fn add_class(&self,
-                 fields: &Vec<Field>,
-                 class_type: &ClassType,
-                 class: &mut ClassSpec)
-                 -> Result<()> {
-        if self.options.build_constructor {
-            let constructor = self.build_constructor(class);
-            class.push_constructor(constructor);
-        }
-
-        for field in class.fields.clone() {
+    fn add_class_like<C>(&self, class_type: &ClassType, class: &mut C) -> Result<()>
+        where C: ClassLike
+    {
+        for field in class.fields().clone() {
             if self.options.build_getters {
                 let getter = self.build_getter(&field)?;
                 class.push(getter);
@@ -563,9 +586,139 @@ impl Processor {
             class.push(to_string);
         }
 
-        self.listeners.class_added(&fields, &class_type, class)?;
-
         Ok(())
+    }
+
+    fn add_class<C>(&self, class_type: &ClassType, class: &mut C) -> Result<()>
+        where C: ClassLike
+    {
+        if self.options.build_constructor {
+            let constructor = self.build_constructor(class);
+            class.push_constructor(constructor);
+        }
+
+        self.add_class_like(class_type, class)
+    }
+
+    fn build_enum_constructor(&self, en: &EnumSpec) -> ConstructorSpec {
+        let mut constructor = ConstructorSpec::new(java_mods![Modifier::Private]);
+
+        for field in &en.fields {
+            let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
+            constructor.push_argument(&argument);
+
+            if !self.options.nullable {
+                if let Some(non_null) = self.require_non_null(&field, &argument) {
+                    constructor.push(non_null);
+                }
+            }
+
+            constructor.push(java_stmt!["this.", &field.name, " = ", argument, ";"]);
+        }
+
+        constructor
+    }
+
+    fn to_primitive_literal(&self, number: &i64, ty: &PrimitiveType) -> Result<String> {
+        match &*ty.primitive {
+            "int" => Ok(number.to_string()),
+            "long" => Ok(format!("{}L", number.to_string())),
+            "double" => Ok(format!("{}D", number.to_string())),
+            "float" => Ok(format!("{}F", number.to_string())),
+            _ => Err(format!("Cannot convert {} to a primitive literal", ty.primitive).into()),
+        }
+    }
+
+    fn literal_value(&self, value: &ast::Literal, member: &Type) -> Result<Variable> {
+        match *member {
+            Type::Primitive(ref primitive) => {
+                match *value {
+                    ast::Literal::Number(ref number) => {
+                        let lit = self.to_primitive_literal(number, primitive)?;
+                        return Ok(Variable::Literal(lit));
+                    }
+                    _ => {}
+                }
+            }
+            Type::Class(ref class) => {
+                if *class == self.string {
+                    match *value {
+                        ast::Literal::String(ref value) => {
+                            return Ok(Variable::String(value.to_owned()))
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        Err("unexpected type".into())
+    }
+
+    fn process_enum(&self, package: &ast::Package, ty: &ast::EnumBody) -> Result<FileSpec> {
+        let class_type = Type::class(&self.java_package_name(package), &ty.name);
+
+        let mut en = EnumSpec::new(java_mods![Modifier::Public], &ty.name);
+        let mut fields = Vec::new();
+
+        for member in &ty.members {
+            if let ast::Member::Field(ref field, _) = *member {
+                let field_type = self.convert_type(package, &field.ty)?;
+                let field_spec = self.push_field(&field_type, field)?;
+
+                en.push_field(&field_spec);
+
+                fields.push(Field::new(field.modifier.clone(),
+                                       field.name.clone(),
+                                       field_type,
+                                       field_spec));
+                continue;
+            }
+
+            if let ast::Member::Code(ref context, ref content, _) = *member {
+                if context == JAVA_CONTEXT {
+                    en.push(content);
+                }
+
+                continue;
+            }
+        }
+
+        for enum_literal in &ty.values {
+            let mut enum_value = Elements::new();
+            let mut enum_stmt = java_stmt![&enum_literal.name];
+
+            if !enum_literal.values.is_empty() {
+                let mut value_arguments = Statement::new();
+
+                for (value, field) in enum_literal.values.iter().zip(fields.iter()) {
+                    value_arguments.push(self.literal_value(value, &field.ty)?);
+                }
+
+                enum_stmt.push(java_stmt!["(", value_arguments.join(", "), ")"]);
+            }
+
+            enum_value.push(enum_stmt);
+            en.push_value(enum_value);
+        }
+
+        let constructor = self.build_enum_constructor(&en);
+        en.push_constructor(constructor);
+
+        for field in en.fields.clone() {
+            if self.options.build_getters {
+                let getter = self.build_getter(&field)?;
+                en.push(getter);
+            }
+        }
+
+        self.listeners.enum_added(ty, &fields, &class_type, &mut en)?;
+
+        let mut file_spec = self.new_file_spec(package);
+        file_spec.push(&en);
+
+        Ok(file_spec)
     }
 
     fn process_tuple(&self, package: &ast::Package, ty: &ast::TupleBody) -> Result<FileSpec> {
@@ -588,7 +741,8 @@ impl Processor {
             }
         }
 
-        self.add_class(&fields, &class_type, &mut class)?;
+        self.add_class(&class_type, &mut class)?;
+        self.listeners.class_added(&fields, &class_type, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push(&class);
@@ -626,7 +780,8 @@ impl Processor {
             }
         }
 
-        self.add_class(&fields, &class_type, &mut class)?;
+        self.add_class(&class_type, &mut class)?;
+        self.listeners.class_added(&fields, &class_type, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push(&class);
@@ -699,7 +854,8 @@ impl Processor {
                 }
             }
 
-            self.add_class(&fields, &class_type, &mut class)?;
+            self.add_class(&class_type, &mut class)?;
+            self.listeners.class_added(&fields, &class_type, &mut class)?;
 
             self.listeners.sub_type_added(&fields, interface, sub_type, &mut class)?;
             interface_spec.push(&class);
@@ -754,7 +910,7 @@ impl Backend for Processor {
                 }
                 ast::Decl::Type(ref ty, _) => self.process_type(package, ty),
                 ast::Decl::Tuple(ref ty, _) => self.process_tuple(package, ty),
-                _ => continue,
+                ast::Decl::Enum(ref ty, _) => self.process_enum(package, ty),
             }?;
 
             debug!("+class: {}", full_path.display());

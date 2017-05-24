@@ -147,12 +147,12 @@ impl_rdp! {
         enum_value = { ident ~ (["("] ~ (literal ~ ([","] ~ literal)*) ~ [")"])? }
         option_decl = { ident ~ (option_value ~ ([","] ~ option_value)*) ~ [";"] }
 
-        option_value = { string | number }
+        option_value = { string | number | ident }
 
         package_ident = @{ ident ~ (["."] ~ ident)* }
         ident =  @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
 
-        literal = { string | number }
+        literal = { string | number | ident | type_spec }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
         escape  =  _{ ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
@@ -298,12 +298,21 @@ impl_rdp! {
 
         _literal(&self) -> ast::Literal {
             (&value: string) => {
-                ast::Literal::String(value.to_owned())
+                let value = decode_escaped_string(value).unwrap();
+                ast::Literal::String(value)
             },
 
             (&value: number) => {
                 let value = value.parse::<i64>().unwrap();
                 ast::Literal::Number(value)
+            },
+
+            (&value: ident) => {
+                ast::Literal::Identifier(value.to_owned())
+            },
+
+            (ty: _type_spec()) => {
+                ast::Literal::Type(ty)
             },
         }
 
@@ -338,6 +347,15 @@ impl_rdp! {
             (&string: string) => {
                 let string = decode_escaped_string(string).unwrap();
                 ast::OptionValue::String(string)
+            },
+
+            (&value: ident) => {
+                ast::OptionValue::Identifier(value.to_owned())
+            },
+
+            (&value: number) => {
+                let value = value.parse::<i64>().unwrap();
+                ast::OptionValue::Number(value)
             },
         }
 

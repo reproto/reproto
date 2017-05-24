@@ -3,7 +3,19 @@ package heroic.v1;
 use heroic.common as c;
 
 enum TimeUnit {
-  SECONDS;
+  SECONDS("seconds", 1000),
+  SECONDS("minutes", 60000);
+
+  serialize_as number;
+
+  value: string;
+  number: u64;
+
+  java {{
+    public long toMilliseconds() {
+      return this.number;
+    }
+  }}
 }
 
 interface Sampling {

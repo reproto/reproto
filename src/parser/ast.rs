@@ -9,6 +9,8 @@ pub type Pos = (usize, usize);
 #[derive(Debug, PartialEq, Clone)]
 pub enum OptionValue {
     String(String),
+    Number(i64),
+    Identifier(String),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -59,6 +61,7 @@ impl Options {
             .flat_map(|o| o.values.iter())
             .flat_map(|v| match *v {
                 OptionValue::String(ref s) => Some(s).into_iter(),
+                _ => None.into_iter(),
             })
             .collect()
     }
@@ -70,6 +73,31 @@ impl Options {
             .flat_map(|o| o.values.iter())
             .flat_map(|v| match *v {
                 OptionValue::String(ref s) => Some(s).into_iter(),
+                _ => None.into_iter(),
+            })
+            .nth(n)
+    }
+
+    pub fn lookup_identifier(&self, name: &str) -> Vec<&String> {
+        self.options
+            .iter()
+            .filter(|o| o.name.as_str() == name)
+            .flat_map(|o| o.values.iter())
+            .flat_map(|v| match *v {
+                OptionValue::Identifier(ref s) => Some(s).into_iter(),
+                _ => None.into_iter(),
+            })
+            .collect()
+    }
+
+    pub fn lookup_identifier_nth(&self, name: &str, n: usize) -> Option<&String> {
+        self.options
+            .iter()
+            .filter(|o| o.name.as_str() == name)
+            .flat_map(|o| o.values.iter())
+            .flat_map(|v| match *v {
+                OptionValue::Identifier(ref s) => Some(s).into_iter(),
+                _ => None.into_iter(),
             })
             .nth(n)
     }
@@ -123,6 +151,8 @@ pub enum Type {
 pub enum Literal {
     String(String),
     Number(i64),
+    Identifier(String),
+    Type(Type),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]

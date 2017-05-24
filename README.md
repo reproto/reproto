@@ -29,7 +29,7 @@ This will install the command into `~/.cargo/bin`, make sure it is in your `$PAT
 Using the [FasterXML][fasterxml] backend for Java:
 
 ```bash
-$> reproto --debug --b java -m fasterxml -o target/java \
+$> reproto --debug -b java -m fasterxml -o target/java \
   --path examples \
   heroic.v1
 ```
