@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::collections::BTreeMap;
-use std::collections::btree_map::Entry;
 
 use super::errors::*;
 
@@ -189,6 +188,34 @@ pub struct SubType {
     pub pos: Pos,
 }
 
+pub trait Body {
+    fn name(&self) -> &str;
+}
+
+impl Body for TupleBody {
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl Body for TypeBody {
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl Body for EnumBody {
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl Body for InterfaceBody {
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
 impl SubType {
     pub fn new(name: String, options: Options, members: Vec<Member>, pos: Pos) -> SubType {
         SubType {
@@ -206,22 +233,45 @@ impl SubType {
     }
 }
 
-/// interface <name> { <members>* }
 #[derive(Debug, PartialEq, Clone)]
-pub struct TypeBody {
+pub struct TupleBody {
+    pub name: String,
+    pub options: Options,
+    pub members: Vec<Member>,
+}
+
+impl TupleBody {
+    pub fn new(name: String, options: Options, members: Vec<Member>) -> TupleBody {
+        TupleBody {
+            name: name,
+            options: options,
+            members: members,
+        }
+    }
+
+    pub fn merge(&mut self, other: &TupleBody) -> Result<()> {
+        self.options.merge(&other.options);
+        self.members.extend(other.members.clone());
+
+        return Ok(());
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct InterfaceBody {
     pub name: String,
     pub options: Options,
     pub members: Vec<Member>,
     pub sub_types: BTreeMap<String, SubType>,
 }
 
-impl TypeBody {
+impl InterfaceBody {
     pub fn new(name: String,
                options: Options,
                members: Vec<Member>,
                sub_types: BTreeMap<String, SubType>)
-               -> TypeBody {
-        TypeBody {
+               -> InterfaceBody {
+        InterfaceBody {
             name: name,
             options: options,
             members: members,
@@ -229,20 +279,63 @@ impl TypeBody {
         }
     }
 
-    pub fn merge(&mut self, other: &TypeBody) -> Result<()> {
+    pub fn merge(&mut self, other: &InterfaceBody) -> Result<()> {
         self.options.merge(&other.options);
         self.members.extend(other.members.clone());
 
-        for (key, sub_type) in &other.sub_types {
-            match self.sub_types.entry(key.to_owned()) {
-                Entry::Vacant(entry) => {
-                    entry.insert(sub_type.clone());
-                }
-                Entry::Occupied(entry) => {
-                    entry.into_mut().merge(sub_type)?;
-                }
-            }
+        return Ok(());
+    }
+}
+
+/// type <name> { <members>* }
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeBody {
+    pub name: String,
+    pub options: Options,
+    pub members: Vec<Member>,
+}
+
+impl TypeBody {
+    pub fn new(name: String, options: Options, members: Vec<Member>) -> TypeBody {
+        TypeBody {
+            name: name,
+            options: options,
+            members: members,
         }
+    }
+
+    pub fn merge(&mut self, other: &TypeBody) -> Result<()> {
+        self.options.merge(&other.options);
+        self.members.extend(other.members.clone());
+        return Ok(());
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct EnumBody {
+    pub name: String,
+    pub values: Vec<EnumValue>,
+    pub options: Options,
+    pub members: Vec<Member>,
+}
+
+impl EnumBody {
+    pub fn new(name: String,
+               values: Vec<EnumValue>,
+               options: Options,
+               members: Vec<Member>)
+               -> EnumBody {
+        EnumBody {
+            name: name,
+            values: values,
+            options: options,
+            members: members,
+        }
+    }
+
+    pub fn merge(&mut self, other: &EnumBody) -> Result<()> {
+        self.options.merge(&other.options);
+        self.members.extend(other.members.clone());
 
         return Ok(());
     }
@@ -266,9 +359,9 @@ impl EnumValue {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Decl {
     Type(TypeBody, Pos),
-    Tuple(TypeBody, Pos),
-    Interface(TypeBody, Pos),
-    Enum(TypeBody, Vec<EnumValue>, Pos),
+    Tuple(TupleBody, Pos),
+    Interface(InterfaceBody, Pos),
+    Enum(EnumBody, Pos),
 }
 
 impl Decl {
@@ -277,7 +370,7 @@ impl Decl {
             Decl::Interface(ref interface, _) => interface.name.clone(),
             Decl::Type(ref ty, _) => ty.name.clone(),
             Decl::Tuple(ref ty, _) => ty.name.clone(),
-            Decl::Enum(ref ty, _, _) => ty.name.clone(),
+            Decl::Enum(ref ty, _) => ty.name.clone(),
         }
     }
 
@@ -286,7 +379,7 @@ impl Decl {
             Decl::Interface(_, pos) => pos.clone(),
             Decl::Type(_, pos) => pos.clone(),
             Decl::Tuple(_, pos) => pos.clone(),
-            Decl::Enum(_, _, pos) => pos.clone(),
+            Decl::Enum(_, pos) => pos.clone(),
         }
     }
 
@@ -295,7 +388,7 @@ impl Decl {
             Decl::Interface(ref body, _) => format!("interface {}", body.name),
             Decl::Type(ref body, _) => format!("type {}", body.name),
             Decl::Tuple(ref body, _) => format!("tuple {}", body.name),
-            Decl::Enum(ref body, _, _) => format!("enum {}", body.name),
+            Decl::Enum(ref body, _) => format!("enum {}", body.name),
         }
     }
 

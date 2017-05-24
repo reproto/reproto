@@ -214,23 +214,31 @@ impl_rdp! {
             () => LinkedList::new(),
         }
 
-        _type_body(&self) -> ast::TypeBody {
-            (&name: ident, options: _option_list(), members: _member_list()) => {
+        _decl(&self) -> ast::Decl {
+            (
+                token: type_decl,
+                &name: ident,
+                options: _option_list(),
+                members: _member_list()
+            ) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                ast::TypeBody::new(name.to_owned(), options, members, BTreeMap::new())
-            },
-        }
-
-        _decl(&self) -> ast::Decl {
-            (token: type_decl, ty: _type_body()) => {
+                let body = ast::TypeBody::new(name.to_owned(), options, members);
                 let pos = (token.start, token.end);
-                ast::Decl::Type(ty, pos)
+                ast::Decl::Type(body, pos)
             },
 
-            (token: tuple_decl, ty: _type_body()) => {
+            (
+                token: tuple_decl,
+                &name: ident,
+                options: _option_list(),
+                members: _member_list()
+            ) => {
+                let options = ast::Options::new(options.into_iter().collect());
+                let members = members.into_iter().collect();
+                let body = ast::TupleBody::new(name.to_owned(), options, members);
                 let pos = (token.start, token.end);
-                ast::Decl::Tuple(ty, pos)
+                ast::Decl::Tuple(body, pos)
             },
 
             (
@@ -243,23 +251,23 @@ impl_rdp! {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
                 let pos = (token.start, token.end);
-                let body = ast::TypeBody::new(name.to_owned(), options, members, sub_types);
+                let body = ast::InterfaceBody::new(name.to_owned(), options, members, sub_types);
                 ast::Decl::Interface(body, pos)
             },
 
             (
                 token: enum_decl,
                 &name: ident,
-                enum_values: _enum_value_list(),
+                values: _enum_value_list(),
                 options: _option_list(),
                 members: _member_list(),
             ) => {
-                let enum_values = enum_values.into_iter().collect();
+                let values = values.into_iter().collect();
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
                 let pos = (token.start, token.end);
-                let body = ast::TypeBody::new(name.to_owned(), options, members, BTreeMap::new());
-                ast::Decl::Enum(body, enum_values, pos)
+                let body = ast::EnumBody::new(name.to_owned(), values, options, members);
+                ast::Decl::Enum(body, pos)
             },
         }
 

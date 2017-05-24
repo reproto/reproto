@@ -2,6 +2,10 @@ package heroic.v1;
 
 use heroic.common as c;
 
+enum TimeUnit {
+  SECONDS;
+}
+
 interface Sampling {
 }
 

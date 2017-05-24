@@ -47,7 +47,7 @@ impl Environment {
         }
     }
 
-    fn validate_tuple(&self, body: &ast::TypeBody) -> Result<()> {
+    fn validate_tuple(&self, body: &ast::TupleBody) -> Result<()> {
         for member in &body.members {
             if let ast::Member::Field(ref field, _) = *member {
                 if field.modifier == ast::Modifier::Optional {

@@ -372,7 +372,7 @@ impl Processor {
         constructor
     }
 
-    fn process_tuple(&self, package: &ast::Package, ty: &ast::TypeBody) -> Result<ClassSpec> {
+    fn process_tuple(&self, package: &ast::Package, ty: &ast::TupleBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&ty.name);
         let mut fields: Vec<Field> = Vec::new();
 
@@ -468,7 +468,7 @@ impl Processor {
 
     fn process_interface(&self,
                          package: &ast::Package,
-                         interface: &ast::TypeBody)
+                         interface: &ast::InterfaceBody)
                          -> Result<Vec<ClassSpec>> {
         let mut classes = Vec::new();
 
@@ -674,7 +674,7 @@ impl Processor {
         Ok(())
     }
 
-    fn interface_decode_method(&self, interface: &ast::TypeBody) -> Result<MethodSpec> {
+    fn interface_decode_method(&self, interface: &ast::InterfaceBody) -> Result<MethodSpec> {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
         decode.push_argument(python_stmt!["data"]);

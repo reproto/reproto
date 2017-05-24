@@ -27,7 +27,7 @@ pub trait Listeners {
     }
 
     fn interface_added(&self,
-                       _interface: &ast::TypeBody,
+                       _interface: &ast::InterfaceBody,
                        _interface_spec: &mut InterfaceSpec)
                        -> Result<()> {
         Ok(())
@@ -35,7 +35,7 @@ pub trait Listeners {
 
     fn sub_type_added(&self,
                       _fields: &Vec<Field>,
-                      _interface: &ast::TypeBody,
+                      _interface: &ast::InterfaceBody,
                       _sub_type: &ast::SubType,
                       _class: &mut ClassSpec)
                       -> Result<()> {
@@ -66,7 +66,7 @@ impl Listeners for Vec<Box<Listeners>> {
     }
 
     fn interface_added(&self,
-                       interface: &ast::TypeBody,
+                       interface: &ast::InterfaceBody,
                        interface_spec: &mut InterfaceSpec)
                        -> Result<()> {
         for listeners in self {
@@ -78,7 +78,7 @@ impl Listeners for Vec<Box<Listeners>> {
 
     fn sub_type_added(&self,
                       fields: &Vec<Field>,
-                      interface: &ast::TypeBody,
+                      interface: &ast::InterfaceBody,
                       sub_type: &ast::SubType,
                       class: &mut ClassSpec)
                       -> Result<()> {
@@ -568,7 +568,7 @@ impl Processor {
         Ok(())
     }
 
-    fn process_tuple(&self, package: &ast::Package, ty: &ast::TypeBody) -> Result<FileSpec> {
+    fn process_tuple(&self, package: &ast::Package, ty: &ast::TupleBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
@@ -636,7 +636,7 @@ impl Processor {
 
     fn process_interface(&self,
                          package: &ast::Package,
-                         interface: &ast::TypeBody)
+                         interface: &ast::InterfaceBody)
                          -> Result<FileSpec> {
         let parent_type = Type::class(&self.java_package_name(package), &interface.name);
 
