@@ -205,7 +205,7 @@ impl Processor {
         check.push(python_stmt!["else:"]);
         check.push_nested(python_stmt![var_name, " = None"]);
 
-        check.as_element_spec()
+        check.into()
     }
 
     fn decode_method<F>(&self,
@@ -236,7 +236,7 @@ impl Processor {
                 _ => {
                     let var_stmt = python_stmt!["data[", &var, "]"];
                     let var_stmt = self.decode(package, &field.ty, var_stmt)?;
-                    python_stmt![&var_name, " = ", &var_stmt].as_element_spec()
+                    python_stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
 
@@ -276,20 +276,20 @@ impl Processor {
         let package = self.package(package);
         let key = &(package.clone(), custom.to_owned());
         let _ = self.env.types.get(key);
-        Name::local(&custom).as_name()
+        Name::local(&custom).into()
     }
 
     fn used_name(&self, package: &ast::Package, used: &str, custom: &str) -> Result<Name> {
         let package = self.env.lookup_used(package, used)?;
         let package = self.package(package);
         let package = package.parts.join(".");
-        Ok(Name::imported_alias(&package, &custom, used).as_name())
+        Ok(Name::imported_alias(&package, &custom, used).into())
     }
 
     fn encode<S>(&self, package: &ast::Package, ty: &ast::Type, value_stmt: S) -> Result<Statement>
-        where S: AsStatement
+        where S: Into<Statement>
     {
-        let value_stmt = value_stmt.as_statement();
+        let value_stmt = value_stmt.into();
 
         // TODO: do not skip conversion if strict type checking is enabled
         if self.is_native(ty) {
@@ -316,9 +316,9 @@ impl Processor {
     }
 
     fn decode<S>(&self, package: &ast::Package, ty: &ast::Type, value_stmt: S) -> Result<Statement>
-        where S: AsStatement
+        where S: Into<Statement>
     {
-        let value_stmt = value_stmt.as_statement();
+        let value_stmt = value_stmt.into();
 
         // TODO: do not skip conversion if strict type checking is enabled
         if self.is_native(ty) {
@@ -687,7 +687,7 @@ impl Processor {
 
         for (_, ref sub_type) in &interface.sub_types {
             for name in sub_type.options.lookup_string("name") {
-                let type_name = Name::local(&sub_type.name).as_name();
+                let type_name: Variable = Name::local(&sub_type.name).into();
 
                 let mut check = Elements::new();
 

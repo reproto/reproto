@@ -251,33 +251,33 @@ impl Processor {
     /// Convert the given type to a java type.
     fn convert_type(&self, package: &ast::Package, ty: &ast::Type) -> Result<Type> {
         let ty = match *ty {
-            ast::Type::String => self.string.clone().as_type(),
-            ast::Type::I32 => self.integer.clone().as_type(),
-            ast::Type::U32 => self.integer.clone().as_type(),
-            ast::Type::I64 => self.long.clone().as_type(),
-            ast::Type::U64 => self.long.clone().as_type(),
-            ast::Type::Float => self.float.clone().as_type(),
-            ast::Type::Double => self.double.clone().as_type(),
+            ast::Type::String => self.string.clone().into(),
+            ast::Type::I32 => self.integer.clone().into(),
+            ast::Type::U32 => self.integer.clone().into(),
+            ast::Type::I64 => self.long.clone().into(),
+            ast::Type::U64 => self.long.clone().into(),
+            ast::Type::Float => self.float.clone().into(),
+            ast::Type::Double => self.double.clone().into(),
             ast::Type::Array(ref ty) => {
                 let argument = self.convert_type(package, ty)?;
-                self.list.with_arguments(vec![argument]).as_type()
+                self.list.with_arguments(vec![argument]).into()
             }
             ast::Type::Custom(ref string) => {
                 let key = (package.clone(), string.clone());
                 let _ = self.env.types.get(&key);
                 let package_name = self.java_package_name(package);
-                Type::class(&package_name, string).as_type()
+                Type::class(&package_name, string).into()
             }
-            ast::Type::Any => self.object.clone().as_type(),
+            ast::Type::Any => self.object.clone().into(),
             ast::Type::UsedType(ref used, ref custom) => {
                 let package = self.env.lookup_used(package, used)?;
                 let package_name = self.java_package_name(package);
-                Type::class(&package_name, custom).as_type()
+                Type::class(&package_name, custom).into()
             }
             ast::Type::Map(ref key, ref value) => {
                 let key = self.convert_type(package, key)?;
                 let value = self.convert_type(package, value)?;
-                self.map.with_arguments(vec![key, value]).as_type()
+                self.map.with_arguments(vec![key, value]).into()
             }
             ref t => {
                 return Err(format!("Unsupported type: {:?}", t).into());
@@ -871,7 +871,7 @@ impl Processor {
 
     fn push_field(&self, field_type: &Type, field: &ast::Field) -> Result<FieldSpec> {
         let field_type = if field.is_optional() {
-            self.optional.with_arguments(vec![field_type]).as_type()
+            self.optional.with_arguments(vec![field_type]).into()
         } else {
             field_type.clone()
         };

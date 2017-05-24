@@ -25,7 +25,7 @@ impl Module {
         let field_mods = java_mods![Modifier::Private];
 
         let ty = match field.modifier {
-            ast::Modifier::Required => self.optional.with_arguments(vec![&source.ty]).as_type(),
+            ast::Modifier::Required => self.optional.with_arguments(vec![&source.ty]).into(),
             _ => source.ty.clone(),
         };
 
