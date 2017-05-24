@@ -112,12 +112,18 @@ impl Listeners for Vec<Box<Listeners>> {
     }
 }
 
+/// A single field.
 #[derive(Debug, Clone)]
 pub struct Field {
     pub modifier: ast::Modifier,
     pub name: String,
     pub ty: Type,
     pub field_spec: FieldSpec,
+}
+
+enum Member<'a> {
+    Field(Field),
+    Code(&'a Vec<String>),
 }
 
 impl Field {
@@ -555,7 +561,7 @@ impl Processor {
     }
 
     fn add_class_like<C>(&self, class_type: &ClassType, class: &mut C) -> Result<()>
-        where C: ClassLike
+        where C: ClassLike + ContainerSpec
     {
         for field in class.fields().clone() {
             if self.options.build_getters {
@@ -590,7 +596,7 @@ impl Processor {
     }
 
     fn add_class<C>(&self, class_type: &ClassType, class: &mut C) -> Result<()>
-        where C: ClassLike
+        where C: ClassLike + ContainerSpec
     {
         if self.options.build_constructor {
             let constructor = self.build_constructor(class);
@@ -756,29 +762,18 @@ impl Processor {
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &message.name);
         let mut fields = Vec::new();
 
-        for member in &message.members {
-            if let ast::Member::Field(ref field, _) = *member {
-                let field_type = self.convert_type(package, &field.ty)?;
-                let field_spec = self.push_field(&field_type, field)?;
-
-                class.push_field(&field_spec);
-
-                fields.push(Field::new(field.modifier.clone(),
-                                       field.name.clone(),
-                                       field_type,
-                                       field_spec));
-
-                continue;
-            }
-
-            if let ast::Member::Code(ref context, ref content, _) = *member {
-                if context == JAVA_CONTEXT {
-                    class.push(content);
+        self.process_members(package, &message.members, |m| {
+                match m {
+                    Member::Field(field) => {
+                        class.push_field(&field.field_spec);
+                        fields.push(field);
+                    }
+                    Member::Code(code) => {
+                        class.push(code);
+                    }
                 }
+            })?;
 
-                continue;
-            }
-        }
 
         self.add_class(&class_type, &mut class)?;
         self.listeners.class_added(&fields, &class_type, &mut class)?;
@@ -796,28 +791,18 @@ impl Processor {
         let parent_type = Type::class(&self.java_package_name(package), &interface.name);
 
         let mut interface_spec = InterfaceSpec::new(java_mods![Modifier::Public], &interface.name);
-        let mut interface_fields = Vec::new();
+        let mut interface_fields: Vec<Field> = Vec::new();
 
-        for member in &interface.members {
-            if let ast::Member::Field(ref field, _) = *member {
-                let field_type = self.convert_type(package, &field.ty)?;
-                let field_spec = self.push_field(&field_type, field)?;
-
-                interface_fields.push(Field::new(field.modifier.clone(),
-                                                 field.name.clone(),
-                                                 field_type,
-                                                 field_spec));
-                continue;
-            }
-
-            if let ast::Member::Code(ref context, ref content, _) = *member {
-                if context == JAVA_CONTEXT {
-                    interface_spec.push(content);
+        self.process_members(package, &interface.members, |m| {
+                match m {
+                    Member::Field(field) => {
+                        interface_fields.push(field);
+                    }
+                    Member::Code(code) => {
+                        interface_spec.push(code);
+                    }
                 }
-
-                continue;
-            }
-        }
+            })?;
 
         for (_, ref sub_type) in &interface.sub_types {
             let class_type = parent_type.extend(&sub_type.name);
@@ -832,26 +817,20 @@ impl Processor {
                 class.push_field(&interface_field.field_spec);
             }
 
-            for member in &sub_type.members {
-                if let ast::Member::Field(ref field, _) = *member {
-                    let field_type = self.convert_type(package, &field.ty)?;
-                    let field_spec = self.push_field(&field_type, field)?;
-
-                    class.push_field(&field_spec);
-                    fields.push(Field::new(field.modifier.clone(),
-                                           field.name.clone(),
-                                           field_type,
-                                           field_spec));
-                    continue;
-                }
-
-                if let ast::Member::Code(ref context, ref content, _) = *member {
-                    if context == JAVA_CONTEXT {
-                        class.push(content);
+            self.process_members(package, &sub_type.members, |m| {
+                    match m {
+                        Member::Field(field) => {
+                            class.push_field(&field.field_spec);
+                            fields.push(field);
+                        }
+                        Member::Code(code) => {
+                            class.push(code);
+                        }
                     }
+                })?;
 
-                    continue;
-                }
+            for field in &fields {
+                class.push_field(&field.field_spec);
             }
 
             self.add_class(&class_type, &mut class)?;
@@ -867,6 +846,39 @@ impl Processor {
 
         file_spec.push(&interface_spec);
         Ok(file_spec)
+    }
+
+    fn process_members<C>(&self,
+                          package: &ast::Package,
+                          members: &Vec<ast::Member>,
+                          mut consumer: C)
+                          -> Result<()>
+        where C: FnMut(Member) -> ()
+    {
+        for member in members {
+            if let ast::Member::Field(ref field, _) = *member {
+                let field_type = self.convert_type(package, &field.ty)?;
+                let field_spec = self.push_field(&field_type, field)?;
+
+                let field = Field::new(field.modifier.clone(),
+                                       field.name.clone(),
+                                       field_type,
+                                       field_spec);
+
+                consumer(Member::Field(field));
+                continue;
+            }
+
+            if let ast::Member::Code(ref context, ref content, _) = *member {
+                if context == JAVA_CONTEXT {
+                    consumer(Member::Code(content));
+                }
+
+                continue;
+            }
+        }
+
+        Ok(())
     }
 
     fn push_field(&self, field_type: &Type, field: &ast::Field) -> Result<FieldSpec> {
