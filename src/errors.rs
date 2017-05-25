@@ -1,10 +1,8 @@
-use std::path::PathBuf;
-
-use parser::errors as parser;
-use codeviz::errors as codeviz;
-
-use parser::ast;
+use ast;
 use backend;
+use codeviz::errors as codeviz;
+use parser::errors as parser;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum InternalError {
@@ -33,7 +31,7 @@ error_chain! {
         Io(::std::io::Error);
         Log(::log::SetLoggerError);
         ParseError(InternalError);
-        BackendError(backend::VerifyError);
+        BackendError(backend::Error);
     }
 
     errors {
@@ -48,6 +46,11 @@ error_chain! {
         DeclConflict(path: PathBuf, line_string: String, line: usize, existing: ast::Decl, conflicting: ast::Decl) {
             description("Conflicting type declared")
             display("Conflicting type declared: {}:{}: `{}`", path.display(), line, line_string)
+        }
+
+        InvalidMerge(this: ast::Decl, other: ast::Decl) {
+            description("Invalid merge")
+            display("Cannot merge existing `{}` with `{}`", this.display(), other.display())
         }
     }
 }

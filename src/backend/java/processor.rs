@@ -1,14 +1,13 @@
+use ast;
+use backend::*;
+use codeviz::java::*;
 use environment::Environment;
 use naming::{self, FromNaming};
 use options::Options;
-use parser::ast;
 use std::fs::File;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-
-use backend::*;
-use codeviz::java::*;
 
 const JAVA_CONTEXT: &str = "java";
 
@@ -122,6 +121,7 @@ pub struct Field {
     pub name: String,
     pub ty: Type,
     pub field_spec: FieldSpec,
+    pub pos: ast::Pos,
 }
 
 enum Member<'a> {
@@ -130,12 +130,18 @@ enum Member<'a> {
 }
 
 impl Field {
-    pub fn new(modifier: ast::Modifier, name: String, ty: Type, field_spec: FieldSpec) -> Field {
+    pub fn new(modifier: ast::Modifier,
+               name: String,
+               ty: Type,
+               field_spec: FieldSpec,
+               pos: ast::Pos)
+               -> Field {
         Field {
             modifier: modifier,
             name: name,
             ty: ty,
             field_spec: field_spec,
+            pos: pos,
         }
     }
 }
@@ -658,14 +664,14 @@ impl Processor {
         Err(format!("{} cannot be applied to type {}", value, display_type(ty)).into())
     }
 
-    fn find_field(&self, fields: &Vec<Field>, name: &str) -> Result<Field> {
+    fn find_field(&self, fields: &Vec<Field>, name: &str) -> Option<Field> {
         for field in fields {
             if field.name == name {
-                return Ok(field.clone());
+                return Some(field.clone());
             }
         }
 
-        Err(format!("no field named: {}", name).into())
+        None
     }
 
     fn enum_from_value_method(&self, field: &Field, class_type: &ClassType) -> Result<MethodSpec> {
@@ -714,7 +720,11 @@ impl Processor {
         Ok(to_value)
     }
 
-    fn process_enum(&self, package: &ast::Package, ty: &ast::EnumBody) -> Result<FileSpec> {
+    fn process_enum(&self,
+                    package: &ast::Package,
+                    ty: &ast::EnumBody,
+                    pos: &ast::Pos)
+                    -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
         let mut en = EnumSpec::new(java_mods![Modifier::Public], &ty.name);
@@ -764,10 +774,13 @@ impl Processor {
         let mut to_value: Option<MethodSpec> = None;
 
         if let Some(serialize_as) = ty.options.lookup_identifier_nth("serialize_as", 0) {
-            let field = self.find_field(&fields, serialize_as)?;
-
-            from_value = Some(self.enum_from_value_method(&field, &class_type)?);
-            to_value = Some(self.enum_to_value_method(&field)?);
+            if let Some(field) = self.find_field(&fields, serialize_as) {
+                from_value = Some(self.enum_from_value_method(&field, &class_type)?);
+                to_value = Some(self.enum_to_value_method(&field)?);
+            } else {
+                return Err(Error::location(format!("No field named: {}", serialize_as),
+                                           pos.clone()));
+            }
         }
 
         self.listeners
@@ -792,7 +805,11 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_tuple(&self, package: &ast::Package, ty: &ast::TupleBody) -> Result<FileSpec> {
+    fn process_tuple(&self,
+                     package: &ast::Package,
+                     ty: &ast::TupleBody,
+                     _pos: &ast::Pos)
+                     -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
@@ -819,7 +836,11 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_type(&self, package: &ast::Package, message: &ast::TypeBody) -> Result<FileSpec> {
+    fn process_type(&self,
+                    package: &ast::Package,
+                    message: &ast::TypeBody,
+                    _pos: &ast::Pos)
+                    -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &message.name);
 
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &message.name);
@@ -915,14 +936,15 @@ impl Processor {
         where C: FnMut(Member) -> ()
     {
         for member in members {
-            if let ast::Member::Field(ref field, _) = *member {
+            if let ast::Member::Field(ref field, ref pos) = *member {
                 let field_type = self.convert_type(package, &field.ty)?;
                 let field_spec = self.push_field(&field_type, field)?;
 
                 let field = Field::new(field.modifier.clone(),
                                        field.name.clone(),
                                        field_type,
-                                       field_spec);
+                                       field_spec,
+                                       pos.clone());
 
                 consumer(Member::Field(field));
                 continue;
@@ -956,8 +978,8 @@ impl Processor {
         Ok(self.new_field_spec(&field_type, &name))
     }
 
-    fn process_files<F>(&self, consumer: F) -> Result<()>
-        where F: Fn(PathBuf, FileSpec) -> Result<()>
+    fn process_files<F>(&self, mut consumer: F) -> Result<()>
+        where F: FnMut(PathBuf, &ast::Package, &ast::Decl) -> Result<()>
     {
         let root_dir = &self.options.parent.out_path;
 
@@ -968,33 +990,37 @@ impl Processor {
                 .iter()
                 .fold(root_dir.clone(), |current, next| current.join(next));
 
-            if !out_dir.is_dir() {
-                debug!("+dir: {}", out_dir.display());
-                fs::create_dir_all(&out_dir)?;
-            }
-
             let full_path = out_dir.join(format!("{}.java", decl.name()));
 
-            let file_spec = match *decl {
-                ast::Decl::Interface(ref interface, _) => {
-                    self.process_interface(package, interface)
-                }
-                ast::Decl::Type(ref ty, _) => self.process_type(package, ty),
-                ast::Decl::Tuple(ref ty, _) => self.process_tuple(package, ty),
-                ast::Decl::Enum(ref ty, _) => self.process_enum(package, ty),
-            }?;
-
-            consumer(full_path, file_spec)?;
+            consumer(full_path, package, decl)?;
         }
 
         Ok(())
+    }
+
+    fn build_file_spec(&self, package: &ast::Package, decl: &ast::Decl) -> Result<FileSpec> {
+        match *decl {
+            ast::Decl::Interface(ref interface, _) => self.process_interface(package, interface),
+            ast::Decl::Type(ref ty, ref pos) => self.process_type(package, ty, pos),
+            ast::Decl::Tuple(ref ty, ref pos) => self.process_tuple(package, ty, pos),
+            ast::Decl::Enum(ref ty, ref pos) => self.process_enum(package, ty, pos),
+        }
     }
 }
 
 impl Backend for Processor {
     fn process(&self) -> Result<()> {
-        self.process_files(|full_path: PathBuf, file_spec| {
+        self.process_files(|full_path, package, decl| {
             debug!("+class: {}", full_path.display());
+
+            if let Some(out_dir) = full_path.parent() {
+                if !out_dir.is_dir() {
+                    debug!("+dir: {}", out_dir.display());
+                    fs::create_dir_all(&out_dir)?;
+                }
+            }
+
+            let file_spec = self.build_file_spec(package, decl)?;
 
             let out = file_spec.format();
             let mut f = File::create(full_path)?;
@@ -1007,11 +1033,26 @@ impl Backend for Processor {
         })
     }
 
-    fn verify(&self) -> Result<()> {
-        self.process_files(|full_path, _| {
-            debug!("+class: {}", full_path.display());
-            Ok(())
-        })
+    fn verify(&self) -> Result<Vec<VerifyError>> {
+        let mut results = Vec::new();
+
+        self.process_files(|full_path, package, decl| {
+                if let Err(error) = self.build_file_spec(package, decl) {
+                    match error {
+                        Error::Location(ref message, ref location) => {
+                            let error = VerifyError::new(message.to_owned(),
+                                                         full_path.to_owned(),
+                                                         location.clone());
+                            results.push(error);
+                        }
+                        e => return Err(e),
+                    };
+                };
+
+                Ok(())
+            })?;
+
+        Ok(results)
     }
 }
 

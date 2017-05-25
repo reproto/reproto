@@ -1,5 +1,4 @@
-use ::errors::*;
-
+use errors::*;
 use log;
 
 struct SimpleLogger;

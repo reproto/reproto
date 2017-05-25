@@ -1,12 +1,12 @@
-use errors::*;
-
+use ast;
 use clap::{Arg, App, SubCommand, ArgMatches};
+use errors::*;
 use std::path::{Path, PathBuf};
-use super::environment::Environment;
-use super::options::Options;
-use super::parser::ast;
 use super::backend;
+use super::environment::Environment;
 use super::naming;
+use super::options::Options;
+use super::parser;
 
 fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
     let mut parts = input.split(":");
@@ -152,7 +152,20 @@ pub fn compile(matches: &ArgMatches) -> Result<()> {
 
 pub fn verify(matches: &ArgMatches) -> Result<()> {
     let backend = setup_backend(matches)?;
-    backend.verify()?;
+    let results = backend.verify()?;
+
+    for result in results {
+        println!("path = {}", result.path.display());
+
+        let (line_string, line) = parser::find_line(&result.path, result.location.0)?;
+
+        println!("{}:{}: {}: {}",
+                 result.path.display(),
+                 line,
+                 result.message,
+                 line_string);
+    }
+
     Ok(())
 }
 

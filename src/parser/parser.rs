@@ -2,7 +2,7 @@ use pest::prelude::*;
 use std::collections::BTreeMap;
 use std::collections::LinkedList;
 
-use super::ast;
+use ast;
 use super::errors::*;
 
 /// Check if character is an indentation character.

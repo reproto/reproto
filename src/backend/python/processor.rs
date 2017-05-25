@@ -1,16 +1,15 @@
+use ast;
 use backend::*;
+use codeviz::python::*;
 use environment::Environment;
 use naming::{self, FromNaming};
 use options::Options;
-use parser::ast;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-
-use codeviz::python::*;
 
 const TYPE: &str = "type";
 const INIT_PY: &str = "__init__.py";
@@ -718,7 +717,7 @@ impl Backend for Processor {
         self.write_files(files)
     }
 
-    fn verify(&self) -> Result<()> {
-        Ok(())
+    fn verify(&self) -> Result<Vec<VerifyError>> {
+        Ok(vec![])
     }
 }

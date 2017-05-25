@@ -1,7 +1,6 @@
-use std::collections::HashSet;
+use errors::*;
 use std::collections::BTreeMap;
-
-use super::errors::*;
+use std::collections::HashSet;
 
 /// Position relative in file where the declaration is present.
 pub type Pos = (usize, usize);

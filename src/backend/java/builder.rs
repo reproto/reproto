@@ -1,10 +1,8 @@
 /// Module that adds fasterxml annotations to generated classes.
-use super::processor;
-
-use parser::ast;
-
-use codeviz::java::*;
+use ast;
 use backend::*;
+use codeviz::java::*;
+use super::processor;
 
 pub struct Module {
     optional: ClassType,

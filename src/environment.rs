@@ -1,12 +1,10 @@
+use ast;
 use backend::TypeId;
-use parser::ast;
-use parser;
-use std::collections::BTreeMap;
-use std::collections::HashSet;
-use std::collections::btree_map::{Entry, OccupiedEntry};
-use std::path::{Path, PathBuf};
-
 use errors::*;
+use parser;
+use std::collections::btree_map::{Entry, OccupiedEntry};
+use std::collections::{BTreeMap, HashSet};
+use std::path::{Path, PathBuf};
 
 const EXT: &str = "reproto";
 

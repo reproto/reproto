@@ -3,34 +3,50 @@ pub mod python;
 
 use environment::Environment;
 use options::Options;
-use parser::ast;
-use std::path::PathBuf;
+use ast;
 use std::fmt;
+use std::path::PathBuf;
 
 pub type TypeId = (ast::Package, String);
 
-type Location = (PathBuf, usize, usize);
+#[derive(Debug)]
+pub struct VerifyError {
+    pub message: String,
+    pub path: PathBuf,
+    pub location: Location,
+}
+
+impl VerifyError {
+    pub fn new(message: String, path: PathBuf, location: Location) -> VerifyError {
+        VerifyError {
+            message: message,
+            path: path,
+            location: location,
+        }
+    }
+}
+
+type Location = (usize, usize);
 
 #[derive(Debug)]
-enum ErrorCause {
+pub enum Error {
     Message(String),
-    IoError(::std::io::Error),
+    Location(String, Location),
     Error(Box<::errors::Error>),
 }
 
-/// An error that occured at a given location.
-#[derive(Debug)]
-pub struct VerifyError {
-    cause: ErrorCause,
-    location: Option<Location>,
+impl Error {
+    pub fn location(message: String, location: Location) -> Error {
+        Error::Location(message, location)
+    }
 }
 
-type Result<T> = ::std::result::Result<T, VerifyError>;
+type Result<T> = ::std::result::Result<T, Error>;
 
 pub trait Backend {
     fn process(&self) -> Result<()>;
 
-    fn verify(&self) -> Result<()>;
+    fn verify(&self) -> Result<Vec<VerifyError>>;
 }
 
 pub fn resolve(backend: &str, options: Options, env: Environment) -> Result<Box<Backend>> {
@@ -43,62 +59,49 @@ pub fn resolve(backend: &str, options: Options, env: Environment) -> Result<Box<
     Ok(backend)
 }
 
-impl fmt::Display for VerifyError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.cause {
-            ErrorCause::Message(ref string) => write!(f, "{}", string),
-            ErrorCause::IoError(ref io) => io.fmt(f),
-            ErrorCause::Error(ref error) => error.fmt(f),
+        match *self {
+            Error::Message(ref message) => write!(f, "{}", message),
+            Error::Location(ref message, _) => write!(f, "{}", message),
+            Error::Error(ref error) => error.fmt(f),
         }
     }
 }
 
-impl ::std::error::Error for VerifyError {
+impl ::std::error::Error for Error {
     fn description(&self) -> &str {
         "backend error"
     }
 
     fn cause(&self) -> Option<&::std::error::Error> {
-        match self.cause {
-            ErrorCause::Message(_) => None,
-            ErrorCause::IoError(ref io) => Some(io),
-            ErrorCause::Error(ref error) => Some(error),
+        match *self {
+            Error::Error(ref error) => Some(error),
+            _ => None,
         }
     }
 }
 
-impl From<String> for VerifyError {
-    fn from(value: String) -> VerifyError {
-        VerifyError {
-            cause: ErrorCause::Message(value),
-            location: None,
-        }
+impl From<String> for Error {
+    fn from(value: String) -> Error {
+        Error::Message(value)
     }
 }
 
-impl<'a> From<&'a str> for VerifyError {
-    fn from(value: &'a str) -> VerifyError {
-        VerifyError {
-            cause: ErrorCause::Message(value.to_owned()),
-            location: None,
-        }
+impl<'a> From<&'a str> for Error {
+    fn from(value: &'a str) -> Error {
+        Error::Message(value.to_owned())
     }
 }
 
-impl From<::std::io::Error> for VerifyError {
-    fn from(value: ::std::io::Error) -> VerifyError {
-        VerifyError {
-            cause: ErrorCause::IoError(value),
-            location: None,
-        }
+impl From<::std::io::Error> for Error {
+    fn from(value: ::std::io::Error) -> Error {
+        Error::Error(Box::new(value.into()))
     }
 }
 
-impl From<::errors::Error> for VerifyError {
-    fn from(value: ::errors::Error) -> VerifyError {
-        VerifyError {
-            cause: ErrorCause::Error(Box::new(value)),
-            location: None,
-        }
+impl From<::errors::Error> for Error {
+    fn from(value: ::errors::Error) -> Error {
+        Error::Error(Box::new(value))
     }
 }

@@ -1,8 +1,7 @@
 /// Module that adds lombok annotations to generated classes.
-use super::processor;
-
-use codeviz::java::*;
 use backend::*;
+use codeviz::java::*;
+use super::processor;
 
 pub struct Module {
     data: ClassType,

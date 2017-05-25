@@ -1,17 +1,15 @@
 mod parser;
-
-pub mod ast;
 pub mod errors;
 
+use ast;
 use pest::Parser;
 use pest::prelude::StringInput;
+use self::errors::*;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Read;
 use std::path::Path;
-
-use self::errors::*;
 
 pub fn find_line(path: &Path, pos: usize) -> Result<(String, usize)> {
     let file = File::open(path)?;

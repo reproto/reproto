@@ -1,6 +1,5 @@
-use super::processor;
-
 use backend::*;
+use super::processor;
 
 pub struct Module {
 }
