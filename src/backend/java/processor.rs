@@ -1,4 +1,3 @@
-use backend::Backend;
 use environment::Environment;
 use naming::{self, FromNaming};
 use options::Options;
@@ -6,10 +5,10 @@ use parser::ast;
 use std::fs::File;
 use std::fs;
 use std::io::Write;
+use std::path::PathBuf;
 
+use backend::*;
 use codeviz::java::*;
-
-use errors::*;
 
 const JAVA_CONTEXT: &str = "java";
 
@@ -956,10 +955,10 @@ impl Processor {
 
         Ok(self.new_field_spec(&field_type, &name))
     }
-}
 
-impl Backend for Processor {
-    fn process(&self) -> Result<()> {
+    fn process_files<F>(&self, consumer: F) -> Result<()>
+        where F: Fn(PathBuf, FileSpec) -> Result<()>
+    {
         let root_dir = &self.options.parent.out_path;
 
         // Process all types discovered so far.
@@ -985,6 +984,16 @@ impl Backend for Processor {
                 ast::Decl::Enum(ref ty, _) => self.process_enum(package, ty),
             }?;
 
+            consumer(full_path, file_spec)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Backend for Processor {
+    fn process(&self) -> Result<()> {
+        self.process_files(|full_path: PathBuf, file_spec| {
             debug!("+class: {}", full_path.display());
 
             let out = file_spec.format();
@@ -993,9 +1002,16 @@ impl Backend for Processor {
 
             f.write_all(&bytes)?;
             f.flush()?;
-        }
 
-        Ok(())
+            Ok(())
+        })
+    }
+
+    fn verify(&self) -> Result<()> {
+        self.process_files(|full_path, _| {
+            debug!("+class: {}", full_path.display());
+            Ok(())
+        })
     }
 }
 

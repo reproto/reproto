@@ -10,7 +10,7 @@ use environment::Environment;
 use options::Options;
 use parser::ast;
 
-use errors::*;
+use backend::*;
 
 fn setup_module(module: &str) -> Result<Box<processor::Listeners>> {
     let module: Box<processor::Listeners> = match module {

@@ -4,7 +4,7 @@ use parser;
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::collections::btree_map::{Entry, OccupiedEntry};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use errors::*;
 
@@ -17,7 +17,7 @@ pub struct Environment {
     pub used: BTreeMap<(ast::Package, String), ast::Package>,
 }
 
-fn handle_occupied<'a>(path: &PathBuf,
+fn handle_occupied<'a>(path: &Path,
                        entry: OccupiedEntry<'a, TypeId, ast::Decl>,
                        decl: &ast::Decl)
                        -> Result<()> {
@@ -31,7 +31,7 @@ fn handle_occupied<'a>(path: &PathBuf,
 
         parser::find_line(path, pos.0)
             .map(|(line_string, line)| {
-                ErrorKind::DeclConflict(path.clone(), line_string, line, existing, decl.clone())
+                ErrorKind::DeclConflict(path.to_owned(), line_string, line, existing, decl.clone())
             })
             .unwrap_or_else(|e| ErrorKind::Parser(e.into()).into())
     })
@@ -67,7 +67,7 @@ impl Environment {
     }
 
     fn register_type(&mut self,
-                     path: &PathBuf,
+                     path: &Path,
                      package: &ast::Package,
                      decl: &ast::Decl)
                      -> Result<()> {
@@ -122,6 +122,43 @@ impl Environment {
         Ok(package)
     }
 
+    pub fn import_file(&mut self, path: &Path, package: Option<&ast::Package>) -> Result<()> {
+        debug!("in: {}", path.display());
+
+        let file =
+            parser::parse_file(&path).chain_err(|| format!("Failed to parse: {}", path.display()))?;
+
+        if let Some(package) = package {
+            if file.package != *package {
+                return Err(format!("Expected package ({}) in file {}, but was ({})",
+                                   package,
+                                   path.display(),
+                                   file.package)
+                    .into());
+            }
+        }
+
+        for use_decl in &file.uses {
+            self.register_alias(&file.package, use_decl)?;
+            self.import(&use_decl.package)?;
+        }
+
+        for decl in &file.decls {
+            self.register_type(path, &file.package, decl)
+                .chain_err(|| {
+                    let pos = decl.pos();
+
+                    parser::find_line(&path, pos.0)
+                        .map(|(line_string, line)| {
+                            ErrorKind::DeclError(path.to_owned(), line_string, line, decl.clone())
+                        })
+                        .unwrap_or_else(|e| ErrorKind::Parser(e.into()).into())
+                })?;
+        }
+
+        Ok(())
+    }
+
     pub fn import(&mut self, package: &ast::Package) -> Result<()> {
         if self.visited.contains(package) {
             return Ok(());
@@ -129,7 +166,7 @@ impl Environment {
 
         self.visited.insert(package.clone());
 
-        let mut files: Vec<(PathBuf, ast::File)> = Vec::new();
+        let mut files: Vec<PathBuf> = Vec::new();
 
         let candidates: Vec<PathBuf> = self.paths
             .iter()
@@ -150,20 +187,7 @@ impl Environment {
                 continue;
             }
 
-            debug!("in: {}", path.display());
-
-            let file = parser::parse_file(&path)
-                    .chain_err(|| format!("Failed to parse: {}", path.display()))?;
-
-            if file.package != *package {
-                return Err(format!("Expected package ({}) in file {}, but was ({})",
-                                   package,
-                                   path.display(),
-                                   file.package)
-                    .into());
-            }
-
-            files.push((path.clone(), file));
+            files.push(path.clone());
         }
 
         if files.len() == 0 {
@@ -179,24 +203,8 @@ impl Environment {
                 .into());
         }
 
-        for &(ref path, ref file) in &files {
-            for use_decl in &file.uses {
-                self.register_alias(package, use_decl)?;
-                self.import(&use_decl.package)?;
-            }
-
-            for decl in &file.decls {
-                self.register_type(path, package, decl)
-                    .chain_err(|| {
-                        let pos = decl.pos();
-
-                        parser::find_line(path, pos.0)
-                            .map(|(line_string, line)| {
-                                ErrorKind::DeclError(path.clone(), line_string, line, decl.clone())
-                            })
-                            .unwrap_or_else(|e| ErrorKind::Parser(e.into()).into())
-                    })?;
-            }
+        for path in files {
+            self.import_file(&path, Some(package))?;
         }
 
         Ok(())

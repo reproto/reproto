@@ -4,6 +4,7 @@ use parser::errors as parser;
 use codeviz::errors as codeviz;
 
 use parser::ast;
+use backend;
 
 #[derive(Debug)]
 pub enum InternalError {
@@ -32,6 +33,7 @@ error_chain! {
         Io(::std::io::Error);
         Log(::log::SetLoggerError);
         ParseError(InternalError);
+        BackendError(backend::VerifyError);
     }
 
     errors {

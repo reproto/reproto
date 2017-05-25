@@ -31,7 +31,7 @@ Using the [FasterXML][fasterxml] backend for Java:
 ```bash
 $> reproto --debug compile -b java -m fasterxml -o target/java \
   --path examples \
-  heroic.v1
+  --package heroic.v1
 ```
 
 Multiple paths can be included, and the same declarations will extend each other:
@@ -40,7 +40,7 @@ Multiple paths can be included, and the same declarations will extend each other
 $> reproto --debug compile -b java -m fasterxml -o target/java \
   --path examples \
   --path examples/ext \
-  heroic.v1
+  --package heroic.v1
 ```
 
 This will generate code for the plain python backend:

@@ -3,7 +3,7 @@ use parser::ast;
 use super::processor;
 
 use codeviz::java::*;
-use errors::*;
+use backend::*;
 
 pub struct Module {
     json_creator: ClassType,

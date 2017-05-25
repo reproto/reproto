@@ -2,7 +2,7 @@
 use super::processor;
 
 use codeviz::java::*;
-use errors::*;
+use backend::*;
 
 pub struct Module {
     constructor_properties: ClassType,

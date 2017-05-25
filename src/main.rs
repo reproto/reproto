@@ -46,6 +46,7 @@ fn entry() -> Result<()> {
     if let Some(matches) = matches {
         match name {
             "compile" => commands::compile(matches),
+            "verify" => commands::verify(matches),
             _ => Err(format!("No such command: {}", name).into()),
         }
     } else {

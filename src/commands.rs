@@ -1,7 +1,7 @@
 use errors::*;
 
 use clap::{Arg, App, SubCommand, ArgMatches};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use super::environment::Environment;
 use super::options::Options;
 use super::parser::ast;
@@ -37,9 +37,8 @@ fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
 pub struct CompileOptions {
 }
 
-pub fn compile_options<'a, 'b>() -> App<'a, 'b> {
-    SubCommand::with_name("compile")
-        .about("Compile .reproto declarations")
+pub fn compile_options<'a, 'b>(name: &str) -> App<'a, 'b> {
+    SubCommand::with_name(name)
         .arg(Arg::with_name("backend")
             .long("backend")
             .short("b")
@@ -50,14 +49,21 @@ pub fn compile_options<'a, 'b>() -> App<'a, 'b> {
             .long("module")
             .short("m")
             .takes_value(true)
+            .multiple(true)
+            .number_of_values(1)
             .help("Modules to load for a given backend"))
         .arg(Arg::with_name("path")
             .long("path")
             .short("p")
             .takes_value(true)
             .multiple(true)
+            .number_of_values(1)
             .help("Paths to look for definitions."))
-        .arg(Arg::with_name("out").short("o").takes_value(true).help("Output directory."))
+        .arg(Arg::with_name("out")
+            .long("out")
+            .short("o")
+            .takes_value(true)
+            .help("Output directory."))
         .arg(Arg::with_name("id-converter")
             .long("id-converter")
             .takes_value(true)
@@ -66,10 +72,21 @@ pub fn compile_options<'a, 'b>() -> App<'a, 'b> {
             .long("package-prefix")
             .takes_value(true)
             .help("Package prefix to use when generating classes"))
-        .arg(Arg::with_name("package").help("Packages to compile").multiple(true))
+        .arg(Arg::with_name("file")
+            .long("file")
+            .help("File to compile")
+            .takes_value(true)
+            .multiple(true)
+            .number_of_values(1))
+        .arg(Arg::with_name("package")
+            .long("package")
+            .help("Packages to compile")
+            .takes_value(true)
+            .multiple(true)
+            .number_of_values(1))
 }
 
-pub fn compile(matches: &ArgMatches) -> Result<()> {
+fn setup_backend(matches: &ArgMatches) -> Result<Box<backend::Backend>> {
     let paths: Vec<::std::path::PathBuf> = matches.values_of("path")
         .into_iter()
         .flat_map(|it| it)
@@ -102,26 +119,46 @@ pub fn compile(matches: &ArgMatches) -> Result<()> {
 
     let mut env = Environment::new(paths);
 
+    let files: Vec<PathBuf> = matches.values_of("file")
+        .into_iter()
+        .flat_map(|it| it)
+        .map(Path::new)
+        .map(ToOwned::to_owned)
+        .collect();
+
     let packages: Vec<String> = matches.values_of("package")
         .into_iter()
         .flat_map(|it| it)
         .map(ToOwned::to_owned)
         .collect();
 
+    for file in files {
+        env.import_file(&file, None)?;
+    }
+
     for package in packages {
         let package = ast::Package::new(package.split(".").map(ToOwned::to_owned).collect());
         env.import(&package)?;
     }
 
-    let backend = backend::resolve(&backend, options, env)?;
+    Ok(backend::resolve(&backend, options, env)?)
+}
 
+pub fn compile(matches: &ArgMatches) -> Result<()> {
+    let backend = setup_backend(matches)?;
     backend.process()?;
+    Ok(())
+}
 
+pub fn verify(matches: &ArgMatches) -> Result<()> {
+    let backend = setup_backend(matches)?;
+    backend.verify()?;
     Ok(())
 }
 
 pub fn commands<'a, 'b>() -> Vec<App<'a, 'b>> {
     let mut commands = Vec::new();
-    commands.push(compile_options());
+    commands.push(compile_options("compile").about("Compile .reproto declarations"));
+    commands.push(compile_options("verify").about("Verify .reproto declarations"));
     commands
 }

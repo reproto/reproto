@@ -4,7 +4,7 @@ use super::processor;
 use parser::ast;
 
 use codeviz::java::*;
-use errors::*;
+use backend::*;
 
 pub struct Module {
     optional: ClassType,

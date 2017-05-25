@@ -1,4 +1,4 @@
-use backend;
+use backend::*;
 use environment::Environment;
 use naming::{self, FromNaming};
 use options::Options;
@@ -11,8 +11,6 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use codeviz::python::*;
-
-use errors::*;
 
 const TYPE: &str = "type";
 const INIT_PY: &str = "__init__.py";
@@ -714,9 +712,13 @@ impl Processor {
     }
 }
 
-impl backend::Backend for Processor {
+impl Backend for Processor {
     fn process(&self) -> Result<()> {
         let files = self.populate_files()?;
         self.write_files(files)
+    }
+
+    fn verify(&self) -> Result<()> {
+        Ok(())
     }
 }
