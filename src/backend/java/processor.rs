@@ -724,19 +724,17 @@ impl Processor {
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
         let mut fields = Vec::new();
 
-        for member in &ty.members {
-            if let ast::Member::Field(ref field, _) = *member {
-                let field_type = self.convert_type(package, &field.ty)?;
-                let field_spec = self.push_field(&field_type, field)?;
-
-                class.push_field(&field_spec);
-
-                fields.push(Field::new(field.modifier.clone(),
-                                       field.name.clone(),
-                                       field_type,
-                                       field_spec));
-            }
-        }
+        self.process_members(package, &ty.members, |m| {
+                match m {
+                    Member::Field(field) => {
+                        class.push_field(&field.field_spec);
+                        fields.push(field);
+                    }
+                    Member::Code(code) => {
+                        class.push(code);
+                    }
+                }
+            })?;
 
         self.add_class(&class_type, &mut class)?;
         self.listeners.class_added(&fields, &class_type, &mut class)?;
@@ -819,10 +817,6 @@ impl Processor {
                         }
                     }
                 })?;
-
-            for field in &fields {
-                class.push_field(&field.field_spec);
-            }
 
             self.add_class(&class_type, &mut class)?;
             self.listeners.class_added(&fields, &class_type, &mut class)?;

@@ -102,16 +102,20 @@ impl processor::Listeners for Module {
 
         constructor.push_annotation(&creator_annotation);
 
-        let mut field_it = fields.iter();
+        if constructor.arguments.len() != fields.len() {
+            return Err(format!("The number of constructor arguments ({}) did not match the \
+                                number of fields ({})",
+                               constructor.arguments.len(),
+                               fields.len())
+                .into());
+        }
 
-        for argument in &mut constructor.arguments {
-            if let Some(field) = field_it.next() {
-                let mut property = AnnotationSpec::new(&self.json_property);
-                property.push_argument(java_stmt![Variable::String(field.name.clone())]);
-                argument.push_annotation(&property);
-            } else {
-                return Err("missing field".into());
-            }
+        let zipped = constructor.arguments.iter_mut().zip(fields.iter());
+
+        for (argument, field) in zipped {
+            let mut property = AnnotationSpec::new(&self.json_property);
+            property.push_argument(java_stmt![Variable::String(field.name.clone())]);
+            argument.push_annotation(&property);
         }
 
         Ok(())
