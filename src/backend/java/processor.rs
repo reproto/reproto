@@ -181,12 +181,6 @@ pub struct Processor {
     map: ClassType,
     string: ClassType,
     optional: ClassType,
-    void: PrimitiveType,
-    integer: PrimitiveType,
-    boolean: PrimitiveType,
-    long: PrimitiveType,
-    float: PrimitiveType,
-    double: PrimitiveType,
 }
 
 impl Processor {
@@ -211,12 +205,6 @@ impl Processor {
             map: Type::class("java.util", "Map"),
             string: Type::class("java.lang", "String"),
             optional: Type::class("java.util", "Optional"),
-            void: Type::primitive("void", "Void"),
-            integer: Type::primitive("int", "Integer"),
-            boolean: Type::primitive("boolean", "Boolean"),
-            long: Type::primitive("long", "Long"),
-            float: Type::primitive("float", "Float"),
-            double: Type::primitive("double", "Double"),
         }
     }
 
@@ -258,12 +246,12 @@ impl Processor {
     fn convert_type(&self, package: &ast::Package, ty: &ast::Type) -> Result<Type> {
         let ty = match *ty {
             ast::Type::String => self.string.clone().into(),
-            ast::Type::I32 => self.integer.clone().into(),
-            ast::Type::U32 => self.integer.clone().into(),
-            ast::Type::I64 => self.long.clone().into(),
-            ast::Type::U64 => self.long.clone().into(),
-            ast::Type::Float => self.float.clone().into(),
-            ast::Type::Double => self.double.clone().into(),
+            ast::Type::I32 => INTEGER.into(),
+            ast::Type::U32 => INTEGER.into(),
+            ast::Type::I64 => LONG.into(),
+            ast::Type::U64 => LONG.into(),
+            ast::Type::Float => FLOAT.into(),
+            ast::Type::Double => DOUBLE.into(),
             ast::Type::Array(ref ty) => {
                 let argument = self.convert_type(package, ty)?;
                 self.list.with_arguments(vec![argument]).into()
@@ -333,8 +321,7 @@ impl Processor {
         let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
 
         method_spec.push_argument(&argument);
-
-        method_spec.returns(&self.void);
+        method_spec.returns(VOID);
 
         let mut method_body = Elements::new();
 
@@ -368,7 +355,7 @@ impl Processor {
         let mut hash_code = MethodSpec::new(java_mods![Modifier::Public], "hashCode");
 
         hash_code.push_annotation(&self.override_);
-        hash_code.returns(&self.integer);
+        hash_code.returns(INTEGER);
 
         let mut method_body = Elements::new();
 
@@ -379,7 +366,7 @@ impl Processor {
 
             let value = match field.ty {
                 Type::Primitive(ref primitive) => {
-                    if *primitive == self.integer {
+                    if *primitive == INTEGER {
                         field_stmt.clone()
                     } else {
                         java_stmt![primitive.as_boxed(), ".hashCode(", &field_stmt, ")"]
@@ -413,7 +400,7 @@ impl Processor {
         let mut equals = MethodSpec::new(java_mods![Modifier::Public], "equals");
 
         equals.push_annotation(&self.override_);
-        equals.returns(&self.boolean);
+        equals.returns(BOOLEAN);
 
         let argument = ArgumentSpec::new(java_mods![Modifier::Final], &self.object, "other");
 
@@ -626,17 +613,17 @@ impl Processor {
     }
 
     fn to_integer_literal(&self, number: &i64, ty: &PrimitiveType) -> Result<String> {
-        match &*ty.primitive {
-            "int" => Ok(number.to_string()),
-            "long" => Ok(format!("{}L", number.to_string())),
+        match *ty {
+            INTEGER => Ok(number.to_string()),
+            LONG => Ok(format!("{}L", number.to_string())),
             _ => Err(format!("Cannot convert integer ({}) to {}", number, ty.primitive).into()),
         }
     }
 
     fn to_float_literal(&self, number: &f64, ty: &PrimitiveType) -> Result<String> {
-        match &*ty.primitive {
-            "double" => Ok(format!("{}D", number.to_string())),
-            "float" => Ok(format!("{}F", number.to_string())),
+        match *ty {
+            DOUBLE => Ok(format!("{}D", number.to_string())),
+            FLOAT => Ok(format!("{}F", number.to_string())),
             _ => Err(format!("Cannot convert float ({}) to {}", number, ty.primitive).into()),
         }
     }

@@ -1,6 +1,6 @@
 [package]
 name = "reproto"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -18,4 +18,4 @@ getopts = "0.2.14"
 pest = "0.4.1"
 
 [dependencies.codeviz]
-version = "0.0.2"
+version = "0.0.3"
