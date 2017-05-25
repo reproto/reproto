@@ -13,7 +13,7 @@
 
 * General
   * ~~Treat named types as (named) simple types, like tuples.~~
-  * Enums.
+  * ~~Enums.~~
   * Documentation syntax (preferably not comments).
   * Type aliases.
     * *Question:* Are they useful?
@@ -206,6 +206,9 @@ enum State {
     UNKNOWN("unknown"),
     START("start"),
     END("end");
+
+    // select which field to serialize as.
+    serialize_as value;
 
     value: string;
 }

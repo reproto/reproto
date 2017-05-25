@@ -30,6 +30,8 @@ pub trait Listeners {
                   _enum_body: &ast::EnumBody,
                   _fields: &Vec<Field>,
                   _class_type: &ClassType,
+                  _from_value: &mut Option<MethodSpec>,
+                  _to_value: &mut Option<MethodSpec>,
                   _class: &mut EnumSpec)
                   -> Result<()> {
         Ok(())
@@ -78,10 +80,12 @@ impl Listeners for Vec<Box<Listeners>> {
                   enum_body: &ast::EnumBody,
                   fields: &Vec<Field>,
                   class_type: &ClassType,
+                  from_value: &mut Option<MethodSpec>,
+                  to_value: &mut Option<MethodSpec>,
                   class: &mut EnumSpec)
                   -> Result<()> {
         for listeners in self {
-            listeners.enum_added(enum_body, fields, class_type, class)?;
+            listeners.enum_added(enum_body, fields, class_type, from_value, to_value, class)?;
         }
 
         Ok(())
@@ -181,6 +185,7 @@ pub struct Processor {
     map: ClassType,
     string: ClassType,
     optional: ClassType,
+    illegal_argument: ClassType,
 }
 
 impl Processor {
@@ -205,6 +210,7 @@ impl Processor {
             map: Type::class("java.util", "Map"),
             string: Type::class("java.lang", "String"),
             optional: Type::class("java.util", "Optional"),
+            illegal_argument: Type::class("java.lang", "IllegalArgumentException"),
         }
     }
 
@@ -653,6 +659,62 @@ impl Processor {
         Err(format!("{} cannot be applied to type {}", value, display_type(ty)).into())
     }
 
+    fn find_field(&self, fields: &Vec<Field>, name: &str) -> Result<Field> {
+        for field in fields {
+            if field.name == name {
+                return Ok(field.clone());
+            }
+        }
+
+        Err(format!("no field named: {}", name).into())
+    }
+
+    fn enum_from_value_method(&self, field: &Field, class_type: &ClassType) -> Result<MethodSpec> {
+        let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
+
+        let value = java_stmt!["value"];
+
+        let cond = match field.ty {
+            Type::Primitive(_) => java_stmt![&value, ".", &field.name, " == ", &argument],
+            _ => java_stmt![&value, ".", &field.name, ".equals(", &argument, ")"],
+        };
+
+        let mut return_matched = Elements::new();
+
+        return_matched.push(java_stmt!["if (", &cond, ") {"]);
+        return_matched.push_nested(java_stmt!["return ", &value, ";"]);
+        return_matched.push("}");
+
+        let mut value_loop = Elements::new();
+
+        value_loop.push(java_stmt!["for (final ", class_type, " ", &value, " : ", "values()) {"]);
+
+        value_loop.push_nested(return_matched);
+        value_loop.push("}");
+
+        let mut from_value = MethodSpec::new(java_mods![Modifier::Public, Modifier::Static],
+                                             "fromValue");
+
+        let argument_name = Variable::String(argument.name.clone());
+        let throw = java_stmt!["throw new ", &self.illegal_argument, "(", argument_name, ");"];
+
+        from_value.returns(class_type);
+        from_value.push_argument(argument);
+        from_value.push(value_loop);
+        from_value.push(throw);
+
+        Ok(from_value)
+    }
+
+    fn enum_to_value_method(&self, field: &Field) -> Result<MethodSpec> {
+        let mut to_value = MethodSpec::new(java_mods![Modifier::Public], "toValue");
+
+        to_value.returns(&field.ty);
+        to_value.push(java_stmt!["return this.", &field.name, ";"]);
+
+        Ok(to_value)
+    }
+
     fn process_enum(&self, package: &ast::Package, ty: &ast::EnumBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
@@ -710,7 +772,31 @@ impl Processor {
             }
         }
 
-        self.listeners.enum_added(ty, &fields, &class_type, &mut en)?;
+        let mut from_value: Option<MethodSpec> = None;
+        let mut to_value: Option<MethodSpec> = None;
+
+        if let Some(serialize_as) = ty.options.lookup_identifier_nth("serialize_as", 0) {
+            let field = self.find_field(&fields, serialize_as)?;
+
+            from_value = Some(self.enum_from_value_method(&field, &class_type)?);
+            to_value = Some(self.enum_to_value_method(&field)?);
+        }
+
+        self.listeners
+            .enum_added(ty,
+                        &fields,
+                        &class_type,
+                        &mut from_value,
+                        &mut to_value,
+                        &mut en)?;
+
+        if let Some(from_value) = from_value {
+            en.push(from_value);
+        }
+
+        if let Some(to_value) = to_value {
+            en.push(to_value);
+        }
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push(&en);

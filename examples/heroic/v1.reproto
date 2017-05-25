@@ -4,7 +4,7 @@ use heroic.common as c;
 
 enum TimeUnit {
   SECONDS("seconds", 1000),
-  SECONDS("minutes", 60000);
+  MINUTES("minutes", 60000);
 
   serialize_as number;
 
