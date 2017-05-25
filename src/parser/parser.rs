@@ -144,24 +144,24 @@ impl_rdp! {
         array = { ["["] ~ array_argument ~ ["]"] }
         array_argument = { type_spec }
 
-        enum_value = { ident ~ (["("] ~ (literal ~ ([","] ~ literal)*) ~ [")"])? }
+        enum_value = { ident ~ (["("] ~ (value ~ ([","] ~ value)*) ~ [")"])? }
         option_decl = { ident ~ (option_value ~ ([","] ~ option_value)*) ~ [";"] }
 
-        option_value = { string | number | ident }
+        option_value = { string | integer | ident }
 
         package_ident = @{ ident ~ (["."] ~ ident)* }
         ident =  @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
 
-        literal = { string | number | ident | type_spec }
+        value = { string | float | integer | ident | type_spec }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
         escape  =  _{ ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
         unicode =  _{ ["u"] ~ hex ~ hex ~ hex ~ hex }
         hex     =  _{ ['0'..'9'] | ['a'..'f'] }
 
-        number = @{ ["-"]? ~ int ~ (["."] ~ ['0'..'9']+ ~ exp? | exp)? }
+        integer = @{ ["-"]? ~ int }
+        float  = @{ ["-"]? ~ int? ~ (["."] ~ ['0'..'9']+) }
         int    =  _{ ["0"] | ['1'..'9'] ~ ['0'..'9']* }
-        exp    =  _{ (["E"] | ["e"]) ~ (["+"] | ["-"])? ~ int }
 
         whitespace = _{ [" "] | ["\t"] | ["\r"] | ["\n"] }
 
@@ -281,14 +281,14 @@ impl_rdp! {
         }
 
         _enum_value(&self) -> ast::EnumValue {
-            (&name: ident, values: _literal_list()) => {
+            (&name: ident, values: _value_list()) => {
                 let values = values.into_iter().collect();
                 ast::EnumValue::new(name.to_owned(), values)
             },
         }
 
-        _literal_list(&self) -> LinkedList<ast::Literal> {
-            (_: literal, first: _literal(), mut tail: _literal_list()) => {
+        _value_list(&self) -> LinkedList<ast::Value> {
+            (_: value, first: _value(), mut tail: _value_list()) => {
                 tail.push_front(first);
                 tail
             },
@@ -296,23 +296,28 @@ impl_rdp! {
             () => LinkedList::new(),
         }
 
-        _literal(&self) -> ast::Literal {
+        _value(&self) -> ast::Value {
             (&value: string) => {
                 let value = decode_escaped_string(value).unwrap();
-                ast::Literal::String(value)
+                ast::Value::String(value)
             },
 
-            (&value: number) => {
+            (&value: integer) => {
                 let value = value.parse::<i64>().unwrap();
-                ast::Literal::Number(value)
+                ast::Value::Integer(value)
+            },
+
+            (&value: float) => {
+                let value = value.parse::<f64>().unwrap();
+                ast::Value::Float(value)
             },
 
             (&value: ident) => {
-                ast::Literal::Identifier(value.to_owned())
+                ast::Value::Identifier(value.to_owned())
             },
 
             (ty: _type_spec()) => {
-                ast::Literal::Type(ty)
+                ast::Value::Type(ty)
             },
         }
 
@@ -353,9 +358,9 @@ impl_rdp! {
                 ast::OptionValue::Identifier(value.to_owned())
             },
 
-            (&value: number) => {
+            (&value: integer) => {
                 let value = value.parse::<i64>().unwrap();
-                ast::OptionValue::Number(value)
+                ast::OptionValue::Integer(value)
             },
         }
 
@@ -528,5 +533,13 @@ mod tests {
     fn test_strip_code_block() {
         let result = strip_code_block("\n   hello\n  world\n\n\n again\n\n\n");
         assert_eq!(vec!["  hello", " world", "", "", "again"], result);
+    }
+
+    #[test]
+    fn test_value() {
+        let mut parser = Rdp::new(StringInput::new("60000.0"));
+
+        assert!(parser.value());
+        assert!(parser.end());
     }
 }

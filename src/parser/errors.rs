@@ -17,7 +17,7 @@ error_chain! {
 
         Syntax(message: String, line_string: String, line: usize) {
             description("Syntax error")
-            display("Syntax error: {}: {}", message, line_string)
+            display("Syntax error line {}: {}: {}", line, message, line_string)
         }
     }
 }

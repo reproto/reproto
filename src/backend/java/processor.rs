@@ -625,41 +625,45 @@ impl Processor {
         constructor
     }
 
-    fn to_primitive_literal(&self, number: &i64, ty: &PrimitiveType) -> Result<String> {
+    fn to_integer_literal(&self, number: &i64, ty: &PrimitiveType) -> Result<String> {
         match &*ty.primitive {
             "int" => Ok(number.to_string()),
             "long" => Ok(format!("{}L", number.to_string())),
-            "double" => Ok(format!("{}D", number.to_string())),
-            "float" => Ok(format!("{}F", number.to_string())),
-            _ => Err(format!("Cannot convert {} to a primitive literal", ty.primitive).into()),
+            _ => Err(format!("Cannot convert integer ({}) to {}", number, ty.primitive).into()),
         }
     }
 
-    fn literal_value(&self, value: &ast::Literal, member: &Type) -> Result<Variable> {
-        match *member {
-            Type::Primitive(ref primitive) => {
-                match *value {
-                    ast::Literal::Number(ref number) => {
-                        let lit = self.to_primitive_literal(number, primitive)?;
-                        return Ok(Variable::Literal(lit));
-                    }
-                    _ => {}
-                }
+    fn to_float_literal(&self, number: &f64, ty: &PrimitiveType) -> Result<String> {
+        match &*ty.primitive {
+            "double" => Ok(format!("{}D", number.to_string())),
+            "float" => Ok(format!("{}F", number.to_string())),
+            _ => Err(format!("Cannot convert float ({}) to {}", number, ty.primitive).into()),
+        }
+    }
+
+    fn literal_value(&self, value: &ast::Value, ty: &Type) -> Result<Variable> {
+
+        if let Type::Primitive(ref primitive) = *ty {
+            if let ast::Value::Integer(ref integer) = *value {
+                let lit = self.to_integer_literal(integer, primitive)?;
+                return Ok(lit.into());
             }
-            Type::Class(ref class) => {
-                if *class == self.string {
-                    match *value {
-                        ast::Literal::String(ref value) => {
-                            return Ok(Variable::String(value.to_owned()))
-                        }
-                        _ => {}
-                    }
-                }
+
+            if let ast::Value::Float(ref float) = *value {
+                let lit = self.to_float_literal(float, primitive)?;
+                return Ok(lit.into());
             }
-            _ => {}
         }
 
-        Err("unexpected type".into())
+        if let Type::Class(ref class) = *ty {
+            if *class == self.string {
+                if let ast::Value::String(ref value) = *value {
+                    return Ok(Variable::String(value.to_owned()));
+                }
+            }
+        }
+
+        Err(format!("{} cannot be applied to type {}", value, display_type(ty)).into())
     }
 
     fn process_enum(&self, package: &ast::Package, ty: &ast::EnumBody) -> Result<FileSpec> {
@@ -936,5 +940,27 @@ impl Backend for Processor {
         }
 
         Ok(())
+    }
+}
+
+impl ::std::fmt::Display for ast::Value {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        let out = match *self {
+            ast::Value::String(_) => "<string>",
+            ast::Value::Integer(_) => "<int>",
+            ast::Value::Float(_) => "<float>",
+            ast::Value::Identifier(_) => "<identifier>",
+            ast::Value::Type(_) => "<type>",
+        };
+
+        write!(f, "{}", out)
+    }
+}
+
+fn display_type(ty: &Type) -> String {
+    match *ty {
+        Type::Primitive(ref primitive) => primitive.primitive.to_owned(),
+        Type::Class(ref class) => format!("class {}.{}", class.package, class.name),
+        _ => "<unknown>".to_owned(),
     }
 }

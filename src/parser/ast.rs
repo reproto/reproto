@@ -9,7 +9,7 @@ pub type Pos = (usize, usize);
 #[derive(Debug, PartialEq, Clone)]
 pub enum OptionValue {
     String(String),
-    Number(i64),
+    Integer(i64),
     Identifier(String),
 }
 
@@ -148,9 +148,10 @@ pub enum Type {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Literal {
+pub enum Value {
     String(String),
-    Number(i64),
+    Integer(i64),
+    Float(f64),
     Identifier(String),
     Type(Type),
 }
@@ -374,11 +375,11 @@ impl EnumBody {
 #[derive(Debug, PartialEq, Clone)]
 pub struct EnumValue {
     pub name: String,
-    pub values: Vec<Literal>,
+    pub values: Vec<Value>,
 }
 
 impl EnumValue {
-    pub fn new(name: String, values: Vec<Literal>) -> EnumValue {
+    pub fn new(name: String, values: Vec<Value>) -> EnumValue {
         EnumValue {
             name: name,
             values: values,
