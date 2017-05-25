@@ -29,7 +29,7 @@ This will install the command into `~/.cargo/bin`, make sure it is in your `$PAT
 Using the [FasterXML][fasterxml] backend for Java:
 
 ```bash
-$> reproto --debug -b java -m fasterxml -o target/java \
+$> reproto --debug compile -b java -m fasterxml -o target/java \
   --path examples \
   heroic.v1
 ```
@@ -37,7 +37,7 @@ $> reproto --debug -b java -m fasterxml -o target/java \
 Multiple paths can be included, and the same declarations will extend each other:
 
 ```bash
-$> reproto --debug -b java -m fasterxml -o target/java \
+$> reproto --debug compile -b java -m fasterxml -o target/java \
   --path examples \
   --path examples/ext \
   heroic.v1
@@ -46,7 +46,7 @@ $> reproto --debug -b java -m fasterxml -o target/java \
 This will generate code for the plain python backend:
 
 ```bash
-$> reproto --debug -b python -o target/python \
+$> reproto --debug compile -b python -o target/python \
   --path examples \
   heroic.v1
 ```

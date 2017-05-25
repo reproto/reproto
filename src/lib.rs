@@ -1,6 +1,6 @@
 #![recursion_limit = "1000"]
 
-extern crate getopts;
+extern crate clap;
 
 #[macro_use]
 extern crate pest;
@@ -18,3 +18,4 @@ pub mod parser;
 pub mod options;
 pub mod environment;
 pub mod naming;
+pub mod commands;

@@ -16,11 +16,11 @@ all: heroic
 heroic: heroic_python heroic_java
 
 heroic_python: ${reproto}
-	${reproto} --debug -b python -o ${PYTHONPATH} --path ${PROTO_PATH} heroic.v1
+	${reproto} --debug compile -b python -o ${PYTHONPATH} --path ${PROTO_PATH} heroic.v1
 	PYTHONPATH=${PYTHONPATH} ${PYTHON} ${CURDIR}/python/example_heroic.py
 
 heroic_java: ${reproto}
-	${reproto} --debug -b java -m builder -o ${JAVA_PATH} --path ${PROTO_PATH} heroic.v1
+	${reproto} --debug compile -b java -m builder -o ${JAVA_PATH} --path ${PROTO_PATH} heroic.v1
 	${JAVAC} ${JAVAC_OPTS} ${JAVA_PATH}/heroic/v1/Query.java ${CURDIR}/java/TestHeroic.java
 	${JAVA} -cp ${JAVA_PATH} TestHeroic
 

@@ -14,7 +14,7 @@ Rethinking Protocol Generators
 [dependencies]
 error-chain = "0.10.0"
 log = "0.3.7"
-getopts = "0.2.14"
+clap = "2.24.2"
 pest = "0.4.1"
 
 [dependencies.codeviz]

@@ -31,7 +31,6 @@ error_chain! {
     foreign_links {
         Io(::std::io::Error);
         Log(::log::SetLoggerError);
-        Getopts(::getopts::Fail);
         ParseError(InternalError);
     }
 
