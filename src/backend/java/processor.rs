@@ -721,28 +721,17 @@ impl Processor {
         let mut en = EnumSpec::new(java_mods![Modifier::Public], &ty.name);
         let mut fields = Vec::new();
 
-        for member in &ty.members {
-            if let ast::Member::Field(ref field, _) = *member {
-                let field_type = self.convert_type(package, &field.ty)?;
-                let field_spec = self.push_field(&field_type, field)?;
-
-                en.push_field(&field_spec);
-
-                fields.push(Field::new(field.modifier.clone(),
-                                       field.name.clone(),
-                                       field_type,
-                                       field_spec));
-                continue;
-            }
-
-            if let ast::Member::Code(ref context, ref content, _) = *member {
-                if context == JAVA_CONTEXT {
-                    en.push(content);
+        self.process_members(package, &ty.members, |m| {
+                match m {
+                    Member::Field(field) => {
+                        en.push_field(&field.field_spec);
+                        fields.push(field);
+                    }
+                    Member::Code(code) => {
+                        en.push(code);
+                    }
                 }
-
-                continue;
-            }
-        }
+            })?;
 
         for enum_literal in &ty.values {
             let mut enum_value = Elements::new();
