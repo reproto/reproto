@@ -2,6 +2,7 @@ use ast;
 use parser;
 use super::models::*;
 use super::errors::*;
+use with_prefix::WithPrefix;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -172,18 +173,18 @@ impl Environment {
         let mut codes = Vec::new();
 
         for value in &body.values {
-            let mut enum_values = Vec::new();
+            let mut arguments = Vec::new();
 
-            for enum_value in &value.values {
-                let pos = (path.to_owned(), enum_value.pos.0, enum_value.pos.1);
-                enum_values.push(Token::new(enum_value.inner.clone(), pos));
+            for argument in &value.arguments {
+                arguments.push(argument.clone().with_prefix(path.to_owned()));
             }
 
             let pos = (path.to_owned(), value.pos.0, value.pos.1);
             let value = EnumValue {
                 name: value.name.clone(),
-                values: enum_values,
+                arguments: arguments,
             };
+
             values.push(Token::new(value, pos));
         }
 

@@ -747,10 +747,10 @@ impl Processor {
             let mut enum_value = Elements::new();
             let mut enum_stmt = java_stmt![&enum_literal.name];
 
-            if !enum_literal.values.is_empty() {
+            if !enum_literal.arguments.is_empty() {
                 let mut value_arguments = Statement::new();
 
-                for (value, field) in enum_literal.values.iter().zip(fields.iter()) {
+                for (value, field) in enum_literal.arguments.iter().zip(fields.iter()) {
                     value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
                 }
 

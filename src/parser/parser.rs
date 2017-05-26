@@ -316,11 +316,11 @@ impl_rdp! {
 
         _enum_value(&self) -> ast::EnumValue {
             (&name: ident, values: _value_list()) => {
-                let values = values.into_iter().collect();
+                let arguments = values.into_iter().collect();
 
                 ast::EnumValue {
                     name: name.to_owned(),
-                    values: values,
+                    arguments: arguments,
                 }
             },
         }
