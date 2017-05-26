@@ -247,7 +247,7 @@ impl Processor {
     }
 
     /// Convert the given type to a java type.
-    fn convert_type(&self, package: &m::Package, ty: &m::Type) -> Result<Type> {
+    fn convert_type(&self, pos: &m::Pos, package: &m::Package, ty: &m::Type) -> Result<Type> {
         let ty = match *ty {
             m::Type::String => self.string.clone().into(),
             m::Type::I32 => INTEGER.into(),
@@ -257,28 +257,32 @@ impl Processor {
             m::Type::Float => FLOAT.into(),
             m::Type::Double => DOUBLE.into(),
             m::Type::Array(ref ty) => {
-                let argument = self.convert_type(package, ty)?;
+                let argument = self.convert_type(pos, package, ty)?;
                 self.list.with_arguments(vec![argument]).into()
             }
             m::Type::Custom(ref string) => {
                 let key = (package.clone(), string.clone());
-                let _ = self.env.types.get(&key);
+
+                if let None = self.env.types.get(&key) {
+                    return Err(Error::pos(format!("no such type: {}", string), pos.clone()));
+                }
+
                 let package_name = self.java_package_name(package);
                 Type::class(&package_name, string).into()
             }
             m::Type::Any => self.object.clone().into(),
             m::Type::UsedType(ref used, ref custom) => {
-                let package = self.env.lookup_used(package, used)?;
+                let package = self.env.lookup_used(pos, package, used)?;
                 let package_name = self.java_package_name(package);
                 Type::class(&package_name, custom).into()
             }
             m::Type::Map(ref key, ref value) => {
-                let key = self.convert_type(package, key)?;
-                let value = self.convert_type(package, value)?;
+                let key = self.convert_type(pos, package, key)?;
+                let value = self.convert_type(pos, package, value)?;
                 self.map.with_arguments(vec![key, value]).into()
             }
             ref t => {
-                return Err(format!("Unsupported type: {:?}", t).into());
+                return Err(Error::pos(format!("unsupported type: {:?}", t), pos.clone()));
             }
         };
 
@@ -616,32 +620,37 @@ impl Processor {
         constructor
     }
 
-    fn to_integer_literal(&self, number: &i64, ty: &PrimitiveType) -> Result<String> {
+    fn to_integer_literal(&self, pos: &m::Pos, number: &i64, ty: &PrimitiveType) -> Result<String> {
         match *ty {
             INTEGER => Ok(number.to_string()),
             LONG => Ok(format!("{}L", number.to_string())),
-            _ => Err(format!("Cannot convert integer ({}) to {}", number, ty.primitive).into()),
+            _ => {
+                Err(Error::pos(format!("cannot convert integer to {}", ty.primitive),
+                               pos.clone()))
+            }
         }
     }
 
-    fn to_float_literal(&self, number: &f64, ty: &PrimitiveType) -> Result<String> {
+    fn to_float_literal(&self, pos: &m::Pos, number: &f64, ty: &PrimitiveType) -> Result<String> {
         match *ty {
             DOUBLE => Ok(format!("{}D", number.to_string())),
             FLOAT => Ok(format!("{}F", number.to_string())),
-            _ => Err(format!("Cannot convert float ({}) to {}", number, ty.primitive).into()),
+            _ => {
+                Err(Error::pos(format!("cannot convert float to {}", ty.primitive),
+                               pos.clone()))
+            }
         }
     }
 
-    fn literal_value(&self, value: &m::Value, ty: &Type) -> Result<Variable> {
-
+    fn literal_value(&self, pos: &m::Pos, value: &m::Value, ty: &Type) -> Result<Variable> {
         if let Type::Primitive(ref primitive) = *ty {
             if let m::Value::Integer(ref integer) = *value {
-                let lit = self.to_integer_literal(integer, primitive)?;
+                let lit = self.to_integer_literal(pos, integer, primitive)?;
                 return Ok(lit.into());
             }
 
             if let m::Value::Float(ref float) = *value {
-                let lit = self.to_float_literal(float, primitive)?;
+                let lit = self.to_float_literal(pos, float, primitive)?;
                 return Ok(lit.into());
             }
         }
@@ -654,7 +663,10 @@ impl Processor {
             }
         }
 
-        Err(format!("{} cannot be applied to type {}", value, display_type(ty)).into())
+        Err(Error::pos(format!("{} cannot be applied to expected type {}",
+                               value,
+                               display_type(ty)),
+                       pos.clone()))
     }
 
     fn find_field(&self, fields: &Vec<Field>, name: &str) -> Option<Field> {
@@ -739,7 +751,7 @@ impl Processor {
                 let mut value_arguments = Statement::new();
 
                 for (value, field) in enum_literal.values.iter().zip(fields.iter()) {
-                    value_arguments.push(self.literal_value(value, &field.ty)?);
+                    value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
                 }
 
                 enum_stmt.push(java_stmt!["(", value_arguments.join(", "), ")"]);
@@ -913,7 +925,7 @@ impl Processor {
               B: m::BodyLike
     {
         for field in body.fields() {
-            let field_type = self.convert_type(package, &field.ty)?;
+            let field_type = self.convert_type(&field.pos, package, &field.ty)?;
             let field_spec = self.push_field(&field_type, field)?;
 
             let field = Field::new(field.modifier.clone(),

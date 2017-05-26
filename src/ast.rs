@@ -1,31 +1,10 @@
 use backend::models::*;
 use std::collections::BTreeMap;
+use token;
 
 /// Position relative in file where the declaration is present.
 pub type Pos = (usize, usize);
-
-#[derive(Debug)]
-pub struct Token<T> {
-    pub inner: T,
-    pub pos: Pos,
-}
-
-impl<T> ::std::ops::Deref for Token<T> {
-    type Target = T;
-
-    fn deref(&self) -> &T {
-        &self.inner
-    }
-}
-
-impl<T> Token<T> {
-    pub fn new(inner: T, pos: Pos) -> Token<T> {
-        Token {
-            inner: inner,
-            pos: pos,
-        }
-    }
-}
+pub type Token<T> = token::Token<T, Pos>;
 
 #[derive(Debug)]
 pub enum OptionValue {

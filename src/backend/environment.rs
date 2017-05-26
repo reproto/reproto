@@ -78,9 +78,7 @@ impl Environment {
             let key = (package.clone(), alias.clone());
 
             match self.used.entry(key) {
-                Entry::Vacant(entry) => {
-                    entry.insert(use_decl.package.clone());
-                }
+                Entry::Vacant(entry) => entry.insert(use_decl.package.inner.clone()),
                 Entry::Occupied(_) => return Err(format!("alias {} already in used", alias).into()),
             };
         }
@@ -89,11 +87,14 @@ impl Environment {
     }
 
     /// Lookup the package declaration a used alias refers to.
-    pub fn lookup_used(&self, package: &Package, used: &str) -> Result<&Package> {
+    pub fn lookup_used(&self, pos: &Pos, package: &Package, used: &str) -> Result<&Package> {
         // resolve alias
-        let package = self.used
-            .get(&(package.clone(), used.to_owned()))
-            .ok_or(format!("Missing import alias for ({})", used))?;
+        let package =
+            self.used
+                .get(&(package.clone(), used.to_owned()))
+                .ok_or_else(|| {
+                    Error::pos(format!("Missing import alias for ({})", used), pos.clone())
+                })?;
 
         // check that type actually exists?
         let key = (package.clone(), used.to_owned());
@@ -103,7 +104,7 @@ impl Environment {
     }
 
     fn convert_type(&self, path: &Path, body: &ast::TypeBody) -> Result<TypeBody> {
-        let mut fields = Vec::new();
+        let mut fields: Vec<Token<Field>> = Vec::new();
         let mut codes = Vec::new();
 
         for member in &body.members {
@@ -113,6 +114,13 @@ impl Environment {
                 ast::Member::Field(ref field) => {
                     let field =
                         Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
+
+                    if let Some(other) = fields.iter().find(|f| f.name == field.name) {
+                        return Err(Error::field_conflict(field.name.clone(),
+                                                         pos.clone(),
+                                                         other.pos.clone()));
+                    }
+
                     fields.push(Token::new(field, pos));
                 }
                 ast::Member::Code(ref context, ref lines) => {

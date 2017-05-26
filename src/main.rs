@@ -32,7 +32,7 @@ fn setup_logger(matches: &clap::ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn handle_error(e: &backend::errors::Error) -> Result<()> {
+fn handle_backend_error(e: &backend::errors::Error) -> Result<()> {
     match *e {
         backend::errors::Error::Message(ref m) => {
             println!("<unknown>: {}", m);
@@ -44,9 +44,9 @@ fn handle_error(e: &backend::errors::Error) -> Result<()> {
             print_error(m, a)?;
             print_error("previous declaration", b)?;
         }
-        backend::errors::Error::FieldMerge(ref m, ref a, ref b) => {
-            print_error(m, a)?;
-            print_error("previous field", b)?;
+        backend::errors::Error::FieldConflict(ref name, ref source, ref target) => {
+            print_error(&format!("conflict in field `{}`", name), source)?;
+            print_error("previous field", target)?;
         }
         backend::errors::Error::Error(ref e) => {
             println!("<unknown>: {}", e);
@@ -57,15 +57,14 @@ fn handle_error(e: &backend::errors::Error) -> Result<()> {
 }
 
 fn print_error(m: &str, p: &m::Pos) -> Result<()> {
-    let (line, exact, lines, range) = parser::find_line(&p.0, (p.1, p.2))?;
+    let (line, lines, range) = parser::find_line(&p.0, (p.1, p.2))?;
 
-    println!("{}:{}:{}-{} {} at `{}`",
+    println!("{}:{}:{}-{}: {}:",
              p.0.display(),
              lines + 1,
              range.0,
              range.1,
-             m,
-             exact);
+             m);
 
     let line_no = format!("{:>3}", lines + 1);
     let diff = range.1 - range.0;
@@ -114,8 +113,11 @@ fn compiler_entry() -> Result<()> {
             match *e.kind() {
                 ErrorKind::BackendErrors(ref errors) => {
                     for e in errors {
-                        handle_error(e)?;
+                        handle_backend_error(e)?;
                     }
+                }
+                ErrorKind::BackendError(ref e) => {
+                    handle_backend_error(e)?;
                 }
                 _ => {}
             }

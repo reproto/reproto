@@ -111,7 +111,7 @@ impl Processor {
 
     fn encode_method<E>(&self,
                         package: &m::Package,
-                        fields: &Vec<Field>,
+                        fields: &Vec<m::Token<Field>>,
                         builder: &BuiltInName,
                         extra: E)
                         -> Result<MethodSpec>
@@ -159,7 +159,10 @@ impl Processor {
         Ok(encode)
     }
 
-    fn encode_tuple_method(&self, package: &m::Package, fields: &Vec<Field>) -> Result<MethodSpec> {
+    fn encode_tuple_method(&self,
+                           package: &m::Package,
+                           fields: &Vec<m::Token<Field>>)
+                           -> Result<MethodSpec> {
         let mut values = Statement::new();
 
         let mut encode = MethodSpec::new("encode");
@@ -204,7 +207,7 @@ impl Processor {
 
     fn decode_method<F>(&self,
                         package: &m::Package,
-                        fields: &Vec<Field>,
+                        fields: &Vec<m::Token<Field>>,
                         class: &ClassSpec,
                         variable_fn: F)
                         -> Result<MethodSpec>
@@ -224,12 +227,12 @@ impl Processor {
 
             let stmt = match field.modifier {
                 m::Modifier::Optional => {
-                    let var_stmt = self.decode(package, &field.ty, &var_name)?;
+                    let var_stmt = self.decode(&field.pos, package, &field.ty, &var_name)?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
                 _ => {
                     let var_stmt = python_stmt!["data[", &var, "]"];
-                    let var_stmt = self.decode(package, &field.ty, var_stmt)?;
+                    let var_stmt = self.decode(&field.pos, package, &field.ty, var_stmt)?;
                     python_stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
@@ -273,8 +276,13 @@ impl Processor {
         Name::local(&custom).into()
     }
 
-    fn used_name(&self, package: &m::Package, used: &str, custom: &str) -> Result<Name> {
-        let package = self.env.lookup_used(package, used)?;
+    fn used_name(&self,
+                 pos: &m::Pos,
+                 package: &m::Package,
+                 used: &str,
+                 custom: &str)
+                 -> Result<Name> {
+        let package = self.env.lookup_used(pos, package, used)?;
         let package = self.package(package);
         let package = package.parts.join(".");
         Ok(Name::imported_alias(&package, &custom, used).into())
@@ -309,7 +317,12 @@ impl Processor {
         Ok(value_stmt)
     }
 
-    fn decode<S>(&self, package: &m::Package, ty: &m::Type, value_stmt: S) -> Result<Statement>
+    fn decode<S>(&self,
+                 pos: &m::Pos,
+                 package: &m::Package,
+                 ty: &m::Type,
+                 value_stmt: S)
+                 -> Result<Statement>
         where S: Into<Statement>
     {
         let value_stmt = value_stmt.into();
@@ -330,11 +343,11 @@ impl Processor {
                 python_stmt![name, ".decode(", value_stmt, ")"]
             }
             m::Type::UsedType(ref used, ref custom) => {
-                let name = self.used_name(package, used, custom)?;
+                let name = self.used_name(pos, package, used, custom)?;
                 python_stmt![name, ".decode(", value_stmt, ")"]
             }
             m::Type::Array(ref inner) => {
-                let inner = self.decode(package, inner, python_stmt!["v"])?;
+                let inner = self.decode(pos, package, inner, python_stmt!["v"])?;
                 python_stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
             }
             _ => value_stmt,
@@ -354,7 +367,7 @@ impl Processor {
             .unwrap_or_else(|| package.clone())
     }
 
-    fn build_constructor(&self, fields: &Vec<Field>) -> MethodSpec {
+    fn build_constructor(&self, fields: &Vec<m::Token<Field>>) -> MethodSpec {
         let mut constructor = MethodSpec::new("__init__");
         constructor.push_argument(python_stmt!["self"]);
 
@@ -368,15 +381,14 @@ impl Processor {
 
     fn process_tuple(&self, package: &m::Package, ty: &m::TupleBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&ty.name);
-        let mut fields: Vec<Field> = Vec::new();
+        let mut fields: Vec<m::Token<Field>> = Vec::new();
 
         for field in &ty.fields {
             let ident = self.ident(&field.name);
 
-            fields.push(Field::new(m::Modifier::Required,
-                                   field.ty.clone(),
-                                   field.name.clone(),
-                                   ident));
+            fields.push(field.map_inner(|f| {
+                Field::new(m::Modifier::Required, f.ty.clone(), f.name.clone(), ident)
+            }));
         }
 
         for code in &ty.codes {
@@ -398,7 +410,7 @@ impl Processor {
         Ok(class)
     }
 
-    fn build_getters(&self, fields: &Vec<Field>) -> Result<Vec<MethodSpec>> {
+    fn build_getters(&self, fields: &Vec<m::Token<Field>>) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
         for field in fields {
@@ -420,11 +432,9 @@ impl Processor {
         for field in &ty.fields {
             let ident = self.ident(&field.name);
 
-            fields.push(Field::new(field.modifier.clone(),
-                                   field.ty.clone(),
-                                   field.name.clone(),
-                                   ident));
-
+            fields.push(field.map_inner(|f| {
+                    Field::new(f.modifier.clone(), f.ty.clone(), f.name.clone(), ident)
+                }));
         }
 
         let constructor = self.build_constructor(&fields);
@@ -467,17 +477,14 @@ impl Processor {
 
         interface_spec.push(self.interface_decode_method(interface)?);
 
-        let mut interface_fields: Vec<Field> = Vec::new();
+        let mut interface_fields = Vec::new();
 
         for field in &interface.fields {
             let ident = self.ident(&field.name);
 
-            interface_fields.push(Field::new(field.modifier.clone(),
-                                             field.ty.clone(),
-                                             field.name.clone(),
-                                             ident));
-
-
+            interface_fields.push(field.map_inner(|f| {
+                    Field::new(f.modifier.clone(), f.ty.clone(), f.name.clone(), ident)
+                }));
         }
 
         for code in &interface.codes {
@@ -505,11 +512,9 @@ impl Processor {
             for field in &sub_type.fields {
                 let ident = self.ident(&field.name);
 
-                fields.push(Field::new(field.modifier.clone(),
-                                       field.ty.clone(),
-                                       field.name.clone(),
-                                       ident));
-
+                fields.push(field.map_inner(|f| {
+                    Field::new(f.modifier.clone(), f.ty.clone(), f.name.clone(), ident)
+                }));
             }
 
             let constructor = self.build_constructor(&fields);
@@ -637,7 +642,7 @@ impl Processor {
 
     fn tuple_added(&self,
                    package: &m::Package,
-                   fields: &Vec<Field>,
+                   fields: &Vec<m::Token<Field>>,
                    class: &mut ClassSpec)
                    -> Result<()> {
 

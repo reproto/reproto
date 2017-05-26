@@ -2,37 +2,10 @@ use std::collections::btree_map;
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
 use super::errors::*;
+use token;
 
 pub type Pos = (PathBuf, usize, usize);
-
-#[derive(Debug, Clone)]
-pub struct Token<T>
-    where T: Clone
-{
-    pub inner: T,
-    pub pos: Pos,
-}
-
-impl<T> ::std::ops::Deref for Token<T>
-    where T: Clone
-{
-    type Target = T;
-
-    fn deref(&self) -> &T {
-        &self.inner
-    }
-}
-
-impl<T> Token<T>
-    where T: Clone
-{
-    pub fn new(inner: T, pos: Pos) -> Token<T> {
-        Token {
-            inner: inner,
-            pos: pos,
-        }
-    }
-}
+pub type Token<T> = token::Token<T, Pos>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Type {
@@ -173,9 +146,9 @@ pub trait BodyLike {
     {
         for field in other.fields() {
             if let Some(pos) = self.push_if_absent(field) {
-                return Err(Error::field_merge(format!("Cannot merge with {}", field.display()),
-                                              field.pos.clone(),
-                                              pos.clone()));
+                return Err(Error::field_conflict(field.name.clone(),
+                                                 field.pos.clone(),
+                                                 pos.clone()));
             }
         }
 

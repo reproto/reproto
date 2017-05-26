@@ -20,7 +20,7 @@ pub enum Error {
     Message(String),
     Pos(String, Pos),
     DeclMerge(String, Pos, Pos),
-    FieldMerge(String, Pos, Pos),
+    FieldConflict(String, Pos, Pos),
     Error(Box<::errors::Error>),
 }
 
@@ -29,8 +29,8 @@ impl Error {
         Error::Pos(message, pos)
     }
 
-    pub fn field_merge(message: String, source: Pos, target: Pos) -> Error {
-        Error::FieldMerge(message, source, target)
+    pub fn field_conflict(field: String, source: Pos, target: Pos) -> Error {
+        Error::FieldConflict(field, source, target)
     }
 
     pub fn decl_merge(message: String, source: Pos, target: Pos) -> Error {
@@ -46,7 +46,7 @@ impl ::std::fmt::Display for Error {
             Error::Message(ref message) => write!(f, "{}", message),
             Error::Pos(ref message, _) => write!(f, "{}", message),
             Error::Error(ref error) => error.fmt(f),
-            Error::FieldMerge(ref message, _, _) => write!(f, "{}", message),
+            Error::FieldConflict(ref name, _, _) => write!(f, "conflicting field: {}", name),
             Error::DeclMerge(ref message, _, _) => write!(f, "{}", message),
         }
     }
