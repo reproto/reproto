@@ -74,7 +74,10 @@ pub struct Processor {
     listeners: Box<Listeners>,
     to_lower_snake: Box<naming::Naming>,
     staticmethod: BuiltInName,
+    classmethod: BuiltInName,
     dict: BuiltInName,
+    enum_enum: ImportedName,
+    enum_auto: ImportedName,
     type_var: Variable,
 }
 
@@ -93,9 +96,25 @@ impl Processor {
             listeners: listeners,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             staticmethod: Name::built_in("staticmethod"),
+            classmethod: Name::built_in("classmethod"),
             dict: Name::built_in("dict"),
+            enum_enum: Name::imported("enum", "Enum"),
+            enum_auto: Name::imported("enum", "auto"),
             type_var: Variable::String(TYPE.to_owned()),
         }
+    }
+
+    fn find_field<'a>(&self,
+                      fields: &'a Vec<m::Token<Field>>,
+                      name: &str)
+                      -> Option<(usize, &'a Field)> {
+        for (i, field) in fields.iter().enumerate() {
+            if field.name == name {
+                return Some((i, &field.inner));
+            }
+        }
+
+        None
     }
 
     /// Build a function that raises an exception if the given value `stmt` is None.
@@ -127,7 +146,7 @@ impl Processor {
         extra(&mut encode_body);
 
         for field in fields {
-            let var_string = Variable::String(field.name.to_owned());
+            let var_string = Variable::String(field.ident.to_owned());
             let field_stmt = python_stmt!["self.", &field.ident];
             let value_stmt = self.encode(package, &field.ty, &field_stmt)?;
 
@@ -171,7 +190,7 @@ impl Processor {
         let mut encode_body = Elements::new();
 
         for field in fields {
-            let stmt = python_stmt!["self.", &field.name];
+            let stmt = python_stmt!["self.", &field.ident];
             encode_body.push(self.raise_if_none(&stmt, field));
             values.push(self.encode(package, &field.ty, stmt)?);
         }
@@ -179,6 +198,50 @@ impl Processor {
         encode_body.push(python_stmt!["return (", values.join(", "), ")"]);
         encode.push(encode_body.join(ElementSpec::Spacing));
         Ok(encode)
+    }
+
+    fn encode_enum_method(&self, field: &Field) -> Result<MethodSpec> {
+        let mut encode = MethodSpec::new("encode");
+        encode.push_argument(python_stmt!["self"]);
+
+        let mut encode_body = Elements::new();
+
+        encode_body.push(python_stmt!["return self.", &field.ident]);
+        encode.push(encode_body.join(ElementSpec::Spacing));
+        Ok(encode)
+    }
+
+    fn decode_enum_method(&self, field: &Field) -> Result<MethodSpec> {
+        let mut decode = MethodSpec::new("decode");
+
+        let cls = python_stmt!["cls"];
+        let data = python_stmt!["data"];
+
+        decode.push_decorator(&self.classmethod);
+        decode.push_argument(&cls);
+        decode.push_argument(&data);
+
+        let mut decode_body = Elements::new();
+
+        let value = python_stmt!["value"];
+
+        let mut check = Elements::new();
+        check.push(python_stmt!["if ", &value, ".", &field.ident, " == ", data, ":"]);
+        check.push_nested(python_stmt!["return ", &value]);
+
+        let mut member_loop = Elements::new();
+
+        member_loop.push(python_stmt!["for ", &value, " in ", &cls, ".__members__.values():"]);
+        member_loop.push_nested(check);
+
+        let mismatch = Variable::String("data does not match enum".to_owned());
+        let raise = python_stmt!["raise Exception(", mismatch, ")"];
+
+        decode_body.push(member_loop);
+        decode_body.push(raise);
+
+        decode.push(decode_body.join(ElementSpec::Spacing));
+        Ok(decode)
     }
 
     fn optional_check(&self, var_name: &str, index: &Variable, stmt: &Statement) -> ElementSpec {
@@ -410,11 +473,96 @@ impl Processor {
         Ok(class)
     }
 
+    fn literal_value(&self, pos: &m::Pos, value: &m::Value, ty: &m::Type) -> Result<Variable> {
+        match *ty {
+            m::Type::Double | m::Type::Float | m::Type::U32 | m::Type::U64 | m::Type::I32 |
+            m::Type::I64 => {
+                if let m::Value::Integer(ref integer) = *value {
+                    return Ok(Variable::Literal(integer.to_string()));
+                }
+
+                if let m::Value::Float(ref float) = *value {
+                    return Ok(Variable::Literal(float.to_string()));
+                }
+            }
+            m::Type::String => {
+                if let m::Value::String(ref string) = *value {
+                    return Ok(Variable::String(string.to_owned()));
+                }
+            }
+            _ => {}
+        }
+
+        Err(Error::pos(format!("{} cannot be applied to expected type {}", value, ty),
+                       pos.clone()))
+    }
+
+    fn process_enum(&self, _package: &m::Package, body: &m::EnumBody) -> Result<ClassSpec> {
+        let mut class = ClassSpec::new(&body.name);
+        let mut fields: Vec<m::Token<Field>> = Vec::new();
+
+        for field in &body.fields {
+            let ident = self.ident(&field.name);
+
+            // reserved fields
+            let ident = match ident.as_str() {
+                "name" => "_name".to_owned(),
+                "value" => "_value".to_owned(),
+                i => i.to_owned(),
+            };
+
+            fields.push(field.map_inner(|f| {
+                Field::new(m::Modifier::Required, f.ty.clone(), f.name.clone(), ident)
+            }));
+        }
+
+        class.extends(&self.enum_enum);
+
+        let mut values = Elements::new();
+
+        for value in &body.values {
+            let arguments = if !value.arguments.is_empty() {
+                let mut value_arguments = Statement::new();
+
+                for (value, field) in value.arguments.iter().zip(fields.iter()) {
+                    value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
+                }
+
+                python_stmt!["(", value_arguments.join(", "), ")"]
+            } else {
+                python_stmt![&self.enum_auto, "()"]
+            };
+
+            values.push(python_stmt![&value.name, " = ", arguments]);
+        }
+
+        class.push(values);
+
+        for code in &body.codes {
+            if code.context == PYTHON_CONTEXT {
+                class.push(code.lines.clone());
+            }
+        }
+
+        class.push(self.build_constructor(&fields));
+
+        // TODO: make configurable
+        if false {
+            for getter in self.build_getters(&fields)? {
+                class.push(&getter);
+            }
+        }
+
+        let serialized_as = &body.serialized_as;
+        self.enum_added(&fields, serialized_as, &mut class)?;
+        Ok(class)
+    }
+
     fn build_getters(&self, fields: &Vec<m::Token<Field>>) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
         for field in fields {
-            let name = self.to_lower_snake.convert(&field.name);
+            let name = self.to_lower_snake.convert(&field.ident);
             let getter_name = format!("get_{}", name);
             let mut method_spec = MethodSpec::new(&getter_name);
             method_spec.push_argument(python_stmt!["self"]);
@@ -456,7 +604,7 @@ impl Processor {
         let decode = self.decode_method(package,
                            &fields,
                            &class,
-                           |_, field| Variable::String(field.name.to_owned()))?;
+                           |_, field| Variable::String(field.ident.to_owned()))?;
 
         class.push(decode);
 
@@ -536,7 +684,7 @@ impl Processor {
             let decode = self.decode_method(package,
                                &fields,
                                &class,
-                               |_, field| Variable::String(field.name.to_owned()))?;
+                               |_, field| Variable::String(field.ident.to_owned()))?;
 
             class.push(decode);
 
@@ -564,7 +712,7 @@ impl Processor {
                 m::Decl::Interface(ref body) => self.process_interface(package, body)?,
                 m::Decl::Type(ref body) => vec![self.process_type(package, body)?],
                 m::Decl::Tuple(ref body) => vec![self.process_tuple(package, body)?],
-                _ => continue,
+                m::Decl::Enum(ref body) => vec![self.process_enum(package, body)?],
             };
 
             match files.entry(package) {
@@ -658,6 +806,23 @@ impl Processor {
         Ok(())
     }
 
+    fn enum_added(&self,
+                  fields: &Vec<m::Token<Field>>,
+                  serialized_as: &Option<m::Token<String>>,
+                  class: &mut ClassSpec)
+                  -> Result<()> {
+        if let Some(ref s) = *serialized_as {
+            if let Some((_, ref field)) = self.find_field(fields, &s.inner) {
+                class.push(self.encode_enum_method(field)?);
+                class.push(self.decode_enum_method(field)?);
+            } else {
+                return Err(Error::pos(format!("no field named: {}", s.inner), s.pos.clone()));
+            }
+        }
+
+        Ok(())
+    }
+
     fn interface_decode_method(&self, interface: &m::InterfaceBody) -> Result<MethodSpec> {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
@@ -706,5 +871,19 @@ impl Backend for Processor {
 
     fn verify(&self) -> Result<Vec<Error>> {
         Ok(vec![])
+    }
+}
+
+impl ::std::fmt::Display for m::Type {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        match *self {
+            m::Type::I32 | m::Type::U32 | m::Type::I64 | m::Type::U64 => write!(f, "int"),
+            m::Type::Float | m::Type::Double => write!(f, "float"),
+            m::Type::String => write!(f, "str"),
+            m::Type::Custom(ref custom) => write!(f, "{}", custom),
+            m::Type::UsedType(ref used, ref custom) => write!(f, "{}.{}", used, custom),
+            m::Type::Array(_) => write!(f, "array"),
+            _ => write!(f, "<unknown>"),
+        }
     }
 }

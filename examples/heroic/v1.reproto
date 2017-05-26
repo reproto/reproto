@@ -8,7 +8,7 @@ enum TimeUnit {
 
   serialized_as number;
 
-  value: string;
+  name: string;
   number: u64;
 
   java {{

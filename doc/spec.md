@@ -41,6 +41,7 @@
   * ~~Tuple decoding.~~
   * ~~Optional support.~~
   * ~~Encode `type` field.~~
+  * ~~Enum support~~
   * Strict decoding/encoding where types are deeply verified.
 
 ## Introduction
