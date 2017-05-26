@@ -3,9 +3,12 @@ extern crate reproto;
 #[macro_use]
 extern crate log;
 
+use reproto::backend::models as m;
+use reproto::backend;
+use reproto::commands;
 use reproto::errors::*;
 use reproto::logger;
-use reproto::commands;
+use reproto::parser;
 
 static VERSION: &str = "0.0.5";
 
@@ -25,6 +28,57 @@ fn setup_logger(matches: &clap::ArgMatches) -> Result<()> {
     };
 
     logger::init(level)?;
+
+    Ok(())
+}
+
+fn handle_error(e: &backend::errors::Error) -> Result<()> {
+    match *e {
+        backend::errors::Error::Message(ref m) => {
+            println!("<unknown>: {}", m);
+        }
+        backend::errors::Error::Pos(ref m, ref p) => {
+            print_error(m, p)?;
+        }
+        backend::errors::Error::DeclMerge(ref m, ref a, ref b) => {
+            print_error(m, a)?;
+            print_error("previous declaration", b)?;
+        }
+        backend::errors::Error::FieldMerge(ref m, ref a, ref b) => {
+            print_error(m, a)?;
+            print_error("previous field", b)?;
+        }
+        backend::errors::Error::Error(ref e) => {
+            println!("<unknown>: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+fn print_error(m: &str, p: &m::Pos) -> Result<()> {
+    let (line, exact, lines, range) = parser::find_line(&p.0, (p.1, p.2))?;
+
+    println!("{}:{}:{}-{} {} at `{}`",
+             p.0.display(),
+             lines + 1,
+             range.0,
+             range.1,
+             m,
+             exact);
+
+    let line_no = format!("{:>3}", lines + 1);
+    let diff = range.1 - range.0;
+
+    let mut line_indicator = String::new();
+
+    line_indicator.push_str(&::std::iter::repeat(" ")
+        .take(line_no.len() + range.0 + 1)
+        .collect::<String>());
+    line_indicator.push_str(&::std::iter::repeat("^").take(diff).collect::<String>());
+
+    println!("{}: {}", line_no, line);
+    println!("{} - here", line_indicator);
 
     Ok(())
 }
@@ -54,8 +108,26 @@ fn entry() -> Result<()> {
     }
 }
 
-fn main() {
+fn compiler_entry() -> Result<()> {
     match entry() {
+        Err(e) => {
+            match *e.kind() {
+                ErrorKind::BackendErrors(ref errors) => {
+                    for e in errors {
+                        handle_error(e)?;
+                    }
+                }
+                _ => {}
+            }
+
+            Err(e)
+        }
+        ok => ok,
+    }
+}
+
+fn main() {
+    match compiler_entry() {
         Err(e) => {
             error!("{}", e);
 

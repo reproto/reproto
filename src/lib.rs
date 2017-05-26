@@ -14,7 +14,6 @@ extern crate codeviz;
 pub mod ast;
 pub mod backend;
 pub mod commands;
-pub mod environment;
 pub mod errors;
 pub mod logger;
 pub mod naming;

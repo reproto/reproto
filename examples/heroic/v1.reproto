@@ -6,7 +6,7 @@ enum TimeUnit {
   SECONDS("seconds", 1000),
   MINUTES("minutes", 60000);
 
-  serialize_as number;
+  serialized_as number;
 
   value: string;
   number: u64;

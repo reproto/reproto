@@ -1,6 +1,6 @@
 /// Module that adds fasterxml annotations to generated classes.
-use ast;
 use backend::*;
+use backend::models as m;
 use codeviz::java::*;
 use super::processor;
 
@@ -23,7 +23,7 @@ impl Module {
         let field_mods = java_mods![Modifier::Private];
 
         let ty = match field.modifier {
-            ast::Modifier::Required => self.optional.with_arguments(vec![&source.ty]).into(),
+            m::Modifier::Required => self.optional.with_arguments(vec![&source.ty]).into(),
             _ => source.ty.clone(),
         };
 
@@ -71,7 +71,7 @@ impl processor::Listeners for Module {
             builder.push(self.setter_method(field, source));
 
             let value = match field.modifier {
-                ast::Modifier::Required => {
+                m::Modifier::Required => {
                     let message = Variable::String(format!("{}: is required", source.name));
                     let throw_stmt = java_stmt!["new ", &self.runtime_exception, "(", message, ")"];
 

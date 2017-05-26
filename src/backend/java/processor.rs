@@ -1,7 +1,7 @@
-use ast;
 use backend::*;
+use backend::models as m;
 use codeviz::java::*;
-use environment::Environment;
+use backend::errors::*;
 use naming::{self, FromNaming};
 use options::Options;
 use std::fs::File;
@@ -25,7 +25,7 @@ pub trait Listeners {
     }
 
     fn enum_added(&self,
-                  _enum_body: &ast::EnumBody,
+                  _enum_body: &m::EnumBody,
                   _fields: &Vec<Field>,
                   _class_type: &ClassType,
                   _from_value: &mut Option<MethodSpec>,
@@ -36,7 +36,7 @@ pub trait Listeners {
     }
 
     fn interface_added(&self,
-                       _interface: &ast::InterfaceBody,
+                       _interface: &m::InterfaceBody,
                        _interface_spec: &mut InterfaceSpec)
                        -> Result<()> {
         Ok(())
@@ -44,8 +44,8 @@ pub trait Listeners {
 
     fn sub_type_added(&self,
                       _fields: &Vec<Field>,
-                      _interface: &ast::InterfaceBody,
-                      _sub_type: &ast::SubType,
+                      _interface: &m::InterfaceBody,
+                      _sub_type: &m::SubType,
                       _class: &mut ClassSpec)
                       -> Result<()> {
         Ok(())
@@ -75,7 +75,7 @@ impl Listeners for Vec<Box<Listeners>> {
     }
 
     fn enum_added(&self,
-                  enum_body: &ast::EnumBody,
+                  enum_body: &m::EnumBody,
                   fields: &Vec<Field>,
                   class_type: &ClassType,
                   from_value: &mut Option<MethodSpec>,
@@ -90,7 +90,7 @@ impl Listeners for Vec<Box<Listeners>> {
     }
 
     fn interface_added(&self,
-                       interface: &ast::InterfaceBody,
+                       interface: &m::InterfaceBody,
                        interface_spec: &mut InterfaceSpec)
                        -> Result<()> {
         for listeners in self {
@@ -102,8 +102,8 @@ impl Listeners for Vec<Box<Listeners>> {
 
     fn sub_type_added(&self,
                       fields: &Vec<Field>,
-                      interface: &ast::InterfaceBody,
-                      sub_type: &ast::SubType,
+                      interface: &m::InterfaceBody,
+                      sub_type: &m::SubType,
                       class: &mut ClassSpec)
                       -> Result<()> {
         for listeners in self {
@@ -117,11 +117,10 @@ impl Listeners for Vec<Box<Listeners>> {
 /// A single field.
 #[derive(Debug, Clone)]
 pub struct Field {
-    pub modifier: ast::Modifier,
+    pub modifier: m::Modifier,
     pub name: String,
     pub ty: Type,
     pub field_spec: FieldSpec,
-    pub pos: ast::Pos,
 }
 
 enum Member<'a> {
@@ -130,18 +129,12 @@ enum Member<'a> {
 }
 
 impl Field {
-    pub fn new(modifier: ast::Modifier,
-               name: String,
-               ty: Type,
-               field_spec: FieldSpec,
-               pos: ast::Pos)
-               -> Field {
+    pub fn new(modifier: m::Modifier, name: String, ty: Type, field_spec: FieldSpec) -> Field {
         Field {
             modifier: modifier,
             name: name,
             ty: ty,
             field_spec: field_spec,
-            pos: pos,
         }
     }
 }
@@ -178,7 +171,7 @@ pub struct Processor {
     options: ProcessorOptions,
     env: Environment,
     listeners: Box<Listeners>,
-    package_prefix: Option<ast::Package>,
+    package_prefix: Option<m::Package>,
     lower_to_upper_camel: Box<naming::Naming>,
     null_string: Variable,
     suppress_warnings: ClassType,
@@ -196,7 +189,7 @@ pub struct Processor {
 impl Processor {
     pub fn new(options: ProcessorOptions,
                env: Environment,
-               package_prefix: Option<ast::Package>,
+               package_prefix: Option<m::Package>,
                listeners: Box<Listeners>)
                -> Processor {
         Processor {
@@ -230,7 +223,7 @@ impl Processor {
     }
 
     /// Create a new FileSpec from the given package.
-    fn new_file_spec(&self, package: &ast::Package) -> FileSpec {
+    fn new_file_spec(&self, package: &m::Package) -> FileSpec {
         FileSpec::new(&self.java_package_name(package))
     }
 
@@ -242,44 +235,44 @@ impl Processor {
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn java_package(&self, package: &ast::Package) -> ast::Package {
+    fn java_package(&self, package: &m::Package) -> m::Package {
         self.package_prefix
             .clone()
             .map(|prefix| prefix.join(package))
             .unwrap_or_else(|| package.clone())
     }
 
-    fn java_package_name(&self, package: &ast::Package) -> String {
+    fn java_package_name(&self, package: &m::Package) -> String {
         self.java_package(package).parts.join(".")
     }
 
     /// Convert the given type to a java type.
-    fn convert_type(&self, package: &ast::Package, ty: &ast::Type) -> Result<Type> {
+    fn convert_type(&self, package: &m::Package, ty: &m::Type) -> Result<Type> {
         let ty = match *ty {
-            ast::Type::String => self.string.clone().into(),
-            ast::Type::I32 => INTEGER.into(),
-            ast::Type::U32 => INTEGER.into(),
-            ast::Type::I64 => LONG.into(),
-            ast::Type::U64 => LONG.into(),
-            ast::Type::Float => FLOAT.into(),
-            ast::Type::Double => DOUBLE.into(),
-            ast::Type::Array(ref ty) => {
+            m::Type::String => self.string.clone().into(),
+            m::Type::I32 => INTEGER.into(),
+            m::Type::U32 => INTEGER.into(),
+            m::Type::I64 => LONG.into(),
+            m::Type::U64 => LONG.into(),
+            m::Type::Float => FLOAT.into(),
+            m::Type::Double => DOUBLE.into(),
+            m::Type::Array(ref ty) => {
                 let argument = self.convert_type(package, ty)?;
                 self.list.with_arguments(vec![argument]).into()
             }
-            ast::Type::Custom(ref string) => {
+            m::Type::Custom(ref string) => {
                 let key = (package.clone(), string.clone());
                 let _ = self.env.types.get(&key);
                 let package_name = self.java_package_name(package);
                 Type::class(&package_name, string).into()
             }
-            ast::Type::Any => self.object.clone().into(),
-            ast::Type::UsedType(ref used, ref custom) => {
+            m::Type::Any => self.object.clone().into(),
+            m::Type::UsedType(ref used, ref custom) => {
                 let package = self.env.lookup_used(package, used)?;
                 let package_name = self.java_package_name(package);
                 Type::class(&package_name, custom).into()
             }
-            ast::Type::Map(ref key, ref value) => {
+            m::Type::Map(ref key, ref value) => {
                 let key = self.convert_type(package, key)?;
                 let value = self.convert_type(package, value)?;
                 self.map.with_arguments(vec![key, value]).into()
@@ -639,15 +632,15 @@ impl Processor {
         }
     }
 
-    fn literal_value(&self, value: &ast::Value, ty: &Type) -> Result<Variable> {
+    fn literal_value(&self, value: &m::Value, ty: &Type) -> Result<Variable> {
 
         if let Type::Primitive(ref primitive) = *ty {
-            if let ast::Value::Integer(ref integer) = *value {
+            if let m::Value::Integer(ref integer) = *value {
                 let lit = self.to_integer_literal(integer, primitive)?;
                 return Ok(lit.into());
             }
 
-            if let ast::Value::Float(ref float) = *value {
+            if let m::Value::Float(ref float) = *value {
                 let lit = self.to_float_literal(float, primitive)?;
                 return Ok(lit.into());
             }
@@ -655,7 +648,7 @@ impl Processor {
 
         if let Type::Class(ref class) = *ty {
             if *class == self.string {
-                if let ast::Value::String(ref value) = *value {
+                if let m::Value::String(ref value) = *value {
                     return Ok(Variable::String(value.to_owned()));
                 }
             }
@@ -720,17 +713,13 @@ impl Processor {
         Ok(to_value)
     }
 
-    fn process_enum(&self,
-                    package: &ast::Package,
-                    ty: &ast::EnumBody,
-                    pos: &ast::Pos)
-                    -> Result<FileSpec> {
+    fn process_enum(&self, package: &m::Package, ty: &m::EnumBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
         let mut en = EnumSpec::new(java_mods![Modifier::Public], &ty.name);
         let mut fields = Vec::new();
 
-        self.process_members(package, &ty.members, |m| {
+        self.process_members(package, ty, |m| {
                 match m {
                     Member::Field(field) => {
                         en.push_field(&field.field_spec);
@@ -773,13 +762,12 @@ impl Processor {
         let mut from_value: Option<MethodSpec> = None;
         let mut to_value: Option<MethodSpec> = None;
 
-        if let Some(serialize_as) = ty.options.lookup_identifier_nth("serialize_as", 0) {
-            if let Some(field) = self.find_field(&fields, serialize_as) {
+        if let Some(ref s) = ty.serialized_as {
+            if let Some(field) = self.find_field(&fields, &s.inner) {
                 from_value = Some(self.enum_from_value_method(&field, &class_type)?);
                 to_value = Some(self.enum_to_value_method(&field)?);
             } else {
-                return Err(Error::location(format!("No field named: {}", serialize_as),
-                                           pos.clone()));
+                return Err(Error::pos(format!("no field named: {}", s.inner), s.pos.clone()));
             }
         }
 
@@ -805,17 +793,13 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_tuple(&self,
-                     package: &ast::Package,
-                     ty: &ast::TupleBody,
-                     _pos: &ast::Pos)
-                     -> Result<FileSpec> {
+    fn process_tuple(&self, package: &m::Package, ty: &m::TupleBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
         let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
         let mut fields = Vec::new();
 
-        self.process_members(package, &ty.members, |m| {
+        self.process_members(package, ty, |m| {
                 match m {
                     Member::Field(field) => {
                         class.push_field(&field.field_spec);
@@ -836,17 +820,13 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_type(&self,
-                    package: &ast::Package,
-                    message: &ast::TypeBody,
-                    _pos: &ast::Pos)
-                    -> Result<FileSpec> {
-        let class_type = Type::class(&self.java_package_name(package), &message.name);
+    fn process_type(&self, package: &m::Package, body: &m::TypeBody) -> Result<FileSpec> {
+        let class_type = Type::class(&self.java_package_name(package), &body.name);
 
-        let mut class = ClassSpec::new(java_mods![Modifier::Public], &message.name);
+        let mut class = ClassSpec::new(java_mods![Modifier::Public], &body.name);
         let mut fields = Vec::new();
 
-        self.process_members(package, &message.members, |m| {
+        self.process_members(package, body, |m| {
                 match m {
                     Member::Field(field) => {
                         class.push_field(&field.field_spec);
@@ -869,15 +849,15 @@ impl Processor {
     }
 
     fn process_interface(&self,
-                         package: &ast::Package,
-                         interface: &ast::InterfaceBody)
+                         package: &m::Package,
+                         interface: &m::InterfaceBody)
                          -> Result<FileSpec> {
         let parent_type = Type::class(&self.java_package_name(package), &interface.name);
 
         let mut interface_spec = InterfaceSpec::new(java_mods![Modifier::Public], &interface.name);
         let mut interface_fields: Vec<Field> = Vec::new();
 
-        self.process_members(package, &interface.members, |m| {
+        self.process_members(package, interface, |m| {
                 match m {
                     Member::Field(field) => {
                         interface_fields.push(field);
@@ -901,7 +881,7 @@ impl Processor {
                 class.push_field(&interface_field.field_spec);
             }
 
-            self.process_members(package, &sub_type.members, |m| {
+            self.process_members(package, &sub_type.inner, |m| {
                     match m {
                         Member::Field(field) => {
                             class.push_field(&field.field_spec);
@@ -928,41 +908,32 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_members<C>(&self,
-                          package: &ast::Package,
-                          members: &Vec<ast::Member>,
-                          mut consumer: C)
-                          -> Result<()>
-        where C: FnMut(Member) -> ()
+    fn process_members<C, B>(&self, package: &m::Package, body: &B, mut consumer: C) -> Result<()>
+        where C: FnMut(Member) -> (),
+              B: m::BodyLike
     {
-        for member in members {
-            if let ast::Member::Field(ref field, ref pos) = *member {
-                let field_type = self.convert_type(package, &field.ty)?;
-                let field_spec = self.push_field(&field_type, field)?;
+        for field in body.fields() {
+            let field_type = self.convert_type(package, &field.ty)?;
+            let field_spec = self.push_field(&field_type, field)?;
 
-                let field = Field::new(field.modifier.clone(),
-                                       field.name.clone(),
-                                       field_type,
-                                       field_spec,
-                                       pos.clone());
+            let field = Field::new(field.modifier.clone(),
+                                   field.name.clone(),
+                                   field_type,
+                                   field_spec);
 
-                consumer(Member::Field(field));
-                continue;
-            }
+            consumer(Member::Field(field));
+        }
 
-            if let ast::Member::Code(ref context, ref content, _) = *member {
-                if context == JAVA_CONTEXT {
-                    consumer(Member::Code(content));
-                }
-
-                continue;
+        for code in body.codes() {
+            if code.context == JAVA_CONTEXT {
+                consumer(Member::Code(&code.lines));
             }
         }
 
         Ok(())
     }
 
-    fn push_field(&self, field_type: &Type, field: &ast::Field) -> Result<FieldSpec> {
+    fn push_field(&self, field_type: &Type, field: &m::Field) -> Result<FieldSpec> {
         let field_type = if field.is_optional() {
             self.optional.with_arguments(vec![field_type]).into()
         } else {
@@ -979,7 +950,7 @@ impl Processor {
     }
 
     fn process_files<F>(&self, mut consumer: F) -> Result<()>
-        where F: FnMut(PathBuf, &ast::Package, &ast::Decl) -> Result<()>
+        where F: FnMut(PathBuf, &m::Package, &m::Decl) -> Result<()>
     {
         let root_dir = &self.options.parent.out_path;
 
@@ -998,12 +969,12 @@ impl Processor {
         Ok(())
     }
 
-    fn build_file_spec(&self, package: &ast::Package, decl: &ast::Decl) -> Result<FileSpec> {
+    fn build_file_spec(&self, package: &m::Package, decl: &m::Decl) -> Result<FileSpec> {
         match *decl {
-            ast::Decl::Interface(ref interface, _) => self.process_interface(package, interface),
-            ast::Decl::Type(ref ty, ref pos) => self.process_type(package, ty, pos),
-            ast::Decl::Tuple(ref ty, ref pos) => self.process_tuple(package, ty, pos),
-            ast::Decl::Enum(ref ty, ref pos) => self.process_enum(package, ty, pos),
+            m::Decl::Interface(ref interface) => self.process_interface(package, interface),
+            m::Decl::Type(ref ty) => self.process_type(package, ty),
+            m::Decl::Tuple(ref ty) => self.process_tuple(package, ty),
+            m::Decl::Enum(ref ty) => self.process_enum(package, ty),
         }
     }
 }
@@ -1033,37 +1004,30 @@ impl Backend for Processor {
         })
     }
 
-    fn verify(&self) -> Result<Vec<VerifyError>> {
-        let mut results = Vec::new();
+    fn verify(&self) -> Result<Vec<Error>> {
+        let mut errors = Vec::new();
 
-        self.process_files(|full_path, package, decl| {
-                if let Err(error) = self.build_file_spec(package, decl) {
-                    match error {
-                        Error::Location(ref message, ref location) => {
-                            let error = VerifyError::new(message.to_owned(),
-                                                         full_path.to_owned(),
-                                                         location.clone());
-                            results.push(error);
-                        }
-                        e => return Err(e),
-                    };
+        self.process_files(|_, package, decl| {
+                match self.build_file_spec(package, decl) {
+                    Err(e) => errors.push(e),
+                    _ => {}
                 };
 
                 Ok(())
             })?;
 
-        Ok(results)
+        Ok(errors)
     }
 }
 
-impl ::std::fmt::Display for ast::Value {
+impl ::std::fmt::Display for m::Value {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         let out = match *self {
-            ast::Value::String(_) => "<string>",
-            ast::Value::Integer(_) => "<int>",
-            ast::Value::Float(_) => "<float>",
-            ast::Value::Identifier(_) => "<identifier>",
-            ast::Value::Type(_) => "<type>",
+            m::Value::String(_) => "<string>",
+            m::Value::Integer(_) => "<int>",
+            m::Value::Float(_) => "<float>",
+            m::Value::Identifier(_) => "<identifier>",
+            m::Value::Type(_) => "<type>",
         };
 
         write!(f, "{}", out)

@@ -1,7 +1,7 @@
-use ast;
 use backend::*;
+use backend::errors::*;
+use backend::models as m;
 use codeviz::python::*;
-use environment::Environment;
 use naming::{self, FromNaming};
 use options::Options;
 use std::collections::HashMap;
@@ -34,14 +34,14 @@ impl Listeners for Vec<Box<Listeners>> {
 
 #[derive(Clone)]
 pub struct Field {
-    pub modifier: ast::Modifier,
-    pub ty: ast::Type,
+    pub modifier: m::Modifier,
+    pub ty: m::Type,
     pub name: String,
     pub ident: String,
 }
 
 impl Field {
-    pub fn new(modifier: ast::Modifier, ty: ast::Type, name: String, ident: String) -> Field {
+    pub fn new(modifier: m::Modifier, ty: m::Type, name: String, ident: String) -> Field {
         Field {
             modifier: modifier,
             ty: ty,
@@ -70,7 +70,7 @@ impl ProcessorOptions {
 pub struct Processor {
     options: ProcessorOptions,
     env: Environment,
-    package_prefix: Option<ast::Package>,
+    package_prefix: Option<m::Package>,
     listeners: Box<Listeners>,
     to_lower_snake: Box<naming::Naming>,
     staticmethod: BuiltInName,
@@ -83,7 +83,7 @@ const PYTHON_CONTEXT: &str = "python";
 impl Processor {
     pub fn new(options: ProcessorOptions,
                env: Environment,
-               package_prefix: Option<ast::Package>,
+               package_prefix: Option<m::Package>,
                listeners: Box<Listeners>)
                -> Processor {
         Processor {
@@ -110,7 +110,7 @@ impl Processor {
     }
 
     fn encode_method<E>(&self,
-                        package: &ast::Package,
+                        package: &m::Package,
                         fields: &Vec<Field>,
                         builder: &BuiltInName,
                         extra: E)
@@ -132,7 +132,7 @@ impl Processor {
             let value_stmt = self.encode(package, &field.ty, &field_stmt)?;
 
             match field.modifier {
-                ast::Modifier::Optional => {
+                m::Modifier::Optional => {
                     let mut check_if_none = Elements::new();
 
                     check_if_none.push(python_stmt!["if ", &field_stmt, " is not None:"]);
@@ -159,10 +159,7 @@ impl Processor {
         Ok(encode)
     }
 
-    fn encode_tuple_method(&self,
-                           package: &ast::Package,
-                           fields: &Vec<Field>)
-                           -> Result<MethodSpec> {
+    fn encode_tuple_method(&self, package: &m::Package, fields: &Vec<Field>) -> Result<MethodSpec> {
         let mut values = Statement::new();
 
         let mut encode = MethodSpec::new("encode");
@@ -206,7 +203,7 @@ impl Processor {
     }
 
     fn decode_method<F>(&self,
-                        package: &ast::Package,
+                        package: &m::Package,
                         fields: &Vec<Field>,
                         class: &ClassSpec,
                         variable_fn: F)
@@ -226,7 +223,7 @@ impl Processor {
             let var = variable_fn(i, field);
 
             let stmt = match field.modifier {
-                ast::Modifier::Optional => {
+                m::Modifier::Optional => {
                     let var_stmt = self.decode(package, &field.ty, &var_name)?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
@@ -249,14 +246,14 @@ impl Processor {
         Ok(decode)
     }
 
-    fn is_native(&self, ty: &ast::Type) -> bool {
+    fn is_native(&self, ty: &m::Type) -> bool {
         match *ty {
-            ast::Type::I32 | ast::Type::U32 => true,
-            ast::Type::I64 | ast::Type::U64 => true,
-            ast::Type::Float | ast::Type::Double => true,
-            ast::Type::String => true,
-            ast::Type::Any => true,
-            ast::Type::Array(ref inner) => self.is_native(inner),
+            m::Type::I32 | m::Type::U32 => true,
+            m::Type::I64 | m::Type::U64 => true,
+            m::Type::Float | m::Type::Double => true,
+            m::Type::String => true,
+            m::Type::Any => true,
+            m::Type::Array(ref inner) => self.is_native(inner),
             _ => false,
         }
     }
@@ -269,21 +266,21 @@ impl Processor {
         }
     }
 
-    fn custom_name(&self, package: &ast::Package, custom: &str) -> Name {
+    fn custom_name(&self, package: &m::Package, custom: &str) -> Name {
         let package = self.package(package);
         let key = &(package.clone(), custom.to_owned());
         let _ = self.env.types.get(key);
         Name::local(&custom).into()
     }
 
-    fn used_name(&self, package: &ast::Package, used: &str, custom: &str) -> Result<Name> {
+    fn used_name(&self, package: &m::Package, used: &str, custom: &str) -> Result<Name> {
         let package = self.env.lookup_used(package, used)?;
         let package = self.package(package);
         let package = package.parts.join(".");
         Ok(Name::imported_alias(&package, &custom, used).into())
     }
 
-    fn encode<S>(&self, package: &ast::Package, ty: &ast::Type, value_stmt: S) -> Result<Statement>
+    fn encode<S>(&self, package: &m::Package, ty: &m::Type, value_stmt: S) -> Result<Statement>
         where S: Into<Statement>
     {
         let value_stmt = value_stmt.into();
@@ -294,14 +291,14 @@ impl Processor {
         }
 
         let value_stmt = match *ty {
-            ast::Type::I32 | ast::Type::U32 => value_stmt,
-            ast::Type::I64 | ast::Type::U64 => value_stmt,
-            ast::Type::Float | ast::Type::Double => value_stmt,
-            ast::Type::String => value_stmt,
-            ast::Type::Any => value_stmt,
-            ast::Type::Custom(ref _custom) => python_stmt![value_stmt, ".encode()"],
-            ast::Type::UsedType(ref _used, ref _custom) => python_stmt![value_stmt, ".encode()"],
-            ast::Type::Array(ref inner) => {
+            m::Type::I32 | m::Type::U32 => value_stmt,
+            m::Type::I64 | m::Type::U64 => value_stmt,
+            m::Type::Float | m::Type::Double => value_stmt,
+            m::Type::String => value_stmt,
+            m::Type::Any => value_stmt,
+            m::Type::Custom(ref _custom) => python_stmt![value_stmt, ".encode()"],
+            m::Type::UsedType(ref _used, ref _custom) => python_stmt![value_stmt, ".encode()"],
+            m::Type::Array(ref inner) => {
                 let v = python_stmt!["v"];
                 let inner = self.encode(package, inner, v)?;
                 python_stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
@@ -312,7 +309,7 @@ impl Processor {
         Ok(value_stmt)
     }
 
-    fn decode<S>(&self, package: &ast::Package, ty: &ast::Type, value_stmt: S) -> Result<Statement>
+    fn decode<S>(&self, package: &m::Package, ty: &m::Type, value_stmt: S) -> Result<Statement>
         where S: Into<Statement>
     {
         let value_stmt = value_stmt.into();
@@ -323,20 +320,20 @@ impl Processor {
         }
 
         let value_stmt = match *ty {
-            ast::Type::I32 | ast::Type::U32 => value_stmt,
-            ast::Type::I64 | ast::Type::U64 => value_stmt,
-            ast::Type::Float | ast::Type::Double => value_stmt,
-            ast::Type::String => value_stmt,
-            ast::Type::Any => value_stmt,
-            ast::Type::Custom(ref custom) => {
+            m::Type::I32 | m::Type::U32 => value_stmt,
+            m::Type::I64 | m::Type::U64 => value_stmt,
+            m::Type::Float | m::Type::Double => value_stmt,
+            m::Type::String => value_stmt,
+            m::Type::Any => value_stmt,
+            m::Type::Custom(ref custom) => {
                 let name = self.custom_name(package, custom);
                 python_stmt![name, ".decode(", value_stmt, ")"]
             }
-            ast::Type::UsedType(ref used, ref custom) => {
+            m::Type::UsedType(ref used, ref custom) => {
                 let name = self.used_name(package, used, custom)?;
                 python_stmt![name, ".decode(", value_stmt, ")"]
             }
-            ast::Type::Array(ref inner) => {
+            m::Type::Array(ref inner) => {
                 let inner = self.decode(package, inner, python_stmt!["v"])?;
                 python_stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
             }
@@ -350,7 +347,7 @@ impl Processor {
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn package(&self, package: &ast::Package) -> ast::Package {
+    fn package(&self, package: &m::Package) -> m::Package {
         self.package_prefix
             .clone()
             .map(|prefix| prefix.join(package))
@@ -369,18 +366,22 @@ impl Processor {
         constructor
     }
 
-    fn process_tuple(&self, package: &ast::Package, ty: &ast::TupleBody) -> Result<ClassSpec> {
+    fn process_tuple(&self, package: &m::Package, ty: &m::TupleBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&ty.name);
         let mut fields: Vec<Field> = Vec::new();
 
-        for member in &ty.members {
-            if let ast::Member::Field(ref field, _) = *member {
-                let ident = self.ident(&field.name);
+        for field in &ty.fields {
+            let ident = self.ident(&field.name);
 
-                fields.push(Field::new(ast::Modifier::Required,
-                                       field.ty.clone(),
-                                       field.name.clone(),
-                                       ident));
+            fields.push(Field::new(m::Modifier::Required,
+                                   field.ty.clone(),
+                                   field.name.clone(),
+                                   ident));
+        }
+
+        for code in &ty.codes {
+            if code.context == PYTHON_CONTEXT {
+                class.push(code.lines.clone());
             }
         }
 
@@ -412,21 +413,18 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, package: &ast::Package, ty: &ast::TypeBody) -> Result<ClassSpec> {
+    fn process_type(&self, package: &m::Package, ty: &m::TypeBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&ty.name);
         let mut fields = Vec::new();
 
-        for member in &ty.members {
-            if let ast::Member::Field(ref field, _) = *member {
-                let ident = self.ident(&field.name);
+        for field in &ty.fields {
+            let ident = self.ident(&field.name);
 
-                fields.push(Field::new(field.modifier.clone(),
-                                       field.ty.clone(),
-                                       field.name.clone(),
-                                       ident));
+            fields.push(Field::new(field.modifier.clone(),
+                                   field.ty.clone(),
+                                   field.name.clone(),
+                                   ident));
 
-                continue;
-            }
         }
 
         let constructor = self.build_constructor(&fields);
@@ -439,13 +437,9 @@ impl Processor {
             }
         }
 
-        for member in &ty.members {
-            if let ast::Member::Code(ref context, ref content, _) = *member {
-                if context == PYTHON_CONTEXT {
-                    class.push(content.clone());
-                }
-
-                continue;
+        for code in &ty.codes {
+            if code.context == PYTHON_CONTEXT {
+                class.push(code.lines.clone());
             }
         }
 
@@ -464,8 +458,8 @@ impl Processor {
     }
 
     fn process_interface(&self,
-                         package: &ast::Package,
-                         interface: &ast::InterfaceBody)
+                         package: &m::Package,
+                         interface: &m::InterfaceBody)
                          -> Result<Vec<ClassSpec>> {
         let mut classes = Vec::new();
 
@@ -475,24 +469,20 @@ impl Processor {
 
         let mut interface_fields: Vec<Field> = Vec::new();
 
-        for member in &interface.members {
-            if let ast::Member::Field(ref field, _) = *member {
-                let ident = self.ident(&field.name);
+        for field in &interface.fields {
+            let ident = self.ident(&field.name);
 
-                interface_fields.push(Field::new(field.modifier.clone(),
-                                                 field.ty.clone(),
-                                                 field.name.clone(),
-                                                 ident));
+            interface_fields.push(Field::new(field.modifier.clone(),
+                                             field.ty.clone(),
+                                             field.name.clone(),
+                                             ident));
 
-                continue;
-            }
 
-            if let ast::Member::Code(ref context, ref content, _) = *member {
-                if context == PYTHON_CONTEXT {
-                    interface_spec.push(content.clone());
-                }
+        }
 
-                continue;
+        for code in &interface.codes {
+            if code.context == PYTHON_CONTEXT {
+                interface_spec.push(code.lines.clone());
             }
         }
 
@@ -502,26 +492,24 @@ impl Processor {
             let mut class = ClassSpec::new(&sub_type.name);
             class.extends(Name::local(&interface.name));
 
-            let name = sub_type.options
-                .lookup_string_nth("name", 0)
-                .map(Clone::clone)
+            let name: String = sub_type.names
+                .iter()
+                .map(|t| t.inner.to_owned())
+                .nth(0)
                 .unwrap_or_else(|| interface.name.clone());
 
             class.push(python_stmt!["TYPE = ", Variable::String(name.clone())]);
 
             let mut fields = interface_fields.clone();
 
-            for member in &sub_type.members {
-                if let ast::Member::Field(ref field, _) = *member {
-                    let ident = self.ident(&field.name);
+            for field in &sub_type.fields {
+                let ident = self.ident(&field.name);
 
-                    fields.push(Field::new(field.modifier.clone(),
-                                           field.ty.clone(),
-                                           field.name.clone(),
-                                           ident));
+                fields.push(Field::new(field.modifier.clone(),
+                                       field.ty.clone(),
+                                       field.name.clone(),
+                                       ident));
 
-                    continue;
-                }
             }
 
             let constructor = self.build_constructor(&fields);
@@ -534,13 +522,9 @@ impl Processor {
                 }
             }
 
-            for member in &sub_type.members {
-                if let ast::Member::Code(ref context, ref content, _) = *member {
-                    if context == PYTHON_CONTEXT {
-                        class.push(content.clone());
-                    }
-
-                    continue;
+            for code in &sub_type.codes {
+                if code.context == PYTHON_CONTEXT {
+                    class.push(code.lines.clone());
                 }
             }
 
@@ -566,17 +550,15 @@ impl Processor {
         Ok(classes)
     }
 
-    fn populate_files(&self) -> Result<HashMap<&ast::Package, FileSpec>> {
+    fn populate_files(&self) -> Result<HashMap<&m::Package, FileSpec>> {
         let mut files = HashMap::new();
 
         // Process all types discovered so far.
         for (&(ref package, _), decl) in &self.env.types {
-            let class_specs = match *decl {
-                ast::Decl::Interface(ref interface, _) => {
-                    self.process_interface(package, interface)?
-                }
-                ast::Decl::Type(ref ty, _) => vec![self.process_type(package, ty)?],
-                ast::Decl::Tuple(ref tuple, _) => vec![self.process_tuple(package, tuple)?],
+            let class_specs: Vec<ClassSpec> = match decl.inner {
+                m::Decl::Interface(ref body) => self.process_interface(package, body)?,
+                m::Decl::Type(ref body) => vec![self.process_type(package, body)?],
+                m::Decl::Tuple(ref body) => vec![self.process_tuple(package, body)?],
                 _ => continue,
             };
 
@@ -603,7 +585,7 @@ impl Processor {
         Ok(files)
     }
 
-    fn setup_module_path(&self, root_dir: &PathBuf, package: &ast::Package) -> Result<PathBuf> {
+    fn setup_module_path(&self, root_dir: &PathBuf, package: &m::Package) -> Result<PathBuf> {
         let package = self.package(package);
 
         let mut full_path = root_dir.to_owned();
@@ -634,7 +616,7 @@ impl Processor {
         Ok(full_path)
     }
 
-    fn write_files(&self, files: HashMap<&ast::Package, FileSpec>) -> Result<()> {
+    fn write_files(&self, files: HashMap<&m::Package, FileSpec>) -> Result<()> {
         let root_dir = &self.options.parent.out_path;
 
         for (package, file_spec) in files {
@@ -654,7 +636,7 @@ impl Processor {
     }
 
     fn tuple_added(&self,
-                   package: &ast::Package,
+                   package: &m::Package,
                    fields: &Vec<Field>,
                    class: &mut ClassSpec)
                    -> Result<()> {
@@ -671,7 +653,7 @@ impl Processor {
         Ok(())
     }
 
-    fn interface_decode_method(&self, interface: &ast::InterfaceBody) -> Result<MethodSpec> {
+    fn interface_decode_method(&self, interface: &m::InterfaceBody) -> Result<MethodSpec> {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
         decode.push_argument(python_stmt!["data"]);
@@ -683,7 +665,7 @@ impl Processor {
         decode_body.push(python_stmt![&type_field, " = data[", &self.type_var, "]"]);
 
         for (_, ref sub_type) in &interface.sub_types {
-            for name in sub_type.options.lookup_string("name") {
+            for name in &sub_type.names {
                 let type_name: Variable = Name::local(&sub_type.name).into();
 
                 let mut check = Elements::new();
@@ -691,7 +673,7 @@ impl Processor {
                 check.push(python_stmt!["if ",
                                         &type_field,
                                         " == ",
-                                        Variable::String(name.to_owned()),
+                                        Variable::String(name.inner.to_owned()),
                                         ":"]);
                 check.push_nested(python_stmt!["return ", type_name, ".decode(data)"]);
 
@@ -717,7 +699,7 @@ impl Backend for Processor {
         self.write_files(files)
     }
 
-    fn verify(&self) -> Result<Vec<VerifyError>> {
+    fn verify(&self) -> Result<Vec<Error>> {
         Ok(vec![])
     }
 }

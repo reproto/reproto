@@ -1,5 +1,5 @@
 use ast;
-use backend;
+use backend::errors as backend;
 use codeviz::errors as codeviz;
 use parser::errors as parser;
 use std::path::PathBuf;
@@ -35,6 +35,11 @@ error_chain! {
     }
 
     errors {
+        BackendErrors(errors: Vec<backend::Error>) {
+            description("backend errors")
+            display("Encountered {} backend error(s)", errors.len())
+        }
+
         MissingBackend {
         }
 
@@ -52,5 +57,11 @@ error_chain! {
             description("Invalid merge")
             display("Cannot merge existing `{}` with `{}`", this.display(), other.display())
         }
+    }
+}
+
+impl From<Vec<backend::Error>> for Error {
+    fn from(errors: Vec<backend::Error>) -> Error {
+        ErrorKind::BackendErrors(errors).into()
     }
 }

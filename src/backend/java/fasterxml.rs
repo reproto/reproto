@@ -1,6 +1,6 @@
 /// Module that adds fasterxml annotations to generated classes.
-use ast;
 use backend::*;
+use backend::models as m;
 use codeviz::java::*;
 use super::processor;
 
@@ -59,7 +59,7 @@ impl processor::Listeners for Module {
     }
 
     fn enum_added(&self,
-                  _enum_body: &ast::EnumBody,
+                  _enum_body: &m::EnumBody,
                   _fields: &Vec<processor::Field>,
                   _class_type: &ClassType,
                   from_value: &mut Option<MethodSpec>,
@@ -79,7 +79,7 @@ impl processor::Listeners for Module {
     }
 
     fn interface_added(&self,
-                       interface: &ast::InterfaceBody,
+                       interface: &m::InterfaceBody,
                        interface_spec: &mut InterfaceSpec)
                        -> Result<()> {
         {
@@ -99,8 +99,8 @@ impl processor::Listeners for Module {
             let mut arguments = Statement::new();
 
             for (key, sub_type) in &interface.sub_types {
-                for name in &sub_type.options.lookup_string("name") {
-                    let name: String = (*name).clone();
+                for name in &sub_type.names {
+                    let name: String = name.inner.to_owned();
 
                     let mut type_args = Statement::new();
 
@@ -125,8 +125,8 @@ impl processor::Listeners for Module {
 
     fn sub_type_added(&self,
                       _fields: &Vec<processor::Field>,
-                      _interface: &ast::InterfaceBody,
-                      _sub_type: &ast::SubType,
+                      _interface: &m::InterfaceBody,
+                      _sub_type: &m::SubType,
                       _class: &mut ClassSpec)
                       -> Result<()> {
         // if let Some(name) = sub_type.options.lookup_string_nth("name", 0) {

@@ -1,184 +1,65 @@
-use errors::*;
+use backend::models::*;
 use std::collections::BTreeMap;
-use std::collections::HashSet;
 
 /// Position relative in file where the declaration is present.
 pub type Pos = (usize, usize);
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
+pub struct Token<T> {
+    pub inner: T,
+    pub pos: Pos,
+}
+
+impl<T> ::std::ops::Deref for Token<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
+
+impl<T> Token<T> {
+    pub fn new(inner: T, pos: Pos) -> Token<T> {
+        Token {
+            inner: inner,
+            pos: pos,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum OptionValue {
     String(String),
     Integer(i64),
     Identifier(String),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,
-    pub values: Vec<OptionValue>,
+    pub values: Vec<Token<OptionValue>>,
 }
 
-impl OptionDecl {
-    pub fn new(name: String, values: Vec<OptionValue>) -> OptionDecl {
-        OptionDecl {
-            name: name,
-            values: values,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct Options {
-    options: Vec<OptionDecl>,
+    options: Vec<Token<OptionDecl>>,
 }
 
 impl Options {
-    pub fn new(options: Vec<OptionDecl>) -> Options {
+    pub fn new(options: Vec<Token<OptionDecl>>) -> Options {
         Options { options: options }
     }
 
-    pub fn lookup(&self, name: &str) -> Vec<&OptionValue> {
-        self.options
-            .iter()
-            .filter(|o| o.name.as_str() == name)
-            .flat_map(|o| o.values.iter())
-            .collect()
-    }
+    pub fn lookup<'a>(&'a self, name: &'a str) -> Box<Iterator<Item = &Token<OptionValue>> + 'a> {
+        let it = self.options
+            .iter();
 
-    pub fn lookup_nth(&self, name: &str, n: usize) -> Option<&OptionValue> {
-        self.options
-            .iter()
-            .filter(|o| o.name.as_str() == name)
-            .flat_map(|o| o.values.iter())
-            .nth(n)
-    }
-
-    pub fn lookup_string(&self, name: &str) -> Vec<&String> {
-        self.options
-            .iter()
-            .filter(|o| o.name.as_str() == name)
-            .flat_map(|o| o.values.iter())
-            .flat_map(|v| match *v {
-                OptionValue::String(ref s) => Some(s).into_iter(),
-                _ => None.into_iter(),
-            })
-            .collect()
-    }
-
-    pub fn lookup_string_nth(&self, name: &str, n: usize) -> Option<&String> {
-        self.options
-            .iter()
-            .filter(|o| o.name.as_str() == name)
-            .flat_map(|o| o.values.iter())
-            .flat_map(|v| match *v {
-                OptionValue::String(ref s) => Some(s).into_iter(),
-                _ => None.into_iter(),
-            })
-            .nth(n)
-    }
-
-    pub fn lookup_identifier(&self, name: &str) -> Vec<&String> {
-        self.options
-            .iter()
-            .filter(|o| o.name.as_str() == name)
-            .flat_map(|o| o.values.iter())
-            .flat_map(|v| match *v {
-                OptionValue::Identifier(ref s) => Some(s).into_iter(),
-                _ => None.into_iter(),
-            })
-            .collect()
-    }
-
-    pub fn lookup_identifier_nth(&self, name: &str, n: usize) -> Option<&String> {
-        self.options
-            .iter()
-            .filter(|o| o.name.as_str() == name)
-            .flat_map(|o| o.values.iter())
-            .flat_map(|v| match *v {
-                OptionValue::Identifier(ref s) => Some(s).into_iter(),
-                _ => None.into_iter(),
-            })
-            .nth(n)
-    }
-
-    pub fn merge(&mut self, other: &Options) {
-        self.options.extend(other.options.clone());
+        Box::new(it.filter(move |o| o.name.as_str() == name)
+            .flat_map(|o| o.values.iter()))
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum Modifier {
-    Required,
-    Optional,
-    Repeated,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Modifiers {
-    modifiers: HashSet<Modifier>,
-}
-
-impl Modifiers {
-    pub fn new(modifiers: HashSet<Modifier>) -> Modifiers {
-        Modifiers { modifiers: modifiers }
-    }
-
-    pub fn test(&self, modifier: &Modifier) -> bool {
-        self.modifiers.contains(modifier)
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Type {
-    Double,
-    Float,
-    I32,
-    I64,
-    U32,
-    U64,
-    Bool,
-    String,
-    Bytes,
-    Any,
-    UsedType(String, String),
-    Custom(String),
-    Array(Box<Type>),
-    Map(Box<Type>, Box<Type>),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Value {
-    String(String),
-    Integer(i64),
-    Float(f64),
-    Identifier(String),
-    Type(Type),
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
-pub struct Package {
-    pub parts: Vec<String>,
-}
-
-impl Package {
-    pub fn new(parts: Vec<String>) -> Package {
-        Package { parts: parts }
-    }
-
-    pub fn join(&self, other: &Package) -> Package {
-        let mut parts = self.parts.clone();
-        parts.extend(other.parts.clone());
-        Package::new(parts)
-    }
-}
-
-impl ::std::fmt::Display for Package {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "{}", self.parts.join("."))
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct Field {
     pub modifier: Modifier,
     pub name: String,
@@ -204,18 +85,10 @@ impl Field {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub enum Member {
-    Field(Field, Pos),
-    Code(String, Vec<String>, Pos),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct SubType {
-    pub name: String,
-    pub options: Options,
-    pub members: Vec<Member>,
-    pub pos: Pos,
+    Field(Field),
+    Code(String, Vec<String>),
 }
 
 pub trait Body {
@@ -246,234 +119,79 @@ impl Body for InterfaceBody {
     }
 }
 
-impl SubType {
-    pub fn new(name: String, options: Options, members: Vec<Member>, pos: Pos) -> SubType {
-        SubType {
-            name: name,
-            options: options,
-            members: members,
-            pos: pos,
-        }
-    }
-
-    pub fn merge(&mut self, other: &SubType) -> Result<()> {
-        self.options.merge(&other.options);
-        self.members.extend(other.members.clone());
-        Ok(())
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct TupleBody {
     pub name: String,
     pub options: Options,
-    pub members: Vec<Member>,
+    pub members: Vec<Token<Member>>,
 }
 
-impl TupleBody {
-    pub fn new(name: String, options: Options, members: Vec<Member>) -> TupleBody {
-        TupleBody {
-            name: name,
-            options: options,
-            members: members,
-        }
-    }
-
-    pub fn merge(&mut self, other: &TupleBody) -> Result<()> {
-        self.options.merge(&other.options);
-        self.members.extend(other.members.clone());
-
-        return Ok(());
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct InterfaceBody {
     pub name: String,
     pub options: Options,
-    pub members: Vec<Member>,
-    pub sub_types: BTreeMap<String, SubType>,
+    pub members: Vec<Token<Member>>,
+    pub sub_types: BTreeMap<String, Token<TypeBody>>,
 }
 
-impl InterfaceBody {
-    pub fn new(name: String,
-               options: Options,
-               members: Vec<Member>,
-               sub_types: BTreeMap<String, SubType>)
-               -> InterfaceBody {
-        InterfaceBody {
-            name: name,
-            options: options,
-            members: members,
-            sub_types: sub_types,
-        }
-    }
-
-    pub fn merge(&mut self, other: &InterfaceBody) -> Result<()> {
-        self.options.merge(&other.options);
-        self.members.extend(other.members.clone());
-
-        return Ok(());
-    }
-}
-
-/// type <name> { <members>* }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct TypeBody {
     pub name: String,
     pub options: Options,
-    pub members: Vec<Member>,
+    pub members: Vec<Token<Member>>,
 }
 
-impl TypeBody {
-    pub fn new(name: String, options: Options, members: Vec<Member>) -> TypeBody {
-        TypeBody {
-            name: name,
-            options: options,
-            members: members,
-        }
-    }
-
-    pub fn merge(&mut self, other: &TypeBody) -> Result<()> {
-        self.options.merge(&other.options);
-        self.members.extend(other.members.clone());
-        return Ok(());
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct EnumBody {
     pub name: String,
-    pub values: Vec<EnumValue>,
+    pub values: Vec<Token<EnumValue>>,
     pub options: Options,
-    pub members: Vec<Member>,
+    pub members: Vec<Token<Member>>,
 }
 
-impl EnumBody {
-    pub fn new(name: String,
-               values: Vec<EnumValue>,
-               options: Options,
-               members: Vec<Member>)
-               -> EnumBody {
-        EnumBody {
-            name: name,
-            values: values,
-            options: options,
-            members: members,
-        }
-    }
-
-    pub fn merge(&mut self, other: &EnumBody) -> Result<()> {
-        self.options.merge(&other.options);
-        self.members.extend(other.members.clone());
-
-        return Ok(());
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct EnumValue {
     pub name: String,
-    pub values: Vec<Value>,
+    pub values: Vec<Token<Value>>,
 }
 
-impl EnumValue {
-    pub fn new(name: String, values: Vec<Value>) -> EnumValue {
-        EnumValue {
-            name: name,
-            values: values,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub enum Decl {
-    Type(TypeBody, Pos),
-    Tuple(TupleBody, Pos),
-    Interface(InterfaceBody, Pos),
-    Enum(EnumBody, Pos),
+    Type(TypeBody),
+    Tuple(TupleBody),
+    Interface(InterfaceBody),
+    Enum(EnumBody),
 }
 
 impl Decl {
     pub fn name(&self) -> String {
         match *self {
-            Decl::Interface(ref interface, _) => interface.name.clone(),
-            Decl::Type(ref ty, _) => ty.name.clone(),
-            Decl::Tuple(ref ty, _) => ty.name.clone(),
-            Decl::Enum(ref ty, _) => ty.name.clone(),
-        }
-    }
-
-    pub fn pos(&self) -> Pos {
-        match *self {
-            Decl::Interface(_, pos) => pos.clone(),
-            Decl::Type(_, pos) => pos.clone(),
-            Decl::Tuple(_, pos) => pos.clone(),
-            Decl::Enum(_, pos) => pos.clone(),
+            Decl::Interface(ref interface) => interface.name.clone(),
+            Decl::Type(ref ty) => ty.name.clone(),
+            Decl::Tuple(ref ty) => ty.name.clone(),
+            Decl::Enum(ref ty) => ty.name.clone(),
         }
     }
 
     pub fn display(&self) -> String {
         match *self {
-            Decl::Interface(ref body, _) => format!("interface {}", body.name),
-            Decl::Type(ref body, _) => format!("type {}", body.name),
-            Decl::Tuple(ref body, _) => format!("tuple {}", body.name),
-            Decl::Enum(ref body, _) => format!("enum {}", body.name),
+            Decl::Interface(ref body) => format!("interface {}", body.name),
+            Decl::Type(ref body) => format!("type {}", body.name),
+            Decl::Tuple(ref body) => format!("tuple {}", body.name),
+            Decl::Enum(ref body) => format!("enum {}", body.name),
         }
-    }
-
-    pub fn merge(&mut self, other: &Decl) -> Result<()> {
-        match *self {
-            Decl::Interface(ref mut body, _) => {
-                if let Decl::Interface(ref other, _) = *other {
-                    return body.merge(other);
-                }
-            }
-            Decl::Type(ref mut body, _) => {
-                if let Decl::Type(ref other, _) = *other {
-                    return body.merge(other);
-                }
-            }
-            Decl::Tuple(ref mut body, _) => {
-                if let Decl::Tuple(ref other, _) = *other {
-                    return body.merge(other);
-                }
-            }
-            _ => {}
-        }
-
-        Err(ErrorKind::InvalidMerge(self.clone(), other.clone()).into())
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct UseDecl {
-    pub package: Package,
+    pub package: Token<Package>,
     pub alias: Option<String>,
 }
 
-impl UseDecl {
-    pub fn new(package: Package, alias: Option<String>) -> UseDecl {
-        UseDecl {
-            package: package,
-            alias: alias,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct File {
-    pub package: Package,
-    pub uses: Vec<UseDecl>,
-    pub decls: Vec<Decl>,
-}
-
-impl File {
-    pub fn new(package: Package, uses: Vec<UseDecl>, decls: Vec<Decl>) -> File {
-        File {
-            package: package,
-            uses: uses,
-            decls: decls,
-        }
-    }
+    pub package: Token<Package>,
+    pub uses: Vec<Token<UseDecl>>,
+    pub decls: Vec<Token<Decl>>,
 }

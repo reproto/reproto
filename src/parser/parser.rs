@@ -1,8 +1,8 @@
+use ast;
+use backend::models as m;
 use pest::prelude::*;
 use std::collections::BTreeMap;
 use std::collections::LinkedList;
-
-use ast;
 use super::errors::*;
 
 /// Check if character is an indentation character.
@@ -174,17 +174,29 @@ impl_rdp! {
     }
 
     process! {
-        _file(&self) -> Result<ast::File> {
-            (_: package_decl, package: _package(), imports: _use_list(), decls: _decl_list()) => {
-                let imports = imports.into_iter().collect();
+        _file(&self) -> ast::File {
+            (_: package_decl, package: _package(), uses: _use_list(), decls: _decl_list()) => {
+                let uses = uses.into_iter().collect();
                 let decls = decls.into_iter().collect();
-                Ok(ast::File::new(package, imports, decls))
+
+                ast::File {
+                    package: package,
+                    uses: uses,
+                    decls: decls
+                }
             },
         }
 
-        _use_list(&self) -> LinkedList<ast::UseDecl> {
-            (_: use_decl, package: _package(), alias: _use_as(), mut tail: _use_list()) => {
-                tail.push_front(ast::UseDecl::new(package, alias));
+        _use_list(&self) -> LinkedList<ast::Token<ast::UseDecl>> {
+            (token: use_decl, package: _package(), alias: _use_as(), mut tail: _use_list()) => {
+                let use_decl = ast::UseDecl {
+                    package: package,
+                    alias: alias,
+                };
+
+                let pos = (token.start, token.end);
+                tail.push_front(ast::Token::new(use_decl, pos));
+
                 tail
             },
 
@@ -199,15 +211,18 @@ impl_rdp! {
             () => None,
         }
 
-        _package(&self) -> ast::Package {
-            (_: package_ident, idents: _ident_list()) => {
-                ast::Package::new(idents.into_iter().collect())
+        _package(&self) -> ast::Token<m::Package> {
+            (token: package_ident, idents: _ident_list()) => {
+                let package = m::Package::new(idents.into_iter().collect());
+                let pos = (token.start, token.end);
+                ast::Token::new(package, pos)
             },
         }
 
-        _decl_list(&self) -> LinkedList<ast::Decl> {
-            (_: decl, first: _decl(), mut tail: _decl_list()) => {
-                tail.push_front(first);
+        _decl_list(&self) -> LinkedList<ast::Token<ast::Decl>> {
+            (token: decl, first: _decl(), mut tail: _decl_list()) => {
+                let pos = (token.start, token.end);
+                tail.push_front(ast::Token::new(first, pos));
                 tail
             },
 
@@ -216,33 +231,41 @@ impl_rdp! {
 
         _decl(&self) -> ast::Decl {
             (
-                token: type_decl,
+                _: type_decl,
                 &name: ident,
                 options: _option_list(),
                 members: _member_list()
             ) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                let body = ast::TypeBody::new(name.to_owned(), options, members);
-                let pos = (token.start, token.end);
-                ast::Decl::Type(body, pos)
+                let body = ast::TypeBody {
+                    name: name.to_owned(),
+                    options: options,
+                    members: members
+                };
+
+                ast::Decl::Type(body)
             },
 
             (
-                token: tuple_decl,
+                _: tuple_decl,
                 &name: ident,
                 options: _option_list(),
                 members: _member_list()
             ) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                let body = ast::TupleBody::new(name.to_owned(), options, members);
-                let pos = (token.start, token.end);
-                ast::Decl::Tuple(body, pos)
+                let body = ast::TupleBody {
+                    name: name.to_owned(),
+                    options: options,
+                    members: members,
+                };
+
+                ast::Decl::Tuple(body)
             },
 
             (
-                token: interface_decl,
+                _: interface_decl,
                 &name: ident,
                 options: _option_list(),
                 members: _member_list(),
@@ -250,13 +273,18 @@ impl_rdp! {
             ) => {
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                let pos = (token.start, token.end);
-                let body = ast::InterfaceBody::new(name.to_owned(), options, members, sub_types);
-                ast::Decl::Interface(body, pos)
+                let body = ast::InterfaceBody {
+                    name: name.to_owned(),
+                    options: options,
+                    members: members,
+                    sub_types: sub_types,
+                };
+
+                ast::Decl::Interface(body)
             },
 
             (
-                token: enum_decl,
+                _: enum_decl,
                 &name: ident,
                 values: _enum_value_list(),
                 options: _option_list(),
@@ -265,15 +293,21 @@ impl_rdp! {
                 let values = values.into_iter().collect();
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                let pos = (token.start, token.end);
-                let body = ast::EnumBody::new(name.to_owned(), values, options, members);
-                ast::Decl::Enum(body, pos)
+                let body = ast::EnumBody {
+                    name: name.to_owned(),
+                    values: values,
+                    options: options,
+                    members: members,
+                };
+
+                ast::Decl::Enum(body)
             },
         }
 
-        _enum_value_list(&self) -> LinkedList<ast::EnumValue> {
-            (_: enum_value, first: _enum_value(), mut tail: _enum_value_list()) => {
-                tail.push_front(first);
+        _enum_value_list(&self) -> LinkedList<ast::Token<ast::EnumValue>> {
+            (token: enum_value, first: _enum_value(), mut tail: _enum_value_list()) => {
+                let pos = (token.start, token.end);
+                tail.push_front(ast::Token::new(first, pos));
                 tail
             },
 
@@ -283,47 +317,53 @@ impl_rdp! {
         _enum_value(&self) -> ast::EnumValue {
             (&name: ident, values: _value_list()) => {
                 let values = values.into_iter().collect();
-                ast::EnumValue::new(name.to_owned(), values)
+
+                ast::EnumValue {
+                    name: name.to_owned(),
+                    values: values,
+                }
             },
         }
 
-        _value_list(&self) -> LinkedList<ast::Value> {
-            (_: value, first: _value(), mut tail: _value_list()) => {
-                tail.push_front(first);
+        _value_list(&self) -> LinkedList<ast::Token<m::Value>> {
+            (token: value, first: _value(), mut tail: _value_list()) => {
+                let pos = (token.start, token.end);
+                tail.push_front(ast::Token::new(first, pos));
                 tail
             },
 
             () => LinkedList::new(),
         }
 
-        _value(&self) -> ast::Value {
+        _value(&self) -> m::Value {
             (&value: string) => {
                 let value = decode_escaped_string(value).unwrap();
-                ast::Value::String(value)
+                m::Value::String(value)
             },
 
             (&value: integer) => {
                 let value = value.parse::<i64>().unwrap();
-                ast::Value::Integer(value)
+                m::Value::Integer(value)
             },
 
             (&value: float) => {
                 let value = value.parse::<f64>().unwrap();
-                ast::Value::Float(value)
+                m::Value::Float(value)
             },
 
             (&value: ident) => {
-                ast::Value::Identifier(value.to_owned())
+                m::Value::Identifier(value.to_owned())
             },
 
             (ty: _type_spec()) => {
-                ast::Value::Type(ty)
+                m::Value::Type(ty)
             },
         }
 
-        _option_list(&self) -> LinkedList<ast::OptionDecl> {
-            (_: option_decl, first: _option_decl(), mut tail: _option_list()) => {
-                tail.push_front(first);
+        _option_list(&self) -> LinkedList<ast::Token<ast::OptionDecl>> {
+            (token: option_decl, first: _option_decl(), mut tail: _option_list()) => {
+                let pos = (token.start, token.end);
+                tail.push_front(ast::Token::new(first, pos));
                 tail
             },
 
@@ -333,13 +373,18 @@ impl_rdp! {
         _option_decl(&self) -> ast::OptionDecl {
             (&name: ident, values: _option_value_list()) => {
                 let values = values.into_iter().collect();
-                ast::OptionDecl::new(name.to_owned(), values)
+
+                ast::OptionDecl {
+                    name: name.to_owned(),
+                    values: values,
+                }
             },
         }
 
-        _option_value_list(&self) -> LinkedList<ast::OptionValue> {
-            (_: option_value, first: _option_value(), mut tail: _option_value_list()) => {
-                tail.push_front(first);
+        _option_value_list(&self) -> LinkedList<ast::Token<ast::OptionValue>> {
+            (token: option_value, first: _option_value(), mut tail: _option_value_list()) => {
+                let pos = (token.start, token.end);
+                tail.push_front(ast::Token::new(first, pos));
                 tail
             },
 
@@ -364,9 +409,10 @@ impl_rdp! {
             },
         }
 
-        _member_list(&self) -> LinkedList<ast::Member> {
-            (_: member, first: _member(), mut tail: _member_list()) => {
-                tail.push_front(first);
+        _member_list(&self) -> LinkedList<ast::Token<ast::Member>> {
+            (token: member, first: _member(), mut tail: _member_list()) => {
+                let pos = (token.start, token.end);
+                tail.push_front(ast::Token::new(first, pos));
                 tail
             },
 
@@ -374,21 +420,20 @@ impl_rdp! {
         }
 
         _member(&self) -> ast::Member {
-            (token: field, field: _field()) => {
-                let pos = (token.start, token.end);
-                ast::Member::Field(field, pos)
+            (_: field, field: _field()) => {
+                ast::Member::Field(field)
             },
 
-            (token: code_block, &context: ident, &content: code_body) => {
-                let pos = (token.start, token.end);
+            (_: code_block, &context: ident, &content: code_body) => {
                 let block = strip_code_block(content);
-                ast::Member::Code(context.to_owned(), block, pos)
+                ast::Member::Code(context.to_owned(), block)
             },
         }
 
-        _sub_type_list(&self) -> BTreeMap<String, ast::SubType> {
-            (_: sub_type_decl, first: _sub_type(), mut tail: _sub_type_list()) => {
-                tail.insert(first.name.clone(), first);
+        _sub_type_list(&self) -> BTreeMap<String, ast::Token<ast::TypeBody>> {
+            (token: sub_type_decl, first: _sub_type(), mut tail: _sub_type_list()) => {
+                let pos = (token.start, token.end);
+                tail.insert(first.name.clone(), ast::Token::new(first, pos));
                 tail
             },
 
@@ -397,13 +442,17 @@ impl_rdp! {
             },
         }
 
-        _sub_type(&self) -> ast::SubType {
-            (token: sub_type, &name: ident, options: _option_list(), members: _member_list()) => {
+        _sub_type(&self) -> ast::TypeBody {
+            (_: sub_type, &name: ident, options: _option_list(), members: _member_list()) => {
                 let name = name.to_owned();
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
-                let pos = (token.start, token.end);
-                ast::SubType::new(name, options, members, pos)
+
+                ast::TypeBody {
+                    name: name,
+                    options: options,
+                    members: members,
+                }
             },
         }
 
@@ -413,39 +462,39 @@ impl_rdp! {
             },
         }
 
-        _type_spec(&self) -> ast::Type {
+        _type_spec(&self) -> m::Type {
             (_: type_spec, _: type_literal, &value: ident) => {
                 match value {
-                    "double" => ast::Type::Double,
-                    "float" => ast::Type::Float,
-                    "i32" => ast::Type::I32,
-                    "i64" => ast::Type::I64,
-                    "u32" => ast::Type::U32,
-                    "u64" => ast::Type::U64,
-                    "bool" => ast::Type::Bool,
-                    "string" => ast::Type::String,
-                    "bytes" => ast::Type::Bytes,
-                    "any" => ast::Type::Any,
-                    name => ast::Type::Custom(name.to_owned()),
+                    "double" => m::Type::Double,
+                    "float" => m::Type::Float,
+                    "i32" => m::Type::I32,
+                    "i64" => m::Type::I64,
+                    "u32" => m::Type::U32,
+                    "u64" => m::Type::U64,
+                    "bool" => m::Type::Bool,
+                    "string" => m::Type::String,
+                    "bytes" => m::Type::Bytes,
+                    "any" => m::Type::Any,
+                    name => m::Type::Custom(name.to_owned()),
                 }
             },
 
             (_: type_spec, _: used_type, &used: ident, &value: ident) => {
-                ast::Type::UsedType(used.to_owned(), value.to_owned())
+                m::Type::UsedType(used.to_owned(), value.to_owned())
             },
 
             (_: type_spec, _: array, _: array_argument, argument: _type_spec()) => {
-                ast::Type::Array(Box::new(argument))
+                m::Type::Array(Box::new(argument))
             },
 
             (_: type_spec, _: map, key: _type_spec(), value: _type_spec()) => {
-                ast::Type::Map(Box::new(key), Box::new(value))
+                m::Type::Map(Box::new(key), Box::new(value))
             },
         }
 
-        _modifier(&self) -> ast::Modifier {
-            (_: modifier) => ast::Modifier::Optional,
-            () => ast::Modifier::Required,
+        _modifier(&self) -> m::Modifier {
+            (_: modifier) => m::Modifier::Optional,
+            () => m::Modifier::Required,
         }
 
         _ident_list(&self) -> LinkedList<String> {
@@ -475,7 +524,7 @@ mod tests {
 
         let file = parser._file().unwrap();
 
-        let package = ast::Package::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
+        let package = m::Package::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
 
         assert_eq!(package, file.package);
         assert_eq!(4, file.decls.len());

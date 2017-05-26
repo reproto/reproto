@@ -1,12 +1,11 @@
-use ast;
+use backend::environment::Environment;
+use backend::models as m;
+use backend;
 use clap::{Arg, App, SubCommand, ArgMatches};
 use errors::*;
-use std::path::{Path, PathBuf};
-use super::backend;
-use super::environment::Environment;
-use super::naming;
-use super::options::Options;
-use super::parser;
+use naming;
+use options::Options;
+use std::path::Path;
 
 fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
     let mut parts = input.split(":");
@@ -86,7 +85,9 @@ pub fn compile_options<'a, 'b>(name: &str) -> App<'a, 'b> {
             .number_of_values(1))
 }
 
-fn setup_backend(matches: &ArgMatches) -> Result<Box<backend::Backend>> {
+fn setup_compiler<'a>
+    (matches: &'a ArgMatches)
+     -> Result<(Vec<&'a Path>, Vec<m::Package>, Environment, Options, &'a str)> {
     let paths: Vec<::std::path::PathBuf> = matches.values_of("path")
         .into_iter()
         .flat_map(|it| it)
@@ -117,56 +118,73 @@ fn setup_backend(matches: &ArgMatches) -> Result<Box<backend::Backend>> {
         modules: modules,
     };
 
-    let mut env = Environment::new(paths);
+    let env = Environment::new(paths);
 
-    let files: Vec<PathBuf> = matches.values_of("file")
+    let files: Vec<&Path> = matches.values_of("file")
         .into_iter()
         .flat_map(|it| it)
         .map(Path::new)
-        .map(ToOwned::to_owned)
         .collect();
 
-    let packages: Vec<String> = matches.values_of("package")
+    let packages: Vec<m::Package> = matches.values_of("package")
         .into_iter()
         .flat_map(|it| it)
-        .map(ToOwned::to_owned)
+        .map(|s| m::Package::new(s.split(".").map(ToOwned::to_owned).collect()))
         .collect();
 
+    Ok((files, packages, env, options, backend))
+}
+
+fn do_compile(matches: &ArgMatches) -> Result<Box<backend::Backend>> {
+    let (files, packages, mut env, options, backend) = setup_compiler(matches)?;
+
+    let mut failed: Vec<backend::errors::Error> = Vec::new();
+
     for file in files {
-        env.import_file(&file, None)?;
+        if let Err(e) = env.import_file(file, None) {
+            failed.push(e);
+        }
     }
 
     for package in packages {
-        let package = ast::Package::new(package.split(".").map(ToOwned::to_owned).collect());
-        env.import(&package)?;
+        if let Err(e) = env.import(&package) {
+            failed.push(e);
+        }
     }
 
-    Ok(backend::resolve(&backend, options, env)?)
+    let backend = backend::resolve(&backend, options, env);
+
+    match backend {
+        Err(e) => {
+            failed.push(e);
+            Err(failed.into())
+        }
+        Ok(backend) => {
+            if failed.is_empty() {
+                Ok(backend)
+            } else {
+                Err(failed.into())
+            }
+        }
+    }
 }
 
 pub fn compile(matches: &ArgMatches) -> Result<()> {
-    let backend = setup_backend(matches)?;
+    let backend = do_compile(matches)?;
     backend.process()?;
     Ok(())
 }
 
 pub fn verify(matches: &ArgMatches) -> Result<()> {
-    let backend = setup_backend(matches)?;
-    let results = backend.verify()?;
+    let backend = do_compile(matches)?;
 
-    for result in results {
-        println!("path = {}", result.path.display());
+    let errors = backend.verify()?;
 
-        let (line_string, line) = parser::find_line(&result.path, result.location.0)?;
-
-        println!("{}:{}: {}: {}",
-                 result.path.display(),
-                 line,
-                 result.message,
-                 line_string);
+    if errors.is_empty() {
+        return Ok(());
     }
 
-    Ok(())
+    Err(ErrorKind::BackendErrors(errors).into())
 }
 
 pub fn commands<'a, 'b>() -> Vec<App<'a, 'b>> {
