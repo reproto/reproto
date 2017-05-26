@@ -24,6 +24,14 @@ pub trait Listeners {
         Ok(())
     }
 
+    fn tuple_added(&self,
+                   _fields: &Vec<Field>,
+                   _class_type: &ClassType,
+                   _class: &mut ClassSpec)
+                   -> Result<()> {
+        Ok(())
+    }
+
     fn enum_added(&self,
                   _enum_body: &m::EnumBody,
                   _fields: &Vec<Field>,
@@ -69,6 +77,18 @@ impl Listeners for Vec<Box<Listeners>> {
                    -> Result<()> {
         for listeners in self {
             listeners.class_added(fields, class_type, class)?;
+        }
+
+        Ok(())
+    }
+
+    fn tuple_added(&self,
+                   fields: &Vec<Field>,
+                   class_type: &ClassType,
+                   class: &mut ClassSpec)
+                   -> Result<()> {
+        for listeners in self {
+            listeners.tuple_added(fields, class_type, class)?;
         }
 
         Ok(())
@@ -824,7 +844,7 @@ impl Processor {
             })?;
 
         self.add_class(&class_type, &mut class)?;
-        self.listeners.class_added(&fields, &class_type, &mut class)?;
+        self.listeners.tuple_added(&fields, &class_type, &mut class)?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push(&class);
