@@ -522,11 +522,11 @@ mod tests {
         assert!(parser.file());
         assert!(parser.end());
 
-        let file = parser._file().unwrap();
+        let file = parser._file();
 
         let package = m::Package::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
 
-        assert_eq!(package, file.package);
+        assert_eq!(package, *file.package);
         assert_eq!(4, file.decls.len());
     }
 
