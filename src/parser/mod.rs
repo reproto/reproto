@@ -64,5 +64,5 @@ pub fn parse_file(path: &Path) -> Result<ast::File> {
         return Err("not parsed until end".into());
     }
 
-    Ok(parser._file())
+    parser._file()
 }

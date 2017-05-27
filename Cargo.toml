@@ -18,5 +18,4 @@ clap = "2.24.2"
 pest = "0.4.1"
 
 [dependencies.codeviz]
-version = "0.0.5"
-path = "../codeviz"
+version = "0.0.6"

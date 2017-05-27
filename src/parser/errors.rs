@@ -2,6 +2,7 @@ error_chain! {
     foreign_links {
         Io(::std::io::Error);
         ParseInt(::std::num::ParseIntError);
+        ParseFloat(::std::num::ParseFloatError);
         FromUtf8Error(::std::string::FromUtf8Error);
     }
 
