@@ -606,10 +606,14 @@ mod tests {
 
     const FILE1: &[u8] = include_bytes!("tests/file1.reproto");
 
+    fn parse(input: &'static str) -> Rdp<StringInput> {
+        Rdp::new(StringInput::new(input))
+    }
+
     #[test]
     fn test_file1() {
         let input = ::std::str::from_utf8(FILE1).unwrap();
-        let mut parser = Rdp::new(StringInput::new(input));
+        let mut parser = parse(input);
 
         assert!(parser.file());
         assert!(parser.end());
@@ -624,31 +628,63 @@ mod tests {
 
     #[test]
     fn test_array() {
-        let mut parser = Rdp::new(StringInput::new("[string]"));
+        let mut parser = parse("[string]");
 
         assert!(parser.type_spec());
         assert!(parser.end());
 
-        parser._type_spec().unwrap();
+        let ty = parser._type_spec().unwrap();
+
+        if let m::Type::Array(inner) = ty {
+            if let m::Type::String = *inner {
+                return;
+            }
+        }
+
+        panic!("Expected Type::Array(Type::String)");
+    }
+
+    #[test]
+    fn test_map() {
+        let mut parser = parse("{string: unsigned/123}");
+
+        assert!(parser.type_spec());
+        assert!(parser.end());
+
+        let ty = parser._type_spec().unwrap();
+
+        // TODO: use #![feature(box_patterns)]:
+        // if let m::Type::Map(box m::Type::String, box m::Type::Unsigned(size)) = ty {
+        // }
+        if let m::Type::Map(key, value) = ty {
+            if let m::Type::String = *key {
+                if let m::Type::Unsigned(size) = *value {
+                    assert_eq!(Some(123usize), size);
+                    return;
+                }
+            }
+        }
+
+        panic!("Expected Type::Array(Type::String)");
     }
 
     #[test]
     fn test_block_comment() {
-        let mut parser = Rdp::new(StringInput::new("/* hello \n world */"));
+        let mut parser = parse("/* hello \n world */");
 
         assert!(parser.comment());
     }
 
     #[test]
     fn test_line_comment() {
-        let mut parser = Rdp::new(StringInput::new("// hello world\n"));
+        let mut parser = parse("// hello world\n");
 
         assert!(parser.comment());
     }
 
     #[test]
     fn test_code_block() {
-        let mut parser = Rdp::new(StringInput::new("a { b { c } d } e"));
+        let mut parser = parse("a { b { c } d } e");
 
         assert!(parser.code_body());
         assert!(parser.end());
@@ -656,7 +692,7 @@ mod tests {
 
     #[test]
     fn test_code() {
-        let mut parser = Rdp::new(StringInput::new("java{{\na { b { c } d } e\n}}"));
+        let mut parser = parse("java{{\na { b { c } d } e\n}}");
 
         assert!(parser.code_block());
         assert!(parser.end());
@@ -678,7 +714,7 @@ mod tests {
 
     #[test]
     fn test_value() {
-        let mut parser = Rdp::new(StringInput::new("60000.0"));
+        let mut parser = parse("62.0");
 
         assert!(parser.value());
         assert!(parser.end());
@@ -689,7 +725,7 @@ mod tests {
         let input = "package foo.bar; interface Foo { reserved 1, 2, 3; java {{  }} Hello { } \
                      World { } }";
 
-        let mut parser = Rdp::new(StringInput::new(input));
+        let mut parser = parse(input);
 
         assert!(parser.file());
         assert!(parser.end());
