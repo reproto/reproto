@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
 use super::errors::*;
 use super::into_model::IntoModel;
+use super::merge::Merge;
 use super::models::*;
 
 const EXT: &str = "reproto";

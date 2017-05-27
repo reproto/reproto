@@ -1,8 +1,6 @@
 use num_bigint::BigInt;
-use std::collections::btree_map;
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
-use super::errors::*;
 use token;
 
 pub type Pos = (PathBuf, usize, usize);
@@ -123,52 +121,13 @@ impl Code {
 }
 
 pub trait BodyLike {
-    fn mut_fields(&mut self) -> &mut Vec<Token<Field>>;
     fn fields(&self) -> &Vec<Token<Field>>;
-
-    fn mut_codes(&mut self) -> &mut Vec<Token<Code>>;
     fn codes(&self) -> &Vec<Token<Code>>;
-
-    /// Insert the given field, or return the already existing field if it already exists.
-    fn push_if_absent(&mut self, field: &Token<Field>) -> Option<Pos> {
-        for f in self.fields() {
-            if f.name == field.name {
-                return Some(f.pos.clone());
-            }
-        }
-
-        self.mut_fields().push(field.clone());
-        None
-    }
-
-    fn merge_codes(&mut self, codes: Vec<Token<Code>>) {
-        for code in codes {
-            self.mut_codes().push(code.clone());
-        }
-    }
-
-    fn merge_fields(&mut self, fields: Vec<Token<Field>>) -> Result<()> {
-        for field in fields {
-            if let Some(pos) = self.push_if_absent(&field) {
-                return Err(Error::field_conflict(field.name.clone(), field.pos, pos.clone()));
-            }
-        }
-
-        Ok(())
-    }
 }
 
 impl BodyLike for InterfaceBody {
-    fn mut_fields(&mut self) -> &mut Vec<Token<Field>> {
-        &mut self.fields
-    }
-
     fn fields(&self) -> &Vec<Token<Field>> {
         &self.fields
-    }
-
-    fn mut_codes(&mut self) -> &mut Vec<Token<Code>> {
-        &mut self.codes
     }
 
     fn codes(&self) -> &Vec<Token<Code>> {
@@ -177,16 +136,8 @@ impl BodyLike for InterfaceBody {
 }
 
 impl BodyLike for TypeBody {
-    fn mut_fields(&mut self) -> &mut Vec<Token<Field>> {
-        &mut self.fields
-    }
-
     fn fields(&self) -> &Vec<Token<Field>> {
         &self.fields
-    }
-
-    fn mut_codes(&mut self) -> &mut Vec<Token<Code>> {
-        &mut self.codes
     }
 
     fn codes(&self) -> &Vec<Token<Code>> {
@@ -195,16 +146,8 @@ impl BodyLike for TypeBody {
 }
 
 impl BodyLike for EnumBody {
-    fn mut_fields(&mut self) -> &mut Vec<Token<Field>> {
-        &mut self.fields
-    }
-
     fn fields(&self) -> &Vec<Token<Field>> {
         &self.fields
-    }
-
-    fn mut_codes(&mut self) -> &mut Vec<Token<Code>> {
-        &mut self.codes
     }
 
     fn codes(&self) -> &Vec<Token<Code>> {
@@ -213,16 +156,8 @@ impl BodyLike for EnumBody {
 }
 
 impl BodyLike for TupleBody {
-    fn mut_fields(&mut self) -> &mut Vec<Token<Field>> {
-        &mut self.fields
-    }
-
     fn fields(&self) -> &Vec<Token<Field>> {
         &self.fields
-    }
-
-    fn mut_codes(&mut self) -> &mut Vec<Token<Code>> {
-        &mut self.codes
     }
 
     fn codes(&self) -> &Vec<Token<Code>> {
@@ -231,16 +166,8 @@ impl BodyLike for TupleBody {
 }
 
 impl BodyLike for SubType {
-    fn mut_fields(&mut self) -> &mut Vec<Token<Field>> {
-        &mut self.fields
-    }
-
     fn fields(&self) -> &Vec<Token<Field>> {
         &self.fields
-    }
-
-    fn mut_codes(&mut self) -> &mut Vec<Token<Code>> {
-        &mut self.codes
     }
 
     fn codes(&self) -> &Vec<Token<Code>> {
@@ -269,13 +196,6 @@ impl SubType {
             names: names,
         }
     }
-
-    pub fn merge(&mut self, other: SubType) -> Result<()> {
-        self.merge_fields(other.fields)?;
-        self.merge_codes(other.codes);
-        self.names.extend(other.names);
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -299,25 +219,6 @@ impl InterfaceBody {
             sub_types: sub_types,
         }
     }
-
-    pub fn merge(&mut self, other: InterfaceBody) -> Result<()> {
-        self.merge_fields(other.fields)?;
-        self.merge_codes(other.codes);
-
-        for (key, sub_type) in other.sub_types {
-            match self.sub_types.entry(key.clone()) {
-                btree_map::Entry::Vacant(entry) => {
-                    entry.insert(sub_type.clone());
-                }
-                btree_map::Entry::Occupied(entry) => {
-                    let entry = &mut entry.into_mut().inner;
-                    entry.merge(sub_type.inner)?;
-                }
-            }
-        }
-
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -335,12 +236,6 @@ impl TypeBody {
             codes: codes,
         }
     }
-
-    pub fn merge(&mut self, other: TypeBody) -> Result<()> {
-        self.merge_fields(other.fields)?;
-        self.merge_codes(other.codes);
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -357,12 +252,6 @@ impl TupleBody {
             fields: fields,
             codes: codes,
         }
-    }
-
-    pub fn merge(&mut self, other: TupleBody) -> Result<()> {
-        self.merge_fields(other.fields)?;
-        self.merge_codes(other.codes);
-        Ok(())
     }
 }
 
@@ -395,12 +284,6 @@ impl EnumBody {
             codes: codes,
             serialized_as: serialized_as,
         }
-    }
-
-    pub fn merge(&mut self, other: EnumBody) -> Result<()> {
-        self.merge_fields(other.fields)?;
-        self.merge_codes(other.codes);
-        Ok(())
     }
 }
 

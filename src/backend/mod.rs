@@ -1,5 +1,6 @@
 mod convert_to_model;
 mod into_model;
+mod merge;
 pub mod environment;
 pub mod errors;
 pub mod java;

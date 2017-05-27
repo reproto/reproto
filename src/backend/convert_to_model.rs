@@ -5,6 +5,7 @@ use std::collections::btree_map;
 use std::path::Path;
 use super::errors::*;
 use super::into_model::IntoModel;
+use super::merge::Merge;
 use super::models::*;
 use with_prefix::WithPrefix;
 
