@@ -140,7 +140,7 @@ pub struct Field {
     pub modifier: m::Modifier,
     pub name: String,
     pub ty: Type,
-    pub field_spec: FieldSpec,
+    pub spec: FieldSpec,
 }
 
 enum Member<'a> {
@@ -149,12 +149,12 @@ enum Member<'a> {
 }
 
 impl Field {
-    pub fn new(modifier: m::Modifier, name: String, ty: Type, field_spec: FieldSpec) -> Field {
+    pub fn new(modifier: m::Modifier, name: String, ty: Type, spec: FieldSpec) -> Field {
         Field {
             modifier: modifier,
             name: name,
             ty: ty,
-            field_spec: field_spec,
+            spec: spec,
         }
     }
 }
@@ -374,14 +374,19 @@ impl Processor {
         Ok(method_spec)
     }
 
-    pub fn build_getter(&self, field: &FieldSpec) -> Result<MethodSpec> {
+    pub fn build_getter_method(&self, field: &FieldSpec) -> Result<MethodSpec> {
         let return_type = &field.ty;
         let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
         let mut method_spec = MethodSpec::new(mods![Modifier::Public], &name);
 
         method_spec.returns(return_type);
-        method_spec.push(stmt!["return this.", field, ";"]);
 
+        Ok(method_spec)
+    }
+
+    pub fn build_getter(&self, field: &FieldSpec) -> Result<MethodSpec> {
+        let mut method_spec = self.build_getter_method(field)?;
+        method_spec.push(stmt!["return this.", field, ";"]);
         Ok(method_spec)
     }
 
@@ -578,21 +583,12 @@ impl Processor {
         to_string
     }
 
-    fn add_class_like<C>(&self, class_type: &ClassType, class: &mut C) -> Result<()>
+    fn add_class<C>(&self, class_type: &ClassType, class: &mut C) -> Result<()>
         where C: ClassLike + ContainerSpec
     {
-        for field in class.fields().clone() {
-            if self.options.build_getters {
-                let getter = self.build_getter(&field)?;
-                class.push(getter);
-            }
-
-            if self.options.build_setters {
-                if !field.modifiers.contains(&Modifier::Final) {
-                    let setter = self.build_setter(&field)?;
-                    class.push(setter);
-                }
-            }
+        if self.options.build_constructor {
+            let constructor = self.build_constructor(class);
+            class.push_constructor(constructor);
         }
 
         if self.options.build_hash_code {
@@ -611,17 +607,6 @@ impl Processor {
         }
 
         Ok(())
-    }
-
-    fn add_class<C>(&self, class_type: &ClassType, class: &mut C) -> Result<()>
-        where C: ClassLike + ContainerSpec
-    {
-        if self.options.build_constructor {
-            let constructor = self.build_constructor(class);
-            class.push_constructor(constructor);
-        }
-
-        self.add_class_like(class_type, class)
     }
 
     fn build_enum_constructor(&self, en: &EnumSpec) -> ConstructorSpec {
@@ -763,13 +748,15 @@ impl Processor {
         self.process_members(package, ty, |m| {
                 match m {
                     Member::Field(field) => {
-                        en.push_field(&field.field_spec);
+                        en.push_field(&field.spec);
                         fields.push(field);
                     }
                     Member::Code(code) => {
                         en.push(code);
                     }
                 }
+
+                Ok(())
             })?;
 
         for enum_literal in &ty.values {
@@ -843,13 +830,15 @@ impl Processor {
         self.process_members(package, ty, |m| {
                 match m {
                     Member::Field(field) => {
-                        class.push_field(&field.field_spec);
+                        self.push_field(&mut class, &field)?;
                         fields.push(field);
                     }
                     Member::Code(code) => {
                         class.push(code);
                     }
                 }
+
+                Ok(())
             })?;
 
         self.add_class(&class_type, &mut class)?;
@@ -870,13 +859,15 @@ impl Processor {
         self.process_members(package, body, |m| {
                 match m {
                     Member::Field(field) => {
-                        class.push_field(&field.field_spec);
+                        self.push_field(&mut class, &field)?;
                         fields.push(field);
                     }
                     Member::Code(code) => {
                         class.push(code);
                     }
                 }
+
+                Ok(())
             })?;
 
 
@@ -901,12 +892,19 @@ impl Processor {
         self.process_members(package, interface, |m| {
                 match m {
                     Member::Field(field) => {
+                        if self.options.build_getters {
+                            let getter = self.build_getter_method(&field.spec)?;
+                            interface_spec.push(getter);
+                        }
+
                         interface_fields.push(field);
                     }
                     Member::Code(code) => {
                         interface_spec.push(code);
                     }
                 }
+
+                Ok(())
             })?;
 
         for (_, ref sub_type) in &interface.sub_types {
@@ -919,19 +917,27 @@ impl Processor {
             class.implements(&parent_type);
 
             for interface_field in &interface_fields {
-                class.push_field(&interface_field.field_spec);
+                class.push_field(&interface_field.spec);
+
+                if self.options.build_getters {
+                    let mut getter = self.build_getter(&interface_field.spec)?;
+                    getter.push_annotation(&self.override_);
+                    class.push(getter);
+                }
             }
 
             self.process_members(package, &sub_type.inner, |m| {
                     match m {
                         Member::Field(field) => {
-                            class.push_field(&field.field_spec);
+                            self.push_field(&mut class, &field)?;
                             fields.push(field);
                         }
                         Member::Code(code) => {
                             class.push(code);
                         }
                     }
+
+                    Ok(())
                 })?;
 
             self.add_class(&class_type, &mut class)?;
@@ -950,31 +956,49 @@ impl Processor {
     }
 
     fn process_members<C, B>(&self, package: &m::Package, body: &B, mut consumer: C) -> Result<()>
-        where C: FnMut(Member) -> (),
+        where C: FnMut(Member) -> Result<()>,
               B: m::BodyLike
     {
         for field in body.fields() {
             let field_type = self.convert_type(&field.pos, package, &field.ty)?;
-            let field_spec = self.push_field(&field_type, field)?;
-
-            let field = Field::new(field.modifier.clone(),
-                                   field.name.clone(),
-                                   field_type,
-                                   field_spec);
-
-            consumer(Member::Field(field));
+            let spec = self.build_field_spec(&field_type, field)?;
+            let field = Field::new(field.modifier.clone(), field.name.clone(), field_type, spec);
+            consumer(Member::Field(field))?;
         }
 
         for code in body.codes() {
             if code.context == JAVA_CONTEXT {
-                consumer(Member::Code(&code.lines));
+                consumer(Member::Code(&code.lines))?;
             }
         }
 
         Ok(())
     }
 
-    fn push_field(&self, field_type: &Type, field: &m::Field) -> Result<FieldSpec> {
+    /// Push a single field onto the given container.
+    fn push_field<C>(&self, container: &mut C, field: &Field) -> Result<()>
+        where C: ContainerSpec + ClassLike
+    {
+        let field = &field.spec;
+
+        container.push_field(field);
+
+        if self.options.build_getters {
+            let getter = self.build_getter(field)?;
+            container.push(getter);
+        }
+
+        if self.options.build_setters {
+            if !field.modifiers.contains(&Modifier::Final) {
+                let setter = self.build_setter(field)?;
+                container.push(setter);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn build_field_spec(&self, field_type: &Type, field: &m::Field) -> Result<FieldSpec> {
         let field_type = if field.is_optional() {
             self.optional.with_arguments(vec![field_type]).into()
         } else {

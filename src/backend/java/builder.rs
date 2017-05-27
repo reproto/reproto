@@ -27,9 +27,9 @@ impl Module {
             _ => source.ty.clone(),
         };
 
-        let mut field_spec = FieldSpec::new(field_mods, ty, &source.name);
-        field_spec.initialize(stmt![&self.optional, ".empty()"]);
-        field_spec
+        let mut spec = FieldSpec::new(field_mods, ty, &source.name);
+        spec.initialize(stmt![&self.optional, ".empty()"]);
+        spec
     }
 
     fn setter_method(&self, field: &processor::Field, source: &FieldSpec) -> MethodSpec {
@@ -65,7 +65,7 @@ impl processor::Listeners for Module {
         let mut build_constructor_arguments = Statement::new();
 
         for field in fields {
-            let source = &field.field_spec;
+            let source = &field.spec;
 
             builder.push_field(self.builder_field(field, source));
             builder.push(self.setter_method(field, source));

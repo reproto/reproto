@@ -32,6 +32,8 @@ tuple Event {
 }
 
 interface Samples {
+  name: string;
+
   Points {
     name "points";
     name "points_backwards";

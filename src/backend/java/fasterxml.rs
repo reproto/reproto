@@ -77,7 +77,7 @@ impl Module {
         body.push(stmt![&jgen, ".writeStartArray();"]);
 
         for field in fields {
-            let field_stmt = stmt![&value, ".", &field.field_spec];
+            let field_stmt = stmt![&value, ".", &field.spec];
 
             let write = match field.ty {
                 Type::Primitive(ref primitive) => {
@@ -213,16 +213,9 @@ impl Module {
                 deserialize.push(field_check);
             }
 
-            let variable = stmt!["v_", &field.field_spec.name];
-
-            deserialize.push(stmt!["final ",
-                                        &field.field_spec.ty,
-                                        " ",
-                                        &variable,
-                                        " = ",
-                                        reader,
-                                        ";"]);
-
+            let variable = stmt!["v_", &field.spec.name];
+            let assign = stmt!["final ", &field.spec.ty, " ", &variable, " = ", reader, ";"];
+            deserialize.push(assign);
             arguments.push(variable);
         }
 
