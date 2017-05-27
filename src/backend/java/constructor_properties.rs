@@ -26,11 +26,11 @@ impl Module {
         let mut arguments = Statement::new();
 
         for field in fields {
-            arguments.push(java_stmt![Variable::String(field.name.clone())]);
+            arguments.push(stmt![Variable::String(field.name.clone())]);
         }
 
         let mut annotation = AnnotationSpec::new(&self.constructor_properties);
-        annotation.push_argument(java_stmt!["{", arguments.join(", "), "}"]);
+        annotation.push_argument(stmt!["{", arguments.join(", "), "}"]);
         constructor.push_annotation(&annotation);
 
         Ok(())

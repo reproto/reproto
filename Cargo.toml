@@ -19,3 +19,4 @@ pest = "0.4.1"
 
 [dependencies.codeviz]
 version = "0.0.5"
+path = "../codeviz"

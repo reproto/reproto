@@ -233,7 +233,7 @@ impl Processor {
     }
 
     fn field_mods(&self) -> Modifiers {
-        let mut modifiers = java_mods![Modifier::Private];
+        let mut modifiers = mods![Modifier::Private];
 
         if self.options.immutable {
             modifiers.insert(Modifier::Final);
@@ -320,10 +320,10 @@ impl Processor {
     fn build_constructor<C>(&self, class: &C) -> ConstructorSpec
         where C: ClassLike
     {
-        let mut constructor = ConstructorSpec::new(java_mods![Modifier::Public]);
+        let mut constructor = ConstructorSpec::new(mods![Modifier::Public]);
 
         for field in class.fields() {
-            let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
+            let argument = ArgumentSpec::new(mods![Modifier::Final], &field.ty, &field.name);
             constructor.push_argument(&argument);
 
             if !self.options.nullable {
@@ -332,7 +332,7 @@ impl Processor {
                 }
             }
 
-            constructor.push(java_stmt!["this.", &field.name, " = ", argument, ";"]);
+            constructor.push(stmt!["this.", &field.name, " = ", argument, ";"]);
         }
 
         constructor
@@ -343,18 +343,18 @@ impl Processor {
         match field.ty {
             Type::Primitive(_) => None,
             _ => {
-                let require_non_null = java_stmt![&self.objects, ".requireNonNull"];
+                let require_non_null = stmt![&self.objects, ".requireNonNull"];
                 let string = Variable::String(field.name.clone());
-                Some(java_stmt![require_non_null, "(", &argument, ", ", string, ");"])
+                Some(stmt![require_non_null, "(", &argument, ", ", string, ");"])
             }
         }
     }
 
     fn build_setter(&self, field: &FieldSpec) -> Result<MethodSpec> {
         let name = format!("set{}", self.lower_to_upper_camel.convert(&field.name));
-        let mut method_spec = MethodSpec::new(java_mods![Modifier::Public], &name);
+        let mut method_spec = MethodSpec::new(mods![Modifier::Public], &name);
 
-        let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
+        let argument = ArgumentSpec::new(mods![Modifier::Final], &field.ty, &field.name);
 
         method_spec.push_argument(&argument);
         method_spec.returns(VOID);
@@ -367,7 +367,7 @@ impl Processor {
             }
         }
 
-        method_body.push(java_stmt!["this.", field, " = ", &argument, ";"]);
+        method_body.push(stmt!["this.", field, " = ", &argument, ";"]);
 
         method_spec.push(method_body);
 
@@ -377,10 +377,10 @@ impl Processor {
     pub fn build_getter(&self, field: &FieldSpec) -> Result<MethodSpec> {
         let return_type = &field.ty;
         let name = format!("get{}", self.lower_to_upper_camel.convert(&field.name));
-        let mut method_spec = MethodSpec::new(java_mods![Modifier::Public], &name);
+        let mut method_spec = MethodSpec::new(mods![Modifier::Public], &name);
 
         method_spec.returns(return_type);
-        method_spec.push(java_stmt!["return this.", field, ";"]);
+        method_spec.push(stmt!["return this.", field, ";"]);
 
         Ok(method_spec)
     }
@@ -388,7 +388,7 @@ impl Processor {
     fn build_hash_code<C>(&self, class: &C) -> MethodSpec
         where C: ClassLike
     {
-        let mut hash_code = MethodSpec::new(java_mods![Modifier::Public], "hashCode");
+        let mut hash_code = MethodSpec::new(mods![Modifier::Public], "hashCode");
 
         hash_code.push_annotation(&self.override_);
         hash_code.returns(INTEGER);
@@ -398,29 +398,29 @@ impl Processor {
         method_body.push("int result = 1;");
 
         for field in class.fields() {
-            let field_stmt = java_stmt!["this.", field];
+            let field_stmt = stmt!["this.", field];
 
             let value = match field.ty {
                 Type::Primitive(ref primitive) => {
                     if *primitive == INTEGER {
                         field_stmt.clone()
                     } else {
-                        java_stmt![primitive.as_boxed(), ".hashCode(", &field_stmt, ")"]
+                        stmt![primitive.as_boxed(), ".hashCode(", &field_stmt, ")"]
                     }
                 }
-                _ => java_stmt![&field_stmt, ".hashCode()"],
+                _ => stmt![&field_stmt, ".hashCode()"],
             };
 
             let value = if self.options.nullable {
                 match field.ty {
                     Type::Primitive(_) => value,
-                    _ => java_stmt!["(", &field_stmt, " != null ? 0 : ", value, ")"],
+                    _ => stmt!["(", &field_stmt, " != null ? 0 : ", value, ")"],
                 }
             } else {
                 value
             };
 
-            method_body.push(java_stmt!["result = result * 31 + ", value, ";"]);
+            method_body.push(stmt!["result = result * 31 + ", value, ";"]);
         }
 
         method_body.push("return result;");
@@ -433,12 +433,12 @@ impl Processor {
     fn build_equals<C>(&self, class_type: &ClassType, class: &C) -> MethodSpec
         where C: ClassLike
     {
-        let mut equals = MethodSpec::new(java_mods![Modifier::Public], "equals");
+        let mut equals = MethodSpec::new(mods![Modifier::Public], "equals");
 
         equals.push_annotation(&self.override_);
         equals.returns(BOOLEAN);
 
-        let argument = ArgumentSpec::new(java_mods![Modifier::Final], &self.object, "other");
+        let argument = ArgumentSpec::new(mods![Modifier::Final], &self.object, "other");
 
         equals.push_argument(&argument);
 
@@ -446,7 +446,7 @@ impl Processor {
         {
             let mut null_check = Elements::new();
 
-            null_check.push(java_stmt!["if (", &argument, " == null) {"]);
+            null_check.push(stmt!["if (", &argument, " == null) {"]);
             null_check.push_nested("return false;");
             null_check.push("}");
 
@@ -457,7 +457,7 @@ impl Processor {
         {
             let mut instanceof_check = Elements::new();
 
-            instanceof_check.push(java_stmt!["if (!(", &argument, " instanceof ", class_type, ")) {"]);
+            instanceof_check.push(stmt!["if (!(", &argument, " instanceof ", class_type, ")) {"]);
             instanceof_check.push_nested("return false;");
             instanceof_check.push("}");
 
@@ -465,7 +465,7 @@ impl Processor {
         }
 
         // cast argument.
-        let o = java_stmt!["o"];
+        let o = stmt!["o"];
 
         let mut cast = Elements::new();
 
@@ -473,36 +473,35 @@ impl Processor {
         suppress_warnings.push_argument(Variable::String("unchecked".to_owned()));
 
         cast.push(suppress_warnings);
-        cast.push(java_stmt!["final ", class_type, " ", &o, " = (", class_type, ") ", argument,
-                             ";"]);
+        cast.push(stmt!["final ", class_type, " ", &o, " = (", class_type, ") ", argument, ";"]);
 
         equals.push(cast);
 
         for field in class.fields() {
-            let field_stmt = java_stmt!["this.", field];
-            let o = java_stmt![&o, ".", &field.name];
+            let field_stmt = stmt!["this.", field];
+            let o = stmt![&o, ".", &field.name];
 
             let equals_condition = match field.ty {
-                Type::Primitive(_) => java_stmt![&field_stmt, " != ", &o],
-                _ => java_stmt!["!", &field_stmt, ".equals(", &o, ")"],
+                Type::Primitive(_) => stmt![&field_stmt, " != ", &o],
+                _ => stmt!["!", &field_stmt, ".equals(", &o, ")"],
             };
 
             let mut equals_check = Elements::new();
 
-            equals_check.push(java_stmt!["if (", equals_condition, ") {"]);
+            equals_check.push(stmt!["if (", equals_condition, ") {"]);
             equals_check.push_nested("return false;");
             equals_check.push("}");
 
             if self.options.nullable {
                 let mut null_check = Elements::new();
 
-                null_check.push(java_stmt!["if (", &o, " != null) {"]);
+                null_check.push(stmt!["if (", &o, " != null) {"]);
                 null_check.push_nested("return false;");
                 null_check.push("}");
 
                 let mut field_check = Elements::new();
 
-                field_check.push(java_stmt!["if (", &field_stmt, " == null) {"]);
+                field_check.push(stmt!["if (", &field_stmt, " == null) {"]);
                 field_check.push_nested(null_check);
                 field_check.push("} else {");
                 field_check.push_nested(equals_check);
@@ -522,37 +521,33 @@ impl Processor {
     fn build_to_string<C>(&self, class_type: &ClassType, class: &C) -> MethodSpec
         where C: ClassLike
     {
-        let mut to_string = MethodSpec::new(java_mods![Modifier::Public], "toString");
+        let mut to_string = MethodSpec::new(mods![Modifier::Public], "toString");
 
         to_string.push_annotation(&self.override_);
         to_string.returns(&self.string);
 
-        let b = java_stmt!["b"];
+        let b = stmt!["b"];
 
-        let new_string_builder = java_stmt!["new ", &self.string_builder, "();"];
+        let new_string_builder = stmt!["new ", &self.string_builder, "();"];
 
-        to_string.push(java_stmt!["final ",
-                                  &self.string_builder,
-                                  " ",
-                                  &b,
-                                  " = ", &new_string_builder]);
+        to_string.push(stmt!["final ", &self.string_builder, " ", &b, " = ", &new_string_builder]);
 
         let mut fields = Elements::new();
 
         for field in class.fields() {
             let mut field_append = Elements::new();
 
-            let field_stmt = java_stmt!["this.", field];
+            let field_stmt = stmt!["this.", field];
 
             let format = match field.ty {
                 Type::Primitive(ref primitive) => {
-                    java_stmt![primitive.as_boxed(), ".toString(", &field_stmt, ")"]
+                    stmt![primitive.as_boxed(), ".toString(", &field_stmt, ")"]
                 }
                 _ => {
-                    let format = java_stmt![&field_stmt, ".toString()"];
+                    let format = stmt![&field_stmt, ".toString()"];
 
                     if self.options.nullable {
-                        java_stmt![&field_stmt, " == null ? ", &self.null_string, " : ", format]
+                        stmt![&field_stmt, " == null ? ", &self.null_string, " : ", format]
                     } else {
                         format
                     }
@@ -561,24 +556,24 @@ impl Processor {
 
             let field_key = Variable::String(format!("{}=", &field.name));
 
-            field_append.push(java_stmt![&b, ".append(", field_key, ");"]);
-            field_append.push(java_stmt![&b, ".append(", format, ");"]);
+            field_append.push(stmt![&b, ".append(", field_key, ");"]);
+            field_append.push(stmt![&b, ".append(", format, ");"]);
 
             fields.push(field_append);
         }
 
         /// join each field with ", "
-        let field_joiner = java_stmt![&b, ".append(", Variable::String(", ".to_owned()), ");"];
+        let field_joiner = stmt![&b, ".append(", Variable::String(", ".to_owned()), ");"];
 
         let mut class_appends = Elements::new();
 
-        class_appends.push(java_stmt![&b, ".append(", Variable::String(class_type.name.clone()), ");"]);
-        class_appends.push(java_stmt![&b, ".append(", Variable::String("(".to_owned()), ");"]);
+        class_appends.push(stmt![&b, ".append(", Variable::String(class_type.name.clone()), ");"]);
+        class_appends.push(stmt![&b, ".append(", Variable::String("(".to_owned()), ");"]);
         class_appends.push(fields.join(field_joiner));
-        class_appends.push(java_stmt![&b, ".append(", Variable::String(")".to_owned()), ");"]);
+        class_appends.push(stmt![&b, ".append(", Variable::String(")".to_owned()), ");"]);
 
         to_string.push(class_appends);
-        to_string.push(java_stmt!["return ", &b, ".toString();"]);
+        to_string.push(stmt!["return ", &b, ".toString();"]);
 
         to_string
     }
@@ -630,10 +625,10 @@ impl Processor {
     }
 
     fn build_enum_constructor(&self, en: &EnumSpec) -> ConstructorSpec {
-        let mut constructor = ConstructorSpec::new(java_mods![Modifier::Private]);
+        let mut constructor = ConstructorSpec::new(mods![Modifier::Private]);
 
         for field in &en.fields {
-            let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
+            let argument = ArgumentSpec::new(mods![Modifier::Final], &field.ty, &field.name);
             constructor.push_argument(&argument);
 
             if !self.options.nullable {
@@ -642,7 +637,7 @@ impl Processor {
                 }
             }
 
-            constructor.push(java_stmt!["this.", &field.name, " = ", argument, ";"]);
+            constructor.push(stmt!["this.", &field.name, " = ", argument, ";"]);
         }
 
         constructor
@@ -708,33 +703,33 @@ impl Processor {
     }
 
     fn enum_from_value_method(&self, field: &Field, class_type: &ClassType) -> Result<MethodSpec> {
-        let argument = ArgumentSpec::new(java_mods![Modifier::Final], &field.ty, &field.name);
+        let argument = ArgumentSpec::new(mods![Modifier::Final], &field.ty, &field.name);
 
-        let value = java_stmt!["value"];
+        let value = stmt!["value"];
 
         let cond = match field.ty {
-            Type::Primitive(_) => java_stmt![&value, ".", &field.name, " == ", &argument],
-            _ => java_stmt![&value, ".", &field.name, ".equals(", &argument, ")"],
+            Type::Primitive(_) => stmt![&value, ".", &field.name, " == ", &argument],
+            _ => stmt![&value, ".", &field.name, ".equals(", &argument, ")"],
         };
 
         let mut return_matched = Elements::new();
 
-        return_matched.push(java_stmt!["if (", &cond, ") {"]);
-        return_matched.push_nested(java_stmt!["return ", &value, ";"]);
+        return_matched.push(stmt!["if (", &cond, ") {"]);
+        return_matched.push_nested(stmt!["return ", &value, ";"]);
         return_matched.push("}");
 
         let mut value_loop = Elements::new();
 
-        value_loop.push(java_stmt!["for (final ", class_type, " ", &value, " : ", "values()) {"]);
+        value_loop.push(stmt!["for (final ", class_type, " ", &value, " : ", "values()) {"]);
 
         value_loop.push_nested(return_matched);
         value_loop.push("}");
 
-        let mut from_value = MethodSpec::new(java_mods![Modifier::Public, Modifier::Static],
+        let mut from_value = MethodSpec::new(mods![Modifier::Public, Modifier::Static],
                                              "fromValue");
 
         let argument_name = Variable::String(argument.name.clone());
-        let throw = java_stmt!["throw new ", &self.illegal_argument, "(", argument_name, ");"];
+        let throw = stmt!["throw new ", &self.illegal_argument, "(", argument_name, ");"];
 
         from_value.returns(class_type);
         from_value.push_argument(argument);
@@ -745,10 +740,10 @@ impl Processor {
     }
 
     fn enum_to_value_method(&self, field: &Field) -> Result<MethodSpec> {
-        let mut to_value = MethodSpec::new(java_mods![Modifier::Public], "toValue");
+        let mut to_value = MethodSpec::new(mods![Modifier::Public], "toValue");
 
         to_value.returns(&field.ty);
-        to_value.push(java_stmt!["return this.", &field.name, ";"]);
+        to_value.push(stmt!["return this.", &field.name, ";"]);
 
         Ok(to_value)
     }
@@ -756,7 +751,7 @@ impl Processor {
     fn process_enum(&self, package: &m::Package, ty: &m::EnumBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
-        let mut en = EnumSpec::new(java_mods![Modifier::Public], &ty.name);
+        let mut en = EnumSpec::new(mods![Modifier::Public], &ty.name);
         let mut fields = Vec::new();
 
         self.process_members(package, ty, |m| {
@@ -773,7 +768,7 @@ impl Processor {
 
         for enum_literal in &ty.values {
             let mut enum_value = Elements::new();
-            let mut enum_stmt = java_stmt![&enum_literal.name];
+            let mut enum_stmt = stmt![&enum_literal.name];
 
             if !enum_literal.arguments.is_empty() {
                 let mut value_arguments = Statement::new();
@@ -782,7 +777,7 @@ impl Processor {
                     value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
                 }
 
-                enum_stmt.push(java_stmt!["(", value_arguments.join(", "), ")"]);
+                enum_stmt.push(stmt!["(", value_arguments.join(", "), ")"]);
             }
 
             enum_value.push(enum_stmt);
@@ -836,7 +831,7 @@ impl Processor {
     fn process_tuple(&self, package: &m::Package, ty: &m::TupleBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &ty.name);
 
-        let mut class = ClassSpec::new(java_mods![Modifier::Public], &ty.name);
+        let mut class = ClassSpec::new(mods![Modifier::Public], &ty.name);
         let mut fields = Vec::new();
 
         self.process_members(package, ty, |m| {
@@ -863,7 +858,7 @@ impl Processor {
     fn process_type(&self, package: &m::Package, body: &m::TypeBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &body.name);
 
-        let mut class = ClassSpec::new(java_mods![Modifier::Public], &body.name);
+        let mut class = ClassSpec::new(mods![Modifier::Public], &body.name);
         let mut fields = Vec::new();
 
         self.process_members(package, body, |m| {
@@ -894,7 +889,7 @@ impl Processor {
                          -> Result<FileSpec> {
         let parent_type = Type::class(&self.java_package_name(package), &interface.name);
 
-        let mut interface_spec = InterfaceSpec::new(java_mods![Modifier::Public], &interface.name);
+        let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
         let mut interface_fields: Vec<Field> = Vec::new();
 
         self.process_members(package, interface, |m| {
@@ -911,7 +906,7 @@ impl Processor {
         for (_, ref sub_type) in &interface.sub_types {
             let class_type = parent_type.extend(&sub_type.name);
 
-            let mods = java_mods![Modifier::Public, Modifier::Static];
+            let mods = mods![Modifier::Public, Modifier::Static];
             let mut class = ClassSpec::new(mods, &sub_type.name);
             let mut fields = interface_fields.clone();
 

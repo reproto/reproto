@@ -55,18 +55,18 @@ impl Module {
                         fields: &Vec<processor::Field>,
                         class_type: &ClassType)
                         -> Result<ClassSpec> {
-        let mut serializer = ClassSpec::new(java_mods![Modifier::Public, Modifier::Static],
+        let mut serializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
                                             "Serializer");
 
         serializer.extends(self.serializer.with_arguments(vec![&class_type]));
 
-        let value = ArgumentSpec::new(java_mods![Modifier::Final], &class_type, "value");
-        let jgen = ArgumentSpec::new(java_mods![Modifier::Final], &self.generator, "jgen");
-        let provider = ArgumentSpec::new(java_mods![Modifier::Final],
+        let value = ArgumentSpec::new(mods![Modifier::Final], &class_type, "value");
+        let jgen = ArgumentSpec::new(mods![Modifier::Final], &self.generator, "jgen");
+        let provider = ArgumentSpec::new(mods![Modifier::Final],
                                          &self.serializer_provider,
                                          "provider");
 
-        let mut serialize = MethodSpec::new(java_mods![Modifier::Public], "serialize");
+        let mut serialize = MethodSpec::new(mods![Modifier::Public], "serialize");
         serialize.throws(&self.io_exception);
         serialize.push_argument(&value);
         serialize.push_argument(&jgen);
@@ -74,34 +74,34 @@ impl Module {
         serialize.push_annotation(&self.override_);
 
         let mut body = Elements::new();
-        body.push(java_stmt![&jgen, ".writeStartArray();"]);
+        body.push(stmt![&jgen, ".writeStartArray();"]);
 
         for field in fields {
-            let field_stmt = java_stmt![&value, ".", &field.field_spec];
+            let field_stmt = stmt![&value, ".", &field.field_spec];
 
             let write = match field.ty {
                 Type::Primitive(ref primitive) => {
                     match *primitive {
                         SHORT | LONG | INTEGER | FLOAT | DOUBLE => {
-                            java_stmt!["writeNumber(", field_stmt, ")"]
+                            stmt!["writeNumber(", field_stmt, ")"]
                         }
                         _ => return Err("cannot serialize type".into()),
                     }
                 }
                 Type::Class(ref class) => {
                     if *class == self.string {
-                        java_stmt!["writeString(", field_stmt, ")"]
+                        stmt!["writeString(", field_stmt, ")"]
                     } else {
-                        java_stmt!["writeObject(", field_stmt, ")"]
+                        stmt!["writeObject(", field_stmt, ")"]
                     }
                 }
-                _ => java_stmt!["writeObject(", field_stmt, ")"],
+                _ => stmt!["writeObject(", field_stmt, ")"],
             };
 
-            body.push(java_stmt![&jgen, ".", write, ";"]);
+            body.push(stmt![&jgen, ".", write, ";"]);
         }
 
-        body.push(java_stmt![&jgen, ".writeEndArray();"]);
+        body.push(stmt![&jgen, ".writeEndArray();"]);
 
         serialize.push(body);
 
@@ -116,49 +116,43 @@ impl Module {
                                    -> Result<(Option<(Statement, &str)>, Statement)> {
         match *ty {
             Type::Primitive(ref primitive) => {
-                let test = java_stmt!["!", parser, ".nextToken().isNumeric()"];
+                let test = stmt!["!", parser, ".nextToken().isNumeric()"];
 
                 match *primitive {
                     SHORT => {
-                        Ok((Some((test, "VALUE_NUMBER_INT")),
-                            java_stmt![parser, ".getShortValue()"]))
+                        Ok((Some((test, "VALUE_NUMBER_INT")), stmt![parser, ".getShortValue()"]))
                     }
                     LONG => {
-                        Ok((Some((test, "VALUE_NUMBER_INT")),
-                            java_stmt![parser, ".getLongValue()"]))
+                        Ok((Some((test, "VALUE_NUMBER_INT")), stmt![parser, ".getLongValue()"]))
                     }
                     INTEGER => {
-                        Ok((Some((test, "VALUE_NUMBER_INT")),
-                            java_stmt![parser, ".getIntegerValue()"]))
+                        Ok((Some((test, "VALUE_NUMBER_INT")), stmt![parser, ".getIntegerValue()"]))
                     }
                     FLOAT => {
-                        Ok((Some((test, "VALUE_NUMBER_FLOAT")),
-                            java_stmt![parser, ".getFloatValue()"]))
+                        Ok((Some((test, "VALUE_NUMBER_FLOAT")), stmt![parser, ".getFloatValue()"]))
                     }
                     DOUBLE => {
-                        Ok((Some((test, "VALUE_NUMBER_FLOAT")),
-                            java_stmt![parser, ".getDoubleValue()"]))
+                        Ok((Some((test, "VALUE_NUMBER_FLOAT")), stmt![parser, ".getDoubleValue()"]))
                     }
                     _ => return Err("cannot deserialize type".into()),
                 }
             }
             Type::Class(ref class) => {
                 if *class == self.string {
-                    let test =
-                        java_stmt![&parser, ".nextToken() != ", &self.token, ".VALUE_STRING"];
+                    let test = stmt![&parser, ".nextToken() != ", &self.token, ".VALUE_STRING"];
                     let token = Some((test, "VALUE_STRING"));
-                    return Ok((token, java_stmt![parser, ".getText()"]));
+                    return Ok((token, stmt![parser, ".getText()"]));
                 }
 
                 if class.arguments.is_empty() {
-                    return Ok((None, java_stmt![parser, ".readValueAs(", class, ".class)"]));
+                    return Ok((None, stmt![parser, ".readValueAs(", class, ".class)"]));
                 }
 
                 // TODO: support generics
                 return Err("cannot deserialize type".into());
             }
             Type::Local(ref local) => {
-                return Ok((None, java_stmt![parser, ".readValueAs(", &local.name, ")"]));
+                return Ok((None, stmt![parser, ".readValueAs(", &local.name, ")"]));
             }
         }
     }
@@ -170,10 +164,10 @@ impl Module {
                              -> Statement {
         let mut arguments = Statement::new();
         arguments.push(parser);
-        arguments.push(java_stmt![&self.token, ".", token]);
+        arguments.push(stmt![&self.token, ".", token]);
         arguments.push("null");
 
-        java_stmt!["throw ", ctxt, ".wrongTokenException(", arguments.join(", "), ");"]
+        stmt!["throw ", ctxt, ".wrongTokenException(", arguments.join(", "), ");"]
     }
 
     /// Custom deserialize implementation for tuples.
@@ -181,27 +175,27 @@ impl Module {
                           fields: &Vec<processor::Field>,
                           class_type: &ClassType)
                           -> Result<ClassSpec> {
-        let mut deserializer = ClassSpec::new(java_mods![Modifier::Public, Modifier::Static],
+        let mut deserializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
                                               "deserializer");
 
         deserializer.extends(self.deserializer.with_arguments(vec![&class_type]));
 
-        let parser = ArgumentSpec::new(java_mods![Modifier::Final], &self.parser, "parser");
-        let ctxt = ArgumentSpec::new(java_mods![Modifier::Final],
+        let parser = ArgumentSpec::new(mods![Modifier::Final], &self.parser, "parser");
+        let ctxt = ArgumentSpec::new(mods![Modifier::Final],
                                      &self.deserialization_context,
                                      "ctxt");
 
-        let mut deserialize = MethodSpec::new(java_mods![Modifier::Public], "deserialize");
+        let mut deserialize = MethodSpec::new(mods![Modifier::Public], "deserialize");
         deserialize.throws(&self.io_exception);
         deserialize.push_argument(&parser);
         deserialize.push_argument(&ctxt);
         deserialize.push_annotation(&self.override_);
         deserialize.returns(&class_type);
 
-        let current_token = java_stmt![&parser, ".getCurrentToken()"];
+        let current_token = stmt![&parser, ".getCurrentToken()"];
 
         let mut start_array = Elements::new();
-        start_array.push(java_stmt!["if (", &current_token, " != ", &self.token, ".START_ARRAY) {"]);
+        start_array.push(stmt!["if (", &current_token, " != ", &self.token, ".START_ARRAY) {"]);
         start_array.push_nested(self.wrong_token_exception(&ctxt, &parser, "START_ARRAY"));
         start_array.push("}");
         deserialize.push(start_array);
@@ -213,15 +207,15 @@ impl Module {
 
             if let Some((test, expected)) = token {
                 let mut field_check = Elements::new();
-                field_check.push(java_stmt!["if (", &test, ") {"]);
+                field_check.push(stmt!["if (", &test, ") {"]);
                 field_check.push_nested(self.wrong_token_exception(&ctxt, &parser, expected));
                 field_check.push("}");
                 deserialize.push(field_check);
             }
 
-            let variable = java_stmt!["v_", &field.field_spec.name];
+            let variable = stmt!["v_", &field.field_spec.name];
 
-            deserialize.push(java_stmt!["final ",
+            deserialize.push(stmt!["final ",
                                         &field.field_spec.ty,
                                         " ",
                                         &variable,
@@ -232,15 +226,15 @@ impl Module {
             arguments.push(variable);
         }
 
-        let next_token = java_stmt![&parser, ".nextToken()"];
+        let next_token = stmt![&parser, ".nextToken()"];
 
         let mut end_array = Elements::new();
-        end_array.push(java_stmt!["if (", &next_token, " != ", &self.token, ".END_ARRAY) {"]);
+        end_array.push(stmt!["if (", &next_token, " != ", &self.token, ".END_ARRAY) {"]);
         end_array.push_nested(self.wrong_token_exception(&ctxt, &parser, "END_ARRAY"));
         end_array.push("}");
         deserialize.push(end_array);
 
-        deserialize.push(java_stmt!["return new ", &class_type, "(", arguments.join(", "), ");"]);
+        deserialize.push(stmt!["return new ", &class_type, "(", arguments.join(", "), ");"]);
 
         deserializer.push(deserialize);
         Ok(deserializer)
@@ -274,7 +268,7 @@ impl processor::Listeners for Module {
 
         for (argument, field) in zipped {
             let mut property = AnnotationSpec::new(&self.property);
-            property.push_argument(java_stmt![Variable::String(field.name.clone())]);
+            property.push_argument(stmt![Variable::String(field.name.clone())]);
             argument.push_annotation(&property);
         }
 
@@ -293,7 +287,7 @@ impl processor::Listeners for Module {
                                           &format!("{}.{}", class_type.name, serializer.name));
 
         let mut serialize_annotation: AnnotationSpec = self.serialize.clone().into();
-        serialize_annotation.push_argument(java_stmt!["using = ", serializer_type, ".class"]);
+        serialize_annotation.push_argument(stmt!["using = ", serializer_type, ".class"]);
 
         class.push_annotation(serialize_annotation);
         class.push(serializer);
@@ -304,7 +298,7 @@ impl processor::Listeners for Module {
                                             &format!("{}.{}", class_type.name, deserializer.name));
 
         let mut deserialize_annotation: AnnotationSpec = self.deserialize.clone().into();
-        deserialize_annotation.push_argument(java_stmt!["using = ", deserializer_type, ".class"]);
+        deserialize_annotation.push_argument(stmt!["using = ", deserializer_type, ".class"]);
 
         class.push_annotation(deserialize_annotation);
         class.push(deserializer);
@@ -339,9 +333,9 @@ impl processor::Listeners for Module {
         {
             let mut arguments = Statement::new();
 
-            arguments.push(java_stmt!["use=", &self.type_info, ".Id.NAME"]);
-            arguments.push(java_stmt!["include=", &self.type_info, ".As.PROPERTY"]);
-            arguments.push(java_stmt!["property=", Variable::String("type".to_owned())]);
+            arguments.push(stmt!["use=", &self.type_info, ".Id.NAME"]);
+            arguments.push(stmt!["include=", &self.type_info, ".As.PROPERTY"]);
+            arguments.push(stmt!["property=", Variable::String("type".to_owned())]);
 
             let mut type_info = AnnotationSpec::new(&self.type_info);
             type_info.push_argument(arguments.join(", "));
@@ -358,17 +352,17 @@ impl processor::Listeners for Module {
 
                     let mut type_args = Statement::new();
 
-                    type_args.push(java_stmt!["name=", Variable::String(name)]);
-                    type_args.push(java_stmt!["value=", &interface_spec.name, ".", key, ".class"]);
+                    type_args.push(stmt!["name=", Variable::String(name)]);
+                    type_args.push(stmt!["value=", &interface_spec.name, ".", key, ".class"]);
 
-                    let a = java_stmt!["@", &self.sub_types, ".Type(", type_args.join(", "), ")"];
+                    let a = stmt!["@", &self.sub_types, ".Type(", type_args.join(", "), ")"];
 
                     arguments.push(a);
                 }
             }
 
             let mut sub_types = AnnotationSpec::new(&self.sub_types);
-            sub_types.push_argument(java_stmt!["{", arguments.join(", "), "}"]);
+            sub_types.push_argument(stmt!["{", arguments.join(", "), "}"]);
 
             interface_spec.push_annotation(&sub_types);
         }
@@ -384,7 +378,7 @@ impl processor::Listeners for Module {
                       -> Result<()> {
         // if let Some(name) = sub_type.options.lookup_string_nth("name", 0) {
         // let mut type_name = AnnotationSpec::new(&self.type_name);
-        // type_name.push_argument(java_stmt![Variable::String(name.clone())]);
+        // type_name.push_argument(stmt![Variable::String(name.clone())]);
         // class.push_annotation(&type_name);
         // }
 

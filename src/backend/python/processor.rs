@@ -122,8 +122,8 @@ impl Processor {
         let mut raise_if_none = Elements::new();
         let required_error = Variable::String(format!("{}: is a required field", field.name));
 
-        raise_if_none.push(python_stmt!["if ", &stmt, " is None:"]);
-        raise_if_none.push_nested(python_stmt!["raise Exception(", required_error, ")"]);
+        raise_if_none.push(stmt!["if ", &stmt, " is None:"]);
+        raise_if_none.push_nested(stmt!["raise Exception(", required_error, ")"]);
 
         raise_if_none
     }
@@ -137,26 +137,26 @@ impl Processor {
         where E: FnOnce(&mut Elements) -> ()
     {
         let mut encode = MethodSpec::new("encode");
-        encode.push_argument(python_stmt!["self"]);
+        encode.push_argument(stmt!["self"]);
 
         let mut encode_body = Elements::new();
 
-        encode_body.push(python_stmt!["data = ", builder, "()"]);
+        encode_body.push(stmt!["data = ", builder, "()"]);
 
         extra(&mut encode_body);
 
         for field in fields {
             let var_string = Variable::String(field.ident.to_owned());
-            let field_stmt = python_stmt!["self.", &field.ident];
+            let field_stmt = stmt!["self.", &field.ident];
             let value_stmt = self.encode(package, &field.ty, &field_stmt)?;
 
             match field.modifier {
                 m::Modifier::Optional => {
                     let mut check_if_none = Elements::new();
 
-                    check_if_none.push(python_stmt!["if ", &field_stmt, " is not None:"]);
+                    check_if_none.push(stmt!["if ", &field_stmt, " is not None:"]);
 
-                    let stmt = python_stmt!["data[", var_string, "] = ", value_stmt];
+                    let stmt = stmt!["data[", var_string, "] = ", value_stmt];
 
                     check_if_none.push_nested(stmt);
 
@@ -165,14 +165,14 @@ impl Processor {
                 _ => {
                     encode_body.push(self.raise_if_none(&field_stmt, field));
 
-                    let stmt = python_stmt!["data[", var_string, "] = ", value_stmt];
+                    let stmt = stmt!["data[", var_string, "] = ", value_stmt];
 
                     encode_body.push(stmt);
                 }
             }
         }
 
-        encode_body.push(python_stmt!["return data"]);
+        encode_body.push(stmt!["return data"]);
 
         encode.push(encode_body.join(ElementSpec::Spacing));
         Ok(encode)
@@ -185,28 +185,28 @@ impl Processor {
         let mut values = Statement::new();
 
         let mut encode = MethodSpec::new("encode");
-        encode.push_argument(python_stmt!["self"]);
+        encode.push_argument(stmt!["self"]);
 
         let mut encode_body = Elements::new();
 
         for field in fields {
-            let stmt = python_stmt!["self.", &field.ident];
+            let stmt = stmt!["self.", &field.ident];
             encode_body.push(self.raise_if_none(&stmt, field));
             values.push(self.encode(package, &field.ty, stmt)?);
         }
 
-        encode_body.push(python_stmt!["return (", values.join(", "), ")"]);
+        encode_body.push(stmt!["return (", values.join(", "), ")"]);
         encode.push(encode_body.join(ElementSpec::Spacing));
         Ok(encode)
     }
 
     fn encode_enum_method(&self, field: &Field) -> Result<MethodSpec> {
         let mut encode = MethodSpec::new("encode");
-        encode.push_argument(python_stmt!["self"]);
+        encode.push_argument(stmt!["self"]);
 
         let mut encode_body = Elements::new();
 
-        encode_body.push(python_stmt!["return self.", &field.ident]);
+        encode_body.push(stmt!["return self.", &field.ident]);
         encode.push(encode_body.join(ElementSpec::Spacing));
         Ok(encode)
     }
@@ -214,8 +214,8 @@ impl Processor {
     fn decode_enum_method(&self, field: &Field) -> Result<MethodSpec> {
         let mut decode = MethodSpec::new("decode");
 
-        let cls = python_stmt!["cls"];
-        let data = python_stmt!["data"];
+        let cls = stmt!["cls"];
+        let data = stmt!["data"];
 
         decode.push_decorator(&self.classmethod);
         decode.push_argument(&cls);
@@ -223,19 +223,19 @@ impl Processor {
 
         let mut decode_body = Elements::new();
 
-        let value = python_stmt!["value"];
+        let value = stmt!["value"];
 
         let mut check = Elements::new();
-        check.push(python_stmt!["if ", &value, ".", &field.ident, " == ", data, ":"]);
-        check.push_nested(python_stmt!["return ", &value]);
+        check.push(stmt!["if ", &value, ".", &field.ident, " == ", data, ":"]);
+        check.push_nested(stmt!["return ", &value]);
 
         let mut member_loop = Elements::new();
 
-        member_loop.push(python_stmt!["for ", &value, " in ", &cls, ".__members__.values():"]);
+        member_loop.push(stmt!["for ", &value, " in ", &cls, ".__members__.values():"]);
         member_loop.push_nested(check);
 
         let mismatch = Variable::String("data does not match enum".to_owned());
-        let raise = python_stmt!["raise Exception(", mismatch, ")"];
+        let raise = stmt!["raise Exception(", mismatch, ")"];
 
         decode_body.push(member_loop);
         decode_body.push(raise);
@@ -248,22 +248,22 @@ impl Processor {
         let mut check = Elements::new();
 
         let mut none_check = Elements::new();
-        none_check.push(python_stmt![var_name, " = data[", index, "]"]);
+        none_check.push(stmt![var_name, " = data[", index, "]"]);
 
         let mut none_check_if = Elements::new();
 
-        let assign_var = python_stmt![var_name, " = ", stmt];
+        let assign_var = stmt![var_name, " = ", stmt];
 
-        none_check_if.push(python_stmt!["if ", var_name, " is not None:"]);
+        none_check_if.push(stmt!["if ", var_name, " is not None:"]);
         none_check_if.push_nested(assign_var);
 
         none_check.push(none_check_if);
 
-        check.push(python_stmt!["if ", index, " in data:"]);
+        check.push(stmt!["if ", index, " in data:"]);
         check.push_nested(none_check.join(ElementSpec::Spacing));
 
-        check.push(python_stmt!["else:"]);
-        check.push_nested(python_stmt![var_name, " = None"]);
+        check.push(stmt!["else:"]);
+        check.push_nested(stmt![var_name, " = None"]);
 
         check.into()
     }
@@ -278,7 +278,7 @@ impl Processor {
     {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
-        decode.push_argument(python_stmt!["data"]);
+        decode.push_argument(stmt!["data"]);
 
         let mut decode_body = Elements::new();
 
@@ -294,9 +294,9 @@ impl Processor {
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
                 _ => {
-                    let var_stmt = python_stmt!["data[", &var, "]"];
+                    let var_stmt = stmt!["data[", &var, "]"];
                     let var_stmt = self.decode(&field.pos, package, &field.ty, var_stmt)?;
-                    python_stmt![&var_name, " = ", &var_stmt].into()
+                    stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
 
@@ -305,7 +305,7 @@ impl Processor {
         }
 
         let arguments = arguments.join(", ");
-        decode_body.push(python_stmt!["return ", &class.name, "(", arguments, ")"]);
+        decode_body.push(stmt!["return ", &class.name, "(", arguments, ")"]);
 
         decode.push(decode_body.join(ElementSpec::Spacing));
 
@@ -369,12 +369,12 @@ impl Processor {
             m::Type::String => value_stmt,
             m::Type::Any => value_stmt,
             m::Type::Boolean => value_stmt,
-            m::Type::Custom(ref _custom) => python_stmt![value_stmt, ".encode()"],
-            m::Type::UsedType(ref _used, ref _custom) => python_stmt![value_stmt, ".encode()"],
+            m::Type::Custom(ref _custom) => stmt![value_stmt, ".encode()"],
+            m::Type::UsedType(ref _used, ref _custom) => stmt![value_stmt, ".encode()"],
             m::Type::Array(ref inner) => {
-                let v = python_stmt!["v"];
+                let v = stmt!["v"];
                 let inner = self.encode(package, inner, v)?;
-                python_stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
+                stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
             }
             _ => value_stmt,
         };
@@ -406,15 +406,15 @@ impl Processor {
             m::Type::Boolean => value_stmt,
             m::Type::Custom(ref custom) => {
                 let name = self.custom_name(package, custom);
-                python_stmt![name, ".decode(", value_stmt, ")"]
+                stmt![name, ".decode(", value_stmt, ")"]
             }
             m::Type::UsedType(ref used, ref custom) => {
                 let name = self.used_name(pos, package, used, custom)?;
-                python_stmt![name, ".decode(", value_stmt, ")"]
+                stmt![name, ".decode(", value_stmt, ")"]
             }
             m::Type::Array(ref inner) => {
-                let inner = self.decode(pos, package, inner, python_stmt!["v"])?;
-                python_stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
+                let inner = self.decode(pos, package, inner, stmt!["v"])?;
+                stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
             }
             _ => value_stmt,
         };
@@ -435,11 +435,11 @@ impl Processor {
 
     fn build_constructor(&self, fields: &Vec<m::Token<Field>>) -> MethodSpec {
         let mut constructor = MethodSpec::new("__init__");
-        constructor.push_argument(python_stmt!["self"]);
+        constructor.push_argument(stmt!["self"]);
 
         for field in fields {
-            constructor.push_argument(python_stmt![&field.ident]);
-            constructor.push(python_stmt!["self.", &field.ident, " = ", &field.ident]);
+            constructor.push_argument(stmt![&field.ident]);
+            constructor.push(stmt!["self.", &field.ident, " = ", &field.ident]);
         }
 
         constructor
@@ -538,12 +538,12 @@ impl Processor {
                     value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
                 }
 
-                python_stmt!["(", value_arguments.join(", "), ")"]
+                stmt!["(", value_arguments.join(", "), ")"]
             } else {
-                python_stmt![&self.enum_auto, "()"]
+                stmt![&self.enum_auto, "()"]
             };
 
-            values.push(python_stmt![&value.name, " = ", arguments]);
+            values.push(stmt![&value.name, " = ", arguments]);
         }
 
         class.push(values);
@@ -575,8 +575,8 @@ impl Processor {
             let name = self.to_lower_snake.convert(&field.ident);
             let getter_name = format!("get_{}", name);
             let mut method_spec = MethodSpec::new(&getter_name);
-            method_spec.push_argument(python_stmt!["self"]);
-            method_spec.push(python_stmt!["return self.", name]);
+            method_spec.push_argument(stmt!["self"]);
+            method_spec.push(stmt!["return self.", name]);
             result.push(method_spec);
         }
 
@@ -663,7 +663,7 @@ impl Processor {
                 .nth(0)
                 .unwrap_or_else(|| interface.name.clone());
 
-            class.push(python_stmt!["TYPE = ", Variable::String(name.clone())]);
+            class.push(stmt!["TYPE = ", Variable::String(name.clone())]);
 
             let mut fields = interface_fields.clone();
 
@@ -698,8 +698,7 @@ impl Processor {
 
             class.push(decode);
 
-            let type_stmt =
-                python_stmt!["data[", &self.type_var, "] = ", Variable::String(name.clone())];
+            let type_stmt = stmt!["data[", &self.type_var, "] = ", Variable::String(name.clone())];
 
             let encode = self.encode_method(package, &fields, &self.dict, move |elements| {
                     elements.push(type_stmt);
@@ -836,13 +835,13 @@ impl Processor {
     fn interface_decode_method(&self, interface: &m::InterfaceBody) -> Result<MethodSpec> {
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
-        decode.push_argument(python_stmt!["data"]);
+        decode.push_argument(stmt!["data"]);
 
         let mut decode_body = Elements::new();
 
         let type_field = Variable::Literal("f_type".to_owned());
 
-        decode_body.push(python_stmt![&type_field, " = data[", &self.type_var, "]"]);
+        decode_body.push(stmt![&type_field, " = data[", &self.type_var, "]"]);
 
         for (_, ref sub_type) in &interface.sub_types {
             for name in &sub_type.names {
@@ -850,22 +849,22 @@ impl Processor {
 
                 let mut check = Elements::new();
 
-                check.push(python_stmt!["if ",
-                                        &type_field,
-                                        " == ",
-                                        Variable::String(name.inner.to_owned()),
-                                        ":"]);
-                check.push_nested(python_stmt!["return ", type_name, ".decode(data)"]);
+                check.push(stmt!["if ",
+                                 &type_field,
+                                 " == ",
+                                 Variable::String(name.inner.to_owned()),
+                                 ":"]);
+                check.push_nested(stmt!["return ", type_name, ".decode(data)"]);
 
                 decode_body.push(check);
             }
         }
 
-        decode_body.push(python_stmt!["raise Exception(",
-                                      Variable::String("bad type".to_owned()),
-                                      " + ",
-                                      &type_field,
-                                      ")"]);
+        decode_body.push(stmt!["raise Exception(",
+                               Variable::String("bad type".to_owned()),
+                               " + ",
+                               &type_field,
+                               ")"]);
 
         decode.push(decode_body.join(ElementSpec::Spacing));
 
