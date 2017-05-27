@@ -1,6 +1,6 @@
-mod parser;
 pub mod ast;
 pub mod errors;
+pub mod parser;
 
 use pest::Parser;
 use pest::prelude::StringInput;
@@ -18,6 +18,7 @@ pub fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (us
     let reader = BufReader::new(&file);
 
     let start = pos.0;
+    let end = pos.1;
 
     let mut line_start = 0usize;
     let mut line_buffer: Vec<u8> = Vec::new();
@@ -30,7 +31,8 @@ pub fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (us
         if b == NL || b == CR {
             if i >= start {
                 let line = String::from_utf8(line_buffer)?;
-                let range = (start - line_start, i - line_start);
+                let end = if i > end { end } else { i };
+                let range = (start - line_start, end - line_start);
                 return Ok((line, lines, range));
             }
 
@@ -56,8 +58,9 @@ pub fn parse_file(path: &Path) -> Result<ast::File> {
 
     if !parser.file() {
         let pos = parser.tracked_len_pos();
+        println!("len = {:?}", pos);
         let (expected, _) = parser.expected();
-        let pos = (path.to_owned(), pos.0, pos.1);
+        let pos = (path.to_owned(), pos.1, pos.1);
         return Err(ErrorKind::Syntax(pos, expected).into());
     }
 

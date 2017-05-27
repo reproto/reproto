@@ -32,41 +32,6 @@ fn setup_logger(matches: &clap::ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn handle_backend_error(e: &backend::errors::Error) -> Result<()> {
-    match *e {
-        backend::errors::Error::Message(ref m) => {
-            println!("<unknown>: {}", m);
-        }
-        backend::errors::Error::Pos(ref m, ref p) => {
-            print_error(m, p)?;
-        }
-        backend::errors::Error::DeclMerge(ref m, ref source, ref target) => {
-            print_error(m, source)?;
-            print_error("previous declaration here", target)?;
-        }
-        backend::errors::Error::FieldConflict(ref name, ref source, ref target) => {
-            print_error(&format!("conflict in field `{}`", name), source)?;
-            print_error("previous declaration here", target)?;
-        }
-        backend::errors::Error::Error(ref e) => {
-            println!("<unknown>: {}", e);
-        }
-    }
-
-    Ok(())
-}
-
-fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
-    match *e {
-        parser::errors::ErrorKind::Syntax(ref p, ref expected) => {
-            print_error("syntax error", p)?;
-        }
-        _ => {}
-    }
-
-    Ok(())
-}
-
 fn print_error(m: &str, p: &m::Pos) -> Result<()> {
     let (line, lines, range) = parser::find_line(&p.0, (p.1, p.2))?;
 
@@ -79,6 +44,7 @@ fn print_error(m: &str, p: &m::Pos) -> Result<()> {
 
     let line_no = format!("{:>3}", lines + 1);
     let diff = range.1 - range.0;
+    let diff = if diff < 1 { 1 } else { diff };
 
     let mut line_indicator = String::new();
 
@@ -89,6 +55,53 @@ fn print_error(m: &str, p: &m::Pos) -> Result<()> {
 
     println!("{}: {}", line_no, line);
     println!("{} - here", line_indicator);
+
+    Ok(())
+}
+
+fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<()> {
+    match *e {
+        backend::errors::ErrorKind::Pos(ref m, ref p) => {
+            print_error(m, p)?;
+        }
+        backend::errors::ErrorKind::DeclMerge(ref m, ref source, ref target) => {
+            print_error(m, source)?;
+            print_error("previous declaration here", target)?;
+        }
+        backend::errors::ErrorKind::FieldConflict(ref name, ref source, ref target) => {
+            print_error(&format!("conflict in field `{}`", name), source)?;
+            print_error("previous declaration here", target)?;
+        }
+        backend::errors::ErrorKind::Parser(ref e) => {
+            handle_parser_error(e)?;
+        }
+        _ => {}
+    }
+
+    Ok(())
+}
+
+fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
+    match *e {
+        parser::errors::ErrorKind::Syntax(ref p, ref expected) => {
+            print_error("syntax error", p)?;
+
+            let expected_list: Vec<String> = expected.iter().map(|r| format!("{:?}", r)).collect();
+            let expected_list = expected_list.join(", ");
+
+            println!("Expected one of: {}", expected_list);
+
+            for e in expected {
+                match *e {
+                    parser::parser::Rule::type_ident => {
+                        println!("For example: `DateRange`");
+                    }
+                    _ => {}
+                }
+            }
+        }
+        _ => {}
+    }
 
     Ok(())
 }
