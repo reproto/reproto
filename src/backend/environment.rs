@@ -37,32 +37,7 @@ impl Environment {
                 entry.insert(decl);
             }
             Entry::Occupied(entry) => {
-                let target = entry.into_mut();
-                let target_pos = target.pos.clone();
-
-                match target.inner {
-                    Decl::Type(ref mut body) => {
-                        if let Decl::Type(other) = decl.inner {
-                            body.merge(other)?;
-                        } else {
-                            return Err(Error::decl_merge(format!("Cannot merge {}",
-                                                                 decl.display()),
-                                                         decl.pos,
-                                                         target_pos));
-                        }
-                    }
-                    Decl::Enum(ref mut body) => {
-                        if let Decl::Enum(other) = decl.inner {
-                            body.merge(other)?;
-                        } else {
-                            return Err(Error::decl_merge(format!("Cannot merge {}",
-                                                                 decl.display()),
-                                                         decl.pos,
-                                                         target_pos));
-                        }
-                    }
-                    _ => return Err("not yet supported".into()),
-                }
+                entry.into_mut().merge(decl)?;
             }
         };
 

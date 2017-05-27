@@ -46,7 +46,7 @@ fn handle_backend_error(e: &backend::errors::Error) -> Result<()> {
         }
         backend::errors::Error::FieldConflict(ref name, ref source, ref target) => {
             print_error(&format!("conflict in field `{}`", name), source)?;
-            print_error("previous field", target)?;
+            print_error("previous declaration here", target)?;
         }
         backend::errors::Error::Error(ref e) => {
             println!("<unknown>: {}", e);
