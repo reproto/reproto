@@ -30,7 +30,7 @@
   * ~~Generate _good_ builder.~~
   * ~~Generated equals/hashCode (disabled when using lombok).~~
   * ~~Generated toString (disabled when using lombok).~~
-  * Tuple decoding (in `fasterxml`).
+  * ~~Tuple decoding (in `fasterxml`).~~
 
 * Python Backend
   * ~~Encode support (e.g. `instance.encode()`)~~

@@ -1,7 +1,7 @@
 mod parser;
+pub mod ast;
 pub mod errors;
 
-use ast;
 use pest::Parser;
 use pest::prelude::StringInput;
 use self::errors::*;

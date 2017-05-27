@@ -13,6 +13,9 @@ tuple Tuple {
 type Foo {
   reserved "foo";
 
+  /**
+   * Captured doc?
+   */
   name: string;
   map: {string: unsigned/32};
 
@@ -22,10 +25,6 @@ type Foo {
     }
   }}
 }
-
-/**
- * Hello World.
- */
 
 interface Bar {
   reserved "a", "b", "c";

@@ -12,7 +12,6 @@ extern crate log;
 #[macro_use]
 extern crate codeviz;
 
-pub mod ast;
 pub mod backend;
 pub mod commands;
 pub mod errors;

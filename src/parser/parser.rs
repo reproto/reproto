@@ -1,9 +1,9 @@
-use ast;
 use backend::models as m;
 use num_bigint::BigInt;
 use pest::prelude::*;
 use std::collections::BTreeMap;
 use std::collections::LinkedList;
+use super::ast;
 use super::errors::*;
 
 /// Check if character is an indentation character.

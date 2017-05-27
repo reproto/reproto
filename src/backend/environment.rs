@@ -1,11 +1,11 @@
-use ast;
+use parser::ast;
 use parser;
-use super::models::*;
-use super::errors::*;
-use with_prefix::WithPrefix;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
+use super::errors::*;
+use super::into_model::IntoModel;
+use super::models::*;
 
 const EXT: &str = "reproto";
 
@@ -104,198 +104,6 @@ impl Environment {
         Ok(package)
     }
 
-    fn convert_type(&self, path: &Path, body: &ast::TypeBody) -> Result<TypeBody> {
-        let mut fields: Vec<Token<Field>> = Vec::new();
-        let mut codes = Vec::new();
-
-        for member in &body.members {
-            let pos = (path.to_owned(), member.pos.0, member.pos.1);
-
-            match **member {
-                ast::Member::Field(ref field) => {
-                    let field =
-                        Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
-
-                    if let Some(other) = fields.iter().find(|f| f.name == field.name) {
-                        return Err(Error::field_conflict(field.name.clone(),
-                                                         pos.clone(),
-                                                         other.pos.clone()));
-                    }
-
-                    fields.push(Token::new(field, pos));
-                }
-                ast::Member::Code(ref context, ref lines) => {
-                    let code = Code::new(context.clone(), lines.clone());
-                    codes.push(Token::new(code, pos));
-                }
-            }
-        }
-
-        Ok(TypeBody::new(body.name.clone(), fields, codes))
-    }
-
-    fn convert_interface(&self, path: &Path, body: &ast::InterfaceBody) -> Result<InterfaceBody> {
-        let mut fields = Vec::new();
-        let mut codes = Vec::new();
-        let mut sub_types = BTreeMap::new();
-
-        for member in &body.members {
-            let pos = (path.to_owned(), member.pos.0, member.pos.1);
-
-            match **member {
-                ast::Member::Field(ref field) => {
-                    let field =
-                        Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
-                    fields.push(Token::new(field, pos));
-                }
-                ast::Member::Code(ref context, ref lines) => {
-                    let code = Code::new(context.clone(), lines.clone());
-                    codes.push(Token::new(code, pos));
-                }
-            }
-        }
-
-        for (key, sub_type) in &body.sub_types {
-            let pos = (path.to_owned(), sub_type.pos.0, sub_type.pos.1);
-            let ty = self.convert_type(path, sub_type)?;
-            let names = self.find_all_strings(path, &sub_type.options, "name")?;
-            let sub_type = SubType::new(ty.name, ty.fields, ty.codes, names);
-
-            sub_types.insert(key.clone(), Token::new(sub_type, pos));
-        }
-
-        Ok(InterfaceBody::new(body.name.clone(), fields, codes, sub_types))
-    }
-
-    fn convert_enum(&self, path: &Path, body: &ast::EnumBody) -> Result<EnumBody> {
-        let mut values = Vec::new();
-        let mut fields = Vec::new();
-        let mut codes = Vec::new();
-
-        for value in &body.values {
-            let mut arguments = Vec::new();
-
-            for argument in &value.arguments {
-                arguments.push(argument.clone().with_prefix(path.to_owned()));
-            }
-
-            let pos = (path.to_owned(), value.pos.0, value.pos.1);
-            let value = EnumValue {
-                name: value.name.clone(),
-                arguments: arguments,
-            };
-
-            values.push(Token::new(value, pos));
-        }
-
-        for member in &body.members {
-            let pos = (path.to_owned(), member.pos.0, member.pos.1);
-
-            match **member {
-                ast::Member::Field(ref field) => {
-                    let field =
-                        Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
-                    fields.push(Token::new(field, pos));
-                }
-                ast::Member::Code(ref context, ref lines) => {
-                    let code = Code::new(context.clone(), lines.clone());
-                    codes.push(Token::new(code, pos));
-                }
-            }
-        }
-
-        let serialized_as: Option<Token<String>> =
-            self.find_one_identifier(path, &body.options, "serialized_as")?;
-
-        Ok(EnumBody::new(body.name.clone(), values, fields, codes, serialized_as))
-    }
-
-    fn find_one_identifier(&self,
-                           path: &Path,
-                           options: &ast::Options,
-                           name: &str)
-                           -> Result<Option<Token<String>>> {
-        let mut out: Option<Token<String>> = None;
-
-        for s in options.lookup(name) {
-            let pos = (path.to_owned(), s.pos.0, s.pos.1);
-
-            if let Some(_) = out {
-                return Err(Error::pos(format!("{}: only one value may be present", name), pos));
-            }
-
-            match **s {
-                ast::OptionValue::Identifier(ref string) => {
-                    out = Some(Token::new(string.clone(), pos));
-                }
-                _ => {
-                    return Err(Error::pos(format!("{}: expected identifier", name), pos));
-                }
-            }
-        }
-
-        Ok(out)
-    }
-
-    fn find_all_strings(&self,
-                        path: &Path,
-                        options: &ast::Options,
-                        name: &str)
-                        -> Result<Vec<Token<String>>> {
-        let mut out: Vec<Token<String>> = Vec::new();
-
-        for s in options.lookup(name) {
-            let pos = (path.to_owned(), s.pos.0, s.pos.1);
-
-            match **s {
-                ast::OptionValue::String(ref string) => {
-                    out.push(Token::new(string.clone(), pos));
-                }
-                _ => {
-                    return Err(Error::pos(format!("{}: expected identifier", name), pos));
-                }
-            }
-        }
-
-        Ok(out)
-    }
-
-    fn convert_tuple(&self, path: &Path, body: &ast::TupleBody) -> Result<TupleBody> {
-        let mut fields = Vec::new();
-        let mut codes = Vec::new();
-
-        for member in &body.members {
-            let pos = (path.to_owned(), member.pos.0, member.pos.1);
-
-            match **member {
-                ast::Member::Field(ref field) => {
-                    let field =
-                        Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
-                    fields.push(Token::new(field, pos));
-                }
-                ast::Member::Code(ref context, ref lines) => {
-                    let code = Code::new(context.clone(), lines.clone());
-                    codes.push(Token::new(code, pos));
-                }
-            }
-        }
-
-        Ok(TupleBody::new(body.name.clone(), fields, codes))
-    }
-
-    fn convert_decl(&self, path: &Path, decl: &ast::Token<ast::Decl>) -> Result<Token<Decl>> {
-        let pos = (path.to_owned(), decl.pos.0, decl.pos.1);
-
-        let decl = match decl.inner {
-            ast::Decl::Type(ref body) => Decl::Type(self.convert_type(path, body)?),
-            ast::Decl::Interface(ref body) => Decl::Interface(self.convert_interface(path, body)?),
-            ast::Decl::Enum(ref body) => Decl::Enum(self.convert_enum(path, body)?),
-            ast::Decl::Tuple(ref body) => Decl::Tuple(self.convert_tuple(path, body)?),
-        };
-
-        Ok(Token::new(decl, pos))
-    }
-
     pub fn import_file(&mut self, path: &Path, package: Option<&Package>) -> Result<()> {
         debug!("in: {}", path.display());
 
@@ -317,8 +125,8 @@ impl Environment {
             self.import(&use_decl.package)?;
         }
 
-        for decl in &file.decls {
-            let decl = self.convert_decl(path, decl)?;
+        for decl in file.decls {
+            let decl = decl.into_model(path)?;
             self.register_type(&file.package, decl)?;
         }
 

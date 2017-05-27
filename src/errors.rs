@@ -1,6 +1,6 @@
-use ast;
 use backend::errors as backend;
 use codeviz::errors as codeviz;
+use parser::ast;
 use parser::errors as parser;
 use std::path::PathBuf;
 
