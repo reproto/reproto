@@ -487,11 +487,7 @@ impl Processor {
                     return Ok(Variable::Literal(boolean.to_string()));
                 }
 
-                if let m::Value::Signed(ref integer) = *value {
-                    return Ok(Variable::Literal(integer.to_string()));
-                }
-
-                if let m::Value::Unsigned(ref integer) = *value {
+                if let m::Value::Integer(ref integer) = *value {
                     return Ok(Variable::Literal(integer.to_string()));
                 }
 

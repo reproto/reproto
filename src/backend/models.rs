@@ -1,3 +1,4 @@
+use num_bigint::BigInt;
 use std::collections::btree_map;
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
@@ -26,8 +27,7 @@ pub enum Type {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     String(String),
-    Signed(i64),
-    Unsigned(u64),
+    Integer(BigInt),
     Float(f64),
     Boolean(bool),
     Identifier(String),

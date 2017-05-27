@@ -9,7 +9,7 @@ enum TimeUnit {
   serialized_as number;
 
   name: string;
-  number: signed;
+  number: double;
 
   java {{
     public long toMilliseconds() {

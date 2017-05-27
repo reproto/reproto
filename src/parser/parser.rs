@@ -1,5 +1,6 @@
 use ast;
 use backend::models as m;
+use num_bigint::BigInt;
 use pest::prelude::*;
 use std::collections::BTreeMap;
 use std::collections::LinkedList;
@@ -173,7 +174,7 @@ impl_rdp! {
 
         type_bits = { (["/"] ~ unsigned) }
 
-        value = { string | float | signed | unsigned | boolean }
+        value = { string | float | signed | boolean }
 
         ident =  @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
 
@@ -377,17 +378,13 @@ impl_rdp! {
                 Ok(m::Value::String(value))
             },
 
-            (value: _signed()) => {
-                Ok(m::Value::Signed(value?))
-            },
-
-            (value: _unsigned()) => {
-                Ok(m::Value::Unsigned(value?))
-            },
-
             (&value: float) => {
                 let value = value.parse::<f64>()?;
                 Ok(m::Value::Float(value))
+            },
+
+            (&value: signed) => {
+                Ok(m::Value::Integer(value.parse::<BigInt>()?))
             },
 
             (&value: boolean) => {
@@ -398,24 +395,6 @@ impl_rdp! {
                 };
 
                 Ok(m::Value::Boolean(value))
-            },
-        }
-
-        _signed(&self) -> Result<i64> {
-            (&value: signed) => {
-                Ok(value.parse::<i64>()?)
-            },
-        }
-
-        _unsigned(&self) -> Result<u64> {
-            (&value: unsigned) => {
-                Ok(value.parse::<u64>()?)
-            },
-        }
-
-        _usize(&self) -> Result<usize> {
-            (&value: unsigned) => {
-                Ok(value.parse::<usize>()?)
             },
         }
 
@@ -536,12 +515,14 @@ impl_rdp! {
                 Ok(m::Type::Float)
             },
 
-            (_: signed_type, _: type_bits, size: _usize()) => {
-                Ok(m::Type::Signed(Some(size?)))
+            (_: signed_type, _: type_bits, &size: unsigned) => {
+                let size = size.parse::<usize>()?;
+                Ok(m::Type::Signed(Some(size)))
             },
 
-            (_: unsigned_type, _: type_bits, size: _usize()) => {
-                Ok(m::Type::Unsigned(Some(size?)))
+            (_: unsigned_type, _: type_bits, &size: unsigned) => {
+                let size = size.parse::<usize>()?;
+                Ok(m::Type::Unsigned(Some(size)))
             },
 
             (_: signed_type) => {

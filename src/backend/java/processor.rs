@@ -651,6 +651,8 @@ impl Processor {
         match *ty {
             INTEGER => Ok(string),
             LONG => Ok(format!("{}L", string)),
+            FLOAT => Ok(format!("{}F", string)),
+            DOUBLE => Ok(format!("{}D", string)),
             _ => {
                 Err(Error::pos(format!("cannot convert integer to {}", ty.primitive),
                                pos.clone()))
@@ -671,12 +673,7 @@ impl Processor {
 
     fn literal_value(&self, pos: &m::Pos, value: &m::Value, ty: &Type) -> Result<Variable> {
         if let Type::Primitive(ref primitive) = *ty {
-            if let m::Value::Signed(ref integer) = *value {
-                let lit = self.to_integer_literal(pos, integer.to_string(), primitive)?;
-                return Ok(lit.into());
-            }
-
-            if let m::Value::Unsigned(ref integer) = *value {
+            if let m::Value::Integer(ref integer) = *value {
                 let lit = self.to_integer_literal(pos, integer.to_string(), primitive)?;
                 return Ok(lit.into());
             }
@@ -1068,8 +1065,7 @@ impl ::std::fmt::Display for m::Value {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         let out = match *self {
             m::Value::String(_) => "<string>",
-            m::Value::Signed(_) => "<signed>",
-            m::Value::Unsigned(_) => "<unsigned>",
+            m::Value::Integer(_) => "<integer>",
             m::Value::Float(_) => "<float>",
             m::Value::Boolean(_) => "<boolean>",
             m::Value::Identifier(_) => "<identifier>",
