@@ -120,13 +120,20 @@ impl_rdp! {
         use_decl = { ["use"] ~ package_ident ~ use_as? ~ [";"] }
         use_as = { ["as"] ~ ident }
         package_decl = { ["package"] ~ package_ident ~ [";"] }
-        type_decl = { ["type"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
-        tuple_decl = { ["tuple"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
-        interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ sub_type* ~ ["}"] }
-        enum_decl = {
-            ["enum"] ~ ident ~ ["{"] ~ (enum_value ~ [","])* ~ enum_value ~ [";"] ~ option_decl* ~ member* ~ ["}"]
-        }
-        sub_type = { ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
+
+        type_decl = { ["type"] ~ type_ident ~ ["{"] ~ type_body ~ ["}"] }
+        type_body = _{ option_decl* ~ member* }
+
+        tuple_decl = { ["tuple"] ~ type_ident ~ ["{"] ~ tuple_body ~ ["}"] }
+        tuple_body = _{ option_decl* ~ member* }
+
+        interface_decl = { ["interface"] ~ type_ident ~ ["{"] ~ interface_body ~ ["}"] }
+        interface_body = _{ option_decl* ~ member* ~ sub_type* }
+
+        enum_decl = { ["enum"] ~ type_ident ~ ["{"] ~ enum_body ~ ["}"] }
+        enum_body = _{ (enum_value ~ [","])* ~ enum_value ~ [";"] ~ option_decl* ~ member* }
+
+        sub_type = { type_ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
 
         member = { field | code_block }
 
@@ -168,14 +175,15 @@ impl_rdp! {
         any_type = @{ ["any"] }
         map_type = { ["{"] ~ type_spec ~ [":"] ~ type_spec ~ ["}"] }
         array_type = { ["["] ~ type_spec ~ ["]"] }
-        used_type = @{ ident ~ ["."] ~ ident }
-        custom_type = { ident }
+        used_type = @{ ident ~ ["."] ~ type_ident }
+        custom_type = { type_ident }
 
         type_bits = { (["/"] ~ unsigned) }
 
         value = { string | float | signed | boolean }
 
-        ident =  @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
+        type_ident = @{ (['A'..'Z'] ~ ['a'..'z']*)+ }
+        ident = @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
         escape  =  _{ ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
@@ -263,7 +271,7 @@ impl_rdp! {
         _decl(&self) -> Result<ast::Decl> {
             (
                 _: type_decl,
-                &name: ident,
+                &name: type_ident,
                 options: _option_list(),
                 members: _member_list()
             ) => {
@@ -281,7 +289,7 @@ impl_rdp! {
 
             (
                 _: tuple_decl,
-                &name: ident,
+                &name: type_ident,
                 options: _option_list(),
                 members: _member_list()
             ) => {
@@ -299,7 +307,7 @@ impl_rdp! {
 
             (
                 _: interface_decl,
-                &name: ident,
+                &name: type_ident,
                 options: _option_list(),
                 members: _member_list(),
                 sub_types: _sub_type_list()
@@ -320,7 +328,7 @@ impl_rdp! {
 
             (
                 _: enum_decl,
-                &name: ident,
+                &name: type_ident,
                 values: _enum_value_list(),
                 options: _option_list(),
                 members: _member_list(),
@@ -486,7 +494,7 @@ impl_rdp! {
         }
 
         _sub_type(&self) -> Result<ast::SubType> {
-            (&name: ident, options: _option_list(), members: _member_list()) => {
+            (&name: type_ident, options: _option_list(), members: _member_list()) => {
                 let name = name.to_owned();
                 let options = ast::Options::new(options?.into_iter().collect());
                 let members = members?.into_iter().collect();
@@ -543,11 +551,11 @@ impl_rdp! {
                 Ok(m::Type::Any)
             },
 
-            (_: custom_type, &name: ident) => {
+            (_: custom_type, &name: type_ident) => {
                 Ok(m::Type::Custom(name.to_owned()))
             },
 
-            (_: used_type, &used: ident, &value: ident) => {
+            (_: used_type, &used: ident, &value: type_ident) => {
                 Ok(m::Type::UsedType(used.to_owned(), value.to_owned()))
             },
 

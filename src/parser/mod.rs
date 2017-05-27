@@ -55,9 +55,10 @@ pub fn parse_file(path: &Path) -> Result<ast::File> {
     let mut parser = parser::Rdp::new(StringInput::new(&content));
 
     if !parser.file() {
-        let (_, pos) = parser.tracked_len_pos();
-        let (line, lines, _) = find_line(path, (pos, pos))?;
-        return Err(ErrorKind::Syntax("unexpected input".to_owned(), line, lines).into());
+        let pos = parser.tracked_len_pos();
+        let (expected, _) = parser.expected();
+        let pos = (path.to_owned(), pos.0, pos.1);
+        return Err(ErrorKind::Syntax(pos, expected).into());
     }
 
     if !parser.end() {

@@ -56,6 +56,17 @@ fn handle_backend_error(e: &backend::errors::Error) -> Result<()> {
     Ok(())
 }
 
+fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
+    match *e {
+        parser::errors::ErrorKind::Syntax(ref p, ref expected) => {
+            print_error("syntax error", p)?;
+        }
+        _ => {}
+    }
+
+    Ok(())
+}
+
 fn print_error(m: &str, p: &m::Pos) -> Result<()> {
     let (line, lines, range) = parser::find_line(&p.0, (p.1, p.2))?;
 
@@ -118,6 +129,9 @@ fn compiler_entry() -> Result<()> {
                 }
                 ErrorKind::BackendError(ref e) => {
                     handle_backend_error(e)?;
+                }
+                ErrorKind::Parser(ref e) => {
+                    handle_parser_error(e)?;
                 }
                 _ => {}
             }

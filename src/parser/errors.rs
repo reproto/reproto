@@ -1,3 +1,6 @@
+use backend::models as m;
+use super::parser;
+
 error_chain! {
     foreign_links {
         Io(::std::io::Error);
@@ -11,9 +14,8 @@ error_chain! {
         InvalidEscape {
         }
 
-        Syntax(message: String, line_string: String, line: usize) {
-            description("Syntax error")
-            display("Syntax error line {}: {}: {}", line, message, line_string)
+        Syntax(pos: m::Pos, expected: Vec<parser::Rule>) {
+            description("syntax error")
         }
     }
 }

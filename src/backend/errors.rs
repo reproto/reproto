@@ -2,21 +2,6 @@ use super::models::Pos;
 use parser::errors as parser_errors;
 
 #[derive(Debug)]
-pub struct EnvironmentError {
-    pub message: String,
-    pub pos: Pos,
-}
-
-impl EnvironmentError {
-    pub fn new(message: String, pos: Pos) -> EnvironmentError {
-        EnvironmentError {
-            message: message,
-            pos: pos,
-        }
-    }
-}
-
-#[derive(Debug)]
 pub enum Error {
     Message(String),
     Pos(String, Pos),
