@@ -21,6 +21,7 @@ pub struct Module {
     deserialization_context: ClassType,
     token: ClassType,
     string: ClassType,
+    io_exception: ClassType,
 }
 
 impl Module {
@@ -32,18 +33,20 @@ impl Module {
             property: Type::class("com.fasterxml.jackson.annotation", "JsonProperty"),
             sub_types: Type::class("com.fasterxml.jackson.annotation", "JsonSubTypes"),
             type_info: Type::class("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
-            serialize: Type::class("com.fasterxml.jackson.annotation", "JsonSerialize"),
-            deserialize: Type::class("com.fasterxml.jackson.annotation", "JsonDeserialize"),
+            serialize: Type::class("com.fasterxml.jackson.databind.annotation", "JsonSerialize"),
+            deserialize: Type::class("com.fasterxml.jackson.databind.annotation",
+                                     "JsonDeserialize"),
             serializer: Type::class("com.fasterxml.jackson.databind", "JsonSerializer"),
             deserializer: Type::class("com.fasterxml.jackson.databind", "JsonDeserializer"),
             generator: Type::class("com.fasterxml.jackson.core", "JsonGenerator"),
             serializer_provider: Type::class("com.fasterxml.jackson.databind",
-                                             "JsonSerializerProvider"),
+                                             "SerializerProvider"),
             parser: Type::class("com.fasterxml.jackson.core", "JsonParser"),
             deserialization_context: Type::class("com.fasterxml.jackson.databind",
                                                  "DeserializationContext"),
             token: Type::class("com.fasterxml.jackson.core", "JsonToken"),
             string: Type::class("java.lang", "String"),
+            io_exception: Type::class("java.io", "IOException"),
         }
     }
 
@@ -64,6 +67,7 @@ impl Module {
                                          "provider");
 
         let mut serialize = MethodSpec::new(java_mods![Modifier::Public], "serialize");
+        serialize.throws(&self.io_exception);
         serialize.push_argument(&value);
         serialize.push_argument(&jgen);
         serialize.push_argument(&provider);
@@ -73,7 +77,7 @@ impl Module {
         body.push(java_stmt![&jgen, ".writeStartArray();"]);
 
         for field in fields {
-            let field_stmt = java_stmt!["this.", &field.field_spec];
+            let field_stmt = java_stmt![&value, ".", &field.field_spec];
 
             let write = match field.ty {
                 Type::Primitive(ref primitive) => {
@@ -109,21 +113,41 @@ impl Module {
     fn deserialize_method_for_type(&self,
                                    ty: &Type,
                                    parser: &ArgumentSpec)
-                                   -> Result<(Option<&str>, Statement)> {
+                                   -> Result<(Option<(Statement, &str)>, Statement)> {
         match *ty {
             Type::Primitive(ref primitive) => {
+                let test = java_stmt!["!", parser, ".nextToken().isNumeric()"];
+
                 match *primitive {
-                    SHORT => Ok((Some("NUMBER"), java_stmt![parser, ".getShortValue()"])),
-                    LONG => Ok((Some("NUMBER"), java_stmt![parser, ".getLongValue()"])),
-                    INTEGER => Ok((Some("NUMBER"), java_stmt![parser, ".getIntegerValue()"])),
-                    FLOAT => Ok((Some("NUMBER"), java_stmt![parser, ".getFloatValue()"])),
-                    DOUBLE => Ok((Some("NUMBER"), java_stmt![parser, ".getDoubleValue()"])),
+                    SHORT => {
+                        Ok((Some((test, "VALUE_NUMBER_INT")),
+                            java_stmt![parser, ".getShortValue()"]))
+                    }
+                    LONG => {
+                        Ok((Some((test, "VALUE_NUMBER_INT")),
+                            java_stmt![parser, ".getLongValue()"]))
+                    }
+                    INTEGER => {
+                        Ok((Some((test, "VALUE_NUMBER_INT")),
+                            java_stmt![parser, ".getIntegerValue()"]))
+                    }
+                    FLOAT => {
+                        Ok((Some((test, "VALUE_NUMBER_FLOAT")),
+                            java_stmt![parser, ".getFloatValue()"]))
+                    }
+                    DOUBLE => {
+                        Ok((Some((test, "VALUE_NUMBER_FLOAT")),
+                            java_stmt![parser, ".getDoubleValue()"]))
+                    }
                     _ => return Err("cannot deserialize type".into()),
                 }
             }
             Type::Class(ref class) => {
                 if *class == self.string {
-                    return Ok((Some("STRING"), java_stmt![parser, ".getText()"]));
+                    let test =
+                        java_stmt![&parser, ".nextToken() != ", &self.token, ".VALUE_STRING"];
+                    let token = Some((test, "VALUE_STRING"));
+                    return Ok((token, java_stmt![parser, ".getText()"]));
                 }
 
                 if class.arguments.is_empty() {
@@ -144,15 +168,12 @@ impl Module {
                              parser: &ArgumentSpec,
                              token: &str)
                              -> Statement {
-        java_stmt!["throw ",
-                   ctxt,
-                   ".wrongTokenException(",
-                   parser,
-                   ", ",
-                   &self.token,
-                   ",",
-                   token,
-                   ", null);"]
+        let mut arguments = Statement::new();
+        arguments.push(parser);
+        arguments.push(java_stmt![&self.token, ".", token]);
+        arguments.push("null");
+
+        java_stmt!["throw ", ctxt, ".wrongTokenException(", arguments.join(", "), ");"]
     }
 
     /// Custom deserialize implementation for tuples.
@@ -171,15 +192,16 @@ impl Module {
                                      "ctxt");
 
         let mut deserialize = MethodSpec::new(java_mods![Modifier::Public], "deserialize");
+        deserialize.throws(&self.io_exception);
         deserialize.push_argument(&parser);
         deserialize.push_argument(&ctxt);
         deserialize.push_annotation(&self.override_);
         deserialize.returns(&class_type);
 
-        let next_token = java_stmt![&parser, ".nextToken()"];
+        let current_token = java_stmt![&parser, ".getCurrentToken()"];
 
         let mut start_array = Elements::new();
-        start_array.push(java_stmt!["if (", &next_token, " != ", &self.token, ".START_ARRAY) {"]);
+        start_array.push(java_stmt!["if (", &current_token, " != ", &self.token, ".START_ARRAY) {"]);
         start_array.push_nested(self.wrong_token_exception(&ctxt, &parser, "START_ARRAY"));
         start_array.push("}");
         deserialize.push(start_array);
@@ -189,19 +211,28 @@ impl Module {
         for field in fields {
             let (token, reader) = self.deserialize_method_for_type(&field.ty, &parser)?;
 
-            if let Some(token) = token {
+            if let Some((test, expected)) = token {
                 let mut field_check = Elements::new();
-                field_check.push(java_stmt!["if (", &next_token, " != ", &self.token, ".", token, ") {"]);
-                field_check.push_nested(self.wrong_token_exception(&ctxt, &parser, token));
+                field_check.push(java_stmt!["if (", &test, ") {"]);
+                field_check.push_nested(self.wrong_token_exception(&ctxt, &parser, expected));
                 field_check.push("}");
                 deserialize.push(field_check);
             }
 
             let variable = java_stmt!["v_", &field.field_spec.name];
 
-            deserialize.push(java_stmt!["final ", &variable, " = ", reader, ";"]);
+            deserialize.push(java_stmt!["final ",
+                                        &field.field_spec.ty,
+                                        " ",
+                                        &variable,
+                                        " = ",
+                                        reader,
+                                        ";"]);
+
             arguments.push(variable);
         }
+
+        let next_token = java_stmt![&parser, ".nextToken()"];
 
         let mut end_array = Elements::new();
         end_array.push(java_stmt!["if (", &next_token, " != ", &self.token, ".END_ARRAY) {"]);

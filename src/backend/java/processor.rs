@@ -551,7 +551,7 @@ impl Processor {
                 }
             };
 
-            let field_key = Variable::String(format!("{} = ", &field.name));
+            let field_key = Variable::String(format!("{}=", &field.name));
 
             field_append.push(java_stmt![&b, ".append(", field_key, ");"]);
             field_append.push(java_stmt![&b, ".append(", format, ");"]);
