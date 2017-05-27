@@ -83,48 +83,34 @@ impl Merge for Vec<Token<Field>> {
 
 impl Merge for Token<Decl> {
     fn merge(&mut self, source: Token<Decl>) -> Result<()> {
-        let target_pos = self.pos.clone();
+        let dest_pos = self.pos.clone();
 
         match self.inner {
             Decl::Type(ref mut body) => {
                 if let Decl::Type(other) = source.inner {
-                    body.merge(other)?;
-                } else {
-                    return Err(Error::decl_merge(format!("Cannot merge {}", source.display()),
-                                                 source.pos,
-                                                 target_pos));
+                    return body.merge(other);
                 }
             }
             Decl::Enum(ref mut body) => {
                 if let Decl::Enum(other) = source.inner {
-                    body.merge(other)?;
-                } else {
-                    return Err(Error::decl_merge(format!("Cannot merge {}", source.display()),
-                                                 source.pos,
-                                                 target_pos));
+                    return body.merge(other);
                 }
             }
             Decl::Interface(ref mut body) => {
                 if let Decl::Interface(other) = source.inner {
-                    body.merge(other)?;
-                } else {
-                    return Err(Error::decl_merge(format!("Cannot merge {}", source.display()),
-                                                 source.pos,
-                                                 target_pos));
+                    return body.merge(other);
                 }
             }
             Decl::Tuple(ref mut body) => {
                 if let Decl::Tuple(other) = source.inner {
-                    body.merge(other)?;
-                } else {
-                    return Err(Error::decl_merge(format!("Cannot merge {}", source.display()),
-                                                 source.pos,
-                                                 target_pos));
+                    return body.merge(other);
                 }
             }
         }
 
-        Ok(())
+        return Err(Error::decl_merge(format!("cannot merge with {}", source.display()),
+                                     source.pos,
+                                     dest_pos));
     }
 }
 

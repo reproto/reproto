@@ -11,13 +11,13 @@ use std::io::Read;
 use std::path::Path;
 
 static NL: u8 = '\n' as u8;
+static CR: u8 = '\r' as u8;
 
 pub fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (usize, usize))> {
     let file = File::open(path)?;
     let reader = BufReader::new(&file);
 
     let start = pos.0;
-    let end = pos.1;
 
     let mut line_start = 0usize;
     let mut line_buffer: Vec<u8> = Vec::new();
@@ -27,10 +27,10 @@ pub fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (us
     while let Some((i, b)) = it.next() {
         let b = b?;
 
-        if b == NL {
+        if b == NL || b == CR {
             if i >= start {
                 let line = String::from_utf8(line_buffer)?;
-                let range = (start - line_start, end - line_start);
+                let range = (start - line_start, i - line_start);
                 return Ok((line, lines, range));
             }
 

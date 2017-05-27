@@ -40,9 +40,9 @@ fn handle_backend_error(e: &backend::errors::Error) -> Result<()> {
         backend::errors::Error::Pos(ref m, ref p) => {
             print_error(m, p)?;
         }
-        backend::errors::Error::DeclMerge(ref m, ref a, ref b) => {
-            print_error(m, a)?;
-            print_error("previous declaration", b)?;
+        backend::errors::Error::DeclMerge(ref m, ref source, ref target) => {
+            print_error(m, source)?;
+            print_error("previous declaration here", target)?;
         }
         backend::errors::Error::FieldConflict(ref name, ref source, ref target) => {
             print_error(&format!("conflict in field `{}`", name), source)?;
