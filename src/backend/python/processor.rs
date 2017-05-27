@@ -314,11 +314,12 @@ impl Processor {
 
     fn is_native(&self, ty: &m::Type) -> bool {
         match *ty {
-            m::Type::I32 | m::Type::U32 => true,
-            m::Type::I64 | m::Type::U64 => true,
+            m::Type::Signed(_) |
+            m::Type::Unsigned(_) => true,
             m::Type::Float | m::Type::Double => true,
             m::Type::String => true,
             m::Type::Any => true,
+            m::Type::Boolean => true,
             m::Type::Array(ref inner) => self.is_native(inner),
             _ => false,
         }
@@ -362,11 +363,12 @@ impl Processor {
         }
 
         let value_stmt = match *ty {
-            m::Type::I32 | m::Type::U32 => value_stmt,
-            m::Type::I64 | m::Type::U64 => value_stmt,
+            m::Type::Signed(_) |
+            m::Type::Unsigned(_) => value_stmt,
             m::Type::Float | m::Type::Double => value_stmt,
             m::Type::String => value_stmt,
             m::Type::Any => value_stmt,
+            m::Type::Boolean => value_stmt,
             m::Type::Custom(ref _custom) => python_stmt![value_stmt, ".encode()"],
             m::Type::UsedType(ref _used, ref _custom) => python_stmt![value_stmt, ".encode()"],
             m::Type::Array(ref inner) => {
@@ -396,11 +398,12 @@ impl Processor {
         }
 
         let value_stmt = match *ty {
-            m::Type::I32 | m::Type::U32 => value_stmt,
-            m::Type::I64 | m::Type::U64 => value_stmt,
+            m::Type::Signed(_) |
+            m::Type::Unsigned(_) => value_stmt,
             m::Type::Float | m::Type::Double => value_stmt,
             m::Type::String => value_stmt,
             m::Type::Any => value_stmt,
+            m::Type::Boolean => value_stmt,
             m::Type::Custom(ref custom) => {
                 let name = self.custom_name(package, custom);
                 python_stmt![name, ".decode(", value_stmt, ")"]
@@ -475,8 +478,15 @@ impl Processor {
 
     fn literal_value(&self, pos: &m::Pos, value: &m::Value, ty: &m::Type) -> Result<Variable> {
         match *ty {
-            m::Type::Double | m::Type::Float | m::Type::U32 | m::Type::U64 | m::Type::I32 |
-            m::Type::I64 => {
+            m::Type::Double |
+            m::Type::Float |
+            m::Type::Signed(_) |
+            m::Type::Boolean => {
+                if let m::Value::Boolean(ref boolean) = *value {
+                    return Ok(Variable::Literal(boolean.to_string()));
+                }
+            }
+            m::Type::Unsigned(_) => {
                 if let m::Value::Integer(ref integer) = *value {
                     return Ok(Variable::Literal(integer.to_string()));
                 }
@@ -877,12 +887,14 @@ impl Backend for Processor {
 impl ::std::fmt::Display for m::Type {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match *self {
-            m::Type::I32 | m::Type::U32 | m::Type::I64 | m::Type::U64 => write!(f, "int"),
+            m::Type::Signed(_) |
+            m::Type::Unsigned(_) => write!(f, "int"),
             m::Type::Float | m::Type::Double => write!(f, "float"),
             m::Type::String => write!(f, "str"),
             m::Type::Custom(ref custom) => write!(f, "{}", custom),
             m::Type::UsedType(ref used, ref custom) => write!(f, "{}.{}", used, custom),
             m::Type::Array(_) => write!(f, "array"),
+            m::Type::Boolean => write!(f, "bool"),
             _ => write!(f, "<unknown>"),
         }
     }

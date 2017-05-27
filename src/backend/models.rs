@@ -11,11 +11,9 @@ pub type Token<T> = token::Token<T, Pos>;
 pub enum Type {
     Double,
     Float,
-    I32,
-    I64,
-    U32,
-    U64,
-    Bool,
+    Signed(Option<usize>),
+    Unsigned(Option<usize>),
+    Boolean,
     String,
     Bytes,
     Any,
@@ -30,6 +28,7 @@ pub enum Value {
     String(String),
     Integer(i64),
     Float(f64),
+    Boolean(bool),
     Identifier(String),
     Type(Type),
 }

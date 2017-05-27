@@ -137,11 +137,35 @@ impl_rdp! {
         // body of a code block, either another balanced block, or anything but brackets
         modifier = { ["?"] }
 
-        type_spec = { map | array | used_type | type_literal }
-        type_literal = { ident }
+        type_spec = {
+            float_type |
+            double_type |
+            signed_type |
+            unsigned_type |
+            boolean_type |
+            string_type |
+            bytes_type |
+            any_type |
+            map_type |
+            array_type |
+            used_type |
+            custom_type
+        }
+
+        float_type = { ["float"] }
+        double_type = { ["double"] }
+        signed_type = { ["signed"] ~ (["("] ~ integer ~ [")"])? }
+        unsigned_type = { ["unsigned"] ~ (["("] ~ integer ~ [")"])? }
+        boolean_type = { ["boolean"] }
+        string_type = { ["string"] }
+        bytes_type = { ["bytes"] }
+        any_type = { ["any"] }
+        custom_type = { ident }
+
         used_type = { ident ~ ["."] ~ ident }
-        map = { ["{"] ~ type_spec ~ [":"] ~ type_spec ~ ["}"] }
-        array = { ["["] ~ array_argument ~ ["]"] }
+
+        map_type = { ["{"] ~ type_spec ~ [":"] ~ type_spec ~ ["}"] }
+        array_type = { ["["] ~ array_argument ~ ["]"] }
         array_argument = { type_spec }
 
         enum_value = { ident ~ (["("] ~ (value ~ ([","] ~ value)*) ~ [")"])? }
@@ -152,7 +176,7 @@ impl_rdp! {
         package_ident = @{ ident ~ (["."] ~ ident)* }
         ident =  @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
 
-        value = { string | float | integer | ident | type_spec }
+        value = { string | float | integer | boolean | ident | type_spec }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
         escape  =  _{ ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
@@ -162,6 +186,8 @@ impl_rdp! {
         integer = @{ ["-"]? ~ int }
         float  = @{ ["-"]? ~ int? ~ (["."] ~ ['0'..'9']+) }
         int    =  _{ ["0"] | ['1'..'9'] ~ ['0'..'9']* }
+
+        boolean = { ["true"] | ["false"] }
 
         whitespace = _{ [" "] | ["\t"] | ["\r"] | ["\n"] }
 
@@ -341,8 +367,7 @@ impl_rdp! {
                 m::Value::String(value)
             },
 
-            (&value: integer) => {
-                let value = value.parse::<i64>().unwrap();
+            (value: _signed()) => {
                 m::Value::Integer(value)
             },
 
@@ -351,12 +376,40 @@ impl_rdp! {
                 m::Value::Float(value)
             },
 
+            (&value: boolean) => {
+                let value = match value {
+                    "true" => true,
+                    "false" => false,
+                    _ => panic!("should not happen"),
+                };
+
+                m::Value::Boolean(value)
+            },
+
             (&value: ident) => {
                 m::Value::Identifier(value.to_owned())
             },
 
             (ty: _type_spec()) => {
                 m::Value::Type(ty)
+            },
+        }
+
+        _signed(&self) -> i64 {
+            (&value: integer) => {
+                value.parse::<i64>().unwrap()
+            },
+        }
+
+        _usize(&self) -> usize {
+            (&value: integer) => {
+                value.parse::<usize>().unwrap()
+            },
+        }
+
+        _unsigned(&self) -> u64 {
+            (&value: integer) => {
+                value.parse::<u64>().unwrap()
             },
         }
 
@@ -463,31 +516,59 @@ impl_rdp! {
         }
 
         _type_spec(&self) -> m::Type {
-            (_: type_spec, _: type_literal, &value: ident) => {
-                match value {
-                    "double" => m::Type::Double,
-                    "float" => m::Type::Float,
-                    "i32" => m::Type::I32,
-                    "i64" => m::Type::I64,
-                    "u32" => m::Type::U32,
-                    "u64" => m::Type::U64,
-                    "bool" => m::Type::Bool,
-                    "string" => m::Type::String,
-                    "bytes" => m::Type::Bytes,
-                    "any" => m::Type::Any,
-                    name => m::Type::Custom(name.to_owned()),
-                }
+            (_: type_spec, _: double_type) => {
+                m::Type::Double
+            },
+
+            (_: type_spec, _: float_type) => {
+                m::Type::Float
+            },
+
+            (_: type_spec, _: signed_type) => {
+                m::Type::Signed(None)
+            },
+
+            (_: type_spec, _: signed_type, size: _usize()) => {
+                m::Type::Signed(Some(size))
+            },
+
+            (_: type_spec, _: unsigned_type) => {
+                m::Type::Unsigned(None)
+            },
+
+            (_: type_spec, _: unsigned_type, size: _usize()) => {
+                m::Type::Unsigned(Some(size))
+            },
+
+            (_: type_spec, _: boolean_type) => {
+                m::Type::Boolean
+            },
+
+            (_: type_spec, _: string_type) => {
+                m::Type::String
+            },
+
+            (_: type_spec, _: bytes_type) => {
+                m::Type::Bytes
+            },
+
+            (_: type_spec, _: any_type) => {
+                m::Type::Any
+            },
+
+            (_: type_spec, _: custom_type, &name: ident) => {
+                m::Type::Custom(name.to_owned())
             },
 
             (_: type_spec, _: used_type, &used: ident, &value: ident) => {
                 m::Type::UsedType(used.to_owned(), value.to_owned())
             },
 
-            (_: type_spec, _: array, _: array_argument, argument: _type_spec()) => {
+            (_: type_spec, _: array_type, _: array_argument, argument: _type_spec()) => {
                 m::Type::Array(Box::new(argument))
             },
 
-            (_: type_spec, _: map, key: _type_spec(), value: _type_spec()) => {
+            (_: type_spec, _: map_type, key: _type_spec(), value: _type_spec()) => {
                 m::Type::Map(Box::new(key), Box::new(value))
             },
         }

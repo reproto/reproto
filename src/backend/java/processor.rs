@@ -270,12 +270,20 @@ impl Processor {
     fn convert_type(&self, pos: &m::Pos, package: &m::Package, ty: &m::Type) -> Result<Type> {
         let ty = match *ty {
             m::Type::String => self.string.clone().into(),
-            m::Type::I32 => INTEGER.into(),
-            m::Type::U32 => INTEGER.into(),
-            m::Type::I64 => LONG.into(),
-            m::Type::U64 => LONG.into(),
+            m::Type::Signed(ref size) |
+            m::Type::Unsigned(ref size) => {
+                // default to integer if unspecified.
+                // TODO: should we care about signedness?
+                // TODO: > 64 bits, use BitInteger?
+                if size.map(|s| s <= 32usize).unwrap_or(true) {
+                    INTEGER.into()
+                } else {
+                    LONG.into()
+                }
+            }
             m::Type::Float => FLOAT.into(),
             m::Type::Double => DOUBLE.into(),
+            m::Type::Boolean => BOOLEAN.into(),
             m::Type::Array(ref ty) => {
                 let argument = self.convert_type(pos, package, ty)?;
                 self.list.with_arguments(vec![argument]).into()
@@ -1058,6 +1066,7 @@ impl ::std::fmt::Display for m::Value {
             m::Value::String(_) => "<string>",
             m::Value::Integer(_) => "<int>",
             m::Value::Float(_) => "<float>",
+            m::Value::Boolean(_) => "<boolean>",
             m::Value::Identifier(_) => "<identifier>",
             m::Value::Type(_) => "<type>",
         };

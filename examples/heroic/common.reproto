@@ -1,5 +1,5 @@
 package heroic.common;
 
 type Date {
-  field: u32;
+  field: unsigned;
 }

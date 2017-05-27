@@ -9,7 +9,7 @@ enum TimeUnit {
   serialized_as number;
 
   name: string;
-  number: u64;
+  number: unsigned;
 
   java {{
     public long toMilliseconds() {
@@ -22,12 +22,12 @@ interface Sampling {
 }
 
 tuple Point {
-  timestamp: i64;
+  timestamp: unsigned;
   value: double;
 }
 
 tuple Event {
-  timestamp: i64;
+  timestamp: unsigned;
   payload: any;
 }
 
@@ -57,8 +57,8 @@ interface Duration {
   Absolute {
     name "absolute";
 
-    start: u64;
-    end: u64;
+    start: unsigned;
+    end: unsigned;
   }
 }
 
