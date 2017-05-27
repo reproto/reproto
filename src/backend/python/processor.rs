@@ -481,13 +481,17 @@ impl Processor {
             m::Type::Double |
             m::Type::Float |
             m::Type::Signed(_) |
+            m::Type::Unsigned(_) |
             m::Type::Boolean => {
                 if let m::Value::Boolean(ref boolean) = *value {
                     return Ok(Variable::Literal(boolean.to_string()));
                 }
-            }
-            m::Type::Unsigned(_) => {
-                if let m::Value::Integer(ref integer) = *value {
+
+                if let m::Value::Signed(ref integer) = *value {
+                    return Ok(Variable::Literal(integer.to_string()));
+                }
+
+                if let m::Value::Unsigned(ref integer) = *value {
                     return Ok(Variable::Literal(integer.to_string()));
                 }
 

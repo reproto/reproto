@@ -173,7 +173,7 @@ impl_rdp! {
 
         type_bits = { (["/"] ~ unsigned) }
 
-        value = { string | float | signed | boolean }
+        value = { string | float | signed | unsigned | boolean }
 
         ident =  @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
 
@@ -378,7 +378,11 @@ impl_rdp! {
             },
 
             (value: _signed()) => {
-                Ok(m::Value::Integer(value?))
+                Ok(m::Value::Signed(value?))
+            },
+
+            (value: _unsigned()) => {
+                Ok(m::Value::Unsigned(value?))
             },
 
             (&value: float) => {

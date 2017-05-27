@@ -26,7 +26,8 @@ pub enum Type {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     String(String),
-    Integer(i64),
+    Signed(i64),
+    Unsigned(u64),
     Float(f64),
     Boolean(bool),
     Identifier(String),
