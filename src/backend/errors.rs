@@ -1,4 +1,5 @@
 use super::models::Pos;
+use parser::errors as parser_errors;
 
 #[derive(Debug)]
 pub struct EnvironmentError {
@@ -86,5 +87,11 @@ impl From<::std::io::Error> for Error {
 impl From<::errors::Error> for Error {
     fn from(value: ::errors::Error) -> Error {
         Error::Error(Box::new(value))
+    }
+}
+
+impl From<parser_errors::Error> for Error {
+    fn from(value: parser_errors::Error) -> Error {
+        Error::Error(Box::new(value.into()))
     }
 }

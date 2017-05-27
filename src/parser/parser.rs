@@ -122,11 +122,10 @@ impl_rdp! {
         package_decl = { ["package"] ~ package_ident ~ [";"] }
         type_decl = { ["type"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
         tuple_decl = { ["tuple"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
-        interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ sub_type_decl* ~ ["}"] }
+        interface_decl = { ["interface"] ~ ident ~ ["{"] ~ option_decl* ~ member* ~ sub_type* ~ ["}"] }
         enum_decl = {
             ["enum"] ~ ident ~ ["{"] ~ (enum_value ~ [","])* ~ enum_value ~ [";"] ~ option_decl* ~ member* ~ ["}"]
         }
-        sub_type_decl = { sub_type }
         sub_type = { ident ~ ["{"] ~ option_decl* ~ member* ~ ["}"] }
 
         member = { field | code_block }
@@ -137,7 +136,14 @@ impl_rdp! {
         // body of a code block, either another balanced block, or anything but brackets
         modifier = { ["?"] }
 
-        type_spec = {
+        enum_value = { ident ~ (["("] ~ (value ~ ([","] ~ value)*) ~ [")"])? }
+        option_decl = { ident ~ (option_value ~ ([","] ~ option_value)*) ~ [";"] }
+
+        option_value = { string | integer | ident }
+
+        package_ident = @{ ident ~ (["."] ~ ident)* }
+
+        type_spec = _{
             float_type |
             double_type |
             signed_type |
@@ -152,31 +158,24 @@ impl_rdp! {
             custom_type
         }
 
-        float_type = { ["float"] }
-        double_type = { ["double"] }
-        signed_type = { ["signed"] ~ (["("] ~ integer ~ [")"])? }
-        unsigned_type = { ["unsigned"] ~ (["("] ~ integer ~ [")"])? }
-        boolean_type = { ["boolean"] }
-        string_type = { ["string"] }
-        bytes_type = { ["bytes"] }
-        any_type = { ["any"] }
+        float_type = @{ ["float"] }
+        double_type = @{ ["double"] }
+        signed_type = @{ ["signed"] ~ type_bits? }
+        unsigned_type = @{ ["unsigned"] ~ type_bits? }
+        boolean_type = @{ ["boolean"] }
+        string_type = @{ ["string"] }
+        bytes_type = @{ ["bytes"] }
+        any_type = @{ ["any"] }
+        map_type = { ["{"] ~ type_spec ~ [":"] ~ type_spec ~ ["}"] }
+        array_type = { ["["] ~ type_spec ~ ["]"] }
+        used_type = @{ ident ~ ["."] ~ ident }
         custom_type = { ident }
 
-        used_type = { ident ~ ["."] ~ ident }
+        type_bits = { (["/"] ~ integer) }
 
-        map_type = { ["{"] ~ type_spec ~ [":"] ~ type_spec ~ ["}"] }
-        array_type = { ["["] ~ array_argument ~ ["]"] }
-        array_argument = { type_spec }
+        value = { string | float | integer | boolean }
 
-        enum_value = { ident ~ (["("] ~ (value ~ ([","] ~ value)*) ~ [")"])? }
-        option_decl = { ident ~ (option_value ~ ([","] ~ option_value)*) ~ [";"] }
-
-        option_value = { string | integer | ident }
-
-        package_ident = @{ ident ~ (["."] ~ ident)* }
         ident =  @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
-
-        value = { string | float | integer | boolean | ident | type_spec }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
         escape  =  _{ ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
@@ -385,14 +384,6 @@ impl_rdp! {
 
                 m::Value::Boolean(value)
             },
-
-            (&value: ident) => {
-                m::Value::Identifier(value.to_owned())
-            },
-
-            (ty: _type_spec()) => {
-                m::Value::Type(ty)
-            },
         }
 
         _signed(&self) -> i64 {
@@ -484,7 +475,7 @@ impl_rdp! {
         }
 
         _sub_type_list(&self) -> BTreeMap<String, ast::Token<ast::TypeBody>> {
-            (token: sub_type_decl, first: _sub_type(), mut tail: _sub_type_list()) => {
+            (token: sub_type, first: _sub_type(), mut tail: _sub_type_list()) => {
                 let pos = (token.start, token.end);
                 tail.insert(first.name.clone(), ast::Token::new(first, pos));
                 tail
@@ -496,7 +487,7 @@ impl_rdp! {
         }
 
         _sub_type(&self) -> ast::TypeBody {
-            (_: sub_type, &name: ident, options: _option_list(), members: _member_list()) => {
+            (&name: ident, options: _option_list(), members: _member_list()) => {
                 let name = name.to_owned();
                 let options = ast::Options::new(options.into_iter().collect());
                 let members = members.into_iter().collect();
@@ -516,59 +507,59 @@ impl_rdp! {
         }
 
         _type_spec(&self) -> m::Type {
-            (_: type_spec, _: double_type) => {
+            (_: double_type) => {
                 m::Type::Double
             },
 
-            (_: type_spec, _: float_type) => {
+            (_: float_type) => {
                 m::Type::Float
             },
 
-            (_: type_spec, _: signed_type) => {
-                m::Type::Signed(None)
-            },
-
-            (_: type_spec, _: signed_type, size: _usize()) => {
+            (_: signed_type, _: type_bits, size: _usize()) => {
                 m::Type::Signed(Some(size))
             },
 
-            (_: type_spec, _: unsigned_type) => {
-                m::Type::Unsigned(None)
-            },
-
-            (_: type_spec, _: unsigned_type, size: _usize()) => {
+            (_: unsigned_type, _: type_bits, size: _usize()) => {
                 m::Type::Unsigned(Some(size))
             },
 
-            (_: type_spec, _: boolean_type) => {
+            (_: signed_type) => {
+                m::Type::Signed(None)
+            },
+
+            (_: unsigned_type) => {
+                m::Type::Unsigned(None)
+            },
+
+            (_: boolean_type) => {
                 m::Type::Boolean
             },
 
-            (_: type_spec, _: string_type) => {
+            (_: string_type) => {
                 m::Type::String
             },
 
-            (_: type_spec, _: bytes_type) => {
+            (_: bytes_type) => {
                 m::Type::Bytes
             },
 
-            (_: type_spec, _: any_type) => {
+            (_: any_type) => {
                 m::Type::Any
             },
 
-            (_: type_spec, _: custom_type, &name: ident) => {
+            (_: custom_type, &name: ident) => {
                 m::Type::Custom(name.to_owned())
             },
 
-            (_: type_spec, _: used_type, &used: ident, &value: ident) => {
+            (_: used_type, &used: ident, &value: ident) => {
                 m::Type::UsedType(used.to_owned(), value.to_owned())
             },
 
-            (_: type_spec, _: array_type, _: array_argument, argument: _type_spec()) => {
+            (_: array_type, argument: _type_spec()) => {
                 m::Type::Array(Box::new(argument))
             },
 
-            (_: type_spec, _: map_type, key: _type_spec(), value: _type_spec()) => {
+            (_: map_type, key: _type_spec(), value: _type_spec()) => {
                 m::Type::Map(Box::new(key), Box::new(value))
             },
         }
@@ -671,5 +662,20 @@ mod tests {
 
         assert!(parser.value());
         assert!(parser.end());
+    }
+
+    #[test]
+    fn test_interface() {
+        let input = "package foo.bar; interface Foo { reserved 1, 2, 3; java {{  }} Hello { } \
+                     World { } }";
+
+        let mut parser = Rdp::new(StringInput::new(input));
+
+        assert!(parser.file());
+        assert!(parser.end());
+
+        let file = parser._file();
+
+        assert_eq!(1, file.decls.len());
     }
 }

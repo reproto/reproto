@@ -300,7 +300,7 @@ impl Environment {
         debug!("in: {}", path.display());
 
         // TODO: fix this
-        let file = parser::parse_file(&path).unwrap();
+        let file = parser::parse_file(&path)?;
 
         if let Some(package) = package {
             if *file.package != *package {

@@ -61,7 +61,7 @@ use common as c;
 
 // A tuple.
 tuple Sample {
-  timestamp: u64;
+  timestamp: unsigned/64;
   value: double;
 }
 
@@ -112,8 +112,8 @@ There are a number of built-in types available:
 
 | Type               | Description |
 |--------------------|-------------|
-| `u32`, `u64`       | Unsigned integer values which can store a given number of bits |
-| `i32`, `u64`       | Signed integer values which can store a given number of bits |
+| `unsigned{/size}`  | Unsigned integer values which can store a given number of bits |
+| `signed{/size}`    | Signed integer values which can store a given number of bits |
 | `double`, `float`  | Floating point precision numbers |
 | `string`           | UTF-8 encoded strings |
 | `bytes`            | Arbitrary byte-arrays, are encoded as base64-strings in JSON |
@@ -132,7 +132,7 @@ The following is an example type declaration:
 ```reproto
 type Foo {
     foo: string;
-    bar: i32;
+    bar: signed/32;
 }
 ```
 
@@ -163,7 +163,7 @@ interface Instant {
 
     Absolute {
         name "absolute", "a";
-        timestamp: u64;
+        timestamp: unsigned/64;
     }
 }
 ```
@@ -185,7 +185,7 @@ Tuples are sequences of data, where each element has a known type.
 
 ```reproto
 tuple Sample {
-  time: u64;
+  time: unsigned/64;
   value: double;
 }
 ```
