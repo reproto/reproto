@@ -1,6 +1,7 @@
 //! Implementations for converting asts into models.
 use parser::ast;
 use std::collections::BTreeMap;
+use std::collections::btree_map;
 use std::path::Path;
 use super::errors::*;
 use super::into_model::IntoModel;
@@ -79,7 +80,7 @@ impl ConvertToModel for ast::InterfaceBody {
     fn convert_to_model(body: ast::InterfaceBody, path: &Path) -> Result<InterfaceBody> {
         let mut fields = Vec::new();
         let mut codes = Vec::new();
-        let mut sub_types = BTreeMap::new();
+        let mut sub_types: BTreeMap<String, Token<SubType>> = BTreeMap::new();
 
         for member in body.members {
             let pos = (path.to_owned(), member.pos.0, member.pos.1);
@@ -97,13 +98,20 @@ impl ConvertToModel for ast::InterfaceBody {
             }
         }
 
-        for (key, sub_type) in body.sub_types {
+        for sub_type in body.sub_types {
             let pos = (path.to_owned(), sub_type.pos.0, sub_type.pos.1);
-            let names = sub_type.options.find_all_strings(path, "name")?;
-            let ty = sub_type.inner.into_model(path)?;
-            let sub_type = SubType::new(ty.name, ty.fields, ty.codes, names);
+            let sub_type = sub_type.inner.into_model(path)?;
+            let key = sub_type.name.clone();
 
-            sub_types.insert(key.clone(), Token::new(sub_type, pos));
+            match sub_types.entry(key) {
+                btree_map::Entry::Occupied(entry) => {
+                    let existing = &mut entry.into_mut().inner;
+                    existing.merge(sub_type)?;
+                }
+                btree_map::Entry::Vacant(entry) => {
+                    entry.insert(Token::new(sub_type, pos));
+                }
+            }
         }
 
         Ok(InterfaceBody::new(body.name.clone(), fields, codes, sub_types))
@@ -188,6 +196,41 @@ impl ConvertToModel for ast::TypeBody {
         }
 
         Ok(TypeBody::new(body.name.clone(), fields, codes))
+    }
+}
+
+impl ConvertToModel for ast::SubType {
+    type Output = SubType;
+
+    fn convert_to_model(body: ast::SubType, path: &Path) -> Result<SubType> {
+        let mut fields: Vec<Token<Field>> = Vec::new();
+        let mut codes = Vec::new();
+
+        for member in &body.members {
+            let pos = (path.to_owned(), member.pos.0, member.pos.1);
+
+            match **member {
+                ast::Member::Field(ref field) => {
+                    let field =
+                        Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
+
+                    if let Some(other) = fields.iter().find(|f| f.name == field.name) {
+                        return Err(Error::field_conflict(field.name.clone(),
+                                                         pos.clone(),
+                                                         other.pos.clone()));
+                    }
+
+                    fields.push(Token::new(field, pos));
+                }
+                ast::Member::Code(ref context, ref lines) => {
+                    let code = Code::new(context.clone(), lines.clone());
+                    codes.push(Token::new(code, pos));
+                }
+            }
+        }
+
+        let names = body.options.find_all_strings(path, "name")?;
+        Ok(SubType::new(body.name.clone(), fields, codes, names))
     }
 }
 

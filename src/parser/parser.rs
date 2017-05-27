@@ -1,7 +1,6 @@
 use backend::models as m;
 use num_bigint::BigInt;
 use pest::prelude::*;
-use std::collections::BTreeMap;
 use std::collections::LinkedList;
 use super::ast;
 use super::errors::*;
@@ -307,12 +306,13 @@ impl_rdp! {
             ) => {
                 let options = ast::Options::new(options?.into_iter().collect());
                 let members = members?.into_iter().collect();
+                let sub_types = sub_types?.into_iter().collect();
 
                 let body = ast::InterfaceBody {
                     name: name.to_owned(),
                     options: options,
                     members: members,
-                    sub_types: sub_types?,
+                    sub_types: sub_types,
                 };
 
                 Ok(ast::Decl::Interface(body))
@@ -472,31 +472,25 @@ impl_rdp! {
             },
         }
 
-        _sub_type_list(&self) -> Result<BTreeMap<String, ast::Token<ast::TypeBody>>> {
+        _sub_type_list(&self) -> Result<LinkedList<ast::Token<ast::SubType>>> {
             (token: sub_type, first: _sub_type(), tail: _sub_type_list()) => {
-                let first = first?;
                 let mut tail = tail?;
                 let pos = (token.start, token.end);
-                tail.insert(first.name.clone(), ast::Token::new(first, pos));
+                tail.push_front(ast::Token::new(first?, pos));
                 Ok(tail)
             },
 
             () => {
-                Ok(BTreeMap::new())
+                Ok(LinkedList::new())
             },
         }
 
-        _sub_type(&self) -> Result<ast::TypeBody> {
+        _sub_type(&self) -> Result<ast::SubType> {
             (&name: ident, options: _option_list(), members: _member_list()) => {
                 let name = name.to_owned();
                 let options = ast::Options::new(options?.into_iter().collect());
                 let members = members?.into_iter().collect();
-
-                Ok(ast::TypeBody {
-                    name: name,
-                    options: options,
-                    members: members,
-                })
+                Ok(ast::SubType { name: name, options: options, members: members })
             },
         }
 

@@ -141,19 +141,17 @@ pub trait BodyLike {
         None
     }
 
-    fn merge_body<B>(&mut self, other: &B) -> Result<()>
-        where B: BodyLike
-    {
-        for field in other.fields() {
-            if let Some(pos) = self.push_if_absent(field) {
-                return Err(Error::field_conflict(field.name.clone(),
-                                                 field.pos.clone(),
-                                                 pos.clone()));
-            }
-        }
-
-        for code in other.codes() {
+    fn merge_codes(&mut self, codes: Vec<Token<Code>>) {
+        for code in codes {
             self.mut_codes().push(code.clone());
+        }
+    }
+
+    fn merge_fields(&mut self, fields: Vec<Token<Field>>) -> Result<()> {
+        for field in fields {
+            if let Some(pos) = self.push_if_absent(&field) {
+                return Err(Error::field_conflict(field.name.clone(), field.pos, pos.clone()));
+            }
         }
 
         Ok(())
@@ -272,8 +270,11 @@ impl SubType {
         }
     }
 
-    pub fn merge(&mut self, other: &SubType) -> Result<()> {
-        self.merge_body(other)
+    pub fn merge(&mut self, other: SubType) -> Result<()> {
+        self.merge_fields(other.fields)?;
+        self.merge_codes(other.codes);
+        self.names.extend(other.names);
+        Ok(())
     }
 }
 
@@ -299,17 +300,18 @@ impl InterfaceBody {
         }
     }
 
-    pub fn merge(&mut self, other: &InterfaceBody) -> Result<()> {
-        self.merge_body(other)?;
+    pub fn merge(&mut self, other: InterfaceBody) -> Result<()> {
+        self.merge_fields(other.fields)?;
+        self.merge_codes(other.codes);
 
-        for (key, sub_type) in &other.sub_types {
+        for (key, sub_type) in other.sub_types {
             match self.sub_types.entry(key.clone()) {
                 btree_map::Entry::Vacant(entry) => {
                     entry.insert(sub_type.clone());
                 }
                 btree_map::Entry::Occupied(entry) => {
                     let entry = &mut entry.into_mut().inner;
-                    entry.merge(&sub_type.inner)?;
+                    entry.merge(sub_type.inner)?;
                 }
             }
         }
@@ -334,8 +336,10 @@ impl TypeBody {
         }
     }
 
-    pub fn merge(&mut self, other: &TypeBody) -> Result<()> {
-        self.merge_body(other)
+    pub fn merge(&mut self, other: TypeBody) -> Result<()> {
+        self.merge_fields(other.fields)?;
+        self.merge_codes(other.codes);
+        Ok(())
     }
 }
 
@@ -355,8 +359,10 @@ impl TupleBody {
         }
     }
 
-    pub fn merge(&mut self, other: &TupleBody) -> Result<()> {
-        self.merge_body(other)
+    pub fn merge(&mut self, other: TupleBody) -> Result<()> {
+        self.merge_fields(other.fields)?;
+        self.merge_codes(other.codes);
+        Ok(())
     }
 }
 
@@ -391,8 +397,10 @@ impl EnumBody {
         }
     }
 
-    pub fn merge(&mut self, other: &EnumBody) -> Result<()> {
-        self.merge_body(other)
+    pub fn merge(&mut self, other: EnumBody) -> Result<()> {
+        self.merge_fields(other.fields)?;
+        self.merge_codes(other.codes);
+        Ok(())
     }
 }
 

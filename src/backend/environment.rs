@@ -39,9 +39,9 @@ impl Environment {
                 let target = entry.into_mut();
                 let target_pos = target.pos.clone();
 
-                match &mut target.inner {
-                    &mut Decl::Type(ref mut body) => {
-                        if let Decl::Type(ref other) = decl.inner {
+                match target.inner {
+                    Decl::Type(ref mut body) => {
+                        if let Decl::Type(other) = decl.inner {
                             body.merge(other)?;
                         } else {
                             return Err(Error::decl_merge(format!("Cannot merge {}",
@@ -50,8 +50,8 @@ impl Environment {
                                                          target_pos));
                         }
                     }
-                    &mut Decl::Enum(ref mut body) => {
-                        if let Decl::Enum(ref other) = decl.inner {
+                    Decl::Enum(ref mut body) => {
+                        if let Decl::Enum(other) = decl.inner {
                             body.merge(other)?;
                         } else {
                             return Err(Error::decl_merge(format!("Cannot merge {}",

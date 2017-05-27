@@ -1,5 +1,4 @@
 use backend::models::*;
-use std::collections::BTreeMap;
 use token;
 
 /// Position relative in file where the declaration is present.
@@ -110,11 +109,19 @@ pub struct InterfaceBody {
     pub name: String,
     pub options: Options,
     pub members: Vec<Token<Member>>,
-    pub sub_types: BTreeMap<String, Token<TypeBody>>,
+    pub sub_types: Vec<Token<SubType>>,
 }
 
 #[derive(Debug)]
 pub struct TypeBody {
+    pub name: String,
+    pub options: Options,
+    pub members: Vec<Token<Member>>,
+}
+
+/// Sub-types in interface declarations.
+#[derive(Debug)]
+pub struct SubType {
     pub name: String,
     pub options: Options,
     pub members: Vec<Token<Member>>,
