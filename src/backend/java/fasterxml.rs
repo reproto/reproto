@@ -176,7 +176,7 @@ impl Module {
                           class_type: &ClassType)
                           -> Result<ClassSpec> {
         let mut deserializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
-                                              "deserializer");
+                                              "Deserializer");
 
         deserializer.extends(self.deserializer.with_arguments(vec![&class_type]));
 
