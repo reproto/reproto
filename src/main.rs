@@ -10,7 +10,7 @@ use reproto::errors::*;
 use reproto::logger;
 use reproto::parser;
 
-static VERSION: &str = "0.0.5";
+static VERSION: &str = "0.0.11";
 
 fn setup_opts<'a, 'b>() -> clap::App<'a, 'b> {
     clap::App::new("reproto")
