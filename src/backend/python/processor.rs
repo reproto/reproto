@@ -491,7 +491,7 @@ impl Processor {
                     return Ok(Variable::Literal(integer.to_string()));
                 }
 
-                if let m::Value::Float(ref float) = *value {
+                if let m::Value::Decimal(ref float) = *value {
                     return Ok(Variable::Literal(float.to_string()));
                 }
             }

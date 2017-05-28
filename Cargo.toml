@@ -1,6 +1,6 @@
 [package]
 name = "reproto"
-version = "0.0.8"
+version = "0.0.9"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -10,6 +10,10 @@ documentation = "https://docs.rs/reproto"
 description = """
 Rethinking Protocol Generators
 """
+
+[features]
+# Enable to emit very detailed tracing, potentially performance sensitive.
+tracing = []
 
 [dependencies]
 error-chain = "0.10.0"

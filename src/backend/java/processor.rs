@@ -663,7 +663,7 @@ impl Processor {
                 return Ok(lit.into());
             }
 
-            if let m::Value::Float(ref float) = *value {
+            if let m::Value::Decimal(ref float) = *value {
                 let lit = self.to_float_literal(pos, float, primitive)?;
                 return Ok(lit.into());
             }
@@ -1090,7 +1090,7 @@ impl ::std::fmt::Display for m::Value {
         let out = match *self {
             m::Value::String(_) => "<string>",
             m::Value::Integer(_) => "<integer>",
-            m::Value::Float(_) => "<float>",
+            m::Value::Decimal(_) => "<decimal>",
             m::Value::Boolean(_) => "<boolean>",
             m::Value::Identifier(_) => "<identifier>",
             m::Value::Type(_) => "<type>",

@@ -26,7 +26,7 @@ pub enum Type {
 pub enum Value {
     String(String),
     Integer(BigInt),
-    Float(f64),
+    Decimal(f64),
     Boolean(bool),
     Identifier(String),
     Type(Type),

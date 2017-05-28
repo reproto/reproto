@@ -86,17 +86,28 @@ fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
         parser::errors::ErrorKind::Syntax(ref p, ref expected) => {
             print_error("syntax error", p)?;
 
-            let expected_list: Vec<String> = expected.iter().map(|r| format!("{:?}", r)).collect();
-            let expected_list = expected_list.join(", ");
-
-            println!("Expected one of: {}", expected_list);
+            println!("Expected one of:");
 
             for e in expected {
                 match *e {
-                    parser::parser::Rule::type_ident => {
-                        println!("For example: `DateRange`");
+                    parser::parser::Rule::type_identifier => {
+                        println!("  A type identifier, like: `DateRange`");
                     }
-                    _ => {}
+                    parser::parser::Rule::string => {
+                        println!("  A string, like: `\"foo bar\"`");
+                    }
+                    parser::parser::Rule::integer => {
+                        println!("  An integer, like: `42`");
+                    }
+                    parser::parser::Rule::decimal => {
+                        println!("  A decimal number, like: `3.14`");
+                    }
+                    parser::parser::Rule::boolean => {
+                        println!("  A boolean: `true` or `false`");
+                    }
+                    token => {
+                        println!("  A token: {:?}", token);
+                    }
                 }
             }
         }

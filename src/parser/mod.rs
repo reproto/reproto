@@ -58,7 +58,6 @@ pub fn parse_file(path: &Path) -> Result<ast::File> {
 
     if !parser.file() {
         let pos = parser.tracked_len_pos();
-        println!("len = {:?}", pos);
         let (expected, _) = parser.expected();
         let pos = (path.to_owned(), pos.1, pos.1);
         return Err(ErrorKind::Syntax(pos, expected).into());
@@ -66,6 +65,15 @@ pub fn parse_file(path: &Path) -> Result<ast::File> {
 
     if !parser.end() {
         return Err("not parsed until end".into());
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        debug!("Parser queue for file {}:", path.display());
+
+        for (i, e) in parser.queue().iter().enumerate() {
+            debug!("  {:>3} = {:?}", i, e);
+        }
     }
 
     parser._file()
