@@ -1,7 +1,7 @@
 # ReProto Compiler
 
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
-[![crates.io](https://img.shields.io/crates/v/reproto.svg?maxAge=2592000)](https://crates.io/crates/reproto)
+[![crates.io](https://img.shields.io/crates/v/reproto.svg)](https://crates.io/crates/reproto)
 
 The ReProto project is a language-neutral protocol specification, aimed towards describing and generating
 code for handling messages exchanged through JSON-based APIs.
