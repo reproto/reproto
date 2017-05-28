@@ -1,6 +1,6 @@
 [package]
 name = "reproto"
-version = "0.0.11"
+version = "0.0.12"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "Apache-2.0"
 readme = "README.md"
