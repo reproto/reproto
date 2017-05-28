@@ -248,43 +248,35 @@ impl_rdp! {
         }
 
         _use_list(&self) -> Result<LinkedList<ast::Token<ast::UseDecl>>> {
-            (
-                token: use_decl,
-                _: use_keyword,
-                package: _package(),
-                alias: _use_as(),
-                tail: _use_list(),
-                _: semi_colon
-            ) => {
-                let mut tail = tail?;
-
-                let use_decl = ast::UseDecl {
-                    package: package,
-                    alias: alias,
-                };
-
+            (token: use_decl, use_decl: _use_decl(), tail: _use_list()) => {
                 let pos = (token.start, token.end);
+                let mut tail = tail?;
                 tail.push_front(ast::Token::new(use_decl, pos));
-
                 Ok(tail)
             },
 
             () => Ok(LinkedList::new()),
         }
 
-        _use_as(&self) -> Option<String> {
-            (_: use_as, _: as_keyword, &alias: identifier) => {
-                Some(alias.to_owned())
-            },
+        _use_decl(&self) -> ast::UseDecl {
+            (_: use_keyword, package: _package(), alias: _use_as(), _: semi_colon) => {
+                ast::UseDecl {
+                    package: package,
+                    alias: alias,
+                }
+            }
+        }
 
+        _use_as(&self) -> Option<String> {
+            (_: use_as, _: as_keyword, &alias: identifier) => Some(alias.to_owned()),
             () => None,
         }
 
         _package(&self) -> ast::Token<m::Package> {
             (token: package_ident, idents: _ident_list()) => {
+                let pos = (token.start, token.end);
                 let idents = idents;
                 let package = m::Package::new(idents.into_iter().collect());
-                let pos = (token.start, token.end);
                 ast::Token::new(package, pos)
             },
         }

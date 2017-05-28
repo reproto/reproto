@@ -88,6 +88,8 @@ fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
 
             println!("Expected one of:");
 
+            let mut expected_list = Vec::new();
+
             for e in expected {
                 match *e {
                     parser::parser::Rule::type_identifier => {
@@ -106,9 +108,13 @@ fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
                         println!("  A boolean: `true` or `false`");
                     }
                     token => {
-                        println!("  A token: {:?}", token);
+                        expected_list.push(format!("{:?}", token));
                     }
                 }
+            }
+
+            if !expected_list.is_empty() {
+                println!("  A token: {}", expected_list.join(", "));
             }
         }
         _ => {}
