@@ -1,5 +1,7 @@
 # ReProto File Specification
 
+See [TODO](todo.md) for things that are work in progress.
+
 * [Introduction](#introduction)
 * [Built-In Types](#built-in-types)
 * [Types](#types)
@@ -8,41 +10,6 @@
 * [Enums](#enums)
 * [Custom Code](#custom-code)
 * [Extensions](#extensions)
-
-# TODO
-
-* General
-  * ~~Treat named types as (named) simple types, like tuples.~~
-  * ~~Enums.~~
-  * Documentation syntax (preferably not comments).
-  * Type aliases.
-    * *Question:* Are they useful?
-  * Validators
-    * Tricky, too many extensions to DSL to be useful. Might just skip for now but push towards `2.0`.
-
-* ~~Maven Plugin + Maven Artifacts w/ Static Builds~~~
-  * For clean integration into Java ecosystem.
-
-* HTML Backend
-  * Generate static documentation.
-
-* Java Backend
-  * ~~Generate _good_ builder.~~
-  * ~~Generated equals/hashCode (disabled when using lombok).~~
-  * ~~Generated toString (disabled when using lombok).~~
-  * ~~Tuple decoding (in `fasterxml`).~~
-
-* Python Backend
-  * ~~Encode support (e.g. `instance.encode()`)~~
-  * ~~Relative import, especially with package prefixes.~~ (not needed with aliases)
-  * ~~Create missing `__init__.py` files.~~
-  * ~~Array decoding.~~
-  * ~~Map decoding.~~
-  * ~~Tuple decoding.~~
-  * ~~Optional support.~~
-  * ~~Encode `type` field.~~
-  * ~~Enum support~~
-  * Strict decoding/encoding where types are deeply verified.
 
 ## Introduction
 
@@ -118,7 +85,7 @@ There are a number of built-in types available:
 | `string`           | UTF-8 encoded strings |
 | `bytes`            | Arbitrary byte-arrays, are encoded as base64-strings in JSON |
 | `[<type>]`         | Arrays which store the given type  |
-| `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` |
+| `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` due to limitations in JSON, but might be subject to change if other formats are supported in the future) |
 
 ## Types
 
@@ -154,15 +121,17 @@ The following is an example interface with two sub-types.
 
 ```reproto
 interface Instant {
-    reserved "deprecated", SomethingOld;
+    reserved old_field;
 
     RelativeToNow {
         name "relative", "r";
-        offset: u32;
+        // Offset in milliseconds.
+        offset: signed/32;
     }
 
     Absolute {
         name "absolute", "a";
+        // Absolute timestamp since unix epoch.
         timestamp: unsigned/64;
     }
 }
@@ -203,23 +172,37 @@ A single sample (e.g. `Sample(time: 1, value: 2.0)`) would be encoded like this 
 Enums can take on of a given set of constant values.
 
 ```
-enum State {
-    UNKNOWN("unknown"),
-    START("start"),
-    END("end");
+enum SI {
+    NANO("nano", "n", 1e-9),
+    MICRO("micro", "μ", 1e-6),
+    MILLI("milli", "m", 1e-3),
+    KILO("kilo", "k", 1e3),
+    MEGA("mega", "M", 1e6);
 
     // select which field to serialize as.
     serialize_as value;
 
-    value: string;
+    name: string;
+    symbol: string;
+    factor: double;
 }
 ```
 
-`State` would be serialized as a given value, for example `State.END` would become the following in
-JSON:
+Using this, SI.NANO would be serialized as:
 
 ```json
-"end"
+"nano"
+```
+
+Associating data with the enum permits less specialized code for dealing with them.
+
+```java
+public class Entry {
+  public static void main(String[] argv) {
+    final SI si = ...;
+    System.out.println(52 + si.factor + "s");
+  }
+}
 ```
 
 ## Custom Code
@@ -254,6 +237,13 @@ reProto allows all types and interfaces to be extended.
 Extensions allow for additions, and is typically used to adapt a protocol specification to
 your local environment.
 
+In a perfect world, extensions should not be necessary.
+The specification should be in sync with the API, and there should be no additional configuration
+necessary to start using the generated code.
+
+Extensions allow you to add additional information, as long as it doesn't conflict with any
+existing declarations.
+
 An extension is loaded when a when an identical package and type declaration is present in the
 path.
 
@@ -268,7 +258,7 @@ type Foo {
 }
 ```
 
-You can now add additional fields or custom code snippets by doing the following:
+You can now add extend existing types by specifying the same type somewhere else in your path.
 
 ```reproto
 // file: ext/foo.reproto
