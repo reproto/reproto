@@ -240,15 +240,32 @@ pub struct TypeBody {
     pub name: String,
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
+    // Set of fields which are reserved for this type.
+    pub reserved: HashSet<Token<String>>,
 }
 
 impl TypeBody {
-    pub fn new(name: String, fields: Vec<Token<Field>>, codes: Vec<Token<Code>>) -> TypeBody {
+    pub fn new(name: String,
+               fields: Vec<Token<Field>>,
+               codes: Vec<Token<Code>>,
+               reserved: HashSet<Token<String>>)
+               -> TypeBody {
         TypeBody {
             name: name,
             fields: fields,
             codes: codes,
+            reserved: reserved,
         }
+    }
+
+    pub fn verify(&self) -> Result<()> {
+        for reserved in &self.reserved {
+            if let Some(field) = self.fields.iter().find(|f| f.name == reserved.inner) {
+                return Err(Error::reserved_field(field.pos.clone(), reserved.pos.clone()));
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -347,6 +364,9 @@ impl Options {
             .flat_map(|o| o.values.iter()))
     }
 
+    /// Find all strings matching the given name.
+    ///
+    /// This enforces that all found values are strings, otherwise the lookup will cause an error.
     pub fn find_all_strings(&self, name: &str) -> Result<Vec<Token<String>>> {
         let mut out: Vec<Token<String>> = Vec::new();
 
@@ -364,6 +384,10 @@ impl Options {
         Ok(out)
     }
 
+    /// Optionally find exactly one identifier matching the given name.
+    ///
+    /// This enforces that all found values are identifiers, otherwise the lookup will cause an
+    /// error.
     pub fn find_one_identifier(&self, name: &str) -> Result<Option<Token<String>>> {
         let mut out: Option<Token<String>> = None;
 
@@ -376,6 +400,26 @@ impl Options {
             match **s {
                 Value::Identifier(ref string) => {
                     out = Some(s.map_inner(|_| string.clone()));
+                }
+                _ => {
+                    return Err(Error::pos(format!("{}: expected identifier", name), s.pos.clone()));
+                }
+            }
+        }
+
+        Ok(out)
+    }
+
+    /// Find all identifiers matching the given name.
+    ///
+    /// This enforces that all found values are identifiers, otherwise the lookup will cause an error.
+    pub fn find_all_identifiers(&self, name: &str) -> Result<Vec<Token<String>>> {
+        let mut out: Vec<Token<String>> = Vec::new();
+
+        for s in self.lookup(name) {
+            match **s {
+                Value::Identifier(ref identifier) => {
+                    out.push(s.map_inner(|_| identifier.clone()));
                 }
                 _ => {
                     return Err(Error::pos(format!("{}: expected identifier", name), s.pos.clone()));

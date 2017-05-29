@@ -54,7 +54,6 @@ impl Merge for TupleBody {
 
 impl Merge for EnumBody {
     fn merge(&mut self, source: EnumBody) -> Result<()> {
-        self.fields.merge(source.fields)?;
         self.codes.merge(source.codes)?;
         Ok(())
     }
@@ -93,6 +92,21 @@ impl Merge for Token<Decl> {
             }
             Decl::Enum(ref mut body) => {
                 if let Decl::Enum(other) = source.inner {
+                    if let Some(value) = other.values.iter().next() {
+                        return Err(Error::extend_enum("cannot extend enum with additional values"
+                                                          .to_owned(),
+                                                      value.pos.clone(),
+                                                      dest_pos));
+                    }
+
+                    if let Some(field) = other.fields.iter().next() {
+                        return Err(Error::extend_enum("cannot extend enum with additional fields"
+                                                          .to_owned(),
+                                                      field.pos.clone(),
+                                                      dest_pos));
+                    }
+
+
                     return body.merge(other);
                 }
             }

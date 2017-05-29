@@ -8,8 +8,10 @@ See [TODO](todo.md) for things that are work in progress.
 * [Interfaces](#interfaces)
 * [Tuples](#tuples)
 * [Enums](#enums)
-* [Custom Code](#custom-code)
+* [Options](#options)
+* [Reserved Fields](#reserved-fields)
 * [Extensions](#extensions)
+* [Custom Code](#custom-code)
 
 ## Introduction
 
@@ -121,8 +123,6 @@ The following is an example interface with two sub-types.
 
 ```reproto
 interface Instant {
-    reserved old_field;
-
     RelativeToNow {
         name "relative", "r";
         // Offset in milliseconds.
@@ -171,12 +171,12 @@ A single sample (e.g. `Sample(time: 1, value: 2.0)`) would be encoded like this 
 
 Enums can take on of a given set of constant values.
 
-```
+```reproto
 enum SI {
-    NANO("nano", "n", 1e-9),
-    MICRO("micro", "μ", 1e-6),
-    MILLI("milli", "m", 1e-3),
-    KILO("kilo", "k", 1e3),
+    NANO("nano", "n", 1e-9);
+    MICRO("micro", "μ", 1e-6);
+    MILLI("milli", "m", 1e-3);
+    KILO("kilo", "k", 1e3);
     MEGA("mega", "M", 1e6);
 
     // select which field to serialize as.
@@ -205,30 +205,33 @@ public class Entry {
 }
 ```
 
-## Custom Code
+## Options
 
-A powerful mechanism for modifying the behaviour of your protocols is to embed code snippets.
-This _only_ be done in [extensions](extensions), to adapt a given set of protocols into your
-application.
+TODO: document available options
 
-```reproto
-package foo;
+## Reserved fields
 
-type Foo {
-  field: string;
+Fields can be reserved using a special option called `reserved`.
 
-  java {{
-    public boolean isFieldOk() {
-      return this.field.equals("ok");
-    }
-  }}
+Fields which are reserved _cannot_ be added again.
 
-  python {{
-    def is_field_ok(self):
-      return self.field == "ok"
-  }}
-}
+Attempting to do so will yield an error like the following:
+
+```bash
+examples/heroic/v1.reproto:55:3-21:
+ 55:   no_can_do: string;
+       ^^^^^^^^^^^^^^^^^^ - field reserved
+examples/heroic/v1.reproto:49:12-21:
+ 49:   reserved no_can_do;
+                ^^^^^^^^^ - field reserved here
 ```
+
+As long as the reserved statement is preserved, it prevents future or current introductions of
+reserved field.
+
+It can also be used to reserve future fields, that you intend to introduce at some point.
+
+Clients who decode a reserved field should ignore them.
 
 ## Extensions
 
@@ -275,20 +278,27 @@ type Foo {
 }
 ```
 
-The naming is used for languages which do not natively support tuples, like python:
+## Custom Code
 
-```python
-class Sample:
-  def __init__(self, time, value):
-    self.time = time
-    self.value = value
+A powerful mechanism for modifying the behaviour of your protocols is to embed code snippets.
+This _only_ be done in [extensions](extensions), to adapt a given set of protocols into your
+application.
 
-  @staticmethod
-  def decode(data):
-    time = data[0]
-    value = data[1]
-    return Sample(time, value)
+```reproto
+package foo;
 
-  def encode(self):
-    return (self.time, self.value)
+type Foo {
+  field: string;
+
+  java {{
+    public boolean isFieldOk() {
+      return this.field.equals("ok");
+    }
+  }}
+
+  python {{
+    def is_field_ok(self):
+      return self.field == "ok"
+  }}
+}
 ```

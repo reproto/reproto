@@ -3,7 +3,7 @@ package heroic.v1;
 use heroic.common as c;
 
 enum TimeUnit {
-  SECONDS("seconds", 1000),
+  SECONDS("seconds", 1000);
   MINUTES("minutes", 60000);
 
   serialized_as number;
@@ -12,13 +12,10 @@ enum TimeUnit {
   number: double;
 
   java {{
-    public long toMilliseconds() {
+    public double toMilliseconds() {
       return this.number;
     }
   }}
-}
-
-interface Sampling {
 }
 
 tuple Point {
@@ -29,6 +26,7 @@ tuple Point {
 tuple Event {
   timestamp: unsigned/64;
   payload: any;
+  payload: any;
 }
 
 interface Samples {
@@ -36,7 +34,6 @@ interface Samples {
 
   Points {
     name "points";
-    name "points_backwards";
 
     data: [Point];
   }

@@ -1,6 +1,6 @@
 //! Implementations for converting asts into models.
 use parser::ast;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::collections::btree_map;
 use std::path::Path;
 use super::errors::*;
@@ -151,9 +151,12 @@ impl IntoModel for ast::TypeBody {
             }
         }
 
-        let _options = Options::new(options);
+        let options = Options::new(options);
 
-        Ok(TypeBody::new(self.name, fields, codes))
+        let reserved: HashSet<Token<String>> =
+            options.find_all_identifiers("reserved")?.into_iter().collect();
+
+        Ok(TypeBody::new(self.name, fields, codes, reserved))
     }
 }
 

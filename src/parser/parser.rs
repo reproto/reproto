@@ -133,7 +133,8 @@ impl_rdp! {
         interface_body = _{ member* ~ sub_type* }
 
         enum_decl = { enum_keyword ~ type_identifier ~ left_curly ~ enum_body ~ right_curly }
-        enum_body = _{ enum_value ~ (comma ~ enum_value)* ~ semi_colon ~ member* }
+        enum_body = _{ enum_body_value* ~ member* }
+        enum_body_value = { enum_value }
 
         sub_type = { type_identifier ~ left_curly ~ sub_type_body ~ right_curly }
         sub_type_body = _{ member* }
@@ -143,7 +144,8 @@ impl_rdp! {
         code_block = @{ identifier ~ whitespace* ~ code_start ~ code_body ~ code_end }
         code_body = { (!(["}}"]) ~ any)* }
 
-        enum_value = { identifier ~ (left_paren ~ (value ~ (comma ~ value)*) ~ right_paren)? }
+        enum_value = { identifier ~ enum_arguments ~ semi_colon }
+        enum_arguments = { (left_paren ~ (value ~ (comma ~ value)*) ~ right_paren)? }
         option_decl = { identifier ~ (value ~ (comma ~ value)*) ~ semi_colon }
 
         package_ident = @{ identifier ~ (["."] ~ identifier)* }
@@ -355,7 +357,6 @@ impl_rdp! {
                 &name: type_identifier,
                 _: left_curly,
                 values: _enum_value_list(),
-                _: semi_colon,
                 members: _member_list(),
                 _: right_curly,
             ) => {
@@ -373,30 +374,32 @@ impl_rdp! {
         }
 
         _enum_value_list(&self) -> Result<LinkedList<ast::Token<ast::EnumValue>>> {
-            (token: enum_value, value: _enum_value(), _: comma, tail: _enum_value_list()) => {
-                let value = value?;
+            (_: enum_body_value, value: _enum_value(), tail: _enum_value_list()) => {
                 let mut tail = tail?;
-                let pos = (token.start, token.end);
-                tail.push_front(ast::Token::new(value, pos));
+                tail.push_front(value?);
                 Ok(tail)
             },
 
-            (token: enum_value, value: _enum_value()) => {
-                let value = value?;
-                let pos = (token.start, token.end);
+            () => Ok(LinkedList::new()),
+        }
 
-                let mut tail = LinkedList::new();
-                tail.push_front(ast::Token::new(value, pos));
-                Ok(tail)
+        _enum_value(&self) -> Result<ast::Token<ast::EnumValue>> {
+            (
+                token: enum_value,
+                &name: identifier,
+                values: _enum_arguments(),
+                _: semi_colon
+             ) => {
+                let arguments = values?.into_iter().collect();
+                let pos = (token.start, token.end);
+                let enum_value = ast::EnumValue { name: name.to_owned(), arguments: arguments };
+                Ok(ast::Token::new(enum_value, pos))
             },
         }
 
-        _enum_value(&self) -> Result<ast::EnumValue> {
-            (&name: identifier, _: left_paren, values: _value_list(), _: right_paren) => {
-                let arguments = values?.into_iter().collect();
-
-                Ok(ast::EnumValue { name: name.to_owned(), arguments: arguments })
-            },
+        _enum_arguments(&self) -> Result<LinkedList<ast::Token<m::Value>>> {
+            (_: enum_arguments, _: left_paren, values: _value_list(), _: right_paren) => values,
+            (_: enum_arguments) => Ok(LinkedList::new()),
         }
 
         _value_list(&self) -> Result<LinkedList<ast::Token<m::Value>>> {

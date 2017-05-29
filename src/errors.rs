@@ -1,8 +1,6 @@
 use backend::errors as backend;
 use codeviz::errors as codeviz;
-use parser::ast;
 use parser::errors as parser;
-use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum InternalError {
@@ -37,25 +35,10 @@ error_chain! {
     errors {
         BackendErrors(errors: Vec<backend::Error>) {
             description("backend errors")
-            display("Encountered {} backend error(s)", errors.len())
+            display("encountered {} backend error(s)", errors.len())
         }
 
         MissingBackend {
-        }
-
-        DeclError(path: PathBuf, line_string: String, line: usize, decl: ast::Decl) {
-            description("Error in declaration")
-            display("Error in declaration `{}`: {}:{}: `{}`", decl.display(), path.display(), line, line_string)
-        }
-
-        DeclConflict(path: PathBuf, line_string: String, line: usize, existing: ast::Decl, conflicting: ast::Decl) {
-            description("Conflicting type declared")
-            display("Conflicting type declared: {}:{}: `{}`", path.display(), line, line_string)
-        }
-
-        InvalidMerge(this: ast::Decl, other: ast::Decl) {
-            description("Invalid merge")
-            display("Cannot merge existing `{}` with `{}`", this.display(), other.display())
         }
     }
 }

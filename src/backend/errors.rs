@@ -12,12 +12,28 @@ error_chain! {
 
     errors {
         Pos(message: String, pos: m::Pos) {
+            description("position error")
+            display("{}", message)
         }
 
         FieldConflict(message: String, source: m::Pos, target: m::Pos) {
+            description("field conflict")
+            display("{}", message)
         }
 
         DeclMerge(message: String, source: m::Pos, target: m::Pos) {
+            description("declaration merge")
+            display("{}", message)
+        }
+
+        ExtendEnum(message: String, source: m::Pos, enum_pos: m::Pos) {
+            description("extend enum")
+            display("{}", message)
+        }
+
+        ReservedField(field_pos: m::Pos, reserved_pos: m::Pos) {
+            description("field reserved")
+            display("field reserved")
         }
     }
 }
@@ -33,5 +49,13 @@ impl Error {
 
     pub fn decl_merge(message: String, source: m::Pos, target: m::Pos) -> Error {
         ErrorKind::DeclMerge(message, source, target).into()
+    }
+
+    pub fn extend_enum(message: String, source: m::Pos, enum_pos: m::Pos) -> Error {
+        ErrorKind::ExtendEnum(message, source, enum_pos).into()
+    }
+
+    pub fn reserved_field(field_pos: m::Pos, reserved_pos: m::Pos) -> Error {
+        ErrorKind::ReservedField(field_pos, reserved_pos).into()
     }
 }

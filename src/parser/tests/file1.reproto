@@ -42,7 +42,9 @@ interface Bar {
 }
 
 enum Baz {
-  THIRD(2, "third");
+  FIRST(1, "first");
+  SECOND(2, "second");
+  FIRST(3, "third");
 }
 
 // Support type aliases?

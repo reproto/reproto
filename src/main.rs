@@ -35,12 +35,7 @@ fn setup_logger(matches: &clap::ArgMatches) -> Result<()> {
 fn print_error(m: &str, p: &m::Pos) -> Result<()> {
     let (line, lines, range) = parser::find_line(&p.0, (p.1, p.2))?;
 
-    println!("{}:{}:{}-{}: {}:",
-             p.0.display(),
-             lines + 1,
-             range.0,
-             range.1,
-             m);
+    println!("{}:{}:{}-{}:", p.0.display(), lines + 1, range.0, range.1);
 
     let line_no = format!("{:>3}", lines + 1);
     let diff = range.1 - range.0;
@@ -54,7 +49,7 @@ fn print_error(m: &str, p: &m::Pos) -> Result<()> {
     line_indicator.push_str(&::std::iter::repeat("^").take(diff).collect::<String>());
 
     println!("{}: {}", line_no, line);
-    println!("{} - here", line_indicator);
+    println!("{} - {}", line_indicator, m);
 
     Ok(())
 }
@@ -71,6 +66,14 @@ fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<()> {
         backend::errors::ErrorKind::FieldConflict(ref name, ref source, ref target) => {
             print_error(&format!("conflict in field `{}`", name), source)?;
             print_error("previous declaration here", target)?;
+        }
+        backend::errors::ErrorKind::ExtendEnum(ref m, ref source, ref enum_target) => {
+            print_error(m, source)?;
+            print_error("previous declaration here", enum_target)?;
+        }
+        backend::errors::ErrorKind::ReservedField(ref field_pos, ref reserved_pos) => {
+            print_error("field reserved", field_pos)?;
+            print_error("field reserved here", reserved_pos)?;
         }
         backend::errors::ErrorKind::Parser(ref e) => {
             handle_parser_error(e)?;

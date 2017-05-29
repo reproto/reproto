@@ -1,8 +1,10 @@
 mod into_model;
 mod merge;
+
 pub mod environment;
 pub mod errors;
 pub mod java;
+pub mod js;
 pub mod models;
 pub mod python;
 
@@ -20,6 +22,7 @@ pub fn resolve(backend: &str, options: Options, env: Environment) -> Result<Box<
     let backend: Box<Backend> = match backend {
         "java" => Box::new(java::resolve(options, env)?),
         "python" => Box::new(python::resolve(options, env)?),
+        "js" => Box::new(js::resolve(options, env)?),
         _ => return Err(format!("Unknown backend type: {}", backend).into()),
     };
 

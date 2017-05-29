@@ -152,6 +152,10 @@ fn do_compile(matches: &ArgMatches) -> Result<Box<backend::Backend>> {
         }
     }
 
+    if let Err(e) = env.verify() {
+        failed.push(e);
+    }
+
     let backend = backend::resolve(&backend, options, env);
 
     match backend {

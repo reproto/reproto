@@ -83,7 +83,6 @@ impl Environment {
     pub fn import_file(&mut self, path: &Path, package: Option<&Package>) -> Result<()> {
         debug!("in: {}", path.display());
 
-        // TODO: fix this
         let file = parser::parse_file(&path)?;
 
         if let Some(package) = package {
@@ -155,6 +154,19 @@ impl Environment {
 
         for path in files {
             self.import_file(&path, Some(package))?;
+        }
+
+        Ok(())
+    }
+
+    pub fn verify(&mut self) -> Result<()> {
+        for (_, ref ty) in &self.types {
+            match ty.inner {
+                Decl::Type(ref ty) => {
+                    ty.verify()?;
+                }
+                _ => {}
+            }
         }
 
         Ok(())
