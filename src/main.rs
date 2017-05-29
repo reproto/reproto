@@ -98,11 +98,8 @@ fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
                     parser::parser::Rule::string => {
                         println!("  A string, like: `\"foo bar\"`");
                     }
-                    parser::parser::Rule::integer => {
-                        println!("  An integer, like: `42`");
-                    }
-                    parser::parser::Rule::decimal => {
-                        println!("  A decimal number, like: `3.14`");
+                    parser::parser::Rule::number => {
+                        println!("  A number number, like: `3.14`");
                     }
                     parser::parser::Rule::boolean => {
                         println!("  A boolean: `true` or `false`");

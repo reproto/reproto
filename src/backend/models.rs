@@ -1,10 +1,25 @@
-use num_bigint::BigInt;
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
+use super::errors::*;
 use token;
 
 pub type Pos = (PathBuf, usize, usize);
 pub type Token<T> = token::Token<T, Pos>;
+
+#[derive(Debug)]
+pub struct OptionDecl {
+    pub name: String,
+    pub values: Vec<Token<Value>>,
+}
+
+impl OptionDecl {
+    pub fn new(name: String, values: Vec<Token<Value>>) -> OptionDecl {
+        OptionDecl {
+            name: name,
+            values: values,
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Type {
@@ -25,8 +40,7 @@ pub enum Type {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     String(String),
-    Integer(BigInt),
-    Decimal(f64),
+    Number(f64),
     Boolean(bool),
     Identifier(String),
     Type(Type),
@@ -312,5 +326,63 @@ impl Decl {
             Decl::Enum(ref body) => format!("enum {}", body.name),
             Decl::Tuple(ref body) => format!("tuple {}", body.name),
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct Options {
+    options: Vec<Token<OptionDecl>>,
+}
+
+impl Options {
+    pub fn new(options: Vec<Token<OptionDecl>>) -> Options {
+        Options { options: options }
+    }
+
+    pub fn lookup<'a>(&'a self, name: &'a str) -> Box<Iterator<Item = &Token<Value>> + 'a> {
+        let it = self.options
+            .iter();
+
+        Box::new(it.filter(move |o| o.name.as_str() == name)
+            .flat_map(|o| o.values.iter()))
+    }
+
+    pub fn find_all_strings(&self, name: &str) -> Result<Vec<Token<String>>> {
+        let mut out: Vec<Token<String>> = Vec::new();
+
+        for s in self.lookup(name) {
+            match **s {
+                Value::String(ref string) => {
+                    out.push(s.map_inner(|_| string.clone()));
+                }
+                _ => {
+                    return Err(Error::pos(format!("{}: expected string", name), s.pos.clone()));
+                }
+            }
+        }
+
+        Ok(out)
+    }
+
+    pub fn find_one_identifier(&self, name: &str) -> Result<Option<Token<String>>> {
+        let mut out: Option<Token<String>> = None;
+
+        for s in self.lookup(name) {
+            if let Some(_) = out {
+                return Err(Error::pos(format!("{}: only one value may be present", name),
+                                      s.pos.clone()));
+            }
+
+            match **s {
+                Value::Identifier(ref string) => {
+                    out = Some(s.map_inner(|_| string.clone()));
+                }
+                _ => {
+                    return Err(Error::pos(format!("{}: expected identifier", name), s.pos.clone()));
+                }
+            }
+        }
+
+        Ok(out)
     }
 }

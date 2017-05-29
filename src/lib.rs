@@ -1,6 +1,5 @@
 #![recursion_limit = "1000"]
 
-extern crate num_bigint;
 extern crate clap;
 
 #[macro_use]

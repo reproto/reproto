@@ -628,16 +628,12 @@ impl Processor {
         constructor
     }
 
-    fn to_integer_literal(&self,
-                          pos: &m::Pos,
-                          string: String,
-                          ty: &PrimitiveType)
-                          -> Result<String> {
+    fn to_number_literal(&self, pos: &m::Pos, value: &f64, ty: &PrimitiveType) -> Result<String> {
         match *ty {
-            INTEGER => Ok(string),
-            LONG => Ok(format!("{}L", string)),
-            FLOAT => Ok(format!("{}F", string)),
-            DOUBLE => Ok(format!("{}D", string)),
+            INTEGER => Ok(value.floor().to_string()),
+            LONG => Ok(format!("{}L", value.floor())),
+            FLOAT => Ok(format!("{}F", value)),
+            DOUBLE => Ok(format!("{}D", value)),
             _ => {
                 Err(Error::pos(format!("cannot convert integer to {}", ty.primitive),
                                pos.clone()))
@@ -645,26 +641,10 @@ impl Processor {
         }
     }
 
-    fn to_float_literal(&self, pos: &m::Pos, number: &f64, ty: &PrimitiveType) -> Result<String> {
-        match *ty {
-            DOUBLE => Ok(format!("{}D", number.to_string())),
-            FLOAT => Ok(format!("{}F", number.to_string())),
-            _ => {
-                Err(Error::pos(format!("cannot convert float to {}", ty.primitive),
-                               pos.clone()))
-            }
-        }
-    }
-
     fn literal_value(&self, pos: &m::Pos, value: &m::Value, ty: &Type) -> Result<Variable> {
         if let Type::Primitive(ref primitive) = *ty {
-            if let m::Value::Integer(ref integer) = *value {
-                let lit = self.to_integer_literal(pos, integer.to_string(), primitive)?;
-                return Ok(lit.into());
-            }
-
-            if let m::Value::Decimal(ref float) = *value {
-                let lit = self.to_float_literal(pos, float, primitive)?;
+            if let m::Value::Number(ref float) = *value {
+                let lit = self.to_number_literal(pos, float, primitive)?;
                 return Ok(lit.into());
             }
         }
@@ -1089,8 +1069,7 @@ impl ::std::fmt::Display for m::Value {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         let out = match *self {
             m::Value::String(_) => "<string>",
-            m::Value::Integer(_) => "<integer>",
-            m::Value::Decimal(_) => "<decimal>",
+            m::Value::Number(_) => "<number>",
             m::Value::Boolean(_) => "<boolean>",
             m::Value::Identifier(_) => "<identifier>",
             m::Value::Type(_) => "<type>",

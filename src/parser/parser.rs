@@ -1,5 +1,6 @@
+#![allow(unconditional_recursion)]
+
 use backend::models as m;
-use num_bigint::BigInt;
 use pest::prelude::*;
 use std::collections::LinkedList;
 use super::ast;
@@ -123,28 +124,27 @@ impl_rdp! {
         package_decl = { package_keyword ~ package_ident ~ semi_colon }
 
         type_decl = { type_keyword ~ type_identifier ~ left_curly ~ type_body ~ right_curly }
-        type_body = _{ option_decl* ~ member* }
+        type_body = _{ member* }
 
         tuple_decl = { tuple_keyword ~ type_identifier ~ left_curly ~ tuple_body ~ right_curly }
-        tuple_body = _{ option_decl* ~ member* }
+        tuple_body = _{ member* }
 
         interface_decl = { interface_keyword ~ type_identifier ~ left_curly ~ interface_body ~ right_curly }
-        interface_body = _{ option_decl* ~ member* ~ sub_type* }
+        interface_body = _{ member* ~ sub_type* }
 
         enum_decl = { enum_keyword ~ type_identifier ~ left_curly ~ enum_body ~ right_curly }
-        enum_body = _{ enum_value ~ (comma ~ enum_value)* ~ semi_colon ~ option_decl* ~ member* }
+        enum_body = _{ enum_value ~ (comma ~ enum_value)* ~ semi_colon ~ member* }
 
-        sub_type = { type_identifier ~ left_curly ~ option_decl* ~ member* ~ right_curly }
+        sub_type = { type_identifier ~ left_curly ~ sub_type_body ~ right_curly }
+        sub_type_body = _{ member* }
 
-        member = { field | code_block }
+        member = { option_decl | field | code_block }
         field = { identifier ~ optional? ~ colon ~ type_spec ~ semi_colon }
         code_block = @{ identifier ~ whitespace* ~ code_start ~ code_body ~ code_end }
         code_body = { (!(["}}"]) ~ any)* }
 
         enum_value = { identifier ~ (left_paren ~ (value ~ (comma ~ value)*) ~ right_paren)? }
-        option_decl = { identifier ~ (option_value ~ (comma ~ option_value)*) ~ semi_colon }
-
-        option_value = { string | integer | unsigned | identifier }
+        option_decl = { identifier ~ (value ~ (comma ~ value)*) ~ semi_colon }
 
         package_ident = @{ identifier ~ (["."] ~ identifier)* }
 
@@ -199,7 +199,7 @@ impl_rdp! {
 
         type_bits = _{ (forward_slash ~ unsigned) }
 
-        value = { string | decimal | integer | boolean }
+        value = { boolean | identifier | string | number }
 
         identifier = @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
         type_identifier = @{ (['A'..'Z'] ~ ['a'..'z']*)+ }
@@ -209,9 +209,8 @@ impl_rdp! {
         unicode =  _{ ["u"] ~ hex ~ hex ~ hex ~ hex }
         hex     =  _{ ['0'..'9'] | ['a'..'f'] }
 
-        integer   = @{ ["-"]? ~ int }
-        unsigned = @{ ["-"]? ~ int }
-        decimal    = @{ ["-"]? ~ int? ~ (["."] ~ ['0'..'9']+) }
+        unsigned = @{ int }
+        number   = @{ ["-"]? ~ int ~ (["."] ~ ['0'..'9']+)? ~ (["e"] ~ int)? }
         int      =  _{ ["0"] | ['1'..'9'] ~ ['0'..'9']* }
 
         boolean = { ["true"] | ["false"] }
@@ -298,16 +297,13 @@ impl_rdp! {
                 _: type_keyword,
                 &name: type_identifier,
                 _: left_curly,
-                options: _option_list(),
                 members: _member_list(),
                 _: right_curly,
             ) => {
-                let options = ast::Options::new(options?.into_iter().collect());
                 let members = members?.into_iter().collect();
 
                 let body = ast::TypeBody {
                     name: name.to_owned(),
-                    options: options,
                     members: members
                 };
 
@@ -319,16 +315,13 @@ impl_rdp! {
                 _: tuple_keyword,
                 &name: type_identifier,
                 _: left_curly,
-                options: _option_list(),
                 members: _member_list(),
                 _: right_curly,
             ) => {
-                let options = ast::Options::new(options?.into_iter().collect());
                 let members = members?.into_iter().collect();
 
                 let body = ast::TupleBody {
                     name: name.to_owned(),
-                    options: options,
                     members: members,
                 };
 
@@ -340,18 +333,15 @@ impl_rdp! {
                 _: interface_keyword,
                 &name: type_identifier,
                 _: left_curly,
-                options: _option_list(),
                 members: _member_list(),
                 sub_types: _sub_type_list(),
                 _: right_curly,
             ) => {
-                let options = ast::Options::new(options?.into_iter().collect());
                 let members = members?.into_iter().collect();
                 let sub_types = sub_types?.into_iter().collect();
 
                 let body = ast::InterfaceBody {
                     name: name.to_owned(),
-                    options: options,
                     members: members,
                     sub_types: sub_types,
                 };
@@ -366,18 +356,15 @@ impl_rdp! {
                 _: left_curly,
                 values: _enum_value_list(),
                 _: semi_colon,
-                options: _option_list(),
                 members: _member_list(),
                 _: right_curly,
             ) => {
                 let values = values?.into_iter().collect();
-                let options = ast::Options::new(options?.into_iter().collect());
                 let members = members?.into_iter().collect();
 
                 let body = ast::EnumBody {
                     name: name.to_owned(),
                     values: values,
-                    options: options,
                     members: members,
                 };
 
@@ -413,20 +400,23 @@ impl_rdp! {
         }
 
         _value_list(&self) -> Result<LinkedList<ast::Token<m::Value>>> {
-            (token: value, value: _value(), _: comma, tail: _value_list()) => {
-                let value = value?;
-                let pos = (token.start, token.end);
+            (value: _value_token(), _: comma, tail: _value_list()) => {
                 let mut tail = tail?;
-                tail.push_front(ast::Token::new(value, pos));
+                tail.push_front(value?);
                 Ok(tail)
             },
 
-            (token: value, value: _value()) => {
-                let value = value?;
-                let pos = (token.start, token.end);
+            (value: _value_token()) => {
                 let mut tail = LinkedList::new();
-                tail.push_front(ast::Token::new(value, pos));
+                tail.push_front(value?);
                 Ok(tail)
+            },
+        }
+
+        _value_token(&self) -> Result<ast::Token<m::Value>> {
+            (token: value, value: _value()) => {
+                let pos = (token.start, token.end);
+                value.map(move |v| ast::Token::new(v, pos))
             },
         }
 
@@ -436,13 +426,13 @@ impl_rdp! {
                 Ok(m::Value::String(value))
             },
 
-            (&value: decimal) => {
-                let value = value.parse::<f64>()?;
-                Ok(m::Value::Decimal(value))
+            (&value: identifier) => {
+                Ok(m::Value::Identifier(value.to_owned()))
             },
 
-            (&value: integer) => {
-                Ok(m::Value::Integer(value.parse::<BigInt>()?))
+            (&value: number) => {
+                let value = value.parse::<f64>()?;
+                Ok(m::Value::Number(value))
             },
 
             (&value: boolean) => {
@@ -453,61 +443,6 @@ impl_rdp! {
                 };
 
                 Ok(m::Value::Boolean(value))
-            },
-        }
-
-        _option_list(&self) -> Result<LinkedList<ast::Token<ast::OptionDecl>>> {
-            (token: option_decl, first: _option_decl(), _: semi_colon, tail: _option_list()) => {
-                let mut tail = tail?;
-                let pos = (token.start, token.end);
-                tail.push_front(ast::Token::new(first?, pos));
-                Ok(tail)
-            },
-
-            () => Ok(LinkedList::new()),
-        }
-
-        _option_decl(&self) -> Result<ast::OptionDecl> {
-            (&name: identifier, values: _option_value_list()) => {
-                let values = values?.into_iter().collect();
-                Ok(ast::OptionDecl { name: name.to_owned(), values: values })
-            },
-        }
-
-        _option_value_list(&self) -> Result<LinkedList<ast::Token<ast::OptionValue>>> {
-            (token: option_value, value: _option_value(), _: comma, tail: _option_value_list()) => {
-                let pos = (token.start, token.end);
-                let mut tail = tail?;
-                tail.push_front(ast::Token::new(value?, pos));
-                Ok(tail)
-            },
-
-            (token: option_value, value: _option_value()) => {
-                let pos = (token.start, token.end);
-                let mut tail = LinkedList::new();
-                tail.push_front(ast::Token::new(value?, pos));
-                Ok(tail)
-            },
-        }
-
-        _option_value(&self) -> Result<ast::OptionValue> {
-            (&string: string) => {
-                let string = decode_escaped_string(string)?;
-                Ok(ast::OptionValue::String(string))
-            },
-
-            (&value: identifier) => {
-                Ok(ast::OptionValue::Identifier(value.to_owned()))
-            },
-
-            (&value: integer) => {
-                let value = value.parse::<i64>()?;
-                Ok(ast::OptionValue::Integer(value))
-            },
-
-            (&value: unsigned) => {
-                let value = value.parse::<u64>()?;
-                Ok(ast::OptionValue::Integer(value as i64))
             },
         }
 
@@ -545,6 +480,17 @@ impl_rdp! {
                 let block = strip_code_block(content);
                 Ok(ast::Member::Code(context.to_owned(), block))
             },
+
+            (
+                _: option_decl,
+                &name: identifier,
+                values: _value_list(),
+                _: semi_colon,
+            ) => {
+                let values = values?.into_iter().collect();
+                let option_decl = ast::OptionDecl { name: name.to_owned(), values: values };
+                Ok(ast::Member::Option(option_decl))
+            },
         }
 
         _sub_type_list(&self) -> Result<LinkedList<ast::Token<ast::SubType>>> {
@@ -564,14 +510,12 @@ impl_rdp! {
             (
                 &name: type_identifier,
                 _: left_curly,
-                options: _option_list(),
                 members: _member_list(),
                 _: right_curly,
              ) => {
                 let name = name.to_owned();
-                let options = ast::Options::new(options?.into_iter().collect());
                 let members = members?.into_iter().collect();
-                Ok(ast::SubType { name: name, options: options, members: members })
+                Ok(ast::SubType { name: name, members: members })
             },
         }
 
@@ -665,7 +609,18 @@ impl_rdp! {
 mod tests {
     use super::*;
 
+    /// Check that a parsed value equals expected.
+    macro_rules! value_eq {
+        ($expected:expr, $input:expr) => {{
+            let mut parser = parse($input);
+            assert!(parser.value());
+            let v = parser._value_token().unwrap().inner;
+            assert_eq!($expected, v);
+        }}
+    }
+
     const FILE1: &[u8] = include_bytes!("tests/file1.reproto");
+    const INTERFACE1: &[u8] = include_bytes!("tests/interface1.reproto");
 
     fn parse(input: &'static str) -> Rdp<StringInput> {
         Rdp::new(StringInput::new(input))
@@ -774,18 +729,8 @@ mod tests {
     }
 
     #[test]
-    fn test_value() {
-        let mut parser = parse("62.0");
-
-        assert!(parser.value());
-        assert!(parser.end());
-    }
-
-    #[test]
     fn test_interface() {
-        let input = "package foo.bar; interface Foo { reserved 1, 2, 3; java {{  }} Hello { } \
-                     World { } }";
-
+        let input = ::std::str::from_utf8(INTERFACE1).unwrap();
         let mut parser = parse(input);
 
         assert!(parser.file());
@@ -794,5 +739,33 @@ mod tests {
         let file = parser._file().unwrap();
 
         assert_eq!(1, file.decls.len());
+    }
+
+    #[test]
+    fn test_values() {
+        value_eq!(m::Value::String("foo\nbar".to_owned()), "\"foo\\nbar\"");
+        value_eq!(m::Value::Number(1f64), "1");
+    }
+
+    #[test]
+    fn test_option_decl() {
+        let mut parser = parse("foo_bar_baz true, foo, \"bar\", 12;");
+
+        assert!(parser.option_decl());
+        assert!(parser.end());
+
+        if let ast::Member::Option(option) = parser._member().unwrap() {
+            assert_eq!("foo_bar_baz", option.name);
+            assert_eq!(4, option.values.len());
+
+            assert_eq!(m::Value::Boolean(true), option.values[0].inner);
+            assert_eq!(m::Value::Identifier("foo".to_owned()),
+                       option.values[1].inner);
+            assert_eq!(m::Value::String("bar".to_owned()), option.values[2].inner);
+            assert_eq!(m::Value::Number(12f64), option.values[3].inner);
+            return;
+        }
+
+        panic!("option did not match");
     }
 }

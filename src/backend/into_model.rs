@@ -16,65 +16,6 @@ pub trait IntoModel {
     fn into_model(self, path: &Path) -> Result<Self::Output>;
 }
 
-/// Extensions to ast::Options.
-trait OptionsExt {
-    /// Base lookup method (defers to ast::Options::lookup).
-    fn lookup<'a>(&'a self,
-                  name: &'a str)
-                  -> Box<Iterator<Item = &ast::Token<ast::OptionValue>> + 'a>;
-
-    fn find_all_strings(&self, path: &Path, name: &str) -> Result<Vec<Token<String>>> {
-        let mut out: Vec<Token<String>> = Vec::new();
-
-        for s in self.lookup(name) {
-            let pos = (path.to_owned(), s.pos.0, s.pos.1);
-
-            match **s {
-                ast::OptionValue::String(ref string) => {
-                    out.push(Token::new(string.clone(), pos));
-                }
-                _ => {
-                    return Err(Error::pos(format!("{}: expected identifier", name), pos));
-                }
-            }
-        }
-
-        Ok(out)
-    }
-
-    fn find_one_identifier(&self, path: &Path, name: &str) -> Result<Option<Token<String>>> {
-        let mut out: Option<Token<String>> = None;
-
-        for s in self.lookup(name) {
-            let pos = (path.to_owned(), s.pos.0, s.pos.1);
-
-            if let Some(_) = out {
-                return Err(Error::pos(format!("{}: only one value may be present", name), pos));
-            }
-
-            match **s {
-                ast::OptionValue::Identifier(ref string) => {
-                    out = Some(Token::new(string.clone(), pos));
-                }
-                _ => {
-                    return Err(Error::pos(format!("{}: expected identifier", name), pos));
-                }
-            }
-        }
-
-        Ok(out)
-    }
-}
-
-/// Binding for ast::Options to extensions.
-impl OptionsExt for ast::Options {
-    fn lookup<'a>(&'a self,
-                  name: &'a str)
-                  -> Box<Iterator<Item = &ast::Token<ast::OptionValue>> + 'a> {
-        ast::Options::lookup(self, name)
-    }
-}
-
 impl IntoModel for ast::InterfaceBody {
     type Output = InterfaceBody;
 
@@ -82,19 +23,22 @@ impl IntoModel for ast::InterfaceBody {
         let mut fields = Vec::new();
         let mut codes = Vec::new();
         let mut sub_types: BTreeMap<String, Token<SubType>> = BTreeMap::new();
+        let mut options = Vec::new();
 
         for member in self.members {
             let pos = (path.to_owned(), member.pos.0, member.pos.1);
 
-            match *member {
-                ast::Member::Field(ref field) => {
-                    let field =
-                        Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
+            match member.inner {
+                ast::Member::Field(field) => {
+                    let field = Field::new(field.modifier, field.name, field.ty);
                     fields.push(Token::new(field, pos));
                 }
-                ast::Member::Code(ref context, ref lines) => {
-                    let code = Code::new(context.clone(), lines.clone());
+                ast::Member::Code(context, lines) => {
+                    let code = Code::new(context, lines);
                     codes.push(Token::new(code, pos));
+                }
+                ast::Member::Option(option) => {
+                    options.push(Token::new(option.into_model(path)?, pos));
                 }
             }
         }
@@ -102,6 +46,8 @@ impl IntoModel for ast::InterfaceBody {
         for sub_type in self.sub_types {
             let pos = (path.to_owned(), sub_type.pos.0, sub_type.pos.1);
             let sub_type = sub_type.inner.into_model(path)?;
+
+            // key has to be owned by entry
             let key = sub_type.name.clone();
 
             match sub_types.entry(key) {
@@ -115,7 +61,9 @@ impl IntoModel for ast::InterfaceBody {
             }
         }
 
-        Ok(InterfaceBody::new(self.name.clone(), fields, codes, sub_types))
+        let _options = Options::new(options);
+
+        Ok(InterfaceBody::new(self.name, fields, codes, sub_types))
     }
 }
 
@@ -126,43 +74,49 @@ impl IntoModel for ast::EnumBody {
         let mut values = Vec::new();
         let mut fields = Vec::new();
         let mut codes = Vec::new();
+        let mut options = Vec::new();
 
-        for value in &self.values {
-            let mut arguments = Vec::new();
+        for value in self.values {
+            let pos = value.pos;
+            let pos = (path.to_owned(), pos.0, pos.1);
+            let value = value.inner;
 
-            for argument in &value.arguments {
-                arguments.push(argument.clone().with_prefix(path.to_owned()));
-            }
+            let name = value.name;
+            let arguments: Vec<Token<Value>> =
+                value.arguments.into_iter().map(|a| a.with_prefix(path.to_owned())).collect();
 
-            let pos = (path.to_owned(), value.pos.0, value.pos.1);
             let value = EnumValue {
-                name: value.name.clone(),
+                name: name,
                 arguments: arguments,
             };
 
             values.push(Token::new(value, pos));
         }
 
-        for member in &self.members {
+        for member in self.members {
             let pos = (path.to_owned(), member.pos.0, member.pos.1);
 
-            match **member {
-                ast::Member::Field(ref field) => {
-                    let field =
-                        Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
+            match member.inner {
+                ast::Member::Field(field) => {
+                    let field = Field::new(field.modifier, field.name, field.ty);
                     fields.push(Token::new(field, pos));
                 }
-                ast::Member::Code(ref context, ref lines) => {
-                    let code = Code::new(context.clone(), lines.clone());
+                ast::Member::Code(context, lines) => {
+                    let code = Code::new(context, lines);
                     codes.push(Token::new(code, pos));
+                }
+                ast::Member::Option(option) => {
+                    options.push(Token::new(option.into_model(path)?, pos));
                 }
             }
         }
 
-        let serialized_as: Option<Token<String>> = self.options
-            .find_one_identifier(path, "serialized_as")?;
+        let options = Options::new(options);
 
-        Ok(EnumBody::new(self.name.clone(), values, fields, codes, serialized_as))
+        let serialized_as: Option<Token<String>> = options.find_one_identifier("serialized_as")?
+            .to_owned();
+
+        Ok(EnumBody::new(self.name, values, fields, codes, serialized_as))
     }
 }
 
@@ -172,31 +126,34 @@ impl IntoModel for ast::TypeBody {
     fn into_model(self, path: &Path) -> Result<TypeBody> {
         let mut fields: Vec<Token<Field>> = Vec::new();
         let mut codes = Vec::new();
+        let mut options = Vec::new();
 
-        for member in &self.members {
+        for member in self.members {
             let pos = (path.to_owned(), member.pos.0, member.pos.1);
 
-            match **member {
-                ast::Member::Field(ref field) => {
-                    let field =
-                        Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
+            match member.inner {
+                ast::Member::Field(field) => {
+                    let field = Field::new(field.modifier, field.name, field.ty);
 
                     if let Some(other) = fields.iter().find(|f| f.name == field.name) {
-                        return Err(Error::field_conflict(field.name.clone(),
-                                                         pos.clone(),
-                                                         other.pos.clone()));
+                        return Err(Error::field_conflict(field.name, pos, other.pos.clone()));
                     }
 
                     fields.push(Token::new(field, pos));
                 }
-                ast::Member::Code(ref context, ref lines) => {
-                    let code = Code::new(context.clone(), lines.clone());
+                ast::Member::Code(context, lines) => {
+                    let code = Code::new(context, lines);
                     codes.push(Token::new(code, pos));
+                }
+                ast::Member::Option(option) => {
+                    options.push(Token::new(option.into_model(path)?, pos));
                 }
             }
         }
 
-        Ok(TypeBody::new(self.name.clone(), fields, codes))
+        let _options = Options::new(options);
+
+        Ok(TypeBody::new(self.name, fields, codes))
     }
 }
 
@@ -206,32 +163,35 @@ impl IntoModel for ast::SubType {
     fn into_model(self, path: &Path) -> Result<SubType> {
         let mut fields: Vec<Token<Field>> = Vec::new();
         let mut codes = Vec::new();
+        let mut options = Vec::new();
 
-        for member in &self.members {
+        for member in self.members {
             let pos = (path.to_owned(), member.pos.0, member.pos.1);
 
-            match **member {
-                ast::Member::Field(ref field) => {
-                    let field =
-                        Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
+            match member.inner {
+                ast::Member::Field(field) => {
+                    let field = Field::new(field.modifier, field.name, field.ty);
 
                     if let Some(other) = fields.iter().find(|f| f.name == field.name) {
-                        return Err(Error::field_conflict(field.name.clone(),
-                                                         pos.clone(),
-                                                         other.pos.clone()));
+                        return Err(Error::field_conflict(field.name, pos, other.pos.clone()));
                     }
 
                     fields.push(Token::new(field, pos));
                 }
-                ast::Member::Code(ref context, ref lines) => {
-                    let code = Code::new(context.clone(), lines.clone());
+                ast::Member::Code(context, lines) => {
+                    let code = Code::new(context, lines);
                     codes.push(Token::new(code, pos));
+                }
+                ast::Member::Option(option) => {
+                    options.push(Token::new(option.into_model(path)?, pos));
                 }
             }
         }
 
-        let names = self.options.find_all_strings(path, "name")?;
-        Ok(SubType::new(self.name.clone(), fields, codes, names))
+        let options = Options::new(options);
+
+        let names = options.find_all_strings("name")?;
+        Ok(SubType::new(self.name, fields, codes, names))
     }
 }
 
@@ -241,24 +201,29 @@ impl IntoModel for ast::TupleBody {
     fn into_model(self, path: &Path) -> Result<TupleBody> {
         let mut fields = Vec::new();
         let mut codes = Vec::new();
+        let mut options = Vec::new();
 
-        for member in &self.members {
+        for member in self.members {
             let pos = (path.to_owned(), member.pos.0, member.pos.1);
 
-            match **member {
-                ast::Member::Field(ref field) => {
-                    let field =
-                        Field::new(field.modifier.clone(), field.name.clone(), field.ty.clone());
+            match member.inner {
+                ast::Member::Field(field) => {
+                    let field = Field::new(field.modifier, field.name, field.ty);
                     fields.push(Token::new(field, pos));
                 }
-                ast::Member::Code(ref context, ref lines) => {
-                    let code = Code::new(context.clone(), lines.clone());
+                ast::Member::Code(context, lines) => {
+                    let code = Code::new(context, lines);
                     codes.push(Token::new(code, pos));
+                }
+                ast::Member::Option(option) => {
+                    options.push(Token::new(option.into_model(path)?, pos));
                 }
             }
         }
 
-        Ok(TupleBody::new(self.name.clone(), fields, codes))
+        let _options = Options::new(options);
+
+        Ok(TupleBody::new(self.name, fields, codes))
     }
 }
 
@@ -276,5 +241,19 @@ impl IntoModel for ast::Token<ast::Decl> {
         };
 
         Ok(Token::new(decl, pos))
+    }
+}
+
+impl IntoModel for ast::OptionDecl {
+    type Output = OptionDecl;
+
+    fn into_model(self, path: &Path) -> Result<OptionDecl> {
+        let mut values = Vec::new();
+
+        for value in self.values {
+            values.push(value.with_prefix(path.to_owned()));
+        }
+
+        Ok(OptionDecl::new(self.name, values))
     }
 }

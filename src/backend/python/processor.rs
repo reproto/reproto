@@ -487,12 +487,8 @@ impl Processor {
                     return Ok(Variable::Literal(boolean.to_string()));
                 }
 
-                if let m::Value::Integer(ref integer) = *value {
-                    return Ok(Variable::Literal(integer.to_string()));
-                }
-
-                if let m::Value::Decimal(ref float) = *value {
-                    return Ok(Variable::Literal(float.to_string()));
+                if let m::Value::Number(ref number) = *value {
+                    return Ok(Variable::Literal(number.to_string()));
                 }
             }
             m::Type::String => {

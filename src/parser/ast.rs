@@ -6,35 +6,9 @@ pub type Pos = (usize, usize);
 pub type Token<T> = token::Token<T, Pos>;
 
 #[derive(Debug)]
-pub enum OptionValue {
-    String(String),
-    Integer(i64),
-    Identifier(String),
-}
-
-#[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,
-    pub values: Vec<Token<OptionValue>>,
-}
-
-#[derive(Debug)]
-pub struct Options {
-    options: Vec<Token<OptionDecl>>,
-}
-
-impl Options {
-    pub fn new(options: Vec<Token<OptionDecl>>) -> Options {
-        Options { options: options }
-    }
-
-    pub fn lookup<'a>(&'a self, name: &'a str) -> Box<Iterator<Item = &Token<OptionValue>> + 'a> {
-        let it = self.options
-            .iter();
-
-        Box::new(it.filter(move |o| o.name.as_str() == name)
-            .flat_map(|o| o.values.iter()))
-    }
+    pub values: Vec<Token<Value>>,
 }
 
 #[derive(Debug)]
@@ -67,6 +41,7 @@ impl Field {
 pub enum Member {
     Field(Field),
     Code(String, Vec<String>),
+    Option(OptionDecl),
 }
 
 pub trait Body {
@@ -100,14 +75,12 @@ impl Body for InterfaceBody {
 #[derive(Debug)]
 pub struct TupleBody {
     pub name: String,
-    pub options: Options,
     pub members: Vec<Token<Member>>,
 }
 
 #[derive(Debug)]
 pub struct InterfaceBody {
     pub name: String,
-    pub options: Options,
     pub members: Vec<Token<Member>>,
     pub sub_types: Vec<Token<SubType>>,
 }
@@ -115,7 +88,6 @@ pub struct InterfaceBody {
 #[derive(Debug)]
 pub struct TypeBody {
     pub name: String,
-    pub options: Options,
     pub members: Vec<Token<Member>>,
 }
 
@@ -123,7 +95,6 @@ pub struct TypeBody {
 #[derive(Debug)]
 pub struct SubType {
     pub name: String,
-    pub options: Options,
     pub members: Vec<Token<Member>>,
 }
 
@@ -131,7 +102,6 @@ pub struct SubType {
 pub struct EnumBody {
     pub name: String,
     pub values: Vec<Token<EnumValue>>,
-    pub options: Options,
     pub members: Vec<Token<Member>>,
 }
 
