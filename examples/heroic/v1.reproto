@@ -2,6 +2,14 @@ package heroic.v1;
 
 use heroic.common as c;
 
+enum SI {
+  NANO = 3;
+  MICRO = 2;
+  MILLI = 10;
+
+  serialized_as_name true;
+}
+
 enum TimeUnit {
   SECONDS("seconds", 1000);
   MINUTES("minutes", 60000);

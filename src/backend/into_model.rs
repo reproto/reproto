@@ -19,6 +19,53 @@ fn code(pos: &Pos, ast_pos: ast::Pos, context: String, lines: Vec<String>) -> To
     Token::new(code, pos)
 }
 
+struct OrdinalGenerator {
+    next_ordinal: u32,
+    ordinals: HashSet<u32>,
+}
+
+impl OrdinalGenerator {
+    pub fn new() -> OrdinalGenerator {
+        OrdinalGenerator {
+            next_ordinal: 0,
+            ordinals: HashSet::new(),
+        }
+    }
+
+    pub fn next(&mut self, ordinal: &Option<ast::Token<Value>>, pos: &Pos) -> Result<u32> {
+        if let Some(ref ordinal) = *ordinal {
+            let pos = (pos.0.to_owned(), ordinal.pos.0, ordinal.pos.1);
+
+            if let Value::Number(ref number) = ordinal.inner {
+                let n: u32 = number.floor() as u32;
+
+                if self.ordinals.contains(&n) {
+                    return Err(Error::pos("duplicate ordinal".to_owned(), pos));
+                }
+
+                self.ordinals.insert(n);
+
+                self.next_ordinal = n + 1;
+
+                return Ok(n);
+            }
+
+            return Err(Error::pos("must be a number".to_owned(), pos));
+        }
+
+        let o = self.next_ordinal;
+
+        self.next_ordinal += 1;
+
+        if self.ordinals.contains(&o) {
+            return Err(Error::pos(format!("generated ordinal {} conflicts with existing", o),
+                                  pos.clone()));
+        }
+
+        Ok(o)
+    }
+}
+
 /// Adds the into_model() method for all types that supports conversion into models.
 pub trait IntoModel {
     type Output;
@@ -91,6 +138,8 @@ impl IntoModel for ast::EnumBody {
         let mut codes = Vec::new();
         let mut options = Vec::new();
 
+        let mut ordinals = OrdinalGenerator::new();
+
         for value in self.values {
             let pos = (pos.0.to_owned(), value.pos.0, value.pos.1);
             let value = value.inner;
@@ -98,10 +147,12 @@ impl IntoModel for ast::EnumBody {
             let name = value.name;
             let arguments: Vec<Token<Value>> =
                 value.arguments.into_iter().map(|a| a.with_prefix(pos.0.to_owned())).collect();
+            let ordinal = ordinals.next(&value.ordinal, &pos)?;
 
             let value = EnumValue {
                 name: name,
                 arguments: arguments,
+                ordinal: ordinal,
             };
 
             values.push(Token::new(value, pos));
@@ -128,9 +179,10 @@ impl IntoModel for ast::EnumBody {
         let serialized_as: Option<Token<String>> = options.find_one_identifier("serialized_as")?
             .to_owned();
 
-        let serialized_as_name: Option<Token<bool>> =
-            options.find_one_boolean("serialized_as_name")?
-                .to_owned();
+        let serialized_as_name = options.find_one_boolean("serialized_as_name")?
+            .to_owned()
+            .map(|t| t.inner)
+            .unwrap_or(false);
 
         let en = EnumBody {
             name: self.name,

@@ -86,8 +86,8 @@ impl Processor {
             error: Name::built_in("Error"),
             type_var: string(TYPE),
             values: stmt!["values"],
-            enum_ordinal: Variable::Literal("enum_ordinal".to_owned()),
-            enum_name: Variable::Literal("enum_name".to_owned()),
+            enum_ordinal: Variable::Literal("ordinal".to_owned()),
+            enum_name: Variable::Literal("name".to_owned()),
         }
     }
 
@@ -110,7 +110,7 @@ impl Processor {
     {
         let required_error = string(format!("{}: is a required field", field.name));
         if_stmt!(is_not_defined(stmt),
-                 stmt!["throw new", &self.error, "(", required_error, ");"])
+                 stmt!["throw new ", &self.error, "(", required_error, ");"])
     }
 
     fn convert_fields(&self, fields: &Vec<Token<Field>>) -> Vec<Token<JsField>> {
@@ -199,15 +199,15 @@ impl Processor {
         Ok(encode)
     }
 
-    fn encode_enum_method(&self, field: &JsField) -> Result<MethodSpec> {
+    fn encode_enum_method(&self, ident: &str) -> Result<MethodSpec> {
         let mut encode = MethodSpec::new("encode");
         let mut encode_body = Elements::new();
-        encode_body.push(stmt!["return self.", &field.ident, ";"]);
+        encode_body.push(stmt!["return self.", &ident, ";"]);
         encode.push(encode_body.join(ElementSpec::Spacing));
         Ok(encode)
     }
 
-    fn decode_enum_method(&self, class: &ClassSpec, field: &JsField) -> Result<MethodSpec> {
+    fn decode_enum_method(&self, class: &ClassSpec, ident: &str) -> Result<MethodSpec> {
         let mut decode = MethodSpec::with_static("decode");
 
         let data = stmt!["data"];
@@ -221,14 +221,14 @@ impl Processor {
 
         let members = stmt![&class.name, ".", &self.values];
         let loop_init = stmt!["let ", &i, " = 0, ", &l, " = ", &members, ".length"];
-        let for_loop = stmt!["for (", &loop_init ,"; i < ", &l, "; ", &i, "++) {"];
+        let for_loop = stmt!["for (", &loop_init, "; i < ", &l, "; ", &i, "++) {"];
         let member_value = stmt!["const ", &member, " = ", &members, "[", &i, "];"];
 
         let mut body = Elements::new();
 
         body.push(member_value);
 
-        let cond = stmt![&member, ".", &field.ident, " === ", data];
+        let cond = stmt![&member, ".", ident, " === ", data];
         body.push(if_stmt!(cond, stmt!["return ", &member, ";"]));
 
         member_loop.push(for_loop);
@@ -518,12 +518,53 @@ impl Processor {
                        pos.clone()))
     }
 
+    fn enum_encode_decode(&self,
+                          body: &EnumBody,
+                          fields: &Vec<Token<JsField>>,
+                          class: &ClassSpec)
+                          -> Result<ElementSpec> {
+        // lookup serialized_as if specified.
+        if let Some(ref s) = body.serialized_as {
+            let mut elements = Elements::new();
+
+            if let Some((_, ref field)) = self.find_field(fields, &s.inner) {
+                elements.push(self.encode_enum_method(&field.name)?);
+                let decode = self.decode_enum_method(&class, &field.name)?;
+                elements.push(decode);
+                return Ok(elements.into());
+            }
+
+            return Err(Error::pos(format!("no field named: {}", s.inner), s.pos.clone()));
+        }
+
+        if body.serialized_as_name {
+            let mut elements = Elements::new();
+
+            elements.push(self.encode_enum_method("name")?);
+            let decode = self.decode_enum_method(&class, "name")?;
+            elements.push(decode);
+            return Ok(elements.into());
+        }
+
+        let mut elements = Elements::new();
+        elements.push(self.encode_enum_method("ordinal")?);
+        let decode = self.decode_enum_method(&class, "ordinal")?;
+        elements.push(decode);
+        Ok(elements.into())
+    }
+
     fn process_enum(&self, _package: &Package, body: &EnumBody) -> Result<ElementSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<Token<JsField>> = Vec::new();
 
         for field in &body.fields {
             let ident = self.ident(&field.name);
+
+            let ident = match ident.as_str() {
+                "name" => "_name".to_owned(),
+                "ordinal" => "_ordinal".to_owned(),
+                ident => ident.to_owned(),
+            };
 
             fields.push(field.clone()
                 .map_inner(|f| {
@@ -545,24 +586,15 @@ impl Processor {
         }
 
         class.push(self.build_enum_constructor(&fields));
-
-        // lookup serialized_as if specified.
-        if let Some(ref s) = body.serialized_as {
-            if let Some((_, ref field)) = self.find_field(&fields, &s.inner) {
-                class.push(self.encode_enum_method(field)?);
-                let decode = self.decode_enum_method(&class, field)?;
-                class.push(decode);
-            } else {
-                return Err(Error::pos(format!("no field named: {}", s.inner), s.pos.clone()));
-            }
-        }
+        let encode_decode = self.enum_encode_decode(&body, &fields, &class)?;
+        class.push(encode_decode);
 
         let mut values = Elements::new();
 
-        for (i, value) in body.values.iter().enumerate() {
+        for value in &body.values {
             let mut value_arguments = Statement::new();
 
-            value_arguments.push(i.to_string());
+            value_arguments.push(value.ordinal.to_string());
             value_arguments.push(string(&value.name));
 
             for (value, field) in value.arguments.iter().zip(fields.iter()) {
@@ -662,7 +694,7 @@ impl Processor {
                 .unwrap_or_else(|| interface.name.clone());
 
             let mut fields = interface_fields.clone();
-            fields.extend(self.convert_fields(&interface.fields));
+            fields.extend(self.convert_fields(&sub_type.fields));
 
             let constructor = self.build_constructor(&fields);
             class.push(&constructor);

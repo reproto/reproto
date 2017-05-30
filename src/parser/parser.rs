@@ -144,8 +144,9 @@ impl_rdp! {
         code_block = @{ identifier ~ whitespace* ~ code_start ~ code_body ~ code_end }
         code_body = { (!(["}}"]) ~ any)* }
 
-        enum_value = { identifier ~ enum_arguments ~ semi_colon }
-        enum_arguments = { (left_paren ~ (value ~ (comma ~ value)*) ~ right_paren)? }
+        enum_value = { identifier ~ enum_arguments? ~ enum_ordinal? ~ semi_colon }
+        enum_arguments = { (left_paren ~ (value ~ (comma ~ value)*) ~ right_paren) }
+        enum_ordinal = { equals ~ value }
         option_decl = { identifier ~ (value ~ (comma ~ value)*) ~ semi_colon }
 
         package_ident = @{ identifier ~ (["."] ~ identifier)* }
@@ -198,6 +199,7 @@ impl_rdp! {
         right_paren = @{ [")"] }
         forward_slash = @{ ["/"] }
         optional = @{ ["?"] }
+        equals = @{ ["="] }
 
         type_bits = _{ (forward_slash ~ unsigned) }
 
@@ -388,18 +390,25 @@ impl_rdp! {
                 token: enum_value,
                 &name: identifier,
                 values: _enum_arguments(),
+                ordinal: _enum_ordinal(),
                 _: semi_colon
              ) => {
                 let arguments = values?.into_iter().collect();
+                let ordinal = ordinal?;
                 let pos = (token.start, token.end);
-                let enum_value = ast::EnumValue { name: name.to_owned(), arguments: arguments };
+                let enum_value = ast::EnumValue { name: name.to_owned(), arguments: arguments, ordinal: ordinal };
                 Ok(ast::Token::new(enum_value, pos))
             },
         }
 
         _enum_arguments(&self) -> Result<LinkedList<ast::Token<m::Value>>> {
             (_: enum_arguments, _: left_paren, values: _value_list(), _: right_paren) => values,
-            (_: enum_arguments) => Ok(LinkedList::new()),
+            () => Ok(LinkedList::new()),
+        }
+
+        _enum_ordinal(&self) -> Result<Option<ast::Token<m::Value>>> {
+            (_: enum_ordinal, _: equals, value: _value_token()) => value.map(Some),
+            () => Ok(None),
         }
 
         _value_list(&self) -> Result<LinkedList<ast::Token<m::Value>>> {

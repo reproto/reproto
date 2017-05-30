@@ -211,6 +211,7 @@ pub struct TupleBody {
 pub struct EnumValue {
     pub name: String,
     pub arguments: Vec<Token<Value>>,
+    pub ordinal: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -220,7 +221,7 @@ pub struct EnumBody {
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
     pub serialized_as: Option<Token<String>>,
-    pub serialized_as_name: Option<Token<bool>>,
+    pub serialized_as_name: bool,
 }
 
 #[derive(Clone)]
