@@ -452,9 +452,8 @@ impl Processor {
         for field in &ty.fields {
             let ident = self.ident(&field.name);
 
-            fields.push(field.map_inner(|f| {
-                Field::new(m::Modifier::Required, f.ty.clone(), f.name.clone(), ident)
-            }));
+            fields.push(field.clone()
+                .map_inner(|f| Field::new(m::Modifier::Required, f.ty, f.name, ident)));
         }
 
         for code in &ty.codes {
@@ -517,9 +516,8 @@ impl Processor {
                 i => i.to_owned(),
             };
 
-            fields.push(field.map_inner(|f| {
-                Field::new(m::Modifier::Required, f.ty.clone(), f.name.clone(), ident)
-            }));
+            fields.push(field.clone()
+                .map_inner(|f| Field::new(m::Modifier::Required, f.ty, f.name, ident)));
         }
 
         class.extends(&self.enum_enum);
@@ -586,9 +584,7 @@ impl Processor {
         for field in &ty.fields {
             let ident = self.ident(&field.name);
 
-            fields.push(field.map_inner(|f| {
-                    Field::new(f.modifier.clone(), f.ty.clone(), f.name.clone(), ident)
-                }));
+            fields.push(field.clone().map_inner(|f| Field::new(f.modifier, f.ty, f.name, ident)));
         }
 
         let constructor = self.build_constructor(&fields);
@@ -636,8 +632,8 @@ impl Processor {
         for field in &interface.fields {
             let ident = self.ident(&field.name);
 
-            interface_fields.push(field.map_inner(|f| {
-                    Field::new(f.modifier.clone(), f.ty.clone(), f.name.clone(), ident)
+            interface_fields.push(field.clone().map_inner(|f| {
+                    Field::new(f.modifier, f.ty, f.name, ident)
                 }));
         }
 
@@ -666,8 +662,8 @@ impl Processor {
             for field in &sub_type.fields {
                 let ident = self.ident(&field.name);
 
-                fields.push(field.map_inner(|f| {
-                    Field::new(f.modifier.clone(), f.ty.clone(), f.name.clone(), ident)
+                fields.push(field.clone().map_inner(|f| {
+                    Field::new(f.modifier, f.ty, f.name, ident)
                 }));
             }
 

@@ -22,10 +22,10 @@ impl<T, P> Token<T, P>
         }
     }
 
-    pub fn map_inner<M, U>(&self, map: M) -> Token<U, P>
-        where M: FnOnce(&T) -> U,
+    pub fn map_inner<M, U>(self, map: M) -> Token<U, P>
+        where M: FnOnce(T) -> U,
               U: Clone
     {
-        Token::new(map(&self.inner), self.pos.clone())
+        Token::new(map(self.inner), self.pos)
     }
 }

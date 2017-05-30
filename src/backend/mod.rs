@@ -1,5 +1,6 @@
 mod into_model;
 mod merge;
+mod options;
 
 pub mod environment;
 pub mod errors;

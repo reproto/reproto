@@ -299,23 +299,7 @@ pub struct EnumBody {
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
     pub serialized_as: Option<Token<String>>,
-}
-
-impl EnumBody {
-    pub fn new(name: String,
-               values: Vec<Token<EnumValue>>,
-               fields: Vec<Token<Field>>,
-               codes: Vec<Token<Code>>,
-               serialized_as: Option<Token<String>>)
-               -> EnumBody {
-        EnumBody {
-            name: name,
-            values: values,
-            fields: fields,
-            codes: codes,
-            serialized_as: serialized_as,
-        }
-    }
+    pub serialized_as_name: Option<Token<bool>>,
 }
 
 #[derive(Clone)]
@@ -343,90 +327,5 @@ impl Decl {
             Decl::Enum(ref body) => format!("enum {}", body.name),
             Decl::Tuple(ref body) => format!("tuple {}", body.name),
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct Options {
-    options: Vec<Token<OptionDecl>>,
-}
-
-impl Options {
-    pub fn new(options: Vec<Token<OptionDecl>>) -> Options {
-        Options { options: options }
-    }
-
-    pub fn lookup<'a>(&'a self, name: &'a str) -> Box<Iterator<Item = &Token<Value>> + 'a> {
-        let it = self.options
-            .iter();
-
-        Box::new(it.filter(move |o| o.name.as_str() == name)
-            .flat_map(|o| o.values.iter()))
-    }
-
-    /// Find all strings matching the given name.
-    ///
-    /// This enforces that all found values are strings, otherwise the lookup will cause an error.
-    pub fn find_all_strings(&self, name: &str) -> Result<Vec<Token<String>>> {
-        let mut out: Vec<Token<String>> = Vec::new();
-
-        for s in self.lookup(name) {
-            match **s {
-                Value::String(ref string) => {
-                    out.push(s.map_inner(|_| string.clone()));
-                }
-                _ => {
-                    return Err(Error::pos(format!("{}: expected string", name), s.pos.clone()));
-                }
-            }
-        }
-
-        Ok(out)
-    }
-
-    /// Optionally find exactly one identifier matching the given name.
-    ///
-    /// This enforces that all found values are identifiers, otherwise the lookup will cause an
-    /// error.
-    pub fn find_one_identifier(&self, name: &str) -> Result<Option<Token<String>>> {
-        let mut out: Option<Token<String>> = None;
-
-        for s in self.lookup(name) {
-            if let Some(_) = out {
-                return Err(Error::pos(format!("{}: only one value may be present", name),
-                                      s.pos.clone()));
-            }
-
-            match **s {
-                Value::Identifier(ref string) => {
-                    out = Some(s.map_inner(|_| string.clone()));
-                }
-                _ => {
-                    return Err(Error::pos(format!("{}: expected identifier", name), s.pos.clone()));
-                }
-            }
-        }
-
-        Ok(out)
-    }
-
-    /// Find all identifiers matching the given name.
-    ///
-    /// This enforces that all found values are identifiers, otherwise the lookup will cause an error.
-    pub fn find_all_identifiers(&self, name: &str) -> Result<Vec<Token<String>>> {
-        let mut out: Vec<Token<String>> = Vec::new();
-
-        for s in self.lookup(name) {
-            match **s {
-                Value::Identifier(ref identifier) => {
-                    out.push(s.map_inner(|_| identifier.clone()));
-                }
-                _ => {
-                    return Err(Error::pos(format!("{}: expected identifier", name), s.pos.clone()));
-                }
-            }
-        }
-
-        Ok(out)
     }
 }

@@ -244,7 +244,7 @@ enum SI {
     MEGA("mega", "M", 1e6);
 
     // select which field to serialize as.
-    serialize_as unit_name;
+    serialized_as unit_name;
 
     unit_name: string;
     symbol: string;
