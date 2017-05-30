@@ -75,7 +75,7 @@ impl<'a> Options<'a> {
         Ok(None)
     }
 
-    pub fn find_one_string(&self, name: &str) -> Result<Option<Token<String>>> {
+    pub fn _find_one_string(&self, name: &str) -> Result<Option<Token<String>>> {
         if let Some(t) = self.find_one(name)? {
             if let Value::String(ref string) = t.inner {
                 return Ok(Some(Token::new(string.clone(), t.pos.clone())));
