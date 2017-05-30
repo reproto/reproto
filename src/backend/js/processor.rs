@@ -64,7 +64,9 @@ pub struct Processor {
     to_lower_snake: Box<naming::Naming>,
     error: BuiltInName,
     type_var: Variable,
-    members: Statement,
+    values: Statement,
+    enum_ordinal: Variable,
+    enum_name: Variable,
 }
 
 const JS_CONTEXT: &str = "js";
@@ -83,7 +85,9 @@ impl Processor {
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             error: Name::built_in("Error"),
             type_var: string(TYPE),
-            members: stmt!["__members__"],
+            values: stmt!["values"],
+            enum_ordinal: Variable::Literal("enum_ordinal".to_owned()),
+            enum_name: Variable::Literal("enum_name".to_owned()),
         }
     }
 
@@ -136,12 +140,14 @@ impl Processor {
               B: Into<Variable>
     {
         let mut encode = MethodSpec::new("encode");
+        let mut body = Elements::new();
+        let data = stmt!["data"];
 
-        let mut encode_body = Elements::new();
+        body.push(stmt!["const ", &data, " = ", builder, ";"]);
 
-        encode_body.push(stmt!["let data = ", builder, ";"]);
+        extra(&mut body);
 
-        extra(&mut encode_body);
+        let mut assign = Elements::new();
 
         for field in fields {
             let var_string = string(field.ident.to_owned());
@@ -151,20 +157,24 @@ impl Processor {
             match field.modifier {
                 Modifier::Optional => {
                     let stmt = if_stmt!(is_not_defined(field_stmt),
-                                        stmt!["data[", var_string, "] = ", value_stmt, ";"]);
-                    encode_body.push(stmt);
+                                        stmt![&data, "[", var_string, "] = ", value_stmt, ";"]);
+                    assign.push(stmt);
                 }
                 _ => {
-                    encode_body.push(self.throw_if_null(field_stmt, field));
-                    let stmt = stmt!["data[", var_string, "] = ", value_stmt, ";"];
-                    encode_body.push(stmt);
+                    assign.push(self.throw_if_null(field_stmt, field));
+                    let stmt = stmt![&data, "[", var_string, "] = ", value_stmt, ";"];
+                    assign.push(stmt);
                 }
             }
         }
 
-        encode_body.push(stmt!["return data"]);
+        if !assign.is_empty() {
+            body.push(assign);
+        }
 
-        encode.push(encode_body.join(ElementSpec::Spacing));
+        body.push(stmt!["return ", data, ";"]);
+
+        encode.push(body.join(ElementSpec::Spacing));
         Ok(encode)
     }
 
@@ -192,47 +202,48 @@ impl Processor {
     fn encode_enum_method(&self, field: &JsField) -> Result<MethodSpec> {
         let mut encode = MethodSpec::new("encode");
         let mut encode_body = Elements::new();
-        encode_body.push(stmt!["return self.", &field.ident]);
+        encode_body.push(stmt!["return self.", &field.ident, ";"]);
         encode.push(encode_body.join(ElementSpec::Spacing));
         Ok(encode)
     }
 
-    fn decode_enum_method(&self, field: &JsField) -> Result<MethodSpec> {
+    fn decode_enum_method(&self, class: &ClassSpec, field: &JsField) -> Result<MethodSpec> {
         let mut decode = MethodSpec::with_static("decode");
 
         let data = stmt!["data"];
         let i = stmt!["i"];
-        let member_name = stmt!["m"];
+        let l = stmt!["l"];
         let member = stmt!["member"];
 
         decode.push_argument(&data);
 
-        let mut decode_body = Elements::new();
-
         let mut member_loop = Elements::new();
 
-        let for_loop =
-            stmt!["for (var ", &i, " = 0; i < this.", &self.members, ".length; ", &i, "++) {"];
+        let members = stmt![&class.name, ".", &self.values];
+        let loop_init = stmt!["let ", &i, " = 0, ", &l, " = ", &members, ".length"];
+        let for_loop = stmt!["for (", &loop_init ,"; i < ", &l, "; ", &i, "++) {"];
+        let member_value = stmt!["const ", &member, " = ", &members, "[", &i, "];"];
 
-        let name_assign =
-            stmt!["var ", &member_name, " = this.", &self.members, ".length[", &i, "];"];
+        let mut body = Elements::new();
 
-        member_loop.push(for_loop);
-        member_loop.push_nested(name_assign);
-        member_loop.push_nested(stmt!["var ", &member, " = this[", &member_name, "];"]);
+        body.push(member_value);
 
         let cond = stmt![&member, ".", &field.ident, " === ", data];
-        member_loop.push_nested(if_stmt!(cond, stmt!["return ", &member]));
+        body.push(if_stmt!(cond, stmt!["return ", &member, ";"]));
 
+        member_loop.push(for_loop);
+        member_loop.push_nested(body.join(ElementSpec::Spacing));
         member_loop.push("}");
 
-        let mismatch = string("data does not match enum".to_owned());
-        let throw = stmt!["throw new ", &self.error, "(", mismatch, ")"];
+        let mismatch = string("no matching value");
+        let throw = stmt!["throw new ", &self.error, "(", mismatch, ");"];
 
-        decode_body.push(member_loop);
-        decode_body.push(throw);
+        let mut body = Elements::new();
 
-        decode.push(decode_body.join(ElementSpec::Spacing));
+        body.push(member_loop);
+        body.push(throw);
+
+        decode.push(body.join(ElementSpec::Spacing));
         Ok(decode)
     }
 
@@ -244,15 +255,16 @@ impl Processor {
                         -> Result<MethodSpec>
         where F: Fn(usize, &JsField) -> Variable
     {
-        let mut decode = MethodSpec::new("static decode");
-        decode.push_argument(stmt!["data"]);
+        let mut decode = MethodSpec::with_static("decode");
+        let data = stmt!["data"];
 
-        let mut decode_body = Elements::new();
+        decode.push_argument(&data);
 
         let mut arguments = Statement::new();
+        let mut assign = Elements::new();
 
         for (i, field) in fields.iter().enumerate() {
-            let var_name = format!("f_{}", field.ident);
+            let var_name = field.ident.clone();
             let var = variable_fn(i, field);
 
             let stmt: ElementSpec = match field.modifier {
@@ -261,7 +273,7 @@ impl Processor {
 
                     let mut check = Elements::new();
 
-                    check.push(stmt!["var ", &var_name, " = data[", &var, "];"]);
+                    check.push(stmt!["let ", &var_name, " = ", &data, "[", &var, "];"]);
                     check.push(ElementSpec::Spacing);
                     check.push(if_stmt!(is_defined(stmt![&var_name]),
                                         stmt![&var_name, " = ", var_stmt, ";"],
@@ -270,20 +282,26 @@ impl Processor {
                     check.into()
                 }
                 _ => {
-                    let var_stmt = stmt!["data[", &var, "]"];
+                    let var_stmt = stmt![&data, "[", &var, "]"];
                     let var_stmt = self.decode(&field.pos, package, &field.ty, var_stmt)?;
-                    stmt![&var_name, " = ", &var_stmt, ";"].into()
+                    stmt!["const ", &var_name, " = ", &var_stmt, ";"].into()
                 }
             };
 
-            decode_body.push(stmt);
+            assign.push(stmt);
             arguments.push(var_name);
         }
 
-        let arguments = arguments.join(", ");
-        decode_body.push(stmt!["return new ", &class.name, "(", arguments, ");"]);
+        let mut body = Elements::new();
 
-        decode.push(decode_body.join(ElementSpec::Spacing));
+        if !assign.is_empty() {
+            body.push(assign);
+        }
+
+        let arguments = arguments.join(", ");
+        body.push(stmt!["return new ", &class.name, "(", arguments, ");"]);
+
+        decode.push(body.join(ElementSpec::Spacing));
 
         Ok(decode)
     }
@@ -400,19 +418,38 @@ impl Processor {
     }
 
     fn build_constructor(&self, fields: &Vec<Token<JsField>>) -> ConstructorSpec {
-        let mut constructor = ConstructorSpec::new();
+        let mut ctor = ConstructorSpec::new();
         let mut assignments = Elements::new();
 
         for field in fields {
-            constructor.push_argument(stmt![&field.ident]);
+            ctor.push_argument(stmt![&field.ident]);
             assignments.push(stmt!["this.", &field.ident, " = ", &field.ident, ";"]);
         }
 
-        constructor.push(assignments);
-        constructor
+        ctor.push(assignments);
+        ctor
     }
 
-    fn process_tuple(&self, package: &Package, ty: &TupleBody) -> Result<ClassSpec> {
+    fn build_enum_constructor(&self, fields: &Vec<Token<JsField>>) -> ConstructorSpec {
+        let mut ctor = ConstructorSpec::new();
+        let mut assignments = Elements::new();
+
+        ctor.push_argument(&self.enum_ordinal);
+        assignments.push(stmt!["this.", &self.enum_ordinal, " = ", &self.enum_ordinal, ";"]);
+
+        ctor.push_argument(&self.enum_name);
+        assignments.push(stmt!["this.", &self.enum_name, " = ", &self.enum_name, ";"]);
+
+        for field in fields {
+            ctor.push_argument(stmt![&field.ident]);
+            assignments.push(stmt!["this.", &field.ident, " = ", &field.ident, ";"]);
+        }
+
+        ctor.push(assignments);
+        ctor
+    }
+
+    fn process_tuple(&self, package: &Package, ty: &TupleBody) -> Result<ElementSpec> {
         let mut class = ClassSpec::new(&ty.name);
         let mut fields: Vec<Token<JsField>> = Vec::new();
 
@@ -451,7 +488,7 @@ impl Processor {
         let encode = self.encode_tuple_method(package, &fields)?;
         class.push(encode);
 
-        Ok(class)
+        Ok(class.into())
     }
 
     fn literal_value(&self, pos: &Pos, value: &Value, ty: &Type) -> Result<Variable> {
@@ -481,7 +518,7 @@ impl Processor {
                        pos.clone()))
     }
 
-    fn process_enum(&self, _package: &Package, body: &EnumBody) -> Result<ClassSpec> {
+    fn process_enum(&self, _package: &Package, body: &EnumBody) -> Result<ElementSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<Token<JsField>> = Vec::new();
 
@@ -500,22 +537,6 @@ impl Processor {
         }
 
         let mut members = Statement::new();
-        let mut values = Elements::new();
-
-        for value in &body.values {
-            let mut value_arguments = Statement::new();
-
-            for (value, field) in value.arguments.iter().zip(fields.iter()) {
-                value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
-            }
-
-            let arguments = stmt!["new ", &body.name, "(", value_arguments.join(", "), ")"];
-            values.push(stmt!["static ", &value.name, " = ", arguments, ";"]);
-            members.push(string(&value.name));
-        }
-
-        class.push(stmt!["static ", &self.members, " = [", members.join(", "), "]"]);
-        class.push(values);
 
         for code in &body.codes {
             if code.context == JS_CONTEXT {
@@ -523,26 +544,48 @@ impl Processor {
             }
         }
 
-        class.push(self.build_constructor(&fields));
-
-        // TODO: make configurable
-        if false {
-            for getter in self.build_getters(&fields)? {
-                class.push(&getter);
-            }
-        }
+        class.push(self.build_enum_constructor(&fields));
 
         // lookup serialized_as if specified.
         if let Some(ref s) = body.serialized_as {
             if let Some((_, ref field)) = self.find_field(&fields, &s.inner) {
                 class.push(self.encode_enum_method(field)?);
-                class.push(self.decode_enum_method(field)?);
+                let decode = self.decode_enum_method(&class, field)?;
+                class.push(decode);
             } else {
                 return Err(Error::pos(format!("no field named: {}", s.inner), s.pos.clone()));
             }
         }
 
-        Ok(class)
+        let mut values = Elements::new();
+
+        for (i, value) in body.values.iter().enumerate() {
+            let mut value_arguments = Statement::new();
+
+            value_arguments.push(i.to_string());
+            value_arguments.push(string(&value.name));
+
+            for (value, field) in value.arguments.iter().zip(fields.iter()) {
+                value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
+            }
+
+            let arguments = stmt!["new ", &body.name, "(", value_arguments.join(", "), ")"];
+            values.push(stmt![&class.name, ".", &value.name, " = ", arguments, ";"]);
+            members.push(stmt![&class.name, ".", &value.name]);
+        }
+
+        let mut elements = Elements::new();
+
+        // class declaration
+        elements.push(&class);
+
+        // enum literal values
+        elements.push(values);
+
+        // push members field
+        elements.push(stmt![&class.name, ".", &self.values, " = [", members.join(", "), "];"]);
+
+        Ok(elements.join(ElementSpec::Spacing).into())
     }
 
     fn build_getters(&self, fields: &Vec<Token<JsField>>) -> Result<Vec<MethodSpec>> {
@@ -559,7 +602,7 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, package: &Package, ty: &TypeBody) -> Result<ClassSpec> {
+    fn process_type(&self, package: &Package, ty: &TypeBody) -> Result<ElementSpec> {
         let fields = self.convert_fields(&ty.fields);
 
         let mut class = ClassSpec::new(&ty.name);
@@ -586,14 +629,14 @@ impl Processor {
         let encode = self.encode_method(package, &fields, "{}", |_| {})?;
         class.push(encode);
 
-        Ok(class)
+        Ok(class.into())
     }
 
     fn process_interface(&self,
                          package: &Package,
                          interface: &InterfaceBody)
-                         -> Result<Vec<ClassSpec>> {
-        let mut classes = Vec::new();
+                         -> Result<ElementSpec> {
+        let mut classes = Elements::new();
 
         let mut interface_spec = ClassSpec::new(&interface.name);
 
@@ -618,8 +661,6 @@ impl Processor {
                 .nth(0)
                 .unwrap_or_else(|| interface.name.clone());
 
-            class.push(stmt!["static TYPE = ", string(name.clone()), ";"]);
-
             let mut fields = interface_fields.clone();
             fields.extend(self.convert_fields(&interface.fields));
 
@@ -643,7 +684,7 @@ impl Processor {
 
             class.push(decode);
 
-            let type_stmt = stmt!["data[", &self.type_var, "] = ", string(name.clone()), ";"];
+            let type_stmt = stmt!["data[", &self.type_var, "] = ", &class.name, ".TYPE;"];
 
             let encode = self.encode_method(package, &fields, "{}", move |elements| {
                     elements.push(type_stmt);
@@ -651,10 +692,11 @@ impl Processor {
 
             class.push(encode);
 
-            classes.push(class);
+            classes.push(&class);
+            classes.push(stmt![&class.name, ".TYPE", " = ", string(name.clone()), ";"]);
         }
 
-        Ok(classes)
+        Ok(classes.join(ElementSpec::Spacing).into())
     }
 
     fn populate_files(&self) -> Result<HashMap<&Package, FileSpec>> {
@@ -662,29 +704,22 @@ impl Processor {
 
         // Process all types discovered so far.
         for (&(ref package, _), decl) in &self.env.types {
-            let class_specs: Vec<ClassSpec> = match decl.inner {
+            let spec = match decl.inner {
                 Decl::Interface(ref body) => self.process_interface(package, body)?,
-                Decl::Type(ref body) => vec![self.process_type(package, body)?],
-                Decl::Tuple(ref body) => vec![self.process_tuple(package, body)?],
-                Decl::Enum(ref body) => vec![self.process_enum(package, body)?],
+                Decl::Type(ref body) => self.process_type(package, body)?,
+                Decl::Tuple(ref body) => self.process_tuple(package, body)?,
+                Decl::Enum(ref body) => self.process_enum(package, body)?,
             };
 
             match files.entry(package) {
                 Entry::Vacant(entry) => {
                     let mut file_spec = FileSpec::new();
-
-                    for class_spec in class_specs {
-                        file_spec.push(class_spec);
-                    }
-
+                    file_spec.push(spec);
                     entry.insert(file_spec);
                 }
                 Entry::Occupied(entry) => {
                     let mut file_spec = entry.into_mut();
-
-                    for class_spec in class_specs {
-                        file_spec.push(class_spec);
-                    }
+                    file_spec.push(spec);
                 }
             }
         }
@@ -734,31 +769,34 @@ impl Processor {
 
     fn interface_decode_method(&self, interface: &InterfaceBody) -> Result<MethodSpec> {
         let mut decode = MethodSpec::with_static("decode");
-        decode.push_argument(stmt!["data"]);
 
-        let mut decode_body = Elements::new();
+        let data = stmt!["data"];
+
+        decode.push_argument(&data);
+
+        let mut body = Elements::new();
 
         let type_field = Variable::Literal("f_type".to_owned());
 
-        decode_body.push(stmt!["var ", &type_field, " = data[", &self.type_var, "]"]);
+        body.push(stmt!["const ", &type_field, " = ", &data, "[", &self.type_var, "]"]);
 
         for (_, ref sub_type) in &interface.sub_types {
             for name in &sub_type.names {
                 let type_name: Variable = Name::local(&sub_type.name).into();
                 let cond = stmt![&type_field, " === ", string(&name.inner)];
-                decode_body.push(if_stmt!(cond, stmt!["return ", type_name, ".decode(data);"]));
+                body.push(if_stmt!(cond, stmt!["return ", type_name, ".decode(", &data, ");"]));
             }
         }
 
-        decode_body.push(stmt!["throw new ",
-                               &self.error,
-                               "(",
-                               string("bad type"),
-                               " + ",
-                               &type_field,
-                               ")"]);
+        body.push(stmt!["throw new ",
+                        &self.error,
+                        "(",
+                        string("bad type"),
+                        " + ",
+                        &type_field,
+                        ");"]);
 
-        decode.push(decode_body.join(ElementSpec::Spacing));
+        decode.push(body.join(ElementSpec::Spacing));
 
         Ok(decode)
     }
