@@ -102,7 +102,7 @@ impl Environment {
 
         for decl in file.decls {
             let pos = (path.to_owned(), decl.pos.0, decl.pos.1);
-            let decl = decl.into_model(pos, path)?;
+            let decl = decl.into_model(pos)?;
             self.register_type(&file.package, decl)?;
         }
 

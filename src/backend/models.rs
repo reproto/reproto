@@ -12,15 +12,6 @@ pub struct OptionDecl {
     pub values: Vec<Token<Value>>,
 }
 
-impl OptionDecl {
-    pub fn new(name: String, values: Vec<Token<Value>>) -> OptionDecl {
-        OptionDecl {
-            name: name,
-            values: values,
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     Double,
@@ -99,14 +90,6 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn new(modifier: Modifier, name: String, ty: Type) -> Field {
-        Field {
-            modifier: modifier,
-            name: name,
-            ty: ty,
-        }
-    }
-
     pub fn is_optional(&self) -> bool {
         match self.modifier {
             Modifier::Optional => true,
@@ -123,15 +106,6 @@ impl Field {
 pub struct Code {
     pub context: String,
     pub lines: Vec<String>,
-}
-
-impl Code {
-    pub fn new(context: String, lines: Vec<String>) -> Code {
-        Code {
-            context: context,
-            lines: lines,
-        }
-    }
 }
 
 pub trait BodyLike {
@@ -197,42 +171,12 @@ pub struct SubType {
     pub names: Vec<Token<String>>,
 }
 
-impl SubType {
-    pub fn new(name: String,
-               fields: Vec<Token<Field>>,
-               codes: Vec<Token<Code>>,
-               names: Vec<Token<String>>)
-               -> SubType {
-        SubType {
-            name: name,
-            fields: fields,
-            codes: codes,
-            names: names,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct InterfaceBody {
     pub name: String,
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
     pub sub_types: BTreeMap<String, Token<SubType>>,
-}
-
-impl InterfaceBody {
-    pub fn new(name: String,
-               fields: Vec<Token<Field>>,
-               codes: Vec<Token<Code>>,
-               sub_types: BTreeMap<String, Token<SubType>>)
-               -> InterfaceBody {
-        InterfaceBody {
-            name: name,
-            fields: fields,
-            codes: codes,
-            sub_types: sub_types,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -245,19 +189,6 @@ pub struct TypeBody {
 }
 
 impl TypeBody {
-    pub fn new(name: String,
-               fields: Vec<Token<Field>>,
-               codes: Vec<Token<Code>>,
-               reserved: HashSet<Token<String>>)
-               -> TypeBody {
-        TypeBody {
-            name: name,
-            fields: fields,
-            codes: codes,
-            reserved: reserved,
-        }
-    }
-
     pub fn verify(&self) -> Result<()> {
         for reserved in &self.reserved {
             if let Some(field) = self.fields.iter().find(|f| f.name == reserved.inner) {
@@ -274,16 +205,6 @@ pub struct TupleBody {
     pub name: String,
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
-}
-
-impl TupleBody {
-    pub fn new(name: String, fields: Vec<Token<Field>>, codes: Vec<Token<Code>>) -> TupleBody {
-        TupleBody {
-            name: name,
-            fields: fields,
-            codes: codes,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
