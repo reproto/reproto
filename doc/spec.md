@@ -20,60 +20,63 @@ ReProto is geared towards being an expressive and productive protocol specificat
 The choice of using a DSL over something existing like JSON or YAML is an attempt to improve signal-to-noise ratio.
 Concise markup, and relatively intuitive syntax should hopefully mean that more effort can be spent on designing good data models.
 
-A .reproto file has the following general syntax:
+The following is an example specification for a simple time-series database:
 
 ```reproto
 package proto.v1;
 
-// Importing types from other module.
 use common as c;
 
-// A tuple.
 tuple Sample {
   timestamp: unsigned/64;
   value: double;
 }
 
-// An interface.
-interface Range {
-  // A field that is inherited in all sub-types.
-  unit: c.Unit;
-
-  Relative {
-    name "relative";
-    duration: c.Duration;
-  }
-
-  Absolute {
-    name "absolute";
-    start: Instant;
-    end: Instant;
-  }
-}
-
-// A plain type.
-type Query {
-  // A field with a custom type.
-  range: Range;
-  // An association (a.k.a. Map).
-  extra: {string: string};
-  // An optional field.
-  id?: string;
-}
-
-type QueryResponse {
-  // An array.
+type Graph {
   samples: [Sample];
+}
+
+interface System {
+  requests_per_second: Graph;
+
+  WebServer {
+    name "web-server";
+
+    last_logged_in: c.User;
+  }
+
+  Database {
+    name "database";
+
+    transactions: Graph;
+  }
+}
+
+type GraphsRequest {
+  systems: [string];
+}
+
+type GraphsResponse {
+  systems: [System];
 }
 ```
 
-This could then be used to straight up serialize or deserialize an `Query` in Java:
+When compiled, the generated objects can be used to serialize, and de-serialize models.
+Like with the following example using [`fasterxml`][fasterxml].
 
 ```java
 final ObjectMapper m = new ObjectMapper();
-final byte[] message = /* aggregation as bytes */;
-final Query aggregation = m.readValue(message, Query.class);
+
+final GraphsRequest request =
+  GraphsRequest.builder().systems(ImmutableList.of("database")).build();
+
+final byte[] response = request(m.writeValueAsBytes(request));
+
+final GraphsResponse response =
+  m.readValue(message, GraphsResponse.class);
 ```
+
+[fasterxml]: https://github.com/FasterXML/jackson-databind
 
 ## Built-In Types
 
@@ -86,6 +89,7 @@ There are a number of built-in types available:
 | `double`, `float`  | Floating point precision numbers |
 | `string`           | UTF-8 encoded strings |
 | `bytes`            | Arbitrary byte-arrays, are encoded as base64-strings in JSON |
+| `boolean`          | Boolean values, `true` or `false` |
 | `[<type>]`         | Arrays which store the given type  |
 | `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` due to limitations in JSON, but might be subject to change if other formats are supported in the future) |
 
@@ -122,31 +126,91 @@ Each interface lists all the types that it contains in the declaration.
 The following is an example interface with two sub-types.
 
 ```reproto
-interface Instant {
-    RelativeToNow {
-        name "relative", "r";
-        // Offset in milliseconds.
-        offset: signed/32;
+/**
+ * Describes how a time series should be sampled.
+ *
+ * Sampling is when a time series which is very dense is samples to reduce its size.
+ */
+interface Sampling {
+    // size of the sample.
+    sample_size: unsigned/32;
+    // unit of the sample.
+    sample_unit: Unit;
+
+    /**
+     * Take the average value for each sample.
+     */
+    Average {
+        name "average";
     }
 
-    Absolute {
-        name "absolute", "a";
-        // Absolute timestamp since unix epoch.
-        timestamp: unsigned/64;
+    /**
+     * Take the first value encountered for each sample.
+     */
+    First {
+        name "first";
     }
+
+    /**
+     * Take the last value encountered for each sample.
+     */
+    Last {
+        name "last";
+    }
+
+    /**
+     * Take the value which is in the given percentile for each sample.
+     */
+    Percentile {
+        name "percentile";
+
+        // Which percentile to sample, as a value between 0-1.0
+        percentile: float;
+    }
+}
+
+enum Unit {
+     MILLISECONDS("ms");
+     SECONDS("s");
+     HOURS("H");
+     DAYS("d");
+     WEEKS("w");
+
+     short: string;
+
+     serialized_as short;
 }
 ```
 
 An interface is encoded as an object, with a special `type` field.
 
-For example (using `Instant.RelativeToNow(offset: -1000)`):
+For example (using `new Sampling.Average(10, Unit.SECONDS)`):
 
 ```json
 {
-    "type": "relative",
-    "offset": -1000
+    "type": "average",
+    "sample_size": 10,
+    "sample_unit": "s"
 }
 ```
+
+The following options are supported by interfaces:
+
+#### `type_info <identifier>`
+
+Indicates the method of transferring type information.
+Valid options are:
+
+* `type_field` sub-types are serialized as objects, with a special field (given by
+  `type_field_name`) containing its `name`.
+* `array` sub-types will be serialized as arrays, where the first value is the `name`.
+* `object_keys` sub-types will be serialized as objects with a single
+    key, where the key is the `name` |
+
+#### `type_field_name <string>`
+
+Name of the type field indicating which sub-type it is.
+This Option is only valid when `type_info type_field` is set. |
 
 ## Tuples
 
@@ -161,7 +225,7 @@ tuple Sample {
 
 All fields in a tuple are required, and are presented in the order that the field occurs in the sequence.
 
-A single sample (e.g. `Sample(time: 1, value: 2.0)`) would be encoded like this in JSON:
+A single sample (e.g. `new Sample(1, 2.0)`) would be encoded like this in JSON:
 
 ```json
 [1, 2.0]
@@ -180,34 +244,39 @@ enum SI {
     MEGA("mega", "M", 1e6);
 
     // select which field to serialize as.
-    serialize_as value;
+    serialize_as unit_name;
 
-    name: string;
+    unit_name: string;
     symbol: string;
     factor: double;
 }
 ```
 
-Using this, SI.NANO would be serialized as:
+*Note*: it is recommended to avoid the fields `name` and `value`, since these are used in some
+        languages by enums natively.
+
+Using this, `SI.NANO` would be serialized as:
 
 ```json
 "nano"
 ```
 
-Associating data with the enum permits less specialized code for dealing with them.
+Associating data with enums permit less specialized code for dealing with them:
 
 ```java
-public class Entry {
-  public static void main(String[] argv) {
-    final SI si = ...;
-    System.out.println(52 + si.factor + "s");
-  }
-}
+final SI si = deserialize("nano");
+System.out.println(Math.floor((1000.0 / si.factor)) + si.symbol + "s");
 ```
 
-## Options
+The following options are supported by enums:
 
-TODO: document available options
+#### `serialized_as <identifier>`
+
+Indicates that the enum should be serialized as the given field |
+
+#### `serialized_as_name`
+
+Indicates that the enum should be serialized as its `name`.
 
 ## Reserved fields
 
@@ -281,8 +350,8 @@ type Foo {
 ## Custom Code
 
 A powerful mechanism for modifying the behaviour of your protocols is to embed code snippets.
-This _only_ be done in [extensions](extensions), to adapt a given set of protocols into your
-application.
+This should _primarily_ be done in [extensions](extensions), to adapt a given set of protocols to
+your application.
 
 ```reproto
 package foo;

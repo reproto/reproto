@@ -212,7 +212,7 @@ impl Processor {
     }
 
     fn decode_enum_method(&self, field: &Field) -> Result<MethodSpec> {
-        let mut decode = MethodSpec::new("static decode");
+        let mut decode = MethodSpec::with_static("decode");
 
         let data = stmt!["data"];
         let i = stmt!["i"];
@@ -804,7 +804,7 @@ impl Processor {
     }
 
     fn interface_decode_method(&self, interface: &m::InterfaceBody) -> Result<MethodSpec> {
-        let mut decode = MethodSpec::new("static decode");
+        let mut decode = MethodSpec::with_static("decode");
         decode.push_argument(stmt!["data"]);
 
         let mut decode_body = Elements::new();
