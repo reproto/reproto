@@ -59,11 +59,17 @@ pub enum Member {
 }
 
 #[derive(Debug)]
+pub struct MatchVariable {
+    pub name: String,
+    pub ty: Type,
+}
+
+#[derive(Debug)]
 pub enum MatchCondition {
     /// Match a specific value.
     Value(Token<Value>),
     /// Match a type, and add a binding for the given name that can be resolved in the action.
-    Variable { name: String, ty: Type },
+    Type(MatchVariable),
 }
 
 #[derive(Debug)]

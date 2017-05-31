@@ -6,7 +6,6 @@ use super::errors::*;
 use super::merge::Merge;
 use super::models::*;
 use super::options::Options;
-use with_prefix::WithPrefix;
 
 fn code(pos: &Pos, ast_pos: ast::Pos, context: String, lines: Vec<String>) -> Token<Code> {
     let pos = (pos.0.clone(), ast_pos.0, ast_pos.1);
@@ -25,17 +24,18 @@ type OptionVec = Vec<Token<OptionDecl>>;
 
 fn members_into_model(pos: &Pos,
                       members: Vec<ast::Token<ast::Member>>)
-                      -> Result<(Fields, Codes, OptionVec)> {
+                      -> Result<(Fields, Codes, OptionVec, MatchDecl)> {
     let mut fields: Vec<Token<Field>> = Vec::new();
     let mut codes = Vec::new();
     let mut options: Vec<Token<OptionDecl>> = Vec::new();
+    let mut match_decl = MatchDecl::new();
 
     for member in members {
         let pos = (pos.0.to_owned(), member.pos.0, member.pos.1);
 
         match member.inner {
             ast::Member::Field(field) => {
-                let field = field.into_model(pos.clone())?;
+                let field = field.into_model(&pos)?;
 
                 if let Some(other) = fields.iter().find(|f| f.name == field.name) {
                     return Err(Error::field_conflict(field.name.clone(), pos, other.pos.clone()));
@@ -47,15 +47,17 @@ fn members_into_model(pos: &Pos,
                 codes.push(code(&pos, member.pos, context, lines));
             }
             ast::Member::Option(option) => {
-                options.push(option.into_model(pos)?);
+                options.push(option.into_model(&pos)?);
             }
-            _ => {
-                return Err(Error::pos("not supported".to_owned(), pos.clone()));
+            ast::Member::Match(m) => {
+                for member in m.members {
+                    match_decl.push(member.into_model(&pos)?)?;
+                }
             }
         }
     }
 
-    Ok((fields, codes, options))
+    Ok((fields, codes, options, match_decl))
 }
 
 struct OrdinalGenerator {
@@ -110,7 +112,7 @@ pub trait IntoModel {
     type Output;
 
     /// Convert the current type to a model.
-    fn into_model(self, pos: Pos) -> Result<Self::Output>;
+    fn into_model(self, pos: &Pos) -> Result<Self::Output>;
 }
 
 impl<T> IntoModel for ast::Token<T>
@@ -118,9 +120,9 @@ impl<T> IntoModel for ast::Token<T>
 {
     type Output = Token<T::Output>;
 
-    fn into_model(self, pos: Pos) -> Result<Self::Output> {
-        let pos = (pos.0, self.pos.0, self.pos.1);
-        let out = self.inner.into_model(pos.clone())?;
+    fn into_model(self, pos: &Pos) -> Result<Self::Output> {
+        let pos = (pos.0.clone(), self.pos.0, self.pos.1);
+        let out = self.inner.into_model(&pos)?;
         Ok(Token::new(out, pos))
     }
 }
@@ -130,11 +132,11 @@ impl<T> IntoModel for Vec<T>
 {
     type Output = Vec<T::Output>;
 
-    fn into_model(self, pos: Pos) -> Result<Self::Output> {
+    fn into_model(self, pos: &Pos) -> Result<Self::Output> {
         let mut out = Vec::new();
 
         for v in self {
-            out.push(v.into_model(pos.clone())?);
+            out.push(v.into_model(pos)?);
         }
 
         Ok(out)
@@ -146,7 +148,7 @@ impl<T> IntoModel for Option<T>
 {
     type Output = Option<T::Output>;
 
-    fn into_model(self, pos: Pos) -> Result<Self::Output> {
+    fn into_model(self, pos: &Pos) -> Result<Self::Output> {
         if let Some(value) = self {
             return Ok(Some(value.into_model(pos)?));
         }
@@ -158,12 +160,12 @@ impl<T> IntoModel for Option<T>
 impl IntoModel for ast::InterfaceBody {
     type Output = InterfaceBody;
 
-    fn into_model(self, pos: Pos) -> Result<InterfaceBody> {
-        let (fields, codes, options) = members_into_model(&pos, self.members)?;
+    fn into_model(self, pos: &Pos) -> Result<InterfaceBody> {
+        let (fields, codes, options, match_decl) = members_into_model(&pos, self.members)?;
 
         let mut sub_types: BTreeMap<String, Token<SubType>> = BTreeMap::new();
 
-        for sub_type in self.sub_types.into_model(pos.clone())? {
+        for sub_type in self.sub_types.into_model(pos)? {
             // key has to be owned by entry
             let key = sub_type.name.clone();
 
@@ -183,6 +185,7 @@ impl IntoModel for ast::InterfaceBody {
             name: self.name,
             fields: fields,
             codes: codes,
+            match_decl: match_decl,
             sub_types: sub_types,
         };
 
@@ -193,20 +196,20 @@ impl IntoModel for ast::InterfaceBody {
 impl IntoModel for ast::EnumBody {
     type Output = EnumBody;
 
-    fn into_model(self, pos: Pos) -> Result<EnumBody> {
+    fn into_model(self, pos: &Pos) -> Result<EnumBody> {
         let mut values = Vec::new();
 
         let mut ordinals = OrdinalGenerator::new();
 
-        let (fields, codes, options) = members_into_model(&pos, self.members)?;
+        let (fields, codes, options, match_decl) = members_into_model(pos, self.members)?;
 
         for value in self.values {
-            let ordinal = ordinals.next(&value.ordinal, &pos)?;
+            let ordinal = ordinals.next(&value.ordinal, pos)?;
             /// need to tack on an ordinal value.
-            values.push(value.map_inner(|v| (v, ordinal)).into_model(pos.clone())?);
+            values.push(value.map_inner(|v| (v, ordinal)).into_model(pos)?);
         }
 
-        let options = Options::new(&pos, options);
+        let options = Options::new(pos, options);
 
         let serialized_as: Option<Token<String>> = options.find_one_identifier("serialized_as")?
             .to_owned();
@@ -221,6 +224,7 @@ impl IntoModel for ast::EnumBody {
             values: values,
             fields: fields,
             codes: codes,
+            match_decl: match_decl,
             serialized_as: serialized_as,
             serialized_as_name: serialized_as_name,
         };
@@ -233,7 +237,7 @@ impl IntoModel for ast::EnumBody {
 impl IntoModel for (ast::EnumValue, u32) {
     type Output = EnumValue;
 
-    fn into_model(self, pos: Pos) -> Result<Self::Output> {
+    fn into_model(self, pos: &Pos) -> Result<Self::Output> {
         let value = self.0;
         let ordinal = self.1;
 
@@ -250,8 +254,8 @@ impl IntoModel for (ast::EnumValue, u32) {
 impl IntoModel for ast::TypeBody {
     type Output = TypeBody;
 
-    fn into_model(self, pos: Pos) -> Result<TypeBody> {
-        let (fields, codes, options) = members_into_model(&pos, self.members)?;
+    fn into_model(self, pos: &Pos) -> Result<TypeBody> {
+        let (fields, codes, options, match_decl) = members_into_model(&pos, self.members)?;
 
         let options = Options::new(&pos, options);
 
@@ -262,6 +266,7 @@ impl IntoModel for ast::TypeBody {
             name: self.name,
             fields: fields,
             codes: codes,
+            match_decl: match_decl,
             reserved: reserved,
         };
 
@@ -272,7 +277,7 @@ impl IntoModel for ast::TypeBody {
 impl IntoModel for ast::SubType {
     type Output = SubType;
 
-    fn into_model(self, pos: Pos) -> Result<SubType> {
+    fn into_model(self, pos: &Pos) -> Result<SubType> {
         let mut fields: Vec<Token<Field>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
@@ -282,7 +287,7 @@ impl IntoModel for ast::SubType {
 
             match member.inner {
                 ast::Member::Field(field) => {
-                    let field = field.into_model(pos.clone())?;
+                    let field = field.into_model(&pos)?;
 
                     if let Some(other) = fields.iter().find(|f| f.name == field.name) {
                         return Err(Error::field_conflict(field.name.clone(),
@@ -296,10 +301,10 @@ impl IntoModel for ast::SubType {
                     codes.push(code(&pos, member.pos, context, lines));
                 }
                 ast::Member::Option(option) => {
-                    options.push(option.into_model(pos)?);
+                    options.push(option.into_model(&pos)?);
                 }
                 _ => {
-                    return Err(Error::pos("not supported".to_owned(), pos.clone()));
+                    return Err(Error::pos("not supported".to_owned(), pos));
                 }
             }
         }
@@ -322,8 +327,8 @@ impl IntoModel for ast::SubType {
 impl IntoModel for ast::TupleBody {
     type Output = TupleBody;
 
-    fn into_model(self, pos: Pos) -> Result<TupleBody> {
-        let (fields, codes, options) = members_into_model(&pos, self.members)?;
+    fn into_model(self, pos: &Pos) -> Result<TupleBody> {
+        let (fields, codes, options, match_decl) = members_into_model(&pos, self.members)?;
 
         let _options = Options::new(&pos, options);
 
@@ -331,6 +336,7 @@ impl IntoModel for ast::TupleBody {
             name: self.name,
             fields: fields,
             codes: codes,
+            match_decl: match_decl,
         };
 
         Ok(tuple_body)
@@ -340,7 +346,7 @@ impl IntoModel for ast::TupleBody {
 impl IntoModel for ast::Decl {
     type Output = Decl;
 
-    fn into_model(self, pos: Pos) -> Result<Decl> {
+    fn into_model(self, pos: &Pos) -> Result<Decl> {
         let decl = match self {
             ast::Decl::Type(body) => Decl::Type(body.into_model(pos)?),
             ast::Decl::Interface(body) => Decl::Interface(body.into_model(pos)?),
@@ -355,16 +361,10 @@ impl IntoModel for ast::Decl {
 impl IntoModel for ast::OptionDecl {
     type Output = OptionDecl;
 
-    fn into_model(self, pos: Pos) -> Result<OptionDecl> {
-        let mut values = Vec::new();
-
-        for value in self.values {
-            values.push(value.into_model(pos.clone())?);
-        }
-
+    fn into_model(self, pos: &Pos) -> Result<OptionDecl> {
         let decl = OptionDecl {
             name: self.name,
-            values: values,
+            values: self.values.into_model(pos)?,
         };
 
         Ok(decl)
@@ -374,7 +374,7 @@ impl IntoModel for ast::OptionDecl {
 impl IntoModel for ast::Field {
     type Output = Field;
 
-    fn into_model(self, pos: Pos) -> Result<Field> {
+    fn into_model(self, pos: &Pos) -> Result<Field> {
         let field_as = self.field_as.into_model(pos)?;
 
         let field_as = if let Some(field_as) = field_as {
@@ -401,7 +401,7 @@ impl IntoModel for ast::Field {
 impl IntoModel for ast::Value {
     type Output = Value;
 
-    fn into_model(self, pos: Pos) -> Result<Value> {
+    fn into_model(self, pos: &Pos) -> Result<Value> {
         let value = match self {
             ast::Value::String(string) => Value::String(string),
             ast::Value::Number(number) => Value::Number(number),
@@ -418,10 +418,10 @@ impl IntoModel for ast::Value {
 impl IntoModel for ast::FieldInit {
     type Output = FieldInit;
 
-    fn into_model(self, pos: Pos) -> Result<FieldInit> {
+    fn into_model(self, pos: &Pos) -> Result<FieldInit> {
         let field_init = FieldInit {
-            name: self.name.into_model(pos.clone())?,
-            value: self.value.into_model(pos.clone())?,
+            name: self.name.into_model(pos)?,
+            value: self.value.into_model(pos)?,
         };
 
         Ok(field_init)
@@ -431,7 +431,7 @@ impl IntoModel for ast::FieldInit {
 impl IntoModel for ast::Instance {
     type Output = Instance;
 
-    fn into_model(self, pos: Pos) -> Result<Instance> {
+    fn into_model(self, pos: &Pos) -> Result<Instance> {
         let instance = Instance {
             ty: self.ty,
             arguments: self.arguments.into_model(pos)?,
@@ -444,7 +444,46 @@ impl IntoModel for ast::Instance {
 impl IntoModel for String {
     type Output = String;
 
-    fn into_model(self, pos: Pos) -> Result<String> {
+    fn into_model(self, _pos: &Pos) -> Result<String> {
         Ok(self)
+    }
+}
+
+impl IntoModel for ast::MatchVariable {
+    type Output = MatchVariable;
+
+    fn into_model(self, pos: &Pos) -> Result<MatchVariable> {
+        let match_variable = MatchVariable {
+            name: self.name.into_model(pos)?,
+            ty: self.ty,
+        };
+
+        Ok(match_variable)
+    }
+}
+
+impl IntoModel for ast::MatchCondition {
+    type Output = MatchCondition;
+
+    fn into_model(self, pos: &Pos) -> Result<MatchCondition> {
+        let match_condition = match self {
+            ast::MatchCondition::Value(value) => MatchCondition::Value(value.into_model(pos)?),
+            ast::MatchCondition::Type(ty) => MatchCondition::Type(ty.into_model(pos)?),
+        };
+
+        Ok(match_condition)
+    }
+}
+
+impl IntoModel for ast::MatchMember {
+    type Output = MatchMember;
+
+    fn into_model(self, pos: &Pos) -> Result<MatchMember> {
+        let member = MatchMember {
+            condition: self.condition.into_model(pos)?,
+            value: self.value.into_model(pos)?,
+        };
+
+        Ok(member)
     }
 }

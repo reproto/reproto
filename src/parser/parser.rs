@@ -186,7 +186,7 @@ impl_rdp! {
         map_type = { left_curly ~ type_spec ~ colon ~ type_spec ~ right_curly }
         array_type = { ["["] ~ type_spec ~ ["]"] }
         used_type = @{ identifier ~ dot ~ custom_type }
-        custom_type = { type_identifier ~ (dot ~ type_identifier)* }
+        custom_type = @{ type_identifier ~ (dot ~ type_identifier)* }
 
         // Keywords and tokens
         enum_keyword = @{ ["enum"] }
@@ -214,9 +214,9 @@ impl_rdp! {
 
         type_bits = _{ (forward_slash ~ unsigned) }
 
-        value = { instance | type_spec | boolean | identifier | string | number }
+        value = { instance | boolean | identifier | string | number }
 
-        instance = { type_spec ~ left_paren ~ field_init* ~ right_paren }
+        instance = { type_spec ~ left_paren ~ (field_init ~ (comma ~ field_init)*)? ~ right_paren }
         field_init = { identifier ~ colon ~ value }
 
         identifier = @{ ['a'..'z'] ~ (['0'..'9'] | ['a'..'z'] | ["_"])* }
@@ -459,7 +459,7 @@ impl_rdp! {
 
                 let instance = ast::Instance {
                     ty: ty?,
-                    arguments: arguments,
+                   arguments: arguments,
                 };
 
                 Ok(ast::Value::Instance(ast::Token::new(instance, pos)))
@@ -488,13 +488,31 @@ impl_rdp! {
 
                 Ok(ast::Value::Boolean(value))
             },
-
-            (ty: _type_spec()) => {
-                Ok(ast::Value::Type(ty?))
-            },
         }
 
         _field_init_list(&self) -> Result<LinkedList<ast::Token<ast::FieldInit>>> {
+            (
+                token: field_init,
+                &name: identifier,
+                _: colon,
+                value: _value_token(),
+                _: comma,
+                tail: _field_init_list()
+            ) => {
+                let mut tail = tail?;
+                let pos = (token.start, token.end);
+                let name = name.to_owned();
+                let value = value?;
+
+                let field_init = ast::FieldInit {
+                    name: ast::Token::new(name, pos),
+                    value: value,
+                };
+
+                tail.push_front(ast::Token::new(field_init, pos));
+                Ok(tail)
+            },
+
             (
                 token: field_init,
                 &name: identifier,
@@ -677,10 +695,12 @@ impl_rdp! {
                 let name = name.to_owned();
                 let ty = ty?;
 
-                let condition = ast::MatchCondition::Variable{
+                let variable = ast::MatchVariable {
                     name: name,
                     ty: ty,
                 };
+
+                let condition = ast::MatchCondition::Type(variable);
 
                 Ok(ast::Token::new(condition, pos))
             },
@@ -729,11 +749,6 @@ impl_rdp! {
                 Ok(m::Type::Any)
             },
 
-            (_: custom_type, parts: _type_identifier_list()) => {
-                let parts = parts.into_iter().collect();
-                Ok(m::Type::Custom(parts))
-            },
-
             (
                 _: used_type,
                 &used: identifier,
@@ -762,6 +777,11 @@ impl_rdp! {
                 let value = value?;
                 Ok(m::Type::Map(Box::new(key), Box::new(value)))
             },
+
+            (_: custom_type, parts: _type_identifier_list()) => {
+                let parts = parts.into_iter().collect();
+                Ok(m::Type::Custom(parts))
+            },
         }
 
         _modifier(&self) -> m::Modifier {
@@ -784,17 +804,17 @@ impl_rdp! {
         }
 
         _type_identifier_list(&self) -> LinkedList<String> {
-            (&value: type_identifier, _: dot, mut tail: _ident_list()) => {
+            (&value: type_identifier, _: dot, mut tail: _type_identifier_list()) => {
                 tail.push_front(value.to_owned());
                 tail
             },
 
-            (&value: type_identifier, mut tail: _ident_list()) => {
+            (&value: type_identifier) => {
+                let mut tail = LinkedList::new();
                 tail.push_front(value.to_owned());
                 tail
             },
 
-            () => LinkedList::new(),
         }
     }
 }
@@ -804,11 +824,23 @@ mod tests {
     use super::*;
 
     /// Check that a parsed value equals expected.
-    macro_rules! value_eq {
+    macro_rules! assert_value_eq {
         ($expected:expr, $input:expr) => {{
             let mut parser = parse($input);
             assert!(parser.value());
+
             let v = parser._value_token().unwrap().inner;
+            assert_eq!($expected, v);
+        }}
+    }
+
+    macro_rules! assert_type_spec_eq {
+        ($expected:expr, $input:expr) => {{
+            let mut parser = parse($input);
+            assert!(parser.type_spec());
+            assert!(parser.end());
+
+            let v = parser._type_spec().unwrap();
             assert_eq!($expected, v);
         }}
     }
@@ -937,8 +969,29 @@ mod tests {
 
     #[test]
     fn test_values() {
-        value_eq!(ast::Value::String("foo\nbar".to_owned()), "\"foo\\nbar\"");
-        value_eq!(ast::Value::Number(1f64), "1");
+        let field = ast::FieldInit {
+            name: ast::Token::new("hello".to_owned(), (8, 17)),
+            value: ast::Token::new(ast::Value::Number(12f64), (15, 17)),
+        };
+
+        let field = ast::Token::new(field, (8, 17));
+
+        let instance = ast::Instance {
+            ty: m::Type::Custom(vec!["Foo".to_owned(), "Bar".to_owned()]),
+            arguments: vec![field],
+        };
+
+        assert_value_eq!(ast::Value::Instance(ast::Token::new(instance, (0, 18))),
+                         "Foo.Bar(hello: 12)");
+        assert_value_eq!(ast::Value::String("foo\nbar".to_owned()), "\"foo\\nbar\"");
+        assert_value_eq!(ast::Value::Number(1f64), "1");
+    }
+
+    #[test]
+    fn test_type_spec() {
+        assert_type_spec_eq!(m::Type::String, "string");
+        assert_type_spec_eq!(m::Type::Custom(vec!["Hello".to_owned(), "World".to_owned()]),
+                             "Hello.World");
     }
 
     #[test]

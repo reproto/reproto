@@ -35,6 +35,10 @@ error_chain! {
             description("field reserved")
             display("field reserved")
         }
+
+        MatchConflict(source: m::Pos, target: m::Pos) {
+            description("match conflict")
+        }
     }
 }
 

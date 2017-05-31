@@ -208,6 +208,7 @@ pub struct InterfaceBody {
     pub name: String,
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
+    pub match_decl: MatchDecl,
     pub sub_types: BTreeMap<String, Token<SubType>>,
 }
 
@@ -216,6 +217,7 @@ pub struct TypeBody {
     pub name: String,
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
+    pub match_decl: MatchDecl,
     // Set of fields which are reserved for this type.
     pub reserved: HashSet<Token<String>>,
 }
@@ -237,6 +239,7 @@ pub struct TupleBody {
     pub name: String,
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
+    pub match_decl: MatchDecl,
 }
 
 #[derive(Debug, Clone)]
@@ -252,6 +255,7 @@ pub struct EnumBody {
     pub values: Vec<Token<EnumValue>>,
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
+    pub match_decl: MatchDecl,
     pub serialized_as: Option<Token<String>>,
     pub serialized_as_name: bool,
 }
@@ -281,5 +285,105 @@ impl Decl {
             Decl::Enum(ref body) => format!("enum {}", body.name),
             Decl::Tuple(ref body) => format!("tuple {}", body.name),
         }
+    }
+}
+
+/// Simplified types that _can_ be uniquely matched over.
+#[derive(Debug, PartialEq, Clone)]
+pub enum MatchKind {
+    Any,
+    Object,
+    Array,
+    String,
+    Boolean,
+    Number,
+}
+
+#[derive(Debug, Clone)]
+pub enum MatchCondition {
+    /// Match a specific value.
+    Value(Token<Value>),
+    /// Match a type, and add a binding for the given name that can be resolved in the action.
+    Type(MatchVariable),
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchMember {
+    pub condition: Token<MatchCondition>,
+    pub value: Token<Value>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MatchVariable {
+    pub name: String,
+    pub ty: Type,
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchDecl {
+    pub by_value: Vec<(Token<Value>, Token<MatchMember>)>,
+    pub by_type: Vec<(MatchKind, Token<MatchMember>)>,
+}
+
+impl MatchDecl {
+    pub fn new() -> MatchDecl {
+        MatchDecl {
+            by_value: Vec::new(),
+            by_type: Vec::new(),
+        }
+    }
+
+    pub fn identify_match_kind(&self, variable: &MatchVariable) -> MatchKind {
+        match variable.ty {
+            Type::Double |
+            Type::Float |
+            Type::Signed(_) |
+            Type::Unsigned(_) => MatchKind::Number,
+            Type::Boolean => MatchKind::Boolean,
+            Type::String | Type::Bytes => MatchKind::String,
+            Type::Any => MatchKind::Any,
+            Type::UsedType(_, _) |
+            Type::Custom(_) |
+            Type::Map(_, _) => MatchKind::Object,
+            Type::Array(_) => MatchKind::Array,
+        }
+    }
+
+    pub fn push(&mut self, member: Token<MatchMember>) -> Result<()> {
+        match member.condition.inner {
+            MatchCondition::Type(ref variable) => {
+                let match_kind = self.identify_match_kind(variable);
+
+                {
+                    // conflicting when type matches
+                    let result =
+                        self.by_type.iter().find(|e| e.0 == match_kind || e.0 == MatchKind::Any);
+
+                    if let Some(&(_, ref existing_value)) = result {
+                        let err = ErrorKind::MatchConflict(member.condition.pos.clone(),
+                                                           existing_value.condition.pos.clone());
+                        return Err(err.into());
+                    }
+                }
+
+                self.by_type.push((match_kind, member.clone()));
+            }
+            MatchCondition::Value(ref value) => {
+                {
+                    // conflicting when value matches
+                    let result = self.by_value.iter().find(|e| e.0.inner == value.inner);
+
+                    if let Some(&(_, ref existing_value)) = result {
+                        let err = ErrorKind::MatchConflict(member.condition.pos.clone(),
+                                                           existing_value.condition.pos.clone());
+                        return Err(err.into());
+                    }
+                }
+
+                self.by_value.push((value.clone(), member.clone()));
+            }
+        }
+
+        Ok(())
     }
 }

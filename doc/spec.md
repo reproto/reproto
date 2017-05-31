@@ -280,26 +280,38 @@ Indicates that the enum should be serialized as its `name`.
 
 ## Match
 
-```
+Match declarations exist to allow types to be created from non-objects.
+
+With the example below, `Foo` can now be created from a `string`, or a `number` as well as an
+object.
+
+```reproto
 type Foo {
+    match {
+        s: string => Foo(name: s);
+        n: unsigned => Foo(name: "from unsigned", value: n);
+        true => Foo(name: "from true", value: 1),
+    }
+
     name: string;
     value?: unsigned;
-
-    match {
-        s: string => {name: s};
-        n: unsigned => {name: "numeric", value: n};
-    }
 }
 ```
 
-```
-type AggregationOrList {
-    aggregation: Aggregation;
+When a match declaration is present, _only_ the variants listed in it are permitted ways of
+decoding that object.
 
+To permit `Foo` from being created from an object again, the following must be added.
+
+```reproto
+type Foo {
     match {
-        a: object => a as Aggregation;
-        chain: [Aggregation] => Aggregation.Chain{chain: chain};
+        /* omitted */
+        foo: Foo => foo;
     }
+
+    name: string;
+    value?: unsigned;
 }
 ```
 

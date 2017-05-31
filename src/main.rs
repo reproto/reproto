@@ -75,6 +75,10 @@ fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<()> {
             print_error("field reserved", field_pos)?;
             print_error("field reserved here", reserved_pos)?;
         }
+        backend::errors::ErrorKind::MatchConflict(ref source, ref target) => {
+            print_error("conflicts with existing clause", source)?;
+            print_error("existing clause here", target)?;
+        }
         backend::errors::ErrorKind::Parser(ref e) => {
             handle_parser_error(e)?;
         }
