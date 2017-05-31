@@ -2,6 +2,7 @@ mod models;
 pub mod builder;
 pub mod constructor_properties;
 pub mod fasterxml;
+pub mod listeners;
 pub mod lombok;
 pub mod mutable;
 pub mod nullable;
@@ -11,8 +12,8 @@ use backend::*;
 use backend::models as m;
 use options::Options;
 
-fn setup_module(module: &str) -> Result<Box<processor::Listeners>> {
-    let module: Box<processor::Listeners> = match module {
+fn setup_module(module: &str) -> Result<Box<listeners::Listeners>> {
+    let module: Box<listeners::Listeners> = match module {
         "builder" => Box::new(builder::Module::new()),
         "constructor_properties" => Box::new(constructor_properties::Module::new()),
         "fasterxml" => Box::new(fasterxml::Module::new()),
@@ -30,7 +31,7 @@ pub fn resolve(options: Options, env: Environment) -> Result<processor::Processo
         .clone()
         .map(|prefix| m::Package::new(prefix.split(".").map(ToOwned::to_owned).collect()));
 
-    let mut listeners: Vec<Box<processor::Listeners>> = Vec::new();
+    let mut listeners: Vec<Box<listeners::Listeners>> = Vec::new();
 
     for module in &options.modules {
         listeners.push(setup_module(module)?);

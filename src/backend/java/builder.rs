@@ -2,7 +2,7 @@
 use backend::*;
 use codeviz::java::*;
 use super::models as m;
-use super::processor;
+use super::processor::*;
 
 pub struct Module {
     optional: ClassType,
@@ -53,18 +53,14 @@ impl Module {
     }
 }
 
-impl processor::Listeners for Module {
-    fn class_added(&self,
-                   fields: &Vec<m::JavaField>,
-                   class_type: &ClassType,
-                   class: &mut ClassSpec)
-                   -> Result<()> {
+impl Listeners for Module {
+    fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
         let mut builder = ClassSpec::new(mods![Modifier::Public, Modifier::Static], "Builder");
 
         let mut build_variable_assign = Elements::new();
         let mut build_constructor_arguments = Statement::new();
 
-        for field in fields {
+        for field in event.fields {
             let source = &field.spec;
 
             builder.push_field(self.builder_field(field, source));
@@ -86,17 +82,17 @@ impl processor::Listeners for Module {
         }
 
         let mut build = MethodSpec::new(mods![Modifier::Public], "build");
-        build.returns(class_type);
+        build.returns(event.class_type);
         build.push(build_variable_assign);
         build.push(stmt!["return new ",
-                         class_type,
+                         event.class_type,
                          "(",
                          build_constructor_arguments.join(", "),
                          ");"]);
 
         builder.push(build);
 
-        class.push(builder);
+        event.spec.push(builder);
 
         Ok(())
     }

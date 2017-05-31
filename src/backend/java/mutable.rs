@@ -1,5 +1,5 @@
 use backend::*;
-use super::processor;
+use super::processor::*;
 
 pub struct Module {
 }
@@ -10,8 +10,8 @@ impl Module {
     }
 }
 
-impl processor::Listeners for Module {
-    fn configure(&self, options: &mut processor::ProcessorOptions) -> Result<()> {
+impl Listeners for Module {
+    fn configure(&self, options: &mut ProcessorOptions) -> Result<()> {
         options.immutable = false;
         Ok(())
     }

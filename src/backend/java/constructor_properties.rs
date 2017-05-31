@@ -1,8 +1,7 @@
 /// Module that adds fasterxml annotations to generated classes.
 use backend::*;
 use codeviz::java::*;
-use super::models as m;
-use super::processor;
+use super::processor::*;
 
 pub struct Module {
     constructor_properties: ClassType,
@@ -14,19 +13,16 @@ impl Module {
     }
 }
 
-impl Module {
-    fn add_constructor_properties(&self,
-                                  fields: &Vec<m::JavaField>,
-                                  class: &mut ClassSpec)
-                                  -> Result<()> {
-        if class.constructors.len() != 1 {
+impl Listeners for Module {
+    fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
+        if event.spec.constructors.len() != 1 {
             return Err("Expected exactly one constructor".into());
         }
 
-        let constructor = &mut class.constructors[0];
+        let constructor = &mut event.spec.constructors[0];
         let mut arguments = Statement::new();
 
-        for field in fields {
+        for field in event.fields {
             arguments.push(stmt![Variable::String(field.name.clone())]);
         }
 
@@ -34,17 +30,6 @@ impl Module {
         annotation.push_argument(stmt!["{", arguments.join(", "), "}"]);
         constructor.push_annotation(&annotation);
 
-        Ok(())
-    }
-}
-
-impl processor::Listeners for Module {
-    fn class_added(&self,
-                   fields: &Vec<m::JavaField>,
-                   _class_type: &ClassType,
-                   class: &mut ClassSpec)
-                   -> Result<()> {
-        self.add_constructor_properties(fields, class)?;
         Ok(())
     }
 }

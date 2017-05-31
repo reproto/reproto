@@ -2,7 +2,7 @@
 use backend::*;
 use codeviz::java::*;
 use super::models as m;
-use super::processor;
+use super::processor::*;
 
 pub struct Module {
     override_: ClassType,
@@ -234,30 +234,26 @@ impl Module {
     }
 }
 
-impl processor::Listeners for Module {
-    fn class_added(&self,
-                   fields: &Vec<m::JavaField>,
-                   _class_type: &ClassType,
-                   class: &mut ClassSpec)
-                   -> Result<()> {
-        if class.constructors.len() != 1 {
+impl Listeners for Module {
+    fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
+        if event.spec.constructors.len() != 1 {
             return Err("Expected exactly one constructor".into());
         }
 
-        let constructor = &mut class.constructors[0];
+        let constructor = &mut event.spec.constructors[0];
         let creator_annotation = AnnotationSpec::new(&self.creator);
 
         constructor.push_annotation(&creator_annotation);
 
-        if constructor.arguments.len() != fields.len() {
+        if constructor.arguments.len() != event.fields.len() {
             return Err(format!("The number of constructor arguments ({}) did not match the \
                                 number of fields ({})",
                                constructor.arguments.len(),
-                               fields.len())
+                               event.fields.len())
                 .into());
         }
 
-        let zipped = constructor.arguments.iter_mut().zip(fields.iter());
+        let zipped = constructor.arguments.iter_mut().zip(event.fields.iter());
 
         for (argument, field) in zipped {
             let mut property = AnnotationSpec::new(&self.property);
@@ -268,61 +264,47 @@ impl processor::Listeners for Module {
         Ok(())
     }
 
-    fn tuple_added(&self,
-                   fields: &Vec<m::JavaField>,
-                   class_type: &ClassType,
-                   class: &mut ClassSpec)
-                   -> Result<()> {
+    fn tuple_added(&self, event: &mut TupleAdded) -> Result<()> {
+        let serializer = self.tuple_serializer(&event.fields, &event.class_type)?;
 
-        let serializer = self.tuple_serializer(fields, class_type)?;
-
-        let serializer_type = Type::class(&class_type.package,
-                                          &format!("{}.{}", class_type.name, serializer.name));
+        let serializer_type =
+            Type::class(&event.class_type.package,
+                        &format!("{}.{}", event.class_type.name, serializer.name));
 
         let mut serialize_annotation: AnnotationSpec = self.serialize.clone().into();
         serialize_annotation.push_argument(stmt!["using = ", serializer_type, ".class"]);
 
-        class.push_annotation(serialize_annotation);
-        class.push(serializer);
+        event.spec.push_annotation(serialize_annotation);
+        event.spec.push(serializer);
 
-        let deserializer = self.tuple_deserializer(fields, class_type)?;
+        let deserializer = self.tuple_deserializer(&event.fields, &event.class_type)?;
 
-        let deserializer_type = Type::class(&class_type.package,
-                                            &format!("{}.{}", class_type.name, deserializer.name));
+        let deserializer_type =
+            Type::class(&event.class_type.package,
+                        &format!("{}.{}", &event.class_type.name, deserializer.name));
 
         let mut deserialize_annotation: AnnotationSpec = self.deserialize.clone().into();
         deserialize_annotation.push_argument(stmt!["using = ", deserializer_type, ".class"]);
 
-        class.push_annotation(deserialize_annotation);
-        class.push(deserializer);
+        event.spec.push_annotation(deserialize_annotation);
+        event.spec.push(deserializer);
 
         Ok(())
     }
 
-    fn enum_added(&self,
-                  _enum_body: &m::EnumBody,
-                  _fields: &Vec<m::JavaField>,
-                  _class_type: &ClassType,
-                  from_value: &mut Option<MethodSpec>,
-                  to_value: &mut Option<MethodSpec>,
-                  _en: &mut EnumSpec)
-                  -> Result<()> {
-
-        if let Some(ref mut from_value) = *from_value {
+    fn enum_added(&self, event: &mut EnumAdded) -> Result<()> {
+        if let Some(ref mut from_value) = *event.from_value {
             from_value.push_annotation(&self.creator);
         }
 
-        if let Some(ref mut to_value) = *to_value {
+        if let Some(ref mut to_value) = *event.to_value {
             to_value.push_annotation(&self.value);
         }
 
         Ok(())
     }
 
-    fn interface_added(&self,
-                       interface: &m::InterfaceBody,
-                       interface_spec: &mut InterfaceSpec)
-                       -> Result<()> {
+    fn interface_added(&self, event: &mut InterfaceAdded) -> Result<()> {
         {
             let mut arguments = Statement::new();
 
@@ -333,20 +315,20 @@ impl processor::Listeners for Module {
             let mut type_info = AnnotationSpec::new(&self.type_info);
             type_info.push_argument(arguments.join(", "));
 
-            interface_spec.push_annotation(&type_info);
+            event.spec.push_annotation(&type_info);
         }
 
         {
             let mut arguments = Statement::new();
 
-            for (key, sub_type) in &interface.sub_types {
+            for (key, sub_type) in &event.interface.sub_types {
                 for name in &sub_type.names {
                     let name: String = name.inner.to_owned();
 
                     let mut type_args = Statement::new();
 
                     type_args.push(stmt!["name=", Variable::String(name)]);
-                    type_args.push(stmt!["value=", &interface_spec.name, ".", key, ".class"]);
+                    type_args.push(stmt!["value=", &event.spec.name, ".", key, ".class"]);
 
                     let a = stmt!["@", &self.sub_types, ".Type(", type_args.join(", "), ")"];
 
@@ -357,23 +339,8 @@ impl processor::Listeners for Module {
             let mut sub_types = AnnotationSpec::new(&self.sub_types);
             sub_types.push_argument(stmt!["{", arguments.join(", "), "}"]);
 
-            interface_spec.push_annotation(&sub_types);
+            event.spec.push_annotation(&sub_types);
         }
-
-        Ok(())
-    }
-
-    fn sub_type_added(&self,
-                      _fields: &Vec<m::JavaField>,
-                      _interface: &m::InterfaceBody,
-                      _sub_type: &m::SubType,
-                      _class: &mut ClassSpec)
-                      -> Result<()> {
-        // if let Some(name) = sub_type.options.lookup_string_nth("name", 0) {
-        // let mut type_name = AnnotationSpec::new(&self.type_name);
-        // type_name.push_argument(stmt![Variable::String(name.clone())]);
-        // class.push_annotation(&type_name);
-        // }
 
         Ok(())
     }

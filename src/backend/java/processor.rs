@@ -1,3 +1,4 @@
+pub use super::listeners::*;
 use backend::*;
 use backend::errors::*;
 use backend::for_context::ForContext;
@@ -12,138 +13,23 @@ use super::models as m;
 
 const JAVA_CONTEXT: &str = "java";
 
-pub trait Listeners {
-    fn configure(&self, _options: &mut ProcessorOptions) -> Result<()> {
-        Ok(())
-    }
-
-    fn class_added(&self,
-                   _fields: &Vec<m::JavaField>,
-                   _class_type: &ClassType,
-                   _class: &mut ClassSpec)
-                   -> Result<()> {
-        Ok(())
-    }
-
-    fn tuple_added(&self,
-                   _fields: &Vec<m::JavaField>,
-                   _class_type: &ClassType,
-                   _class: &mut ClassSpec)
-                   -> Result<()> {
-        Ok(())
-    }
-
-    fn enum_added(&self,
-                  _enum_body: &m::EnumBody,
-                  _fields: &Vec<m::JavaField>,
-                  _class_type: &ClassType,
-                  _from_value: &mut Option<MethodSpec>,
-                  _to_value: &mut Option<MethodSpec>,
-                  _class: &mut EnumSpec)
-                  -> Result<()> {
-        Ok(())
-    }
-
-    fn interface_added(&self,
-                       _interface: &m::InterfaceBody,
-                       _interface_spec: &mut InterfaceSpec)
-                       -> Result<()> {
-        Ok(())
-    }
-
-    fn sub_type_added(&self,
-                      _fields: &Vec<m::JavaField>,
-                      _interface: &m::InterfaceBody,
-                      _sub_type: &m::SubType,
-                      _class: &mut ClassSpec)
-                      -> Result<()> {
-        Ok(())
-    }
-}
-
-/// A vector of listeners is a valid listener.
-impl Listeners for Vec<Box<Listeners>> {
-    fn configure(&self, processor: &mut ProcessorOptions) -> Result<()> {
-        for listeners in self {
-            listeners.configure(processor)?;
-        }
-
-        Ok(())
-    }
-
-    fn class_added(&self,
-                   fields: &Vec<m::JavaField>,
-                   class_type: &ClassType,
-                   class: &mut ClassSpec)
-                   -> Result<()> {
-        for listeners in self {
-            listeners.class_added(fields, class_type, class)?;
-        }
-
-        Ok(())
-    }
-
-    fn tuple_added(&self,
-                   fields: &Vec<m::JavaField>,
-                   class_type: &ClassType,
-                   class: &mut ClassSpec)
-                   -> Result<()> {
-        for listeners in self {
-            listeners.tuple_added(fields, class_type, class)?;
-        }
-
-        Ok(())
-    }
-
-    fn enum_added(&self,
-                  enum_body: &m::EnumBody,
-                  fields: &Vec<m::JavaField>,
-                  class_type: &ClassType,
-                  from_value: &mut Option<MethodSpec>,
-                  to_value: &mut Option<MethodSpec>,
-                  class: &mut EnumSpec)
-                  -> Result<()> {
-        for listeners in self {
-            listeners.enum_added(enum_body, fields, class_type, from_value, to_value, class)?;
-        }
-
-        Ok(())
-    }
-
-    fn interface_added(&self,
-                       interface: &m::InterfaceBody,
-                       interface_spec: &mut InterfaceSpec)
-                       -> Result<()> {
-        for listeners in self {
-            listeners.interface_added(interface, interface_spec)?;
-        }
-
-        Ok(())
-    }
-
-    fn sub_type_added(&self,
-                      fields: &Vec<m::JavaField>,
-                      interface: &m::InterfaceBody,
-                      sub_type: &m::SubType,
-                      class: &mut ClassSpec)
-                      -> Result<()> {
-        for listeners in self {
-            listeners.sub_type_added(fields, interface, sub_type, class)?;
-        }
-
-        Ok(())
-    }
-}
-
 pub struct ProcessorOptions {
     parent: Options,
+    /// Should fields be nullable?
     pub nullable: bool,
+    /// Should the type be immutable?
     pub immutable: bool,
+    /// Build setters?
     pub build_setters: bool,
+    /// Build getters?
     pub build_getters: bool,
+    /// Build a constructor?
     pub build_constructor: bool,
+    /// Build a Object#hashCode() implementation.
     pub build_hash_code: bool,
+    /// Build a Object#equals() implementation.
     pub build_equals: bool,
+    /// Build a Object#toString() implementation.
     pub build_to_string: bool,
 }
 
@@ -669,11 +555,11 @@ impl Processor {
     fn process_enum(&self, package: &m::Package, body: &m::EnumBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &body.name);
 
-        let mut en = EnumSpec::new(mods![Modifier::Public], &body.name);
+        let mut spec = EnumSpec::new(mods![Modifier::Public], &body.name);
         let fields = self.convert_fields(package, &body.fields)?;
 
         for code in body.codes.for_context(JAVA_CONTEXT) {
-            en.push(code.inner.lines);
+            spec.push(code.inner.lines);
         }
 
         for enum_literal in &body.values {
@@ -691,20 +577,20 @@ impl Processor {
             }
 
             enum_value.push(enum_stmt);
-            en.push_value(enum_value);
+            spec.push_value(enum_value);
         }
 
-        let constructor = self.build_enum_constructor(&en);
-        en.push_constructor(constructor);
+        let constructor = self.build_enum_constructor(&spec);
+        spec.push_constructor(constructor);
 
         for field in &fields {
             if self.options.build_getters {
-                en.push(field.getter()?);
+                spec.push(field.getter()?);
             }
 
             if self.options.build_setters {
                 if let Some(setter) = field.setter()? {
-                    en.push(setter);
+                    spec.push(setter);
                 }
             }
         }
@@ -722,23 +608,25 @@ impl Processor {
         }
 
         self.listeners
-            .enum_added(body,
-                        &fields,
-                        &class_type,
-                        &mut from_value,
-                        &mut to_value,
-                        &mut en)?;
+            .enum_added(&mut EnumAdded {
+                body: body,
+                fields: &fields,
+                class_type: &class_type,
+                from_value: &mut from_value,
+                to_value: &mut to_value,
+                spec: &mut spec,
+            })?;
 
         if let Some(from_value) = from_value {
-            en.push(from_value);
+            spec.push(from_value);
         }
 
         if let Some(to_value) = to_value {
-            en.push(to_value);
+            spec.push(to_value);
         }
 
         let mut file_spec = self.new_file_spec(package);
-        file_spec.push(&en);
+        file_spec.push(&spec);
 
         Ok(file_spec)
     }
@@ -754,7 +642,12 @@ impl Processor {
         }
 
         self.add_class(&class_type, &mut class)?;
-        self.listeners.tuple_added(&fields, &class_type, &mut class)?;
+        self.listeners
+            .tuple_added(&mut TupleAdded {
+                fields: &fields,
+                class_type: &class_type,
+                spec: &mut class,
+            })?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push(&class);
@@ -773,7 +666,12 @@ impl Processor {
         }
 
         self.add_class(&class_type, &mut class)?;
-        self.listeners.class_added(&fields, &class_type, &mut class)?;
+        self.listeners
+            .class_added(&mut ClassAdded {
+                fields: &fields,
+                class_type: &class_type,
+                spec: &mut class,
+            })?;
 
         let mut file_spec = self.new_file_spec(package);
         file_spec.push(&class);
@@ -828,15 +726,32 @@ impl Processor {
             fields.extend(self.convert_fields(package, &sub_type.inner.fields)?);
 
             self.add_class(&class_type, &mut class)?;
-            self.listeners.class_added(&fields, &class_type, &mut class)?;
 
-            self.listeners.sub_type_added(&fields, interface, sub_type, &mut class)?;
+            self.listeners
+                .class_added(&mut ClassAdded {
+                    fields: &fields,
+                    class_type: &class_type,
+                    spec: &mut class,
+                })?;
+
+            self.listeners
+                .sub_type_added(&mut SubTypeAdded {
+                    fields: &fields,
+                    interface: interface,
+                    sub_type: sub_type,
+                    spec: &mut class,
+                })?;
+
             interface_spec.push(&class);
         }
 
         let mut file_spec = self.new_file_spec(package);
 
-        self.listeners.interface_added(interface, &mut interface_spec)?;
+        self.listeners
+            .interface_added(&mut InterfaceAdded {
+                interface: interface,
+                spec: &mut interface_spec,
+            })?;
 
         file_spec.push(&interface_spec);
         Ok(file_spec)
