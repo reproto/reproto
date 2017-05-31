@@ -266,21 +266,27 @@ impl Processor {
                 let argument = self.convert_type(pos, package, ty)?;
                 self.list.with_arguments(vec![argument]).into()
             }
-            m::Type::Custom(ref string) => {
-                let key = (package.clone(), string.clone());
+            m::Type::Custom(ref parts) => {
+                let key = (package.clone(), parts.clone());
 
                 if let None = self.env.types.get(&key) {
-                    return Err(Error::pos(format!("no such type: {}", string), pos.clone()));
+                    return Err(Error::pos(format!("no such type: {}", parts.join(".")),
+                                          pos.clone()));
                 }
 
-                let package_name = self.java_package_name(package);
-                Type::class(&package_name, string).into()
+                if let Some(last) = parts.iter().last() {
+                    let package_name = self.java_package_name(package);
+                    Type::class(&package_name, last).into()
+                } else {
+                    return Err(Error::pos(format!("unsupported custom type: {:?}", parts),
+                                          pos.clone()));
+                }
             }
             m::Type::Any => self.object.clone().into(),
             m::Type::UsedType(ref used, ref custom) => {
-                let package = self.env.lookup_used(pos, package, used)?;
+                let package = self.env.lookup_used(pos, package, used, custom)?;
                 let package_name = self.java_package_name(package);
-                Type::class(&package_name, custom).into()
+                Type::class(&package_name, &custom.join(".")).into()
             }
             m::Type::Map(ref key, ref value) => {
                 let key = self.convert_type(pos, package, key)?;
@@ -951,6 +957,7 @@ impl ::std::fmt::Display for m::Value {
             m::Value::Boolean(_) => "<boolean>",
             m::Value::Identifier(_) => "<identifier>",
             m::Value::Type(_) => "<type>",
+            m::Value::Instance(_) => "<instance>",
         };
 
         write!(f, "{}", out)

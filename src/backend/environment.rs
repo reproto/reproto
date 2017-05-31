@@ -10,7 +10,7 @@ use super::models::*;
 
 const EXT: &str = "reproto";
 
-pub type TypeId = (Package, String);
+pub type TypeId = (Package, Vec<String>);
 
 pub struct Environment {
     paths: Vec<PathBuf>,
@@ -30,7 +30,7 @@ impl Environment {
     }
 
     fn register_type(&mut self, package: &Package, decl: Token<Decl>) -> Result<()> {
-        let key = (package.clone(), decl.name().to_owned());
+        let key = (package.clone(), vec![decl.name().to_owned()]);
 
         match self.types.entry(key) {
             Entry::Vacant(entry) => {
@@ -64,7 +64,12 @@ impl Environment {
     }
 
     /// Lookup the package declaration a used alias refers to.
-    pub fn lookup_used(&self, pos: &Pos, package: &Package, used: &str) -> Result<&Package> {
+    pub fn lookup_used(&self,
+                       pos: &Pos,
+                       package: &Package,
+                       used: &str,
+                       custom: &Vec<String>)
+                       -> Result<&Package> {
         // resolve alias
         let package =
             self.used
@@ -74,7 +79,7 @@ impl Environment {
                 })?;
 
         // check that type actually exists?
-        let key = (package.clone(), used.to_owned());
+        let key = (package.clone(), custom.clone());
         let _ = self.types.get(&key);
 
         Ok(package)

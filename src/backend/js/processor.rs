@@ -315,18 +315,23 @@ impl Processor {
         }
     }
 
-    fn custom_name(&self, package: &Package, custom: &str) -> Name {
+    fn custom_name(&self, package: &Package, custom: &Vec<String>) -> Name {
         let package = self.package(package);
         let key = &(package.clone(), custom.to_owned());
         let _ = self.env.types.get(key);
-        Name::local(&custom).into()
+        Name::local(&custom.join(".")).into()
     }
 
-    fn used_name(&self, pos: &Pos, package: &Package, used: &str, custom: &str) -> Result<Name> {
-        let package = self.env.lookup_used(pos, package, used)?;
+    fn used_name(&self,
+                 pos: &Pos,
+                 package: &Package,
+                 used: &str,
+                 custom: &Vec<String>)
+                 -> Result<Name> {
+        let package = self.env.lookup_used(pos, package, used, custom)?;
         let package = self.package(package);
         let package = package.parts.join(".");
-        Ok(Name::imported_alias(&package, &custom, used).into())
+        Ok(Name::imported_alias(&package, &custom.join("."), used).into())
     }
 
     fn encode<S>(&self, package: &Package, ty: &Type, value_stmt: S) -> Result<Statement>
@@ -376,8 +381,8 @@ impl Processor {
             Type::String => value_stmt,
             Type::Any => value_stmt,
             Type::Boolean => value_stmt,
-            Type::Custom(ref custom) => {
-                let name = self.custom_name(package, custom);
+            Type::Custom(ref parts) => {
+                let name = self.custom_name(package, parts);
                 stmt![name, ".decode(", value_stmt, ")"]
             }
             Type::UsedType(ref used, ref custom) => {

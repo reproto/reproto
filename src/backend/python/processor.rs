@@ -333,23 +333,23 @@ impl Processor {
         }
     }
 
-    fn custom_name(&self, package: &m::Package, custom: &str) -> Name {
+    fn custom_name(&self, package: &m::Package, custom: &Vec<String>) -> Name {
         let package = self.package(package);
         let key = &(package.clone(), custom.to_owned());
         let _ = self.env.types.get(key);
-        Name::local(&custom).into()
+        Name::local(&custom.join(".")).into()
     }
 
     fn used_name(&self,
                  pos: &m::Pos,
                  package: &m::Package,
                  used: &str,
-                 custom: &str)
+                 custom: &Vec<String>)
                  -> Result<Name> {
-        let package = self.env.lookup_used(pos, package, used)?;
+        let package = self.env.lookup_used(pos, package, used, custom)?;
         let package = self.package(package);
         let package = package.parts.join(".");
-        Ok(Name::imported_alias(&package, &custom, used).into())
+        Ok(Name::imported_alias(&package, &custom.join("."), used).into())
     }
 
     fn encode<S>(&self, package: &m::Package, ty: &m::Type, value_stmt: S) -> Result<Statement>
@@ -867,8 +867,8 @@ impl ::std::fmt::Display for m::Type {
             m::Type::Unsigned(_) => write!(f, "int"),
             m::Type::Float | m::Type::Double => write!(f, "float"),
             m::Type::String => write!(f, "str"),
-            m::Type::Custom(ref custom) => write!(f, "{}", custom),
-            m::Type::UsedType(ref used, ref custom) => write!(f, "{}.{}", used, custom),
+            m::Type::Custom(ref custom) => write!(f, "{}", custom.join(".")),
+            m::Type::UsedType(ref used, ref custom) => write!(f, "{}.{}", used, custom.join(".")),
             m::Type::Array(_) => write!(f, "array"),
             m::Type::Boolean => write!(f, "bool"),
             _ => write!(f, "<unknown>"),

@@ -1,5 +1,5 @@
-use super::models::*;
 use super::errors::*;
+use super::models::*;
 
 /// Helper for looking up and dealing with options.
 #[derive(Debug)]

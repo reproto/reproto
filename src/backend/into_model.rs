@@ -28,7 +28,7 @@ fn members_into_model(pos: &Pos,
                       -> Result<(Fields, Codes, OptionVec)> {
     let mut fields: Vec<Token<Field>> = Vec::new();
     let mut codes = Vec::new();
-    let mut options = Vec::new();
+    let mut options: Vec<Token<OptionDecl>> = Vec::new();
 
     for member in members {
         let pos = (pos.0.to_owned(), member.pos.0, member.pos.1);
@@ -41,13 +41,16 @@ fn members_into_model(pos: &Pos,
                     return Err(Error::field_conflict(field.name.clone(), pos, other.pos.clone()));
                 }
 
-                fields.push(field);
+                fields.push(Token::new(field, pos));
             }
             ast::Member::Code(context, lines) => {
                 codes.push(code(&pos, member.pos, context, lines));
             }
             ast::Member::Option(option) => {
                 options.push(option.into_model(pos)?);
+            }
+            _ => {
+                return Err(Error::pos("not supported".to_owned(), pos.clone()));
             }
         }
     }
@@ -68,11 +71,11 @@ impl OrdinalGenerator {
         }
     }
 
-    pub fn next(&mut self, ordinal: &Option<ast::Token<Value>>, pos: &Pos) -> Result<u32> {
+    pub fn next(&mut self, ordinal: &Option<ast::Token<ast::Value>>, pos: &Pos) -> Result<u32> {
         if let Some(ref ordinal) = *ordinal {
             let pos = (pos.0.to_owned(), ordinal.pos.0, ordinal.pos.1);
 
-            if let Value::Number(ref number) = ordinal.inner {
+            if let ast::Value::Number(ref number) = ordinal.inner {
                 let n: u32 = number.floor() as u32;
 
                 if self.ordinals.contains(&n) {
@@ -107,21 +110,60 @@ pub trait IntoModel {
     type Output;
 
     /// Convert the current type to a model.
-    fn into_model(self, pos: Pos) -> Result<Token<Self::Output>>;
+    fn into_model(self, pos: Pos) -> Result<Self::Output>;
+}
+
+impl<T> IntoModel for ast::Token<T>
+    where T: IntoModel
+{
+    type Output = Token<T::Output>;
+
+    fn into_model(self, pos: Pos) -> Result<Self::Output> {
+        let pos = (pos.0, self.pos.0, self.pos.1);
+        let out = self.inner.into_model(pos.clone())?;
+        Ok(Token::new(out, pos))
+    }
+}
+
+impl<T> IntoModel for Vec<T>
+    where T: IntoModel
+{
+    type Output = Vec<T::Output>;
+
+    fn into_model(self, pos: Pos) -> Result<Self::Output> {
+        let mut out = Vec::new();
+
+        for v in self {
+            out.push(v.into_model(pos.clone())?);
+        }
+
+        Ok(out)
+    }
+}
+
+impl<T> IntoModel for Option<T>
+    where T: IntoModel
+{
+    type Output = Option<T::Output>;
+
+    fn into_model(self, pos: Pos) -> Result<Self::Output> {
+        if let Some(value) = self {
+            return Ok(Some(value.into_model(pos)?));
+        }
+
+        Ok(None)
+    }
 }
 
 impl IntoModel for ast::InterfaceBody {
     type Output = InterfaceBody;
 
-    fn into_model(self, pos: Pos) -> Result<Token<InterfaceBody>> {
+    fn into_model(self, pos: Pos) -> Result<InterfaceBody> {
         let (fields, codes, options) = members_into_model(&pos, self.members)?;
 
         let mut sub_types: BTreeMap<String, Token<SubType>> = BTreeMap::new();
 
-        for sub_type in self.sub_types {
-            let pos = (pos.0.clone(), sub_type.pos.0, sub_type.pos.1);
-            let sub_type = sub_type.inner.into_model(pos)?;
-
+        for sub_type in self.sub_types.into_model(pos.clone())? {
             // key has to be owned by entry
             let key = sub_type.name.clone();
 
@@ -144,14 +186,14 @@ impl IntoModel for ast::InterfaceBody {
             sub_types: sub_types,
         };
 
-        Ok(Token::new(interface_body, pos.clone()))
+        Ok(interface_body)
     }
 }
 
 impl IntoModel for ast::EnumBody {
     type Output = EnumBody;
 
-    fn into_model(self, pos: Pos) -> Result<Token<EnumBody>> {
+    fn into_model(self, pos: Pos) -> Result<EnumBody> {
         let mut values = Vec::new();
 
         let mut ordinals = OrdinalGenerator::new();
@@ -159,21 +201,9 @@ impl IntoModel for ast::EnumBody {
         let (fields, codes, options) = members_into_model(&pos, self.members)?;
 
         for value in self.values {
-            let pos = (pos.0.to_owned(), value.pos.0, value.pos.1);
-            let value = value.inner;
-
-            let name = value.name;
-            let arguments: Vec<Token<Value>> =
-                value.arguments.into_iter().map(|a| a.with_prefix(pos.0.to_owned())).collect();
             let ordinal = ordinals.next(&value.ordinal, &pos)?;
-
-            let value = EnumValue {
-                name: name,
-                arguments: arguments,
-                ordinal: ordinal,
-            };
-
-            values.push(Token::new(value, pos));
+            /// need to tack on an ordinal value.
+            values.push(value.map_inner(|v| (v, ordinal)).into_model(pos.clone())?);
         }
 
         let options = Options::new(&pos, options);
@@ -195,14 +225,32 @@ impl IntoModel for ast::EnumBody {
             serialized_as_name: serialized_as_name,
         };
 
-        Ok(Token::new(en, pos.clone()))
+        Ok(en)
+    }
+}
+
+/// enum value with assigned ordinal
+impl IntoModel for (ast::EnumValue, u32) {
+    type Output = EnumValue;
+
+    fn into_model(self, pos: Pos) -> Result<Self::Output> {
+        let value = self.0;
+        let ordinal = self.1;
+
+        let value = EnumValue {
+            name: value.name,
+            arguments: value.arguments.into_model(pos)?,
+            ordinal: ordinal,
+        };
+
+        Ok(value)
     }
 }
 
 impl IntoModel for ast::TypeBody {
     type Output = TypeBody;
 
-    fn into_model(self, pos: Pos) -> Result<Token<TypeBody>> {
+    fn into_model(self, pos: Pos) -> Result<TypeBody> {
         let (fields, codes, options) = members_into_model(&pos, self.members)?;
 
         let options = Options::new(&pos, options);
@@ -217,14 +265,14 @@ impl IntoModel for ast::TypeBody {
             reserved: reserved,
         };
 
-        Ok(Token::new(type_body, pos.clone()))
+        Ok(type_body)
     }
 }
 
 impl IntoModel for ast::SubType {
     type Output = SubType;
 
-    fn into_model(self, pos: Pos) -> Result<Token<SubType>> {
+    fn into_model(self, pos: Pos) -> Result<SubType> {
         let mut fields: Vec<Token<Field>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
@@ -242,13 +290,16 @@ impl IntoModel for ast::SubType {
                                                          other.pos.clone()));
                     }
 
-                    fields.push(field);
+                    fields.push(Token::new(field, pos));
                 }
                 ast::Member::Code(context, lines) => {
                     codes.push(code(&pos, member.pos, context, lines));
                 }
                 ast::Member::Option(option) => {
                     options.push(option.into_model(pos)?);
+                }
+                _ => {
+                    return Err(Error::pos("not supported".to_owned(), pos.clone()));
                 }
             }
         }
@@ -264,14 +315,14 @@ impl IntoModel for ast::SubType {
             names: names,
         };
 
-        Ok(Token::new(sub_type, pos.clone()))
+        Ok(sub_type)
     }
 }
 
 impl IntoModel for ast::TupleBody {
     type Output = TupleBody;
 
-    fn into_model(self, pos: Pos) -> Result<Token<TupleBody>> {
+    fn into_model(self, pos: Pos) -> Result<TupleBody> {
         let (fields, codes, options) = members_into_model(&pos, self.members)?;
 
         let _options = Options::new(&pos, options);
@@ -282,19 +333,19 @@ impl IntoModel for ast::TupleBody {
             codes: codes,
         };
 
-        Ok(Token::new(tuple_body, pos.clone()))
+        Ok(tuple_body)
     }
 }
 
-impl IntoModel for ast::Token<ast::Decl> {
+impl IntoModel for ast::Decl {
     type Output = Decl;
 
-    fn into_model(self, pos: Pos) -> Result<Token<Decl>> {
-        let decl = match self.inner {
-            ast::Decl::Type(body) => body.into_model(pos)?.map_inner(Decl::Type),
-            ast::Decl::Interface(body) => body.into_model(pos)?.map_inner(Decl::Interface),
-            ast::Decl::Enum(body) => body.into_model(pos)?.map_inner(Decl::Enum),
-            ast::Decl::Tuple(body) => body.into_model(pos)?.map_inner(Decl::Tuple),
+    fn into_model(self, pos: Pos) -> Result<Decl> {
+        let decl = match self {
+            ast::Decl::Type(body) => Decl::Type(body.into_model(pos)?),
+            ast::Decl::Interface(body) => Decl::Interface(body.into_model(pos)?),
+            ast::Decl::Enum(body) => Decl::Enum(body.into_model(pos)?),
+            ast::Decl::Tuple(body) => Decl::Tuple(body.into_model(pos)?),
         };
 
         Ok(decl)
@@ -304,11 +355,11 @@ impl IntoModel for ast::Token<ast::Decl> {
 impl IntoModel for ast::OptionDecl {
     type Output = OptionDecl;
 
-    fn into_model(self, pos: Pos) -> Result<Token<OptionDecl>> {
+    fn into_model(self, pos: Pos) -> Result<OptionDecl> {
         let mut values = Vec::new();
 
         for value in self.values {
-            values.push(value.with_prefix(pos.0.to_owned()));
+            values.push(value.into_model(pos.clone())?);
         }
 
         let decl = OptionDecl {
@@ -316,17 +367,22 @@ impl IntoModel for ast::OptionDecl {
             values: values,
         };
 
-        Ok(Token::new(decl, pos))
+        Ok(decl)
     }
 }
 
 impl IntoModel for ast::Field {
     type Output = Field;
 
-    fn into_model(self, pos: Pos) -> Result<Token<Field>> {
-        let field_as = if let Some(ident) = self.field_as {
-            let pos = (pos.0.clone(), ident.pos.0, ident.pos.1);
-            Some(ident.into_model(pos)?)
+    fn into_model(self, pos: Pos) -> Result<Field> {
+        let field_as = self.field_as.into_model(pos)?;
+
+        let field_as = if let Some(field_as) = field_as {
+            if let Value::String(name) = field_as.inner {
+                Some(Token::new(name, field_as.pos.clone()))
+            } else {
+                return Err(Error::pos("must be a string".to_owned(), field_as.pos));
+            }
         } else {
             None
         };
@@ -338,18 +394,57 @@ impl IntoModel for ast::Field {
             field_as: field_as,
         };
 
-        Ok(Token::new(field, pos))
+        Ok(field)
     }
 }
 
-impl IntoModel for ast::Token<Value> {
+impl IntoModel for ast::Value {
+    type Output = Value;
+
+    fn into_model(self, pos: Pos) -> Result<Value> {
+        let value = match self {
+            ast::Value::String(string) => Value::String(string),
+            ast::Value::Number(number) => Value::Number(number),
+            ast::Value::Boolean(boolean) => Value::Boolean(boolean),
+            ast::Value::Identifier(identifier) => Value::Identifier(identifier),
+            ast::Value::Type(ty) => Value::Type(ty),
+            ast::Value::Instance(instance) => Value::Instance(instance.into_model(pos)?),
+        };
+
+        Ok(value)
+    }
+}
+
+impl IntoModel for ast::FieldInit {
+    type Output = FieldInit;
+
+    fn into_model(self, pos: Pos) -> Result<FieldInit> {
+        let field_init = FieldInit {
+            name: self.name.into_model(pos.clone())?,
+            value: self.value.into_model(pos.clone())?,
+        };
+
+        Ok(field_init)
+    }
+}
+
+impl IntoModel for ast::Instance {
+    type Output = Instance;
+
+    fn into_model(self, pos: Pos) -> Result<Instance> {
+        let instance = Instance {
+            ty: self.ty,
+            arguments: self.arguments.into_model(pos)?,
+        };
+
+        Ok(instance)
+    }
+}
+
+impl IntoModel for String {
     type Output = String;
 
-    fn into_model(self, pos: Pos) -> Result<Token<String>> {
-        if let Value::String(string) = self.inner {
-            return Ok(Token::new(string, pos));
-        }
-
-        Err(Error::pos("expected string".to_owned(), pos))
+    fn into_model(self, pos: Pos) -> Result<String> {
+        Ok(self)
     }
 }

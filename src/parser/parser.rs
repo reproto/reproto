@@ -139,7 +139,7 @@ impl_rdp! {
         sub_type = { type_identifier ~ left_curly ~ sub_type_body ~ right_curly }
         sub_type_body = _{ member* }
 
-        member = { option_decl | field | code_block }
+        member = { option_decl | match_decl | field | code_block }
         field = { identifier ~ optional? ~ colon ~ type_spec ~ field_as? ~ semi_colon }
         field_as = { as_keyword ~ value }
         code_block = @{ identifier ~ whitespace* ~ code_start ~ code_body ~ code_end }
@@ -150,7 +150,14 @@ impl_rdp! {
         enum_ordinal = { equals ~ value }
         option_decl = { identifier ~ (value ~ (comma ~ value)*) ~ semi_colon }
 
-        package_ident = @{ identifier ~ (["."] ~ identifier)* }
+        match_decl = { match_keyword ~ left_curly ~ match_member_entry* ~ right_curly }
+        match_member_entry = { match_member }
+        match_member = { match_condition ~ hash_rocket ~ value ~ semi_colon }
+        match_condition = { match_variable | match_value }
+        match_variable = { identifier ~ colon ~ type_spec }
+        match_value = { value }
+
+        package_ident = @{ identifier ~ (dot ~ identifier)* }
 
         type_spec = _{
             float_type |
@@ -178,8 +185,8 @@ impl_rdp! {
         any_type = @{ ["any"] }
         map_type = { left_curly ~ type_spec ~ colon ~ type_spec ~ right_curly }
         array_type = { ["["] ~ type_spec ~ ["]"] }
-        used_type = @{ identifier ~ ["."] ~ type_identifier }
-        custom_type = { type_identifier }
+        used_type = @{ identifier ~ dot ~ custom_type }
+        custom_type = { type_identifier ~ (dot ~ type_identifier)* }
 
         // Keywords and tokens
         enum_keyword = @{ ["enum"] }
@@ -189,6 +196,8 @@ impl_rdp! {
         type_keyword = @{ ["type"] }
         tuple_keyword = @{ ["tuple"] }
         interface_keyword = @{ ["interface"] }
+        match_keyword = @{ ["match"] }
+        hash_rocket = @{ ["=>"] }
         comma = @{ [","] }
         colon = @{ [":"] }
         semi_colon = @{ [";"] }
@@ -201,10 +210,14 @@ impl_rdp! {
         forward_slash = @{ ["/"] }
         optional = @{ ["?"] }
         equals = @{ ["="] }
+        dot = @{ ["."] }
 
         type_bits = _{ (forward_slash ~ unsigned) }
 
-        value = { type_spec | boolean | identifier | string | number }
+        value = { instance | type_spec | boolean | identifier | string | number }
+
+        instance = { type_spec ~ left_paren ~ field_init* ~ right_paren }
+        field_init = { identifier ~ colon ~ value }
 
         identifier = @{ ['a'..'z'] ~ (['0'..'9'] | ['a'..'z'] | ["_"])* }
         type_identifier = @{ ['A'..'Z'] ~ (['A'..'Z'] | ['a'..'z'])* }
@@ -215,7 +228,7 @@ impl_rdp! {
         hex     =  _{ ['0'..'9'] | ['a'..'f'] }
 
         unsigned = @{ int }
-        number   = @{ ["-"]? ~ int ~ (["."] ~ ['0'..'9']+)? ~ (["e"] ~ int)? }
+        number   = @{ ["-"]? ~ int ~ (dot ~ ['0'..'9']+)? ~ (["e"] ~ int)? }
         int      =  _{ ["0"] | ['1'..'9'] ~ ['0'..'9']* }
 
         boolean = { ["true"] | ["false"] }
@@ -402,17 +415,17 @@ impl_rdp! {
             },
         }
 
-        _enum_arguments(&self) -> Result<LinkedList<ast::Token<m::Value>>> {
+        _enum_arguments(&self) -> Result<LinkedList<ast::Token<ast::Value>>> {
             (_: enum_arguments, _: left_paren, values: _value_list(), _: right_paren) => values,
             () => Ok(LinkedList::new()),
         }
 
-        _enum_ordinal(&self) -> Result<Option<ast::Token<m::Value>>> {
+        _enum_ordinal(&self) -> Result<Option<ast::Token<ast::Value>>> {
             (_: enum_ordinal, _: equals, value: _value_token()) => value.map(Some),
             () => Ok(None),
         }
 
-        _value_list(&self) -> Result<LinkedList<ast::Token<m::Value>>> {
+        _value_list(&self) -> Result<LinkedList<ast::Token<ast::Value>>> {
             (value: _value_token(), _: comma, tail: _value_list()) => {
                 let mut tail = tail?;
                 tail.push_front(value?);
@@ -426,26 +439,44 @@ impl_rdp! {
             },
         }
 
-        _value_token(&self) -> Result<ast::Token<m::Value>> {
+        _value_token(&self) -> Result<ast::Token<ast::Value>> {
             (token: value, value: _value()) => {
                 let pos = (token.start, token.end);
                 value.map(move |v| ast::Token::new(v, pos))
             },
         }
 
-        _value(&self) -> Result<m::Value> {
+        _value(&self) -> Result<ast::Value> {
+            (
+                token: instance,
+                ty: _type_spec(),
+                _: left_paren,
+                arguments: _field_init_list(),
+                _: right_paren
+            ) => {
+                let pos = (token.start, token.end);
+                let arguments = arguments?.into_iter().collect();
+
+                let instance = ast::Instance {
+                    ty: ty?,
+                    arguments: arguments,
+                };
+
+                Ok(ast::Value::Instance(ast::Token::new(instance, pos)))
+            },
+
             (&value: string) => {
                 let value = decode_escaped_string(value)?;
-                Ok(m::Value::String(value))
+                Ok(ast::Value::String(value))
             },
 
             (&value: identifier) => {
-                Ok(m::Value::Identifier(value.to_owned()))
+                Ok(ast::Value::Identifier(value.to_owned()))
             },
 
             (&value: number) => {
                 let value = value.parse::<f64>()?;
-                Ok(m::Value::Number(value))
+                Ok(ast::Value::Number(value))
             },
 
             (&value: boolean) => {
@@ -455,12 +486,37 @@ impl_rdp! {
                     _ => panic!("should not happen"),
                 };
 
-                Ok(m::Value::Boolean(value))
+                Ok(ast::Value::Boolean(value))
             },
 
             (ty: _type_spec()) => {
-                Ok(m::Value::Type(ty?))
+                Ok(ast::Value::Type(ty?))
             },
+        }
+
+        _field_init_list(&self) -> Result<LinkedList<ast::Token<ast::FieldInit>>> {
+            (
+                token: field_init,
+                &name: identifier,
+                _: colon,
+                value: _value_token(),
+                tail: _field_init_list()
+            ) => {
+                let mut tail = tail?;
+                let pos = (token.start, token.end);
+                let name = name.to_owned();
+                let value = value?;
+
+                let field_init = ast::FieldInit {
+                    name: ast::Token::new(name, pos),
+                    value: value,
+                };
+
+                tail.push_front(ast::Token::new(field_init, pos));
+                Ok(tail)
+            },
+
+            () => Ok(LinkedList::new()),
         }
 
         _member_list(&self) -> Result<LinkedList<ast::Token<ast::Member>>> {
@@ -506,18 +562,35 @@ impl_rdp! {
             },
 
             (
-                _: option_decl,
+                token: option_decl,
                 &name: identifier,
                 values: _value_list(),
                 _: semi_colon,
             ) => {
+                let pos = (token.start, token.end);
                 let values = values?.into_iter().collect();
                 let option_decl = ast::OptionDecl { name: name.to_owned(), values: values };
-                Ok(ast::Member::Option(option_decl))
+                Ok(ast::Member::Option(ast::Token::new(option_decl, pos)))
+            },
+
+            (
+                _: match_decl,
+                _: match_keyword,
+                _: left_curly,
+                members: _match_member_list(),
+                _: right_curly,
+             ) => {
+                let members = members?.into_iter().collect();
+
+                let decl = ast::MatchDecl {
+                    members: members,
+                };
+
+                Ok(ast::Member::Match(decl))
             },
         }
 
-        _field_as(&self) -> Result<Option<ast::Token<m::Value>>> {
+        _field_as(&self) -> Result<Option<ast::Token<ast::Value>>> {
             (_: field_as, _: as_keyword, value: _value_token()) => Ok(Some(value?)),
             () => Ok(None),
         }
@@ -545,6 +618,71 @@ impl_rdp! {
                 let name = name.to_owned();
                 let members = members?.into_iter().collect();
                 Ok(ast::SubType { name: name, members: members })
+            },
+        }
+
+        _match_member_list(&self) -> Result<LinkedList<ast::Token<ast::MatchMember>>> {
+            (
+                _: match_member_entry,
+                member: _match_member(),
+                tail: _match_member_list(),
+            ) => {
+                let mut tail = tail?;
+                tail.push_front(member?);
+                Ok(tail)
+            },
+
+            () => Ok(LinkedList::new()),
+        }
+
+        _match_member(&self) -> Result<ast::Token<ast::MatchMember>> {
+            (
+                token: match_member,
+                condition: _match_condition(),
+                _: hash_rocket,
+                value: _value_token(),
+                _: semi_colon,
+            ) => {
+                let pos = (token.start, token.end);
+
+                let member = ast::MatchMember {
+                    condition: condition?,
+                    value: value?,
+                };
+
+                Ok(ast::Token::new(member, pos))
+            },
+        }
+
+        _match_condition(&self) -> Result<ast::Token<ast::MatchCondition>> {
+            (
+                token: match_condition,
+                _: match_value,
+                value: _value_token(),
+            ) => {
+                let pos = (token.start, token.end);
+                let value = value?;
+                let condition = ast::MatchCondition::Value(value);
+                Ok(ast::Token::new(condition, pos))
+            },
+
+            (
+                token: match_condition,
+                _: match_variable,
+                &name: identifier,
+                _: colon,
+                ty: _type_spec(),
+            ) => {
+                let pos = (token.start, token.end);
+                let name = name.to_owned();
+                let ty = ty?;
+
+                let condition = ast::MatchCondition::Variable{
+                    name: name,
+                    ty: ty,
+                };
+
+                Ok(ast::Token::new(condition, pos))
             },
         }
 
@@ -591,12 +729,20 @@ impl_rdp! {
                 Ok(m::Type::Any)
             },
 
-            (_: custom_type, &name: type_identifier) => {
-                Ok(m::Type::Custom(name.to_owned()))
+            (_: custom_type, parts: _type_identifier_list()) => {
+                let parts = parts.into_iter().collect();
+                Ok(m::Type::Custom(parts))
             },
 
-            (_: used_type, &used: identifier, &value: type_identifier) => {
-                Ok(m::Type::UsedType(used.to_owned(), value.to_owned()))
+            (
+                _: used_type,
+                &used: identifier,
+                _: dot,
+                _: custom_type,
+                parts: _type_identifier_list(),
+            ) => {
+                let parts = parts.into_iter().collect();
+                Ok(m::Type::UsedType(used.to_owned(), parts))
             },
 
             (_: array_type, argument: _type_spec()) => {
@@ -624,7 +770,26 @@ impl_rdp! {
         }
 
         _ident_list(&self) -> LinkedList<String> {
+            (&value: identifier, _: dot, mut tail: _ident_list()) => {
+                tail.push_front(value.to_owned());
+                tail
+            },
+
             (&value: identifier, mut tail: _ident_list()) => {
+                tail.push_front(value.to_owned());
+                tail
+            },
+
+            () => LinkedList::new(),
+        }
+
+        _type_identifier_list(&self) -> LinkedList<String> {
+            (&value: type_identifier, _: dot, mut tail: _ident_list()) => {
+                tail.push_front(value.to_owned());
+                tail
+            },
+
+            (&value: type_identifier, mut tail: _ident_list()) => {
                 tail.push_front(value.to_owned());
                 tail
             },
@@ -772,8 +937,8 @@ mod tests {
 
     #[test]
     fn test_values() {
-        value_eq!(m::Value::String("foo\nbar".to_owned()), "\"foo\\nbar\"");
-        value_eq!(m::Value::Number(1f64), "1");
+        value_eq!(ast::Value::String("foo\nbar".to_owned()), "\"foo\\nbar\"");
+        value_eq!(ast::Value::Number(1f64), "1");
     }
 
     #[test]
@@ -787,11 +952,11 @@ mod tests {
             assert_eq!("foo_bar_baz", option.name);
             assert_eq!(4, option.values.len());
 
-            assert_eq!(m::Value::Boolean(true), option.values[0].inner);
-            assert_eq!(m::Value::Identifier("foo".to_owned()),
+            assert_eq!(ast::Value::Boolean(true), option.values[0].inner);
+            assert_eq!(ast::Value::Identifier("foo".to_owned()),
                        option.values[1].inner);
-            assert_eq!(m::Value::String("bar".to_owned()), option.values[2].inner);
-            assert_eq!(m::Value::Number(12f64), option.values[3].inner);
+            assert_eq!(ast::Value::String("bar".to_owned()), option.values[2].inner);
+            assert_eq!(ast::Value::Number(12f64), option.values[3].inner);
             return;
         }
 

@@ -69,6 +69,10 @@ interface Duration {
 }
 
 interface Aggregation {
+  match {
+    chain: [Aggregation] => Aggregation.Chain(chain: chain);
+  }
+
   Sum {
     name "sum";
 
@@ -89,9 +93,5 @@ interface Aggregation {
     name "chain";
 
     chain: [Aggregation];
-  }
-
-  match {
-    chain: [Aggregation] => Aggregation.Chain{chain: chain};
   }
 }

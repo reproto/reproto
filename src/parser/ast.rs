@@ -1,9 +1,31 @@
-use backend::models::*;
+use backend::models::{Type, Modifier, Package};
 use token;
 
 /// Position relative in file where the declaration is present.
 pub type Pos = (usize, usize);
 pub type Token<T> = token::Token<T, Pos>;
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct FieldInit {
+    pub name: Token<String>,
+    pub value: Token<Value>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Instance {
+    pub ty: Type,
+    pub arguments: Vec<Token<FieldInit>>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Value {
+    String(String),
+    Number(f64),
+    Boolean(bool),
+    Identifier(String),
+    Type(Type),
+    Instance(Token<Instance>),
+}
 
 #[derive(Debug)]
 pub struct OptionDecl {
@@ -32,7 +54,27 @@ impl Field {
 pub enum Member {
     Field(Field),
     Code(String, Vec<String>),
-    Option(OptionDecl),
+    Option(Token<OptionDecl>),
+    Match(MatchDecl),
+}
+
+#[derive(Debug)]
+pub enum MatchCondition {
+    /// Match a specific value.
+    Value(Token<Value>),
+    /// Match a type, and add a binding for the given name that can be resolved in the action.
+    Variable { name: String, ty: Type },
+}
+
+#[derive(Debug)]
+pub struct MatchMember {
+    pub condition: Token<MatchCondition>,
+    pub value: Token<Value>,
+}
+
+#[derive(Debug)]
+pub struct MatchDecl {
+    pub members: Vec<Token<MatchMember>>,
 }
 
 pub trait Body {

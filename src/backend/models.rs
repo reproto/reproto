@@ -6,6 +6,28 @@ use token;
 pub type Pos = (PathBuf, usize, usize);
 pub type Token<T> = token::Token<T, Pos>;
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct FieldInit {
+    pub name: Token<String>,
+    pub value: Token<Value>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Instance {
+    pub ty: Type,
+    pub arguments: Vec<Token<FieldInit>>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Value {
+    String(String),
+    Number(f64),
+    Boolean(bool),
+    Identifier(String),
+    Type(Type),
+    Instance(Token<Instance>),
+}
+
 #[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,
@@ -22,19 +44,10 @@ pub enum Type {
     String,
     Bytes,
     Any,
-    UsedType(String, String),
-    Custom(String),
+    UsedType(String, Vec<String>),
+    Custom(Vec<String>),
     Array(Box<Type>),
     Map(Box<Type>, Box<Type>),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Value {
-    String(String),
-    Number(f64),
-    Boolean(bool),
-    Identifier(String),
-    Type(Type),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
