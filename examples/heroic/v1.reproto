@@ -34,7 +34,6 @@ tuple Point {
 tuple Event {
   timestamp: unsigned/64;
   payload: any;
-  payload: any;
 }
 
 interface Samples {

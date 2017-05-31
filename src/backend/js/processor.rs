@@ -62,7 +62,6 @@ pub struct Processor {
     package_prefix: Option<Package>,
     listeners: Box<Listeners>,
     to_lower_snake: Box<naming::Naming>,
-    error: BuiltInName,
     type_var: Variable,
     values: Statement,
     enum_ordinal: Variable,
@@ -83,7 +82,6 @@ impl Processor {
             package_prefix: package_prefix,
             listeners: listeners,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
-            error: Name::built_in("Error"),
             type_var: string(TYPE),
             values: stmt!["values"],
             enum_ordinal: Variable::Literal("ordinal".to_owned()),
@@ -109,8 +107,7 @@ impl Processor {
         where S: Into<Statement>
     {
         let required_error = string(format!("{}: is a required field", field.name));
-        if_stmt!(is_not_defined(stmt),
-                 stmt!["throw new ", &self.error, "(", required_error, ");"])
+        js![if is_not_defined(stmt), js![throw required_error]]
     }
 
     fn convert_fields(&self, fields: &Vec<Token<Field>>) -> Vec<Token<JsField>> {
@@ -156,8 +153,8 @@ impl Processor {
 
             match field.modifier {
                 Modifier::Optional => {
-                    let stmt = if_stmt!(is_not_defined(field_stmt),
-                                        stmt![&data, "[", var_string, "] = ", value_stmt, ";"]);
+                    let stmt = js![if is_not_defined(field_stmt),
+                                      stmt![&data, "[", var_string, "] = ", value_stmt, ";"]];
                     assign.push(stmt);
                 }
                 _ => {
@@ -172,7 +169,7 @@ impl Processor {
             body.push(assign);
         }
 
-        body.push(stmt!["return ", data, ";"]);
+        body.push(js![return data]);
 
         encode.push(body.join(ElementSpec::Spacing));
         Ok(encode)
@@ -194,7 +191,7 @@ impl Processor {
             values.push(self.encode(package, &field.ty, stmt)?);
         }
 
-        encode_body.push(stmt!["return [", values.join(", "), "];"]);
+        encode_body.push(js![@return [ values ]]);
         encode.push(encode_body.join(ElementSpec::Spacing));
         Ok(encode)
     }
@@ -202,7 +199,7 @@ impl Processor {
     fn encode_enum_method(&self, ident: &str) -> Result<MethodSpec> {
         let mut encode = MethodSpec::new("encode");
         let mut encode_body = Elements::new();
-        encode_body.push(stmt!["return self.", &ident, ";"]);
+        encode_body.push(js![return "this.", &ident]);
         encode.push(encode_body.join(ElementSpec::Spacing));
         Ok(encode)
     }
@@ -219,29 +216,21 @@ impl Processor {
 
         let mut member_loop = Elements::new();
 
-        let members = stmt![&class.name, ".", &self.values];
-        let loop_init = stmt!["let ", &i, " = 0, ", &l, " = ", &members, ".length"];
-        let for_loop = stmt!["for (", &loop_init, "; i < ", &l, "; ", &i, "++) {"];
-        let member_value = stmt!["const ", &member, " = ", &members, "[", &i, "];"];
-
         let mut body = Elements::new();
 
-        body.push(member_value);
+        let members = stmt![&class.name, ".", &self.values];
+        body.push(js![const &member, &members, "[", &i, "]"]);
 
         let cond = stmt![&member, ".", ident, " === ", data];
-        body.push(if_stmt!(cond, stmt!["return ", &member, ";"]));
+        body.push(js![if cond, js![return &member]]);
 
-        member_loop.push(for_loop);
-        member_loop.push_nested(body.join(ElementSpec::Spacing));
-        member_loop.push("}");
-
-        let mismatch = string("no matching value");
-        let throw = stmt!["throw new ", &self.error, "(", mismatch, ");"];
+        let loop_init = stmt!["let ", &i, " = 0, ", &l, " = ", &members, ".length"];
+        member_loop.push(js![for loop_init; stmt![&i, " < ", &l]; stmt![&i, "++"], body.join(ElementSpec::Spacing)]);
 
         let mut body = Elements::new();
 
         body.push(member_loop);
-        body.push(throw);
+        body.push(js![throw string("no matching value")]);
 
         decode.push(body.join(ElementSpec::Spacing));
         Ok(decode)
@@ -275,9 +264,9 @@ impl Processor {
 
                     check.push(stmt!["let ", &var_name, " = ", &data, "[", &var, "];"]);
                     check.push(ElementSpec::Spacing);
-                    check.push(if_stmt!(is_defined(stmt![&var_name]),
-                                        stmt![&var_name, " = ", var_stmt, ";"],
-                                        stmt![&var_name, " = null;"]));
+                    check.push(js![if is_defined(stmt![&var_name]),
+                                      stmt![&var_name, " = ", var_stmt, ";"],
+                                      stmt![&var_name, " = null", ";"]]);
 
                     check.into()
                 }
@@ -298,8 +287,7 @@ impl Processor {
             body.push(assign);
         }
 
-        let arguments = arguments.join(", ");
-        body.push(stmt!["return new ", &class.name, "(", arguments, ");"]);
+        body.push(js![@return new &class.name, arguments]);
 
         decode.push(body.join(ElementSpec::Spacing));
 
@@ -601,9 +589,11 @@ impl Processor {
                 value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
             }
 
-            let arguments = stmt!["new ", &body.name, "(", value_arguments.join(", "), ")"];
-            values.push(stmt![&class.name, ".", &value.name, " = ", arguments, ";"]);
-            members.push(stmt![&class.name, ".", &value.name]);
+            let arguments = js![new &body.name, value_arguments];
+            let member = stmt![&class.name, ".", &value.name];
+
+            values.push(js![= &member, arguments]);
+            members.push(member);
         }
 
         let mut elements = Elements::new();
@@ -615,7 +605,8 @@ impl Processor {
         elements.push(values);
 
         // push members field
-        elements.push(stmt![&class.name, ".", &self.values, " = [", members.join(", "), "];"]);
+        let members_key = stmt![&class.name, ".", &self.values];
+        elements.push(js![= members_key, js!([members])]);
 
         Ok(elements.join(ElementSpec::Spacing).into())
     }
@@ -627,7 +618,7 @@ impl Processor {
             let name = self.to_lower_snake.convert(&field.ident);
             let getter_name = format!("get_{}", name);
             let mut method_spec = MethodSpec::new(&getter_name);
-            method_spec.push(stmt!["return this.", name]);
+            method_spec.push(js![return "this.", name]);
             result.push(method_spec);
         }
 
@@ -816,18 +807,11 @@ impl Processor {
             for name in &sub_type.names {
                 let type_name: Variable = Name::local(&sub_type.name).into();
                 let cond = stmt![&type_field, " === ", string(&name.inner)];
-                body.push(if_stmt!(cond, stmt!["return ", type_name, ".decode(", &data, ");"]));
+                body.push(js![if cond, js![return type_name, ".decode(", &data, ")"]]);
             }
         }
 
-        body.push(stmt!["throw new ",
-                        &self.error,
-                        "(",
-                        string("bad type"),
-                        " + ",
-                        &type_field,
-                        ");"]);
-
+        body.push(js![throw string("bad type")]);
         decode.push(body.join(ElementSpec::Spacing));
 
         Ok(decode)

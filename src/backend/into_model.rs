@@ -19,6 +19,42 @@ fn code(pos: &Pos, ast_pos: ast::Pos, context: String, lines: Vec<String>) -> To
     Token::new(code, pos)
 }
 
+type Fields = Vec<Token<Field>>;
+type Codes = Vec<Token<Code>>;
+type OptionVec = Vec<Token<OptionDecl>>;
+
+fn members_into_model(pos: &Pos,
+                      members: Vec<ast::Token<ast::Member>>)
+                      -> Result<(Fields, Codes, OptionVec)> {
+    let mut fields: Vec<Token<Field>> = Vec::new();
+    let mut codes = Vec::new();
+    let mut options = Vec::new();
+
+    for member in members {
+        let pos = (pos.0.to_owned(), member.pos.0, member.pos.1);
+
+        match member.inner {
+            ast::Member::Field(field) => {
+                let field = field.into_model(pos.clone())?;
+
+                if let Some(other) = fields.iter().find(|f| f.name == field.name) {
+                    return Err(Error::field_conflict(field.name.clone(), pos, other.pos.clone()));
+                }
+
+                fields.push(field);
+            }
+            ast::Member::Code(context, lines) => {
+                codes.push(code(&pos, member.pos, context, lines));
+            }
+            ast::Member::Option(option) => {
+                options.push(option.into_model(pos)?);
+            }
+        }
+    }
+
+    Ok((fields, codes, options))
+}
+
 struct OrdinalGenerator {
     next_ordinal: u32,
     ordinals: HashSet<u32>,
@@ -78,26 +114,9 @@ impl IntoModel for ast::InterfaceBody {
     type Output = InterfaceBody;
 
     fn into_model(self, pos: Pos) -> Result<Token<InterfaceBody>> {
-        let mut fields = Vec::new();
-        let mut codes = Vec::new();
+        let (fields, codes, options) = members_into_model(&pos, self.members)?;
+
         let mut sub_types: BTreeMap<String, Token<SubType>> = BTreeMap::new();
-        let mut options = Vec::new();
-
-        for member in self.members {
-            let pos = (pos.0.clone(), member.pos.0, member.pos.1);
-
-            match member.inner {
-                ast::Member::Field(field) => {
-                    fields.push(field.into_model(pos)?);
-                }
-                ast::Member::Code(context, lines) => {
-                    codes.push(code(&pos, member.pos, context, lines));
-                }
-                ast::Member::Option(option) => {
-                    options.push(option.into_model(pos)?);
-                }
-            }
-        }
 
         for sub_type in self.sub_types {
             let pos = (pos.0.clone(), sub_type.pos.0, sub_type.pos.1);
@@ -134,11 +153,10 @@ impl IntoModel for ast::EnumBody {
 
     fn into_model(self, pos: Pos) -> Result<Token<EnumBody>> {
         let mut values = Vec::new();
-        let mut fields = Vec::new();
-        let mut codes = Vec::new();
-        let mut options = Vec::new();
 
         let mut ordinals = OrdinalGenerator::new();
+
+        let (fields, codes, options) = members_into_model(&pos, self.members)?;
 
         for value in self.values {
             let pos = (pos.0.to_owned(), value.pos.0, value.pos.1);
@@ -156,22 +174,6 @@ impl IntoModel for ast::EnumBody {
             };
 
             values.push(Token::new(value, pos));
-        }
-
-        for member in self.members {
-            let pos = (pos.0.to_owned(), member.pos.0, member.pos.1);
-
-            match member.inner {
-                ast::Member::Field(field) => {
-                    fields.push(field.into_model(pos)?);
-                }
-                ast::Member::Code(context, lines) => {
-                    codes.push(code(&pos, member.pos, context, lines));
-                }
-                ast::Member::Option(option) => {
-                    options.push(option.into_model(pos)?);
-                }
-            }
         }
 
         let options = Options::new(&pos, options);
@@ -201,33 +203,7 @@ impl IntoModel for ast::TypeBody {
     type Output = TypeBody;
 
     fn into_model(self, pos: Pos) -> Result<Token<TypeBody>> {
-        let mut fields: Vec<Token<Field>> = Vec::new();
-        let mut codes = Vec::new();
-        let mut options = Vec::new();
-
-        for member in self.members {
-            let pos = (pos.0.to_owned(), member.pos.0, member.pos.1);
-
-            match member.inner {
-                ast::Member::Field(field) => {
-                    let field = field.into_model(pos.clone())?;
-
-                    if let Some(other) = fields.iter().find(|f| f.name == field.name) {
-                        return Err(Error::field_conflict(field.name.clone(),
-                                                         pos.clone(),
-                                                         other.pos.clone()));
-                    }
-
-                    fields.push(field);
-                }
-                ast::Member::Code(context, lines) => {
-                    codes.push(code(&pos, member.pos, context, lines));
-                }
-                ast::Member::Option(option) => {
-                    options.push(option.into_model(pos)?);
-                }
-            }
-        }
+        let (fields, codes, options) = members_into_model(&pos, self.members)?;
 
         let options = Options::new(&pos, options);
 
@@ -296,25 +272,7 @@ impl IntoModel for ast::TupleBody {
     type Output = TupleBody;
 
     fn into_model(self, pos: Pos) -> Result<Token<TupleBody>> {
-        let mut fields = Vec::new();
-        let mut codes = Vec::new();
-        let mut options = Vec::new();
-
-        for member in self.members {
-            let pos = (pos.0.to_owned(), member.pos.0, member.pos.1);
-
-            match member.inner {
-                ast::Member::Field(field) => {
-                    fields.push(field.into_model(pos)?);
-                }
-                ast::Member::Code(context, lines) => {
-                    codes.push(code(&pos, member.pos, context, lines));
-                }
-                ast::Member::Option(option) => {
-                    options.push(option.into_model(pos)?);
-                }
-            }
-        }
+        let (fields, codes, options) = members_into_model(&pos, self.members)?;
 
         let _options = Options::new(&pos, options);
 
