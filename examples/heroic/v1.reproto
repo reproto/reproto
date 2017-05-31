@@ -84,4 +84,14 @@ interface Aggregation {
     size?: Duration;
     extent?: Duration;
   }
+
+  Chain {
+    name "chain";
+
+    chain: [Aggregation];
+  }
+
+  match {
+    chain: [Aggregation] => Aggregation.Chain{chain: chain};
+  }
 }

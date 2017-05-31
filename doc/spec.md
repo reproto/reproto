@@ -281,10 +281,25 @@ Indicates that the enum should be serialized as its `name`.
 ## Match
 
 ```
-match Foo {
-    "hello" as SI;
-    string as SI;
-    object as Instant;
+type Foo {
+    name: string;
+    value?: unsigned;
+
+    match {
+        s: string => {name: s};
+        n: unsigned => {name: "numeric", value: n};
+    }
+}
+```
+
+```
+type AggregationOrList {
+    aggregation: Aggregation;
+
+    match {
+        a: object => a as Aggregation;
+        chain: [Aggregation] => Aggregation.Chain{chain: chain};
+    }
 }
 ```
 
