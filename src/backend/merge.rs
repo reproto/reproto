@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::collections::BTreeMap;
 use std::collections::btree_map;
 use super::errors::*;
@@ -7,6 +8,17 @@ use super::models::*;
 pub trait Merge {
     /// Convert the current type to a model.
     fn merge(&mut self, other: Self) -> Result<()>;
+}
+
+impl<T> Merge for Rc<T>
+    where T: Merge
+{
+    fn merge(&mut self, source: Rc<T>) -> Result<()> {
+        let mut rc = Rc::get_mut(self).ok_or(ErrorKind::RcGetMut)?;
+        let source = Rc::try_unwrap(source).map_err(|_| ErrorKind::RcTryUnwrap)?;
+        rc.merge(source)?;
+        Ok(())
+    }
 }
 
 impl<T> Merge for Token<T>

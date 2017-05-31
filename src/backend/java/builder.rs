@@ -35,7 +35,7 @@ impl Module {
     fn setter_method(&self, field: &m::JavaField, source: &FieldSpec) -> MethodSpec {
         let mut setter = MethodSpec::new(mods![Modifier::Public], &source.name);
 
-        let argument = ArgumentSpec::new(mods![Modifier::Final], &field.ty, &source.name);
+        let argument = ArgumentSpec::new(mods![Modifier::Final], &field.java_type, &source.name);
 
         let value = stmt![&self.optional, ".of(", &argument, ")"];
 
@@ -61,7 +61,7 @@ impl Listeners for Module {
         let mut build_constructor_arguments = Statement::new();
 
         for field in event.fields {
-            let source = &field.spec;
+            let source = &field.java_spec;
 
             builder.push_field(self.builder_field(field, source));
             builder.push(self.setter_method(field, source));

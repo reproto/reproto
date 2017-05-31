@@ -79,6 +79,14 @@ fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<()> {
             print_error("conflicts with existing clause", source)?;
             print_error("existing clause here", target)?;
         }
+        backend::errors::ErrorKind::MissingRequired(ref names, ref location, ref fields) => {
+            print_error(&format!("missing required fields: {}", names.join(", ")),
+                        location)?;
+
+            for f in fields {
+                print_error("required field", f)?;
+            }
+        }
         backend::errors::ErrorKind::Parser(ref e) => {
             handle_parser_error(e)?;
         }

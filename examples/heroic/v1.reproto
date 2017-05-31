@@ -2,12 +2,34 @@ package heroic.v1;
 
 use heroic.common as c;
 
+type Sampling {
+    unit?: TimeUnit;
+    size?: unsigned;
+    extent?: unsigned;
+}
+
 enum SI {
   NANO = 3;
   MICRO = 2;
   MILLI = 10;
 
   serialized_as_name true;
+}
+
+enum ComplexEnum {
+  FIRST(Sampling(size: 42), SI.NANO, Samples.Points(name: "points", data: []));
+  SECOND(Sampling(), SI.MILLI, Samples.Points(name: "b", data: []));
+
+  si: Sampling;
+  other: SI;
+  samples: Samples;
+}
+
+enum Complex21 {
+  FIRST(Point(timestamp: 123, value: 1.1231));
+  SECOND(Event(timestamp: 123));
+
+  point: Point;
 }
 
 enum TimeUnit {
@@ -33,7 +55,7 @@ tuple Point {
 
 tuple Event {
   timestamp: unsigned/64;
-  payload: any;
+  payload?: any;
 }
 
 interface Samples {
@@ -55,7 +77,7 @@ interface Samples {
 type Query {
   query?: string;
   aggregation?: Aggregation;
-  date?: c.Date;
+  date?: c::Date;
   parameters?: {string: string};
 }
 

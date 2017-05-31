@@ -77,9 +77,9 @@ impl Module {
         body.push(stmt![&jgen, ".writeStartArray();"]);
 
         for field in fields {
-            let field_stmt = stmt![&value, ".", &field.spec];
+            let field_stmt = stmt![&value, ".", &field.java_spec];
 
-            let write = match field.ty {
+            let write = match field.java_type {
                 Type::Primitive(ref primitive) => {
                     match *primitive {
                         SHORT | LONG | INTEGER | FLOAT | DOUBLE => {
@@ -203,7 +203,7 @@ impl Module {
         let mut arguments = Statement::new();
 
         for field in fields {
-            let (token, reader) = self.deserialize_method_for_type(&field.ty, &parser)?;
+            let (token, reader) = self.deserialize_method_for_type(&field.java_type, &parser)?;
 
             if let Some((test, expected)) = token {
                 let mut field_check = Elements::new();
@@ -213,8 +213,8 @@ impl Module {
                 deserialize.push(field_check);
             }
 
-            let variable = stmt!["v_", &field.spec.name];
-            let assign = stmt!["final ", &field.spec.ty, " ", &variable, " = ", reader, ";"];
+            let variable = stmt!["v_", &field.java_spec.name];
+            let assign = stmt!["final ", &field.java_spec.ty, " ", &variable, " = ", reader, ";"];
             deserialize.push(assign);
             arguments.push(variable);
         }
@@ -241,17 +241,18 @@ impl Listeners for Module {
         }
 
         let constructor = &mut event.spec.constructors[0];
-        let creator_annotation = AnnotationSpec::new(&self.creator);
-
-        constructor.push_annotation(&creator_annotation);
 
         if constructor.arguments.len() != event.fields.len() {
-            return Err(format!("The number of constructor arguments ({}) did not match the \
-                                number of fields ({})",
+            return Err(format!("{:?}: the number of constructor arguments ({}) did not match \
+                                the number of fields ({})",
+                               event.class_type,
                                constructor.arguments.len(),
                                event.fields.len())
                 .into());
         }
+
+        let creator_annotation = AnnotationSpec::new(&self.creator);
+        constructor.push_annotation(&creator_annotation);
 
         let zipped = constructor.arguments.iter_mut().zip(event.fields.iter());
 

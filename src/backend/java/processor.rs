@@ -67,6 +67,7 @@ pub struct Processor {
     string: ClassType,
     optional: ClassType,
     illegal_argument: ClassType,
+    immutable_list: ClassType,
 }
 
 impl Processor {
@@ -93,6 +94,7 @@ impl Processor {
             string: Type::class("java.lang", "String"),
             optional: Type::class("java.util", "Optional"),
             illegal_argument: Type::class("java.lang", "IllegalArgumentException"),
+            immutable_list: Type::class("com.google.common.collect", "ImmutableList"),
         }
     }
 
@@ -130,6 +132,25 @@ impl Processor {
         self.java_package(package).parts.join(".")
     }
 
+    fn convert_custom(&self,
+                      pos: &m::Pos,
+                      package: &m::Package,
+                      custom: &m::Custom)
+                      -> Result<Type> {
+        let package = if let Some(ref prefix) = custom.prefix {
+            self.env
+                .lookup_used(package, prefix)
+                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?
+        } else {
+            package
+        };
+
+        let name = custom.parts.join(".");
+
+        let package_name = self.java_package_name(package);
+        Ok(Type::class(&package_name, &name).into())
+    }
+
     /// Convert the given type to a java type.
     fn convert_type(&self, pos: &m::Pos, package: &m::Package, ty: &m::Type) -> Result<Type> {
         let ty = match *ty {
@@ -152,33 +173,15 @@ impl Processor {
                 let argument = self.convert_type(pos, package, ty)?;
                 self.list.with_arguments(vec![argument]).into()
             }
-            m::Type::Custom(ref parts) => {
-                let key = (package.clone(), parts.clone());
-
-                if let None = self.env.types.get(&key) {
-                    return Err(Error::pos(format!("no such type: {}", parts.join(".")),
-                                          pos.clone()));
-                }
-
-                if let Some(last) = parts.iter().last() {
-                    let package_name = self.java_package_name(package);
-                    Type::class(&package_name, last).into()
-                } else {
-                    return Err(Error::pos(format!("unsupported custom type: {:?}", parts),
-                                          pos.clone()));
-                }
-            }
-            m::Type::Any => self.object.clone().into(),
-            m::Type::UsedType(ref used, ref custom) => {
-                let package = self.env.lookup_used(pos, package, used, custom)?;
-                let package_name = self.java_package_name(package);
-                Type::class(&package_name, &custom.join(".")).into()
+            m::Type::Custom(ref custom) => {
+                return self.convert_custom(pos, package, custom);
             }
             m::Type::Map(ref key, ref value) => {
                 let key = self.convert_type(pos, package, key)?;
                 let value = self.convert_type(pos, package, value)?;
                 self.map.with_arguments(vec![key, value]).into()
             }
+            m::Type::Any => self.object.clone().into(),
             ref t => {
                 return Err(Error::pos(format!("unsupported type: {:?}", t), pos.clone()));
             }
@@ -471,25 +474,83 @@ impl Processor {
         }
     }
 
-    fn literal_value(&self, pos: &m::Pos, value: &m::Value, ty: &Type) -> Result<Variable> {
-        if let Type::Primitive(ref primitive) = *ty {
-            if let m::Value::Number(ref float) = *value {
+    fn value(&self,
+             package: &m::Package,
+             value: &m::Token<m::Value>,
+             ty: &m::Type)
+             -> Result<Statement> {
+        let pos = &value.pos;
+
+        let java_type = self.convert_type(pos, package, ty)?;
+
+        if let Type::Primitive(ref primitive) = java_type {
+            if let m::Value::Number(ref float) = **value {
                 let lit = self.to_number_literal(pos, float, primitive)?;
-                return Ok(lit.into());
+                return Ok(Variable::Literal(lit).into());
             }
         }
 
-        if let Type::Class(ref class) = *ty {
-            if *class == self.string {
-                if let m::Value::String(ref value) = *value {
-                    return Ok(Variable::String(value.to_owned()));
+        match *ty {
+            m::Type::Array(ref ty) => {
+                if let m::Value::Array(ref values) = **value {
+                    let mut arguments = Statement::new();
+
+                    for v in values {
+                        arguments.push(self.value(package, v, ty)?);
+                    }
+
+                    return Ok(stmt![&self.immutable_list, ".of(", arguments.join(", "), ")"]);
                 }
             }
+            m::Type::String => {
+                if let m::Value::String(ref value) = **value {
+                    return Ok(Variable::String(value.to_owned()).into());
+                }
+            }
+            m::Type::Custom(ref custom) => {
+                if let m::Value::Constant(ref custom) = **value {
+                    let (_, registered) = self.env
+                        .lookup(package, &custom)
+                        .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+
+                    let current_ty = self.convert_custom(pos, package, custom)?;
+
+                    match *registered {
+                        m::Registered::EnumConstant { parent: _, value: _ } => {
+                            return Ok(stmt![current_ty]);
+                        }
+                        _ => {
+                            return Err(Error::pos("cannot make instance of enum".to_owned(),
+                                                  pos.clone()));
+                        }
+                    }
+                }
+
+                if let m::Value::Instance(ref instance) = **value {
+                    let (registered, known) = self.env
+                        .instance_arguments(pos, package, instance)?;
+
+                    // TODO: check argument types.
+
+                    let mut argument_statements = Statement::new();
+
+                    for f in registered.fields()? {
+                        if let Some(ref init) = known.get(&f.name) {
+                            argument_statements.push(self.value(package, &init.value, &f.ty)?);
+                        } else {
+                            argument_statements.push(stmt![&self.optional, ".empty()"]);
+                        }
+                    }
+
+                    let current_ty = self.convert_custom(pos, package, &instance.ty)?;
+                    let n = stmt!["new ", &current_ty, "(", argument_statements.join(", "), ")"];
+                    return Ok(n);
+                }
+            }
+            _ => {}
         }
 
-        Err(Error::pos(format!("{} cannot be applied to expected type {}",
-                               value,
-                               display_type(ty)),
+        Err(Error::pos(format!("expected type {}", display_type(&java_type)),
                        pos.clone()))
     }
 
@@ -507,11 +568,11 @@ impl Processor {
                               field: &m::JavaField,
                               class_type: &ClassType)
                               -> Result<MethodSpec> {
-        let argument = ArgumentSpec::new(mods![Modifier::Final], &field.ty, &field.name);
+        let argument = ArgumentSpec::new(mods![Modifier::Final], &field.java_type, &field.name);
 
         let value = stmt!["value"];
 
-        let cond = match field.ty {
+        let cond = match field.java_type {
             Type::Primitive(_) => stmt![&value, ".", &field.name, " == ", &argument],
             _ => stmt![&value, ".", &field.name, ".equals(", &argument, ")"],
         };
@@ -546,7 +607,7 @@ impl Processor {
     fn enum_to_value_method(&self, field: &m::JavaField) -> Result<MethodSpec> {
         let mut to_value = MethodSpec::new(mods![Modifier::Public], "toValue");
 
-        to_value.returns(&field.ty);
+        to_value.returns(&field.java_type);
         to_value.push(stmt!["return this.", &field.name, ";"]);
 
         Ok(to_value)
@@ -557,6 +618,20 @@ impl Processor {
 
         let mut spec = EnumSpec::new(mods![Modifier::Public], &body.name);
         let fields = self.convert_fields(package, &body.fields)?;
+
+        for field in &fields {
+            spec.push_field(&field.java_spec);
+
+            if self.options.build_getters {
+                spec.push(field.getter()?);
+            }
+
+            if self.options.build_setters {
+                if let Some(setter) = field.setter()? {
+                    spec.push(setter);
+                }
+            }
+        }
 
         for code in body.codes.for_context(JAVA_CONTEXT) {
             spec.push(code.inner.lines);
@@ -570,7 +645,7 @@ impl Processor {
                 let mut value_arguments = Statement::new();
 
                 for (value, field) in enum_literal.arguments.iter().zip(fields.iter()) {
-                    value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
+                    value_arguments.push(self.value(package, value, &field.ty)?);
                 }
 
                 enum_stmt.push(stmt!["(", value_arguments.join(", "), ")"]);
@@ -580,19 +655,9 @@ impl Processor {
             spec.push_value(enum_value);
         }
 
-        let constructor = self.build_enum_constructor(&spec);
-        spec.push_constructor(constructor);
-
-        for field in &fields {
-            if self.options.build_getters {
-                spec.push(field.getter()?);
-            }
-
-            if self.options.build_setters {
-                if let Some(setter) = field.setter()? {
-                    spec.push(setter);
-                }
-            }
+        if !fields.is_empty() {
+            let constructor = self.build_enum_constructor(&spec);
+            spec.push_constructor(constructor);
         }
 
         let mut from_value: Option<MethodSpec> = None;
@@ -633,24 +698,39 @@ impl Processor {
 
     fn process_tuple(&self, package: &m::Package, body: &m::TupleBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &body.name);
-        let mut class = ClassSpec::new(mods![Modifier::Public], &body.name);
+        let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
 
         let fields = self.convert_fields(package, &body.fields)?;
 
-        for code in body.codes.for_context(JAVA_CONTEXT) {
-            class.push(code.inner.lines);
+        for field in &fields {
+            spec.push_field(&field.java_spec);
+
+            if self.options.build_getters {
+                spec.push(field.getter()?);
+            }
+
+            if self.options.build_setters {
+                if let Some(setter) = field.setter()? {
+                    spec.push(setter);
+                }
+            }
         }
 
-        self.add_class(&class_type, &mut class)?;
+        for code in body.codes.for_context(JAVA_CONTEXT) {
+            spec.push(code.inner.lines);
+        }
+
+        self.add_class(&class_type, &mut spec)?;
+
         self.listeners
             .tuple_added(&mut TupleAdded {
                 fields: &fields,
                 class_type: &class_type,
-                spec: &mut class,
+                spec: &mut spec,
             })?;
 
         let mut file_spec = self.new_file_spec(package);
-        file_spec.push(&class);
+        file_spec.push(&spec);
 
         Ok(file_spec)
     }
@@ -658,23 +738,38 @@ impl Processor {
     fn process_type(&self, package: &m::Package, body: &m::TypeBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(package), &body.name);
 
-        let mut class = ClassSpec::new(mods![Modifier::Public], &body.name);
+        let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
         let fields = self.convert_fields(package, &body.fields)?;
 
-        for code in body.codes.for_context(JAVA_CONTEXT) {
-            class.push(code.inner.lines);
+        for field in &fields {
+            spec.push_field(&field.java_spec);
+
+            if self.options.build_getters {
+                spec.push(field.getter()?);
+            }
+
+            if self.options.build_setters {
+                if let Some(setter) = field.setter()? {
+                    spec.push(setter);
+                }
+            }
         }
 
-        self.add_class(&class_type, &mut class)?;
+        for code in body.codes.for_context(JAVA_CONTEXT) {
+            spec.push(code.inner.lines);
+        }
+
+        self.add_class(&class_type, &mut spec)?;
+
         self.listeners
             .class_added(&mut ClassAdded {
                 fields: &fields,
                 class_type: &class_type,
-                spec: &mut class,
+                spec: &mut spec,
             })?;
 
         let mut file_spec = self.new_file_spec(package);
-        file_spec.push(&class);
+        file_spec.push(&spec);
 
         Ok(file_spec)
     }
@@ -706,8 +801,11 @@ impl Processor {
 
             class.implements(&parent_type);
 
-            for field in &interface_fields {
-                class.push_field(&field.spec);
+            let mut fields = interface_fields.clone();
+            fields.extend(self.convert_fields(package, &sub_type.inner.fields)?);
+
+            for field in &fields {
+                class.push_field(&field.java_spec);
 
                 if self.options.build_getters {
                     let mut getter = field.getter()?;
@@ -721,9 +819,6 @@ impl Processor {
                     }
                 }
             }
-
-            let mut fields = interface_fields.clone();
-            fields.extend(self.convert_fields(package, &sub_type.inner.fields)?);
 
             self.add_class(&class_type, &mut class)?;
 
@@ -757,6 +852,27 @@ impl Processor {
         Ok(file_spec)
     }
 
+    fn convert_field(&self,
+                     package: &m::Package,
+                     field: &m::Token<m::Field>)
+                     -> Result<m::JavaField> {
+        let java_type = self.convert_type(&field.pos, package, &field.ty)?;
+        let camel_name = self.snake_to_upper_camel.convert(&field.name);
+        let ident = self.snake_to_lower_camel.convert(&field.name);
+        let java_spec = self.build_field_spec(&java_type, field)?;
+
+        Ok(m::JavaField {
+            modifier: field.modifier.clone(),
+            name: field.name.clone(),
+            ty: field.ty.clone(),
+            camel_name: camel_name,
+            ident: ident,
+            java_type: java_type,
+            java_spec: java_spec,
+        })
+    }
+
+
     fn convert_fields(&self,
                       package: &m::Package,
                       fields: &Vec<m::Token<m::Field>>)
@@ -764,19 +880,7 @@ impl Processor {
         let mut out = Vec::new();
 
         for field in fields {
-            let ty = self.convert_type(&field.pos, package, &field.ty)?;
-            let camel_name = self.snake_to_upper_camel.convert(&field.name);
-            let ident = self.snake_to_lower_camel.convert(&field.name);
-            let spec = self.build_field_spec(&ty, field)?;
-
-            out.push(m::JavaField {
-                modifier: field.modifier.clone(),
-                name: field.name.clone(),
-                camel_name: camel_name,
-                ident: ident,
-                ty: ty,
-                spec: spec,
-            });
+            out.push(self.convert_field(package, field)?);
         }
 
         Ok(out)
@@ -799,14 +903,13 @@ impl Processor {
         let root_dir = &self.options.parent.out_path;
 
         // Process all types discovered so far.
-        for (&(ref package, _), decl) in &self.env.types {
+        for (&(ref package, _), ref decl) in &self.env.decls {
             let out_dir = self.java_package(package)
                 .parts
                 .iter()
                 .fold(root_dir.clone(), |current, next| current.join(next));
 
             let full_path = out_dir.join(format!("{}.java", decl.name()));
-
             consumer(full_path, package, decl)?;
         }
 
@@ -873,6 +976,8 @@ impl ::std::fmt::Display for m::Value {
             m::Value::Identifier(_) => "<identifier>",
             m::Value::Type(_) => "<type>",
             m::Value::Instance(_) => "<instance>",
+            m::Value::Constant(_) => "<constant>",
+            m::Value::Array(_) => "<array>",
         };
 
         write!(f, "{}", out)

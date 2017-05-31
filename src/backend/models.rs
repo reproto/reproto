@@ -1,10 +1,15 @@
+pub use token::WithPrefix;
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
+use std::rc::Rc;
 use super::errors::*;
 use token;
 
 pub type Pos = (PathBuf, usize, usize);
 pub type Token<T> = token::Token<T, Pos>;
+
+pub type RootTypeId = (Package, String);
+pub type NestedTypeId = (Package, Vec<String>);
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldInit {
@@ -14,8 +19,8 @@ pub struct FieldInit {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Instance {
-    pub ty: Type,
-    pub arguments: Vec<Token<FieldInit>>,
+    pub ty: Custom,
+    pub arguments: Token<Vec<Token<FieldInit>>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -26,12 +31,20 @@ pub enum Value {
     Identifier(String),
     Type(Type),
     Instance(Token<Instance>),
+    Constant(Token<Custom>),
+    Array(Vec<Token<Value>>),
 }
 
 #[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,
     pub values: Vec<Token<Value>>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Custom {
+    pub prefix: Option<String>,
+    pub parts: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -44,8 +57,7 @@ pub enum Type {
     String,
     Bytes,
     Any,
-    UsedType(String, Vec<String>),
-    Custom(Vec<String>),
+    Custom(Custom),
     Array(Box<Type>),
     Map(Box<Type>, Box<Type>),
 }
@@ -201,6 +213,10 @@ impl SubType {
             .nth(0)
             .unwrap_or_else(|| self.name.clone())
     }
+
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Token<Field>> + 'a> {
+        Box::new(self.fields.iter())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -209,7 +225,13 @@ pub struct InterfaceBody {
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
     pub match_decl: MatchDecl,
-    pub sub_types: BTreeMap<String, Token<SubType>>,
+    pub sub_types: BTreeMap<String, Token<Rc<SubType>>>,
+}
+
+impl InterfaceBody {
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Token<Field>> + 'a> {
+        Box::new(self.fields.iter())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -232,6 +254,10 @@ impl TypeBody {
 
         Ok(())
     }
+
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Token<Field>> + 'a> {
+        Box::new(self.fields.iter())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -240,6 +266,12 @@ pub struct TupleBody {
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
     pub match_decl: MatchDecl,
+}
+
+impl TupleBody {
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Token<Field>> + 'a> {
+        Box::new(self.fields.iter())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -252,7 +284,7 @@ pub struct EnumValue {
 #[derive(Debug, Clone)]
 pub struct EnumBody {
     pub name: String,
-    pub values: Vec<Token<EnumValue>>,
+    pub values: Vec<Token<Rc<EnumValue>>>,
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
     pub match_decl: MatchDecl,
@@ -261,11 +293,54 @@ pub struct EnumBody {
 }
 
 #[derive(Clone)]
+pub enum Registered {
+    Type(Rc<TypeBody>),
+    Interface(Rc<InterfaceBody>),
+    Enum(Rc<EnumBody>),
+    Tuple(Rc<TupleBody>),
+    SubType {
+        parent: Rc<InterfaceBody>,
+        sub_type: Rc<SubType>,
+    },
+    EnumConstant {
+        parent: Rc<EnumBody>,
+        value: Rc<EnumValue>,
+    },
+}
+
+impl Registered {
+    pub fn fields<'a>(&'a self) -> Result<Box<Iterator<Item = &Token<Field>> + 'a>> {
+        let it: Box<Iterator<Item = &Token<Field>>> = match *self {
+            Registered::Type(ref body) => Box::new(body.fields.iter()),
+            Registered::Tuple(ref body) => Box::new(body.fields.iter()),
+            Registered::SubType { ref parent, ref sub_type } => {
+                Box::new(parent.fields.iter().chain(sub_type.fields.iter()))
+            }
+            _ => {
+                return Err("has no fields".into());
+            }
+        };
+
+        Ok(it)
+    }
+
+    pub fn find_field(&self, name: &str) -> Result<Option<&Token<Field>>> {
+        for field in self.fields()? {
+            if field.name == name {
+                return Ok(Some(field));
+            }
+        }
+
+        Ok(None)
+    }
+}
+
+#[derive(Clone)]
 pub enum Decl {
-    Type(TypeBody),
-    Interface(InterfaceBody),
-    Enum(EnumBody),
-    Tuple(TupleBody),
+    Type(Rc<TypeBody>),
+    Interface(Rc<InterfaceBody>),
+    Enum(Rc<EnumBody>),
+    Tuple(Rc<TupleBody>),
 }
 
 impl Decl {
@@ -342,9 +417,7 @@ impl MatchDecl {
             Type::Boolean => MatchKind::Boolean,
             Type::String | Type::Bytes => MatchKind::String,
             Type::Any => MatchKind::Any,
-            Type::UsedType(_, _) |
-            Type::Custom(_) |
-            Type::Map(_, _) => MatchKind::Object,
+            Type::Custom(_) | Type::Map(_, _) => MatchKind::Object,
             Type::Array(_) => MatchKind::Array,
         }
     }

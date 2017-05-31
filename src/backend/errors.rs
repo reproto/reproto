@@ -39,6 +39,21 @@ error_chain! {
         MatchConflict(source: m::Pos, target: m::Pos) {
             description("match conflict")
         }
+
+        /// An instance creation is missing a set of required fields.
+        MissingRequired(names: Vec<String>, pos: m::Pos, fields: Vec<m::Pos>) {
+            description("missing required")
+        }
+
+        RegisteredTypeConflict {
+        }
+
+        /// Error thrown by Rc::get_mut
+        RcGetMut {
+        }
+
+        RcTryUnwrap {
+        }
     }
 }
 

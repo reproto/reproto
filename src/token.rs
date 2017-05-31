@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Token<T, P> {
     pub inner: T,
@@ -26,5 +28,26 @@ impl<T, P> Token<T, P>
         where M: FnOnce(T) -> U
     {
         Token::new(map(self.inner), self.pos)
+    }
+}
+
+pub trait WithPrefix<T> {
+    type Prefix;
+    type Output;
+
+    fn with_prefix(self, prefix: Self::Prefix) -> Token<T, Self::Output>;
+}
+
+impl<T, B, C> WithPrefix<T> for Token<T, (B, C)>
+    where T: Clone,
+          B: Clone,
+          C: Clone
+{
+    type Prefix = PathBuf;
+    type Output = (PathBuf, B, C);
+
+    fn with_prefix(self, prefix: Self::Prefix) -> Token<T, Self::Output> {
+        let (b, c) = self.pos.clone();
+        Token::new(self.inner.clone(), (prefix, b, c))
     }
 }

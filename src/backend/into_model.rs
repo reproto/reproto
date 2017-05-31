@@ -1,7 +1,8 @@
 //! Implementations for converting asts into models.
 use parser::ast;
-use std::collections::{BTreeMap, HashSet};
 use std::collections::btree_map;
+use std::collections::{BTreeMap, HashSet};
+use std::rc::Rc;
 use super::errors::*;
 use super::merge::Merge;
 use super::models::*;
@@ -158,12 +159,12 @@ impl<T> IntoModel for Option<T>
 }
 
 impl IntoModel for ast::InterfaceBody {
-    type Output = InterfaceBody;
+    type Output = Rc<InterfaceBody>;
 
-    fn into_model(self, pos: &Pos) -> Result<InterfaceBody> {
+    fn into_model(self, pos: &Pos) -> Result<Rc<InterfaceBody>> {
         let (fields, codes, options, match_decl) = members_into_model(&pos, self.members)?;
 
-        let mut sub_types: BTreeMap<String, Token<SubType>> = BTreeMap::new();
+        let mut sub_types: BTreeMap<String, Token<Rc<SubType>>> = BTreeMap::new();
 
         for sub_type in self.sub_types.into_model(pos)? {
             // key has to be owned by entry
@@ -189,14 +190,14 @@ impl IntoModel for ast::InterfaceBody {
             sub_types: sub_types,
         };
 
-        Ok(interface_body)
+        Ok(Rc::new(interface_body))
     }
 }
 
 impl IntoModel for ast::EnumBody {
-    type Output = EnumBody;
+    type Output = Rc<EnumBody>;
 
-    fn into_model(self, pos: &Pos) -> Result<EnumBody> {
+    fn into_model(self, pos: &Pos) -> Result<Rc<EnumBody>> {
         let mut values = Vec::new();
 
         let mut ordinals = OrdinalGenerator::new();
@@ -229,13 +230,13 @@ impl IntoModel for ast::EnumBody {
             serialized_as_name: serialized_as_name,
         };
 
-        Ok(en)
+        Ok(Rc::new(en))
     }
 }
 
 /// enum value with assigned ordinal
 impl IntoModel for (ast::EnumValue, u32) {
-    type Output = EnumValue;
+    type Output = Rc<EnumValue>;
 
     fn into_model(self, pos: &Pos) -> Result<Self::Output> {
         let value = self.0;
@@ -247,14 +248,14 @@ impl IntoModel for (ast::EnumValue, u32) {
             ordinal: ordinal,
         };
 
-        Ok(value)
+        Ok(Rc::new(value))
     }
 }
 
 impl IntoModel for ast::TypeBody {
-    type Output = TypeBody;
+    type Output = Rc<TypeBody>;
 
-    fn into_model(self, pos: &Pos) -> Result<TypeBody> {
+    fn into_model(self, pos: &Pos) -> Result<Rc<TypeBody>> {
         let (fields, codes, options, match_decl) = members_into_model(&pos, self.members)?;
 
         let options = Options::new(&pos, options);
@@ -270,14 +271,14 @@ impl IntoModel for ast::TypeBody {
             reserved: reserved,
         };
 
-        Ok(type_body)
+        Ok(Rc::new(type_body))
     }
 }
 
 impl IntoModel for ast::SubType {
-    type Output = SubType;
+    type Output = Rc<SubType>;
 
-    fn into_model(self, pos: &Pos) -> Result<SubType> {
+    fn into_model(self, pos: &Pos) -> Result<Rc<SubType>> {
         let mut fields: Vec<Token<Field>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
@@ -320,14 +321,14 @@ impl IntoModel for ast::SubType {
             names: names,
         };
 
-        Ok(sub_type)
+        Ok(Rc::new(sub_type))
     }
 }
 
 impl IntoModel for ast::TupleBody {
-    type Output = TupleBody;
+    type Output = Rc<TupleBody>;
 
-    fn into_model(self, pos: &Pos) -> Result<TupleBody> {
+    fn into_model(self, pos: &Pos) -> Result<Rc<TupleBody>> {
         let (fields, codes, options, match_decl) = members_into_model(&pos, self.members)?;
 
         let _options = Options::new(&pos, options);
@@ -339,7 +340,7 @@ impl IntoModel for ast::TupleBody {
             match_decl: match_decl,
         };
 
-        Ok(tuple_body)
+        Ok(Rc::new(tuple_body))
     }
 }
 
@@ -409,6 +410,8 @@ impl IntoModel for ast::Value {
             ast::Value::Identifier(identifier) => Value::Identifier(identifier),
             ast::Value::Type(ty) => Value::Type(ty),
             ast::Value::Instance(instance) => Value::Instance(instance.into_model(pos)?),
+            ast::Value::Constant(constant) => Value::Constant(constant.with_prefix(pos.0.clone())),
+            ast::Value::Array(values) => Value::Array(values.into_model(pos)?),
         };
 
         Ok(value)
