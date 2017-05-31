@@ -153,7 +153,7 @@ impl Processor {
 
             match field.modifier {
                 Modifier::Optional => {
-                    let stmt = js![if is_not_defined(field_stmt),
+                    let stmt = js![if is_defined(field_stmt),
                                       stmt![&data, "[", var_string, "] = ", value_stmt, ";"]];
                     assign.push(stmt);
                 }
@@ -166,7 +166,7 @@ impl Processor {
         }
 
         if !assign.is_empty() {
-            body.push(assign);
+            body.push(assign.join(ElementSpec::Spacing));
         }
 
         body.push(js![return data]);
@@ -284,7 +284,7 @@ impl Processor {
         let mut body = Elements::new();
 
         if !assign.is_empty() {
-            body.push(assign);
+            body.push(assign.join(ElementSpec::Spacing));
         }
 
         body.push(js![@return new &class.name, arguments]);
