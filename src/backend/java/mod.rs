@@ -1,3 +1,4 @@
+mod models;
 pub mod builder;
 pub mod constructor_properties;
 pub mod fasterxml;

@@ -1,5 +1,6 @@
 use backend::*;
 use backend::errors::*;
+use backend::for_context::ForContext;
 use backend::models as m;
 use codeviz::python::*;
 use naming::{self, FromNaming};
@@ -14,6 +15,7 @@ use std::path::PathBuf;
 const TYPE: &str = "type";
 const INIT_PY: &str = "__init__.py";
 const EXT: &str = "py";
+const PYTHON_CONTEXT: &str = "python";
 
 pub trait Listeners {
     fn configure(&self, _processor: &mut ProcessorOptions) -> Result<()> {
@@ -80,8 +82,6 @@ pub struct Processor {
     enum_auto: ImportedName,
     type_var: Variable,
 }
-
-const PYTHON_CONTEXT: &str = "python";
 
 impl Processor {
     pub fn new(options: ProcessorOptions,
@@ -445,21 +445,15 @@ impl Processor {
         constructor
     }
 
-    fn process_tuple(&self, package: &m::Package, ty: &m::TupleBody) -> Result<ClassSpec> {
-        let mut class = ClassSpec::new(&ty.name);
+    fn process_tuple(&self, package: &m::Package, body: &m::TupleBody) -> Result<ClassSpec> {
+        let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<m::Token<Field>> = Vec::new();
 
-        for field in &ty.fields {
+        for field in &body.fields {
             let ident = self.ident(&field.name);
 
             fields.push(field.clone()
                 .map_inner(|f| Field::new(m::Modifier::Required, f.ty, f.name, ident)));
-        }
-
-        for code in &ty.codes {
-            if code.context == PYTHON_CONTEXT {
-                class.push(code.lines.clone());
-            }
         }
 
         class.push(self.build_constructor(&fields));
@@ -469,6 +463,10 @@ impl Processor {
             for getter in self.build_getters(&fields)? {
                 class.push(&getter);
             }
+        }
+
+        for code in body.codes.for_context(PYTHON_CONTEXT) {
+            class.push(code.inner.lines);
         }
 
         self.tuple_added(package, &fields, &mut class)?;
@@ -542,12 +540,6 @@ impl Processor {
 
         class.push(values);
 
-        for code in &body.codes {
-            if code.context == PYTHON_CONTEXT {
-                class.push(code.lines.clone());
-            }
-        }
-
         class.push(self.build_constructor(&fields));
 
         // TODO: make configurable
@@ -555,6 +547,10 @@ impl Processor {
             for getter in self.build_getters(&fields)? {
                 class.push(&getter);
             }
+        }
+
+        for code in body.codes.for_context(PYTHON_CONTEXT) {
+            class.push(code.inner.lines);
         }
 
         let serialized_as = &body.serialized_as;
@@ -577,11 +573,11 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, package: &m::Package, ty: &m::TypeBody) -> Result<ClassSpec> {
-        let mut class = ClassSpec::new(&ty.name);
+    fn process_type(&self, package: &m::Package, body: &m::TypeBody) -> Result<ClassSpec> {
+        let mut class = ClassSpec::new(&body.name);
         let mut fields = Vec::new();
 
-        for field in &ty.fields {
+        for field in &body.fields {
             let ident = self.ident(&field.name);
 
             fields.push(field.clone().map_inner(|f| Field::new(f.modifier, f.ty, f.name, ident)));
@@ -597,12 +593,6 @@ impl Processor {
             }
         }
 
-        for code in &ty.codes {
-            if code.context == PYTHON_CONTEXT {
-                class.push(code.lines.clone());
-            }
-        }
-
         let decode = self.decode_method(package,
                            &fields,
                            &class,
@@ -614,22 +604,26 @@ impl Processor {
 
         class.push(encode);
 
+        for code in body.codes.for_context(PYTHON_CONTEXT) {
+            class.push(code.inner.lines);
+        }
+
         Ok(class)
     }
 
     fn process_interface(&self,
                          package: &m::Package,
-                         interface: &m::InterfaceBody)
+                         body: &m::InterfaceBody)
                          -> Result<Vec<ClassSpec>> {
         let mut classes = Vec::new();
 
-        let mut interface_spec = ClassSpec::new(&interface.name);
+        let mut interface_spec = ClassSpec::new(&body.name);
 
-        interface_spec.push(self.interface_decode_method(interface)?);
+        interface_spec.push(self.interface_decode_method(body)?);
 
         let mut interface_fields = Vec::new();
 
-        for field in &interface.fields {
+        for field in &body.fields {
             let ident = self.ident(&field.name);
 
             interface_fields.push(field.clone().map_inner(|f| {
@@ -637,25 +631,17 @@ impl Processor {
                 }));
         }
 
-        for code in &interface.codes {
-            if code.context == PYTHON_CONTEXT {
-                interface_spec.push(code.lines.clone());
-            }
+        for code in body.codes.for_context(PYTHON_CONTEXT) {
+            interface_spec.push(code.inner.lines);
         }
 
         classes.push(interface_spec);
 
-        for (_, ref sub_type) in &interface.sub_types {
+        for (_, ref sub_type) in &body.sub_types {
             let mut class = ClassSpec::new(&sub_type.name);
-            class.extends(Name::local(&interface.name));
+            class.extends(Name::local(&body.name));
 
-            let name: String = sub_type.names
-                .iter()
-                .map(|t| t.inner.to_owned())
-                .nth(0)
-                .unwrap_or_else(|| interface.name.clone());
-
-            class.push(stmt!["TYPE = ", Variable::String(name.clone())]);
+            class.push(stmt!["TYPE = ", Variable::String(sub_type.name())]);
 
             let mut fields = interface_fields.clone();
 
@@ -677,12 +663,6 @@ impl Processor {
                 }
             }
 
-            for code in &sub_type.codes {
-                if code.context == PYTHON_CONTEXT {
-                    class.push(code.lines.clone());
-                }
-            }
-
             let decode = self.decode_method(package,
                                &fields,
                                &class,
@@ -690,13 +670,18 @@ impl Processor {
 
             class.push(decode);
 
-            let type_stmt = stmt!["data[", &self.type_var, "] = ", Variable::String(name.clone())];
+            let type_stmt =
+                stmt!["data[", &self.type_var, "] = ", Variable::String(sub_type.name())];
 
             let encode = self.encode_method(package, &fields, &self.dict, move |elements| {
                     elements.push(type_stmt);
                 })?;
 
             class.push(encode);
+
+            for code in sub_type.codes.for_context(PYTHON_CONTEXT) {
+                class.push(code.inner.lines);
+            }
 
             classes.push(class);
         }

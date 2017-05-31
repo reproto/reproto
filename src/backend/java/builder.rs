@@ -1,7 +1,7 @@
 /// Module that adds fasterxml annotations to generated classes.
 use backend::*;
-use backend::models as m;
 use codeviz::java::*;
+use super::models as m;
 use super::processor;
 
 pub struct Module {
@@ -19,7 +19,7 @@ impl Module {
 }
 
 impl Module {
-    fn builder_field(&self, field: &processor::Field, source: &FieldSpec) -> FieldSpec {
+    fn builder_field(&self, field: &m::JavaField, source: &FieldSpec) -> FieldSpec {
         let field_mods = mods![Modifier::Private];
 
         let ty = match field.modifier {
@@ -32,7 +32,7 @@ impl Module {
         spec
     }
 
-    fn setter_method(&self, field: &processor::Field, source: &FieldSpec) -> MethodSpec {
+    fn setter_method(&self, field: &m::JavaField, source: &FieldSpec) -> MethodSpec {
         let mut setter = MethodSpec::new(mods![Modifier::Public], &source.name);
 
         let argument = ArgumentSpec::new(mods![Modifier::Final], &field.ty, &source.name);
@@ -55,7 +55,7 @@ impl Module {
 
 impl processor::Listeners for Module {
     fn class_added(&self,
-                   fields: &Vec<processor::Field>,
+                   fields: &Vec<m::JavaField>,
                    class_type: &ClassType,
                    class: &mut ClassSpec)
                    -> Result<()> {

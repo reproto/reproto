@@ -1,7 +1,7 @@
 /// Module that adds fasterxml annotations to generated classes.
 use backend::*;
-use backend::models as m;
 use codeviz::java::*;
+use super::models as m;
 use super::processor;
 
 pub struct Module {
@@ -52,7 +52,7 @@ impl Module {
 
     /// Custom serialize implementation for tuples.
     fn tuple_serializer(&self,
-                        fields: &Vec<processor::Field>,
+                        fields: &Vec<m::JavaField>,
                         class_type: &ClassType)
                         -> Result<ClassSpec> {
         let mut serializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
@@ -172,7 +172,7 @@ impl Module {
 
     /// Custom deserialize implementation for tuples.
     fn tuple_deserializer(&self,
-                          fields: &Vec<processor::Field>,
+                          fields: &Vec<m::JavaField>,
                           class_type: &ClassType)
                           -> Result<ClassSpec> {
         let mut deserializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
@@ -236,7 +236,7 @@ impl Module {
 
 impl processor::Listeners for Module {
     fn class_added(&self,
-                   fields: &Vec<processor::Field>,
+                   fields: &Vec<m::JavaField>,
                    _class_type: &ClassType,
                    class: &mut ClassSpec)
                    -> Result<()> {
@@ -269,7 +269,7 @@ impl processor::Listeners for Module {
     }
 
     fn tuple_added(&self,
-                   fields: &Vec<processor::Field>,
+                   fields: &Vec<m::JavaField>,
                    class_type: &ClassType,
                    class: &mut ClassSpec)
                    -> Result<()> {
@@ -301,7 +301,7 @@ impl processor::Listeners for Module {
 
     fn enum_added(&self,
                   _enum_body: &m::EnumBody,
-                  _fields: &Vec<processor::Field>,
+                  _fields: &Vec<m::JavaField>,
                   _class_type: &ClassType,
                   from_value: &mut Option<MethodSpec>,
                   to_value: &mut Option<MethodSpec>,
@@ -364,7 +364,7 @@ impl processor::Listeners for Module {
     }
 
     fn sub_type_added(&self,
-                      _fields: &Vec<processor::Field>,
+                      _fields: &Vec<m::JavaField>,
                       _interface: &m::InterfaceBody,
                       _sub_type: &m::SubType,
                       _class: &mut ClassSpec)

@@ -87,6 +87,7 @@ pub struct Field {
     pub modifier: Modifier,
     pub name: String,
     pub ty: Type,
+    pub field_as: Option<Token<String>>,
 }
 
 impl Field {
@@ -94,6 +95,14 @@ impl Field {
         match self.modifier {
             Modifier::Optional => true,
             _ => false,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        if let Some(ref field) = self.field_as {
+            &field.inner
+        } else {
+            &self.name
         }
     }
 
@@ -169,6 +178,16 @@ pub struct SubType {
     pub fields: Vec<Token<Field>>,
     pub codes: Vec<Token<Code>>,
     pub names: Vec<Token<String>>,
+}
+
+impl SubType {
+    pub fn name(&self) -> String {
+        self.names
+            .iter()
+            .map(|t| t.inner.to_owned())
+            .nth(0)
+            .unwrap_or_else(|| self.name.clone())
+    }
 }
 
 #[derive(Debug, Clone)]

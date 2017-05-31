@@ -16,19 +16,10 @@ pub struct Field {
     pub modifier: Modifier,
     pub name: String,
     pub ty: Type,
-    pub id: u32,
+    pub field_as: Option<Token<Value>>,
 }
 
 impl Field {
-    pub fn new(modifier: Modifier, name: String, ty: Type, id: u32) -> Field {
-        Field {
-            modifier: modifier,
-            name: name,
-            ty: ty,
-            id: id,
-        }
-    }
-
     pub fn is_optional(&self) -> bool {
         match self.modifier {
             Modifier::Optional => true,

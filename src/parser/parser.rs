@@ -140,11 +140,12 @@ impl_rdp! {
         sub_type_body = _{ member* }
 
         member = { option_decl | field | code_block }
-        field = { identifier ~ optional? ~ colon ~ type_spec ~ semi_colon }
+        field = { identifier ~ optional? ~ colon ~ type_spec ~ field_as? ~ semi_colon }
+        field_as = { as_keyword ~ value }
         code_block = @{ identifier ~ whitespace* ~ code_start ~ code_body ~ code_end }
         code_body = { (!(["}}"]) ~ any)* }
 
-        enum_value = { identifier ~ enum_arguments? ~ enum_ordinal? ~ semi_colon }
+        enum_value = { type_identifier ~ enum_arguments? ~ enum_ordinal? ~ semi_colon }
         enum_arguments = { (left_paren ~ (value ~ (comma ~ value)*) ~ right_paren) }
         enum_ordinal = { equals ~ value }
         option_decl = { identifier ~ (value ~ (comma ~ value)*) ~ semi_colon }
@@ -203,10 +204,10 @@ impl_rdp! {
 
         type_bits = _{ (forward_slash ~ unsigned) }
 
-        value = { boolean | identifier | string | number }
+        value = { type_spec | boolean | identifier | string | number }
 
-        identifier = @{ (['a'..'z'] | ['A'..'Z'] | ["_"]) ~ (['0'..'9'] | ['a'..'z'] | ['A'..'Z'] | ["_"])* }
-        type_identifier = @{ (['A'..'Z'] ~ ['a'..'z']*)+ }
+        identifier = @{ ['a'..'z'] ~ (['0'..'9'] | ['a'..'z'] | ["_"])* }
+        type_identifier = @{ ['A'..'Z'] ~ (['A'..'Z'] | ['a'..'z'])* }
 
         string  = @{ ["\""] ~ (escape | !(["\""] | ["\\"]) ~ any)* ~ ["\""] }
         escape  =  _{ ["\\"] ~ (["\""] | ["\\"] | ["/"] | ["n"] | ["r"] | ["t"] | unicode) }
@@ -388,7 +389,7 @@ impl_rdp! {
         _enum_value(&self) -> Result<ast::Token<ast::EnumValue>> {
             (
                 token: enum_value,
-                &name: identifier,
+                &name: type_identifier,
                 values: _enum_arguments(),
                 ordinal: _enum_ordinal(),
                 _: semi_colon
@@ -456,6 +457,10 @@ impl_rdp! {
 
                 Ok(m::Value::Boolean(value))
             },
+
+            (ty: _type_spec()) => {
+                Ok(m::Value::Type(ty?))
+            },
         }
 
         _member_list(&self) -> Result<LinkedList<ast::Token<ast::Member>>> {
@@ -476,9 +481,16 @@ impl_rdp! {
                 modifier: _modifier(),
                 _: colon,
                 type_spec: _type_spec(),
+                field_as: _field_as(),
                 _: semi_colon,
             ) => {
-                let field = ast::Field::new(modifier, name.to_owned(), type_spec?, 0);
+                let field = ast::Field {
+                    modifier: modifier,
+                    name: name.to_owned(),
+                    ty: type_spec?,
+                    field_as: field_as?,
+                };
+
                 Ok(ast::Member::Field(field))
             },
 
@@ -503,6 +515,11 @@ impl_rdp! {
                 let option_decl = ast::OptionDecl { name: name.to_owned(), values: values };
                 Ok(ast::Member::Option(option_decl))
             },
+        }
+
+        _field_as(&self) -> Result<Option<ast::Token<m::Value>>> {
+            (_: field_as, _: as_keyword, value: _value_token()) => Ok(Some(value?)),
+            () => Ok(None),
         }
 
         _sub_type_list(&self) -> Result<LinkedList<ast::Token<ast::SubType>>> {

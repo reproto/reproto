@@ -1,6 +1,7 @@
 /// Module that adds fasterxml annotations to generated classes.
 use backend::*;
 use codeviz::java::*;
+use super::models as m;
 use super::processor;
 
 pub struct Module {
@@ -15,7 +16,7 @@ impl Module {
 
 impl Module {
     fn add_constructor_properties(&self,
-                                  fields: &Vec<processor::Field>,
+                                  fields: &Vec<m::JavaField>,
                                   class: &mut ClassSpec)
                                   -> Result<()> {
         if class.constructors.len() != 1 {
@@ -39,7 +40,7 @@ impl Module {
 
 impl processor::Listeners for Module {
     fn class_added(&self,
-                   fields: &Vec<processor::Field>,
+                   fields: &Vec<m::JavaField>,
                    _class_type: &ClassType,
                    class: &mut ClassSpec)
                    -> Result<()> {

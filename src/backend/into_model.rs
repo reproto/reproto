@@ -324,12 +324,32 @@ impl IntoModel for ast::Field {
     type Output = Field;
 
     fn into_model(self, pos: Pos) -> Result<Token<Field>> {
+        let field_as = if let Some(ident) = self.field_as {
+            let pos = (pos.0.clone(), ident.pos.0, ident.pos.1);
+            Some(ident.into_model(pos)?)
+        } else {
+            None
+        };
+
         let field = Field {
             modifier: self.modifier,
             name: self.name,
             ty: self.ty,
+            field_as: field_as,
         };
 
         Ok(Token::new(field, pos))
+    }
+}
+
+impl IntoModel for ast::Token<Value> {
+    type Output = String;
+
+    fn into_model(self, pos: Pos) -> Result<Token<String>> {
+        if let Value::String(string) = self.inner {
+            return Ok(Token::new(string, pos));
+        }
+
+        Err(Error::pos("expected string".to_owned(), pos))
     }
 }

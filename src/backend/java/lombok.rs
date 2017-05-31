@@ -1,6 +1,7 @@
 /// Module that adds lombok annotations to generated classes.
 use backend::*;
 use codeviz::java::*;
+use super::models as m;
 use super::processor;
 
 pub struct Module {
@@ -25,7 +26,7 @@ impl processor::Listeners for Module {
     }
 
     fn class_added(&self,
-                   _fields: &Vec<processor::Field>,
+                   _fields: &Vec<m::JavaField>,
                    _class_type: &ClassType,
                    class: &mut ClassSpec)
                    -> Result<()> {

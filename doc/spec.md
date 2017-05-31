@@ -8,7 +8,7 @@ See [TODO](todo.md) for things that are work in progress.
 * [Interfaces](#interfaces)
 * [Tuples](#tuples)
 * [Enums](#enums)
-* [Options](#options)
+* [Match](#match)
 * [Reserved Fields](#reserved-fields)
 * [Extensions](#extensions)
 * [Custom Code](#custom-code)
@@ -277,6 +277,16 @@ Indicates that the enum should be serialized as the given field |
 #### `serialized_as_name`
 
 Indicates that the enum should be serialized as its `name`.
+
+## Match
+
+```
+match Foo {
+    "hello" as SI;
+    string as SI;
+    object as Instant;
+}
+```
 
 ## Reserved fields
 

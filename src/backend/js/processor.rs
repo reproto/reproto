@@ -1,5 +1,6 @@
 use backend::*;
 use backend::errors::*;
+use backend::for_context::ForContext;
 use codeviz::js::*;
 use naming::{self, FromNaming};
 use options::Options;
@@ -14,6 +15,7 @@ use super::utils::*;
 
 const TYPE: &str = "type";
 const EXT: &str = "js";
+const JS_CONTEXT: &str = "js";
 
 fn field_ident(_i: usize, field: &JsField) -> Variable {
     string(&field.ident)
@@ -68,8 +70,6 @@ pub struct Processor {
     enum_name: Variable,
 }
 
-const JS_CONTEXT: &str = "js";
-
 impl Processor {
     pub fn new(options: ProcessorOptions,
                env: Environment,
@@ -113,13 +113,13 @@ impl Processor {
     fn convert_fields(&self, fields: &Vec<Token<Field>>) -> Vec<Token<JsField>> {
         fields.iter()
             .map(|f| {
-                let ident = self.ident(&f.name);
+                let ident = self.field_ident(&f);
 
                 f.clone().map_inner(|o| {
                     JsField {
                         modifier: o.modifier,
                         ty: o.ty,
-                        name: o.name,
+                        name: f.name().to_owned(),
                         ident: ident,
                     }
                 })
@@ -307,11 +307,11 @@ impl Processor {
         }
     }
 
-    fn ident(&self, name: &str) -> String {
+    fn field_ident(&self, field: &Field) -> String {
         if let Some(ref id_converter) = self.options.parent.id_converter {
-            id_converter.convert(name)
+            id_converter.convert(&field.name)
         } else {
-            name.to_owned()
+            field.name.to_owned()
         }
     }
 
@@ -437,28 +437,22 @@ impl Processor {
         ctor
     }
 
-    fn process_tuple(&self, package: &Package, ty: &TupleBody) -> Result<ElementSpec> {
-        let mut class = ClassSpec::new(&ty.name);
+    fn process_tuple(&self, package: &Package, body: &TupleBody) -> Result<ElementSpec> {
+        let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<Token<JsField>> = Vec::new();
 
-        for field in &ty.fields {
-            let ident = self.ident(&field.name);
+        for field in &body.fields {
+            let ident = self.field_ident(&field);
 
             fields.push(field.clone()
                 .map_inner(|f| {
                     JsField {
                         modifier: Modifier::Required,
                         ty: f.ty,
-                        name: f.name,
+                        name: field.name().to_owned(),
                         ident: ident,
                     }
                 }));
-        }
-
-        for code in &ty.codes {
-            if code.context == JS_CONTEXT {
-                class.push(code.lines.clone());
-            }
         }
 
         class.push(self.build_constructor(&fields));
@@ -475,6 +469,10 @@ impl Processor {
 
         let encode = self.encode_tuple_method(package, &fields)?;
         class.push(encode);
+
+        for code in body.codes.for_context(JS_CONTEXT) {
+            class.push(code.inner.lines);
+        }
 
         Ok(class.into())
     }
@@ -546,7 +544,7 @@ impl Processor {
         let mut fields: Vec<Token<JsField>> = Vec::new();
 
         for field in &body.fields {
-            let ident = self.ident(&field.name);
+            let ident = self.field_ident(&field);
 
             let ident = match ident.as_str() {
                 "name" => "_name".to_owned(),
@@ -559,19 +557,13 @@ impl Processor {
                     JsField {
                         modifier: Modifier::Required,
                         ty: f.ty,
-                        name: f.name,
+                        name: field.name().to_owned(),
                         ident: ident,
                     }
                 }));
         }
 
         let mut members = Statement::new();
-
-        for code in &body.codes {
-            if code.context == JS_CONTEXT {
-                class.push(code.lines.clone());
-            }
-        }
 
         class.push(self.build_enum_constructor(&fields));
         let encode_decode = self.enum_encode_decode(&body, &fields, &class)?;
@@ -594,6 +586,10 @@ impl Processor {
 
             values.push(js![= &member, arguments]);
             members.push(member);
+        }
+
+        for code in body.codes.for_context(JS_CONTEXT) {
+            class.push(code.inner.lines);
         }
 
         let mut elements = Elements::new();
@@ -625,10 +621,10 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, package: &Package, ty: &TypeBody) -> Result<ElementSpec> {
-        let fields = self.convert_fields(&ty.fields);
+    fn process_type(&self, package: &Package, body: &TypeBody) -> Result<ElementSpec> {
+        let fields = self.convert_fields(&body.fields);
 
-        let mut class = ClassSpec::new(&ty.name);
+        let mut class = ClassSpec::new(&body.name);
 
         let constructor = self.build_constructor(&fields);
         class.push(&constructor);
@@ -640,49 +636,36 @@ impl Processor {
             }
         }
 
-        for code in &ty.codes {
-            if code.context == JS_CONTEXT {
-                class.push(code.lines.clone());
-            }
-        }
-
         let decode = self.decode_method(package, &fields, &class, field_ident)?;
         class.push(decode);
 
         let encode = self.encode_method(package, &fields, "{}", |_| {})?;
         class.push(encode);
 
+        for code in body.codes.for_context(JS_CONTEXT) {
+            class.push(code.inner.lines);
+        }
+
         Ok(class.into())
     }
 
-    fn process_interface(&self,
-                         package: &Package,
-                         interface: &InterfaceBody)
-                         -> Result<ElementSpec> {
+    fn process_interface(&self, package: &Package, body: &InterfaceBody) -> Result<ElementSpec> {
         let mut classes = Elements::new();
 
-        let mut interface_spec = ClassSpec::new(&interface.name);
+        let mut interface_spec = ClassSpec::new(&body.name);
 
-        interface_spec.push(self.interface_decode_method(interface)?);
+        interface_spec.push(self.interface_decode_method(body)?);
 
-        let interface_fields = self.convert_fields(&interface.fields);
+        let interface_fields = self.convert_fields(&body.fields);
 
-        for code in &interface.codes {
-            if code.context == JS_CONTEXT {
-                interface_spec.push(code.lines.clone());
-            }
+        for code in body.codes.for_context(JS_CONTEXT) {
+            interface_spec.push(code.inner.lines);
         }
 
         classes.push(interface_spec);
 
-        for (_, ref sub_type) in &interface.sub_types {
+        for (_, ref sub_type) in &body.sub_types {
             let mut class = ClassSpec::new(&sub_type.name);
-
-            let name: String = sub_type.names
-                .iter()
-                .map(|t| t.inner.to_owned())
-                .nth(0)
-                .unwrap_or_else(|| interface.name.clone());
 
             let mut fields = interface_fields.clone();
             fields.extend(self.convert_fields(&sub_type.fields));
@@ -694,12 +677,6 @@ impl Processor {
             if false {
                 for getter in self.build_getters(&fields)? {
                     class.push(&getter);
-                }
-            }
-
-            for code in &sub_type.codes {
-                if code.context == JS_CONTEXT {
-                    class.push(code.lines.clone());
                 }
             }
 
@@ -715,8 +692,12 @@ impl Processor {
 
             class.push(encode);
 
+            for code in sub_type.codes.for_context(JS_CONTEXT) {
+                class.push(code.inner.lines);
+            }
+
             classes.push(&class);
-            classes.push(stmt![&class.name, ".TYPE", " = ", string(name.clone()), ";"]);
+            classes.push(stmt![&class.name, ".TYPE", " = ", string(sub_type.name.clone()), ";"]);
         }
 
         Ok(classes.join(ElementSpec::Spacing).into())
