@@ -78,7 +78,12 @@ pub struct Processor {
     to_lower_snake: Box<naming::Naming>,
     staticmethod: BuiltInName,
     classmethod: BuiltInName,
+    isinstance: BuiltInName,
     dict: BuiltInName,
+    list: BuiltInName,
+    basestring: BuiltInName,
+    boolean: BuiltInName,
+    number: ImportedName,
     enum_enum: ImportedName,
     enum_auto: ImportedName,
     type_var: Variable,
@@ -98,7 +103,12 @@ impl Processor {
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             staticmethod: Name::built_in("staticmethod"),
             classmethod: Name::built_in("classmethod"),
+            isinstance: Name::built_in("isinstance"),
             dict: Name::built_in("dict"),
+            list: Name::built_in("list"),
+            basestring: Name::built_in("basestring"),
+            boolean: Name::built_in("bool"),
+            number: Name::imported("numbers", "Number"),
             enum_enum: Name::imported("enum", "Enum"),
             enum_auto: Name::imported("enum", "auto"),
             type_var: Variable::String(TYPE.to_owned()),
@@ -305,6 +315,45 @@ impl Processor {
 
             let mut value_body = Elements::new();
             value_body.push(stmt!["if ", &data, " == ", &value, ":"]);
+            value_body.push_nested(stmt!["return ", &result]);
+
+            decode_body.push(value_body);
+        }
+
+        for &(ref kind, ref result) in &match_decl.by_type {
+            let variable = result.0.name.clone();
+
+            let mut variables = m::Variables::new();
+            variables.insert(variable.clone(), &result.0.ty);
+
+            let decode_stmt = self.decode(&result.1.pos, &type_id.package, &result.0.ty, &data)?;
+
+            let result = self.value(&ValueBuilderEnv {
+                    value: &result.1,
+                    package: &type_id.package,
+                    ty: Some(&m::Type::Custom(type_id.custom.clone())),
+                    variables: &variables,
+                })?;
+
+            let check = match *kind {
+                m::MatchKind::Any => stmt!["true"],
+                m::MatchKind::Object => stmt![&self.isinstance, "(", &data, ", ", &self.dict, ")"],
+                m::MatchKind::Array => stmt![&self.isinstance, "(", &data, ", ", &self.list, ")"],
+                m::MatchKind::String => {
+                    stmt![&self.isinstance, "(", &data, ", ", &self.basestring, ")"]
+                }
+                m::MatchKind::Boolean => {
+                    stmt![&self.isinstance, "(", &data, ", ", &self.boolean, ")"]
+                }
+                m::MatchKind::Number => {
+                    stmt![&self.isinstance, "(", &data, ", ", &self.number, ")"]
+                }
+            };
+
+            let mut value_body = Elements::new();
+
+            value_body.push(stmt!["if ", check, ":"]);
+            value_body.push_nested(stmt![&variable, " = ", decode_stmt]);
             value_body.push_nested(stmt!["return ", &result]);
 
             decode_body.push(value_body);

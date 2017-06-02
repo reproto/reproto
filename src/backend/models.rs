@@ -420,35 +420,45 @@ impl Registered {
     }
 
     pub fn is_assignable_from(&self, other: &Registered) -> bool {
-        match *self {
-            Registered::Type(ref body) => {
-                // Check if type equals.
-                if let Registered::Type(ref other) = *other {
-                    return Rc::ptr_eq(body, other);
-                }
+        match (self, other) {
+            // exact type
+            (&Registered::Type(ref target), &Registered::Type(ref source)) => {
+                Rc::ptr_eq(target, source)
             }
-            Registered::Tuple(ref body) => {
-                // Check if tuple equals.
-                if let Registered::Tuple(ref other) = *other {
-                    return Rc::ptr_eq(body, other);
-                }
+            // exact tuple
+            (&Registered::Tuple(ref target), &Registered::Tuple(ref source)) => {
+                Rc::ptr_eq(target, source)
             }
-            Registered::Interface(ref interface) => {
-                // Check if implementation is interface.
-                if let Registered::SubType { ref parent, sub_type: _ } = *other {
-                    return Rc::ptr_eq(interface, parent);
-                }
+            // exact interface, with unknown sub-type.
+            (&Registered::Interface(ref target), &Registered::Interface(ref source)) => {
+                Rc::ptr_eq(target, source)
             }
-            Registered::Enum(ref en) => {
-                // Check if constant is contained in enum
-                if let Registered::EnumConstant { ref parent, value: _ } = *other {
-                    return Rc::ptr_eq(en, parent);
-                }
+            // exact enum, with unknown value
+            (&Registered::Enum(ref target), &Registered::Enum(ref source)) => {
+                Rc::ptr_eq(target, source)
             }
-            _ => {}
+            // sub-type to parent
+            (&Registered::Interface(ref target),
+             &Registered::SubType { parent: ref source, sub_type: _ }) => {
+                Rc::ptr_eq(target, source)
+            }
+            // enum constant to parent type
+            (&Registered::Enum(ref target),
+             &Registered::EnumConstant { parent: ref source, value: _ }) => {
+                Rc::ptr_eq(target, source)
+            }
+            // exact matching sub-type
+            (&Registered::SubType { parent: ref target_parent, sub_type: ref target },
+             &Registered::SubType { parent: ref source_parent, sub_type: ref source }) => {
+                Rc::ptr_eq(target_parent, source_parent) && Rc::ptr_eq(target, source)
+            }
+            // exact matching constant
+            (&Registered::EnumConstant { parent: ref target_parent, value: ref target },
+             &Registered::EnumConstant { parent: ref source_parent, value: ref source }) => {
+                Rc::ptr_eq(target_parent, source_parent) && Rc::ptr_eq(target, source)
+            }
+            _ => false,
         }
-
-        false
     }
 
     pub fn display(&self) -> String {
@@ -529,7 +539,7 @@ pub struct MatchVariable {
 #[derive(Debug, Clone)]
 pub struct MatchDecl {
     pub by_value: Vec<(Token<Value>, Token<Value>)>,
-    pub by_type: Vec<(MatchKind, Token<MatchVariable>)>,
+    pub by_type: Vec<(MatchKind, (Token<MatchVariable>, Token<Value>))>,
 }
 
 impl MatchDecl {
@@ -570,12 +580,12 @@ impl MatchDecl {
 
                     if let Some(&(_, ref existing_value)) = result {
                         let err = ErrorKind::MatchConflict(member.condition.pos.clone(),
-                                                           existing_value.pos.clone());
+                                                           existing_value.0.pos.clone());
                         return Err(err.into());
                     }
                 }
 
-                self.by_type.push((match_kind, variable.clone()));
+                self.by_type.push((match_kind, (variable.clone(), member.value.clone())));
             }
             MatchCondition::Value(ref value) => {
                 {
@@ -597,16 +607,20 @@ impl MatchDecl {
     }
 }
 
-pub struct Variables {
-    variables: HashMap<String, Type>,
+pub struct Variables<'a> {
+    variables: HashMap<String, &'a Type>,
 }
 
-impl Variables {
-    pub fn new() -> Variables {
+impl<'a> Variables<'a> {
+    pub fn new() -> Variables<'a> {
         Variables { variables: HashMap::new() }
     }
 
-    pub fn get(&self, key: &String) -> Option<&Type> {
-        self.variables.get(key)
+    pub fn get(&self, key: &String) -> Option<&'a Type> {
+        self.variables.get(key).map(|t| *t)
+    }
+
+    pub fn insert(&mut self, key: String, value: &'a Type) {
+        self.variables.insert(key, value);
     }
 }

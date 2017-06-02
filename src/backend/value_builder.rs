@@ -19,7 +19,7 @@ pub type KnownValues<T> = HashMap<String, T>;
 
 pub struct ValueBuilderEnv<'a> {
     pub package: &'a m::Package,
-    pub variables: &'a m::Variables,
+    pub variables: &'a m::Variables<'a>,
     pub value: &'a m::Token<m::Value>,
     pub ty: Option<&'a m::Type>,
 }
@@ -154,12 +154,14 @@ pub trait ValueBuilder {
                 return self.instance(ty, arguments);
             }
             // identifier with any type.
-            (&m::Value::Identifier(ref identifier), _) => {
+            (&m::Value::Identifier(ref identifier), expected) => {
                 if let Some(variable_type) = env.variables.get(identifier) {
                     // if expected is set
-                    if let Some(ty) = ty {
-                        if self.env().is_assignable_from(ty, variable_type)? {
-                            return Err(Error::pos("not assignable".into(), value.pos.clone()));
+                    if let Some(expected) = expected {
+                        if !self.env().is_assignable_from(&env.package, expected, variable_type)? {
+                            return Err(Error::pos(format!("not assignable to `{}`", expected)
+                                                      .into(),
+                                                  value.pos.clone()));
                         }
                     }
 

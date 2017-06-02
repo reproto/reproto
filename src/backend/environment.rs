@@ -113,15 +113,45 @@ impl Environment {
         Ok(())
     }
 
-    pub fn is_assignable_from(&self, target: &Type, source: &Type) -> Result<bool> {
+    pub fn is_assignable_from(&self,
+                              package: &Package,
+                              target: &Type,
+                              source: &Type)
+                              -> Result<bool> {
         match (target, source) {
             (&Type::Double, &Type::Double) => Ok(true),
             (&Type::Float, &Type::Float) => Ok(true),
-            (&Type::Signed(ref target_size), &Type::Signed(ref source_size)) => {
-                Ok(target_size <= source_size)
+            (&Type::Signed(Some(ref target)), &Type::Signed(Some(ref source))) => {
+                Ok(target <= source)
             }
-            (&Type::Unsigned(ref target_size), &Type::Unsigned(ref source_size)) => {
-                Ok(target_size <= source_size)
+            // unknown size matches known
+            (&Type::Signed(_), &Type::Signed(None)) => Ok(true),
+            (&Type::Unsigned(Some(ref target)), &Type::Unsigned(Some(ref source))) => {
+                Ok(target <= source)
+            }
+            // unknown size matches known
+            (&Type::Unsigned(_), &Type::Unsigned(None)) => Ok(true),
+            (&Type::Boolean, &Type::Boolean) => return Ok(true),
+            (&Type::String, &Type::String) => return Ok(true),
+            (&Type::Bytes, &Type::Bytes) => return Ok(true),
+            // everything assignable to any type
+            (&Type::Any, _) => Ok(true),
+            (&Type::Custom(ref target), &Type::Custom(ref source)) => {
+                let target = self.lookup(package, target)?;
+                let source = self.lookup(package, source)?;
+                return Ok(target.is_assignable_from(source));
+            }
+            // arrays match if inner type matches
+            (&Type::Array(ref target), &Type::Array(ref source)) => {
+                return self.is_assignable_from(package, target, source);
+            }
+            (&Type::Map(ref target_key, ref target_value),
+             &Type::Map(ref source_key, ref source_value)) => {
+                let key_assignable = self.is_assignable_from(package, target_key, source_key)?;
+                let value_assignable =
+                    self.is_assignable_from(package, target_value, source_value)?;
+
+                return Ok(key_assignable && value_assignable);
             }
             _ => Ok(false),
         }
