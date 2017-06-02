@@ -4,7 +4,7 @@ use heroic.common as c;
 
 type Sampling {
     unit?: TimeUnit;
-    size?: unsigned;
+    size: unsigned;
     extent?: unsigned;
 }
 
@@ -18,7 +18,7 @@ enum SI {
 
 enum ComplexEnum {
   FIRST(Sampling(size: 42), SI.NANO, Samples.Points(name: "points", data: []));
-  SECOND(Sampling(), SI.MILLI, Samples.Points(name: "b", data: []));
+  SECOND(Sampling(size: 9), SI.MILLI, Samples.Points(name: "b", data: []));
 
   si: Sampling;
   other: SI;
@@ -26,8 +26,8 @@ enum ComplexEnum {
 }
 
 enum Complex21 {
-  FIRST(Point(timestamp: 123, value: 1.1231));
-  SECOND(Event(timestamp: 123));
+  FIRST(Point(timestamp: 123, value: test));
+  SECOND(Point(timestamp: 123, value: 1234.12));
 
   point: Point;
 }

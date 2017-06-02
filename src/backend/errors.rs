@@ -45,7 +45,13 @@ error_chain! {
             description("missing required")
         }
 
-        RegisteredTypeConflict {
+        EnumValueConflict(pos: m::Pos, other: m::Pos) {
+            description("enum value conflict")
+        }
+
+        RegisteredTypeConflict(type_id: m::NestedTypeId) {
+            description("registered type conflict")
+            display("registered type conflict with: {:?}", type_id)
         }
 
         /// Error thrown by Rc::get_mut

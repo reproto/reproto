@@ -525,7 +525,7 @@ impl Processor {
                 stmt![&self.enum_auto, "()"]
             };
 
-            values.push(stmt![&value.name, " = ", arguments]);
+            values.push(stmt![&*value.name, " = ", arguments]);
         }
 
         class.push(values);
@@ -847,26 +847,5 @@ impl Backend for Processor {
 
     fn verify(&self) -> Result<Vec<Error>> {
         Ok(vec![])
-    }
-}
-
-impl ::std::fmt::Display for m::Type {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        match *self {
-            m::Type::Signed(_) |
-            m::Type::Unsigned(_) => write!(f, "int"),
-            m::Type::Float | m::Type::Double => write!(f, "float"),
-            m::Type::String => write!(f, "str"),
-            m::Type::Custom(ref custom) => {
-                if let Some(ref used) = custom.prefix {
-                    write!(f, "{}.{}", used, custom.parts.join("."))
-                } else {
-                    write!(f, "{}", custom.parts.join("."))
-                }
-            }
-            m::Type::Array(_) => write!(f, "array"),
-            m::Type::Boolean => write!(f, "bool"),
-            _ => write!(f, "<unknown>"),
-        }
     }
 }

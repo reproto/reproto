@@ -87,6 +87,10 @@ fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<()> {
                 print_error("required field", f)?;
             }
         }
+        backend::errors::ErrorKind::EnumValueConflict(ref pos, ref other) => {
+            print_error("conflicting name", pos)?;
+            print_error("previous name here", other)?;
+        }
         backend::errors::ErrorKind::Parser(ref e) => {
             handle_parser_error(e)?;
         }
@@ -187,7 +191,16 @@ fn compiler_entry() -> Result<()> {
 fn main() {
     match compiler_entry() {
         Err(e) => {
-            error!("{}", e);
+            match *e.kind() {
+                ErrorKind::BackendErrors(ref errors) => {
+                    for e in errors {
+                        error!("error: {}", e);
+                    }
+                }
+                _ => {
+                    error!("error: {}", e);
+                }
+            }
 
             for e in e.iter().skip(1) {
                 error!("  caused by: {}", e);

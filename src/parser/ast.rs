@@ -148,7 +148,7 @@ pub struct EnumBody {
 
 #[derive(Debug)]
 pub struct EnumValue {
-    pub name: String,
+    pub name: Token<String>,
     pub arguments: Vec<Token<Value>>,
     pub ordinal: Option<Token<Value>>,
 }

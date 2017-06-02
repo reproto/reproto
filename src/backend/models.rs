@@ -62,6 +62,42 @@ pub enum Type {
     Map(Box<Type>, Box<Type>),
 }
 
+impl ::std::fmt::Display for Type {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        match *self {
+            Type::Double => write!(f, "double"),
+            Type::Float => write!(f, "float"),
+            Type::Signed(ref size) => {
+                if let Some(size) = *size {
+                    write!(f, "signed/{}", size)
+                } else {
+                    write!(f, "signed")
+                }
+            }
+            Type::Unsigned(ref size) => {
+                if let Some(size) = *size {
+                    write!(f, "unsigned/{}", size)
+                } else {
+                    write!(f, "unsigned")
+                }
+            }
+            Type::Boolean => write!(f, "boolean"),
+            Type::String => write!(f, "string"),
+            Type::Custom(ref custom) => {
+                if let Some(ref used) = custom.prefix {
+                    write!(f, "{}::{}", used, custom.parts.join("."))
+                } else {
+                    write!(f, "{}", custom.parts.join("."))
+                }
+            }
+            Type::Array(ref inner) => write!(f, "[{}]", inner),
+            Type::Map(ref key, ref value) => write!(f, "{{{}: {}}}", key, value),
+            Type::Any => write!(f, "any"),
+            Type::Bytes => write!(f, "bytes"),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub struct Package {
     pub parts: Vec<String>,
@@ -276,7 +312,7 @@ impl TupleBody {
 
 #[derive(Debug, Clone)]
 pub struct EnumValue {
-    pub name: String,
+    pub name: Token<String>,
     pub arguments: Vec<Token<Value>>,
     pub ordinal: u32,
 }
@@ -292,7 +328,7 @@ pub struct EnumBody {
     pub serialized_as_name: bool,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Registered {
     Type(Rc<TypeBody>),
     Interface(Rc<InterfaceBody>),
@@ -332,6 +368,53 @@ impl Registered {
         }
 
         Ok(None)
+    }
+
+    pub fn is_assignable_from(&self, other: &Registered) -> bool {
+        match *self {
+            Registered::Type(ref body) => {
+                // Check if type equals.
+                if let Registered::Type(ref other) = *other {
+                    return Rc::ptr_eq(body, other);
+                }
+            }
+            Registered::Tuple(ref body) => {
+                // Check if tuple equals.
+                if let Registered::Tuple(ref other) = *other {
+                    return Rc::ptr_eq(body, other);
+                }
+            }
+            Registered::Interface(ref interface) => {
+                // Check if implementation is interface.
+                if let Registered::SubType { ref parent, sub_type: _ } = *other {
+                    return Rc::ptr_eq(interface, parent);
+                }
+            }
+            Registered::Enum(ref en) => {
+                // Check if constant is contained in enum
+                if let Registered::EnumConstant { ref parent, value: _ } = *other {
+                    return Rc::ptr_eq(en, parent);
+                }
+            }
+            _ => {}
+        }
+
+        false
+    }
+
+    pub fn display(&self) -> String {
+        match *self {
+            Registered::Type(ref body) => format!("type {}", body.name.to_owned()),
+            Registered::Interface(ref body) => format!("interface {}", body.name.to_owned()),
+            Registered::Enum(ref body) => format!("enum {}", body.name.to_owned()),
+            Registered::Tuple(ref body) => format!("tuple {}", body.name.to_owned()),
+            Registered::SubType { ref parent, ref sub_type } => {
+                format!("type {}.{}", parent.name, sub_type.name)
+            }
+            Registered::EnumConstant { ref parent, ref value } => {
+                format!("{}.{}", parent.name, *value.name)
+            }
+        }
     }
 }
 

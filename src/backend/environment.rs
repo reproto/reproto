@@ -76,7 +76,7 @@ impl Environment {
                     let token = Token::new(enum_constant, decl.pos.clone());
 
                     let mut key = current.clone();
-                    key.push(value.name.to_owned());
+                    key.push((*value.name).to_owned());
                     out.push(((package.clone(), key), token));
                 }
             }
@@ -114,12 +114,23 @@ impl Environment {
     pub fn instance_arguments<'a>(&'a self,
                                   pos: &Pos,
                                   package: &'a Package,
-                                  instance: &Instance)
+                                  instance: &Instance,
+                                  target: &Custom)
                                   -> Result<(&'a Registered, InitFields)> {
-        let (_, registered) = self.lookup(package, &instance.ty)
+        let reg_instance = self.lookup(package, &instance.ty)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
-        let required_fields = match *registered {
+        let reg_target = self.lookup(package, target)
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+
+        if !reg_target.is_assignable_from(reg_instance) {
+            return Err(Error::pos(format!("expected instance of `{}` but found `{}`",
+                                          reg_target.display(),
+                                          reg_instance.display()),
+                                  pos.clone()));
+        }
+
+        let required_fields = match *reg_instance {
             Registered::Type(ref ty) => ty.fields(),
             Registered::SubType { ref parent, ref sub_type } => {
                 Box::new(parent.fields().chain(sub_type.fields()))
@@ -139,7 +150,7 @@ impl Environment {
             .collect();
 
         for init in &*instance.arguments {
-            if let Some(ref field) = registered.find_field(&init.name)? {
+            if let Some(ref field) = reg_instance.find_field(&init.name)? {
                 // TODO: map out init position, and check that required variables are set.
                 known.insert(field.name.clone(), init.clone());
                 required.remove(&field.name);
@@ -163,7 +174,7 @@ impl Environment {
                 .into());
         }
 
-        Ok((registered, known))
+        Ok((reg_instance, known))
     }
 
     /// Lookup the package declaration a used alias refers to.
@@ -175,10 +186,7 @@ impl Environment {
     }
 
     /// Lookup the declaration matching the custom type.
-    pub fn lookup<'a>(&'a self,
-                      package: &'a Package,
-                      custom: &Custom)
-                      -> Result<(&'a Package, &'a Registered)> {
+    pub fn lookup<'a>(&'a self, package: &'a Package, custom: &Custom) -> Result<&'a Registered> {
         let package = if let Some(ref prefix) = custom.prefix {
             self.lookup_used(package, prefix)?
         } else {
@@ -188,7 +196,7 @@ impl Environment {
         let key = (package.clone(), custom.parts.clone());
 
         if let Some(ty) = self.types.get(&key) {
-            return Ok((package, ty));
+            return Ok(ty);
         }
 
         return Err("no such type".into());
@@ -239,8 +247,8 @@ impl Environment {
             let registered_types = self.into_registered_type(&file.package, decl.clone())?;
 
             for (key, t) in registered_types.into_iter() {
-                if let Some(_) = types.insert(key, t) {
-                    return Err(ErrorKind::RegisteredTypeConflict.into());
+                if let Some(_) = types.insert(key.clone(), t) {
+                    return Err(ErrorKind::RegisteredTypeConflict(key.clone()).into());
                 }
             }
         }

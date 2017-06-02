@@ -570,14 +570,14 @@ impl Processor {
             let mut value_arguments = Statement::new();
 
             value_arguments.push(value.ordinal.to_string());
-            value_arguments.push(string(&value.name));
+            value_arguments.push(string(&*value.name));
 
             for (value, field) in value.arguments.iter().zip(fields.iter()) {
                 value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
             }
 
             let arguments = js![new &body.name, value_arguments];
-            let member = stmt![&class.name, ".", &value.name];
+            let member = stmt![&class.name, ".", &*value.name];
 
             values.push(js![= &member, arguments]);
             members.push(member);

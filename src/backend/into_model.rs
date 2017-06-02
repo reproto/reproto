@@ -198,16 +198,27 @@ impl IntoModel for ast::EnumBody {
     type Output = Rc<EnumBody>;
 
     fn into_model(self, pos: &Pos) -> Result<Rc<EnumBody>> {
-        let mut values = Vec::new();
+        let mut values: Vec<Token<Rc<EnumValue>>> = Vec::new();
 
         let mut ordinals = OrdinalGenerator::new();
 
         let (fields, codes, options, match_decl) = members_into_model(pos, self.members)?;
 
         for value in self.values {
-            let ordinal = ordinals.next(&value.ordinal, pos)?;
+            let ordinal = ordinals.next(&value.ordinal, pos)
+                .map_err(|e| Error::pos(e.description().into(), pos.clone()))?;
+
+            let value = Token::new((value.inner, ordinal).into_model(pos)?,
+                                   (pos.0.clone(), value.pos.0, value.pos.1));
+
+            if let Some(other) = values.iter().find(|v| *v.name == *value.name) {
+                return Err(ErrorKind::EnumValueConflict(other.name.pos.clone(),
+                                                        value.name.pos.clone())
+                    .into());
+            }
+
             /// need to tack on an ordinal value.
-            values.push(value.map_inner(|v| (v, ordinal)).into_model(pos)?);
+            values.push(value);
         }
 
         let options = Options::new(pos, options);
@@ -243,7 +254,7 @@ impl IntoModel for (ast::EnumValue, u32) {
         let ordinal = self.1;
 
         let value = EnumValue {
-            name: value.name,
+            name: value.name.into_model(pos)?,
             arguments: value.arguments.into_model(pos)?,
             ordinal: ordinal,
         };

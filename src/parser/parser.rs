@@ -145,7 +145,8 @@ impl_rdp! {
         code_block = @{ identifier ~ whitespace* ~ code_start ~ code_body ~ code_end }
         code_body = { (!(["}}"]) ~ any)* }
 
-        enum_value = { type_identifier ~ enum_arguments? ~ enum_ordinal? ~ semi_colon }
+        enum_value = { enum_name ~ enum_arguments? ~ enum_ordinal? ~ semi_colon }
+        enum_name = { type_identifier }
         enum_arguments = { (left_paren ~ (value ~ (comma ~ value)*) ~ right_paren) }
         enum_ordinal = { equals ~ value }
         option_decl = { identifier ~ (value ~ (comma ~ value)*) ~ semi_colon }
@@ -413,16 +414,21 @@ impl_rdp! {
         _enum_value(&self) -> Result<ast::Token<ast::EnumValue>> {
             (
                 token: enum_value,
+                name_token: enum_name,
                 &name: type_identifier,
                 values: _enum_arguments(),
                 ordinal: _enum_ordinal(),
                 _: semi_colon
              ) => {
-                let arguments = values?.into_iter().collect();
-                let ordinal = ordinal?;
-                let pos = (token.start, token.end);
-                let enum_value = ast::EnumValue { name: name.to_owned(), arguments: arguments, ordinal: ordinal };
-                Ok(ast::Token::new(enum_value, pos))
+                let name = ast::Token::new(name.to_owned(), (name_token.start, name_token.end));
+
+                let enum_value = ast::EnumValue {
+                    name: name,
+                    arguments: values?.into_iter().collect(),
+                    ordinal: ordinal?
+                };
+
+                Ok(ast::Token::new(enum_value, (token.start, token.end)))
             },
         }
 

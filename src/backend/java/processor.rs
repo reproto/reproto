@@ -461,19 +461,6 @@ impl Processor {
         constructor
     }
 
-    fn to_number_literal(&self, pos: &m::Pos, value: &f64, ty: &PrimitiveType) -> Result<String> {
-        match *ty {
-            INTEGER => Ok(value.floor().to_string()),
-            LONG => Ok(format!("{}L", value.floor())),
-            FLOAT => Ok(format!("{}F", value)),
-            DOUBLE => Ok(format!("{}D", value)),
-            _ => {
-                Err(Error::pos(format!("cannot convert integer to {}", ty.primitive),
-                               pos.clone()))
-            }
-        }
-    }
-
     fn value(&self,
              package: &m::Package,
              value: &m::Token<m::Value>,
@@ -481,77 +468,90 @@ impl Processor {
              -> Result<Statement> {
         let pos = &value.pos;
 
-        let java_type = self.convert_type(pos, package, ty)?;
-
-        if let Type::Primitive(ref primitive) = java_type {
-            if let m::Value::Number(ref float) = **value {
-                let lit = self.to_number_literal(pos, float, primitive)?;
-                return Ok(Variable::Literal(lit).into());
+        match (&**value, ty) {
+            (&m::Value::String(ref string), &m::Type::String) => {
+                return Ok(Variable::String(string.to_owned()).into())
             }
-        }
-
-        match *ty {
-            m::Type::Array(ref ty) => {
-                if let m::Value::Array(ref values) = **value {
-                    let mut arguments = Statement::new();
-
-                    for v in values {
-                        arguments.push(self.value(package, v, ty)?);
-                    }
-
-                    return Ok(stmt![&self.immutable_list, ".of(", arguments.join(", "), ")"]);
-                }
+            (&m::Value::Boolean(ref boolean), &m::Type::Boolean) => {
+                return Ok(stmt![boolean.to_string()])
             }
-            m::Type::String => {
-                if let m::Value::String(ref value) = **value {
-                    return Ok(Variable::String(value.to_owned()).into());
-                }
-            }
-            m::Type::Custom(ref custom) => {
-                if let m::Value::Constant(ref custom) = **value {
-                    let (_, registered) = self.env
-                        .lookup(package, &custom)
-                        .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
-
-                    let current_ty = self.convert_custom(pos, package, custom)?;
-
-                    match *registered {
-                        m::Registered::EnumConstant { parent: _, value: _ } => {
-                            return Ok(stmt![current_ty]);
-                        }
-                        _ => {
-                            return Err(Error::pos("cannot make instance of enum".to_owned(),
-                                                  pos.clone()));
-                        }
-                    }
-                }
-
-                if let m::Value::Instance(ref instance) = **value {
-                    let (registered, known) = self.env
-                        .instance_arguments(pos, package, instance)?;
-
-                    // TODO: check argument types.
-
-                    let mut argument_statements = Statement::new();
-
-                    for f in registered.fields()? {
-                        if let Some(ref init) = known.get(&f.name) {
-                            argument_statements.push(self.value(package, &init.value, &f.ty)?);
+            (&m::Value::Number(ref number), inner) => {
+                match *inner {
+                    m::Type::Signed(ref size) |
+                    m::Type::Unsigned(ref size) => {
+                        // default to integer if unspecified.
+                        // TODO: should we care about signedness?
+                        // TODO: > 64 bits, use BitInteger?
+                        if size.map(|s| s <= 32usize).unwrap_or(true) {
+                            return Ok(stmt![format!("{}", number)]);
                         } else {
-                            argument_statements.push(stmt![&self.optional, ".empty()"]);
+                            return Ok(stmt![format!("{}L", number)]);
                         }
                     }
-
-                    let current_ty = self.convert_custom(pos, package, &instance.ty)?;
-                    let n = stmt!["new ", &current_ty, "(", argument_statements.join(", "), ")"];
-                    return Ok(n);
+                    m::Type::Float => return Ok(stmt![format!("{}F", number)]),
+                    m::Type::Double => return Ok(stmt![format!("{}D", number)]),
+                    _ => {}
                 }
+            }
+            (&m::Value::Array(ref values), &m::Type::Array(ref inner)) => {
+                let mut arguments = Statement::new();
+
+                for v in values {
+                    arguments.push(self.value(package, v, inner)?);
+                }
+
+                return Ok(stmt![&self.immutable_list, ".of(", arguments.join(", "), ")"]);
+            }
+            (&m::Value::Constant(ref constant), &m::Type::Custom(ref target)) => {
+                let reg_constant = self.env
+                    .lookup(package, constant)
+                    .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+
+                let reg_target = self.env
+                    .lookup(package, &target)
+                    .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+
+                if !reg_target.is_assignable_from(reg_constant) {
+                    return Err(Error::pos(format!("expected instance of `{}` but found `{}`",
+                                                  reg_target.display(),
+                                                  reg_constant.display()),
+                                          pos.clone()));
+                }
+
+                match *reg_constant {
+                    m::Registered::EnumConstant { parent: _, value: _ } => {
+                        let ty = self.convert_custom(pos, package, target)?;
+                        return Ok(stmt![ty]);
+                    }
+                    _ => {}
+                }
+            }
+            (&m::Value::Instance(ref instance), &m::Type::Custom(ref target)) => {
+                let (registered, known) = self.env
+                    .instance_arguments(pos, package, instance, target)?;
+
+                let mut argument_statements = Statement::new();
+
+                for f in registered.fields()? {
+                    if let Some(ref init) = known.get(&f.name) {
+                        argument_statements.push(self.value(package, &init.value, &f.ty)?);
+                    } else {
+                        argument_statements.push(stmt![&self.optional, ".empty()"]);
+                    }
+                }
+
+                let ty = self.convert_custom(pos, package, &instance.ty)?;
+                let n = stmt!["new ", &ty, "(", argument_statements.join(", "), ")"];
+                return Ok(n);
+            }
+            // identifier with any type.
+            (&m::Value::Identifier(ref _identifier), _) => {
+                return Err(Error::pos("missing variable".into(), value.pos.clone()));
             }
             _ => {}
         }
 
-        Err(Error::pos(format!("expected type {}", display_type(&java_type)),
-                       pos.clone()))
+        Err(Error::pos(format!("expected `{}`", ty), value.pos.clone()))
     }
 
     fn find_field(&self, fields: &Vec<m::JavaField>, name: &str) -> Option<m::JavaField> {
@@ -639,7 +639,7 @@ impl Processor {
 
         for enum_literal in &body.values {
             let mut enum_value = Elements::new();
-            let mut enum_stmt = stmt![&enum_literal.name];
+            let mut enum_stmt = stmt![&*enum_literal.name];
 
             if !enum_literal.arguments.is_empty() {
                 let mut value_arguments = Statement::new();
@@ -981,13 +981,5 @@ impl ::std::fmt::Display for m::Value {
         };
 
         write!(f, "{}", out)
-    }
-}
-
-fn display_type(ty: &Type) -> String {
-    match *ty {
-        Type::Primitive(ref primitive) => primitive.primitive.to_owned(),
-        Type::Class(ref class) => format!("class {}.{}", class.package, class.name),
-        _ => "<unknown>".to_owned(),
     }
 }
