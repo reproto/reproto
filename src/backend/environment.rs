@@ -9,7 +9,7 @@ use super::into_model::IntoModel;
 use super::merge::Merge;
 use super::models::*;
 
-type InitFields = HashMap<String, Token<FieldInit>>;
+pub type InitFields = HashMap<String, Token<FieldInit>>;
 
 const EXT: &str = "reproto";
 

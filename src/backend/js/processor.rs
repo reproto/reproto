@@ -12,6 +12,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use super::models::*;
 use super::utils::*;
+use super::value_builder::*;
 
 const TYPE: &str = "type";
 const EXT: &str = "js";
@@ -315,20 +316,6 @@ impl Processor {
         }
     }
 
-    fn name(&self, pos: &Pos, package: &Package, custom: &Custom) -> Result<Name> {
-        if let Some(ref used) = custom.prefix {
-            let package = self.env
-                .lookup_used(package, used)
-                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
-
-            let package = self.package(package);
-            let package = package.parts.join(".");
-            return Ok(Name::imported_alias(&package, &custom.parts.join("."), used).into());
-        }
-
-        Ok(Name::local(&custom.parts.join(".")).into())
-    }
-
     fn encode<S>(&self, package: &Package, ty: &Type, value_stmt: S) -> Result<Statement>
         where S: Into<Statement>
     {
@@ -376,7 +363,7 @@ impl Processor {
             Type::Any => value_stmt,
             Type::Boolean => value_stmt,
             Type::Custom(ref custom) => {
-                let name = self.name(pos, package, custom)?;
+                let name = self.convert_type(pos, package, custom)?;
                 stmt![name, ".decode(", value_stmt, ")"]
             }
             Type::Array(ref inner) => {
@@ -472,33 +459,6 @@ impl Processor {
         Ok(class.into())
     }
 
-    fn literal_value(&self, pos: &Pos, value: &Value, ty: &Type) -> Result<Variable> {
-        match *ty {
-            Type::Double |
-            Type::Float |
-            Type::Signed(_) |
-            Type::Unsigned(_) |
-            Type::Boolean => {
-                if let Value::Boolean(ref boolean) = *value {
-                    return Ok(Variable::Literal(boolean.to_string()));
-                }
-
-                if let Value::Number(ref number) = *value {
-                    return Ok(Variable::Literal(number.to_string()));
-                }
-            }
-            Type::String => {
-                if let Value::String(ref s) = *value {
-                    return Ok(string(s));
-                }
-            }
-            _ => {}
-        }
-
-        Err(Error::pos(format!("{} cannot be applied to expected type {}", value, ty),
-                       pos.clone()))
-    }
-
     fn enum_encode_decode(&self,
                           body: &EnumBody,
                           fields: &Vec<Token<JsField>>,
@@ -534,7 +494,7 @@ impl Processor {
         Ok(elements.into())
     }
 
-    fn process_enum(&self, _package: &Package, body: &EnumBody) -> Result<ElementSpec> {
+    fn process_enum(&self, package: &Package, body: &EnumBody) -> Result<ElementSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<Token<JsField>> = Vec::new();
 
@@ -565,6 +525,7 @@ impl Processor {
         class.push(encode_decode);
 
         let mut values = Elements::new();
+        let variables = Variables::new();
 
         for value in &body.values {
             let mut value_arguments = Statement::new();
@@ -573,7 +534,14 @@ impl Processor {
             value_arguments.push(string(&*value.name));
 
             for (value, field) in value.arguments.iter().zip(fields.iter()) {
-                value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
+                let env = ValueBuilderEnv {
+                    value: &value,
+                    package: package,
+                    ty: &field.ty,
+                    variables: &variables,
+                };
+
+                value_arguments.push(self.value(&env)?);
             }
 
             let arguments = js![new &body.name, value_arguments];
@@ -802,5 +770,73 @@ impl Backend for Processor {
 
     fn verify(&self) -> Result<Vec<Error>> {
         Ok(vec![])
+    }
+}
+
+/// Build values in js.
+impl ValueBuilder for Processor {
+    type Output = Statement;
+    type Type = Name;
+
+    fn env(&self) -> &Environment {
+        &self.env
+    }
+
+    fn identifier(&self, identifier: &str) -> Result<Self::Output> {
+        Ok(stmt![identifier])
+    }
+
+    fn optional_empty(&self) -> Result<Self::Output> {
+        Ok(stmt!["None"])
+    }
+
+    fn convert_type(&self, pos: &Pos, package: &Package, custom: &Custom) -> Result<Name> {
+        if let Some(ref used) = custom.prefix {
+            let package = self.env
+                .lookup_used(package, used)
+                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+
+            let package = self.package(package);
+            let package = package.parts.join(".");
+            return Ok(Name::imported_alias(&package, &custom.parts.join("."), used).into());
+        }
+
+        Ok(Name::local(&custom.parts.join(".")).into())
+    }
+
+    fn constant(&self, ty: Self::Type) -> Result<Self::Output> {
+        return Ok(stmt![ty]);
+    }
+
+    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Output>) -> Result<Self::Output> {
+        let mut stmt = Statement::new();
+
+        for a in arguments {
+            stmt.push(a);
+        }
+
+        Ok(stmt!["new ", &ty, "(", stmt.join(", "), ")"])
+    }
+
+    fn number(&self, number: &f64) -> Result<Self::Output> {
+        Ok(stmt![number.to_string()])
+    }
+
+    fn boolean(&self, boolean: &bool) -> Result<Self::Output> {
+        Ok(stmt![boolean.to_string()])
+    }
+
+    fn string(&self, string: &str) -> Result<Self::Output> {
+        Ok(Variable::String(string.to_owned()).into())
+    }
+
+    fn array(&self, values: Vec<Self::Output>) -> Result<Self::Output> {
+        let mut arguments = Statement::new();
+
+        for v in values {
+            arguments.push(v);
+        }
+
+        Ok(stmt!["[", arguments.join(", "), "]"])
     }
 }

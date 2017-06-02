@@ -2,6 +2,7 @@ use backend::*;
 use backend::errors::*;
 use backend::for_context::ForContext;
 use backend::models as m;
+use backend::value_builder::*;
 use codeviz::python::*;
 use naming::{self, FromNaming};
 use options::Options;
@@ -333,20 +334,6 @@ impl Processor {
         }
     }
 
-    fn used_name(&self, pos: &m::Pos, package: &m::Package, custom: &m::Custom) -> Result<Name> {
-        if let Some(ref used) = custom.prefix {
-            let package = self.env
-                .lookup_used(package, used)
-                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
-
-            let package = self.package(package);
-            let package = package.parts.join(".");
-            return Ok(Name::imported_alias(&package, &custom.parts.join("."), used).into());
-        }
-
-        Ok(Name::local(&custom.parts.join(".")).into())
-    }
-
     fn encode<S>(&self, package: &m::Package, ty: &m::Type, value_stmt: S) -> Result<Statement>
         where S: Into<Statement>
     {
@@ -399,7 +386,7 @@ impl Processor {
             m::Type::Any => value_stmt,
             m::Type::Boolean => value_stmt,
             m::Type::Custom(ref custom) => {
-                let name = self.used_name(pos, package, custom)?;
+                let name = self.convert_type(pos, package, custom)?;
                 stmt![name, ".decode(", value_stmt, ")"]
             }
             m::Type::Array(ref inner) => {
@@ -463,101 +450,6 @@ impl Processor {
         Ok(class)
     }
 
-    fn custom_value(&self, pos: &m::Pos, pkg: &m::Package, custom: &m::Custom) -> Result<Name> {
-        let pkg = if let Some(ref prefix) = custom.prefix {
-            self.env
-                .lookup_used(pkg, prefix)
-                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?
-        } else {
-            pkg
-        };
-
-        let name = custom.parts.join(".");
-
-        let package_name = self.package(pkg).parts.join(".");
-        Ok(Name::imported(&package_name, &name).into())
-    }
-
-    fn value(&self,
-             pkg: &m::Package,
-             value: &m::Token<m::Value>,
-             ty: &m::Type,
-             variables: &m::Variables)
-             -> Result<Statement> {
-        match (&**value, ty) {
-            (&m::Value::String(ref string), &m::Type::String) => {
-                return Ok(Variable::String(string.to_owned()).into())
-            }
-            (&m::Value::Boolean(ref boolean), &m::Type::Boolean) => {
-                return Ok(stmt![boolean.to_string()])
-            }
-            (&m::Value::Number(ref number), &m::Type::Signed(_)) => {
-                return Ok(stmt![number.to_string()]);
-            }
-            (&m::Value::Number(ref number), &m::Type::Unsigned(_)) => {
-                return Ok(stmt![number.to_string()]);
-            }
-            (&m::Value::Number(ref number), &m::Type::Float) => {
-                return Ok(stmt![number.to_string()]);
-            }
-            (&m::Value::Number(ref number), &m::Type::Double) => {
-                return Ok(stmt![number.to_string()]);
-            }
-            (&m::Value::Array(ref values), &m::Type::Array(ref inner)) => {
-                let mut arguments = Statement::new();
-
-                for v in values {
-                    arguments.push(self.value(pkg, v, inner, variables)?);
-                }
-
-                return Ok(stmt!["[", arguments.join(", "), "]"]);
-            }
-            (&m::Value::Constant(ref constant), &m::Type::Custom(ref target)) => {
-                let reg_constant = self.env.constant(&value.pos, pkg, constant, target)?;
-
-                match *reg_constant {
-                    m::Registered::EnumConstant { parent: _, value: _ } => {
-                        let ty = self.custom_value(&value.pos, pkg, target)?;
-                        return Ok(stmt![ty]);
-                    }
-                    _ => {}
-                }
-            }
-            (&m::Value::Instance(ref instance), &m::Type::Custom(ref target)) => {
-                let (registered, known) = self.env
-                    .instance(&value.pos, pkg, instance, target)?;
-
-                let mut arguments = Statement::new();
-
-                for f in registered.fields()? {
-                    if let Some(ref init) = known.get(&f.name) {
-                        arguments.push(self.value(pkg, &init.value, &f.ty, variables)?);
-                    } else {
-                        arguments.push(stmt!["None"]);
-                    }
-                }
-
-                let ty = self.custom_value(&value.pos, pkg, &instance.ty)?;
-                let n = stmt![&ty, "(", arguments.join(", "), ")"];
-                return Ok(n);
-            }
-            // identifier with any type.
-            (&m::Value::Identifier(ref identifier), _) => {
-                if let Some(variable_type) = variables.get(identifier) {
-                    if self.env.is_assignable_from(ty, variable_type)? {
-                    }
-
-                    return Ok(stmt![identifier]);
-                } else {
-                    return Err(Error::pos("missing variable".into(), value.pos.clone()));
-                }
-            }
-            _ => {}
-        }
-
-        Err(Error::pos(format!("expected `{}`", ty), value.pos.clone()))
-    }
-
     fn process_enum(&self, package: &m::Package, body: &m::EnumBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<m::Token<Field>> = Vec::new();
@@ -586,7 +478,14 @@ impl Processor {
                 let mut value_arguments = Statement::new();
 
                 for (value, field) in value.arguments.iter().zip(fields.iter()) {
-                    value_arguments.push(self.value(package, &value, &field.ty, &variables)?);
+                    let env = ValueBuilderEnv {
+                        value: &value,
+                        package: package,
+                        ty: &field.ty,
+                        variables: &variables,
+                    };
+
+                    value_arguments.push(self.value(&env)?);
                 }
 
                 stmt!["(", value_arguments.join(", "), ")"]
@@ -916,5 +815,73 @@ impl Backend for Processor {
 
     fn verify(&self) -> Result<Vec<Error>> {
         Ok(vec![])
+    }
+}
+
+/// Build values in python.
+impl ValueBuilder for Processor {
+    type Output = Statement;
+    type Type = Name;
+
+    fn env(&self) -> &Environment {
+        &self.env
+    }
+
+    fn identifier(&self, identifier: &str) -> Result<Self::Output> {
+        Ok(stmt![identifier])
+    }
+
+    fn optional_empty(&self) -> Result<Self::Output> {
+        Ok(stmt!["None"])
+    }
+
+    fn convert_type(&self, pos: &m::Pos, package: &m::Package, custom: &m::Custom) -> Result<Name> {
+        if let Some(ref used) = custom.prefix {
+            let package = self.env
+                .lookup_used(package, used)
+                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+
+            let package = self.package(package);
+            let package = package.parts.join(".");
+            return Ok(Name::imported_alias(&package, &custom.parts.join("."), used).into());
+        }
+
+        Ok(Name::local(&custom.parts.join(".")).into())
+    }
+
+    fn constant(&self, ty: Self::Type) -> Result<Self::Output> {
+        return Ok(stmt![ty]);
+    }
+
+    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Output>) -> Result<Self::Output> {
+        let mut stmt = Statement::new();
+
+        for a in arguments {
+            stmt.push(a);
+        }
+
+        Ok(stmt![&ty, "(", stmt.join(", "), ")"])
+    }
+
+    fn number(&self, number: &f64) -> Result<Self::Output> {
+        Ok(stmt![number.to_string()])
+    }
+
+    fn boolean(&self, boolean: &bool) -> Result<Self::Output> {
+        Ok(stmt![boolean.to_string()])
+    }
+
+    fn string(&self, string: &str) -> Result<Self::Output> {
+        Ok(Variable::String(string.to_owned()).into())
+    }
+
+    fn array(&self, values: Vec<Self::Output>) -> Result<Self::Output> {
+        let mut arguments = Statement::new();
+
+        for v in values {
+            arguments.push(v);
+        }
+
+        Ok(stmt!["[", arguments.join(", "), "]"])
     }
 }

@@ -1,7 +1,6 @@
 mod into_model;
 mod merge;
 mod options;
-
 pub mod environment;
 pub mod errors;
 pub mod for_context;
@@ -9,8 +8,9 @@ pub mod java;
 pub mod js;
 pub mod models;
 pub mod python;
+pub mod value_builder;
 
-pub use self::environment::Environment;
+pub use self::environment::{Environment, InitFields};
 use options::Options;
 use self::errors::*;
 

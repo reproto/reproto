@@ -10,6 +10,7 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use super::models as m;
+use super::value_builder::*;
 
 const JAVA_CONTEXT: &str = "java";
 
@@ -457,92 +458,6 @@ impl Processor {
         constructor
     }
 
-    fn value(&self,
-             pkg: &m::Package,
-             value: &m::Token<m::Value>,
-             ty: &m::Type,
-             variables: &m::Variables)
-             -> Result<Statement> {
-        match (&**value, ty) {
-            (&m::Value::String(ref string), &m::Type::String) => {
-                return Ok(Variable::String(string.to_owned()).into())
-            }
-            (&m::Value::Boolean(ref boolean), &m::Type::Boolean) => {
-                return Ok(stmt![boolean.to_string()])
-            }
-            (&m::Value::Number(ref number), inner) => {
-                match *inner {
-                    m::Type::Signed(ref size) |
-                    m::Type::Unsigned(ref size) => {
-                        // default to integer if unspecified.
-                        // TODO: should we care about signedness?
-                        // TODO: > 64 bits, use BitInteger?
-                        if size.map(|s| s <= 32usize).unwrap_or(true) {
-                            return Ok(stmt![format!("{}", number)]);
-                        } else {
-                            return Ok(stmt![format!("{}L", number)]);
-                        }
-                    }
-                    m::Type::Float => return Ok(stmt![format!("{}F", number)]),
-                    m::Type::Double => return Ok(stmt![format!("{}D", number)]),
-                    _ => {}
-                }
-            }
-            (&m::Value::Array(ref values), &m::Type::Array(ref inner)) => {
-                let mut arguments = Statement::new();
-
-                for v in values {
-                    arguments.push(self.value(pkg, v, inner, variables)?);
-                }
-
-                return Ok(stmt![&self.immutable_list, ".of(", arguments.join(", "), ")"]);
-            }
-            (&m::Value::Constant(ref constant), &m::Type::Custom(ref target)) => {
-                let reg_constant = self.env.constant(&value.pos, pkg, constant, target)?;
-
-                match *reg_constant {
-                    m::Registered::EnumConstant { parent: _, value: _ } => {
-                        let ty = self.convert_custom(&value.pos, pkg, target)?;
-                        return Ok(stmt![ty]);
-                    }
-                    _ => {}
-                }
-            }
-            (&m::Value::Instance(ref instance), &m::Type::Custom(ref target)) => {
-                let (registered, known) = self.env
-                    .instance(&value.pos, pkg, instance, target)?;
-
-                let mut arguments = Statement::new();
-
-                for f in registered.fields()? {
-                    if let Some(ref init) = known.get(&f.name) {
-                        arguments.push(self.value(pkg, &init.value, &f.ty, variables)?);
-                    } else {
-                        arguments.push(stmt![&self.optional, ".empty()"]);
-                    }
-                }
-
-                let ty = self.convert_custom(&value.pos, pkg, &instance.ty)?;
-                let n = stmt!["new ", &ty, "(", arguments.join(", "), ")"];
-                return Ok(n);
-            }
-            // identifier with any type.
-            (&m::Value::Identifier(ref identifier), _) => {
-                if let Some(variable_type) = variables.get(identifier) {
-                    if self.env.is_assignable_from(ty, variable_type)? {
-                    }
-
-                    return Ok(stmt![identifier]);
-                } else {
-                    return Err(Error::pos("missing variable".into(), value.pos.clone()));
-                }
-            }
-            _ => {}
-        }
-
-        Err(Error::pos(format!("expected `{}`", ty), value.pos.clone()))
-    }
-
     fn find_field(&self, fields: &Vec<m::JavaField>, name: &str) -> Option<m::JavaField> {
         for field in fields {
             if field.name == name {
@@ -636,7 +551,14 @@ impl Processor {
                 let mut value_arguments = Statement::new();
 
                 for (value, field) in enum_literal.arguments.iter().zip(fields.iter()) {
-                    value_arguments.push(self.value(pkg, value, &field.ty, &variables)?);
+                    let env = ValueBuilderEnv {
+                        value: &value,
+                        package: pkg,
+                        ty: &field.ty,
+                        variables: &variables,
+                    };
+
+                    value_arguments.push(self.value(&env)?);
                 }
 
                 enum_stmt.push(stmt!["(", value_arguments.join(", "), ")"]);
@@ -952,5 +874,102 @@ impl Backend for Processor {
             })?;
 
         Ok(errors)
+    }
+}
+
+/// Build values in python.
+impl ValueBuilder for Processor {
+    type Output = Statement;
+    type Type = Type;
+
+    fn env(&self) -> &Environment {
+        &self.env
+    }
+
+    fn identifier(&self, identifier: &str) -> Result<Self::Output> {
+        Ok(stmt![identifier])
+    }
+
+    fn optional_empty(&self) -> Result<Self::Output> {
+        Ok(stmt!["None"])
+    }
+
+    fn convert_type(&self, pos: &m::Pos, pkg: &m::Package, custom: &m::Custom) -> Result<Type> {
+        let pkg = if let Some(ref prefix) = custom.prefix {
+            self.env
+                .lookup_used(pkg, prefix)
+                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?
+        } else {
+            pkg
+        };
+
+        let name = custom.parts.join(".");
+
+        let package_name = self.java_package_name(pkg);
+        Ok(Type::class(&package_name, &name).into())
+    }
+
+    fn constant(&self, ty: Self::Type) -> Result<Self::Output> {
+        return Ok(stmt![ty]);
+    }
+
+    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Output>) -> Result<Self::Output> {
+        let mut stmt = Statement::new();
+
+        for a in arguments {
+            stmt.push(a);
+        }
+
+        Ok(stmt!["new ", &ty, "(", stmt.join(", "), ")"])
+    }
+
+    fn number(&self, number: &f64) -> Result<Self::Output> {
+        Ok(stmt![number.to_string()])
+    }
+
+    fn signed(&self, number: &f64, size: &Option<usize>) -> Result<Self::Output> {
+        let ty: Variable = if size.map(|s| s <= 32usize).unwrap_or(true) {
+            format!("{}", number.to_string()).into()
+        } else {
+            format!("{}L", number.to_string()).into()
+        };
+
+        Ok(ty.into())
+    }
+
+    fn unsigned(&self, number: &f64, size: &Option<usize>) -> Result<Self::Output> {
+        let ty: Variable = if size.map(|s| s <= 32usize).unwrap_or(true) {
+            format!("{}", number.to_string()).into()
+        } else {
+            format!("{}L", number.to_string()).into()
+        };
+
+        Ok(ty.into())
+    }
+
+    fn float(&self, number: &f64) -> Result<Self::Output> {
+        Ok(stmt![format!("{}F", number.to_string())])
+    }
+
+    fn double(&self, number: &f64) -> Result<Self::Output> {
+        Ok(stmt![format!("{}D", number.to_string())])
+    }
+
+    fn boolean(&self, boolean: &bool) -> Result<Self::Output> {
+        Ok(stmt![boolean.to_string()])
+    }
+
+    fn string(&self, string: &str) -> Result<Self::Output> {
+        Ok(Variable::String(string.to_owned()).into())
+    }
+
+    fn array(&self, values: Vec<Self::Output>) -> Result<Self::Output> {
+        let mut arguments = Statement::new();
+
+        for v in values {
+            arguments.push(v);
+        }
+
+        Ok(stmt![&self.immutable_list, ".of(", arguments.join(", "), ")"])
     }
 }
