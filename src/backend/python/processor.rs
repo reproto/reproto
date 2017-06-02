@@ -270,18 +270,45 @@ impl Processor {
     }
 
     fn decode_method<F>(&self,
-                        package: &m::Package,
+                        type_id: &m::TypeId,
+                        match_decl: &m::MatchDecl,
                         fields: &Vec<m::Token<Field>>,
                         class: &ClassSpec,
                         variable_fn: F)
                         -> Result<MethodSpec>
         where F: Fn(usize, &Field) -> Variable
     {
+        let data = stmt!["data"];
+
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
-        decode.push_argument(stmt!["data"]);
+        decode.push_argument(&data);
 
         let mut decode_body = Elements::new();
+
+        let variables = m::Variables::new();
+
+        for &(ref value, ref result) in &match_decl.by_value {
+            let value = self.value(&ValueBuilderEnv {
+                    value: value,
+                    package: &type_id.package,
+                    ty: None,
+                    variables: &variables,
+                })?;
+
+            let result = self.value(&ValueBuilderEnv {
+                    value: result,
+                    package: &type_id.package,
+                    ty: Some(&m::Type::Custom(type_id.custom.clone())),
+                    variables: &variables,
+                })?;
+
+            let mut value_body = Elements::new();
+            value_body.push(stmt!["if ", &data, " == ", &value, ":"]);
+            value_body.push_nested(stmt!["return ", &result]);
+
+            decode_body.push(value_body);
+        }
 
         let mut arguments = Statement::new();
 
@@ -291,12 +318,12 @@ impl Processor {
 
             let stmt = match field.modifier {
                 m::Modifier::Optional => {
-                    let var_stmt = self.decode(&field.pos, package, &field.ty, &var_name)?;
+                    let var_stmt = self.decode(&field.pos, &type_id.package, &field.ty, &var_name)?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
                 _ => {
                     let var_stmt = stmt!["data[", &var, "]"];
-                    let var_stmt = self.decode(&field.pos, package, &field.ty, var_stmt)?;
+                    let var_stmt = self.decode(&field.pos, &type_id.package, &field.ty, var_stmt)?;
                     stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
@@ -386,14 +413,14 @@ impl Processor {
             m::Type::Any => value_stmt,
             m::Type::Boolean => value_stmt,
             m::Type::Custom(ref custom) => {
-                let name = self.convert_type(pos, package, custom)?;
+                let name = self.convert_type(pos, &package.into_type_id(custom))?;
                 stmt![name, ".decode(", value_stmt, ")"]
             }
             m::Type::Array(ref inner) => {
                 let inner = self.decode(pos, package, inner, stmt!["v"])?;
                 stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
             }
-            _ => value_stmt,
+            _ => return Err(Error::pos("not supported".into(), pos.clone())),
         };
 
         Ok(value_stmt)
@@ -422,7 +449,11 @@ impl Processor {
         constructor
     }
 
-    fn process_tuple(&self, package: &m::Package, body: &m::TupleBody) -> Result<ClassSpec> {
+    fn process_tuple(&self,
+                     type_id: &m::TypeId,
+                     _pos: &m::Pos,
+                     body: &m::TupleBody)
+                     -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<m::Token<Field>> = Vec::new();
 
@@ -446,11 +477,11 @@ impl Processor {
             class.push(code.inner.lines);
         }
 
-        self.tuple_added(package, &fields, &mut class)?;
+        self.tuple_added(&type_id, &body.match_decl, &fields, &mut class)?;
         Ok(class)
     }
 
-    fn process_enum(&self, package: &m::Package, body: &m::EnumBody) -> Result<ClassSpec> {
+    fn process_enum(&self, type_id: &m::TypeId, body: &m::EnumBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<m::Token<Field>> = Vec::new();
 
@@ -480,8 +511,8 @@ impl Processor {
                 for (value, field) in value.arguments.iter().zip(fields.iter()) {
                     let env = ValueBuilderEnv {
                         value: &value,
-                        package: package,
-                        ty: &field.ty,
+                        package: &type_id.package,
+                        ty: Some(&field.ty),
                         variables: &variables,
                     };
 
@@ -531,7 +562,7 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, package: &m::Package, body: &m::TypeBody) -> Result<ClassSpec> {
+    fn process_type(&self, type_id: &m::TypeId, body: &m::TypeBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields = Vec::new();
 
@@ -551,14 +582,15 @@ impl Processor {
             }
         }
 
-        let decode = self.decode_method(package,
+        let decode = self.decode_method(type_id,
+                           &body.match_decl,
                            &fields,
                            &class,
                            |_, field| Variable::String(field.ident.to_owned()))?;
 
         class.push(decode);
 
-        let encode = self.encode_method(package, &fields, &self.dict, |_| {})?;
+        let encode = self.encode_method(&type_id.package, &fields, &self.dict, |_| {})?;
 
         class.push(encode);
 
@@ -570,7 +602,7 @@ impl Processor {
     }
 
     fn process_interface(&self,
-                         package: &m::Package,
+                         type_id: &m::TypeId,
                          body: &m::InterfaceBody)
                          -> Result<Vec<ClassSpec>> {
         let mut classes = Vec::new();
@@ -621,7 +653,8 @@ impl Processor {
                 }
             }
 
-            let decode = self.decode_method(package,
+            let decode = self.decode_method(type_id,
+                               &body.match_decl,
                                &fields,
                                &class,
                                |_, field| Variable::String(field.ident.to_owned()))?;
@@ -631,7 +664,7 @@ impl Processor {
             let type_stmt =
                 stmt!["data[", &self.type_var, "] = ", Variable::String(sub_type.name())];
 
-            let encode = self.encode_method(package, &fields, &self.dict, move |elements| {
+            let encode = self.encode_method(&type_id.package, &fields, &self.dict, move |elements| {
                     elements.push(type_stmt);
                 })?;
 
@@ -651,15 +684,15 @@ impl Processor {
         let mut files = HashMap::new();
 
         // Process all types discovered so far.
-        for (&(ref package, _), decl) in &self.env.decls {
+        for (type_id, decl) in &self.env.decls {
             let class_specs: Vec<ClassSpec> = match decl.inner {
-                m::Decl::Interface(ref body) => self.process_interface(package, body)?,
-                m::Decl::Type(ref body) => vec![self.process_type(package, body)?],
-                m::Decl::Tuple(ref body) => vec![self.process_tuple(package, body)?],
-                m::Decl::Enum(ref body) => vec![self.process_enum(package, body)?],
+                m::Decl::Interface(ref body) => self.process_interface(type_id, body)?,
+                m::Decl::Type(ref body) => vec![self.process_type(type_id, body)?],
+                m::Decl::Tuple(ref body) => vec![self.process_tuple(type_id, &decl.pos, body)?],
+                m::Decl::Enum(ref body) => vec![self.process_enum(type_id, body)?],
             };
 
-            match files.entry(package) {
+            match files.entry(&type_id.package) {
                 Entry::Vacant(entry) => {
                     let mut file_spec = FileSpec::new();
 
@@ -733,17 +766,19 @@ impl Processor {
     }
 
     fn tuple_added(&self,
-                   package: &m::Package,
+                   type_id: &m::TypeId,
+                   match_decl: &m::MatchDecl,
                    fields: &Vec<m::Token<Field>>,
                    class: &mut ClassSpec)
                    -> Result<()> {
 
-        let decode = self.decode_method(package,
+        let decode = self.decode_method(type_id,
+                           match_decl,
                            fields,
                            class,
                            |i, _| Variable::Literal(i.to_string()))?;
 
-        let encode = self.encode_tuple_method(package, fields)?;
+        let encode = self.encode_tuple_method(&type_id.package, fields)?;
 
         class.push(decode);
         class.push(encode);
@@ -835,7 +870,10 @@ impl ValueBuilder for Processor {
         Ok(stmt!["None"])
     }
 
-    fn convert_type(&self, pos: &m::Pos, package: &m::Package, custom: &m::Custom) -> Result<Name> {
+    fn convert_type(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Name> {
+        let package = &type_id.package;
+        let custom = &type_id.custom;
+
         if let Some(ref used) = custom.prefix {
             let package = self.env
                 .lookup_used(package, used)

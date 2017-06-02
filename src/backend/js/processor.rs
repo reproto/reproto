@@ -129,7 +129,7 @@ impl Processor {
     }
 
     fn encode_method<E, B>(&self,
-                           package: &Package,
+                           type_id: &TypeId,
                            fields: &Vec<Token<JsField>>,
                            builder: B,
                            extra: E)
@@ -150,7 +150,7 @@ impl Processor {
         for field in fields {
             let var_string = string(field.ident.to_owned());
             let field_stmt = stmt!["this.", &field.ident];
-            let value_stmt = self.encode(package, &field.ty, &field_stmt)?;
+            let value_stmt = self.encode(type_id, &field.ty, &field_stmt)?;
 
             match field.modifier {
                 Modifier::Optional => {
@@ -177,7 +177,7 @@ impl Processor {
     }
 
     fn encode_tuple_method(&self,
-                           package: &Package,
+                           type_id: &TypeId,
                            fields: &Vec<Token<JsField>>)
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
@@ -189,7 +189,7 @@ impl Processor {
         for field in fields {
             let stmt = stmt!["this.", &field.ident];
             encode_body.push(self.throw_if_null(&stmt, field));
-            values.push(self.encode(package, &field.ty, stmt)?);
+            values.push(self.encode(type_id, &field.ty, stmt)?);
         }
 
         encode_body.push(js![@return [ values ]]);
@@ -238,7 +238,7 @@ impl Processor {
     }
 
     fn decode_method<F>(&self,
-                        package: &Package,
+                        type_id: &TypeId,
                         fields: &Vec<Token<JsField>>,
                         class: &ClassSpec,
                         variable_fn: F)
@@ -259,7 +259,7 @@ impl Processor {
 
             let stmt: ElementSpec = match field.modifier {
                 Modifier::Optional => {
-                    let var_stmt = self.decode(&field.pos, package, &field.ty, &var_name)?;
+                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_name)?;
 
                     let mut check = Elements::new();
 
@@ -273,7 +273,7 @@ impl Processor {
                 }
                 _ => {
                     let var_stmt = stmt![&data, "[", &var, "]"];
-                    let var_stmt = self.decode(&field.pos, package, &field.ty, var_stmt)?;
+                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, var_stmt)?;
                     stmt!["const ", &var_name, " = ", &var_stmt, ";"].into()
                 }
             };
@@ -316,7 +316,7 @@ impl Processor {
         }
     }
 
-    fn encode<S>(&self, package: &Package, ty: &Type, value_stmt: S) -> Result<Statement>
+    fn encode<S>(&self, type_id: &TypeId, ty: &Type, value_stmt: S) -> Result<Statement>
         where S: Into<Statement>
     {
         let value_stmt = value_stmt.into();
@@ -336,7 +336,7 @@ impl Processor {
             Type::Custom(ref _custom) => stmt![value_stmt, ".encode()"],
             Type::Array(ref inner) => {
                 let v = stmt!["v"];
-                let inner = self.encode(package, inner, &v)?;
+                let inner = self.encode(type_id, inner, &v)?;
                 stmt![value_stmt, ".map(function(", &v, ") { return ", inner, "; })"]
             }
             _ => value_stmt,
@@ -345,7 +345,7 @@ impl Processor {
         Ok(value_stmt)
     }
 
-    fn decode<S>(&self, pos: &Pos, package: &Package, ty: &Type, value_stmt: S) -> Result<Statement>
+    fn decode<S>(&self, type_id: &TypeId, pos: &Pos, ty: &Type, value_stmt: S) -> Result<Statement>
         where S: Into<Statement>
     {
         let value_stmt = value_stmt.into();
@@ -363,14 +363,14 @@ impl Processor {
             Type::Any => value_stmt,
             Type::Boolean => value_stmt,
             Type::Custom(ref custom) => {
-                let name = self.convert_type(pos, package, custom)?;
+                let name = self.convert_type(pos, &type_id.with_custom(custom.clone()))?;
                 stmt![name, ".decode(", value_stmt, ")"]
             }
             Type::Array(ref inner) => {
-                let inner = self.decode(pos, package, inner, stmt!["v"])?;
+                let inner = self.decode(type_id, pos, inner, stmt!["v"])?;
                 stmt![value_stmt, ".map(function(v) { ", inner, "; })"]
             }
-            _ => value_stmt,
+            _ => return Err(Error::pos("not supported".into(), pos.clone())),
         };
 
         Ok(value_stmt)
@@ -419,7 +419,7 @@ impl Processor {
         ctor
     }
 
-    fn process_tuple(&self, package: &Package, body: &TupleBody) -> Result<ElementSpec> {
+    fn process_tuple(&self, type_id: &TypeId, body: &TupleBody) -> Result<ElementSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<Token<JsField>> = Vec::new();
 
@@ -446,10 +446,10 @@ impl Processor {
             }
         }
 
-        let decode = self.decode_method(package, &fields, &class, field_index)?;
+        let decode = self.decode_method(type_id, &fields, &class, field_index)?;
         class.push(decode);
 
-        let encode = self.encode_tuple_method(package, &fields)?;
+        let encode = self.encode_tuple_method(type_id, &fields)?;
         class.push(encode);
 
         for code in body.codes.for_context(JS_CONTEXT) {
@@ -494,7 +494,7 @@ impl Processor {
         Ok(elements.into())
     }
 
-    fn process_enum(&self, package: &Package, body: &EnumBody) -> Result<ElementSpec> {
+    fn process_enum(&self, type_id: &TypeId, body: &EnumBody) -> Result<ElementSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<Token<JsField>> = Vec::new();
 
@@ -536,8 +536,8 @@ impl Processor {
             for (value, field) in value.arguments.iter().zip(fields.iter()) {
                 let env = ValueBuilderEnv {
                     value: &value,
-                    package: package,
-                    ty: &field.ty,
+                    package: &type_id.package,
+                    ty: Some(&field.ty),
                     variables: &variables,
                 };
 
@@ -584,7 +584,7 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, package: &Package, body: &TypeBody) -> Result<ElementSpec> {
+    fn process_type(&self, type_id: &TypeId, body: &TypeBody) -> Result<ElementSpec> {
         let fields = self.convert_fields(&body.fields);
 
         let mut class = ClassSpec::new(&body.name);
@@ -599,10 +599,10 @@ impl Processor {
             }
         }
 
-        let decode = self.decode_method(package, &fields, &class, field_ident)?;
+        let decode = self.decode_method(type_id, &fields, &class, field_ident)?;
         class.push(decode);
 
-        let encode = self.encode_method(package, &fields, "{}", |_| {})?;
+        let encode = self.encode_method(type_id, &fields, "{}", |_| {})?;
         class.push(encode);
 
         for code in body.codes.for_context(JS_CONTEXT) {
@@ -612,7 +612,7 @@ impl Processor {
         Ok(class.into())
     }
 
-    fn process_interface(&self, package: &Package, body: &InterfaceBody) -> Result<ElementSpec> {
+    fn process_interface(&self, type_id: &TypeId, body: &InterfaceBody) -> Result<ElementSpec> {
         let mut classes = Elements::new();
 
         let mut interface_spec = ClassSpec::new(&body.name);
@@ -643,13 +643,13 @@ impl Processor {
                 }
             }
 
-            let decode = self.decode_method(package, &fields, &class, field_ident)?;
+            let decode = self.decode_method(type_id, &fields, &class, field_ident)?;
 
             class.push(decode);
 
             let type_stmt = stmt!["data[", &self.type_var, "] = ", &class.name, ".TYPE;"];
 
-            let encode = self.encode_method(package, &fields, "{}", move |elements| {
+            let encode = self.encode_method(type_id, &fields, "{}", move |elements| {
                     elements.push(type_stmt);
                 })?;
 
@@ -670,15 +670,15 @@ impl Processor {
         let mut files = HashMap::new();
 
         // Process all types discovered so far.
-        for (&(ref package, _), decl) in &self.env.decls {
+        for (type_id, decl) in &self.env.decls {
             let spec = match decl.inner {
-                Decl::Interface(ref body) => self.process_interface(package, body)?,
-                Decl::Type(ref body) => self.process_type(package, body)?,
-                Decl::Tuple(ref body) => self.process_tuple(package, body)?,
-                Decl::Enum(ref body) => self.process_enum(package, body)?,
+                Decl::Interface(ref body) => self.process_interface(type_id, body)?,
+                Decl::Type(ref body) => self.process_type(type_id, body)?,
+                Decl::Tuple(ref body) => self.process_tuple(type_id, body)?,
+                Decl::Enum(ref body) => self.process_enum(type_id, body)?,
             };
 
-            match files.entry(package) {
+            match files.entry(&type_id.package) {
                 Entry::Vacant(entry) => {
                     let mut file_spec = FileSpec::new();
                     file_spec.push(spec);
@@ -790,10 +790,12 @@ impl ValueBuilder for Processor {
         Ok(stmt!["None"])
     }
 
-    fn convert_type(&self, pos: &Pos, package: &Package, custom: &Custom) -> Result<Name> {
+    fn convert_type(&self, pos: &Pos, type_id: &TypeId) -> Result<Name> {
+        let custom = &type_id.custom;
+
         if let Some(ref used) = custom.prefix {
             let package = self.env
-                .lookup_used(package, used)
+                .lookup_used(&type_id.package, used)
                 .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
             let package = self.package(package);

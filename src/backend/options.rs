@@ -1,3 +1,5 @@
+//! # Helper data structure do handle option lookups
+
 use super::errors::*;
 use super::models::*;
 

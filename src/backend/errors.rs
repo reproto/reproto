@@ -49,7 +49,7 @@ error_chain! {
             description("enum value conflict")
         }
 
-        RegisteredTypeConflict(type_id: m::NestedTypeId) {
+        RegisteredTypeConflict(type_id: m::TypeId) {
             description("registered type conflict")
             display("registered type conflict with: {:?}", type_id)
         }

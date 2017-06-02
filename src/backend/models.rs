@@ -8,8 +8,27 @@ use token;
 pub type Pos = (PathBuf, usize, usize);
 pub type Token<T> = token::Token<T, Pos>;
 
-pub type RootTypeId = (Package, String);
-pub type NestedTypeId = (Package, Vec<String>);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TypeId {
+    pub package: Package,
+    pub custom: Custom,
+}
+
+impl TypeId {
+    pub fn new(package: Package, custom: Custom) -> TypeId {
+        TypeId {
+            package: package,
+            custom: custom,
+        }
+    }
+
+    pub fn with_custom(&self, custom: Custom) -> TypeId {
+        TypeId {
+            package: self.package.clone(),
+            custom: custom,
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldInit {
@@ -58,10 +77,19 @@ pub struct OptionDecl {
     pub values: Vec<Token<Value>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Custom {
     pub prefix: Option<String>,
     pub parts: Vec<String>,
+}
+
+impl Custom {
+    pub fn with_parts(parts: Vec<String>) -> Custom {
+        Custom {
+            prefix: None,
+            parts: parts,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -129,6 +157,10 @@ impl Package {
         let mut parts = self.parts.clone();
         parts.extend(other.parts.clone());
         Package::new(parts)
+    }
+
+    pub fn into_type_id(&self, custom: &Custom) -> TypeId {
+        TypeId::new(self.clone(), custom.clone())
     }
 }
 
@@ -479,7 +511,7 @@ pub enum MatchCondition {
     /// Match a specific value.
     Value(Token<Value>),
     /// Match a type, and add a binding for the given name that can be resolved in the action.
-    Type(MatchVariable),
+    Type(Token<MatchVariable>),
 }
 
 #[derive(Debug, Clone)]
@@ -496,8 +528,8 @@ pub struct MatchVariable {
 
 #[derive(Debug, Clone)]
 pub struct MatchDecl {
-    pub by_value: Vec<(Token<Value>, Token<MatchMember>)>,
-    pub by_type: Vec<(MatchKind, Token<MatchMember>)>,
+    pub by_value: Vec<(Token<Value>, Token<Value>)>,
+    pub by_type: Vec<(MatchKind, Token<MatchVariable>)>,
 }
 
 impl MatchDecl {
@@ -506,6 +538,10 @@ impl MatchDecl {
             by_value: Vec::new(),
             by_type: Vec::new(),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.by_value.is_empty() && self.by_type.is_empty()
     }
 
     pub fn identify_match_kind(&self, variable: &MatchVariable) -> MatchKind {
@@ -534,12 +570,12 @@ impl MatchDecl {
 
                     if let Some(&(_, ref existing_value)) = result {
                         let err = ErrorKind::MatchConflict(member.condition.pos.clone(),
-                                                           existing_value.condition.pos.clone());
+                                                           existing_value.pos.clone());
                         return Err(err.into());
                     }
                 }
 
-                self.by_type.push((match_kind, member.clone()));
+                self.by_type.push((match_kind, variable.clone()));
             }
             MatchCondition::Value(ref value) => {
                 {
@@ -548,12 +584,12 @@ impl MatchDecl {
 
                     if let Some(&(_, ref existing_value)) = result {
                         let err = ErrorKind::MatchConflict(member.condition.pos.clone(),
-                                                           existing_value.condition.pos.clone());
+                                                           existing_value.pos.clone());
                         return Err(err.into());
                     }
                 }
 
-                self.by_value.push((value.clone(), member.clone()));
+                self.by_value.push((value.clone(), member.value.clone()));
             }
         }
 

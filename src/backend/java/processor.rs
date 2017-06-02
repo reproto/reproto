@@ -149,7 +149,7 @@ impl Processor {
     }
 
     /// Convert the given type to a java type.
-    fn convert_type(&self, pos: &m::Pos, pkg: &m::Package, ty: &m::Type) -> Result<Type> {
+    fn into_java_type(&self, pos: &m::Pos, pkg: &m::Package, ty: &m::Type) -> Result<Type> {
         let ty = match *ty {
             m::Type::String => self.string.clone().into(),
             m::Type::Signed(ref size) |
@@ -167,15 +167,15 @@ impl Processor {
             m::Type::Double => DOUBLE.into(),
             m::Type::Boolean => BOOLEAN.into(),
             m::Type::Array(ref ty) => {
-                let argument = self.convert_type(pos, pkg, ty)?;
+                let argument = self.into_java_type(pos, pkg, ty)?;
                 self.list.with_arguments(vec![argument]).into()
             }
             m::Type::Custom(ref custom) => {
                 return self.convert_custom(pos, pkg, custom);
             }
             m::Type::Map(ref key, ref value) => {
-                let key = self.convert_type(pos, pkg, key)?;
-                let value = self.convert_type(pos, pkg, value)?;
+                let key = self.into_java_type(pos, pkg, key)?;
+                let value = self.into_java_type(pos, pkg, value)?;
                 self.map.with_arguments(vec![key, value]).into()
             }
             m::Type::Any => self.object.clone().into(),
@@ -554,7 +554,7 @@ impl Processor {
                     let env = ValueBuilderEnv {
                         value: &value,
                         package: pkg,
-                        ty: &field.ty,
+                        ty: Some(&field.ty),
                         variables: &variables,
                     };
 
@@ -766,7 +766,7 @@ impl Processor {
     }
 
     fn convert_field(&self, pkg: &m::Package, field: &m::Token<m::Field>) -> Result<m::JavaField> {
-        let java_type = self.convert_type(&field.pos, pkg, &field.ty)?;
+        let java_type = self.into_java_type(&field.pos, pkg, &field.ty)?;
         let camel_name = self.snake_to_upper_camel.convert(&field.name);
         let ident = self.snake_to_lower_camel.convert(&field.name);
         let java_spec = self.build_field_spec(&java_type, field)?;
@@ -813,14 +813,14 @@ impl Processor {
         let root_dir = &self.options.parent.out_path;
 
         // Process all types discovered so far.
-        for (&(ref pkg, _), ref decl) in &self.env.decls {
-            let out_dir = self.java_package(pkg)
+        for (ref type_id, ref decl) in &self.env.decls {
+            let out_dir = self.java_package(&type_id.package)
                 .parts
                 .iter()
                 .fold(root_dir.clone(), |current, next| current.join(next));
 
             let full_path = out_dir.join(format!("{}.java", decl.name()));
-            consumer(full_path, pkg, decl)?;
+            consumer(full_path, &type_id.package, decl)?;
         }
 
         Ok(())
@@ -894,7 +894,10 @@ impl ValueBuilder for Processor {
         Ok(stmt!["None"])
     }
 
-    fn convert_type(&self, pos: &m::Pos, pkg: &m::Package, custom: &m::Custom) -> Result<Type> {
+    fn convert_type(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Type> {
+        let pkg = &type_id.package;
+        let custom = &type_id.custom;
+
         let pkg = if let Some(ref prefix) = custom.prefix {
             self.env
                 .lookup_used(pkg, prefix)

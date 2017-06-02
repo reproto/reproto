@@ -16,8 +16,8 @@ const EXT: &str = "reproto";
 pub struct Environment {
     paths: Vec<PathBuf>,
     visited: HashSet<Package>,
-    pub types: BTreeMap<NestedTypeId, Token<Registered>>,
-    pub decls: BTreeMap<RootTypeId, Rc<Token<Decl>>>,
+    pub types: BTreeMap<TypeId, Token<Registered>>,
+    pub decls: BTreeMap<TypeId, Rc<Token<Decl>>>,
     pub used: BTreeMap<(Package, String), Package>,
 }
 
@@ -35,20 +35,20 @@ impl Environment {
     fn into_registered_type(&self,
                             package: &Package,
                             decl: Rc<Token<Decl>>)
-                            -> Result<Vec<(NestedTypeId, Token<Registered>)>> {
+                            -> Result<Vec<(TypeId, Token<Registered>)>> {
         let mut out = Vec::new();
 
         match decl.inner {
             Decl::Type(ref ty) => {
-                let key = (package.clone(), vec![ty.name.clone()]);
+                let type_id = TypeId::new(package.clone(),
+                                          Custom::with_parts(vec![ty.name.clone()]));
                 let token = Token::new(Registered::Type(ty.clone()), decl.pos.clone());
-                out.push((key, token));
+                out.push((type_id, token));
             }
             Decl::Interface(ref interface) => {
                 let current = vec![interface.name.clone()];
-                let key = (package.clone(), current.clone());
+                let type_id = TypeId::new(package.clone(), Custom::with_parts(current.clone()));
                 let token = Token::new(Registered::Interface(interface.clone()), decl.pos.clone());
-                out.push((key, token));
 
                 for (name, sub_type) in &interface.sub_types {
                     let sub_type = Registered::SubType {
@@ -57,16 +57,17 @@ impl Environment {
                     };
                     let token = Token::new(sub_type, decl.pos.clone());
 
-                    let mut key = current.clone();
-                    key.push(name.to_owned());
-                    out.push(((package.clone(), key), token));
+                    let mut current = current.clone();
+                    current.push(name.to_owned());
+                    out.push((type_id.with_custom(Custom::with_parts(current)), token));
                 }
+
+                out.push((type_id, token));
             }
             Decl::Enum(ref en) => {
                 let current = vec![en.name.clone()];
-                let key = (package.clone(), current.clone());
+                let type_id = TypeId::new(package.clone(), Custom::with_parts(current.clone()));
                 let token = Token::new(Registered::Enum(en.clone()), decl.pos.clone());
-                out.push((key, token));
 
                 for value in &en.values {
                     let enum_constant = Registered::EnumConstant {
@@ -75,15 +76,18 @@ impl Environment {
                     };
                     let token = Token::new(enum_constant, decl.pos.clone());
 
-                    let mut key = current.clone();
-                    key.push((*value.name).to_owned());
-                    out.push(((package.clone(), key), token));
+                    let mut current = current.clone();
+                    current.push((*value.name).to_owned());
+                    out.push((type_id.with_custom(Custom::with_parts(current)), token));
                 }
+
+                out.push((type_id, token));
             }
             Decl::Tuple(ref tuple) => {
-                let key = (package.clone(), vec![tuple.name.clone()]);
+                let type_id = TypeId::new(package.clone(),
+                                          Custom::with_parts(vec![tuple.name.clone()]));
                 let token = Token::new(Registered::Tuple(tuple.clone()), decl.pos.clone());
-                out.push((key, token));
+                out.push((type_id, token));
             }
         }
 
@@ -229,7 +233,7 @@ impl Environment {
             package
         };
 
-        let key = (package.clone(), custom.parts.clone());
+        let key = TypeId::new(package.clone(), custom.clone());
 
         if let Some(ty) = self.types.get(&key) {
             return Ok(ty);
@@ -264,7 +268,8 @@ impl Environment {
             let pos = (path.to_owned(), decl.pos.0, decl.pos.1);
             let decl = decl.into_model(&pos)?;
 
-            let key: RootTypeId = (file.package.inner.clone(), decl.name().to_owned());
+            let custom = Custom::with_parts(vec![decl.name().to_owned()]);
+            let key: TypeId = TypeId::new(file.package.inner.clone(), custom);
 
             match decls.entry(key) {
                 Entry::Vacant(entry) => {

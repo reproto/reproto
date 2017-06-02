@@ -49,6 +49,10 @@ enum TimeUnit {
 }
 
 tuple Point {
+  match {
+    42 => Point(timestamp: 42, value: 41.2);
+  }
+
   timestamp: unsigned/64 as "TS";
   value: double;
 }

@@ -727,7 +727,7 @@ impl_rdp! {
 
             (
                 token: match_condition,
-                _: match_variable,
+                match_token: match_variable,
                 &name: identifier,
                 _: colon,
                 ty: _type_spec(),
@@ -740,6 +740,8 @@ impl_rdp! {
                     name: name,
                     ty: ty,
                 };
+
+                let variable = ast::Token::new(variable, (match_token.start, match_token.end));
 
                 let condition = ast::MatchCondition::Type(variable);
 
