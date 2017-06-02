@@ -129,10 +129,14 @@ pub trait ValueBuilder {
 
                 match *reg_constant {
                     m::Registered::EnumConstant { parent: _, value: _ } => {
-                        let ty = self.convert_type(&value.pos, &env.package.into_type_id(target))?;
+                        let ty =
+                            self.convert_type(&value.pos, &env.package.into_type_id(constant))?;
                         return self.constant(ty);
                     }
-                    _ => return Err(Error::pos("not a valid constant".into(), value.pos.clone())),
+                    _ => {
+                        return Err(Error::pos("not a valid enum constant".into(),
+                                              value.pos.clone()))
+                    }
                 }
             }
             (&m::Value::Instance(ref instance), Some(&m::Type::Custom(ref target))) => {
@@ -150,7 +154,7 @@ pub trait ValueBuilder {
                     }
                 }
 
-                let ty = self.convert_type(&value.pos, &env.package.into_type_id(target))?;
+                let ty = self.convert_type(&value.pos, &env.package.into_type_id(&instance.ty))?;
                 return self.instance(ty, arguments);
             }
             // identifier with any type.

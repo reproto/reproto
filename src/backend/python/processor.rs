@@ -279,24 +279,18 @@ impl Processor {
         check.into()
     }
 
-    fn decode_method<F>(&self,
-                        type_id: &m::TypeId,
-                        match_decl: &m::MatchDecl,
-                        fields: &Vec<m::Token<Field>>,
-                        class: &ClassSpec,
-                        variable_fn: F)
-                        -> Result<MethodSpec>
-        where F: Fn(usize, &Field) -> Variable
-    {
-        let data = stmt!["data"];
-
-        let mut decode = MethodSpec::new("decode");
-        decode.push_decorator(&self.staticmethod);
-        decode.push_argument(&data);
-
-        let mut decode_body = Elements::new();
+    fn decode_by_value(&self,
+                       type_id: &m::TypeId,
+                       match_decl: &m::MatchDecl,
+                       data: &Statement)
+                       -> Result<Option<Elements>> {
+        if match_decl.by_value.is_empty() {
+            return Ok(None);
+        }
 
         let variables = m::Variables::new();
+
+        let mut elements = Elements::new();
 
         for &(ref value, ref result) in &match_decl.by_value {
             let value = self.value(&ValueBuilderEnv {
@@ -317,8 +311,22 @@ impl Processor {
             value_body.push(stmt!["if ", &data, " == ", &value, ":"]);
             value_body.push_nested(stmt!["return ", &result]);
 
-            decode_body.push(value_body);
+            elements.push(value_body);
         }
+
+        Ok(Some(elements.join(ElementSpec::Spacing)))
+    }
+
+    fn decode_by_type(&self,
+                      type_id: &m::TypeId,
+                      match_decl: &m::MatchDecl,
+                      data: &Statement)
+                      -> Result<Option<Elements>> {
+        if match_decl.by_type.is_empty() {
+            return Ok(None);
+        }
+
+        let mut elements = Elements::new();
 
         for &(ref kind, ref result) in &match_decl.by_type {
             let variable = result.0.name.clone();
@@ -356,7 +364,35 @@ impl Processor {
             value_body.push_nested(stmt![&variable, " = ", decode_stmt]);
             value_body.push_nested(stmt!["return ", &result]);
 
-            decode_body.push(value_body);
+            elements.push(value_body);
+        }
+
+        Ok(Some(elements.join(ElementSpec::Spacing)))
+    }
+
+    fn decode_method<F>(&self,
+                        type_id: &m::TypeId,
+                        match_decl: &m::MatchDecl,
+                        fields: &Vec<m::Token<Field>>,
+                        class: &ClassSpec,
+                        variable_fn: F)
+                        -> Result<MethodSpec>
+        where F: Fn(usize, &Field) -> Variable
+    {
+        let data = stmt!["data"];
+
+        let mut decode = MethodSpec::new("decode");
+        decode.push_decorator(&self.staticmethod);
+        decode.push_argument(&data);
+
+        let mut decode_body = Elements::new();
+
+        if let Some(by_value) = self.decode_by_value(type_id, match_decl, &data)? {
+            decode_body.push(by_value);
+        }
+
+        if let Some(by_type) = self.decode_by_type(type_id, match_decl, &data)? {
+            decode_body.push(by_type);
         }
 
         let mut arguments = Statement::new();
@@ -658,7 +694,7 @@ impl Processor {
 
         let mut interface_spec = ClassSpec::new(&body.name);
 
-        interface_spec.push(self.interface_decode_method(body)?);
+        interface_spec.push(self.interface_decode_method(type_id, body)?);
 
         let mut interface_fields = Vec::new();
 
@@ -851,18 +887,31 @@ impl Processor {
         Ok(())
     }
 
-    fn interface_decode_method(&self, interface: &m::InterfaceBody) -> Result<MethodSpec> {
+    fn interface_decode_method(&self,
+                               type_id: &m::TypeId,
+                               body: &m::InterfaceBody)
+                               -> Result<MethodSpec> {
+        let data = stmt!["data"];
+
         let mut decode = MethodSpec::new("decode");
         decode.push_decorator(&self.staticmethod);
-        decode.push_argument(stmt!["data"]);
+        decode.push_argument(&data);
 
         let mut decode_body = Elements::new();
+
+        if let Some(by_value) = self.decode_by_value(type_id, &body.match_decl, &data)? {
+            decode_body.push(by_value);
+        }
+
+        if let Some(by_type) = self.decode_by_type(type_id, &body.match_decl, &data)? {
+            decode_body.push(by_type);
+        }
 
         let type_field = Variable::Literal("f_type".to_owned());
 
         decode_body.push(stmt![&type_field, " = data[", &self.type_var, "]"]);
 
-        for (_, ref sub_type) in &interface.sub_types {
+        for (_, ref sub_type) in &body.sub_types {
             for name in &sub_type.names {
                 let type_name: Variable = Name::local(&sub_type.name).into();
 

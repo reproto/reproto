@@ -65,6 +65,10 @@ tuple Event {
 }
 
 interface Samples {
+  match {
+    name: string => Samples.Points(name: name, data: []);
+  }
+
   name: string;
 
   Points {
