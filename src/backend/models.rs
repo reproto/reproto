@@ -35,6 +35,23 @@ pub enum Value {
     Array(Vec<Token<Value>>),
 }
 
+impl ::std::fmt::Display for Value {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        let out = match *self {
+            Value::String(_) => "<string>",
+            Value::Number(_) => "<number>",
+            Value::Boolean(_) => "<boolean>",
+            Value::Identifier(_) => "<identifier>",
+            Value::Type(_) => "<type>",
+            Value::Instance(_) => "<instance>",
+            Value::Constant(_) => "<constant>",
+            Value::Array(_) => "<array>",
+        };
+
+        write!(f, "{}", out)
+    }
+}
+
 #[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,

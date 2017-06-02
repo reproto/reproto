@@ -463,34 +463,102 @@ impl Processor {
         Ok(class)
     }
 
-    fn literal_value(&self, pos: &m::Pos, value: &m::Value, ty: &m::Type) -> Result<Variable> {
-        match *ty {
-            m::Type::Double |
-            m::Type::Float |
-            m::Type::Signed(_) |
-            m::Type::Unsigned(_) |
-            m::Type::Boolean => {
-                if let m::Value::Boolean(ref boolean) = *value {
-                    return Ok(Variable::Literal(boolean.to_string()));
+    fn custom_value(&self, pos: &m::Pos, pkg: &m::Package, custom: &m::Custom) -> Result<Name> {
+        let pkg = if let Some(ref prefix) = custom.prefix {
+            self.env
+                .lookup_used(pkg, prefix)
+                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?
+        } else {
+            pkg
+        };
+
+        let name = custom.parts.join(".");
+
+        let package_name = self.package(pkg).parts.join(".");
+        Ok(Name::imported(&package_name, &name).into())
+    }
+
+    fn value(&self,
+             pkg: &m::Package,
+             value: &m::Token<m::Value>,
+             ty: &m::Type,
+             variables: &m::Variables)
+             -> Result<Statement> {
+        match (&**value, ty) {
+            (&m::Value::String(ref string), &m::Type::String) => {
+                return Ok(Variable::String(string.to_owned()).into())
+            }
+            (&m::Value::Boolean(ref boolean), &m::Type::Boolean) => {
+                return Ok(stmt![boolean.to_string()])
+            }
+            (&m::Value::Number(ref number), &m::Type::Signed(_)) => {
+                return Ok(stmt![number.to_string()]);
+            }
+            (&m::Value::Number(ref number), &m::Type::Unsigned(_)) => {
+                return Ok(stmt![number.to_string()]);
+            }
+            (&m::Value::Number(ref number), &m::Type::Float) => {
+                return Ok(stmt![number.to_string()]);
+            }
+            (&m::Value::Number(ref number), &m::Type::Double) => {
+                return Ok(stmt![number.to_string()]);
+            }
+            (&m::Value::Array(ref values), &m::Type::Array(ref inner)) => {
+                let mut arguments = Statement::new();
+
+                for v in values {
+                    arguments.push(self.value(pkg, v, inner, variables)?);
                 }
 
-                if let m::Value::Number(ref number) = *value {
-                    return Ok(Variable::Literal(number.to_string()));
+                return Ok(stmt!["[", arguments.join(", "), "]"]);
+            }
+            (&m::Value::Constant(ref constant), &m::Type::Custom(ref target)) => {
+                let reg_constant = self.env.constant(&value.pos, pkg, constant, target)?;
+
+                match *reg_constant {
+                    m::Registered::EnumConstant { parent: _, value: _ } => {
+                        let ty = self.custom_value(&value.pos, pkg, target)?;
+                        return Ok(stmt![ty]);
+                    }
+                    _ => {}
                 }
             }
-            m::Type::String => {
-                if let m::Value::String(ref string) = *value {
-                    return Ok(Variable::String(string.to_owned()));
+            (&m::Value::Instance(ref instance), &m::Type::Custom(ref target)) => {
+                let (registered, known) = self.env
+                    .instance(&value.pos, pkg, instance, target)?;
+
+                let mut arguments = Statement::new();
+
+                for f in registered.fields()? {
+                    if let Some(ref init) = known.get(&f.name) {
+                        arguments.push(self.value(pkg, &init.value, &f.ty, variables)?);
+                    } else {
+                        arguments.push(stmt!["None"]);
+                    }
+                }
+
+                let ty = self.custom_value(&value.pos, pkg, &instance.ty)?;
+                let n = stmt![&ty, "(", arguments.join(", "), ")"];
+                return Ok(n);
+            }
+            // identifier with any type.
+            (&m::Value::Identifier(ref identifier), _) => {
+                if let Some(variable_type) = variables.get(identifier) {
+                    if self.env.is_assignable_from(ty, variable_type)? {
+                    }
+
+                    return Ok(stmt![identifier]);
+                } else {
+                    return Err(Error::pos("missing variable".into(), value.pos.clone()));
                 }
             }
             _ => {}
         }
 
-        Err(Error::pos(format!("{} cannot be applied to expected type {}", value, ty),
-                       pos.clone()))
+        Err(Error::pos(format!("expected `{}`", ty), value.pos.clone()))
     }
 
-    fn process_enum(&self, _package: &m::Package, body: &m::EnumBody) -> Result<ClassSpec> {
+    fn process_enum(&self, package: &m::Package, body: &m::EnumBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<m::Token<Field>> = Vec::new();
 
@@ -511,13 +579,14 @@ impl Processor {
         class.extends(&self.enum_enum);
 
         let mut values = Elements::new();
+        let variables = m::Variables::new();
 
         for value in &body.values {
             let arguments = if !value.arguments.is_empty() {
                 let mut value_arguments = Statement::new();
 
                 for (value, field) in value.arguments.iter().zip(fields.iter()) {
-                    value_arguments.push(self.literal_value(&value.pos, value, &field.ty)?);
+                    value_arguments.push(self.value(package, &value, &field.ty, &variables)?);
                 }
 
                 stmt!["(", value_arguments.join(", "), ")"]

@@ -954,20 +954,3 @@ impl Backend for Processor {
         Ok(errors)
     }
 }
-
-impl ::std::fmt::Display for m::Value {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        let out = match *self {
-            m::Value::String(_) => "<string>",
-            m::Value::Number(_) => "<number>",
-            m::Value::Boolean(_) => "<boolean>",
-            m::Value::Identifier(_) => "<identifier>",
-            m::Value::Type(_) => "<type>",
-            m::Value::Instance(_) => "<instance>",
-            m::Value::Constant(_) => "<constant>",
-            m::Value::Array(_) => "<array>",
-        };
-
-        write!(f, "{}", out)
-    }
-}
