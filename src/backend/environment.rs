@@ -109,14 +109,50 @@ impl Environment {
         Ok(())
     }
 
+    pub fn is_assignable_from(&self, target: &Type, source: &Type) -> Result<bool> {
+        match (target, source) {
+            (&Type::Double, &Type::Double) => Ok(true),
+            (&Type::Float, &Type::Float) => Ok(true),
+            (&Type::Signed(ref target_size), &Type::Signed(ref source_size)) => {
+                Ok(target_size <= source_size)
+            }
+            (&Type::Unsigned(ref target_size), &Type::Unsigned(ref source_size)) => {
+                Ok(target_size <= source_size)
+            }
+            _ => Ok(false),
+        }
+    }
+
+    pub fn constant<'a>(&'a self,
+                        pos: &Pos,
+                        package: &'a Package,
+                        constant: &Custom,
+                        target: &Custom)
+                        -> Result<&'a Registered> {
+        let reg_constant = self.lookup(package, constant)
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+
+        let reg_target = self.lookup(package, target)
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+
+        if !reg_target.is_assignable_from(reg_constant) {
+            return Err(Error::pos(format!("expected instance of `{}` but found `{}`",
+                                          reg_target.display(),
+                                          reg_constant.display()),
+                                  pos.clone()));
+        }
+
+        Ok(reg_constant)
+    }
+
     /// Convert instance arguments to the known registered type of the instance, and a map
     /// containing the arguments being instantiated.
-    pub fn instance_arguments<'a>(&'a self,
-                                  pos: &Pos,
-                                  package: &'a Package,
-                                  instance: &Instance,
-                                  target: &Custom)
-                                  -> Result<(&'a Registered, InitFields)> {
+    pub fn instance<'a>(&'a self,
+                        pos: &Pos,
+                        package: &'a Package,
+                        instance: &Instance,
+                        target: &Custom)
+                        -> Result<(&'a Registered, InitFields)> {
         let reg_instance = self.lookup(package, &instance.ty)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 

@@ -26,7 +26,7 @@ enum ComplexEnum {
 }
 
 enum Complex21 {
-  FIRST(Point(timestamp: 123, value: test));
+  FIRST(Point(timestamp: 123, value: 42.1));
   SECOND(Point(timestamp: 123, value: 1234.12));
 
   point: Point;

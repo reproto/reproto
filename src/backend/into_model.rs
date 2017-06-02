@@ -211,6 +211,11 @@ impl IntoModel for ast::EnumBody {
             let value = Token::new((value.inner, ordinal).into_model(pos)?,
                                    (pos.0.clone(), value.pos.0, value.pos.1));
 
+            if fields.len() != value.arguments.len() {
+                return Err(Error::pos(format!("expected {} arguments", fields.len()),
+                                      value.pos.clone()));
+            }
+
             if let Some(other) = values.iter().find(|v| *v.name == *value.name) {
                 return Err(ErrorKind::EnumValueConflict(other.name.pos.clone(),
                                                         value.name.pos.clone())

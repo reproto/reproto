@@ -109,8 +109,8 @@ impl Processor {
     }
 
     /// Create a new FileSpec from the given package.
-    fn new_file_spec(&self, package: &m::Package) -> FileSpec {
-        FileSpec::new(&self.java_package_name(package))
+    fn new_file_spec(&self, pkg: &m::Package) -> FileSpec {
+        FileSpec::new(&self.java_package_name(pkg))
     }
 
     fn new_field_spec(&self, ty: &Type, name: &str) -> FieldSpec {
@@ -121,38 +121,34 @@ impl Processor {
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn java_package(&self, package: &m::Package) -> m::Package {
+    fn java_package(&self, pkg: &m::Package) -> m::Package {
         self.package_prefix
             .clone()
-            .map(|prefix| prefix.join(package))
-            .unwrap_or_else(|| package.clone())
+            .map(|prefix| prefix.join(pkg))
+            .unwrap_or_else(|| pkg.clone())
     }
 
-    fn java_package_name(&self, package: &m::Package) -> String {
-        self.java_package(package).parts.join(".")
+    fn java_package_name(&self, pkg: &m::Package) -> String {
+        self.java_package(pkg).parts.join(".")
     }
 
-    fn convert_custom(&self,
-                      pos: &m::Pos,
-                      package: &m::Package,
-                      custom: &m::Custom)
-                      -> Result<Type> {
-        let package = if let Some(ref prefix) = custom.prefix {
+    fn convert_custom(&self, pos: &m::Pos, pkg: &m::Package, custom: &m::Custom) -> Result<Type> {
+        let pkg = if let Some(ref prefix) = custom.prefix {
             self.env
-                .lookup_used(package, prefix)
+                .lookup_used(pkg, prefix)
                 .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?
         } else {
-            package
+            pkg
         };
 
         let name = custom.parts.join(".");
 
-        let package_name = self.java_package_name(package);
+        let package_name = self.java_package_name(pkg);
         Ok(Type::class(&package_name, &name).into())
     }
 
     /// Convert the given type to a java type.
-    fn convert_type(&self, pos: &m::Pos, package: &m::Package, ty: &m::Type) -> Result<Type> {
+    fn convert_type(&self, pos: &m::Pos, pkg: &m::Package, ty: &m::Type) -> Result<Type> {
         let ty = match *ty {
             m::Type::String => self.string.clone().into(),
             m::Type::Signed(ref size) |
@@ -170,15 +166,15 @@ impl Processor {
             m::Type::Double => DOUBLE.into(),
             m::Type::Boolean => BOOLEAN.into(),
             m::Type::Array(ref ty) => {
-                let argument = self.convert_type(pos, package, ty)?;
+                let argument = self.convert_type(pos, pkg, ty)?;
                 self.list.with_arguments(vec![argument]).into()
             }
             m::Type::Custom(ref custom) => {
-                return self.convert_custom(pos, package, custom);
+                return self.convert_custom(pos, pkg, custom);
             }
             m::Type::Map(ref key, ref value) => {
-                let key = self.convert_type(pos, package, key)?;
-                let value = self.convert_type(pos, package, value)?;
+                let key = self.convert_type(pos, pkg, key)?;
+                let value = self.convert_type(pos, pkg, value)?;
                 self.map.with_arguments(vec![key, value]).into()
             }
             m::Type::Any => self.object.clone().into(),
@@ -462,12 +458,11 @@ impl Processor {
     }
 
     fn value(&self,
-             package: &m::Package,
+             pkg: &m::Package,
              value: &m::Token<m::Value>,
-             ty: &m::Type)
+             ty: &m::Type,
+             variables: &m::Variables)
              -> Result<Statement> {
-        let pos = &value.pos;
-
         match (&**value, ty) {
             (&m::Value::String(ref string), &m::Type::String) => {
                 return Ok(Variable::String(string.to_owned()).into())
@@ -497,30 +492,17 @@ impl Processor {
                 let mut arguments = Statement::new();
 
                 for v in values {
-                    arguments.push(self.value(package, v, inner)?);
+                    arguments.push(self.value(pkg, v, inner, variables)?);
                 }
 
                 return Ok(stmt![&self.immutable_list, ".of(", arguments.join(", "), ")"]);
             }
             (&m::Value::Constant(ref constant), &m::Type::Custom(ref target)) => {
-                let reg_constant = self.env
-                    .lookup(package, constant)
-                    .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
-
-                let reg_target = self.env
-                    .lookup(package, &target)
-                    .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
-
-                if !reg_target.is_assignable_from(reg_constant) {
-                    return Err(Error::pos(format!("expected instance of `{}` but found `{}`",
-                                                  reg_target.display(),
-                                                  reg_constant.display()),
-                                          pos.clone()));
-                }
+                let reg_constant = self.env.constant(&value.pos, pkg, constant, target)?;
 
                 match *reg_constant {
                     m::Registered::EnumConstant { parent: _, value: _ } => {
-                        let ty = self.convert_custom(pos, package, target)?;
+                        let ty = self.convert_custom(&value.pos, pkg, target)?;
                         return Ok(stmt![ty]);
                     }
                     _ => {}
@@ -528,25 +510,32 @@ impl Processor {
             }
             (&m::Value::Instance(ref instance), &m::Type::Custom(ref target)) => {
                 let (registered, known) = self.env
-                    .instance_arguments(pos, package, instance, target)?;
+                    .instance(&value.pos, pkg, instance, target)?;
 
-                let mut argument_statements = Statement::new();
+                let mut arguments = Statement::new();
 
                 for f in registered.fields()? {
                     if let Some(ref init) = known.get(&f.name) {
-                        argument_statements.push(self.value(package, &init.value, &f.ty)?);
+                        arguments.push(self.value(pkg, &init.value, &f.ty, variables)?);
                     } else {
-                        argument_statements.push(stmt![&self.optional, ".empty()"]);
+                        arguments.push(stmt![&self.optional, ".empty()"]);
                     }
                 }
 
-                let ty = self.convert_custom(pos, package, &instance.ty)?;
-                let n = stmt!["new ", &ty, "(", argument_statements.join(", "), ")"];
+                let ty = self.convert_custom(&value.pos, pkg, &instance.ty)?;
+                let n = stmt!["new ", &ty, "(", arguments.join(", "), ")"];
                 return Ok(n);
             }
             // identifier with any type.
-            (&m::Value::Identifier(ref _identifier), _) => {
-                return Err(Error::pos("missing variable".into(), value.pos.clone()));
+            (&m::Value::Identifier(ref identifier), _) => {
+                if let Some(variable_type) = variables.get(identifier) {
+                    if self.env.is_assignable_from(ty, variable_type)? {
+                    }
+
+                    return Ok(stmt![identifier]);
+                } else {
+                    return Err(Error::pos("missing variable".into(), value.pos.clone()));
+                }
             }
             _ => {}
         }
@@ -613,11 +602,11 @@ impl Processor {
         Ok(to_value)
     }
 
-    fn process_enum(&self, package: &m::Package, body: &m::EnumBody) -> Result<FileSpec> {
-        let class_type = Type::class(&self.java_package_name(package), &body.name);
+    fn process_enum(&self, pkg: &m::Package, body: &m::EnumBody) -> Result<FileSpec> {
+        let class_type = Type::class(&self.java_package_name(pkg), &body.name);
 
         let mut spec = EnumSpec::new(mods![Modifier::Public], &body.name);
-        let fields = self.convert_fields(package, &body.fields)?;
+        let fields = self.convert_fields(pkg, &body.fields)?;
 
         for field in &fields {
             spec.push_field(&field.java_spec);
@@ -637,6 +626,8 @@ impl Processor {
             spec.push(code.inner.lines);
         }
 
+        let variables = m::Variables::new();
+
         for enum_literal in &body.values {
             let mut enum_value = Elements::new();
             let mut enum_stmt = stmt![&*enum_literal.name];
@@ -645,7 +636,7 @@ impl Processor {
                 let mut value_arguments = Statement::new();
 
                 for (value, field) in enum_literal.arguments.iter().zip(fields.iter()) {
-                    value_arguments.push(self.value(package, value, &field.ty)?);
+                    value_arguments.push(self.value(pkg, value, &field.ty, &variables)?);
                 }
 
                 enum_stmt.push(stmt!["(", value_arguments.join(", "), ")"]);
@@ -690,17 +681,17 @@ impl Processor {
             spec.push(to_value);
         }
 
-        let mut file_spec = self.new_file_spec(package);
+        let mut file_spec = self.new_file_spec(pkg);
         file_spec.push(&spec);
 
         Ok(file_spec)
     }
 
-    fn process_tuple(&self, package: &m::Package, body: &m::TupleBody) -> Result<FileSpec> {
-        let class_type = Type::class(&self.java_package_name(package), &body.name);
+    fn process_tuple(&self, pkg: &m::Package, body: &m::TupleBody) -> Result<FileSpec> {
+        let class_type = Type::class(&self.java_package_name(pkg), &body.name);
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
 
-        let fields = self.convert_fields(package, &body.fields)?;
+        let fields = self.convert_fields(pkg, &body.fields)?;
 
         for field in &fields {
             spec.push_field(&field.java_spec);
@@ -729,17 +720,17 @@ impl Processor {
                 spec: &mut spec,
             })?;
 
-        let mut file_spec = self.new_file_spec(package);
+        let mut file_spec = self.new_file_spec(pkg);
         file_spec.push(&spec);
 
         Ok(file_spec)
     }
 
-    fn process_type(&self, package: &m::Package, body: &m::TypeBody) -> Result<FileSpec> {
-        let class_type = Type::class(&self.java_package_name(package), &body.name);
+    fn process_type(&self, pkg: &m::Package, body: &m::TypeBody) -> Result<FileSpec> {
+        let class_type = Type::class(&self.java_package_name(pkg), &body.name);
 
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
-        let fields = self.convert_fields(package, &body.fields)?;
+        let fields = self.convert_fields(pkg, &body.fields)?;
 
         for field in &fields {
             spec.push_field(&field.java_spec);
@@ -768,20 +759,20 @@ impl Processor {
                 spec: &mut spec,
             })?;
 
-        let mut file_spec = self.new_file_spec(package);
+        let mut file_spec = self.new_file_spec(pkg);
         file_spec.push(&spec);
 
         Ok(file_spec)
     }
 
     fn process_interface(&self,
-                         package: &m::Package,
+                         pkg: &m::Package,
                          interface: &m::InterfaceBody)
                          -> Result<FileSpec> {
-        let parent_type = Type::class(&self.java_package_name(package), &interface.name);
+        let parent_type = Type::class(&self.java_package_name(pkg), &interface.name);
 
         let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
-        let interface_fields = self.convert_fields(package, &interface.fields)?;
+        let interface_fields = self.convert_fields(pkg, &interface.fields)?;
 
         for code in interface.codes.for_context(JAVA_CONTEXT) {
             interface_spec.push(code.inner.lines);
@@ -793,7 +784,7 @@ impl Processor {
             let mods = mods![Modifier::Public, Modifier::Static];
             let mut class = ClassSpec::new(mods, &sub_type.name);
             let mut fields = interface_fields.clone();
-            fields.extend(self.convert_fields(package, &sub_type.fields)?);
+            fields.extend(self.convert_fields(pkg, &sub_type.fields)?);
 
             for code in sub_type.codes.for_context(JAVA_CONTEXT) {
                 class.push(code.inner.lines);
@@ -802,7 +793,7 @@ impl Processor {
             class.implements(&parent_type);
 
             let mut fields = interface_fields.clone();
-            fields.extend(self.convert_fields(package, &sub_type.inner.fields)?);
+            fields.extend(self.convert_fields(pkg, &sub_type.inner.fields)?);
 
             for field in &fields {
                 class.push_field(&field.java_spec);
@@ -840,7 +831,7 @@ impl Processor {
             interface_spec.push(&class);
         }
 
-        let mut file_spec = self.new_file_spec(package);
+        let mut file_spec = self.new_file_spec(pkg);
 
         self.listeners
             .interface_added(&mut InterfaceAdded {
@@ -852,11 +843,8 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn convert_field(&self,
-                     package: &m::Package,
-                     field: &m::Token<m::Field>)
-                     -> Result<m::JavaField> {
-        let java_type = self.convert_type(&field.pos, package, &field.ty)?;
+    fn convert_field(&self, pkg: &m::Package, field: &m::Token<m::Field>) -> Result<m::JavaField> {
+        let java_type = self.convert_type(&field.pos, pkg, &field.ty)?;
         let camel_name = self.snake_to_upper_camel.convert(&field.name);
         let ident = self.snake_to_lower_camel.convert(&field.name);
         let java_spec = self.build_field_spec(&java_type, field)?;
@@ -874,13 +862,13 @@ impl Processor {
 
 
     fn convert_fields(&self,
-                      package: &m::Package,
+                      pkg: &m::Package,
                       fields: &Vec<m::Token<m::Field>>)
                       -> Result<Vec<m::JavaField>> {
         let mut out = Vec::new();
 
         for field in fields {
-            out.push(self.convert_field(package, field)?);
+            out.push(self.convert_field(pkg, field)?);
         }
 
         Ok(out)
@@ -903,32 +891,32 @@ impl Processor {
         let root_dir = &self.options.parent.out_path;
 
         // Process all types discovered so far.
-        for (&(ref package, _), ref decl) in &self.env.decls {
-            let out_dir = self.java_package(package)
+        for (&(ref pkg, _), ref decl) in &self.env.decls {
+            let out_dir = self.java_package(pkg)
                 .parts
                 .iter()
                 .fold(root_dir.clone(), |current, next| current.join(next));
 
             let full_path = out_dir.join(format!("{}.java", decl.name()));
-            consumer(full_path, package, decl)?;
+            consumer(full_path, pkg, decl)?;
         }
 
         Ok(())
     }
 
-    fn build_file_spec(&self, package: &m::Package, decl: &m::Decl) -> Result<FileSpec> {
+    fn build_file_spec(&self, pkg: &m::Package, decl: &m::Decl) -> Result<FileSpec> {
         match *decl {
-            m::Decl::Interface(ref interface) => self.process_interface(package, interface),
-            m::Decl::Type(ref ty) => self.process_type(package, ty),
-            m::Decl::Tuple(ref ty) => self.process_tuple(package, ty),
-            m::Decl::Enum(ref ty) => self.process_enum(package, ty),
+            m::Decl::Interface(ref interface) => self.process_interface(pkg, interface),
+            m::Decl::Type(ref ty) => self.process_type(pkg, ty),
+            m::Decl::Tuple(ref ty) => self.process_tuple(pkg, ty),
+            m::Decl::Enum(ref ty) => self.process_enum(pkg, ty),
         }
     }
 }
 
 impl Backend for Processor {
     fn process(&self) -> Result<()> {
-        self.process_files(|full_path, package, decl| {
+        self.process_files(|full_path, pkg, decl| {
             debug!("+class: {}", full_path.display());
 
             if let Some(out_dir) = full_path.parent() {
@@ -938,7 +926,7 @@ impl Backend for Processor {
                 }
             }
 
-            let file_spec = self.build_file_spec(package, decl)?;
+            let file_spec = self.build_file_spec(pkg, decl)?;
 
             let out = file_spec.format();
             let mut f = File::create(full_path)?;
@@ -954,8 +942,8 @@ impl Backend for Processor {
     fn verify(&self) -> Result<Vec<Error>> {
         let mut errors = Vec::new();
 
-        self.process_files(|_, package, decl| {
-                match self.build_file_spec(package, decl) {
+        self.process_files(|_, pkg, decl| {
+                match self.build_file_spec(pkg, decl) {
                     Err(e) => errors.push(e),
                     _ => {}
                 };

@@ -1,5 +1,5 @@
 pub use token::WithPrefix;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet, HashMap};
 use std::path::PathBuf;
 use std::rc::Rc;
 use super::errors::*;
@@ -541,5 +541,19 @@ impl MatchDecl {
         }
 
         Ok(())
+    }
+}
+
+pub struct Variables {
+    variables: HashMap<String, Type>,
+}
+
+impl Variables {
+    pub fn new() -> Variables {
+        Variables { variables: HashMap::new() }
+    }
+
+    pub fn get(&self, key: &String) -> Option<&Type> {
+        self.variables.get(key)
     }
 }
