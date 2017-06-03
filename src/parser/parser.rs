@@ -749,52 +749,52 @@ impl_rdp! {
             },
         }
 
-        _type_spec(&self) -> Result<m::Type> {
+        _type_spec(&self) -> Result<m::RpType> {
             (_: double_type) => {
-                Ok(m::Type::Double)
+                Ok(m::RpType::Double)
             },
 
             (_: float_type) => {
-                Ok(m::Type::Float)
+                Ok(m::RpType::Float)
             },
 
             (_: signed_type, _: forward_slash, &size: unsigned) => {
                 let size = size.parse::<usize>()?;
-                Ok(m::Type::Signed(Some(size)))
+                Ok(m::RpType::Signed(Some(size)))
             },
 
             (_: unsigned_type, _: forward_slash, &size: unsigned) => {
                 let size = size.parse::<usize>()?;
-                Ok(m::Type::Unsigned(Some(size)))
+                Ok(m::RpType::Unsigned(Some(size)))
             },
 
             (_: signed_type) => {
-                Ok(m::Type::Signed(None))
+                Ok(m::RpType::Signed(None))
             },
 
             (_: unsigned_type) => {
-                Ok(m::Type::Unsigned(None))
+                Ok(m::RpType::Unsigned(None))
             },
 
             (_: boolean_type) => {
-                Ok(m::Type::Boolean)
+                Ok(m::RpType::Boolean)
             },
 
             (_: string_type) => {
-                Ok(m::Type::String)
+                Ok(m::RpType::String)
             },
 
             (_: bytes_type) => {
-                Ok(m::Type::Bytes)
+                Ok(m::RpType::Bytes)
             },
 
             (_: any_type) => {
-                Ok(m::Type::Any)
+                Ok(m::RpType::Any)
             },
 
             (_: array_type, _: bracket_start, argument: _type_spec(), _: bracket_end) => {
                 let argument = argument?;
-                Ok(m::Type::Array(Box::new(argument)))
+                Ok(m::RpType::Array(Box::new(argument)))
             },
 
             (
@@ -807,11 +807,11 @@ impl_rdp! {
              ) => {
                 let key = key?;
                 let value = value?;
-                Ok(m::Type::Map(Box::new(key), Box::new(value)))
+                Ok(m::RpType::Map(Box::new(key), Box::new(value)))
             },
 
             (_: custom_type, custom: _custom()) => {
-                Ok(m::Type::Custom(custom))
+                Ok(m::RpType::Custom(custom))
             },
         }
 
@@ -826,9 +826,9 @@ impl_rdp! {
             },
         }
 
-        _modifier(&self) -> m::Modifier {
-            (_: optional) => m::Modifier::Optional,
-            () => m::Modifier::Required,
+        _modifier(&self) -> m::RpModifier {
+            (_: optional) => m::RpModifier::Optional,
+            () => m::RpModifier::Required,
         }
 
         _ident_list(&self) -> LinkedList<String> {
@@ -919,8 +919,8 @@ mod tests {
 
         let ty = parser._type_spec().unwrap();
 
-        if let m::Type::Array(inner) = ty {
-            if let m::Type::String = *inner {
+        if let m::RpType::Array(inner) = ty {
+            if let m::RpType::String = *inner {
                 return;
             }
         }
@@ -940,9 +940,9 @@ mod tests {
         // TODO: use #![feature(box_patterns)]:
         // if let m::Type::Map(box m::Type::String, box m::Type::Unsigned(size)) = ty {
         // }
-        if let m::Type::Map(key, value) = ty {
-            if let m::Type::String = *key {
-                if let m::Type::Unsigned(size) = *value {
+        if let m::RpType::Map(key, value) = ty {
+            if let m::RpType::String = *key {
+                if let m::RpType::Unsigned(size) = *value {
                     assert_eq!(Some(123usize), size);
                     return;
                 }
@@ -1046,8 +1046,8 @@ mod tests {
             parts: vec!["Hello".to_owned(), "World".to_owned()],
         };
 
-        assert_type_spec_eq!(m::Type::String, "string");
-        assert_type_spec_eq!(m::Type::Custom(c), "Hello.World");
+        assert_type_spec_eq!(m::RpType::String, "string");
+        assert_type_spec_eq!(m::RpType::Custom(c), "Hello.World");
     }
 
     #[test]

@@ -1,7 +1,6 @@
 /// Module that adds fasterxml annotations to generated classes.
-use backend::*;
 use codeviz::java::*;
-use super::models as m;
+use super::models::*;
 use super::processor::*;
 
 pub struct Module {
@@ -52,7 +51,7 @@ impl Module {
 
     /// Custom serialize implementation for tuples.
     fn tuple_serializer(&self,
-                        fields: &Vec<m::JavaField>,
+                        fields: &Vec<JavaField>,
                         class_type: &ClassType)
                         -> Result<ClassSpec> {
         let mut serializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
@@ -172,7 +171,7 @@ impl Module {
 
     /// Custom deserialize implementation for tuples.
     fn tuple_deserializer(&self,
-                          fields: &Vec<m::JavaField>,
+                          fields: &Vec<JavaField>,
                           class_type: &ClassType)
                           -> Result<ClassSpec> {
         let mut deserializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],

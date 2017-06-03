@@ -1,7 +1,7 @@
 use backend::*;
 use backend::errors::*;
 use backend::for_context::ForContext;
-use backend::models as m;
+use backend::models::*;
 use backend::value_builder::*;
 use codeviz::python::*;
 use naming::{self, FromNaming};
@@ -37,14 +37,14 @@ impl Listeners for Vec<Box<Listeners>> {
 
 #[derive(Clone)]
 pub struct Field {
-    pub modifier: m::Modifier,
-    pub ty: m::Type,
+    pub modifier: RpModifier,
+    pub ty: RpType,
     pub name: String,
     pub ident: String,
 }
 
 impl Field {
-    pub fn new(modifier: m::Modifier, ty: m::Type, name: String, ident: String) -> Field {
+    pub fn new(modifier: RpModifier, ty: RpType, name: String, ident: String) -> Field {
         Field {
             modifier: modifier,
             ty: ty,
@@ -73,7 +73,7 @@ impl ProcessorOptions {
 pub struct Processor {
     options: ProcessorOptions,
     env: Environment,
-    package_prefix: Option<m::Package>,
+    package_prefix: Option<Package>,
     listeners: Box<Listeners>,
     to_lower_snake: Box<naming::Naming>,
     staticmethod: BuiltInName,
@@ -91,7 +91,7 @@ pub struct Processor {
 impl Processor {
     pub fn new(options: ProcessorOptions,
                env: Environment,
-               package_prefix: Option<m::Package>,
+               package_prefix: Option<Package>,
                listeners: Box<Listeners>)
                -> Processor {
         Processor {
@@ -114,7 +114,7 @@ impl Processor {
     }
 
     fn find_field<'a>(&self,
-                      fields: &'a Vec<m::Token<Field>>,
+                      fields: &'a Vec<Token<Field>>,
                       name: &str)
                       -> Option<(usize, &'a Field)> {
         for (i, field) in fields.iter().enumerate() {
@@ -138,8 +138,8 @@ impl Processor {
     }
 
     fn encode_method<E>(&self,
-                        package: &m::Package,
-                        fields: &Vec<m::Token<Field>>,
+                        package: &Package,
+                        fields: &Vec<Token<Field>>,
                         builder: &BuiltInName,
                         extra: E)
                         -> Result<MethodSpec>
@@ -160,7 +160,7 @@ impl Processor {
             let value_stmt = self.encode(package, &field.ty, &field_stmt)?;
 
             match field.modifier {
-                m::Modifier::Optional => {
+                RpModifier::Optional => {
                     let mut check_if_none = Elements::new();
 
                     check_if_none.push(stmt!["if ", &field_stmt, " is not None:"]);
@@ -188,8 +188,8 @@ impl Processor {
     }
 
     fn encode_tuple_method(&self,
-                           package: &m::Package,
-                           fields: &Vec<m::Token<Field>>)
+                           package: &Package,
+                           fields: &Vec<Token<Field>>)
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
 
@@ -278,15 +278,15 @@ impl Processor {
     }
 
     fn decode_by_value(&self,
-                       type_id: &m::TypeId,
-                       match_decl: &m::MatchDecl,
+                       type_id: &TypeId,
+                       match_decl: &MatchDecl,
                        data: &Statement)
                        -> Result<Option<Elements>> {
         if match_decl.by_value.is_empty() {
             return Ok(None);
         }
 
-        let variables = m::Variables::new();
+        let variables = Variables::new();
 
         let mut elements = Elements::new();
 
@@ -301,7 +301,7 @@ impl Processor {
             let result = self.value(&ValueBuilderEnv {
                     value: result,
                     package: &type_id.package,
-                    ty: Some(&m::Type::Custom(type_id.custom.clone())),
+                    ty: Some(&RpType::Custom(type_id.custom.clone())),
                     variables: &variables,
                 })?;
 
@@ -316,8 +316,8 @@ impl Processor {
     }
 
     fn decode_by_type(&self,
-                      type_id: &m::TypeId,
-                      match_decl: &m::MatchDecl,
+                      type_id: &TypeId,
+                      match_decl: &MatchDecl,
                       data: &Statement)
                       -> Result<Option<Elements>> {
         if match_decl.by_type.is_empty() {
@@ -329,7 +329,7 @@ impl Processor {
         for &(ref kind, ref result) in &match_decl.by_type {
             let variable = result.0.name.clone();
 
-            let mut variables = m::Variables::new();
+            let mut variables = Variables::new();
             variables.insert(variable.clone(), &result.0.ty);
 
             let decode_stmt = self.decode(&result.1.pos, type_id, &result.0.ty, &data)?;
@@ -337,23 +337,19 @@ impl Processor {
             let result = self.value(&ValueBuilderEnv {
                     value: &result.1,
                     package: &type_id.package,
-                    ty: Some(&m::Type::Custom(type_id.custom.clone())),
+                    ty: Some(&RpType::Custom(type_id.custom.clone())),
                     variables: &variables,
                 })?;
 
             let check = match *kind {
-                m::MatchKind::Any => stmt!["true"],
-                m::MatchKind::Object => stmt![&self.isinstance, "(", &data, ", ", &self.dict, ")"],
-                m::MatchKind::Array => stmt![&self.isinstance, "(", &data, ", ", &self.list, ")"],
-                m::MatchKind::String => {
+                MatchKind::Any => stmt!["true"],
+                MatchKind::Object => stmt![&self.isinstance, "(", &data, ", ", &self.dict, ")"],
+                MatchKind::Array => stmt![&self.isinstance, "(", &data, ", ", &self.list, ")"],
+                MatchKind::String => {
                     stmt![&self.isinstance, "(", &data, ", ", &self.basestring, ")"]
                 }
-                m::MatchKind::Boolean => {
-                    stmt![&self.isinstance, "(", &data, ", ", &self.boolean, ")"]
-                }
-                m::MatchKind::Number => {
-                    stmt![&self.isinstance, "(", &data, ", ", &self.number, ")"]
-                }
+                MatchKind::Boolean => stmt![&self.isinstance, "(", &data, ", ", &self.boolean, ")"],
+                MatchKind::Number => stmt![&self.isinstance, "(", &data, ", ", &self.number, ")"],
             };
 
             let mut value_body = Elements::new();
@@ -369,9 +365,9 @@ impl Processor {
     }
 
     fn decode_method<F>(&self,
-                        type_id: &m::TypeId,
-                        match_decl: &m::MatchDecl,
-                        fields: &Vec<m::Token<Field>>,
+                        type_id: &TypeId,
+                        match_decl: &MatchDecl,
+                        fields: &Vec<Token<Field>>,
                         class: &ClassSpec,
                         variable_fn: F)
                         -> Result<MethodSpec>
@@ -400,7 +396,7 @@ impl Processor {
             let var = variable_fn(i, field);
 
             let stmt = match field.modifier {
-                m::Modifier::Optional => {
+                RpModifier::Optional => {
                     let var_stmt = self.decode(&field.pos, type_id, &field.ty, &var_name)?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
@@ -423,15 +419,15 @@ impl Processor {
         Ok(decode)
     }
 
-    fn is_native(&self, ty: &m::Type) -> bool {
+    fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
-            m::Type::Signed(_) |
-            m::Type::Unsigned(_) => true,
-            m::Type::Float | m::Type::Double => true,
-            m::Type::String => true,
-            m::Type::Any => true,
-            m::Type::Boolean => true,
-            m::Type::Array(ref inner) => self.is_native(inner),
+            RpType::Signed(_) |
+            RpType::Unsigned(_) => true,
+            RpType::Float | RpType::Double => true,
+            RpType::String => true,
+            RpType::Any => true,
+            RpType::Boolean => true,
+            RpType::Array(ref inner) => self.is_native(inner),
             _ => false,
         }
     }
@@ -444,7 +440,7 @@ impl Processor {
         }
     }
 
-    fn encode<S>(&self, package: &m::Package, ty: &m::Type, value_stmt: S) -> Result<Statement>
+    fn encode<S>(&self, package: &Package, ty: &RpType, value_stmt: S) -> Result<Statement>
         where S: Into<Statement>
     {
         let value_stmt = value_stmt.into();
@@ -455,14 +451,14 @@ impl Processor {
         }
 
         let value_stmt = match *ty {
-            m::Type::Signed(_) |
-            m::Type::Unsigned(_) => value_stmt,
-            m::Type::Float | m::Type::Double => value_stmt,
-            m::Type::String => value_stmt,
-            m::Type::Any => value_stmt,
-            m::Type::Boolean => value_stmt,
-            m::Type::Custom(ref _custom) => stmt![value_stmt, ".encode()"],
-            m::Type::Array(ref inner) => {
+            RpType::Signed(_) |
+            RpType::Unsigned(_) => value_stmt,
+            RpType::Float | RpType::Double => value_stmt,
+            RpType::String => value_stmt,
+            RpType::Any => value_stmt,
+            RpType::Boolean => value_stmt,
+            RpType::Custom(ref _custom) => stmt![value_stmt, ".encode()"],
+            RpType::Array(ref inner) => {
                 let v = stmt!["v"];
                 let inner = self.encode(package, inner, v)?;
                 stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
@@ -474,9 +470,9 @@ impl Processor {
     }
 
     fn decode<S>(&self,
-                 pos: &m::Pos,
-                 type_id: &m::TypeId,
-                 ty: &m::Type,
+                 pos: &Pos,
+                 type_id: &TypeId,
+                 ty: &RpType,
                  value_stmt: S)
                  -> Result<Statement>
         where S: Into<Statement>
@@ -489,21 +485,21 @@ impl Processor {
         }
 
         let value_stmt = match *ty {
-            m::Type::Signed(_) |
-            m::Type::Unsigned(_) => value_stmt,
-            m::Type::Float | m::Type::Double => value_stmt,
-            m::Type::String => value_stmt,
-            m::Type::Any => value_stmt,
-            m::Type::Boolean => value_stmt,
-            m::Type::Custom(ref custom) => {
+            RpType::Signed(_) |
+            RpType::Unsigned(_) => value_stmt,
+            RpType::Float | RpType::Double => value_stmt,
+            RpType::String => value_stmt,
+            RpType::Any => value_stmt,
+            RpType::Boolean => value_stmt,
+            RpType::Custom(ref custom) => {
                 let name = self.convert_type(pos, &type_id.with_custom(custom.clone()))?;
                 stmt![name, ".decode(", value_stmt, ")"]
             }
-            m::Type::Array(ref inner) => {
+            RpType::Array(ref inner) => {
                 let inner = self.decode(pos, type_id, inner, stmt!["v"])?;
                 stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
             }
-            m::Type::Map(ref key, ref value) => {
+            RpType::Map(ref key, ref value) => {
                 let key = self.decode(pos, type_id, key, stmt!["t[0]"])?;
                 let value = self.decode(pos, type_id, value, stmt!["t[1]"])?;
                 let body = stmt!["(", &key, ", ", &value, ")"];
@@ -519,14 +515,14 @@ impl Processor {
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn package(&self, package: &m::Package) -> m::Package {
+    fn package(&self, package: &Package) -> Package {
         self.package_prefix
             .clone()
             .map(|prefix| prefix.join(package))
             .unwrap_or_else(|| package.clone())
     }
 
-    fn build_constructor(&self, fields: &Vec<m::Token<Field>>) -> MethodSpec {
+    fn build_constructor(&self, fields: &Vec<Token<Field>>) -> MethodSpec {
         let mut constructor = MethodSpec::new("__init__");
         constructor.push_argument(stmt!["self"]);
 
@@ -538,19 +534,15 @@ impl Processor {
         constructor
     }
 
-    fn process_tuple(&self,
-                     type_id: &m::TypeId,
-                     _pos: &m::Pos,
-                     body: &m::TupleBody)
-                     -> Result<ClassSpec> {
+    fn process_tuple(&self, type_id: &TypeId, _pos: &Pos, body: &TupleBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields: Vec<m::Token<Field>> = Vec::new();
+        let mut fields: Vec<Token<Field>> = Vec::new();
 
         for field in &body.fields {
             let ident = self.ident(&field.name);
 
             fields.push(field.clone()
-                .map_inner(|f| Field::new(m::Modifier::Required, f.ty, f.name, ident)));
+                .map_inner(|f| Field::new(RpModifier::Required, f.ty, f.name, ident)));
         }
 
         class.push(self.build_constructor(&fields));
@@ -570,9 +562,9 @@ impl Processor {
         Ok(class)
     }
 
-    fn process_enum(&self, _type_id: &m::TypeId, body: &m::EnumBody) -> Result<ClassSpec> {
+    fn process_enum(&self, _type_id: &TypeId, body: &EnumBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields: Vec<m::Token<Field>> = Vec::new();
+        let mut fields: Vec<Token<Field>> = Vec::new();
 
         for field in &body.fields {
             let ident = self.ident(&field.name);
@@ -585,7 +577,7 @@ impl Processor {
             };
 
             fields.push(field.clone()
-                .map_inner(|f| Field::new(m::Modifier::Required, f.ty, f.name, ident)));
+                .map_inner(|f| Field::new(RpModifier::Required, f.ty, f.name, ident)));
         }
 
         if !fields.is_empty() {
@@ -608,10 +600,10 @@ impl Processor {
         Ok(class)
     }
 
-    fn process_enum_values(&self, type_id: &m::TypeId, body: &m::EnumBody) -> Result<Statement> {
+    fn process_enum_values(&self, type_id: &TypeId, body: &EnumBody) -> Result<Statement> {
         let mut arguments = Statement::new();
 
-        let variables = m::Variables::new();
+        let variables = Variables::new();
 
         for value in &body.values {
             let name = Variable::String((*value.name).to_owned());
@@ -656,7 +648,7 @@ impl Processor {
                  ")"])
     }
 
-    fn build_getters(&self, fields: &Vec<m::Token<Field>>) -> Result<Vec<MethodSpec>> {
+    fn build_getters(&self, fields: &Vec<Token<Field>>) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
         for field in fields {
@@ -671,7 +663,7 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, type_id: &m::TypeId, body: &m::TypeBody) -> Result<ClassSpec> {
+    fn process_type(&self, type_id: &TypeId, body: &TypeBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields = Vec::new();
 
@@ -710,10 +702,7 @@ impl Processor {
         Ok(class)
     }
 
-    fn process_interface(&self,
-                         type_id: &m::TypeId,
-                         body: &m::InterfaceBody)
-                         -> Result<Vec<ClassSpec>> {
+    fn process_interface(&self, type_id: &TypeId, body: &InterfaceBody) -> Result<Vec<ClassSpec>> {
         let mut classes = Vec::new();
 
         let mut interface_spec = ClassSpec::new(&body.name);
@@ -789,7 +778,7 @@ impl Processor {
         Ok(classes)
     }
 
-    fn populate_files(&self) -> Result<HashMap<&m::Package, FileSpec>> {
+    fn populate_files(&self) -> Result<HashMap<&Package, FileSpec>> {
         let mut files = HashMap::new();
 
         let mut enums = Vec::new();
@@ -797,10 +786,10 @@ impl Processor {
         // Process all types discovered so far.
         for (type_id, decl) in &self.env.decls {
             let class_specs: Vec<ClassSpec> = match decl.inner {
-                m::Decl::Interface(ref body) => self.process_interface(type_id, body)?,
-                m::Decl::Type(ref body) => vec![self.process_type(type_id, body)?],
-                m::Decl::Tuple(ref body) => vec![self.process_tuple(type_id, &decl.pos, body)?],
-                m::Decl::Enum(ref body) => {
+                Decl::Interface(ref body) => self.process_interface(type_id, body)?,
+                Decl::Type(ref body) => vec![self.process_type(type_id, body)?],
+                Decl::Tuple(ref body) => vec![self.process_tuple(type_id, &decl.pos, body)?],
+                Decl::Enum(ref body) => {
                     enums.push((type_id, body));
                     vec![self.process_enum(type_id, body)?]
                 }
@@ -838,7 +827,7 @@ impl Processor {
         Ok(files)
     }
 
-    fn setup_module_path(&self, root_dir: &PathBuf, package: &m::Package) -> Result<PathBuf> {
+    fn setup_module_path(&self, root_dir: &PathBuf, package: &Package) -> Result<PathBuf> {
         let package = self.package(package);
 
         let mut full_path = root_dir.to_owned();
@@ -876,7 +865,7 @@ impl Processor {
         Ok(full_path)
     }
 
-    fn write_files(&self, files: HashMap<&m::Package, FileSpec>) -> Result<()> {
+    fn write_files(&self, files: HashMap<&Package, FileSpec>) -> Result<()> {
         let root_dir = &self.options.parent.out_path;
 
         for (package, file_spec) in files {
@@ -896,9 +885,9 @@ impl Processor {
     }
 
     fn tuple_added(&self,
-                   type_id: &m::TypeId,
-                   match_decl: &m::MatchDecl,
-                   fields: &Vec<m::Token<Field>>,
+                   type_id: &TypeId,
+                   match_decl: &MatchDecl,
+                   fields: &Vec<Token<Field>>,
                    class: &mut ClassSpec)
                    -> Result<()> {
 
@@ -916,8 +905,8 @@ impl Processor {
     }
 
     fn enum_added(&self,
-                  fields: &Vec<m::Token<Field>>,
-                  serialized_as: &Option<m::Token<String>>,
+                  fields: &Vec<Token<Field>>,
+                  serialized_as: &Option<Token<String>>,
                   class: &mut ClassSpec)
                   -> Result<()> {
         if let Some(ref s) = *serialized_as {
@@ -933,8 +922,8 @@ impl Processor {
     }
 
     fn interface_decode_method(&self,
-                               type_id: &m::TypeId,
-                               body: &m::InterfaceBody)
+                               type_id: &TypeId,
+                               body: &InterfaceBody)
                                -> Result<MethodSpec> {
         let data = stmt!["data"];
 
@@ -985,7 +974,7 @@ impl Processor {
         Ok(decode)
     }
 
-    fn convert_type_id<F>(&self, pos: &m::Pos, type_id: &m::TypeId, path_syntax: F) -> Result<Name>
+    fn convert_type_id<F>(&self, pos: &Pos, type_id: &TypeId, path_syntax: F) -> Result<Name>
         where F: Fn(&Vec<String>) -> String
     {
         let package = &type_id.package;
@@ -1034,11 +1023,11 @@ impl ValueBuilder for Processor {
         Ok(stmt!["None"])
     }
 
-    fn convert_type(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Name> {
+    fn convert_type(&self, pos: &Pos, type_id: &TypeId) -> Result<Name> {
         self.convert_type_id(pos, type_id, |v| v.join("_"))
     }
 
-    fn convert_constant(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Name> {
+    fn convert_constant(&self, pos: &Pos, type_id: &TypeId) -> Result<Name> {
         self.convert_type_id(pos, type_id, |v| v.join("."))
     }
 

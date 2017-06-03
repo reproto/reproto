@@ -119,38 +119,38 @@ impl Environment {
 
     pub fn is_assignable_from(&self,
                               package: &Package,
-                              target: &Type,
-                              source: &Type)
+                              target: &RpType,
+                              source: &RpType)
                               -> Result<bool> {
         match (target, source) {
-            (&Type::Double, &Type::Double) => Ok(true),
-            (&Type::Float, &Type::Float) => Ok(true),
-            (&Type::Signed(Some(ref target)), &Type::Signed(Some(ref source))) => {
+            (&RpType::Double, &RpType::Double) => Ok(true),
+            (&RpType::Float, &RpType::Float) => Ok(true),
+            (&RpType::Signed(Some(ref target)), &RpType::Signed(Some(ref source))) => {
                 Ok(target <= source)
             }
             // unknown size matches known
-            (&Type::Signed(_), &Type::Signed(None)) => Ok(true),
-            (&Type::Unsigned(Some(ref target)), &Type::Unsigned(Some(ref source))) => {
+            (&RpType::Signed(_), &RpType::Signed(None)) => Ok(true),
+            (&RpType::Unsigned(Some(ref target)), &RpType::Unsigned(Some(ref source))) => {
                 Ok(target <= source)
             }
             // unknown size matches known
-            (&Type::Unsigned(_), &Type::Unsigned(None)) => Ok(true),
-            (&Type::Boolean, &Type::Boolean) => return Ok(true),
-            (&Type::String, &Type::String) => return Ok(true),
-            (&Type::Bytes, &Type::Bytes) => return Ok(true),
+            (&RpType::Unsigned(_), &RpType::Unsigned(None)) => Ok(true),
+            (&RpType::Boolean, &RpType::Boolean) => return Ok(true),
+            (&RpType::String, &RpType::String) => return Ok(true),
+            (&RpType::Bytes, &RpType::Bytes) => return Ok(true),
             // everything assignable to any type
-            (&Type::Any, _) => Ok(true),
-            (&Type::Custom(ref target), &Type::Custom(ref source)) => {
+            (&RpType::Any, _) => Ok(true),
+            (&RpType::Custom(ref target), &RpType::Custom(ref source)) => {
                 let target = self.lookup(package, target)?;
                 let source = self.lookup(package, source)?;
                 return Ok(target.is_assignable_from(source));
             }
             // arrays match if inner type matches
-            (&Type::Array(ref target), &Type::Array(ref source)) => {
+            (&RpType::Array(ref target), &RpType::Array(ref source)) => {
                 return self.is_assignable_from(package, target, source);
             }
-            (&Type::Map(ref target_key, ref target_value),
-             &Type::Map(ref source_key, ref source_value)) => {
+            (&RpType::Map(ref target_key, ref target_value),
+             &RpType::Map(ref source_key, ref source_value)) => {
                 let key_assignable = self.is_assignable_from(package, target_key, source_key)?;
                 let value_assignable =
                     self.is_assignable_from(package, target_value, source_value)?;
@@ -214,7 +214,7 @@ impl Environment {
         };
 
         // pick required fields.
-        let required_fields = required_fields.filter(|f| f.modifier == Modifier::Required);
+        let required_fields = required_fields.filter(|f| f.modifier == RpModifier::Required);
 
         let mut known: HashMap<String, Token<FieldInit>> = HashMap::new();
 

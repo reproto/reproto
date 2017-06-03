@@ -1,23 +1,22 @@
-use backend::errors::*;
 use codeviz::java::*;
-use super::models as m;
+use super::models::*;
 use super::processor::ProcessorOptions;
 
 pub struct ClassAdded<'a> {
-    pub fields: &'a Vec<m::JavaField>,
+    pub fields: &'a Vec<JavaField>,
     pub class_type: &'a ClassType,
     pub spec: &'a mut ClassSpec,
 }
 
 pub struct TupleAdded<'a> {
-    pub fields: &'a Vec<m::JavaField>,
+    pub fields: &'a Vec<JavaField>,
     pub class_type: &'a ClassType,
     pub spec: &'a mut ClassSpec,
 }
 
 pub struct EnumAdded<'a> {
-    pub body: &'a m::EnumBody,
-    pub fields: &'a Vec<m::JavaField>,
+    pub body: &'a EnumBody,
+    pub fields: &'a Vec<JavaField>,
     pub class_type: &'a ClassType,
     pub from_value: &'a mut Option<MethodSpec>,
     pub to_value: &'a mut Option<MethodSpec>,
@@ -25,14 +24,14 @@ pub struct EnumAdded<'a> {
 }
 
 pub struct InterfaceAdded<'a> {
-    pub interface: &'a m::InterfaceBody,
+    pub interface: &'a InterfaceBody,
     pub spec: &'a mut InterfaceSpec,
 }
 
 pub struct SubTypeAdded<'a> {
-    pub fields: &'a Vec<m::JavaField>,
-    pub interface: &'a m::InterfaceBody,
-    pub sub_type: &'a m::SubType,
+    pub fields: &'a Vec<JavaField>,
+    pub interface: &'a InterfaceBody,
+    pub sub_type: &'a SubType,
     pub spec: &'a mut ClassSpec,
 }
 

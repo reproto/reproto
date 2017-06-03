@@ -1,4 +1,4 @@
-use backend::models::{Type, Custom, Modifier, Package};
+use backend::models::*;
 use token;
 
 /// Position relative in file where the declaration is present.
@@ -23,7 +23,7 @@ pub enum Value {
     Number(f64),
     Boolean(bool),
     Identifier(String),
-    Type(Type),
+    Type(RpType),
     Instance(Token<Instance>),
     Constant(Token<Custom>),
     Array(Vec<Token<Value>>),
@@ -37,16 +37,16 @@ pub struct OptionDecl {
 
 #[derive(Debug)]
 pub struct Field {
-    pub modifier: Modifier,
+    pub modifier: RpModifier,
     pub name: String,
-    pub ty: Type,
+    pub ty: RpType,
     pub field_as: Option<Token<Value>>,
 }
 
 impl Field {
     pub fn is_optional(&self) -> bool {
         match self.modifier {
-            Modifier::Optional => true,
+            RpModifier::Optional => true,
             _ => false,
         }
     }
@@ -63,7 +63,7 @@ pub enum Member {
 #[derive(Debug)]
 pub struct MatchVariable {
     pub name: String,
-    pub ty: Type,
+    pub ty: RpType,
 }
 
 #[derive(Debug)]

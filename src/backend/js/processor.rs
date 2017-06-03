@@ -153,7 +153,7 @@ impl Processor {
             let value_stmt = self.encode(type_id, &field.ty, &field_stmt)?;
 
             match field.modifier {
-                Modifier::Optional => {
+                RpModifier::Optional => {
                     let stmt = js![if is_defined(field_stmt),
                                       stmt![&data, "[", var_string, "] = ", value_stmt, ";"]];
                     assign.push(stmt);
@@ -258,7 +258,7 @@ impl Processor {
             let var = variable_fn(i, field);
 
             let stmt: ElementSpec = match field.modifier {
-                Modifier::Optional => {
+                RpModifier::Optional => {
                     let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_name)?;
 
                     let mut check = Elements::new();
@@ -295,15 +295,15 @@ impl Processor {
         Ok(decode)
     }
 
-    fn is_native(&self, ty: &Type) -> bool {
+    fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
-            Type::Signed(_) |
-            Type::Unsigned(_) => true,
-            Type::Float | Type::Double => true,
-            Type::String => true,
-            Type::Any => true,
-            Type::Boolean => true,
-            Type::Array(ref inner) => self.is_native(inner),
+            RpType::Signed(_) |
+            RpType::Unsigned(_) => true,
+            RpType::Float | RpType::Double => true,
+            RpType::String => true,
+            RpType::Any => true,
+            RpType::Boolean => true,
+            RpType::Array(ref inner) => self.is_native(inner),
             _ => false,
         }
     }
@@ -316,7 +316,7 @@ impl Processor {
         }
     }
 
-    fn encode<S>(&self, type_id: &TypeId, ty: &Type, value_stmt: S) -> Result<Statement>
+    fn encode<S>(&self, type_id: &TypeId, ty: &RpType, value_stmt: S) -> Result<Statement>
         where S: Into<Statement>
     {
         let value_stmt = value_stmt.into();
@@ -327,14 +327,14 @@ impl Processor {
         }
 
         let value_stmt = match *ty {
-            Type::Signed(_) |
-            Type::Unsigned(_) => value_stmt,
-            Type::Float | Type::Double => value_stmt,
-            Type::String => value_stmt,
-            Type::Any => value_stmt,
-            Type::Boolean => value_stmt,
-            Type::Custom(ref _custom) => stmt![value_stmt, ".encode()"],
-            Type::Array(ref inner) => {
+            RpType::Signed(_) |
+            RpType::Unsigned(_) => value_stmt,
+            RpType::Float | RpType::Double => value_stmt,
+            RpType::String => value_stmt,
+            RpType::Any => value_stmt,
+            RpType::Boolean => value_stmt,
+            RpType::Custom(ref _custom) => stmt![value_stmt, ".encode()"],
+            RpType::Array(ref inner) => {
                 let v = stmt!["v"];
                 let inner = self.encode(type_id, inner, &v)?;
                 stmt![value_stmt, ".map(function(", &v, ") { return ", inner, "; })"]
@@ -345,7 +345,12 @@ impl Processor {
         Ok(value_stmt)
     }
 
-    fn decode<S>(&self, type_id: &TypeId, pos: &Pos, ty: &Type, value_stmt: S) -> Result<Statement>
+    fn decode<S>(&self,
+                 type_id: &TypeId,
+                 pos: &Pos,
+                 ty: &RpType,
+                 value_stmt: S)
+                 -> Result<Statement>
         where S: Into<Statement>
     {
         let value_stmt = value_stmt.into();
@@ -356,17 +361,17 @@ impl Processor {
         }
 
         let value_stmt = match *ty {
-            Type::Signed(_) |
-            Type::Unsigned(_) => value_stmt,
-            Type::Float | Type::Double => value_stmt,
-            Type::String => value_stmt,
-            Type::Any => value_stmt,
-            Type::Boolean => value_stmt,
-            Type::Custom(ref custom) => {
+            RpType::Signed(_) |
+            RpType::Unsigned(_) => value_stmt,
+            RpType::Float | RpType::Double => value_stmt,
+            RpType::String => value_stmt,
+            RpType::Any => value_stmt,
+            RpType::Boolean => value_stmt,
+            RpType::Custom(ref custom) => {
                 let name = self.convert_type(pos, &type_id.with_custom(custom.clone()))?;
                 stmt![name, ".decode(", value_stmt, ")"]
             }
-            Type::Array(ref inner) => {
+            RpType::Array(ref inner) => {
                 let inner = self.decode(type_id, pos, inner, stmt!["v"])?;
                 stmt![value_stmt, ".map(function(v) { ", inner, "; })"]
             }
@@ -431,7 +436,7 @@ impl Processor {
             fields.push(field.clone()
                 .map_inner(|f| {
                     JsField {
-                        modifier: Modifier::Required,
+                        modifier: RpModifier::Required,
                         ty: f.ty,
                         name: field.name().to_owned(),
                         ident: ident,
@@ -512,7 +517,7 @@ impl Processor {
             fields.push(field.clone()
                 .map_inner(|f| {
                     JsField {
-                        modifier: Modifier::Required,
+                        modifier: RpModifier::Required,
                         ty: f.ty,
                         name: field.name().to_owned(),
                         ident: ident,

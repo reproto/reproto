@@ -1,7 +1,6 @@
 /// Module that adds fasterxml annotations to generated classes.
-use backend::*;
 use codeviz::java::*;
-use super::models as m;
+use super::models::*;
 use super::processor::*;
 
 pub struct Module {
@@ -19,11 +18,11 @@ impl Module {
 }
 
 impl Module {
-    fn builder_field(&self, field: &m::JavaField, source: &FieldSpec) -> FieldSpec {
+    fn builder_field(&self, field: &JavaField, source: &FieldSpec) -> FieldSpec {
         let field_mods = mods![Modifier::Private];
 
         let ty = match field.modifier {
-            m::Modifier::Required => self.optional.with_arguments(vec![&source.ty]).into(),
+            RpModifier::Required => self.optional.with_arguments(vec![&source.ty]).into(),
             _ => source.ty.clone(),
         };
 
@@ -32,7 +31,7 @@ impl Module {
         spec
     }
 
-    fn setter_method(&self, field: &m::JavaField, source: &FieldSpec) -> MethodSpec {
+    fn setter_method(&self, field: &JavaField, source: &FieldSpec) -> MethodSpec {
         let mut setter = MethodSpec::new(mods![Modifier::Public], &source.name);
 
         let argument = ArgumentSpec::new(mods![Modifier::Final], &field.java_type, &source.name);
@@ -67,7 +66,7 @@ impl Listeners for Module {
             builder.push(self.setter_method(field, source));
 
             let value = match field.modifier {
-                m::Modifier::Required => {
+                RpModifier::Required => {
                     let message = Variable::String(format!("{}: is required", source.name));
                     let throw_stmt = stmt!["new ", &self.runtime_exception, "(", message, ")"];
 

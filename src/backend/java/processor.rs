@@ -1,6 +1,5 @@
 pub use super::listeners::*;
 use backend::*;
-use backend::errors::*;
 use backend::for_context::ForContext;
 use codeviz::java::*;
 use naming::{self, FromNaming};
@@ -9,7 +8,7 @@ use std::fs::File;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-use super::models as m;
+use super::models::*;
 use super::value_builder::*;
 
 const JAVA_CONTEXT: &str = "java";
@@ -54,7 +53,7 @@ pub struct Processor {
     options: ProcessorOptions,
     env: Environment,
     listeners: Box<Listeners>,
-    package_prefix: Option<m::Package>,
+    package_prefix: Option<Package>,
     snake_to_upper_camel: Box<naming::Naming>,
     snake_to_lower_camel: Box<naming::Naming>,
     null_string: Variable,
@@ -74,7 +73,7 @@ pub struct Processor {
 impl Processor {
     pub fn new(options: ProcessorOptions,
                env: Environment,
-               package_prefix: Option<m::Package>,
+               package_prefix: Option<Package>,
                listeners: Box<Listeners>)
                -> Processor {
         Processor {
@@ -110,7 +109,7 @@ impl Processor {
     }
 
     /// Create a new FileSpec from the given package.
-    fn new_file_spec(&self, pkg: &m::Package) -> FileSpec {
+    fn new_file_spec(&self, pkg: &Package) -> FileSpec {
         FileSpec::new(&self.java_package_name(pkg))
     }
 
@@ -122,18 +121,18 @@ impl Processor {
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn java_package(&self, pkg: &m::Package) -> m::Package {
+    fn java_package(&self, pkg: &Package) -> Package {
         self.package_prefix
             .clone()
             .map(|prefix| prefix.join(pkg))
             .unwrap_or_else(|| pkg.clone())
     }
 
-    fn java_package_name(&self, pkg: &m::Package) -> String {
+    fn java_package_name(&self, pkg: &Package) -> String {
         self.java_package(pkg).parts.join(".")
     }
 
-    fn convert_custom(&self, pos: &m::Pos, pkg: &m::Package, custom: &m::Custom) -> Result<Type> {
+    fn convert_custom(&self, pos: &Pos, pkg: &Package, custom: &Custom) -> Result<Type> {
         let pkg = if let Some(ref prefix) = custom.prefix {
             self.env
                 .lookup_used(pkg, prefix)
@@ -149,11 +148,11 @@ impl Processor {
     }
 
     /// Convert the given type to a java type.
-    fn into_java_type(&self, pos: &m::Pos, pkg: &m::Package, ty: &m::Type) -> Result<Type> {
+    fn into_java_type(&self, pos: &Pos, pkg: &Package, ty: &RpType) -> Result<Type> {
         let ty = match *ty {
-            m::Type::String => self.string.clone().into(),
-            m::Type::Signed(ref size) |
-            m::Type::Unsigned(ref size) => {
+            RpType::String => self.string.clone().into(),
+            RpType::Signed(ref size) |
+            RpType::Unsigned(ref size) => {
                 // default to integer if unspecified.
                 // TODO: should we care about signedness?
                 // TODO: > 64 bits, use BitInteger?
@@ -163,22 +162,22 @@ impl Processor {
                     LONG.into()
                 }
             }
-            m::Type::Float => FLOAT.into(),
-            m::Type::Double => DOUBLE.into(),
-            m::Type::Boolean => BOOLEAN.into(),
-            m::Type::Array(ref ty) => {
+            RpType::Float => FLOAT.into(),
+            RpType::Double => DOUBLE.into(),
+            RpType::Boolean => BOOLEAN.into(),
+            RpType::Array(ref ty) => {
                 let argument = self.into_java_type(pos, pkg, ty)?;
                 self.list.with_arguments(vec![argument]).into()
             }
-            m::Type::Custom(ref custom) => {
+            RpType::Custom(ref custom) => {
                 return self.convert_custom(pos, pkg, custom);
             }
-            m::Type::Map(ref key, ref value) => {
+            RpType::Map(ref key, ref value) => {
                 let key = self.into_java_type(pos, pkg, key)?;
                 let value = self.into_java_type(pos, pkg, value)?;
                 self.map.with_arguments(vec![key, value]).into()
             }
-            m::Type::Any => self.object.clone().into(),
+            RpType::Any => self.object.clone().into(),
             ref t => {
                 return Err(Error::pos(format!("unsupported type: {:?}", t), pos.clone()));
             }
@@ -458,7 +457,7 @@ impl Processor {
         constructor
     }
 
-    fn find_field(&self, fields: &Vec<m::JavaField>, name: &str) -> Option<m::JavaField> {
+    fn find_field(&self, fields: &Vec<JavaField>, name: &str) -> Option<JavaField> {
         for field in fields {
             if field.name == name {
                 return Some(field.clone());
@@ -469,7 +468,7 @@ impl Processor {
     }
 
     fn enum_from_value_method(&self,
-                              field: &m::JavaField,
+                              field: &JavaField,
                               class_type: &ClassType)
                               -> Result<MethodSpec> {
         let argument = ArgumentSpec::new(mods![Modifier::Final], &field.java_type, &field.name);
@@ -508,7 +507,7 @@ impl Processor {
         Ok(from_value)
     }
 
-    fn enum_to_value_method(&self, field: &m::JavaField) -> Result<MethodSpec> {
+    fn enum_to_value_method(&self, field: &JavaField) -> Result<MethodSpec> {
         let mut to_value = MethodSpec::new(mods![Modifier::Public], "toValue");
 
         to_value.returns(&field.java_type);
@@ -517,7 +516,7 @@ impl Processor {
         Ok(to_value)
     }
 
-    fn process_enum(&self, pkg: &m::Package, body: &m::EnumBody) -> Result<FileSpec> {
+    fn process_enum(&self, pkg: &Package, body: &EnumBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(pkg), &body.name);
 
         let mut spec = EnumSpec::new(mods![Modifier::Public], &body.name);
@@ -541,7 +540,7 @@ impl Processor {
             spec.push(code.inner.lines);
         }
 
-        let variables = m::Variables::new();
+        let variables = Variables::new();
 
         for enum_literal in &body.values {
             let mut enum_value = Elements::new();
@@ -609,7 +608,7 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_tuple(&self, pkg: &m::Package, body: &m::TupleBody) -> Result<FileSpec> {
+    fn process_tuple(&self, pkg: &Package, body: &TupleBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(pkg), &body.name);
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
 
@@ -648,7 +647,7 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_type(&self, pkg: &m::Package, body: &m::TypeBody) -> Result<FileSpec> {
+    fn process_type(&self, pkg: &Package, body: &TypeBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(pkg), &body.name);
 
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
@@ -687,10 +686,7 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_interface(&self,
-                         pkg: &m::Package,
-                         interface: &m::InterfaceBody)
-                         -> Result<FileSpec> {
+    fn process_interface(&self, pkg: &Package, interface: &InterfaceBody) -> Result<FileSpec> {
         let parent_type = Type::class(&self.java_package_name(pkg), &interface.name);
 
         let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
@@ -778,13 +774,13 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn convert_field(&self, pkg: &m::Package, field: &m::Token<m::Field>) -> Result<m::JavaField> {
+    fn convert_field(&self, pkg: &Package, field: &Token<Field>) -> Result<JavaField> {
         let java_type = self.into_java_type(&field.pos, pkg, &field.ty)?;
         let camel_name = self.snake_to_upper_camel.convert(&field.name);
         let ident = self.snake_to_lower_camel.convert(&field.name);
         let java_spec = self.build_field_spec(&java_type, field)?;
 
-        Ok(m::JavaField {
+        Ok(JavaField {
             modifier: field.modifier.clone(),
             name: field.name.clone(),
             ty: field.ty.clone(),
@@ -796,10 +792,7 @@ impl Processor {
     }
 
 
-    fn convert_fields(&self,
-                      pkg: &m::Package,
-                      fields: &Vec<m::Token<m::Field>>)
-                      -> Result<Vec<m::JavaField>> {
+    fn convert_fields(&self, pkg: &Package, fields: &Vec<Token<Field>>) -> Result<Vec<JavaField>> {
         let mut out = Vec::new();
 
         for field in fields {
@@ -809,7 +802,7 @@ impl Processor {
         Ok(out)
     }
 
-    fn build_field_spec(&self, field_type: &Type, field: &m::Field) -> Result<FieldSpec> {
+    fn build_field_spec(&self, field_type: &Type, field: &Field) -> Result<FieldSpec> {
         let field_type = if field.is_optional() {
             self.optional.with_arguments(vec![field_type]).into()
         } else {
@@ -821,7 +814,7 @@ impl Processor {
     }
 
     fn process_files<F>(&self, mut consumer: F) -> Result<()>
-        where F: FnMut(PathBuf, &m::Package, &m::Decl) -> Result<()>
+        where F: FnMut(PathBuf, &Package, &Decl) -> Result<()>
     {
         let root_dir = &self.options.parent.out_path;
 
@@ -839,12 +832,12 @@ impl Processor {
         Ok(())
     }
 
-    fn build_file_spec(&self, pkg: &m::Package, decl: &m::Decl) -> Result<FileSpec> {
+    fn build_file_spec(&self, pkg: &Package, decl: &Decl) -> Result<FileSpec> {
         match *decl {
-            m::Decl::Interface(ref interface) => self.process_interface(pkg, interface),
-            m::Decl::Type(ref ty) => self.process_type(pkg, ty),
-            m::Decl::Tuple(ref ty) => self.process_tuple(pkg, ty),
-            m::Decl::Enum(ref ty) => self.process_enum(pkg, ty),
+            Decl::Interface(ref interface) => self.process_interface(pkg, interface),
+            Decl::Type(ref ty) => self.process_type(pkg, ty),
+            Decl::Tuple(ref ty) => self.process_tuple(pkg, ty),
+            Decl::Enum(ref ty) => self.process_enum(pkg, ty),
         }
     }
 }
@@ -907,7 +900,7 @@ impl ValueBuilder for Processor {
         Ok(stmt!["None"])
     }
 
-    fn convert_type(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Type> {
+    fn convert_type(&self, pos: &Pos, type_id: &TypeId) -> Result<Type> {
         let pkg = &type_id.package;
         let custom = &type_id.custom;
 

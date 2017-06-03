@@ -55,7 +55,7 @@ pub enum Value {
     Number(f64),
     Boolean(bool),
     Identifier(String),
-    Type(Type),
+    Type(RpType),
     Instance(Token<Instance>),
     Constant(Token<Custom>),
     Array(Vec<Token<Value>>),
@@ -110,7 +110,7 @@ impl Custom {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Type {
+pub enum RpType {
     Double,
     Float,
     Signed(Option<usize>),
@@ -120,42 +120,42 @@ pub enum Type {
     Bytes,
     Any,
     Custom(Custom),
-    Array(Box<Type>),
-    Map(Box<Type>, Box<Type>),
+    Array(Box<RpType>),
+    Map(Box<RpType>, Box<RpType>),
 }
 
-impl ::std::fmt::Display for Type {
+impl ::std::fmt::Display for RpType {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match *self {
-            Type::Double => write!(f, "double"),
-            Type::Float => write!(f, "float"),
-            Type::Signed(ref size) => {
+            RpType::Double => write!(f, "double"),
+            RpType::Float => write!(f, "float"),
+            RpType::Signed(ref size) => {
                 if let Some(size) = *size {
                     write!(f, "signed/{}", size)
                 } else {
                     write!(f, "signed")
                 }
             }
-            Type::Unsigned(ref size) => {
+            RpType::Unsigned(ref size) => {
                 if let Some(size) = *size {
                     write!(f, "unsigned/{}", size)
                 } else {
                     write!(f, "unsigned")
                 }
             }
-            Type::Boolean => write!(f, "boolean"),
-            Type::String => write!(f, "string"),
-            Type::Custom(ref custom) => {
+            RpType::Boolean => write!(f, "boolean"),
+            RpType::String => write!(f, "string"),
+            RpType::Custom(ref custom) => {
                 if let Some(ref used) = custom.prefix {
                     write!(f, "{}::{}", used, custom.parts.join("."))
                 } else {
                     write!(f, "{}", custom.parts.join("."))
                 }
             }
-            Type::Array(ref inner) => write!(f, "[{}]", inner),
-            Type::Map(ref key, ref value) => write!(f, "{{{}: {}}}", key, value),
-            Type::Any => write!(f, "any"),
-            Type::Bytes => write!(f, "bytes"),
+            RpType::Array(ref inner) => write!(f, "[{}]", inner),
+            RpType::Map(ref key, ref value) => write!(f, "{{{}: {}}}", key, value),
+            RpType::Any => write!(f, "any"),
+            RpType::Bytes => write!(f, "bytes"),
         }
     }
 }
@@ -188,39 +188,39 @@ impl ::std::fmt::Display for Package {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Modifier {
+pub enum RpModifier {
     Required,
     Optional,
     Repeated,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Modifiers {
-    modifiers: HashSet<Modifier>,
+pub struct RpModifiers {
+    modifiers: HashSet<RpModifier>,
 }
 
-impl Modifiers {
-    pub fn new(modifiers: HashSet<Modifier>) -> Modifiers {
-        Modifiers { modifiers: modifiers }
+impl RpModifiers {
+    pub fn new(modifiers: HashSet<RpModifier>) -> RpModifiers {
+        RpModifiers { modifiers: modifiers }
     }
 
-    pub fn test(&self, modifier: &Modifier) -> bool {
+    pub fn test(&self, modifier: &RpModifier) -> bool {
         self.modifiers.contains(modifier)
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Field {
-    pub modifier: Modifier,
+    pub modifier: RpModifier,
     pub name: String,
-    pub ty: Type,
+    pub ty: RpType,
     pub field_as: Option<Token<String>>,
 }
 
 impl Field {
     pub fn is_optional(&self) -> bool {
         match self.modifier {
-            Modifier::Optional => true,
+            RpModifier::Optional => true,
             _ => false,
         }
     }
@@ -550,7 +550,7 @@ pub struct MatchMember {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchVariable {
     pub name: String,
-    pub ty: Type,
+    pub ty: RpType,
 }
 
 #[derive(Debug, Clone)]
@@ -573,15 +573,16 @@ impl MatchDecl {
 
     pub fn identify_match_kind(&self, variable: &MatchVariable) -> MatchKind {
         match variable.ty {
-            Type::Double |
-            Type::Float |
-            Type::Signed(_) |
-            Type::Unsigned(_) => MatchKind::Number,
-            Type::Boolean => MatchKind::Boolean,
-            Type::String | Type::Bytes => MatchKind::String,
-            Type::Any => MatchKind::Any,
-            Type::Custom(_) | Type::Map(_, _) => MatchKind::Object,
-            Type::Array(_) => MatchKind::Array,
+            RpType::Double |
+            RpType::Float |
+            RpType::Signed(_) |
+            RpType::Unsigned(_) => MatchKind::Number,
+            RpType::Boolean => MatchKind::Boolean,
+            RpType::String | RpType::Bytes => MatchKind::String,
+            RpType::Any => MatchKind::Any,
+            RpType::Custom(_) |
+            RpType::Map(_, _) => MatchKind::Object,
+            RpType::Array(_) => MatchKind::Array,
         }
     }
 
@@ -625,7 +626,7 @@ impl MatchDecl {
 }
 
 pub struct Variables<'a> {
-    variables: HashMap<String, &'a Type>,
+    variables: HashMap<String, &'a RpType>,
 }
 
 impl<'a> Variables<'a> {
@@ -633,11 +634,11 @@ impl<'a> Variables<'a> {
         Variables { variables: HashMap::new() }
     }
 
-    pub fn get(&self, key: &String) -> Option<&'a Type> {
+    pub fn get(&self, key: &String) -> Option<&'a RpType> {
         self.variables.get(key).map(|t| *t)
     }
 
-    pub fn insert(&mut self, key: String, value: &'a Type) {
+    pub fn insert(&mut self, key: String, value: &'a RpType) {
         self.variables.insert(key, value);
     }
 }

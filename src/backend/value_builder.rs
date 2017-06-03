@@ -13,21 +13,21 @@
 use std::collections::HashMap;
 use super::environment::Environment;
 use super::errors::*;
-use super::models as m;
+use super::models::*;
 
 pub type KnownValues<T> = HashMap<String, T>;
 
 pub struct ValueBuilderEnv<'a> {
-    pub package: &'a m::Package,
-    pub variables: &'a m::Variables<'a>,
-    pub value: &'a m::Token<m::Value>,
-    pub ty: Option<&'a m::Type>,
+    pub package: &'a Package,
+    pub variables: &'a Variables<'a>,
+    pub value: &'a Token<Value>,
+    pub ty: Option<&'a RpType>,
 }
 
-fn new_env<'a>(package: &'a m::Package,
-               variables: &'a m::Variables,
-               value: &'a m::Token<m::Value>,
-               ty: Option<&'a m::Type>)
+fn new_env<'a>(package: &'a Package,
+               variables: &'a Variables,
+               value: &'a Token<Value>,
+               ty: Option<&'a RpType>)
                -> Box<ValueBuilderEnv<'a>> {
     Box::new(ValueBuilderEnv {
         package: package,
@@ -69,9 +69,9 @@ pub trait ValueBuilder {
 
     fn optional_empty(&self) -> Result<Self::Output>;
 
-    fn convert_type(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Self::Type>;
+    fn convert_type(&self, pos: &Pos, type_id: &TypeId) -> Result<Self::Type>;
 
-    fn convert_constant(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Self::Type> {
+    fn convert_constant(&self, pos: &Pos, type_id: &TypeId) -> Result<Self::Type> {
         self.convert_type(pos, type_id)
     }
 
@@ -86,32 +86,32 @@ pub trait ValueBuilder {
         let ty = env.ty;
 
         match (&**value, ty) {
-            (&m::Value::String(ref string), Some(&m::Type::String)) |
-            (&m::Value::String(ref string), None) => {
+            (&Value::String(ref string), Some(&RpType::String)) |
+            (&Value::String(ref string), None) => {
                 return self.string(string);
             }
-            (&m::Value::Boolean(ref boolean), Some(&m::Type::Boolean)) |
-            (&m::Value::Boolean(ref boolean), None) => {
+            (&Value::Boolean(ref boolean), Some(&RpType::Boolean)) |
+            (&Value::Boolean(ref boolean), None) => {
                 return self.boolean(boolean);
             }
-            (&m::Value::Number(ref number), None) => {
+            (&Value::Number(ref number), None) => {
                 return self.number(number);
             }
-            (&m::Value::Number(ref number), Some(&m::Type::Signed(ref size))) => {
+            (&Value::Number(ref number), Some(&RpType::Signed(ref size))) => {
                 return self.signed(number, size);
             }
-            (&m::Value::Number(ref number), Some(&m::Type::Unsigned(ref size))) => {
+            (&Value::Number(ref number), Some(&RpType::Unsigned(ref size))) => {
                 return self.unsigned(number, size);
             }
-            (&m::Value::Number(ref number), Some(&m::Type::Float)) => {
+            (&Value::Number(ref number), Some(&RpType::Float)) => {
                 return self.float(number);
             }
-            (&m::Value::Number(ref number), Some(&m::Type::Double)) => {
+            (&Value::Number(ref number), Some(&RpType::Double)) => {
                 return self.double(number);
             }
-            (&m::Value::Array(ref values), expected) => {
+            (&Value::Array(ref values), expected) => {
                 let inner = match expected {
-                    Some(&m::Type::Array(ref inner)) => Some(&**inner),
+                    Some(&RpType::Array(ref inner)) => Some(&**inner),
                     Some(other) => {
                         return Err(Error::pos(format!("expected `{}`", other), value.pos.clone()))
                     }
@@ -127,12 +127,12 @@ pub trait ValueBuilder {
 
                 return self.array(array_values);
             }
-            (&m::Value::Constant(ref constant), Some(&m::Type::Custom(ref target))) => {
+            (&Value::Constant(ref constant), Some(&RpType::Custom(ref target))) => {
                 let reg_constant = self.env()
                     .constant(&value.pos, &env.package, constant, target)?;
 
                 match *reg_constant {
-                    m::Registered::EnumConstant { parent: _, value: _ } => {
+                    Registered::EnumConstant { parent: _, value: _ } => {
                         let ty =
                             self.convert_constant(&value.pos, &env.package.into_type_id(constant))?;
                         return self.constant(ty);
@@ -143,7 +143,7 @@ pub trait ValueBuilder {
                     }
                 }
             }
-            (&m::Value::Instance(ref instance), Some(&m::Type::Custom(ref target))) => {
+            (&Value::Instance(ref instance), Some(&RpType::Custom(ref target))) => {
                 let (registered, known) = self.env()
                     .instance(&value.pos, env.package, instance, target)?;
 
@@ -162,7 +162,7 @@ pub trait ValueBuilder {
                 return self.instance(ty, arguments);
             }
             // identifier with any type.
-            (&m::Value::Identifier(ref identifier), expected) => {
+            (&Value::Identifier(ref identifier), expected) => {
                 if let Some(variable_type) = env.variables.get(identifier) {
                     // if expected is set
                     if let Some(expected) = expected {
