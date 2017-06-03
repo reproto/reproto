@@ -19,20 +19,24 @@ js_args ?=
 all: clean it
 
 it: ${SUITES}
-	diff --color=auto -ur $(EXPECTED) $(OUTPUT)
+	@echo "Verifying"
+	@diff -ur $(EXPECTED) $(OUTPUT)
 
 update: ${SUITES}
 	@rsync -rav $(OUTPUT)/ $(EXPECTED)/
 	git add $(EXPECTED)
 
 clean:
-	${RM} -rf output
+	@${RM} -rf output
 
 python:
-	${TOOL} compile -b python ${python_args} -o ${PYTHON_OUT} --path ${PROTO_PATH} --package ${TARGET}
+	@echo "Building Python"
+	@${TOOL} compile -b python ${python_args} -o ${PYTHON_OUT} --path ${PROTO_PATH} --package ${TARGET}
 
 js:
-	${TOOL} compile -b js ${js_args} -o ${JS_OUT} --path ${PROTO_PATH} --package ${TARGET}
+	@echo "Building JavaScript"
+	@${TOOL} compile -b js ${js_args} -o ${JS_OUT} --path ${PROTO_PATH} --package ${TARGET}
 
 java:
-	${TOOL} compile -b java ${java_args} -o ${JAVA_OUT} --path ${PROTO_PATH} --package ${TARGET}
+	@echo "Building Java"
+	@${TOOL} compile -b java ${java_args} -o ${JAVA_OUT} --path ${PROTO_PATH} --package ${TARGET}
