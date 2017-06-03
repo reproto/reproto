@@ -74,11 +74,11 @@ impl OrdinalGenerator {
         }
     }
 
-    pub fn next(&mut self, ordinal: &Option<ast::AstLoc<ast::Value>>, pos: &Pos) -> Result<u32> {
+    pub fn next(&mut self, ordinal: &Option<ast::AstLoc<ast::RpValue>>, pos: &Pos) -> Result<u32> {
         if let Some(ref ordinal) = *ordinal {
             let pos = (pos.0.to_owned(), ordinal.pos.0, ordinal.pos.1);
 
-            if let ast::Value::Number(ref number) = ordinal.inner {
+            if let ast::RpValue::Number(ref number) = ordinal.inner {
                 let n: u32 = number.floor() as u32;
 
                 if self.ordinals.contains(&n) {
@@ -398,7 +398,7 @@ impl IntoModel for ast::Field {
         let field_as = self.field_as.into_model(pos)?;
 
         let field_as = if let Some(field_as) = field_as {
-            if let Value::String(name) = field_as.inner {
+            if let RpValue::String(name) = field_as.inner {
                 Some(RpLoc::new(name, field_as.pos.clone()))
             } else {
                 return Err(Error::pos("must be a string".to_owned(), field_as.pos));
@@ -418,19 +418,21 @@ impl IntoModel for ast::Field {
     }
 }
 
-impl IntoModel for ast::Value {
-    type Output = Value;
+impl IntoModel for ast::RpValue {
+    type Output = RpValue;
 
-    fn into_model(self, pos: &Pos) -> Result<Value> {
+    fn into_model(self, pos: &Pos) -> Result<RpValue> {
         let value = match self {
-            ast::Value::String(string) => Value::String(string),
-            ast::Value::Number(number) => Value::Number(number),
-            ast::Value::Boolean(boolean) => Value::Boolean(boolean),
-            ast::Value::Identifier(identifier) => Value::Identifier(identifier),
-            ast::Value::Type(ty) => Value::Type(ty),
-            ast::Value::Instance(instance) => Value::Instance(instance.into_model(pos)?),
-            ast::Value::Constant(constant) => Value::Constant(constant.with_prefix(pos.0.clone())),
-            ast::Value::Array(values) => Value::Array(values.into_model(pos)?),
+            ast::RpValue::String(string) => RpValue::String(string),
+            ast::RpValue::Number(number) => RpValue::Number(number),
+            ast::RpValue::Boolean(boolean) => RpValue::Boolean(boolean),
+            ast::RpValue::Identifier(identifier) => RpValue::Identifier(identifier),
+            ast::RpValue::Type(ty) => RpValue::Type(ty),
+            ast::RpValue::Instance(instance) => RpValue::Instance(instance.into_model(pos)?),
+            ast::RpValue::Constant(constant) => {
+                RpValue::Constant(constant.with_prefix(pos.0.clone()))
+            }
+            ast::RpValue::Array(values) => RpValue::Array(values.into_model(pos)?),
         };
 
         Ok(value)
@@ -489,7 +491,7 @@ impl IntoModel for ast::MatchCondition {
 
     fn into_model(self, pos: &Pos) -> Result<MatchCondition> {
         let match_condition = match self {
-            ast::MatchCondition::Value(value) => MatchCondition::Value(value.into_model(pos)?),
+            ast::MatchCondition::RpValue(value) => MatchCondition::RpValue(value.into_model(pos)?),
             ast::MatchCondition::Type(ty) => MatchCondition::Type(ty.into_model(pos)?),
         };
 

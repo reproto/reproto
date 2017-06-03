@@ -29,7 +29,7 @@ fn setup_module(module: &str) -> Result<Box<listeners::Listeners>> {
 pub fn resolve(options: Options, env: Environment) -> Result<processor::Processor> {
     let package_prefix = options.package_prefix
         .clone()
-        .map(|prefix| Package::new(prefix.split(".").map(ToOwned::to_owned).collect()));
+        .map(|prefix| RpPackage::new(prefix.split(".").map(ToOwned::to_owned).collect()));
 
     let mut listeners: Vec<Box<listeners::Listeners>> = Vec::new();
 

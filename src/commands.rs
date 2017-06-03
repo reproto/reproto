@@ -70,7 +70,7 @@ pub fn compile_options<'a, 'b>(name: &str) -> App<'a, 'b> {
         .arg(Arg::with_name("package-prefix")
             .long("package-prefix")
             .takes_value(true)
-            .help("Package prefix to use when generating classes"))
+            .help("RpPackage prefix to use when generating classes"))
         .arg(Arg::with_name("file")
             .long("file")
             .help("File to compile")
@@ -86,7 +86,7 @@ pub fn compile_options<'a, 'b>(name: &str) -> App<'a, 'b> {
 }
 
 fn setup_compiler<'a>(matches: &'a ArgMatches)
-                      -> Result<(Vec<&'a Path>, Vec<Package>, Environment, Options, &'a str)> {
+                      -> Result<(Vec<&'a Path>, Vec<RpPackage>, Environment, Options, &'a str)> {
     let paths: Vec<::std::path::PathBuf> = matches.values_of("path")
         .into_iter()
         .flat_map(|it| it)
@@ -125,10 +125,10 @@ fn setup_compiler<'a>(matches: &'a ArgMatches)
         .map(Path::new)
         .collect();
 
-    let packages: Vec<Package> = matches.values_of("package")
+    let packages: Vec<RpPackage> = matches.values_of("package")
         .into_iter()
         .flat_map(|it| it)
-        .map(|s| Package::new(s.split(".").map(ToOwned::to_owned).collect()))
+        .map(|s| RpPackage::new(s.split(".").map(ToOwned::to_owned).collect()))
         .collect();
 
     Ok((files, packages, env, options, backend))

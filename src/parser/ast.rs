@@ -1,4 +1,4 @@
-pub use backend::models::{Custom, Package, RpType, RpModifier};
+pub use backend::models::{RpName, RpPackage, RpType, RpModifier};
 use loc;
 
 /// Position relative in file where the declaration is present.
@@ -8,31 +8,31 @@ pub type AstLoc<T> = loc::Loc<T, Pos>;
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldInit {
     pub name: AstLoc<String>,
-    pub value: AstLoc<Value>,
+    pub value: AstLoc<RpValue>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Instance {
-    pub ty: Custom,
+    pub ty: RpName,
     pub arguments: AstLoc<Vec<AstLoc<FieldInit>>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Value {
+pub enum RpValue {
     String(String),
     Number(f64),
     Boolean(bool),
     Identifier(String),
     Type(RpType),
     Instance(AstLoc<Instance>),
-    Constant(AstLoc<Custom>),
-    Array(Vec<AstLoc<Value>>),
+    Constant(AstLoc<RpName>),
+    Array(Vec<AstLoc<RpValue>>),
 }
 
 #[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,
-    pub values: Vec<AstLoc<Value>>,
+    pub values: Vec<AstLoc<RpValue>>,
 }
 
 #[derive(Debug)]
@@ -40,7 +40,7 @@ pub struct Field {
     pub modifier: RpModifier,
     pub name: String,
     pub ty: RpType,
-    pub field_as: Option<AstLoc<Value>>,
+    pub field_as: Option<AstLoc<RpValue>>,
 }
 
 impl Field {
@@ -69,7 +69,7 @@ pub struct MatchVariable {
 #[derive(Debug)]
 pub enum MatchCondition {
     /// Match a specific value.
-    Value(AstLoc<Value>),
+    RpValue(AstLoc<RpValue>),
     /// Match a type, and add a binding for the given name that can be resolved in the action.
     Type(AstLoc<MatchVariable>),
 }
@@ -77,7 +77,7 @@ pub enum MatchCondition {
 #[derive(Debug)]
 pub struct MatchMember {
     pub condition: AstLoc<MatchCondition>,
-    pub value: AstLoc<Value>,
+    pub value: AstLoc<RpValue>,
 }
 
 #[derive(Debug)]
@@ -149,8 +149,8 @@ pub struct EnumBody {
 #[derive(Debug)]
 pub struct EnumValue {
     pub name: AstLoc<String>,
-    pub arguments: Vec<AstLoc<Value>>,
-    pub ordinal: Option<AstLoc<Value>>,
+    pub arguments: Vec<AstLoc<RpValue>>,
+    pub ordinal: Option<AstLoc<RpValue>>,
 }
 
 #[derive(Debug)]
@@ -183,13 +183,13 @@ impl Decl {
 
 #[derive(Debug)]
 pub struct UseDecl {
-    pub package: AstLoc<Package>,
+    pub package: AstLoc<RpPackage>,
     pub alias: Option<String>,
 }
 
 #[derive(Debug)]
 pub struct File {
-    pub package: AstLoc<Package>,
+    pub package: AstLoc<RpPackage>,
     pub uses: Vec<AstLoc<UseDecl>>,
     pub decls: Vec<AstLoc<Decl>>,
 }

@@ -49,7 +49,7 @@ impl Module {
         }
     }
 
-    /// Custom serialize implementation for tuples.
+    /// RpName serialize implementation for tuples.
     fn tuple_serializer(&self,
                         fields: &Vec<JavaField>,
                         class_type: &ClassType)
@@ -169,7 +169,7 @@ impl Module {
         stmt!["throw ", ctxt, ".wrongTokenException(", arguments.join(", "), ");"]
     }
 
-    /// Custom deserialize implementation for tuples.
+    /// RpName deserialize implementation for tuples.
     fn tuple_deserializer(&self,
                           fields: &Vec<JavaField>,
                           class_type: &ClassType)

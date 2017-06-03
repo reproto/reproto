@@ -15,10 +15,10 @@ const EXT: &str = "reproto";
 
 pub struct Environment {
     paths: Vec<PathBuf>,
-    visited: HashSet<Package>,
+    visited: HashSet<RpPackage>,
     pub types: LinkedHashMap<TypeId, RpLoc<Registered>>,
     pub decls: LinkedHashMap<TypeId, Rc<RpLoc<Decl>>>,
-    pub used: LinkedHashMap<(Package, String), Package>,
+    pub used: LinkedHashMap<(RpPackage, String), RpPackage>,
 }
 
 impl Environment {
@@ -33,7 +33,7 @@ impl Environment {
     }
 
     fn into_registered_type(&self,
-                            package: &Package,
+                            package: &RpPackage,
                             decl: Rc<RpLoc<Decl>>)
                             -> Result<Vec<(TypeId, RpLoc<Registered>)>> {
         let mut out = Vec::new();
@@ -41,13 +41,13 @@ impl Environment {
         match decl.inner {
             Decl::Type(ref ty) => {
                 let type_id = TypeId::new(package.clone(),
-                                          Custom::with_parts(vec![ty.name.clone()]));
+                                          RpName::with_parts(vec![ty.name.clone()]));
                 let token = RpLoc::new(Registered::Type(ty.clone()), decl.pos.clone());
                 out.push((type_id, token));
             }
             Decl::Interface(ref interface) => {
                 let current = vec![interface.name.clone()];
-                let type_id = TypeId::new(package.clone(), Custom::with_parts(current.clone()));
+                let type_id = TypeId::new(package.clone(), RpName::with_parts(current.clone()));
                 let token = RpLoc::new(Registered::Interface(interface.clone()), decl.pos.clone());
 
                 for (name, sub_type) in &interface.sub_types {
@@ -59,14 +59,14 @@ impl Environment {
 
                     let mut current = current.clone();
                     current.push(name.to_owned());
-                    out.push((type_id.with_custom(Custom::with_parts(current)), token));
+                    out.push((type_id.with_name(RpName::with_parts(current)), token));
                 }
 
                 out.push((type_id, token));
             }
             Decl::Enum(ref en) => {
                 let current = vec![en.name.clone()];
-                let type_id = TypeId::new(package.clone(), Custom::with_parts(current.clone()));
+                let type_id = TypeId::new(package.clone(), RpName::with_parts(current.clone()));
                 let token = RpLoc::new(Registered::Enum(en.clone()), decl.pos.clone());
 
                 for value in &en.values {
@@ -78,14 +78,14 @@ impl Environment {
 
                     let mut current = current.clone();
                     current.push((*value.name).to_owned());
-                    out.push((type_id.with_custom(Custom::with_parts(current)), token));
+                    out.push((type_id.with_name(RpName::with_parts(current)), token));
                 }
 
                 out.push((type_id, token));
             }
             Decl::Tuple(ref tuple) => {
                 let type_id = TypeId::new(package.clone(),
-                                          Custom::with_parts(vec![tuple.name.clone()]));
+                                          RpName::with_parts(vec![tuple.name.clone()]));
                 let token = RpLoc::new(Registered::Tuple(tuple.clone()), decl.pos.clone());
                 out.push((type_id, token));
             }
@@ -94,7 +94,7 @@ impl Environment {
         Ok(out)
     }
 
-    fn register_alias(&mut self, package: &Package, use_decl: &ast::UseDecl) -> Result<()> {
+    fn register_alias(&mut self, package: &RpPackage, use_decl: &ast::UseDecl) -> Result<()> {
         if let Some(used) = use_decl.package.parts.iter().last() {
             let alias = if let Some(ref next) = use_decl.alias {
                 next
@@ -118,7 +118,7 @@ impl Environment {
     }
 
     pub fn is_assignable_from(&self,
-                              package: &Package,
+                              package: &RpPackage,
                               target: &RpType,
                               source: &RpType)
                               -> Result<bool> {
@@ -140,7 +140,7 @@ impl Environment {
             (&RpType::Bytes, &RpType::Bytes) => return Ok(true),
             // everything assignable to any type
             (&RpType::Any, _) => Ok(true),
-            (&RpType::Custom(ref target), &RpType::Custom(ref source)) => {
+            (&RpType::Name(ref target), &RpType::Name(ref source)) => {
                 let target = self.lookup(package, target)?;
                 let source = self.lookup(package, source)?;
                 return Ok(target.is_assignable_from(source));
@@ -163,9 +163,9 @@ impl Environment {
 
     pub fn constant<'a>(&'a self,
                         pos: &Pos,
-                        package: &'a Package,
-                        constant: &Custom,
-                        target: &Custom)
+                        package: &'a RpPackage,
+                        constant: &RpName,
+                        target: &RpName)
                         -> Result<&'a Registered> {
         let reg_constant = self.lookup(package, constant)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
@@ -187,9 +187,9 @@ impl Environment {
     /// containing the arguments being instantiated.
     pub fn instance<'a>(&'a self,
                         pos: &Pos,
-                        package: &'a Package,
+                        package: &'a RpPackage,
                         instance: &Instance,
-                        target: &Custom)
+                        target: &RpName)
                         -> Result<(&'a Registered, InitFields)> {
         let reg_instance = self.lookup(package, &instance.ty)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
@@ -252,7 +252,7 @@ impl Environment {
     }
 
     /// Lookup the package declaration a used alias refers to.
-    pub fn lookup_used(&self, package: &Package, used: &str) -> Result<&Package> {
+    pub fn lookup_used(&self, package: &RpPackage, used: &str) -> Result<&RpPackage> {
         // resolve alias
         self.used
             .get(&(package.clone(), used.to_owned()))
@@ -260,7 +260,7 @@ impl Environment {
     }
 
     /// Lookup the declaration matching the custom type.
-    pub fn lookup<'a>(&'a self, package: &'a Package, custom: &Custom) -> Result<&'a Registered> {
+    pub fn lookup<'a>(&'a self, package: &'a RpPackage, custom: &RpName) -> Result<&'a Registered> {
         let package = if let Some(ref prefix) = custom.prefix {
             self.lookup_used(package, prefix)?
         } else {
@@ -276,7 +276,7 @@ impl Environment {
         return Err("no such type".into());
     }
 
-    pub fn import_file(&mut self, path: &Path, package: Option<&Package>) -> Result<()> {
+    pub fn import_file(&mut self, path: &Path, package: Option<&RpPackage>) -> Result<()> {
         debug!("in: {}", path.display());
 
         let file = parser::parse_file(&path)?;
@@ -302,7 +302,7 @@ impl Environment {
             let pos = (path.to_owned(), decl.pos.0, decl.pos.1);
             let decl = decl.into_model(&pos)?;
 
-            let custom = Custom::with_parts(vec![decl.name().to_owned()]);
+            let custom = RpName::with_parts(vec![decl.name().to_owned()]);
             let key: TypeId = TypeId::new(file.package.inner.clone(), custom);
 
             match decls.entry(key) {
@@ -333,7 +333,7 @@ impl Environment {
         Ok(())
     }
 
-    pub fn import(&mut self, package: &Package) -> Result<()> {
+    pub fn import(&mut self, package: &RpPackage) -> Result<()> {
         if self.visited.contains(package) {
             return Ok(());
         }

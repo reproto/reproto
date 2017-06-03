@@ -73,7 +73,7 @@ impl ProcessorOptions {
 pub struct Processor {
     options: ProcessorOptions,
     env: Environment,
-    package_prefix: Option<Package>,
+    package_prefix: Option<RpPackage>,
     listeners: Box<Listeners>,
     to_lower_snake: Box<naming::Naming>,
     staticmethod: BuiltInName,
@@ -91,7 +91,7 @@ pub struct Processor {
 impl Processor {
     pub fn new(options: ProcessorOptions,
                env: Environment,
-               package_prefix: Option<Package>,
+               package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
                -> Processor {
         Processor {
@@ -138,7 +138,7 @@ impl Processor {
     }
 
     fn encode_method<E>(&self,
-                        package: &Package,
+                        package: &RpPackage,
                         fields: &Vec<RpLoc<Field>>,
                         builder: &BuiltInName,
                         extra: E)
@@ -188,7 +188,7 @@ impl Processor {
     }
 
     fn encode_tuple_method(&self,
-                           package: &Package,
+                           package: &RpPackage,
                            fields: &Vec<RpLoc<Field>>)
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
@@ -301,7 +301,7 @@ impl Processor {
             let result = self.value(&ValueBuilderEnv {
                     value: result,
                     package: &type_id.package,
-                    ty: Some(&RpType::Custom(type_id.custom.clone())),
+                    ty: Some(&RpType::Name(type_id.name.clone())),
                     variables: &variables,
                 })?;
 
@@ -337,7 +337,7 @@ impl Processor {
             let result = self.value(&ValueBuilderEnv {
                     value: &result.1,
                     package: &type_id.package,
-                    ty: Some(&RpType::Custom(type_id.custom.clone())),
+                    ty: Some(&RpType::Name(type_id.name.clone())),
                     variables: &variables,
                 })?;
 
@@ -440,7 +440,7 @@ impl Processor {
         }
     }
 
-    fn encode<S>(&self, package: &Package, ty: &RpType, value_stmt: S) -> Result<Statement>
+    fn encode<S>(&self, package: &RpPackage, ty: &RpType, value_stmt: S) -> Result<Statement>
         where S: Into<Statement>
     {
         let value_stmt = value_stmt.into();
@@ -457,7 +457,7 @@ impl Processor {
             RpType::String => value_stmt,
             RpType::Any => value_stmt,
             RpType::Boolean => value_stmt,
-            RpType::Custom(ref _custom) => stmt![value_stmt, ".encode()"],
+            RpType::Name(ref _custom) => stmt![value_stmt, ".encode()"],
             RpType::Array(ref inner) => {
                 let v = stmt!["v"];
                 let inner = self.encode(package, inner, v)?;
@@ -491,8 +491,8 @@ impl Processor {
             RpType::String => value_stmt,
             RpType::Any => value_stmt,
             RpType::Boolean => value_stmt,
-            RpType::Custom(ref custom) => {
-                let name = self.convert_type(pos, &type_id.with_custom(custom.clone()))?;
+            RpType::Name(ref name) => {
+                let name = self.convert_type(pos, &type_id.with_name(name.clone()))?;
                 stmt![name, ".decode(", value_stmt, ")"]
             }
             RpType::Array(ref inner) => {
@@ -515,7 +515,7 @@ impl Processor {
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn package(&self, package: &Package) -> Package {
+    fn package(&self, package: &RpPackage) -> RpPackage {
         self.package_prefix
             .clone()
             .map(|prefix| prefix.join(package))
@@ -778,7 +778,7 @@ impl Processor {
         Ok(classes)
     }
 
-    fn populate_files(&self) -> Result<HashMap<&Package, FileSpec>> {
+    fn populate_files(&self) -> Result<HashMap<&RpPackage, FileSpec>> {
         let mut files = HashMap::new();
 
         let mut enums = Vec::new();
@@ -827,7 +827,7 @@ impl Processor {
         Ok(files)
     }
 
-    fn setup_module_path(&self, root_dir: &PathBuf, package: &Package) -> Result<PathBuf> {
+    fn setup_module_path(&self, root_dir: &PathBuf, package: &RpPackage) -> Result<PathBuf> {
         let package = self.package(package);
 
         let mut full_path = root_dir.to_owned();
@@ -865,7 +865,7 @@ impl Processor {
         Ok(full_path)
     }
 
-    fn write_files(&self, files: HashMap<&Package, FileSpec>) -> Result<()> {
+    fn write_files(&self, files: HashMap<&RpPackage, FileSpec>) -> Result<()> {
         let root_dir = &self.options.parent.out_path;
 
         for (package, file_spec) in files {
@@ -978,20 +978,20 @@ impl Processor {
         where F: Fn(&Vec<String>) -> String
     {
         let package = &type_id.package;
-        let custom = &type_id.custom;
+        let name = &type_id.name;
 
-        if let Some(ref used) = custom.prefix {
+        if let Some(ref used) = name.prefix {
             let package = self.env
                 .lookup_used(package, used)
                 .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
             let package = self.package(package);
             let package = package.parts.join(".");
-            return Ok(Name::imported_alias(&package, &path_syntax(&custom.parts), used).into());
+            return Ok(Name::imported_alias(&package, &path_syntax(&name.parts), used).into());
         }
 
         // no nested types in python
-        Ok(Name::local(&path_syntax(&custom.parts)).into())
+        Ok(Name::local(&path_syntax(&name.parts)).into())
     }
 }
 

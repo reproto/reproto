@@ -53,7 +53,7 @@ pub struct Processor {
     options: ProcessorOptions,
     env: Environment,
     listeners: Box<Listeners>,
-    package_prefix: Option<Package>,
+    package_prefix: Option<RpPackage>,
     snake_to_upper_camel: Box<naming::Naming>,
     snake_to_lower_camel: Box<naming::Naming>,
     null_string: Variable,
@@ -73,7 +73,7 @@ pub struct Processor {
 impl Processor {
     pub fn new(options: ProcessorOptions,
                env: Environment,
-               package_prefix: Option<Package>,
+               package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
                -> Processor {
         Processor {
@@ -109,7 +109,7 @@ impl Processor {
     }
 
     /// Create a new FileSpec from the given package.
-    fn new_file_spec(&self, pkg: &Package) -> FileSpec {
+    fn new_file_spec(&self, pkg: &RpPackage) -> FileSpec {
         FileSpec::new(&self.java_package_name(pkg))
     }
 
@@ -121,19 +121,19 @@ impl Processor {
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn java_package(&self, pkg: &Package) -> Package {
+    fn java_package(&self, pkg: &RpPackage) -> RpPackage {
         self.package_prefix
             .clone()
             .map(|prefix| prefix.join(pkg))
             .unwrap_or_else(|| pkg.clone())
     }
 
-    fn java_package_name(&self, pkg: &Package) -> String {
+    fn java_package_name(&self, pkg: &RpPackage) -> String {
         self.java_package(pkg).parts.join(".")
     }
 
-    fn convert_custom(&self, pos: &Pos, pkg: &Package, custom: &Custom) -> Result<Type> {
-        let pkg = if let Some(ref prefix) = custom.prefix {
+    fn convert_custom(&self, pos: &Pos, pkg: &RpPackage, name: &RpName) -> Result<Type> {
+        let pkg = if let Some(ref prefix) = name.prefix {
             self.env
                 .lookup_used(pkg, prefix)
                 .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?
@@ -141,14 +141,14 @@ impl Processor {
             pkg
         };
 
-        let name = custom.parts.join(".");
+        let name = name.parts.join(".");
 
         let package_name = self.java_package_name(pkg);
         Ok(Type::class(&package_name, &name).into())
     }
 
     /// Convert the given type to a java type.
-    fn into_java_type(&self, pos: &Pos, pkg: &Package, ty: &RpType) -> Result<Type> {
+    fn into_java_type(&self, pos: &Pos, pkg: &RpPackage, ty: &RpType) -> Result<Type> {
         let ty = match *ty {
             RpType::String => self.string.clone().into(),
             RpType::Signed(ref size) |
@@ -169,8 +169,8 @@ impl Processor {
                 let argument = self.into_java_type(pos, pkg, ty)?;
                 self.list.with_arguments(vec![argument]).into()
             }
-            RpType::Custom(ref custom) => {
-                return self.convert_custom(pos, pkg, custom);
+            RpType::Name(ref name) => {
+                return self.convert_custom(pos, pkg, name);
             }
             RpType::Map(ref key, ref value) => {
                 let key = self.into_java_type(pos, pkg, key)?;
@@ -516,7 +516,7 @@ impl Processor {
         Ok(to_value)
     }
 
-    fn process_enum(&self, pkg: &Package, body: &EnumBody) -> Result<FileSpec> {
+    fn process_enum(&self, pkg: &RpPackage, body: &EnumBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(pkg), &body.name);
 
         let mut spec = EnumSpec::new(mods![Modifier::Public], &body.name);
@@ -608,7 +608,7 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_tuple(&self, pkg: &Package, body: &TupleBody) -> Result<FileSpec> {
+    fn process_tuple(&self, pkg: &RpPackage, body: &TupleBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(pkg), &body.name);
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
 
@@ -647,7 +647,7 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_type(&self, pkg: &Package, body: &TypeBody) -> Result<FileSpec> {
+    fn process_type(&self, pkg: &RpPackage, body: &TypeBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(pkg), &body.name);
 
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
@@ -686,7 +686,7 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_interface(&self, pkg: &Package, interface: &InterfaceBody) -> Result<FileSpec> {
+    fn process_interface(&self, pkg: &RpPackage, interface: &InterfaceBody) -> Result<FileSpec> {
         let parent_type = Type::class(&self.java_package_name(pkg), &interface.name);
 
         let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
@@ -774,7 +774,7 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn convert_field(&self, pkg: &Package, field: &RpLoc<Field>) -> Result<JavaField> {
+    fn convert_field(&self, pkg: &RpPackage, field: &RpLoc<Field>) -> Result<JavaField> {
         let java_type = self.into_java_type(&field.pos, pkg, &field.ty)?;
         let camel_name = self.snake_to_upper_camel.convert(&field.name);
         let ident = self.snake_to_lower_camel.convert(&field.name);
@@ -792,7 +792,10 @@ impl Processor {
     }
 
 
-    fn convert_fields(&self, pkg: &Package, fields: &Vec<RpLoc<Field>>) -> Result<Vec<JavaField>> {
+    fn convert_fields(&self,
+                      pkg: &RpPackage,
+                      fields: &Vec<RpLoc<Field>>)
+                      -> Result<Vec<JavaField>> {
         let mut out = Vec::new();
 
         for field in fields {
@@ -814,7 +817,7 @@ impl Processor {
     }
 
     fn process_files<F>(&self, mut consumer: F) -> Result<()>
-        where F: FnMut(PathBuf, &Package, &Decl) -> Result<()>
+        where F: FnMut(PathBuf, &RpPackage, &Decl) -> Result<()>
     {
         let root_dir = &self.options.parent.out_path;
 
@@ -832,7 +835,7 @@ impl Processor {
         Ok(())
     }
 
-    fn build_file_spec(&self, pkg: &Package, decl: &Decl) -> Result<FileSpec> {
+    fn build_file_spec(&self, pkg: &RpPackage, decl: &Decl) -> Result<FileSpec> {
         match *decl {
             Decl::Interface(ref interface) => self.process_interface(pkg, interface),
             Decl::Type(ref ty) => self.process_type(pkg, ty),
@@ -902,9 +905,9 @@ impl ValueBuilder for Processor {
 
     fn convert_type(&self, pos: &Pos, type_id: &TypeId) -> Result<Type> {
         let pkg = &type_id.package;
-        let custom = &type_id.custom;
+        let name = &type_id.name;
 
-        let pkg = if let Some(ref prefix) = custom.prefix {
+        let pkg = if let Some(ref prefix) = name.prefix {
             self.env
                 .lookup_used(pkg, prefix)
                 .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?
@@ -912,7 +915,7 @@ impl ValueBuilder for Processor {
             pkg
         };
 
-        let name = custom.parts.join(".");
+        let name = name.parts.join(".");
 
         let package_name = self.java_package_name(pkg);
         Ok(Type::class(&package_name, &name).into())

@@ -18,7 +18,7 @@ impl<'a> Options<'a> {
         }
     }
 
-    pub fn lookup(&'a self, name: &'a str) -> Box<Iterator<Item = &RpLoc<Value>> + 'a> {
+    pub fn lookup(&'a self, name: &'a str) -> Box<Iterator<Item = &RpLoc<RpValue>> + 'a> {
         let it = self.options
             .iter();
 
@@ -34,7 +34,7 @@ impl<'a> Options<'a> {
 
         for s in self.lookup(name) {
             match **s {
-                Value::String(ref string) => {
+                RpValue::String(ref string) => {
                     out.push(RpLoc::new(string.clone(), s.pos.clone()));
                 }
                 _ => {
@@ -46,8 +46,8 @@ impl<'a> Options<'a> {
         Ok(out)
     }
 
-    pub fn find_one(&'a self, name: &'a str) -> Result<Option<&'a RpLoc<Value>>> {
-        let mut out: Option<&RpLoc<Value>> = None;
+    pub fn find_one(&'a self, name: &'a str) -> Result<Option<&'a RpLoc<RpValue>>> {
+        let mut out: Option<&RpLoc<RpValue>> = None;
 
         for s in self.lookup(name) {
             if let Some(_) = out {
@@ -67,7 +67,7 @@ impl<'a> Options<'a> {
     /// error.
     pub fn find_one_identifier(&self, name: &str) -> Result<Option<RpLoc<String>>> {
         if let Some(t) = self.find_one(name)? {
-            if let Value::Identifier(ref identifier) = t.inner {
+            if let RpValue::Identifier(ref identifier) = t.inner {
                 return Ok(Some(RpLoc::new(identifier.clone(), t.pos.clone())));
             } else {
                 return Err(Error::pos("expected identifier".to_owned(), t.pos.clone()));
@@ -79,7 +79,7 @@ impl<'a> Options<'a> {
 
     pub fn _find_one_string(&self, name: &str) -> Result<Option<RpLoc<String>>> {
         if let Some(t) = self.find_one(name)? {
-            if let Value::String(ref string) = t.inner {
+            if let RpValue::String(ref string) = t.inner {
                 return Ok(Some(RpLoc::new(string.clone(), t.pos.clone())));
             } else {
                 return Err(Error::pos("expected string".to_owned(), t.pos.clone()));
@@ -91,7 +91,7 @@ impl<'a> Options<'a> {
 
     pub fn find_one_boolean(&self, name: &str) -> Result<Option<RpLoc<bool>>> {
         if let Some(t) = self.find_one(name)? {
-            if let Value::Boolean(ref boolean) = t.inner {
+            if let RpValue::Boolean(ref boolean) = t.inner {
                 return Ok(Some(RpLoc::new(boolean.clone(), t.pos.clone())));
             } else {
                 return Err(Error::pos("expected string".to_owned(), t.pos.clone()));
@@ -109,7 +109,7 @@ impl<'a> Options<'a> {
 
         for s in self.lookup(name) {
             match **s {
-                Value::Identifier(ref identifier) => {
+                RpValue::Identifier(ref identifier) => {
                     out.push(RpLoc::new(identifier.clone(), s.pos.clone()));
                 }
                 _ => {

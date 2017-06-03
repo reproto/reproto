@@ -10,29 +10,29 @@ pub type RpLoc<T> = loc::Loc<T, Pos>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TypeId {
-    pub package: Package,
-    pub custom: Custom,
+    pub package: RpPackage,
+    pub name: RpName,
 }
 
 impl TypeId {
-    pub fn new(package: Package, custom: Custom) -> TypeId {
+    pub fn new(package: RpPackage, name: RpName) -> TypeId {
         TypeId {
             package: package,
-            custom: custom,
+            name: name,
         }
     }
 
-    pub fn with_custom(&self, custom: Custom) -> TypeId {
+    pub fn with_name(&self, name: RpName) -> TypeId {
         TypeId {
             package: self.package.clone(),
-            custom: custom,
+            name: name,
         }
     }
 
     pub fn extend(&self, part: String) -> TypeId {
         TypeId {
             package: self.package.clone(),
-            custom: self.custom.extend(part),
+            name: self.name.extend(part),
         }
     }
 }
@@ -40,38 +40,38 @@ impl TypeId {
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldInit {
     pub name: RpLoc<String>,
-    pub value: RpLoc<Value>,
+    pub value: RpLoc<RpValue>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Instance {
-    pub ty: Custom,
+    pub ty: RpName,
     pub arguments: RpLoc<Vec<RpLoc<FieldInit>>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Value {
+pub enum RpValue {
     String(String),
     Number(f64),
     Boolean(bool),
     Identifier(String),
     Type(RpType),
     Instance(RpLoc<Instance>),
-    Constant(RpLoc<Custom>),
-    Array(Vec<RpLoc<Value>>),
+    Constant(RpLoc<RpName>),
+    Array(Vec<RpLoc<RpValue>>),
 }
 
-impl ::std::fmt::Display for Value {
+impl ::std::fmt::Display for RpValue {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         let out = match *self {
-            Value::String(_) => "<string>",
-            Value::Number(_) => "<number>",
-            Value::Boolean(_) => "<boolean>",
-            Value::Identifier(_) => "<identifier>",
-            Value::Type(_) => "<type>",
-            Value::Instance(_) => "<instance>",
-            Value::Constant(_) => "<constant>",
-            Value::Array(_) => "<array>",
+            RpValue::String(_) => "<string>",
+            RpValue::Number(_) => "<number>",
+            RpValue::Boolean(_) => "<boolean>",
+            RpValue::Identifier(_) => "<identifier>",
+            RpValue::Type(_) => "<type>",
+            RpValue::Instance(_) => "<instance>",
+            RpValue::Constant(_) => "<constant>",
+            RpValue::Array(_) => "<array>",
         };
 
         write!(f, "{}", out)
@@ -81,28 +81,28 @@ impl ::std::fmt::Display for Value {
 #[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,
-    pub values: Vec<RpLoc<Value>>,
+    pub values: Vec<RpLoc<RpValue>>,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Custom {
+pub struct RpName {
     pub prefix: Option<String>,
     pub parts: Vec<String>,
 }
 
-impl Custom {
-    pub fn with_parts(parts: Vec<String>) -> Custom {
-        Custom {
+impl RpName {
+    pub fn with_parts(parts: Vec<String>) -> RpName {
+        RpName {
             prefix: None,
             parts: parts,
         }
     }
 
-    pub fn extend(&self, part: String) -> Custom {
+    pub fn extend(&self, part: String) -> RpName {
         let mut parts = self.parts.clone();
         parts.push(part);
 
-        Custom {
+        RpName {
             prefix: self.prefix.clone(),
             parts: parts,
         }
@@ -119,7 +119,7 @@ pub enum RpType {
     String,
     Bytes,
     Any,
-    Custom(Custom),
+    Name(RpName),
     Array(Box<RpType>),
     Map(Box<RpType>, Box<RpType>),
 }
@@ -145,11 +145,11 @@ impl ::std::fmt::Display for RpType {
             }
             RpType::Boolean => write!(f, "boolean"),
             RpType::String => write!(f, "string"),
-            RpType::Custom(ref custom) => {
-                if let Some(ref used) = custom.prefix {
-                    write!(f, "{}::{}", used, custom.parts.join("."))
+            RpType::Name(ref name) => {
+                if let Some(ref used) = name.prefix {
+                    write!(f, "{}::{}", used, name.parts.join("."))
                 } else {
-                    write!(f, "{}", custom.parts.join("."))
+                    write!(f, "{}", name.parts.join("."))
                 }
             }
             RpType::Array(ref inner) => write!(f, "[{}]", inner),
@@ -161,27 +161,27 @@ impl ::std::fmt::Display for RpType {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Package {
+pub struct RpPackage {
     pub parts: Vec<String>,
 }
 
-impl Package {
-    pub fn new(parts: Vec<String>) -> Package {
-        Package { parts: parts }
+impl RpPackage {
+    pub fn new(parts: Vec<String>) -> RpPackage {
+        RpPackage { parts: parts }
     }
 
-    pub fn join(&self, other: &Package) -> Package {
+    pub fn join(&self, other: &RpPackage) -> RpPackage {
         let mut parts = self.parts.clone();
         parts.extend(other.parts.clone());
-        Package::new(parts)
+        RpPackage::new(parts)
     }
 
-    pub fn into_type_id(&self, custom: &Custom) -> TypeId {
-        TypeId::new(self.clone(), custom.clone())
+    pub fn into_type_id(&self, name: &RpName) -> TypeId {
+        TypeId::new(self.clone(), name.clone())
     }
 }
 
-impl ::std::fmt::Display for Package {
+impl ::std::fmt::Display for RpPackage {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "{}", self.parts.join("."))
     }
@@ -379,7 +379,7 @@ impl TupleBody {
 #[derive(Debug, Clone)]
 pub struct EnumValue {
     pub name: RpLoc<String>,
-    pub arguments: Vec<RpLoc<Value>>,
+    pub arguments: Vec<RpLoc<RpValue>>,
     pub ordinal: u32,
 }
 
@@ -536,7 +536,7 @@ pub enum MatchKind {
 #[derive(Debug, Clone)]
 pub enum MatchCondition {
     /// Match a specific value.
-    Value(RpLoc<Value>),
+    RpValue(RpLoc<RpValue>),
     /// Match a type, and add a binding for the given name that can be resolved in the action.
     Type(RpLoc<MatchVariable>),
 }
@@ -544,7 +544,7 @@ pub enum MatchCondition {
 #[derive(Debug, Clone)]
 pub struct MatchMember {
     pub condition: RpLoc<MatchCondition>,
-    pub value: RpLoc<Value>,
+    pub value: RpLoc<RpValue>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -555,8 +555,8 @@ pub struct MatchVariable {
 
 #[derive(Debug, Clone)]
 pub struct MatchDecl {
-    pub by_value: Vec<(RpLoc<Value>, RpLoc<Value>)>,
-    pub by_type: Vec<(MatchKind, (RpLoc<MatchVariable>, RpLoc<Value>))>,
+    pub by_value: Vec<(RpLoc<RpValue>, RpLoc<RpValue>)>,
+    pub by_type: Vec<(MatchKind, (RpLoc<MatchVariable>, RpLoc<RpValue>))>,
 }
 
 impl MatchDecl {
@@ -580,7 +580,7 @@ impl MatchDecl {
             RpType::Boolean => MatchKind::Boolean,
             RpType::String | RpType::Bytes => MatchKind::String,
             RpType::Any => MatchKind::Any,
-            RpType::Custom(_) |
+            RpType::Name(_) |
             RpType::Map(_, _) => MatchKind::Object,
             RpType::Array(_) => MatchKind::Array,
         }
@@ -605,7 +605,7 @@ impl MatchDecl {
 
                 self.by_type.push((match_kind, (variable.clone(), member.value.clone())));
             }
-            MatchCondition::Value(ref value) => {
+            MatchCondition::RpValue(ref value) => {
                 {
                     // conflicting when value matches
                     let result = self.by_value.iter().find(|e| e.0.inner == value.inner);

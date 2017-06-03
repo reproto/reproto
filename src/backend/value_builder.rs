@@ -1,6 +1,6 @@
 //! # Helper trait to deal with value construction
 //!
-//! Value construction is when a literal value is encoded into the output.
+//! RpValue construction is when a literal value is encoded into the output.
 //!
 //! For example, when creating an instance of type `Foo(1, 2, 3)` in java could be translated to:
 //!
@@ -18,15 +18,15 @@ use super::models::*;
 pub type KnownValues<T> = HashMap<String, T>;
 
 pub struct ValueBuilderEnv<'a> {
-    pub package: &'a Package,
+    pub package: &'a RpPackage,
     pub variables: &'a Variables<'a>,
-    pub value: &'a RpLoc<Value>,
+    pub value: &'a RpLoc<RpValue>,
     pub ty: Option<&'a RpType>,
 }
 
-fn new_env<'a>(package: &'a Package,
+fn new_env<'a>(package: &'a RpPackage,
                variables: &'a Variables,
-               value: &'a RpLoc<Value>,
+               value: &'a RpLoc<RpValue>,
                ty: Option<&'a RpType>)
                -> Box<ValueBuilderEnv<'a>> {
     Box::new(ValueBuilderEnv {
@@ -86,30 +86,30 @@ pub trait ValueBuilder {
         let ty = env.ty;
 
         match (&**value, ty) {
-            (&Value::String(ref string), Some(&RpType::String)) |
-            (&Value::String(ref string), None) => {
+            (&RpValue::String(ref string), Some(&RpType::String)) |
+            (&RpValue::String(ref string), None) => {
                 return self.string(string);
             }
-            (&Value::Boolean(ref boolean), Some(&RpType::Boolean)) |
-            (&Value::Boolean(ref boolean), None) => {
+            (&RpValue::Boolean(ref boolean), Some(&RpType::Boolean)) |
+            (&RpValue::Boolean(ref boolean), None) => {
                 return self.boolean(boolean);
             }
-            (&Value::Number(ref number), None) => {
+            (&RpValue::Number(ref number), None) => {
                 return self.number(number);
             }
-            (&Value::Number(ref number), Some(&RpType::Signed(ref size))) => {
+            (&RpValue::Number(ref number), Some(&RpType::Signed(ref size))) => {
                 return self.signed(number, size);
             }
-            (&Value::Number(ref number), Some(&RpType::Unsigned(ref size))) => {
+            (&RpValue::Number(ref number), Some(&RpType::Unsigned(ref size))) => {
                 return self.unsigned(number, size);
             }
-            (&Value::Number(ref number), Some(&RpType::Float)) => {
+            (&RpValue::Number(ref number), Some(&RpType::Float)) => {
                 return self.float(number);
             }
-            (&Value::Number(ref number), Some(&RpType::Double)) => {
+            (&RpValue::Number(ref number), Some(&RpType::Double)) => {
                 return self.double(number);
             }
-            (&Value::Array(ref values), expected) => {
+            (&RpValue::Array(ref values), expected) => {
                 let inner = match expected {
                     Some(&RpType::Array(ref inner)) => Some(&**inner),
                     Some(other) => {
@@ -127,7 +127,7 @@ pub trait ValueBuilder {
 
                 return self.array(array_values);
             }
-            (&Value::Constant(ref constant), Some(&RpType::Custom(ref target))) => {
+            (&RpValue::Constant(ref constant), Some(&RpType::Name(ref target))) => {
                 let reg_constant = self.env()
                     .constant(&value.pos, &env.package, constant, target)?;
 
@@ -143,7 +143,7 @@ pub trait ValueBuilder {
                     }
                 }
             }
-            (&Value::Instance(ref instance), Some(&RpType::Custom(ref target))) => {
+            (&RpValue::Instance(ref instance), Some(&RpType::Name(ref target))) => {
                 let (registered, known) = self.env()
                     .instance(&value.pos, env.package, instance, target)?;
 
@@ -162,7 +162,7 @@ pub trait ValueBuilder {
                 return self.instance(ty, arguments);
             }
             // identifier with any type.
-            (&Value::Identifier(ref identifier), expected) => {
+            (&RpValue::Identifier(ref identifier), expected) => {
                 if let Some(variable_type) = env.variables.get(identifier) {
                     // if expected is set
                     if let Some(expected) = expected {
