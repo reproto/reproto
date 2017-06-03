@@ -1,7 +1,6 @@
 #![allow(unconditional_recursion)]
 
 use pest::prelude::*;
-use std::collections::LinkedList;
 use super::ast::*;
 use super::errors::*;
 
@@ -112,6 +111,12 @@ fn decode_unicode4(it: &mut Iterator<Item = char>) -> Result<char> {
     Ok(::std::char::from_u32(res).ok_or("expected valid character")?)
 }
 
+impl<T> From<(T, Token<Rule>)> for AstLoc<T> {
+    fn from(pair: (T, Token<Rule>)) -> AstLoc<T> {
+        AstLoc::new(pair.0, (pair.1.start, pair.1.end))
+    }
+}
+
 impl_rdp! {
     grammar! {
         file = _{ package_decl ~ use_decl* ~ decl* ~ eoi }
@@ -132,8 +137,7 @@ impl_rdp! {
         interface_body = _{ member* ~ sub_type* }
 
         enum_decl = { enum_keyword ~ type_identifier ~ left_curly ~ enum_body ~ right_curly }
-        enum_body = _{ enum_body_value* ~ member* }
-        enum_body_value = { enum_value }
+        enum_body = _{ enum_value* ~ member* }
 
         sub_type = { type_identifier ~ left_curly ~ sub_type_body ~ right_curly }
         sub_type_body = _{ member* }
@@ -150,8 +154,7 @@ impl_rdp! {
         enum_ordinal = { equals ~ value }
         option_decl = { identifier ~ (value ~ (comma ~ value)*) ~ semi_colon }
 
-        match_decl = { match_keyword ~ left_curly ~ match_member_entry* ~ right_curly }
-        match_member_entry = { match_member }
+        match_decl = { match_keyword ~ left_curly ~ match_member* ~ right_curly }
         match_member = { match_condition ~ hash_rocket ~ value ~ semi_colon }
         match_condition = { match_variable | match_value }
         match_variable = { identifier ~ colon ~ type_spec }
@@ -255,39 +258,26 @@ impl_rdp! {
     }
 
     process! {
-        _file(&self) -> Result<File> {
+        process_file(&self) -> Result<File> {
             (
                 _: package_decl,
                 _: package_keyword,
-                package: _package(), _: semi_colon,
-                uses: _use_list(),
-                decls: _decl_list(),
+                package: process_package(), _: semi_colon,
+                uses: use_decl_list(),
+                decls: decl_list(),
             ) => {
                 let package = package;
-                let uses = uses?.into_iter().collect();
-                let decls = decls?.into_iter().collect();
 
                 Ok(File {
                     package: package,
                     uses: uses,
-                    decls: decls
+                    decls: decls?
                 })
             },
         }
 
-        _use_list(&self) -> Result<LinkedList<AstLoc<UseDecl>>> {
-            (token: use_decl, use_decl: _use_decl(), tail: _use_list()) => {
-                let pos = (token.start, token.end);
-                let mut tail = tail?;
-                tail.push_front(AstLoc::new(use_decl, pos));
-                Ok(tail)
-            },
-
-            () => Ok(LinkedList::new()),
-        }
-
-        _use_decl(&self) -> UseDecl {
-            (_: use_keyword, package: _package(), alias: _use_as(), _: semi_colon) => {
+        process_use_decl(&self) -> UseDecl {
+            (_: use_keyword, package: process_package(), alias: process_use_as(), _: semi_colon) => {
                 UseDecl {
                     package: package,
                     alias: alias,
@@ -295,45 +285,29 @@ impl_rdp! {
             }
         }
 
-        _use_as(&self) -> Option<String> {
+        process_use_as(&self) -> Option<String> {
             (_: use_as, _: as_keyword, &alias: identifier) => Some(alias.to_owned()),
             () => None,
         }
 
-        _package(&self) -> AstLoc<RpPackage> {
-            (token: package_ident, idents: _ident_list()) => {
-                let pos = (token.start, token.end);
-                let idents = idents;
-                let package = RpPackage::new(idents.into_iter().collect());
-                AstLoc::new(package, pos)
+        process_package(&self) -> AstLoc<RpPackage> {
+            (token: package_ident, idents: identifier_list()) => {
+                (RpPackage::new(idents), token).into()
             },
         }
 
-        _decl_list(&self) -> Result<LinkedList<AstLoc<Decl>>> {
-            (token: decl, value: _decl(), tail: _decl_list()) => {
-                let mut tail = tail?;
-                let pos = (token.start, token.end);
-                tail.push_front(AstLoc::new(value?, pos));
-                Ok(tail)
-            },
-
-            () => Ok(LinkedList::new()),
-        }
-
-        _decl(&self) -> Result<Decl> {
+        process_decl(&self) -> Result<Decl> {
             (
                 _: type_decl,
                 _: type_keyword,
                 &name: type_identifier,
                 _: left_curly,
-                members: _member_list(),
+                members: member_list(),
                 _: right_curly,
             ) => {
-                let members = members?.into_iter().collect();
-
                 let body = TypeBody {
                     name: name.to_owned(),
-                    members: members
+                    members: members?
                 };
 
                 Ok(Decl::Type(body))
@@ -344,14 +318,12 @@ impl_rdp! {
                 _: tuple_keyword,
                 &name: type_identifier,
                 _: left_curly,
-                members: _member_list(),
+                members: member_list(),
                 _: right_curly,
             ) => {
-                let members = members?.into_iter().collect();
-
                 let body = TupleBody {
                     name: name.to_owned(),
-                    members: members,
+                    members: members?,
                 };
 
                 Ok(Decl::Tuple(body))
@@ -362,17 +334,14 @@ impl_rdp! {
                 _: interface_keyword,
                 &name: type_identifier,
                 _: left_curly,
-                members: _member_list(),
-                sub_types: _sub_type_list(),
+                members: member_list(),
+                sub_types: sub_type_list(),
                 _: right_curly,
             ) => {
-                let members = members?.into_iter().collect();
-                let sub_types = sub_types?.into_iter().collect();
-
                 let body = InterfaceBody {
                     name: name.to_owned(),
-                    members: members,
-                    sub_types: sub_types,
+                    members: members?,
+                    sub_types: sub_types?,
                 };
 
                 Ok(Decl::Interface(body))
@@ -383,129 +352,90 @@ impl_rdp! {
                 _: enum_keyword,
                 &name: type_identifier,
                 _: left_curly,
-                values: _enum_value_list(),
-                members: _member_list(),
+                values: enum_value_list(),
+                members: member_list(),
                 _: right_curly,
             ) => {
-                let values = values?.into_iter().collect();
-                let members = members?.into_iter().collect();
-
                 let body = EnumBody {
                     name: name.to_owned(),
-                    values: values,
-                    members: members,
+                    values: values?,
+                    members: members?,
                 };
 
                 Ok(Decl::Enum(body))
             },
         }
 
-        _enum_value_list(&self) -> Result<LinkedList<AstLoc<EnumValue>>> {
-            (_: enum_body_value, value: _enum_value(), tail: _enum_value_list()) => {
-                let mut tail = tail?;
-                tail.push_front(value?);
-                Ok(tail)
-            },
-
-            () => Ok(LinkedList::new()),
-        }
-
-        _enum_value(&self) -> Result<AstLoc<EnumValue>> {
+        process_enum_value(&self) -> Result<EnumValue> {
             (
-                token: enum_value,
                 name_token: enum_name,
                 &name: type_identifier,
-                values: _enum_arguments(),
-                ordinal: _enum_ordinal(),
+                values: process_enum_arguments(),
+                ordinal: process_enum_ordinal(),
                 _: semi_colon
              ) => {
-                let name = AstLoc::new(name.to_owned(), (name_token.start, name_token.end));
-
-                let enum_value = EnumValue {
-                    name: name,
-                    arguments: values?.into_iter().collect(),
+                Ok(EnumValue {
+                    name: (name.to_owned(), name_token).into(),
+                    arguments: values?,
                     ordinal: ordinal?
-                };
-
-                Ok(AstLoc::new(enum_value, (token.start, token.end)))
+                })
             },
         }
 
-        _enum_arguments(&self) -> Result<LinkedList<AstLoc<RpValue>>> {
-            (_: enum_arguments, _: left_paren, values: _value_list(), _: right_paren) => values,
-            () => Ok(LinkedList::new()),
+        process_enum_arguments(&self) -> Result<Vec<AstLoc<RpValue>>> {
+            (_: enum_arguments, _: left_paren, values: value_list(), _: right_paren) => values,
+            () => Ok(Vec::new()),
         }
 
-        _enum_ordinal(&self) -> Result<Option<AstLoc<RpValue>>> {
-            (_: enum_ordinal, _: equals, value: _value_token()) => value.map(Some),
+        process_enum_ordinal(&self) -> Result<Option<AstLoc<RpValue>>> {
+            (_: enum_ordinal, _: equals, value: process_value_token()) => value.map(Some),
             () => Ok(None),
         }
 
-        _optional_value_list(&self) -> Result<LinkedList<AstLoc<RpValue>>> {
-            (_: optional_value_list, values: _value_list()) => values,
-            () => Ok(LinkedList::new()),
+        process_optional_value_list(&self) -> Result<Vec<AstLoc<RpValue>>> {
+            (_: optional_value_list, values: value_list()) => values,
+            () => Ok(Vec::new()),
         }
 
-        _value_list(&self) -> Result<LinkedList<AstLoc<RpValue>>> {
-            (value: _value_token(), _: comma, tail: _value_list()) => {
-                let mut tail = tail?;
-                tail.push_front(value?);
-                Ok(tail)
-            },
-
-            (value: _value_token()) => {
-                let mut tail = LinkedList::new();
-                tail.push_front(value?);
-                Ok(tail)
+        process_value_token(&self) -> Result<AstLoc<RpValue>> {
+            (token: value, value: process_value()) => {
+                value.map(move |v| (v, token).into())
             },
         }
 
-        _value_token(&self) -> Result<AstLoc<RpValue>> {
-            (token: value, value: _value()) => {
-                let pos = (token.start, token.end);
-                value.map(move |v| AstLoc::new(v, pos))
-            },
-        }
-
-        _value(&self) -> Result<RpValue> {
+        process_value(&self) -> Result<RpValue> {
             (
                 token: instance,
                 _: custom_type,
-                custom: _custom(),
+                name: process_name(),
                 arguments_token: instance_arguments,
                 _: left_paren,
-                arguments: _field_init_list(),
+                arguments: field_init_list(),
                 _: right_paren,
             ) => {
-                let arguments = arguments?.into_iter().collect();
-
-                let args_pos = (arguments_token.start, arguments_token.end);
                 let instance = Instance {
-                   ty: custom,
-                   arguments: AstLoc::new(arguments, args_pos),
+                   ty: name,
+                   arguments: (arguments?, arguments_token).into(),
                 };
 
-                let pos = (token.start, token.end);
-                Ok(RpValue::Instance(AstLoc::new(instance, pos)))
+                Ok(RpValue::Instance((instance, token).into()))
             },
 
             (
                 token: constant,
                 _: custom_type,
-                custom: _custom(),
+                name: process_name(),
             ) => {
-                let pos = (token.start, token.end);
-                Ok(RpValue::Constant(AstLoc::new(custom, pos)))
+                Ok(RpValue::Constant((name, token).into()))
             },
 
             (
                 _: array,
                 _: bracket_start,
-                values: _optional_value_list(),
+                values: process_optional_value_list(),
                 _: bracket_end,
             ) => {
-                let values = values?.into_iter().collect();
-                Ok(RpValue::Array(values))
+                Ok(RpValue::Array(values?))
             },
 
             (&value: string) => {
@@ -533,69 +463,33 @@ impl_rdp! {
             },
         }
 
-        _used_prefix(&self) -> Option<String> {
+        process_used_prefix(&self) -> Option<String> {
             (_: used_prefix, &prefix: identifier, _: scope) => Some(prefix.to_owned()),
             () => None,
         }
 
-        _field_init_list(&self) -> Result<LinkedList<AstLoc<FieldInit>>> {
-            (
-                token: field_init,
-                field_init: _field_init(),
-                _: comma,
-                tail: _field_init_list()
-            ) => {
-                let mut tail = tail?;
-                tail.push_front(AstLoc::new(field_init?, (token.start, token.end)));
-                Ok(tail)
-            },
-
-            (
-                token: field_init,
-                field_init: _field_init(),
-                tail: _field_init_list()
-            ) => {
-                let mut tail = tail?;
-                tail.push_front(AstLoc::new(field_init?, (token.start, token.end)));
-                Ok(tail)
-            },
-
-            () => Ok(LinkedList::new()),
-        }
-
-        _field_init(&self) -> Result<FieldInit> {
+        process_field_init(&self) -> Result<FieldInit> {
             (
                 name_token: field_name,
                 &name: identifier,
                 _: colon,
-                value: _value_token(),
+                value: process_value_token(),
             ) => {
                 Ok(FieldInit {
-                    name: AstLoc::new(name.to_owned(), (name_token.start, name_token.end)),
+                    name: (name.to_owned(), name_token).into(),
                     value: value?,
                 })
             },
         }
 
-        _member_list(&self) -> Result<LinkedList<AstLoc<Member>>> {
-            (token: member, value: _member(), tail: _member_list()) => {
-                let mut tail = tail?;
-                let pos = (token.start, token.end);
-                tail.push_front(AstLoc::new(value?, pos));
-                Ok(tail)
-            },
-
-            () => Ok(LinkedList::new()),
-        }
-
-        _member(&self) -> Result<Member> {
+        process_member(&self) -> Result<Member> {
             (
                 _: field,
                 &name: identifier,
-                modifier: _modifier(),
+                modifier: process_modifier(),
                 _: colon,
-                type_spec: _type_spec(),
-                field_as: _field_as(),
+                type_spec: process_type_spec(),
+                field_as: process_field_as(),
                 _: semi_colon,
             ) => {
                 let field = Field {
@@ -622,106 +516,63 @@ impl_rdp! {
             (
                 token: option_decl,
                 &name: identifier,
-                values: _value_list(),
+                values: value_list(),
                 _: semi_colon,
             ) => {
-                let pos = (token.start, token.end);
-                let values = values?.into_iter().collect();
-                let option_decl = OptionDecl { name: name.to_owned(), values: values };
-                Ok(Member::Option(AstLoc::new(option_decl, pos)))
+                let option_decl = OptionDecl { name: name.to_owned(), values: values? };
+                Ok(Member::Option((option_decl, token).into()))
             },
 
             (
                 _: match_decl,
                 _: match_keyword,
                 _: left_curly,
-                members: _match_member_list(),
+                members: match_member_list(),
                 _: right_curly,
              ) => {
-                let members = members?.into_iter().collect();
-
                 let decl = MatchDecl {
-                    members: members,
+                    members: members?,
                 };
 
                 Ok(Member::Match(decl))
             },
         }
 
-        _field_as(&self) -> Result<Option<AstLoc<RpValue>>> {
-            (_: field_as, _: as_keyword, value: _value_token()) => Ok(Some(value?)),
+        process_field_as(&self) -> Result<Option<AstLoc<RpValue>>> {
+            (_: field_as, _: as_keyword, value: process_value_token()) => Ok(Some(value?)),
             () => Ok(None),
         }
 
-        _sub_type_list(&self) -> Result<LinkedList<AstLoc<SubType>>> {
-            (token: sub_type, value: _sub_type(), tail: _sub_type_list()) => {
-                let mut tail = tail?;
-                let pos = (token.start, token.end);
-                tail.push_front(AstLoc::new(value?, pos));
-                Ok(tail)
-            },
-
-            () => {
-                Ok(LinkedList::new())
-            },
-        }
-
-        _sub_type(&self) -> Result<SubType> {
+        process_sub_type(&self) -> Result<SubType> {
             (
                 &name: type_identifier,
                 _: left_curly,
-                members: _member_list(),
+                members: member_list(),
                 _: right_curly,
              ) => {
                 let name = name.to_owned();
-                let members = members?.into_iter().collect();
-                Ok(SubType { name: name, members: members })
+                Ok(SubType { name: name, members: members? })
             },
         }
 
-        _match_member_list(&self) -> Result<LinkedList<AstLoc<MatchMember>>> {
+        process_match_member(&self) -> Result<MatchMember> {
             (
-                _: match_member_entry,
-                member: _match_member(),
-                tail: _match_member_list(),
-            ) => {
-                let mut tail = tail?;
-                tail.push_front(member?);
-                Ok(tail)
-            },
-
-            () => Ok(LinkedList::new()),
-        }
-
-        _match_member(&self) -> Result<AstLoc<MatchMember>> {
-            (
-                token: match_member,
-                condition: _match_condition(),
+                condition: process_match_condition(),
                 _: hash_rocket,
-                value: _value_token(),
+                value: process_value_token(),
                 _: semi_colon,
             ) => {
-                let pos = (token.start, token.end);
-
-                let member = MatchMember {
-                    condition: condition?,
-                    value: value?,
-                };
-
-                Ok(AstLoc::new(member, pos))
+                Ok(MatchMember { condition: condition?, value: value? })
             },
         }
 
-        _match_condition(&self) -> Result<AstLoc<MatchCondition>> {
+        process_match_condition(&self) -> Result<AstLoc<MatchCondition>> {
             (
                 token: match_condition,
                 _: match_value,
-                value: _value_token(),
+                value: process_value_token(),
             ) => {
-                let pos = (token.start, token.end);
-                let value = value?;
-                let condition = MatchCondition::RpValue(value);
-                Ok(AstLoc::new(condition, pos))
+                Ok((MatchCondition::RpValue(value?), token).into())
             },
 
             (
@@ -729,26 +580,18 @@ impl_rdp! {
                 match_token: match_variable,
                 &name: identifier,
                 _: colon,
-                ty: _type_spec(),
+                ty: process_type_spec(),
             ) => {
-                let pos = (token.start, token.end);
-                let name = name.to_owned();
-                let ty = ty?;
-
                 let variable = MatchVariable {
-                    name: name,
-                    ty: ty,
+                    name: name.to_owned(),
+                    ty: ty?,
                 };
 
-                let variable = AstLoc::new(variable, (match_token.start, match_token.end));
-
-                let condition = MatchCondition::Type(variable);
-
-                Ok(AstLoc::new(condition, pos))
+                Ok((MatchCondition::Type((variable, match_token).into()), token).into())
             },
         }
 
-        _type_spec(&self) -> Result<RpType> {
+        process_type_spec(&self) -> Result<RpType> {
             (_: double_type) => {
                 Ok(RpType::Double)
             },
@@ -791,7 +634,7 @@ impl_rdp! {
                 Ok(RpType::Any)
             },
 
-            (_: array_type, _: bracket_start, argument: _type_spec(), _: bracket_end) => {
+            (_: array_type, _: bracket_start, argument: process_type_spec(), _: bracket_end) => {
                 let argument = argument?;
                 Ok(RpType::Array(Box::new(argument)))
             },
@@ -799,9 +642,9 @@ impl_rdp! {
             (
                 _: map_type,
                 _: left_curly,
-                key: _type_spec(),
+                key: process_type_spec(),
                 _: colon,
-                value: _type_spec(),
+                value: process_type_spec(),
                 _: right_curly
              ) => {
                 let key = key?;
@@ -809,15 +652,13 @@ impl_rdp! {
                 Ok(RpType::Map(Box::new(key), Box::new(value)))
             },
 
-            (_: custom_type, custom: _custom()) => {
-                Ok(RpType::Name(custom))
+            (_: custom_type, name: process_name()) => {
+                Ok(RpType::Name(name))
             },
         }
 
-        _custom(&self) -> RpName {
-            (prefix: _used_prefix(), parts: _type_identifier_list()) => {
-                let parts = parts.into_iter().collect();
-
+        process_name(&self) -> RpName {
+            (prefix: process_used_prefix(), parts: type_identifier_list()) => {
                 RpName {
                     prefix: prefix,
                     parts: parts,
@@ -825,38 +666,111 @@ impl_rdp! {
             },
         }
 
-        _modifier(&self) -> RpModifier {
+        process_modifier(&self) -> RpModifier {
             (_: optional) => RpModifier::Optional,
             () => RpModifier::Required,
         }
+    }
+}
 
-        _ident_list(&self) -> LinkedList<String> {
-            (&value: identifier, _: dot, mut tail: _ident_list()) => {
-                tail.push_front(value.to_owned());
-                tail
-            },
+/// Extend Rdp with helper utilities.
+impl<'input, T: Input<'input>> Rdp<T> {
+    pub fn match_member_list(&self) -> Result<Vec<AstLoc<MatchMember>>> {
+        self.result_list_loc(Rule::match_member, None, Rdp::process_match_member)
+    }
 
-            (&value: identifier, mut tail: _ident_list()) => {
-                tail.push_front(value.to_owned());
-                tail
-            },
+    pub fn sub_type_list(&self) -> Result<Vec<AstLoc<SubType>>> {
+        self.result_list_loc(Rule::sub_type, None, Rdp::process_sub_type)
+    }
 
-            () => LinkedList::new(),
+    pub fn member_list(&self) -> Result<Vec<AstLoc<Member>>> {
+        self.result_list_loc(Rule::member, None, Rdp::process_member)
+    }
+
+    pub fn enum_value_list(&self) -> Result<Vec<AstLoc<EnumValue>>> {
+        self.result_list_loc(Rule::enum_value, None, Rdp::process_enum_value)
+    }
+
+    pub fn decl_list(&self) -> Result<Vec<AstLoc<Decl>>> {
+        self.result_list_loc(Rule::decl, None, Rdp::process_decl)
+    }
+
+    pub fn value_list(&self) -> Result<Vec<AstLoc<RpValue>>> {
+        self.result_list_loc(Rule::value, Some(Rule::comma), Rdp::process_value)
+    }
+
+    pub fn field_init_list(&self) -> Result<Vec<AstLoc<FieldInit>>> {
+        self.result_list_loc(Rule::field_init, Some(Rule::comma), Rdp::process_field_init)
+    }
+
+    pub fn use_decl_list(&self) -> Vec<AstLoc<UseDecl>> {
+        self.list(Rule::use_decl,
+                  None,
+                  |token| (self.process_use_decl(), *token).into())
+    }
+
+    pub fn identifier_list(&self) -> Vec<String> {
+        self.list(Rule::identifier,
+                  Some(Rule::dot),
+                  |t| self.input().slice(t.start, t.end).to_owned())
+    }
+
+    pub fn type_identifier_list(&self) -> Vec<String> {
+        self.list(Rule::type_identifier,
+                  Some(Rule::dot),
+                  |t| self.input().slice(t.start, t.end).to_owned())
+    }
+
+    pub fn result_list_loc<O, F>(&self,
+                                 marker: Rule,
+                                 sep: Option<Rule>,
+                                 rule: F)
+                                 -> Result<Vec<AstLoc<O>>>
+        where F: Fn(&Self) -> Result<O>
+    {
+        self.result_list(marker,
+                         sep,
+                         |token| rule(self).map(move |item| (item, *token).into()))
+    }
+
+    pub fn result_list<O, F>(&self, marker: Rule, sep: Option<Rule>, rule: F) -> Result<Vec<O>>
+        where F: Fn(&Token<Rule>) -> Result<O>
+    {
+        let mut out = Vec::new();
+
+        for n in self.list(marker, sep, rule) {
+            out.push(n?);
         }
 
-        _type_identifier_list(&self) -> LinkedList<String> {
-            (&value: type_identifier, _: dot, mut tail: _type_identifier_list()) => {
-                tail.push_front(value.to_owned());
-                tail
-            },
+        Ok(out)
+    }
 
-            (&value: type_identifier) => {
-                let mut tail = LinkedList::new();
-                tail.push_front(value.to_owned());
-                tail
-            },
+    pub fn list<O, F>(&self, marker: Rule, sep: Option<Rule>, rule: F) -> Vec<O>
+        where F: Fn(&Token<Rule>) -> O
+    {
+        let mut list = Vec::new();
 
+        while let Some(token) = self.queue().get(self.queue_index()) {
+            if token.rule != marker {
+                break;
+            }
+
+            self.inc_queue_index();
+            list.push(rule(token));
+
+            if let Some(sep) = sep {
+                if let Some(token) = self.queue().get(self.queue_index()) {
+                    if token.rule == sep {
+                        self.inc_queue_index();
+                        continue;
+                    }
+                }
+
+                break;
+            }
         }
+
+        list
     }
 }
 
@@ -870,7 +784,7 @@ mod tests {
             let mut parser = parse($input);
             assert!(parser.value());
 
-            let v = parser._value_token().unwrap().inner;
+            let v = parser.process_value_token().unwrap().inner;
             assert_eq!($expected, v);
         }}
     }
@@ -881,7 +795,7 @@ mod tests {
             assert!(parser.type_spec());
             assert!(parser.end());
 
-            let v = parser._type_spec().unwrap();
+            let v = parser.process_type_spec().unwrap();
             assert_eq!($expected, v);
         }}
     }
@@ -901,7 +815,7 @@ mod tests {
         assert!(parser.file());
         assert!(parser.end());
 
-        let file = parser._file().unwrap();
+        let file = parser.process_file().unwrap();
 
         let package = RpPackage::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
 
@@ -916,7 +830,7 @@ mod tests {
         assert!(parser.type_spec());
         assert!(parser.end());
 
-        let ty = parser._type_spec().unwrap();
+        let ty = parser.process_type_spec().unwrap();
 
         if let RpType::Array(inner) = ty {
             if let RpType::String = *inner {
@@ -934,7 +848,7 @@ mod tests {
         assert!(parser.type_spec());
         assert!(parser.end());
 
-        let ty = parser._type_spec().unwrap();
+        let ty = parser.process_type_spec().unwrap();
 
         // TODO: use #![feature(box_patterns)]:
         // if let Type::Map(box Type::String, box Type::Unsigned(size)) = ty {
@@ -1003,7 +917,7 @@ mod tests {
         assert!(parser.file());
         assert!(parser.end());
 
-        let file = parser._file().unwrap();
+        let file = parser.process_file().unwrap();
 
         assert_eq!(1, file.decls.len());
     }
@@ -1056,7 +970,7 @@ mod tests {
         assert!(parser.option_decl());
         assert!(parser.end());
 
-        if let Member::Option(option) = parser._member().unwrap() {
+        if let Member::Option(option) = parser.process_member().unwrap() {
             assert_eq!("foo_bar_baz", option.name);
             assert_eq!(4, option.values.len());
 

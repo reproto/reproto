@@ -76,5 +76,5 @@ pub fn parse_file(path: &Path) -> Result<ast::File> {
         }
     }
 
-    parser._file()
+    parser.process_file()
 }

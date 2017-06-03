@@ -15,7 +15,7 @@ TARGET ?= test
 all: clean it
 
 it: ${SUITES}
-	diff -urq $(EXPECTED) $(OUTPUT)
+	diff -ur $(EXPECTED) $(OUTPUT)
 
 update: ${SUITES}
 	@rsync -rav $(OUTPUT)/ $(EXPECTED)/
