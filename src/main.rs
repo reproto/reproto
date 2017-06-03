@@ -3,9 +3,9 @@ extern crate reproto;
 #[macro_use]
 extern crate log;
 
-use reproto::backend::models as m;
 use reproto::backend;
 use reproto::commands;
+use reproto::core::*;
 use reproto::errors::*;
 use reproto::logger;
 use reproto::parser;
@@ -32,7 +32,7 @@ fn setup_logger(matches: &clap::ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn print_error(m: &str, p: &m::Pos) -> Result<()> {
+fn print_error(m: &str, p: &RpPos) -> Result<()> {
     let (line, lines, range) = parser::find_line(&p.0, (p.1, p.2))?;
 
     println!("{}:{}:{}-{}:", p.0.display(), lines + 1, range.0, range.1);

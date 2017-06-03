@@ -1,4 +1,4 @@
-use super::models as m;
+use core::*;
 use parser::errors as parser_errors;
 
 error_chain! {
@@ -11,45 +11,45 @@ error_chain! {
     }
 
     errors {
-        Pos(message: String, pos: m::Pos) {
+        Pos(message: String, pos: RpPos) {
             description("position error")
             display("{}", message)
         }
 
-        FieldConflict(message: String, source: m::Pos, target: m::Pos) {
+        FieldConflict(message: String, source: RpPos, target: RpPos) {
             description("field conflict")
             display("{}", message)
         }
 
-        DeclMerge(message: String, source: m::Pos, target: m::Pos) {
+        DeclMerge(message: String, source: RpPos, target: RpPos) {
             description("declaration merge")
             display("{}", message)
         }
 
-        ExtendEnum(message: String, source: m::Pos, enum_pos: m::Pos) {
+        ExtendEnum(message: String, source: RpPos, enum_pos: RpPos) {
             description("extend enum")
             display("{}", message)
         }
 
-        ReservedField(field_pos: m::Pos, reserved_pos: m::Pos) {
+        ReservedField(field_pos: RpPos, reserved_pos: RpPos) {
             description("field reserved")
             display("field reserved")
         }
 
-        MatchConflict(source: m::Pos, target: m::Pos) {
+        MatchConflict(source: RpPos, target: RpPos) {
             description("match conflict")
         }
 
         /// An instance creation is missing a set of required fields.
-        MissingRequired(names: Vec<String>, pos: m::Pos, fields: Vec<m::Pos>) {
+        MissingRequired(names: Vec<String>, pos: RpPos, fields: Vec<RpPos>) {
             description("missing required")
         }
 
-        EnumValueConflict(pos: m::Pos, other: m::Pos) {
+        EnumValueConflict(pos: RpPos, other: RpPos) {
             description("enum value conflict")
         }
 
-        RegisteredTypeConflict(type_id: m::TypeId) {
+        RegisteredTypeConflict(type_id: RpTypeId) {
             description("registered type conflict")
             display("registered type conflict with: {:?}", type_id)
         }
@@ -64,23 +64,23 @@ error_chain! {
 }
 
 impl Error {
-    pub fn pos(message: String, pos: m::Pos) -> Error {
+    pub fn pos(message: String, pos: RpPos) -> Error {
         ErrorKind::Pos(message, pos).into()
     }
 
-    pub fn field_conflict(field: String, source: m::Pos, target: m::Pos) -> Error {
+    pub fn field_conflict(field: String, source: RpPos, target: RpPos) -> Error {
         ErrorKind::FieldConflict(field, source, target).into()
     }
 
-    pub fn decl_merge(message: String, source: m::Pos, target: m::Pos) -> Error {
+    pub fn decl_merge(message: String, source: RpPos, target: RpPos) -> Error {
         ErrorKind::DeclMerge(message, source, target).into()
     }
 
-    pub fn extend_enum(message: String, source: m::Pos, enum_pos: m::Pos) -> Error {
+    pub fn extend_enum(message: String, source: RpPos, enum_pos: RpPos) -> Error {
         ErrorKind::ExtendEnum(message, source, enum_pos).into()
     }
 
-    pub fn reserved_field(field_pos: m::Pos, reserved_pos: m::Pos) -> Error {
+    pub fn reserved_field(field_pos: RpPos, reserved_pos: RpPos) -> Error {
         ErrorKind::ReservedField(field_pos, reserved_pos).into()
     }
 }

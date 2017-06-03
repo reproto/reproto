@@ -1,13 +1,14 @@
 use backend::*;
 use backend::errors::*;
 use backend::for_context::ForContext;
+use backend::variables::Variables;
 use codeviz::js::*;
 use naming::{self, FromNaming};
 use options::Options;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::fs::File;
 use std::fs;
+use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use super::models::*;
@@ -111,7 +112,7 @@ impl Processor {
         js![if is_not_defined(stmt), js![throw required_error]]
     }
 
-    fn convert_fields(&self, fields: &Vec<RpLoc<Field>>) -> Vec<RpLoc<JsField>> {
+    fn convert_fields(&self, fields: &Vec<RpLoc<RpField>>) -> Vec<RpLoc<JsField>> {
         fields.iter()
             .map(|f| {
                 let ident = self.field_ident(&f);
@@ -129,7 +130,7 @@ impl Processor {
     }
 
     fn encode_method<E, B>(&self,
-                           type_id: &TypeId,
+                           type_id: &RpTypeId,
                            fields: &Vec<RpLoc<JsField>>,
                            builder: B,
                            extra: E)
@@ -177,7 +178,7 @@ impl Processor {
     }
 
     fn encode_tuple_method(&self,
-                           type_id: &TypeId,
+                           type_id: &RpTypeId,
                            fields: &Vec<RpLoc<JsField>>)
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
@@ -238,7 +239,7 @@ impl Processor {
     }
 
     fn decode_method<F>(&self,
-                        type_id: &TypeId,
+                        type_id: &RpTypeId,
                         fields: &Vec<RpLoc<JsField>>,
                         class: &ClassSpec,
                         variable_fn: F)
@@ -309,7 +310,7 @@ impl Processor {
         }
     }
 
-    fn field_ident(&self, field: &Field) -> String {
+    fn field_ident(&self, field: &RpField) -> String {
         if let Some(ref id_converter) = self.options.parent.id_converter {
             id_converter.convert(&field.name)
         } else {
@@ -317,7 +318,7 @@ impl Processor {
         }
     }
 
-    fn encode<S>(&self, type_id: &TypeId, ty: &RpType, value_stmt: S) -> Result<Statement>
+    fn encode<S>(&self, type_id: &RpTypeId, ty: &RpType, value_stmt: S) -> Result<Statement>
         where S: Into<Statement>
     {
         let value_stmt = value_stmt.into();
@@ -347,8 +348,8 @@ impl Processor {
     }
 
     fn decode<S>(&self,
-                 type_id: &TypeId,
-                 pos: &Pos,
+                 type_id: &RpTypeId,
+                 pos: &RpPos,
                  ty: &RpType,
                  value_stmt: S)
                  -> Result<Statement>
@@ -433,7 +434,7 @@ impl Processor {
         ctor
     }
 
-    fn process_tuple(&self, type_id: &TypeId, body: &TupleBody) -> Result<ElementSpec> {
+    fn process_tuple(&self, type_id: &RpTypeId, body: &RpTupleBody) -> Result<ElementSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<RpLoc<JsField>> = Vec::new();
 
@@ -474,7 +475,7 @@ impl Processor {
     }
 
     fn enum_encode_decode(&self,
-                          body: &EnumBody,
+                          body: &RpEnumBody,
                           fields: &Vec<RpLoc<JsField>>,
                           class: &ClassSpec)
                           -> Result<ElementSpec> {
@@ -508,7 +509,7 @@ impl Processor {
         Ok(elements.into())
     }
 
-    fn process_enum(&self, type_id: &TypeId, body: &EnumBody) -> Result<ElementSpec> {
+    fn process_enum(&self, type_id: &RpTypeId, body: &RpEnumBody) -> Result<ElementSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<RpLoc<JsField>> = Vec::new();
 
@@ -598,7 +599,7 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, type_id: &TypeId, body: &TypeBody) -> Result<ElementSpec> {
+    fn process_type(&self, type_id: &RpTypeId, body: &RpTypeBody) -> Result<ElementSpec> {
         let fields = self.convert_fields(&body.fields);
 
         let mut class = ClassSpec::new(&body.name);
@@ -626,7 +627,7 @@ impl Processor {
         Ok(class.into())
     }
 
-    fn process_interface(&self, type_id: &TypeId, body: &InterfaceBody) -> Result<ElementSpec> {
+    fn process_interface(&self, type_id: &RpTypeId, body: &RpInterfaceBody) -> Result<ElementSpec> {
         let mut classes = Elements::new();
 
         let mut interface_spec = ClassSpec::new(&body.name);
@@ -686,10 +687,10 @@ impl Processor {
         // Process all types discovered so far.
         for (type_id, decl) in &self.env.decls {
             let spec = match decl.inner {
-                Decl::Interface(ref body) => self.process_interface(type_id, body)?,
-                Decl::Type(ref body) => self.process_type(type_id, body)?,
-                Decl::Tuple(ref body) => self.process_tuple(type_id, body)?,
-                Decl::Enum(ref body) => self.process_enum(type_id, body)?,
+                RpDecl::Interface(ref body) => self.process_interface(type_id, body)?,
+                RpDecl::Type(ref body) => self.process_type(type_id, body)?,
+                RpDecl::Tuple(ref body) => self.process_tuple(type_id, body)?,
+                RpDecl::Enum(ref body) => self.process_enum(type_id, body)?,
             };
 
             match files.entry(&type_id.package) {
@@ -748,7 +749,7 @@ impl Processor {
         Ok(())
     }
 
-    fn interface_decode_method(&self, interface: &InterfaceBody) -> Result<MethodSpec> {
+    fn interface_decode_method(&self, interface: &RpInterfaceBody) -> Result<MethodSpec> {
         let mut decode = MethodSpec::with_static("decode");
 
         let data = stmt!["data"];
@@ -804,7 +805,7 @@ impl ValueBuilder for Processor {
         Ok(stmt!["None"])
     }
 
-    fn convert_type(&self, pos: &Pos, type_id: &TypeId) -> Result<Name> {
+    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
         let name = &type_id.name;
 
         if let Some(ref used) = name.prefix {

@@ -1,15 +1,16 @@
 use backend::*;
 use backend::errors::*;
 use backend::for_context::ForContext;
-use backend::models::*;
 use backend::value_builder::*;
+use backend::variables::Variables;
 use codeviz::python::*;
+use core::*;
 use naming::{self, FromNaming};
 use options::Options;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::fs::File;
 use std::fs;
+use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -278,8 +279,8 @@ impl Processor {
     }
 
     fn decode_by_value(&self,
-                       type_id: &TypeId,
-                       match_decl: &MatchDecl,
+                       type_id: &RpTypeId,
+                       match_decl: &RpMatchDecl,
                        data: &Statement)
                        -> Result<Option<Elements>> {
         if match_decl.by_value.is_empty() {
@@ -316,8 +317,8 @@ impl Processor {
     }
 
     fn decode_by_type(&self,
-                      type_id: &TypeId,
-                      match_decl: &MatchDecl,
+                      type_id: &RpTypeId,
+                      match_decl: &RpMatchDecl,
                       data: &Statement)
                       -> Result<Option<Elements>> {
         if match_decl.by_type.is_empty() {
@@ -342,14 +343,16 @@ impl Processor {
                 })?;
 
             let check = match *kind {
-                MatchKind::Any => stmt!["true"],
-                MatchKind::Object => stmt![&self.isinstance, "(", &data, ", ", &self.dict, ")"],
-                MatchKind::Array => stmt![&self.isinstance, "(", &data, ", ", &self.list, ")"],
-                MatchKind::String => {
+                RpMatchKind::Any => stmt!["true"],
+                RpMatchKind::Object => stmt![&self.isinstance, "(", &data, ", ", &self.dict, ")"],
+                RpMatchKind::Array => stmt![&self.isinstance, "(", &data, ", ", &self.list, ")"],
+                RpMatchKind::String => {
                     stmt![&self.isinstance, "(", &data, ", ", &self.basestring, ")"]
                 }
-                MatchKind::Boolean => stmt![&self.isinstance, "(", &data, ", ", &self.boolean, ")"],
-                MatchKind::Number => stmt![&self.isinstance, "(", &data, ", ", &self.number, ")"],
+                RpMatchKind::Boolean => {
+                    stmt![&self.isinstance, "(", &data, ", ", &self.boolean, ")"]
+                }
+                RpMatchKind::Number => stmt![&self.isinstance, "(", &data, ", ", &self.number, ")"],
             };
 
             let mut value_body = Elements::new();
@@ -365,8 +368,8 @@ impl Processor {
     }
 
     fn decode_method<F>(&self,
-                        type_id: &TypeId,
-                        match_decl: &MatchDecl,
+                        type_id: &RpTypeId,
+                        match_decl: &RpMatchDecl,
                         fields: &Vec<RpLoc<Field>>,
                         class: &ClassSpec,
                         variable_fn: F)
@@ -470,8 +473,8 @@ impl Processor {
     }
 
     fn decode<S>(&self,
-                 pos: &Pos,
-                 type_id: &TypeId,
+                 pos: &RpPos,
+                 type_id: &RpTypeId,
                  ty: &RpType,
                  value_stmt: S)
                  -> Result<Statement>
@@ -534,7 +537,11 @@ impl Processor {
         constructor
     }
 
-    fn process_tuple(&self, type_id: &TypeId, _pos: &Pos, body: &TupleBody) -> Result<ClassSpec> {
+    fn process_tuple(&self,
+                     type_id: &RpTypeId,
+                     _pos: &RpPos,
+                     body: &RpTupleBody)
+                     -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<RpLoc<Field>> = Vec::new();
 
@@ -562,7 +569,7 @@ impl Processor {
         Ok(class)
     }
 
-    fn process_enum(&self, _type_id: &TypeId, body: &EnumBody) -> Result<ClassSpec> {
+    fn process_enum(&self, _type_id: &RpTypeId, body: &RpEnumBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<RpLoc<Field>> = Vec::new();
 
@@ -600,7 +607,7 @@ impl Processor {
         Ok(class)
     }
 
-    fn process_enum_values(&self, type_id: &TypeId, body: &EnumBody) -> Result<Statement> {
+    fn process_enum_values(&self, type_id: &RpTypeId, body: &RpEnumBody) -> Result<Statement> {
         let mut arguments = Statement::new();
 
         let variables = Variables::new();
@@ -663,7 +670,7 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, type_id: &TypeId, body: &TypeBody) -> Result<ClassSpec> {
+    fn process_type(&self, type_id: &RpTypeId, body: &RpTypeBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields = Vec::new();
 
@@ -702,7 +709,10 @@ impl Processor {
         Ok(class)
     }
 
-    fn process_interface(&self, type_id: &TypeId, body: &InterfaceBody) -> Result<Vec<ClassSpec>> {
+    fn process_interface(&self,
+                         type_id: &RpTypeId,
+                         body: &RpInterfaceBody)
+                         -> Result<Vec<ClassSpec>> {
         let mut classes = Vec::new();
 
         let mut interface_spec = ClassSpec::new(&body.name);
@@ -786,10 +796,10 @@ impl Processor {
         // Process all types discovered so far.
         for (type_id, decl) in &self.env.decls {
             let class_specs: Vec<ClassSpec> = match decl.inner {
-                Decl::Interface(ref body) => self.process_interface(type_id, body)?,
-                Decl::Type(ref body) => vec![self.process_type(type_id, body)?],
-                Decl::Tuple(ref body) => vec![self.process_tuple(type_id, &decl.pos, body)?],
-                Decl::Enum(ref body) => {
+                RpDecl::Interface(ref body) => self.process_interface(type_id, body)?,
+                RpDecl::Type(ref body) => vec![self.process_type(type_id, body)?],
+                RpDecl::Tuple(ref body) => vec![self.process_tuple(type_id, &decl.pos, body)?],
+                RpDecl::Enum(ref body) => {
                     enums.push((type_id, body));
                     vec![self.process_enum(type_id, body)?]
                 }
@@ -885,8 +895,8 @@ impl Processor {
     }
 
     fn tuple_added(&self,
-                   type_id: &TypeId,
-                   match_decl: &MatchDecl,
+                   type_id: &RpTypeId,
+                   match_decl: &RpMatchDecl,
                    fields: &Vec<RpLoc<Field>>,
                    class: &mut ClassSpec)
                    -> Result<()> {
@@ -922,8 +932,8 @@ impl Processor {
     }
 
     fn interface_decode_method(&self,
-                               type_id: &TypeId,
-                               body: &InterfaceBody)
+                               type_id: &RpTypeId,
+                               body: &RpInterfaceBody)
                                -> Result<MethodSpec> {
         let data = stmt!["data"];
 
@@ -974,7 +984,7 @@ impl Processor {
         Ok(decode)
     }
 
-    fn convert_type_id<F>(&self, pos: &Pos, type_id: &TypeId, path_syntax: F) -> Result<Name>
+    fn convert_type_id<F>(&self, pos: &RpPos, type_id: &RpTypeId, path_syntax: F) -> Result<Name>
         where F: Fn(&Vec<String>) -> String
     {
         let package = &type_id.package;
@@ -1023,11 +1033,11 @@ impl ValueBuilder for Processor {
         Ok(stmt!["None"])
     }
 
-    fn convert_type(&self, pos: &Pos, type_id: &TypeId) -> Result<Name> {
+    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
         self.convert_type_id(pos, type_id, |v| v.join("_"))
     }
 
-    fn convert_constant(&self, pos: &Pos, type_id: &TypeId) -> Result<Name> {
+    fn convert_constant(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
         self.convert_type_id(pos, type_id, |v| v.join("."))
     }
 

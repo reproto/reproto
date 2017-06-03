@@ -1,17 +1,17 @@
 //! # Helper data structure do handle option lookups
 
+use core::*;
 use super::errors::*;
-use super::models::*;
 
 /// Helper for looking up and dealing with options.
 #[derive(Debug)]
 pub struct Options<'a> {
-    pos: &'a Pos,
-    options: Vec<RpLoc<OptionDecl>>,
+    pos: &'a RpPos,
+    options: Vec<RpLoc<RpOptionDecl>>,
 }
 
 impl<'a> Options<'a> {
-    pub fn new(pos: &'a Pos, options: Vec<RpLoc<OptionDecl>>) -> Options {
+    pub fn new(pos: &'a RpPos, options: Vec<RpLoc<RpOptionDecl>>) -> Options {
         Options {
             pos: pos,
             options: options,

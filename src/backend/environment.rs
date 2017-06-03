@@ -1,23 +1,22 @@
+use core::*;
+use core::into_model::IntoModel;
 use linked_hash_map::{self, LinkedHashMap};
-use parser::ast;
 use parser;
-use std::collections::{BTreeMap, HashSet, HashMap};
+use parser::ast;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use super::errors::*;
-use super::into_model::IntoModel;
-use super::merge::Merge;
-use super::models::*;
 
-pub type InitFields = HashMap<String, RpLoc<FieldInit>>;
+pub type InitFields = HashMap<String, RpLoc<RpFieldInit>>;
 
 const EXT: &str = "reproto";
 
 pub struct Environment {
     paths: Vec<PathBuf>,
     visited: HashSet<RpPackage>,
-    pub types: LinkedHashMap<TypeId, RpLoc<Registered>>,
-    pub decls: LinkedHashMap<TypeId, Rc<RpLoc<Decl>>>,
+    pub types: LinkedHashMap<RpTypeId, RpLoc<RpRegistered>>,
+    pub decls: LinkedHashMap<RpTypeId, Rc<RpLoc<RpDecl>>>,
     pub used: LinkedHashMap<(RpPackage, String), RpPackage>,
 }
 
@@ -34,24 +33,25 @@ impl Environment {
 
     fn into_registered_type(&self,
                             package: &RpPackage,
-                            decl: Rc<RpLoc<Decl>>)
-                            -> Result<Vec<(TypeId, RpLoc<Registered>)>> {
+                            decl: Rc<RpLoc<RpDecl>>)
+                            -> Result<Vec<(RpTypeId, RpLoc<RpRegistered>)>> {
         let mut out = Vec::new();
 
         match decl.inner {
-            Decl::Type(ref ty) => {
-                let type_id = TypeId::new(package.clone(),
-                                          RpName::with_parts(vec![ty.name.clone()]));
-                let token = RpLoc::new(Registered::Type(ty.clone()), decl.pos.clone());
+            RpDecl::Type(ref ty) => {
+                let type_id = RpTypeId::new(package.clone(),
+                                            RpName::with_parts(vec![ty.name.clone()]));
+                let token = RpLoc::new(RpRegistered::Type(ty.clone()), decl.pos.clone());
                 out.push((type_id, token));
             }
-            Decl::Interface(ref interface) => {
+            RpDecl::Interface(ref interface) => {
                 let current = vec![interface.name.clone()];
-                let type_id = TypeId::new(package.clone(), RpName::with_parts(current.clone()));
-                let token = RpLoc::new(Registered::Interface(interface.clone()), decl.pos.clone());
+                let type_id = RpTypeId::new(package.clone(), RpName::with_parts(current.clone()));
+                let token = RpLoc::new(RpRegistered::Interface(interface.clone()),
+                                       decl.pos.clone());
 
                 for (name, sub_type) in &interface.sub_types {
-                    let sub_type = Registered::SubType {
+                    let sub_type = RpRegistered::SubType {
                         parent: interface.clone(),
                         sub_type: sub_type.inner.clone(),
                     };
@@ -64,13 +64,13 @@ impl Environment {
 
                 out.push((type_id, token));
             }
-            Decl::Enum(ref en) => {
+            RpDecl::Enum(ref en) => {
                 let current = vec![en.name.clone()];
-                let type_id = TypeId::new(package.clone(), RpName::with_parts(current.clone()));
-                let token = RpLoc::new(Registered::Enum(en.clone()), decl.pos.clone());
+                let type_id = RpTypeId::new(package.clone(), RpName::with_parts(current.clone()));
+                let token = RpLoc::new(RpRegistered::Enum(en.clone()), decl.pos.clone());
 
                 for value in &en.values {
-                    let enum_constant = Registered::EnumConstant {
+                    let enum_constant = RpRegistered::EnumConstant {
                         parent: en.clone(),
                         value: value.inner.clone(),
                     };
@@ -83,10 +83,10 @@ impl Environment {
 
                 out.push((type_id, token));
             }
-            Decl::Tuple(ref tuple) => {
-                let type_id = TypeId::new(package.clone(),
-                                          RpName::with_parts(vec![tuple.name.clone()]));
-                let token = RpLoc::new(Registered::Tuple(tuple.clone()), decl.pos.clone());
+            RpDecl::Tuple(ref tuple) => {
+                let type_id = RpTypeId::new(package.clone(),
+                                            RpName::with_parts(vec![tuple.name.clone()]));
+                let token = RpLoc::new(RpRegistered::Tuple(tuple.clone()), decl.pos.clone());
                 out.push((type_id, token));
             }
         }
@@ -162,11 +162,11 @@ impl Environment {
     }
 
     pub fn constant<'a>(&'a self,
-                        pos: &Pos,
+                        pos: &RpPos,
                         package: &'a RpPackage,
                         constant: &RpName,
                         target: &RpName)
-                        -> Result<&'a Registered> {
+                        -> Result<&'a RpRegistered> {
         let reg_constant = self.lookup(package, constant)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
@@ -186,11 +186,11 @@ impl Environment {
     /// Convert instance arguments to the known registered type of the instance, and a map
     /// containing the arguments being instantiated.
     pub fn instance<'a>(&'a self,
-                        pos: &Pos,
+                        pos: &RpPos,
                         package: &'a RpPackage,
-                        instance: &Instance,
+                        instance: &RpInstance,
                         target: &RpName)
-                        -> Result<(&'a Registered, InitFields)> {
+                        -> Result<(&'a RpRegistered, InitFields)> {
         let reg_instance = self.lookup(package, &instance.ty)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
@@ -205,21 +205,21 @@ impl Environment {
         }
 
         let required_fields = match *reg_instance {
-            Registered::Type(ref ty) => ty.fields(),
-            Registered::SubType { ref parent, ref sub_type } => {
+            RpRegistered::Type(ref ty) => ty.fields(),
+            RpRegistered::SubType { ref parent, ref sub_type } => {
                 Box::new(parent.fields().chain(sub_type.fields()))
             }
-            Registered::Tuple(ref tuple) => tuple.fields(),
+            RpRegistered::Tuple(ref tuple) => tuple.fields(),
             _ => return Err(Error::pos("expected instantiable type".into(), pos.clone())),
         };
 
         // pick required fields.
         let required_fields = required_fields.filter(|f| f.modifier == RpModifier::Required);
 
-        let mut known: HashMap<String, RpLoc<FieldInit>> = HashMap::new();
+        let mut known: HashMap<String, RpLoc<RpFieldInit>> = HashMap::new();
 
         // check that all required fields are set.
-        let mut required: BTreeMap<String, RpLoc<Field>> = required_fields.map(Clone::clone)
+        let mut required: BTreeMap<String, RpLoc<RpField>> = required_fields.map(Clone::clone)
             .map(|f| (f.name.clone(), f))
             .collect();
 
@@ -234,13 +234,13 @@ impl Environment {
         }
 
         if !required.is_empty() {
-            let required: Vec<(String, RpLoc<Field>)> = required.into_iter()
+            let required: Vec<(String, RpLoc<RpField>)> = required.into_iter()
                 .collect();
 
             let names: Vec<String> =
                 required.iter().map(|&(ref name, _)| name.to_owned()).collect();
 
-            let positions: Vec<Pos> = required.iter().map(|&(_, ref t)| t.pos.clone()).collect();
+            let positions: Vec<RpPos> = required.iter().map(|&(_, ref t)| t.pos.clone()).collect();
 
             return Err(ErrorKind::MissingRequired(names,
                                                   instance.arguments.pos.clone(),
@@ -260,14 +260,17 @@ impl Environment {
     }
 
     /// Lookup the declaration matching the custom type.
-    pub fn lookup<'a>(&'a self, package: &'a RpPackage, custom: &RpName) -> Result<&'a Registered> {
+    pub fn lookup<'a>(&'a self,
+                      package: &'a RpPackage,
+                      custom: &RpName)
+                      -> Result<&'a RpRegistered> {
         let package = if let Some(ref prefix) = custom.prefix {
             self.lookup_used(package, prefix)?
         } else {
             package
         };
 
-        let key = TypeId::new(package.clone(), custom.clone());
+        let key = RpTypeId::new(package.clone(), custom.clone());
 
         if let Some(ty) = self.types.get(&key) {
             return Ok(ty);
@@ -303,7 +306,7 @@ impl Environment {
             let decl = decl.into_model(&pos)?;
 
             let custom = RpName::with_parts(vec![decl.name().to_owned()]);
-            let key: TypeId = TypeId::new(file.package.inner.clone(), custom);
+            let key = RpTypeId::new(file.package.inner.clone(), custom);
 
             match decls.entry(key) {
                 linked_hash_map::Entry::Vacant(entry) => {
@@ -387,7 +390,7 @@ impl Environment {
     pub fn verify(&mut self) -> Result<()> {
         for (_, ref ty) in &self.decls {
             match ty.inner {
-                Decl::Type(ref ty) => {
+                RpDecl::Type(ref ty) => {
                     ty.verify()?;
                 }
                 _ => {}

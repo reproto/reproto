@@ -1,4 +1,4 @@
-use backend::models as m;
+use core::*;
 use super::parser;
 
 error_chain! {
@@ -13,7 +13,7 @@ error_chain! {
         InvalidEscape {
         }
 
-        Syntax(pos: m::Pos, expected: Vec<parser::Rule>) {
+        Syntax(pos: RpPos, expected: Vec<parser::Rule>) {
             description("syntax error")
         }
     }

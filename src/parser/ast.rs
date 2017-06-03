@@ -1,4 +1,4 @@
-pub use backend::models::{RpName, RpPackage, RpType, RpModifier};
+pub use core::*;
 use loc;
 
 /// Position relative in file where the declaration is present.
@@ -8,7 +8,7 @@ pub type AstLoc<T> = loc::Loc<T, Pos>;
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldInit {
     pub name: AstLoc<String>,
-    pub value: AstLoc<RpValue>,
+    pub value: AstLoc<Value>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -18,7 +18,7 @@ pub struct Instance {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum RpValue {
+pub enum Value {
     String(String),
     Number(f64),
     Boolean(bool),
@@ -26,13 +26,13 @@ pub enum RpValue {
     Type(RpType),
     Instance(AstLoc<Instance>),
     Constant(AstLoc<RpName>),
-    Array(Vec<AstLoc<RpValue>>),
+    Array(Vec<AstLoc<Value>>),
 }
 
 #[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,
-    pub values: Vec<AstLoc<RpValue>>,
+    pub values: Vec<AstLoc<Value>>,
 }
 
 #[derive(Debug)]
@@ -40,7 +40,7 @@ pub struct Field {
     pub modifier: RpModifier,
     pub name: String,
     pub ty: RpType,
-    pub field_as: Option<AstLoc<RpValue>>,
+    pub field_as: Option<AstLoc<Value>>,
 }
 
 impl Field {
@@ -69,7 +69,7 @@ pub struct MatchVariable {
 #[derive(Debug)]
 pub enum MatchCondition {
     /// Match a specific value.
-    RpValue(AstLoc<RpValue>),
+    Value(AstLoc<Value>),
     /// Match a type, and add a binding for the given name that can be resolved in the action.
     Type(AstLoc<MatchVariable>),
 }
@@ -77,7 +77,7 @@ pub enum MatchCondition {
 #[derive(Debug)]
 pub struct MatchMember {
     pub condition: AstLoc<MatchCondition>,
-    pub value: AstLoc<RpValue>,
+    pub value: AstLoc<Value>,
 }
 
 #[derive(Debug)]
@@ -149,8 +149,8 @@ pub struct EnumBody {
 #[derive(Debug)]
 pub struct EnumValue {
     pub name: AstLoc<String>,
-    pub arguments: Vec<AstLoc<RpValue>>,
-    pub ordinal: Option<AstLoc<RpValue>>,
+    pub arguments: Vec<AstLoc<Value>>,
+    pub ordinal: Option<AstLoc<Value>>,
 }
 
 #[derive(Debug)]

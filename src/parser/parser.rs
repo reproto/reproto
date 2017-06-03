@@ -382,28 +382,28 @@ impl_rdp! {
             },
         }
 
-        process_enum_arguments(&self) -> Result<Vec<AstLoc<RpValue>>> {
+        process_enum_arguments(&self) -> Result<Vec<AstLoc<Value>>> {
             (_: enum_arguments, _: left_paren, values: value_list(), _: right_paren) => values,
             () => Ok(Vec::new()),
         }
 
-        process_enum_ordinal(&self) -> Result<Option<AstLoc<RpValue>>> {
+        process_enum_ordinal(&self) -> Result<Option<AstLoc<Value>>> {
             (_: enum_ordinal, _: equals, value: process_value_token()) => value.map(Some),
             () => Ok(None),
         }
 
-        process_optional_value_list(&self) -> Result<Vec<AstLoc<RpValue>>> {
+        process_optional_value_list(&self) -> Result<Vec<AstLoc<Value>>> {
             (_: optional_value_list, values: value_list()) => values,
             () => Ok(Vec::new()),
         }
 
-        process_value_token(&self) -> Result<AstLoc<RpValue>> {
+        process_value_token(&self) -> Result<AstLoc<Value>> {
             (token: value, value: process_value()) => {
                 value.map(move |v| (v, token).into())
             },
         }
 
-        process_value(&self) -> Result<RpValue> {
+        process_value(&self) -> Result<Value> {
             (
                 token: instance,
                 _: custom_type,
@@ -418,7 +418,7 @@ impl_rdp! {
                    arguments: (arguments?, arguments_token).into(),
                 };
 
-                Ok(RpValue::Instance((instance, token).into()))
+                Ok(Value::Instance((instance, token).into()))
             },
 
             (
@@ -426,7 +426,7 @@ impl_rdp! {
                 _: custom_type,
                 name: process_name(),
             ) => {
-                Ok(RpValue::Constant((name, token).into()))
+                Ok(Value::Constant((name, token).into()))
             },
 
             (
@@ -435,21 +435,21 @@ impl_rdp! {
                 values: process_optional_value_list(),
                 _: bracket_end,
             ) => {
-                Ok(RpValue::Array(values?))
+                Ok(Value::Array(values?))
             },
 
             (&value: string) => {
                 let value = decode_escaped_string(value)?;
-                Ok(RpValue::String(value))
+                Ok(Value::String(value))
             },
 
             (&value: identifier) => {
-                Ok(RpValue::Identifier(value.to_owned()))
+                Ok(Value::Identifier(value.to_owned()))
             },
 
             (&value: number) => {
                 let value = value.parse::<f64>()?;
-                Ok(RpValue::Number(value))
+                Ok(Value::Number(value))
             },
 
             (&value: boolean) => {
@@ -459,7 +459,7 @@ impl_rdp! {
                     _ => panic!("should not happen"),
                 };
 
-                Ok(RpValue::Boolean(value))
+                Ok(Value::Boolean(value))
             },
         }
 
@@ -538,7 +538,7 @@ impl_rdp! {
             },
         }
 
-        process_field_as(&self) -> Result<Option<AstLoc<RpValue>>> {
+        process_field_as(&self) -> Result<Option<AstLoc<Value>>> {
             (_: field_as, _: as_keyword, value: process_value_token()) => Ok(Some(value?)),
             () => Ok(None),
         }
@@ -572,7 +572,7 @@ impl_rdp! {
                 _: match_value,
                 value: process_value_token(),
             ) => {
-                Ok((MatchCondition::RpValue(value?), token).into())
+                Ok((MatchCondition::Value(value?), token).into())
             },
 
             (
@@ -695,7 +695,7 @@ impl<'input, T: Input<'input>> Rdp<T> {
         self.result_list_loc(Rule::decl, None, Rdp::process_decl)
     }
 
-    pub fn value_list(&self) -> Result<Vec<AstLoc<RpValue>>> {
+    pub fn value_list(&self) -> Result<Vec<AstLoc<Value>>> {
         self.result_list_loc(Rule::value, Some(Rule::comma), Rdp::process_value)
     }
 
@@ -931,7 +931,7 @@ mod tests {
 
         let field = FieldInit {
             name: AstLoc::new("hello".to_owned(), (8, 13)),
-            value: AstLoc::new(RpValue::Number(12f64), (15, 17)),
+            value: AstLoc::new(Value::Number(12f64), (15, 17)),
         };
 
         let field = AstLoc::new(field, (8, 17));
@@ -941,15 +941,15 @@ mod tests {
             arguments: AstLoc::new(vec![field], (7, 18)),
         };
 
-        assert_value_eq!(RpValue::Instance(AstLoc::new(instance, (0, 18))),
+        assert_value_eq!(Value::Instance(AstLoc::new(instance, (0, 18))),
                          "Foo.Bar(hello: 12)");
     }
 
     #[test]
     fn test_values() {
-        assert_value_eq!(RpValue::String("foo\nbar".to_owned()), "\"foo\\nbar\"");
-        assert_value_eq!(RpValue::Number(1f64), "1");
-        assert_value_eq!(RpValue::Number(1.25f64), "1.25");
+        assert_value_eq!(Value::String("foo\nbar".to_owned()), "\"foo\\nbar\"");
+        assert_value_eq!(Value::Number(1f64), "1");
+        assert_value_eq!(Value::Number(1.25f64), "1.25");
     }
 
     #[test]
@@ -974,11 +974,10 @@ mod tests {
             assert_eq!("foo_bar_baz", option.name);
             assert_eq!(4, option.values.len());
 
-            assert_eq!(RpValue::Boolean(true), option.values[0].inner);
-            assert_eq!(RpValue::Identifier("foo".to_owned()),
-                       option.values[1].inner);
-            assert_eq!(RpValue::String("bar".to_owned()), option.values[2].inner);
-            assert_eq!(RpValue::Number(12f64), option.values[3].inner);
+            assert_eq!(Value::Boolean(true), option.values[0].inner);
+            assert_eq!(Value::Identifier("foo".to_owned()), option.values[1].inner);
+            assert_eq!(Value::String("bar".to_owned()), option.values[2].inner);
+            assert_eq!(Value::Number(12f64), option.values[3].inner);
             return;
         }
 

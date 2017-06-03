@@ -15,7 +15,7 @@ pub struct TupleAdded<'a> {
 }
 
 pub struct EnumAdded<'a> {
-    pub body: &'a EnumBody,
+    pub body: &'a RpEnumBody,
     pub fields: &'a Vec<JavaField>,
     pub class_type: &'a ClassType,
     pub from_value: &'a mut Option<MethodSpec>,
@@ -24,14 +24,14 @@ pub struct EnumAdded<'a> {
 }
 
 pub struct InterfaceAdded<'a> {
-    pub interface: &'a InterfaceBody,
+    pub interface: &'a RpInterfaceBody,
     pub spec: &'a mut InterfaceSpec,
 }
 
 pub struct SubTypeAdded<'a> {
     pub fields: &'a Vec<JavaField>,
-    pub interface: &'a InterfaceBody,
-    pub sub_type: &'a SubType,
+    pub interface: &'a RpInterfaceBody,
+    pub sub_type: &'a RpSubType,
     pub spec: &'a mut ClassSpec,
 }
 

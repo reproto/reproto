@@ -9,7 +9,7 @@ pub mod nullable;
 pub mod processor;
 
 use backend::*;
-use backend::models::*;
+use core::*;
 use options::Options;
 
 fn setup_module(module: &str) -> Result<Box<listeners::Listeners>> {

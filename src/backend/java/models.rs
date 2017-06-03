@@ -1,6 +1,6 @@
 pub use backend::errors::*;
-pub use backend::models::*;
 use codeviz::java::*;
+pub use core::*;
 
 /// A single field.
 #[derive(Debug, Clone)]

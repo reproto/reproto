@@ -10,10 +10,11 @@
 //!
 //! In this example, the second field is a `float`, and the third field is a `double`.
 
+use core::*;
 use std::collections::HashMap;
 use super::environment::Environment;
 use super::errors::*;
-use super::models::*;
+use super::variables::*;
 
 pub type KnownValues<T> = HashMap<String, T>;
 
@@ -69,9 +70,9 @@ pub trait ValueBuilder {
 
     fn optional_empty(&self) -> Result<Self::Output>;
 
-    fn convert_type(&self, pos: &Pos, type_id: &TypeId) -> Result<Self::Type>;
+    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Self::Type>;
 
-    fn convert_constant(&self, pos: &Pos, type_id: &TypeId) -> Result<Self::Type> {
+    fn convert_constant(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Self::Type> {
         self.convert_type(pos, type_id)
     }
 
@@ -132,7 +133,7 @@ pub trait ValueBuilder {
                     .constant(&value.pos, &env.package, constant, target)?;
 
                 match *reg_constant {
-                    Registered::EnumConstant { parent: _, value: _ } => {
+                    RpRegistered::EnumConstant { parent: _, value: _ } => {
                         let ty =
                             self.convert_constant(&value.pos, &env.package.into_type_id(constant))?;
                         return self.constant(ty);

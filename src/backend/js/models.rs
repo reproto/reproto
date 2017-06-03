@@ -1,4 +1,4 @@
-pub use backend::models::*;
+pub use core::*;
 
 #[derive(Clone)]
 pub struct JsField {
