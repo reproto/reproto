@@ -304,6 +304,7 @@ impl Processor {
             RpType::Any => true,
             RpType::Boolean => true,
             RpType::Array(ref inner) => self.is_native(inner),
+            RpType::Map(ref key, ref value) => self.is_native(key) && self.is_native(value),
             _ => false,
         }
     }
@@ -374,6 +375,12 @@ impl Processor {
             RpType::Array(ref inner) => {
                 let inner = self.decode(type_id, pos, inner, stmt!["v"])?;
                 stmt![value_stmt, ".map(function(v) { ", inner, "; })"]
+            }
+            RpType::Map(ref key, ref value) => {
+                let key = self.decode(type_id, pos, key, stmt!["t[0]"])?;
+                let value = self.decode(type_id, pos, value, stmt!["t[1]"])?;
+                let body = stmt!["[", &key, ", ", &value, "]"];
+                stmt!["to_object(from_object(", value_stmt, ").map(function(t) { return ", &body, "; }))"]
             }
             ref ty => {
                 return Err(Error::pos(format!("type `{}` not supported", ty).into(), pos.clone()))
