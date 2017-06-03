@@ -4,3 +4,4 @@ Cargo.lock
 __pycache__
 *.pyc
 *.class
+/it/*/output

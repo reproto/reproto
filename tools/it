@@ -1,0 +1,32 @@
+#!/bin/bash
+
+green="\033[0;32m"
+red="\033[0;31m"
+nc="\033[0m"
+
+overall_exit_code=0
+
+for test in it/*; do
+    if [[ ! -d $test ]]; then
+        continue
+    fi
+
+    pushd $test > /dev/null
+    exit_code=0
+    make "$@"
+    exit_code=$?
+    make clean
+
+    popd > /dev/null
+
+    if [[ $exit_code -ne 0 ]]; then
+        tput bold
+        echo -e "${red}Test failed: $test${nc}"
+        overall_exit_code=1
+    else
+        tput bold
+        echo -e "${green}Test succeeded: $test${nc}"
+    fi
+done
+
+exit $overall_exit_code

@@ -851,16 +851,23 @@ impl Processor {
                 continue;
             }
 
+            if !full_path.is_dir() {
+                debug!("+dir: {}", full_path.display());
+                fs::create_dir_all(&full_path)?;
+            }
+
             let init_path = full_path.join(INIT_PY);
 
             if !init_path.is_file() {
-                if !full_path.is_dir() {
-                    debug!("+dir: {}", full_path.display());
-                    fs::create_dir_all(&full_path)?;
-                }
-
                 debug!("+init: {}", init_path.display());
                 File::create(init_path)?;
+            }
+        }
+
+        if let Some(parent) = full_path.parent() {
+            if !parent.is_dir() {
+                debug!("+dir: {}", parent.display());
+                fs::create_dir_all(&parent)?;
             }
         }
 

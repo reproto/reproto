@@ -9,6 +9,10 @@ rust:
   - beta
   - nightly
 
+script:
+  - cargo test
+  - tools/it
+
 matrix:
   allow_failures:
     - rust: nightly

@@ -1,0 +1,5 @@
+package heroic.common;
+
+type Date {
+  field: unsigned/64;
+}
