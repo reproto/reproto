@@ -276,11 +276,11 @@ impl_rdp! {
             },
         }
 
-        _use_list(&self) -> Result<LinkedList<AstToken<UseDecl>>> {
+        _use_list(&self) -> Result<LinkedList<AstLoc<UseDecl>>> {
             (token: use_decl, use_decl: _use_decl(), tail: _use_list()) => {
                 let pos = (token.start, token.end);
                 let mut tail = tail?;
-                tail.push_front(AstToken::new(use_decl, pos));
+                tail.push_front(AstLoc::new(use_decl, pos));
                 Ok(tail)
             },
 
@@ -301,20 +301,20 @@ impl_rdp! {
             () => None,
         }
 
-        _package(&self) -> AstToken<m::Package> {
+        _package(&self) -> AstLoc<m::Package> {
             (token: package_ident, idents: _ident_list()) => {
                 let pos = (token.start, token.end);
                 let idents = idents;
                 let package = m::Package::new(idents.into_iter().collect());
-                AstToken::new(package, pos)
+                AstLoc::new(package, pos)
             },
         }
 
-        _decl_list(&self) -> Result<LinkedList<AstToken<Decl>>> {
+        _decl_list(&self) -> Result<LinkedList<AstLoc<Decl>>> {
             (token: decl, value: _decl(), tail: _decl_list()) => {
                 let mut tail = tail?;
                 let pos = (token.start, token.end);
-                tail.push_front(AstToken::new(value?, pos));
+                tail.push_front(AstLoc::new(value?, pos));
                 Ok(tail)
             },
 
@@ -401,7 +401,7 @@ impl_rdp! {
             },
         }
 
-        _enum_value_list(&self) -> Result<LinkedList<AstToken<EnumValue>>> {
+        _enum_value_list(&self) -> Result<LinkedList<AstLoc<EnumValue>>> {
             (_: enum_body_value, value: _enum_value(), tail: _enum_value_list()) => {
                 let mut tail = tail?;
                 tail.push_front(value?);
@@ -411,7 +411,7 @@ impl_rdp! {
             () => Ok(LinkedList::new()),
         }
 
-        _enum_value(&self) -> Result<AstToken<EnumValue>> {
+        _enum_value(&self) -> Result<AstLoc<EnumValue>> {
             (
                 token: enum_value,
                 name_token: enum_name,
@@ -420,7 +420,7 @@ impl_rdp! {
                 ordinal: _enum_ordinal(),
                 _: semi_colon
              ) => {
-                let name = AstToken::new(name.to_owned(), (name_token.start, name_token.end));
+                let name = AstLoc::new(name.to_owned(), (name_token.start, name_token.end));
 
                 let enum_value = EnumValue {
                     name: name,
@@ -428,26 +428,26 @@ impl_rdp! {
                     ordinal: ordinal?
                 };
 
-                Ok(AstToken::new(enum_value, (token.start, token.end)))
+                Ok(AstLoc::new(enum_value, (token.start, token.end)))
             },
         }
 
-        _enum_arguments(&self) -> Result<LinkedList<AstToken<Value>>> {
+        _enum_arguments(&self) -> Result<LinkedList<AstLoc<Value>>> {
             (_: enum_arguments, _: left_paren, values: _value_list(), _: right_paren) => values,
             () => Ok(LinkedList::new()),
         }
 
-        _enum_ordinal(&self) -> Result<Option<AstToken<Value>>> {
+        _enum_ordinal(&self) -> Result<Option<AstLoc<Value>>> {
             (_: enum_ordinal, _: equals, value: _value_token()) => value.map(Some),
             () => Ok(None),
         }
 
-        _optional_value_list(&self) -> Result<LinkedList<AstToken<Value>>> {
+        _optional_value_list(&self) -> Result<LinkedList<AstLoc<Value>>> {
             (_: optional_value_list, values: _value_list()) => values,
             () => Ok(LinkedList::new()),
         }
 
-        _value_list(&self) -> Result<LinkedList<AstToken<Value>>> {
+        _value_list(&self) -> Result<LinkedList<AstLoc<Value>>> {
             (value: _value_token(), _: comma, tail: _value_list()) => {
                 let mut tail = tail?;
                 tail.push_front(value?);
@@ -461,10 +461,10 @@ impl_rdp! {
             },
         }
 
-        _value_token(&self) -> Result<AstToken<Value>> {
+        _value_token(&self) -> Result<AstLoc<Value>> {
             (token: value, value: _value()) => {
                 let pos = (token.start, token.end);
-                value.map(move |v| AstToken::new(v, pos))
+                value.map(move |v| AstLoc::new(v, pos))
             },
         }
 
@@ -483,11 +483,11 @@ impl_rdp! {
                 let args_pos = (arguments_token.start, arguments_token.end);
                 let instance = Instance {
                    ty: custom,
-                   arguments: AstToken::new(arguments, args_pos),
+                   arguments: AstLoc::new(arguments, args_pos),
                 };
 
                 let pos = (token.start, token.end);
-                Ok(Value::Instance(AstToken::new(instance, pos)))
+                Ok(Value::Instance(AstLoc::new(instance, pos)))
             },
 
             (
@@ -496,7 +496,7 @@ impl_rdp! {
                 custom: _custom(),
             ) => {
                 let pos = (token.start, token.end);
-                Ok(Value::Constant(AstToken::new(custom, pos)))
+                Ok(Value::Constant(AstLoc::new(custom, pos)))
             },
 
             (
@@ -539,7 +539,7 @@ impl_rdp! {
             () => None,
         }
 
-        _field_init_list(&self) -> Result<LinkedList<AstToken<FieldInit>>> {
+        _field_init_list(&self) -> Result<LinkedList<AstLoc<FieldInit>>> {
             (
                 token: field_init,
                 field_init: _field_init(),
@@ -547,7 +547,7 @@ impl_rdp! {
                 tail: _field_init_list()
             ) => {
                 let mut tail = tail?;
-                tail.push_front(AstToken::new(field_init?, (token.start, token.end)));
+                tail.push_front(AstLoc::new(field_init?, (token.start, token.end)));
                 Ok(tail)
             },
 
@@ -557,7 +557,7 @@ impl_rdp! {
                 tail: _field_init_list()
             ) => {
                 let mut tail = tail?;
-                tail.push_front(AstToken::new(field_init?, (token.start, token.end)));
+                tail.push_front(AstLoc::new(field_init?, (token.start, token.end)));
                 Ok(tail)
             },
 
@@ -572,17 +572,17 @@ impl_rdp! {
                 value: _value_token(),
             ) => {
                 Ok(FieldInit {
-                    name: AstToken::new(name.to_owned(), (name_token.start, name_token.end)),
+                    name: AstLoc::new(name.to_owned(), (name_token.start, name_token.end)),
                     value: value?,
                 })
             },
         }
 
-        _member_list(&self) -> Result<LinkedList<AstToken<Member>>> {
+        _member_list(&self) -> Result<LinkedList<AstLoc<Member>>> {
             (token: member, value: _member(), tail: _member_list()) => {
                 let mut tail = tail?;
                 let pos = (token.start, token.end);
-                tail.push_front(AstToken::new(value?, pos));
+                tail.push_front(AstLoc::new(value?, pos));
                 Ok(tail)
             },
 
@@ -629,7 +629,7 @@ impl_rdp! {
                 let pos = (token.start, token.end);
                 let values = values?.into_iter().collect();
                 let option_decl = OptionDecl { name: name.to_owned(), values: values };
-                Ok(Member::Option(AstToken::new(option_decl, pos)))
+                Ok(Member::Option(AstLoc::new(option_decl, pos)))
             },
 
             (
@@ -649,16 +649,16 @@ impl_rdp! {
             },
         }
 
-        _field_as(&self) -> Result<Option<AstToken<Value>>> {
+        _field_as(&self) -> Result<Option<AstLoc<Value>>> {
             (_: field_as, _: as_keyword, value: _value_token()) => Ok(Some(value?)),
             () => Ok(None),
         }
 
-        _sub_type_list(&self) -> Result<LinkedList<AstToken<SubType>>> {
+        _sub_type_list(&self) -> Result<LinkedList<AstLoc<SubType>>> {
             (token: sub_type, value: _sub_type(), tail: _sub_type_list()) => {
                 let mut tail = tail?;
                 let pos = (token.start, token.end);
-                tail.push_front(AstToken::new(value?, pos));
+                tail.push_front(AstLoc::new(value?, pos));
                 Ok(tail)
             },
 
@@ -680,7 +680,7 @@ impl_rdp! {
             },
         }
 
-        _match_member_list(&self) -> Result<LinkedList<AstToken<MatchMember>>> {
+        _match_member_list(&self) -> Result<LinkedList<AstLoc<MatchMember>>> {
             (
                 _: match_member_entry,
                 member: _match_member(),
@@ -694,7 +694,7 @@ impl_rdp! {
             () => Ok(LinkedList::new()),
         }
 
-        _match_member(&self) -> Result<AstToken<MatchMember>> {
+        _match_member(&self) -> Result<AstLoc<MatchMember>> {
             (
                 token: match_member,
                 condition: _match_condition(),
@@ -709,11 +709,11 @@ impl_rdp! {
                     value: value?,
                 };
 
-                Ok(AstToken::new(member, pos))
+                Ok(AstLoc::new(member, pos))
             },
         }
 
-        _match_condition(&self) -> Result<AstToken<MatchCondition>> {
+        _match_condition(&self) -> Result<AstLoc<MatchCondition>> {
             (
                 token: match_condition,
                 _: match_value,
@@ -722,7 +722,7 @@ impl_rdp! {
                 let pos = (token.start, token.end);
                 let value = value?;
                 let condition = MatchCondition::Value(value);
-                Ok(AstToken::new(condition, pos))
+                Ok(AstLoc::new(condition, pos))
             },
 
             (
@@ -741,11 +741,11 @@ impl_rdp! {
                     ty: ty,
                 };
 
-                let variable = AstToken::new(variable, (match_token.start, match_token.end));
+                let variable = AstLoc::new(variable, (match_token.start, match_token.end));
 
                 let condition = MatchCondition::Type(variable);
 
-                Ok(AstToken::new(condition, pos))
+                Ok(AstLoc::new(condition, pos))
             },
         }
 
@@ -1017,18 +1017,18 @@ mod tests {
         };
 
         let field = FieldInit {
-            name: AstToken::new("hello".to_owned(), (8, 13)),
-            value: AstToken::new(Value::Number(12f64), (15, 17)),
+            name: AstLoc::new("hello".to_owned(), (8, 13)),
+            value: AstLoc::new(Value::Number(12f64), (15, 17)),
         };
 
-        let field = AstToken::new(field, (8, 17));
+        let field = AstLoc::new(field, (8, 17));
 
         let instance = Instance {
             ty: c,
-            arguments: AstToken::new(vec![field], (7, 18)),
+            arguments: AstLoc::new(vec![field], (7, 18)),
         };
 
-        assert_value_eq!(Value::Instance(AstToken::new(instance, (0, 18))),
+        assert_value_eq!(Value::Instance(AstLoc::new(instance, (0, 18))),
                          "Foo.Bar(hello: 12)");
     }
 

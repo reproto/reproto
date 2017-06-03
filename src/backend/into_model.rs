@@ -8,7 +8,7 @@ use super::merge::Merge;
 use super::models::*;
 use super::options::Options;
 
-fn code(pos: &Pos, ast_pos: ast::Pos, context: String, lines: Vec<String>) -> RpToken<Code> {
+fn code(pos: &Pos, ast_pos: ast::Pos, context: String, lines: Vec<String>) -> RpLoc<Code> {
     let pos = (pos.0.clone(), ast_pos.0, ast_pos.1);
 
     let code = Code {
@@ -16,19 +16,19 @@ fn code(pos: &Pos, ast_pos: ast::Pos, context: String, lines: Vec<String>) -> Rp
         lines: lines,
     };
 
-    RpToken::new(code, pos)
+    RpLoc::new(code, pos)
 }
 
-type Fields = Vec<RpToken<Field>>;
-type Codes = Vec<RpToken<Code>>;
-type OptionVec = Vec<RpToken<OptionDecl>>;
+type Fields = Vec<RpLoc<Field>>;
+type Codes = Vec<RpLoc<Code>>;
+type OptionVec = Vec<RpLoc<OptionDecl>>;
 
 fn members_into_model(pos: &Pos,
-                      members: Vec<ast::AstToken<ast::Member>>)
+                      members: Vec<ast::AstLoc<ast::Member>>)
                       -> Result<(Fields, Codes, OptionVec, MatchDecl)> {
-    let mut fields: Vec<RpToken<Field>> = Vec::new();
+    let mut fields: Vec<RpLoc<Field>> = Vec::new();
     let mut codes = Vec::new();
-    let mut options: Vec<RpToken<OptionDecl>> = Vec::new();
+    let mut options: Vec<RpLoc<OptionDecl>> = Vec::new();
     let mut match_decl = MatchDecl::new();
 
     for member in members {
@@ -42,7 +42,7 @@ fn members_into_model(pos: &Pos,
                     return Err(Error::field_conflict(field.name.clone(), pos, other.pos.clone()));
                 }
 
-                fields.push(RpToken::new(field, pos));
+                fields.push(RpLoc::new(field, pos));
             }
             ast::Member::Code(context, lines) => {
                 codes.push(code(&pos, member.pos, context, lines));
@@ -74,7 +74,7 @@ impl OrdinalGenerator {
         }
     }
 
-    pub fn next(&mut self, ordinal: &Option<ast::AstToken<ast::Value>>, pos: &Pos) -> Result<u32> {
+    pub fn next(&mut self, ordinal: &Option<ast::AstLoc<ast::Value>>, pos: &Pos) -> Result<u32> {
         if let Some(ref ordinal) = *ordinal {
             let pos = (pos.0.to_owned(), ordinal.pos.0, ordinal.pos.1);
 
@@ -116,15 +116,15 @@ pub trait IntoModel {
     fn into_model(self, pos: &Pos) -> Result<Self::Output>;
 }
 
-impl<T> IntoModel for ast::AstToken<T>
+impl<T> IntoModel for ast::AstLoc<T>
     where T: IntoModel
 {
-    type Output = RpToken<T::Output>;
+    type Output = RpLoc<T::Output>;
 
     fn into_model(self, pos: &Pos) -> Result<Self::Output> {
         let pos = (pos.0.clone(), self.pos.0, self.pos.1);
         let out = self.inner.into_model(&pos)?;
-        Ok(RpToken::new(out, pos))
+        Ok(RpLoc::new(out, pos))
     }
 }
 
@@ -164,7 +164,7 @@ impl IntoModel for ast::InterfaceBody {
     fn into_model(self, pos: &Pos) -> Result<Rc<InterfaceBody>> {
         let (fields, codes, options, match_decl) = members_into_model(&pos, self.members)?;
 
-        let mut sub_types: BTreeMap<String, RpToken<Rc<SubType>>> = BTreeMap::new();
+        let mut sub_types: BTreeMap<String, RpLoc<Rc<SubType>>> = BTreeMap::new();
 
         for sub_type in self.sub_types.into_model(pos)? {
             // key has to be owned by entry
@@ -198,7 +198,7 @@ impl IntoModel for ast::EnumBody {
     type Output = Rc<EnumBody>;
 
     fn into_model(self, pos: &Pos) -> Result<Rc<EnumBody>> {
-        let mut values: Vec<RpToken<Rc<EnumValue>>> = Vec::new();
+        let mut values: Vec<RpLoc<Rc<EnumValue>>> = Vec::new();
 
         let mut ordinals = OrdinalGenerator::new();
 
@@ -208,8 +208,8 @@ impl IntoModel for ast::EnumBody {
             let ordinal = ordinals.next(&value.ordinal, pos)
                 .map_err(|e| Error::pos(e.description().into(), pos.clone()))?;
 
-            let value = RpToken::new((value.inner, ordinal).into_model(pos)?,
-                                     (pos.0.clone(), value.pos.0, value.pos.1));
+            let value = RpLoc::new((value.inner, ordinal).into_model(pos)?,
+                                   (pos.0.clone(), value.pos.0, value.pos.1));
 
             if fields.len() != value.arguments.len() {
                 return Err(Error::pos(format!("expected {} arguments", fields.len()),
@@ -228,7 +228,7 @@ impl IntoModel for ast::EnumBody {
 
         let options = Options::new(pos, options);
 
-        let serialized_as: Option<RpToken<String>> = options.find_one_identifier("serialized_as")?
+        let serialized_as: Option<RpLoc<String>> = options.find_one_identifier("serialized_as")?
             .to_owned();
 
         let serialized_as_name = options.find_one_boolean("serialized_as_name")?
@@ -276,7 +276,7 @@ impl IntoModel for ast::TypeBody {
 
         let options = Options::new(&pos, options);
 
-        let reserved: HashSet<RpToken<String>> =
+        let reserved: HashSet<RpLoc<String>> =
             options.find_all_identifiers("reserved")?.into_iter().collect();
 
         let type_body = TypeBody {
@@ -295,7 +295,7 @@ impl IntoModel for ast::SubType {
     type Output = Rc<SubType>;
 
     fn into_model(self, pos: &Pos) -> Result<Rc<SubType>> {
-        let mut fields: Vec<RpToken<Field>> = Vec::new();
+        let mut fields: Vec<RpLoc<Field>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
         let mut match_decl = MatchDecl::new();
@@ -313,7 +313,7 @@ impl IntoModel for ast::SubType {
                                                          other.pos.clone()));
                     }
 
-                    fields.push(RpToken::new(field, pos));
+                    fields.push(RpLoc::new(field, pos));
                 }
                 ast::Member::Code(context, lines) => {
                     codes.push(code(&pos, member.pos, context, lines));
@@ -399,7 +399,7 @@ impl IntoModel for ast::Field {
 
         let field_as = if let Some(field_as) = field_as {
             if let Value::String(name) = field_as.inner {
-                Some(RpToken::new(name, field_as.pos.clone()))
+                Some(RpLoc::new(name, field_as.pos.clone()))
             } else {
                 return Err(Error::pos("must be a string".to_owned(), field_as.pos));
             }

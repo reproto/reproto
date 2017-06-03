@@ -20,13 +20,13 @@ pub type KnownValues<T> = HashMap<String, T>;
 pub struct ValueBuilderEnv<'a> {
     pub package: &'a Package,
     pub variables: &'a Variables<'a>,
-    pub value: &'a RpToken<Value>,
+    pub value: &'a RpLoc<Value>,
     pub ty: Option<&'a RpType>,
 }
 
 fn new_env<'a>(package: &'a Package,
                variables: &'a Variables,
-               value: &'a RpToken<Value>,
+               value: &'a RpLoc<Value>,
                ty: Option<&'a RpType>)
                -> Box<ValueBuilderEnv<'a>> {
     Box::new(ValueBuilderEnv {

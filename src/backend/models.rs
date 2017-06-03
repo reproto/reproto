@@ -1,12 +1,12 @@
-pub use token::WithPrefix;
+pub use loc::WithPrefix;
 use std::collections::{BTreeMap, HashSet, HashMap};
 use std::path::PathBuf;
 use std::rc::Rc;
 use super::errors::*;
-use token;
+use loc;
 
 pub type Pos = (PathBuf, usize, usize);
-pub type RpToken<T> = token::Token<T, Pos>;
+pub type RpLoc<T> = loc::Loc<T, Pos>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TypeId {
@@ -39,14 +39,14 @@ impl TypeId {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldInit {
-    pub name: RpToken<String>,
-    pub value: RpToken<Value>,
+    pub name: RpLoc<String>,
+    pub value: RpLoc<Value>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Instance {
     pub ty: Custom,
-    pub arguments: RpToken<Vec<RpToken<FieldInit>>>,
+    pub arguments: RpLoc<Vec<RpLoc<FieldInit>>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -56,9 +56,9 @@ pub enum Value {
     Boolean(bool),
     Identifier(String),
     Type(RpType),
-    Instance(RpToken<Instance>),
-    Constant(RpToken<Custom>),
-    Array(Vec<RpToken<Value>>),
+    Instance(RpLoc<Instance>),
+    Constant(RpLoc<Custom>),
+    Array(Vec<RpLoc<Value>>),
 }
 
 impl ::std::fmt::Display for Value {
@@ -81,7 +81,7 @@ impl ::std::fmt::Display for Value {
 #[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,
-    pub values: Vec<RpToken<Value>>,
+    pub values: Vec<RpLoc<Value>>,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -214,7 +214,7 @@ pub struct Field {
     pub modifier: RpModifier,
     pub name: String,
     pub ty: RpType,
-    pub field_as: Option<RpToken<String>>,
+    pub field_as: Option<RpLoc<String>>,
 }
 
 impl Field {
@@ -245,56 +245,56 @@ pub struct Code {
 }
 
 pub trait BodyLike {
-    fn fields(&self) -> &Vec<RpToken<Field>>;
-    fn codes(&self) -> &Vec<RpToken<Code>>;
+    fn fields(&self) -> &Vec<RpLoc<Field>>;
+    fn codes(&self) -> &Vec<RpLoc<Code>>;
 }
 
 impl BodyLike for InterfaceBody {
-    fn fields(&self) -> &Vec<RpToken<Field>> {
+    fn fields(&self) -> &Vec<RpLoc<Field>> {
         &self.fields
     }
 
-    fn codes(&self) -> &Vec<RpToken<Code>> {
+    fn codes(&self) -> &Vec<RpLoc<Code>> {
         &self.codes
     }
 }
 
 impl BodyLike for TypeBody {
-    fn fields(&self) -> &Vec<RpToken<Field>> {
+    fn fields(&self) -> &Vec<RpLoc<Field>> {
         &self.fields
     }
 
-    fn codes(&self) -> &Vec<RpToken<Code>> {
+    fn codes(&self) -> &Vec<RpLoc<Code>> {
         &self.codes
     }
 }
 
 impl BodyLike for EnumBody {
-    fn fields(&self) -> &Vec<RpToken<Field>> {
+    fn fields(&self) -> &Vec<RpLoc<Field>> {
         &self.fields
     }
 
-    fn codes(&self) -> &Vec<RpToken<Code>> {
+    fn codes(&self) -> &Vec<RpLoc<Code>> {
         &self.codes
     }
 }
 
 impl BodyLike for TupleBody {
-    fn fields(&self) -> &Vec<RpToken<Field>> {
+    fn fields(&self) -> &Vec<RpLoc<Field>> {
         &self.fields
     }
 
-    fn codes(&self) -> &Vec<RpToken<Code>> {
+    fn codes(&self) -> &Vec<RpLoc<Code>> {
         &self.codes
     }
 }
 
 impl BodyLike for SubType {
-    fn fields(&self) -> &Vec<RpToken<Field>> {
+    fn fields(&self) -> &Vec<RpLoc<Field>> {
         &self.fields
     }
 
-    fn codes(&self) -> &Vec<RpToken<Code>> {
+    fn codes(&self) -> &Vec<RpLoc<Code>> {
         &self.codes
     }
 }
@@ -302,9 +302,9 @@ impl BodyLike for SubType {
 #[derive(Debug, Clone)]
 pub struct SubType {
     pub name: String,
-    pub fields: Vec<RpToken<Field>>,
-    pub codes: Vec<RpToken<Code>>,
-    pub names: Vec<RpToken<String>>,
+    pub fields: Vec<RpLoc<Field>>,
+    pub codes: Vec<RpLoc<Code>>,
+    pub names: Vec<RpLoc<String>>,
 }
 
 impl SubType {
@@ -316,7 +316,7 @@ impl SubType {
             .unwrap_or_else(|| self.name.clone())
     }
 
-    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpToken<Field>> + 'a> {
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpLoc<Field>> + 'a> {
         Box::new(self.fields.iter())
     }
 }
@@ -324,14 +324,14 @@ impl SubType {
 #[derive(Debug, Clone)]
 pub struct InterfaceBody {
     pub name: String,
-    pub fields: Vec<RpToken<Field>>,
-    pub codes: Vec<RpToken<Code>>,
+    pub fields: Vec<RpLoc<Field>>,
+    pub codes: Vec<RpLoc<Code>>,
     pub match_decl: MatchDecl,
-    pub sub_types: BTreeMap<String, RpToken<Rc<SubType>>>,
+    pub sub_types: BTreeMap<String, RpLoc<Rc<SubType>>>,
 }
 
 impl InterfaceBody {
-    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpToken<Field>> + 'a> {
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpLoc<Field>> + 'a> {
         Box::new(self.fields.iter())
     }
 }
@@ -339,11 +339,11 @@ impl InterfaceBody {
 #[derive(Debug, Clone)]
 pub struct TypeBody {
     pub name: String,
-    pub fields: Vec<RpToken<Field>>,
-    pub codes: Vec<RpToken<Code>>,
+    pub fields: Vec<RpLoc<Field>>,
+    pub codes: Vec<RpLoc<Code>>,
     pub match_decl: MatchDecl,
     // Set of fields which are reserved for this type.
-    pub reserved: HashSet<RpToken<String>>,
+    pub reserved: HashSet<RpLoc<String>>,
 }
 
 impl TypeBody {
@@ -357,7 +357,7 @@ impl TypeBody {
         Ok(())
     }
 
-    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpToken<Field>> + 'a> {
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpLoc<Field>> + 'a> {
         Box::new(self.fields.iter())
     }
 }
@@ -365,32 +365,32 @@ impl TypeBody {
 #[derive(Debug, Clone)]
 pub struct TupleBody {
     pub name: String,
-    pub fields: Vec<RpToken<Field>>,
-    pub codes: Vec<RpToken<Code>>,
+    pub fields: Vec<RpLoc<Field>>,
+    pub codes: Vec<RpLoc<Code>>,
     pub match_decl: MatchDecl,
 }
 
 impl TupleBody {
-    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpToken<Field>> + 'a> {
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpLoc<Field>> + 'a> {
         Box::new(self.fields.iter())
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct EnumValue {
-    pub name: RpToken<String>,
-    pub arguments: Vec<RpToken<Value>>,
+    pub name: RpLoc<String>,
+    pub arguments: Vec<RpLoc<Value>>,
     pub ordinal: u32,
 }
 
 #[derive(Debug, Clone)]
 pub struct EnumBody {
     pub name: String,
-    pub values: Vec<RpToken<Rc<EnumValue>>>,
-    pub fields: Vec<RpToken<Field>>,
-    pub codes: Vec<RpToken<Code>>,
+    pub values: Vec<RpLoc<Rc<EnumValue>>>,
+    pub fields: Vec<RpLoc<Field>>,
+    pub codes: Vec<RpLoc<Code>>,
     pub match_decl: MatchDecl,
-    pub serialized_as: Option<RpToken<String>>,
+    pub serialized_as: Option<RpLoc<String>>,
     pub serialized_as_name: bool,
 }
 
@@ -411,8 +411,8 @@ pub enum Registered {
 }
 
 impl Registered {
-    pub fn fields<'a>(&'a self) -> Result<Box<Iterator<Item = &RpToken<Field>> + 'a>> {
-        let it: Box<Iterator<Item = &RpToken<Field>>> = match *self {
+    pub fn fields<'a>(&'a self) -> Result<Box<Iterator<Item = &RpLoc<Field>> + 'a>> {
+        let it: Box<Iterator<Item = &RpLoc<Field>>> = match *self {
             Registered::Type(ref body) => Box::new(body.fields.iter()),
             Registered::Tuple(ref body) => Box::new(body.fields.iter()),
             Registered::SubType { ref parent, ref sub_type } => {
@@ -426,7 +426,7 @@ impl Registered {
         Ok(it)
     }
 
-    pub fn find_field(&self, name: &str) -> Result<Option<&RpToken<Field>>> {
+    pub fn find_field(&self, name: &str) -> Result<Option<&RpLoc<Field>>> {
         for field in self.fields()? {
             if field.name == name {
                 return Ok(Some(field));
@@ -536,15 +536,15 @@ pub enum MatchKind {
 #[derive(Debug, Clone)]
 pub enum MatchCondition {
     /// Match a specific value.
-    Value(RpToken<Value>),
+    Value(RpLoc<Value>),
     /// Match a type, and add a binding for the given name that can be resolved in the action.
-    Type(RpToken<MatchVariable>),
+    Type(RpLoc<MatchVariable>),
 }
 
 #[derive(Debug, Clone)]
 pub struct MatchMember {
-    pub condition: RpToken<MatchCondition>,
-    pub value: RpToken<Value>,
+    pub condition: RpLoc<MatchCondition>,
+    pub value: RpLoc<Value>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -555,8 +555,8 @@ pub struct MatchVariable {
 
 #[derive(Debug, Clone)]
 pub struct MatchDecl {
-    pub by_value: Vec<(RpToken<Value>, RpToken<Value>)>,
-    pub by_type: Vec<(MatchKind, (RpToken<MatchVariable>, RpToken<Value>))>,
+    pub by_value: Vec<(RpLoc<Value>, RpLoc<Value>)>,
+    pub by_type: Vec<(MatchKind, (RpLoc<MatchVariable>, RpLoc<Value>))>,
 }
 
 impl MatchDecl {
@@ -586,7 +586,7 @@ impl MatchDecl {
         }
     }
 
-    pub fn push(&mut self, member: RpToken<MatchMember>) -> Result<()> {
+    pub fn push(&mut self, member: RpLoc<MatchMember>) -> Result<()> {
         match member.condition.inner {
             MatchCondition::Type(ref variable) => {
                 let match_kind = self.identify_match_kind(variable);

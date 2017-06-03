@@ -1,20 +1,20 @@
 use backend::models as m;
-use token;
+use loc;
 
 /// Position relative in file where the declaration is present.
 pub type Pos = (usize, usize);
-pub type AstToken<T> = token::Token<T, Pos>;
+pub type AstLoc<T> = loc::Loc<T, Pos>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldInit {
-    pub name: AstToken<String>,
-    pub value: AstToken<Value>,
+    pub name: AstLoc<String>,
+    pub value: AstLoc<Value>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Instance {
     pub ty: m::Custom,
-    pub arguments: AstToken<Vec<AstToken<FieldInit>>>,
+    pub arguments: AstLoc<Vec<AstLoc<FieldInit>>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -24,15 +24,15 @@ pub enum Value {
     Boolean(bool),
     Identifier(String),
     Type(m::RpType),
-    Instance(AstToken<Instance>),
-    Constant(AstToken<m::Custom>),
-    Array(Vec<AstToken<Value>>),
+    Instance(AstLoc<Instance>),
+    Constant(AstLoc<m::Custom>),
+    Array(Vec<AstLoc<Value>>),
 }
 
 #[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,
-    pub values: Vec<AstToken<Value>>,
+    pub values: Vec<AstLoc<Value>>,
 }
 
 #[derive(Debug)]
@@ -40,7 +40,7 @@ pub struct Field {
     pub modifier: m::RpModifier,
     pub name: String,
     pub ty: m::RpType,
-    pub field_as: Option<AstToken<Value>>,
+    pub field_as: Option<AstLoc<Value>>,
 }
 
 impl Field {
@@ -56,7 +56,7 @@ impl Field {
 pub enum Member {
     Field(Field),
     Code(String, Vec<String>),
-    Option(AstToken<OptionDecl>),
+    Option(AstLoc<OptionDecl>),
     Match(MatchDecl),
 }
 
@@ -69,20 +69,20 @@ pub struct MatchVariable {
 #[derive(Debug)]
 pub enum MatchCondition {
     /// Match a specific value.
-    Value(AstToken<Value>),
+    Value(AstLoc<Value>),
     /// Match a type, and add a binding for the given name that can be resolved in the action.
-    Type(AstToken<MatchVariable>),
+    Type(AstLoc<MatchVariable>),
 }
 
 #[derive(Debug)]
 pub struct MatchMember {
-    pub condition: AstToken<MatchCondition>,
-    pub value: AstToken<Value>,
+    pub condition: AstLoc<MatchCondition>,
+    pub value: AstLoc<Value>,
 }
 
 #[derive(Debug)]
 pub struct MatchDecl {
-    pub members: Vec<AstToken<MatchMember>>,
+    pub members: Vec<AstLoc<MatchMember>>,
 }
 
 pub trait Body {
@@ -116,41 +116,41 @@ impl Body for InterfaceBody {
 #[derive(Debug)]
 pub struct TupleBody {
     pub name: String,
-    pub members: Vec<AstToken<Member>>,
+    pub members: Vec<AstLoc<Member>>,
 }
 
 #[derive(Debug)]
 pub struct InterfaceBody {
     pub name: String,
-    pub members: Vec<AstToken<Member>>,
-    pub sub_types: Vec<AstToken<SubType>>,
+    pub members: Vec<AstLoc<Member>>,
+    pub sub_types: Vec<AstLoc<SubType>>,
 }
 
 #[derive(Debug)]
 pub struct TypeBody {
     pub name: String,
-    pub members: Vec<AstToken<Member>>,
+    pub members: Vec<AstLoc<Member>>,
 }
 
 /// Sub-types in interface declarations.
 #[derive(Debug)]
 pub struct SubType {
     pub name: String,
-    pub members: Vec<AstToken<Member>>,
+    pub members: Vec<AstLoc<Member>>,
 }
 
 #[derive(Debug)]
 pub struct EnumBody {
     pub name: String,
-    pub values: Vec<AstToken<EnumValue>>,
-    pub members: Vec<AstToken<Member>>,
+    pub values: Vec<AstLoc<EnumValue>>,
+    pub members: Vec<AstLoc<Member>>,
 }
 
 #[derive(Debug)]
 pub struct EnumValue {
-    pub name: AstToken<String>,
-    pub arguments: Vec<AstToken<Value>>,
-    pub ordinal: Option<AstToken<Value>>,
+    pub name: AstLoc<String>,
+    pub arguments: Vec<AstLoc<Value>>,
+    pub ordinal: Option<AstLoc<Value>>,
 }
 
 #[derive(Debug)]
@@ -183,13 +183,13 @@ impl Decl {
 
 #[derive(Debug)]
 pub struct UseDecl {
-    pub package: AstToken<m::Package>,
+    pub package: AstLoc<m::Package>,
     pub alias: Option<String>,
 }
 
 #[derive(Debug)]
 pub struct File {
-    pub package: AstToken<m::Package>,
-    pub uses: Vec<AstToken<UseDecl>>,
-    pub decls: Vec<AstToken<Decl>>,
+    pub package: AstLoc<m::Package>,
+    pub uses: Vec<AstLoc<UseDecl>>,
+    pub decls: Vec<AstLoc<Decl>>,
 }
