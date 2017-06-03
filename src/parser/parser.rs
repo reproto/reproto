@@ -1,6 +1,5 @@
 #![allow(unconditional_recursion)]
 
-use backend::models as m;
 use pest::prelude::*;
 use std::collections::LinkedList;
 use super::ast::*;
@@ -301,11 +300,11 @@ impl_rdp! {
             () => None,
         }
 
-        _package(&self) -> AstLoc<m::Package> {
+        _package(&self) -> AstLoc<Package> {
             (token: package_ident, idents: _ident_list()) => {
                 let pos = (token.start, token.end);
                 let idents = idents;
-                let package = m::Package::new(idents.into_iter().collect());
+                let package = Package::new(idents.into_iter().collect());
                 AstLoc::new(package, pos)
             },
         }
@@ -749,52 +748,52 @@ impl_rdp! {
             },
         }
 
-        _type_spec(&self) -> Result<m::RpType> {
+        _type_spec(&self) -> Result<RpType> {
             (_: double_type) => {
-                Ok(m::RpType::Double)
+                Ok(RpType::Double)
             },
 
             (_: float_type) => {
-                Ok(m::RpType::Float)
+                Ok(RpType::Float)
             },
 
             (_: signed_type, _: forward_slash, &size: unsigned) => {
                 let size = size.parse::<usize>()?;
-                Ok(m::RpType::Signed(Some(size)))
+                Ok(RpType::Signed(Some(size)))
             },
 
             (_: unsigned_type, _: forward_slash, &size: unsigned) => {
                 let size = size.parse::<usize>()?;
-                Ok(m::RpType::Unsigned(Some(size)))
+                Ok(RpType::Unsigned(Some(size)))
             },
 
             (_: signed_type) => {
-                Ok(m::RpType::Signed(None))
+                Ok(RpType::Signed(None))
             },
 
             (_: unsigned_type) => {
-                Ok(m::RpType::Unsigned(None))
+                Ok(RpType::Unsigned(None))
             },
 
             (_: boolean_type) => {
-                Ok(m::RpType::Boolean)
+                Ok(RpType::Boolean)
             },
 
             (_: string_type) => {
-                Ok(m::RpType::String)
+                Ok(RpType::String)
             },
 
             (_: bytes_type) => {
-                Ok(m::RpType::Bytes)
+                Ok(RpType::Bytes)
             },
 
             (_: any_type) => {
-                Ok(m::RpType::Any)
+                Ok(RpType::Any)
             },
 
             (_: array_type, _: bracket_start, argument: _type_spec(), _: bracket_end) => {
                 let argument = argument?;
-                Ok(m::RpType::Array(Box::new(argument)))
+                Ok(RpType::Array(Box::new(argument)))
             },
 
             (
@@ -807,28 +806,28 @@ impl_rdp! {
              ) => {
                 let key = key?;
                 let value = value?;
-                Ok(m::RpType::Map(Box::new(key), Box::new(value)))
+                Ok(RpType::Map(Box::new(key), Box::new(value)))
             },
 
             (_: custom_type, custom: _custom()) => {
-                Ok(m::RpType::Custom(custom))
+                Ok(RpType::Custom(custom))
             },
         }
 
-        _custom(&self) -> m::Custom {
+        _custom(&self) -> Custom {
             (prefix: _used_prefix(), parts: _type_identifier_list()) => {
                 let parts = parts.into_iter().collect();
 
-                m::Custom {
+                Custom {
                     prefix: prefix,
                     parts: parts,
                 }
             },
         }
 
-        _modifier(&self) -> m::RpModifier {
-            (_: optional) => m::RpModifier::Optional,
-            () => m::RpModifier::Required,
+        _modifier(&self) -> RpModifier {
+            (_: optional) => RpModifier::Optional,
+            () => RpModifier::Required,
         }
 
         _ident_list(&self) -> LinkedList<String> {
@@ -904,7 +903,7 @@ mod tests {
 
         let file = parser._file().unwrap();
 
-        let package = m::Package::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
+        let package = Package::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
 
         assert_eq!(package, *file.package);
         assert_eq!(4, file.decls.len());
@@ -919,8 +918,8 @@ mod tests {
 
         let ty = parser._type_spec().unwrap();
 
-        if let m::RpType::Array(inner) = ty {
-            if let m::RpType::String = *inner {
+        if let RpType::Array(inner) = ty {
+            if let RpType::String = *inner {
                 return;
             }
         }
@@ -938,11 +937,11 @@ mod tests {
         let ty = parser._type_spec().unwrap();
 
         // TODO: use #![feature(box_patterns)]:
-        // if let m::Type::Map(box m::Type::String, box m::Type::Unsigned(size)) = ty {
+        // if let Type::Map(box Type::String, box Type::Unsigned(size)) = ty {
         // }
-        if let m::RpType::Map(key, value) = ty {
-            if let m::RpType::String = *key {
-                if let m::RpType::Unsigned(size) = *value {
+        if let RpType::Map(key, value) = ty {
+            if let RpType::String = *key {
+                if let RpType::Unsigned(size) = *value {
                     assert_eq!(Some(123usize), size);
                     return;
                 }
@@ -1011,7 +1010,7 @@ mod tests {
 
     #[test]
     fn test_instance() {
-        let c = m::Custom {
+        let c = Custom {
             prefix: None,
             parts: vec!["Foo".to_owned(), "Bar".to_owned()],
         };
@@ -1041,13 +1040,13 @@ mod tests {
 
     #[test]
     fn test_type_spec() {
-        let c = m::Custom {
+        let c = Custom {
             prefix: None,
             parts: vec!["Hello".to_owned(), "World".to_owned()],
         };
 
-        assert_type_spec_eq!(m::RpType::String, "string");
-        assert_type_spec_eq!(m::RpType::Custom(c), "Hello.World");
+        assert_type_spec_eq!(RpType::String, "string");
+        assert_type_spec_eq!(RpType::Custom(c), "Hello.World");
     }
 
     #[test]

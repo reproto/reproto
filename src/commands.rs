@@ -1,5 +1,5 @@
 use backend::environment::Environment;
-use backend::models as m;
+use backend::models::*;
 use backend;
 use clap::{Arg, App, SubCommand, ArgMatches};
 use errors::*;
@@ -85,9 +85,8 @@ pub fn compile_options<'a, 'b>(name: &str) -> App<'a, 'b> {
             .number_of_values(1))
 }
 
-fn setup_compiler<'a>
-    (matches: &'a ArgMatches)
-     -> Result<(Vec<&'a Path>, Vec<m::Package>, Environment, Options, &'a str)> {
+fn setup_compiler<'a>(matches: &'a ArgMatches)
+                      -> Result<(Vec<&'a Path>, Vec<Package>, Environment, Options, &'a str)> {
     let paths: Vec<::std::path::PathBuf> = matches.values_of("path")
         .into_iter()
         .flat_map(|it| it)
@@ -126,10 +125,10 @@ fn setup_compiler<'a>
         .map(Path::new)
         .collect();
 
-    let packages: Vec<m::Package> = matches.values_of("package")
+    let packages: Vec<Package> = matches.values_of("package")
         .into_iter()
         .flat_map(|it| it)
-        .map(|s| m::Package::new(s.split(".").map(ToOwned::to_owned).collect()))
+        .map(|s| Package::new(s.split(".").map(ToOwned::to_owned).collect()))
         .collect();
 
     Ok((files, packages, env, options, backend))

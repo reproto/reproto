@@ -1,4 +1,4 @@
-use backend::models as m;
+pub use backend::models::{Custom, Package, RpType, RpModifier};
 use loc;
 
 /// Position relative in file where the declaration is present.
@@ -13,7 +13,7 @@ pub struct FieldInit {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Instance {
-    pub ty: m::Custom,
+    pub ty: Custom,
     pub arguments: AstLoc<Vec<AstLoc<FieldInit>>>,
 }
 
@@ -23,9 +23,9 @@ pub enum Value {
     Number(f64),
     Boolean(bool),
     Identifier(String),
-    Type(m::RpType),
+    Type(RpType),
     Instance(AstLoc<Instance>),
-    Constant(AstLoc<m::Custom>),
+    Constant(AstLoc<Custom>),
     Array(Vec<AstLoc<Value>>),
 }
 
@@ -37,16 +37,16 @@ pub struct OptionDecl {
 
 #[derive(Debug)]
 pub struct Field {
-    pub modifier: m::RpModifier,
+    pub modifier: RpModifier,
     pub name: String,
-    pub ty: m::RpType,
+    pub ty: RpType,
     pub field_as: Option<AstLoc<Value>>,
 }
 
 impl Field {
     pub fn is_optional(&self) -> bool {
         match self.modifier {
-            m::RpModifier::Optional => true,
+            RpModifier::Optional => true,
             _ => false,
         }
     }
@@ -63,7 +63,7 @@ pub enum Member {
 #[derive(Debug)]
 pub struct MatchVariable {
     pub name: String,
-    pub ty: m::RpType,
+    pub ty: RpType,
 }
 
 #[derive(Debug)]
@@ -183,13 +183,13 @@ impl Decl {
 
 #[derive(Debug)]
 pub struct UseDecl {
-    pub package: AstLoc<m::Package>,
+    pub package: AstLoc<Package>,
     pub alias: Option<String>,
 }
 
 #[derive(Debug)]
 pub struct File {
-    pub package: AstLoc<m::Package>,
+    pub package: AstLoc<Package>,
     pub uses: Vec<AstLoc<UseDecl>>,
     pub decls: Vec<AstLoc<Decl>>,
 }
