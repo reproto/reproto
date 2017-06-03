@@ -244,61 +244,6 @@ pub struct Code {
     pub lines: Vec<String>,
 }
 
-pub trait BodyLike {
-    fn fields(&self) -> &Vec<RpLoc<Field>>;
-    fn codes(&self) -> &Vec<RpLoc<Code>>;
-}
-
-impl BodyLike for InterfaceBody {
-    fn fields(&self) -> &Vec<RpLoc<Field>> {
-        &self.fields
-    }
-
-    fn codes(&self) -> &Vec<RpLoc<Code>> {
-        &self.codes
-    }
-}
-
-impl BodyLike for TypeBody {
-    fn fields(&self) -> &Vec<RpLoc<Field>> {
-        &self.fields
-    }
-
-    fn codes(&self) -> &Vec<RpLoc<Code>> {
-        &self.codes
-    }
-}
-
-impl BodyLike for EnumBody {
-    fn fields(&self) -> &Vec<RpLoc<Field>> {
-        &self.fields
-    }
-
-    fn codes(&self) -> &Vec<RpLoc<Code>> {
-        &self.codes
-    }
-}
-
-impl BodyLike for TupleBody {
-    fn fields(&self) -> &Vec<RpLoc<Field>> {
-        &self.fields
-    }
-
-    fn codes(&self) -> &Vec<RpLoc<Code>> {
-        &self.codes
-    }
-}
-
-impl BodyLike for SubType {
-    fn fields(&self) -> &Vec<RpLoc<Field>> {
-        &self.fields
-    }
-
-    fn codes(&self) -> &Vec<RpLoc<Code>> {
-        &self.codes
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct SubType {
     pub name: String,
