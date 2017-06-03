@@ -9,15 +9,15 @@ use super::into_model::IntoModel;
 use super::merge::Merge;
 use super::models::*;
 
-pub type InitFields = HashMap<String, Token<FieldInit>>;
+pub type InitFields = HashMap<String, RpToken<FieldInit>>;
 
 const EXT: &str = "reproto";
 
 pub struct Environment {
     paths: Vec<PathBuf>,
     visited: HashSet<Package>,
-    pub types: LinkedHashMap<TypeId, Token<Registered>>,
-    pub decls: LinkedHashMap<TypeId, Rc<Token<Decl>>>,
+    pub types: LinkedHashMap<TypeId, RpToken<Registered>>,
+    pub decls: LinkedHashMap<TypeId, Rc<RpToken<Decl>>>,
     pub used: LinkedHashMap<(Package, String), Package>,
 }
 
@@ -34,28 +34,29 @@ impl Environment {
 
     fn into_registered_type(&self,
                             package: &Package,
-                            decl: Rc<Token<Decl>>)
-                            -> Result<Vec<(TypeId, Token<Registered>)>> {
+                            decl: Rc<RpToken<Decl>>)
+                            -> Result<Vec<(TypeId, RpToken<Registered>)>> {
         let mut out = Vec::new();
 
         match decl.inner {
             Decl::Type(ref ty) => {
                 let type_id = TypeId::new(package.clone(),
                                           Custom::with_parts(vec![ty.name.clone()]));
-                let token = Token::new(Registered::Type(ty.clone()), decl.pos.clone());
+                let token = RpToken::new(Registered::Type(ty.clone()), decl.pos.clone());
                 out.push((type_id, token));
             }
             Decl::Interface(ref interface) => {
                 let current = vec![interface.name.clone()];
                 let type_id = TypeId::new(package.clone(), Custom::with_parts(current.clone()));
-                let token = Token::new(Registered::Interface(interface.clone()), decl.pos.clone());
+                let token = RpToken::new(Registered::Interface(interface.clone()),
+                                         decl.pos.clone());
 
                 for (name, sub_type) in &interface.sub_types {
                     let sub_type = Registered::SubType {
                         parent: interface.clone(),
                         sub_type: sub_type.inner.clone(),
                     };
-                    let token = Token::new(sub_type, decl.pos.clone());
+                    let token = RpToken::new(sub_type, decl.pos.clone());
 
                     let mut current = current.clone();
                     current.push(name.to_owned());
@@ -67,14 +68,14 @@ impl Environment {
             Decl::Enum(ref en) => {
                 let current = vec![en.name.clone()];
                 let type_id = TypeId::new(package.clone(), Custom::with_parts(current.clone()));
-                let token = Token::new(Registered::Enum(en.clone()), decl.pos.clone());
+                let token = RpToken::new(Registered::Enum(en.clone()), decl.pos.clone());
 
                 for value in &en.values {
                     let enum_constant = Registered::EnumConstant {
                         parent: en.clone(),
                         value: value.inner.clone(),
                     };
-                    let token = Token::new(enum_constant, decl.pos.clone());
+                    let token = RpToken::new(enum_constant, decl.pos.clone());
 
                     let mut current = current.clone();
                     current.push((*value.name).to_owned());
@@ -86,7 +87,7 @@ impl Environment {
             Decl::Tuple(ref tuple) => {
                 let type_id = TypeId::new(package.clone(),
                                           Custom::with_parts(vec![tuple.name.clone()]));
-                let token = Token::new(Registered::Tuple(tuple.clone()), decl.pos.clone());
+                let token = RpToken::new(Registered::Tuple(tuple.clone()), decl.pos.clone());
                 out.push((type_id, token));
             }
         }
@@ -216,10 +217,10 @@ impl Environment {
         // pick required fields.
         let required_fields = required_fields.filter(|f| f.modifier == RpModifier::Required);
 
-        let mut known: HashMap<String, Token<FieldInit>> = HashMap::new();
+        let mut known: HashMap<String, RpToken<FieldInit>> = HashMap::new();
 
         // check that all required fields are set.
-        let mut required: BTreeMap<String, Token<Field>> = required_fields.map(Clone::clone)
+        let mut required: BTreeMap<String, RpToken<Field>> = required_fields.map(Clone::clone)
             .map(|f| (f.name.clone(), f))
             .collect();
 
@@ -234,7 +235,7 @@ impl Environment {
         }
 
         if !required.is_empty() {
-            let required: Vec<(String, Token<Field>)> = required.into_iter()
+            let required: Vec<(String, RpToken<Field>)> = required.into_iter()
                 .collect();
 
             let names: Vec<String> =

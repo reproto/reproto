@@ -114,7 +114,7 @@ impl Processor {
     }
 
     fn find_field<'a>(&self,
-                      fields: &'a Vec<Token<Field>>,
+                      fields: &'a Vec<RpToken<Field>>,
                       name: &str)
                       -> Option<(usize, &'a Field)> {
         for (i, field) in fields.iter().enumerate() {
@@ -139,7 +139,7 @@ impl Processor {
 
     fn encode_method<E>(&self,
                         package: &Package,
-                        fields: &Vec<Token<Field>>,
+                        fields: &Vec<RpToken<Field>>,
                         builder: &BuiltInName,
                         extra: E)
                         -> Result<MethodSpec>
@@ -189,7 +189,7 @@ impl Processor {
 
     fn encode_tuple_method(&self,
                            package: &Package,
-                           fields: &Vec<Token<Field>>)
+                           fields: &Vec<RpToken<Field>>)
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
 
@@ -367,7 +367,7 @@ impl Processor {
     fn decode_method<F>(&self,
                         type_id: &TypeId,
                         match_decl: &MatchDecl,
-                        fields: &Vec<Token<Field>>,
+                        fields: &Vec<RpToken<Field>>,
                         class: &ClassSpec,
                         variable_fn: F)
                         -> Result<MethodSpec>
@@ -522,7 +522,7 @@ impl Processor {
             .unwrap_or_else(|| package.clone())
     }
 
-    fn build_constructor(&self, fields: &Vec<Token<Field>>) -> MethodSpec {
+    fn build_constructor(&self, fields: &Vec<RpToken<Field>>) -> MethodSpec {
         let mut constructor = MethodSpec::new("__init__");
         constructor.push_argument(stmt!["self"]);
 
@@ -536,7 +536,7 @@ impl Processor {
 
     fn process_tuple(&self, type_id: &TypeId, _pos: &Pos, body: &TupleBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields: Vec<Token<Field>> = Vec::new();
+        let mut fields: Vec<RpToken<Field>> = Vec::new();
 
         for field in &body.fields {
             let ident = self.ident(&field.name);
@@ -564,7 +564,7 @@ impl Processor {
 
     fn process_enum(&self, _type_id: &TypeId, body: &EnumBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields: Vec<Token<Field>> = Vec::new();
+        let mut fields: Vec<RpToken<Field>> = Vec::new();
 
         for field in &body.fields {
             let ident = self.ident(&field.name);
@@ -648,7 +648,7 @@ impl Processor {
                  ")"])
     }
 
-    fn build_getters(&self, fields: &Vec<Token<Field>>) -> Result<Vec<MethodSpec>> {
+    fn build_getters(&self, fields: &Vec<RpToken<Field>>) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
         for field in fields {
@@ -887,7 +887,7 @@ impl Processor {
     fn tuple_added(&self,
                    type_id: &TypeId,
                    match_decl: &MatchDecl,
-                   fields: &Vec<Token<Field>>,
+                   fields: &Vec<RpToken<Field>>,
                    class: &mut ClassSpec)
                    -> Result<()> {
 
@@ -905,8 +905,8 @@ impl Processor {
     }
 
     fn enum_added(&self,
-                  fields: &Vec<Token<Field>>,
-                  serialized_as: &Option<Token<String>>,
+                  fields: &Vec<RpToken<Field>>,
+                  serialized_as: &Option<RpToken<String>>,
                   class: &mut ClassSpec)
                   -> Result<()> {
         if let Some(ref s) = *serialized_as {

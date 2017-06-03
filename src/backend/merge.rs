@@ -21,10 +21,10 @@ impl<T> Merge for Rc<T>
     }
 }
 
-impl<T> Merge for Token<T>
+impl<T> Merge for RpToken<T>
     where T: Merge
 {
-    fn merge(&mut self, source: Token<T>) -> Result<()> {
+    fn merge(&mut self, source: RpToken<T>) -> Result<()> {
         self.inner.merge(source.inner)?;
         Ok(())
     }
@@ -71,15 +71,15 @@ impl Merge for EnumBody {
     }
 }
 
-impl Merge for Vec<Token<Code>> {
-    fn merge(&mut self, source: Vec<Token<Code>>) -> Result<()> {
+impl Merge for Vec<RpToken<Code>> {
+    fn merge(&mut self, source: Vec<RpToken<Code>>) -> Result<()> {
         self.extend(source);
         Ok(())
     }
 }
 
-impl Merge for Vec<Token<Field>> {
-    fn merge(&mut self, source: Vec<Token<Field>>) -> Result<()> {
+impl Merge for Vec<RpToken<Field>> {
+    fn merge(&mut self, source: Vec<RpToken<Field>>) -> Result<()> {
         for f in source {
             if let Some(field) = self.iter().find(|e| e.name == f.name) {
                 return Err(Error::field_conflict(f.name.clone(), f.pos.clone(), field.pos.clone()));
@@ -92,8 +92,8 @@ impl Merge for Vec<Token<Field>> {
     }
 }
 
-impl Merge for Token<Decl> {
-    fn merge(&mut self, source: Token<Decl>) -> Result<()> {
+impl Merge for RpToken<Decl> {
+    fn merge(&mut self, source: RpToken<Decl>) -> Result<()> {
         let dest_pos = self.pos.clone();
 
         match self.inner {

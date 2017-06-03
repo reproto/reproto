@@ -3,7 +3,7 @@
 use backend::models as m;
 use pest::prelude::*;
 use std::collections::LinkedList;
-use super::ast;
+use super::ast::*;
 use super::errors::*;
 
 /// Check if character is an indentation character.
@@ -256,7 +256,7 @@ impl_rdp! {
     }
 
     process! {
-        _file(&self) -> Result<ast::File> {
+        _file(&self) -> Result<File> {
             (
                 _: package_decl,
                 _: package_keyword,
@@ -268,7 +268,7 @@ impl_rdp! {
                 let uses = uses?.into_iter().collect();
                 let decls = decls?.into_iter().collect();
 
-                Ok(ast::File {
+                Ok(File {
                     package: package,
                     uses: uses,
                     decls: decls
@@ -276,20 +276,20 @@ impl_rdp! {
             },
         }
 
-        _use_list(&self) -> Result<LinkedList<ast::Token<ast::UseDecl>>> {
+        _use_list(&self) -> Result<LinkedList<AstToken<UseDecl>>> {
             (token: use_decl, use_decl: _use_decl(), tail: _use_list()) => {
                 let pos = (token.start, token.end);
                 let mut tail = tail?;
-                tail.push_front(ast::Token::new(use_decl, pos));
+                tail.push_front(AstToken::new(use_decl, pos));
                 Ok(tail)
             },
 
             () => Ok(LinkedList::new()),
         }
 
-        _use_decl(&self) -> ast::UseDecl {
+        _use_decl(&self) -> UseDecl {
             (_: use_keyword, package: _package(), alias: _use_as(), _: semi_colon) => {
-                ast::UseDecl {
+                UseDecl {
                     package: package,
                     alias: alias,
                 }
@@ -301,27 +301,27 @@ impl_rdp! {
             () => None,
         }
 
-        _package(&self) -> ast::Token<m::Package> {
+        _package(&self) -> AstToken<m::Package> {
             (token: package_ident, idents: _ident_list()) => {
                 let pos = (token.start, token.end);
                 let idents = idents;
                 let package = m::Package::new(idents.into_iter().collect());
-                ast::Token::new(package, pos)
+                AstToken::new(package, pos)
             },
         }
 
-        _decl_list(&self) -> Result<LinkedList<ast::Token<ast::Decl>>> {
+        _decl_list(&self) -> Result<LinkedList<AstToken<Decl>>> {
             (token: decl, value: _decl(), tail: _decl_list()) => {
                 let mut tail = tail?;
                 let pos = (token.start, token.end);
-                tail.push_front(ast::Token::new(value?, pos));
+                tail.push_front(AstToken::new(value?, pos));
                 Ok(tail)
             },
 
             () => Ok(LinkedList::new()),
         }
 
-        _decl(&self) -> Result<ast::Decl> {
+        _decl(&self) -> Result<Decl> {
             (
                 _: type_decl,
                 _: type_keyword,
@@ -332,12 +332,12 @@ impl_rdp! {
             ) => {
                 let members = members?.into_iter().collect();
 
-                let body = ast::TypeBody {
+                let body = TypeBody {
                     name: name.to_owned(),
                     members: members
                 };
 
-                Ok(ast::Decl::Type(body))
+                Ok(Decl::Type(body))
             },
 
             (
@@ -350,12 +350,12 @@ impl_rdp! {
             ) => {
                 let members = members?.into_iter().collect();
 
-                let body = ast::TupleBody {
+                let body = TupleBody {
                     name: name.to_owned(),
                     members: members,
                 };
 
-                Ok(ast::Decl::Tuple(body))
+                Ok(Decl::Tuple(body))
             },
 
             (
@@ -370,13 +370,13 @@ impl_rdp! {
                 let members = members?.into_iter().collect();
                 let sub_types = sub_types?.into_iter().collect();
 
-                let body = ast::InterfaceBody {
+                let body = InterfaceBody {
                     name: name.to_owned(),
                     members: members,
                     sub_types: sub_types,
                 };
 
-                Ok(ast::Decl::Interface(body))
+                Ok(Decl::Interface(body))
             },
 
             (
@@ -391,17 +391,17 @@ impl_rdp! {
                 let values = values?.into_iter().collect();
                 let members = members?.into_iter().collect();
 
-                let body = ast::EnumBody {
+                let body = EnumBody {
                     name: name.to_owned(),
                     values: values,
                     members: members,
                 };
 
-                Ok(ast::Decl::Enum(body))
+                Ok(Decl::Enum(body))
             },
         }
 
-        _enum_value_list(&self) -> Result<LinkedList<ast::Token<ast::EnumValue>>> {
+        _enum_value_list(&self) -> Result<LinkedList<AstToken<EnumValue>>> {
             (_: enum_body_value, value: _enum_value(), tail: _enum_value_list()) => {
                 let mut tail = tail?;
                 tail.push_front(value?);
@@ -411,7 +411,7 @@ impl_rdp! {
             () => Ok(LinkedList::new()),
         }
 
-        _enum_value(&self) -> Result<ast::Token<ast::EnumValue>> {
+        _enum_value(&self) -> Result<AstToken<EnumValue>> {
             (
                 token: enum_value,
                 name_token: enum_name,
@@ -420,34 +420,34 @@ impl_rdp! {
                 ordinal: _enum_ordinal(),
                 _: semi_colon
              ) => {
-                let name = ast::Token::new(name.to_owned(), (name_token.start, name_token.end));
+                let name = AstToken::new(name.to_owned(), (name_token.start, name_token.end));
 
-                let enum_value = ast::EnumValue {
+                let enum_value = EnumValue {
                     name: name,
                     arguments: values?.into_iter().collect(),
                     ordinal: ordinal?
                 };
 
-                Ok(ast::Token::new(enum_value, (token.start, token.end)))
+                Ok(AstToken::new(enum_value, (token.start, token.end)))
             },
         }
 
-        _enum_arguments(&self) -> Result<LinkedList<ast::Token<ast::Value>>> {
+        _enum_arguments(&self) -> Result<LinkedList<AstToken<Value>>> {
             (_: enum_arguments, _: left_paren, values: _value_list(), _: right_paren) => values,
             () => Ok(LinkedList::new()),
         }
 
-        _enum_ordinal(&self) -> Result<Option<ast::Token<ast::Value>>> {
+        _enum_ordinal(&self) -> Result<Option<AstToken<Value>>> {
             (_: enum_ordinal, _: equals, value: _value_token()) => value.map(Some),
             () => Ok(None),
         }
 
-        _optional_value_list(&self) -> Result<LinkedList<ast::Token<ast::Value>>> {
+        _optional_value_list(&self) -> Result<LinkedList<AstToken<Value>>> {
             (_: optional_value_list, values: _value_list()) => values,
             () => Ok(LinkedList::new()),
         }
 
-        _value_list(&self) -> Result<LinkedList<ast::Token<ast::Value>>> {
+        _value_list(&self) -> Result<LinkedList<AstToken<Value>>> {
             (value: _value_token(), _: comma, tail: _value_list()) => {
                 let mut tail = tail?;
                 tail.push_front(value?);
@@ -461,14 +461,14 @@ impl_rdp! {
             },
         }
 
-        _value_token(&self) -> Result<ast::Token<ast::Value>> {
+        _value_token(&self) -> Result<AstToken<Value>> {
             (token: value, value: _value()) => {
                 let pos = (token.start, token.end);
-                value.map(move |v| ast::Token::new(v, pos))
+                value.map(move |v| AstToken::new(v, pos))
             },
         }
 
-        _value(&self) -> Result<ast::Value> {
+        _value(&self) -> Result<Value> {
             (
                 token: instance,
                 _: custom_type,
@@ -481,13 +481,13 @@ impl_rdp! {
                 let arguments = arguments?.into_iter().collect();
 
                 let args_pos = (arguments_token.start, arguments_token.end);
-                let instance = ast::Instance {
+                let instance = Instance {
                    ty: custom,
-                   arguments: ast::Token::new(arguments, args_pos),
+                   arguments: AstToken::new(arguments, args_pos),
                 };
 
                 let pos = (token.start, token.end);
-                Ok(ast::Value::Instance(ast::Token::new(instance, pos)))
+                Ok(Value::Instance(AstToken::new(instance, pos)))
             },
 
             (
@@ -496,7 +496,7 @@ impl_rdp! {
                 custom: _custom(),
             ) => {
                 let pos = (token.start, token.end);
-                Ok(ast::Value::Constant(ast::Token::new(custom, pos)))
+                Ok(Value::Constant(AstToken::new(custom, pos)))
             },
 
             (
@@ -506,21 +506,21 @@ impl_rdp! {
                 _: bracket_end,
             ) => {
                 let values = values?.into_iter().collect();
-                Ok(ast::Value::Array(values))
+                Ok(Value::Array(values))
             },
 
             (&value: string) => {
                 let value = decode_escaped_string(value)?;
-                Ok(ast::Value::String(value))
+                Ok(Value::String(value))
             },
 
             (&value: identifier) => {
-                Ok(ast::Value::Identifier(value.to_owned()))
+                Ok(Value::Identifier(value.to_owned()))
             },
 
             (&value: number) => {
                 let value = value.parse::<f64>()?;
-                Ok(ast::Value::Number(value))
+                Ok(Value::Number(value))
             },
 
             (&value: boolean) => {
@@ -530,7 +530,7 @@ impl_rdp! {
                     _ => panic!("should not happen"),
                 };
 
-                Ok(ast::Value::Boolean(value))
+                Ok(Value::Boolean(value))
             },
         }
 
@@ -539,7 +539,7 @@ impl_rdp! {
             () => None,
         }
 
-        _field_init_list(&self) -> Result<LinkedList<ast::Token<ast::FieldInit>>> {
+        _field_init_list(&self) -> Result<LinkedList<AstToken<FieldInit>>> {
             (
                 token: field_init,
                 field_init: _field_init(),
@@ -547,7 +547,7 @@ impl_rdp! {
                 tail: _field_init_list()
             ) => {
                 let mut tail = tail?;
-                tail.push_front(ast::Token::new(field_init?, (token.start, token.end)));
+                tail.push_front(AstToken::new(field_init?, (token.start, token.end)));
                 Ok(tail)
             },
 
@@ -557,39 +557,39 @@ impl_rdp! {
                 tail: _field_init_list()
             ) => {
                 let mut tail = tail?;
-                tail.push_front(ast::Token::new(field_init?, (token.start, token.end)));
+                tail.push_front(AstToken::new(field_init?, (token.start, token.end)));
                 Ok(tail)
             },
 
             () => Ok(LinkedList::new()),
         }
 
-        _field_init(&self) -> Result<ast::FieldInit> {
+        _field_init(&self) -> Result<FieldInit> {
             (
                 name_token: field_name,
                 &name: identifier,
                 _: colon,
                 value: _value_token(),
             ) => {
-                Ok(ast::FieldInit {
-                    name: ast::Token::new(name.to_owned(), (name_token.start, name_token.end)),
+                Ok(FieldInit {
+                    name: AstToken::new(name.to_owned(), (name_token.start, name_token.end)),
                     value: value?,
                 })
             },
         }
 
-        _member_list(&self) -> Result<LinkedList<ast::Token<ast::Member>>> {
+        _member_list(&self) -> Result<LinkedList<AstToken<Member>>> {
             (token: member, value: _member(), tail: _member_list()) => {
                 let mut tail = tail?;
                 let pos = (token.start, token.end);
-                tail.push_front(ast::Token::new(value?, pos));
+                tail.push_front(AstToken::new(value?, pos));
                 Ok(tail)
             },
 
             () => Ok(LinkedList::new()),
         }
 
-        _member(&self) -> Result<ast::Member> {
+        _member(&self) -> Result<Member> {
             (
                 _: field,
                 &name: identifier,
@@ -599,14 +599,14 @@ impl_rdp! {
                 field_as: _field_as(),
                 _: semi_colon,
             ) => {
-                let field = ast::Field {
+                let field = Field {
                     modifier: modifier,
                     name: name.to_owned(),
                     ty: type_spec?,
                     field_as: field_as?,
                 };
 
-                Ok(ast::Member::Field(field))
+                Ok(Member::Field(field))
             },
 
             (
@@ -617,7 +617,7 @@ impl_rdp! {
                 _: code_end,
              ) => {
                 let block = strip_code_block(content);
-                Ok(ast::Member::Code(context.to_owned(), block))
+                Ok(Member::Code(context.to_owned(), block))
             },
 
             (
@@ -628,8 +628,8 @@ impl_rdp! {
             ) => {
                 let pos = (token.start, token.end);
                 let values = values?.into_iter().collect();
-                let option_decl = ast::OptionDecl { name: name.to_owned(), values: values };
-                Ok(ast::Member::Option(ast::Token::new(option_decl, pos)))
+                let option_decl = OptionDecl { name: name.to_owned(), values: values };
+                Ok(Member::Option(AstToken::new(option_decl, pos)))
             },
 
             (
@@ -641,24 +641,24 @@ impl_rdp! {
              ) => {
                 let members = members?.into_iter().collect();
 
-                let decl = ast::MatchDecl {
+                let decl = MatchDecl {
                     members: members,
                 };
 
-                Ok(ast::Member::Match(decl))
+                Ok(Member::Match(decl))
             },
         }
 
-        _field_as(&self) -> Result<Option<ast::Token<ast::Value>>> {
+        _field_as(&self) -> Result<Option<AstToken<Value>>> {
             (_: field_as, _: as_keyword, value: _value_token()) => Ok(Some(value?)),
             () => Ok(None),
         }
 
-        _sub_type_list(&self) -> Result<LinkedList<ast::Token<ast::SubType>>> {
+        _sub_type_list(&self) -> Result<LinkedList<AstToken<SubType>>> {
             (token: sub_type, value: _sub_type(), tail: _sub_type_list()) => {
                 let mut tail = tail?;
                 let pos = (token.start, token.end);
-                tail.push_front(ast::Token::new(value?, pos));
+                tail.push_front(AstToken::new(value?, pos));
                 Ok(tail)
             },
 
@@ -667,7 +667,7 @@ impl_rdp! {
             },
         }
 
-        _sub_type(&self) -> Result<ast::SubType> {
+        _sub_type(&self) -> Result<SubType> {
             (
                 &name: type_identifier,
                 _: left_curly,
@@ -676,11 +676,11 @@ impl_rdp! {
              ) => {
                 let name = name.to_owned();
                 let members = members?.into_iter().collect();
-                Ok(ast::SubType { name: name, members: members })
+                Ok(SubType { name: name, members: members })
             },
         }
 
-        _match_member_list(&self) -> Result<LinkedList<ast::Token<ast::MatchMember>>> {
+        _match_member_list(&self) -> Result<LinkedList<AstToken<MatchMember>>> {
             (
                 _: match_member_entry,
                 member: _match_member(),
@@ -694,7 +694,7 @@ impl_rdp! {
             () => Ok(LinkedList::new()),
         }
 
-        _match_member(&self) -> Result<ast::Token<ast::MatchMember>> {
+        _match_member(&self) -> Result<AstToken<MatchMember>> {
             (
                 token: match_member,
                 condition: _match_condition(),
@@ -704,16 +704,16 @@ impl_rdp! {
             ) => {
                 let pos = (token.start, token.end);
 
-                let member = ast::MatchMember {
+                let member = MatchMember {
                     condition: condition?,
                     value: value?,
                 };
 
-                Ok(ast::Token::new(member, pos))
+                Ok(AstToken::new(member, pos))
             },
         }
 
-        _match_condition(&self) -> Result<ast::Token<ast::MatchCondition>> {
+        _match_condition(&self) -> Result<AstToken<MatchCondition>> {
             (
                 token: match_condition,
                 _: match_value,
@@ -721,8 +721,8 @@ impl_rdp! {
             ) => {
                 let pos = (token.start, token.end);
                 let value = value?;
-                let condition = ast::MatchCondition::Value(value);
-                Ok(ast::Token::new(condition, pos))
+                let condition = MatchCondition::Value(value);
+                Ok(AstToken::new(condition, pos))
             },
 
             (
@@ -736,16 +736,16 @@ impl_rdp! {
                 let name = name.to_owned();
                 let ty = ty?;
 
-                let variable = ast::MatchVariable {
+                let variable = MatchVariable {
                     name: name,
                     ty: ty,
                 };
 
-                let variable = ast::Token::new(variable, (match_token.start, match_token.end));
+                let variable = AstToken::new(variable, (match_token.start, match_token.end));
 
-                let condition = ast::MatchCondition::Type(variable);
+                let condition = MatchCondition::Type(variable);
 
-                Ok(ast::Token::new(condition, pos))
+                Ok(AstToken::new(condition, pos))
             },
         }
 
@@ -1016,27 +1016,27 @@ mod tests {
             parts: vec!["Foo".to_owned(), "Bar".to_owned()],
         };
 
-        let field = ast::FieldInit {
-            name: ast::Token::new("hello".to_owned(), (8, 13)),
-            value: ast::Token::new(ast::Value::Number(12f64), (15, 17)),
+        let field = FieldInit {
+            name: AstToken::new("hello".to_owned(), (8, 13)),
+            value: AstToken::new(Value::Number(12f64), (15, 17)),
         };
 
-        let field = ast::Token::new(field, (8, 17));
+        let field = AstToken::new(field, (8, 17));
 
-        let instance = ast::Instance {
+        let instance = Instance {
             ty: c,
-            arguments: ast::Token::new(vec![field], (7, 18)),
+            arguments: AstToken::new(vec![field], (7, 18)),
         };
 
-        assert_value_eq!(ast::Value::Instance(ast::Token::new(instance, (0, 18))),
+        assert_value_eq!(Value::Instance(AstToken::new(instance, (0, 18))),
                          "Foo.Bar(hello: 12)");
     }
 
     #[test]
     fn test_values() {
-        assert_value_eq!(ast::Value::String("foo\nbar".to_owned()), "\"foo\\nbar\"");
-        assert_value_eq!(ast::Value::Number(1f64), "1");
-        assert_value_eq!(ast::Value::Number(1.25f64), "1.25");
+        assert_value_eq!(Value::String("foo\nbar".to_owned()), "\"foo\\nbar\"");
+        assert_value_eq!(Value::Number(1f64), "1");
+        assert_value_eq!(Value::Number(1.25f64), "1.25");
     }
 
     #[test]
@@ -1057,15 +1057,14 @@ mod tests {
         assert!(parser.option_decl());
         assert!(parser.end());
 
-        if let ast::Member::Option(option) = parser._member().unwrap() {
+        if let Member::Option(option) = parser._member().unwrap() {
             assert_eq!("foo_bar_baz", option.name);
             assert_eq!(4, option.values.len());
 
-            assert_eq!(ast::Value::Boolean(true), option.values[0].inner);
-            assert_eq!(ast::Value::Identifier("foo".to_owned()),
-                       option.values[1].inner);
-            assert_eq!(ast::Value::String("bar".to_owned()), option.values[2].inner);
-            assert_eq!(ast::Value::Number(12f64), option.values[3].inner);
+            assert_eq!(Value::Boolean(true), option.values[0].inner);
+            assert_eq!(Value::Identifier("foo".to_owned()), option.values[1].inner);
+            assert_eq!(Value::String("bar".to_owned()), option.values[2].inner);
+            assert_eq!(Value::Number(12f64), option.values[3].inner);
             return;
         }
 

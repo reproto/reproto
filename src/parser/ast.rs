@@ -1,20 +1,20 @@
-use backend::models::*;
+use backend::models as m;
 use token;
 
 /// Position relative in file where the declaration is present.
 pub type Pos = (usize, usize);
-pub type Token<T> = token::Token<T, Pos>;
+pub type AstToken<T> = token::Token<T, Pos>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldInit {
-    pub name: Token<String>,
-    pub value: Token<Value>,
+    pub name: AstToken<String>,
+    pub value: AstToken<Value>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Instance {
-    pub ty: Custom,
-    pub arguments: Token<Vec<Token<FieldInit>>>,
+    pub ty: m::Custom,
+    pub arguments: AstToken<Vec<AstToken<FieldInit>>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -23,30 +23,30 @@ pub enum Value {
     Number(f64),
     Boolean(bool),
     Identifier(String),
-    Type(RpType),
-    Instance(Token<Instance>),
-    Constant(Token<Custom>),
-    Array(Vec<Token<Value>>),
+    Type(m::RpType),
+    Instance(AstToken<Instance>),
+    Constant(AstToken<m::Custom>),
+    Array(Vec<AstToken<Value>>),
 }
 
 #[derive(Debug)]
 pub struct OptionDecl {
     pub name: String,
-    pub values: Vec<Token<Value>>,
+    pub values: Vec<AstToken<Value>>,
 }
 
 #[derive(Debug)]
 pub struct Field {
-    pub modifier: RpModifier,
+    pub modifier: m::RpModifier,
     pub name: String,
-    pub ty: RpType,
-    pub field_as: Option<Token<Value>>,
+    pub ty: m::RpType,
+    pub field_as: Option<AstToken<Value>>,
 }
 
 impl Field {
     pub fn is_optional(&self) -> bool {
         match self.modifier {
-            RpModifier::Optional => true,
+            m::RpModifier::Optional => true,
             _ => false,
         }
     }
@@ -56,33 +56,33 @@ impl Field {
 pub enum Member {
     Field(Field),
     Code(String, Vec<String>),
-    Option(Token<OptionDecl>),
+    Option(AstToken<OptionDecl>),
     Match(MatchDecl),
 }
 
 #[derive(Debug)]
 pub struct MatchVariable {
     pub name: String,
-    pub ty: RpType,
+    pub ty: m::RpType,
 }
 
 #[derive(Debug)]
 pub enum MatchCondition {
     /// Match a specific value.
-    Value(Token<Value>),
+    Value(AstToken<Value>),
     /// Match a type, and add a binding for the given name that can be resolved in the action.
-    Type(Token<MatchVariable>),
+    Type(AstToken<MatchVariable>),
 }
 
 #[derive(Debug)]
 pub struct MatchMember {
-    pub condition: Token<MatchCondition>,
-    pub value: Token<Value>,
+    pub condition: AstToken<MatchCondition>,
+    pub value: AstToken<Value>,
 }
 
 #[derive(Debug)]
 pub struct MatchDecl {
-    pub members: Vec<Token<MatchMember>>,
+    pub members: Vec<AstToken<MatchMember>>,
 }
 
 pub trait Body {
@@ -116,41 +116,41 @@ impl Body for InterfaceBody {
 #[derive(Debug)]
 pub struct TupleBody {
     pub name: String,
-    pub members: Vec<Token<Member>>,
+    pub members: Vec<AstToken<Member>>,
 }
 
 #[derive(Debug)]
 pub struct InterfaceBody {
     pub name: String,
-    pub members: Vec<Token<Member>>,
-    pub sub_types: Vec<Token<SubType>>,
+    pub members: Vec<AstToken<Member>>,
+    pub sub_types: Vec<AstToken<SubType>>,
 }
 
 #[derive(Debug)]
 pub struct TypeBody {
     pub name: String,
-    pub members: Vec<Token<Member>>,
+    pub members: Vec<AstToken<Member>>,
 }
 
 /// Sub-types in interface declarations.
 #[derive(Debug)]
 pub struct SubType {
     pub name: String,
-    pub members: Vec<Token<Member>>,
+    pub members: Vec<AstToken<Member>>,
 }
 
 #[derive(Debug)]
 pub struct EnumBody {
     pub name: String,
-    pub values: Vec<Token<EnumValue>>,
-    pub members: Vec<Token<Member>>,
+    pub values: Vec<AstToken<EnumValue>>,
+    pub members: Vec<AstToken<Member>>,
 }
 
 #[derive(Debug)]
 pub struct EnumValue {
-    pub name: Token<String>,
-    pub arguments: Vec<Token<Value>>,
-    pub ordinal: Option<Token<Value>>,
+    pub name: AstToken<String>,
+    pub arguments: Vec<AstToken<Value>>,
+    pub ordinal: Option<AstToken<Value>>,
 }
 
 #[derive(Debug)]
@@ -183,13 +183,13 @@ impl Decl {
 
 #[derive(Debug)]
 pub struct UseDecl {
-    pub package: Token<Package>,
+    pub package: AstToken<m::Package>,
     pub alias: Option<String>,
 }
 
 #[derive(Debug)]
 pub struct File {
-    pub package: Token<Package>,
-    pub uses: Vec<Token<UseDecl>>,
-    pub decls: Vec<Token<Decl>>,
+    pub package: AstToken<m::Package>,
+    pub uses: Vec<AstToken<UseDecl>>,
+    pub decls: Vec<AstToken<Decl>>,
 }

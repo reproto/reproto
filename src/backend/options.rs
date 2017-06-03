@@ -7,18 +7,18 @@ use super::models::*;
 #[derive(Debug)]
 pub struct Options<'a> {
     pos: &'a Pos,
-    options: Vec<Token<OptionDecl>>,
+    options: Vec<RpToken<OptionDecl>>,
 }
 
 impl<'a> Options<'a> {
-    pub fn new(pos: &'a Pos, options: Vec<Token<OptionDecl>>) -> Options {
+    pub fn new(pos: &'a Pos, options: Vec<RpToken<OptionDecl>>) -> Options {
         Options {
             pos: pos,
             options: options,
         }
     }
 
-    pub fn lookup(&'a self, name: &'a str) -> Box<Iterator<Item = &Token<Value>> + 'a> {
+    pub fn lookup(&'a self, name: &'a str) -> Box<Iterator<Item = &RpToken<Value>> + 'a> {
         let it = self.options
             .iter();
 
@@ -29,13 +29,13 @@ impl<'a> Options<'a> {
     /// Find all strings matching the given name.
     ///
     /// This enforces that all found values are strings, otherwise the lookup will cause an error.
-    pub fn find_all_strings(&self, name: &str) -> Result<Vec<Token<String>>> {
-        let mut out: Vec<Token<String>> = Vec::new();
+    pub fn find_all_strings(&self, name: &str) -> Result<Vec<RpToken<String>>> {
+        let mut out: Vec<RpToken<String>> = Vec::new();
 
         for s in self.lookup(name) {
             match **s {
                 Value::String(ref string) => {
-                    out.push(Token::new(string.clone(), s.pos.clone()));
+                    out.push(RpToken::new(string.clone(), s.pos.clone()));
                 }
                 _ => {
                     return Err(Error::pos(format!("{}: expected string", name), s.pos.clone()));
@@ -46,8 +46,8 @@ impl<'a> Options<'a> {
         Ok(out)
     }
 
-    pub fn find_one(&'a self, name: &'a str) -> Result<Option<&'a Token<Value>>> {
-        let mut out: Option<&Token<Value>> = None;
+    pub fn find_one(&'a self, name: &'a str) -> Result<Option<&'a RpToken<Value>>> {
+        let mut out: Option<&RpToken<Value>> = None;
 
         for s in self.lookup(name) {
             if let Some(_) = out {
@@ -65,10 +65,10 @@ impl<'a> Options<'a> {
     ///
     /// This enforces that all found values are identifiers, otherwise the lookup will cause an
     /// error.
-    pub fn find_one_identifier(&self, name: &str) -> Result<Option<Token<String>>> {
+    pub fn find_one_identifier(&self, name: &str) -> Result<Option<RpToken<String>>> {
         if let Some(t) = self.find_one(name)? {
             if let Value::Identifier(ref identifier) = t.inner {
-                return Ok(Some(Token::new(identifier.clone(), t.pos.clone())));
+                return Ok(Some(RpToken::new(identifier.clone(), t.pos.clone())));
             } else {
                 return Err(Error::pos("expected identifier".to_owned(), t.pos.clone()));
             }
@@ -77,10 +77,10 @@ impl<'a> Options<'a> {
         Ok(None)
     }
 
-    pub fn _find_one_string(&self, name: &str) -> Result<Option<Token<String>>> {
+    pub fn _find_one_string(&self, name: &str) -> Result<Option<RpToken<String>>> {
         if let Some(t) = self.find_one(name)? {
             if let Value::String(ref string) = t.inner {
-                return Ok(Some(Token::new(string.clone(), t.pos.clone())));
+                return Ok(Some(RpToken::new(string.clone(), t.pos.clone())));
             } else {
                 return Err(Error::pos("expected string".to_owned(), t.pos.clone()));
             }
@@ -89,10 +89,10 @@ impl<'a> Options<'a> {
         Ok(None)
     }
 
-    pub fn find_one_boolean(&self, name: &str) -> Result<Option<Token<bool>>> {
+    pub fn find_one_boolean(&self, name: &str) -> Result<Option<RpToken<bool>>> {
         if let Some(t) = self.find_one(name)? {
             if let Value::Boolean(ref boolean) = t.inner {
-                return Ok(Some(Token::new(boolean.clone(), t.pos.clone())));
+                return Ok(Some(RpToken::new(boolean.clone(), t.pos.clone())));
             } else {
                 return Err(Error::pos("expected string".to_owned(), t.pos.clone()));
             }
@@ -104,13 +104,13 @@ impl<'a> Options<'a> {
     /// Find all identifiers matching the given name.
     ///
     /// This enforces that all found values are identifiers, otherwise the lookup will cause an error.
-    pub fn find_all_identifiers(&self, name: &str) -> Result<Vec<Token<String>>> {
-        let mut out: Vec<Token<String>> = Vec::new();
+    pub fn find_all_identifiers(&self, name: &str) -> Result<Vec<RpToken<String>>> {
+        let mut out: Vec<RpToken<String>> = Vec::new();
 
         for s in self.lookup(name) {
             match **s {
                 Value::Identifier(ref identifier) => {
-                    out.push(Token::new(identifier.clone(), s.pos.clone()));
+                    out.push(RpToken::new(identifier.clone(), s.pos.clone()));
                 }
                 _ => {
                     return Err(Error::pos(format!("{}: expected identifier", name), s.pos.clone()));

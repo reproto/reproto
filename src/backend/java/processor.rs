@@ -774,7 +774,7 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn convert_field(&self, pkg: &Package, field: &Token<Field>) -> Result<JavaField> {
+    fn convert_field(&self, pkg: &Package, field: &RpToken<Field>) -> Result<JavaField> {
         let java_type = self.into_java_type(&field.pos, pkg, &field.ty)?;
         let camel_name = self.snake_to_upper_camel.convert(&field.name);
         let ident = self.snake_to_lower_camel.convert(&field.name);
@@ -792,7 +792,10 @@ impl Processor {
     }
 
 
-    fn convert_fields(&self, pkg: &Package, fields: &Vec<Token<Field>>) -> Result<Vec<JavaField>> {
+    fn convert_fields(&self,
+                      pkg: &Package,
+                      fields: &Vec<RpToken<Field>>)
+                      -> Result<Vec<JavaField>> {
         let mut out = Vec::new();
 
         for field in fields {

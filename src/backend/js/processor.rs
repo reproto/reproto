@@ -91,7 +91,7 @@ impl Processor {
     }
 
     fn find_field<'a>(&self,
-                      fields: &'a Vec<Token<JsField>>,
+                      fields: &'a Vec<RpToken<JsField>>,
                       name: &str)
                       -> Option<(usize, &'a JsField)> {
         for (i, field) in fields.iter().enumerate() {
@@ -111,7 +111,7 @@ impl Processor {
         js![if is_not_defined(stmt), js![throw required_error]]
     }
 
-    fn convert_fields(&self, fields: &Vec<Token<Field>>) -> Vec<Token<JsField>> {
+    fn convert_fields(&self, fields: &Vec<RpToken<Field>>) -> Vec<RpToken<JsField>> {
         fields.iter()
             .map(|f| {
                 let ident = self.field_ident(&f);
@@ -130,7 +130,7 @@ impl Processor {
 
     fn encode_method<E, B>(&self,
                            type_id: &TypeId,
-                           fields: &Vec<Token<JsField>>,
+                           fields: &Vec<RpToken<JsField>>,
                            builder: B,
                            extra: E)
                            -> Result<MethodSpec>
@@ -178,7 +178,7 @@ impl Processor {
 
     fn encode_tuple_method(&self,
                            type_id: &TypeId,
-                           fields: &Vec<Token<JsField>>)
+                           fields: &Vec<RpToken<JsField>>)
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
 
@@ -239,7 +239,7 @@ impl Processor {
 
     fn decode_method<F>(&self,
                         type_id: &TypeId,
-                        fields: &Vec<Token<JsField>>,
+                        fields: &Vec<RpToken<JsField>>,
                         class: &ClassSpec,
                         variable_fn: F)
                         -> Result<MethodSpec>
@@ -394,7 +394,7 @@ impl Processor {
             .unwrap_or_else(|| package.clone())
     }
 
-    fn build_constructor(&self, fields: &Vec<Token<JsField>>) -> ConstructorSpec {
+    fn build_constructor(&self, fields: &Vec<RpToken<JsField>>) -> ConstructorSpec {
         let mut ctor = ConstructorSpec::new();
         let mut assignments = Elements::new();
 
@@ -407,7 +407,7 @@ impl Processor {
         ctor
     }
 
-    fn build_enum_constructor(&self, fields: &Vec<Token<JsField>>) -> ConstructorSpec {
+    fn build_enum_constructor(&self, fields: &Vec<RpToken<JsField>>) -> ConstructorSpec {
         let mut ctor = ConstructorSpec::new();
         let mut assignments = Elements::new();
 
@@ -428,7 +428,7 @@ impl Processor {
 
     fn process_tuple(&self, type_id: &TypeId, body: &TupleBody) -> Result<ElementSpec> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields: Vec<Token<JsField>> = Vec::new();
+        let mut fields: Vec<RpToken<JsField>> = Vec::new();
 
         for field in &body.fields {
             let ident = self.field_ident(&field);
@@ -468,7 +468,7 @@ impl Processor {
 
     fn enum_encode_decode(&self,
                           body: &EnumBody,
-                          fields: &Vec<Token<JsField>>,
+                          fields: &Vec<RpToken<JsField>>,
                           class: &ClassSpec)
                           -> Result<ElementSpec> {
         // lookup serialized_as if specified.
@@ -503,7 +503,7 @@ impl Processor {
 
     fn process_enum(&self, type_id: &TypeId, body: &EnumBody) -> Result<ElementSpec> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields: Vec<Token<JsField>> = Vec::new();
+        let mut fields: Vec<RpToken<JsField>> = Vec::new();
 
         for field in &body.fields {
             let ident = self.field_ident(&field);
@@ -577,7 +577,7 @@ impl Processor {
         Ok(elements.join(ElementSpec::Spacing).into())
     }
 
-    fn build_getters(&self, fields: &Vec<Token<JsField>>) -> Result<Vec<MethodSpec>> {
+    fn build_getters(&self, fields: &Vec<RpToken<JsField>>) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
         for field in fields {
