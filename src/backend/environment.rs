@@ -1,6 +1,6 @@
+use linked_hash_map::{self, LinkedHashMap};
 use parser::ast;
 use parser;
-use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -16,9 +16,9 @@ const EXT: &str = "reproto";
 pub struct Environment {
     paths: Vec<PathBuf>,
     visited: HashSet<Package>,
-    pub types: BTreeMap<TypeId, Token<Registered>>,
-    pub decls: BTreeMap<TypeId, Rc<Token<Decl>>>,
-    pub used: BTreeMap<(Package, String), Package>,
+    pub types: LinkedHashMap<TypeId, Token<Registered>>,
+    pub decls: LinkedHashMap<TypeId, Rc<Token<Decl>>>,
+    pub used: LinkedHashMap<(Package, String), Package>,
 }
 
 impl Environment {
@@ -26,9 +26,9 @@ impl Environment {
         Environment {
             paths: paths,
             visited: HashSet::new(),
-            types: BTreeMap::new(),
-            decls: BTreeMap::new(),
-            used: BTreeMap::new(),
+            types: LinkedHashMap::new(),
+            decls: LinkedHashMap::new(),
+            used: LinkedHashMap::new(),
         }
     }
 
@@ -105,8 +105,12 @@ impl Environment {
             let key = (package.clone(), alias.clone());
 
             match self.used.entry(key) {
-                Entry::Vacant(entry) => entry.insert(use_decl.package.inner.clone()),
-                Entry::Occupied(_) => return Err(format!("alias {} already in used", alias).into()),
+                linked_hash_map::Entry::Vacant(entry) => {
+                    entry.insert(use_decl.package.inner.clone())
+                }
+                linked_hash_map::Entry::Occupied(_) => {
+                    return Err(format!("alias {} already in used", alias).into())
+                }
             };
         }
 
@@ -292,7 +296,7 @@ impl Environment {
             self.import(&use_decl.package)?;
         }
 
-        let mut decls = BTreeMap::new();
+        let mut decls = LinkedHashMap::new();
 
         for decl in file.decls {
             let pos = (path.to_owned(), decl.pos.0, decl.pos.1);
@@ -302,16 +306,16 @@ impl Environment {
             let key: TypeId = TypeId::new(file.package.inner.clone(), custom);
 
             match decls.entry(key) {
-                Entry::Vacant(entry) => {
+                linked_hash_map::Entry::Vacant(entry) => {
                     entry.insert(Rc::new(decl));
                 }
-                Entry::Occupied(entry) => {
+                linked_hash_map::Entry::Occupied(entry) => {
                     entry.into_mut().merge(Rc::new(decl))?;
                 }
             }
         }
 
-        let mut types = BTreeMap::new();
+        let mut types = LinkedHashMap::new();
 
         // again, post-merge
         for (_, decl) in &decls {

@@ -27,6 +27,8 @@
   * ~~Optional support.~~
   * ~~Encode `type` field.~~
   * ~~Enum support~~
+  * Declarations need to be hoisted to support static initialization of enums since they mind
+    depend on types in the same file. Alternatively, move initialization blocks to end of file.
   * Strict decoding/encoding where types are deeply verified.
 
 * HTML Backend

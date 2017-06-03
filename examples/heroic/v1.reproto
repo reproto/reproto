@@ -16,22 +16,6 @@ enum SI {
   serialized_as_name true;
 }
 
-enum ComplexEnum {
-  FIRST(Sampling(size: 42), SI.NANO, Samples.Points(name: "points", data: []));
-  SECOND(Sampling(size: 9), SI.MILLI, Samples.Points(name: "b", data: []));
-
-  si: Sampling;
-  other: SI;
-  samples: Samples;
-}
-
-enum Complex21 {
-  FIRST(Point(timestamp: 123, value: 42.1));
-  SECOND(Point(timestamp: 123, value: 1234.12));
-
-  point: Point;
-}
-
 enum TimeUnit {
   SECONDS("seconds", 1000);
   MINUTES("minutes", 60000);
@@ -126,4 +110,20 @@ interface Aggregation {
 
     chain: [Aggregation];
   }
+}
+
+enum ComplexEnum {
+  FIRST(Sampling(size: 42), SI.NANO, Samples.Points(name: "points", data: []));
+  SECOND(Sampling(size: 9), SI.MILLI, Samples.Points(name: "b", data: []));
+
+  si: Sampling;
+  other: SI;
+  samples: Samples;
+}
+
+enum Complex21 {
+  FIRST(Point(timestamp: 123, value: 42.1));
+  SECOND(Point(timestamp: 123, value: 1234.12));
+
+  point: Point;
 }

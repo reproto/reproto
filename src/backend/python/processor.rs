@@ -85,7 +85,6 @@ pub struct Processor {
     boolean: BuiltInName,
     number: ImportedName,
     enum_enum: ImportedName,
-    enum_auto: ImportedName,
     type_var: Variable,
 }
 
@@ -110,7 +109,6 @@ impl Processor {
             boolean: Name::built_in("bool"),
             number: Name::imported("numbers", "Number"),
             enum_enum: Name::imported("enum", "Enum"),
-            enum_auto: Name::imported("enum", "auto"),
             type_var: Variable::String(TYPE.to_owned()),
         }
     }
@@ -334,7 +332,7 @@ impl Processor {
             let mut variables = m::Variables::new();
             variables.insert(variable.clone(), &result.0.ty);
 
-            let decode_stmt = self.decode(&result.1.pos, &type_id.package, &result.0.ty, &data)?;
+            let decode_stmt = self.decode(&result.1.pos, type_id, &result.0.ty, &data)?;
 
             let result = self.value(&ValueBuilderEnv {
                     value: &result.1,
@@ -403,12 +401,12 @@ impl Processor {
 
             let stmt = match field.modifier {
                 m::Modifier::Optional => {
-                    let var_stmt = self.decode(&field.pos, &type_id.package, &field.ty, &var_name)?;
+                    let var_stmt = self.decode(&field.pos, type_id, &field.ty, &var_name)?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
                 _ => {
                     let var_stmt = stmt!["data[", &var, "]"];
-                    let var_stmt = self.decode(&field.pos, &type_id.package, &field.ty, var_stmt)?;
+                    let var_stmt = self.decode(&field.pos, type_id, &field.ty, var_stmt)?;
                     stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
@@ -477,7 +475,7 @@ impl Processor {
 
     fn decode<S>(&self,
                  pos: &m::Pos,
-                 package: &m::Package,
+                 type_id: &m::TypeId,
                  ty: &m::Type,
                  value_stmt: S)
                  -> Result<Statement>
@@ -498,12 +496,18 @@ impl Processor {
             m::Type::Any => value_stmt,
             m::Type::Boolean => value_stmt,
             m::Type::Custom(ref custom) => {
-                let name = self.convert_type(pos, &package.into_type_id(custom))?;
+                let name = self.convert_type(pos, &type_id.with_custom(custom.clone()))?;
                 stmt![name, ".decode(", value_stmt, ")"]
             }
             m::Type::Array(ref inner) => {
-                let inner = self.decode(pos, package, inner, stmt!["v"])?;
+                let inner = self.decode(pos, type_id, inner, stmt!["v"])?;
                 stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
+            }
+            m::Type::Map(ref key, ref value) => {
+                let key = self.decode(pos, type_id, key, stmt!["t[0]"])?;
+                let value = self.decode(pos, type_id, value, stmt!["t[1]"])?;
+                let body = stmt!["(", &key, ", ", &value, ")"];
+                stmt![&self.dict, "(", value_stmt, ".items().map(lambda t: ", &body, "))"]
             }
             _ => return Err(Error::pos("not supported".into(), pos.clone())),
         };
@@ -566,7 +570,7 @@ impl Processor {
         Ok(class)
     }
 
-    fn process_enum(&self, type_id: &m::TypeId, body: &m::EnumBody) -> Result<ClassSpec> {
+    fn process_enum(&self, _type_id: &m::TypeId, body: &m::EnumBody) -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<m::Token<Field>> = Vec::new();
 
@@ -584,37 +588,9 @@ impl Processor {
                 .map_inner(|f| Field::new(m::Modifier::Required, f.ty, f.name, ident)));
         }
 
-        class.extends(&self.enum_enum);
-
-        let mut values = Elements::new();
-        let variables = m::Variables::new();
-
-        for value in &body.values {
-            let arguments = if !value.arguments.is_empty() {
-                let mut value_arguments = Statement::new();
-
-                for (value, field) in value.arguments.iter().zip(fields.iter()) {
-                    let env = ValueBuilderEnv {
-                        value: &value,
-                        package: &type_id.package,
-                        ty: Some(&field.ty),
-                        variables: &variables,
-                    };
-
-                    value_arguments.push(self.value(&env)?);
-                }
-
-                stmt!["(", value_arguments.join(", "), ")"]
-            } else {
-                stmt![&self.enum_auto, "()"]
-            };
-
-            values.push(stmt![&*value.name, " = ", arguments]);
+        if !fields.is_empty() {
+            class.push(self.build_constructor(&fields));
         }
-
-        class.push(values);
-
-        class.push(self.build_constructor(&fields));
 
         // TODO: make configurable
         if false {
@@ -630,6 +606,54 @@ impl Processor {
         let serialized_as = &body.serialized_as;
         self.enum_added(&fields, serialized_as, &mut class)?;
         Ok(class)
+    }
+
+    fn process_enum_values(&self, type_id: &m::TypeId, body: &m::EnumBody) -> Result<Statement> {
+        let mut arguments = Statement::new();
+
+        let variables = m::Variables::new();
+
+        for value in &body.values {
+            let name = Variable::String((*value.name).to_owned());
+
+            let mut enum_arguments = Statement::new();
+
+            enum_arguments.push(name);
+
+            if !value.arguments.is_empty() {
+                let mut value_arguments = Statement::new();
+
+                for (value, field) in value.arguments.iter().zip(body.fields.iter()) {
+                    let env = ValueBuilderEnv {
+                        value: &value,
+                        package: &type_id.package,
+                        ty: Some(&field.ty),
+                        variables: &variables,
+                    };
+
+                    value_arguments.push(self.value(&env)?);
+                }
+
+                enum_arguments.push(stmt!["(", value_arguments.join(", "), ")"]);
+            } else {
+                enum_arguments.push(value.ordinal.to_string());
+            }
+
+            arguments.push(stmt!["(", enum_arguments.join(", "), ")"]);
+        }
+
+        let class_name = Variable::String(body.name.to_owned());
+
+        Ok(stmt![&body.name,
+                 " = ",
+                 &self.enum_enum,
+                 "(",
+                 class_name,
+                 ", [",
+                 arguments.join(", "),
+                 "], type=",
+                 &body.name,
+                 ")"])
     }
 
     fn build_getters(&self, fields: &Vec<m::Token<Field>>) -> Result<Vec<MethodSpec>> {
@@ -713,7 +737,7 @@ impl Processor {
         classes.push(interface_spec);
 
         for (_, ref sub_type) in &body.sub_types {
-            let mut class = ClassSpec::new(&sub_type.name);
+            let mut class = ClassSpec::new(&format!("{}_{}", &body.name, &sub_type.name));
             class.extends(Name::local(&body.name));
 
             class.push(stmt!["TYPE = ", Variable::String(sub_type.name())]);
@@ -768,13 +792,18 @@ impl Processor {
     fn populate_files(&self) -> Result<HashMap<&m::Package, FileSpec>> {
         let mut files = HashMap::new();
 
+        let mut enums = Vec::new();
+
         // Process all types discovered so far.
         for (type_id, decl) in &self.env.decls {
             let class_specs: Vec<ClassSpec> = match decl.inner {
                 m::Decl::Interface(ref body) => self.process_interface(type_id, body)?,
                 m::Decl::Type(ref body) => vec![self.process_type(type_id, body)?],
                 m::Decl::Tuple(ref body) => vec![self.process_tuple(type_id, &decl.pos, body)?],
-                m::Decl::Enum(ref body) => vec![self.process_enum(type_id, body)?],
+                m::Decl::Enum(ref body) => {
+                    enums.push((type_id, body));
+                    vec![self.process_enum(type_id, body)?]
+                }
             };
 
             match files.entry(&type_id.package) {
@@ -794,6 +823,15 @@ impl Processor {
                         file_spec.push(class_spec);
                     }
                 }
+            }
+        }
+
+        /// process static initialization of enums at bottom of file
+        for (type_id, body) in enums {
+            if let Some(ref mut file_spec) = files.get_mut(&type_id.package) {
+                file_spec.push(self.process_enum_values(type_id, body)?);
+            } else {
+                return Err(format!("no such package: {}", &type_id.package).into());
             }
         }
 
@@ -913,7 +951,8 @@ impl Processor {
 
         for (_, ref sub_type) in &body.sub_types {
             for name in &sub_type.names {
-                let type_name: Variable = Name::local(&sub_type.name).into();
+                let type_id = type_id.extend(sub_type.name.clone());
+                let type_name = self.convert_type(&sub_type.pos, &type_id)?;
 
                 let mut check = Elements::new();
 
@@ -937,6 +976,26 @@ impl Processor {
         decode.push(decode_body.join(ElementSpec::Spacing));
 
         Ok(decode)
+    }
+
+    fn convert_type_id<F>(&self, pos: &m::Pos, type_id: &m::TypeId, path_syntax: F) -> Result<Name>
+        where F: Fn(&Vec<String>) -> String
+    {
+        let package = &type_id.package;
+        let custom = &type_id.custom;
+
+        if let Some(ref used) = custom.prefix {
+            let package = self.env
+                .lookup_used(package, used)
+                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+
+            let package = self.package(package);
+            let package = package.parts.join(".");
+            return Ok(Name::imported_alias(&package, &path_syntax(&custom.parts), used).into());
+        }
+
+        // no nested types in python
+        Ok(Name::local(&path_syntax(&custom.parts)).into())
     }
 }
 
@@ -969,20 +1028,11 @@ impl ValueBuilder for Processor {
     }
 
     fn convert_type(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Name> {
-        let package = &type_id.package;
-        let custom = &type_id.custom;
+        self.convert_type_id(pos, type_id, |v| v.join("_"))
+    }
 
-        if let Some(ref used) = custom.prefix {
-            let package = self.env
-                .lookup_used(package, used)
-                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
-
-            let package = self.package(package);
-            let package = package.parts.join(".");
-            return Ok(Name::imported_alias(&package, &custom.parts.join("."), used).into());
-        }
-
-        Ok(Name::local(&custom.parts.join(".")).into())
+    fn convert_constant(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Name> {
+        self.convert_type_id(pos, type_id, |v| v.join("."))
     }
 
     fn constant(&self, ty: Self::Type) -> Result<Self::Output> {

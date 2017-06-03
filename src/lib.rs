@@ -1,6 +1,7 @@
 #![recursion_limit = "1000"]
 
 extern crate clap;
+extern crate linked_hash_map;
 
 #[macro_use]
 extern crate pest;

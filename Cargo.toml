@@ -20,6 +20,7 @@ error-chain = "0.10.0"
 log = "0.3.7"
 clap = "2.24.2"
 pest = "0.4.1"
+linked-hash-map = "0.4.2"
 
 [dependencies.codeviz]
 version = "0.0.8"

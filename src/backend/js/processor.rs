@@ -370,7 +370,9 @@ impl Processor {
                 let inner = self.decode(type_id, pos, inner, stmt!["v"])?;
                 stmt![value_stmt, ".map(function(v) { ", inner, "; })"]
             }
-            _ => return Err(Error::pos("not supported".into(), pos.clone())),
+            ref ty => {
+                return Err(Error::pos(format!("type `{}` not supported", ty).into(), pos.clone()))
+            }
         };
 
         Ok(value_stmt)

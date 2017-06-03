@@ -71,6 +71,10 @@ pub trait ValueBuilder {
 
     fn convert_type(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Self::Type>;
 
+    fn convert_constant(&self, pos: &m::Pos, type_id: &m::TypeId) -> Result<Self::Type> {
+        self.convert_type(pos, type_id)
+    }
+
     fn constant(&self, ty: Self::Type) -> Result<Self::Output>;
 
     fn instance(&self, ty: Self::Type, arguments: Vec<Self::Output>) -> Result<Self::Output>;
@@ -130,7 +134,7 @@ pub trait ValueBuilder {
                 match *reg_constant {
                     m::Registered::EnumConstant { parent: _, value: _ } => {
                         let ty =
-                            self.convert_type(&value.pos, &env.package.into_type_id(constant))?;
+                            self.convert_constant(&value.pos, &env.package.into_type_id(constant))?;
                         return self.constant(ty);
                     }
                     _ => {

@@ -8,7 +8,7 @@ use token;
 pub type Pos = (PathBuf, usize, usize);
 pub type Token<T> = token::Token<T, Pos>;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TypeId {
     pub package: Package,
     pub custom: Custom,
@@ -26,6 +26,13 @@ impl TypeId {
         TypeId {
             package: self.package.clone(),
             custom: custom,
+        }
+    }
+
+    pub fn extend(&self, part: String) -> TypeId {
+        TypeId {
+            package: self.package.clone(),
+            custom: self.custom.extend(part),
         }
     }
 }
@@ -77,7 +84,7 @@ pub struct OptionDecl {
     pub values: Vec<Token<Value>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Custom {
     pub prefix: Option<String>,
     pub parts: Vec<String>,
@@ -87,6 +94,16 @@ impl Custom {
     pub fn with_parts(parts: Vec<String>) -> Custom {
         Custom {
             prefix: None,
+            parts: parts,
+        }
+    }
+
+    pub fn extend(&self, part: String) -> Custom {
+        let mut parts = self.parts.clone();
+        parts.push(part);
+
+        Custom {
+            prefix: self.prefix.clone(),
             parts: parts,
         }
     }
@@ -143,7 +160,7 @@ impl ::std::fmt::Display for Type {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Package {
     pub parts: Vec<String>,
 }

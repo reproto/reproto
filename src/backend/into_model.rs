@@ -298,6 +298,7 @@ impl IntoModel for ast::SubType {
         let mut fields: Vec<Token<Field>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
+        let mut match_decl = MatchDecl::new();
 
         for member in self.members {
             let pos = (pos.0.to_owned(), member.pos.0, member.pos.1);
@@ -320,8 +321,10 @@ impl IntoModel for ast::SubType {
                 ast::Member::Option(option) => {
                     options.push(option.into_model(&pos)?);
                 }
-                _ => {
-                    return Err(Error::pos("not supported".to_owned(), pos));
+                ast::Member::Match(m) => {
+                    for member in m.members {
+                        match_decl.push(member.into_model(&pos)?)?;
+                    }
                 }
             }
         }
