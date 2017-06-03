@@ -700,6 +700,12 @@ impl Processor {
             interface_spec.push(code.inner.lines);
         }
 
+        if self.options.build_getters {
+            for field in &interface_fields {
+                interface_spec.push(field.getter_without_body()?);
+            }
+        }
+
         for (_, ref sub_type) in &interface.sub_types {
             let class_type = parent_type.extend(&sub_type.name);
 
@@ -714,6 +720,15 @@ impl Processor {
 
             class.implements(&parent_type);
 
+            // override methods for interface fields.
+            if self.options.build_getters {
+                for field in &interface_fields {
+                    let mut getter = field.getter()?;
+                    getter.push_annotation(&self.override_);
+                    class.push(getter);
+                }
+            }
+
             let mut fields = interface_fields.clone();
             fields.extend(self.convert_fields(pkg, &sub_type.inner.fields)?);
 
@@ -721,9 +736,7 @@ impl Processor {
                 class.push_field(&field.java_spec);
 
                 if self.options.build_getters {
-                    let mut getter = field.getter()?;
-                    getter.push_annotation(&self.override_);
-                    class.push(getter);
+                    class.push(field.getter()?);
                 }
 
                 if self.options.build_setters {

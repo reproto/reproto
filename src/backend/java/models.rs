@@ -37,10 +37,22 @@ impl JavaField {
         Ok(Some(setter))
     }
 
-    pub fn getter(&self) -> Result<java::MethodSpec> {
+    pub fn getter_without_body(&self) -> Result<java::MethodSpec> {
         let name = format!("get{}", self.camel_name);
         let mut getter = java::MethodSpec::new(mods![java::Modifier::Public], &name);
-        getter.returns(&self.java_type);
+
+        if self.modifier == Modifier::Optional {
+            let optional = java::Type::class("java.util", "Optional");
+            getter.returns(optional.with_arguments(vec![&self.java_type]));
+        } else {
+            getter.returns(&self.java_type);
+        }
+
+        Ok(getter)
+    }
+
+    pub fn getter(&self) -> Result<java::MethodSpec> {
+        let mut getter = self.getter_without_body()?;
         getter.push(stmt!["return this.", &self.ident, ";"]);
         Ok(getter)
     }
