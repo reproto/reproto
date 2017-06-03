@@ -1,5 +1,9 @@
 # TODO
 
+* Compiler
+  * Match statements using self type:
+    * Either: *reject* types referencing self, or externalize decoder for them.
+
 * General
   * ~~Treat named types as (named) simple types, like tuples.~~
   * ~~Enums.~~
@@ -16,6 +20,7 @@
   * ~~Generated equals/hashCode (disabled when using lombok).~~
   * ~~Generated toString (disabled when using lombok).~~
   * ~~Tuple decoding (in `fasterxml`).~~
+  * Support match statements through external deserializer model.
 
 * Python Backend
   * ~~Encode support (e.g. `instance.encode()`)~~
