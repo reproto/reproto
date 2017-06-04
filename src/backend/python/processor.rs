@@ -13,6 +13,8 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use super::converter::Converter;
+use super::dynamic_decode::DynamicDecode;
 
 const TYPE: &str = "type";
 const INIT_PY: &str = "__init__.py";
@@ -333,7 +335,7 @@ impl Processor {
             let mut variables = Variables::new();
             variables.insert(variable.clone(), &result.0.ty);
 
-            let decode_stmt = self.decode(&result.1.pos, type_id, &result.0.ty, &data)?;
+            let decode_stmt = self.decode(type_id, &result.1.pos, &result.0.ty, &data)?;
 
             let result = self.value(&ValueBuilderEnv {
                     value: &result.1,
@@ -400,12 +402,12 @@ impl Processor {
 
             let stmt = match field.modifier {
                 RpModifier::Optional => {
-                    let var_stmt = self.decode(&field.pos, type_id, &field.ty, &var_name)?;
+                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_name)?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
                 _ => {
                     let var_stmt = stmt!["data[", &var, "]"];
-                    let var_stmt = self.decode(&field.pos, type_id, &field.ty, var_stmt)?;
+                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, var_stmt)?;
                     stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
@@ -420,19 +422,6 @@ impl Processor {
         decode.push(decode_body.join(ElementSpec::Spacing));
 
         Ok(decode)
-    }
-
-    fn is_native(&self, ty: &RpType) -> bool {
-        match *ty {
-            RpType::Signed(_) |
-            RpType::Unsigned(_) => true,
-            RpType::Float | RpType::Double => true,
-            RpType::String => true,
-            RpType::Any => true,
-            RpType::Boolean => true,
-            RpType::Array(ref inner) => self.is_native(inner),
-            _ => false,
-        }
     }
 
     fn ident(&self, name: &str) -> String {
@@ -471,49 +460,6 @@ impl Processor {
 
         Ok(value_stmt)
     }
-
-    fn decode<S>(&self,
-                 pos: &RpPos,
-                 type_id: &RpTypeId,
-                 ty: &RpType,
-                 value_stmt: S)
-                 -> Result<Statement>
-        where S: Into<Statement>
-    {
-        let value_stmt = value_stmt.into();
-
-        // TODO: do not skip conversion if strict type checking is enabled
-        if self.is_native(ty) {
-            return Ok(value_stmt);
-        }
-
-        let value_stmt = match *ty {
-            RpType::Signed(_) |
-            RpType::Unsigned(_) => value_stmt,
-            RpType::Float | RpType::Double => value_stmt,
-            RpType::String => value_stmt,
-            RpType::Any => value_stmt,
-            RpType::Boolean => value_stmt,
-            RpType::Name(ref name) => {
-                let name = self.convert_type(pos, &type_id.with_name(name.clone()))?;
-                stmt![name, ".decode(", value_stmt, ")"]
-            }
-            RpType::Array(ref inner) => {
-                let inner = self.decode(pos, type_id, inner, stmt!["v"])?;
-                stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
-            }
-            RpType::Map(ref key, ref value) => {
-                let key = self.decode(pos, type_id, key, stmt!["t[0]"])?;
-                let value = self.decode(pos, type_id, value, stmt!["t[1]"])?;
-                let body = stmt!["(", &key, ", ", &value, ")"];
-                stmt![&self.dict, "(", value_stmt, ".items().map(lambda t: ", &body, "))"]
-            }
-            _ => return Err(Error::pos("not supported".into(), pos.clone())),
-        };
-
-        Ok(value_stmt)
-    }
-
 
     /// Build the java package of a given package.
     ///
@@ -1016,10 +962,21 @@ impl Backend for Processor {
     }
 }
 
+impl Converter for Processor {
+    type Type = Name;
+
+    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
+        self.convert_type_id(pos, type_id, |v| v.join("_"))
+    }
+
+    fn convert_constant(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
+        self.convert_type_id(pos, type_id, |v| v.join("."))
+    }
+}
+
 /// Build values in python.
 impl ValueBuilder for Processor {
     type Output = Statement;
-    type Type = Name;
 
     fn env(&self) -> &Environment {
         &self.env
@@ -1031,14 +988,6 @@ impl ValueBuilder for Processor {
 
     fn optional_empty(&self) -> Result<Self::Output> {
         Ok(stmt!["None"])
-    }
-
-    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
-        self.convert_type_id(pos, type_id, |v| v.join("_"))
-    }
-
-    fn convert_constant(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
-        self.convert_type_id(pos, type_id, |v| v.join("."))
     }
 
     fn constant(&self, ty: Self::Type) -> Result<Self::Output> {
@@ -1075,5 +1024,47 @@ impl ValueBuilder for Processor {
         }
 
         Ok(stmt!["[", arguments.join(", "), "]"])
+    }
+}
+
+impl DynamicDecode for Processor {
+    type Output = Statement;
+
+    fn is_native(&self, ty: &RpType) -> bool {
+        match *ty {
+            RpType::Signed(_) |
+            RpType::Unsigned(_) => true,
+            RpType::Float | RpType::Double => true,
+            RpType::String => true,
+            RpType::Any => true,
+            RpType::Boolean => true,
+            RpType::Array(ref inner) => self.is_native(inner),
+            _ => false,
+        }
+    }
+
+    fn map_key_var(&self) -> Self::Output {
+        stmt!["t[0]"]
+    }
+
+    fn map_value_var(&self) -> Self::Output {
+        stmt!["t[1]"]
+    }
+
+    fn array_inner_var(&self) -> Self::Output {
+        stmt!["v"]
+    }
+
+    fn name_decode(&self, input: Statement, name: Self::Type) -> Self::Output {
+        stmt![name, ".decode(", input, ")"]
+    }
+
+    fn array_decode(&self, input: Statement, inner: Statement) -> Self::Output {
+        stmt!["map(lambda v: ", inner, ", ", input, ")"]
+    }
+
+    fn map_decode(&self, input: Statement, key: Statement, value: Statement) -> Self::Output {
+        let body = stmt!["(", &key, ", ", &value, ")"];
+        stmt![&self.dict, "(", input, ".items().map(lambda t: ", &body, "))"]
     }
 }

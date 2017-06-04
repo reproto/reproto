@@ -12,6 +12,7 @@
 
 use core::*;
 use std::collections::HashMap;
+use super::converter::Converter;
 use super::environment::Environment;
 use super::errors::*;
 use super::variables::*;
@@ -38,9 +39,10 @@ fn new_env<'a>(package: &'a RpPackage,
     })
 }
 
-pub trait ValueBuilder {
+pub trait ValueBuilder
+    where Self: Converter
+{
     type Output;
-    type Type;
 
     fn env(&self) -> &Environment;
 
@@ -69,12 +71,6 @@ pub trait ValueBuilder {
     fn array(&self, values: Vec<Self::Output>) -> Result<Self::Output>;
 
     fn optional_empty(&self) -> Result<Self::Output>;
-
-    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Self::Type>;
-
-    fn convert_constant(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Self::Type> {
-        self.convert_type(pos, type_id)
-    }
 
     fn constant(&self, ty: Self::Type) -> Result<Self::Output>;
 

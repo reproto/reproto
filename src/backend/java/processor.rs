@@ -7,6 +7,7 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use super::converter::Converter;
 pub use super::listeners::*;
 use super::models::*;
 use super::value_builder::*;
@@ -887,22 +888,8 @@ impl Backend for Processor {
     }
 }
 
-/// Build values in python.
-impl ValueBuilder for Processor {
-    type Output = Statement;
+impl Converter for Processor {
     type Type = Type;
-
-    fn env(&self) -> &Environment {
-        &self.env
-    }
-
-    fn identifier(&self, identifier: &str) -> Result<Self::Output> {
-        Ok(stmt![identifier])
-    }
-
-    fn optional_empty(&self) -> Result<Self::Output> {
-        Ok(stmt!["None"])
-    }
 
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
         let pkg = &type_id.package;
@@ -920,6 +907,23 @@ impl ValueBuilder for Processor {
 
         let package_name = self.java_package_name(pkg);
         Ok(Type::class(&package_name, &name).into())
+    }
+}
+
+/// Build values in python.
+impl ValueBuilder for Processor {
+    type Output = Statement;
+
+    fn env(&self) -> &Environment {
+        &self.env
+    }
+
+    fn identifier(&self, identifier: &str) -> Result<Self::Output> {
+        Ok(stmt![identifier])
+    }
+
+    fn optional_empty(&self) -> Result<Self::Output> {
+        Ok(stmt!["None"])
     }
 
     fn constant(&self, ty: Self::Type) -> Result<Self::Output> {

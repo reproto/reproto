@@ -5,6 +5,8 @@ pub mod java;
 pub mod js;
 pub mod python;
 pub mod value_builder;
+pub mod dynamic_decode;
+pub mod converter;
 pub mod variables;
 
 use options::Options;

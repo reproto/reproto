@@ -11,6 +11,8 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use super::converter::Converter;
+use super::dynamic_decode::DynamicDecode;
 use super::models::*;
 use super::utils::*;
 use super::value_builder::*;
@@ -296,20 +298,6 @@ impl Processor {
         Ok(decode)
     }
 
-    fn is_native(&self, ty: &RpType) -> bool {
-        match *ty {
-            RpType::Signed(_) |
-            RpType::Unsigned(_) => true,
-            RpType::Float | RpType::Double => true,
-            RpType::String => true,
-            RpType::Any => true,
-            RpType::Boolean => true,
-            RpType::Array(ref inner) => self.is_native(inner),
-            RpType::Map(ref key, ref value) => self.is_native(key) && self.is_native(value),
-            _ => false,
-        }
-    }
-
     fn field_ident(&self, field: &RpField) -> String {
         if let Some(ref id_converter) = self.options.parent.id_converter {
             id_converter.convert(&field.name)
@@ -346,51 +334,6 @@ impl Processor {
 
         Ok(value_stmt)
     }
-
-    fn decode<S>(&self,
-                 type_id: &RpTypeId,
-                 pos: &RpPos,
-                 ty: &RpType,
-                 value_stmt: S)
-                 -> Result<Statement>
-        where S: Into<Statement>
-    {
-        let value_stmt = value_stmt.into();
-
-        // TODO: do not skip conversion if strict type checking is enabled
-        if self.is_native(ty) {
-            return Ok(value_stmt);
-        }
-
-        let value_stmt = match *ty {
-            RpType::Signed(_) |
-            RpType::Unsigned(_) => value_stmt,
-            RpType::Float | RpType::Double => value_stmt,
-            RpType::String => value_stmt,
-            RpType::Any => value_stmt,
-            RpType::Boolean => value_stmt,
-            RpType::Name(ref name) => {
-                let name = self.convert_type(pos, &type_id.with_name(name.clone()))?;
-                stmt![name, ".decode(", value_stmt, ")"]
-            }
-            RpType::Array(ref inner) => {
-                let inner = self.decode(type_id, pos, inner, stmt!["v"])?;
-                stmt![value_stmt, ".map(function(v) { ", inner, "; })"]
-            }
-            RpType::Map(ref key, ref value) => {
-                let key = self.decode(type_id, pos, key, stmt!["t[0]"])?;
-                let value = self.decode(type_id, pos, value, stmt!["t[1]"])?;
-                let body = stmt!["[", &key, ", ", &value, "]"];
-                stmt!["to_object(from_object(", value_stmt, ").map(function(t) { return ", &body, "; }))"]
-            }
-            ref ty => {
-                return Err(Error::pos(format!("type `{}` not supported", ty).into(), pos.clone()))
-            }
-        };
-
-        Ok(value_stmt)
-    }
-
 
     /// Build the java package of a given package.
     ///
@@ -788,22 +731,8 @@ impl Backend for Processor {
     }
 }
 
-/// Build values in js.
-impl ValueBuilder for Processor {
-    type Output = Statement;
+impl Converter for Processor {
     type Type = Name;
-
-    fn env(&self) -> &Environment {
-        &self.env
-    }
-
-    fn identifier(&self, identifier: &str) -> Result<Self::Output> {
-        Ok(stmt![identifier])
-    }
-
-    fn optional_empty(&self) -> Result<Self::Output> {
-        Ok(stmt!["None"])
-    }
 
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
         let name = &type_id.name;
@@ -819,6 +748,23 @@ impl ValueBuilder for Processor {
         }
 
         Ok(Name::local(&name.parts.join(".")).into())
+    }
+}
+
+/// Build values in js.
+impl ValueBuilder for Processor {
+    type Output = Statement;
+
+    fn env(&self) -> &Environment {
+        &self.env
+    }
+
+    fn identifier(&self, identifier: &str) -> Result<Self::Output> {
+        Ok(stmt![identifier])
+    }
+
+    fn optional_empty(&self) -> Result<Self::Output> {
+        Ok(stmt!["None"])
     }
 
     fn constant(&self, ty: Self::Type) -> Result<Self::Output> {
@@ -855,5 +801,49 @@ impl ValueBuilder for Processor {
         }
 
         Ok(stmt!["[", arguments.join(", "), "]"])
+    }
+}
+
+impl DynamicDecode for Processor {
+    type Output = Statement;
+
+    fn is_native(&self, ty: &RpType) -> bool {
+        match *ty {
+            RpType::Signed(_) |
+            RpType::Unsigned(_) => true,
+            RpType::Float | RpType::Double => true,
+            RpType::String => true,
+            RpType::Any => true,
+            RpType::Boolean => true,
+            RpType::Array(ref inner) => self.is_native(inner),
+            RpType::Map(ref key, ref value) => self.is_native(key) && self.is_native(value),
+            _ => false,
+        }
+    }
+
+    fn map_key_var(&self) -> Self::Output {
+        stmt!["t[0]"]
+    }
+
+    fn map_value_var(&self) -> Self::Output {
+        stmt!["t[1]"]
+    }
+
+    fn array_inner_var(&self) -> Self::Output {
+        stmt!["v"]
+    }
+
+    fn name_decode(&self, input: Statement, name: Self::Type) -> Self::Output {
+        stmt![name, ".decode(", input, ")"]
+    }
+
+    fn array_decode(&self, input: Statement, inner: Statement) -> Self::Output {
+        stmt![input, ".map(function(v) { ", inner, "; })"]
+    }
+
+    fn map_decode(&self, input: Statement, key: Statement, value: Statement) -> Self::Output {
+        let body = stmt!["[", &key, ", ", &value, "]"];
+        // TODO: these functions need to be implemented and hoisted into the module
+        stmt!["to_object(from_object(", input, ").map(function(t) { return ", &body, "; }))"]
     }
 }
