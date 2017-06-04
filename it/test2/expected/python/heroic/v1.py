@@ -146,10 +146,6 @@ class Samples_Events(Samples):
 
   @staticmethod
   def decode(data):
-    if isinstance(data, basestring):
-      name = data
-      return Samples_Points(name, [])
-
     f_name = data["name"]
 
     f_data = map(lambda v: Event.decode(v), data["data"])
@@ -182,10 +178,6 @@ class Samples_Points(Samples):
 
   @staticmethod
   def decode(data):
-    if isinstance(data, basestring):
-      name = data
-      return Samples_Points(name, [])
-
     f_name = data["name"]
 
     f_data = map(lambda v: Point.decode(v), data["data"])
@@ -341,10 +333,6 @@ class Aggregation_Average(Aggregation):
 
   @staticmethod
   def decode(data):
-    if isinstance(data, list):
-      chain = map(lambda v: Aggregation.decode(v), data)
-      return Aggregation_Chain(chain)
-
     if "sampling" in data:
       f_sampling = data["sampling"]
 
@@ -395,10 +383,6 @@ class Aggregation_Chain(Aggregation):
 
   @staticmethod
   def decode(data):
-    if isinstance(data, list):
-      chain = map(lambda v: Aggregation.decode(v), data)
-      return Aggregation_Chain(chain)
-
     f_chain = map(lambda v: Aggregation.decode(v), data["chain"])
 
     return Aggregation(f_chain)
@@ -425,10 +409,6 @@ class Aggregation_Sum(Aggregation):
 
   @staticmethod
   def decode(data):
-    if isinstance(data, list):
-      chain = map(lambda v: Aggregation.decode(v), data)
-      return Aggregation_Chain(chain)
-
     if "sampling" in data:
       f_sampling = data["sampling"]
 

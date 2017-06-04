@@ -202,11 +202,6 @@ class Events {
   }
 
   static decode(data) {
-    if (typeof data === "string") {
-      name = data
-      return new Samples.Points(name, []);
-    }
-
     const name = data["name"];
 
     const data = data["data"].map(function(v) { Event.decode(v); });
@@ -244,11 +239,6 @@ class Points {
   }
 
   static decode(data) {
-    if (typeof data === "string") {
-      name = data
-      return new Samples.Points(name, []);
-    }
-
     const name = data["name"];
 
     const data = data["data"].map(function(v) { Point.decode(v); });
@@ -423,11 +413,6 @@ class Average {
   }
 
   static decode(data) {
-    if (data.constructor === Array) {
-      chain = data.map(function(v) { Aggregation.decode(v); })
-      return new Aggregation.Chain(chain);
-    }
-
     let sampling = data["sampling"];
 
     if (sampling !== null && sampling !== undefined) {
@@ -484,11 +469,6 @@ class Chain {
   }
 
   static decode(data) {
-    if (data.constructor === Array) {
-      chain = data.map(function(v) { Aggregation.decode(v); })
-      return new Aggregation.Chain(chain);
-    }
-
     const chain = data["chain"].map(function(v) { Aggregation.decode(v); });
 
     return new Chain(chain);
@@ -519,11 +499,6 @@ class Sum {
   }
 
   static decode(data) {
-    if (data.constructor === Array) {
-      chain = data.map(function(v) { Aggregation.decode(v); })
-      return new Aggregation.Chain(chain);
-    }
-
     let sampling = data["sampling"];
 
     if (sampling !== null && sampling !== undefined) {

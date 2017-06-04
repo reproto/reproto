@@ -16,6 +16,7 @@ pub struct RpSubType {
     pub fields: Vec<RpLoc<RpField>>,
     pub codes: Vec<RpLoc<RpCode>>,
     pub names: Vec<RpLoc<String>>,
+    pub match_decl: RpMatchDecl,
 }
 
 impl RpSubType {
@@ -79,6 +80,7 @@ impl IntoModel for ast::SubType {
             fields: fields,
             codes: codes,
             names: names,
+            match_decl: match_decl,
         };
 
         Ok(Rc::new(sub_type))

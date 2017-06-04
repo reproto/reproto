@@ -403,7 +403,16 @@ impl Processor {
             class.push(code.inner.lines);
         }
 
-        self.tuple_added(&type_id, pos, &body.match_decl, &fields, &mut class)?;
+        let decode = self.decode_method(type_id,
+                           pos,
+                           &body.match_decl,
+                           &fields,
+                           |i, _| Variable::Literal(i.to_string()))?;
+        class.push(decode);
+
+        let encode = self.encode_tuple_method(&type_id, &fields)?;
+        class.push(encode);
+
         Ok(class)
     }
 
@@ -440,8 +449,15 @@ impl Processor {
             class.push(code.inner.lines);
         }
 
-        let serialized_as = &body.serialized_as;
-        self.enum_added(&fields, serialized_as, &mut class)?;
+        if let Some(ref s) = body.serialized_as {
+            if let Some((_, ref field)) = self.find_field(&fields, &s.inner) {
+                class.push(self.encode_enum_method(field)?);
+                class.push(self.decode_enum_method(field)?);
+            } else {
+                return Err(Error::pos(format!("no field named: {}", s.inner), s.pos.clone()));
+            }
+        }
+
         Ok(class)
     }
 
@@ -605,7 +621,7 @@ impl Processor {
 
             let decode = self.decode_method(type_id,
                                &sub_type.pos,
-                               &body.match_decl,
+                               &sub_type.match_decl,
                                &fields,
                                |_, field| Variable::String(field.ident.to_owned()))?;
 
@@ -731,44 +747,6 @@ impl Processor {
 
             f.write_all(&bytes)?;
             f.flush()?;
-        }
-
-        Ok(())
-    }
-
-    fn tuple_added(&self,
-                   type_id: &RpTypeId,
-                   pos: &RpPos,
-                   match_decl: &RpMatchDecl,
-                   fields: &Vec<RpLoc<Field>>,
-                   class: &mut ClassSpec)
-                   -> Result<()> {
-
-        let decode = self.decode_method(type_id,
-                           pos,
-                           match_decl,
-                           fields,
-                           |i, _| Variable::Literal(i.to_string()))?;
-
-        let encode = self.encode_tuple_method(&type_id, fields)?;
-
-        class.push(decode);
-        class.push(encode);
-        Ok(())
-    }
-
-    fn enum_added(&self,
-                  fields: &Vec<RpLoc<Field>>,
-                  serialized_as: &Option<RpLoc<String>>,
-                  class: &mut ClassSpec)
-                  -> Result<()> {
-        if let Some(ref s) = *serialized_as {
-            if let Some((_, ref field)) = self.find_field(fields, &s.inner) {
-                class.push(self.encode_enum_method(field)?);
-                class.push(self.decode_enum_method(field)?);
-            } else {
-                return Err(Error::pos(format!("no field named: {}", s.inner), s.pos.clone()));
-            }
         }
 
         Ok(())

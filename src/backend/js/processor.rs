@@ -587,7 +587,7 @@ impl Processor {
             }
 
             let decode =
-                self.decode_method(type_id, &body.match_decl, &fields, &class, field_ident)?;
+                self.decode_method(type_id, &sub_type.match_decl, &fields, &class, field_ident)?;
 
             class.push(decode);
 
