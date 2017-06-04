@@ -1,14 +1,11 @@
 //! # Helper trait to implement match-based decoding
 
 use core::*;
+use super::container::Container;
 use super::decode::Decode;
 use super::errors::*;
 use super::value_builder::{ValueBuilder, ValueBuilderEnv};
 use super::variables::Variables;
-
-pub trait Container {
-    fn push(&mut self, other: &Self);
-}
 
 pub trait MatchDecode
     where Self: ValueBuilder<Stmt = <Self as Decode>::Stmt>,

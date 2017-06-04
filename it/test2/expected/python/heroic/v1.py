@@ -246,7 +246,7 @@ class Query:
       f_parameters = data["parameters"]
 
       if f_parameters is not None:
-        f_parameters = dict(f_parameters.items().map(lambda t: (t[0], t[1])))
+        f_parameters = f_parameters
     else:
       f_parameters = None
 

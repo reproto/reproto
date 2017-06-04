@@ -11,9 +11,12 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use super::container::Container;
 use super::converter::Converter;
+use super::dynamic_converter::DynamicConverter;
 use super::dynamic_decode::DynamicDecode;
-use super::match_decode::{Container, MatchDecode};
+use super::dynamic_encode::DynamicEncode;
+use super::match_decode::MatchDecode;
 use super::models::*;
 use super::utils::*;
 use super::value_builder::*;
@@ -154,7 +157,7 @@ impl Processor {
         for field in fields {
             let var_string = string(field.ident.to_owned());
             let field_stmt = stmt!["this.", &field.ident];
-            let value_stmt = self.encode(type_id, &field.ty, &field_stmt)?;
+            let value_stmt = self.encode(type_id, &field.pos, &field.ty, &field_stmt)?;
 
             match field.modifier {
                 RpModifier::Optional => {
@@ -193,7 +196,7 @@ impl Processor {
         for field in fields {
             let stmt = stmt!["this.", &field.ident];
             encode_body.push(self.throw_if_null(&stmt, field));
-            values.push(self.encode(type_id, &field.ty, stmt)?);
+            values.push(self.encode(type_id, &field.pos, &field.ty, &stmt)?);
         }
 
         encode_body.push(js![@return [ values ]]);
@@ -315,35 +318,6 @@ impl Processor {
         } else {
             field.name.to_owned()
         }
-    }
-
-    fn encode<S>(&self, type_id: &RpTypeId, ty: &RpType, value_stmt: S) -> Result<Statement>
-        where S: Into<Statement>
-    {
-        let value_stmt = value_stmt.into();
-
-        // TODO: do not skip conversion if strict type checking is enabled
-        if self.is_native(ty) {
-            return Ok(value_stmt);
-        }
-
-        let value_stmt = match *ty {
-            RpType::Signed(_) |
-            RpType::Unsigned(_) => value_stmt,
-            RpType::Float | RpType::Double => value_stmt,
-            RpType::String => value_stmt,
-            RpType::Any => value_stmt,
-            RpType::Boolean => value_stmt,
-            RpType::Name(ref _custom) => stmt![value_stmt, ".encode()"],
-            RpType::Array(ref inner) => {
-                let v = stmt!["v"];
-                let inner = self.encode(type_id, inner, &v)?;
-                stmt![value_stmt, ".map(function(", &v, ") { return ", inner, "; })"]
-            }
-            _ => value_stmt,
-        };
-
-        Ok(value_stmt)
     }
 
     /// Build the java package of a given package.
@@ -816,8 +790,8 @@ impl ValueBuilder for Processor {
     }
 }
 
-impl DynamicDecode for Processor {
-    type Stmt = Statement;
+impl DynamicConverter for Processor {
+    type DynamicConverterStmt = Statement;
 
     fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
@@ -833,17 +807,21 @@ impl DynamicDecode for Processor {
         }
     }
 
-    fn map_key_var(&self) -> Self::Stmt {
+    fn map_key_var(&self) -> Statement {
         stmt!["t[0]"]
     }
 
-    fn map_value_var(&self) -> Self::Stmt {
+    fn map_value_var(&self) -> Statement {
         stmt!["t[1]"]
     }
 
-    fn array_inner_var(&self) -> Self::Stmt {
+    fn array_inner_var(&self) -> Statement {
         stmt!["v"]
     }
+}
+
+impl DynamicDecode for Processor {
+    type Stmt = Statement;
 
     fn name_decode(&self, input: &Statement, name: Self::Type) -> Self::Stmt {
         stmt![name, ".decode(", input, ")"]
@@ -854,6 +832,24 @@ impl DynamicDecode for Processor {
     }
 
     fn map_decode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
+        let body = stmt!["[", &key, ", ", &value, "]"];
+        // TODO: these functions need to be implemented and hoisted into the module
+        stmt!["to_object(from_object(", input, ").map(function(t) { return ", &body, "; }))"]
+    }
+}
+
+impl DynamicEncode for Processor {
+    type Stmt = Statement;
+
+    fn name_encode(&self, input: &Statement, _: Self::Type) -> Self::Stmt {
+        stmt![input, ".encode()"]
+    }
+
+    fn array_encode(&self, input: &Statement, inner: Statement) -> Self::Stmt {
+        stmt![input, ".map(function(v) { return ", inner, "; })"]
+    }
+
+    fn map_encode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
         let body = stmt!["[", &key, ", ", &value, "]"];
         // TODO: these functions need to be implemented and hoisted into the module
         stmt!["to_object(from_object(", input, ").map(function(t) { return ", &body, "; }))"]

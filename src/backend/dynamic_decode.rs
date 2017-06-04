@@ -3,21 +3,13 @@
 use core::*;
 use super::converter::Converter;
 use super::decode::Decode;
+use super::dynamic_converter::DynamicConverter;
 use super::errors::*;
 
 pub trait DynamicDecode
-    where Self: Converter
+    where Self: Converter + DynamicConverter<DynamicConverterStmt = <Self as DynamicDecode>::Stmt>
 {
     type Stmt: Clone;
-
-    /// If the type deeply compatible already with the language and need no conversion.
-    fn is_native(&self, &RpType) -> bool;
-
-    fn map_key_var(&self) -> Self::Stmt;
-
-    fn map_value_var(&self) -> Self::Stmt;
-
-    fn array_inner_var(&self) -> Self::Stmt;
 
     fn name_decode(&self, input: &Self::Stmt, name: Self::Type) -> Self::Stmt;
 
@@ -31,7 +23,6 @@ pub trait DynamicDecode
               ty: &RpType,
               input: &Self::Stmt)
               -> Result<Self::Stmt> {
-        // TODO: do not skip conversion if strict type checking is enabled
         if self.is_native(ty) {
             return Ok(input.clone());
         }

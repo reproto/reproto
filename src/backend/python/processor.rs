@@ -13,9 +13,12 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use super::container::Container;
 use super::converter::Converter;
+use super::dynamic_converter::DynamicConverter;
 use super::dynamic_decode::DynamicDecode;
-use super::match_decode::{Container, MatchDecode};
+use super::dynamic_encode::DynamicEncode;
+use super::match_decode::MatchDecode;
 
 const TYPE: &str = "type";
 const INIT_PY: &str = "__init__.py";
@@ -142,7 +145,7 @@ impl Processor {
     }
 
     fn encode_method<E>(&self,
-                        package: &RpPackage,
+                        type_id: &RpTypeId,
                         fields: &Vec<RpLoc<Field>>,
                         builder: &BuiltInName,
                         extra: E)
@@ -161,7 +164,7 @@ impl Processor {
         for field in fields {
             let var_string = Variable::String(field.ident.to_owned());
             let field_stmt = stmt!["self.", &field.ident];
-            let value_stmt = self.encode(package, &field.ty, &field_stmt)?;
+            let value_stmt = self.encode(type_id, &field.pos, &field.ty, &field_stmt)?;
 
             match field.modifier {
                 RpModifier::Optional => {
@@ -192,7 +195,7 @@ impl Processor {
     }
 
     fn encode_tuple_method(&self,
-                           package: &RpPackage,
+                           type_id: &RpTypeId,
                            fields: &Vec<RpLoc<Field>>)
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
@@ -205,7 +208,7 @@ impl Processor {
         for field in fields {
             let stmt = stmt!["self.", &field.ident];
             encode_body.push(self.raise_if_none(&stmt, field));
-            values.push(self.encode(package, &field.ty, stmt)?);
+            values.push(self.encode(type_id, &field.pos, &field.ty, &stmt)?);
         }
 
         encode_body.push(stmt!["return (", values.join(", "), ")"]);
@@ -349,35 +352,6 @@ impl Processor {
         }
     }
 
-    fn encode<S>(&self, package: &RpPackage, ty: &RpType, value_stmt: S) -> Result<Statement>
-        where S: Into<Statement>
-    {
-        let value_stmt = value_stmt.into();
-
-        // TODO: do not skip conversion if strict type checking is enabled
-        if self.is_native(ty) {
-            return Ok(value_stmt);
-        }
-
-        let value_stmt = match *ty {
-            RpType::Signed(_) |
-            RpType::Unsigned(_) => value_stmt,
-            RpType::Float | RpType::Double => value_stmt,
-            RpType::String => value_stmt,
-            RpType::Any => value_stmt,
-            RpType::Boolean => value_stmt,
-            RpType::Name(ref _custom) => stmt![value_stmt, ".encode()"],
-            RpType::Array(ref inner) => {
-                let v = stmt!["v"];
-                let inner = self.encode(package, inner, v)?;
-                stmt!["map(lambda v: ", inner, ", ", value_stmt, ")"]
-            }
-            _ => value_stmt,
-        };
-
-        Ok(value_stmt)
-    }
-
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
@@ -402,7 +376,7 @@ impl Processor {
 
     fn process_tuple(&self,
                      type_id: &RpTypeId,
-                     _pos: &RpPos,
+                     pos: &RpPos,
                      body: &RpTupleBody)
                      -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
@@ -428,7 +402,7 @@ impl Processor {
             class.push(code.inner.lines);
         }
 
-        self.tuple_added(&type_id, &body.match_decl, &fields, &mut class)?;
+        self.tuple_added(&type_id, pos, &body.match_decl, &fields, &mut class)?;
         Ok(class)
     }
 
@@ -561,7 +535,7 @@ impl Processor {
 
         class.push(decode);
 
-        let encode = self.encode_method(&type_id.package, &fields, &self.dict, |_| {})?;
+        let encode = self.encode_method(type_id, &fields, &self.dict, |_| {})?;
 
         class.push(encode);
 
@@ -635,7 +609,7 @@ impl Processor {
             let type_stmt =
                 stmt!["data[", &self.type_var, "] = ", Variable::String(sub_type.name())];
 
-            let encode = self.encode_method(&type_id.package, &fields, &self.dict, move |elements| {
+            let encode = self.encode_method(type_id, &fields, &self.dict, move |elements| {
                     elements.push(type_stmt);
                 })?;
 
@@ -759,6 +733,7 @@ impl Processor {
 
     fn tuple_added(&self,
                    type_id: &RpTypeId,
+                   _pos: &RpPos,
                    match_decl: &RpMatchDecl,
                    fields: &Vec<RpLoc<Field>>,
                    class: &mut ClassSpec)
@@ -770,7 +745,7 @@ impl Processor {
                            class,
                            |i, _| Variable::Literal(i.to_string()))?;
 
-        let encode = self.encode_tuple_method(&type_id.package, fields)?;
+        let encode = self.encode_tuple_method(&type_id, fields)?;
 
         class.push(decode);
         class.push(encode);
@@ -944,8 +919,8 @@ impl ValueBuilder for Processor {
     }
 }
 
-impl DynamicDecode for Processor {
-    type Stmt = Statement;
+impl DynamicConverter for Processor {
+    type DynamicConverterStmt = Statement;
 
     fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
@@ -956,21 +931,26 @@ impl DynamicDecode for Processor {
             RpType::Any => true,
             RpType::Boolean => true,
             RpType::Array(ref inner) => self.is_native(inner),
+            RpType::Map(ref key, ref value) => self.is_native(key) && self.is_native(value),
             _ => false,
         }
     }
 
-    fn map_key_var(&self) -> Self::Stmt {
+    fn map_key_var(&self) -> Statement {
         stmt!["t[0]"]
     }
 
-    fn map_value_var(&self) -> Self::Stmt {
+    fn map_value_var(&self) -> Statement {
         stmt!["t[1]"]
     }
 
-    fn array_inner_var(&self) -> Self::Stmt {
+    fn array_inner_var(&self) -> Statement {
         stmt!["v"]
     }
+}
+
+impl DynamicDecode for Processor {
+    type Stmt = Statement;
 
     fn name_decode(&self, input: &Statement, name: Self::Type) -> Self::Stmt {
         stmt![name, ".decode(", input, ")"]
@@ -981,6 +961,23 @@ impl DynamicDecode for Processor {
     }
 
     fn map_decode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
+        let body = stmt!["(", &key, ", ", &value, ")"];
+        stmt![&self.dict, "(map(lambda t: ", &body, ", ", input, ".items()))"]
+    }
+}
+
+impl DynamicEncode for Processor {
+    type Stmt = Statement;
+
+    fn name_encode(&self, input: &Statement, _: Self::Type) -> Self::Stmt {
+        stmt![input, ".encode()"]
+    }
+
+    fn array_encode(&self, input: &Statement, inner: Statement) -> Self::Stmt {
+        stmt!["map(lambda v: ", inner, ", ", input, ")"]
+    }
+
+    fn map_encode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
         let body = stmt!["(", &key, ", ", &value, ")"];
         stmt![&self.dict, "(", input, ".items().map(lambda t: ", &body, "))"]
     }
