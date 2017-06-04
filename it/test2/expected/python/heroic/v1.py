@@ -154,7 +154,7 @@ class Samples_Events(Samples):
 
     f_data = map(lambda v: Event.decode(v), data["data"])
 
-    return Samples_Events(f_name, f_data)
+    return Samples(f_name, f_data)
 
   def encode(self):
     data = dict()
@@ -190,7 +190,7 @@ class Samples_Points(Samples):
 
     f_data = map(lambda v: Point.decode(v), data["data"])
 
-    return Samples_Points(f_name, f_data)
+    return Samples(f_name, f_data)
 
   def encode(self):
     data = dict()
@@ -292,7 +292,7 @@ class Duration_Absolute(Duration):
 
     f_end = data["end"]
 
-    return Duration_Absolute(f_start, f_end)
+    return Duration(f_start, f_end)
 
   def encode(self):
     data = dict()
@@ -369,7 +369,7 @@ class Aggregation_Average(Aggregation):
     else:
       f_extent = None
 
-    return Aggregation_Average(f_sampling, f_size, f_extent)
+    return Aggregation(f_sampling, f_size, f_extent)
 
   def encode(self):
     data = dict()
@@ -401,7 +401,7 @@ class Aggregation_Chain(Aggregation):
 
     f_chain = map(lambda v: Aggregation.decode(v), data["chain"])
 
-    return Aggregation_Chain(f_chain)
+    return Aggregation(f_chain)
 
   def encode(self):
     data = dict()
@@ -453,7 +453,7 @@ class Aggregation_Sum(Aggregation):
     else:
       f_extent = None
 
-    return Aggregation_Sum(f_sampling, f_size, f_extent)
+    return Aggregation(f_sampling, f_size, f_extent)
 
   def encode(self):
     data = dict()

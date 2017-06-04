@@ -290,9 +290,9 @@ impl Processor {
 
     fn decode_method<F>(&self,
                         type_id: &RpTypeId,
+                        pos: &RpPos,
                         match_decl: &RpMatchDecl,
                         fields: &Vec<RpLoc<Field>>,
-                        class: &ClassSpec,
                         variable_fn: F)
                         -> Result<MethodSpec>
         where F: Fn(usize, &Field) -> Variable
@@ -337,7 +337,8 @@ impl Processor {
         }
 
         let arguments = arguments.join(", ");
-        decode_body.push(stmt!["return ", &class.name, "(", arguments, ")"]);
+        let name = self.convert_type(pos, type_id)?;
+        decode_body.push(stmt!["return ", name, "(", arguments, ")"]);
 
         decode.push(decode_body.join(ElementSpec::Spacing));
 
@@ -507,7 +508,11 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, type_id: &RpTypeId, body: &RpTypeBody) -> Result<ClassSpec> {
+    fn process_type(&self,
+                    type_id: &RpTypeId,
+                    pos: &RpPos,
+                    body: &RpTypeBody)
+                    -> Result<ClassSpec> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields = Vec::new();
 
@@ -528,9 +533,9 @@ impl Processor {
         }
 
         let decode = self.decode_method(type_id,
+                           pos,
                            &body.match_decl,
                            &fields,
-                           &class,
                            |_, field| Variable::String(field.ident.to_owned()))?;
 
         class.push(decode);
@@ -599,9 +604,9 @@ impl Processor {
             }
 
             let decode = self.decode_method(type_id,
+                               &sub_type.pos,
                                &body.match_decl,
                                &fields,
-                               &class,
                                |_, field| Variable::String(field.ident.to_owned()))?;
 
             class.push(decode);
@@ -634,7 +639,7 @@ impl Processor {
         for (type_id, decl) in &self.env.decls {
             let class_specs: Vec<ClassSpec> = match decl.inner {
                 RpDecl::Interface(ref body) => self.process_interface(type_id, body)?,
-                RpDecl::Type(ref body) => vec![self.process_type(type_id, body)?],
+                RpDecl::Type(ref body) => vec![self.process_type(type_id, &decl.pos, body)?],
                 RpDecl::Tuple(ref body) => vec![self.process_tuple(type_id, &decl.pos, body)?],
                 RpDecl::Enum(ref body) => {
                     enums.push((type_id, body));
@@ -733,16 +738,16 @@ impl Processor {
 
     fn tuple_added(&self,
                    type_id: &RpTypeId,
-                   _pos: &RpPos,
+                   pos: &RpPos,
                    match_decl: &RpMatchDecl,
                    fields: &Vec<RpLoc<Field>>,
                    class: &mut ClassSpec)
                    -> Result<()> {
 
         let decode = self.decode_method(type_id,
+                           pos,
                            match_decl,
                            fields,
-                           class,
                            |i, _| Variable::Literal(i.to_string()))?;
 
         let encode = self.encode_tuple_method(&type_id, fields)?;
