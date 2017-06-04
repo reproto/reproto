@@ -912,25 +912,25 @@ impl Converter for Processor {
 
 /// Build values in python.
 impl ValueBuilder for Processor {
-    type Output = Statement;
+    type Stmt = Statement;
 
     fn env(&self) -> &Environment {
         &self.env
     }
 
-    fn identifier(&self, identifier: &str) -> Result<Self::Output> {
+    fn identifier(&self, identifier: &str) -> Result<Self::Stmt> {
         Ok(stmt![identifier])
     }
 
-    fn optional_empty(&self) -> Result<Self::Output> {
+    fn optional_empty(&self) -> Result<Self::Stmt> {
         Ok(stmt!["None"])
     }
 
-    fn constant(&self, ty: Self::Type) -> Result<Self::Output> {
+    fn constant(&self, ty: Self::Type) -> Result<Self::Stmt> {
         return Ok(stmt![ty]);
     }
 
-    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Output>) -> Result<Self::Output> {
+    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Stmt>) -> Result<Self::Stmt> {
         let mut stmt = Statement::new();
 
         for a in arguments {
@@ -940,11 +940,11 @@ impl ValueBuilder for Processor {
         Ok(stmt!["new ", &ty, "(", stmt.join(", "), ")"])
     }
 
-    fn number(&self, number: &f64) -> Result<Self::Output> {
+    fn number(&self, number: &f64) -> Result<Self::Stmt> {
         Ok(stmt![number.to_string()])
     }
 
-    fn signed(&self, number: &f64, size: &Option<usize>) -> Result<Self::Output> {
+    fn signed(&self, number: &f64, size: &Option<usize>) -> Result<Self::Stmt> {
         let ty: Variable = if size.map(|s| s <= 32usize).unwrap_or(true) {
             format!("{}", number.to_string()).into()
         } else {
@@ -954,7 +954,7 @@ impl ValueBuilder for Processor {
         Ok(ty.into())
     }
 
-    fn unsigned(&self, number: &f64, size: &Option<usize>) -> Result<Self::Output> {
+    fn unsigned(&self, number: &f64, size: &Option<usize>) -> Result<Self::Stmt> {
         let ty: Variable = if size.map(|s| s <= 32usize).unwrap_or(true) {
             format!("{}", number.to_string()).into()
         } else {
@@ -964,23 +964,23 @@ impl ValueBuilder for Processor {
         Ok(ty.into())
     }
 
-    fn float(&self, number: &f64) -> Result<Self::Output> {
+    fn float(&self, number: &f64) -> Result<Self::Stmt> {
         Ok(stmt![format!("{}F", number.to_string())])
     }
 
-    fn double(&self, number: &f64) -> Result<Self::Output> {
+    fn double(&self, number: &f64) -> Result<Self::Stmt> {
         Ok(stmt![format!("{}D", number.to_string())])
     }
 
-    fn boolean(&self, boolean: &bool) -> Result<Self::Output> {
+    fn boolean(&self, boolean: &bool) -> Result<Self::Stmt> {
         Ok(stmt![boolean.to_string()])
     }
 
-    fn string(&self, string: &str) -> Result<Self::Output> {
+    fn string(&self, string: &str) -> Result<Self::Stmt> {
         Ok(Variable::String(string.to_owned()).into())
     }
 
-    fn array(&self, values: Vec<Self::Output>) -> Result<Self::Output> {
+    fn array(&self, values: Vec<Self::Stmt>) -> Result<Self::Stmt> {
         let mut arguments = Statement::new();
 
         for v in values {

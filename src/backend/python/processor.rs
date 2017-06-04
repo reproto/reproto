@@ -15,6 +15,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use super::converter::Converter;
 use super::dynamic_decode::DynamicDecode;
+use super::match_decode::{Container, MatchDecode};
 
 const TYPE: &str = "type";
 const INIT_PY: &str = "__init__.py";
@@ -256,7 +257,11 @@ impl Processor {
         Ok(decode)
     }
 
-    fn optional_check(&self, var_name: &str, index: &Variable, stmt: &Statement) -> ElementSpec {
+    fn optional_check(&self,
+                      var_name: &Statement,
+                      index: &Variable,
+                      stmt: &Statement)
+                      -> ElementSpec {
         let mut check = Elements::new();
 
         let mut none_check = Elements::new();
@@ -280,95 +285,6 @@ impl Processor {
         check.into()
     }
 
-    fn decode_by_value(&self,
-                       type_id: &RpTypeId,
-                       match_decl: &RpMatchDecl,
-                       data: &Statement)
-                       -> Result<Option<Elements>> {
-        if match_decl.by_value.is_empty() {
-            return Ok(None);
-        }
-
-        let variables = Variables::new();
-
-        let mut elements = Elements::new();
-
-        for &(ref value, ref result) in &match_decl.by_value {
-            let value = self.value(&ValueBuilderEnv {
-                    value: value,
-                    package: &type_id.package,
-                    ty: None,
-                    variables: &variables,
-                })?;
-
-            let result = self.value(&ValueBuilderEnv {
-                    value: result,
-                    package: &type_id.package,
-                    ty: Some(&RpType::Name(type_id.name.clone())),
-                    variables: &variables,
-                })?;
-
-            let mut value_body = Elements::new();
-            value_body.push(stmt!["if ", &data, " == ", &value, ":"]);
-            value_body.push_nested(stmt!["return ", &result]);
-
-            elements.push(value_body);
-        }
-
-        Ok(Some(elements.join(ElementSpec::Spacing)))
-    }
-
-    fn decode_by_type(&self,
-                      type_id: &RpTypeId,
-                      match_decl: &RpMatchDecl,
-                      data: &Statement)
-                      -> Result<Option<Elements>> {
-        if match_decl.by_type.is_empty() {
-            return Ok(None);
-        }
-
-        let mut elements = Elements::new();
-
-        for &(ref kind, ref result) in &match_decl.by_type {
-            let variable = result.0.name.clone();
-
-            let mut variables = Variables::new();
-            variables.insert(variable.clone(), &result.0.ty);
-
-            let decode_stmt = self.decode(type_id, &result.1.pos, &result.0.ty, &data)?;
-
-            let result = self.value(&ValueBuilderEnv {
-                    value: &result.1,
-                    package: &type_id.package,
-                    ty: Some(&RpType::Name(type_id.name.clone())),
-                    variables: &variables,
-                })?;
-
-            let check = match *kind {
-                RpMatchKind::Any => stmt!["true"],
-                RpMatchKind::Object => stmt![&self.isinstance, "(", &data, ", ", &self.dict, ")"],
-                RpMatchKind::Array => stmt![&self.isinstance, "(", &data, ", ", &self.list, ")"],
-                RpMatchKind::String => {
-                    stmt![&self.isinstance, "(", &data, ", ", &self.basestring, ")"]
-                }
-                RpMatchKind::Boolean => {
-                    stmt![&self.isinstance, "(", &data, ", ", &self.boolean, ")"]
-                }
-                RpMatchKind::Number => stmt![&self.isinstance, "(", &data, ", ", &self.number, ")"],
-            };
-
-            let mut value_body = Elements::new();
-
-            value_body.push(stmt!["if ", check, ":"]);
-            value_body.push_nested(stmt![&variable, " = ", decode_stmt]);
-            value_body.push_nested(stmt!["return ", &result]);
-
-            elements.push(value_body);
-        }
-
-        Ok(Some(elements.join(ElementSpec::Spacing)))
-    }
-
     fn decode_method<F>(&self,
                         type_id: &RpTypeId,
                         match_decl: &RpMatchDecl,
@@ -387,11 +303,11 @@ impl Processor {
         let mut decode_body = Elements::new();
 
         if let Some(by_value) = self.decode_by_value(type_id, match_decl, &data)? {
-            decode_body.push(by_value);
+            decode_body.push(by_value.join(ElementSpec::Spacing));
         }
 
         if let Some(by_type) = self.decode_by_type(type_id, match_decl, &data)? {
-            decode_body.push(by_type);
+            decode_body.push(by_type.join(ElementSpec::Spacing));
         }
 
         let mut arguments = Statement::new();
@@ -402,12 +318,13 @@ impl Processor {
 
             let stmt = match field.modifier {
                 RpModifier::Optional => {
+                    let var_name = var_name.clone().into();
                     let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_name)?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
                 _ => {
                     let var_stmt = stmt!["data[", &var, "]"];
-                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, var_stmt)?;
+                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_stmt.into())?;
                     stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
@@ -976,25 +893,25 @@ impl Converter for Processor {
 
 /// Build values in python.
 impl ValueBuilder for Processor {
-    type Output = Statement;
+    type Stmt = Statement;
 
     fn env(&self) -> &Environment {
         &self.env
     }
 
-    fn identifier(&self, identifier: &str) -> Result<Self::Output> {
+    fn identifier(&self, identifier: &str) -> Result<Self::Stmt> {
         Ok(stmt![identifier])
     }
 
-    fn optional_empty(&self) -> Result<Self::Output> {
+    fn optional_empty(&self) -> Result<Self::Stmt> {
         Ok(stmt!["None"])
     }
 
-    fn constant(&self, ty: Self::Type) -> Result<Self::Output> {
+    fn constant(&self, ty: Self::Type) -> Result<Self::Stmt> {
         return Ok(stmt![ty]);
     }
 
-    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Output>) -> Result<Self::Output> {
+    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Stmt>) -> Result<Self::Stmt> {
         let mut stmt = Statement::new();
 
         for a in arguments {
@@ -1004,19 +921,19 @@ impl ValueBuilder for Processor {
         Ok(stmt![&ty, "(", stmt.join(", "), ")"])
     }
 
-    fn number(&self, number: &f64) -> Result<Self::Output> {
+    fn number(&self, number: &f64) -> Result<Self::Stmt> {
         Ok(stmt![number.to_string()])
     }
 
-    fn boolean(&self, boolean: &bool) -> Result<Self::Output> {
+    fn boolean(&self, boolean: &bool) -> Result<Self::Stmt> {
         Ok(stmt![boolean.to_string()])
     }
 
-    fn string(&self, string: &str) -> Result<Self::Output> {
+    fn string(&self, string: &str) -> Result<Self::Stmt> {
         Ok(Variable::String(string.to_owned()).into())
     }
 
-    fn array(&self, values: Vec<Self::Output>) -> Result<Self::Output> {
+    fn array(&self, values: Vec<Self::Stmt>) -> Result<Self::Stmt> {
         let mut arguments = Statement::new();
 
         for v in values {
@@ -1028,7 +945,7 @@ impl ValueBuilder for Processor {
 }
 
 impl DynamicDecode for Processor {
-    type Output = Statement;
+    type Stmt = Statement;
 
     fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
@@ -1043,28 +960,74 @@ impl DynamicDecode for Processor {
         }
     }
 
-    fn map_key_var(&self) -> Self::Output {
+    fn map_key_var(&self) -> Self::Stmt {
         stmt!["t[0]"]
     }
 
-    fn map_value_var(&self) -> Self::Output {
+    fn map_value_var(&self) -> Self::Stmt {
         stmt!["t[1]"]
     }
 
-    fn array_inner_var(&self) -> Self::Output {
+    fn array_inner_var(&self) -> Self::Stmt {
         stmt!["v"]
     }
 
-    fn name_decode(&self, input: Statement, name: Self::Type) -> Self::Output {
+    fn name_decode(&self, input: &Statement, name: Self::Type) -> Self::Stmt {
         stmt![name, ".decode(", input, ")"]
     }
 
-    fn array_decode(&self, input: Statement, inner: Statement) -> Self::Output {
+    fn array_decode(&self, input: &Statement, inner: Statement) -> Self::Stmt {
         stmt!["map(lambda v: ", inner, ", ", input, ")"]
     }
 
-    fn map_decode(&self, input: Statement, key: Statement, value: Statement) -> Self::Output {
+    fn map_decode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
         let body = stmt!["(", &key, ", ", &value, ")"];
         stmt![&self.dict, "(", input, ".items().map(lambda t: ", &body, "))"]
+    }
+}
+
+impl Container for Elements {
+    fn push(&mut self, other: &Elements) {
+        self.push(other)
+    }
+}
+
+impl MatchDecode for Processor {
+    type Elements = Elements;
+
+    fn new_elements(&self) -> Elements {
+        Elements::new()
+    }
+
+    fn match_value(&self, data: &Statement, value: Statement, result: Statement) -> Elements {
+        let mut value_body = Elements::new();
+        value_body.push(stmt!["if ", &data, " == ", value, ":"]);
+        value_body.push_nested(stmt!["return ", result]);
+        value_body
+    }
+
+    fn match_type(&self,
+                  data: &Statement,
+                  kind: &RpMatchKind,
+                  variable: &str,
+                  decode: Statement,
+                  result: Statement)
+                  -> Elements {
+        let check = match *kind {
+            RpMatchKind::Any => stmt!["true"],
+            RpMatchKind::Object => stmt![&self.isinstance, "(", data, ", ", &self.dict, ")"],
+            RpMatchKind::Array => stmt![&self.isinstance, "(", data, ", ", &self.list, ")"],
+            RpMatchKind::String => stmt![&self.isinstance, "(", data, ", ", &self.basestring, ")"],
+            RpMatchKind::Boolean => stmt![&self.isinstance, "(", data, ", ", &self.boolean, ")"],
+            RpMatchKind::Number => stmt![&self.isinstance, "(", data, ", ", &self.number, ")"],
+        };
+
+        let mut value_body = Elements::new();
+
+        value_body.push(stmt!["if ", check, ":"]);
+        value_body.push_nested(stmt![&variable, " = ", decode]);
+        value_body.push_nested(stmt!["return ", &result]);
+
+        value_body
     }
 }

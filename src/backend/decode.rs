@@ -4,13 +4,12 @@ use core::*;
 use super::errors::*;
 
 pub trait Decode {
-    type Output;
+    type Stmt;
 
-    fn decode<S>(&self,
-                 type_id: &RpTypeId,
-                 pos: &RpPos,
-                 ty: &RpType,
-                 input: S)
-                 -> Result<Self::Output>
-        where S: Into<Self::Output>;
+    fn decode(&self,
+              type_id: &RpTypeId,
+              pos: &RpPos,
+              ty: &RpType,
+              input: &Self::Stmt)
+              -> Result<Self::Stmt>;
 }

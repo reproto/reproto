@@ -6,16 +6,36 @@ use super::errors::*;
 use super::value_builder::{ValueBuilder, ValueBuilderEnv};
 use super::variables::Variables;
 
+pub trait Container {
+    fn push(&mut self, other: &Self);
+}
+
 pub trait MatchDecode
-    where Self: ValueBuilder<Output = <Self as Decode>::Output>,
+    where Self: ValueBuilder<Stmt = <Self as Decode>::Stmt>,
           Self: Decode
 {
-    type Elements;
+    type Elements: Container;
+
+    fn new_elements(&self) -> Self::Elements;
+
+    fn match_value(&self,
+                   data: &<Self as Decode>::Stmt,
+                   value: <Self as Decode>::Stmt,
+                   result: <Self as Decode>::Stmt)
+                   -> Self::Elements;
+
+    fn match_type(&self,
+                  data: &<Self as Decode>::Stmt,
+                  kind: &RpMatchKind,
+                  variable: &str,
+                  decode: <Self as Decode>::Stmt,
+                  result: <Self as Decode>::Stmt)
+                  -> Self::Elements;
 
     fn decode_by_value(&self,
                        type_id: &RpTypeId,
                        match_decl: &RpMatchDecl,
-                       data: <Self as Decode>::Output)
+                       data: &<Self as Decode>::Stmt)
                        -> Result<Option<Self::Elements>> {
         if match_decl.by_value.is_empty() {
             return Ok(None);
@@ -23,7 +43,7 @@ pub trait MatchDecode
 
         let variables = Variables::new();
 
-        let mut elements = Elements::new();
+        let mut elements = self.new_elements();
 
         for &(ref value, ref result) in &match_decl.by_value {
             let value = self.value(&ValueBuilderEnv {
@@ -40,34 +60,30 @@ pub trait MatchDecode
                     variables: &variables,
                 })?;
 
-            let mut value_body = Elements::new();
-            value_body.push(stmt!["if ", &data, " == ", &value, ":"]);
-            value_body.push_nested(stmt!["return ", &result]);
-
-            elements.push(value_body);
+            elements.push(&self.match_value(data, value, result));
         }
 
-        Ok(Some(elements.join(ElementSpec::Spacing)))
+        Ok(Some(elements))
     }
 
     fn decode_by_type(&self,
                       type_id: &RpTypeId,
                       match_decl: &RpMatchDecl,
-                      data: &<Self as Decode>::Output)
+                      data: &<Self as Decode>::Stmt)
                       -> Result<Option<Self::Elements>> {
         if match_decl.by_type.is_empty() {
             return Ok(None);
         }
 
-        let mut elements = Elements::new();
+        let mut elements = self.new_elements();
 
         for &(ref kind, ref result) in &match_decl.by_type {
-            let variable = result.0.name.clone();
+            let variable = &result.0.name;
 
             let mut variables = Variables::new();
             variables.insert(variable.clone(), &result.0.ty);
 
-            let decode_stmt = self.decode(type_id, &result.1.pos, &result.0.ty, data)?;
+            let decode = self.decode(type_id, &result.1.pos, &result.0.ty, data)?;
 
             let result = self.value(&ValueBuilderEnv {
                     value: &result.1,
@@ -76,28 +92,9 @@ pub trait MatchDecode
                     variables: &variables,
                 })?;
 
-            let check = match *kind {
-                RpMatchKind::Any => stmt!["true"],
-                RpMatchKind::Object => stmt![&self.isinstance, "(", &data, ", ", &self.dict, ")"],
-                RpMatchKind::Array => stmt![&self.isinstance, "(", &data, ", ", &self.list, ")"],
-                RpMatchKind::String => {
-                    stmt![&self.isinstance, "(", &data, ", ", &self.basestring, ")"]
-                }
-                RpMatchKind::Boolean => {
-                    stmt![&self.isinstance, "(", &data, ", ", &self.boolean, ")"]
-                }
-                RpMatchKind::Number => stmt![&self.isinstance, "(", &data, ", ", &self.number, ")"],
-            };
-
-            let mut value_body = Elements::new();
-
-            value_body.push(stmt!["if ", check, ":"]);
-            value_body.push_nested(stmt![&variable, " = ", decode_stmt]);
-            value_body.push_nested(stmt!["return ", &result]);
-
-            elements.push(value_body);
+            elements.push(&self.match_type(data, kind, variable, decode, result));
         }
 
-        Ok(Some(elements.join(ElementSpec::Spacing)))
+        Ok(Some(elements))
     }
 }

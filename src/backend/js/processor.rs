@@ -13,6 +13,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use super::converter::Converter;
 use super::dynamic_decode::DynamicDecode;
+use super::match_decode::{Container, MatchDecode};
 use super::models::*;
 use super::utils::*;
 use super::value_builder::*;
@@ -242,6 +243,7 @@ impl Processor {
 
     fn decode_method<F>(&self,
                         type_id: &RpTypeId,
+                        match_decl: &RpMatchDecl,
                         fields: &Vec<RpLoc<JsField>>,
                         class: &ClassSpec,
                         variable_fn: F)
@@ -262,6 +264,7 @@ impl Processor {
 
             let stmt: ElementSpec = match field.modifier {
                 RpModifier::Optional => {
+                    let var_name = var_name.clone().into();
                     let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_name)?;
 
                     let mut check = Elements::new();
@@ -276,7 +279,7 @@ impl Processor {
                 }
                 _ => {
                     let var_stmt = stmt![&data, "[", &var, "]"];
-                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, var_stmt)?;
+                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_stmt.into())?;
                     stmt!["const ", &var_name, " = ", &var_stmt, ";"].into()
                 }
             };
@@ -286,6 +289,14 @@ impl Processor {
         }
 
         let mut body = Elements::new();
+
+        if let Some(by_value) = self.decode_by_value(type_id, match_decl, &data)? {
+            body.push(by_value.join(ElementSpec::Spacing));
+        }
+
+        if let Some(by_type) = self.decode_by_type(type_id, match_decl, &data)? {
+            body.push(by_type.join(ElementSpec::Spacing));
+        }
 
         if !assign.is_empty() {
             body.push(assign.join(ElementSpec::Spacing));
@@ -404,7 +415,7 @@ impl Processor {
             }
         }
 
-        let decode = self.decode_method(type_id, &fields, &class, field_index)?;
+        let decode = self.decode_method(type_id, &body.match_decl, &fields, &class, field_index)?;
         class.push(decode);
 
         let encode = self.encode_tuple_method(type_id, &fields)?;
@@ -557,7 +568,7 @@ impl Processor {
             }
         }
 
-        let decode = self.decode_method(type_id, &fields, &class, field_ident)?;
+        let decode = self.decode_method(type_id, &body.match_decl, &fields, &class, field_ident)?;
         class.push(decode);
 
         let encode = self.encode_method(type_id, &fields, "{}", |_| {})?;
@@ -601,7 +612,8 @@ impl Processor {
                 }
             }
 
-            let decode = self.decode_method(type_id, &fields, &class, field_ident)?;
+            let decode =
+                self.decode_method(type_id, &body.match_decl, &fields, &class, field_ident)?;
 
             class.push(decode);
 
@@ -753,25 +765,25 @@ impl Converter for Processor {
 
 /// Build values in js.
 impl ValueBuilder for Processor {
-    type Output = Statement;
+    type Stmt = Statement;
 
     fn env(&self) -> &Environment {
         &self.env
     }
 
-    fn identifier(&self, identifier: &str) -> Result<Self::Output> {
+    fn identifier(&self, identifier: &str) -> Result<Self::Stmt> {
         Ok(stmt![identifier])
     }
 
-    fn optional_empty(&self) -> Result<Self::Output> {
+    fn optional_empty(&self) -> Result<Self::Stmt> {
         Ok(stmt!["None"])
     }
 
-    fn constant(&self, ty: Self::Type) -> Result<Self::Output> {
+    fn constant(&self, ty: Self::Type) -> Result<Self::Stmt> {
         return Ok(stmt![ty]);
     }
 
-    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Output>) -> Result<Self::Output> {
+    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Stmt>) -> Result<Self::Stmt> {
         let mut stmt = Statement::new();
 
         for a in arguments {
@@ -781,19 +793,19 @@ impl ValueBuilder for Processor {
         Ok(stmt!["new ", &ty, "(", stmt.join(", "), ")"])
     }
 
-    fn number(&self, number: &f64) -> Result<Self::Output> {
+    fn number(&self, number: &f64) -> Result<Self::Stmt> {
         Ok(stmt![number.to_string()])
     }
 
-    fn boolean(&self, boolean: &bool) -> Result<Self::Output> {
+    fn boolean(&self, boolean: &bool) -> Result<Self::Stmt> {
         Ok(stmt![boolean.to_string()])
     }
 
-    fn string(&self, string: &str) -> Result<Self::Output> {
+    fn string(&self, string: &str) -> Result<Self::Stmt> {
         Ok(Variable::String(string.to_owned()).into())
     }
 
-    fn array(&self, values: Vec<Self::Output>) -> Result<Self::Output> {
+    fn array(&self, values: Vec<Self::Stmt>) -> Result<Self::Stmt> {
         let mut arguments = Statement::new();
 
         for v in values {
@@ -805,7 +817,7 @@ impl ValueBuilder for Processor {
 }
 
 impl DynamicDecode for Processor {
-    type Output = Statement;
+    type Stmt = Statement;
 
     fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
@@ -821,29 +833,77 @@ impl DynamicDecode for Processor {
         }
     }
 
-    fn map_key_var(&self) -> Self::Output {
+    fn map_key_var(&self) -> Self::Stmt {
         stmt!["t[0]"]
     }
 
-    fn map_value_var(&self) -> Self::Output {
+    fn map_value_var(&self) -> Self::Stmt {
         stmt!["t[1]"]
     }
 
-    fn array_inner_var(&self) -> Self::Output {
+    fn array_inner_var(&self) -> Self::Stmt {
         stmt!["v"]
     }
 
-    fn name_decode(&self, input: Statement, name: Self::Type) -> Self::Output {
+    fn name_decode(&self, input: &Statement, name: Self::Type) -> Self::Stmt {
         stmt![name, ".decode(", input, ")"]
     }
 
-    fn array_decode(&self, input: Statement, inner: Statement) -> Self::Output {
+    fn array_decode(&self, input: &Statement, inner: Statement) -> Self::Stmt {
         stmt![input, ".map(function(v) { ", inner, "; })"]
     }
 
-    fn map_decode(&self, input: Statement, key: Statement, value: Statement) -> Self::Output {
+    fn map_decode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
         let body = stmt!["[", &key, ", ", &value, "]"];
         // TODO: these functions need to be implemented and hoisted into the module
         stmt!["to_object(from_object(", input, ").map(function(t) { return ", &body, "; }))"]
+    }
+}
+
+impl Container for Elements {
+    fn push(&mut self, other: &Elements) {
+        self.push(other)
+    }
+}
+
+impl MatchDecode for Processor {
+    type Elements = Elements;
+
+    fn new_elements(&self) -> Elements {
+        Elements::new()
+    }
+
+    fn match_value(&self, data: &Statement, value: Statement, result: Statement) -> Elements {
+        let mut value_body = Elements::new();
+        value_body.push(stmt!["if (", data, " == ", &value, ") {"]);
+        value_body.push_nested(stmt!["return ", &result]);
+        value_body.push("}");
+        value_body
+    }
+
+    fn match_type(&self,
+                  data: &Statement,
+                  kind: &RpMatchKind,
+                  variable: &str,
+                  decode: Statement,
+                  result: Statement)
+                  -> Elements {
+        let check = match *kind {
+            RpMatchKind::Any => stmt!["true"],
+            RpMatchKind::Object => stmt![data, ".constructor === Object"],
+            RpMatchKind::Array => stmt![data, ".constructor === Array"],
+            RpMatchKind::String => stmt!["typeof ", data, " === \"string\""],
+            RpMatchKind::Boolean => stmt!["typeof ", data, " === \"boolean\""],
+            RpMatchKind::Number => stmt!["typeof ", data, " === \"number\""],
+        };
+
+        let mut value_body = Elements::new();
+
+        value_body.push(stmt!["if (", check, ") {"]);
+        value_body.push_nested(stmt![&variable, " = ", decode]);
+        value_body.push_nested(stmt!["return ", &result, ";"]);
+        value_body.push("}");
+
+        value_body
     }
 }

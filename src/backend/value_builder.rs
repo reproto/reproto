@@ -42,43 +42,43 @@ fn new_env<'a>(package: &'a RpPackage,
 pub trait ValueBuilder
     where Self: Converter
 {
-    type Output;
+    type Stmt;
 
     fn env(&self) -> &Environment;
 
-    fn signed(&self, number: &f64, _: &Option<usize>) -> Result<Self::Output> {
+    fn signed(&self, number: &f64, _: &Option<usize>) -> Result<Self::Stmt> {
         self.number(number)
     }
 
-    fn unsigned(&self, number: &f64, _: &Option<usize>) -> Result<Self::Output> {
+    fn unsigned(&self, number: &f64, _: &Option<usize>) -> Result<Self::Stmt> {
         self.number(number)
     }
 
-    fn float(&self, number: &f64) -> Result<Self::Output> {
+    fn float(&self, number: &f64) -> Result<Self::Stmt> {
         self.number(number)
     }
 
-    fn double(&self, number: &f64) -> Result<Self::Output> {
+    fn double(&self, number: &f64) -> Result<Self::Stmt> {
         self.number(number)
     }
 
-    fn string(&self, &str) -> Result<Self::Output>;
+    fn string(&self, &str) -> Result<Self::Stmt>;
 
-    fn boolean(&self, &bool) -> Result<Self::Output>;
+    fn boolean(&self, &bool) -> Result<Self::Stmt>;
 
-    fn number(&self, &f64) -> Result<Self::Output>;
+    fn number(&self, &f64) -> Result<Self::Stmt>;
 
-    fn array(&self, values: Vec<Self::Output>) -> Result<Self::Output>;
+    fn array(&self, values: Vec<Self::Stmt>) -> Result<Self::Stmt>;
 
-    fn optional_empty(&self) -> Result<Self::Output>;
+    fn optional_empty(&self) -> Result<Self::Stmt>;
 
-    fn constant(&self, ty: Self::Type) -> Result<Self::Output>;
+    fn constant(&self, ty: Self::Type) -> Result<Self::Stmt>;
 
-    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Output>) -> Result<Self::Output>;
+    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Stmt>) -> Result<Self::Stmt>;
 
-    fn identifier(&self, identifier: &str) -> Result<Self::Output>;
+    fn identifier(&self, identifier: &str) -> Result<Self::Stmt>;
 
-    fn value(&self, env: &ValueBuilderEnv) -> Result<Self::Output> {
+    fn value(&self, env: &ValueBuilderEnv) -> Result<Self::Stmt> {
         let value = env.value;
         let ty = env.ty;
 
