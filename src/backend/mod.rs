@@ -1,3 +1,7 @@
+pub mod converter;
+pub mod decode;
+pub mod dynamic_decode;
+pub mod match_decode;
 pub mod environment;
 pub mod errors;
 pub mod for_context;
@@ -5,8 +9,6 @@ pub mod java;
 pub mod js;
 pub mod python;
 pub mod value_builder;
-pub mod dynamic_decode;
-pub mod converter;
 pub mod variables;
 
 use options::Options;

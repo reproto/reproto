@@ -2,6 +2,7 @@
 
 use core::*;
 use super::converter::Converter;
+use super::decode::Decode;
 use super::errors::*;
 
 pub trait DynamicDecode
@@ -72,5 +73,23 @@ pub trait DynamicDecode
         };
 
         Ok(input)
+    }
+}
+
+/// Dynamic decode is a valid decoding mechanism
+impl<T> Decode for T
+    where T: DynamicDecode
+{
+    type Output = T::Output;
+
+    fn decode<S>(&self,
+                 type_id: &RpTypeId,
+                 pos: &RpPos,
+                 ty: &RpType,
+                 input: S)
+                 -> Result<Self::Output>
+        where S: Into<Self::Output>
+    {
+        DynamicDecode::decode(self, type_id, pos, ty, input)
     }
 }
