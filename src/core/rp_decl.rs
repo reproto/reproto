@@ -26,13 +26,15 @@ impl RpDecl {
             RpDecl::Tuple(ref body) => &body.name,
         }
     }
+}
 
-    pub fn display(&self) -> String {
+impl ::std::fmt::Display for RpDecl {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match *self {
-            RpDecl::Type(ref body) => format!("type {}", body.name),
-            RpDecl::Interface(ref body) => format!("interface {}", body.name),
-            RpDecl::Enum(ref body) => format!("enum {}", body.name),
-            RpDecl::Tuple(ref body) => format!("tuple {}", body.name),
+            RpDecl::Type(ref body) => write!(f, "type {}", body.name),
+            RpDecl::Interface(ref body) => write!(f, "interface {}", body.name),
+            RpDecl::Enum(ref body) => write!(f, "enum {}", body.name),
+            RpDecl::Tuple(ref body) => write!(f, "tuple {}", body.name),
         }
     }
 }
@@ -94,7 +96,7 @@ impl Merge for RpLoc<RpDecl> {
             }
         }
 
-        return Err(Error::decl_merge(format!("cannot merge with {}", source.display()),
+        return Err(Error::decl_merge(format!("cannot merge with {}", source),
                                      source.pos,
                                      dest_pos));
     }

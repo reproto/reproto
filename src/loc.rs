@@ -51,3 +51,11 @@ impl<T, B, C> WithPrefix<T> for Loc<T, (B, C)>
         Loc::new(self.inner.clone(), (prefix, b, c))
     }
 }
+
+impl<T, P> ::std::fmt::Display for Loc<T, P>
+    where T: ::std::fmt::Display
+{
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{}", self.inner)
+    }
+}

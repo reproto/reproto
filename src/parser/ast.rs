@@ -170,13 +170,15 @@ impl Decl {
             Decl::Enum(ref ty) => ty.name.clone(),
         }
     }
+}
 
-    pub fn display(&self) -> String {
+impl ::std::fmt::Display for Decl {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match *self {
-            Decl::Interface(ref body) => format!("interface {}", body.name),
-            Decl::Type(ref body) => format!("type {}", body.name),
-            Decl::Tuple(ref body) => format!("tuple {}", body.name),
-            Decl::Enum(ref body) => format!("enum {}", body.name),
+            Decl::Interface(ref body) => write!(f, "interface {}", body.name),
+            Decl::Type(ref body) => write!(f, "type {}", body.name),
+            Decl::Tuple(ref body) => write!(f, "tuple {}", body.name),
+            Decl::Enum(ref body) => write!(f, "enum {}", body.name),
         }
     }
 }
