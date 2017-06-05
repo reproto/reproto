@@ -1,9 +1,11 @@
+use codeviz::errors as codeviz;
 use core::*;
 use parser::errors as parser_errors;
 
 error_chain! {
     links {
         Parser(parser_errors::Error, parser_errors::ErrorKind);
+        Codeviz(codeviz::Error, codeviz::ErrorKind);
     }
 
     foreign_links {

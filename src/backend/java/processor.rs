@@ -861,11 +861,11 @@ impl Backend for Processor {
 
             let file_spec = self.build_file_spec(pkg, decl)?;
 
-            let out = file_spec.format();
-            let mut f = File::create(full_path)?;
-            let bytes = out.into_bytes();
+            let mut out = String::new();
+            file_spec.format(&mut out)?;
 
-            f.write_all(&bytes)?;
+            let mut f = File::create(full_path)?;
+            f.write_all(&out.into_bytes())?;
             f.flush()?;
 
             Ok(())
