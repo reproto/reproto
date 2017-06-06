@@ -174,12 +174,12 @@ impl Processor {
         }
 
         if !assign.is_empty() {
-            body.push(assign.join(ElementSpec::Spacing));
+            body.push(assign.join(Spacing));
         }
 
         body.push(js![return data]);
 
-        encode.push(body.join(ElementSpec::Spacing));
+        encode.push(body.join(Spacing));
         Ok(encode)
     }
 
@@ -200,7 +200,7 @@ impl Processor {
         }
 
         encode_body.push(js![@return [ values ]]);
-        encode.push(encode_body.join(ElementSpec::Spacing));
+        encode.push(encode_body.join(Spacing));
         Ok(encode)
     }
 
@@ -208,7 +208,7 @@ impl Processor {
         let mut encode = MethodSpec::new("encode");
         let mut encode_body = Elements::new();
         encode_body.push(js![return "this.", &ident]);
-        encode.push(encode_body.join(ElementSpec::Spacing));
+        encode.push(encode_body.join(Spacing));
         Ok(encode)
     }
 
@@ -233,14 +233,14 @@ impl Processor {
         body.push(js![if cond, js![return &member]]);
 
         let loop_init = stmt!["let ", &i, " = 0, ", &l, " = ", &members, ".length"];
-        member_loop.push(js![for loop_init; stmt![&i, " < ", &l]; stmt![&i, "++"], body.join(ElementSpec::Spacing)]);
+        member_loop.push(js![for loop_init; stmt![&i, " < ", &l]; stmt![&i, "++"], body.join(Spacing)]);
 
         let mut body = Elements::new();
 
         body.push(member_loop);
         body.push(js![throw string("no matching value")]);
 
-        decode.push(body.join(ElementSpec::Spacing));
+        decode.push(body.join(Spacing));
         Ok(decode)
     }
 
@@ -265,7 +265,7 @@ impl Processor {
             let var_name = field.ident.clone();
             let var = variable_fn(i, field);
 
-            let stmt: ElementSpec = match field.modifier {
+            let stmt: Element = match field.modifier {
                 RpModifier::Optional => {
                     let var_name = var_name.clone().into();
                     let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_name)?;
@@ -273,7 +273,7 @@ impl Processor {
                     let mut check = Elements::new();
 
                     check.push(stmt!["let ", &var_name, " = ", &data, "[", &var, "];"]);
-                    check.push(ElementSpec::Spacing);
+                    check.push(Spacing);
                     check.push(js![if is_defined(stmt![&var_name]),
                                       stmt![&var_name, " = ", var_stmt, ";"],
                                       stmt![&var_name, " = null", ";"]]);
@@ -294,20 +294,20 @@ impl Processor {
         let mut body = Elements::new();
 
         if let Some(by_value) = self.decode_by_value(type_id, match_decl, &data)? {
-            body.push(by_value.join(ElementSpec::Spacing));
+            body.push(by_value.join(Spacing));
         }
 
         if let Some(by_type) = self.decode_by_type(type_id, match_decl, &data)? {
-            body.push(by_type.join(ElementSpec::Spacing));
+            body.push(by_type.join(Spacing));
         }
 
         if !assign.is_empty() {
-            body.push(assign.join(ElementSpec::Spacing));
+            body.push(assign.join(Spacing));
         }
 
         body.push(js![@return new &class.name, arguments]);
 
-        decode.push(body.join(ElementSpec::Spacing));
+        decode.push(body.join(Spacing));
 
         Ok(decode)
     }
@@ -362,7 +362,7 @@ impl Processor {
         ctor
     }
 
-    fn process_tuple(&self, type_id: &RpTypeId, body: &RpTupleBody) -> Result<ElementSpec> {
+    fn process_tuple(&self, type_id: &RpTypeId, body: &RpTupleBody) -> Result<Element> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<RpLoc<JsField>> = Vec::new();
 
@@ -406,7 +406,7 @@ impl Processor {
                           body: &RpEnumBody,
                           fields: &Vec<RpLoc<JsField>>,
                           class: &ClassSpec)
-                          -> Result<ElementSpec> {
+                          -> Result<Element> {
         // lookup serialized_as if specified.
         if let Some(ref s) = body.serialized_as {
             let mut elements = Elements::new();
@@ -437,7 +437,7 @@ impl Processor {
         Ok(elements.into())
     }
 
-    fn process_enum(&self, type_id: &RpTypeId, body: &RpEnumBody) -> Result<ElementSpec> {
+    fn process_enum(&self, type_id: &RpTypeId, body: &RpEnumBody) -> Result<Element> {
         let mut class = ClassSpec::new(&body.name);
         let mut fields: Vec<RpLoc<JsField>> = Vec::new();
 
@@ -510,7 +510,7 @@ impl Processor {
         let members_key = stmt![&class.name, ".", &self.values];
         elements.push(js![= members_key, js!([members])]);
 
-        Ok(elements.join(ElementSpec::Spacing).into())
+        Ok(elements.join(Spacing).into())
     }
 
     fn build_getters(&self, fields: &Vec<RpLoc<JsField>>) -> Result<Vec<MethodSpec>> {
@@ -527,7 +527,7 @@ impl Processor {
         Ok(result)
     }
 
-    fn process_type(&self, type_id: &RpTypeId, body: &RpTypeBody) -> Result<ElementSpec> {
+    fn process_type(&self, type_id: &RpTypeId, body: &RpTypeBody) -> Result<Element> {
         let fields = self.convert_fields(&body.fields);
 
         let mut class = ClassSpec::new(&body.name);
@@ -555,7 +555,7 @@ impl Processor {
         Ok(class.into())
     }
 
-    fn process_interface(&self, type_id: &RpTypeId, body: &RpInterfaceBody) -> Result<ElementSpec> {
+    fn process_interface(&self, type_id: &RpTypeId, body: &RpInterfaceBody) -> Result<Element> {
         let mut classes = Elements::new();
 
         let mut interface_spec = ClassSpec::new(&body.name);
@@ -607,7 +607,7 @@ impl Processor {
             classes.push(stmt![&class.name, ".TYPE", " = ", string(sub_type.name.clone()), ";"]);
         }
 
-        Ok(classes.join(ElementSpec::Spacing).into())
+        Ok(classes.join(Spacing).into())
     }
 
     fn populate_files(&self) -> Result<HashMap<&RpPackage, FileSpec>> {
@@ -700,7 +700,7 @@ impl Processor {
         }
 
         body.push(js![throw string("bad type")]);
-        decode.push(body.join(ElementSpec::Spacing));
+        decode.push(body.join(Spacing));
 
         Ok(decode)
     }

@@ -76,7 +76,7 @@ macro_rules! js {
         let mut el = Elements::new();
 
         el.push(stmt!["for (", $init, "; ", $while, "; ", $next, ") {"]);
-        $(el.push_nested($body.join(ElementSpec::Spacing));)*
+        $(el.push_nested($body.join(Spacing));)*
         el.push("}");
 
         el

@@ -190,7 +190,7 @@ impl Processor {
 
         encode_body.push(stmt!["return data"]);
 
-        encode.push(encode_body.join(ElementSpec::Spacing));
+        encode.push(encode_body.join(Spacing));
         Ok(encode)
     }
 
@@ -212,7 +212,7 @@ impl Processor {
         }
 
         encode_body.push(stmt!["return (", values.join(", "), ")"]);
-        encode.push(encode_body.join(ElementSpec::Spacing));
+        encode.push(encode_body.join(Spacing));
         Ok(encode)
     }
 
@@ -223,7 +223,7 @@ impl Processor {
         let mut encode_body = Elements::new();
 
         encode_body.push(stmt!["return self.", &field.ident]);
-        encode.push(encode_body.join(ElementSpec::Spacing));
+        encode.push(encode_body.join(Spacing));
         Ok(encode)
     }
 
@@ -256,15 +256,11 @@ impl Processor {
         decode_body.push(member_loop);
         decode_body.push(raise);
 
-        decode.push(decode_body.join(ElementSpec::Spacing));
+        decode.push(decode_body.join(Spacing));
         Ok(decode)
     }
 
-    fn optional_check(&self,
-                      var_name: &Statement,
-                      index: &Variable,
-                      stmt: &Statement)
-                      -> ElementSpec {
+    fn optional_check(&self, var_name: &Statement, index: &Variable, stmt: &Statement) -> Element {
         let mut check = Elements::new();
 
         let mut none_check = Elements::new();
@@ -280,7 +276,7 @@ impl Processor {
         none_check.push(none_check_if);
 
         check.push(stmt!["if ", index, " in data:"]);
-        check.push_nested(none_check.join(ElementSpec::Spacing));
+        check.push_nested(none_check.join(Spacing));
 
         check.push(stmt!["else:"]);
         check.push_nested(stmt![var_name, " = None"]);
@@ -306,11 +302,11 @@ impl Processor {
         let mut decode_body = Elements::new();
 
         if let Some(by_value) = self.decode_by_value(type_id, match_decl, &data)? {
-            decode_body.push(by_value.join(ElementSpec::Spacing));
+            decode_body.push(by_value.join(Spacing));
         }
 
         if let Some(by_type) = self.decode_by_type(type_id, match_decl, &data)? {
-            decode_body.push(by_type.join(ElementSpec::Spacing));
+            decode_body.push(by_type.join(Spacing));
         }
 
         let mut arguments = Statement::new();
@@ -340,7 +336,7 @@ impl Processor {
         let name = self.convert_type(pos, type_id)?;
         decode_body.push(stmt!["return ", name, "(", arguments, ")"]);
 
-        decode.push(decode_body.join(ElementSpec::Spacing));
+        decode.push(decode_body.join(Spacing));
 
         Ok(decode)
     }
@@ -800,7 +796,7 @@ impl Processor {
                                &type_field,
                                ")"]);
 
-        decode.push(decode_body.join(ElementSpec::Spacing));
+        decode.push(decode_body.join(Spacing));
 
         Ok(decode)
     }

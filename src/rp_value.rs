@@ -1,4 +1,3 @@
-
 use super::into_model::IntoModel;
 use super::rp_loc::{RpLoc, RpPos};
 
