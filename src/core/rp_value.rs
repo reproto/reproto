@@ -3,6 +3,7 @@ use super::errors::*;
 use super::into_model::IntoModel;
 use super::rp_instance::RpInstance;
 use super::rp_loc::{RpLoc, RpPos};
+use super::rp_match_kind::RpMatchKind;
 use super::rp_name::RpName;
 use super::rp_type::RpType;
 
@@ -16,6 +17,21 @@ pub enum RpValue {
     Instance(RpLoc<RpInstance>),
     Constant(RpLoc<RpName>),
     Array(Vec<RpLoc<RpValue>>),
+}
+
+impl RpValue {
+    pub fn as_match_kind(&self) -> RpMatchKind {
+        match *self {
+            RpValue::String(_) => RpMatchKind::String,
+            RpValue::Number(_) => RpMatchKind::Number,
+            RpValue::Boolean(_) => RpMatchKind::Boolean,
+            RpValue::Identifier(_) => RpMatchKind::Any,
+            RpValue::Type(_) => RpMatchKind::Any,
+            RpValue::Instance(_) => RpMatchKind::Object,
+            RpValue::Constant(_) => RpMatchKind::Any,
+            RpValue::Array(_) => RpMatchKind::Array,
+        }
+    }
 }
 
 impl ::std::fmt::Display for RpValue {

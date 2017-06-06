@@ -1,8 +1,10 @@
 use codeviz::java::*;
 use super::models::*;
-use super::processor::ProcessorOptions;
+use super::processor::{Processor, ProcessorOptions};
 
 pub struct ClassAdded<'a> {
+    pub processor: &'a Processor,
+    pub type_id: &'a RpTypeId,
     pub fields: &'a Vec<JavaField>,
     pub class_type: &'a ClassType,
     pub match_decl: &'a RpMatchDecl,

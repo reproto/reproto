@@ -869,21 +869,28 @@ impl MatchDecode for Processor {
         Elements::new()
     }
 
-    fn match_value(&self, data: &Statement, value: Statement, result: Statement) -> Elements {
+    fn match_value(&self,
+                   data: &Statement,
+                   _value: &RpValue,
+                   value_stmt: Statement,
+                   result: Statement)
+                   -> Result<Elements> {
         let mut value_body = Elements::new();
-        value_body.push(stmt!["if (", data, " == ", &value, ") {"]);
-        value_body.push_nested(stmt!["return ", &result]);
+        value_body.push(stmt!["if (", data, " == ", value_stmt, ") {"]);
+        value_body.push_nested(stmt!["return ", result]);
         value_body.push("}");
-        value_body
+        Ok(value_body)
     }
 
     fn match_type(&self,
+                  _type_id: &RpTypeId,
                   data: &Statement,
                   kind: &RpMatchKind,
                   variable: &str,
                   decode: Statement,
-                  result: Statement)
-                  -> Elements {
+                  result: Statement,
+                  _value: &RpByTypeValue)
+                  -> Result<Elements> {
         let check = match *kind {
             RpMatchKind::Any => stmt!["true"],
             RpMatchKind::Object => stmt![data, ".constructor === Object"],
@@ -900,6 +907,6 @@ impl MatchDecode for Processor {
         value_body.push_nested(stmt!["return ", &result, ";"]);
         value_body.push("}");
 
-        value_body
+        Ok(value_body)
     }
 }

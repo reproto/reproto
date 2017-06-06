@@ -1,7 +1,13 @@
 /// Module that adds fasterxml annotations to generated classes.
 use codeviz::java::*;
+use super::container::Container;
+use super::converter::Converter;
+use super::decode::Decode;
+use super::match_decode::MatchDecode;
 use super::models::*;
 use super::processor::*;
+use super::super::environment::Environment;
+use super::value_builder::ValueBuilder;
 
 pub struct Module {
     override_: ClassType,
@@ -109,10 +115,12 @@ impl Module {
         Ok(serializer)
     }
 
-    fn deserialize_method_for_type(&self,
-                                   ty: &Type,
-                                   parser: &ArgumentSpec)
-                                   -> Result<(Option<(Statement, &str)>, Statement)> {
+    fn deserialize_method_for_type<A>(&self,
+                                      ty: &Type,
+                                      parser: &A)
+                                      -> Result<(Option<(Statement, &str)>, Statement)>
+        where A: Into<Variable> + Clone
+    {
         match *ty {
             Type::Primitive(ref primitive) => {
                 let test = stmt!["!", parser, ".nextToken().isNumeric()"];
@@ -138,7 +146,7 @@ impl Module {
             }
             Type::Class(ref class) => {
                 if *class == self.string {
-                    let test = stmt![&parser, ".nextToken() != ", &self.token, ".VALUE_STRING"];
+                    let test = stmt![parser, ".nextToken() != ", &self.token, ".VALUE_STRING"];
                     let token = Some((test, "VALUE_STRING"));
                     return Ok((token, stmt![parser, ".getText()"]));
                 }
@@ -313,9 +321,11 @@ impl Module {
     /// * `model` - The model to return when falling back to default deserialization.
     /// * `class_type` - The class to deserialize to.
     fn match_deserializer(&self,
+                          type_id: &RpTypeId,
                           match_decl: &RpMatchDecl,
                           model: &ClassSpec,
-                          class_type: &ClassType)
+                          class_type: &ClassType,
+                          processor: &Processor)
                           -> Result<ClassSpec> {
         // TODO: mostly common code for setting up a deserializer with tuple_deserializer.
         let mut deserializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
@@ -335,6 +345,21 @@ impl Module {
         deserialize.push_annotation(&self.override_);
         deserialize.returns(&class_type);
 
+        let match_decode = FasterXmlMatchDecode {
+            processor: processor,
+            module: self,
+        };
+
+        let p = stmt![&parser];
+
+        if let Some(by_value) = match_decode.decode_by_value(type_id, match_decl, &p)? {
+            deserialize.push(by_value.join(Spacing));
+        }
+
+        if let Some(by_type) = match_decode.decode_by_type(type_id, match_decl, &p)? {
+            deserialize.push(by_type.join(Spacing));
+        }
+
         deserialize.push(self.deserialize_using_model(model, class_type, &parser)?);
 
         deserializer.push(deserialize);
@@ -346,7 +371,11 @@ impl Module {
         let mut model = self.build_model(event.fields);
         self.add_class_annotations(&mut model, &event.fields)?;
 
-        let deserializer = self.match_deserializer(&event.match_decl, &model, &event.class_type)?;
+        let deserializer = self.match_deserializer(&event.type_id,
+                                &event.match_decl,
+                                &model,
+                                &event.class_type,
+                                &event.processor)?;
 
         let deserializer_type =
             Type::class(&event.class_type.package,
@@ -453,5 +482,182 @@ impl Listeners for Module {
         }
 
         Ok(())
+    }
+}
+
+impl Container for Elements {
+    fn push(&mut self, other: &Elements) {
+        self.push(other)
+    }
+}
+
+struct FasterXmlMatchDecode<'a> {
+    processor: &'a Processor,
+    module: &'a Module,
+}
+
+impl<'a> FasterXmlMatchDecode<'a> {
+    fn type_check(&self, data: &Statement, kind: &RpMatchKind) -> Statement {
+        match *kind {
+            RpMatchKind::Any => stmt!["true"],
+            RpMatchKind::Object => {
+                stmt![stmt![data, ".getCurrentToken() == ", &self.module.token, ".START_OBJECT"]]
+            }
+            RpMatchKind::Array => {
+                stmt![data, ".getCurrentToken() == ", &self.module.token, ".START_ARRAY"]
+            }
+            RpMatchKind::String => {
+                stmt![data, ".getCurrentToken() == ", &self.module.token, ".VALUE_STRING"]
+            }
+            RpMatchKind::Boolean => {
+                stmt![data, ".getCurrentToken() == ", &self.module.token, ".VALUE_BOOLEAN"]
+            }
+            RpMatchKind::Number => stmt![data, ".getCurrentToken().isNumeric()"],
+        }
+    }
+
+    fn value_check(&self,
+                   data: &Statement,
+                   kind: &RpMatchKind,
+                   other: &Statement)
+                   -> Result<Statement> {
+        match *kind {
+            RpMatchKind::String => return Ok(stmt![data, ".getText() == ", &other]),
+            RpMatchKind::Boolean => return Ok(stmt![data, ".getBooleanValue() == ", &other]),
+            RpMatchKind::Number => return Ok(stmt![data, ".getLongValue() == ", &other]),
+            _ => {}
+        }
+
+        Err("not supported".into())
+    }
+}
+
+impl<'a> Decode for FasterXmlMatchDecode<'a> {
+    type Stmt = Statement;
+
+    fn decode(&self,
+              type_id: &RpTypeId,
+              pos: &RpPos,
+              ty: &RpType,
+              input: &Self::Stmt)
+              -> Result<Self::Stmt> {
+        let ty = self.processor.into_java_type(pos, &type_id.package, ty)?;
+        let (_, reader) = self.module.deserialize_method_for_type(&ty, input)?;
+        Ok(reader)
+    }
+}
+
+impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
+    type Elements = Elements;
+
+    fn new_elements(&self) -> Elements {
+        Elements::new()
+    }
+
+    fn match_value(&self,
+                   data: &Statement,
+                   value: &RpValue,
+                   value_stmt: Statement,
+                   result: Statement)
+                   -> Result<Elements> {
+        let mut value_body = Elements::new();
+        let kind = value.as_match_kind();
+        let check = self.type_check(data, &kind);
+        let compare_value = self.value_check(data, &kind, &value_stmt)?;
+
+        value_body.push(stmt!["if (", check, " && ", compare_value, ") {"]);
+        value_body.push_nested(stmt!["return ", result]);
+        value_body.push("}");
+
+        Ok(value_body)
+    }
+
+    fn match_type(&self,
+                  type_id: &RpTypeId,
+                  data: &Statement,
+                  kind: &RpMatchKind,
+                  variable: &str,
+                  decode: Statement,
+                  result: Statement,
+                  value: &RpByTypeValue)
+                  -> Result<Elements> {
+        let pos = &value.1.pos;
+        let ty = &value.0.ty;
+
+        let variable_ty = self.processor.into_java_type(pos, &type_id.package, ty)?;
+
+        let mut value_body = Elements::new();
+        let check = self.type_check(data, kind);
+
+        value_body.push(stmt!["if (", check, ") {"]);
+        value_body.push_nested(stmt!["final ", &variable_ty, " ", &variable, " = ", decode]);
+        value_body.push_nested(stmt!["return ", &result, ";"]);
+        value_body.push("}");
+
+        Ok(value_body)
+    }
+}
+
+impl<'a> Converter for FasterXmlMatchDecode<'a> {
+    type Type = Type;
+
+    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
+        self.processor.convert_type(pos, type_id)
+    }
+}
+
+impl<'a> ValueBuilder for FasterXmlMatchDecode<'a> {
+    type Stmt = Statement;
+
+    fn env(&self) -> &Environment {
+        self.processor.env()
+    }
+
+    fn identifier(&self, identifier: &str) -> Result<Self::Stmt> {
+        self.processor.identifier(identifier)
+    }
+
+    fn optional_empty(&self) -> Result<Self::Stmt> {
+        self.processor.optional_empty()
+    }
+
+    fn constant(&self, ty: Self::Type) -> Result<Self::Stmt> {
+        self.processor.constant(ty)
+    }
+
+    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Stmt>) -> Result<Self::Stmt> {
+        self.processor.instance(ty, arguments)
+    }
+
+    fn number(&self, number: &f64) -> Result<Self::Stmt> {
+        self.processor.number(number)
+    }
+
+    fn signed(&self, number: &f64, size: &Option<usize>) -> Result<Self::Stmt> {
+        self.processor.signed(number, size)
+    }
+
+    fn unsigned(&self, number: &f64, size: &Option<usize>) -> Result<Self::Stmt> {
+        self.processor.unsigned(number, size)
+    }
+
+    fn float(&self, number: &f64) -> Result<Self::Stmt> {
+        self.processor.float(number)
+    }
+
+    fn double(&self, number: &f64) -> Result<Self::Stmt> {
+        self.processor.double(number)
+    }
+
+    fn boolean(&self, boolean: &bool) -> Result<Self::Stmt> {
+        self.processor.boolean(boolean)
+    }
+
+    fn string(&self, string: &str) -> Result<Self::Stmt> {
+        self.processor.string(string)
+    }
+
+    fn array(&self, values: Vec<Self::Stmt>) -> Result<Self::Stmt> {
+        self.processor.array(values)
     }
 }

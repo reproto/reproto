@@ -150,7 +150,7 @@ impl Processor {
     }
 
     /// Convert the given type to a java type.
-    fn into_java_type(&self, pos: &RpPos, pkg: &RpPackage, ty: &RpType) -> Result<Type> {
+    pub fn into_java_type(&self, pos: &RpPos, pkg: &RpPackage, ty: &RpType) -> Result<Type> {
         let ty = match *ty {
             RpType::String => self.string.clone().into(),
             RpType::Signed(ref size) |
@@ -649,11 +649,11 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_type(&self, pkg: &RpPackage, body: &RpTypeBody) -> Result<FileSpec> {
-        let class_type = Type::class(&self.java_package_name(pkg), &body.name);
+    fn process_type(&self, type_id: &RpTypeId, body: &RpTypeBody) -> Result<FileSpec> {
+        let class_type = Type::class(&self.java_package_name(&type_id.package), &body.name);
 
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
-        let fields = self.convert_fields(pkg, &body.fields)?;
+        let fields = self.convert_fields(&type_id.package, &body.fields)?;
 
         for field in &fields {
             spec.push_field(&field.java_spec);
@@ -677,23 +677,28 @@ impl Processor {
 
         self.listeners
             .class_added(&mut ClassAdded {
+                processor: self,
+                type_id: type_id,
                 fields: &fields,
                 class_type: &class_type,
                 match_decl: &body.match_decl,
                 spec: &mut spec,
             })?;
 
-        let mut file_spec = self.new_file_spec(pkg);
+        let mut file_spec = self.new_file_spec(&type_id.package);
         file_spec.push(&spec);
 
         Ok(file_spec)
     }
 
-    fn process_interface(&self, pkg: &RpPackage, interface: &RpInterfaceBody) -> Result<FileSpec> {
-        let parent_type = Type::class(&self.java_package_name(pkg), &interface.name);
+    fn process_interface(&self,
+                         type_id: &RpTypeId,
+                         interface: &RpInterfaceBody)
+                         -> Result<FileSpec> {
+        let parent_type = Type::class(&self.java_package_name(&type_id.package), &interface.name);
 
         let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
-        let interface_fields = self.convert_fields(pkg, &interface.fields)?;
+        let interface_fields = self.convert_fields(&type_id.package, &interface.fields)?;
 
         for code in interface.codes.for_context(JAVA_CONTEXT) {
             interface_spec.push(code.inner.lines);
@@ -711,7 +716,7 @@ impl Processor {
             let mods = mods![Modifier::Public, Modifier::Static];
             let mut class = ClassSpec::new(mods, &sub_type.name);
             let mut fields = interface_fields.clone();
-            fields.extend(self.convert_fields(pkg, &sub_type.fields)?);
+            fields.extend(self.convert_fields(&type_id.package, &sub_type.fields)?);
 
             for code in sub_type.codes.for_context(JAVA_CONTEXT) {
                 class.push(code.inner.lines);
@@ -729,7 +734,7 @@ impl Processor {
             }
 
             let mut fields = interface_fields.clone();
-            fields.extend(self.convert_fields(pkg, &sub_type.inner.fields)?);
+            fields.extend(self.convert_fields(&type_id.package, &sub_type.inner.fields)?);
 
             for field in &fields {
                 class.push_field(&field.java_spec);
@@ -749,6 +754,8 @@ impl Processor {
 
             self.listeners
                 .class_added(&mut ClassAdded {
+                    processor: self,
+                    type_id: type_id,
                     fields: &fields,
                     class_type: &class_type,
                     match_decl: &sub_type.match_decl,
@@ -766,7 +773,7 @@ impl Processor {
             interface_spec.push(&class);
         }
 
-        let mut file_spec = self.new_file_spec(pkg);
+        let mut file_spec = self.new_file_spec(&type_id.package);
 
         self.listeners
             .interface_added(&mut InterfaceAdded {
@@ -821,7 +828,7 @@ impl Processor {
     }
 
     fn process_files<F>(&self, mut consumer: F) -> Result<()>
-        where F: FnMut(PathBuf, &RpPackage, &RpDecl) -> Result<()>
+        where F: FnMut(PathBuf, &RpTypeId, &RpDecl) -> Result<()>
     {
         let root_dir = &self.options.parent.out_path;
 
@@ -833,25 +840,25 @@ impl Processor {
                 .fold(root_dir.clone(), |current, next| current.join(next));
 
             let full_path = out_dir.join(format!("{}.java", decl.name()));
-            consumer(full_path, &type_id.package, decl)?;
+            consumer(full_path, type_id, decl)?;
         }
 
         Ok(())
     }
 
-    fn build_file_spec(&self, pkg: &RpPackage, decl: &RpDecl) -> Result<FileSpec> {
+    fn build_file_spec(&self, type_id: &RpTypeId, decl: &RpDecl) -> Result<FileSpec> {
         match *decl {
-            RpDecl::Interface(ref interface) => self.process_interface(pkg, interface),
-            RpDecl::Type(ref ty) => self.process_type(pkg, ty),
-            RpDecl::Tuple(ref ty) => self.process_tuple(pkg, ty),
-            RpDecl::Enum(ref ty) => self.process_enum(pkg, ty),
+            RpDecl::Interface(ref interface) => self.process_interface(type_id, interface),
+            RpDecl::Type(ref ty) => self.process_type(type_id, ty),
+            RpDecl::Tuple(ref ty) => self.process_tuple(&type_id.package, ty),
+            RpDecl::Enum(ref ty) => self.process_enum(&type_id.package, ty),
         }
     }
 }
 
 impl Backend for Processor {
     fn process(&self) -> Result<()> {
-        self.process_files(|full_path, pkg, decl| {
+        self.process_files(|full_path, type_id, decl| {
             debug!("+class: {}", full_path.display());
 
             if let Some(out_dir) = full_path.parent() {
@@ -861,7 +868,7 @@ impl Backend for Processor {
                 }
             }
 
-            let file_spec = self.build_file_spec(pkg, decl)?;
+            let file_spec = self.build_file_spec(type_id, decl)?;
 
             let mut out = String::new();
             file_spec.format(&mut out)?;
@@ -877,8 +884,8 @@ impl Backend for Processor {
     fn verify(&self) -> Result<Vec<Error>> {
         let mut errors = Vec::new();
 
-        self.process_files(|_, pkg, decl| {
-                match self.build_file_spec(pkg, decl) {
+        self.process_files(|_, type_id, decl| {
+                match self.build_file_spec(type_id, decl) {
                     Err(e) => errors.push(e),
                     _ => {}
                 };
@@ -925,7 +932,7 @@ impl ValueBuilder for Processor {
     }
 
     fn optional_empty(&self) -> Result<Self::Stmt> {
-        Ok(stmt!["None"])
+        Ok(stmt![&self.optional, ".empty()"])
     }
 
     fn constant(&self, ty: Self::Type) -> Result<Self::Stmt> {

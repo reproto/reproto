@@ -39,4 +39,4 @@ js:
 
 java:
 	@echo "Building Java"
-	${TOOL} compile -b java ${java_args} -o ${JAVA_OUT} --path ${PROTO_PATH} --package ${TARGET}
+	@${TOOL} compile -b java ${java_args} -o ${JAVA_OUT} --path ${PROTO_PATH} --package ${TARGET}

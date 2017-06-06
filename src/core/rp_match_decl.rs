@@ -7,10 +7,12 @@ use super::rp_match_variable::RpMatchVariable;
 use super::rp_type::RpType;
 use super::rp_value::RpValue;
 
+pub type RpByTypeValue = (RpLoc<RpMatchVariable>, RpLoc<RpValue>);
+
 #[derive(Debug, Clone)]
 pub struct RpMatchDecl {
     pub by_value: Vec<(RpLoc<RpValue>, RpLoc<RpValue>)>,
-    pub by_type: Vec<(RpMatchKind, (RpLoc<RpMatchVariable>, RpLoc<RpValue>))>,
+    pub by_type: Vec<(RpMatchKind, RpByTypeValue)>,
 }
 
 impl RpMatchDecl {

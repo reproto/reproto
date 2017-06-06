@@ -2,10 +2,11 @@ package heroic.v1;
 
 import com.google.common.collect.ImmutableList;
 import java.util.Objects;
+import java.util.Optional;
 
 public enum ComplexEnum {
-  FIRST(new Sampling(None, 42, None), SI.NANO, new Samples.Points("points", ImmutableList.of())),
-  SECOND(new Sampling(None, 9, None), SI.MILLI, new Samples.Points("b", ImmutableList.of()));
+  FIRST(new Sampling(Optional.empty(), 42, Optional.empty()), SI.NANO, new Samples.Points("points", ImmutableList.of())),
+  SECOND(new Sampling(Optional.empty(), 9, Optional.empty()), SI.MILLI, new Samples.Points("b", ImmutableList.of()));
 
   private final Sampling si;
   private final SI other;
