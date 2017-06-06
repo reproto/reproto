@@ -5,6 +5,7 @@ use super::processor::ProcessorOptions;
 pub struct ClassAdded<'a> {
     pub fields: &'a Vec<JavaField>,
     pub class_type: &'a ClassType,
+    pub match_decl: &'a RpMatchDecl,
     pub spec: &'a mut ClassSpec,
 }
 

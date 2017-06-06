@@ -210,6 +210,10 @@ class Query:
 
   @staticmethod
   def decode(data):
+    if isinstance(data, basestring):
+      query = data
+      return Query(query, None, None, None)
+
     if "query" in data:
       f_query = data["query"]
 

@@ -1,9 +1,14 @@
 package heroic.v1;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+@JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="type")
+@JsonSubTypes({@JsonSubTypes.Type(name="events", value=Samples.Events.class), @JsonSubTypes.Type(name="points", value=Samples.Points.class)})
 public interface Samples {
   public String getName();
 
@@ -11,7 +16,11 @@ public interface Samples {
     private final String name;
     private final List<Event> data;
 
-    public Events(final String name, final List<Event> data) {
+    @JsonCreator
+    public Events(
+      @JsonProperty("name") final String name, 
+      @JsonProperty("data") final List<Event> data
+    ) {
       Objects.requireNonNull(name, "name");
       this.name = name;
       Objects.requireNonNull(data, "data");
@@ -106,7 +115,11 @@ public interface Samples {
     private final String name;
     private final List<Point> data;
 
-    public Points(final String name, final List<Point> data) {
+    @JsonCreator
+    public Points(
+      @JsonProperty("name") final String name, 
+      @JsonProperty("data") final List<Point> data
+    ) {
       Objects.requireNonNull(name, "name");
       this.name = name;
       Objects.requireNonNull(data, "data");

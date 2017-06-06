@@ -69,6 +69,10 @@ interface Samples {
 }
 
 type Query {
+  match {
+    query: string => Query(query: query);
+  }
+
   query?: string;
   aggregation?: Aggregation;
   date?: c::Date;

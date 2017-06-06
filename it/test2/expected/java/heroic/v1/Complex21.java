@@ -8,7 +8,9 @@ public enum Complex21 {
 
   private final Point point;
 
-  private Complex21(final Point point) {
+  private Complex21(
+    final Point point
+  ) {
     Objects.requireNonNull(point, "point");
     this.point = point;
   }

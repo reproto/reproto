@@ -1,13 +1,22 @@
 package heroic.v1;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.Optional;
 
+@JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="type")
+@JsonSubTypes({@JsonSubTypes.Type(name="absolute", value=Duration.Absolute.class)})
 public interface Duration {
   public static class Absolute implements Duration {
     private final long start;
     private final long end;
 
-    public Absolute(final long start, final long end) {
+    @JsonCreator
+    public Absolute(
+      @JsonProperty("start") final long start, 
+      @JsonProperty("end") final long end
+    ) {
       this.start = start;
       this.end = end;
     }

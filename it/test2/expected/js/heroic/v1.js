@@ -278,6 +278,11 @@ class Query {
   }
 
   static decode(data) {
+    if (typeof data === "string") {
+      query = data
+      return new Query(query, null, null, null);
+    }
+
     let query = data["query"];
 
     if (query !== null && query !== undefined) {
@@ -576,8 +581,8 @@ class ComplexEnum {
   }
 }
 
-ComplexEnum.FIRST = new ComplexEnum(0, "FIRST", new Sampling(None, 42, None), SI.NANO, new Samples.Points("points", []));
-ComplexEnum.SECOND = new ComplexEnum(1, "SECOND", new Sampling(None, 9, None), SI.MILLI, new Samples.Points("b", []));
+ComplexEnum.FIRST = new ComplexEnum(0, "FIRST", new Sampling(null, 42, null), SI.NANO, new Samples.Points("points", []));
+ComplexEnum.SECOND = new ComplexEnum(1, "SECOND", new Sampling(null, 9, null), SI.MILLI, new Samples.Points("b", []));
 
 ComplexEnum.values = [ComplexEnum.FIRST, ComplexEnum.SECOND];
 

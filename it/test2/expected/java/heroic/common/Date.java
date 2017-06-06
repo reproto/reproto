@@ -1,11 +1,15 @@
 package heroic.common;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import java.util.Optional;
 
 public class Date {
   private final long field;
 
-  public Date(final long field) {
+  @JsonCreator
+  public Date(
+    @JsonProperty("field") final long field
+  ) {
     this.field = field;
   }
 

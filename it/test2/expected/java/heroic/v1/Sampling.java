@@ -1,5 +1,6 @@
 package heroic.v1;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -8,7 +9,12 @@ public class Sampling {
   private final int size;
   private final Optional<Integer> extent;
 
-  public Sampling(final Optional<TimeUnit> unit, final int size, final Optional<Integer> extent) {
+  @JsonCreator
+  public Sampling(
+    @JsonProperty("unit") final Optional<TimeUnit> unit, 
+    @JsonProperty("size") final int size, 
+    @JsonProperty("extent") final Optional<Integer> extent
+  ) {
     Objects.requireNonNull(unit, "unit");
     this.unit = unit;
     this.size = size;

@@ -1,16 +1,26 @@
 package heroic.v1;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+@JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="type")
+@JsonSubTypes({@JsonSubTypes.Type(name="average", value=Aggregation.Average.class), @JsonSubTypes.Type(name="chain", value=Aggregation.Chain.class), @JsonSubTypes.Type(name="sum", value=Aggregation.Sum.class)})
 public interface Aggregation {
   public static class Average implements Aggregation {
     private final Optional<Sampling> sampling;
     private final Optional<Duration> size;
     private final Optional<Duration> extent;
 
-    public Average(final Optional<Sampling> sampling, final Optional<Duration> size, final Optional<Duration> extent) {
+    @JsonCreator
+    public Average(
+      @JsonProperty("sampling") final Optional<Sampling> sampling, 
+      @JsonProperty("size") final Optional<Duration> size, 
+      @JsonProperty("extent") final Optional<Duration> extent
+    ) {
       Objects.requireNonNull(sampling, "sampling");
       this.sampling = sampling;
       Objects.requireNonNull(size, "size");
@@ -120,7 +130,10 @@ public interface Aggregation {
   public static class Chain implements Aggregation {
     private final List<Aggregation> chain;
 
-    public Chain(final List<Aggregation> chain) {
+    @JsonCreator
+    public Chain(
+      @JsonProperty("chain") final List<Aggregation> chain
+    ) {
       Objects.requireNonNull(chain, "chain");
       this.chain = chain;
     }
@@ -190,7 +203,12 @@ public interface Aggregation {
     private final Optional<Duration> size;
     private final Optional<Duration> extent;
 
-    public Sum(final Optional<Sampling> sampling, final Optional<Duration> size, final Optional<Duration> extent) {
+    @JsonCreator
+    public Sum(
+      @JsonProperty("sampling") final Optional<Sampling> sampling, 
+      @JsonProperty("size") final Optional<Duration> size, 
+      @JsonProperty("extent") final Optional<Duration> extent
+    ) {
       Objects.requireNonNull(sampling, "sampling");
       this.sampling = sampling;
       Objects.requireNonNull(size, "size");

@@ -750,7 +750,7 @@ impl ValueBuilder for Processor {
     }
 
     fn optional_empty(&self) -> Result<Self::Stmt> {
-        Ok(stmt!["None"])
+        Ok(stmt!["null"])
     }
 
     fn constant(&self, ty: Self::Type) -> Result<Self::Stmt> {

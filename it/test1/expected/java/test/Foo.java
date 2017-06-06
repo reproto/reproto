@@ -6,7 +6,9 @@ import java.util.Optional;
 public class Foo {
   private final String field;
 
-  public Foo(final String field) {
+  public Foo(
+    final String field
+  ) {
     Objects.requireNonNull(field, "field");
     this.field = field;
   }

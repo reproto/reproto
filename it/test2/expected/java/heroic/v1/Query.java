@@ -11,7 +11,9 @@ public class Query {
   private final Optional<Date> date;
   private final Optional<Map<String, String>> parameters;
 
-  public Query(final Optional<String> query, final Optional<Aggregation> aggregation, final Optional<Date> date, final Optional<Map<String, String>> parameters) {
+  public Query(
+    final Optional<String> query, final Optional<Aggregation> aggregation, final Optional<Date> date, final Optional<Map<String, String>> parameters
+  ) {
     Objects.requireNonNull(query, "query");
     this.query = query;
     Objects.requireNonNull(aggregation, "aggregation");

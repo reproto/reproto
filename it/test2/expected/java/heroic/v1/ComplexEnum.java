@@ -11,7 +11,9 @@ public enum ComplexEnum {
   private final SI other;
   private final Samples samples;
 
-  private ComplexEnum(final Sampling si, final SI other, final Samples samples) {
+  private ComplexEnum(
+    final Sampling si, final SI other, final Samples samples
+  ) {
     Objects.requireNonNull(si, "si");
     this.si = si;
     Objects.requireNonNull(other, "other");

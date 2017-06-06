@@ -1,10 +1,25 @@
 package heroic.v1;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import java.io.IOException;
+
+@JsonSerialize(using = Point.Serializer.class)
+@JsonDeserialize(using = Point.Deserializer.class)
 public class Point {
   private final long timestamp;
   private final double value;
 
-  public Point(final long timestamp, final double value) {
+  public Point(
+    final long timestamp, final double value
+  ) {
     this.timestamp = timestamp;
     this.value = value;
   }
@@ -63,5 +78,42 @@ public class Point {
     b.append(")");
 
     return b.toString();
+  }
+
+  public static class Serializer extends JsonSerializer<Point> {
+    @Override
+    public void serialize(final Point value, final JsonGenerator jgen, final SerializerProvider provider) throws IOException {
+      jgen.writeStartArray();
+      jgen.writeNumber(value.timestamp);
+      jgen.writeNumber(value.value);
+      jgen.writeEndArray();
+    }
+  }
+
+  public static class Deserializer extends JsonDeserializer<Point> {
+    @Override
+    public Point deserialize(final JsonParser parser, final DeserializationContext ctxt) throws IOException {
+      if (parser.getCurrentToken() != JsonToken.START_ARRAY) {
+        throw ctxt.wrongTokenException(parser, JsonToken.START_ARRAY, null);
+      }
+
+      if (!parser.nextToken().isNumeric()) {
+        throw ctxt.wrongTokenException(parser, JsonToken.VALUE_NUMBER_INT, null);
+      }
+
+      final long v_timestamp = parser.getLongValue();
+
+      if (!parser.nextToken().isNumeric()) {
+        throw ctxt.wrongTokenException(parser, JsonToken.VALUE_NUMBER_FLOAT, null);
+      }
+
+      final double v_value = parser.getDoubleValue();
+
+      if (parser.nextToken() != JsonToken.END_ARRAY) {
+        throw ctxt.wrongTokenException(parser, JsonToken.END_ARRAY, null);
+      }
+
+      return new Point(v_timestamp, v_value);
+    }
   }
 }

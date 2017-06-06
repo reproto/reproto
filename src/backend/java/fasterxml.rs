@@ -231,29 +231,26 @@ impl Module {
         deserializer.push(deserialize);
         Ok(deserializer)
     }
-}
 
-impl Listeners for Module {
-    fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
-        if event.spec.constructors.len() != 1 {
+    fn add_class_annotations(&self, spec: &mut ClassSpec, fields: &Vec<JavaField>) -> Result<()> {
+        if spec.constructors.len() != 1 {
             return Err("Expected exactly one constructor".into());
         }
 
-        let constructor = &mut event.spec.constructors[0];
+        let constructor = &mut spec.constructors[0];
 
-        if constructor.arguments.len() != event.fields.len() {
-            return Err(format!("{:?}: the number of constructor arguments ({}) did not match \
+        if constructor.arguments.len() != fields.len() {
+            return Err(format!("the number of constructor arguments ({}) did not match \
                                 the number of fields ({})",
-                               event.class_type,
                                constructor.arguments.len(),
-                               event.fields.len())
+                               fields.len())
                 .into());
         }
 
         let creator_annotation = AnnotationSpec::new(&self.creator);
         constructor.push_annotation(&creator_annotation);
 
-        let zipped = constructor.arguments.iter_mut().zip(event.fields.iter());
+        let zipped = constructor.arguments.iter_mut().zip(fields.iter());
 
         for (argument, field) in zipped {
             let mut property = AnnotationSpec::new(&self.property);
@@ -261,6 +258,32 @@ impl Listeners for Module {
             argument.push_annotation(&property);
         }
 
+        Ok(())
+    }
+
+    fn handle_match_decl(&self, event: &mut ClassAdded) -> Result<()> {
+        // Add inner model used specifically for regular serialization.
+
+        /* let mut model = event.spec.clone();
+        model.name = String::from("Model");
+        model.modifiers.insert(Modifier::Static);
+
+        self.add_class_annotations(&mut model, &event.fields)?;
+
+        event.spec.push(model);*/
+
+        Err("match declaration not supported yet".into())
+    }
+}
+
+impl Listeners for Module {
+    fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
+        if !event.match_decl.is_empty() {
+            // self.handle_match_decl(event)?;
+            return Ok(());
+        }
+
+        self.add_class_annotations(&mut event.spec, &event.fields)?;
         Ok(())
     }
 
