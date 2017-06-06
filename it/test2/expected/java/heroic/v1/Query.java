@@ -1,10 +1,17 @@
 package heroic.v1;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import heroic.common.Date;
+import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+@JsonDeserialize(using = Query.Deserializer.class)
 public class Query {
   private final Optional<String> query;
   private final Optional<Aggregation> aggregation;
@@ -137,6 +144,34 @@ public class Query {
       final Optional<Map<String, String>> parameters = this.parameters;
 
       return new Query(query, aggregation, date, parameters);
+    }
+  }
+
+  public static class Model {
+    private final Optional<String> query;
+    private final Optional<Aggregation> aggregation;
+    private final Optional<Date> date;
+    private final Optional<Map<String, String>> parameters;
+
+    @JsonCreator
+    public Model(
+      @JsonProperty("query") final Optional<String> query, 
+      @JsonProperty("aggregation") final Optional<Aggregation> aggregation, 
+      @JsonProperty("date") final Optional<Date> date, 
+      @JsonProperty("parameters") final Optional<Map<String, String>> parameters
+    ) {
+      this.query = query;
+      this.aggregation = aggregation;
+      this.date = date;
+      this.parameters = parameters;
+    }
+  }
+
+  public static class Deserializer extends JsonDeserializer<Query> {
+    @Override
+    public Query deserialize(final JsonParser parser, final DeserializationContext ctxt) throws IOException {
+      final Model m = parser.readValueAs(Model.class);
+      return new Query(m.query, m.aggregation, m.date, m.parameters)
     }
   }
 }

@@ -261,25 +261,112 @@ impl Module {
         Ok(())
     }
 
+    fn build_model(&self, fields: &Vec<JavaField>) -> ClassSpec {
+        let mut model = ClassSpec::new(mods![Modifier::Public, Modifier::Static], "Model");
+
+        for field in fields {
+            model.push_field(&field.java_spec);
+        }
+
+        let mut constructor = ConstructorSpec::new(mods![Modifier::Public]);
+
+        for field in fields {
+            let argument =
+                ArgumentSpec::new(mods![Modifier::Final], &field.java_spec.ty, &field.ident);
+            constructor.push_argument(&argument);
+            constructor.push(stmt!["this.", &field.ident, " = ", argument, ";"]);
+        }
+
+        model.push_constructor(constructor);
+
+        model
+    }
+
+    /// Build the fallback method used when matching to deserialize using a companion model.
+    fn deserialize_using_model(&self,
+                               model: &ClassSpec,
+                               class_type: &ClassType,
+                               parser: &ArgumentSpec)
+                               -> Result<Elements> {
+        let mut elements = Elements::new();
+
+        // fallback to deserializing model and assigning fields from it.
+        let model_name = stmt!["m"];
+
+        let var_decl = stmt!["final ", &model.name, " ", &model_name];
+        elements.push(stmt![var_decl, " = ", parser, ".readValueAs(", &model.name, ".class);"]);
+
+        let mut arguments = Statement::new();
+
+        for field in &model.fields {
+            arguments.push(stmt![&model_name, ".", &field.name]);
+        }
+
+        elements.push(stmt!["return new ", class_type, "(", arguments.join(", "), ")"]);
+
+        Ok(elements)
+    }
+
+    /// Build a match deserializer.
+    ///
+    /// * `match_decl` - The declaration to to use when deserializing.
+    /// * `model` - The model to return when falling back to default deserialization.
+    /// * `class_type` - The class to deserialize to.
+    fn match_deserializer(&self,
+                          match_decl: &RpMatchDecl,
+                          model: &ClassSpec,
+                          class_type: &ClassType)
+                          -> Result<ClassSpec> {
+        // TODO: mostly common code for setting up a deserializer with tuple_deserializer.
+        let mut deserializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
+                                              "Deserializer");
+
+        deserializer.extends(self.deserializer.with_arguments(vec![&class_type]));
+
+        let parser = ArgumentSpec::new(mods![Modifier::Final], &self.parser, "parser");
+        let ctxt = ArgumentSpec::new(mods![Modifier::Final],
+                                     &self.deserialization_context,
+                                     "ctxt");
+
+        let mut deserialize = MethodSpec::new(mods![Modifier::Public], "deserialize");
+        deserialize.throws(&self.io_exception);
+        deserialize.push_argument(&parser);
+        deserialize.push_argument(&ctxt);
+        deserialize.push_annotation(&self.override_);
+        deserialize.returns(&class_type);
+
+        deserialize.push(self.deserialize_using_model(model, class_type, &parser)?);
+
+        deserializer.push(deserialize);
+        Ok(deserializer)
+    }
+
     fn handle_match_decl(&self, event: &mut ClassAdded) -> Result<()> {
         // Add inner model used specifically for regular serialization.
-
-        /* let mut model = event.spec.clone();
-        model.name = String::from("Model");
-        model.modifiers.insert(Modifier::Static);
-
+        let mut model = self.build_model(event.fields);
         self.add_class_annotations(&mut model, &event.fields)?;
 
-        event.spec.push(model);*/
+        let deserializer = self.match_deserializer(&event.match_decl, &model, &event.class_type)?;
 
-        Err("match declaration not supported yet".into())
+        let deserializer_type =
+            Type::class(&event.class_type.package,
+                        &format!("{}.{}", &event.class_type.name, &deserializer.name));
+
+        let mut deserialize_annotation: AnnotationSpec = self.deserialize.clone().into();
+        deserialize_annotation.push_argument(stmt!["using = ", deserializer_type, ".class"]);
+
+        event.spec.push_annotation(deserialize_annotation);
+        event.spec.push(model);
+        event.spec.push(deserializer);
+
+        Ok(())
     }
 }
 
 impl Listeners for Module {
     fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
         if !event.match_decl.is_empty() {
-            // self.handle_match_decl(event)?;
+            self.handle_match_decl(event)?;
             return Ok(());
         }
 
