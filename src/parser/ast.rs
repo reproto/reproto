@@ -20,7 +20,7 @@ pub struct Instance {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     String(String),
-    Number(f64),
+    Number(RpNumber),
     Boolean(bool),
     Identifier(String),
     Type(RpType),

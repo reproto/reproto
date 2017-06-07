@@ -11,6 +11,8 @@
   * Validators
     * Tricky, too many extensions to DSL to be useful.
       Might just skip for now but push towards `2.0`.
+  * finish arbitrary precision number representation.
+  * replace match value with instance.
 
 * ~~Maven Plugin + Maven Artifacts w/ Static Builds~~~
   * For clean integration into Java ecosystem.

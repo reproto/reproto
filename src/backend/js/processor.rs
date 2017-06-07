@@ -767,7 +767,7 @@ impl ValueBuilder for Processor {
         Ok(stmt!["new ", &ty, "(", stmt.join(", "), ")"])
     }
 
-    fn number(&self, number: &f64) -> Result<Self::Stmt> {
+    fn number(&self, number: &RpNumber) -> Result<Self::Stmt> {
         Ok(stmt![number.to_string()])
     }
 
@@ -889,7 +889,7 @@ impl MatchDecode for Processor {
                   variable: &str,
                   decode: Statement,
                   result: Statement,
-                  _value: &RpByTypeValue)
+                  _value: &RpByTypeMatch)
                   -> Result<Elements> {
         let check = match *kind {
             RpMatchKind::Any => stmt!["true"],

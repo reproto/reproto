@@ -46,19 +46,19 @@ pub trait ValueBuilder
 
     fn env(&self) -> &Environment;
 
-    fn signed(&self, number: &f64, _: &Option<usize>) -> Result<Self::Stmt> {
+    fn signed(&self, number: &RpNumber, _: &Option<usize>) -> Result<Self::Stmt> {
         self.number(number)
     }
 
-    fn unsigned(&self, number: &f64, _: &Option<usize>) -> Result<Self::Stmt> {
+    fn unsigned(&self, number: &RpNumber, _: &Option<usize>) -> Result<Self::Stmt> {
         self.number(number)
     }
 
-    fn float(&self, number: &f64) -> Result<Self::Stmt> {
+    fn float(&self, number: &RpNumber) -> Result<Self::Stmt> {
         self.number(number)
     }
 
-    fn double(&self, number: &f64) -> Result<Self::Stmt> {
+    fn double(&self, number: &RpNumber) -> Result<Self::Stmt> {
         self.number(number)
     }
 
@@ -66,7 +66,7 @@ pub trait ValueBuilder
 
     fn boolean(&self, &bool) -> Result<Self::Stmt>;
 
-    fn number(&self, &f64) -> Result<Self::Stmt>;
+    fn number(&self, &RpNumber) -> Result<Self::Stmt>;
 
     fn array(&self, values: Vec<Self::Stmt>) -> Result<Self::Stmt>;
 

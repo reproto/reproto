@@ -5,7 +5,7 @@ use super::rp_field_init::RpFieldInit;
 use super::rp_loc::{RpLoc, RpPos};
 use super::rp_name::RpName;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpInstance {
     pub ty: RpName,
     pub arguments: RpLoc<Vec<RpLoc<RpFieldInit>>>,

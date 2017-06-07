@@ -80,7 +80,7 @@ impl OrdinalGenerator {
             let pos = (pos.0.to_owned(), ordinal.pos.0, ordinal.pos.1);
 
             if let ast::Value::Number(ref number) = ordinal.inner {
-                let n: u32 = number.floor() as u32;
+                let n: u32 = number.to_u32().ok_or_else(|| ErrorKind::Overflow)?;
 
                 if self.ordinals.contains(&n) {
                     return Err(Error::pos("duplicate ordinal".to_owned(), pos));

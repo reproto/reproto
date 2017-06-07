@@ -62,6 +62,9 @@ error_chain! {
 
         RcTryUnwrap {
         }
+
+        Overflow {
+        }
     }
 }
 

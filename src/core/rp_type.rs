@@ -1,6 +1,6 @@
 use super::rp_name::RpName;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RpType {
     Double,
     Float,

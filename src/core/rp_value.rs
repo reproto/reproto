@@ -5,12 +5,13 @@ use super::rp_instance::RpInstance;
 use super::rp_loc::{RpLoc, RpPos};
 use super::rp_match_kind::RpMatchKind;
 use super::rp_name::RpName;
+use super::rp_number::RpNumber;
 use super::rp_type::RpType;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RpValue {
     String(String),
-    Number(f64),
+    Number(RpNumber),
     Boolean(bool),
     Identifier(String),
     Type(RpType),

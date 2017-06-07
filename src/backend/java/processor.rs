@@ -949,11 +949,11 @@ impl ValueBuilder for Processor {
         Ok(stmt!["new ", &ty, "(", stmt.join(", "), ")"])
     }
 
-    fn number(&self, number: &f64) -> Result<Self::Stmt> {
+    fn number(&self, number: &RpNumber) -> Result<Self::Stmt> {
         Ok(stmt![number.to_string()])
     }
 
-    fn signed(&self, number: &f64, size: &Option<usize>) -> Result<Self::Stmt> {
+    fn signed(&self, number: &RpNumber, size: &Option<usize>) -> Result<Self::Stmt> {
         let ty: Variable = if size.map(|s| s <= 32usize).unwrap_or(true) {
             format!("{}", number.to_string()).into()
         } else {
@@ -963,7 +963,7 @@ impl ValueBuilder for Processor {
         Ok(ty.into())
     }
 
-    fn unsigned(&self, number: &f64, size: &Option<usize>) -> Result<Self::Stmt> {
+    fn unsigned(&self, number: &RpNumber, size: &Option<usize>) -> Result<Self::Stmt> {
         let ty: Variable = if size.map(|s| s <= 32usize).unwrap_or(true) {
             format!("{}", number.to_string()).into()
         } else {
@@ -973,11 +973,11 @@ impl ValueBuilder for Processor {
         Ok(ty.into())
     }
 
-    fn float(&self, number: &f64) -> Result<Self::Stmt> {
+    fn float(&self, number: &RpNumber) -> Result<Self::Stmt> {
         Ok(stmt![format!("{}F", number.to_string())])
     }
 
-    fn double(&self, number: &f64) -> Result<Self::Stmt> {
+    fn double(&self, number: &RpNumber) -> Result<Self::Stmt> {
         Ok(stmt![format!("{}D", number.to_string())])
     }
 

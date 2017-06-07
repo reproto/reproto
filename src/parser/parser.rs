@@ -1,5 +1,6 @@
 #![allow(unconditional_recursion)]
 
+use num_bigint::BigInt;
 use pest::prelude::*;
 use super::ast::*;
 use super::errors::*;
@@ -242,7 +243,10 @@ impl_rdp! {
         hex     =  _{ ['0'..'9'] | ['a'..'f'] }
 
         unsigned = @{ int }
-        number   = @{ ["-"]? ~ int ~ (["."] ~ ['0'..'9']+)? ~ (["e"] ~ int)? }
+        number = @{ whole ~ (["."] ~  fraction)? ~ (["e"] ~ exponent)? }
+        whole = { ["-"]? ~ int }
+        fraction = { ['0'..'9']+ }
+        exponent = { int }
         int      =  _{ ["0"] | ['1'..'9'] ~ ['0'..'9']* }
 
         boolean = { ["true"] | ["false"] }
@@ -447,9 +451,19 @@ impl_rdp! {
                 Ok(Value::Identifier(value.to_owned()))
             },
 
-            (&value: number) => {
-                let value = value.parse::<f64>()?;
-                Ok(Value::Number(value))
+            (
+                _: number,
+                &whole: whole,
+                fraction: process_fraction(),
+                exponent: process_exponent(),
+            ) => {
+                let whole = whole.parse::<BigInt>()?;
+                let fraction = fraction?;
+                let exponent = exponent?;
+
+                Ok(Value::Number(RpNumber {
+                    whole: whole, fraction: fraction, exponent: exponent
+                }))
             },
 
             (&value: boolean) => {
@@ -461,6 +475,22 @@ impl_rdp! {
 
                 Ok(Value::Boolean(value))
             },
+        }
+
+        process_fraction(&self) -> Result<Option<BigInt>> {
+            (&fraction: fraction) => {
+                Ok(Some(fraction.parse::<BigInt>()?))
+            },
+
+            () => Ok(None),
+        }
+
+        process_exponent(&self) -> Result<Option<i32>> {
+            (&exponent: exponent) => {
+                Ok(Some(exponent.parse::<i32>()?))
+            },
+
+            () => Ok(None),
         }
 
         process_used_prefix(&self) -> Option<String> {
@@ -931,7 +961,7 @@ mod tests {
 
         let field = FieldInit {
             name: AstLoc::new("hello".to_owned(), (8, 13)),
-            value: AstLoc::new(Value::Number(12f64), (15, 17)),
+            value: AstLoc::new(Value::Number(12.into()), (15, 17)),
         };
 
         let field = AstLoc::new(field, (8, 17));
@@ -948,8 +978,15 @@ mod tests {
     #[test]
     fn test_values() {
         assert_value_eq!(Value::String("foo\nbar".to_owned()), "\"foo\\nbar\"");
-        assert_value_eq!(Value::Number(1f64), "1");
-        assert_value_eq!(Value::Number(1.25f64), "1.25");
+
+        assert_value_eq!(Value::Number(1.into()), "1");
+
+        assert_value_eq!(Value::Number(RpNumber {
+                             whole: 1.into(),
+                             fraction: Some(25.into()),
+                             exponent: None,
+                         }),
+                         "1.25");
     }
 
     #[test]
@@ -977,7 +1014,7 @@ mod tests {
             assert_eq!(Value::Boolean(true), option.values[0].inner);
             assert_eq!(Value::Identifier("foo".to_owned()), option.values[1].inner);
             assert_eq!(Value::String("bar".to_owned()), option.values[2].inner);
-            assert_eq!(Value::Number(12f64), option.values[3].inner);
+            assert_eq!(Value::Number(12u32.into()), option.values[3].inner);
             return;
         }
 

@@ -1,4 +1,6 @@
 use super::errors::*;
+use super::rp_by_type_match::RpByTypeMatch;
+use super::rp_by_value_match::RpByValueMatch;
 use super::rp_loc::RpLoc;
 use super::rp_match_condition::RpMatchCondition;
 use super::rp_match_kind::RpMatchKind;
@@ -7,12 +9,10 @@ use super::rp_match_variable::RpMatchVariable;
 use super::rp_type::RpType;
 use super::rp_value::RpValue;
 
-pub type RpByTypeValue = (RpLoc<RpMatchVariable>, RpLoc<RpValue>);
-
 #[derive(Debug, Clone)]
 pub struct RpMatchDecl {
-    pub by_value: Vec<(RpLoc<RpValue>, RpLoc<RpValue>)>,
-    pub by_type: Vec<(RpMatchKind, RpByTypeValue)>,
+    pub by_value: Vec<(RpLoc<RpValue>, RpByValueMatch)>,
+    pub by_type: Vec<(RpMatchKind, RpByTypeMatch)>,
 }
 
 impl RpMatchDecl {
@@ -54,12 +54,16 @@ impl RpMatchDecl {
 
                     if let Some(&(_, ref existing_value)) = result {
                         let err = ErrorKind::MatchConflict(member.condition.pos.clone(),
-                                                           existing_value.0.pos.clone());
+                                                           existing_value.instance.pos.clone());
                         return Err(err.into());
                     }
                 }
 
-                self.by_type.push((match_kind, (variable.clone(), member.value.clone())));
+                self.by_type.push((match_kind,
+                                   RpByTypeMatch {
+                                       variable: variable.clone(),
+                                       instance: member.value.clone(),
+                                   }));
             }
             RpMatchCondition::Value(ref value) => {
                 {
@@ -68,12 +72,13 @@ impl RpMatchDecl {
 
                     if let Some(&(_, ref existing_value)) = result {
                         let err = ErrorKind::MatchConflict(member.condition.pos.clone(),
-                                                           existing_value.pos.clone());
+                                                           existing_value.instance.pos.clone());
                         return Err(err.into());
                     }
                 }
 
-                self.by_value.push((value.clone(), member.value.clone()));
+                self.by_value
+                    .push((value.clone(), RpByValueMatch { instance: member.value.clone() }));
             }
         }
 

@@ -29,7 +29,7 @@ pub trait MatchDecode
                   variable: &str,
                   decode: <Self as Decode>::Stmt,
                   result: <Self as Decode>::Stmt,
-                  value: &RpByTypeValue)
+                  value: &RpByTypeMatch)
                   -> Result<Self::Elements>;
 
     fn decode_by_value(&self,
@@ -54,7 +54,7 @@ pub trait MatchDecode
                 })?;
 
             let result = self.value(&ValueBuilderEnv {
-                    value: result,
+                    value: &result.instance,
                     package: &type_id.package,
                     ty: Some(&RpType::Name(type_id.name.clone())),
                     variables: &variables,
@@ -78,15 +78,15 @@ pub trait MatchDecode
         let mut elements = self.new_elements();
 
         for &(ref kind, ref result) in &match_decl.by_type {
-            let variable = &result.0.name;
+            let variable = &result.variable.name;
 
             let mut variables = Variables::new();
-            variables.insert(variable.clone(), &result.0.ty);
+            variables.insert(variable.clone(), &result.variable.ty);
 
-            let decode = self.decode(type_id, &result.1.pos, &result.0.ty, data)?;
+            let decode = self.decode(type_id, &result.variable.pos, &result.variable.ty, data)?;
 
             let result_value = self.value(&ValueBuilderEnv {
-                    value: &result.1,
+                    value: &result.instance,
                     package: &type_id.package,
                     ty: Some(&RpType::Name(type_id.name.clone())),
                     variables: &variables,
