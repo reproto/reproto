@@ -6,7 +6,7 @@ error_chain! {
         Io(::std::io::Error);
         ParseInt(::std::num::ParseIntError);
         ParseFloat(::std::num::ParseFloatError);
-        ParseBigInt(::num_bigint::ParseBigIntError);
+        ParseBigInt(::num::bigint::ParseBigIntError);
         FromUtf8Error(::std::string::FromUtf8Error);
     }
 
@@ -16,6 +16,9 @@ error_chain! {
 
         Syntax(pos: RpPos, expected: Vec<parser::Rule>) {
             description("syntax error")
+        }
+
+        Overflow {
         }
     }
 }

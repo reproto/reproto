@@ -1,6 +1,7 @@
 #![allow(unconditional_recursion)]
 
-use num_bigint::BigInt;
+use num::Zero;
+use num::bigint::BigInt;
 use pest::prelude::*;
 use super::ast::*;
 use super::errors::*;
@@ -243,9 +244,10 @@ impl_rdp! {
         hex     =  _{ ['0'..'9'] | ['a'..'f'] }
 
         unsigned = @{ int }
-        number = @{ whole ~ (["."] ~  fraction)? ~ (["e"] ~ exponent)? }
-        whole = { ["-"]? ~ int }
+        number = @{ negative? ~ whole ~ (["."] ~  fraction)? ~ (["e"] ~ exponent)? }
+        negative = @{ ["-"] }
         fraction = { ['0'..'9']+ }
+        whole = { int }
         exponent = { int }
         int      =  _{ ["0"] | ['1'..'9'] ~ ['0'..'9']* }
 
@@ -453,16 +455,52 @@ impl_rdp! {
 
             (
                 _: number,
-                &whole: whole,
+                sign: process_sign(),
+                &digits: whole,
                 fraction: process_fraction(),
                 exponent: process_exponent(),
             ) => {
-                let whole = whole.parse::<BigInt>()?;
-                let fraction = fraction?;
-                let exponent = exponent?;
+                let mut digits = digits.parse::<BigInt>()?;
+                let mut decimal = 0usize;
+
+                if let Some((dec, fraction)) = fraction? {
+                    decimal += dec;
+
+                    let mut f = fraction.clone();
+                    let ten: BigInt = 10.into();
+
+                    while !f.is_zero() {
+                        digits = digits * ten.clone();
+                        decimal += 1;
+                        f = f / ten.clone();
+                    }
+
+                    digits = digits + fraction;
+                }
+
+                if let Some(exponent) = exponent? {
+                    if exponent < 0 {
+                        decimal += exponent.abs() as usize;
+                    } else {
+                        let ten: BigInt = 10.into();
+
+                        for _ in 0..exponent {
+                            if decimal > 0 {
+                                decimal = decimal - 1;
+                            } else {
+                                digits = digits * ten.clone();
+                            }
+                        }
+                    }
+                }
+
+                digits = match sign {
+                    Sign::Negative => -digits,
+                    _ => digits,
+                };
 
                 Ok(Value::Number(RpNumber {
-                    whole: whole, fraction: fraction, exponent: exponent
+                    digits: digits, decimal: decimal,
                 }))
             },
 
@@ -477,19 +515,28 @@ impl_rdp! {
             },
         }
 
-        process_fraction(&self) -> Result<Option<BigInt>> {
-            (&fraction: fraction) => {
-                Ok(Some(fraction.parse::<BigInt>()?))
-            },
+        process_sign(&self) -> Sign {
+            (_: negative) => Sign::Negative,
+            () => Sign::Positive,
+        }
 
+        process_fraction(&self) -> Result<Option<(usize, BigInt)>> {
+            (&fraction: fraction) => {
+                let decimal = fraction
+                    .chars()
+                    .enumerate()
+                    .find(|&(_, ref c)| *c != '0')
+                    .map(|(i, _)| i)
+                    .unwrap_or(0usize);
+
+                let fraction: BigInt = fraction.parse()?;
+                Ok(Some((decimal, fraction)))
+            },
             () => Ok(None),
         }
 
         process_exponent(&self) -> Result<Option<i32>> {
-            (&exponent: exponent) => {
-                Ok(Some(exponent.parse::<i32>()?))
-            },
-
+            (&exponent: exponent) => exponent.parse().map_err(Into::into).map(Some),
             () => Ok(None),
         }
 
@@ -982,11 +1029,28 @@ mod tests {
         assert_value_eq!(Value::Number(1.into()), "1");
 
         assert_value_eq!(Value::Number(RpNumber {
-                             whole: 1.into(),
-                             fraction: Some(25.into()),
-                             exponent: None,
+                             digits: 125.into(),
+                             decimal: 2,
                          }),
                          "1.25");
+
+        assert_value_eq!(Value::Number(RpNumber {
+                             digits: 12500.into(),
+                             decimal: 0,
+                         }),
+                         "1.25e4");
+
+        assert_value_eq!(Value::Number(RpNumber {
+                             digits: (-12500).into(),
+                             decimal: 0,
+                         }),
+                         "-1.25e4");
+
+        assert_value_eq!(Value::Number(RpNumber {
+                             digits: (1234).into(),
+                             decimal: 8,
+                         }),
+                         "0.00001234");
     }
 
     #[test]

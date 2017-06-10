@@ -32,7 +32,7 @@ class Point:
 
     if isinstance(data, numbers.Number):
       n = data
-      return Point(n, 42.0)
+      return Point(n, 42)
 
     if isinstance(data, dict):
       p = Point.decode(data)

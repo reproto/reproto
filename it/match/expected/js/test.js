@@ -35,7 +35,7 @@ class Point {
 
     if (typeof data === "number") {
       n = data
-      return new Point(n, 42.0);
+      return new Point(n, 42);
     }
 
     if (data.constructor === Object) {

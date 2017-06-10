@@ -1,6 +1,11 @@
 pub use core::*;
 use loc;
 
+pub enum Sign {
+    Positive,
+    Negative,
+}
+
 /// Position relative in file where the declaration is present.
 pub type Pos = (usize, usize);
 pub type AstLoc<T> = loc::Loc<T, Pos>;
