@@ -1,10 +1,18 @@
 //! # Converter for core data structures into processor-specific ones.
 
+use codeviz::common::Element;
+use codeviz::common::VariableFormat;
 use core::*;
+use super::container::Container;
 use super::errors::*;
 
 pub trait Converter {
+    type Elements: Clone + Into<Element<Self::Variable>> + Container<Self::Variable>;
+    type Stmt: Clone + Into<Element<Self::Variable>>;
     type Type;
+    type Variable: Clone + VariableFormat;
+
+    fn new_var(&self, name: &str) -> Self::Stmt;
 
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Self::Type>;
 

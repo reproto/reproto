@@ -2,41 +2,39 @@
 
 use core::*;
 use super::container::Container;
+use super::converter::Converter;
 use super::decode::Decode;
 use super::errors::*;
 use super::value_builder::{ValueBuilder, ValueBuilderEnv};
 use super::variables::Variables;
 
 pub trait MatchDecode
-    where Self: ValueBuilder<Stmt = <Self as Decode>::Stmt>,
-          Self: Decode
+    where Self: ValueBuilder,
+          Self: Decode,
+          Self: Converter
 {
-    type Elements: Container;
-
-    fn new_elements(&self) -> Self::Elements;
-
     fn match_value(&self,
-                   data: &<Self as Decode>::Stmt,
+                   data: &Self::Stmt,
                    value: &RpValue,
-                   value_stmt: <Self as Decode>::Stmt,
+                   value_stmt: Self::Stmt,
                    result: &RpValue,
-                   result_stmt: <Self as Decode>::Stmt)
+                   result_stmt: Self::Stmt)
                    -> Result<Self::Elements>;
 
     fn match_type(&self,
                   type_id: &RpTypeId,
-                  data: &<Self as Decode>::Stmt,
+                  data: &Self::Stmt,
                   kind: &RpMatchKind,
                   variable: &str,
-                  decode: <Self as Decode>::Stmt,
-                  result: <Self as Decode>::Stmt,
+                  decode: Self::Stmt,
+                  result: Self::Stmt,
                   value: &RpByTypeMatch)
                   -> Result<Self::Elements>;
 
     fn decode_by_value(&self,
                        type_id: &RpTypeId,
                        match_decl: &RpMatchDecl,
-                       data: &<Self as Decode>::Stmt)
+                       data: &Self::Stmt)
                        -> Result<Option<Self::Elements>> {
         if match_decl.by_value.is_empty() {
             return Ok(None);
@@ -44,7 +42,7 @@ pub trait MatchDecode
 
         let variables = Variables::new();
 
-        let mut elements = self.new_elements();
+        let mut elements = Self::Elements::new();
 
         for &(ref value, ref result) in &match_decl.by_value {
             let value_stmt = self.value(&ValueBuilderEnv {
@@ -70,13 +68,13 @@ pub trait MatchDecode
     fn decode_by_type(&self,
                       type_id: &RpTypeId,
                       match_decl: &RpMatchDecl,
-                      data: &<Self as Decode>::Stmt)
+                      data: &Self::Stmt)
                       -> Result<Option<Self::Elements>> {
         if match_decl.by_type.is_empty() {
             return Ok(None);
         }
 
-        let mut elements = self.new_elements();
+        let mut elements = Self::Elements::new();
 
         for &(ref kind, ref result) in &match_decl.by_type {
             let variable = &result.variable.name;

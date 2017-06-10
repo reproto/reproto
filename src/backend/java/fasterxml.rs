@@ -1,6 +1,5 @@
 /// Module that adds fasterxml annotations to generated classes.
 use codeviz::java::*;
-use super::container::Container;
 use super::converter::Converter;
 use super::decode::Decode;
 use super::match_decode::MatchDecode;
@@ -485,12 +484,6 @@ impl Listeners for Module {
     }
 }
 
-impl Container for Elements {
-    fn push(&mut self, other: &Elements) {
-        self.push(other)
-    }
-}
-
 struct FasterXmlMatchDecode<'a> {
     processor: &'a Processor,
     module: &'a Module,
@@ -533,8 +526,6 @@ impl<'a> FasterXmlMatchDecode<'a> {
 }
 
 impl<'a> Decode for FasterXmlMatchDecode<'a> {
-    type Stmt = Statement;
-
     fn decode(&self,
               type_id: &RpTypeId,
               pos: &RpPos,
@@ -548,12 +539,6 @@ impl<'a> Decode for FasterXmlMatchDecode<'a> {
 }
 
 impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
-    type Elements = Elements;
-
-    fn new_elements(&self) -> Elements {
-        Elements::new()
-    }
-
     fn match_value(&self,
                    data: &Statement,
                    value: &RpValue,
@@ -599,6 +584,13 @@ impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
 
 impl<'a> Converter for FasterXmlMatchDecode<'a> {
     type Type = Type;
+    type Stmt = Statement;
+    type Elements = Elements;
+    type Variable = Variable;
+
+    fn new_var(&self, name: &str) -> Self::Stmt {
+        stmt![name]
+    }
 
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
         self.processor.convert_type(pos, type_id)
@@ -606,8 +598,6 @@ impl<'a> Converter for FasterXmlMatchDecode<'a> {
 }
 
 impl<'a> ValueBuilder for FasterXmlMatchDecode<'a> {
-    type Stmt = Statement;
-
     fn env(&self) -> &Environment {
         self.processor.env()
     }

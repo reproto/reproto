@@ -11,7 +11,6 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use super::container::Container;
 use super::converter::Converter;
 use super::dynamic_converter::DynamicConverter;
 use super::dynamic_decode::DynamicDecode;
@@ -560,7 +559,7 @@ impl Processor {
 
         let mut interface_spec = ClassSpec::new(&body.name);
 
-        interface_spec.push(self.interface_decode_method(body)?);
+        interface_spec.push(self.interface_decode_method(type_id, body)?);
 
         let interface_fields = self.convert_fields(&body.fields);
 
@@ -571,7 +570,7 @@ impl Processor {
         classes.push(interface_spec);
 
         for (_, ref sub_type) in &body.sub_types {
-            let mut class = ClassSpec::new(&sub_type.name);
+            let mut class = ClassSpec::new(&format!("{}_{}", &body.name, &sub_type.name));
 
             let mut fields = interface_fields.clone();
             fields.extend(self.convert_fields(&sub_type.fields));
@@ -677,33 +676,6 @@ impl Processor {
 
         Ok(())
     }
-
-    fn interface_decode_method(&self, interface: &RpInterfaceBody) -> Result<MethodSpec> {
-        let mut decode = MethodSpec::with_static("decode");
-
-        let data = stmt!["data"];
-
-        decode.push_argument(&data);
-
-        let mut body = Elements::new();
-
-        let type_field = Variable::Literal("f_type".to_owned());
-
-        body.push(stmt!["const ", &type_field, " = ", &data, "[", &self.type_var, "]"]);
-
-        for (_, ref sub_type) in &interface.sub_types {
-            for name in &sub_type.names {
-                let type_name: Variable = Name::local(&sub_type.name).into();
-                let cond = stmt![&type_field, " === ", string(&name.inner)];
-                body.push(js![if cond, js![return type_name, ".decode(", &data, ")"]]);
-            }
-        }
-
-        body.push(js![throw string("bad type")]);
-        decode.push(body.join(Spacing));
-
-        Ok(decode)
-    }
 }
 
 impl Backend for Processor {
@@ -719,6 +691,13 @@ impl Backend for Processor {
 
 impl Converter for Processor {
     type Type = Name;
+    type Stmt = Statement;
+    type Elements = Elements;
+    type Variable = Variable;
+
+    fn new_var(&self, name: &str) -> Self::Stmt {
+        stmt![name]
+    }
 
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
         let name = &type_id.name;
@@ -733,14 +712,12 @@ impl Converter for Processor {
             return Ok(Name::imported_alias(&package, &name.parts.join("."), used).into());
         }
 
-        Ok(Name::local(&name.parts.join(".")).into())
+        Ok(Name::local(&name.parts.join("_")).into())
     }
 }
 
 /// Build values in js.
 impl ValueBuilder for Processor {
-    type Stmt = Statement;
-
     fn env(&self) -> &Environment {
         &self.env
     }
@@ -791,8 +768,6 @@ impl ValueBuilder for Processor {
 }
 
 impl DynamicConverter for Processor {
-    type DynamicConverterStmt = Statement;
-
     fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
             RpType::Signed(_) |
@@ -821,7 +796,7 @@ impl DynamicConverter for Processor {
 }
 
 impl DynamicDecode for Processor {
-    type Stmt = Statement;
+    type Method = MethodSpec;
 
     fn name_decode(&self, input: &Statement, name: Self::Type) -> Self::Stmt {
         stmt![name, ".decode(", input, ")"]
@@ -836,11 +811,36 @@ impl DynamicDecode for Processor {
         // TODO: these functions need to be implemented and hoisted into the module
         stmt!["to_object(from_object(", input, ").map(function(t) { return ", &body, "; }))"]
     }
+
+    fn assign_type_var(&self, data: &Self::Stmt, type_var: &Self::Stmt) -> Self::Stmt {
+        stmt!["const ", type_var, " = ", data, "[", &self.type_var, "]"]
+    }
+
+    fn check_type_var(&self,
+                      data: &Self::Stmt,
+                      type_var: &Self::Stmt,
+                      name: &RpLoc<String>,
+                      type_name: &Self::Type)
+                      -> Self::Elements {
+        let mut body = Elements::new();
+        let cond = stmt![type_var, " === ", string(&name.inner)];
+        body.push(js![if cond, js![return type_name, ".decode(", &data, ")"]]);
+        body
+    }
+
+    fn raise_bad_type(&self, type_var: &Self::Stmt) -> Self::Stmt {
+        js![throw string("bad type: "), " + ", type_var]
+    }
+
+    fn new_decode_method(&self, data: &Self::Stmt, body: Self::Elements) -> Self::Method {
+        let mut decode = MethodSpec::with_static("decode");
+        decode.push_argument(&data);
+        decode.push(body);
+        decode
+    }
 }
 
 impl DynamicEncode for Processor {
-    type Stmt = Statement;
-
     fn name_encode(&self, input: &Statement, _: Self::Type) -> Self::Stmt {
         stmt![input, ".encode()"]
     }
@@ -856,19 +856,7 @@ impl DynamicEncode for Processor {
     }
 }
 
-impl Container for Elements {
-    fn push(&mut self, other: &Elements) {
-        self.push(other)
-    }
-}
-
 impl MatchDecode for Processor {
-    type Elements = Elements;
-
-    fn new_elements(&self) -> Elements {
-        Elements::new()
-    }
-
     fn match_value(&self,
                    data: &Statement,
                    _value: &RpValue,

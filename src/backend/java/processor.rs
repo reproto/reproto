@@ -899,6 +899,13 @@ impl Backend for Processor {
 
 impl Converter for Processor {
     type Type = Type;
+    type Stmt = Statement;
+    type Elements = Elements;
+    type Variable = Variable;
+
+    fn new_var(&self, name: &str) -> Self::Stmt {
+        stmt![name]
+    }
 
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
         let pkg = &type_id.package;
@@ -921,8 +928,6 @@ impl Converter for Processor {
 
 /// Build values in python.
 impl ValueBuilder for Processor {
-    type Stmt = Statement;
-
     fn env(&self) -> &Environment {
         &self.env
     }

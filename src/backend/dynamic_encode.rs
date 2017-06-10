@@ -1,16 +1,13 @@
 //! # Helper trait for building a dynamic-language encode method
 
 use core::*;
-use super::converter::Converter;
 use super::dynamic_converter::DynamicConverter;
 use super::encode::Encode;
 use super::errors::*;
 
 pub trait DynamicEncode
-    where Self: Converter + DynamicConverter<DynamicConverterStmt = <Self as DynamicEncode>::Stmt>
+    where Self: DynamicConverter
 {
-    type Stmt: Clone;
-
     fn name_encode(&self, input: &Self::Stmt, name: Self::Type) -> Self::Stmt;
 
     fn array_encode(&self, input: &Self::Stmt, inner: Self::Stmt) -> Self::Stmt;

@@ -42,8 +42,6 @@ fn new_env<'a>(package: &'a RpPackage,
 pub trait ValueBuilder
     where Self: Converter
 {
-    type Stmt;
-
     fn env(&self) -> &Environment;
 
     fn signed(&self, number: &RpNumber, _: &Option<usize>) -> Result<Self::Stmt> {

@@ -13,7 +13,6 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use super::container::Container;
 use super::converter::Converter;
 use super::dynamic_converter::DynamicConverter;
 use super::dynamic_decode::DynamicDecode;
@@ -748,59 +747,6 @@ impl Processor {
         Ok(())
     }
 
-    fn interface_decode_method(&self,
-                               type_id: &RpTypeId,
-                               body: &RpInterfaceBody)
-                               -> Result<MethodSpec> {
-        let data = stmt!["data"];
-
-        let mut decode = MethodSpec::new("decode");
-        decode.push_decorator(&self.staticmethod);
-        decode.push_argument(&data);
-
-        let mut decode_body = Elements::new();
-
-        if let Some(by_value) = self.decode_by_value(type_id, &body.match_decl, &data)? {
-            decode_body.push(by_value);
-        }
-
-        if let Some(by_type) = self.decode_by_type(type_id, &body.match_decl, &data)? {
-            decode_body.push(by_type);
-        }
-
-        let type_field = Variable::Literal("f_type".to_owned());
-
-        decode_body.push(stmt![&type_field, " = data[", &self.type_var, "]"]);
-
-        for (_, ref sub_type) in &body.sub_types {
-            for name in &sub_type.names {
-                let type_id = type_id.extend(sub_type.name.clone());
-                let type_name = self.convert_type(&sub_type.pos, &type_id)?;
-
-                let mut check = Elements::new();
-
-                check.push(stmt!["if ",
-                                 &type_field,
-                                 " == ",
-                                 Variable::String(name.inner.to_owned()),
-                                 ":"]);
-                check.push_nested(stmt!["return ", type_name, ".decode(data)"]);
-
-                decode_body.push(check);
-            }
-        }
-
-        decode_body.push(stmt!["raise Exception(",
-                               Variable::String("bad type".to_owned()),
-                               " + ",
-                               &type_field,
-                               ")"]);
-
-        decode.push(decode_body.join(Spacing));
-
-        Ok(decode)
-    }
-
     fn convert_type_id<F>(&self, pos: &RpPos, type_id: &RpTypeId, path_syntax: F) -> Result<Name>
         where F: Fn(&Vec<String>) -> String
     {
@@ -835,6 +781,13 @@ impl Backend for Processor {
 
 impl Converter for Processor {
     type Type = Name;
+    type Stmt = Statement;
+    type Elements = Elements;
+    type Variable = Variable;
+
+    fn new_var(&self, name: &str) -> Self::Stmt {
+        stmt![name]
+    }
 
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
         self.convert_type_id(pos, type_id, |v| v.join("_"))
@@ -847,8 +800,6 @@ impl Converter for Processor {
 
 /// Build values in python.
 impl ValueBuilder for Processor {
-    type Stmt = Statement;
-
     fn env(&self) -> &Environment {
         &self.env
     }
@@ -899,8 +850,6 @@ impl ValueBuilder for Processor {
 }
 
 impl DynamicConverter for Processor {
-    type DynamicConverterStmt = Statement;
-
     fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
             RpType::Signed(_) |
@@ -929,7 +878,7 @@ impl DynamicConverter for Processor {
 }
 
 impl DynamicDecode for Processor {
-    type Stmt = Statement;
+    type Method = MethodSpec;
 
     fn name_decode(&self, input: &Statement, name: Self::Type) -> Self::Stmt {
         stmt![name, ".decode(", input, ")"]
@@ -943,11 +892,37 @@ impl DynamicDecode for Processor {
         let body = stmt!["(", &key, ", ", &value, ")"];
         stmt![&self.dict, "(map(lambda t: ", &body, ", ", input, ".items()))"]
     }
+
+    fn assign_type_var(&self, data: &Self::Stmt, type_var: &Self::Stmt) -> Self::Stmt {
+        stmt![type_var, " = ", data, "[", &self.type_var, "]"]
+    }
+
+    fn check_type_var(&self,
+                      _data: &Self::Stmt,
+                      type_var: &Self::Stmt,
+                      name: &RpLoc<String>,
+                      type_name: &Self::Type)
+                      -> Self::Elements {
+        let mut check = Elements::new();
+        check.push(stmt!["if ", type_var, " == ", Variable::String(name.inner.to_owned()), ":"]);
+        check.push_nested(stmt!["return ", type_name, ".decode(data)"]);
+        check
+    }
+
+    fn raise_bad_type(&self, type_var: &Self::Stmt) -> Self::Stmt {
+        stmt!["raise Exception(", Variable::String("bad type".to_owned()), " + ", type_var, ")"]
+    }
+
+    fn new_decode_method(&self, data: &Self::Stmt, body: Self::Elements) -> Self::Method {
+        let mut decode = MethodSpec::new("decode");
+        decode.push_decorator(&self.staticmethod);
+        decode.push_argument(&data);
+        decode.push(body);
+        decode
+    }
 }
 
 impl DynamicEncode for Processor {
-    type Stmt = Statement;
-
     fn name_encode(&self, input: &Statement, _: Self::Type) -> Self::Stmt {
         stmt![input, ".encode()"]
     }
@@ -962,19 +937,7 @@ impl DynamicEncode for Processor {
     }
 }
 
-impl Container for Elements {
-    fn push(&mut self, other: &Elements) {
-        self.push(other)
-    }
-}
-
 impl MatchDecode for Processor {
-    type Elements = Elements;
-
-    fn new_elements(&self) -> Elements {
-        Elements::new()
-    }
-
     fn match_value(&self,
                    data: &Statement,
                    _value: &RpValue,
