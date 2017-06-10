@@ -120,7 +120,7 @@ public class Type {
     @Override
     public Type deserialize(final JsonParser parser, final DeserializationContext ctxt) throws IOException {
       if (parser.getCurrentToken() == JsonToken.VALUE_STRING && parser.getText() == "foo") {
-        return new Type("foo", Optional.empty())
+        return new Type("foo", Optional.empty());
       }
 
       if (parser.getCurrentToken() == JsonToken.VALUE_STRING) {

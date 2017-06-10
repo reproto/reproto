@@ -124,7 +124,7 @@ class Point {
 
     if (typeof data === "number") {
       n = data
-      return new Point(n, 42);
+      return new Point(n, 42.0);
     }
 
     if (data.constructor === Object) {

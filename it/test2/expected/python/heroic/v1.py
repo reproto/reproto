@@ -77,7 +77,7 @@ class Point:
 
     if isinstance(data, numbers.Number):
       n = data
-      return Point(n, 42)
+      return Point(n, 42.0)
 
     if isinstance(data, dict):
       p = Point.decode(data)
