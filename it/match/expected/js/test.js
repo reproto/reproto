@@ -65,21 +65,26 @@ class Point {
 
 class Interface {
   static decode(data) {
+    if (typeof data === "string") {
+      name = data
+      return new Interface_One(name, null, new Data("data"));
+    }
+
     const f_type = data["type"]
 
     if (f_type === "one") {
-      return One.decode(data);
+      return Interface_One.decode(data);
     }
 
     if (f_type === "two") {
-      return Two.decode(data);
+      return Interface_Two.decode(data);
     }
 
-    throw new Error("bad type");
+    throw new Error("bad type: " + f_type);
   }
 }
 
-class One {
+class Interface_One {
   constructor(name, other, data) {
     this.name = name;
     this.other = other;
@@ -99,13 +104,13 @@ class One {
 
     const data = Data.decode(data["data"]);
 
-    return new One(name, other, data);
+    return new Interface_One(name, other, data);
   }
 
   encode() {
     const data = {};
 
-    data["type"] = One.TYPE;
+    data["type"] = Interface_One.TYPE;
 
     if (this.name === null || this.name === undefined) {
       throw new Error("name: is a required field");
@@ -127,9 +132,9 @@ class One {
   }
 }
 
-One.TYPE = "One";
+Interface_One.TYPE = "One";
 
-class Two {
+class Interface_Two {
   constructor(name, other, data) {
     this.name = name;
     this.other = other;
@@ -149,13 +154,13 @@ class Two {
 
     const data = Data.decode(data["data"]);
 
-    return new Two(name, other, data);
+    return new Interface_Two(name, other, data);
   }
 
   encode() {
     const data = {};
 
-    data["type"] = Two.TYPE;
+    data["type"] = Interface_Two.TYPE;
 
     if (this.name === null || this.name === undefined) {
       throw new Error("name: is a required field");
@@ -177,7 +182,7 @@ class Two {
   }
 }
 
-Two.TYPE = "Two";
+Interface_Two.TYPE = "Two";
 
 class Type {
   constructor(data, other) {

@@ -181,21 +181,26 @@ class Event {
 
 class Samples {
   static decode(data) {
+    if (typeof data === "string") {
+      name = data
+      return new Samples_Points(name, []);
+    }
+
     const f_type = data["type"]
 
     if (f_type === "events") {
-      return Events.decode(data);
+      return Samples_Events.decode(data);
     }
 
     if (f_type === "points") {
-      return Points.decode(data);
+      return Samples_Points.decode(data);
     }
 
-    throw new Error("bad type");
+    throw new Error("bad type: " + f_type);
   }
 }
 
-class Events {
+class Samples_Events {
   constructor(name, data) {
     this.name = name;
     this.data = data;
@@ -206,13 +211,13 @@ class Events {
 
     const data = data["data"].map(function(v) { Event.decode(v); });
 
-    return new Events(name, data);
+    return new Samples_Events(name, data);
   }
 
   encode() {
     const data = {};
 
-    data["type"] = Events.TYPE;
+    data["type"] = Samples_Events.TYPE;
 
     if (this.name === null || this.name === undefined) {
       throw new Error("name: is a required field");
@@ -230,9 +235,9 @@ class Events {
   }
 }
 
-Events.TYPE = "Events";
+Samples_Events.TYPE = "Events";
 
-class Points {
+class Samples_Points {
   constructor(name, data) {
     this.name = name;
     this.data = data;
@@ -243,13 +248,13 @@ class Points {
 
     const data = data["data"].map(function(v) { Point.decode(v); });
 
-    return new Points(name, data);
+    return new Samples_Points(name, data);
   }
 
   encode() {
     const data = {};
 
-    data["type"] = Points.TYPE;
+    data["type"] = Samples_Points.TYPE;
 
     if (this.name === null || this.name === undefined) {
       throw new Error("name: is a required field");
@@ -267,7 +272,7 @@ class Points {
   }
 }
 
-Points.TYPE = "Points";
+Samples_Points.TYPE = "Points";
 
 class Query {
   constructor(query, aggregation, date, parameters) {
@@ -346,14 +351,14 @@ class Duration {
     const f_type = data["type"]
 
     if (f_type === "absolute") {
-      return Absolute.decode(data);
+      return Duration_Absolute.decode(data);
     }
 
-    throw new Error("bad type");
+    throw new Error("bad type: " + f_type);
   }
 }
 
-class Absolute {
+class Duration_Absolute {
   constructor(start, end) {
     this.start = start;
     this.end = end;
@@ -364,13 +369,13 @@ class Absolute {
 
     const end = data["end"];
 
-    return new Absolute(start, end);
+    return new Duration_Absolute(start, end);
   }
 
   encode() {
     const data = {};
 
-    data["type"] = Absolute.TYPE;
+    data["type"] = Duration_Absolute.TYPE;
 
     if (this.start === null || this.start === undefined) {
       throw new Error("start: is a required field");
@@ -388,29 +393,34 @@ class Absolute {
   }
 }
 
-Absolute.TYPE = "Absolute";
+Duration_Absolute.TYPE = "Absolute";
 
 class Aggregation {
   static decode(data) {
+    if (data.constructor === Array) {
+      chain = data.map(function(v) { Aggregation.decode(v); })
+      return new Aggregation_Chain(chain);
+    }
+
     const f_type = data["type"]
 
     if (f_type === "average") {
-      return Average.decode(data);
+      return Aggregation_Average.decode(data);
     }
 
     if (f_type === "chain") {
-      return Chain.decode(data);
+      return Aggregation_Chain.decode(data);
     }
 
     if (f_type === "sum") {
-      return Sum.decode(data);
+      return Aggregation_Sum.decode(data);
     }
 
-    throw new Error("bad type");
+    throw new Error("bad type: " + f_type);
   }
 }
 
-class Average {
+class Aggregation_Average {
   constructor(sampling, size, extent) {
     this.sampling = sampling;
     this.size = size;
@@ -442,13 +452,13 @@ class Average {
       extent = null;
     }
 
-    return new Average(sampling, size, extent);
+    return new Aggregation_Average(sampling, size, extent);
   }
 
   encode() {
     const data = {};
 
-    data["type"] = Average.TYPE;
+    data["type"] = Aggregation_Average.TYPE;
 
     if (this.sampling !== null && this.sampling !== undefined) {
       data["sampling"] = this.sampling.encode();
@@ -466,9 +476,9 @@ class Average {
   }
 }
 
-Average.TYPE = "Average";
+Aggregation_Average.TYPE = "Average";
 
-class Chain {
+class Aggregation_Chain {
   constructor(chain) {
     this.chain = chain;
   }
@@ -476,13 +486,13 @@ class Chain {
   static decode(data) {
     const chain = data["chain"].map(function(v) { Aggregation.decode(v); });
 
-    return new Chain(chain);
+    return new Aggregation_Chain(chain);
   }
 
   encode() {
     const data = {};
 
-    data["type"] = Chain.TYPE;
+    data["type"] = Aggregation_Chain.TYPE;
 
     if (this.chain === null || this.chain === undefined) {
       throw new Error("chain: is a required field");
@@ -494,9 +504,9 @@ class Chain {
   }
 }
 
-Chain.TYPE = "Chain";
+Aggregation_Chain.TYPE = "Chain";
 
-class Sum {
+class Aggregation_Sum {
   constructor(sampling, size, extent) {
     this.sampling = sampling;
     this.size = size;
@@ -528,13 +538,13 @@ class Sum {
       extent = null;
     }
 
-    return new Sum(sampling, size, extent);
+    return new Aggregation_Sum(sampling, size, extent);
   }
 
   encode() {
     const data = {};
 
-    data["type"] = Sum.TYPE;
+    data["type"] = Aggregation_Sum.TYPE;
 
     if (this.sampling !== null && this.sampling !== undefined) {
       data["sampling"] = this.sampling.encode();
@@ -552,7 +562,7 @@ class Sum {
   }
 }
 
-Sum.TYPE = "Sum";
+Aggregation_Sum.TYPE = "Sum";
 
 class ComplexEnum {
   constructor(ordinal, name, si, other, samples) {
@@ -581,8 +591,8 @@ class ComplexEnum {
   }
 }
 
-ComplexEnum.FIRST = new ComplexEnum(0, "FIRST", new Sampling(null, 42, null), SI.NANO, new Samples.Points("points", []));
-ComplexEnum.SECOND = new ComplexEnum(1, "SECOND", new Sampling(null, 9, null), SI.MILLI, new Samples.Points("b", []));
+ComplexEnum.FIRST = new ComplexEnum(0, "FIRST", new Sampling(null, 42, null), SI_NANO, new Samples_Points("points", []));
+ComplexEnum.SECOND = new ComplexEnum(1, "SECOND", new Sampling(null, 9, null), SI_MILLI, new Samples_Points("b", []));
 
 ComplexEnum.values = [ComplexEnum.FIRST, ComplexEnum.SECOND];
 
