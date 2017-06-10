@@ -873,11 +873,12 @@ impl MatchDecode for Processor {
                    data: &Statement,
                    _value: &RpValue,
                    value_stmt: Statement,
-                   result: Statement)
+                   _result: &RpValue,
+                   result_stmt: Statement)
                    -> Result<Elements> {
         let mut value_body = Elements::new();
         value_body.push(stmt!["if (", data, " == ", value_stmt, ") {"]);
-        value_body.push_nested(stmt!["return ", result]);
+        value_body.push_nested(stmt!["return ", result_stmt]);
         value_body.push("}");
         Ok(value_body)
     }

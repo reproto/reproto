@@ -558,7 +558,8 @@ impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
                    data: &Statement,
                    value: &RpValue,
                    value_stmt: Statement,
-                   result: Statement)
+                   _result: &RpValue,
+                   result_stmt: Statement)
                    -> Result<Elements> {
         let mut value_body = Elements::new();
         let kind = value.as_match_kind();
@@ -566,7 +567,7 @@ impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
         let compare_value = self.value_check(data, &kind, &value_stmt)?;
 
         value_body.push(stmt!["if (", check, " && ", compare_value, ") {"]);
-        value_body.push_nested(stmt!["return ", result]);
+        value_body.push_nested(stmt!["return ", result_stmt, ";"]);
         value_body.push("}");
 
         Ok(value_body)

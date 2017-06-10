@@ -19,7 +19,8 @@ pub trait MatchDecode
                    data: &<Self as Decode>::Stmt,
                    value: &RpValue,
                    value_stmt: <Self as Decode>::Stmt,
-                   result: <Self as Decode>::Stmt)
+                   result: &RpValue,
+                   result_stmt: <Self as Decode>::Stmt)
                    -> Result<Self::Elements>;
 
     fn match_type(&self,
@@ -53,14 +54,14 @@ pub trait MatchDecode
                     variables: &variables,
                 })?;
 
-            let result = self.value(&ValueBuilderEnv {
+            let result_stmt = self.value(&ValueBuilderEnv {
                     value: &result.instance,
                     package: &type_id.package,
                     ty: Some(&RpType::Name(type_id.name.clone())),
                     variables: &variables,
                 })?;
 
-            elements.push(&self.match_value(data, value, value_stmt, result)?);
+            elements.push(&self.match_value(data, value, value_stmt, &result.instance, result_stmt)?);
         }
 
         Ok(Some(elements))
