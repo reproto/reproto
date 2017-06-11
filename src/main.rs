@@ -103,34 +103,12 @@ fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<()> {
 fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
     match *e {
         parser::errors::ErrorKind::Syntax(ref p, ref expected) => {
-            print_error("syntax error", p)?;
-
-            println!("Expected one of:");
-
-            let mut expected_list = Vec::new();
-
-            for e in expected {
-                match *e {
-                    parser::parser::Rule::type_identifier => {
-                        println!("  A type identifier, like: `DateRange`");
-                    }
-                    parser::parser::Rule::string => {
-                        println!("  A string, like: `\"foo bar\"`");
-                    }
-                    parser::parser::Rule::number => {
-                        println!("  A number number, like: `3.14`");
-                    }
-                    parser::parser::Rule::boolean => {
-                        println!("  A boolean: `true` or `false`");
-                    }
-                    token => {
-                        expected_list.push(format!("{:?}", token));
-                    }
-                }
+            if let Some(ref pos) = *p {
+                print_error("syntax error", pos)?;
             }
 
-            if !expected_list.is_empty() {
-                println!("  A token: {}", expected_list.join(", "));
+            if !expected.is_empty() {
+                println!("Expected one of: {}", expected.join(", "));
             }
         }
         _ => {}

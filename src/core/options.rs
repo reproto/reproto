@@ -94,7 +94,7 @@ impl<'a> Options<'a> {
             if let RpValue::Boolean(ref boolean) = t.inner {
                 return Ok(Some(RpLoc::new(boolean.clone(), t.pos.clone())));
             } else {
-                return Err(Error::pos("expected string".to_owned(), t.pos.clone()));
+                return Err(Error::pos("expected boolean".to_owned(), t.pos.clone()));
             }
         }
 

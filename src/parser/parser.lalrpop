@@ -1,0 +1,266 @@
+// vim: ft=rust
+use super::errors::Error;
+use super::token::*;
+use super::ast::*;
+use super::utils::*;
+use core::RpNumber;
+
+grammar;
+
+pub File: File = {
+    <package:Loc<PackageDecl>> <uses:Loc<Use>*> <decls:Loc<Decl>*> => File {
+        package: package,
+        uses: uses,
+        decls: decls,
+    },
+};
+
+Use: UseDecl = {
+    "use" <package:Loc<Package>> <alias:("as" Identifier)?> ";" => UseDecl {
+        package: package,
+        alias: alias.map(|t| t.1),
+    },
+};
+
+PackageDecl: RpPackage = "package" <package:Package> ";" => package;
+Package: RpPackage = <parts:OneOrMore<".", Identifier>> => RpPackage::new(parts);
+
+Decl: Decl = {
+    <en:Enum> => Decl::Enum(en),
+    <interface:Interface> => Decl::Interface(interface),
+    <ty:Type> => Decl::Type(ty),
+    <tuple:Tuple> => Decl::Tuple(tuple),
+};
+
+Enum: EnumBody =
+    "enum" <name:TypeIdentifier> "{"
+      <values:Loc<EnumValue>*>
+      <members:Loc<Member>*>
+    "}" =>
+{
+    EnumBody {
+        name: name,
+        values: values,
+        members: members,
+    }
+};
+
+Interface: InterfaceBody =
+    "interface" <name:TypeIdentifier> "{"
+      <members:Loc<Member>*>
+      <sub_types:Loc<SubType>*>
+    "}" =>
+{
+    InterfaceBody {
+        name: name,
+        members: members,
+        sub_types: sub_types,
+    }
+};
+
+Type: TypeBody =
+    "type" <name:TypeIdentifier> "{"
+      <members:Loc<Member>*>
+    "}" =>
+{
+    TypeBody {
+        name: name,
+        members: members,
+    }
+};
+
+Tuple: TupleBody =
+    "tuple" <name:TypeIdentifier> "{"
+      <members:Loc<Member>*>
+    "}" =>
+{
+    TupleBody {
+        name: name,
+        members: members,
+    }
+};
+
+EnumValue: EnumValue =
+    <name:Loc<TypeIdentifier>>
+    <arguments:("(" OneOrMore<",", Loc<Value>> ")")?>
+    <ordinal:("=" Loc<Value>)?>
+    ";" =>
+{
+    EnumValue {
+        name: name,
+        arguments: arguments.map(|a| a.1).unwrap_or_else(|| vec![]),
+        ordinal: ordinal.map(|o| o.1),
+    }
+};
+
+pub Member: Member = {
+    <name:Identifier> <modifier:"?"?> ":" <ty:TypeSpec> <alias:("as" Loc<Value>)?> ";" => {
+         let field = Field {
+             modifier: modifier.map(|_| RpModifier::Optional).unwrap_or(RpModifier::Required),
+             name: name,
+             ty: ty,
+             field_as: alias.map(|a| a.1),
+         };
+
+         Member::Field(field)
+    },
+
+    "match" "{" <members:Loc<MatchMember>*> "}" => {
+         let m = MatchDecl {
+             members: members
+         };
+
+         Member::Match(m)
+    },
+
+    <s:@L> <name:Identifier> <values:OneOrMore<",", Loc<Value>>> ";" <e:@R> => {
+         let option = OptionDecl {
+             name: name,
+             values: values,
+         };
+
+         Member::Option(AstLoc::new(option, (s, e)))
+    },
+
+    <context:Identifier> "{{" <content:code> "}}" => {
+        let content = strip_code_block(&content);
+        Member::Code(context, content)
+    },
+};
+
+MatchMember: MatchMember = {
+    <condition:Loc<MatchCondition>> "=>" <value:Loc<Value>> ";" => MatchMember {
+        condition: condition,
+        value: value,
+    },
+};
+
+MatchCondition: MatchCondition = {
+    <variable:Loc<MatchVariable>> => MatchCondition::Type(variable),
+    <value:Loc<Value>> => MatchCondition::Value(value),
+};
+
+MatchVariable: MatchVariable = <name:Identifier> ":" <ty:TypeSpec> => MatchVariable {
+    name: name.to_owned(),
+    ty: ty,
+};
+
+SubType: SubType = {
+    <name:TypeIdentifier> "{" <members:Loc<Member>*> "}" => {
+         SubType { name: name, members: members, }
+    },
+};
+
+pub Value: Value = {
+    "[" <values:ZeroOrMore<",", Loc<Value>>> "]" => Value::Array(values),
+    <instance:Loc<Instance>> => Value::Instance(instance),
+    <constant:Loc<Name>> => Value::Constant(constant),
+    <string:string> => Value::String(string),
+    <number:Number> => Value::Number(number),
+    <true> => Value::Boolean(true),
+    <false> => Value::Boolean(false),
+    <identifier:Identifier> => Value::Identifier(identifier),
+};
+
+Instance: Instance = {
+    <name:Name> "(" <arguments:Loc<ZeroOrMore<",", Loc<FieldInit>>>> ")" => Instance {
+        ty: name,
+        arguments: arguments,
+    },
+};
+
+FieldInit: FieldInit = {
+    <name:Loc<Identifier>> ":" <value:Loc<Value>> => FieldInit {
+        name: name,
+        value: value,
+    },
+};
+
+pub TypeSpec: RpType = {
+    "any" => RpType::Any,
+    "float" => RpType::Float,
+    "double" => RpType::Double,
+    "signed" <size:TypeBits?> => RpType::Signed(size),
+    "unsigned" <size:TypeBits?> => RpType::Unsigned(size),
+    "boolean" => RpType::Boolean,
+    "string" => RpType::String,
+    "bytes" => RpType::Bytes,
+    <name:Name> => RpType::Name(name),
+    "[" <inner:TypeSpec> "]" => RpType::Array(Box::new(inner)),
+    "{" <key:TypeSpec> ":" <value:TypeSpec> "}" => RpType::Map(Box::new(key), Box::new(value)),
+};
+
+Name: RpName = {
+    <prefix:(Identifier "::")?> <parts:OneOrMore<".", TypeIdentifier>> => RpName {
+        prefix: prefix.map(|p| p.0),
+        parts: parts,
+    }
+};
+
+TypeBits: usize = "/" <number:Number> => number.to_usize().unwrap_or(0usize);
+
+/// Zero or more matching, separated by a token.
+ZeroOrMore<Sep, T>: Vec<T> = {
+    <value:OneOrMore<Sep, T>?> => {
+        value.unwrap_or_else(|| vec![])
+    }
+};
+
+/// One or more matching, separated by a token.
+OneOrMore<Sep, T>: Vec<T> = {
+     <values:(<T> Sep)*> <last:T> => {
+        let mut values = values;
+        values.push(last);
+        values
+    }
+};
+
+Loc<Inner>: AstLoc<Inner> = <s:@L> <inner:Inner> <e:@R> => AstLoc::new(inner, (s, e));
+
+extern {
+    type Location = usize;
+    type Error = Error;
+
+    enum Token {
+        TypeIdentifier => Token::TypeIdentifier(<String>),
+        Identifier => Token::Identifier(<String>),
+        Number => Token::Number(<RpNumber>),
+        "match" => Token::MatchKeyword,
+        "use" => Token::UseKeyword,
+        "as" => Token::AsKeyword,
+        "enum" => Token::EnumKeyword,
+        "type" => Token::TypeKeyword,
+        "interface" => Token::InterfaceKeyword,
+        "tuple" => Token::TupleKeyword,
+        "package" => Token::PackageKeyword,
+        "(" => Token::LeftParen,
+        ")" => Token::RightParen,
+        "{" => Token::LeftCurly,
+        "}" => Token::RightCurly,
+        "{{" => Token::CodeOpen,
+        "}}" => Token::CodeClose,
+        code => Token::CodeContent(<String>),
+        string => Token::String(<String>),
+        "[" => Token::LeftBracket,
+        "]" => Token::RightBracket,
+        ";" => Token::SemiColon,
+        ":" => Token::Colon,
+        "?" => Token::Optional,
+        "/" => Token::Slash,
+        "=" => Token::Equals,
+        "=>" => Token::HashRocket,
+        "," => Token::Comma,
+        "." => Token::Dot,
+        "::" => Token::Scope,
+        "any" => Token::AnyKeyword,
+        "float" => Token::FloatKeyword,
+        "double" => Token::DoubleKeyword,
+        "signed" => Token::SignedKeyword,
+        "unsigned" => Token::UnsignedKeyword,
+        "boolean" => Token::BooleanKeyword,
+        "string" => Token::StringKeyword,
+        "bytes" => Token::BytesKeyword,
+        true => Token::TrueKeyword,
+        false => Token::FalseKeyword,
+    }
+}

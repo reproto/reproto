@@ -1,11 +1,10 @@
 #![recursion_limit = "1000"]
 
+extern crate lalrpop_util;
 extern crate clap;
 extern crate linked_hash_map;
 extern crate num;
 
-#[macro_use]
-extern crate pest;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]

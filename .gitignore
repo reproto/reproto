@@ -5,3 +5,5 @@ __pycache__
 *.pyc
 *.class
 /it/*/output
+# generated
+/src/parser/parser.rs

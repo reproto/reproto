@@ -10,6 +10,7 @@ documentation = "https://docs.rs/reproto"
 description = """
 Rethinking Protocol Generators
 """
+build = "build.rs"
 
 [features]
 # Enable to emit very detailed tracing, potentially performance sensitive.
@@ -19,9 +20,14 @@ tracing = []
 error-chain = "0.10.0"
 log = "0.3.7"
 clap = "2.24.2"
-pest = "0.4.1"
 linked-hash-map = "0.4.2"
 num = "0.1.37"
 
 [dependencies.codeviz]
 version = "0.0.11"
+
+[dependencies.lalrpop-util]
+version = "0.13.0"
+
+[build-dependencies.lalrpop-snap]
+version = "0.13.0"

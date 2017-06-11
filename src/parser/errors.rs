@@ -1,5 +1,4 @@
 use core::*;
-use super::parser;
 
 error_chain! {
     foreign_links {
@@ -14,11 +13,14 @@ error_chain! {
         InvalidEscape {
         }
 
-        Syntax(pos: RpPos, expected: Vec<parser::Rule>) {
+        Syntax(pos: Option<RpPos>, expected: Vec<String>) {
             description("syntax error")
         }
 
         Overflow {
+        }
+
+        IllegalToken {
         }
     }
 }

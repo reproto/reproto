@@ -1,9 +1,10 @@
 use num::bigint::BigInt;
 use num::integer::Integer;
+use num::traits::Signed;
 use num::traits::cast::ToPrimitive;
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpNumber {
     // base digits
     pub digits: BigInt,
@@ -35,6 +36,10 @@ impl RpNumber {
         self.to_u64().map(|v| v as u32)
     }
 
+    pub fn to_usize(&self) -> Option<usize> {
+        self.to_u64().map(|v| v as usize)
+    }
+
     pub fn to_f64(&self) -> Option<f64> {
         let multiple = self.multiple();
         let (base, decimal) = self.digits.div_mod_floor(&multiple);
@@ -46,6 +51,30 @@ impl RpNumber {
     }
 }
 
+impl From<u32> for RpNumber {
+    fn from(value: u32) -> RpNumber {
+        RpNumber {
+            digits: value.into(),
+            decimal: 0usize,
+        }
+    }
+}
+
+impl From<i32> for RpNumber {
+    fn from(value: i32) -> RpNumber {
+        RpNumber {
+            digits: value.into(),
+            decimal: 0usize,
+        }
+    }
+}
+
+impl fmt::Debug for RpNumber {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RpNumber({})", self)
+    }
+}
+
 impl fmt::Display for RpNumber {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.decimal == 0 {
@@ -53,7 +82,7 @@ impl fmt::Display for RpNumber {
         }
 
         let multiple = self.multiple();
-        let (base, decimal) = self.digits.div_mod_floor(&multiple);
+        let (base, decimal) = self.digits.abs().div_mod_floor(&multiple);
 
         let decimal = format!("{}", decimal);
 
@@ -71,15 +100,10 @@ impl fmt::Display for RpNumber {
             decimal
         };
 
-        write!(f, "{}.{}", base, decimal)
-    }
-}
-
-impl From<u32> for RpNumber {
-    fn from(value: u32) -> RpNumber {
-        RpNumber {
-            digits: value.into(),
-            decimal: 0,
+        if self.digits.is_negative() {
+            write!(f, "-{}.{}", base, decimal)
+        } else {
+            write!(f, "{}.{}", base, decimal)
         }
     }
 }
