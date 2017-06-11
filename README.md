@@ -51,6 +51,7 @@ $> reproto --debug compile -b python -o target/python \
   heroic.v1
 ```
 
+[rust-get-started]: https://doc.rust-lang.org/book/getting-started.html
 [fasterxml]: https://github.com/FasterXML/jackson-annotations
 
 ## [Maven Plugin][maven-plugin]
@@ -64,4 +65,3 @@ A Maven plugin that integrates reproto into the build lifecycle of a maven proje
 A VIM plugin that provides syntax highlighting.
 
 [vim]: https://github.com/reproto/reproto-vim
-[rust-get-started]: https://doc.rust-lang.org/book/getting-started.html

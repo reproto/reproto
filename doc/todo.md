@@ -3,6 +3,8 @@
 * Compiler
   * Match statements using self type:
     * Either: *reject* types referencing self, or externalize decoder for them.
+  * Markup for comments to use in documentation. Currently problematic since it would require two
+    different parsing modes depending on context.
 
 * General
   * ~~Treat named types as (named) simple types, like tuples.~~
@@ -22,7 +24,7 @@
   * ~~Generated equals/hashCode (disabled when using lombok).~~
   * ~~Generated toString (disabled when using lombok).~~
   * ~~Tuple decoding (in `fasterxml`).~~
-  * Support match statements through external deserializer model.
+  * ~~Support match statements through external deserializer model.~~
 
 * Python Backend
   * ~~Encode support (e.g. `instance.encode()`)~~
@@ -39,7 +41,7 @@
   * Strict decoding/encoding where types are deeply verified.
 
 * HTML Backend
-  * Generate static documentation.
+  * Generating documentation.
 
 * JavaScript Backend
-  * For browser compatibility.
+  * ~~For browser compatibility.~~

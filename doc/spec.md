@@ -341,17 +341,16 @@ Clients who decode a reserved field should ignore them.
 
 ## Extensions
 
-reProto allows all types and interfaces to be extended.
+ReProto permits all types and interfaces to be extended.
 
 Extensions allow for additions, and is typically used to adapt a protocol specification to
 your local environment.
-
-In a perfect world, extensions should not be necessary.
-The specification should be in sync with the API, and there should be no additional configuration
-necessary to start using the generated code.
-
-Extensions allow you to add additional information, as long as it doesn't conflict with any
+They allow you to add additional information, as long as it doesn't conflict with any
 existing declarations.
+
+In a perfect world, extensions should not be necessary and the specification should be in sync with
+the API, and there should be no additional configuration necessary to start using the generated
+code.
 
 An extension is loaded when a when an identical package and type declaration is present in the
 path.
