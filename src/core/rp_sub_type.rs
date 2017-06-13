@@ -13,6 +13,7 @@ use super::utils;
 #[derive(Debug, Clone)]
 pub struct RpSubType {
     pub name: String,
+    pub comment: Vec<String>,
     pub fields: Vec<RpLoc<RpField>>,
     pub codes: Vec<RpLoc<RpCode>>,
     pub names: Vec<RpLoc<String>>,
@@ -77,6 +78,7 @@ impl IntoModel for ast::SubType {
 
         let sub_type = RpSubType {
             name: self.name,
+            comment: self.comment,
             fields: fields,
             codes: codes,
             names: names,

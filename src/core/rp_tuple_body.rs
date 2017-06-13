@@ -13,6 +13,7 @@ use super::utils;
 #[derive(Debug, Clone)]
 pub struct RpTupleBody {
     pub name: String,
+    pub comment: Vec<String>,
     pub fields: Vec<RpLoc<RpField>>,
     pub codes: Vec<RpLoc<RpCode>>,
     pub match_decl: RpMatchDecl,
@@ -34,6 +35,7 @@ impl IntoModel for ast::TupleBody {
 
         let tuple_body = RpTupleBody {
             name: self.name,
+            comment: self.comment,
             fields: fields,
             codes: codes,
             match_decl: match_decl,

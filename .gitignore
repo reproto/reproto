@@ -7,3 +7,4 @@ __pycache__
 /it/*/output
 # generated
 /src/parser/parser.rs
+/src/backend/doc/static/doc.*.css

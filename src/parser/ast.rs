@@ -44,6 +44,7 @@ pub struct OptionDecl {
 pub struct Field {
     pub modifier: RpModifier,
     pub name: String,
+    pub comment: Vec<String>,
     pub ty: RpType,
     pub field_as: Option<AstLoc<Value>>,
 }
@@ -121,12 +122,14 @@ impl Body for InterfaceBody {
 #[derive(Debug)]
 pub struct TupleBody {
     pub name: String,
+    pub comment: Vec<String>,
     pub members: Vec<AstLoc<Member>>,
 }
 
 #[derive(Debug)]
 pub struct InterfaceBody {
     pub name: String,
+    pub comment: Vec<String>,
     pub members: Vec<AstLoc<Member>>,
     pub sub_types: Vec<AstLoc<SubType>>,
 }
@@ -134,6 +137,7 @@ pub struct InterfaceBody {
 #[derive(Debug)]
 pub struct TypeBody {
     pub name: String,
+    pub comment: Vec<String>,
     pub members: Vec<AstLoc<Member>>,
 }
 
@@ -141,19 +145,22 @@ pub struct TypeBody {
 #[derive(Debug)]
 pub struct SubType {
     pub name: String,
+    pub comment: Vec<String>,
     pub members: Vec<AstLoc<Member>>,
 }
 
 #[derive(Debug)]
 pub struct EnumBody {
     pub name: String,
-    pub values: Vec<AstLoc<EnumValue>>,
+    pub comment: Vec<String>,
+    pub variants: Vec<AstLoc<EnumVariant>>,
     pub members: Vec<AstLoc<Member>>,
 }
 
 #[derive(Debug)]
-pub struct EnumValue {
+pub struct EnumVariant {
     pub name: AstLoc<String>,
+    pub comment: Vec<String>,
     pub arguments: Vec<AstLoc<Value>>,
     pub ordinal: Option<AstLoc<Value>>,
 }

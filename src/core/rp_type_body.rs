@@ -14,6 +14,7 @@ use super::utils;
 #[derive(Debug, Clone)]
 pub struct RpTypeBody {
     pub name: String,
+    pub comment: Vec<String>,
     pub fields: Vec<RpLoc<RpField>>,
     pub codes: Vec<RpLoc<RpCode>>,
     pub match_decl: RpMatchDecl,
@@ -50,6 +51,7 @@ impl IntoModel for ast::TypeBody {
 
         let type_body = RpTypeBody {
             name: self.name,
+            comment: self.comment,
             fields: fields,
             codes: codes,
             match_decl: match_decl,

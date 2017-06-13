@@ -1,0 +1,8 @@
+[light]
+bg="#EAE1DF"
+title_bg="#8AA083"
+
+type_bg="#FFFFFF"
+interface_bg="#FFFFFF"
+enum_bg="#FFFFFF"
+tuple_bg="#FFFFFF"
