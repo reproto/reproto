@@ -8,7 +8,7 @@ use backend::variables::Variables;
 use codeviz::python::*;
 use core::*;
 use naming::{self, FromNaming};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -389,7 +389,7 @@ impl Processor {
         Ok(result)
     }
 
-    fn populate_files(&self) -> Result<HashMap<&RpPackage, FileSpec>> {
+    fn populate_files(&self) -> Result<BTreeMap<&RpPackage, FileSpec>> {
         let mut enums = Vec::new();
 
         let mut files = self.do_populate_files(|type_id, decl| {
@@ -450,7 +450,7 @@ impl Processor {
         Ok(full_path)
     }
 
-    fn write_files(&self, files: HashMap<&RpPackage, FileSpec>) -> Result<()> {
+    fn write_files(&self, files: BTreeMap<&RpPackage, FileSpec>) -> Result<()> {
         let root_dir = &self.out_path;
 
         for (package, file_spec) in files {

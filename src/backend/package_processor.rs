@@ -1,6 +1,6 @@
 use backend::errors::*;
 use core::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
@@ -60,14 +60,14 @@ pub trait PackageProcessor
         self.default_process(out, type_id, pos)
     }
 
-    fn populate_files(&self) -> Result<HashMap<&RpPackage, Self::Out>> {
+    fn populate_files(&self) -> Result<BTreeMap<&RpPackage, Self::Out>> {
         self.do_populate_files(|_, _| Ok(()))
     }
 
-    fn do_populate_files<'a, F>(&'a self, mut callback: F) -> Result<HashMap<&RpPackage, Self::Out>>
+    fn do_populate_files<'a, F>(&'a self, mut callback: F) -> Result<BTreeMap<&RpPackage, Self::Out>>
         where F: FnMut(&'a RpTypeId, &'a RpLoc<RpDecl>) -> Result<()>
     {
-        let mut files = HashMap::new();
+        let mut files = BTreeMap::new();
 
         // Process all types discovered so far.
         for (type_id, decl) in &self.env().decls {
@@ -130,7 +130,7 @@ pub trait PackageProcessor
         Ok(full_path)
     }
 
-    fn write_files(&self, files: HashMap<&RpPackage, Self::Out>) -> Result<()> {
+    fn write_files(&self, files: BTreeMap<&RpPackage, Self::Out>) -> Result<()> {
         let root_dir = &self.out_path();
 
         for (package, out) in files {
