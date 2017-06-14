@@ -8,3 +8,4 @@ __pycache__
 # generated
 /src/parser/parser.rs
 /src/backend/doc/static/doc.*.css
+/src/backend/doc/themes.rs

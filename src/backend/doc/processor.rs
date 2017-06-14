@@ -11,6 +11,7 @@ use std::io::Write as IoWrite;
 use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
+use super::themes;
 
 pub struct ProcessorOptions {
 }
@@ -54,12 +55,15 @@ const NORMALIZE_CSS_NAME: &str = "normalize.css";
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
 const DOC_CSS_NAME: &str = "doc.css";
-const DOC_CSS_LIGHT: &[u8] = include_bytes!("static/doc.light.css");
 
 fn build_themes() -> HashMap<&'static str, &'static [u8]> {
-    let mut themes = HashMap::new();
-    themes.insert("light", DOC_CSS_LIGHT);
-    themes
+    let mut m = HashMap::new();
+
+    for (key, value) in themes::build() {
+        m.insert(key, value);
+    }
+
+    m
 }
 
 impl Processor {

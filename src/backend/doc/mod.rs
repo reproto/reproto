@@ -1,4 +1,5 @@
 pub mod processor;
+pub mod themes;
 
 use backend::*;
 use core::*;
