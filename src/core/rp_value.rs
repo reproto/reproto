@@ -65,6 +65,7 @@ impl IntoModel for ast::Value {
             ast::Value::Instance(instance) => RpValue::Instance(instance.into_model(pos)?),
             ast::Value::Constant(name) => RpValue::Constant(name.into_model(pos)?),
             ast::Value::Array(inner) => RpValue::Array(inner.into_model(pos)?),
+            _ => return Err(format!("not supported: {:?}", self).into()),
         };
 
         Ok(out)

@@ -24,6 +24,7 @@ pub struct Instance {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
+    Path(RpPath),
     String(String),
     Number(RpNumber),
     Boolean(bool),

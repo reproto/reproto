@@ -20,7 +20,8 @@ error_chain! {
         Overflow {
         }
 
-        IllegalToken {
+        IllegalToken(pos: usize) {
+            description("illegal token")
         }
     }
 }

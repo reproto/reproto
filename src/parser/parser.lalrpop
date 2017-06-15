@@ -164,6 +164,9 @@ SubType: SubType = {
 };
 
 pub Value: Value = {
+    <fragments:("/" PathFragment)+> => Value::Path(RpPath {
+        fragments: fragments.into_iter().map(|f| f.1).collect(),
+    }),
     "[" <values:ZeroOrMore<",", Loc<Value>>> "]" => Value::Array(values),
     <instance:Loc<Instance>> => Value::Instance(instance),
     <constant:Loc<Name>> => Value::Constant(constant),
@@ -172,6 +175,15 @@ pub Value: Value = {
     <true> => Value::Boolean(true),
     <false> => Value::Boolean(false),
     <identifier:IdentifierValue> => Value::Identifier(identifier),
+};
+
+PathFragment: RpPathFragment = {
+    "{" <name:IdentifierValue> ":" <ty:TypeSpec> "}" => {
+        RpPathFragment::Variable {
+            name: name,
+            ty: ty,
+        }
+    }
 };
 
 Instance: Instance = {
@@ -268,6 +280,7 @@ extern {
         "." => Token::Dot,
         "::" => Token::Scope,
         "any" => Token::AnyKeyword,
+        "on" => Token::OnKeyword,
         "float" => Token::FloatKeyword,
         "double" => Token::DoubleKeyword,
         "signed" => Token::SignedKeyword,

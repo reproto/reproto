@@ -92,6 +92,7 @@ impl<I> Lexer<I>
 
         let token = match content.as_str() {
             "any" => Token::AnyKeyword,
+            "on" => Token::OnKeyword,
             "interface" => Token::InterfaceKeyword,
             "type" => Token::TypeKeyword,
             "enum" => Token::EnumKeyword,
@@ -268,7 +269,7 @@ impl<I> Lexer<I>
             self.step();
         }
 
-        Err(ErrorKind::IllegalToken.into())
+        self.illegal()
     }
 
     /// Tokenize code block.
@@ -292,7 +293,7 @@ impl<I> Lexer<I>
             self.step();
         }
 
-        Err(ErrorKind::IllegalToken.into())
+        self.illegal()
     }
 
     fn line_comment(&mut self) {
@@ -332,6 +333,11 @@ impl<I> Lexer<I>
             self.step();
         }
     }
+
+    fn illegal<T>(&mut self) -> Result<T> {
+        self.illegal = true;
+        Err(ErrorKind::IllegalToken(self.pos).into())
+    }
 }
 
 impl<I> Iterator for Lexer<I>
@@ -341,7 +347,7 @@ impl<I> Iterator for Lexer<I>
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.illegal {
-            return Some(Err(ErrorKind::IllegalToken.into()));
+            return Some(self.illegal());
         }
 
         // code block mode
@@ -393,6 +399,7 @@ impl<I> Iterator for Lexer<I>
                     ',' => Token::Comma,
                     '.' => Token::Dot,
                     '?' => Token::Optional,
+                    '&' => Token::And,
                     '/' => Token::Slash,
                     '=' => Token::Equals,
                     'a'...'z' => return Some(self.identifier(start)),
@@ -415,8 +422,7 @@ impl<I> Iterator for Lexer<I>
             }
         }
 
-        self.illegal = true;
-        Some(Err(ErrorKind::IllegalToken.into()))
+        Some(self.illegal())
     }
 }
 
@@ -527,5 +533,11 @@ pub mod tests {
 
         assert_eq!(vec![(16, Identifier(Commented::new(comment, "hello".into())), 21)],
                    tokens.unwrap());
+    }
+
+    #[test]
+    pub fn test_path() {
+        let tokens = tokenize("/hello_world/{path:string}?{multiple:[string]}&{single:unsigned}");
+        println!("tokens = {:?}", tokens);
     }
 }
