@@ -6,6 +6,7 @@ use super::merge::Merge;
 use super::rp_enum_body::RpEnumBody;
 use super::rp_interface_body::RpInterfaceBody;
 use super::rp_loc::{RpLoc, RpPos};
+use super::rp_service_body::RpServiceBody;
 use super::rp_tuple_body::RpTupleBody;
 use super::rp_type_body::RpTypeBody;
 
@@ -15,6 +16,7 @@ pub enum RpDecl {
     Interface(Rc<RpInterfaceBody>),
     Enum(Rc<RpEnumBody>),
     Tuple(Rc<RpTupleBody>),
+    Service(Rc<RpServiceBody>),
 }
 
 impl RpDecl {
@@ -24,6 +26,7 @@ impl RpDecl {
             RpDecl::Interface(ref body) => &body.name,
             RpDecl::Enum(ref body) => &body.name,
             RpDecl::Tuple(ref body) => &body.name,
+            RpDecl::Service(ref body) => &body.name,
         }
     }
 }
@@ -35,6 +38,7 @@ impl ::std::fmt::Display for RpDecl {
             RpDecl::Interface(ref body) => write!(f, "interface {}", body.name),
             RpDecl::Enum(ref body) => write!(f, "enum {}", body.name),
             RpDecl::Tuple(ref body) => write!(f, "tuple {}", body.name),
+            RpDecl::Service(ref body) => write!(f, "service {}", body.name),
         }
     }
 }
@@ -48,6 +52,7 @@ impl IntoModel for ast::Decl {
             ast::Decl::Interface(body) => RpDecl::Interface(body.into_model(pos)?),
             ast::Decl::Enum(body) => RpDecl::Enum(body.into_model(pos)?),
             ast::Decl::Tuple(body) => RpDecl::Tuple(body.into_model(pos)?),
+            ast::Decl::Service(body) => RpDecl::Service(body.into_model(pos)?),
         };
 
         Ok(decl)
@@ -92,6 +97,11 @@ impl Merge for RpLoc<RpDecl> {
             }
             RpDecl::Tuple(ref mut body) => {
                 if let RpDecl::Tuple(other) = source.inner {
+                    return body.merge(other);
+                }
+            }
+            RpDecl::Service(ref mut body) => {
+                if let RpDecl::Service(other) = source.inner {
                     return body.merge(other);
                 }
             }

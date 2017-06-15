@@ -30,6 +30,7 @@ Decl: Decl = {
     <interface:Interface> => Decl::Interface(interface),
     <ty:Type> => Decl::Type(ty),
     <tuple:Tuple> => Decl::Tuple(tuple),
+    <service:Service> => Decl::Service(service),
 };
 
 Enum: EnumBody =
@@ -81,6 +82,16 @@ Tuple: TupleBody =
         name: name.value,
         comment: name.comment,
         members: members,
+    }
+};
+
+Service: ServiceBody =
+    "service" <name:TypeIdentifier> "{"
+    "}" =>
+{
+    ServiceBody {
+        name: name.value,
+        comment: name.comment,
     }
 };
 
@@ -259,6 +270,7 @@ extern {
         "type" => Token::TypeKeyword,
         "interface" => Token::InterfaceKeyword,
         "tuple" => Token::TupleKeyword,
+        "service" => Token::ServiceKeyword,
         "package" => Token::PackageKeyword,
         "(" => Token::LeftParen,
         ")" => Token::RightParen,

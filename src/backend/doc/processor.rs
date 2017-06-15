@@ -403,6 +403,23 @@ impl PackageProcessor for Processor {
         full_path
     }
 
+    fn process_service(&self,
+                       out: &mut Self::Out,
+                       _: &RpTypeId,
+                       _: &RpPos,
+                       body: Rc<RpServiceBody>)
+                       -> Result<()> {
+        write!(out,
+               "<section id=\"{}\" class=\"section-service\">",
+               body.name)?;
+
+        self.section_title(out, "service", &body.name)?;
+        self.write_description(out, &body.comment)?;
+
+        write!(out, "</section>")?;
+        Ok(())
+    }
+
     fn process_enum(&self,
                     out: &mut Self::Out,
                     _: &RpTypeId,

@@ -6,6 +6,7 @@ type_bg="#FFFFFF"
 interface_bg="#FFFFFF"
 enum_bg="#FFFFFF"
 tuple_bg="#FFFFFF"
+service_bg="#FFFFFF"
 
 [dark]
 bg="#000000"
@@ -15,3 +16,4 @@ type_bg="#FFFFFF"
 interface_bg="#FFFFFF"
 enum_bg="#FFFFFF"
 tuple_bg="#FFFFFF"
+service_bg="#FFFFFF"

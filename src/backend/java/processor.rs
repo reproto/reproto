@@ -785,6 +785,14 @@ impl Processor {
         Ok(file_spec)
     }
 
+    fn process_service(&self, type_id: &RpTypeId, body: &RpServiceBody) -> Result<FileSpec> {
+        let package = self.java_package(&type_id.package);
+        let mut file_spec = self.new_file_spec(&package);
+        let interface_spec = InterfaceSpec::new(mods![Modifier::Public], &body.name);
+        file_spec.push(&interface_spec);
+        Ok(file_spec)
+    }
+
     fn convert_field(&self, pkg: &RpPackage, field: &RpLoc<RpField>) -> Result<JavaField> {
         let java_type = self.into_java_type(&field.pos, pkg, &field.ty)?;
         let camel_name = self.snake_to_upper_camel.convert(&field.name);
@@ -852,6 +860,7 @@ impl Processor {
             RpDecl::Type(ref ty) => self.process_type(type_id, ty),
             RpDecl::Tuple(ref ty) => self.process_tuple(&type_id.package, ty),
             RpDecl::Enum(ref ty) => self.process_enum(&type_id.package, ty),
+            RpDecl::Service(ref ty) => self.process_service(&type_id, ty),
         }
     }
 }

@@ -5,6 +5,7 @@ use super::rp_enum_variant::RpEnumVariant;
 use super::rp_field::RpField;
 use super::rp_interface_body::RpInterfaceBody;
 use super::rp_loc::RpLoc;
+use super::rp_service_body::RpServiceBody;
 use super::rp_sub_type::RpSubType;
 use super::rp_tuple_body::RpTupleBody;
 use super::rp_type_body::RpTypeBody;
@@ -23,6 +24,7 @@ pub enum RpRegistered {
         parent: Rc<RpEnumBody>,
         variant: Rc<RpEnumVariant>,
     },
+    Service(Rc<RpServiceBody>),
 }
 
 impl RpRegistered {
@@ -59,6 +61,10 @@ impl RpRegistered {
             }
             // exact tuple
             (&RpRegistered::Tuple(ref target), &RpRegistered::Tuple(ref source)) => {
+                Rc::ptr_eq(target, source)
+            }
+            // exact service
+            (&RpRegistered::Service(ref target), &RpRegistered::Service(ref source)) => {
                 Rc::ptr_eq(target, source)
             }
             // exact interface, with unknown sub-type.
@@ -99,6 +105,7 @@ impl RpRegistered {
             RpRegistered::Interface(ref body) => format!("interface {}", body.name.to_owned()),
             RpRegistered::Enum(ref body) => format!("enum {}", body.name.to_owned()),
             RpRegistered::Tuple(ref body) => format!("tuple {}", body.name.to_owned()),
+            RpRegistered::Service(ref body) => format!("service {}", body.name.to_owned()),
             RpRegistered::SubType { ref parent, ref sub_type } => {
                 format!("type {}.{}", parent.name, sub_type.name)
             }

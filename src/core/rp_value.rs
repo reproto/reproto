@@ -6,10 +6,12 @@ use super::rp_loc::{RpLoc, RpPos};
 use super::rp_match_kind::RpMatchKind;
 use super::rp_name::RpName;
 use super::rp_number::RpNumber;
+use super::rp_path::RpPath;
 use super::rp_type::RpType;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RpValue {
+    Path(RpPath),
     String(String),
     Number(RpNumber),
     Boolean(bool),
@@ -23,6 +25,7 @@ pub enum RpValue {
 impl RpValue {
     pub fn as_match_kind(&self) -> RpMatchKind {
         match *self {
+            RpValue::Path(_) => RpMatchKind::String,
             RpValue::String(_) => RpMatchKind::String,
             RpValue::Number(_) => RpMatchKind::Number,
             RpValue::Boolean(_) => RpMatchKind::Boolean,
@@ -38,6 +41,7 @@ impl RpValue {
 impl ::std::fmt::Display for RpValue {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         let out = match *self {
+            RpValue::Path(_) => "<path>",
             RpValue::String(_) => "<string>",
             RpValue::Number(_) => "<number>",
             RpValue::Boolean(_) => "<boolean>",

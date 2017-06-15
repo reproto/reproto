@@ -60,11 +60,22 @@ pub trait PackageProcessor
         self.default_process(out, type_id, pos)
     }
 
+    fn process_service(&self,
+                       out: &mut Self::Out,
+                       type_id: &RpTypeId,
+                       pos: &RpPos,
+                       _: Rc<RpServiceBody>)
+                       -> Result<()> {
+        self.default_process(out, type_id, pos)
+    }
+
     fn populate_files(&self) -> Result<BTreeMap<&RpPackage, Self::Out>> {
         self.do_populate_files(|_, _| Ok(()))
     }
 
-    fn do_populate_files<'a, F>(&'a self, mut callback: F) -> Result<BTreeMap<&RpPackage, Self::Out>>
+    fn do_populate_files<'a, F>(&'a self,
+                                mut callback: F)
+                                -> Result<BTreeMap<&RpPackage, Self::Out>>
         where F: FnMut(&'a RpTypeId, &'a RpLoc<RpDecl>) -> Result<()>
     {
         let mut files = BTreeMap::new();
@@ -87,6 +98,9 @@ pub trait PackageProcessor
                 }
                 RpDecl::Enum(ref body) => {
                     self.process_enum(&mut out, type_id, &decl.pos, body.clone())?
+                }
+                RpDecl::Service(ref body) => {
+                    self.process_service(&mut out, type_id, &decl.pos, body.clone())?
                 }
             };
         }

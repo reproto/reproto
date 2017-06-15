@@ -97,6 +97,7 @@ impl<I> Lexer<I>
             "type" => Token::TypeKeyword,
             "enum" => Token::EnumKeyword,
             "tuple" => Token::TupleKeyword,
+            "service" => Token::ServiceKeyword,
             "package" => Token::PackageKeyword,
             "match" => Token::MatchKeyword,
             "use" => Token::UseKeyword,

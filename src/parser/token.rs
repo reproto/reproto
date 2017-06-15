@@ -52,6 +52,7 @@ pub enum Token {
     TypeKeyword,
     EnumKeyword,
     TupleKeyword,
+    ServiceKeyword,
     PackageKeyword,
     MatchKeyword,
     UseKeyword,

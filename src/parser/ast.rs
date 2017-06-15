@@ -167,33 +167,18 @@ pub struct EnumVariant {
 }
 
 #[derive(Debug)]
+pub struct ServiceBody {
+    pub name: String,
+    pub comment: Vec<String>,
+}
+
+#[derive(Debug)]
 pub enum Decl {
     Type(TypeBody),
     Tuple(TupleBody),
     Interface(InterfaceBody),
     Enum(EnumBody),
-}
-
-impl Decl {
-    pub fn name(&self) -> String {
-        match *self {
-            Decl::Interface(ref interface) => interface.name.clone(),
-            Decl::Type(ref ty) => ty.name.clone(),
-            Decl::Tuple(ref ty) => ty.name.clone(),
-            Decl::Enum(ref ty) => ty.name.clone(),
-        }
-    }
-}
-
-impl ::std::fmt::Display for Decl {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        match *self {
-            Decl::Interface(ref body) => write!(f, "interface {}", body.name),
-            Decl::Type(ref body) => write!(f, "type {}", body.name),
-            Decl::Tuple(ref body) => write!(f, "tuple {}", body.name),
-            Decl::Enum(ref body) => write!(f, "enum {}", body.name),
-        }
-    }
+    Service(ServiceBody),
 }
 
 #[derive(Debug)]

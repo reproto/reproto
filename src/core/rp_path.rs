@@ -1,6 +1,6 @@
 use super::rp_path_fragment::RpPathFragment;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpPath {
     pub fragments: Vec<RpPathFragment>,
 }

@@ -78,8 +78,6 @@ fn process_colors() -> Result<()> {
     let out_dir = env::var("OUT_DIR")?;
     let out_path = Path::new(&out_dir);
 
-    println!("cargo:rerun-if-changed=themes.toml");
-
     let colors_content = read_file("themes.toml");
     let template_content = read_file("src/backend/doc/static/doc._.css.hbs");
 
@@ -133,6 +131,9 @@ fn process_colors() -> Result<()> {
 }
 
 fn main() {
-    process_colors().unwrap();
+    println!("cargo:rerun-if-changed=themes.toml");
+    println!("cargo:rerun-if-changed=src/parser/parser.lalrpop");
+
     lalrpop_snap::process_root().unwrap();
+    process_colors().unwrap();
 }

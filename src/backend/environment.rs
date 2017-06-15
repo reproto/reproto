@@ -89,6 +89,12 @@ impl Environment {
                 let token = RpLoc::new(RpRegistered::Tuple(tuple.clone()), decl.pos.clone());
                 out.push((type_id, token));
             }
+            RpDecl::Service(ref service) => {
+                let type_id = RpTypeId::new(package.clone(),
+                                            RpName::with_parts(vec![service.name.clone()]));
+                let token = RpLoc::new(RpRegistered::Service(service.clone()), decl.pos.clone());
+                out.push((type_id, token));
+            }
         }
 
         Ok(out)
