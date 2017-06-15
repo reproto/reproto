@@ -132,7 +132,7 @@ mod tests {
     fn test_array() {
         let ty = parse_type_spec("[string]");
 
-        if let RpType::Array(inner) = ty {
+        if let RpType::Array { inner } = ty {
             if let RpType::String = *inner {
                 return;
             }
@@ -148,9 +148,9 @@ mod tests {
         // TODO: use #![feature(box_patterns)]:
         // if let Type::Map(box Type::String, box Type::Unsigned(size)) = ty {
         // }
-        if let RpType::Map(key, value) = ty {
+        if let RpType::Map { key, value } = ty {
             if let RpType::String = *key {
-                if let RpType::Unsigned(size) = *value {
+                if let RpType::Unsigned { size } = *value {
                     assert_eq!(Some(123usize), size);
                     return;
                 }
@@ -197,7 +197,7 @@ mod tests {
         let field = AstLoc::new(field, (8, 17));
 
         let instance = Instance {
-            ty: c,
+            name: c,
             arguments: AstLoc::new(vec![field], (8, 17)),
         };
 
@@ -247,7 +247,7 @@ mod tests {
         };
 
         assert_type_spec_eq!(RpType::String, "string");
-        assert_type_spec_eq!(RpType::Name(c), "Hello.World");
+        assert_type_spec_eq!(RpType::Name { name: c }, "Hello.World");
     }
 
     #[test]

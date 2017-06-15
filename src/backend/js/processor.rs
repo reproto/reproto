@@ -765,14 +765,14 @@ impl ValueBuilder for Processor {
 impl DynamicConverter for Processor {
     fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
-            RpType::Signed(_) |
-            RpType::Unsigned(_) => true,
+            RpType::Signed { size: _ } |
+            RpType::Unsigned { size: _ } => true,
             RpType::Float | RpType::Double => true,
             RpType::String => true,
             RpType::Any => true,
             RpType::Boolean => true,
-            RpType::Array(ref inner) => self.is_native(inner),
-            RpType::Map(ref key, ref value) => self.is_native(key) && self.is_native(value),
+            RpType::Array { ref inner } => self.is_native(inner),
+            RpType::Map { ref key, ref value } => self.is_native(key) && self.is_native(value),
             _ => false,
         }
     }

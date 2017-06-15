@@ -156,14 +156,14 @@ impl Processor {
             RpType::Float => {
                 write!(out, "<span class=\"ty-float\">float</span>")?;
             }
-            RpType::Signed(ref size) => {
+            RpType::Signed { ref size } => {
                 if let Some(ref size) = *size {
                     write!(out, "<span class=\"ty-signed\">signed/{}</span>", size)?;
                 } else {
                     write!(out, "<span class=\"ty-signed\">signed</span>")?;
                 }
             }
-            RpType::Unsigned(ref size) => {
+            RpType::Unsigned { ref size } => {
                 if let Some(ref size) = *size {
                     write!(out, "<span class=\"ty-unsigned\">unsigned/{}</span>", size)?;
                 } else {
@@ -182,7 +182,7 @@ impl Processor {
             RpType::Any => {
                 write!(out, "<span class=\"ty-any\">any</span>")?;
             }
-            RpType::Name(ref name) => {
+            RpType::Name { ref name } => {
                 let url = self.type_url(&type_id.with_name(name.clone()))?;
                 let name = name.parts.join(".");
 
@@ -190,14 +190,14 @@ impl Processor {
                 write!(out, "<a href=\"{url}\">{name}</a>", url = url, name = name)?;
                 write!(out, "</span>")?;
             }
-            RpType::Array(ref inner) => {
+            RpType::Array { ref inner } => {
                 write!(out, "<span class=\"ty-array\">")?;
                 write!(out, "<span class=\"ty-array-left\">[</span>")?;
                 self.write_type(out, type_id, inner)?;
                 write!(out, "<span class=\"ty-array-right\">]</span>")?;
                 write!(out, "</span>")?;
             }
-            RpType::Map(ref key, ref value) => {
+            RpType::Map { ref key, ref value } => {
                 write!(out, "<span class=\"ty-map\">")?;
                 write!(out, "<span class=\"ty-map-key\">{{</span>")?;
                 self.write_type(out, type_id, key)?;
@@ -350,18 +350,22 @@ impl Processor {
     }
 }
 
-impl Collecting for String {
+pub struct Collector {
+    buffer: String,
+}
+
+impl Collecting for Collector {
     type Processor = Processor;
 
     fn new() -> Self {
-        String::new()
+        Collector { buffer: String::new() }
     }
 
     fn into_bytes(self, processor: &Self::Processor) -> Result<Vec<u8>> {
         let mut out = String::new();
 
         processor.write_doc(&mut out, move |out| {
-                out.write_str(&self)?;
+                out.write_str(&self.buffer)?;
                 Ok(())
             })?;
 
@@ -369,8 +373,14 @@ impl Collecting for String {
     }
 }
 
+impl FmtWrite for Collector {
+    fn write_str(&mut self, other: &str) -> ::std::result::Result<(), ::std::fmt::Error> {
+        self.buffer.write_str(other)
+    }
+}
+
 impl PackageProcessor for Processor {
-    type Out = String;
+    type Out = Collector;
 
     fn ext(&self) -> &str {
         EXT

@@ -92,10 +92,10 @@ pub trait ValueBuilder
             (&RpValue::Number(ref number), None) => {
                 return self.number(number);
             }
-            (&RpValue::Number(ref number), Some(&RpType::Signed(ref size))) => {
+            (&RpValue::Number(ref number), Some(&RpType::Signed { ref size })) => {
                 return self.signed(number, size);
             }
-            (&RpValue::Number(ref number), Some(&RpType::Unsigned(ref size))) => {
+            (&RpValue::Number(ref number), Some(&RpType::Unsigned { ref size })) => {
                 return self.unsigned(number, size);
             }
             (&RpValue::Number(ref number), Some(&RpType::Float)) => {
@@ -106,7 +106,7 @@ pub trait ValueBuilder
             }
             (&RpValue::Array(ref values), expected) => {
                 let inner = match expected {
-                    Some(&RpType::Array(ref inner)) => Some(&**inner),
+                    Some(&RpType::Array { ref inner }) => Some(&**inner),
                     Some(other) => {
                         return Err(Error::pos(format!("expected `{}`", other), value.pos.clone()))
                     }
@@ -122,9 +122,9 @@ pub trait ValueBuilder
 
                 return self.array(array_values);
             }
-            (&RpValue::Constant(ref constant), Some(&RpType::Name(ref target))) => {
+            (&RpValue::Constant(ref constant), Some(&RpType::Name { ref name })) => {
                 let reg_constant = self.env()
-                    .constant(&value.pos, &env.package, constant, target)?;
+                    .constant(&value.pos, &env.package, constant, name)?;
 
                 match *reg_constant {
                     RpRegistered::EnumConstant { parent: _, variant: _ } => {
@@ -138,9 +138,9 @@ pub trait ValueBuilder
                     }
                 }
             }
-            (&RpValue::Instance(ref instance), Some(&RpType::Name(ref target))) => {
+            (&RpValue::Instance(ref instance), Some(&RpType::Name { ref name })) => {
                 let (registered, known) = self.env()
-                    .instance(&value.pos, env.package, instance, target)?;
+                    .instance(&value.pos, env.package, instance, name)?;
 
                 let mut arguments = Vec::new();
 
@@ -153,7 +153,7 @@ pub trait ValueBuilder
                     }
                 }
 
-                let ty = self.convert_type(&value.pos, &env.package.into_type_id(&instance.ty))?;
+                let ty = self.convert_type(&value.pos, &env.package.into_type_id(&instance.name))?;
                 return self.instance(ty, arguments);
             }
             // identifier with any type.

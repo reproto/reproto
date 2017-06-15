@@ -131,32 +131,30 @@ impl Environment {
         match (target, source) {
             (&RpType::Double, &RpType::Double) => Ok(true),
             (&RpType::Float, &RpType::Float) => Ok(true),
-            (&RpType::Signed(Some(ref target)), &RpType::Signed(Some(ref source))) => {
-                Ok(target <= source)
-            }
+            (&RpType::Signed { size: Some(ref target) },
+             &RpType::Signed { size: Some(ref source) }) => Ok(target <= source),
             // unknown size matches known
-            (&RpType::Signed(_), &RpType::Signed(None)) => Ok(true),
-            (&RpType::Unsigned(Some(ref target)), &RpType::Unsigned(Some(ref source))) => {
-                Ok(target <= source)
-            }
+            (&RpType::Signed { size: _ }, &RpType::Signed { size: None }) => Ok(true),
+            (&RpType::Unsigned { size: Some(ref target) },
+             &RpType::Unsigned { size: Some(ref source) }) => Ok(target <= source),
             // unknown size matches known
-            (&RpType::Unsigned(_), &RpType::Unsigned(None)) => Ok(true),
+            (&RpType::Unsigned { size: _ }, &RpType::Unsigned { size: None }) => Ok(true),
             (&RpType::Boolean, &RpType::Boolean) => return Ok(true),
             (&RpType::String, &RpType::String) => return Ok(true),
             (&RpType::Bytes, &RpType::Bytes) => return Ok(true),
             // everything assignable to any type
             (&RpType::Any, _) => Ok(true),
-            (&RpType::Name(ref target), &RpType::Name(ref source)) => {
+            (&RpType::Name { name: ref target }, &RpType::Name { name: ref source }) => {
                 let target = self.lookup(package, target)?;
                 let source = self.lookup(package, source)?;
                 return Ok(target.is_assignable_from(source));
             }
             // arrays match if inner type matches
-            (&RpType::Array(ref target), &RpType::Array(ref source)) => {
+            (&RpType::Array { inner: ref target }, &RpType::Array { inner: ref source }) => {
                 return self.is_assignable_from(package, target, source);
             }
-            (&RpType::Map(ref target_key, ref target_value),
-             &RpType::Map(ref source_key, ref source_value)) => {
+            (&RpType::Map { key: ref target_key, value: ref target_value },
+             &RpType::Map { key: ref source_key, value: ref source_value }) => {
                 let key_assignable = self.is_assignable_from(package, target_key, source_key)?;
                 let value_assignable =
                     self.is_assignable_from(package, target_value, source_value)?;
@@ -197,7 +195,7 @@ impl Environment {
                         instance: &RpInstance,
                         target: &RpName)
                         -> Result<(&'a RpRegistered, InitFields)> {
-        let reg_instance = self.lookup(package, &instance.ty)
+        let reg_instance = self.lookup(package, &instance.name)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
         let reg_target = self.lookup(package, target)

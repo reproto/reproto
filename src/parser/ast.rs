@@ -18,7 +18,7 @@ pub struct FieldInit {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Instance {
-    pub ty: RpName,
+    pub name: RpName,
     pub arguments: AstLoc<Vec<AstLoc<FieldInit>>>,
 }
 

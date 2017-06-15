@@ -153,8 +153,8 @@ impl Processor {
     pub fn into_java_type(&self, pos: &RpPos, pkg: &RpPackage, ty: &RpType) -> Result<Type> {
         let ty = match *ty {
             RpType::String => self.string.clone().into(),
-            RpType::Signed(ref size) |
-            RpType::Unsigned(ref size) => {
+            RpType::Signed { ref size } |
+            RpType::Unsigned { ref size } => {
                 // default to integer if unspecified.
                 // TODO: should we care about signedness?
                 // TODO: > 64 bits, use BitInteger?
@@ -167,14 +167,14 @@ impl Processor {
             RpType::Float => FLOAT.into(),
             RpType::Double => DOUBLE.into(),
             RpType::Boolean => BOOLEAN.into(),
-            RpType::Array(ref ty) => {
-                let argument = self.into_java_type(pos, pkg, ty)?;
+            RpType::Array { ref inner } => {
+                let argument = self.into_java_type(pos, pkg, inner)?;
                 self.list.with_arguments(vec![argument]).into()
             }
-            RpType::Name(ref name) => {
+            RpType::Name { ref name } => {
                 return self.convert_custom(pos, pkg, name);
             }
-            RpType::Map(ref key, ref value) => {
+            RpType::Map { ref key, ref value } => {
                 let key = self.into_java_type(pos, pkg, key)?;
                 let value = self.into_java_type(pos, pkg, value)?;
                 self.map.with_arguments(vec![key, value]).into()

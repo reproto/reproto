@@ -7,11 +7,12 @@ use super::rp_modifier::RpModifier;
 use super::rp_type::RpType;
 use super::rp_value::RpValue;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RpField {
     pub modifier: RpModifier,
     pub name: String,
     pub comment: Vec<String>,
+    #[serde(rename="type")]
     pub ty: RpType,
     pub field_as: Option<RpLoc<String>>,
 }

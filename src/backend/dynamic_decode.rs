@@ -46,22 +46,22 @@ pub trait DynamicDecode
         }
 
         let input = match *ty {
-            RpType::Signed(_) |
-            RpType::Unsigned(_) => input.clone(),
+            RpType::Signed { size: _ } |
+            RpType::Unsigned { size: _ } => input.clone(),
             RpType::Float | RpType::Double => input.clone(),
             RpType::String => input.clone(),
             RpType::Any => input.clone(),
             RpType::Boolean => input.clone(),
-            RpType::Name(ref name) => {
+            RpType::Name { ref name } => {
                 let name = self.convert_type(pos, &type_id.with_name(name.clone()))?;
                 self.name_decode(input, name)
             }
-            RpType::Array(ref inner) => {
+            RpType::Array { ref inner } => {
                 let inner_var = self.array_inner_var();
                 let inner = DynamicDecode::decode(self, type_id, pos, inner, &inner_var)?;
                 self.array_decode(input, inner)
             }
-            RpType::Map(ref key, ref value) => {
+            RpType::Map { ref key, ref value } => {
                 let map_key = self.map_key_var();
                 let key = DynamicDecode::decode(self, type_id, pos, key, &map_key)?;
                 let map_value = self.map_value_var();

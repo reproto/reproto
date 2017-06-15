@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 use super::rp_modifier::RpModifier;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct RpModifiers {
-    modifiers: HashSet<RpModifier>,
+    pub modifiers: HashSet<RpModifier>,
 }
 
 impl RpModifiers {

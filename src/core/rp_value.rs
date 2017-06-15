@@ -9,7 +9,8 @@ use super::rp_number::RpNumber;
 use super::rp_path::RpPath;
 use super::rp_type::RpType;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(tag = "type", content="value", rename_all="snake_case")]
 pub enum RpValue {
     Path(RpPath),
     String(String),

@@ -199,7 +199,7 @@ PathFragment: RpPathFragment = {
 
 Instance: Instance = {
     <name:Name> "(" <arguments:Loc<ZeroOrMore<",", Loc<FieldInit>>>> ")" => Instance {
-        ty: name,
+        name: name,
         arguments: arguments,
     },
 };
@@ -215,14 +215,25 @@ pub TypeSpec: RpType = {
     "any" => RpType::Any,
     "float" => RpType::Float,
     "double" => RpType::Double,
-    "signed" <size:TypeBits?> => RpType::Signed(size),
-    "unsigned" <size:TypeBits?> => RpType::Unsigned(size),
+    "signed" <size:TypeBits?> => RpType::Signed {
+        size: size
+    },
+    "unsigned" <size:TypeBits?> => RpType::Unsigned {
+        size: size
+    },
     "boolean" => RpType::Boolean,
     "string" => RpType::String,
     "bytes" => RpType::Bytes,
-    <name:Name> => RpType::Name(name),
-    "[" <inner:TypeSpec> "]" => RpType::Array(Box::new(inner)),
-    "{" <key:TypeSpec> ":" <value:TypeSpec> "}" => RpType::Map(Box::new(key), Box::new(value)),
+    <name:Name> => RpType::Name{
+        name: name
+    },
+    "[" <inner:TypeSpec> "]" => RpType::Array {
+        inner: Box::new(inner)
+    },
+    "{" <key:TypeSpec> ":" <value:TypeSpec> "}" => RpType::Map{
+        key: Box::new(key),
+        value: Box::new(value)
+    },
 };
 
 Name: RpName = {

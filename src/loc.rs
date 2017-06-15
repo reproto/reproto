@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct Loc<T, P> {
+    #[serde(rename = "value")]
     pub inner: T,
     pub pos: P,
 }

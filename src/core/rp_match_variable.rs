@@ -4,9 +4,10 @@ use super::into_model::IntoModel;
 use super::rp_loc::RpPos;
 use super::rp_type::RpType;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct RpMatchVariable {
     pub name: String,
+    #[serde(rename="type")]
     pub ty: RpType,
 }
 

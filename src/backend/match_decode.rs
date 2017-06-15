@@ -55,7 +55,7 @@ pub trait MatchDecode
             let result_stmt = self.value(&ValueBuilderEnv {
                     value: &result.instance,
                     package: &type_id.package,
-                    ty: Some(&RpType::Name(type_id.name.clone())),
+                    ty: Some(&RpType::Name { name: type_id.name.clone() }),
                     variables: &variables,
                 })?;
 
@@ -87,7 +87,7 @@ pub trait MatchDecode
             let result_value = self.value(&ValueBuilderEnv {
                     value: &result.instance,
                     package: &type_id.package,
-                    ty: Some(&RpType::Name(type_id.name.clone())),
+                    ty: Some(&RpType::Name { name: type_id.name.clone() }),
                     variables: &variables,
                 })?;
 

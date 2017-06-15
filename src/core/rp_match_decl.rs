@@ -9,7 +9,7 @@ use super::rp_match_variable::RpMatchVariable;
 use super::rp_type::RpType;
 use super::rp_value::RpValue;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RpMatchDecl {
     pub by_value: Vec<(RpLoc<RpValue>, RpByValueMatch)>,
     pub by_type: Vec<(RpMatchKind, RpByTypeMatch)>,
@@ -31,14 +31,14 @@ impl RpMatchDecl {
         match variable.ty {
             RpType::Double |
             RpType::Float |
-            RpType::Signed(_) |
-            RpType::Unsigned(_) => RpMatchKind::Number,
+            RpType::Signed { size: _ } |
+            RpType::Unsigned { size: _ } => RpMatchKind::Number,
             RpType::Boolean => RpMatchKind::Boolean,
             RpType::String | RpType::Bytes => RpMatchKind::String,
             RpType::Any => RpMatchKind::Any,
-            RpType::Name(_) |
-            RpType::Map(_, _) => RpMatchKind::Object,
-            RpType::Array(_) => RpMatchKind::Array,
+            RpType::Name { name: _ } |
+            RpType::Map { key: _, value: _ } => RpMatchKind::Object,
+            RpType::Array { inner: _ } => RpMatchKind::Array,
         }
     }
 
