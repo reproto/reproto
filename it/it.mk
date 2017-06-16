@@ -5,14 +5,16 @@ PROTO_PATH = proto
 JAVA_OUT = ${OUTPUT}/java
 PYTHON_OUT = ${OUTPUT}/python
 JS_OUT = ${OUTPUT}/js
+RUST_OUT = ${OUTPUT}/rust
 
-SUITES ?= python java js
+SUITES ?= python java js rust
 TOOL ?= cargo run -q --
 TARGET ?= test
 
 python_args ?=
 java_args ?= -m builder
 js_args ?=
+rust_args ?=
 
 .PHONY: all it update clean ${SUITES}
 
@@ -32,6 +34,10 @@ clean:
 python:
 	@echo "Building Python"
 	@${TOOL} compile -b python ${python_args} -o ${PYTHON_OUT} --path ${PROTO_PATH} --package ${TARGET}
+
+rust:
+	@echo "Building Rust"
+	@${TOOL} compile -b rust ${python_args} -o ${RUST_OUT} --path ${PROTO_PATH} --package ${TARGET}
 
 js:
 	@echo "Building JavaScript"

@@ -118,7 +118,7 @@ pub trait PackageProcessor
             .unwrap_or_else(|| package.clone())
     }
 
-    fn resolve_full_path(&self, root_dir: &Path, package: RpPackage) -> PathBuf {
+    fn resolve_full_path(&self, root_dir: &Path, package: RpPackage) -> Result<PathBuf> {
         let mut full_path = root_dir.to_owned();
         let mut iter = package.parts.iter().peekable();
 
@@ -128,15 +128,16 @@ pub trait PackageProcessor
 
         // path to final file
         full_path.set_extension(self.ext());
-        full_path
+        Ok(full_path)
     }
 
     fn setup_module_path(&self, root_dir: &Path, package: &RpPackage) -> Result<PathBuf> {
         let package = self.package(package);
-        let full_path = self.resolve_full_path(root_dir, package);
+        let full_path = self.resolve_full_path(root_dir, package)?;
 
         if let Some(parent) = full_path.parent() {
             if !parent.is_dir() {
+                debug!("+dir: {}", parent.display());
                 fs::create_dir_all(parent)?;
             }
         }

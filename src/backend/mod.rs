@@ -14,6 +14,7 @@ pub mod js;
 pub mod json;
 pub mod match_decode;
 pub mod python;
+pub mod rust;
 pub mod value_builder;
 pub mod variables;
 mod package_processor;
@@ -34,6 +35,7 @@ pub fn resolve(backend: &str, options: Options, env: Environment) -> Result<Box<
         "java" => Box::new(java::resolve(options, env)?),
         "python" => Box::new(python::resolve(options, env)?),
         "js" => Box::new(js::resolve(options, env)?),
+        "rust" => Box::new(rust::resolve(options, env)?),
         "doc" => Box::new(doc::resolve(options, env)?),
         "json" => Box::new(json::resolve(options, env)?),
         _ => return Err(format!("Unknown backend type: {}", backend).into()),

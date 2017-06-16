@@ -109,11 +109,11 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn resolve_full_path(&self, root_dir: &Path, package: RpPackage) -> PathBuf {
+    fn resolve_full_path(&self, root_dir: &Path, package: RpPackage) -> Result<PathBuf> {
         let mut full_path = root_dir.to_owned();
         full_path = full_path.join(self.package_file(package));
         full_path.set_extension(self.ext());
-        full_path
+        Ok(full_path)
     }
 
     fn process_service(&self,

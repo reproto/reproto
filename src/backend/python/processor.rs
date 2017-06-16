@@ -11,7 +11,6 @@ use naming::{self, FromNaming};
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
-use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -412,63 +411,6 @@ impl Processor {
         Ok(files)
     }
 
-    fn setup_module_path(&self, root_dir: &PathBuf, package: &RpPackage) -> Result<PathBuf> {
-        let package = self.package(package);
-
-        let mut full_path = root_dir.to_owned();
-        let mut iter = package.parts.iter().peekable();
-
-        while let Some(part) = iter.next() {
-            full_path = full_path.join(part);
-
-            if iter.peek().is_none() {
-                continue;
-            }
-
-            if !full_path.is_dir() {
-                debug!("+dir: {}", full_path.display());
-                fs::create_dir_all(&full_path)?;
-            }
-
-            let init_path = full_path.join(INIT_PY);
-
-            if !init_path.is_file() {
-                debug!("+init: {}", init_path.display());
-                File::create(init_path)?;
-            }
-        }
-
-        if let Some(parent) = full_path.parent() {
-            if !parent.is_dir() {
-                debug!("+dir: {}", parent.display());
-                fs::create_dir_all(&parent)?;
-            }
-        }
-
-        // path to final file
-        full_path.set_extension(EXT);
-        Ok(full_path)
-    }
-
-    fn write_files(&self, files: BTreeMap<&RpPackage, FileSpec>) -> Result<()> {
-        let root_dir = &self.out_path;
-
-        for (package, file_spec) in files {
-            let full_path = self.setup_module_path(root_dir, package)?;
-
-            debug!("+module: {}", full_path.display());
-
-            let mut out = String::new();
-            file_spec.format(&mut out)?;
-
-            let mut f = File::create(full_path)?;
-            f.write_all(&out.into_bytes())?;
-            f.flush()?;
-        }
-
-        Ok(())
-    }
-
     fn convert_type_id<F>(&self, pos: &RpPos, type_id: &RpTypeId, path_syntax: F) -> Result<Name>
         where F: Fn(&Vec<String>) -> String
     {
@@ -802,6 +744,35 @@ impl PackageProcessor for Processor {
         }
 
         Ok(())
+    }
+
+    fn resolve_full_path(&self, root_dir: &Path, package: RpPackage) -> Result<PathBuf> {
+        let mut full_path = root_dir.to_owned();
+        let mut iter = package.parts.iter().peekable();
+
+        while let Some(part) = iter.next() {
+            full_path = full_path.join(part);
+
+            if iter.peek().is_none() {
+                continue;
+            }
+
+            if !full_path.is_dir() {
+                debug!("+dir: {}", full_path.display());
+                fs::create_dir_all(&full_path)?;
+            }
+
+            let init_path = full_path.join(INIT_PY);
+
+            if !init_path.is_file() {
+                debug!("+init: {}", init_path.display());
+                File::create(init_path)?;
+            }
+        }
+
+        // path to final file
+        full_path.set_extension(self.ext());
+        Ok(full_path)
     }
 }
 
