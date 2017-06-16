@@ -5,6 +5,7 @@ __pycache__
 *.pyc
 *.class
 /it/*/output
+/it/*/*-project
 # generated
 /src/parser/parser.rs
 /src/backend/doc/static/doc.*.css
