@@ -2,28 +2,30 @@ use heroic_common as c;
 use serde_json as json;
 use std::collections;
 
-#[derive(Serialize, Deserialize)]
-struct Sampling {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Sampling {
+  #[serde(skip_serializing_if="Option::is_none")]
   unit: Option<TimeUnit>,
   size: u32,
+  #[serde(skip_serializing_if="Option::is_none")]
   extent: Option<u32>,
 }
 
-enum SI {
+pub enum SI {
 }
 
-enum TimeUnit {
+pub enum TimeUnit {
 }
 
-#[derive(Serialize, Deserialize)]
-struct Point(u64, double);
+#[derive(Serialize, Deserialize, Debug)]
+struct Point(u64, f64);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Event(u64, Option<json::Value>);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
-enum Samples {
+pub enum Samples {
   #[serde(rename = "events")]
   Events {
     name: String,
@@ -37,17 +39,21 @@ enum Samples {
   },
 }
 
-#[derive(Serialize, Deserialize)]
-struct Query {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Query {
+  #[serde(skip_serializing_if="Option::is_none")]
   query: Option<String>,
+  #[serde(skip_serializing_if="Option::is_none")]
   aggregation: Option<Aggregation>,
+  #[serde(skip_serializing_if="Option::is_none")]
   date: Option<c::Date>,
+  #[serde(skip_serializing_if="Option::is_none")]
   parameters: Option<collections::HashMap<String, String>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
-enum Duration {
+pub enum Duration {
   #[serde(rename = "absolute")]
   Absolute {
     start: u64,
@@ -55,13 +61,16 @@ enum Duration {
   },
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
-enum Aggregation {
+pub enum Aggregation {
   #[serde(rename = "average")]
   Average {
+    #[serde(skip_serializing_if="Option::is_none")]
     sampling: Option<Sampling>,
+    #[serde(skip_serializing_if="Option::is_none")]
     size: Option<Duration>,
+    #[serde(skip_serializing_if="Option::is_none")]
     extent: Option<Duration>,
   },
 
@@ -72,14 +81,17 @@ enum Aggregation {
 
   #[serde(rename = "sum")]
   Sum {
+    #[serde(skip_serializing_if="Option::is_none")]
     sampling: Option<Sampling>,
+    #[serde(skip_serializing_if="Option::is_none")]
     size: Option<Duration>,
+    #[serde(skip_serializing_if="Option::is_none")]
     extent: Option<Duration>,
   },
 }
 
-enum ComplexEnum {
+pub enum ComplexEnum {
 }
 
-enum Complex21 {
+pub enum Complex21 {
 }

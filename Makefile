@@ -13,13 +13,16 @@ clean:
 
 # simplified set of suites
 suites:
-	$(EACH) clean suites
+	$(EACH) suites
+
+update:
+	$(EACH) update
 
 # extensive project-building test suites
 projects:
 	@echo "Building and testing: $(PROJECTS)"
-	$(EACH) $(ENVIRONMENT) --no-print-directory clean projects
+	$(EACH) $(ENVIRONMENT) --no-print-directory projects
 
 update-projects:
 	@echo "Updating: $(PROJECTS)"
-	$(EACH) $(ENVIRONMENT) --no-print-directory clean update-projects
+	$(EACH) $(ENVIRONMENT) --no-print-directory update-projects

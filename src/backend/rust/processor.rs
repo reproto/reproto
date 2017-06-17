@@ -128,8 +128,8 @@ impl Processor {
                     stmt!["u64"]
                 }
             }
-            RpType::Float => stmt!["float"],
-            RpType::Double => stmt!["double"],
+            RpType::Float => stmt!["f32"],
+            RpType::Double => stmt!["f64"],
             RpType::Boolean => stmt!["bool"],
             RpType::Array { ref inner } => {
                 let argument = self.into_rust_type(type_id, pos, inner)?;
@@ -148,6 +148,34 @@ impl Processor {
         };
 
         Ok(ty)
+    }
+
+    // Build the corresponding element out of a field declaration.
+    fn field_element(&self, type_id: &RpTypeId, field: &RpLoc<RpField>) -> Result<Element> {
+        let mut elements = Elements::new();
+
+        let ident = self.ident(&field.name);
+        let type_spec = self.into_type(type_id, field)?;
+
+        if field.is_optional() {
+            elements.push(stmt!["#[serde(skip_serializing_if=\"Option::is_none\")]"]);
+        }
+
+        let name = &field.name;
+
+        let name = if let Some(ref field_as) = field.field_as {
+            (**field_as).to_owned()
+        } else {
+            name.to_owned()
+        };
+
+        if name != ident {
+            elements.push(stmt!["#[serde(rename = ", Variable::String(name), ")]"]);
+        }
+
+        elements.push(stmt![ident, ": ", type_spec, ","]);
+
+        Ok(elements.into())
     }
 }
 
@@ -212,7 +240,7 @@ impl PackageProcessor for Processor {
         }
 
         let mut elements = Elements::new();
-        elements.push("#[derive(Serialize, Deserialize)]");
+        elements.push("#[derive(Serialize, Deserialize, Debug)]");
         elements.push(stmt!["struct ", &body.name, "(", fields.join(", "), ");"]);
 
         out.push(elements);
@@ -226,6 +254,7 @@ impl PackageProcessor for Processor {
                     body: Rc<RpEnumBody>)
                     -> Result<()> {
         let mut enum_spec = EnumSpec::new(&body.name);
+        enum_spec.public();
 
         for code in body.codes.for_context(RUST_CONTEXT) {
             enum_spec.push(code.inner.lines);
@@ -244,14 +273,13 @@ impl PackageProcessor for Processor {
         let mut fields = Elements::new();
 
         for field in &body.fields {
-            let ident = self.ident(&field.name);
-            let type_spec = self.into_type(type_id, field)?;
-            fields.push(stmt![ident, ": ", type_spec, ","]);
+            fields.push(self.field_element(type_id, field)?);
         }
 
         let mut struct_spec = StructSpec::new(&body.name);
+        struct_spec.public();
 
-        struct_spec.push_attribute("#[derive(Serialize, Deserialize)]");
+        struct_spec.push_attribute("#[derive(Serialize, Deserialize, Debug)]");
         struct_spec.push(fields);
 
         for code in body.codes.for_context(RUST_CONTEXT) {
@@ -269,8 +297,9 @@ impl PackageProcessor for Processor {
                          body: Rc<RpInterfaceBody>)
                          -> Result<()> {
         let mut enum_spec = EnumSpec::new(&body.name);
+        enum_spec.public();
 
-        enum_spec.push_attribute("#[derive(Serialize, Deserialize)]");
+        enum_spec.push_attribute("#[derive(Serialize, Deserialize, Debug)]");
         enum_spec.push_attribute("#[serde(tag = \"type\")]");
 
         for code in body.codes.for_context(RUST_CONTEXT) {
@@ -289,9 +318,7 @@ impl PackageProcessor for Processor {
             elements.push(stmt![&sub_type.name, " {"]);
 
             for field in body.fields.iter().chain(sub_type.fields.iter()) {
-                let ident = self.ident(&field.name);
-                let type_spec = self.into_type(type_id, field)?;
-                elements.push_nested(stmt![ident, ": ", type_spec, ","]);
+                elements.push_nested(self.field_element(type_id, field)?);
             }
 
             elements.push("},");

@@ -1,4 +1,4 @@
-#[derive(Serialize, Deserialize)]
-struct Date {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Date {
   field: u64,
 }

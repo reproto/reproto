@@ -1,5 +1,5 @@
 TARGET=test
 
-java_args = -m builder -m fasterxml
+java_extra = -m builder -m fasterxml
 
 include ../it.mk

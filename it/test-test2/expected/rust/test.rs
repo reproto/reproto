@@ -1,3 +1,3 @@
-#[derive(Serialize, Deserialize)]
-struct Entry {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Entry {
 }

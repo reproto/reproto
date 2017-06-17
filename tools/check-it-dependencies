@@ -23,3 +23,9 @@ if noecho $PYTHON --version; then
 else
     echo "disabling: python" 1>&2
 fi
+
+if noecho cargo --version; then
+    echo "rust"
+else
+    echo "disabling: rust" 1>&2
+fi

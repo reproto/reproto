@@ -32,9 +32,10 @@ python_suite := -b python $(python_extra)
 python_project := -b python -o workdir-python/generated
 
 rust_suite := -b rust $(rust_extra)
+rust_project := -b rust -o workdir-rust/src
 
 # projects that are filtered
-FILTERED_PROJECTS ?= rust
+FILTERED_PROJECTS ?=
 # projects that are supported after checking that necessary tools are available
 SUPPORTED_PROJECTS ?=
 
