@@ -1,8 +1,7 @@
 use parser::ast;
+use super::*;
 use super::errors::*;
 use super::into_model::IntoModel;
-use super::rp_loc::{RpLoc, RpPos};
-use super::rp_value::RpValue;
 
 #[derive(Debug, Serialize)]
 pub struct RpOptionDecl {

@@ -1,14 +1,9 @@
 use parser::ast;
 use std::rc::Rc;
+use super::*;
 use super::errors::*;
 use super::into_model::IntoModel;
 use super::merge::Merge;
-use super::rp_enum_body::RpEnumBody;
-use super::rp_interface_body::RpInterfaceBody;
-use super::rp_loc::{RpLoc, RpPos};
-use super::rp_service_body::RpServiceBody;
-use super::rp_tuple_body::RpTupleBody;
-use super::rp_type_body::RpTypeBody;
 
 #[derive(Clone, Serialize)]
 #[serde(tag = "type", rename_all="snake_case")]

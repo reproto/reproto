@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use super::rp_modifier::RpModifier;
+use super::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct RpModifiers {

@@ -1,0 +1,47 @@
+mod decl;
+mod enum_body;
+mod enum_variant;
+mod field;
+mod field_init;
+mod file;
+mod instance;
+mod interface_body;
+mod match_condition;
+mod match_decl;
+mod match_member;
+mod match_variable;
+mod member;
+mod option_decl;
+mod service_body;
+mod sub_type;
+mod tuple_body;
+mod type_body;
+mod use_decl;
+mod value;
+
+pub use core::*;
+use loc;
+pub use self::decl::*;
+pub use self::enum_body::*;
+pub use self::enum_variant::*;
+pub use self::field::*;
+pub use self::field_init::*;
+pub use self::file::*;
+pub use self::instance::*;
+pub use self::interface_body::*;
+pub use self::match_condition::*;
+pub use self::match_decl::*;
+pub use self::match_member::*;
+pub use self::match_variable::*;
+pub use self::member::*;
+pub use self::option_decl::*;
+pub use self::service_body::*;
+pub use self::sub_type::*;
+pub use self::tuple_body::*;
+pub use self::type_body::*;
+pub use self::use_decl::*;
+pub use self::value::*;
+
+/// Position relative in file where the declaration is present.
+pub type Pos = (usize, usize);
+pub type AstLoc<T> = loc::Loc<T, Pos>;

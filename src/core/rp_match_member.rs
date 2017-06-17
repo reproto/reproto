@@ -1,9 +1,7 @@
 use parser::ast;
+use super::*;
 use super::errors::*;
 use super::into_model::IntoModel;
-use super::rp_loc::{RpLoc, RpPos};
-use super::rp_match_condition::RpMatchCondition;
-use super::rp_value::RpValue;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpMatchMember {

@@ -1,9 +1,9 @@
 use parser::ast;
 use std::rc::Rc;
+use super::*;
 use super::errors::*;
 use super::into_model::IntoModel;
 use super::merge::Merge;
-use super::rp_loc::RpPos;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpServiceBody {

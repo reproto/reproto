@@ -1,9 +1,7 @@
 use parser::ast;
+use super::*;
 use super::errors::*;
 use super::into_model::IntoModel;
-use super::rp_loc::{RpLoc, RpPos};
-use super::rp_match_variable::RpMatchVariable;
-use super::rp_value::RpValue;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all="snake_case")]

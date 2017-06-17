@@ -1,14 +1,6 @@
 use std::rc::Rc;
+use super::*;
 use super::errors::*;
-use super::rp_enum_body::RpEnumBody;
-use super::rp_enum_variant::RpEnumVariant;
-use super::rp_field::RpField;
-use super::rp_interface_body::RpInterfaceBody;
-use super::rp_loc::RpLoc;
-use super::rp_service_body::RpServiceBody;
-use super::rp_sub_type::RpSubType;
-use super::rp_tuple_body::RpTupleBody;
-use super::rp_type_body::RpTypeBody;
 
 #[derive(Debug, Clone)]
 pub enum RpRegistered {

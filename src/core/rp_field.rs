@@ -1,11 +1,8 @@
 use parser::ast;
+use super::*;
 use super::errors::*;
 use super::into_model::IntoModel;
 use super::merge::Merge;
-use super::rp_loc::{RpLoc, RpPos};
-use super::rp_modifier::RpModifier;
-use super::rp_type::RpType;
-use super::rp_value::RpValue;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpField {

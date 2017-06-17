@@ -1,4 +1,4 @@
-use super::rp_name::RpName;
+use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(tag = "type", rename_all="snake_case")]

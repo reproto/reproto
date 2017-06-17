@@ -2,13 +2,10 @@ use backend::errors::*;
 use parser::ast;
 use std::collections::HashSet;
 use std::rc::Rc;
+use super::*;
 use super::into_model::IntoModel;
 use super::merge::Merge;
 use super::options::Options;
-use super::rp_code::RpCode;
-use super::rp_field::RpField;
-use super::rp_loc::{RpLoc, RpPos};
-use super::rp_match_decl::RpMatchDecl;
 use super::utils;
 
 #[derive(Debug, Clone, Serialize)]

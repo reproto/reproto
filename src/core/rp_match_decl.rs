@@ -1,13 +1,5 @@
+use super::*;
 use super::errors::*;
-use super::rp_by_type_match::RpByTypeMatch;
-use super::rp_by_value_match::RpByValueMatch;
-use super::rp_loc::RpLoc;
-use super::rp_match_condition::RpMatchCondition;
-use super::rp_match_kind::RpMatchKind;
-use super::rp_match_member::RpMatchMember;
-use super::rp_match_variable::RpMatchVariable;
-use super::rp_type::RpType;
-use super::rp_value::RpValue;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpMatchDecl {

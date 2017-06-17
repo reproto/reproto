@@ -1,13 +1,7 @@
 use parser::ast;
+use super::*;
 use super::errors::*;
 use super::into_model::IntoModel;
-use super::rp_instance::RpInstance;
-use super::rp_loc::{RpLoc, RpPos};
-use super::rp_match_kind::RpMatchKind;
-use super::rp_name::RpName;
-use super::rp_number::RpNumber;
-use super::rp_path::RpPath;
-use super::rp_type::RpType;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(tag = "type", content="value", rename_all="snake_case")]

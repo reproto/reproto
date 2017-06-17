@@ -3,7 +3,7 @@ use super::errors::Error;
 use super::token::*;
 use super::ast::*;
 use super::utils::*;
-use core::RpNumber;
+use core::*;
 
 grammar;
 

@@ -1,8 +1,7 @@
 use parser::ast;
+use super::*;
 use super::errors::*;
 use super::into_model::IntoModel;
-use super::rp_loc::RpPos;
-use super::rp_type::RpType;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct RpMatchVariable {

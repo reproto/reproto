@@ -1,6 +1,6 @@
+use super::*;
 use super::errors::*;
 use super::merge::Merge;
-use super::rp_loc::RpLoc;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpCode {

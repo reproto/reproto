@@ -1,4 +1,4 @@
-use super::rp_path_fragment::RpPathFragment;
+use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct RpPath {

@@ -1,9 +1,7 @@
 use parser::ast;
+use super::*;
 use super::errors::*;
 use super::into_model::IntoModel;
-use super::rp_field_init::RpFieldInit;
-use super::rp_loc::{RpLoc, RpPos};
-use super::rp_name::RpName;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct RpInstance {
