@@ -1,6 +1,7 @@
 package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.Objects;
@@ -38,14 +39,6 @@ public interface Interface {
     }
 
     @Override
-    public Optional<Integer> getOther() {
-      return this.other;
-    }
-
-    public String getName() {
-      return this.name;
-    }
-
     public Optional<Integer> getOther() {
       return this.other;
     }
@@ -165,14 +158,6 @@ public interface Interface {
     }
 
     @Override
-    public Optional<Integer> getOther() {
-      return this.other;
-    }
-
-    public String getName() {
-      return this.name;
-    }
-
     public Optional<Integer> getOther() {
       return this.other;
     }

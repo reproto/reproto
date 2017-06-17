@@ -1,5 +1,9 @@
 package test;
 
+type Entry {
+    foo?: Foo;
+}
+
 type Foo {
     field: string;
 }

@@ -1,6 +1,7 @@
 package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -124,12 +125,12 @@ public class Type {
       }
 
       if (parser.getCurrentToken() == JsonToken.VALUE_STRING) {
-        final String data = parser.getText()
+        final String data = parser.getText();
         return new Type(data, Optional.empty());
       }
 
       final Model m = parser.readValueAs(Model.class);
-      return new Type(m.data, m.other)
+      return new Type(m.data, m.other);
     }
   }
 }

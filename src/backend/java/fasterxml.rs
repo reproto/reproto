@@ -309,7 +309,7 @@ impl Module {
             arguments.push(stmt![&model_name, ".", &field.name]);
         }
 
-        elements.push(stmt!["return new ", class_type, "(", arguments.join(", "), ")"]);
+        elements.push(stmt!["return new ", class_type, "(", arguments.join(", "), ");"]);
 
         Ok(elements)
     }
@@ -574,7 +574,7 @@ impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
         let check = self.type_check(data, kind);
 
         value_body.push(stmt!["if (", check, ") {"]);
-        value_body.push_nested(stmt!["final ", &variable_ty, " ", &variable, " = ", decode]);
+        value_body.push_nested(stmt!["final ", &variable_ty, " ", &variable, " = ", decode, ";"]);
         value_body.push_nested(stmt!["return ", &result, ";"]);
         value_body.push("}");
 

@@ -715,8 +715,7 @@ impl Processor {
 
             let mods = mods![Modifier::Public, Modifier::Static];
             let mut class = ClassSpec::new(mods, &sub_type.name);
-            let mut fields = interface_fields.clone();
-            fields.extend(self.convert_fields(&type_id.package, &sub_type.fields)?);
+            let sub_type_fields = self.convert_fields(&type_id.package, &sub_type.fields)?;
 
             for code in sub_type.codes.for_context(JAVA_CONTEXT) {
                 class.push(code.inner.lines);
@@ -725,20 +724,22 @@ impl Processor {
             class.implements(&parent_type);
 
             // override methods for interface fields.
-            if self.options.build_getters {
-                for field in &interface_fields {
+            for field in &interface_fields {
+                if self.options.build_getters {
                     let mut getter = field.getter()?;
                     getter.push_annotation(&self.override_);
                     class.push(getter);
                 }
+
+                if self.options.build_setters {
+                    if let Some(mut setter) = field.setter()? {
+                        setter.push_annotation(&self.override_);
+                        class.push(setter);
+                    }
+                }
             }
 
-            let mut fields = interface_fields.clone();
-            fields.extend(self.convert_fields(&type_id.package, &sub_type.inner.fields)?);
-
-            for field in &fields {
-                class.push_field(&field.java_spec);
-
+            for field in &sub_type_fields {
                 if self.options.build_getters {
                     class.push(field.getter()?);
                 }
@@ -748,6 +749,13 @@ impl Processor {
                         class.push(setter);
                     }
                 }
+            }
+
+            let mut fields = interface_fields.clone();
+            fields.extend(sub_type_fields);
+
+            for field in &fields {
+                class.push_field(&field.java_spec);
             }
 
             self.add_class(&class_type, &mut class)?;
@@ -799,9 +807,17 @@ impl Processor {
         let ident = self.snake_to_lower_camel.convert(&field.name);
         let java_spec = self.build_field_spec(&java_type, field)?;
 
+        let name = &field.name;
+
+        let name: String = if let Some(ref field_as) = field.field_as {
+            (**field_as).to_owned()
+        } else {
+            name.to_owned()
+        };
+
         Ok(JavaField {
             modifier: field.modifier.clone(),
-            name: field.name.clone(),
+            name: name,
             ty: field.ty.clone(),
             camel_name: camel_name,
             ident: ident,
@@ -809,7 +825,6 @@ impl Processor {
             java_spec: java_spec,
         })
     }
-
 
     fn convert_fields(&self,
                       pkg: &RpPackage,

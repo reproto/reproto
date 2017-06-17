@@ -1,6 +1,7 @@
 package heroic.v1;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -172,12 +173,12 @@ public class Query {
     @Override
     public Query deserialize(final JsonParser parser, final DeserializationContext ctxt) throws IOException {
       if (parser.getCurrentToken() == JsonToken.VALUE_STRING) {
-        final String query = parser.getText()
+        final String query = parser.getText();
         return new Query(query, Optional.empty(), Optional.empty(), Optional.empty());
       }
 
       final Model m = parser.readValueAs(Model.class);
-      return new Query(m.query, m.aggregation, m.date, m.parameters)
+      return new Query(m.query, m.aggregation, m.date, m.parameters);
     }
   }
 }

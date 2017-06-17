@@ -1,3 +1,31 @@
+export class Entry {
+  constructor(foo) {
+    this.foo = foo;
+  }
+
+  static decode(data) {
+    let v_foo = data["foo"];
+
+    if (v_foo !== null && v_foo !== undefined) {
+      v_foo = Foo.decode(v_foo);
+    } else {
+      v_foo = null;
+    }
+
+    return new Entry(v_foo);
+  }
+
+  encode() {
+    const data = {};
+
+    if (this.foo !== null && this.foo !== undefined) {
+      data["foo"] = this.foo.encode();
+    }
+
+    return data;
+  }
+}
+
 export class Foo {
   constructor(field) {
     this.field = field;

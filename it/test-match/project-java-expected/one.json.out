@@ -1,0 +1,6 @@
+Entry(data=Optional[Data(name=Foo Foo)], point=Optional.empty, interfaceField=Optional.empty, typeField=Optional.empty)
+Entry(data=Optional.empty, point=Optional[Point(timestamp=42, value=42.42)], interfaceField=Optional.empty, typeField=Optional.empty)
+Entry(data=Optional.empty, point=Optional.empty, interfaceField=Optional[Interface.One(name=One, other=Optional.empty, data=Data(name=Bar Bar))], typeField=Optional.empty)
+Entry(data=Optional.empty, point=Optional.empty, interfaceField=Optional[Interface.Two(name=Two, other=Optional.empty, data=Data(name=Baz Baz))], typeField=Optional.empty)
+Entry(data=Optional.empty, point=Optional.empty, interfaceField=Optional.empty, typeField=Optional[Type(data=hello, other=Optional.empty)])
+Entry(data=Optional.empty, point=Optional.empty, interfaceField=Optional.empty, typeField=Optional[Type(data=hello, other=Optional[42])])

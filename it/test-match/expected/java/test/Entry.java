@@ -1,6 +1,7 @@
 package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -14,8 +15,8 @@ public class Entry {
   public Entry(
     @JsonProperty("data") final Optional<Data> data, 
     @JsonProperty("point") final Optional<Point> point, 
-    @JsonProperty("interface_field") final Optional<Interface> interfaceField, 
-    @JsonProperty("type_field") final Optional<Type> typeField
+    @JsonProperty("interface") final Optional<Interface> interfaceField, 
+    @JsonProperty("type") final Optional<Type> typeField
   ) {
     Objects.requireNonNull(data, "data");
     this.data = data;
