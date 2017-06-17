@@ -25,16 +25,16 @@ class Entry:
     else:
       f_point = None
 
-    if "interface_field" in data:
-      f_interface_field = data["interface_field"]
+    if "interface" in data:
+      f_interface_field = data["interface"]
 
       if f_interface_field is not None:
         f_interface_field = Interface.decode(f_interface_field)
     else:
       f_interface_field = None
 
-    if "type_field" in data:
-      f_type_field = data["type_field"]
+    if "type" in data:
+      f_type_field = data["type"]
 
       if f_type_field is not None:
         f_type_field = Type.decode(f_type_field)
@@ -53,12 +53,15 @@ class Entry:
       data["point"] = self.point.encode()
 
     if self.interface_field is not None:
-      data["interface_field"] = self.interface_field.encode()
+      data["interface"] = self.interface_field.encode()
 
     if self.type_field is not None:
-      data["type_field"] = self.type_field.encode()
+      data["type"] = self.type_field.encode()
 
     return data
+
+  def __repr__(self):
+    return "<Entry data: {!r}, point: {!r}, interface_field: {!r}, type_field: {!r}>".format(self.data, self.point, self.interface_field, self.type_field)
 
 class Data:
   def __init__(self, name):
@@ -79,6 +82,9 @@ class Data:
     data["name"] = self.name
 
     return data
+
+  def __repr__(self):
+    return "<Data name: {!r}>".format(self.name)
 
 class Point:
   def __init__(self, timestamp, value):
@@ -106,17 +112,20 @@ class Point:
 
   def encode(self):
     if self.timestamp is None:
-      raise Exception("timestamp: is a required field")
+      raise Exception("TS: is a required field")
 
     if self.value is None:
       raise Exception("value: is a required field")
 
     return (self.timestamp, self.value)
 
+  def __repr__(self):
+    return "<Point timestamp: {!r}, value: {!r}>".format(self.timestamp, self.value)
+
 class Interface:
   @staticmethod
   def decode(data):
-    if isinstance(data, basestring):
+    if isinstance(data, str):
       name = data
       return Interface_One(name, None, Data("data"))
 
@@ -152,7 +161,7 @@ class Interface_One(Interface):
 
     f_data = Data.decode(data["data"])
 
-    return Interface(f_name, f_other, f_data)
+    return Interface_One(f_name, f_other, f_data)
 
   def encode(self):
     data = dict()
@@ -173,6 +182,9 @@ class Interface_One(Interface):
     data["data"] = self.data.encode()
 
     return data
+
+  def __repr__(self):
+    return "<Interface_One name: {!r}, other: {!r}, data: {!r}>".format(self.name, self.other, self.data)
 
 class Interface_Two(Interface):
   TYPE = "two"
@@ -196,7 +208,7 @@ class Interface_Two(Interface):
 
     f_data = Data.decode(data["data"])
 
-    return Interface(f_name, f_other, f_data)
+    return Interface_Two(f_name, f_other, f_data)
 
   def encode(self):
     data = dict()
@@ -218,6 +230,9 @@ class Interface_Two(Interface):
 
     return data
 
+  def __repr__(self):
+    return "<Interface_Two name: {!r}, other: {!r}, data: {!r}>".format(self.name, self.other, self.data)
+
 class Type:
   def __init__(self, data, other):
     self.data = data
@@ -228,7 +243,7 @@ class Type:
     if data == "foo":
       return Type("foo", None)
 
-    if isinstance(data, basestring):
+    if isinstance(data, str):
       data = data
       return Type(data, None)
 
@@ -256,3 +271,6 @@ class Type:
       data["other"] = self.other
 
     return data
+
+  def __repr__(self):
+    return "<Type data: {!r}, other: {!r}>".format(self.data, self.other)

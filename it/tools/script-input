@@ -6,7 +6,7 @@ while read input; do
     project=$(basename $(dirname $script))
     name=$(basename $input)
 
-    out=${project%-workdir}-output/$name.out
+    out=output-${project#workdir-}/$name.out
 
     mkdir -p $(dirname $out)
 

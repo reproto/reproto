@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-if ! babel --version 2>&1 > /dev/null; then
-    echo "babel: not installed"
-    echo "install with:"
-    echo "npm install -g babel-cli@6 babel-preset-es2015@6"
-    exit 1
-fi

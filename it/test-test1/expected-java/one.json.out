@@ -1,1 +1,2 @@
 Entry(foo=Optional[Foo(field=Field Value)])
+{"foo":{"field":"Field Value"}}

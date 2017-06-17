@@ -22,6 +22,9 @@ class Entry:
 
     return data
 
+  def __repr__(self):
+    return "<Entry foo: {!r}>".format(self.foo)
+
 class Foo:
   def __init__(self, field):
     self.field = field
@@ -41,3 +44,6 @@ class Foo:
     data["field"] = self.field
 
     return data
+
+  def __repr__(self):
+    return "<Foo field: {!r}>".format(self.field)

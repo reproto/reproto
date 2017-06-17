@@ -46,8 +46,12 @@ class Sampling:
 
     return data
 
+  def __repr__(self):
+    return "<Sampling unit: {!r}, size: {!r}, extent: {!r}>".format(self.unit, self.size, self.extent)
+
 class SI:
-  pass
+  def __repr__(self):
+    return "<SI >".format()
 
 class TimeUnit:
   def __init__(self, _name, number):
@@ -64,6 +68,9 @@ class TimeUnit:
         return value
 
     raise Exception("data does not match enum")
+
+  def __repr__(self):
+    return "<TimeUnit _name: {!r}, number: {!r}>".format(self._name, self.number)
 
 class Point:
   def __init__(self, timestamp, value):
@@ -91,12 +98,15 @@ class Point:
 
   def encode(self):
     if self.timestamp is None:
-      raise Exception("timestamp: is a required field")
+      raise Exception("TS: is a required field")
 
     if self.value is None:
       raise Exception("value: is a required field")
 
     return (self.timestamp, self.value)
+
+  def __repr__(self):
+    return "<Point timestamp: {!r}, value: {!r}>".format(self.timestamp, self.value)
 
 class Event:
   def __init__(self, timestamp, payload):
@@ -107,7 +117,13 @@ class Event:
   def decode(data):
     f_timestamp = data[0]
 
-    f_payload = data[1]
+    if 1 in data:
+      f_payload = data[1]
+
+      if f_payload is not None:
+        f_payload = f_payload
+    else:
+      f_payload = None
 
     return Event(f_timestamp, f_payload)
 
@@ -120,10 +136,13 @@ class Event:
 
     return (self.timestamp, self.payload)
 
+  def __repr__(self):
+    return "<Event timestamp: {!r}, payload: {!r}>".format(self.timestamp, self.payload)
+
 class Samples:
   @staticmethod
   def decode(data):
-    if isinstance(data, basestring):
+    if isinstance(data, str):
       name = data
       return Samples_Points(name, [])
 
@@ -150,7 +169,7 @@ class Samples_Events(Samples):
 
     f_data = map(lambda v: Event.decode(v), data["data"])
 
-    return Samples(f_name, f_data)
+    return Samples_Events(f_name, f_data)
 
   def encode(self):
     data = dict()
@@ -169,6 +188,9 @@ class Samples_Events(Samples):
 
     return data
 
+  def __repr__(self):
+    return "<Samples_Events name: {!r}, data: {!r}>".format(self.name, self.data)
+
 class Samples_Points(Samples):
   TYPE = "points"
 
@@ -182,7 +204,7 @@ class Samples_Points(Samples):
 
     f_data = map(lambda v: Point.decode(v), data["data"])
 
-    return Samples(f_name, f_data)
+    return Samples_Points(f_name, f_data)
 
   def encode(self):
     data = dict()
@@ -201,6 +223,9 @@ class Samples_Points(Samples):
 
     return data
 
+  def __repr__(self):
+    return "<Samples_Points name: {!r}, data: {!r}>".format(self.name, self.data)
+
 class Query:
   def __init__(self, query, aggregation, date, parameters):
     self.query = query
@@ -210,7 +235,7 @@ class Query:
 
   @staticmethod
   def decode(data):
-    if isinstance(data, basestring):
+    if isinstance(data, str):
       query = data
       return Query(query, None, None, None)
 
@@ -265,6 +290,9 @@ class Query:
 
     return data
 
+  def __repr__(self):
+    return "<Query query: {!r}, aggregation: {!r}, date: {!r}, parameters: {!r}>".format(self.query, self.aggregation, self.date, self.parameters)
+
 class Duration:
   @staticmethod
   def decode(data):
@@ -288,7 +316,7 @@ class Duration_Absolute(Duration):
 
     f_end = data["end"]
 
-    return Duration(f_start, f_end)
+    return Duration_Absolute(f_start, f_end)
 
   def encode(self):
     data = dict()
@@ -306,6 +334,9 @@ class Duration_Absolute(Duration):
     data["end"] = self.end
 
     return data
+
+  def __repr__(self):
+    return "<Duration_Absolute start: {!r}, end: {!r}>".format(self.start, self.end)
 
 class Aggregation:
   @staticmethod
@@ -361,7 +392,7 @@ class Aggregation_Average(Aggregation):
     else:
       f_extent = None
 
-    return Aggregation(f_sampling, f_size, f_extent)
+    return Aggregation_Average(f_sampling, f_size, f_extent)
 
   def encode(self):
     data = dict()
@@ -379,6 +410,9 @@ class Aggregation_Average(Aggregation):
 
     return data
 
+  def __repr__(self):
+    return "<Aggregation_Average sampling: {!r}, size: {!r}, extent: {!r}>".format(self.sampling, self.size, self.extent)
+
 class Aggregation_Chain(Aggregation):
   TYPE = "chain"
 
@@ -389,7 +423,7 @@ class Aggregation_Chain(Aggregation):
   def decode(data):
     f_chain = map(lambda v: Aggregation.decode(v), data["chain"])
 
-    return Aggregation(f_chain)
+    return Aggregation_Chain(f_chain)
 
   def encode(self):
     data = dict()
@@ -402,6 +436,9 @@ class Aggregation_Chain(Aggregation):
     data["chain"] = map(lambda v: v.encode(), self.chain)
 
     return data
+
+  def __repr__(self):
+    return "<Aggregation_Chain chain: {!r}>".format(self.chain)
 
 class Aggregation_Sum(Aggregation):
   TYPE = "sum"
@@ -437,7 +474,7 @@ class Aggregation_Sum(Aggregation):
     else:
       f_extent = None
 
-    return Aggregation(f_sampling, f_size, f_extent)
+    return Aggregation_Sum(f_sampling, f_size, f_extent)
 
   def encode(self):
     data = dict()
@@ -455,15 +492,24 @@ class Aggregation_Sum(Aggregation):
 
     return data
 
+  def __repr__(self):
+    return "<Aggregation_Sum sampling: {!r}, size: {!r}, extent: {!r}>".format(self.sampling, self.size, self.extent)
+
 class ComplexEnum:
   def __init__(self, si, other, samples):
     self.si = si
     self.other = other
     self.samples = samples
 
+  def __repr__(self):
+    return "<ComplexEnum si: {!r}, other: {!r}, samples: {!r}>".format(self.si, self.other, self.samples)
+
 class Complex21:
   def __init__(self, point):
     self.point = point
+
+  def __repr__(self):
+    return "<Complex21 point: {!r}>".format(self.point)
 
 SI = enum.Enum("SI", [("NANO", 3), ("MICRO", 2), ("MILLI", 10)], type=SI)
 

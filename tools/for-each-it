@@ -17,12 +17,11 @@ while read test; do
 
     if [[ $exit_code -ne 0 ]]; then
         tput bold
-        echo -e "${red}Test failed: ${test}${nc}"
+        echo -e "${red}Failed: ${test} ($@)${nc}"
         overall_exit_code=1
     else
-        make -C $dir clean
         tput bold
-        echo -e "${green}Test succeeded: ${test}${nc}"
+        echo -e "${green}Succeeded: ${test} ($@)${nc}"
     fi
 done < <(ls -1 it/test-*/Makefile)
 

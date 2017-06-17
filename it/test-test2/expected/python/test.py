@@ -10,3 +10,6 @@ class Entry:
     data = dict()
 
     return data
+
+  def __repr__(self):
+    return "<Entry >".format()

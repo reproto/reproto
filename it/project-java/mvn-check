@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-if ! mvn --version 2>&1 > /dev/null; then
-    echo "mvn: not installed"
-    exit 1
-fi

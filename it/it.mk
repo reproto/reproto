@@ -1,87 +1,99 @@
 script_input=$(CURDIR)/../tools/script-input
-diff_projects=$(CURDIR)/../tools/diff-projects
-update_projects=$(CURDIR)/../tools/update-projects
+
+DIFF ?= diff
+RSYNC ?= rsync
+TOOL ?= cargo run -q --
 
 EXPECTED = expected
 OUTPUT = output
 PROTO_PATH = proto
 
-JAVA_OUT = ${OUTPUT}/java
-PYTHON_OUT = ${OUTPUT}/python
-JS_OUT = ${OUTPUT}/js
-RUST_OUT = ${OUTPUT}/rust
-
 SUITES ?= python java js rust
 TARGETS ?= test
 FILTERED ?=
 
-tool ?= cargo run -q --
+java_out = ${OUTPUT}/java
+python_out = ${OUTPUT}/python
+js_out = ${OUTPUT}/js
+rust_out = ${OUTPUT}/rust
 
-python_args ?=
-java_args ?= -m builder
-js_args ?=
-rust_args ?=
+python_extra ?=
+java_extra ?= -m builder
+js_extra ?=
+rust_extra ?=
+
+java_suite := -b java $(java_extra)
+java_project := -b java -m fasterxml -o workdir-java/target/generated-sources/reproto
+
+js_suite := -b js $(js_extra)
+js_project := -b js -o workdir-js/generated
+
+python_suite := -b python $(python_extra)
+python_project := -b python -o workdir-python/generated
+
+rust_suite := -b rust $(rust_extra)
+
+# projects that are filtered
+FILTERED_PROJECTS ?= rust
+# projects that are supported after checking that necessary tools are available
+SUPPORTED_PROJECTS ?=
+
+SUITES := $(filter-out $(FILTERED),$(SUITES))
+PROJECTS := $(filter $(SUPPORTED_PROJECTS),$(filter-out $(FILTERED_PROJECTS),$(SUITES)))
 
 PACKAGES := $(TARGETS:%=--package %)
-PROJECTS := $(SUITES:%=project-%)
-FILTERED_PROJECTS := $(FILTERED_PROJECTS:%=project-%)
-TARGET_PROJECTS := $(filter-out $(FILTERED_PROJECTS),$(PROJECTS))
 
-.PHONY: all it update update-projects clean $(SUITES) $(PROJECTS)
+PROJECT_TARGETS := $(PROJECTS:%=project-%)
+SUITE_TARGETS := $(SUITES:%=suite-%)
+PROJECTDIFFS := $(PROJECTS:%=projectdiff-%)
+PROJECTUPDATES := $(PROJECTS:%=projectupdate-%)
 
-all: clean it
+.PHONY: all clean suites projects update update-projects
 
-it: ${SUITES}
-	@echo "Verifying Diffs"
-	@diff -ur $(EXPECTED) $(OUTPUT)
+all:
+	@make suites
+	@make projects
 
-projects: ${TARGET_PROJECTS}
-	@echo "Verifying Project Diffs"
-	@${diff_projects}
-
-update: ${SUITES}
-	@rsync -ra $(OUTPUT)/ $(EXPECTED)/
-
-update-projects:
-	${update_projects}
+update:
+	@make update-it
+	@make update-projects
 
 clean:
-	rm -rf project-*-workdir
-	rm -rf project-*-output
-	${RM} -rf output
+	@rm -rf workdir-*
+	@rm -rf output-*
+	@rm -rf output
 
-python:
-	@echo "Building Python"
-	@${tool} compile -b python ${python_args} -o ${PYTHON_OUT} --path ${PROTO_PATH} ${PACKAGES}
+suites: $(SUITE_TARGETS) diff
+projects: $(PROJECT_TARGETS) $(PROJECTDIFFS)
 
-project-python:
-	@rsync -ra ../$@/ $@-workdir
-	${tool} compile -b python -o $@-workdir/generated --path ${PROTO_PATH} ${PACKAGES}
-	@cd $@-workdir && make
-	@${script_input} $@-workdir/script.sh
+update-projects: $(PROJECT_TARGETS) $(PROJECTUPDATES)
 
-rust:
-	@echo "Building Rust"
-	@${tool} compile -b rust ${python_args} -o ${RUST_OUT} --path ${PROTO_PATH} ${PACKAGES}
+update-it: $(SUITE_TARGETS)
+	@echo "Updating Suites"
+	@$(RSYNC) -ra $(OUTPUT)/ $(EXPECTED)/
 
-project-rust:
+diff:
+	@echo "Verifying Diffs"
+	@$(DIFF) -ur $(EXPECTED) $(OUTPUT)
 
-js:
-	@echo "Building JavaScript"
-	@${tool} compile -b js ${js_args} -o ${JS_OUT} --path ${PROTO_PATH} ${PACKAGES}
+# rule to diff a projects expected output, with actual.
+projectdiff-%:
+	@echo "Diffing Project: $*"
+	@$(DIFF) -ur expected-$* output-$*
 
-project-js:
-	@rsync -ra ../$@/ $@-workdir
-	${tool} compile -b js ${js_args} -o $@-workdir/generated --path ${PROTO_PATH} ${PACKAGES}
-	@cd $@-workdir && make
-	@${script_input} $@-workdir/script.sh
+# rule to update a projects expected output, with its actual
+projectupdate-%:
+	@echo "Updating Project: $*"
+	@$(RSYNC) -ra output-$*/ expected-$*/
 
-java:
-	@echo "Building Java"
-	@${tool} compile -b java ${java_args} -o ${JAVA_OUT} --path ${PROTO_PATH} ${PACKAGES}
+# rule to build output for a project
+project-%:
+	@$(RSYNC) -ra ../$*/ workdir-$*
+	@$(TOOL) compile $($*_project) --path ${PROTO_PATH} ${PACKAGES}
+	@cd workdir-$* && make
+	@${script_input} workdir-$*/script.sh
 
-project-java:
-	@rsync -ra ../$@/ $@-workdir
-	${tool} compile -b java -m fasterxml -o $@-workdir/target/generated-sources/reproto --path ${PROTO_PATH} ${PACKAGES}
-	@cd $@-workdir && make
-	@${script_input} $@-workdir/script.sh
+# rule to build suite output
+suite-%:
+	@echo "Suite: $*"
+	@${TOOL} compile $($*_suite) -o $($*_out) --path ${PROTO_PATH} ${PACKAGES}

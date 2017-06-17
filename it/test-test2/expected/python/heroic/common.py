@@ -17,3 +17,6 @@ class Date:
     data["field"] = self.field
 
     return data
+
+  def __repr__(self):
+    return "<Date field: {!r}>".format(self.field)
