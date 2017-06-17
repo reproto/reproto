@@ -35,14 +35,6 @@ impl IntoModel for Field {
             None
         };
 
-        let field = RpField {
-            modifier: self.modifier,
-            name: self.name,
-            comment: self.comment,
-            ty: self.ty,
-            field_as: field_as,
-        };
-
-        Ok(field)
+        Ok(RpField::new(self.modifier, self.name, self.comment, self.ty, field_as))
     }
 }

@@ -15,6 +15,18 @@ impl<T, P> ::std::ops::Deref for Loc<T, P> {
     }
 }
 
+impl<T, P> ::std::borrow::Borrow<T> for Loc<T, P> {
+    fn borrow(&self) -> &T {
+        &*self
+    }
+}
+
+impl<T, P> ::std::convert::AsRef<T> for Loc<T, P> {
+    fn as_ref(&self) -> &T {
+        &*self
+    }
+}
+
 impl<T, P> Loc<T, P>
     where P: Clone
 {
@@ -25,10 +37,17 @@ impl<T, P> Loc<T, P>
         }
     }
 
-    pub fn map_inner<M, U>(self, map: M) -> Loc<U, P>
+    pub fn map_into<M, U>(self, map: M) -> Loc<U, P>
         where M: FnOnce(T) -> U
     {
         Loc::new(map(self.inner), self.pos)
+    }
+
+    pub fn map<'a, M, U>(&'a self, map: M) -> Loc<U, P>
+        where M: FnOnce(&'a T) -> U,
+              U: 'a
+    {
+        Loc::new(map(&self.inner), self.pos.clone())
     }
 }
 

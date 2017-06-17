@@ -261,7 +261,7 @@ impl Module {
 
         for (argument, field) in zipped {
             let mut property = AnnotationSpec::new(&self.property);
-            property.push_argument(stmt![Variable::String(field.name.clone())]);
+            property.push_argument(stmt![Variable::String(field.name.to_owned())]);
             argument.push_annotation(&property);
         }
 

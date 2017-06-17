@@ -23,7 +23,7 @@ impl Listeners for Module {
         let mut arguments = Statement::new();
 
         for field in event.fields {
-            arguments.push(stmt![Variable::String(field.name.clone())]);
+            arguments.push(stmt![Variable::String(field.name.to_owned())]);
         }
 
         let mut annotation = AnnotationSpec::new(&self.constructor_properties);

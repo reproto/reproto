@@ -220,7 +220,7 @@ impl Processor {
         for field in fields {
             write!(out, "<div class=\"field\">")?;
 
-            let mut name = format!("<span>{}</span>", field.name);
+            let mut name = format!("<span>{}</span>", field.ident());
             let mut class = "name".to_owned();
 
             if field.is_optional() {

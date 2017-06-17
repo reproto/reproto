@@ -35,9 +35,9 @@ impl RpRegistered {
         Ok(it)
     }
 
-    pub fn find_field(&self, name: &str) -> Result<Option<&RpLoc<RpField>>> {
+    pub fn field_by_ident(&self, ident: &str) -> Result<Option<&RpLoc<RpField>>> {
         for field in self.fields()? {
-            if field.name == name {
+            if field.ident() == ident {
                 return Ok(Some(field));
             }
         }

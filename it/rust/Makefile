@@ -1,8 +1,8 @@
 CARGO ?= cargo
 
-BINARY = $(CURDIR)/target/release/rust
+BINARY := $(CURDIR)/target/debug/rust
 
 all:
-	$(CARGO) build --release
+	$(CARGO) build
 	@echo "#!/usr/bin/env bash\nexec $(BINARY)" > script.sh
 	@chmod +x script.sh

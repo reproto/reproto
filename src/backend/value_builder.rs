@@ -145,7 +145,7 @@ pub trait ValueBuilder
                 let mut arguments = Vec::new();
 
                 for f in registered.fields()? {
-                    if let Some(init) = known.get(&f.name) {
+                    if let Some(init) = known.get(f.ident()) {
                         let new_env = new_env(env.package, env.variables, &init.value, Some(&f.ty));
                         arguments.push(self.value(&*new_env)?);
                     } else {

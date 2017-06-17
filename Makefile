@@ -7,7 +7,7 @@ PROJECTS ?= $(shell PYTHON=$(PYTHON) tools/check-it-dependencies)
 TOOL := $(CURDIR)/target/release/reproto
 ENVIRONMENT = SUPPORTED_PROJECTS="$(PROJECTS)" PYTHON="$(PYTHON)" TOOL="$(TOOL)"
 
-all: suites
+all: suites projects
 
 tests:
 	cargo test
@@ -15,6 +15,7 @@ tests:
 	cd reproto_parser && cargo test
 
 clean:
+	cargo clean
 	$(EACH) clean
 
 # simplified set of suites

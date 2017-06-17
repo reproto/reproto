@@ -32,8 +32,9 @@ pub fn members_into_model(pos: &RpPos,
             Member::Field(field) => {
                 let field = field.into_model(&pos)?;
 
-                if let Some(other) = fields.iter().find(|f| f.name == field.name) {
-                    return Err(ErrorKind::FieldConflict(field.name.clone(),
+                if let Some(other) = fields.iter()
+                    .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
+                    return Err(ErrorKind::FieldConflict(field.ident().to_owned(),
                                                         pos,
                                                         other.pos.clone())
                         .into());

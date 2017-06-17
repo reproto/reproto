@@ -16,7 +16,7 @@ pub struct RpTypeBody {
 impl RpTypeBody {
     pub fn verify(&self) -> Result<()> {
         for reserved in &self.reserved {
-            if let Some(field) = self.fields.iter().find(|f| f.name == reserved.inner) {
+            if let Some(field) = self.fields.iter().find(|f| f.name() == reserved.inner) {
                 return Err(ErrorKind::ReservedField(field.pos.clone(), reserved.pos.clone())
                     .into());
             }

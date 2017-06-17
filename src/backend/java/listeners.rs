@@ -5,21 +5,21 @@ use super::processor::{Processor, ProcessorOptions};
 pub struct ClassAdded<'a> {
     pub processor: &'a Processor,
     pub type_id: &'a RpTypeId,
-    pub fields: &'a Vec<JavaField>,
+    pub fields: &'a Vec<JavaField<'a>>,
     pub class_type: &'a ClassType,
     pub match_decl: &'a RpMatchDecl,
     pub spec: &'a mut ClassSpec,
 }
 
 pub struct TupleAdded<'a> {
-    pub fields: &'a Vec<JavaField>,
+    pub fields: &'a Vec<JavaField<'a>>,
     pub class_type: &'a ClassType,
     pub spec: &'a mut ClassSpec,
 }
 
 pub struct EnumAdded<'a> {
     pub body: &'a RpEnumBody,
-    pub fields: &'a Vec<JavaField>,
+    pub fields: &'a Vec<JavaField<'a>>,
     pub class_type: &'a ClassType,
     pub from_value: &'a mut Option<MethodSpec>,
     pub to_value: &'a mut Option<MethodSpec>,
@@ -32,7 +32,7 @@ pub struct InterfaceAdded<'a> {
 }
 
 pub struct SubTypeAdded<'a> {
-    pub fields: &'a Vec<JavaField>,
+    pub fields: &'a Vec<JavaField<'a>>,
     pub interface: &'a RpInterfaceBody,
     pub sub_type: &'a RpSubType,
     pub spec: &'a mut ClassSpec,

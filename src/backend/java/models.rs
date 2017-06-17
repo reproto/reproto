@@ -4,17 +4,17 @@ pub use core::*;
 
 /// A single field.
 #[derive(Debug, Clone)]
-pub struct JavaField {
-    pub modifier: RpModifier,
-    pub ty: RpType,
+pub struct JavaField<'a> {
+    pub modifier: &'a RpModifier,
+    pub ty: &'a RpType,
     pub camel_name: String,
-    pub name: String,
+    pub name: &'a str,
     pub ident: String,
     pub java_type: Type,
     pub java_spec: FieldSpec,
 }
 
-impl JavaField {
+impl<'a> JavaField<'a> {
     pub fn setter(&self) -> Result<Option<MethodSpec>> {
         if self.java_spec.modifiers.contains(&Modifier::Final) {
             return Ok(None);
@@ -40,7 +40,7 @@ impl JavaField {
         let name = format!("get{}", self.camel_name);
         let mut getter = MethodSpec::new(mods![Modifier::Public], &name);
 
-        if self.modifier == RpModifier::Optional {
+        if *self.modifier == RpModifier::Optional {
             let optional = Type::class("java.util", "Optional");
             getter.returns(optional.with_arguments(vec![&self.java_type]));
         } else {

@@ -224,14 +224,14 @@ impl Environment {
 
         // check that all required fields are set.
         let mut required: BTreeMap<String, RpLoc<RpField>> = required_fields.map(Clone::clone)
-            .map(|f| (f.name.clone(), f))
+            .map(|f| (f.name().to_owned(), f))
             .collect();
 
         for init in &*instance.arguments {
-            if let Some(ref field) = reg_instance.find_field(&init.name)? {
+            if let Some(ref field) = reg_instance.field_by_ident(&init.name)? {
                 // TODO: map out init position, and check that required variables are set.
-                known.insert(field.name.clone(), init.clone());
-                required.remove(&field.name);
+                known.insert(field.ident().to_owned(), init.clone());
+                required.remove(field.name());
             } else {
                 return Err(Error::pos("no such field".to_owned(), init.pos.clone()));
             }

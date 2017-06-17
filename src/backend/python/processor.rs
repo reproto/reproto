@@ -43,24 +43,15 @@ impl Listeners for Vec<Box<Listeners>> {
 }
 
 #[derive(Clone)]
-pub struct Field {
-    pub modifier: RpModifier,
-    pub ty: RpType,
-    pub name: String,
+pub struct Field<'a> {
+    pub modifier: &'a RpModifier,
+    pub ty: &'a RpType,
+    pub name: &'a str,
     pub ident: String,
 }
 
-impl Field {
-    pub fn new(modifier: RpModifier, ty: RpType, name: String, ident: String) -> Field {
-        Field {
-            modifier: modifier,
-            ty: ty,
-            name: name,
-            ident: ident,
-        }
-    }
-
-    pub fn with_ident(self, ident: String) -> Field {
+impl<'a> Field<'a> {
+    pub fn with_ident(self, ident: String) -> Field<'a> {
         Field {
             modifier: self.modifier,
             ty: self.ty,
@@ -134,7 +125,7 @@ impl Processor {
     fn find_field<'a>(&self,
                       fields: &'a Vec<RpLoc<Field>>,
                       name: &str)
-                      -> Option<(usize, &'a Field)> {
+                      -> Option<(usize, &Field<'a>)> {
         for (i, field) in fields.iter().enumerate() {
             if field.name == name {
                 return Some((i, &field.inner));
@@ -177,7 +168,7 @@ impl Processor {
             let field_stmt = stmt!["self.", &field.ident];
             let value_stmt = self.encode(type_id, &field.pos, &field.ty, &field_stmt)?;
 
-            match field.modifier {
+            match *field.modifier {
                 RpModifier::Optional => {
                     let mut check_if_none = Elements::new();
 
@@ -348,7 +339,7 @@ impl Processor {
             let var_name = format!("f_{}", field.ident);
             let var = variable_fn(i, field);
 
-            let stmt = match field.modifier {
+            let stmt = match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = var_name.clone().into();
                     let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_name)?;
@@ -383,7 +374,7 @@ impl Processor {
     }
 
     fn field_ident(&self, field: &RpLoc<RpField>) -> String {
-        self.ident(&field.name)
+        self.ident(field.ident())
     }
 
     /// Build the java package of a given package.
@@ -522,27 +513,25 @@ impl Processor {
         }
     }
 
-    fn into_python_field_with<F>(&self, field: &RpLoc<RpField>, python_field_f: F) -> RpLoc<Field>
-        where F: Fn(Field) -> Field
+    fn into_python_field_with<'a, F>(&self,
+                                     field: &'a RpLoc<RpField>,
+                                     python_field_f: F)
+                                     -> RpLoc<Field<'a>>
+        where F: Fn(Field<'a>) -> Field<'a>
     {
         let ident = self.field_ident(field);
 
-        field.clone()
-            .map_inner(|f| {
-                let name = f.name;
-
-                python_field_f(Field {
-                    modifier: f.modifier,
-                    ty: f.ty,
-                    name: f.field_as
-                        .map(|field_as| (*field_as).to_owned())
-                        .unwrap_or_else(|| name.to_owned()),
-                    ident: ident,
-                })
+        field.map(|f| {
+            python_field_f(Field {
+                modifier: &f.modifier,
+                ty: &f.ty,
+                name: f.name(),
+                ident: ident,
             })
+        })
     }
 
-    fn into_python_field(&self, field: &RpLoc<RpField>) -> RpLoc<Field> {
+    fn into_python_field<'a>(&self, field: &'a RpLoc<RpField>) -> RpLoc<Field<'a>> {
         self.into_python_field_with(field, |ident| ident)
     }
 }

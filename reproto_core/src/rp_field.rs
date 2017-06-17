@@ -4,7 +4,7 @@ use super::errors::*;
 #[derive(Debug, Clone, Serialize)]
 pub struct RpField {
     pub modifier: RpModifier,
-    pub name: String,
+    name: String,
     pub comment: Vec<String>,
     #[serde(rename="type")]
     pub ty: RpType,
@@ -12,6 +12,21 @@ pub struct RpField {
 }
 
 impl RpField {
+    pub fn new(modifier: RpModifier,
+               name: String,
+               comment: Vec<String>,
+               ty: RpType,
+               field_as: Option<RpLoc<String>>)
+               -> RpField {
+        RpField {
+            modifier: modifier,
+            name: name,
+            comment: comment,
+            ty: ty,
+            field_as: field_as,
+        }
+    }
+
     pub fn is_optional(&self) -> bool {
         match self.modifier {
             RpModifier::Optional => true,
@@ -19,12 +34,12 @@ impl RpField {
         }
     }
 
+    pub fn ident(&self) -> &str {
+        &self.name
+    }
+
     pub fn name(&self) -> &str {
-        if let Some(ref field) = self.field_as {
-            &field.inner
-        } else {
-            &self.name
-        }
+        self.field_as.as_ref().map(AsRef::as_ref).unwrap_or(&self.name)
     }
 
     pub fn display(&self) -> String {

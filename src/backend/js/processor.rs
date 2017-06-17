@@ -91,7 +91,7 @@ impl Processor {
     fn find_field<'a>(&self,
                       fields: &'a Vec<RpLoc<JsField>>,
                       name: &str)
-                      -> Option<(usize, &'a JsField)> {
+                      -> Option<(usize, &JsField<'a>)> {
         for (i, field) in fields.iter().enumerate() {
             if field.name == name {
                 return Some((i, &field.inner));
@@ -133,7 +133,7 @@ impl Processor {
             let field_stmt = stmt!["this.", &field.ident];
             let value_stmt = self.encode(type_id, &field.pos, &field.ty, &field_stmt)?;
 
-            match field.modifier {
+            match *field.modifier {
                 RpModifier::Optional => {
                     let stmt = js![if is_defined(field_stmt),
                                       stmt![&data, "[", var_string, "] = ", value_stmt, ";"]];
@@ -239,7 +239,7 @@ impl Processor {
             let var_name = format!("v_{}", field.ident.clone());
             let var = variable_fn(i, field);
 
-            let stmt: Element = match field.modifier {
+            let stmt: Element = match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = var_name.clone().into();
                     let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_name)?;
@@ -304,9 +304,9 @@ impl Processor {
 
     fn field_ident(&self, field: &RpField) -> String {
         if let Some(ref id_converter) = self.id_converter {
-            id_converter.convert(&field.name)
+            id_converter.convert(field.ident())
         } else {
-            field.name.to_owned()
+            field.ident().to_owned()
         }
     }
 
@@ -409,27 +409,25 @@ impl Processor {
         }
     }
 
-    fn into_js_field_with<F>(&self, field: &RpLoc<RpField>, js_field_f: F) -> RpLoc<JsField>
-        where F: Fn(JsField) -> JsField
+    fn into_js_field_with<'a, F>(&self,
+                                 field: &'a RpLoc<RpField>,
+                                 js_field_f: F)
+                                 -> RpLoc<JsField<'a>>
+        where F: Fn(JsField<'a>) -> JsField<'a>
     {
         let ident = self.field_ident(&field);
 
-        field.clone()
-            .map_inner(|f| {
-                let name = f.name;
-
-                js_field_f(JsField {
-                    modifier: f.modifier,
-                    ty: f.ty,
-                    name: f.field_as
-                        .map(|field_as| (*field_as).to_owned())
-                        .unwrap_or_else(|| name.to_owned()),
-                    ident: ident,
-                })
+        field.map(|f| {
+            js_field_f(JsField {
+                modifier: &f.modifier,
+                ty: &f.ty,
+                name: f.name(),
+                ident: ident,
             })
+        })
     }
 
-    fn into_js_field(&self, field: &RpLoc<RpField>) -> RpLoc<JsField> {
+    fn into_js_field<'a>(&self, field: &'a RpLoc<RpField>) -> RpLoc<JsField<'a>> {
         self.into_js_field_with(field, |ident| ident)
     }
 }

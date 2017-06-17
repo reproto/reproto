@@ -154,23 +154,15 @@ impl Processor {
     fn field_element(&self, type_id: &RpTypeId, field: &RpLoc<RpField>) -> Result<Element> {
         let mut elements = Elements::new();
 
-        let ident = self.ident(&field.name);
+        let ident = self.ident(field.ident());
         let type_spec = self.into_type(type_id, field)?;
 
         if field.is_optional() {
             elements.push(stmt!["#[serde(skip_serializing_if=\"Option::is_none\")]"]);
         }
 
-        let name = &field.name;
-
-        let name = if let Some(ref field_as) = field.field_as {
-            (**field_as).to_owned()
-        } else {
-            name.to_owned()
-        };
-
-        if name != ident {
-            elements.push(stmt!["#[serde(rename = ", Variable::String(name), ")]"]);
+        if field.name() != ident {
+            elements.push(stmt!["#[serde(rename = ", Variable::String(field.name().to_owned()), ")]"]);
         }
 
         elements.push(stmt![ident, ": ", type_spec, ","]);

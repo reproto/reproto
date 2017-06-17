@@ -21,7 +21,7 @@ impl Module {
     fn builder_field(&self, field: &JavaField, source: &FieldSpec) -> FieldSpec {
         let field_mods = mods![Modifier::Private];
 
-        let ty = match field.modifier {
+        let ty = match *field.modifier {
             RpModifier::Required => self.optional.with_arguments(vec![&source.ty]).into(),
             _ => source.ty.clone(),
         };
@@ -65,7 +65,7 @@ impl Listeners for Module {
             builder.push_field(self.builder_field(field, source));
             builder.push(self.setter_method(field, source));
 
-            let value = match field.modifier {
+            let value = match *field.modifier {
                 RpModifier::Required => {
                     let message = Variable::String(format!("{}: is required", source.name));
                     let throw_stmt = stmt!["new ", &self.runtime_exception, "(", message, ")"];

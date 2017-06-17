@@ -459,7 +459,7 @@ impl Processor {
         constructor
     }
 
-    fn find_field(&self, fields: &Vec<JavaField>, name: &str) -> Option<JavaField> {
+    fn find_field<'a>(&self, fields: &Vec<JavaField<'a>>, name: &str) -> Option<JavaField<'a>> {
         for field in fields {
             if field.name == name {
                 return Some(field.clone());
@@ -801,24 +801,19 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn convert_field(&self, pkg: &RpPackage, field: &RpLoc<RpField>) -> Result<JavaField> {
+    fn convert_field<'a>(&self,
+                         pkg: &RpPackage,
+                         field: &'a RpLoc<RpField>)
+                         -> Result<JavaField<'a>> {
         let java_type = self.into_java_type(&field.pos, pkg, &field.ty)?;
-        let camel_name = self.snake_to_upper_camel.convert(&field.name);
-        let ident = self.snake_to_lower_camel.convert(&field.name);
+        let camel_name = self.snake_to_upper_camel.convert(field.ident());
+        let ident = self.snake_to_lower_camel.convert(field.ident());
         let java_spec = self.build_field_spec(&java_type, field)?;
 
-        let name = &field.name;
-
-        let name: String = if let Some(ref field_as) = field.field_as {
-            (**field_as).to_owned()
-        } else {
-            name.to_owned()
-        };
-
         Ok(JavaField {
-            modifier: field.modifier.clone(),
-            name: name,
-            ty: field.ty.clone(),
+            modifier: &field.modifier,
+            name: field.name(),
+            ty: &field.ty,
             camel_name: camel_name,
             ident: ident,
             java_type: java_type,
@@ -826,10 +821,10 @@ impl Processor {
         })
     }
 
-    fn convert_fields(&self,
-                      pkg: &RpPackage,
-                      fields: &Vec<RpLoc<RpField>>)
-                      -> Result<Vec<JavaField>> {
+    fn convert_fields<'a>(&self,
+                          pkg: &RpPackage,
+                          fields: &'a Vec<RpLoc<RpField>>)
+                          -> Result<Vec<JavaField<'a>>> {
         let mut out = Vec::new();
 
         for field in fields {
@@ -846,7 +841,7 @@ impl Processor {
             field_type.clone()
         };
 
-        let ident = self.snake_to_lower_camel.convert(&field.name);
+        let ident = self.snake_to_lower_camel.convert(field.ident());
         Ok(self.new_field_spec(&field_type, &ident))
     }
 
