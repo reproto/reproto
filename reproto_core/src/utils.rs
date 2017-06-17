@@ -33,7 +33,7 @@ pub fn members_into_model(pos: &RpPos,
     for member in members {
         let pos = (pos.0.to_owned(), member.pos.0, member.pos.1);
 
-        match member.inner {
+        match *member {
             ast::Member::Field(field) => {
                 let field = field.into_model(&pos)?;
 
@@ -78,7 +78,7 @@ impl OrdinalGenerator {
         if let Some(ref ordinal) = *ordinal {
             let pos = (pos.0.to_owned(), ordinal.pos.0, ordinal.pos.1);
 
-            if let ast::Value::Number(ref number) = ordinal.inner {
+            if let ast::Value::Number(ref number) = *ordinal {
                 let n: u32 = number.to_u32().ok_or_else(|| ErrorKind::Overflow)?;
 
                 if self.ordinals.contains(&n) {

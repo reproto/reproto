@@ -128,7 +128,7 @@ impl Processor {
                       -> Option<(usize, &Field<'a>)> {
         for (i, field) in fields.iter().enumerate() {
             if field.name == name {
-                return Some((i, &field.inner));
+                return Some((i, field.as_ref()));
             }
         }
 
@@ -166,7 +166,7 @@ impl Processor {
         for field in fields {
             let var_string = Variable::String(field.name.to_owned());
             let field_stmt = stmt!["self.", &field.ident];
-            let value_stmt = self.encode(type_id, &field.pos, &field.ty, &field_stmt)?;
+            let value_stmt = self.encode(type_id, field.pos(), &field.ty, &field_stmt)?;
 
             match *field.modifier {
                 RpModifier::Optional => {
@@ -210,7 +210,7 @@ impl Processor {
         for field in fields {
             let stmt = stmt!["self.", &field.ident];
             encode_body.push(self.raise_if_none(&stmt, field));
-            values.push(self.encode(type_id, &field.pos, &field.ty, &stmt)?);
+            values.push(self.encode(type_id, field.pos(), &field.ty, &stmt)?);
         }
 
         encode_body.push(stmt!["return (", values.join(", "), ")"]);
@@ -342,12 +342,12 @@ impl Processor {
             let stmt = match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = var_name.clone().into();
-                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_name)?;
+                    let var_stmt = self.decode(type_id, field.pos(), &field.ty, &var_name)?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
                 _ => {
                     let var_stmt = stmt!["data[", &var, "]"];
-                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_stmt.into())?;
+                    let var_stmt = self.decode(type_id, field.pos(), &field.ty, &var_stmt.into())?;
                     stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
@@ -418,7 +418,7 @@ impl Processor {
         let mut enums = Vec::new();
 
         let mut files = self.do_populate_files(|type_id, decl| {
-                if let RpDecl::Enum(ref body) = decl.inner {
+                if let RpDecl::Enum(ref body) = *decl.as_ref() {
                     enums.push((type_id, body));
                 }
 
@@ -607,7 +607,7 @@ impl PackageProcessor for Processor {
         }
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
-            class.push(code.inner.lines);
+            class.push(code.move_inner().lines);
         }
 
         let decode = self.decode_method(type_id,
@@ -651,15 +651,15 @@ impl PackageProcessor for Processor {
         }
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
-            class.push(code.inner.lines);
+            class.push(code.move_inner().lines);
         }
 
         if let Some(ref s) = body.serialized_as {
-            if let Some((_, ref field)) = self.find_field(&fields, &s.inner) {
+            if let Some((_, ref field)) = self.find_field(&fields, s.as_ref()) {
                 class.push(self.encode_enum_method(field)?);
                 class.push(self.decode_enum_method(field)?);
             } else {
-                return Err(Error::pos(format!("no field named: {}", s.inner), s.pos.clone()));
+                return Err(Error::pos(format!("no field named: {}", s), s.pos().clone()));
             }
         }
 
@@ -707,7 +707,7 @@ impl PackageProcessor for Processor {
         class.push(self.repr_method(&body.name, &fields));
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
-            class.push(code.inner.lines);
+            class.push(code.move_inner().lines);
         }
 
         out.push(class);
@@ -725,7 +725,7 @@ impl PackageProcessor for Processor {
         interface_spec.push(self.interface_decode_method(type_id, &body)?);
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
-            interface_spec.push(code.inner.lines);
+            interface_spec.push(code.move_inner().lines);
         }
 
         out.push(interface_spec);
@@ -737,7 +737,7 @@ impl PackageProcessor for Processor {
             let mut class = ClassSpec::new(&name);
             class.extends(Name::local(&body.name));
 
-            class.push(stmt!["TYPE = ", Variable::String(sub_type.name())]);
+            class.push(stmt!["TYPE = ", Variable::String(sub_type.name().to_owned())]);
 
             let fields: Vec<RpLoc<Field>> = body.fields
                 .iter()
@@ -756,15 +756,17 @@ impl PackageProcessor for Processor {
             }
 
             let decode = self.decode_method(&type_id,
-                               &sub_type.pos,
+                               sub_type.pos(),
                                &sub_type.match_decl,
                                &fields,
                                |_, field| Variable::String(field.ident.to_owned()))?;
 
             class.push(decode);
 
-            let type_stmt =
-                stmt!["data[", &self.type_var, "] = ", Variable::String(sub_type.name())];
+            let type_stmt = stmt!["data[",
+                                  &self.type_var,
+                                  "] = ",
+                                  Variable::String(sub_type.name().to_owned())];
 
             let encode = self.encode_method(&type_id, &fields, &self.dict, move |elements| {
                     elements.push(type_stmt);
@@ -775,7 +777,7 @@ impl PackageProcessor for Processor {
             class.push(self.repr_method(&name, &fields));
 
             for code in sub_type.codes.for_context(PYTHON_CONTEXT) {
-                class.push(code.inner.lines);
+                class.push(code.move_inner().lines);
             }
 
             out.push(class);
@@ -939,7 +941,7 @@ impl DynamicDecode for Processor {
                       type_name: &Self::Type)
                       -> Self::Elements {
         let mut check = Elements::new();
-        check.push(stmt!["if ", type_var, " == ", Variable::String(name.inner.to_owned()), ":"]);
+        check.push(stmt!["if ", type_var, " == ", Variable::String(name.as_ref().to_owned()), ":"]);
         check.push_nested(stmt!["return ", type_name, ".decode(data)"]);
         check
     }

@@ -20,9 +20,10 @@ impl IntoModel for SubType {
         let mut match_decl = RpMatchDecl::new();
 
         for member in self.members {
-            let pos = (pos.0.to_owned(), member.pos.0, member.pos.1);
+            let (member, member_pos) = member.both();
+            let pos = (pos.0.to_owned(), member_pos.0, member_pos.1);
 
-            match member.inner {
+            match member {
                 Member::Field(field) => {
                     let field = field.into_model(&pos)?;
 
@@ -30,14 +31,14 @@ impl IntoModel for SubType {
                         .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
                         return Err(ErrorKind::FieldConflict(field.ident().to_owned(),
                                                             pos,
-                                                            other.pos.clone())
+                                                            other.pos().clone())
                             .into());
                     }
 
                     fields.push(RpLoc::new(field, pos));
                 }
                 Member::Code(context, lines) => {
-                    codes.push(utils::code(&pos, member.pos, context, lines));
+                    codes.push(utils::code(pos, context, lines));
                 }
                 Member::Option(option) => {
                     options.push(option.into_model(&pos)?);

@@ -98,7 +98,7 @@ impl Processor {
     }
 
     fn into_type(&self, type_id: &RpTypeId, field: &RpLoc<RpField>) -> Result<Statement> {
-        let stmt = self.into_rust_type(type_id, &field.pos, &field.ty)?;
+        let stmt = self.into_rust_type(type_id, field.pos(), &field.ty)?;
 
         if field.is_optional() {
             return Ok(stmt!["Option<", stmt, ">"]);
@@ -249,7 +249,7 @@ impl PackageProcessor for Processor {
         enum_spec.public();
 
         for code in body.codes.for_context(RUST_CONTEXT) {
-            enum_spec.push(code.inner.lines);
+            enum_spec.push(code.move_inner().lines);
         }
 
         out.push(enum_spec);
@@ -275,7 +275,7 @@ impl PackageProcessor for Processor {
         struct_spec.push(fields);
 
         for code in body.codes.for_context(RUST_CONTEXT) {
-            struct_spec.push(code.inner.lines);
+            struct_spec.push(code.move_inner().lines);
         }
 
         out.push(struct_spec);
@@ -295,7 +295,7 @@ impl PackageProcessor for Processor {
         enum_spec.push_attribute("#[serde(tag = \"type\")]");
 
         for code in body.codes.for_context(RUST_CONTEXT) {
-            enum_spec.push(code.inner.lines);
+            enum_spec.push(code.move_inner().lines);
         }
 
         for (_, ref sub_type) in &body.sub_types {

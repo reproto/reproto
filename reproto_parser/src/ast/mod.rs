@@ -57,8 +57,8 @@ impl<T> IntoModel for Loc<T, (usize, usize)>
     type Output = RpLoc<T::Output>;
 
     fn into_model(self, pos: &RpPos) -> errors::Result<Self::Output> {
-        let pos = (pos.0.clone(), self.pos.0, self.pos.1);
-        let out = self.inner.into_model(&pos)?;
+        let pos = (pos.0.clone(), self.pos().0, self.pos().1);
+        let out = self.move_inner().into_model(&pos)?;
         Ok(RpLoc::new(out, pos))
     }
 }

@@ -33,12 +33,13 @@ impl<'a> Options<'a> {
         let mut out: Vec<RpLoc<String>> = Vec::new();
 
         for s in self.lookup(name) {
-            match **s {
-                RpValue::String(ref string) => {
-                    out.push(RpLoc::new(string.clone(), s.pos.clone()));
+            match s.ref_both() {
+                (&RpValue::String(ref string), ref pos) => {
+                    out.push(RpLoc::new(string.clone(), (*pos).clone()));
                 }
-                _ => {
-                    return Err(ErrorKind::Pos(format!("{}: expected string", name), s.pos.clone())
+                (_, ref pos) => {
+                    return Err(ErrorKind::Pos(format!("{}: expected string", name),
+                                              (*pos).clone())
                         .into());
                 }
             }
@@ -53,7 +54,7 @@ impl<'a> Options<'a> {
         for s in self.lookup(name) {
             if let Some(_) = out {
                 return Err(ErrorKind::Pos(format!("{}: only one value may be present", name),
-                                          s.pos.clone())
+                                          s.pos().clone())
                     .into());
             }
 
@@ -69,22 +70,14 @@ impl<'a> Options<'a> {
     /// error.
     pub fn find_one_identifier(&self, name: &str) -> Result<Option<RpLoc<String>>> {
         if let Some(t) = self.find_one(name)? {
-            if let RpValue::Identifier(ref identifier) = t.inner {
-                return Ok(Some(RpLoc::new(identifier.clone(), t.pos.clone())));
-            } else {
-                return Err(ErrorKind::Pos("expected identifier".to_owned(), t.pos.clone()).into());
-            }
-        }
-
-        Ok(None)
-    }
-
-    pub fn _find_one_string(&self, name: &str) -> Result<Option<RpLoc<String>>> {
-        if let Some(t) = self.find_one(name)? {
-            if let RpValue::String(ref string) = t.inner {
-                return Ok(Some(RpLoc::new(string.clone(), t.pos.clone())));
-            } else {
-                return Err(ErrorKind::Pos("expected string".to_owned(), t.pos.clone()).into());
+            match t.ref_both() {
+                (&RpValue::Identifier(ref identifier), ref pos) => {
+                    return Ok(Some(RpLoc::new(identifier.clone(), (*pos).clone())));
+                }
+                (_, ref pos) => {
+                    return Err(ErrorKind::Pos("expected identifier".to_owned(), (*pos).clone())
+                        .into());
+                }
             }
         }
 
@@ -93,10 +86,14 @@ impl<'a> Options<'a> {
 
     pub fn find_one_boolean(&self, name: &str) -> Result<Option<RpLoc<bool>>> {
         if let Some(t) = self.find_one(name)? {
-            if let RpValue::Boolean(ref boolean) = t.inner {
-                return Ok(Some(RpLoc::new(boolean.clone(), t.pos.clone())));
-            } else {
-                return Err(ErrorKind::Pos("expected boolean".to_owned(), t.pos.clone()).into());
+            match t.ref_both() {
+                (&RpValue::Boolean(ref boolean), ref pos) => {
+                    return Ok(Some(RpLoc::new(boolean.clone(), (*pos).clone())));
+                }
+                (_, ref pos) => {
+                    return Err(ErrorKind::Pos("expected boolean".to_owned(), (*pos).clone())
+                        .into());
+                }
             }
         }
 
@@ -110,13 +107,13 @@ impl<'a> Options<'a> {
         let mut out: Vec<RpLoc<String>> = Vec::new();
 
         for s in self.lookup(name) {
-            match **s {
-                RpValue::Identifier(ref identifier) => {
-                    out.push(RpLoc::new(identifier.clone(), s.pos.clone()));
+            match s.ref_both() {
+                (&RpValue::Identifier(ref identifier), ref pos) => {
+                    out.push(RpLoc::new(identifier.clone(), (*pos).clone()));
                 }
-                _ => {
+                (_, ref pos) => {
                     return Err(ErrorKind::Pos(format!("{}: expected identifier", name),
-                                              s.pos.clone())
+                                              (*pos).clone())
                         .into());
                 }
             }

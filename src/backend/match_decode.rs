@@ -82,7 +82,7 @@ pub trait MatchDecode
             let mut variables = Variables::new();
             variables.insert(variable.clone(), &result.variable.ty);
 
-            let decode = self.decode(type_id, &result.variable.pos, &result.variable.ty, data)?;
+            let decode = self.decode(type_id, result.variable.pos(), &result.variable.ty, data)?;
 
             let result_value = self.value(&ValueBuilderEnv {
                     value: &result.instance,

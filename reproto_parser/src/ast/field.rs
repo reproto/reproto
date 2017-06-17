@@ -26,10 +26,9 @@ impl IntoModel for Field {
         let field_as = self.field_as.into_model(pos)?;
 
         let field_as = if let Some(field_as) = field_as {
-            if let RpValue::String(name) = field_as.inner {
-                Some(RpLoc::new(name, field_as.pos.clone()))
-            } else {
-                return Err(ErrorKind::Pos("must be a string".to_owned(), field_as.pos).into());
+            match field_as.both() {
+                (RpValue::String(name), pos) => Some(RpLoc::new(name, pos)),
+                (_, pos) => return Err(ErrorKind::Pos("must be a string".to_owned(), pos).into()),
             }
         } else {
             None

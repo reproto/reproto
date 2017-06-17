@@ -35,7 +35,7 @@ impl RpMatchDecl {
     }
 
     pub fn push(&mut self, member: RpLoc<RpMatchMember>) -> Result<()> {
-        match member.condition.inner {
+        match *member.condition {
             RpMatchCondition::Type(ref variable) => {
                 let match_kind = self.identify_match_kind(variable);
 
@@ -45,8 +45,8 @@ impl RpMatchDecl {
                         self.by_type.iter().find(|e| e.0 == match_kind || e.0 == RpMatchKind::Any);
 
                     if let Some(&(_, ref existing_value)) = result {
-                        let err = ErrorKind::MatchConflict(member.condition.pos.clone(),
-                                                           existing_value.instance.pos.clone());
+                        let err = ErrorKind::MatchConflict(member.condition.pos().clone(),
+                                                           existing_value.instance.pos().clone());
                         return Err(err.into());
                     }
                 }
@@ -60,11 +60,11 @@ impl RpMatchDecl {
             RpMatchCondition::Value(ref value) => {
                 {
                     // conflicting when value matches
-                    let result = self.by_value.iter().find(|e| e.0.inner == value.inner);
+                    let result = self.by_value.iter().find(|e| e.0.as_ref() == value.as_ref());
 
                     if let Some(&(_, ref existing_value)) = result {
-                        let err = ErrorKind::MatchConflict(member.condition.pos.clone(),
-                                                           existing_value.instance.pos.clone());
+                        let err = ErrorKind::MatchConflict(member.condition.pos().clone(),
+                                                           existing_value.instance.pos().clone());
                         return Err(err.into());
                     }
                 }

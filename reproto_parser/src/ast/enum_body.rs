@@ -24,18 +24,20 @@ impl IntoModel for EnumBody {
             let ordinal = ordinals.next(&variant.ordinal, pos)
                 .map_err(|e| ErrorKind::Pos(e.description().into(), pos.clone()))?;
 
-            let variant = RpLoc::new((variant.inner, ordinal).into_model(pos)?,
-                                     (pos.0.clone(), variant.pos.0, variant.pos.1));
+            let (variant, variant_pos) = variant.both();
+
+            let variant = RpLoc::new((variant, ordinal).into_model(pos)?,
+                                     (pos.0.clone(), variant_pos.0, variant_pos.1));
 
             if fields.len() != variant.arguments.len() {
                 return Err(ErrorKind::Pos(format!("expected {} arguments", fields.len()),
-                                          variant.pos.clone())
+                                          variant.pos().clone())
                     .into());
             }
 
             if let Some(other) = variants.iter().find(|v| *v.name == *variant.name) {
-                return Err(ErrorKind::EnumVariantConflict(other.name.pos.clone(),
-                                                          variant.name.pos.clone())
+                return Err(ErrorKind::EnumVariantConflict(other.name.pos().clone(),
+                                                          variant.name.pos().clone())
                     .into());
             }
 
@@ -49,7 +51,7 @@ impl IntoModel for EnumBody {
 
         let serialized_as_name = options.find_one_boolean("serialized_as_name")?
             .to_owned()
-            .map(|t| t.inner)
+            .map(|t| t.move_inner())
             .unwrap_or(false);
 
         let en = RpEnumBody {

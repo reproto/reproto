@@ -266,10 +266,10 @@ mod tests {
             assert_eq!("foo_bar_baz", option.name);
             assert_eq!(4, option.values.len());
 
-            assert_eq!(Value::Boolean(true), option.values[0].inner);
-            assert_eq!(Value::Identifier("foo".to_owned()), option.values[1].inner);
-            assert_eq!(Value::String("bar".to_owned()), option.values[2].inner);
-            assert_eq!(Value::Number(12u32.into()), option.values[3].inner);
+            assert_eq!(Value::Boolean(true), *option.values[0].as_ref());
+            assert_eq!(Value::Identifier("foo".to_owned()), *option.values[1].as_ref());
+            assert_eq!(Value::String("bar".to_owned()), *option.values[2].as_ref());
+            assert_eq!(Value::Number(12u32.into()), *option.values[3].as_ref());
             return;
         }
 

@@ -12,12 +12,12 @@ pub struct RpSubType {
 }
 
 impl RpSubType {
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> &str {
         self.names
             .iter()
-            .map(|t| t.inner.to_owned())
+            .map(|t| t.as_ref().as_str())
             .nth(0)
-            .unwrap_or_else(|| self.name.clone())
+            .unwrap_or(&self.name)
     }
 
     pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpLoc<RpField>> + 'a> {

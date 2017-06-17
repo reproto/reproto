@@ -38,22 +38,23 @@ impl ::std::fmt::Display for RpDecl {
 
 impl Merge for RpLoc<RpDecl> {
     fn merge(&mut self, source: RpLoc<RpDecl>) -> Result<()> {
-        let dest_pos = self.pos.clone();
+        let dest_pos = self.pos().clone();
+        let m = self.as_mut();
 
-        match self.inner {
+        match *m {
             RpDecl::Type(ref mut body) => {
-                if let RpDecl::Type(other) = source.inner {
-                    return body.merge(other);
+                if let RpDecl::Type(ref other) = *source {
+                    return body.merge(other.clone());
                 }
             }
             RpDecl::Enum(ref mut body) => {
-                if let RpDecl::Enum(other) = source.inner {
+                if let RpDecl::Enum(ref other) = *source {
                     if let Some(variant) = other.variants.iter().next() {
                         return Err(ErrorKind::ExtendEnum("cannot extend enum with additional \
                                                        variants"
                                                              .to_owned(),
-                                                         variant.pos.clone(),
-                                                         dest_pos)
+                                                         variant.pos().clone(),
+                                                         dest_pos.clone())
                             .into());
                     }
 
@@ -61,35 +62,35 @@ impl Merge for RpLoc<RpDecl> {
                         return Err(ErrorKind::ExtendEnum("cannot extend enum with additional \
                                                           fields"
                                                              .to_owned(),
-                                                         field.pos.clone(),
-                                                         dest_pos)
+                                                         field.pos().clone(),
+                                                         dest_pos.clone())
                             .into());
                     }
 
 
-                    return body.merge(other);
+                    return body.merge(other.clone());
                 }
             }
             RpDecl::Interface(ref mut body) => {
-                if let RpDecl::Interface(other) = source.inner {
-                    return body.merge(other);
+                if let RpDecl::Interface(ref other) = *source {
+                    return body.merge(other.clone());
                 }
             }
             RpDecl::Tuple(ref mut body) => {
-                if let RpDecl::Tuple(other) = source.inner {
-                    return body.merge(other);
+                if let RpDecl::Tuple(ref other) = *source {
+                    return body.merge(other.clone());
                 }
             }
             RpDecl::Service(ref mut body) => {
-                if let RpDecl::Service(other) = source.inner {
-                    return body.merge(other);
+                if let RpDecl::Service(ref other) = *source {
+                    return body.merge(other.clone());
                 }
             }
         }
 
         return Err(ErrorKind::DeclMerge(format!("cannot merge with {}", source),
-                                        source.pos,
-                                        dest_pos)
+                                        source.pos().clone(),
+                                        dest_pos.clone())
             .into());
     }
 }

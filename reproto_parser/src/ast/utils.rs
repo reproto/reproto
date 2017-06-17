@@ -6,9 +6,7 @@ type Fields = Vec<RpLoc<RpField>>;
 type Codes = Vec<RpLoc<RpCode>>;
 type OptionVec = Vec<RpLoc<RpOptionDecl>>;
 
-pub fn code(pos: &RpPos, ast_pos: Pos, context: String, lines: Vec<String>) -> RpLoc<RpCode> {
-    let pos = (pos.0.clone(), ast_pos.0, ast_pos.1);
-
+pub fn code(pos: RpPos, context: String, lines: Vec<String>) -> RpLoc<RpCode> {
     let code = RpCode {
         context: context,
         lines: lines,
@@ -26,9 +24,9 @@ pub fn members_into_model(pos: &RpPos,
     let mut match_decl = RpMatchDecl::new();
 
     for member in members {
-        let pos = (pos.0.to_owned(), member.pos.0, member.pos.1);
+        let pos = (pos.0.to_owned(), member.pos().0, member.pos().1);
 
-        match member.inner {
+        match member.move_inner() {
             Member::Field(field) => {
                 let field = field.into_model(&pos)?;
 
@@ -36,14 +34,14 @@ pub fn members_into_model(pos: &RpPos,
                     .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
                     return Err(ErrorKind::FieldConflict(field.ident().to_owned(),
                                                         pos,
-                                                        other.pos.clone())
+                                                        other.pos().clone())
                         .into());
                 }
 
                 fields.push(RpLoc::new(field, pos));
             }
             Member::Code(context, lines) => {
-                codes.push(code(&pos, member.pos, context, lines));
+                codes.push(code(pos, context, lines));
             }
             Member::Option(option) => {
                 options.push(option.into_model(&pos)?);
@@ -75,9 +73,9 @@ impl OrdinalGenerator {
 
     pub fn next(&mut self, ordinal: &Option<AstLoc<Value>>, pos: &RpPos) -> Result<u32> {
         if let Some(ref ordinal) = *ordinal {
-            let pos = (pos.0.to_owned(), ordinal.pos.0, ordinal.pos.1);
+            let pos = (pos.0.to_owned(), ordinal.pos().0, ordinal.pos().1);
 
-            if let Value::Number(ref number) = ordinal.inner {
+            if let Value::Number(ref number) = *ordinal.as_ref() {
                 let n: u32 = number.to_u32().ok_or_else(|| ErrorKind::Overflow)?;
 
                 if self.ordinals.contains(&n) {

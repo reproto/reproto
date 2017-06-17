@@ -539,7 +539,7 @@ impl Processor {
         }
 
         for code in body.codes.for_context(JAVA_CONTEXT) {
-            spec.push(code.inner.lines);
+            spec.push(code.move_inner().lines);
         }
 
         let variables = Variables::new();
@@ -578,11 +578,11 @@ impl Processor {
         let mut to_value: Option<MethodSpec> = None;
 
         if let Some(ref s) = body.serialized_as {
-            if let Some(field) = self.find_field(&fields, &s.inner) {
+            if let Some(field) = self.find_field(&fields, s.as_ref()) {
                 from_value = Some(self.enum_from_value_method(&field, &class_type)?);
                 to_value = Some(self.enum_to_value_method(&field)?);
             } else {
-                return Err(Error::pos(format!("no field named: {}", s.inner), s.pos.clone()));
+                return Err(Error::pos(format!("no field named: {}", s), s.pos().clone()));
             }
         }
 
@@ -631,7 +631,7 @@ impl Processor {
         }
 
         for code in body.codes.for_context(JAVA_CONTEXT) {
-            spec.push(code.inner.lines);
+            spec.push(code.move_inner().lines);
         }
 
         self.add_class(&class_type, &mut spec)?;
@@ -670,7 +670,7 @@ impl Processor {
         }
 
         for code in body.codes.for_context(JAVA_CONTEXT) {
-            spec.push(code.inner.lines);
+            spec.push(code.move_inner().lines);
         }
 
         self.add_class(&class_type, &mut spec)?;
@@ -701,7 +701,7 @@ impl Processor {
         let interface_fields = self.convert_fields(&type_id.package, &interface.fields)?;
 
         for code in interface.codes.for_context(JAVA_CONTEXT) {
-            interface_spec.push(code.inner.lines);
+            interface_spec.push(code.move_inner().lines);
         }
 
         if self.options.build_getters {
@@ -718,7 +718,7 @@ impl Processor {
             let sub_type_fields = self.convert_fields(&type_id.package, &sub_type.fields)?;
 
             for code in sub_type.codes.for_context(JAVA_CONTEXT) {
-                class.push(code.inner.lines);
+                class.push(code.move_inner().lines);
             }
 
             class.implements(&parent_type);
@@ -805,7 +805,7 @@ impl Processor {
                          pkg: &RpPackage,
                          field: &'a RpLoc<RpField>)
                          -> Result<JavaField<'a>> {
-        let java_type = self.into_java_type(&field.pos, pkg, &field.ty)?;
+        let java_type = self.into_java_type(field.pos(), pkg, &field.ty)?;
         let camel_name = self.snake_to_upper_camel.convert(field.ident());
         let ident = self.snake_to_lower_camel.convert(field.ident());
         let java_spec = self.build_field_spec(&java_type, field)?;

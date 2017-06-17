@@ -461,7 +461,7 @@ impl Listeners for Module {
 
             for (key, sub_type) in &event.interface.sub_types {
                 for name in &sub_type.names {
-                    let name: String = name.inner.to_owned();
+                    let name: String = name.as_ref().to_owned();
 
                     let mut type_args = Statement::new();
 
@@ -568,7 +568,7 @@ impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
                   value: &RpByTypeMatch)
                   -> Result<Elements> {
         let variable_ty = self.processor
-            .into_java_type(&value.variable.pos, &type_id.package, &value.variable.ty)?;
+            .into_java_type(value.variable.pos(), &type_id.package, &value.variable.ty)?;
 
         let mut value_body = Elements::new();
         let check = self.type_check(data, kind);

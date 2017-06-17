@@ -37,25 +37,26 @@ impl Environment {
                             -> Result<Vec<(RpTypeId, RpLoc<RpRegistered>)>> {
         let mut out = Vec::new();
 
-        match decl.inner {
+        match **decl {
             RpDecl::Type(ref ty) => {
                 let type_id = RpTypeId::new(package.clone(),
                                             RpName::with_parts(vec![ty.name.clone()]));
-                let token = RpLoc::new(RpRegistered::Type(ty.clone()), decl.pos.clone());
+                let token = RpLoc::new(RpRegistered::Type(ty.clone()), decl.pos().clone());
                 out.push((type_id, token));
             }
             RpDecl::Interface(ref interface) => {
                 let current = vec![interface.name.clone()];
                 let type_id = RpTypeId::new(package.clone(), RpName::with_parts(current.clone()));
                 let token = RpLoc::new(RpRegistered::Interface(interface.clone()),
-                                       decl.pos.clone());
+                                       decl.pos().clone());
 
                 for (name, sub_type) in &interface.sub_types {
                     let sub_type = RpRegistered::SubType {
                         parent: interface.clone(),
-                        sub_type: sub_type.inner.clone(),
+                        sub_type: sub_type.as_ref().clone(),
                     };
-                    let token = RpLoc::new(sub_type, decl.pos.clone());
+
+                    let token = RpLoc::new(sub_type, decl.pos().clone());
 
                     let mut current = current.clone();
                     current.push(name.to_owned());
@@ -67,14 +68,14 @@ impl Environment {
             RpDecl::Enum(ref en) => {
                 let current = vec![en.name.clone()];
                 let type_id = RpTypeId::new(package.clone(), RpName::with_parts(current.clone()));
-                let token = RpLoc::new(RpRegistered::Enum(en.clone()), decl.pos.clone());
+                let token = RpLoc::new(RpRegistered::Enum(en.clone()), decl.pos().clone());
 
                 for variant in &en.variants {
                     let enum_constant = RpRegistered::EnumConstant {
                         parent: en.clone(),
-                        variant: variant.inner.clone(),
+                        variant: variant.as_ref().clone(),
                     };
-                    let token = RpLoc::new(enum_constant, decl.pos.clone());
+                    let token = RpLoc::new(enum_constant, decl.pos().clone());
 
                     let mut current = current.clone();
                     current.push((*variant.name).to_owned());
@@ -86,13 +87,13 @@ impl Environment {
             RpDecl::Tuple(ref tuple) => {
                 let type_id = RpTypeId::new(package.clone(),
                                             RpName::with_parts(vec![tuple.name.clone()]));
-                let token = RpLoc::new(RpRegistered::Tuple(tuple.clone()), decl.pos.clone());
+                let token = RpLoc::new(RpRegistered::Tuple(tuple.clone()), decl.pos().clone());
                 out.push((type_id, token));
             }
             RpDecl::Service(ref service) => {
                 let type_id = RpTypeId::new(package.clone(),
                                             RpName::with_parts(vec![service.name.clone()]));
-                let token = RpLoc::new(RpRegistered::Service(service.clone()), decl.pos.clone());
+                let token = RpLoc::new(RpRegistered::Service(service.clone()), decl.pos().clone());
                 out.push((type_id, token));
             }
         }
@@ -112,7 +113,7 @@ impl Environment {
 
             match self.used.entry(key) {
                 linked_hash_map::Entry::Vacant(entry) => {
-                    entry.insert(use_decl.package.inner.clone())
+                    entry.insert(use_decl.package.as_ref().clone())
                 }
                 linked_hash_map::Entry::Occupied(_) => {
                     return Err(format!("alias {} already in used", alias).into())
@@ -233,7 +234,7 @@ impl Environment {
                 known.insert(field.ident().to_owned(), init.clone());
                 required.remove(field.name());
             } else {
-                return Err(Error::pos("no such field".to_owned(), init.pos.clone()));
+                return Err(Error::pos("no such field".to_owned(), init.pos().clone()));
             }
         }
 
@@ -244,10 +245,11 @@ impl Environment {
             let names: Vec<String> =
                 required.iter().map(|&(ref name, _)| name.to_owned()).collect();
 
-            let positions: Vec<RpPos> = required.iter().map(|&(_, ref t)| t.pos.clone()).collect();
+            let positions: Vec<RpPos> =
+                required.iter().map(|&(_, ref t)| t.pos().clone()).collect();
 
             return Err(ErrorKind::MissingRequired(names,
-                                                  instance.arguments.pos.clone(),
+                                                  instance.arguments.pos().clone(),
                                                   positions)
                 .into());
         }
@@ -306,11 +308,12 @@ impl Environment {
         let mut decls = LinkedHashMap::new();
 
         for decl in file.decls {
-            let pos = (path.to_owned(), decl.pos.0, decl.pos.1);
-            let decl = decl.into_model(&pos)?;
+            let (decl, pos) = decl.both();
+            let pos = (path.to_owned(), pos.0, pos.1);
+            let decl = RpLoc::new(decl.into_model(&pos)?, pos);
 
             let custom = RpName::with_parts(vec![decl.name().to_owned()]);
-            let key = RpTypeId::new(file.package.inner.clone(), custom);
+            let key = RpTypeId::new(file.package.as_ref().clone(), custom);
 
             match decls.entry(key) {
                 linked_hash_map::Entry::Vacant(entry) => {
@@ -393,7 +396,7 @@ impl Environment {
 
     pub fn verify(&mut self) -> Result<()> {
         for (_, ref ty) in &self.decls {
-            match ty.inner {
+            match ****ty {
                 RpDecl::Type(ref ty) => {
                     ty.verify()?;
                 }

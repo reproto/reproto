@@ -98,7 +98,7 @@ pub trait DynamicDecode
         for (_, ref sub_type) in &body.sub_types {
             for name in &sub_type.names {
                 let type_id = type_id.extend(sub_type.name.clone());
-                let type_name = self.convert_type(&sub_type.pos, &type_id)?;
+                let type_name = self.convert_type(sub_type.pos(), &type_id)?;
                 decode_body.push(&self.check_type_var(&data, &type_var, name, &type_name));
             }
         }

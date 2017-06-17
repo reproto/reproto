@@ -86,21 +86,21 @@ pub trait PackageProcessor
 
             let mut out = files.entry(&type_id.package).or_insert_with(|| Self::Out::new());
 
-            match decl.inner {
+            match ***decl {
                 RpDecl::Interface(ref body) => {
-                    self.process_interface(&mut out, type_id, &decl.pos, body.clone())?
+                    self.process_interface(&mut out, type_id, decl.pos(), body.clone())?
                 }
                 RpDecl::Type(ref body) => {
-                    self.process_type(&mut out, type_id, &decl.pos, body.clone())?
+                    self.process_type(&mut out, type_id, decl.pos(), body.clone())?
                 }
                 RpDecl::Tuple(ref body) => {
-                    self.process_tuple(&mut out, type_id, &decl.pos, body.clone())?
+                    self.process_tuple(&mut out, type_id, decl.pos(), body.clone())?
                 }
                 RpDecl::Enum(ref body) => {
-                    self.process_enum(&mut out, type_id, &decl.pos, body.clone())?
+                    self.process_enum(&mut out, type_id, decl.pos(), body.clone())?
                 }
                 RpDecl::Service(ref body) => {
-                    self.process_service(&mut out, type_id, &decl.pos, body.clone())?
+                    self.process_service(&mut out, type_id, decl.pos(), body.clone())?
                 }
             };
         }

@@ -108,7 +108,7 @@ pub trait ValueBuilder
                 let inner = match expected {
                     Some(&RpType::Array { ref inner }) => Some(&**inner),
                     Some(other) => {
-                        return Err(Error::pos(format!("expected `{}`", other), value.pos.clone()))
+                        return Err(Error::pos(format!("expected `{}`", other), value.pos().clone()))
                     }
                     None => None,
                 };
@@ -124,23 +124,23 @@ pub trait ValueBuilder
             }
             (&RpValue::Constant(ref constant), Some(&RpType::Name { ref name })) => {
                 let reg_constant = self.env()
-                    .constant(&value.pos, &env.package, constant, name)?;
+                    .constant(value.pos(), &env.package, constant, name)?;
 
                 match *reg_constant {
                     RpRegistered::EnumConstant { parent: _, variant: _ } => {
                         let ty =
-                            self.convert_constant(&value.pos, &env.package.into_type_id(constant))?;
+                            self.convert_constant(value.pos(), &env.package.into_type_id(constant))?;
                         return self.constant(ty);
                     }
                     _ => {
                         return Err(Error::pos("not a valid enum constant".into(),
-                                              value.pos.clone()))
+                                              value.pos().clone()))
                     }
                 }
             }
             (&RpValue::Instance(ref instance), Some(&RpType::Name { ref name })) => {
                 let (registered, known) = self.env()
-                    .instance(&value.pos, env.package, instance, name)?;
+                    .instance(value.pos(), env.package, instance, name)?;
 
                 let mut arguments = Vec::new();
 
@@ -153,7 +153,7 @@ pub trait ValueBuilder
                     }
                 }
 
-                let ty = self.convert_type(&value.pos, &env.package.into_type_id(&instance.name))?;
+                let ty = self.convert_type(value.pos(), &env.package.into_type_id(&instance.name))?;
                 return self.instance(ty, arguments);
             }
             // identifier with any type.
@@ -164,22 +164,22 @@ pub trait ValueBuilder
                         if !self.env().is_assignable_from(&env.package, expected, variable_type)? {
                             return Err(Error::pos(format!("not assignable to `{}`", expected)
                                                       .into(),
-                                                  value.pos.clone()));
+                                                  value.pos().clone()));
                         }
                     }
 
                     return self.identifier(identifier);
                 } else {
-                    return Err(Error::pos("missing variable".into(), value.pos.clone()));
+                    return Err(Error::pos("missing variable".into(), value.pos().clone()));
                 }
             }
             _ => {}
         }
 
         if let Some(ty) = ty {
-            Err(Error::pos(format!("expected `{}`", ty), value.pos.clone()))
+            Err(Error::pos(format!("expected `{}`", ty), value.pos().clone()))
         } else {
-            Err(Error::pos("unexpected value".into(), value.pos.clone()))
+            Err(Error::pos("unexpected value".into(), value.pos().clone()))
         }
     }
 }

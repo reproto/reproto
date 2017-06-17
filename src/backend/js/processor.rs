@@ -94,7 +94,7 @@ impl Processor {
                       -> Option<(usize, &JsField<'a>)> {
         for (i, field) in fields.iter().enumerate() {
             if field.name == name {
-                return Some((i, &field.inner));
+                return Some((i, field.as_ref()));
             }
         }
 
@@ -131,7 +131,7 @@ impl Processor {
         for field in fields {
             let var_string = string(field.name.to_owned());
             let field_stmt = stmt!["this.", &field.ident];
-            let value_stmt = self.encode(type_id, &field.pos, &field.ty, &field_stmt)?;
+            let value_stmt = self.encode(type_id, field.pos(), &field.ty, &field_stmt)?;
 
             match *field.modifier {
                 RpModifier::Optional => {
@@ -170,7 +170,7 @@ impl Processor {
         for field in fields {
             let stmt = stmt!["this.", &field.ident];
             encode_body.push(self.throw_if_null(&stmt, field));
-            values.push(self.encode(type_id, &field.pos, &field.ty, &stmt)?);
+            values.push(self.encode(type_id, field.pos(), &field.ty, &stmt)?);
         }
 
         encode_body.push(js![@return [ values ]]);
@@ -242,7 +242,7 @@ impl Processor {
             let stmt: Element = match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = var_name.clone().into();
-                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_name)?;
+                    let var_stmt = self.decode(type_id, field.pos(), &field.ty, &var_name)?;
 
                     let mut check = Elements::new();
 
@@ -256,7 +256,7 @@ impl Processor {
                 }
                 _ => {
                     let var_stmt = stmt![&data, "[", &var, "]"];
-                    let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_stmt.into())?;
+                    let var_stmt = self.decode(type_id, field.pos(), &field.ty, &var_stmt.into())?;
 
                     let mut check = Elements::new();
 
@@ -361,14 +361,14 @@ impl Processor {
         if let Some(ref s) = body.serialized_as {
             let mut elements = Elements::new();
 
-            if let Some((_, ref field)) = self.find_field(fields, &s.inner) {
+            if let Some((_, ref field)) = self.find_field(fields, s.as_ref()) {
                 elements.push(self.encode_enum_method(&field.name)?);
                 let decode = self.decode_enum_method(&class, &field.name)?;
                 elements.push(decode);
                 return Ok(elements.into());
             }
 
-            return Err(Error::pos(format!("no field named: {}", s.inner), s.pos.clone()));
+            return Err(Error::pos(format!("no field named: {}", s), s.pos().clone()));
         }
 
         if body.serialized_as_name {
@@ -513,7 +513,7 @@ impl PackageProcessor for Processor {
         class.push(encode);
 
         for code in body.codes.for_context(JS_CONTEXT) {
-            class.push(code.inner.lines);
+            class.push(code.move_inner().lines);
         }
 
         out.push(class);
@@ -568,7 +568,7 @@ impl PackageProcessor for Processor {
         }
 
         for code in body.codes.for_context(JS_CONTEXT) {
-            class.push(code.inner.lines);
+            class.push(code.move_inner().lines);
         }
 
         let mut elements = Elements::new();
@@ -620,7 +620,7 @@ impl PackageProcessor for Processor {
         class.push(encode);
 
         for code in body.codes.for_context(JS_CONTEXT) {
-            class.push(code.inner.lines);
+            class.push(code.move_inner().lines);
         }
 
         out.push(class);
@@ -644,7 +644,7 @@ impl PackageProcessor for Processor {
             body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         for code in body.codes.for_context(JS_CONTEXT) {
-            interface_spec.push(code.inner.lines);
+            interface_spec.push(code.move_inner().lines);
         }
 
         classes.push(interface_spec);
@@ -685,7 +685,7 @@ impl PackageProcessor for Processor {
             class.push(encode);
 
             for code in sub_type.codes.for_context(JS_CONTEXT) {
-                class.push(code.inner.lines);
+                class.push(code.move_inner().lines);
             }
 
             classes.push(&class);
@@ -831,7 +831,7 @@ impl DynamicDecode for Processor {
                       type_name: &Self::Type)
                       -> Self::Elements {
         let mut body = Elements::new();
-        let cond = stmt![type_var, " === ", string(&name.inner)];
+        let cond = stmt![type_var, " === ", string(name.as_ref())];
         body.push(js![if cond, js![return type_name, ".decode(", &data, ")"]]);
         body
     }

@@ -10,7 +10,7 @@ impl<T> Merge for RpLoc<T>
     where T: Merge
 {
     fn merge(&mut self, source: RpLoc<T>) -> Result<()> {
-        self.inner.merge(source.inner)?;
+        self.as_mut().merge(source.move_inner())?;
         Ok(())
     }
 }

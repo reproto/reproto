@@ -3,8 +3,8 @@ use std::path::PathBuf;
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct Loc<T, P> {
     #[serde(rename = "value")]
-    pub inner: T,
-    pub pos: P,
+    inner: T,
+    pos: P,
 }
 
 impl<T, P> ::std::ops::Deref for Loc<T, P> {
@@ -17,13 +17,19 @@ impl<T, P> ::std::ops::Deref for Loc<T, P> {
 
 impl<T, P> ::std::borrow::Borrow<T> for Loc<T, P> {
     fn borrow(&self) -> &T {
-        &*self
+        &self.inner
     }
 }
 
 impl<T, P> ::std::convert::AsRef<T> for Loc<T, P> {
     fn as_ref(&self) -> &T {
-        &*self
+        &self.inner
+    }
+}
+
+impl<T, P> ::std::convert::AsMut<T> for Loc<T, P> {
+    fn as_mut(&mut self) -> &mut T {
+        &mut self.inner
     }
 }
 
@@ -37,6 +43,14 @@ impl<T, P> Loc<T, P>
         }
     }
 
+    pub fn move_inner(self) -> T {
+        self.inner
+    }
+
+    pub fn pos(&self) -> &P {
+        &self.pos
+    }
+
     pub fn map_into<M, U>(self, map: M) -> Loc<U, P>
         where M: FnOnce(T) -> U
     {
@@ -48,6 +62,14 @@ impl<T, P> Loc<T, P>
               U: 'a
     {
         Loc::new(map(&self.inner), self.pos.clone())
+    }
+
+    pub fn both(self) -> (T, P) {
+        (self.inner, self.pos)
+    }
+
+    pub fn ref_both(&self) -> (&T, &P) {
+        (&self.inner, &self.pos)
     }
 }
 
