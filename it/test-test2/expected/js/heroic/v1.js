@@ -1,6 +1,6 @@
 import * as c from "heroic/common.js";
 
-class Sampling {
+export class Sampling {
   constructor(unit, size, extent) {
     this.unit = unit;
     this.size = size;
@@ -8,25 +8,29 @@ class Sampling {
   }
 
   static decode(data) {
-    let unit = data["unit"];
+    let v_unit = data["unit"];
 
-    if (unit !== null && unit !== undefined) {
-      unit = TimeUnit.decode(unit);
+    if (v_unit !== null && v_unit !== undefined) {
+      v_unit = TimeUnit.decode(v_unit);
     } else {
-      unit = null;
+      v_unit = null;
     }
 
-    const size = data["size"];
+    const v_size = data["size"];
 
-    let extent = data["extent"];
-
-    if (extent !== null && extent !== undefined) {
-      extent = extent;
-    } else {
-      extent = null;
+    if (v_size === null || v_size === undefined) {
+      throw new Error("size" + ": required field");
     }
 
-    return new Sampling(unit, size, extent);
+    let v_extent = data["extent"];
+
+    if (v_extent !== null && v_extent !== undefined) {
+      v_extent = v_extent;
+    } else {
+      v_extent = null;
+    }
+
+    return new Sampling(v_unit, v_size, v_extent);
   }
 
   encode() {
@@ -50,7 +54,7 @@ class Sampling {
   }
 }
 
-class SI {
+export class SI {
   constructor(ordinal, name) {
     this.ordinal = ordinal;
     this.name = name;
@@ -80,7 +84,7 @@ SI.MILLI = new SI(10, "MILLI");
 
 SI.values = [SI.NANO, SI.MICRO, SI.MILLI];
 
-class TimeUnit {
+export class TimeUnit {
   constructor(ordinal, name, _name, number) {
     this.ordinal = ordinal;
     this.name = name;
@@ -111,7 +115,7 @@ TimeUnit.MINUTES = new TimeUnit(1, "MINUTES", "minutes", 60000);
 
 TimeUnit.values = [TimeUnit.SECONDS, TimeUnit.MINUTES];
 
-class Point {
+export class Point {
   constructor(timestamp, value) {
     this.timestamp = timestamp;
     this.value = value;
@@ -132,11 +136,19 @@ class Point {
       return p;
     }
 
-    const timestamp = data[0];
+    const v_timestamp = data[0];
 
-    const value = data[1];
+    if (v_timestamp === null || v_timestamp === undefined) {
+      throw new Error(0 + ": required field");
+    }
 
-    return new Point(timestamp, value);
+    const v_value = data[1];
+
+    if (v_value === null || v_value === undefined) {
+      throw new Error(1 + ": required field");
+    }
+
+    return new Point(v_timestamp, v_value);
   }
 
   encode() {
@@ -152,18 +164,28 @@ class Point {
   }
 }
 
-class Event {
+export class Event {
   constructor(timestamp, payload) {
     this.timestamp = timestamp;
     this.payload = payload;
   }
 
   static decode(data) {
-    const timestamp = data[0];
+    const v_timestamp = data[0];
 
-    const payload = data[1];
+    if (v_timestamp === null || v_timestamp === undefined) {
+      throw new Error(0 + ": required field");
+    }
 
-    return new Event(timestamp, payload);
+    let v_payload = data[1];
+
+    if (v_payload !== null && v_payload !== undefined) {
+      v_payload = v_payload;
+    } else {
+      v_payload = null;
+    }
+
+    return new Event(v_timestamp, v_payload);
   }
 
   encode() {
@@ -179,7 +201,7 @@ class Event {
   }
 }
 
-class Samples {
+export class Samples {
   static decode(data) {
     if (typeof data === "string") {
       name = data
@@ -200,18 +222,26 @@ class Samples {
   }
 }
 
-class Samples_Events {
+export class Samples_Events {
   constructor(name, data) {
     this.name = name;
     this.data = data;
   }
 
   static decode(data) {
-    const name = data["name"];
+    const v_name = data["name"];
 
-    const data = data["data"].map(function(v) { Event.decode(v); });
+    if (v_name === null || v_name === undefined) {
+      throw new Error("name" + ": required field");
+    }
 
-    return new Samples_Events(name, data);
+    const v_data = data["data"].map(function(v) { Event.decode(v); });
+
+    if (v_data === null || v_data === undefined) {
+      throw new Error("data" + ": required field");
+    }
+
+    return new Samples_Events(v_name, v_data);
   }
 
   encode() {
@@ -237,18 +267,26 @@ class Samples_Events {
 
 Samples_Events.TYPE = "Events";
 
-class Samples_Points {
+export class Samples_Points {
   constructor(name, data) {
     this.name = name;
     this.data = data;
   }
 
   static decode(data) {
-    const name = data["name"];
+    const v_name = data["name"];
 
-    const data = data["data"].map(function(v) { Point.decode(v); });
+    if (v_name === null || v_name === undefined) {
+      throw new Error("name" + ": required field");
+    }
 
-    return new Samples_Points(name, data);
+    const v_data = data["data"].map(function(v) { Point.decode(v); });
+
+    if (v_data === null || v_data === undefined) {
+      throw new Error("data" + ": required field");
+    }
+
+    return new Samples_Points(v_name, v_data);
   }
 
   encode() {
@@ -274,7 +312,7 @@ class Samples_Points {
 
 Samples_Points.TYPE = "Points";
 
-class Query {
+export class Query {
   constructor(query, aggregation, date, parameters) {
     this.query = query;
     this.aggregation = aggregation;
@@ -288,39 +326,39 @@ class Query {
       return new Query(query, null, null, null);
     }
 
-    let query = data["query"];
+    let v_query = data["query"];
 
-    if (query !== null && query !== undefined) {
-      query = query;
+    if (v_query !== null && v_query !== undefined) {
+      v_query = v_query;
     } else {
-      query = null;
+      v_query = null;
     }
 
-    let aggregation = data["aggregation"];
+    let v_aggregation = data["aggregation"];
 
-    if (aggregation !== null && aggregation !== undefined) {
-      aggregation = Aggregation.decode(aggregation);
+    if (v_aggregation !== null && v_aggregation !== undefined) {
+      v_aggregation = Aggregation.decode(v_aggregation);
     } else {
-      aggregation = null;
+      v_aggregation = null;
     }
 
-    let date = data["date"];
+    let v_date = data["date"];
 
-    if (date !== null && date !== undefined) {
-      date = c.Date.decode(date);
+    if (v_date !== null && v_date !== undefined) {
+      v_date = c.Date.decode(v_date);
     } else {
-      date = null;
+      v_date = null;
     }
 
-    let parameters = data["parameters"];
+    let v_parameters = data["parameters"];
 
-    if (parameters !== null && parameters !== undefined) {
-      parameters = parameters;
+    if (v_parameters !== null && v_parameters !== undefined) {
+      v_parameters = v_parameters;
     } else {
-      parameters = null;
+      v_parameters = null;
     }
 
-    return new Query(query, aggregation, date, parameters);
+    return new Query(v_query, v_aggregation, v_date, v_parameters);
   }
 
   encode() {
@@ -346,7 +384,7 @@ class Query {
   }
 }
 
-class Duration {
+export class Duration {
   static decode(data) {
     const f_type = data["type"]
 
@@ -358,18 +396,26 @@ class Duration {
   }
 }
 
-class Duration_Absolute {
+export class Duration_Absolute {
   constructor(start, end) {
     this.start = start;
     this.end = end;
   }
 
   static decode(data) {
-    const start = data["start"];
+    const v_start = data["start"];
 
-    const end = data["end"];
+    if (v_start === null || v_start === undefined) {
+      throw new Error("start" + ": required field");
+    }
 
-    return new Duration_Absolute(start, end);
+    const v_end = data["end"];
+
+    if (v_end === null || v_end === undefined) {
+      throw new Error("end" + ": required field");
+    }
+
+    return new Duration_Absolute(v_start, v_end);
   }
 
   encode() {
@@ -395,7 +441,7 @@ class Duration_Absolute {
 
 Duration_Absolute.TYPE = "Absolute";
 
-class Aggregation {
+export class Aggregation {
   static decode(data) {
     if (data.constructor === Array) {
       chain = data.map(function(v) { Aggregation.decode(v); })
@@ -420,7 +466,7 @@ class Aggregation {
   }
 }
 
-class Aggregation_Average {
+export class Aggregation_Average {
   constructor(sampling, size, extent) {
     this.sampling = sampling;
     this.size = size;
@@ -428,31 +474,31 @@ class Aggregation_Average {
   }
 
   static decode(data) {
-    let sampling = data["sampling"];
+    let v_sampling = data["sampling"];
 
-    if (sampling !== null && sampling !== undefined) {
-      sampling = Sampling.decode(sampling);
+    if (v_sampling !== null && v_sampling !== undefined) {
+      v_sampling = Sampling.decode(v_sampling);
     } else {
-      sampling = null;
+      v_sampling = null;
     }
 
-    let size = data["size"];
+    let v_size = data["size"];
 
-    if (size !== null && size !== undefined) {
-      size = Duration.decode(size);
+    if (v_size !== null && v_size !== undefined) {
+      v_size = Duration.decode(v_size);
     } else {
-      size = null;
+      v_size = null;
     }
 
-    let extent = data["extent"];
+    let v_extent = data["extent"];
 
-    if (extent !== null && extent !== undefined) {
-      extent = Duration.decode(extent);
+    if (v_extent !== null && v_extent !== undefined) {
+      v_extent = Duration.decode(v_extent);
     } else {
-      extent = null;
+      v_extent = null;
     }
 
-    return new Aggregation_Average(sampling, size, extent);
+    return new Aggregation_Average(v_sampling, v_size, v_extent);
   }
 
   encode() {
@@ -478,15 +524,19 @@ class Aggregation_Average {
 
 Aggregation_Average.TYPE = "Average";
 
-class Aggregation_Chain {
+export class Aggregation_Chain {
   constructor(chain) {
     this.chain = chain;
   }
 
   static decode(data) {
-    const chain = data["chain"].map(function(v) { Aggregation.decode(v); });
+    const v_chain = data["chain"].map(function(v) { Aggregation.decode(v); });
 
-    return new Aggregation_Chain(chain);
+    if (v_chain === null || v_chain === undefined) {
+      throw new Error("chain" + ": required field");
+    }
+
+    return new Aggregation_Chain(v_chain);
   }
 
   encode() {
@@ -506,7 +556,7 @@ class Aggregation_Chain {
 
 Aggregation_Chain.TYPE = "Chain";
 
-class Aggregation_Sum {
+export class Aggregation_Sum {
   constructor(sampling, size, extent) {
     this.sampling = sampling;
     this.size = size;
@@ -514,31 +564,31 @@ class Aggregation_Sum {
   }
 
   static decode(data) {
-    let sampling = data["sampling"];
+    let v_sampling = data["sampling"];
 
-    if (sampling !== null && sampling !== undefined) {
-      sampling = Sampling.decode(sampling);
+    if (v_sampling !== null && v_sampling !== undefined) {
+      v_sampling = Sampling.decode(v_sampling);
     } else {
-      sampling = null;
+      v_sampling = null;
     }
 
-    let size = data["size"];
+    let v_size = data["size"];
 
-    if (size !== null && size !== undefined) {
-      size = Duration.decode(size);
+    if (v_size !== null && v_size !== undefined) {
+      v_size = Duration.decode(v_size);
     } else {
-      size = null;
+      v_size = null;
     }
 
-    let extent = data["extent"];
+    let v_extent = data["extent"];
 
-    if (extent !== null && extent !== undefined) {
-      extent = Duration.decode(extent);
+    if (v_extent !== null && v_extent !== undefined) {
+      v_extent = Duration.decode(v_extent);
     } else {
-      extent = null;
+      v_extent = null;
     }
 
-    return new Aggregation_Sum(sampling, size, extent);
+    return new Aggregation_Sum(v_sampling, v_size, v_extent);
   }
 
   encode() {
@@ -564,7 +614,7 @@ class Aggregation_Sum {
 
 Aggregation_Sum.TYPE = "Sum";
 
-class ComplexEnum {
+export class ComplexEnum {
   constructor(ordinal, name, si, other, samples) {
     this.ordinal = ordinal;
     this.name = name;
@@ -596,7 +646,7 @@ ComplexEnum.SECOND = new ComplexEnum(1, "SECOND", new Sampling(null, 9, null), S
 
 ComplexEnum.values = [ComplexEnum.FIRST, ComplexEnum.SECOND];
 
-class Complex21 {
+export class Complex21 {
   constructor(ordinal, name, point) {
     this.ordinal = ordinal;
     this.name = name;

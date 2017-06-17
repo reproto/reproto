@@ -1,4 +1,4 @@
-import {Test} from './test.js';
+import {Entry} from './test.js';
 import * as readline from 'readline';
 
 var rl = readline.createInterface({
@@ -9,6 +9,5 @@ var rl = readline.createInterface({
 
 rl.on('line', function(line) {
   let data = JSON.parse(line);
-  console.log(data);
-  Test.decode(data);
+  console.log(Entry.decode(data));
 })

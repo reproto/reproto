@@ -22,14 +22,6 @@ const TYPE: &str = "type";
 const EXT: &str = "js";
 const JS_CONTEXT: &str = "js";
 
-fn field_ident(_i: usize, field: &JsField) -> Variable {
-    string(&field.ident)
-}
-
-fn field_index(i: usize, _field: &JsField) -> Variable {
-    Variable::Literal(i.to_string())
-}
-
 pub trait Listeners {
     fn configure(&self, _processor: &mut ProcessorOptions) -> Result<()> {
         Ok(())
@@ -117,23 +109,6 @@ impl Processor {
         js![if is_not_defined(stmt), js![throw required_error]]
     }
 
-    fn convert_fields(&self, fields: &Vec<RpLoc<RpField>>) -> Vec<RpLoc<JsField>> {
-        fields.iter()
-            .map(|f| {
-                let ident = self.field_ident(&f);
-
-                f.clone().map_inner(|o| {
-                    JsField {
-                        modifier: o.modifier,
-                        ty: o.ty,
-                        name: f.name().to_owned(),
-                        ident: ident,
-                    }
-                })
-            })
-            .collect()
-    }
-
     fn encode_method<E, B>(&self,
                            type_id: &RpTypeId,
                            fields: &Vec<RpLoc<JsField>>,
@@ -154,7 +129,7 @@ impl Processor {
         let mut assign = Elements::new();
 
         for field in fields {
-            let var_string = string(field.ident.to_owned());
+            let var_string = string(field.name.to_owned());
             let field_stmt = stmt!["this.", &field.ident];
             let value_stmt = self.encode(type_id, &field.pos, &field.ty, &field_stmt)?;
 
@@ -261,7 +236,7 @@ impl Processor {
         let mut assign = Elements::new();
 
         for (i, field) in fields.iter().enumerate() {
-            let var_name = field.ident.clone();
+            let var_name = format!("v_{}", field.ident.clone());
             let var = variable_fn(i, field);
 
             let stmt: Element = match field.modifier {
@@ -282,7 +257,15 @@ impl Processor {
                 _ => {
                     let var_stmt = stmt![&data, "[", &var, "]"];
                     let var_stmt = self.decode(type_id, &field.pos, &field.ty, &var_stmt.into())?;
-                    stmt!["const ", &var_name, " = ", &var_stmt, ";"].into()
+
+                    let mut check = Elements::new();
+
+                    check.push(stmt!["const ", &var_name, " = ", &var_stmt, ";"]);
+                    check.push(Spacing);
+                    check.push(js![if is_not_defined(stmt![&var_name]),
+                                   js![throw &var, " + ", string(": required field")]]);
+
+                    check.into()
                 }
             };
 
@@ -309,6 +292,14 @@ impl Processor {
         decode.push(body.join(Spacing));
 
         Ok(decode)
+    }
+
+    fn field_by_name(_i: usize, field: &JsField) -> Variable {
+        string(&field.name)
+    }
+
+    fn field_by_index(i: usize, _field: &JsField) -> Variable {
+        Variable::Literal(i.to_string())
     }
 
     fn field_ident(&self, field: &RpField) -> String {
@@ -409,6 +400,38 @@ impl Processor {
 
         Ok(result)
     }
+
+    fn enum_ident(field: JsField) -> JsField {
+        match field.ident.as_str() {
+            "name" => field.with_ident("_name".to_owned()),
+            "ordinal" => field.with_ident("_ordinal".to_owned()),
+            _ => field,
+        }
+    }
+
+    fn into_js_field_with<F>(&self, field: &RpLoc<RpField>, js_field_f: F) -> RpLoc<JsField>
+        where F: Fn(JsField) -> JsField
+    {
+        let ident = self.field_ident(&field);
+
+        field.clone()
+            .map_inner(|f| {
+                let name = f.name;
+
+                js_field_f(JsField {
+                    modifier: f.modifier,
+                    ty: f.ty,
+                    name: f.field_as
+                        .map(|field_as| (*field_as).to_owned())
+                        .unwrap_or_else(|| name.to_owned()),
+                    ident: ident,
+                })
+            })
+    }
+
+    fn into_js_field(&self, field: &RpLoc<RpField>) -> RpLoc<JsField> {
+        self.into_js_field_with(field, |ident| ident)
+    }
 }
 
 impl Backend for Processor {
@@ -466,21 +489,10 @@ impl PackageProcessor for Processor {
                      body: Rc<RpTupleBody>)
                      -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields: Vec<RpLoc<JsField>> = Vec::new();
+        class.export();
 
-        for field in &body.fields {
-            let ident = self.field_ident(&field);
-
-            fields.push(field.clone()
-                .map_inner(|f| {
-                    JsField {
-                        modifier: RpModifier::Required,
-                        ty: f.ty,
-                        name: field.name().to_owned(),
-                        ident: ident,
-                    }
-                }));
-        }
+        let fields: Vec<RpLoc<JsField>> =
+            body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         class.push(self.build_constructor(&fields));
 
@@ -491,7 +503,12 @@ impl PackageProcessor for Processor {
             }
         }
 
-        let decode = self.decode_method(type_id, &body.match_decl, &fields, &class, field_index)?;
+        let decode = self.decode_method(type_id,
+                           &body.match_decl,
+                           &fields,
+                           &class,
+                           Self::field_by_index)?;
+
         class.push(decode);
 
         let encode = self.encode_tuple_method(type_id, &fields)?;
@@ -512,27 +529,12 @@ impl PackageProcessor for Processor {
                     body: Rc<RpEnumBody>)
                     -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields: Vec<RpLoc<JsField>> = Vec::new();
+        class.export();
 
-        for field in &body.fields {
-            let ident = self.field_ident(&field);
-
-            let ident = match ident.as_str() {
-                "name" => "_name".to_owned(),
-                "ordinal" => "_ordinal".to_owned(),
-                ident => ident.to_owned(),
-            };
-
-            fields.push(field.clone()
-                .map_inner(|f| {
-                    JsField {
-                        modifier: RpModifier::Required,
-                        ty: f.ty,
-                        name: field.name().to_owned(),
-                        ident: ident,
-                    }
-                }));
-        }
+        let fields: Vec<RpLoc<JsField>> = body.fields
+            .iter()
+            .map(|f| self.into_js_field_with(f, Self::enum_ident))
+            .collect();
 
         let mut members = Statement::new();
 
@@ -594,9 +596,10 @@ impl PackageProcessor for Processor {
                     _: &RpPos,
                     body: Rc<RpTypeBody>)
                     -> Result<()> {
-        let fields = self.convert_fields(&body.fields);
+        let fields = body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         let mut class = ClassSpec::new(&body.name);
+        class.export();
 
         let constructor = self.build_constructor(&fields);
         class.push(&constructor);
@@ -608,7 +611,11 @@ impl PackageProcessor for Processor {
             }
         }
 
-        let decode = self.decode_method(type_id, &body.match_decl, &fields, &class, field_ident)?;
+        let decode = self.decode_method(type_id,
+                           &body.match_decl,
+                           &fields,
+                           &class,
+                           Self::field_by_name)?;
         class.push(decode);
 
         let encode = self.encode_method(type_id, &fields, "{}", |_| {})?;
@@ -631,10 +638,12 @@ impl PackageProcessor for Processor {
         let mut classes = Elements::new();
 
         let mut interface_spec = ClassSpec::new(&body.name);
+        interface_spec.export();
 
         interface_spec.push(self.interface_decode_method(type_id, &body)?);
 
-        let interface_fields = self.convert_fields(&body.fields);
+        let interface_fields: Vec<RpLoc<JsField>> =
+            body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         for code in body.codes.for_context(JS_CONTEXT) {
             interface_spec.push(code.inner.lines);
@@ -644,9 +653,12 @@ impl PackageProcessor for Processor {
 
         for (_, ref sub_type) in &body.sub_types {
             let mut class = ClassSpec::new(&format!("{}_{}", &body.name, &sub_type.name));
+            class.export();
 
-            let mut fields = interface_fields.clone();
-            fields.extend(self.convert_fields(&sub_type.fields));
+            let fields = interface_fields.clone()
+                .into_iter()
+                .chain(sub_type.fields.iter().map(|f| self.into_js_field(f)))
+                .collect();
 
             let constructor = self.build_constructor(&fields);
             class.push(&constructor);
@@ -658,8 +670,11 @@ impl PackageProcessor for Processor {
                 }
             }
 
-            let decode =
-                self.decode_method(type_id, &sub_type.match_decl, &fields, &class, field_ident)?;
+            let decode = self.decode_method(type_id,
+                               &sub_type.match_decl,
+                               &fields,
+                               &class,
+                               Self::field_by_name)?;
 
             class.push(decode);
 

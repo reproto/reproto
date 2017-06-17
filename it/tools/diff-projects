@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -e
+
+for project in project-*-output; do
+    expected=${project%-output}-expected
+
+    if [[ -d $expected ]]; then
+        diff -ur $expected $project
+    fi
+done

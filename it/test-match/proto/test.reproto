@@ -1,5 +1,12 @@
 package test;
 
+type Entry {
+  data?: Data;
+  point?: Point;
+  interface_field?: Interface as "interface";
+  type_field?: Type as "type";
+}
+
 type Data {
   name: string;
 }

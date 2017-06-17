@@ -1,0 +1,6 @@
+{"data":{"name":"Foo Foo"}}
+{"point":[42,42.42]}
+{"interface":{"type":"one","name":"One","data":{"name":"Bar Bar"}}}
+{"interface":{"type":"two","name":"Two","data":{"name":"Baz Baz"}}}
+{"type":{"data":"hello"}}
+{"type":{"data":"hello","other":42}}

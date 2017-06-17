@@ -1,12 +1,16 @@
-class Date {
+export class Date {
   constructor(field) {
     this.field = field;
   }
 
   static decode(data) {
-    const field = data["field"];
+    const v_field = data["field"];
 
-    return new Date(field);
+    if (v_field === null || v_field === undefined) {
+      throw new Error("field" + ": required field");
+    }
+
+    return new Date(v_field);
   }
 
   encode() {

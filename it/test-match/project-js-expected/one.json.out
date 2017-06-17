@@ -1,0 +1,30 @@
+Entry {
+  data: Data { name: 'Foo Foo' },
+  point: null,
+  interface_field: null,
+  type_field: null }
+Entry {
+  data: null,
+  point: Point { timestamp: 42, value: 42.42 },
+  interface_field: null,
+  type_field: null }
+Entry {
+  data: null,
+  point: null,
+  interface_field: Interface_One { name: 'One', other: null, data: Data { name: 'Bar Bar' } },
+  type_field: null }
+Entry {
+  data: null,
+  point: null,
+  interface_field: Interface_Two { name: 'Two', other: null, data: Data { name: 'Baz Baz' } },
+  type_field: null }
+Entry {
+  data: null,
+  point: null,
+  interface_field: null,
+  type_field: Type { data: 'hello', other: null } }
+Entry {
+  data: null,
+  point: null,
+  interface_field: null,
+  type_field: Type { data: 'hello', other: 42 } }

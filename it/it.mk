@@ -1,4 +1,6 @@
-project_js = $(CURDIR)/../project-js
+script_input=$(CURDIR)/../tools/script-input
+diff_projects=$(CURDIR)/../tools/diff-projects
+update_projects=$(CURDIR)/../tools/update-projects
 
 EXPECTED = expected
 OUTPUT = output
@@ -10,7 +12,7 @@ JS_OUT = ${OUTPUT}/js
 RUST_OUT = ${OUTPUT}/rust
 
 SUITES ?= python java js rust
-TOOL ?= cargo run -q --
+tool ?= cargo run -q --
 TARGET ?= test
 
 python_args ?=
@@ -23,43 +25,47 @@ rust_args ?=
 all: clean it
 
 it: ${SUITES}
+	make $(SUITES:%=project-%)
 	make diffcheck
-	make $(SUITES:%=%-input)
 
 diffcheck:
 	@echo "Verifying Diffs"
 	@diff -ur $(EXPECTED) $(OUTPUT)
+	${diff_projects}
 
 update: ${SUITES}
 	@rsync -rav $(OUTPUT)/ $(EXPECTED)/
-	git add $(EXPECTED)
+	${update_projects}
 
 clean:
-	rm -rf project-*
-	@${RM} -rf output
+	rm -rf project-*-workdir
+	rm -rf project-*-output
+	${RM} -rf output
 
 python:
 	@echo "Building Python"
-	@${TOOL} compile -b python ${python_args} -o ${PYTHON_OUT} --path ${PROTO_PATH} --package ${TARGET}
+	@${tool} compile -b python ${python_args} -o ${PYTHON_OUT} --path ${PROTO_PATH} --package ${TARGET}
 
-python-input:
+project-python:
 
 rust:
 	@echo "Building Rust"
-	@${TOOL} compile -b rust ${python_args} -o ${RUST_OUT} --path ${PROTO_PATH} --package ${TARGET}
+	@${tool} compile -b rust ${python_args} -o ${RUST_OUT} --path ${PROTO_PATH} --package ${TARGET}
 
-rust-input:
+project-rust:
 
 js:
 	@echo "Building JavaScript"
-	@${TOOL} compile -b js ${js_args} -o ${JS_OUT} --path ${PROTO_PATH} --package ${TARGET}
+	@${tool} compile -b js ${js_args} -o ${JS_OUT} --path ${PROTO_PATH} --package ${TARGET}
 
-js-input:
-	@rsync -rav ${project_js}/ ./project-js/
-	cd ./js-project && make
+project-js:
+	rsync -rav ../$@/ $@-workdir
+	${tool} compile -b js ${js_args} -o $@-workdir/generated --path ${PROTO_PATH} --package ${TARGET}
+	@cd $@-workdir && make
+	@${script_input} $@-workdir/script.sh
 
 java:
 	@echo "Building Java"
-	@${TOOL} compile -b java ${java_args} -o ${JAVA_OUT} --path ${PROTO_PATH} --package ${TARGET}
+	@${tool} compile -b java ${java_args} -o ${JAVA_OUT} --path ${PROTO_PATH} --package ${TARGET}
 
-java-input:
+project-java:

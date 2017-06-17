@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -e
+
+while read project; do
+    expected=${project%-output}-expected
+    rsync -rav $project/ $expected/
+done < <(find . -maxdepth 1 -type d -name 'project-*-output')

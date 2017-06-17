@@ -1,4 +1,12 @@
 #[derive(Serialize, Deserialize)]
+struct Entry {
+  data: Option<Data>,
+  point: Option<Point>,
+  interface_field: Option<Interface>,
+  type_field: Option<Type>,
+}
+
+#[derive(Serialize, Deserialize)]
 struct Data {
   name: String,
 }

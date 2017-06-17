@@ -24,6 +24,6 @@ while read test; do
         tput bold
         echo -e "${green}Test succeeded: ${test}${nc}"
     fi
-done < <(find it -type d -name '__*' -prune -o -name Makefile -maxdepth 2 -print)
+done < <(ls -1 it/test-*/Makefile)
 
 exit $overall_exit_code

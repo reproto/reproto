@@ -1,12 +1,16 @@
-class Foo {
+export class Foo {
   constructor(field) {
     this.field = field;
   }
 
   static decode(data) {
-    const field = data["field"];
+    const v_field = data["field"];
 
-    return new Foo(field);
+    if (v_field === null || v_field === undefined) {
+      throw new Error("field" + ": required field");
+    }
+
+    return new Foo(v_field);
   }
 
   encode() {

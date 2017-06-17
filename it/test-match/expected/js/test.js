@@ -1,12 +1,83 @@
-class Data {
+export class Entry {
+  constructor(data, point, interface_field, type_field) {
+    this.data = data;
+    this.point = point;
+    this.interface_field = interface_field;
+    this.type_field = type_field;
+  }
+
+  static decode(data) {
+    let v_data = data["data"];
+
+    if (v_data !== null && v_data !== undefined) {
+      v_data = Data.decode(v_data);
+    } else {
+      v_data = null;
+    }
+
+    let v_point = data["point"];
+
+    if (v_point !== null && v_point !== undefined) {
+      v_point = Point.decode(v_point);
+    } else {
+      v_point = null;
+    }
+
+    let v_interface_field = data["interface"];
+
+    if (v_interface_field !== null && v_interface_field !== undefined) {
+      v_interface_field = Interface.decode(v_interface_field);
+    } else {
+      v_interface_field = null;
+    }
+
+    let v_type_field = data["type"];
+
+    if (v_type_field !== null && v_type_field !== undefined) {
+      v_type_field = Type.decode(v_type_field);
+    } else {
+      v_type_field = null;
+    }
+
+    return new Entry(v_data, v_point, v_interface_field, v_type_field);
+  }
+
+  encode() {
+    const data = {};
+
+    if (this.data !== null && this.data !== undefined) {
+      data["data"] = this.data.encode();
+    }
+
+    if (this.point !== null && this.point !== undefined) {
+      data["point"] = this.point.encode();
+    }
+
+    if (this.interface_field !== null && this.interface_field !== undefined) {
+      data["interface"] = this.interface_field.encode();
+    }
+
+    if (this.type_field !== null && this.type_field !== undefined) {
+      data["type"] = this.type_field.encode();
+    }
+
+    return data;
+  }
+}
+
+export class Data {
   constructor(name) {
     this.name = name;
   }
 
   static decode(data) {
-    const name = data["name"];
+    const v_name = data["name"];
 
-    return new Data(name);
+    if (v_name === null || v_name === undefined) {
+      throw new Error("name" + ": required field");
+    }
+
+    return new Data(v_name);
   }
 
   encode() {
@@ -22,7 +93,7 @@ class Data {
   }
 }
 
-class Point {
+export class Point {
   constructor(timestamp, value) {
     this.timestamp = timestamp;
     this.value = value;
@@ -43,11 +114,19 @@ class Point {
       return p;
     }
 
-    const timestamp = data[0];
+    const v_timestamp = data[0];
 
-    const value = data[1];
+    if (v_timestamp === null || v_timestamp === undefined) {
+      throw new Error(0 + ": required field");
+    }
 
-    return new Point(timestamp, value);
+    const v_value = data[1];
+
+    if (v_value === null || v_value === undefined) {
+      throw new Error(1 + ": required field");
+    }
+
+    return new Point(v_timestamp, v_value);
   }
 
   encode() {
@@ -63,7 +142,7 @@ class Point {
   }
 }
 
-class Interface {
+export class Interface {
   static decode(data) {
     if (typeof data === "string") {
       name = data
@@ -84,7 +163,7 @@ class Interface {
   }
 }
 
-class Interface_One {
+export class Interface_One {
   constructor(name, other, data) {
     this.name = name;
     this.other = other;
@@ -92,19 +171,27 @@ class Interface_One {
   }
 
   static decode(data) {
-    const name = data["name"];
+    const v_name = data["name"];
 
-    let other = data["other"];
-
-    if (other !== null && other !== undefined) {
-      other = other;
-    } else {
-      other = null;
+    if (v_name === null || v_name === undefined) {
+      throw new Error("name" + ": required field");
     }
 
-    const data = Data.decode(data["data"]);
+    let v_other = data["other"];
 
-    return new Interface_One(name, other, data);
+    if (v_other !== null && v_other !== undefined) {
+      v_other = v_other;
+    } else {
+      v_other = null;
+    }
+
+    const v_data = Data.decode(data["data"]);
+
+    if (v_data === null || v_data === undefined) {
+      throw new Error("data" + ": required field");
+    }
+
+    return new Interface_One(v_name, v_other, v_data);
   }
 
   encode() {
@@ -134,7 +221,7 @@ class Interface_One {
 
 Interface_One.TYPE = "One";
 
-class Interface_Two {
+export class Interface_Two {
   constructor(name, other, data) {
     this.name = name;
     this.other = other;
@@ -142,19 +229,27 @@ class Interface_Two {
   }
 
   static decode(data) {
-    const name = data["name"];
+    const v_name = data["name"];
 
-    let other = data["other"];
-
-    if (other !== null && other !== undefined) {
-      other = other;
-    } else {
-      other = null;
+    if (v_name === null || v_name === undefined) {
+      throw new Error("name" + ": required field");
     }
 
-    const data = Data.decode(data["data"]);
+    let v_other = data["other"];
 
-    return new Interface_Two(name, other, data);
+    if (v_other !== null && v_other !== undefined) {
+      v_other = v_other;
+    } else {
+      v_other = null;
+    }
+
+    const v_data = Data.decode(data["data"]);
+
+    if (v_data === null || v_data === undefined) {
+      throw new Error("data" + ": required field");
+    }
+
+    return new Interface_Two(v_name, v_other, v_data);
   }
 
   encode() {
@@ -184,7 +279,7 @@ class Interface_Two {
 
 Interface_Two.TYPE = "Two";
 
-class Type {
+export class Type {
   constructor(data, other) {
     this.data = data;
     this.other = other;
@@ -200,17 +295,21 @@ class Type {
       return new Type(data, null);
     }
 
-    const data = data["data"];
+    const v_data = data["data"];
 
-    let other = data["other"];
-
-    if (other !== null && other !== undefined) {
-      other = other;
-    } else {
-      other = null;
+    if (v_data === null || v_data === undefined) {
+      throw new Error("data" + ": required field");
     }
 
-    return new Type(data, other);
+    let v_other = data["other"];
+
+    if (v_other !== null && v_other !== undefined) {
+      v_other = v_other;
+    } else {
+      v_other = null;
+    }
+
+    return new Type(v_data, v_other);
   }
 
   encode() {

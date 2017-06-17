@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+script="$1"
+
+while read input; do
+    project=$(basename $(dirname $script))
+    name=$(basename $input)
+
+    out=${project%-workdir}-output/$name.out
+
+    mkdir -p $(dirname $out)
+
+    echo "Running $input against $script into $out"
+    cat $input | $script > $out
+done < <(find input -type f -name '*.json')

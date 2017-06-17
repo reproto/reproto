@@ -4,8 +4,9 @@ Cargo.lock
 __pycache__
 *.pyc
 *.class
-/it/*/output
-/it/*/*-project
+/it/test-*/output
+/it/test-*/project-*-workdir
+/it/test-*/project-*-output
 # generated
 /src/parser/parser.rs
 /src/backend/doc/static/doc.*.css

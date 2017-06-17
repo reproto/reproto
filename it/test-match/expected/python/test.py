@@ -1,5 +1,65 @@
 import numbers
 
+class Entry:
+  def __init__(self, data, point, interface_field, type_field):
+    self.data = data
+    self.point = point
+    self.interface_field = interface_field
+    self.type_field = type_field
+
+  @staticmethod
+  def decode(data):
+    if "data" in data:
+      f_data = data["data"]
+
+      if f_data is not None:
+        f_data = Data.decode(f_data)
+    else:
+      f_data = None
+
+    if "point" in data:
+      f_point = data["point"]
+
+      if f_point is not None:
+        f_point = Point.decode(f_point)
+    else:
+      f_point = None
+
+    if "interface_field" in data:
+      f_interface_field = data["interface_field"]
+
+      if f_interface_field is not None:
+        f_interface_field = Interface.decode(f_interface_field)
+    else:
+      f_interface_field = None
+
+    if "type_field" in data:
+      f_type_field = data["type_field"]
+
+      if f_type_field is not None:
+        f_type_field = Type.decode(f_type_field)
+    else:
+      f_type_field = None
+
+    return Entry(f_data, f_point, f_interface_field, f_type_field)
+
+  def encode(self):
+    data = dict()
+
+    if self.data is not None:
+      data["data"] = self.data.encode()
+
+    if self.point is not None:
+      data["point"] = self.point.encode()
+
+    if self.interface_field is not None:
+      data["interface_field"] = self.interface_field.encode()
+
+    if self.type_field is not None:
+      data["type_field"] = self.type_field.encode()
+
+    return data
+
 class Data:
   def __init__(self, name):
     self.name = name
