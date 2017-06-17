@@ -1,14 +1,11 @@
 #![recursion_limit = "1000"]
 
 extern crate clap;
-extern crate lalrpop_util;
 extern crate linked_hash_map;
-extern crate num;
 extern crate pulldown_cmark;
-extern crate serde;
 extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
+extern crate reproto_core;
+extern crate reproto_parser;
 
 #[macro_use]
 extern crate error_chain;
@@ -20,9 +17,11 @@ extern crate codeviz;
 pub mod backend;
 pub mod commands;
 pub mod errors;
-pub mod loc;
 pub mod logger;
 pub mod naming;
 pub mod options;
-pub mod parser;
-pub mod core;
+
+// external parts
+
+pub(crate) use reproto_core as core;
+pub(crate) use reproto_parser as parser;

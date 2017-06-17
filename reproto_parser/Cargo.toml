@@ -1,6 +1,6 @@
 [package]
-name = "reproto"
-version = "0.0.19"
+name = "reproto_parser"
+version = "0.0.1"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -19,29 +19,15 @@ tracing = []
 [dependencies]
 error-chain = "0.10.0"
 log = "0.3.7"
-clap = "2.24.2"
 linked-hash-map = "0.4.2"
-serde_json = "1.0.2"
+num = "0.1.37"
 
 [dependencies.reproto_core]
 version = "0.0.1"
-path = "./reproto_core"
+path = "../reproto_core"
 
-[dependencies.reproto_parser]
-version = "0.0.1"
-path = "./reproto_parser"
+[dependencies.lalrpop-util]
+version = "0.13.0"
 
-[dependencies.pulldown-cmark]
-version = "0.0.14"
-
-[dependencies.codeviz]
-version = "0.0.15"
-
-[build-dependencies.toml]
-version = "0.4.1"
-
-[build-dependencies.handlebars]
-version = "0.27.0"
-
-[build-dependencies.serde_json]
-version = "1.0.2"
+[build-dependencies.lalrpop-snap]
+version = "0.13.0"

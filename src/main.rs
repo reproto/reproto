@@ -1,3 +1,5 @@
+extern crate reproto_core;
+extern crate reproto_parser;
 extern crate clap;
 extern crate reproto;
 #[macro_use]
@@ -5,10 +7,10 @@ extern crate log;
 
 use reproto::backend;
 use reproto::commands;
-use reproto::core::*;
 use reproto::errors::*;
 use reproto::logger;
-use reproto::parser;
+use reproto_core as core;
+use reproto_parser as parser;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -32,7 +34,7 @@ fn setup_logger(matches: &clap::ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn print_error(m: &str, p: &RpPos) -> Result<()> {
+fn print_error(m: &str, p: &core::RpPos) -> Result<()> {
     let (line, lines, range) = parser::find_line(&p.0, (p.1, p.2))?;
 
     println!("{}:{}:{}-{}:", p.0.display(), lines + 1, range.0, range.1);
@@ -54,45 +56,56 @@ fn print_error(m: &str, p: &RpPos) -> Result<()> {
     Ok(())
 }
 
-fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<()> {
+fn handle_core_error(e: &core::errors::ErrorKind) -> Result<()> {
+    use core::errors::ErrorKind::*;
+
     match *e {
-        backend::errors::ErrorKind::Pos(ref m, ref p) => {
-            print_error(m, p)?;
-        }
-        backend::errors::ErrorKind::DeclMerge(ref m, ref source, ref target) => {
+        DeclMerge(ref m, ref source, ref target) => {
             print_error(m, source)?;
             print_error("previous declaration here", target)?;
         }
-        backend::errors::ErrorKind::FieldConflict(ref name, ref source, ref target) => {
+        FieldConflict(ref name, ref source, ref target) => {
             print_error(&format!("conflict in field `{}`", name), source)?;
             print_error("previous declaration here", target)?;
         }
-        backend::errors::ErrorKind::ExtendEnum(ref m, ref source, ref enum_target) => {
+        ExtendEnum(ref m, ref source, ref enum_target) => {
             print_error(m, source)?;
             print_error("previous declaration here", enum_target)?;
         }
-        backend::errors::ErrorKind::ReservedField(ref field_pos, ref reserved_pos) => {
+        ReservedField(ref field_pos, ref reserved_pos) => {
             print_error("field reserved", field_pos)?;
             print_error("field reserved here", reserved_pos)?;
         }
-        backend::errors::ErrorKind::MatchConflict(ref source, ref target) => {
+        MatchConflict(ref source, ref target) => {
             print_error("conflicts with existing clause", source)?;
             print_error("existing clause here", target)?;
         }
-        backend::errors::ErrorKind::MissingRequired(ref names, ref location, ref fields) => {
+        _ => {}
+    }
+
+    Ok(())
+}
+
+fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<()> {
+    use backend::errors::ErrorKind::*;
+
+    match *e {
+        Pos(ref m, ref p) => {
+            print_error(m, p)?;
+        }
+        Core(ref core) => {
+            handle_core_error(core)?;
+        }
+        Parser(ref e) => {
+            handle_parser_error(e)?;
+        }
+        MissingRequired(ref names, ref location, ref fields) => {
             print_error(&format!("missing required fields: {}", names.join(", ")),
                         location)?;
 
             for f in fields {
                 print_error("required field", f)?;
             }
-        }
-        backend::errors::ErrorKind::EnumVariantConflict(ref pos, ref other) => {
-            print_error("conflicting name", pos)?;
-            print_error("previous name here", other)?;
-        }
-        backend::errors::ErrorKind::Parser(ref e) => {
-            handle_parser_error(e)?;
         }
         _ => {}
     }
@@ -101,8 +114,13 @@ fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<()> {
 }
 
 fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
+    use parser::errors::ErrorKind::*;
+
     match *e {
-        parser::errors::ErrorKind::Syntax(ref p, ref expected) => {
+        Core(ref e) => {
+            handle_core_error(e)?;
+        }
+        Syntax(ref p, ref expected) => {
             if let Some(ref pos) = *p {
                 print_error("syntax error", pos)?;
             }
@@ -110,6 +128,14 @@ fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
             if !expected.is_empty() {
                 println!("Expected one of: {}", expected.join(", "));
             }
+        }
+        FieldConflict(ref name, ref source, ref target) => {
+            print_error(&format!("conflict in field `{}`", name), source)?;
+            print_error("previous declaration here", target)?;
+        }
+        EnumVariantConflict(ref pos, ref other) => {
+            print_error("conflicting name", pos)?;
+            print_error("previous name here", other)?;
         }
         _ => {}
     }

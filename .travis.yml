@@ -10,7 +10,7 @@ rust:
   - nightly
 
 script:
-  - cargo test
+  - make tests
   - make suites
 
 matrix:

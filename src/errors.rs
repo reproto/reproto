@@ -1,6 +1,7 @@
 use backend::errors as backend;
 use codeviz::errors as codeviz;
-use parser::errors as parser;
+use reproto_core::errors as core;
+use reproto_parser::errors as parser;
 
 #[derive(Debug)]
 pub enum InternalError {
@@ -22,6 +23,7 @@ impl ::std::error::Error for InternalError {
 error_chain! {
     links {
         Parser(parser::Error, parser::ErrorKind);
+        Core(core::Error, core::ErrorKind);
         Codeviz(codeviz::Error, codeviz::ErrorKind);
     }
 

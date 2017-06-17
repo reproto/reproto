@@ -1,4 +1,3 @@
-extern crate lalrpop_snap;
 extern crate toml;
 extern crate handlebars;
 extern crate serde_json;
@@ -134,6 +133,5 @@ fn main() {
     println!("cargo:rerun-if-changed=themes.toml");
     println!("cargo:rerun-if-changed=src/parser/parser.lalrpop");
 
-    lalrpop_snap::process_root().unwrap();
     process_colors().unwrap();
 }

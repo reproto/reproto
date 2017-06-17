@@ -1,8 +1,8 @@
-use core::*;
-use core::into_model::IntoModel;
 use linked_hash_map::{self, LinkedHashMap};
 use parser;
-use parser::ast;
+use reproto_core::*;
+use reproto_parser::ast;
+use reproto_parser::ast::IntoModel;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
