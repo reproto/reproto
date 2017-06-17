@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+if ! python3 --version 2>&1 > /dev/null; then
+    echo "python: not installed"
+    exit 1
+fi

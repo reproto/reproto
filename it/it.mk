@@ -32,14 +32,12 @@ TARGET_PROJECTS := $(filter-out $(FILTERED_PROJECTS),$(PROJECTS))
 all: clean it
 
 it: ${SUITES}
-	make diffcheck
-
-projects: ${TARGET_PROJECTS}
-	${diff_projects}
-
-diffcheck:
 	@echo "Verifying Diffs"
 	@diff -ur $(EXPECTED) $(OUTPUT)
+
+projects: ${TARGET_PROJECTS}
+	@echo "Verifying Project Diffs"
+	@${diff_projects}
 
 update: ${SUITES}
 	@rsync -ra $(OUTPUT)/ $(EXPECTED)/
@@ -57,6 +55,10 @@ python:
 	@${tool} compile -b python ${python_args} -o ${PYTHON_OUT} --path ${PROTO_PATH} ${PACKAGES}
 
 project-python:
+	@rsync -ra ../$@/ $@-workdir
+	${tool} compile -b python -o $@-workdir/generated --path ${PROTO_PATH} ${PACKAGES}
+	@cd $@-workdir && make
+	@${script_input} $@-workdir/script.sh
 
 rust:
 	@echo "Building Rust"

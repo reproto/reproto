@@ -59,6 +59,15 @@ impl Field {
             ident: ident,
         }
     }
+
+    pub fn with_ident(self, ident: String) -> Field {
+        Field {
+            modifier: self.modifier,
+            ty: self.ty,
+            name: self.name,
+            ident: ident,
+        }
+    }
 }
 
 pub struct ProcessorOptions {
@@ -87,7 +96,7 @@ pub struct Processor {
     isinstance: BuiltInName,
     dict: BuiltInName,
     list: BuiltInName,
-    basestring: BuiltInName,
+    str_: BuiltInName,
     boolean: BuiltInName,
     number: ImportedName,
     enum_enum: ImportedName,
@@ -114,7 +123,7 @@ impl Processor {
             isinstance: Name::built_in("isinstance"),
             dict: Name::built_in("dict"),
             list: Name::built_in("list"),
-            basestring: Name::built_in("basestring"),
+            str_: Name::built_in("str"),
             boolean: Name::built_in("bool"),
             number: Name::imported("numbers", "Number"),
             enum_enum: Name::imported("enum", "Enum"),
@@ -164,7 +173,7 @@ impl Processor {
         extra(&mut encode_body);
 
         for field in fields {
-            let var_string = Variable::String(field.ident.to_owned());
+            let var_string = Variable::String(field.name.to_owned());
             let field_stmt = stmt!["self.", &field.ident];
             let value_stmt = self.encode(type_id, &field.pos, &field.ty, &field_stmt)?;
 
@@ -262,6 +271,28 @@ impl Processor {
         Ok(decode)
     }
 
+    fn repr_method(&self, name: &str, fields: &[RpLoc<Field>]) -> MethodSpec {
+        let mut repr = MethodSpec::new("__repr__");
+        repr.push_argument(stmt!["self"]);
+
+        let mut arguments = Vec::new();
+        let mut variables = Statement::new();
+
+        for field in fields {
+            arguments.push(format!("{}: {{!r}}", &field.ident));
+            variables.push(stmt!["self.", &field.ident]);
+        }
+
+        let format = format!("<{} {}>", name, arguments.join(", "));
+        repr.push(stmt!["return ",
+                        Variable::String(format),
+                        ".format(",
+                        variables.join(", "),
+                        ")"]);
+
+        repr
+    }
+
     fn optional_check(&self, var_name: &Statement, index: &Variable, stmt: &Statement) -> Element {
         let mut check = Elements::new();
 
@@ -349,6 +380,10 @@ impl Processor {
         } else {
             name.to_owned()
         }
+    }
+
+    fn field_ident(&self, field: &RpLoc<RpField>) -> String {
+        self.ident(&field.name)
     }
 
     /// Build the java package of a given package.
@@ -478,6 +513,38 @@ impl Processor {
                  &body.name,
                  ")"])
     }
+
+    fn enum_ident(field: Field) -> Field {
+        match field.ident.as_str() {
+            "name" => field.with_ident("_name".to_owned()),
+            "ordinal" => field.with_ident("_ordinal".to_owned()),
+            _ => field,
+        }
+    }
+
+    fn into_python_field_with<F>(&self, field: &RpLoc<RpField>, python_field_f: F) -> RpLoc<Field>
+        where F: Fn(Field) -> Field
+    {
+        let ident = self.field_ident(field);
+
+        field.clone()
+            .map_inner(|f| {
+                let name = f.name;
+
+                python_field_f(Field {
+                    modifier: f.modifier,
+                    ty: f.ty,
+                    name: f.field_as
+                        .map(|field_as| (*field_as).to_owned())
+                        .unwrap_or_else(|| name.to_owned()),
+                    ident: ident,
+                })
+            })
+    }
+
+    fn into_python_field(&self, field: &RpLoc<RpField>) -> RpLoc<Field> {
+        self.into_python_field_with(field, |ident| ident)
+    }
 }
 
 impl Backend for Processor {
@@ -535,14 +602,11 @@ impl PackageProcessor for Processor {
                      body: Rc<RpTupleBody>)
                      -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields: Vec<RpLoc<Field>> = Vec::new();
 
-        for field in &body.fields {
-            let ident = self.ident(&field.name);
-
-            fields.push(field.clone()
-                .map_inner(|f| Field::new(RpModifier::Required, f.ty, f.name, ident)));
-        }
+        let fields: Vec<RpLoc<Field>> = body.fields
+            .iter()
+            .map(|f| self.into_python_field(f))
+            .collect();
 
         class.push(self.build_constructor(&fields));
 
@@ -567,6 +631,8 @@ impl PackageProcessor for Processor {
         let encode = self.encode_tuple_method(&type_id, &fields)?;
         class.push(encode);
 
+        class.push(self.repr_method(&body.name, &fields));
+
         out.push(class);
         Ok(())
     }
@@ -578,21 +644,11 @@ impl PackageProcessor for Processor {
                     body: Rc<RpEnumBody>)
                     -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields: Vec<RpLoc<Field>> = Vec::new();
 
-        for field in &body.fields {
-            let ident = self.ident(&field.name);
-
-            // reserved fields
-            let ident = match ident.as_str() {
-                "name" => "_name".to_owned(),
-                "value" => "_value".to_owned(),
-                i => i.to_owned(),
-            };
-
-            fields.push(field.clone()
-                .map_inner(|f| Field::new(RpModifier::Required, f.ty, f.name, ident)));
-        }
+        let fields: Vec<RpLoc<Field>> = body.fields
+            .iter()
+            .map(|f| self.into_python_field_with(f, Self::enum_ident))
+            .collect();
 
         if !fields.is_empty() {
             class.push(self.build_constructor(&fields));
@@ -618,6 +674,8 @@ impl PackageProcessor for Processor {
             }
         }
 
+        class.push(self.repr_method(&body.name, &fields));
+
         out.push(class);
         Ok(())
     }
@@ -629,13 +687,11 @@ impl PackageProcessor for Processor {
                     body: Rc<RpTypeBody>)
                     -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
-        let mut fields = Vec::new();
 
-        for field in &body.fields {
-            let ident = self.ident(&field.name);
-
-            fields.push(field.clone().map_inner(|f| Field::new(f.modifier, f.ty, f.name, ident)));
-        }
+        let fields: Vec<RpLoc<Field>> = body.fields
+            .iter()
+            .map(|f| self.into_python_field(f))
+            .collect();
 
         let constructor = self.build_constructor(&fields);
         class.push(&constructor);
@@ -651,13 +707,15 @@ impl PackageProcessor for Processor {
                            pos,
                            &body.match_decl,
                            &fields,
-                           |_, field| Variable::String(field.ident.to_owned()))?;
+                           |_, field| Variable::String(field.name.to_owned()))?;
 
         class.push(decode);
 
         let encode = self.encode_method(type_id, &fields, &self.dict, |_| {})?;
 
         class.push(encode);
+
+        class.push(self.repr_method(&body.name, &fields));
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
             class.push(code.inner.lines);
@@ -677,16 +735,6 @@ impl PackageProcessor for Processor {
 
         interface_spec.push(self.interface_decode_method(type_id, &body)?);
 
-        let mut interface_fields = Vec::new();
-
-        for field in &body.fields {
-            let ident = self.ident(&field.name);
-
-            interface_fields.push(field.clone().map_inner(|f| {
-                    Field::new(f.modifier, f.ty, f.name, ident)
-                }));
-        }
-
         for code in body.codes.for_context(PYTHON_CONTEXT) {
             interface_spec.push(code.inner.lines);
         }
@@ -694,20 +742,19 @@ impl PackageProcessor for Processor {
         out.push(interface_spec);
 
         for (_, ref sub_type) in &body.sub_types {
-            let mut class = ClassSpec::new(&format!("{}_{}", &body.name, &sub_type.name));
+            let type_id = type_id.extend(sub_type.name.clone());
+            let name = format!("{}_{}", &body.name, &sub_type.name);
+
+            let mut class = ClassSpec::new(&name);
             class.extends(Name::local(&body.name));
 
             class.push(stmt!["TYPE = ", Variable::String(sub_type.name())]);
 
-            let mut fields = interface_fields.clone();
-
-            for field in &sub_type.fields {
-                let ident = self.ident(&field.name);
-
-                fields.push(field.clone().map_inner(|f| {
-                    Field::new(f.modifier, f.ty, f.name, ident)
-                }));
-            }
+            let fields: Vec<RpLoc<Field>> = body.fields
+                .iter()
+                .chain(sub_type.fields.iter())
+                .map(|f| self.into_python_field(f))
+                .collect();
 
             let constructor = self.build_constructor(&fields);
             class.push(&constructor);
@@ -719,7 +766,7 @@ impl PackageProcessor for Processor {
                 }
             }
 
-            let decode = self.decode_method(type_id,
+            let decode = self.decode_method(&type_id,
                                &sub_type.pos,
                                &sub_type.match_decl,
                                &fields,
@@ -730,11 +777,13 @@ impl PackageProcessor for Processor {
             let type_stmt =
                 stmt!["data[", &self.type_var, "] = ", Variable::String(sub_type.name())];
 
-            let encode = self.encode_method(type_id, &fields, &self.dict, move |elements| {
+            let encode = self.encode_method(&type_id, &fields, &self.dict, move |elements| {
                     elements.push(type_stmt);
                 })?;
 
             class.push(encode);
+
+            class.push(self.repr_method(&name, &fields));
 
             for code in sub_type.codes.for_context(PYTHON_CONTEXT) {
                 class.push(code.inner.lines);
@@ -961,7 +1010,7 @@ impl MatchDecode for Processor {
             RpMatchKind::Any => stmt!["true"],
             RpMatchKind::Object => stmt![&self.isinstance, "(", data, ", ", &self.dict, ")"],
             RpMatchKind::Array => stmt![&self.isinstance, "(", data, ", ", &self.list, ")"],
-            RpMatchKind::String => stmt![&self.isinstance, "(", data, ", ", &self.basestring, ")"],
+            RpMatchKind::String => stmt![&self.isinstance, "(", data, ", ", &self.str_, ")"],
             RpMatchKind::Boolean => stmt![&self.isinstance, "(", data, ", ", &self.boolean, ")"],
             RpMatchKind::Number => stmt![&self.isinstance, "(", data, ", ", &self.number, ")"],
         };
