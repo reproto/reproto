@@ -60,6 +60,9 @@ fn handle_core_error(e: &core::errors::ErrorKind) -> Result<()> {
     use core::errors::ErrorKind::*;
 
     match *e {
+        Pos(ref m, ref p) => {
+            print_error(m, p)?;
+        }
         DeclMerge(ref m, ref source, ref target) => {
             print_error(m, source)?;
             print_error("previous declaration here", target)?;

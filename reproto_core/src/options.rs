@@ -25,7 +25,8 @@ impl Options {
             let version = version?;
 
             let result: Result<Version> = Version::parse(version).map_err(Into::into);
-            let result = result.chain_err(|| format!("failed to parse {} as a version", version));
+            let result =
+                result.chain_err(|| ErrorKind::Pos("invalid version string".into(), pos.clone()));
 
             Ok(Some(result?))
         } else {

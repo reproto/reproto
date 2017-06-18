@@ -5,6 +5,8 @@ use core::*;
 use errors::*;
 use naming;
 use options::Options;
+use reproto_repository::*;
+use std::env;
 use std::path::Path;
 
 fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
@@ -136,7 +138,22 @@ fn setup_compiler<'a>
         modules: modules,
     };
 
-    let env = Environment::new(paths);
+    let mut resolvers: Vec<Box<Resolver>> = Vec::new();
+
+    if !paths.is_empty() {
+        resolvers.push(Box::new(Paths::new(paths)));
+    }
+
+    if let Some(home_dir) = env::home_dir() {
+        let repository = home_dir.join(".reproto").join("repository");
+
+        if repository.is_dir() {
+            debug!("using repository: {}", repository.display());
+            resolvers.push(Box::new(Filesystem::new(repository)));
+        }
+    }
+
+    let env = Environment::new(Box::new(Resolvers::new(resolvers)));
 
     let files: Vec<&Path> = matches.values_of("file")
         .into_iter()

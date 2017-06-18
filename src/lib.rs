@@ -6,6 +6,7 @@ extern crate pulldown_cmark;
 extern crate serde_json;
 extern crate reproto_core;
 extern crate reproto_parser;
+extern crate reproto_repository;
 
 #[macro_use]
 extern crate error_chain;

@@ -3,18 +3,9 @@ use semver;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Metadata {
     #[serde(default)]
-    versions: Vec<semver::Version>,
+    pub versions: Vec<semver::Version>,
     #[serde(default)]
     snapshots: Vec<String>,
-}
-
-impl Metadata {
-    pub fn empty() -> Metadata {
-        Metadata {
-            versions: vec![],
-            snapshots: vec![],
-        }
-    }
 }
 
 #[cfg(test)]

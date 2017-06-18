@@ -3,17 +3,16 @@ use parser;
 use reproto_core::*;
 use reproto_parser::ast;
 use reproto_parser::ast::IntoModel;
+use reproto_repository::Resolver;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::rc::Rc;
 use super::errors::*;
 
 pub type InitFields = HashMap<String, RpLoc<RpFieldInit>>;
 
-const EXT: &str = "reproto";
-
 pub struct Environment {
-    paths: Vec<PathBuf>,
+    resolver: Box<Resolver>,
     visited: HashSet<RpVersionedPackage>,
     pub types: LinkedHashMap<RpTypeId, RpLoc<RpRegistered>>,
     pub decls: LinkedHashMap<RpTypeId, Rc<RpLoc<RpDecl>>>,
@@ -21,9 +20,9 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn new(paths: Vec<PathBuf>) -> Environment {
+    pub fn new(resolver: Box<Resolver>) -> Environment {
         Environment {
-            paths: paths,
+            resolver: resolver,
             visited: HashSet::new(),
             types: LinkedHashMap::new(),
             decls: LinkedHashMap::new(),
@@ -413,46 +412,13 @@ impl Environment {
             }
         }
 
-        let mut files: Vec<PathBuf> = Vec::new();
-
-        let candidates: Vec<PathBuf> = self.paths
-            .iter()
-            .map(|p| {
-                let mut path = p.clone();
-
-                for part in &package.package.parts {
-                    path.push(part);
-                }
-
-                path.set_extension(EXT);
-                path
-            })
-            .collect();
-
-        for path in &candidates {
-            if !path.is_file() {
-                continue;
-            }
-
-            files.push(path.clone());
-        }
-
-        if files.len() == 0 {
-            let candidates_format: Vec<String> = candidates.iter()
-                .map(|c| format!("{}", c.display()))
-                .collect();
-
-            let candidates_format = candidates_format.join(", ");
-
-            return Err(format!("No files matching package ({}), expected one of: {}",
-                               *package,
-                               candidates_format)
-                .into());
-        }
+        let files = self.resolver.resolve(package)?;
 
         let mut candidates: BTreeMap<RpVersionedPackage, Vec<_>> = BTreeMap::new();
 
         for path in files {
+            debug!("loading: {}", path.display());
+
             let loaded =
                 self.load_file(&path, Some(&package.package), package.version_req.as_ref())?;
 
@@ -470,7 +436,8 @@ impl Environment {
 
             for (path, file) in files.into_iter() {
                 debug!("in: {}", path.display());
-                self.process_file(&path, &versioned_package, file)?;
+                self.process_file(&path, &versioned_package, file)
+                    .chain_err(|| format!("error when processing {}", path.display()))?;
             }
 
             self.visited.insert(versioned_package.clone());

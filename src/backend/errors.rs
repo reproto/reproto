@@ -2,6 +2,7 @@ use codeviz::errors as codeviz;
 use core::*;
 use core::errors as core;
 use parser::errors as parser;
+use reproto_repository::errors as repository;
 use serde_json as json;
 
 error_chain! {
@@ -9,6 +10,7 @@ error_chain! {
         Parser(parser::Error, parser::ErrorKind);
         Core(core::Error, core::ErrorKind);
         Codeviz(codeviz::Error, codeviz::ErrorKind);
+        Repository(repository::Error, repository::ErrorKind);
     }
 
     foreign_links {

@@ -8,10 +8,8 @@ extern crate serde_derive;
 extern crate error_chain;
 extern crate reproto_core;
 
-mod errors;
-mod repository;
+pub mod errors;
 mod metadata;
 mod resolver;
 
-pub use repository::Repository;
 pub use resolver::*;
