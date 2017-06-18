@@ -12,10 +12,10 @@ pub struct TupleBody {
 impl IntoModel for TupleBody {
     type Output = Rc<RpTupleBody>;
 
-    fn into_model(self, pos: &RpPos) -> Result<Rc<RpTupleBody>> {
-        let (fields, codes, options, match_decl) = utils::members_into_model(&pos, self.members)?;
+    fn into_model(self, path: &Path) -> Result<Rc<RpTupleBody>> {
+        let (fields, codes, options, match_decl) = utils::members_into_model(path, self.members)?;
 
-        let _options = Options::new(&pos, options);
+        let _options = Options::new(options);
 
         let tuple_body = RpTupleBody {
             name: self.name,

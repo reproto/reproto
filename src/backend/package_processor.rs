@@ -69,13 +69,13 @@ pub trait PackageProcessor
         self.default_process(out, type_id, pos)
     }
 
-    fn populate_files(&self) -> Result<BTreeMap<&RpPackage, Self::Out>> {
+    fn populate_files(&self) -> Result<BTreeMap<&RpVersionedPackage, Self::Out>> {
         self.do_populate_files(|_, _| Ok(()))
     }
 
     fn do_populate_files<'a, F>(&'a self,
                                 mut callback: F)
-                                -> Result<BTreeMap<&RpPackage, Self::Out>>
+                                -> Result<BTreeMap<&RpVersionedPackage, Self::Out>>
         where F: FnMut(&'a RpTypeId, &'a RpLoc<RpDecl>) -> Result<()>
     {
         let mut files = BTreeMap::new();
@@ -111,15 +111,17 @@ pub trait PackageProcessor
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn package(&self, package: &RpPackage) -> RpPackage {
+    fn package(&self, package: &RpVersionedPackage) -> RpPackage {
         self.package_prefix()
             .clone()
-            .map(|prefix| prefix.join(package))
+            .map(|prefix| prefix.join_versioned(package))
             .unwrap_or_else(|| package.clone())
+            .into_package(|version| format!("{}", version).replace(".", "_").replace("-", "_"))
     }
 
-    fn resolve_full_path(&self, root_dir: &Path, package: RpPackage) -> Result<PathBuf> {
+    fn resolve_full_path(&self, root_dir: &Path, package: &RpVersionedPackage) -> Result<PathBuf> {
         let mut full_path = root_dir.to_owned();
+        let package = self.package(package);
         let mut iter = package.parts.iter().peekable();
 
         while let Some(part) = iter.next() {
@@ -131,8 +133,7 @@ pub trait PackageProcessor
         Ok(full_path)
     }
 
-    fn setup_module_path(&self, root_dir: &Path, package: &RpPackage) -> Result<PathBuf> {
-        let package = self.package(package);
+    fn setup_module_path(&self, root_dir: &Path, package: &RpVersionedPackage) -> Result<PathBuf> {
         let full_path = self.resolve_full_path(root_dir, package)?;
 
         if let Some(parent) = full_path.parent() {
@@ -145,7 +146,7 @@ pub trait PackageProcessor
         Ok(full_path)
     }
 
-    fn write_files(&self, files: BTreeMap<&RpPackage, Self::Out>) -> Result<()> {
+    fn write_files(&self, files: BTreeMap<&RpVersionedPackage, Self::Out>) -> Result<()> {
         let root_dir = &self.out_path();
 
         for (package, out) in files {

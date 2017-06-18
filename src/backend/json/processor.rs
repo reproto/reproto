@@ -59,8 +59,8 @@ impl Processor {
         }
     }
 
-    fn package_file(&self, package: RpPackage) -> String {
-        package.parts.join("_")
+    fn package_file(&self, package: &RpVersionedPackage) -> String {
+        self.package(package).parts.join("_")
     }
 }
 
@@ -109,7 +109,7 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn resolve_full_path(&self, root_dir: &Path, package: RpPackage) -> Result<PathBuf> {
+    fn resolve_full_path(&self, root_dir: &Path, package: &RpVersionedPackage) -> Result<PathBuf> {
         let mut full_path = root_dir.to_owned();
         full_path = full_path.join(self.package_file(package));
         full_path.set_extension(self.ext());

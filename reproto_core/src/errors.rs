@@ -1,12 +1,20 @@
+use semver;
 use super::{RpPos, RpTypeId};
 
 error_chain! {
     foreign_links {
         IO(::std::io::Error);
         Fmt(::std::fmt::Error);
+        ReqParseError(semver::ReqParseError);
+        SemVerError(semver::SemVerError);
     }
 
     errors {
+        Pos(message: String, pos: RpPos) {
+            description("position error")
+            display("{}", message)
+        }
+
         DeclMerge(message: String, source: RpPos, target: RpPos) {
             description("declaration merge")
             display("{}", message)

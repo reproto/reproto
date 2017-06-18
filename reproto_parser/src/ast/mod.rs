@@ -20,7 +20,6 @@ mod type_body;
 mod use_decl;
 mod value;
 mod into_model;
-mod options;
 
 pub use reproto_core::*;
 pub use self::decl::*;
@@ -38,7 +37,6 @@ pub use self::match_member::*;
 pub use self::match_variable::*;
 pub use self::member::*;
 pub use self::option_decl::*;
-pub(crate) use self::options::*;
 pub use self::service_body::*;
 pub use self::sub_type::*;
 pub use self::tuple_body::*;
@@ -51,22 +49,25 @@ pub(crate) use super::errors;
 pub type Pos = (usize, usize);
 pub type AstLoc<T> = Loc<T, Pos>;
 
+use std::path::Path;
+
 impl<T> IntoModel for Loc<T, (usize, usize)>
     where T: IntoModel
 {
     type Output = RpLoc<T::Output>;
 
-    fn into_model(self, pos: &RpPos) -> errors::Result<Self::Output> {
-        let pos = (pos.0.clone(), self.pos().0, self.pos().1);
-        let out = self.move_inner().into_model(&pos)?;
-        Ok(RpLoc::new(out, pos))
+    fn into_model(self, path: &Path) -> errors::Result<Self::Output> {
+        let (value, pos) = self.both();
+        let value = value.into_model(path)?;
+        let pos = (path.to_owned(), pos.0, pos.1);
+        Ok(RpLoc::new(value, pos))
     }
 }
 
 impl IntoModel for RpName {
     type Output = RpName;
 
-    fn into_model(self, _pos: &RpPos) -> errors::Result<Self::Output> {
+    fn into_model(self, _pos: &Path) -> errors::Result<Self::Output> {
         Ok(self)
     }
 }

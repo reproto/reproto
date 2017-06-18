@@ -14,14 +14,14 @@ pub struct EnumVariant {
 impl IntoModel for (EnumVariant, u32) {
     type Output = Rc<RpEnumVariant>;
 
-    fn into_model(self, pos: &RpPos) -> Result<Self::Output> {
+    fn into_model(self, path: &Path) -> Result<Self::Output> {
         let value = self.0;
         let ordinal = self.1;
 
         let value = RpEnumVariant {
-            name: value.name.into_model(pos)?,
+            name: value.name.into_model(path)?,
             comment: value.comment,
-            arguments: value.arguments.into_model(pos)?,
+            arguments: value.arguments.into_model(path)?,
             ordinal: ordinal,
         };
 

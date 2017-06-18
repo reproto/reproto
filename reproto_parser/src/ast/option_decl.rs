@@ -1,7 +1,7 @@
 use super::*;
 use super::errors::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OptionDecl {
     pub name: String,
     pub values: Vec<AstLoc<Value>>,
@@ -10,10 +10,10 @@ pub struct OptionDecl {
 impl IntoModel for OptionDecl {
     type Output = RpOptionDecl;
 
-    fn into_model(self, pos: &RpPos) -> Result<RpOptionDecl> {
+    fn into_model(self, path: &Path) -> Result<RpOptionDecl> {
         let decl = RpOptionDecl {
             name: self.name,
-            values: self.values.into_model(pos)?,
+            values: self.values.into_model(path)?,
         };
 
         Ok(decl)

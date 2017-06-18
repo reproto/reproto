@@ -13,10 +13,10 @@ pub struct TypeBody {
 impl IntoModel for TypeBody {
     type Output = Rc<RpTypeBody>;
 
-    fn into_model(self, pos: &RpPos) -> Result<Rc<RpTypeBody>> {
-        let (fields, codes, options, match_decl) = utils::members_into_model(&pos, self.members)?;
+    fn into_model(self, path: &Path) -> Result<Rc<RpTypeBody>> {
+        let (fields, codes, options, match_decl) = utils::members_into_model(path, self.members)?;
 
-        let options = Options::new(&pos, options);
+        let options = Options::new(options);
 
         let reserved: HashSet<RpLoc<String>> =
             options.find_all_identifiers("reserved")?.into_iter().collect();

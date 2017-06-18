@@ -10,10 +10,10 @@ pub struct MatchMember {
 impl IntoModel for MatchMember {
     type Output = RpMatchMember;
 
-    fn into_model(self, pos: &RpPos) -> Result<RpMatchMember> {
+    fn into_model(self, path: &Path) -> Result<RpMatchMember> {
         let member = RpMatchMember {
-            condition: self.condition.into_model(pos)?,
-            value: self.value.into_model(pos)?,
+            condition: self.condition.into_model(path)?,
+            value: self.value.into_model(path)?,
         };
 
         Ok(member)

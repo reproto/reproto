@@ -377,16 +377,6 @@ impl Processor {
         self.ident(field.ident())
     }
 
-    /// Build the java package of a given package.
-    ///
-    /// This includes the prefixed configured in `self.options`, if specified.
-    fn package(&self, package: &RpPackage) -> RpPackage {
-        self.package_prefix
-            .clone()
-            .map(|prefix| prefix.join(package))
-            .unwrap_or_else(|| package.clone())
-    }
-
     fn build_constructor(&self, fields: &Vec<RpLoc<Field>>) -> MethodSpec {
         let mut constructor = MethodSpec::new("__init__");
         constructor.push_argument(stmt!["self"]);
@@ -414,7 +404,7 @@ impl Processor {
         Ok(result)
     }
 
-    fn populate_files(&self) -> Result<BTreeMap<&RpPackage, FileSpec>> {
+    fn populate_files(&self) -> Result<BTreeMap<&RpVersionedPackage, FileSpec>> {
         let mut enums = Vec::new();
 
         let mut files = self.do_populate_files(|type_id, decl| {
@@ -786,8 +776,9 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn resolve_full_path(&self, root_dir: &Path, package: RpPackage) -> Result<PathBuf> {
+    fn resolve_full_path(&self, root_dir: &Path, package: &RpVersionedPackage) -> Result<PathBuf> {
         let mut full_path = root_dir.to_owned();
+        let package = self.package(package);
         let mut iter = package.parts.iter().peekable();
 
         while let Some(part) = iter.next() {

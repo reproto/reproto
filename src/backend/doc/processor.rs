@@ -91,8 +91,7 @@ impl Processor {
 
         if let Some(ref used) = name.prefix {
             let package = self.env.lookup_used(package, used)?;
-            let package = self.package(package);
-            let package = package.parts.join("_");
+            let package = self.package_file(package);
             let fragment = name.parts.join("_");
             return Ok(format!("{}.html#{}", package, fragment));
         }
@@ -108,8 +107,8 @@ impl Processor {
         s
     }
 
-    fn package_file(&self, package: RpPackage) -> String {
-        package.parts.join("_")
+    fn package_file(&self, package: &RpVersionedPackage) -> String {
+        self.package(package).parts.join("_")
     }
 
     fn write_description(&self, out: &mut FmtWrite, comment: &Vec<String>) -> Result<()> {
@@ -298,7 +297,7 @@ impl Processor {
     }
 
     fn write_index<'a, I>(&self, packages: I) -> Result<()>
-        where I: Iterator<Item = &'a RpPackage>
+        where I: Iterator<Item = &'a RpVersionedPackage>
     {
         let mut out = String::new();
 
@@ -307,10 +306,7 @@ impl Processor {
 
                 for package in packages {
                     let name = self.package(&package).parts.join(".");
-
-                    let url = format!("{}.{}",
-                                      self.package_file(self.package(&package)),
-                                      self.ext());
+                    let url = format!("{}.{}", self.package_file(&package), self.ext());
 
                     write!(out,
                            "<li><a href=\"{url}\">{name}</a></li>",
@@ -406,7 +402,7 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn resolve_full_path(&self, root_dir: &Path, package: RpPackage) -> Result<PathBuf> {
+    fn resolve_full_path(&self, root_dir: &Path, package: &RpVersionedPackage) -> Result<PathBuf> {
         let mut full_path = root_dir.to_owned();
         full_path = full_path.join(self.package_file(package));
         full_path.set_extension(self.ext());

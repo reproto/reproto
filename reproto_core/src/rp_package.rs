@@ -10,14 +10,20 @@ impl RpPackage {
         RpPackage { parts: parts }
     }
 
+    pub fn join_versioned(&self, other: &RpVersionedPackage) -> RpVersionedPackage {
+        let mut parts = self.parts.clone();
+        parts.extend(other.package.parts.clone());
+        RpVersionedPackage::new(RpPackage::new(parts), other.version.clone())
+    }
+
     pub fn join(&self, other: &RpPackage) -> RpPackage {
         let mut parts = self.parts.clone();
         parts.extend(other.parts.clone());
         RpPackage::new(parts)
     }
 
-    pub fn into_type_id(&self, name: &RpName) -> RpTypeId {
-        RpTypeId::new(self.clone(), name.clone())
+    pub fn into_type_id(&self, version: Option<Version>, name: RpName) -> RpTypeId {
+        RpTypeId::new(RpVersionedPackage::new(self.clone(), version), name)
     }
 }
 

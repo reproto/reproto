@@ -1,6 +1,6 @@
 //! Implementations for converting asts into models.
 
-use super::RpPos;
+pub use std::path::Path;
 use super::errors::*;
 
 /// Adds a method for all types that supports conversion into core types.
@@ -8,7 +8,7 @@ pub trait IntoModel {
     type Output;
 
     /// Convert the current type to a model.
-    fn into_model(self, pos: &RpPos) -> Result<Self::Output>;
+    fn into_model(self, pos: &Path) -> Result<Self::Output>;
 }
 
 /// Generic implementation for vectors.
@@ -17,7 +17,7 @@ impl<T> IntoModel for Vec<T>
 {
     type Output = Vec<T::Output>;
 
-    fn into_model(self, pos: &RpPos) -> Result<Self::Output> {
+    fn into_model(self, pos: &Path) -> Result<Self::Output> {
         let mut out = Vec::new();
 
         for v in self {
@@ -33,7 +33,7 @@ impl<T> IntoModel for Option<T>
 {
     type Output = Option<T::Output>;
 
-    fn into_model(self, pos: &RpPos) -> Result<Self::Output> {
+    fn into_model(self, pos: &Path) -> Result<Self::Output> {
         if let Some(value) = self {
             return Ok(Some(value.into_model(pos)?));
         }
@@ -45,7 +45,7 @@ impl<T> IntoModel for Option<T>
 impl IntoModel for String {
     type Output = String;
 
-    fn into_model(self, _pos: &RpPos) -> Result<String> {
+    fn into_model(self, _pos: &Path) -> Result<String> {
         Ok(self)
     }
 }

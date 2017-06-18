@@ -13,7 +13,7 @@ pub struct SubType {
 impl IntoModel for SubType {
     type Output = Rc<RpSubType>;
 
-    fn into_model(self, pos: &RpPos) -> Result<Rc<RpSubType>> {
+    fn into_model(self, path: &Path) -> Result<Rc<RpSubType>> {
         let mut fields: Vec<RpLoc<RpField>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
@@ -21,11 +21,11 @@ impl IntoModel for SubType {
 
         for member in self.members {
             let (member, member_pos) = member.both();
-            let pos = (pos.0.to_owned(), member_pos.0, member_pos.1);
+            let pos = (path.to_owned(), member_pos.0, member_pos.1);
 
             match member {
                 Member::Field(field) => {
-                    let field = field.into_model(&pos)?;
+                    let field = field.into_model(path)?;
 
                     if let Some(other) = fields.iter()
                         .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
@@ -41,17 +41,17 @@ impl IntoModel for SubType {
                     codes.push(utils::code(pos, context, lines));
                 }
                 Member::Option(option) => {
-                    options.push(option.into_model(&pos)?);
+                    options.push(option.into_model(path)?);
                 }
                 Member::Match(m) => {
                     for member in m.members {
-                        match_decl.push(member.into_model(&pos)?)?;
+                        match_decl.push(member.into_model(path)?)?;
                     }
                 }
             }
         }
 
-        let options = Options::new(&pos, options);
+        let options = Options::new(options);
 
         let names = options.find_all_strings("name")?;
 

@@ -11,7 +11,7 @@ pub struct ServiceBody {
 impl IntoModel for ServiceBody {
     type Output = Rc<RpServiceBody>;
 
-    fn into_model(self, _pos: &RpPos) -> Result<Rc<RpServiceBody>> {
+    fn into_model(self, _pos: &Path) -> Result<Rc<RpServiceBody>> {
         let service_body = RpServiceBody {
             name: self.name,
             comment: self.comment,

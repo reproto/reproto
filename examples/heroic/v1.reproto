@@ -1,6 +1,8 @@
 package heroic.v1;
 
-use heroic.common as c;
+version "1.0.0";
+
+use heroic.common@[=1] as c;
 
 type Sampling {
     // Unit of sampling

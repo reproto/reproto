@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use super::*;
 use super::errors::*;
 
@@ -15,7 +15,7 @@ pub fn code(pos: RpPos, context: String, lines: Vec<String>) -> RpLoc<RpCode> {
     RpLoc::new(code, pos)
 }
 
-pub fn members_into_model(pos: &RpPos,
+pub fn members_into_model(path: &Path,
                           members: Vec<AstLoc<Member>>)
                           -> Result<(Fields, Codes, OptionVec, RpMatchDecl)> {
     let mut fields: Vec<RpLoc<RpField>> = Vec::new();
@@ -24,11 +24,11 @@ pub fn members_into_model(pos: &RpPos,
     let mut match_decl = RpMatchDecl::new();
 
     for member in members {
-        let pos = (pos.0.to_owned(), member.pos().0, member.pos().1);
+        let pos = (path.to_owned(), member.pos().0, member.pos().1);
 
         match member.move_inner() {
             Member::Field(field) => {
-                let field = field.into_model(&pos)?;
+                let field = field.into_model(path)?;
 
                 if let Some(other) = fields.iter()
                     .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
@@ -44,11 +44,11 @@ pub fn members_into_model(pos: &RpPos,
                 codes.push(code(pos, context, lines));
             }
             Member::Option(option) => {
-                options.push(option.into_model(&pos)?);
+                options.push(option.into_model(path)?);
             }
             Member::Match(m) => {
                 for member in m.members {
-                    match_decl.push(member.into_model(&pos)?)?;
+                    match_decl.push(member.into_model(path)?)?;
                 }
             }
         }
@@ -60,32 +60,31 @@ pub fn members_into_model(pos: &RpPos,
 /// Generate ordinal values.
 pub struct OrdinalGenerator {
     next_ordinal: u32,
-    ordinals: HashSet<u32>,
+    ordinals: HashMap<u32, RpPos>,
 }
 
 impl OrdinalGenerator {
     pub fn new() -> OrdinalGenerator {
         OrdinalGenerator {
             next_ordinal: 0,
-            ordinals: HashSet::new(),
+            ordinals: HashMap::new(),
         }
     }
 
-    pub fn next(&mut self, ordinal: &Option<AstLoc<Value>>, pos: &RpPos) -> Result<u32> {
+    pub fn next(&mut self, ordinal: &Option<AstLoc<Value>>, path: &Path) -> Result<u32> {
         if let Some(ref ordinal) = *ordinal {
-            let pos = (pos.0.to_owned(), ordinal.pos().0, ordinal.pos().1);
+            let pos = (path.to_owned(), ordinal.pos().0, ordinal.pos().1);
 
             if let Value::Number(ref number) = *ordinal.as_ref() {
                 let n: u32 = number.to_u32().ok_or_else(|| ErrorKind::Overflow)?;
 
-                if self.ordinals.contains(&n) {
-                    return Err(ErrorKind::Pos("duplicate ordinal".to_owned(), pos).into());
+                if let Some(other) = self.ordinals.get(&n) {
+                    return Err(ErrorKind::Pos("duplicate ordinal".to_owned(), other.clone())
+                        .into());
                 }
 
-                self.ordinals.insert(n);
-
+                self.ordinals.insert(n, pos);
                 self.next_ordinal = n + 1;
-
                 return Ok(n);
             }
 
@@ -96,9 +95,9 @@ impl OrdinalGenerator {
 
         self.next_ordinal += 1;
 
-        if self.ordinals.contains(&o) {
+        if let Some(other) = self.ordinals.get(&o) {
             return Err(ErrorKind::Pos(format!("generated ordinal {} conflicts with existing", o),
-                                      pos.clone())
+                                      other.clone())
                 .into());
         }
 

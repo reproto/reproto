@@ -1,6 +1,8 @@
 package foo.bar.baz;
 
-use foo.bar;
+version "1";
+
+use foo.bar@[^2];
 use foo as bar2;
 
 tuple Tuple {

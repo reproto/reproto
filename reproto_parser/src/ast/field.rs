@@ -22,8 +22,8 @@ impl Field {
 impl IntoModel for Field {
     type Output = RpField;
 
-    fn into_model(self, pos: &RpPos) -> Result<RpField> {
-        let field_as = self.field_as.into_model(pos)?;
+    fn into_model(self, path: &Path) -> Result<RpField> {
+        let field_as = self.field_as.into_model(path)?;
 
         let field_as = if let Some(field_as) = field_as {
             match field_as.both() {

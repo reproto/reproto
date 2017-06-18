@@ -1,6 +1,6 @@
 use num::Zero;
 use num::bigint::BigInt;
-use reproto_core::RpNumber;
+use reproto_core::{RpNumber, VersionReq};
 use super::errors::*;
 use super::token::*;
 
@@ -335,6 +335,25 @@ impl<I> Lexer<I>
         }
     }
 
+    fn version_req(&mut self) -> Result<VersionReq> {
+        self.step();
+        self.step();
+
+        self.buffer.clear();
+
+        while let Some((_, a)) = self.one() {
+            if a == ']' {
+                self.step();
+                return VersionReq::parse(&self.buffer).map_err(From::from);
+            }
+
+            self.buffer.push(a);
+            self.step();
+        }
+
+        Err(ErrorKind::IllegalToken(self.pos).into())
+    }
+
     fn illegal<T>(&mut self) -> Result<T> {
         self.illegal = true;
         Err(ErrorKind::IllegalToken(self.pos).into())
@@ -367,6 +386,10 @@ impl<I> Iterator for Lexer<I>
                     ('/', '*') => {
                         self.block_comment();
                         continue;
+                    }
+                    ('@', '[') => {
+                        return Some(self.version_req()
+                            .map(|version_req| (start, Token::VersionReq(version_req), self.pos)));
                     }
                     ('}', '}') => Some(Token::CodeClose),
                     ('{', '{') => {
@@ -539,6 +562,12 @@ pub mod tests {
     #[test]
     pub fn test_path() {
         let tokens = tokenize("/hello_world/{path:string}?{multiple:[string]}&{single:unsigned}");
+        println!("tokens = {:?}", tokens);
+    }
+
+    #[test]
+    pub fn test_version_req() {
+        let tokens = tokenize("@[>=1.0]");
         println!("tokens = {:?}", tokens);
     }
 }

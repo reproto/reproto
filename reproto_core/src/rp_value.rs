@@ -1,4 +1,5 @@
 use super::*;
+use super::errors::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(tag = "type", content="value", rename_all="snake_case")]
@@ -26,6 +27,13 @@ impl RpValue {
             RpValue::Instance(_) => RpMatchKind::Object,
             RpValue::Constant(_) => RpMatchKind::Any,
             RpValue::Array(_) => RpMatchKind::Array,
+        }
+    }
+
+    pub fn as_str(&self) -> Result<&str> {
+        match *self {
+            RpValue::String(ref string) => Ok(string),
+            _ => Err("not a string".into()),
         }
     }
 }

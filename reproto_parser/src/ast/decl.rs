@@ -13,7 +13,7 @@ pub enum Decl {
 impl IntoModel for Decl {
     type Output = RpDecl;
 
-    fn into_model(self, pos: &RpPos) -> Result<RpDecl> {
+    fn into_model(self, pos: &Path) -> Result<RpDecl> {
         let decl = match self {
             Decl::Type(body) => RpDecl::Type(body.into_model(pos)?),
             Decl::Interface(body) => RpDecl::Interface(body.into_model(pos)?),

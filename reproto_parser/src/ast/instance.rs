@@ -10,10 +10,10 @@ pub struct Instance {
 impl IntoModel for Instance {
     type Output = RpInstance;
 
-    fn into_model(self, pos: &RpPos) -> Result<RpInstance> {
+    fn into_model(self, path: &Path) -> Result<RpInstance> {
         let instance = RpInstance {
             name: self.name,
-            arguments: self.arguments.into_model(pos)?,
+            arguments: self.arguments.into_model(path)?,
         };
 
         Ok(instance)

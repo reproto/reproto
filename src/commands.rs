@@ -85,8 +85,27 @@ pub fn compile_options<'a, 'b>(name: &str) -> App<'a, 'b> {
             .number_of_values(1))
 }
 
-fn setup_compiler<'a>(matches: &'a ArgMatches)
-                      -> Result<(Vec<&'a Path>, Vec<RpPackage>, Environment, Options, &'a str)> {
+fn parse_package(input: &str) -> Result<RpRequiredPackage> {
+    let mut it = input.split("@").into_iter();
+
+    let package = if let Some(first) = it.next() {
+        RpPackage::new(first.split(".").map(ToOwned::to_owned).collect())
+    } else {
+        RpPackage::new(vec![])
+    };
+
+    let version_req = if let Some(version) = it.next() {
+        Some(VersionReq::parse(version)?)
+    } else {
+        None
+    };
+
+    Ok(RpRequiredPackage::new(package, version_req))
+}
+
+fn setup_compiler<'a>
+    (matches: &'a ArgMatches)
+     -> Result<(Vec<&'a Path>, Vec<RpRequiredPackage>, Environment, Options, &'a str)> {
     let paths: Vec<::std::path::PathBuf> = matches.values_of("path")
         .into_iter()
         .flat_map(|it| it)
@@ -125,11 +144,14 @@ fn setup_compiler<'a>(matches: &'a ArgMatches)
         .map(Path::new)
         .collect();
 
-    let packages: Vec<RpPackage> = matches.values_of("package")
-        .into_iter()
-        .flat_map(|it| it)
-        .map(|s| RpPackage::new(s.split(".").map(ToOwned::to_owned).collect()))
-        .collect();
+    let mut packages = Vec::new();
+
+    for package in matches.values_of("package").into_iter().flat_map(|it| it) {
+        let parsed = parse_package(package);
+        let parsed =
+            parsed.chain_err(|| format!("failed to parse --package argument: {}", package))?;
+        packages.push(parsed);
+    }
 
     Ok((files, packages, env, options, backend))
 }
@@ -140,7 +162,7 @@ fn do_compile(matches: &ArgMatches) -> Result<Box<backend::Backend>> {
     let mut failed: Vec<backend::errors::Error> = Vec::new();
 
     for file in files {
-        if let Err(e) = env.import_file(file, None) {
+        if let Err(e) = env.import_file(file, None, None) {
             failed.push(e);
         }
     }

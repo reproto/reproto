@@ -12,10 +12,10 @@ pub enum MatchCondition {
 impl IntoModel for MatchCondition {
     type Output = RpMatchCondition;
 
-    fn into_model(self, pos: &RpPos) -> Result<RpMatchCondition> {
+    fn into_model(self, path: &Path) -> Result<RpMatchCondition> {
         let match_condition = match self {
-            MatchCondition::Value(value) => RpMatchCondition::Value(value.into_model(pos)?),
-            MatchCondition::Type(ty) => RpMatchCondition::Type(ty.into_model(pos)?),
+            MatchCondition::Value(value) => RpMatchCondition::Value(value.into_model(path)?),
+            MatchCondition::Type(ty) => RpMatchCondition::Type(ty.into_model(path)?),
         };
 
         Ok(match_condition)

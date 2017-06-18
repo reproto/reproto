@@ -1,6 +1,7 @@
 use backend::errors as backend;
 use codeviz::errors as codeviz;
 use reproto_core::errors as core;
+use reproto_core::semver;
 use reproto_parser::errors as parser;
 
 #[derive(Debug)]
@@ -32,6 +33,7 @@ error_chain! {
         Log(::log::SetLoggerError);
         ParseError(InternalError);
         BackendError(backend::Error);
+        ReqParseError(semver::ReqParseError);
     }
 
     errors {

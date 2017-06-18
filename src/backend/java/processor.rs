@@ -111,7 +111,7 @@ impl Processor {
     }
 
     /// Create a new FileSpec from the given package.
-    fn new_file_spec(&self, pkg: &RpPackage) -> FileSpec {
+    fn new_file_spec(&self, pkg: &RpVersionedPackage) -> FileSpec {
         FileSpec::new(&self.java_package_name(pkg))
     }
 
@@ -123,18 +123,19 @@ impl Processor {
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn java_package(&self, pkg: &RpPackage) -> RpPackage {
+    fn java_package(&self, pkg: &RpVersionedPackage) -> RpPackage {
         self.package_prefix
             .clone()
-            .map(|prefix| prefix.join(pkg))
+            .map(|prefix| prefix.join_versioned(pkg))
             .unwrap_or_else(|| pkg.clone())
+            .into_package(|version| format!("_{}", version).replace(".", "_").replace("-", "_"))
     }
 
-    fn java_package_name(&self, pkg: &RpPackage) -> String {
+    fn java_package_name(&self, pkg: &RpVersionedPackage) -> String {
         self.java_package(pkg).parts.join(".")
     }
 
-    fn convert_custom(&self, pos: &RpPos, pkg: &RpPackage, name: &RpName) -> Result<Type> {
+    fn convert_custom(&self, pos: &RpPos, pkg: &RpVersionedPackage, name: &RpName) -> Result<Type> {
         let pkg = if let Some(ref prefix) = name.prefix {
             self.env
                 .lookup_used(pkg, prefix)
@@ -150,7 +151,11 @@ impl Processor {
     }
 
     /// Convert the given type to a java type.
-    pub fn into_java_type(&self, pos: &RpPos, pkg: &RpPackage, ty: &RpType) -> Result<Type> {
+    pub fn into_java_type(&self,
+                          pos: &RpPos,
+                          pkg: &RpVersionedPackage,
+                          ty: &RpType)
+                          -> Result<Type> {
         let ty = match *ty {
             RpType::String => self.string.clone().into(),
             RpType::Signed { ref size } |
@@ -518,7 +523,7 @@ impl Processor {
         Ok(to_value)
     }
 
-    fn process_enum(&self, pkg: &RpPackage, body: &RpEnumBody) -> Result<FileSpec> {
+    fn process_enum(&self, pkg: &RpVersionedPackage, body: &RpEnumBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(pkg), &body.name);
 
         let mut spec = EnumSpec::new(mods![Modifier::Public], &body.name);
@@ -610,7 +615,7 @@ impl Processor {
         Ok(file_spec)
     }
 
-    fn process_tuple(&self, pkg: &RpPackage, body: &RpTupleBody) -> Result<FileSpec> {
+    fn process_tuple(&self, pkg: &RpVersionedPackage, body: &RpTupleBody) -> Result<FileSpec> {
         let class_type = Type::class(&self.java_package_name(pkg), &body.name);
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
 
@@ -794,15 +799,14 @@ impl Processor {
     }
 
     fn process_service(&self, type_id: &RpTypeId, body: &RpServiceBody) -> Result<FileSpec> {
-        let package = self.java_package(&type_id.package);
-        let mut file_spec = self.new_file_spec(&package);
+        let mut file_spec = self.new_file_spec(&type_id.package);
         let interface_spec = InterfaceSpec::new(mods![Modifier::Public], &body.name);
         file_spec.push(&interface_spec);
         Ok(file_spec)
     }
 
     fn convert_field<'a>(&self,
-                         pkg: &RpPackage,
+                         pkg: &RpVersionedPackage,
                          field: &'a RpLoc<RpField>)
                          -> Result<JavaField<'a>> {
         let java_type = self.into_java_type(field.pos(), pkg, &field.ty)?;
@@ -822,7 +826,7 @@ impl Processor {
     }
 
     fn convert_fields<'a>(&self,
-                          pkg: &RpPackage,
+                          pkg: &RpVersionedPackage,
                           fields: &'a Vec<RpLoc<RpField>>)
                           -> Result<Vec<JavaField<'a>>> {
         let mut out = Vec::new();

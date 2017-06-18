@@ -20,13 +20,13 @@ use super::variables::*;
 pub type KnownValues<T> = HashMap<String, T>;
 
 pub struct ValueBuilderEnv<'a> {
-    pub package: &'a RpPackage,
+    pub package: &'a RpVersionedPackage,
     pub variables: &'a Variables<'a>,
     pub value: &'a RpLoc<RpValue>,
     pub ty: Option<&'a RpType>,
 }
 
-fn new_env<'a>(package: &'a RpPackage,
+fn new_env<'a>(package: &'a RpVersionedPackage,
                variables: &'a Variables,
                value: &'a RpLoc<RpValue>,
                ty: Option<&'a RpType>)
@@ -128,8 +128,9 @@ pub trait ValueBuilder
 
                 match *reg_constant {
                     RpRegistered::EnumConstant { parent: _, variant: _ } => {
-                        let ty =
-                            self.convert_constant(value.pos(), &env.package.into_type_id(constant))?;
+                        let ty = self.convert_constant(value.pos(),
+                                              &env.package
+                                                  .into_type_id(constant.as_ref().clone()))?;
                         return self.constant(ty);
                     }
                     _ => {
@@ -153,7 +154,8 @@ pub trait ValueBuilder
                     }
                 }
 
-                let ty = self.convert_type(value.pos(), &env.package.into_type_id(&instance.name))?;
+                let ty = self.convert_type(value.pos(),
+                                  &env.package.into_type_id(instance.name.clone()))?;
                 return self.instance(ty, arguments);
             }
             // identifier with any type.

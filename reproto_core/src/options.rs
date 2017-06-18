@@ -1,29 +1,60 @@
 //! # Helper data structure do handle option lookups
 
+use semver::Version;
 use super::*;
 use super::errors::*;
 
 /// Helper for looking up and dealing with options.
 #[derive(Debug)]
-pub struct Options<'a> {
-    pos: &'a RpPos,
+pub struct Options {
     options: Vec<RpLoc<RpOptionDecl>>,
 }
 
-impl<'a> Options<'a> {
-    pub fn new(pos: &'a RpPos, options: Vec<RpLoc<RpOptionDecl>>) -> Options {
-        Options {
-            pos: pos,
-            options: options,
+impl Options {
+    pub fn new(options: Vec<RpLoc<RpOptionDecl>>) -> Options {
+        Options { options: options }
+    }
+
+    pub fn version(&self) -> Result<Option<Version>> {
+        if let Some(version) = self.lookup("version").nth(0) {
+            let (value, pos) = version.ref_both();
+
+            let version: Result<&str> = value.as_str()
+                .map_err(|e| ErrorKind::Pos(e.description().to_owned(), pos.clone()).into());
+
+            let version = version?;
+
+            let result: Result<Version> = Version::parse(version).map_err(Into::into);
+            let result = result.chain_err(|| format!("failed to parse {} as a version", version));
+
+            Ok(Some(result?))
+        } else {
+            Ok(None)
         }
     }
 
-    pub fn lookup(&'a self, name: &'a str) -> Box<Iterator<Item = &RpLoc<RpValue>> + 'a> {
+    pub fn lookup<'a>(&'a self, name: &'a str) -> Box<Iterator<Item = &RpLoc<RpValue>> + 'a> {
         let it = self.options
             .iter();
 
         Box::new(it.filter(move |o| o.name.as_str() == name)
             .flat_map(|o| o.values.iter()))
+    }
+
+    pub fn find_one<'a>(&'a self, name: &'a str) -> Result<Option<&'a RpLoc<RpValue>>> {
+        let mut it = self.lookup(name);
+
+        if let Some(next) = it.next() {
+            if let Some(s) = it.next() {
+                return Err(ErrorKind::Pos(format!("{}: only one value may be present", name),
+                                          s.pos().clone())
+                    .into());
+            }
+
+            return Ok(Some(next));
+        }
+
+        Ok(None)
     }
 
     /// Find all strings matching the given name.
@@ -43,22 +74,6 @@ impl<'a> Options<'a> {
                         .into());
                 }
             }
-        }
-
-        Ok(out)
-    }
-
-    pub fn find_one(&'a self, name: &'a str) -> Result<Option<&'a RpLoc<RpValue>>> {
-        let mut out: Option<&RpLoc<RpValue>> = None;
-
-        for s in self.lookup(name) {
-            if let Some(_) = out {
-                return Err(ErrorKind::Pos(format!("{}: only one value may be present", name),
-                                          s.pos().clone())
-                    .into());
-            }
-
-            out = Some(s);
         }
 
         Ok(out)

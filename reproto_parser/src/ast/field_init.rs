@@ -10,10 +10,10 @@ pub struct FieldInit {
 impl IntoModel for FieldInit {
     type Output = RpFieldInit;
 
-    fn into_model(self, pos: &RpPos) -> Result<RpFieldInit> {
+    fn into_model(self, path: &Path) -> Result<RpFieldInit> {
         let field_init = RpFieldInit {
-            name: self.name.into_model(pos)?,
-            value: self.value.into_model(pos)?,
+            name: self.name.into_model(path)?,
+            value: self.value.into_model(path)?,
         };
 
         Ok(field_init)

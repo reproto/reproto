@@ -9,6 +9,5 @@ __pycache__
 /it/test-*/workdir-*
 /it/test-*/output-*
 # generated
-/src/parser/parser.rs
 /src/backend/doc/static/doc.*.css
 /src/backend/doc/themes.rs

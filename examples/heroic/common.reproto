@@ -1,5 +1,7 @@
 package heroic.common;
 
+version "1.0.0";
+
 // Start of an Heroic service endpoint
 service Heroic {
 }

@@ -2,12 +2,12 @@ use super::*;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct RpTypeId {
-    pub package: RpPackage,
+    pub package: RpVersionedPackage,
     pub name: RpName,
 }
 
 impl RpTypeId {
-    pub fn new(package: RpPackage, name: RpName) -> RpTypeId {
+    pub fn new(package: RpVersionedPackage, name: RpName) -> RpTypeId {
         RpTypeId {
             package: package,
             name: name,

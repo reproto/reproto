@@ -14,12 +14,12 @@ pub struct InterfaceBody {
 impl IntoModel for InterfaceBody {
     type Output = Rc<RpInterfaceBody>;
 
-    fn into_model(self, pos: &RpPos) -> Result<Rc<RpInterfaceBody>> {
-        let (fields, codes, options, match_decl) = utils::members_into_model(&pos, self.members)?;
+    fn into_model(self, path: &Path) -> Result<Rc<RpInterfaceBody>> {
+        let (fields, codes, options, match_decl) = utils::members_into_model(path, self.members)?;
 
         let mut sub_types: BTreeMap<String, RpLoc<Rc<RpSubType>>> = BTreeMap::new();
 
-        for sub_type in self.sub_types.into_model(pos)? {
+        for sub_type in self.sub_types.into_model(path)? {
             // key has to be owned by entry
             let key = sub_type.name.clone();
 
@@ -33,7 +33,7 @@ impl IntoModel for InterfaceBody {
             }
         }
 
-        let _options = Options::new(&pos, options);
+        let _options = Options::new(options);
 
         let interface_body = RpInterfaceBody {
             name: self.name,

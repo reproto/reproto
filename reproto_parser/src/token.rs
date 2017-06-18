@@ -1,4 +1,4 @@
-use reproto_core::RpNumber;
+use reproto_core::{RpNumber, VersionReq};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Commented<T> {
@@ -22,11 +22,12 @@ impl<T> Commented<T> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     Identifier(Commented<String>),
     TypeIdentifier(Commented<String>),
     Number(RpNumber),
+    VersionReq(VersionReq),
     LeftCurly,
     RightCurly,
     LeftBracket,

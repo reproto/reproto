@@ -13,27 +13,29 @@ pub struct EnumBody {
 impl IntoModel for EnumBody {
     type Output = Rc<RpEnumBody>;
 
-    fn into_model(self, pos: &RpPos) -> Result<Rc<RpEnumBody>> {
+    fn into_model(self, path: &Path) -> Result<Rc<RpEnumBody>> {
         let mut variants: Vec<RpLoc<Rc<RpEnumVariant>>> = Vec::new();
 
         let mut ordinals = utils::OrdinalGenerator::new();
 
-        let (fields, codes, options, match_decl) = utils::members_into_model(pos, self.members)?;
+        let (fields, codes, options, match_decl) = utils::members_into_model(path, self.members)?;
 
         for variant in self.variants {
-            let ordinal = ordinals.next(&variant.ordinal, pos)
-                .map_err(|e| ErrorKind::Pos(e.description().into(), pos.clone()))?;
-
             let (variant, variant_pos) = variant.both();
+            let variant_pos = (path.to_owned(), variant_pos.0, variant_pos.1);
 
-            let variant = RpLoc::new((variant, ordinal).into_model(pos)?,
-                                     (pos.0.clone(), variant_pos.0, variant_pos.1));
+            let ordinal = ordinals.next(&variant.ordinal, path)
+                .chain_err(|| {
+                    ErrorKind::Pos("failed to generate ordinal".to_owned(), variant_pos.clone())
+                })?;
 
             if fields.len() != variant.arguments.len() {
                 return Err(ErrorKind::Pos(format!("expected {} arguments", fields.len()),
-                                          variant.pos().clone())
+                                          variant_pos)
                     .into());
             }
+
+            let variant = RpLoc::new((variant, ordinal).into_model(path)?, variant_pos);
 
             if let Some(other) = variants.iter().find(|v| *v.name == *variant.name) {
                 return Err(ErrorKind::EnumVariantConflict(other.name.pos().clone(),
@@ -44,7 +46,7 @@ impl IntoModel for EnumBody {
             variants.push(variant);
         }
 
-        let options = Options::new(pos, options);
+        let options = Options::new(options);
 
         let serialized_as: Option<RpLoc<String>> = options.find_one_identifier("serialized_as")?
             .to_owned();

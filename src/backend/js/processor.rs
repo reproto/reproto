@@ -310,16 +310,6 @@ impl Processor {
         }
     }
 
-    /// Build the java package of a given package.
-    ///
-    /// This includes the prefixed configured in `self.options`, if specified.
-    fn package(&self, package: &RpPackage) -> RpPackage {
-        self.package_prefix
-            .clone()
-            .map(|prefix| prefix.join(package))
-            .unwrap_or_else(|| package.clone())
-    }
-
     fn build_constructor(&self, fields: &Vec<RpLoc<JsField>>) -> ConstructorSpec {
         let mut ctor = ConstructorSpec::new();
         let mut assignments = Elements::new();

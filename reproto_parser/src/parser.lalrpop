@@ -8,16 +8,18 @@ use super::utils::*;
 grammar;
 
 pub File: File = {
-    <package:Loc<PackageDecl>> <uses:Loc<Use>*> <decls:Loc<Decl>*> => File {
+    <package:Loc<PackageDecl>> <options:Loc<OptionDecl>*> <uses:Loc<Use>*> <decls:Loc<Decl>*> => File {
         package: package,
+        options: options,
         uses: uses,
         decls: decls,
     },
 };
 
 Use: UseDecl = {
-    "use" <package:Loc<Package>> <alias:("as" IdentifierValue)?> ";" => UseDecl {
+    "use" <package:Loc<Package>> <version_req:Loc<"@[version]">?> <alias:("as" IdentifierValue)?> ";" => UseDecl {
         package: package,
+        version_req: version_req,
         alias: alias.map(|t| t.1),
     },
 };
@@ -132,19 +134,19 @@ pub Member: Member = {
          Member::Match(m)
     },
 
-    <s:@L> <name:IdentifierValue> <values:OneOrMore<",", Loc<Value>>> ";" <e:@R> => {
-         let option = OptionDecl {
-             name: name,
-             values: values,
-         };
-
-         Member::Option(AstLoc::new(option, (s, e)))
+    <option:Loc<OptionDecl>> => {
+         Member::Option(option)
     },
 
     <context:IdentifierValue> "{{" <content:code> "}}" => {
         let content = strip_code_block(&content);
         Member::Code(context, content)
     },
+};
+
+OptionDecl: OptionDecl = <name:IdentifierValue> <values:OneOrMore<",", Loc<Value>>> ";" => OptionDecl {
+    name: name,
+    values: values,
 };
 
 MatchMember: MatchMember = {
@@ -274,6 +276,7 @@ extern {
         TypeIdentifier => Token::TypeIdentifier(<Commented<String>>),
         Identifier => Token::Identifier(<Commented<String>>),
         Number => Token::Number(<RpNumber>),
+        "@[version]" => Token::VersionReq(<VersionReq>),
         "match" => Token::MatchKeyword,
         "use" => Token::UseKeyword,
         "as" => Token::AsKeyword,
