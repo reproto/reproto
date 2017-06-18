@@ -1,11 +1,10 @@
 .PHONY: all suites projects clean
 
-EACH := tools/for-each-it
-
 PYTHON ?= python3
 PROJECTS ?= $(shell PYTHON=$(PYTHON) tools/check-it-dependencies)
 TOOL := $(CURDIR)/target/release/reproto
 ENVIRONMENT = SUPPORTED_PROJECTS="$(PROJECTS)" PYTHON="$(PYTHON)" TOOL="$(TOOL)"
+EACH := tools/for-each-it
 
 all: suites projects
 
@@ -22,17 +21,21 @@ clean:
 suites: $(TOOL)
 	$(EACH) TOOL="$(TOOL)" suites
 
-update: $(TOOL)
-	$(EACH) TOOL="$(TOOL)" update
+update-suites: $(TOOL)
+	$(EACH) TOOL="$(TOOL)" update-suites
+
+clean-suites: $(TOOL)
+	$(EACH) TOOL="$(TOOL)" clean-suites
 
 # extensive project-building test suites
 projects: $(TOOL)
-	@echo "Building and testing: $(PROJECTS)"
 	$(EACH) $(ENVIRONMENT) --no-print-directory projects
 
 update-projects: $(TOOL)
-	@echo "Updating: $(PROJECTS)"
 	$(EACH) $(ENVIRONMENT) --no-print-directory update-projects
+
+clean-projects: $(TOOL)
+	$(EACH) $(ENVIRONMENT) --no-print-directory clean-projects
 
 $(TOOL):
 	cargo build --release

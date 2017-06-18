@@ -108,33 +108,42 @@ pub trait PackageProcessor
         Ok(files)
     }
 
-    /// Build the java package of a given package.
+    /// Identify if a character is unsafe for use in a package name.
+    fn package_version_unsafe(c: char) -> bool {
+        match c {
+            '.' | '-' | '~' => true,
+            _ => false,
+        }
+    }
+
+    /// Default strategy for building the version package.
+    fn version_package(input: &Version) -> String {
+        format!("_{}", input).replace(Self::package_version_unsafe, "_")
+    }
+
+    /// Build the full package of a versioned package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
+    ///
+    /// This uses a relatively safe strategy for encoding the version number. This can be adjusted
+    /// by overriding `version_package`.
     fn package(&self, package: &RpVersionedPackage) -> RpPackage {
         self.package_prefix()
             .clone()
             .map(|prefix| prefix.join_versioned(package))
             .unwrap_or_else(|| package.clone())
-            .into_package(|version| format!("{}", version).replace(".", "_").replace("-", "_"))
+            .into_package(Self::version_package)
     }
 
-    fn resolve_full_path(&self, root_dir: &Path, package: &RpVersionedPackage) -> Result<PathBuf> {
-        let mut full_path = root_dir.to_owned();
-        let package = self.package(package);
-        let mut iter = package.parts.iter().peekable();
-
-        while let Some(part) = iter.next() {
-            full_path = full_path.join(part);
-        }
-
-        // path to final file
+    fn resolve_full_path(&self, package: &RpPackage) -> Result<PathBuf> {
+        let full_path = self.out_path().to_owned();
+        let mut full_path = package.parts.iter().fold(full_path, |a, b| a.join(b));
         full_path.set_extension(self.ext());
         Ok(full_path)
     }
 
-    fn setup_module_path(&self, root_dir: &Path, package: &RpVersionedPackage) -> Result<PathBuf> {
-        let full_path = self.resolve_full_path(root_dir, package)?;
+    fn setup_module_path(&self, package: &RpPackage) -> Result<PathBuf> {
+        let full_path = self.resolve_full_path(package)?;
 
         if let Some(parent) = full_path.parent() {
             if !parent.is_dir() {
@@ -147,10 +156,9 @@ pub trait PackageProcessor
     }
 
     fn write_files(&self, files: BTreeMap<&RpVersionedPackage, Self::Out>) -> Result<()> {
-        let root_dir = &self.out_path();
-
         for (package, out) in files {
-            let full_path = self.setup_module_path(root_dir, package)?;
+            let package = self.package(package);
+            let full_path = self.setup_module_path(&package)?;
 
             debug!("+module: {}", full_path.display());
 

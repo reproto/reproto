@@ -770,9 +770,8 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn resolve_full_path(&self, root_dir: &Path, package: &RpVersionedPackage) -> Result<PathBuf> {
-        let mut full_path = root_dir.to_owned();
-        let package = self.package(package);
+    fn resolve_full_path(&self, package: &RpPackage) -> Result<PathBuf> {
+        let mut full_path = self.out_path().to_owned();
         let mut iter = package.parts.iter().peekable();
 
         while let Some(part) = iter.next() {

@@ -1,8 +1,10 @@
 script_input=$(CURDIR)/../tools/script-input
 
+ROOT ?= ../..
 DIFF ?= diff
 RSYNC ?= rsync
-TOOL ?= cargo run -q --
+TOOL ?= $(ROOT)/target/release/reproto
+CARGO ?= cargo
 
 EXPECTED = expected
 OUTPUT = output
@@ -32,12 +34,12 @@ python_suite := -b python $(python_extra)
 python_project := -b python -o workdir-python/generated
 
 rust_suite := -b rust $(rust_extra)
-rust_project := -b rust -o workdir-rust/src
+rust_project := -b rust -o workdir-rust/src --package-prefix generated
 
 # projects that are filtered
 FILTERED_PROJECTS ?=
 # projects that are supported after checking that necessary tools are available
-SUPPORTED_PROJECTS ?=
+SUPPORTED_PROJECTS ?= java js python rust
 
 SUITES := $(filter-out $(FILTERED),$(SUITES))
 PROJECTS := $(filter $(SUPPORTED_PROJECTS),$(filter-out $(FILTERED_PROJECTS),$(SUITES)))
@@ -49,52 +51,67 @@ SUITE_TARGETS := $(SUITES:%=suite-%)
 PROJECTDIFFS := $(PROJECTS:%=projectdiff-%)
 PROJECTUPDATES := $(PROJECTS:%=projectupdate-%)
 
+DEBUG ?= no
+
+ifeq ($(DEBUG),yes)
+O :=
+reproto := $(TOOL) --debug
+else
+O := @
+reproto := $(TOOL)
+endif
+
 .PHONY: all clean suites projects update update-projects
 
-all:
-	@make suites
-	@make projects
+all: suites projects
 
-update:
-	@make update-it
-	@make update-projects
+update: update-suites update-projects
 
-clean:
-	@rm -rf workdir-*
-	@rm -rf output-*
-	@rm -rf output
+clean-projects:
+	$Orm -rf workdir-*
+	$Orm -rf output-*
+
+clean-suites:
+	$Orm -rf output
+
+clean: clean-projects clean-suites
 
 suites: $(SUITE_TARGETS) diff
+
 projects: $(PROJECT_TARGETS) $(PROJECTDIFFS)
 
 update-projects: $(PROJECT_TARGETS) $(PROJECTUPDATES)
 
-update-it: $(SUITE_TARGETS)
-	@echo "Updating Suites"
-	@$(RSYNC) -ra $(OUTPUT)/ $(EXPECTED)/
+update-suites: $(SUITE_TARGETS)
+	$Oecho "Updating Suites"
+	$O$(RSYNC) --delete -ra $(OUTPUT)/ $(EXPECTED)/
 
 diff:
-	@echo "Verifying Diffs"
-	@$(DIFF) -ur $(EXPECTED) $(OUTPUT)
+	$Oecho "Verifying Diffs"
+	$O$(DIFF) -ur $(EXPECTED) $(OUTPUT)
 
 # rule to diff a projects expected output, with actual.
 projectdiff-%:
-	@echo "Diffing Project: $*"
-	@$(DIFF) -ur expected-$* output-$*
+	$Oecho "Diffing Project: $*"
+	$O$(DIFF) -ur expected-$* output-$*
 
 # rule to update a projects expected output, with its actual
 projectupdate-%:
-	@echo "Updating Project: $*"
-	@$(RSYNC) -ra output-$*/ expected-$*/
+	$Oecho "Updating Project: $*"
+	$O$(RSYNC) --delete -ra output-$*/ expected-$*/
 
 # rule to build output for a project
-project-%:
-	@$(RSYNC) -ra ../$*/ workdir-$*
-	@$(TOOL) compile $($*_project) --path ${PROTO_PATH} ${PACKAGES}
-	@cd workdir-$* && make
-	@${script_input} workdir-$*/script.sh
+project-%: $(TOOL)
+	$O$(RSYNC) --delete -ra ../$*/ workdir-$*
+	$O$(reproto) compile $($*_project) --path ${PROTO_PATH} ${PACKAGES}
+	$Ocd workdir-$* && make
+	$O${script_input} workdir-$*/script.sh
 
 # rule to build suite output
-suite-%:
-	@echo "Suite: $*"
-	@${TOOL} compile $($*_suite) -o $($*_out) --path ${PROTO_PATH} ${PACKAGES}
+suite-%: $(TOOL)
+	$Oecho "Suite: $*"
+	$O${reproto} compile $($*_suite) -o $($*_out) --path ${PROTO_PATH} ${PACKAGES}
+
+$(TOOL):
+	$Oecho "Building $(TOOL)"
+	$O$(CARGO) build --release

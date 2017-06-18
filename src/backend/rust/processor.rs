@@ -6,6 +6,10 @@ use backend::package_processor::PackageProcessor;
 use codeviz::rust::*;
 use core::*;
 use naming::{self, FromNaming};
+use std::collections::BTreeMap;
+use std::fs;
+use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -78,10 +82,6 @@ impl Processor {
         }
     }
 
-    fn package_file(&self, package: &RpVersionedPackage) -> String {
-        self.package(&package).parts.join("_")
-    }
-
     fn convert_custom(&self, type_id: &RpTypeId, pos: &RpPos, name: &RpName) -> Result<Name> {
         if let Some(ref prefix) = name.prefix {
             let pkg = self.env
@@ -89,7 +89,7 @@ impl Processor {
                 .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
             let name = name.parts.join(".");
-            let package_name = self.package(pkg).parts.join("_");
+            let package_name = self.package(pkg).parts.join("::");
             Ok(Name::Imported(Name::imported_alias(&package_name, &name, prefix)))
         } else {
             let name = name.parts.join(".");
@@ -169,11 +169,57 @@ impl Processor {
 
         Ok(elements.into())
     }
+
+    fn write_mod_files(&self, files: &BTreeMap<&RpVersionedPackage, FileSpec>) -> Result<()> {
+        let mut packages: BTreeMap<PathBuf, Vec<String>> = BTreeMap::new();
+
+        for (key, _) in files {
+            let mut current = self.out_path().to_owned();
+
+            let mut it = self.package(key).parts.into_iter().peekable();
+
+            while let Some(part) = it.next() {
+                current = current.join(part);
+
+                if let Some(next) = it.peek() {
+                    let mut full_path = current.clone();
+
+                    full_path = full_path.join("mod");
+                    full_path.set_extension(self.ext());
+
+                    packages.entry(full_path)
+                        .or_insert_with(Vec::new)
+                        .push(next.clone());
+                }
+            }
+        }
+
+        for (full_path, children) in packages {
+            if let Some(parent) = full_path.parent() {
+                if !parent.is_dir() {
+                    debug!("+dir: {}", parent.display());
+                    fs::create_dir_all(parent)?;
+                }
+            }
+
+            if !full_path.is_file() {
+                debug!("+mod: {}", full_path.display());
+                let mut f = File::create(full_path)?;
+
+                for child in children {
+                    writeln!(f, "pub mod {};", child)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Backend for Processor {
     fn process(&self) -> Result<()> {
         let files = self.populate_files()?;
+        self.write_mod_files(&files)?;
         self.write_files(files)
     }
 
@@ -321,12 +367,5 @@ impl PackageProcessor for Processor {
         out.push(enum_spec);
 
         Ok(())
-    }
-
-    fn resolve_full_path(&self, root_dir: &Path, package: &RpVersionedPackage) -> Result<PathBuf> {
-        let mut full_path = root_dir.to_owned();
-        full_path = full_path.join(self.package_file(package));
-        full_path.set_extension(self.ext());
-        Ok(full_path)
     }
 }

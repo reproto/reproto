@@ -1,0 +1,7 @@
+package test;
+
+use foo@[^4];
+
+type Entry {
+  thing?: foo::Thing;
+}
