@@ -5,7 +5,7 @@ use super::container::Container;
 use super::converter::Converter;
 use super::decode::Decode;
 use super::errors::*;
-use super::value_builder::{ValueBuilder, ValueBuilderEnv};
+use super::value_builder::*;
 use super::variables::Variables;
 
 pub trait MatchDecode
@@ -45,19 +45,12 @@ pub trait MatchDecode
         let mut elements = Self::Elements::new();
 
         for &(ref value, ref result) in &match_decl.by_value {
-            let value_stmt = self.value(&ValueBuilderEnv {
-                    value: value,
-                    package: &type_id.package,
-                    ty: None,
-                    variables: &variables,
-                })?;
+            let value_stmt = self.value(&new_env(&type_id.package, &variables, &value, None))?;
 
-            let result_stmt = self.value(&ValueBuilderEnv {
-                    value: &result.instance,
-                    package: &type_id.package,
-                    ty: Some(&RpType::Name { name: type_id.name.clone() }),
-                    variables: &variables,
-                })?;
+            let result_stmt = self.value(&new_env(&type_id.package,
+                                &variables,
+                                &result.instance,
+                                Some(&RpType::Name { name: type_id.name.clone() })))?;
 
             elements.push(&self.match_value(data, value, value_stmt, &result.instance, result_stmt)?);
         }
@@ -84,12 +77,10 @@ pub trait MatchDecode
 
             let decode = self.decode(type_id, result.variable.pos(), &result.variable.ty, data)?;
 
-            let result_value = self.value(&ValueBuilderEnv {
-                    value: &result.instance,
-                    package: &type_id.package,
-                    ty: Some(&RpType::Name { name: type_id.name.clone() }),
-                    variables: &variables,
-                })?;
+            let result_value = self.value(&new_env(&type_id.package,
+                                &variables,
+                                &result.instance,
+                                Some(&RpType::Name { name: type_id.name.clone() })))?;
 
             elements.push(&self.match_type(type_id, data, kind, variable, decode, result_value, result)?);
         }

@@ -11,26 +11,23 @@
 //! In this example, the second field is a `float`, and the third field is a `double`.
 
 use core::*;
-use std::collections::HashMap;
 use super::converter::Converter;
 use super::environment::Environment;
 use super::errors::*;
 use super::variables::*;
 
-pub type KnownValues<T> = HashMap<String, T>;
-
 pub struct ValueBuilderEnv<'a> {
-    pub package: &'a RpVersionedPackage,
-    pub variables: &'a Variables<'a>,
-    pub value: &'a RpLoc<RpValue>,
-    pub ty: Option<&'a RpType>,
+    package: &'a RpVersionedPackage,
+    variables: &'a Variables<'a>,
+    value: &'a RpLoc<RpValue>,
+    ty: Option<&'a RpType>,
 }
 
-fn new_env<'a>(package: &'a RpVersionedPackage,
-               variables: &'a Variables,
-               value: &'a RpLoc<RpValue>,
-               ty: Option<&'a RpType>)
-               -> Box<ValueBuilderEnv<'a>> {
+pub fn new_env<'a>(package: &'a RpVersionedPackage,
+                   variables: &'a Variables,
+                   value: &'a RpLoc<RpValue>,
+                   ty: Option<&'a RpType>)
+                   -> Box<ValueBuilderEnv<'a>> {
     Box::new(ValueBuilderEnv {
         package: package,
         variables: variables,

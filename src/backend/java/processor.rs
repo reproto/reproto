@@ -557,13 +557,7 @@ impl Processor {
                 let mut value_arguments = Statement::new();
 
                 for (value, field) in variant.arguments.iter().zip(fields.iter()) {
-                    let env = ValueBuilderEnv {
-                        value: &value,
-                        package: pkg,
-                        ty: Some(&field.ty),
-                        variables: &variables,
-                    };
-
+                    let env = new_env(pkg, &variables, &value, Some(&field.ty));
                     value_arguments.push(self.value(&env)?);
                 }
 

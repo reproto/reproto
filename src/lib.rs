@@ -19,10 +19,11 @@ pub mod backend;
 pub mod commands;
 pub mod errors;
 pub mod logger;
-pub mod naming;
-pub mod options;
+pub(crate) mod naming;
+pub(crate) mod options;
 
 // external parts
+
 
 pub(crate) use reproto_core as core;
 pub(crate) use reproto_parser as parser;

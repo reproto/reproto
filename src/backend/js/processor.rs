@@ -540,13 +540,7 @@ impl PackageProcessor for Processor {
             value_arguments.push(string(&*variant.name));
 
             for (value, field) in variant.arguments.iter().zip(fields.iter()) {
-                let env = ValueBuilderEnv {
-                    value: &value,
-                    package: &type_id.package,
-                    ty: Some(&field.ty),
-                    variables: &variables,
-                };
-
+                let env = new_env(&type_id.package, &variables, &value, Some(&field.ty));
                 value_arguments.push(self.value(&env)?);
             }
 
