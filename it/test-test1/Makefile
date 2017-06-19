@@ -1,3 +1,3 @@
 TARGET=test
 
-include ../it.mk
+include ../lib.mk

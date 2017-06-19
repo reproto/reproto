@@ -39,10 +39,10 @@ rust_project := -b rust -o workdir-rust/src --package-prefix generated
 # projects that are filtered
 FILTERED_PROJECTS ?=
 # projects that are supported after checking that necessary tools are available
-SUPPORTED_PROJECTS ?= java js python rust
+SUPPORTED_PROJECTS ?= %
 
 SUITES := $(filter-out $(FILTERED),$(SUITES))
-PROJECTS := $(filter $(SUPPORTED_PROJECTS),$(filter-out $(FILTERED_PROJECTS),$(SUITES)))
+PROJECTS ?= $(filter $(SUPPORTED_PROJECTS), $(filter-out $(FILTERED_PROJECTS),$(SUITES)))
 
 PACKAGES := $(TARGETS:%=--package %)
 

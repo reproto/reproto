@@ -1,5 +1,4 @@
-# ReProto Compiler
-
+# ReProto Compiler 
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
 [![crates.io](https://img.shields.io/crates/v/reproto.svg)](https://crates.io/crates/reproto)
 
@@ -65,3 +64,21 @@ A Maven plugin that integrates reproto into the build lifecycle of a maven proje
 A VIM plugin that provides syntax highlighting.
 
 [vim]: https://github.com/reproto/reproto-vim
+
+# Testing
+
+This project includes an extensive set of integration tests.
+
+Suites are tests which compiled a given set of rules, and compares with expected output.
+
+Projects are complete project tests.
+These are projects written for various programming languages, and are generally harder to build.
+
+The tool [`check-project-deps`](tools/check-project-deps) is used to determine
+which projects your local system can build.
+
+To run all tests, do:
+
+```bash
+$> make clean all
+```
