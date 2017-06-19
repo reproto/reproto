@@ -1,4 +1,4 @@
-import * as foo from "foo/4_0_0.js";
+import * as foo from "foo/_4_0_0.js";
 
 export class Entry {
   constructor(thing) {

@@ -1,0 +1,2 @@
+Entry(thing=Optional[Thing(name=The Thing)])
+{"thing":{"name":"The Thing"}}

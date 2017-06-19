@@ -1,4 +1,4 @@
-use heroic_common as c;
+use heroic::common as c;
 use serde_json as json;
 use std::collections;
 
