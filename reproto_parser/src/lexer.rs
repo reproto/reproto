@@ -279,7 +279,7 @@ impl<I> Lexer<I>
         while let Some((_, c)) = self.one() {
             if let Some((pos, '}', '}')) = self.two() {
                 self.code_block = None;
-                return Ok((start, Token::CodeContent(self.buffer.clone()), pos + 2));
+                return Ok((start, Token::CodeContent(self.buffer.clone()), pos));
             }
 
             self.buffer.push(c);
@@ -371,7 +371,7 @@ impl<I> Iterator for Lexer<I>
                     }
                     ('}', '}') => Some(Token::CodeClose),
                     ('{', '{') => {
-                        self.code_block = Some(start);
+                        self.code_block = Some(start + 2);
                         Some(Token::CodeOpen)
                     }
                     (':', ':') => Some(Token::Scope),

@@ -132,7 +132,7 @@ mod tests {
 
         let package = RpPackage::new(vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()]);
 
-        assert_eq!(package, *file.package);
+        assert_eq!(package, file.package_decl.package);
         assert_eq!(4, file.decls.len());
     }
 
