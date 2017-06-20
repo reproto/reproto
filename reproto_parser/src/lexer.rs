@@ -15,18 +15,17 @@ macro_rules! take {
                 continue;
             }
 
+            end = pos;
+
             match c {
-                $first $(| $rest)* => {
-                    end = pos;
-                    $slf.buffer.push(c);
-                },
+                $first $(| $rest)* => $slf.buffer.push(c),
                 _ => break,
             }
 
             $slf.step();
         }
 
-        (end + 1, &$slf.buffer)
+        (end, &$slf.buffer)
     }}
 }
 
@@ -119,8 +118,16 @@ impl<I> Lexer<I>
             "bytes" => Token::BytesKeyword,
             "true" => Token::TrueKeyword,
             "false" => Token::FalseKeyword,
-            "endpoint" => Token::EndpointKeyword,
-            "response" => Token::ResponseKeyword,
+            "endpoint" => {
+                let comment = self.last_comment.clone();
+                self.last_comment.clear();
+                Token::EndpointKeyword(comment)
+            }
+            "response" => {
+                let comment = self.last_comment.clone();
+                self.last_comment.clear();
+                Token::ResponseKeyword(comment)
+            }
             identifier => {
                 let identifier = Commented::new(self.last_comment.clone(), identifier.to_owned());
                 self.last_comment.clear();
@@ -418,8 +425,8 @@ impl<I> Iterator for Lexer<I>
                     '@' => {
                         self.step();
 
-                        return Some(self.version(start + 1)
-                            .map(|(end, version)| (start + 1, Token::Version(version), end + 1)));
+                        return Some(self.version(start)
+                            .map(|(end, version)| (start, Token::Version(version), end)));
                     }
                     '_' | 'a'...'z' => return Some(self.identifier(start)),
                     'A'...'Z' => return Some(self.type_identifier(start)),

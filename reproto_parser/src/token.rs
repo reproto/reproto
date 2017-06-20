@@ -69,6 +69,6 @@ pub enum Token {
     BytesKeyword,
     TrueKeyword,
     FalseKeyword,
-    EndpointKeyword,
-    ResponseKeyword,
+    EndpointKeyword(Vec<String>),
+    ResponseKeyword(Vec<String>),
 }

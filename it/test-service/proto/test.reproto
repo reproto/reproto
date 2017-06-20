@@ -5,13 +5,22 @@ type Entry {
 }
 
 service Example {
-  endpoint foo_bar {
-    path "/hello/world";
-    consumes "application/json";
-    produces "application/json";
+  endpoint {
+    path "/query";
 
-    response error ErrorResponse {
+    // # text-based endpoint
+    endpoint {
+      consumes "text/plain";
+    }
+
+    // # json-based endpoint
+    endpoint {
+      consumes "application/json";
+    }
+
+    response ErrorResponse {
       status 500;
+      produces "application/json";
     }
   }
 }

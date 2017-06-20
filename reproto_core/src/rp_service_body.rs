@@ -5,6 +5,7 @@ use super::errors::*;
 pub struct RpServiceBody {
     pub name: String,
     pub comment: Vec<String>,
+    pub endpoints: Vec<RpServiceEndpoint>,
 }
 
 impl Merge for RpServiceBody {
