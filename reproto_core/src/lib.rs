@@ -1,5 +1,6 @@
 #![recursion_limit = "1000"]
 
+extern crate mime;
 extern crate num;
 extern crate serde;
 #[macro_use]
@@ -42,7 +43,7 @@ mod rp_registered;
 mod rp_required_package;
 mod rp_service_body;
 mod rp_service_endpoint;
-mod rp_service_response;
+mod rp_service_returns;
 mod rp_sub_type;
 mod rp_tuple_body;
 mod rp_type;
@@ -86,7 +87,7 @@ pub use self::rp_registered::*;
 pub use self::rp_required_package::*;
 pub use self::rp_service_body::*;
 pub use self::rp_service_endpoint::*;
-pub use self::rp_service_response::*;
+pub use self::rp_service_returns::*;
 pub use self::rp_sub_type::*;
 pub use self::rp_tuple_body::*;
 pub use self::rp_type::*;
@@ -97,3 +98,28 @@ pub use self::rp_value::*;
 pub use self::rp_versioned_package::*;
 pub use semver::Version;
 pub use semver::VersionReq;
+
+#[derive(Debug, Clone)]
+pub struct Mime(mime::Mime);
+
+impl serde::Serialize for Mime {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        serializer.serialize_str(&format!("{}", self.0))
+    }
+}
+
+impl ::std::str::FromStr for Mime {
+    type Err = errors::Error;
+
+    fn from_str(s: &str) -> errors::Result<Self> {
+        Ok(Mime(s.parse().map_err(errors::ErrorKind::MimeFromStrError)?))
+    }
+}
+
+impl ::std::fmt::Display for Mime {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}

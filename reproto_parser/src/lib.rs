@@ -5,6 +5,7 @@ extern crate error_chain;
 extern crate lalrpop_util;
 extern crate reproto_core;
 extern crate num;
+extern crate linked_hash_map;
 
 pub mod ast;
 pub mod errors;

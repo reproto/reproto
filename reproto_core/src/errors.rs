@@ -1,3 +1,4 @@
+use mime;
 use super::{RpPos, RpTypeId};
 
 error_chain! {
@@ -7,6 +8,11 @@ error_chain! {
     }
 
     errors {
+        MimeFromStrError(error: mime::FromStrError) {
+            description("couldn't parse mime type")
+            display("{:?}", error)
+        }
+
         Pos(message: String, pos: RpPos) {
             description("position error")
             display("{}", message)

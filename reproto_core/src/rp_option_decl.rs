@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RpOptionDecl {
     pub name: String,
     pub values: Vec<RpLoc<RpValue>>,

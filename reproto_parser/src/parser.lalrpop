@@ -103,23 +103,26 @@ Service: ServiceBody =
 };
 
 ServiceNested: ServiceNested = {
-    <endpoint:"endpoint"> "{"
-        <options:Loc<OptionDecl>*>
-        <children:ServiceNested*>
-    "}" => {
+    <endpoint:"endpoint"> <url:Loc<string>> "{" <options:Loc<OptionDecl>*> <children:ServiceNested*> "}" => {
         ServiceNested::Endpoint {
-            comment: endpoint.0,
+            url: url,
+            comment: endpoint,
             options: options,
             children: children,
         }
     },
-    <response:"response"> <ty:Loc<TypeSpec>> "{"
-        <options:Loc<OptionDecl>*>
-    "}" => {
-        ServiceNested::Response {
-            comment: response.0,
+    <returns:"returns"> <ty:Loc<TypeSpec>> "{" <options:Loc<OptionDecl>*> "}" => {
+        ServiceNested::Returns {
+            comment: returns,
             ty: ty,
             options: options,
+        }
+    },
+    <star:"*"> "{" <options:Loc<OptionDecl>*> <children:ServiceNested*> "}" => {
+        ServiceNested::Star {
+            comment: star,
+            options: options,
+            children: children,
         }
     },
 };
@@ -344,6 +347,7 @@ extern {
         true => Token::TrueKeyword,
         false => Token::FalseKeyword,
         "endpoint" => Token::EndpointKeyword(<Vec<String>>),
-        "response" => Token::ResponseKeyword(<Vec<String>>),
+        "returns" => Token::ReturnsKeyword(<Vec<String>>),
+        "*" => Token::Star(<Vec<String>>),
     }
 }

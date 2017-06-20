@@ -123,10 +123,10 @@ impl<I> Lexer<I>
                 self.last_comment.clear();
                 Token::EndpointKeyword(comment)
             }
-            "response" => {
+            "returns" => {
                 let comment = self.last_comment.clone();
                 self.last_comment.clear();
-                Token::ResponseKeyword(comment)
+                Token::ReturnsKeyword(comment)
             }
             identifier => {
                 let identifier = Commented::new(self.last_comment.clone(), identifier.to_owned());
@@ -422,6 +422,11 @@ impl<I> Iterator for Lexer<I>
                     '&' => Token::And,
                     '/' => Token::Slash,
                     '=' => Token::Equals,
+                    '*' => {
+                        let comment = self.last_comment.clone();
+                        self.last_comment.clear();
+                        Token::Star(comment)
+                    }
                     '@' => {
                         self.step();
 

@@ -3,17 +3,19 @@
 
 body {
   background-color: #EAE1DF;
+  font-family: Roboto, Helvetica, sans-serif;
+  font-size: 14px;
 }
 
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
 }
 
-p {
+pre {
   margin: 10px 0;
 }
 
-pre {
+p {
   margin: 10px 0;
 }
 
@@ -23,40 +25,12 @@ section {
   border-radius: 6px;
 }
 
-.description {
-  margin: 10px 0;
-}
-
-.description h1 {
-  font-size: 100%;
-}
-
-.description h2 {
-  font-size: 90%;
-}
-
-.description h3 {
-  font-size: 80%;
-}
-
-.description h4 {
-  font-size: 70%;
-}
-
-.description h5 {
-  font-size: 60%;
-}
-
-.description h6 {
-  font-size: 60%;
-  font-weight: normal;
-}
-
 section > h1 {
   padding: 5px 10px;
   margin-bottom: 10px;
-  background: #8AA083;
+  background: #F2F2F2;
   border-radius: 4px;
+  border: 1px solid #D9D9D9;
 }
 
 section > h1 > .type {
@@ -137,4 +111,82 @@ section.section-service {
 
 .ty-map-value {
   font-weight: bold;
+}
+
+table.returns {
+}
+
+table.returns > tbody > tr > td:first-child {
+  padding-left: 0px;
+}
+
+table.returns > tbody > tr > td:last-child {
+  padding-right: 0px;
+}
+
+table.returns td {
+  vertical-align: top;
+  padding: 10px 5px;
+}
+
+table.returns td.description {
+  padding: 5px 5px;
+  margin: 5px 0;
+}
+
+table.returns td.description p {
+  margin: 5px 0;
+}
+
+.endpoint-body {
+  padding: 0 10px;
+}
+
+.endpoint-title {
+  font-family: Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.endpoint-title .method {
+  color: white;
+  border-radius: 3px;
+  padding: 0px 6px;
+}
+
+.endpoint-title .url {
+  margin-left: 10px;
+}
+
+.endpoint-title.get {
+  background-color: #D9EDF7;
+}
+
+.endpoint-title.get .method {
+  background-color: #337AB7;
+}
+
+.endpoint-title.post {
+  background-color: #DFF0D8;
+}
+
+.endpoint-title.post .method {
+  background-color: #5CB85C;
+}
+
+.endpoint-title.put {
+  background-color: #FCF8E3;
+}
+
+.endpoint-title.put .method {
+  background-color: #ED9C28;
+}
+
+.endpoint-title.delete {
+  background-color: #F2DEDE;
+}
+
+.endpoint-title.delete .method {
+  background-color: #D9534F;
 }

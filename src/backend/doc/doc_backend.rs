@@ -43,9 +43,10 @@ impl DocBackend {
         }
     }
 
-    fn type_url(&self, type_id: &RpTypeId) -> Result<String> {
+    fn type_url(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<String> {
         let (package, registered) = self.env
-            .lookup(&type_id.package, &type_id.name)?;
+            .lookup(&type_id.package, &type_id.name)
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
         if let Some(_) = type_id.name.prefix {
             let package = self.package(package);
@@ -67,6 +68,15 @@ impl DocBackend {
 
     pub fn package_file(&self, package: &RpPackage) -> String {
         package.parts.join("_")
+    }
+
+    fn write_markdown(&self, out: &mut FmtWrite, comment: &Vec<String>) -> Result<()> {
+        if !comment.is_empty() {
+            let comment = comment.join("\n");
+            write!(out, "{}", Self::markdown(&comment))?;
+        }
+
+        Ok(())
     }
 
     fn write_description(&self, out: &mut FmtWrite, comment: &Vec<String>) -> Result<()> {
@@ -103,7 +113,12 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_type(&self, out: &mut FmtWrite, type_id: &RpTypeId, ty: &RpType) -> Result<()> {
+    fn write_type(&self,
+                  out: &mut FmtWrite,
+                  pos: &RpPos,
+                  type_id: &RpTypeId,
+                  ty: &RpType)
+                  -> Result<()> {
         write!(out, "<span class=\"ty\">")?;
 
         match *ty {
@@ -140,7 +155,7 @@ impl DocBackend {
                 write!(out, "<span class=\"ty-any\">any</span>")?;
             }
             RpType::Name { ref name } => {
-                let url = self.type_url(&type_id.with_name(name.clone()))?;
+                let url = self.type_url(pos, &type_id.with_name(name.clone()))?;
                 let name = name.parts.join(".");
 
                 write!(out, "<span class=\"ty-name\">")?;
@@ -150,16 +165,16 @@ impl DocBackend {
             RpType::Array { ref inner } => {
                 write!(out, "<span class=\"ty-array\">")?;
                 write!(out, "<span class=\"ty-array-left\">[</span>")?;
-                self.write_type(out, type_id, inner)?;
+                self.write_type(out, pos, type_id, inner)?;
                 write!(out, "<span class=\"ty-array-right\">]</span>")?;
                 write!(out, "</span>")?;
             }
             RpType::Map { ref key, ref value } => {
                 write!(out, "<span class=\"ty-map\">")?;
                 write!(out, "<span class=\"ty-map-key\">{{</span>")?;
-                self.write_type(out, type_id, key)?;
+                self.write_type(out, pos, type_id, key)?;
                 write!(out, "<span class=\"ty-map-separator\">:</span>")?;
-                self.write_type(out, type_id, value)?;
+                self.write_type(out, pos, type_id, value)?;
                 write!(out, "<span class=\"ty-map-value\">}}</span>")?;
                 write!(out, "</span>")?;
             }
@@ -175,6 +190,8 @@ impl DocBackend {
         write!(out, "<div class=\"fields\">")?;
 
         for field in fields {
+            let (field, pos) = field.ref_both();
+
             write!(out, "<div class=\"field\">")?;
 
             let mut name = format!("<span>{}</span>", field.ident());
@@ -189,7 +206,7 @@ impl DocBackend {
 
             write!(out, "<div class=\"{class}\">", class = class)?;
             write!(out, "{name}", name = name)?;
-            self.write_type(out, type_id, &field.ty)?;
+            self.write_type(out, pos, type_id, &field.ty)?;
             write!(out, "</div>")?;
 
             self.write_description(out, &field.comment)?;
@@ -238,7 +255,7 @@ impl DocBackend {
 
     pub fn process_service(&self,
                            out: &mut DocCollector,
-                           _: &RpTypeId,
+                           type_id: &RpTypeId,
                            _: &RpPos,
                            body: Rc<RpServiceBody>)
                            -> Result<()> {
@@ -248,6 +265,70 @@ impl DocBackend {
 
         self.section_title(out, "service", &body.name)?;
         self.write_description(out, &body.comment)?;
+
+        for endpoint in &body.endpoints {
+            let method: String =
+                endpoint.method.as_ref().map(AsRef::as_ref).unwrap_or("GET").to_owned();
+
+            write!(out,
+                   "<h2 class=\"endpoint-title {method}\">",
+                   method = method.to_lowercase())?;
+
+            write!(out, "<span class=\"method\">{}</span>", method)?;
+            write!(out, "<span class=\"url\">{}</span>", endpoint.url)?;
+            write!(out, "</h2>")?;
+
+            write!(out, "<div class=\"endpoint-body\">")?;
+
+            self.write_description(out, &endpoint.comment)?;
+
+            if !endpoint.accepts.is_empty() {
+                write!(out, "<h4>Accepts:</h4>")?;
+
+                for accept in &endpoint.accepts {
+                    write!(out, "<div class=\"accept\">")?;
+                    write!(out, "<span>{}</span>", accept)?;
+                    write!(out, "</div>")?;
+                }
+            }
+
+            if !endpoint.returns.is_empty() {
+                write!(out, "<table class=\"returns\">")?;
+
+                for response in &endpoint.returns {
+                    write!(out, "<tr>")?;
+
+                    let (ty, pos) = response.ty.ref_both();
+
+                    let status = response.status
+                        .as_ref()
+                        .map(|status| format!("{}", status))
+                        .unwrap_or("<em>no status</em>".to_owned());
+
+                    let produces = response.produces
+                        .as_ref()
+                        .map(|m| format!("{}", m))
+                        .unwrap_or("*/*".to_owned());
+
+                    write!(out, "<td class=\"status\">{}</td>", status)?;
+                    write!(out, "<td class=\"content-type\">{}</td>", produces)?;
+
+                    write!(out, "<td class=\"ty\">")?;
+                    self.write_type(out, pos, type_id, ty)?;
+                    write!(out, "</td>")?;
+
+                    write!(out, "<td class=\"description\">")?;
+                    self.write_markdown(out, &response.comment)?;
+                    write!(out, "</td>")?;
+
+                    write!(out, "</tr>")?;
+                }
+
+                write!(out, "</table>")?;
+            }
+
+            write!(out, "</div>")?;
+        }
 
         write!(out, "</section>")?;
         Ok(())

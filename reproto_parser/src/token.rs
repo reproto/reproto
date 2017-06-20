@@ -70,5 +70,6 @@ pub enum Token {
     TrueKeyword,
     FalseKeyword,
     EndpointKeyword(Vec<String>),
-    ResponseKeyword(Vec<String>),
+    ReturnsKeyword(Vec<String>),
+    Star(Vec<String>),
 }

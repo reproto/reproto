@@ -58,3 +58,11 @@ impl IntoModel for RpPackage {
         Ok(self)
     }
 }
+
+impl IntoModel for RpType {
+    type Output = RpType;
+
+    fn into_model(self, _: &Path) -> Result<RpType> {
+        Ok(self)
+    }
+}

@@ -1,12 +1,31 @@
 [light]
+font_size="14px"
+font_family="Roboto, Helvetica, sans-serif"
 bg="#EAE1DF"
-title_bg="#8AA083"
+
+title_bg="#F2F2F2"
+title_border_color="#D9D9D9"
 
 type_bg="#FFFFFF"
 interface_bg="#FFFFFF"
 enum_bg="#FFFFFF"
 tuple_bg="#FFFFFF"
 service_bg="#FFFFFF"
+
+endpoint_font_size="14px"
+endpoint_title_font="Roboto, Helvetica, sans-serif"
+
+get_method_fg="#337AB7"
+get_method_bg="#D9EDF7"
+
+post_method_fg="#5CB85C"
+post_method_bg="#DFF0D8"
+
+put_method_fg="#ED9C28"
+put_method_bg="#FCF8E3"
+
+delete_method_fg="#D9534F"
+delete_method_bg="#F2DEDE"
 
 [dark]
 bg="#000000"

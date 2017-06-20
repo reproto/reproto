@@ -4,7 +4,7 @@ use super::*;
 use super::errors::*;
 
 /// Helper for looking up and dealing with options.
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Options {
     options: Vec<RpLoc<RpOptionDecl>>,
 }
@@ -60,6 +60,25 @@ impl Options {
         Ok(out)
     }
 
+    pub fn find_all_numbers(&self, name: &str) -> Result<Vec<RpLoc<RpNumber>>> {
+        let mut out: Vec<RpLoc<RpNumber>> = Vec::new();
+
+        for s in self.lookup(name) {
+            match s.ref_both() {
+                (&RpValue::Number(ref number), ref pos) => {
+                    out.push(RpLoc::new(number.clone(), (*pos).clone()));
+                }
+                (_, ref pos) => {
+                    return Err(ErrorKind::Pos(format!("{}: expected number", name),
+                                              (*pos).clone())
+                        .into());
+                }
+            }
+        }
+
+        Ok(out)
+    }
+
     /// Optionally find exactly one identifier matching the given name.
     ///
     /// This enforces that all found values are identifiers, otherwise the lookup will cause an
@@ -73,6 +92,36 @@ impl Options {
                 (_, ref pos) => {
                     return Err(ErrorKind::Pos("expected identifier".to_owned(), (*pos).clone())
                         .into());
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub fn find_one_string(&self, name: &str) -> Result<Option<RpLoc<String>>> {
+        if let Some(t) = self.find_one(name)? {
+            match t.ref_both() {
+                (&RpValue::String(ref string), ref pos) => {
+                    return Ok(Some(RpLoc::new(string.to_owned(), (*pos).clone())));
+                }
+                (_, ref pos) => {
+                    return Err(ErrorKind::Pos("expected string".to_owned(), (*pos).clone()).into());
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub fn find_one_number(&self, name: &str) -> Result<Option<RpLoc<RpNumber>>> {
+        if let Some(t) = self.find_one(name)? {
+            match t.ref_both() {
+                (&RpValue::Number(ref number), ref pos) => {
+                    return Ok(Some(RpLoc::new(number.clone(), (*pos).clone())));
+                }
+                (_, ref pos) => {
+                    return Err(ErrorKind::Pos("expected number".to_owned(), (*pos).clone()).into());
                 }
             }
         }
