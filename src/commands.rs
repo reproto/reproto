@@ -7,6 +7,7 @@ use naming;
 use options::Options;
 use reproto_repository::*;
 use std::env;
+use std::error::Error;
 use std::path::Path;
 
 fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
@@ -97,7 +98,7 @@ fn parse_package(input: &str) -> Result<RpRequiredPackage> {
     };
 
     let version_req = if let Some(version) = it.next() {
-        Some(VersionReq::parse(version)?)
+        Some(VersionReq::parse(version).map_err(|e| e.description().to_owned())?)
     } else {
         None
     };
@@ -199,13 +200,13 @@ fn do_compile(matches: &ArgMatches) -> Result<Box<backend::Backend>> {
     match backend {
         Err(e) => {
             failed.push(e);
-            Err(failed.into())
+            Err(ErrorKind::Errors(failed).into())
         }
         Ok(backend) => {
             if failed.is_empty() {
                 Ok(backend)
             } else {
-                Err(failed.into())
+                Err(ErrorKind::Errors(failed).into())
             }
         }
     }
@@ -226,7 +227,7 @@ pub fn verify(matches: &ArgMatches) -> Result<()> {
         return Ok(());
     }
 
-    Err(ErrorKind::BackendErrors(errors).into())
+    Err(ErrorKind::Errors(errors).into())
 }
 
 pub fn commands<'a, 'b>() -> Vec<App<'a, 'b>> {

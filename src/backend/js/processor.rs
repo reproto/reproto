@@ -1,10 +1,10 @@
 use backend::*;
 use backend::collecting::Collecting;
-use backend::errors::*;
 use backend::for_context::ForContext;
 use backend::package_processor::PackageProcessor;
 use backend::variables::Variables;
 use codeviz::js::*;
+use errors::*;
 use naming::{self, FromNaming};
 use std::path::Path;
 use std::path::PathBuf;

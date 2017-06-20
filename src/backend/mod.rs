@@ -1,6 +1,5 @@
 mod collecting;
 mod package_processor;
-pub mod errors;
 pub(crate) mod container;
 pub(crate) mod converter;
 pub(crate) mod decode;
@@ -22,7 +21,8 @@ pub(crate) mod variables;
 
 use options::Options;
 pub use self::environment::{Environment, InitFields};
-use self::errors::*;
+pub(crate) use super::errors;
+use super::errors::*;
 
 pub trait Backend {
     fn process(&self) -> Result<()>;

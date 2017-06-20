@@ -1,6 +1,5 @@
 //! # Helper data structure do handle option lookups
 
-use semver::Version;
 use super::*;
 use super::errors::*;
 
@@ -13,25 +12,6 @@ pub struct Options {
 impl Options {
     pub fn new(options: Vec<RpLoc<RpOptionDecl>>) -> Options {
         Options { options: options }
-    }
-
-    pub fn version(&self) -> Result<Option<Version>> {
-        if let Some(version) = self.lookup("version").nth(0) {
-            let (value, pos) = version.ref_both();
-
-            let version: Result<&str> = value.as_str()
-                .map_err(|e| ErrorKind::Pos(e.description().to_owned(), pos.clone()).into());
-
-            let version = version?;
-
-            let result: Result<Version> = Version::parse(version).map_err(Into::into);
-            let result =
-                result.chain_err(|| ErrorKind::Pos("invalid version string".into(), pos.clone()));
-
-            Ok(Some(result?))
-        } else {
-            Ok(None)
-        }
     }
 
     pub fn lookup<'a>(&'a self, name: &'a str) -> Box<Iterator<Item = &RpLoc<RpValue>> + 'a> {

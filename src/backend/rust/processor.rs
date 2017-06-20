@@ -1,10 +1,10 @@
 use backend::*;
 use backend::collecting::Collecting;
-use backend::errors::*;
 use backend::for_context::ForContext;
 use backend::package_processor::PackageProcessor;
 use codeviz::rust::*;
 use core::*;
+use errors::*;
 use naming::{self, FromNaming};
 use std::collections::BTreeMap;
 use std::fs;

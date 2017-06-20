@@ -4,6 +4,7 @@ See [TODO](todo.md) for things that are work in progress.
 
 * [Introduction](#introduction)
 * [Built-In Types](#built-in-types)
+* [Version Requirements](#version-requirements)
 * [Types](#types)
 * [Interfaces](#interfaces)
 * [Tuples](#tuples)
@@ -92,6 +93,32 @@ There are a number of built-in types available:
 | `boolean`          | Boolean values, `true` or `false` |
 | `[<type>]`         | Arrays which store the given type  |
 | `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` due to limitations in JSON, but might be subject to change if other formats are supported in the future) |
+
+## Version Requirements
+
+ReProto supports deep versioning of specifications.
+
+To specify which version a particular specification belongs to, the following can be added to the
+package:
+
+```reproto
+package foo.bar@1.0.0;
+```
+
+To import a particular version of a specification, a similar syntax can be used for `use`
+statements.
+
+```reproto
+package other;
+
+use foo.bar@^1.0;
+
+// ...
+```
+
+Multiple versions of the same specification _may_ co-exist.
+Packages for versioned specifications will be mangled so that they do not conflict, using a method
+specific to what is supported by a target language.
 
 ## Types
 

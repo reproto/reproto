@@ -1,9 +1,9 @@
-use semver;
+use reproto_core::Version;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Metadata {
     #[serde(default)]
-    pub versions: Vec<semver::Version>,
+    pub versions: Vec<Version>,
     #[serde(default)]
     snapshots: Vec<String>,
 }

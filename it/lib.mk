@@ -1,9 +1,12 @@
 script_input=$(CURDIR)/../tools/script-input
 
 ROOT ?= ../..
+
+DEFAULT_TOOL := $(ROOT)/target/release/reproto
+
 DIFF ?= diff
 RSYNC ?= rsync
-TOOL ?= $(ROOT)/target/release/reproto
+TOOL ?= $(DEFAULT_TOOL)
 CARGO ?= cargo
 
 EXPECTED = expected
@@ -112,6 +115,6 @@ suite-%: $(TOOL)
 	$Oecho "Suite: $*"
 	$O${reproto} compile $($*_suite) -o $($*_out) --path ${PROTO_PATH} ${PACKAGES}
 
-$(TOOL):
-	$Oecho "Building $(TOOL)"
+$(DEFAULT_TOOL):
+	$Oecho "Building $(DEFAULT_TOOL)"
 	$O$(CARGO) build --release

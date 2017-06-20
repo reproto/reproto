@@ -8,8 +8,8 @@ use super::utils::*;
 grammar;
 
 pub File: File = {
-    <package:Loc<PackageDecl>> <options:Loc<OptionDecl>*> <uses:Loc<Use>*> <decls:Loc<Decl>*> => File {
-        package: package,
+    <package_decl:Loc<PackageDecl>> <options:Loc<OptionDecl>*> <uses:Loc<Use>*> <decls:Loc<Decl>*> => File {
+        package_decl: package_decl,
         options: options,
         uses: uses,
         decls: decls,
@@ -17,14 +17,17 @@ pub File: File = {
 };
 
 Use: UseDecl = {
-    "use" <package:Loc<Package>> <version_req:Loc<"@[version]">?> <alias:("as" IdentifierValue)?> ";" => UseDecl {
+    "use" <package:Loc<Package>> <version_req:Loc<"@version">?> <alias:("as" IdentifierValue)?> ";" => UseDecl {
         package: package,
         version_req: version_req,
         alias: alias.map(|t| t.1),
     },
 };
 
-PackageDecl: RpPackage = "package" <package:Package> ";" => package;
+PackageDecl: PackageDecl = "package" <package:Package> <version:Loc<"@version">?> ";" => PackageDecl {
+    package: package,
+    version: version,
+};
 Package: RpPackage = <parts:OneOrMore<".", IdentifierValue>> => RpPackage::new(parts);
 
 Decl: Decl = {
@@ -276,7 +279,7 @@ extern {
         TypeIdentifier => Token::TypeIdentifier(<Commented<String>>),
         Identifier => Token::Identifier(<Commented<String>>),
         Number => Token::Number(<RpNumber>),
-        "@[version]" => Token::VersionReq(<VersionReq>),
+        "@version" => Token::Version(<String>),
         "match" => Token::MatchKeyword,
         "use" => Token::UseKeyword,
         "as" => Token::AsKeyword,

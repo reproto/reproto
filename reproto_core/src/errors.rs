@@ -1,12 +1,9 @@
-use semver;
 use super::{RpPos, RpTypeId};
 
 error_chain! {
     foreign_links {
         IO(::std::io::Error);
         Fmt(::std::fmt::Error);
-        ReqParseError(semver::ReqParseError);
-        SemVerError(semver::SemVerError);
     }
 
     errors {

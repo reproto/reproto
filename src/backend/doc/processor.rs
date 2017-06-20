@@ -1,8 +1,8 @@
 use backend::*;
 use backend::collecting::Collecting;
-use backend::errors::*;
 use backend::package_processor::PackageProcessor;
 use core::*;
+use errors::*;
 use pulldown_cmark as markdown;
 use std::collections::HashMap;
 use std::fmt::Write as FmtWrite;

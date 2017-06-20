@@ -1,7 +1,6 @@
 #![recursion_limit = "1000"]
 
 extern crate toml;
-extern crate semver;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]

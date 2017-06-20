@@ -2,7 +2,7 @@ use std::rc::Rc;
 use super::*;
 use super::errors::*;
 
-#[derive(Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all="snake_case")]
 pub enum RpDecl {
     Type(Rc<RpTypeBody>),

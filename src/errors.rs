@@ -1,54 +1,53 @@
-use backend::errors as backend;
 use codeviz::errors as codeviz;
+use reproto_core::{RpPos, RpTypeId};
 use reproto_core::errors as core;
-use reproto_core::semver;
 use reproto_parser::errors as parser;
-
-#[derive(Debug)]
-pub enum InternalError {
-    ParseError,
-}
-
-impl ::std::fmt::Display for InternalError {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        ::std::fmt::Debug::fmt(self, f)
-    }
-}
-
-impl ::std::error::Error for InternalError {
-    fn description(&self) -> &str {
-        "Internal Error"
-    }
-}
+use reproto_repository::errors as repository;
+use serde_json as json;
 
 error_chain! {
     links {
         Parser(parser::Error, parser::ErrorKind);
         Core(core::Error, core::ErrorKind);
         Codeviz(codeviz::Error, codeviz::ErrorKind);
+        Repository(repository::Error, repository::ErrorKind);
     }
 
     foreign_links {
         Io(::std::io::Error);
+        Fmt(::std::fmt::Error);
         Log(::log::SetLoggerError);
-        ParseError(InternalError);
-        BackendError(backend::Error);
-        ReqParseError(semver::ReqParseError);
+        Json(json::Error);
     }
 
     errors {
-        BackendErrors(errors: Vec<backend::Error>) {
-            description("backend errors")
-            display("encountered {} backend error(s)", errors.len())
+        Pos(message: String, pos: RpPos) {
+            description("position error")
+            display("{}", message)
+        }
+
+        Errors(errors: Vec<Error>) {
+            description("errors")
+            display("encountered {} error(s)", errors.len())
         }
 
         MissingBackend {
         }
+
+        /// An instance creation is missing a set of required fields.
+        MissingRequired(names: Vec<String>, pos: RpPos, fields: Vec<RpPos>) {
+            description("missing required")
+        }
+
+        RegisteredTypeConflict(type_id: RpTypeId) {
+            description("registered type conflict")
+            display("registered type conflict with: {:?}", type_id)
+        }
     }
 }
 
-impl From<Vec<backend::Error>> for Error {
-    fn from(errors: Vec<backend::Error>) -> Error {
-        ErrorKind::BackendErrors(errors).into()
+impl Error {
+    pub fn pos(message: String, pos: RpPos) -> Error {
+        ErrorKind::Pos(message, pos).into()
     }
 }

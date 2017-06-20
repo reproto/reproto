@@ -1,6 +1,6 @@
 package test;
 
-use foo@[^4];
+use foo@^4.0.0;
 
 type Entry {
   thing?: foo::Thing;

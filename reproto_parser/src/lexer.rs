@@ -1,15 +1,15 @@
 use num::Zero;
 use num::bigint::BigInt;
-use reproto_core::{RpNumber, VersionReq};
+use reproto_core::RpNumber;
 use super::errors::*;
 use super::token::*;
 
 macro_rules! take {
-    ($slf:expr, $first:pat $(| $rest:pat)*) => {{
-        let mut end = None;
+    ($slf:expr, $current:expr, $first:pat $(| $rest:pat)*) => {{
+        let mut end: usize = $current;
         $slf.buffer.clear();
 
-        while let Some((p, c)) = $slf.one() {
+        while let Some((pos, c)) = $slf.one() {
             if let Some((_, '/', '*')) = $slf.two() {
                 $slf.block_comment();
                 continue;
@@ -17,7 +17,7 @@ macro_rules! take {
 
             match c {
                 $first $(| $rest)* => {
-                    end = Some(p);
+                    end = pos;
                     $slf.buffer.push(c);
                 },
                 _ => break,
@@ -26,31 +26,26 @@ macro_rules! take {
             $slf.step();
         }
 
-        (end, &$slf.buffer)
+        (end + 1, &$slf.buffer)
     }}
 }
 
 pub struct Lexer<I> {
     source: I,
-    pos: usize,
-    n0: Option<Option<char>>,
-    n1: Option<Option<char>>,
+    n0: Option<Option<(usize, char)>>,
+    n1: Option<Option<(usize, char)>>,
     last_comment: Vec<String>,
     buffer: String,
     illegal: bool,
-    code_block: bool,
+    code_block: Option<usize>,
 }
 
 impl<I> Lexer<I>
-    where I: Iterator<Item = char>
+    where I: Iterator<Item = (usize, char)>
 {
     /// Advance the source iterator.
     #[inline]
     fn step(&mut self) {
-        if self.n0.map(|n| n.is_some()).unwrap_or(false) {
-            self.pos += 1;
-        }
-
         // shift
         if let Some(n1) = self.n1 {
             self.n0 = Some(n1);
@@ -68,7 +63,7 @@ impl<I> Lexer<I>
         }
 
         match self.n0 {
-            Some(n0) => n0.map(|n| (self.pos, n)),
+            Some(n0) => n0,
             None => None,
         }
     }
@@ -79,16 +74,20 @@ impl<I> Lexer<I>
             self.step();
         }
 
-        if let (Some(a), Some(b)) = (self.n0.unwrap_or(None), self.n1.unwrap_or(None)) {
-            Some((self.pos, a, b))
+        if let (Some((pos, a)), Some((_, b))) = (self.n0.unwrap_or(None), self.n1.unwrap_or(None)) {
+            Some((pos, a, b))
         } else {
             None
         }
     }
 
+    #[inline]
+    fn pos(&self) -> usize {
+        self.n0.and_then(|n| n).map(|n| n.0).unwrap_or(0usize)
+    }
+
     fn identifier(&mut self, start: usize) -> Result<(usize, Token, usize)> {
-        let (end, content) = take!(self, 'a'...'z' | '_' | '0'...'9');
-        let end = end.unwrap_or(start);
+        let (end, content) = take!(self, start, 'a'...'z' | '_' | '0'...'9');
 
         let token = match content.as_str() {
             "any" => Token::AnyKeyword,
@@ -115,19 +114,18 @@ impl<I> Lexer<I>
                 let identifier = Commented::new(self.last_comment.clone(), identifier.to_owned());
                 self.last_comment.clear();
                 let token = Token::Identifier(identifier);
-                return Ok((start, token, end + 1));
+                return Ok((start, token, end));
             }
         };
 
-        return Ok((start, token, end + 1));
+        return Ok((start, token, end));
     }
 
     fn type_identifier(&mut self, start: usize) -> Result<(usize, Token, usize)> {
-        let (end, content) = take!(self, 'A'...'Z' | 'a'...'z' | '_' | '0'...'9');
-        let end = end.unwrap_or(start);
+        let (end, content) = take!(self, start, 'A'...'Z' | 'a'...'z' | '_' | '0'...'9');
         let type_identifier = Commented::new(self.last_comment.clone(), content.to_owned());
         self.last_comment.clear();
-        Ok((start, Token::TypeIdentifier(type_identifier), end + 1))
+        Ok((start, Token::TypeIdentifier(type_identifier), end))
     }
 
     fn parse_fraction(input: &str) -> Result<(usize, BigInt)> {
@@ -183,8 +181,8 @@ impl<I> Lexer<I>
         };
 
         let (mut end, mut digits) = {
-            let (e, whole) = take!(self, '0'...'9');
-            (e.unwrap_or(start), whole.parse::<BigInt>()?)
+            let (end, whole) = take!(self, start, '0'...'9');
+            (end, whole.parse::<BigInt>()?)
         };
 
         let mut decimal = 0usize;
@@ -193,19 +191,19 @@ impl<I> Lexer<I>
             self.step();
 
             {
-                let (e, fraction) = take!(self, '0'...'9');
+                let (e, fraction) = take!(self, end, '0'...'9');
+                end = e;
                 let (dec, fraction) = Self::parse_fraction(fraction)?;
                 Self::apply_fraction(&mut digits, &mut decimal, dec, fraction);
-                end = e.unwrap_or(end);
             }
 
             if let Some((_, 'e')) = self.one() {
                 self.step();
 
-                let (e, content) = take!(self, '-' | '0'...'9');
+                let (e, content) = take!(self, end, '-' | '0'...'9');
+                end = e;
                 let exponent: i32 = content.parse()?;
                 Self::apply_exponent(&mut digits, &mut decimal, exponent);
-                end = e.unwrap_or(end);
             }
         }
 
@@ -217,7 +215,7 @@ impl<I> Lexer<I>
         };
 
         self.last_comment.clear();
-        Ok((start, Token::Number(number), end + 1))
+        Ok((start, Token::Number(number), end))
     }
 
     fn decode_unicode4(&mut self) -> Result<char> {
@@ -239,7 +237,7 @@ impl<I> Lexer<I>
 
         self.step();
 
-        while let Some((p, c)) = self.one() {
+        while let Some((pos, c)) = self.one() {
             if c == '\\' {
                 self.step();
 
@@ -263,7 +261,7 @@ impl<I> Lexer<I>
             if c == '"' {
                 self.step();
                 self.last_comment.clear();
-                return Ok((start, Token::String(self.buffer.clone()), p + 1));
+                return Ok((start, Token::String(self.buffer.clone()), pos + 1));
             }
 
             self.buffer.push(c);
@@ -275,19 +273,13 @@ impl<I> Lexer<I>
 
     /// Tokenize code block.
     /// TODO: support escape sequences for languages where `}}` might occur.
-    fn code_block(&mut self) -> Result<(usize, Token, usize)> {
+    fn code_block(&mut self, start: usize) -> Result<(usize, Token, usize)> {
         self.buffer.clear();
-        let mut start = None;
 
-        while let Some((p, c)) = self.one() {
-            if start.is_none() {
-                start = Some(p);
-            }
-
-            if let Some((p, '}', '}')) = self.two() {
-                self.code_block = false;
-                let start = start.unwrap_or(p);
-                return Ok((start, Token::CodeContent(self.buffer.clone()), p));
+        while let Some((_, c)) = self.one() {
+            if let Some((pos, '}', '}')) = self.two() {
+                self.code_block = None;
+                return Ok((start, Token::CodeContent(self.buffer.clone()), pos + 2));
             }
 
             self.buffer.push(c);
@@ -335,33 +327,23 @@ impl<I> Lexer<I>
         }
     }
 
-    fn version_req(&mut self) -> Result<VersionReq> {
-        self.step();
-        self.step();
+    fn version(&mut self, start: usize) -> Result<(usize, String)> {
+        let (_, _) = take!(self, start, ' ' | '\n' | '\r' | '\t');
 
-        self.buffer.clear();
+        let (end, buffer) =
+            take!(self, start, '^' | '<' | '>' | '=' | '.' | '-' | '0'...'9' | 'a'...'z');
 
-        while let Some((_, a)) = self.one() {
-            if a == ']' {
-                self.step();
-                return VersionReq::parse(&self.buffer).map_err(From::from);
-            }
-
-            self.buffer.push(a);
-            self.step();
-        }
-
-        Err(ErrorKind::IllegalToken(self.pos).into())
+        Ok((end, buffer.to_owned()))
     }
 
     fn illegal<T>(&mut self) -> Result<T> {
         self.illegal = true;
-        Err(ErrorKind::IllegalToken(self.pos).into())
+        Err(ErrorKind::IllegalToken(self.pos()).into())
     }
 }
 
 impl<I> Iterator for Lexer<I>
-    where I: Iterator<Item = char>
+    where I: Iterator<Item = (usize, char)>
 {
     type Item = Result<(usize, Token, usize)>;
 
@@ -371,8 +353,8 @@ impl<I> Iterator for Lexer<I>
         }
 
         // code block mode
-        if self.code_block {
-            return Some(self.code_block());
+        if let Some(start) = self.code_block {
+            return Some(self.code_block(start));
         }
 
         loop {
@@ -387,13 +369,9 @@ impl<I> Iterator for Lexer<I>
                         self.block_comment();
                         continue;
                     }
-                    ('@', '[') => {
-                        return Some(self.version_req()
-                            .map(|version_req| (start, Token::VersionReq(version_req), self.pos)));
-                    }
                     ('}', '}') => Some(Token::CodeClose),
                     ('{', '{') => {
-                        self.code_block = true;
+                        self.code_block = Some(start);
                         Some(Token::CodeOpen)
                     }
                     (':', ':') => Some(Token::Scope),
@@ -426,6 +404,12 @@ impl<I> Iterator for Lexer<I>
                     '&' => Token::And,
                     '/' => Token::Slash,
                     '=' => Token::Equals,
+                    '@' => {
+                        self.step();
+
+                        return Some(self.version(start + 1)
+                            .map(|(end, version)| (start + 1, Token::Version(version), end + 1)));
+                    }
                     'a'...'z' => return Some(self.identifier(start)),
                     'A'...'Z' => return Some(self.type_identifier(start)),
                     '"' => return Some(self.string(start)),
@@ -451,17 +435,16 @@ impl<I> Iterator for Lexer<I>
 }
 
 pub fn lex<I>(input: I) -> Lexer<I>
-    where I: Iterator<Item = char>
+    where I: Iterator<Item = (usize, char)>
 {
     Lexer {
         source: input,
-        pos: 0usize,
         n0: None,
         n1: None,
         last_comment: Vec::new(),
         buffer: String::new(),
         illegal: false,
-        code_block: false,
+        code_block: None,
     }
 }
 
@@ -471,7 +454,7 @@ pub mod tests {
     use super::Token::*;
 
     fn tokenize(input: &str) -> Result<Vec<(usize, Token, usize)>> {
-        lex(input.chars()).collect()
+        lex(input.char_indices()).collect()
     }
 
     #[test]

@@ -1,7 +1,6 @@
 use linked_hash_map::{self, LinkedHashMap};
 use parser;
 use reproto_core::*;
-use reproto_parser::ast;
 use reproto_parser::ast::IntoModel;
 use reproto_repository::Resolver;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -101,7 +100,7 @@ impl Environment {
 
     fn register_alias(&mut self,
                       source_package: &RpVersionedPackage,
-                      use_decl: &ast::UseDecl,
+                      use_decl: &RpUseDecl,
                       use_package: &RpVersionedPackage)
                       -> Result<()> {
         if let Some(used) = use_decl.package.parts.iter().last() {
@@ -267,7 +266,7 @@ impl Environment {
         // resolve alias
         self.used
             .get(&(package.clone(), used.to_owned()))
-            .ok_or_else(|| format!("Missing import alias for ({})", used).into())
+            .ok_or_else(|| format!("not import for alias ({})", used).into())
     }
 
     /// Lookup the declaration matching the custom type.
@@ -294,17 +293,13 @@ impl Environment {
                      path: &Path,
                      package: Option<&RpPackage>,
                      version_req: Option<&VersionReq>)
-                     -> Result<Option<(RpVersionedPackage, ast::File)>> {
-        let file = parser::parse_file(&path)?;
-
-        // TODO: remove clone requirement
-        let options = Options::new(file.options.clone().into_model(path)?);
-        let version = options.version()?;
+                     -> Result<Option<(RpVersionedPackage, RpFile)>> {
+        let file = parser::parse_file(&path)?.into_model(path)?;
 
         if let Some(version_req) = version_req {
-            match version {
+            match file.package_decl.version {
                 Some(ref version) => {
-                    if !version_req.matches(&version) {
+                    if !version_req.matches(version.as_ref()) {
                         return Ok(None);
                     }
                 }
@@ -317,43 +312,42 @@ impl Environment {
         }
 
         if let Some(package) = package {
-            if *file.package != *package {
+            if file.package_decl.package != *package {
                 return Err(format!("Expected package ({}) in file {}, but was ({})",
                                    package,
                                    path.display(),
-                                   *file.package)
+                                   file.package_decl.package)
                     .into());
             }
         }
 
-        let versioned_package = RpVersionedPackage::new(file.package.as_ref().clone(), version);
-        Ok(Some((versioned_package, file)))
+        let version = file.package_decl.version.as_ref().map(AsRef::as_ref).map(Clone::clone);
+        let versioned = RpVersionedPackage::new(file.package_decl.package.clone(), version);
+        Ok(Some((versioned, file)))
     }
 
-    pub fn process_file(&mut self,
-                        path: &Path,
-                        versioned_package: &RpVersionedPackage,
-                        file: ast::File)
-                        -> Result<()> {
+    pub fn process_file(&mut self, versioned: &RpVersionedPackage, file: RpFile) -> Result<()> {
         for use_decl in &file.uses {
             let package = use_decl.package.as_ref().clone();
-            let version_req = use_decl.version_req.as_ref().map(|v| v.as_ref().clone());
+            let version_req = use_decl.version_req.as_ref().map(AsRef::as_ref).map(Clone::clone);
             let package = RpRequiredPackage::new(package, version_req);
 
-            if let Some(use_package) = self.import(&package)? {
-                self.register_alias(versioned_package, use_decl, &use_package)?;
+            let use_package = self.import(&package)?;
+
+            if let Some(use_package) = use_package {
+                self.register_alias(versioned, use_decl, &use_package)?;
+                continue;
             }
+
+            let error = "no matching package found".to_owned();
+            return Err(ErrorKind::Pos(error, use_decl.pos().clone()).into());
         }
 
         let mut decls = LinkedHashMap::new();
 
         for decl in file.decls {
-            let (decl, pos) = decl.both();
-            let pos = (path.to_owned(), pos.0, pos.1);
-            let decl = RpLoc::new(decl.into_model(path)?, pos);
-
             let custom = RpName::with_parts(vec![decl.name().to_owned()]);
-            let key = versioned_package.into_type_id(custom);
+            let key = versioned.into_type_id(custom);
 
             match decls.entry(key) {
                 linked_hash_map::Entry::Vacant(entry) => {
@@ -369,7 +363,7 @@ impl Environment {
 
         // again, post-merge
         for (_, decl) in &decls {
-            let registered_types = self.into_registered_type(versioned_package, decl.clone())?;
+            let registered_types = self.into_registered_type(versioned, decl.clone())?;
 
             for (key, t) in registered_types.into_iter() {
                 if let Some(_) = types.insert(key.clone(), t) {
@@ -388,8 +382,8 @@ impl Environment {
                        package: Option<&RpPackage>,
                        version_req: Option<&VersionReq>)
                        -> Result<()> {
-        if let Some((versioned_package, file)) = self.load_file(path, package, version_req)? {
-            self.process_file(path, &versioned_package, file)?;
+        if let Some((versioned, file)) = self.load_file(path, package, version_req)? {
+            self.process_file(&versioned, file)?;
         }
 
         Ok(())
@@ -422,26 +416,25 @@ impl Environment {
             let loaded =
                 self.load_file(&path, Some(&package.package), package.version_req.as_ref())?;
 
-            if let Some((versioned_package, file)) = loaded {
-                candidates.entry(versioned_package).or_insert_with(Vec::new).push((path, file));
+            if let Some((versioned, file)) = loaded {
+                candidates.entry(versioned).or_insert_with(Vec::new).push((path, file));
             }
         }
 
-        if let Some((versioned_package, files)) = candidates.into_iter().nth(0) {
+        if let Some((versioned, files)) = candidates.into_iter().nth(0) {
             if let Some(ref version_req) = package.version_req {
-                debug!("found: {} ({})", versioned_package, version_req);
+                debug!("found: {} ({})", versioned, version_req);
             } else {
-                debug!("found: {}", versioned_package);
+                debug!("found: {}", versioned);
             }
 
             for (path, file) in files.into_iter() {
                 debug!("in: {}", path.display());
-                self.process_file(&path, &versioned_package, file)
-                    .chain_err(|| format!("error when processing {}", path.display()))?;
+                self.process_file(&versioned, file)?;
             }
 
-            self.visited.insert(versioned_package.clone());
-            return Ok(Some(versioned_package));
+            self.visited.insert(versioned.clone());
+            return Ok(Some(versioned));
         }
 
         Ok(None)

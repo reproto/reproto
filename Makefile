@@ -1,8 +1,10 @@
 .PHONY: all suites projects clean
 
+DEFAULT_TOOL := $(CURDIR)/target/release/reproto
+
 PYTHON ?= python3
 PROJECTS ?= $(shell PYTHON=$(PYTHON) tools/check-project-deps)
-TOOL := $(CURDIR)/target/release/reproto
+TOOL ?= $(DEFAULT_TOOL)
 ENVIRONMENT = SUPPORTED_PROJECTS="$(PROJECTS)" PYTHON="$(PYTHON)" TOOL="$(TOOL)"
 EACH := tools/for-each-it
 
@@ -68,5 +70,5 @@ help:
 	@echo "    make -C it/test-match clean-projects projects"
 	@echo ""
 
-$(TOOL):
+$(DEFAULT_TOOL):
 	cargo build --release

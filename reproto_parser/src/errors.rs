@@ -1,6 +1,5 @@
 use reproto_core::RpPos;
 use reproto_core::errors as core;
-use reproto_core::semver;
 
 error_chain! {
     links {
@@ -13,8 +12,6 @@ error_chain! {
         ParseFloat(::std::num::ParseFloatError);
         FromUtf8Error(::std::string::FromUtf8Error);
         ParseBigIntError(::num::bigint::ParseBigIntError);
-        ReqParseError(semver::ReqParseError);
-        SemVerError(semver::SemVerError);
     }
 
     errors {

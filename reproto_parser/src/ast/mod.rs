@@ -1,4 +1,5 @@
 mod decl;
+mod package_decl;
 mod utils;
 mod enum_body;
 mod enum_variant;
@@ -37,6 +38,7 @@ pub use self::match_member::*;
 pub use self::match_variable::*;
 pub use self::member::*;
 pub use self::option_decl::*;
+pub use self::package_decl::*;
 pub use self::service_body::*;
 pub use self::sub_type::*;
 pub use self::tuple_body::*;

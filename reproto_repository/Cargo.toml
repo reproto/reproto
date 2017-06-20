@@ -22,10 +22,6 @@ features = ["rc"]
 [dependencies.serde_derive]
 version = "1.0.8"
 
-[dependencies.semver]
-version = "0.7.0"
-features = ["serde"]
-
 [dependencies.reproto_core]
 version = "0.0.1"
 path = "../reproto_core"

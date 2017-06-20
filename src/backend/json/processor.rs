@@ -1,8 +1,8 @@
 use backend::*;
 use backend::collecting::Collecting;
-use backend::errors::*;
 use backend::package_processor::PackageProcessor;
 use core::*;
+use errors::*;
 use serde_json;
 use std::fmt::Write as FmtWrite;
 use std::path::Path;

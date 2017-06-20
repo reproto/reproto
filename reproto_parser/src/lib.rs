@@ -65,7 +65,7 @@ pub fn parse_file(path: &Path) -> Result<ast::File> {
 
     f.read_to_string(&mut content)?;
 
-    let lexer = lexer::lex(content.chars());
+    let lexer = lexer::lex(content.char_indices());
 
     match parser::parse_File(lexer) {
         Ok(file) => Ok(file),
@@ -110,7 +110,7 @@ mod tests {
     const INTERFACE1: &[u8] = include_bytes!("tests/interface1.reproto");
 
     fn parse(input: &'static str) -> Box<Iterator<Item = Result<(usize, token::Token, usize)>>> {
-        Box::new(lexer::lex(input.chars()))
+        Box::new(lexer::lex(input.char_indices()))
     }
 
     fn parse_file(input: &'static str) -> File {

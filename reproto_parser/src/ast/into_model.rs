@@ -1,6 +1,7 @@
 //! Implementations for converting asts into models.
 
 pub use std::path::Path;
+use super::*;
 use super::errors::*;
 
 /// Adds a method for all types that supports conversion into core types.
@@ -45,7 +46,15 @@ impl<T> IntoModel for Option<T>
 impl IntoModel for String {
     type Output = String;
 
-    fn into_model(self, _pos: &Path) -> Result<String> {
+    fn into_model(self, _: &Path) -> Result<String> {
+        Ok(self)
+    }
+}
+
+impl IntoModel for RpPackage {
+    type Output = RpPackage;
+
+    fn into_model(self, _: &Path) -> Result<RpPackage> {
         Ok(self)
     }
 }

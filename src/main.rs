@@ -5,7 +5,6 @@ extern crate reproto;
 #[macro_use]
 extern crate log;
 
-use reproto::backend;
 use reproto::commands;
 use reproto::errors::*;
 use reproto::logger;
@@ -56,72 +55,55 @@ fn print_error(m: &str, p: &core::RpPos) -> Result<()> {
     Ok(())
 }
 
-fn handle_core_error(e: &core::errors::ErrorKind) -> Result<()> {
+fn handle_core_error(e: &core::errors::ErrorKind) -> Result<bool> {
     use core::errors::ErrorKind::*;
 
-    match *e {
+    let out = match *e {
         Pos(ref m, ref p) => {
             print_error(m, p)?;
+            true
         }
         DeclMerge(ref m, ref source, ref target) => {
             print_error(m, source)?;
             print_error("previous declaration here", target)?;
+            true
         }
         FieldConflict(ref name, ref source, ref target) => {
             print_error(&format!("conflict in field `{}`", name), source)?;
             print_error("previous declaration here", target)?;
+            true
         }
         ExtendEnum(ref m, ref source, ref enum_target) => {
             print_error(m, source)?;
             print_error("previous declaration here", enum_target)?;
+            true
         }
         ReservedField(ref field_pos, ref reserved_pos) => {
             print_error("field reserved", field_pos)?;
             print_error("field reserved here", reserved_pos)?;
+            true
         }
         MatchConflict(ref source, ref target) => {
             print_error("conflicts with existing clause", source)?;
             print_error("existing clause here", target)?;
+            true
         }
-        _ => {}
-    }
+        _ => false,
+    };
 
-    Ok(())
+    Ok(out)
 }
 
-fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<()> {
-    use backend::errors::ErrorKind::*;
-
-    match *e {
-        Pos(ref m, ref p) => {
-            print_error(m, p)?;
-        }
-        Core(ref core) => {
-            handle_core_error(core)?;
-        }
-        Parser(ref e) => {
-            handle_parser_error(e)?;
-        }
-        MissingRequired(ref names, ref location, ref fields) => {
-            print_error(&format!("missing required fields: {}", names.join(", ")),
-                        location)?;
-
-            for f in fields {
-                print_error("required field", f)?;
-            }
-        }
-        _ => {}
-    }
-
-    Ok(())
-}
-
-fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
+fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<bool> {
     use parser::errors::ErrorKind::*;
 
-    match *e {
+    let out = match *e {
+        Pos(ref m, ref p) => {
+            print_error(m, p)?;
+            true
+        }
         Core(ref e) => {
-            handle_core_error(e)?;
+            return handle_core_error(e);
         }
         Syntax(ref p, ref expected) => {
             if let Some(ref pos) = *p {
@@ -131,19 +113,60 @@ fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<()> {
             if !expected.is_empty() {
                 println!("Expected one of: {}", expected.join(", "));
             }
+
+            true
         }
         FieldConflict(ref name, ref source, ref target) => {
             print_error(&format!("conflict in field `{}`", name), source)?;
             print_error("previous declaration here", target)?;
+            true
         }
         EnumVariantConflict(ref pos, ref other) => {
             print_error("conflicting name", pos)?;
             print_error("previous name here", other)?;
+            true
+        }
+        _ => false,
+    };
+
+    Ok(out)
+}
+
+fn handle_error(e: &Error) -> Result<bool> {
+    use reproto::errors::ErrorKind::*;
+
+    match *e.kind() {
+        Pos(ref m, ref p) => {
+            print_error(m, p)?;
+            return Ok(true);
+        }
+        ErrorKind::Errors(ref errors) => {
+            for e in errors {
+                handle_error(e)?;
+            }
+
+            return Ok(true);
+        }
+        Core(ref core) => {
+            return handle_core_error(core);
+        }
+        Parser(ref e) => {
+            return handle_parser_error(e);
+        }
+        MissingRequired(ref names, ref location, ref fields) => {
+            print_error(&format!("missing required fields: {}", names.join(", ")),
+                        location)?;
+
+            for f in fields {
+                print_error("required field", f)?;
+            }
+
+            return Ok(true);
         }
         _ => {}
     }
 
-    Ok(())
+    Ok(false)
 }
 
 fn entry() -> Result<()> {
@@ -172,55 +195,35 @@ fn entry() -> Result<()> {
 }
 
 fn compiler_entry() -> Result<()> {
-    match entry() {
-        Err(e) => {
-            match *e.kind() {
-                ErrorKind::BackendErrors(ref errors) => {
-                    for e in errors {
-                        handle_backend_error(e)?;
-                    }
-                }
-                ErrorKind::BackendError(ref e) => {
-                    handle_backend_error(e)?;
-                }
-                ErrorKind::Parser(ref e) => {
-                    handle_parser_error(e)?;
-                }
-                _ => {}
-            }
-
-            Err(e)
+    if let Err(e) = entry() {
+        if !handle_error(&e)? {
+            return Err(e);
         }
-        ok => ok,
+
+        ::std::process::exit(1);
     }
+
+    Ok(())
 }
 
 fn main() {
-    match compiler_entry() {
-        Err(e) => {
-            match *e.kind() {
-                ErrorKind::BackendErrors(ref errors) => {
-                    for e in errors {
-                        error!("error: {}", e);
-                    }
-                }
-                _ => {
-                    error!("error: {}", e);
-                }
-            }
+    if let Err(e) = compiler_entry() {
+        let mut it = e.iter();
 
-            for e in e.iter().skip(1) {
-                error!("  caused by: {}", e);
-            }
-
-            if let Some(backtrace) = e.backtrace() {
-                error!("  backtrace: {:?}", backtrace);
-            }
-
-            ::std::process::exit(1);
+        if let Some(e) = it.next() {
+            error!("error: {}", e);
         }
-        _ => {}
-    };
+
+        while let Some(e) = it.next() {
+            error!("  caused by: {}", e);
+        }
+
+        if let Some(backtrace) = e.backtrace() {
+            error!("backtrace: {:?}", backtrace);
+        }
+
+        ::std::process::exit(1);
+    }
 
     ::std::process::exit(0);
 }

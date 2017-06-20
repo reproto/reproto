@@ -1,6 +1,4 @@
-package foo;
-
-version "4.0.0";
+package foo@.0.0;
 
 type Thing {
   name: string;
