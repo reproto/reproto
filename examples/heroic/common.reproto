@@ -1,9 +1,20 @@
 package heroic.common;
 
-version "1.0.0";
-
-// Start of an Heroic service endpoint
 service Heroic {
+  // An internal server error occured.
+  (status: 500) => any;
+  // Requested resource does not exist.
+  (status: 404) => any;
+
+  endpoint hello_world {
+    path /hello_world/{path:string}?{multiple:[string]}&{single:unsigned};
+    content_type "application/json";
+
+    // an error response
+    response ErrorMessage {
+      status: 500;
+    }
+  }
 }
 
 type Date {

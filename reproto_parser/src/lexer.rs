@@ -87,7 +87,16 @@ impl<I> Lexer<I>
     }
 
     fn identifier(&mut self, start: usize) -> Result<(usize, Token, usize)> {
+        // strip leading _
+        let (stripped, _) = take!(self, start, '_');
         let (end, content) = take!(self, start, 'a'...'z' | '_' | '0'...'9');
+
+        if stripped != start {
+            let identifier = Commented::new(self.last_comment.clone(), content.to_owned());
+            self.last_comment.clear();
+            let token = Token::Identifier(identifier);
+            return Ok((start, token, end));
+        }
 
         let token = match content.as_str() {
             "any" => Token::AnyKeyword,
@@ -110,6 +119,8 @@ impl<I> Lexer<I>
             "bytes" => Token::BytesKeyword,
             "true" => Token::TrueKeyword,
             "false" => Token::FalseKeyword,
+            "endpoint" => Token::EndpointKeyword,
+            "response" => Token::ResponseKeyword,
             identifier => {
                 let identifier = Commented::new(self.last_comment.clone(), identifier.to_owned());
                 self.last_comment.clear();
@@ -410,7 +421,7 @@ impl<I> Iterator for Lexer<I>
                         return Some(self.version(start + 1)
                             .map(|(end, version)| (start + 1, Token::Version(version), end + 1)));
                     }
-                    'a'...'z' => return Some(self.identifier(start)),
+                    '_' | 'a'...'z' => return Some(self.identifier(start)),
                     'A'...'Z' => return Some(self.type_identifier(start)),
                     '"' => return Some(self.string(start)),
                     '-' | '0'...'9' => return Some(self.number(start)),

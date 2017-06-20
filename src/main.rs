@@ -210,7 +210,10 @@ fn print_root_error(e: &Error) {
 
 fn compiler_entry() -> Result<()> {
     if let Err(e) = entry() {
-        handle_error(&e)?;
+        if !handle_error(&e)? {
+            return Err(e);
+        }
+
         ::std::process::exit(1);
     }
 

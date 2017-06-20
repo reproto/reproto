@@ -1,0 +1,17 @@
+package test;
+
+type Entry {
+  name: string;
+}
+
+service Example {
+  endpoint foo_bar {
+    path "/hello/world";
+    consumes "application/json";
+    produces "application/json";
+
+    response error ErrorResponse {
+      status 500;
+    }
+  }
+}

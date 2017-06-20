@@ -2,7 +2,7 @@ SCRIPT_INPUT=$(CURDIR)/../tools/script-input
 
 ROOT ?= ../..
 
-DEFAULT_TOOL := $(ROOT)/target/release/reproto
+DEFAULT_TOOL := $(ROOT)/target/debug/reproto
 
 DIFF ?= diff
 RSYNC ?= rsync
@@ -136,4 +136,4 @@ project-%: $(TOOL)
 
 $(DEFAULT_TOOL):
 	$Oecho "Building $(DEFAULT_TOOL)"
-	$O$(CARGO) build --release
+	$O$(CARGO) build

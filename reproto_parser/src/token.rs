@@ -69,4 +69,6 @@ pub enum Token {
     BytesKeyword,
     TrueKeyword,
     FalseKeyword,
+    EndpointKeyword,
+    ResponseKeyword,
 }

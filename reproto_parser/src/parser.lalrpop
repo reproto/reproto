@@ -92,12 +92,44 @@ Tuple: TupleBody =
 
 Service: ServiceBody =
     "service" <name:TypeIdentifier> "{"
+        <children:ServiceNested*>
     "}" =>
 {
     ServiceBody {
         name: name.value,
         comment: name.comment,
+        children: children,
     }
+};
+
+ServiceNested: ServiceNested = {
+    "endpoint" <name:Loc<Identifier>> "{"
+        <options:Loc<OptionDecl>*>
+        <children:ServiceNested*>
+    "}" => {
+        let comment = name.comment.clone();
+
+        ServiceNested::Endpoint {
+            name: name.map_into(|n| n.value),
+            comment: comment,
+            options: options,
+            children: children,
+        }
+    },
+    "response" <name:Loc<Identifier>> <ty:Loc<TypeSpec>> "{"
+        <options:Loc<OptionDecl>*>
+        <children:ServiceNested*>
+    "}" => {
+        let comment = name.comment.clone();
+
+        ServiceNested::Response {
+            name: name.map_into(|n| n.value),
+            comment: comment,
+            ty: ty,
+            options: options,
+            children: children,
+        }
+    },
 };
 
 EnumVariant: EnumVariant =
@@ -319,5 +351,7 @@ extern {
         "bytes" => Token::BytesKeyword,
         true => Token::TrueKeyword,
         false => Token::FalseKeyword,
+        "endpoint" => Token::EndpointKeyword,
+        "response" => Token::ResponseKeyword,
     }
 }

@@ -6,6 +6,7 @@ use super::errors::*;
 pub struct ServiceBody {
     pub name: String,
     pub comment: Vec<String>,
+    pub children: Vec<ServiceNested>,
 }
 
 impl IntoModel for ServiceBody {
