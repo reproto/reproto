@@ -4,6 +4,7 @@ Cargo.lock
 __pycache__
 *.pyc
 *.class
+.*.un~
 # temporary files for integration tests
 /it/test-*/output
 /it/test-*/workdir-*
