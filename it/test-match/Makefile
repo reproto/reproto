@@ -1,5 +1,4 @@
 TARGET=test
-
-java_extra = -m builder -m fasterxml
+JAVA_EXTRA = -m builder -m fasterxml
 
 include ../lib.mk

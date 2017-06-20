@@ -82,19 +82,19 @@ impl Processor {
         }
     }
 
-    fn convert_custom(&self, type_id: &RpTypeId, pos: &RpPos, name: &RpName) -> Result<Name> {
-        if let Some(ref prefix) = name.prefix {
-            let pkg = self.env
-                .lookup_used(&type_id.package, prefix)
-                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+    fn convert_type_id(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
+        let (package, registered) = self.env
+            .lookup(&type_id.package, &type_id.name)
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
-            let name = name.parts.join(".");
-            let package_name = self.package(pkg).parts.join("::");
-            Ok(Name::Imported(Name::imported_alias(&package_name, &name, prefix)))
-        } else {
-            let name = name.parts.join(".");
-            Ok(Name::Local(Name::local(&name)))
+        let name = registered.name().join(".");
+
+        if let Some(ref prefix) = type_id.name.prefix {
+            let package_name = self.package(package).parts.join("::");
+            return Ok(Name::Imported(Name::imported_alias(&package_name, &name, prefix)));
         }
+
+        Ok(Name::Local(Name::local(&name)))
     }
 
     fn into_type(&self, type_id: &RpTypeId, field: &RpLoc<RpField>) -> Result<Statement> {
@@ -135,7 +135,10 @@ impl Processor {
                 let argument = self.into_rust_type(type_id, pos, inner)?;
                 stmt!["Vec<", argument, ">"]
             }
-            RpType::Name { ref name } => stmt![self.convert_custom(type_id, pos, name)?],
+            RpType::Name { ref name } => {
+                let type_id = type_id.with_name(name.clone());
+                stmt![self.convert_type_id(pos, &type_id)?]
+            }
             RpType::Map { ref key, ref value } => {
                 let key = self.into_rust_type(type_id, pos, key)?;
                 let value = self.into_rust_type(type_id, pos, value)?;

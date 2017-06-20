@@ -135,17 +135,19 @@ fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<bool> {
 fn handle_error(e: &Error) -> Result<bool> {
     use reproto::errors::ErrorKind::*;
 
-    match *e.kind() {
+    let out = match *e.kind() {
         Pos(ref m, ref p) => {
             print_error(m, p)?;
-            return Ok(true);
+            true
         }
-        ErrorKind::Errors(ref errors) => {
+        Errors(ref errors) => {
             for e in errors {
-                handle_error(e)?;
+                if !handle_error(e)? {
+                    print_root_error(e);
+                }
             }
 
-            return Ok(true);
+            true
         }
         Core(ref core) => {
             return handle_core_error(core);
@@ -161,12 +163,12 @@ fn handle_error(e: &Error) -> Result<bool> {
                 print_error("required field", f)?;
             }
 
-            return Ok(true);
+            true
         }
-        _ => {}
-    }
+        _ => false,
+    };
 
-    Ok(false)
+    Ok(out)
 }
 
 fn entry() -> Result<()> {
@@ -194,12 +196,21 @@ fn entry() -> Result<()> {
     }
 }
 
+fn print_root_error(e: &Error) {
+    error!("error: {}", e);
+
+    for cause in e.iter().skip(1) {
+        error!("  caused by: {}", cause);
+    }
+
+    if let Some(backtrace) = e.backtrace() {
+        error!("backtrace: {:?}", backtrace);
+    }
+}
+
 fn compiler_entry() -> Result<()> {
     if let Err(e) = entry() {
-        if !handle_error(&e)? {
-            return Err(e);
-        }
-
+        handle_error(&e)?;
         ::std::process::exit(1);
     }
 
@@ -208,20 +219,7 @@ fn compiler_entry() -> Result<()> {
 
 fn main() {
     if let Err(e) = compiler_entry() {
-        let mut it = e.iter();
-
-        if let Some(e) = it.next() {
-            error!("error: {}", e);
-        }
-
-        while let Some(e) = it.next() {
-            error!("  caused by: {}", e);
-        }
-
-        if let Some(backtrace) = e.backtrace() {
-            error!("backtrace: {:?}", backtrace);
-        }
-
+        print_root_error(&e);
         ::std::process::exit(1);
     }
 

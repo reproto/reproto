@@ -135,27 +135,17 @@ impl Processor {
         self.java_package(pkg).parts.join(".")
     }
 
-    fn convert_custom(&self, pos: &RpPos, pkg: &RpVersionedPackage, name: &RpName) -> Result<Type> {
-        let pkg = if let Some(ref prefix) = name.prefix {
-            self.env
-                .lookup_used(pkg, prefix)
-                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?
-        } else {
-            pkg
-        };
+    fn convert_type_id(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
+        let (package, registered) = self.env
+            .lookup(&type_id.package, &type_id.name)
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
-        let name = name.parts.join(".");
-
-        let package_name = self.java_package_name(pkg);
-        Ok(Type::class(&package_name, &name).into())
+        let package_name = self.java_package_name(package);
+        Ok(Type::class(&package_name, &registered.name().join(".")).into())
     }
 
     /// Convert the given type to a java type.
-    pub fn into_java_type(&self,
-                          pos: &RpPos,
-                          pkg: &RpVersionedPackage,
-                          ty: &RpType)
-                          -> Result<Type> {
+    pub fn into_java_type(&self, pos: &RpPos, type_id: &RpTypeId, ty: &RpType) -> Result<Type> {
         let ty = match *ty {
             RpType::String => self.string.clone().into(),
             RpType::Signed { ref size } |
@@ -173,15 +163,16 @@ impl Processor {
             RpType::Double => DOUBLE.into(),
             RpType::Boolean => BOOLEAN.into(),
             RpType::Array { ref inner } => {
-                let argument = self.into_java_type(pos, pkg, inner)?;
+                let argument = self.into_java_type(pos, type_id, inner)?;
                 self.list.with_arguments(vec![argument]).into()
             }
             RpType::Name { ref name } => {
-                return self.convert_custom(pos, pkg, name);
+                let type_id = type_id.with_name(name.clone());
+                return self.convert_type_id(pos, &type_id);
             }
             RpType::Map { ref key, ref value } => {
-                let key = self.into_java_type(pos, pkg, key)?;
-                let value = self.into_java_type(pos, pkg, value)?;
+                let key = self.into_java_type(pos, type_id, key)?;
+                let value = self.into_java_type(pos, type_id, value)?;
                 self.map.with_arguments(vec![key, value]).into()
             }
             RpType::Any => self.object.clone().into(),
@@ -523,11 +514,11 @@ impl Processor {
         Ok(to_value)
     }
 
-    fn process_enum(&self, pkg: &RpVersionedPackage, body: &RpEnumBody) -> Result<FileSpec> {
-        let class_type = Type::class(&self.java_package_name(pkg), &body.name);
+    fn process_enum(&self, type_id: &RpTypeId, body: &RpEnumBody) -> Result<FileSpec> {
+        let class_type = Type::class(&self.java_package_name(&type_id.package), &body.name);
 
         let mut spec = EnumSpec::new(mods![Modifier::Public], &body.name);
-        let fields = self.convert_fields(pkg, &body.fields)?;
+        let fields = self.convert_fields(type_id, &body.fields)?;
 
         for field in &fields {
             spec.push_field(&field.java_spec);
@@ -557,7 +548,7 @@ impl Processor {
                 let mut value_arguments = Statement::new();
 
                 for (value, field) in variant.arguments.iter().zip(fields.iter()) {
-                    let env = new_env(pkg, &variables, &value, Some(&field.ty));
+                    let env = new_env(&type_id.package, &variables, &value, Some(&field.ty));
                     value_arguments.push(self.value(&env)?);
                 }
 
@@ -603,17 +594,17 @@ impl Processor {
             spec.push(to_value);
         }
 
-        let mut file_spec = self.new_file_spec(pkg);
+        let mut file_spec = self.new_file_spec(&type_id.package);
         file_spec.push(&spec);
 
         Ok(file_spec)
     }
 
-    fn process_tuple(&self, pkg: &RpVersionedPackage, body: &RpTupleBody) -> Result<FileSpec> {
-        let class_type = Type::class(&self.java_package_name(pkg), &body.name);
+    fn process_tuple(&self, type_id: &RpTypeId, body: &RpTupleBody) -> Result<FileSpec> {
+        let class_type = Type::class(&self.java_package_name(&type_id.package), &body.name);
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
 
-        let fields = self.convert_fields(pkg, &body.fields)?;
+        let fields = self.convert_fields(type_id, &body.fields)?;
 
         for field in &fields {
             spec.push_field(&field.java_spec);
@@ -642,7 +633,7 @@ impl Processor {
                 spec: &mut spec,
             })?;
 
-        let mut file_spec = self.new_file_spec(pkg);
+        let mut file_spec = self.new_file_spec(&type_id.package);
         file_spec.push(&spec);
 
         Ok(file_spec)
@@ -652,7 +643,7 @@ impl Processor {
         let class_type = Type::class(&self.java_package_name(&type_id.package), &body.name);
 
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
-        let fields = self.convert_fields(&type_id.package, &body.fields)?;
+        let fields = self.convert_fields(type_id, &body.fields)?;
 
         for field in &fields {
             spec.push_field(&field.java_spec);
@@ -697,7 +688,7 @@ impl Processor {
         let parent_type = Type::class(&self.java_package_name(&type_id.package), &interface.name);
 
         let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
-        let interface_fields = self.convert_fields(&type_id.package, &interface.fields)?;
+        let interface_fields = self.convert_fields(type_id, &interface.fields)?;
 
         for code in interface.codes.for_context(JAVA_CONTEXT) {
             interface_spec.push(code.move_inner().lines);
@@ -710,11 +701,13 @@ impl Processor {
         }
 
         for (_, ref sub_type) in &interface.sub_types {
+            let type_id = type_id.extend(sub_type.name.to_owned());
+
             let class_type = parent_type.extend(&sub_type.name);
 
             let mods = mods![Modifier::Public, Modifier::Static];
             let mut class = ClassSpec::new(mods, &sub_type.name);
-            let sub_type_fields = self.convert_fields(&type_id.package, &sub_type.fields)?;
+            let sub_type_fields = self.convert_fields(&type_id, &sub_type.fields)?;
 
             for code in sub_type.codes.for_context(JAVA_CONTEXT) {
                 class.push(code.move_inner().lines);
@@ -762,7 +755,7 @@ impl Processor {
             self.listeners
                 .class_added(&mut ClassAdded {
                     processor: self,
-                    type_id: type_id,
+                    type_id: &type_id,
                     fields: &fields,
                     class_type: &class_type,
                     match_decl: &sub_type.match_decl,
@@ -800,10 +793,10 @@ impl Processor {
     }
 
     fn convert_field<'a>(&self,
-                         pkg: &RpVersionedPackage,
+                         type_id: &RpTypeId,
                          field: &'a RpLoc<RpField>)
                          -> Result<JavaField<'a>> {
-        let java_type = self.into_java_type(field.pos(), pkg, &field.ty)?;
+        let java_type = self.into_java_type(field.pos(), type_id, &field.ty)?;
         let camel_name = self.snake_to_upper_camel.convert(field.ident());
         let ident = self.snake_to_lower_camel.convert(field.ident());
         let java_spec = self.build_field_spec(&java_type, field)?;
@@ -820,13 +813,13 @@ impl Processor {
     }
 
     fn convert_fields<'a>(&self,
-                          pkg: &RpVersionedPackage,
+                          type_id: &RpTypeId,
                           fields: &'a Vec<RpLoc<RpField>>)
                           -> Result<Vec<JavaField<'a>>> {
         let mut out = Vec::new();
 
         for field in fields {
-            out.push(self.convert_field(pkg, field)?);
+            out.push(self.convert_field(type_id, field)?);
         }
 
         Ok(out)
@@ -866,9 +859,9 @@ impl Processor {
         match *decl {
             RpDecl::Interface(ref interface) => self.process_interface(type_id, interface),
             RpDecl::Type(ref ty) => self.process_type(type_id, ty),
-            RpDecl::Tuple(ref ty) => self.process_tuple(&type_id.package, ty),
-            RpDecl::Enum(ref ty) => self.process_enum(&type_id.package, ty),
-            RpDecl::Service(ref ty) => self.process_service(&type_id, ty),
+            RpDecl::Tuple(ref ty) => self.process_tuple(type_id, ty),
+            RpDecl::Enum(ref ty) => self.process_enum(type_id, ty),
+            RpDecl::Service(ref ty) => self.process_service(type_id, ty),
         }
     }
 }
@@ -925,21 +918,7 @@ impl Converter for Processor {
     }
 
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
-        let pkg = &type_id.package;
-        let name = &type_id.name;
-
-        let pkg = if let Some(ref prefix) = name.prefix {
-            self.env
-                .lookup_used(pkg, prefix)
-                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?
-        } else {
-            pkg
-        };
-
-        let name = name.parts.join(".");
-
-        let package_name = self.java_package_name(pkg);
-        Ok(Type::class(&package_name, &name).into())
+        self.convert_type_id(pos, type_id)
     }
 }
 

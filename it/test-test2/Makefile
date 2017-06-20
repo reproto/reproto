@@ -1,5 +1,5 @@
 TARGETS = test heroic.v1
 FILTERED_PROJECTS = java rust python js
-java_extra = -m builder -m fasterxml
+JAVA_EXTRA = -m builder -m fasterxml
 
 include ../lib.mk

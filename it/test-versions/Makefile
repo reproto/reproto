@@ -1,5 +1,4 @@
-TARGET=test
-
-java_extra = -m builder -m fasterxml
+PATHS = proto2
+JAVA_EXTRA = -m builder -m fasterxml
 
 include ../lib.mk

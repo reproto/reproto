@@ -32,7 +32,8 @@ pub trait DynamicEncode
             RpType::Any => input.clone(),
             RpType::Boolean => input.clone(),
             RpType::Name { ref name } => {
-                let name = self.convert_type(pos, &type_id.with_name(name.clone()))?;
+                let type_id = type_id.with_name(name.clone());
+                let name = self.convert_type(pos, &type_id)?;
                 self.name_encode(&input, name)
             }
             RpType::Array { ref inner } => {

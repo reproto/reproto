@@ -28,3 +28,9 @@ impl RpTypeId {
         }
     }
 }
+
+impl ::std::fmt::Display for RpTypeId {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "[{}]::{}", self.package, self.name)
+    }
+}

@@ -41,7 +41,7 @@ error_chain! {
 
         RegisteredTypeConflict(type_id: RpTypeId) {
             description("registered type conflict")
-            display("registered type conflict with: {:?}", type_id)
+            display("registered type conflict with: {}", type_id)
         }
     }
 }

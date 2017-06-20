@@ -1,1 +1,1 @@
-{"thing":{"name":"The Thing"}}
+{"thing":{"name":"The Thing","other":{"name":"The Other Thing"}}}

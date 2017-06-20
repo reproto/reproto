@@ -1,2 +1,2 @@
-Entry { thing: Some(Thing { name: "The Thing" }) }
-{"thing":{"name":"The Thing"}}
+Entry { thing: Some(Thing { name: "The Thing", other: Other { name: "The Other Thing" } }) }
+{"thing":{"name":"The Thing","other":{"name":"The Other Thing"}}}

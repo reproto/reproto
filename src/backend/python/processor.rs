@@ -428,23 +428,20 @@ impl Processor {
     }
 
     fn convert_type_id<F>(&self, pos: &RpPos, type_id: &RpTypeId, path_syntax: F) -> Result<Name>
-        where F: Fn(&Vec<String>) -> String
+        where F: Fn(Vec<&str>) -> String
     {
-        let package = &type_id.package;
-        let name = &type_id.name;
+        let (package, registered) = self.env
+            .lookup(&type_id.package, &type_id.name)
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
-        if let Some(ref used) = name.prefix {
-            let package = self.env
-                .lookup_used(package, used)
-                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+        let name = path_syntax(registered.name());
 
-            let package = self.package(package);
-            let package = package.parts.join(".");
-            return Ok(Name::imported_alias(&package, &path_syntax(&name.parts), used).into());
+        if let Some(ref used) = type_id.name.prefix {
+            let package = self.package(package).parts.join(".");
+            return Ok(Name::imported_alias(&package, &name, used).into());
         }
 
-        // no nested types in python
-        Ok(Name::local(&path_syntax(&name.parts)).into())
+        Ok(Name::local(&name).into())
     }
 
     fn enum_variants(&self, type_id: &RpTypeId, body: &RpEnumBody) -> Result<Statement> {

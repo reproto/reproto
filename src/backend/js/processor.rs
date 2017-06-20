@@ -692,19 +692,18 @@ impl Converter for Processor {
     }
 
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
-        let name = &type_id.name;
+        let (package, registered) = self.env
+            .lookup(&type_id.package, &type_id.name)
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
 
-        if let Some(ref used) = name.prefix {
-            let package = self.env
-                .lookup_used(&type_id.package, used)
-                .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+        let name = registered.name().join("_");
 
-            let package = self.package(package);
-            let package = package.parts.join(".");
-            return Ok(Name::imported_alias(&package, &name.parts.join("."), used).into());
+        if let Some(ref used) = type_id.name.prefix {
+            let package = self.package(package).parts.join(".");
+            return Ok(Name::imported_alias(&package, &name, used).into());
         }
 
-        Ok(Name::local(&name.parts.join("_")).into())
+        Ok(Name::local(&name).into())
     }
 }
 

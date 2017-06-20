@@ -1,0 +1,5 @@
+package bar@2.0.0;
+
+type Other {
+  name: string;
+}

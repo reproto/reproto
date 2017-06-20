@@ -86,17 +86,17 @@ impl Processor {
     }
 
     fn type_url(&self, type_id: &RpTypeId) -> Result<String> {
-        let package = &type_id.package;
-        let name = &type_id.name;
+        let (package, registered) = self.env
+            .lookup(&type_id.package, &type_id.name)?;
 
-        if let Some(ref used) = name.prefix {
-            let package = self.package(self.env.lookup_used(package, used)?);
+        if let Some(_) = type_id.name.prefix {
+            let package = self.package(package);
             let package = self.package_file(&package);
-            let fragment = name.parts.join("_");
+            let fragment = registered.name().join("_");
             return Ok(format!("{}.html#{}", package, fragment));
         }
 
-        let fragment = name.parts.join("_");
+        let fragment = registered.name().join("_");
         return Ok(format!("#{}", fragment));
     }
 

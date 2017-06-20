@@ -106,4 +106,20 @@ impl RpRegistered {
             }
         }
     }
+
+    pub fn name(&self) -> Vec<&str> {
+        match *self {
+            RpRegistered::Type(ref body) => vec![&body.name],
+            RpRegistered::Interface(ref body) => vec![&body.name],
+            RpRegistered::Enum(ref body) => vec![&body.name],
+            RpRegistered::Tuple(ref body) => vec![&body.name],
+            RpRegistered::Service(ref body) => vec![&body.name],
+            RpRegistered::SubType { ref parent, ref sub_type } => {
+                vec![&parent.name, &sub_type.name]
+            }
+            RpRegistered::EnumConstant { ref parent, ref variant } => {
+                vec![&parent.name, &variant.name]
+            }
+        }
+    }
 }

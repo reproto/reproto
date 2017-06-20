@@ -1,5 +1,7 @@
 package foo._4_0_0;
 
+import bar._1_0_0.Other;
+import bar._2_0_0.Other;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
@@ -7,23 +9,41 @@ import java.util.Optional;
 
 public class Thing {
   private final String name;
+  private final Other other;
+  private final Other other2;
 
   @JsonCreator
   public Thing(
-    @JsonProperty("name") final String name
+    @JsonProperty("name") final String name, 
+    @JsonProperty("other") final Other other, 
+    @JsonProperty("other2") final Other other2
   ) {
     Objects.requireNonNull(name, "name");
     this.name = name;
+    Objects.requireNonNull(other, "other");
+    this.other = other;
+    Objects.requireNonNull(other2, "other2");
+    this.other2 = other2;
   }
 
   public String getName() {
     return this.name;
   }
 
+  public Other getOther() {
+    return this.other;
+  }
+
+  public Other getOther2() {
+    return this.other2;
+  }
+
   @Override
   public int hashCode() {
     int result = 1;
     result = result * 31 + this.name.hashCode();
+    result = result * 31 + this.other.hashCode();
+    result = result * 31 + this.other2.hashCode();
     return result;
   }
 
@@ -44,6 +64,14 @@ public class Thing {
       return false;
     }
 
+    if (!this.other.equals(o.other)) {
+      return false;
+    }
+
+    if (!this.other2.equals(o.other2)) {
+      return false;
+    }
+
     return true;
   }
 
@@ -55,6 +83,12 @@ public class Thing {
     b.append("(");
     b.append("name=");
     b.append(this.name.toString());
+    b.append(", ");
+    b.append("other=");
+    b.append(this.other.toString());
+    b.append(", ");
+    b.append("other2=");
+    b.append(this.other2.toString());
     b.append(")");
 
     return b.toString();
@@ -62,16 +96,30 @@ public class Thing {
 
   public static class Builder {
     private Optional<String> name = Optional.empty();
+    private Optional<Other> other = Optional.empty();
+    private Optional<Other> other2 = Optional.empty();
 
     public Builder name(final String name) {
       this.name = Optional.of(name);
       return this;
     }
 
+    public Builder other(final Other other) {
+      this.other = Optional.of(other);
+      return this;
+    }
+
+    public Builder other2(final Other other2) {
+      this.other2 = Optional.of(other2);
+      return this;
+    }
+
     public Thing build() {
       final String name = this.name.orElseThrow(() -> new RuntimeException("name: is required"));
+      final Other other = this.other.orElseThrow(() -> new RuntimeException("other: is required"));
+      final Other other2 = this.other2.orElseThrow(() -> new RuntimeException("other2: is required"));
 
-      return new Thing(name);
+      return new Thing(name, other, other2);
     }
   }
 }
