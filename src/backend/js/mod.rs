@@ -1,20 +1,33 @@
 mod models;
 #[macro_use]
 mod utils;
-pub mod processor;
+pub mod listeners;
+pub mod js_backend;
+pub mod js_compiler;
+pub mod js_options;
 
 use backend::*;
-use core::*;
+pub(crate) use codeviz::js::*;
+pub(crate) use errors::*;
 use options::Options;
+use self::js_backend::*;
+use self::js_compiler::*;
+use self::js_options::*;
+use self::listeners::*;
+pub(crate) use self::models::*;
+pub(crate) use self::utils::*;
 
-fn setup_module(module: &str) -> Result<Box<processor::Listeners>> {
-    let _module: Box<processor::Listeners> = match module {
+pub(crate) const TYPE: &str = "type";
+pub(crate) const EXT: &str = "js";
+pub(crate) const JS_CONTEXT: &str = "js";
+
+fn setup_module(module: &str) -> Result<Box<Listeners>> {
+    let _module: Box<Listeners> = match module {
         _ => return Err(format!("No such module: {}", module).into()),
     };
 }
 
-pub fn resolve(options: Options, env: Environment) -> Result<processor::Processor> {
-    let out_path = options.out_path;
+pub fn resolve(options: Options, env: Environment) -> Result<JsBackend> {
     let id_converter = options.id_converter;
 
     let package_prefix = options.package_prefix
@@ -27,16 +40,15 @@ pub fn resolve(options: Options, env: Environment) -> Result<processor::Processo
         listeners.push(setup_module(module)?);
     }
 
-    let mut options = processor::ProcessorOptions::new();
+    let mut options = JsOptions::new();
 
     for listener in &listeners {
         listener.configure(&mut options)?;
     }
 
-    return Ok(processor::Processor::new(options,
-                                        env,
-                                        out_path,
-                                        id_converter,
-                                        package_prefix,
-                                        Box::new(listeners)));
+    return Ok(JsBackend::new(options,
+                             env,
+                             id_converter,
+                             package_prefix,
+                             Box::new(listeners)));
 }

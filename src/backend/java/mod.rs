@@ -1,16 +1,26 @@
 mod models;
-pub mod builder;
-pub mod constructor_properties;
-pub mod fasterxml;
-pub mod listeners;
-pub mod lombok;
-pub mod mutable;
-pub mod nullable;
-pub mod processor;
+mod builder;
+mod constructor_properties;
+mod fasterxml;
+mod java_backend;
+mod java_options;
+mod java_compiler;
+mod listeners;
+mod lombok;
+mod mutable;
+mod nullable;
 
 use backend::*;
-use core::*;
+pub(crate) use codeviz::java::*;
+pub(crate) use errors::*;
 use options::Options;
+use self::java_backend::*;
+use self::java_compiler::*;
+use self::java_options::*;
+use self::listeners::*;
+pub(crate) use self::models::*;
+
+pub const JAVA_CONTEXT: &str = "java";
 
 fn setup_module(module: &str) -> Result<Box<listeners::Listeners>> {
     let module: Box<listeners::Listeners> = match module {
@@ -26,9 +36,7 @@ fn setup_module(module: &str) -> Result<Box<listeners::Listeners>> {
     Ok(module)
 }
 
-pub fn resolve(options: Options, env: Environment) -> Result<processor::Processor> {
-    let out_path = options.out_path;
-
+pub fn resolve(options: Options, env: Environment) -> Result<JavaBackend> {
     let package_prefix = options.package_prefix
         .clone()
         .map(|prefix| RpPackage::new(prefix.split(".").map(ToOwned::to_owned).collect()));
@@ -39,11 +47,11 @@ pub fn resolve(options: Options, env: Environment) -> Result<processor::Processo
         listeners.push(setup_module(module)?);
     }
 
-    let mut options = processor::ProcessorOptions::new();
+    let mut options = JavaOptions::new();
 
     for listener in &listeners {
         listener.configure(&mut options)?;
     }
 
-    Ok(processor::Processor::new(options, env, out_path, package_prefix, Box::new(listeners)))
+    Ok(JavaBackend::new(options, env, package_prefix, Box::new(listeners)))
 }

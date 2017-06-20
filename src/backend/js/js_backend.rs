@@ -1,61 +1,24 @@
-use backend::*;
-use backend::collecting::Collecting;
 use backend::for_context::ForContext;
-use backend::package_processor::PackageProcessor;
-use backend::variables::Variables;
-use codeviz::js::*;
-use errors::*;
 use naming::{self, FromNaming};
-use std::path::Path;
-use std::path::PathBuf;
 use std::rc::Rc;
-use super::converter::Converter;
-use super::dynamic_converter::DynamicConverter;
-use super::dynamic_decode::DynamicDecode;
-use super::dynamic_encode::DynamicEncode;
-use super::match_decode::MatchDecode;
-use super::models::*;
-use super::utils::*;
-use super::value_builder::*;
+use super::*;
 
-const TYPE: &str = "type";
-const EXT: &str = "js";
-const JS_CONTEXT: &str = "js";
+impl<'a> Collecting<'a> for FileSpec {
+    type Processor = JsCompiler<'a>;
 
-pub trait Listeners {
-    fn configure(&self, _processor: &mut ProcessorOptions) -> Result<()> {
-        Ok(())
+    fn new() -> Self {
+        FileSpec::new()
+    }
+
+    fn into_bytes(self, _: &Self::Processor) -> Result<Vec<u8>> {
+        let mut out = String::new();
+        self.format(&mut out)?;
+        Ok(out.into_bytes())
     }
 }
 
-/// A vector of listeners is a valid listener.
-impl Listeners for Vec<Box<Listeners>> {
-    fn configure(&self, processor: &mut ProcessorOptions) -> Result<()> {
-        for listeners in self {
-            listeners.configure(processor)?;
-        }
-
-        Ok(())
-    }
-}
-
-pub struct ProcessorOptions {
-    pub build_getters: bool,
-    pub build_constructor: bool,
-}
-
-impl ProcessorOptions {
-    pub fn new() -> ProcessorOptions {
-        ProcessorOptions {
-            build_getters: false,
-            build_constructor: true,
-        }
-    }
-}
-
-pub struct Processor {
-    env: Environment,
-    out_path: PathBuf,
+pub struct JsBackend {
+    pub env: Environment,
     id_converter: Option<Box<naming::Naming>>,
     package_prefix: Option<RpPackage>,
     listeners: Box<Listeners>,
@@ -66,17 +29,15 @@ pub struct Processor {
     enum_name: Variable,
 }
 
-impl Processor {
-    pub fn new(_options: ProcessorOptions,
+impl JsBackend {
+    pub fn new(_: JsOptions,
                env: Environment,
-               out_path: PathBuf,
                id_converter: Option<Box<naming::Naming>>,
                package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
-               -> Processor {
-        Processor {
+               -> JsBackend {
+        JsBackend {
             env: env,
-            out_path: out_path,
             id_converter: id_converter,
             package_prefix: package_prefix,
             listeners: listeners,
@@ -88,10 +49,10 @@ impl Processor {
         }
     }
 
-    fn find_field<'a>(&self,
-                      fields: &'a Vec<RpLoc<JsField>>,
+    fn find_field<'b>(&self,
+                      fields: &'b Vec<RpLoc<JsField>>,
                       name: &str)
-                      -> Option<(usize, &JsField<'a>)> {
+                      -> Option<(usize, &JsField<'b>)> {
         for (i, field) in fields.iter().enumerate() {
             if field.name == name {
                 return Some((i, field.as_ref()));
@@ -399,11 +360,11 @@ impl Processor {
         }
     }
 
-    fn into_js_field_with<'a, F>(&self,
-                                 field: &'a RpLoc<RpField>,
+    fn into_js_field_with<'b, F>(&self,
+                                 field: &'b RpLoc<RpField>,
                                  js_field_f: F)
-                                 -> RpLoc<JsField<'a>>
-        where F: Fn(JsField<'a>) -> JsField<'a>
+                                 -> RpLoc<JsField<'b>>
+        where F: Fn(JsField<'b>) -> JsField<'b>
     {
         let ident = self.field_ident(&field);
 
@@ -417,65 +378,16 @@ impl Processor {
         })
     }
 
-    fn into_js_field<'a>(&self, field: &'a RpLoc<RpField>) -> RpLoc<JsField<'a>> {
+    fn into_js_field<'b>(&self, field: &'b RpLoc<RpField>) -> RpLoc<JsField<'b>> {
         self.into_js_field_with(field, |ident| ident)
     }
-}
 
-impl Backend for Processor {
-    fn process(&self) -> Result<()> {
-        let files = self.populate_files()?;
-        self.write_files(files)
-    }
-
-    fn verify(&self) -> Result<Vec<Error>> {
-        Ok(vec![])
-    }
-}
-
-impl Collecting for FileSpec {
-    type Processor = Processor;
-
-    fn new() -> Self {
-        FileSpec::new()
-    }
-
-    fn into_bytes(self, _: &Self::Processor) -> Result<Vec<u8>> {
-        let mut out = String::new();
-        self.format(&mut out)?;
-        Ok(out.into_bytes())
-    }
-}
-
-impl PackageProcessor for Processor {
-    type Out = FileSpec;
-
-    fn ext(&self) -> &str {
-        EXT
-    }
-
-    fn env(&self) -> &Environment {
-        &self.env
-    }
-
-    fn package_prefix(&self) -> &Option<RpPackage> {
-        &self.package_prefix
-    }
-
-    fn out_path(&self) -> &Path {
-        &self.out_path
-    }
-
-    fn default_process(&self, _out: &mut Self::Out, type_id: &RpTypeId, _: &RpPos) -> Result<()> {
-        Err(format!("not supported: {:?}", type_id).into())
-    }
-
-    fn process_tuple(&self,
-                     out: &mut Self::Out,
-                     type_id: &RpTypeId,
-                     _: &RpPos,
-                     body: Rc<RpTupleBody>)
-                     -> Result<()> {
+    pub fn process_tuple(&self,
+                         out: &mut FileSpec,
+                         type_id: &RpTypeId,
+                         _: &RpPos,
+                         body: Rc<RpTupleBody>)
+                         -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
         class.export();
 
@@ -510,12 +422,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_enum(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    _: &RpPos,
-                    body: Rc<RpEnumBody>)
-                    -> Result<()> {
+    pub fn process_enum(&self,
+                        out: &mut FileSpec,
+                        type_id: &RpTypeId,
+                        _: &RpPos,
+                        body: Rc<RpEnumBody>)
+                        -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
         class.export();
 
@@ -572,12 +484,12 @@ impl PackageProcessor for Processor {
     }
 
 
-    fn process_type(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    _: &RpPos,
-                    body: Rc<RpTypeBody>)
-                    -> Result<()> {
+    pub fn process_type(&self,
+                        out: &mut FileSpec,
+                        type_id: &RpTypeId,
+                        _: &RpPos,
+                        body: Rc<RpTypeBody>)
+                        -> Result<()> {
         let fields = body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         let mut class = ClassSpec::new(&body.name);
@@ -611,12 +523,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_interface(&self,
-                         out: &mut Self::Out,
-                         type_id: &RpTypeId,
-                         _: &RpPos,
-                         body: Rc<RpInterfaceBody>)
-                         -> Result<()> {
+    pub fn process_interface(&self,
+                             out: &mut FileSpec,
+                             type_id: &RpTypeId,
+                             _: &RpPos,
+                             body: Rc<RpInterfaceBody>)
+                             -> Result<()> {
         let mut classes = Elements::new();
 
         let mut interface_spec = ClassSpec::new(&body.name);
@@ -681,7 +593,13 @@ impl PackageProcessor for Processor {
     }
 }
 
-impl Converter for Processor {
+impl PackageUtils for JsBackend {
+    fn package_prefix(&self) -> &Option<RpPackage> {
+        &self.package_prefix
+    }
+}
+
+impl Converter for JsBackend {
     type Type = Name;
     type Stmt = Statement;
     type Elements = Elements;
@@ -708,7 +626,7 @@ impl Converter for Processor {
 }
 
 /// Build values in js.
-impl ValueBuilder for Processor {
+impl ValueBuilder for JsBackend {
     fn env(&self) -> &Environment {
         &self.env
     }
@@ -758,7 +676,7 @@ impl ValueBuilder for Processor {
     }
 }
 
-impl DynamicConverter for Processor {
+impl DynamicConverter for JsBackend {
     fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
             RpType::Signed { size: _ } |
@@ -786,7 +704,7 @@ impl DynamicConverter for Processor {
     }
 }
 
-impl DynamicDecode for Processor {
+impl DynamicDecode for JsBackend {
     type Method = MethodSpec;
 
     fn name_decode(&self, input: &Statement, name: Self::Type) -> Self::Stmt {
@@ -831,7 +749,7 @@ impl DynamicDecode for Processor {
     }
 }
 
-impl DynamicEncode for Processor {
+impl DynamicEncode for JsBackend {
     fn name_encode(&self, input: &Statement, _: Self::Type) -> Self::Stmt {
         stmt![input, ".encode()"]
     }
@@ -847,7 +765,7 @@ impl DynamicEncode for Processor {
     }
 }
 
-impl MatchDecode for Processor {
+impl MatchDecode for JsBackend {
     fn match_value(&self,
                    data: &Statement,
                    _value: &RpValue,

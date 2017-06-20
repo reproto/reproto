@@ -1,9 +1,6 @@
 //! # Helper trait for building a dynamic-language encode method
 
-use core::*;
-use super::dynamic_converter::DynamicConverter;
-use super::encode::Encode;
-use super::errors::*;
+use super::*;
 
 pub trait DynamicEncode
     where Self: DynamicConverter
@@ -56,17 +53,17 @@ pub trait DynamicEncode
 }
 
 /// Dynamic encode is a valid decoding mechanism
-impl<T> Encode for T
+impl<T> BaseEncode for T
     where T: DynamicEncode
 {
     type Stmt = T::Stmt;
 
-    fn encode(&self,
-              type_id: &RpTypeId,
-              pos: &RpPos,
-              ty: &RpType,
-              input: &Self::Stmt)
-              -> Result<Self::Stmt> {
+    fn base_encode(&self,
+                   type_id: &RpTypeId,
+                   pos: &RpPos,
+                   ty: &RpType,
+                   input: &Self::Stmt)
+                   -> Result<Self::Stmt> {
         DynamicEncode::encode(self, type_id, pos, ty, input)
     }
 }

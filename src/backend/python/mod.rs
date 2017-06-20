@@ -1,17 +1,33 @@
-pub mod processor;
+mod field;
+mod listeners;
+mod python_backend;
+mod python_compiler;
+mod python_options;
 
 use backend::*;
-use core::*;
+pub(crate) use backend::*;
+pub(crate) use codeviz::python::*;
+pub(crate) use core::*;
+pub(crate) use errors::*;
 use options::Options;
+use self::field::*;
+use self::listeners::*;
+use self::python_backend::*;
+use self::python_compiler::*;
+use self::python_options::*;
 
-fn setup_module(module: &str) -> Result<Box<processor::Listeners>> {
-    let _module: Box<processor::Listeners> = match module {
+pub(crate) const TYPE: &str = "type";
+pub(crate) const INIT_PY: &str = "__init__.py";
+pub(crate) const EXT: &str = "py";
+pub(crate) const PYTHON_CONTEXT: &str = "python";
+
+fn setup_module(module: &str) -> Result<Box<Listeners>> {
+    let _module: Box<Listeners> = match module {
         _ => return Err(format!("No such module: {}", module).into()),
     };
 }
 
-pub fn resolve(options: Options, env: Environment) -> Result<processor::Processor> {
-    let out_path = options.out_path;
+pub fn resolve(options: Options, env: Environment) -> Result<PythonBackend> {
     let id_converter = options.id_converter;
 
     let package_prefix = options.package_prefix
@@ -24,16 +40,15 @@ pub fn resolve(options: Options, env: Environment) -> Result<processor::Processo
         listeners.push(setup_module(module)?);
     }
 
-    let mut options = processor::ProcessorOptions::new();
+    let mut options = PythonOptions::new();
 
     for listener in &listeners {
         listener.configure(&mut options)?;
     }
 
-    return Ok(processor::Processor::new(options,
-                                        env,
-                                        out_path,
-                                        id_converter,
-                                        package_prefix,
-                                        Box::new(listeners)));
+    return Ok(PythonBackend::new(options,
+                                 env,
+                                 id_converter,
+                                 package_prefix,
+                                 Box::new(listeners)));
 }

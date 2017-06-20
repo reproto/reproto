@@ -1,7 +1,7 @@
-use super::errors::*;
+use super::*;
 
-pub trait Collecting {
-    type Processor;
+pub trait Collecting<'a> {
+    type Processor: 'a;
 
     fn new() -> Self;
 

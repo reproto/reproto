@@ -1,31 +1,55 @@
+mod base_decode;
+mod base_encode;
 mod collecting;
+mod container;
+mod converter;
+mod doc;
+mod dynamic_converter;
+mod dynamic_decode;
+mod dynamic_encode;
+mod environment;
+mod for_context;
+mod java;
+mod js;
+mod json;
+mod match_decode;
 mod package_processor;
-pub(crate) mod container;
-pub(crate) mod converter;
-pub(crate) mod decode;
-pub(crate) mod doc;
-pub(crate) mod dynamic_converter;
-pub(crate) mod dynamic_decode;
-pub(crate) mod dynamic_encode;
-pub(crate) mod encode;
-pub(crate) mod environment;
-pub(crate) mod for_context;
-pub(crate) mod java;
-pub(crate) mod js;
-pub(crate) mod json;
-pub(crate) mod match_decode;
-pub(crate) mod python;
-pub(crate) mod rust;
-pub(crate) mod value_builder;
-pub(crate) mod variables;
+mod package_utils;
+mod python;
+mod rust;
+mod value_builder;
+mod variables;
 
-use options::Options;
+pub(crate) use core::*;
+pub(crate) use errors::*;
+pub(crate) use options::Options;
+pub(crate) use self::base_decode::*;
+pub(crate) use self::base_encode::*;
+pub(crate) use self::collecting::*;
+pub(crate) use self::container::Container;
+pub(crate) use self::converter::*;
+pub(crate) use self::dynamic_converter::*;
+pub(crate) use self::dynamic_decode::*;
+pub(crate) use self::dynamic_encode::*;
 pub use self::environment::{Environment, InitFields};
+pub(crate) use self::match_decode::*;
+pub(crate) use self::package_processor::*;
+pub(crate) use self::package_utils::*;
+pub(crate) use self::value_builder::*;
+pub(crate) use self::variables::*;
+use std::path::PathBuf;
 pub(crate) use super::errors;
-use super::errors::*;
+
+pub struct CompilerOptions {
+    pub out_path: PathBuf,
+}
+
+pub trait Compiler<'a> {
+    fn compile(&self) -> Result<()>;
+}
 
 pub trait Backend {
-    fn process(&self) -> Result<()>;
+    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>>;
 
     fn verify(&self) -> Result<Vec<Error>>;
 }

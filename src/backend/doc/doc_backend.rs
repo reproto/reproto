@@ -1,59 +1,18 @@
-use backend::*;
-use backend::collecting::Collecting;
-use backend::package_processor::PackageProcessor;
-use core::*;
-use errors::*;
 use pulldown_cmark as markdown;
 use std::collections::HashMap;
 use std::fmt::Write as FmtWrite;
-use std::fs;
-use std::io::Write as IoWrite;
-use std::path::Path;
-use std::path::PathBuf;
 use std::rc::Rc;
+use super::*;
 
-pub struct ProcessorOptions {
-}
-
-impl ProcessorOptions {
-    pub fn new() -> ProcessorOptions {
-        ProcessorOptions {}
-    }
-}
-
-pub trait Listeners {
-    fn configure(&self, _processor: &mut ProcessorOptions) -> Result<()> {
-        Ok(())
-    }
-}
-
-/// A vector of listeners is a valid listener.
-impl Listeners for Vec<Box<Listeners>> {
-    fn configure(&self, processor: &mut ProcessorOptions) -> Result<()> {
-        for listeners in self {
-            listeners.configure(processor)?;
-        }
-
-        Ok(())
-    }
-}
-
-pub struct Processor {
-    env: Environment,
-    out_path: PathBuf,
+pub struct DocBackend {
+    #[allow(dead_code)]
+    options: DocOptions,
+    pub env: Environment,
     package_prefix: Option<RpPackage>,
-    theme: String,
-    listeners: Box<Listeners>,
-    themes: HashMap<&'static str, &'static [u8]>,
+    pub theme: String,
+    listeners: Box<DocListeners>,
+    pub themes: HashMap<&'static str, &'static [u8]>,
 }
-
-const EXT: &str = "html";
-const INDEX: &str = "index";
-
-const NORMALIZE_CSS_NAME: &str = "normalize.css";
-const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
-
-const DOC_CSS_NAME: &str = "doc.css";
 
 include!(concat!(env!("OUT_DIR"), "/themes.rs"));
 
@@ -67,17 +26,16 @@ fn build_themes() -> HashMap<&'static str, &'static [u8]> {
     m
 }
 
-impl Processor {
-    pub fn new(_options: ProcessorOptions,
+impl DocBackend {
+    pub fn new(options: DocOptions,
                env: Environment,
-               out_path: PathBuf,
                package_prefix: Option<RpPackage>,
                theme: String,
-               listeners: Box<Listeners>)
-               -> Processor {
-        Processor {
+               listeners: Box<DocListeners>)
+               -> DocBackend {
+        DocBackend {
+            options: options,
             env: env,
-            out_path: out_path,
             package_prefix: package_prefix,
             theme: theme,
             listeners: listeners,
@@ -107,7 +65,7 @@ impl Processor {
         s
     }
 
-    fn package_file(&self, package: &RpPackage) -> String {
+    pub fn package_file(&self, package: &RpPackage) -> String {
         package.parts.join("_")
     }
 
@@ -126,8 +84,8 @@ impl Processor {
         Ok(())
     }
 
-    fn write_variants<'a, I>(&self, out: &mut FmtWrite, variants: I) -> Result<()>
-        where I: Iterator<Item = &'a RpLoc<Rc<RpEnumVariant>>>
+    fn write_variants<'b, I>(&self, out: &mut FmtWrite, variants: I) -> Result<()>
+        where I: Iterator<Item = &'b RpLoc<Rc<RpEnumVariant>>>
     {
         write!(out, "<div class=\"variants\">")?;
 
@@ -211,8 +169,8 @@ impl Processor {
         Ok(())
     }
 
-    fn write_fields<'a, I>(&self, out: &mut FmtWrite, type_id: &RpTypeId, fields: I) -> Result<()>
-        where I: Iterator<Item = &'a RpLoc<RpField>>
+    fn write_fields<'b, I>(&self, out: &mut FmtWrite, type_id: &RpTypeId, fields: I) -> Result<()>
+        where I: Iterator<Item = &'b RpLoc<RpField>>
     {
         write!(out, "<div class=\"fields\">")?;
 
@@ -244,7 +202,16 @@ impl Processor {
         Ok(())
     }
 
-    fn write_doc<Body>(&self, out: &mut FmtWrite, body: Body) -> Result<()>
+    fn section_title(&self, out: &mut FmtWrite, ty: &str, name: &str) -> Result<()> {
+        write!(out, "<h1>")?;
+        write!(out, "{name}", name = name)?;
+        write!(out, "<span class=\"type\">{}</span>", ty)?;
+        write!(out, "</h1>")?;
+
+        Ok(())
+    }
+
+    pub fn write_doc<Body>(&self, out: &mut FmtWrite, body: Body) -> Result<()>
         where Body: FnOnce(&mut FmtWrite) -> Result<()>
     {
         write!(out, "<html>")?;
@@ -269,156 +236,12 @@ impl Processor {
         Ok(())
     }
 
-    fn write_stylesheets(&self) -> Result<()> {
-        if !self.out_path.is_dir() {
-            debug!("+dir: {}", self.out_path.display());
-            fs::create_dir_all(&self.out_path)?;
-        }
-
-        let normalize_css = self.out_path.join(NORMALIZE_CSS_NAME);
-
-        debug!("+css: {}", normalize_css.display());
-        let mut f = fs::File::create(normalize_css)?;
-        f.write_all(NORMALIZE_CSS)?;
-
-        let doc_css = self.out_path.join(DOC_CSS_NAME);
-
-        let content = self.themes.get(self.theme.as_str());
-
-        if let Some(content) = content {
-            debug!("+css: {}", doc_css.display());
-            let mut f = fs::File::create(doc_css)?;
-            f.write_all(content)?;
-        } else {
-            return Err(format!("no such theme: {}", self.theme).into());
-        }
-
-        Ok(())
-    }
-
-    fn write_index<'a, I>(&self, packages: I) -> Result<()>
-        where I: Iterator<Item = &'a RpVersionedPackage>
-    {
-        let mut out = String::new();
-
-        self.write_doc(&mut out, move |out| {
-                write!(out, "<ul>")?;
-
-                for package in packages {
-                    let name = format!("{}", package);
-                    let package = self.package(package);
-                    let url = format!("{}.{}", self.package_file(&package), self.ext());
-
-                    write!(out,
-                           "<li><a href=\"{url}\">{name}</a></li>",
-                           url = url,
-                           name = name)?;
-                }
-
-                write!(out, "</ul>")?;
-
-                Ok(())
-            })?;
-
-        let mut path = self.out_path.join(INDEX);
-        path.set_extension(EXT);
-
-        if let Some(parent) = path.parent() {
-            if !parent.is_dir() {
-                fs::create_dir_all(parent)?;
-            }
-        }
-
-        debug!("+index: {}", path.display());
-
-        let mut f = fs::File::create(path)?;
-        f.write_all(&out.into_bytes())?;
-
-        Ok(())
-    }
-
-    fn section_title(&self, out: &mut FmtWrite, ty: &str, name: &str) -> Result<()> {
-        write!(out, "<h1>")?;
-        write!(out, "{name}", name = name)?;
-        write!(out, "<span class=\"type\">{}</span>", ty)?;
-        write!(out, "</h1>")?;
-
-        Ok(())
-    }
-}
-
-pub struct Collector {
-    buffer: String,
-}
-
-impl Collecting for Collector {
-    type Processor = Processor;
-
-    fn new() -> Self {
-        Collector { buffer: String::new() }
-    }
-
-    fn into_bytes(self, processor: &Self::Processor) -> Result<Vec<u8>> {
-        let mut out = String::new();
-
-        processor.write_doc(&mut out, move |out| {
-                out.write_str(&self.buffer)?;
-                Ok(())
-            })?;
-
-        Ok(out.into_bytes())
-    }
-}
-
-impl FmtWrite for Collector {
-    fn write_str(&mut self, other: &str) -> ::std::result::Result<(), ::std::fmt::Error> {
-        self.buffer.write_str(other)
-    }
-}
-
-impl PackageProcessor for Processor {
-    type Out = Collector;
-
-    fn ext(&self) -> &str {
-        EXT
-    }
-
-    fn env(&self) -> &Environment {
-        &self.env
-    }
-
-    fn package_prefix(&self) -> &Option<RpPackage> {
-        &self.package_prefix
-    }
-
-    fn out_path(&self) -> &Path {
-        &self.out_path
-    }
-
-    fn version_package(input: &Version) -> String {
-        format!("{}", input).replace(Self::package_version_unsafe, "_")
-    }
-
-    fn default_process(&self, out: &mut Self::Out, type_id: &RpTypeId, _: &RpPos) -> Result<()> {
-        let type_id = type_id.clone();
-
-        write!(out, "<h1>unknown `{:?}`</h1>\n", &type_id)?;
-
-        Ok(())
-    }
-
-    fn resolve_full_path(&self, package: &RpPackage) -> Result<PathBuf> {
-        let mut full_path = self.out_path().join(self.package_file(package));
-        full_path.set_extension(self.ext());
-        Ok(full_path)
-    }
-
-    fn process_service(&self,
-                       out: &mut Self::Out,
-                       _: &RpTypeId,
-                       _: &RpPos,
-                       body: Rc<RpServiceBody>)
-                       -> Result<()> {
+    pub fn process_service(&self,
+                           out: &mut DocCollector,
+                           _: &RpTypeId,
+                           _: &RpPos,
+                           body: Rc<RpServiceBody>)
+                           -> Result<()> {
         write!(out,
                "<section id=\"{}\" class=\"section-service\">",
                body.name)?;
@@ -430,12 +253,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_enum(&self,
-                    out: &mut Self::Out,
-                    _: &RpTypeId,
-                    _: &RpPos,
-                    body: Rc<RpEnumBody>)
-                    -> Result<()> {
+    pub fn process_enum(&self,
+                        out: &mut DocCollector,
+                        _: &RpTypeId,
+                        _: &RpPos,
+                        body: Rc<RpEnumBody>)
+                        -> Result<()> {
         write!(out, "<section id=\"{}\" class=\"section-enum\">", body.name)?;
 
         self.section_title(out, "enum", &body.name)?;
@@ -446,12 +269,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_interface(&self,
-                         out: &mut Self::Out,
-                         type_id: &RpTypeId,
-                         _: &RpPos,
-                         body: Rc<RpInterfaceBody>)
-                         -> Result<()> {
+    pub fn process_interface(&self,
+                             out: &mut DocCollector,
+                             type_id: &RpTypeId,
+                             _: &RpPos,
+                             body: Rc<RpInterfaceBody>)
+                             -> Result<()> {
         write!(out,
                "<section id=\"{}\" class=\"section-interface\">",
                body.name)?;
@@ -473,12 +296,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_type(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    _: &RpPos,
-                    body: Rc<RpTypeBody>)
-                    -> Result<()> {
+    pub fn process_type(&self,
+                        out: &mut DocCollector,
+                        type_id: &RpTypeId,
+                        _: &RpPos,
+                        body: Rc<RpTypeBody>)
+                        -> Result<()> {
         write!(out, "<section id=\"{}\" class=\"section-type\">", body.name)?;
 
         self.section_title(out, "type", &body.name)?;
@@ -489,12 +312,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_tuple(&self,
-                     out: &mut Self::Out,
-                     type_id: &RpTypeId,
-                     _: &RpPos,
-                     body: Rc<RpTupleBody>)
-                     -> Result<()> {
+    pub fn process_tuple(&self,
+                         out: &mut DocCollector,
+                         type_id: &RpTypeId,
+                         _: &RpPos,
+                         body: Rc<RpTupleBody>)
+                         -> Result<()> {
         write!(out,
                "<section id=\"{}\" class=\"section-tuple\">",
                body.name)?;
@@ -508,13 +331,22 @@ impl PackageProcessor for Processor {
     }
 }
 
-impl Backend for Processor {
-    fn process(&self) -> Result<()> {
-        let files = self.populate_files()?;
-        self.write_stylesheets()?;
-        self.write_index(files.keys().map(|p| *p))?;
-        self.write_files(files)?;
-        Ok(())
+impl PackageUtils for DocBackend {
+    fn version_package(input: &Version) -> String {
+        format!("{}", input).replace(Self::package_version_unsafe, "_")
+    }
+
+    fn package_prefix(&self) -> &Option<RpPackage> {
+        &self.package_prefix
+    }
+}
+
+impl Backend for DocBackend {
+    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
+        Ok(Box::new(DocCompiler {
+            out_path: options.out_path,
+            processor: self,
+        }))
     }
 
     fn verify(&self) -> Result<Vec<Error>> {

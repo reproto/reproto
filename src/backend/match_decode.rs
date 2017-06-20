@@ -1,16 +1,10 @@
 //! # Helper trait to implement match-based decoding
 
-use core::*;
-use super::container::Container;
-use super::converter::Converter;
-use super::decode::Decode;
-use super::errors::*;
-use super::value_builder::*;
-use super::variables::Variables;
+use super::*;
 
 pub trait MatchDecode
     where Self: ValueBuilder,
-          Self: Decode,
+          Self: BaseDecode,
           Self: Converter
 {
     fn match_value(&self,
@@ -75,7 +69,8 @@ pub trait MatchDecode
             let mut variables = Variables::new();
             variables.insert(variable.clone(), &result.variable.ty);
 
-            let decode = self.decode(type_id, result.variable.pos(), &result.variable.ty, data)?;
+            let decode =
+                self.base_decode(type_id, result.variable.pos(), &result.variable.ty, data)?;
 
             let result_value = self.value(&new_env(&type_id.package,
                                 &variables,

@@ -1,28 +1,25 @@
-use backend::errors::*;
-use core::*;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
-use super::collecting::Collecting;
-use super::environment::Environment;
+use super::*;
 
-pub trait PackageProcessor
-    where Self: Sized
+pub trait PackageProcessor<'a>
+    where Self: 'a + Sized
 {
-    type Out: Collecting<Processor = Self>;
+    type Out: Collecting<'a, Processor = Self>;
 
     fn ext(&self) -> &str;
 
     fn env(&self) -> &Environment;
 
-    fn package_prefix(&self) -> &Option<RpPackage>;
-
     fn out_path(&self) -> &Path;
 
     fn default_process(&self, out: &mut Self::Out, type_id: &RpTypeId, pos: &RpPos) -> Result<()>;
+
+    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage;
 
     fn process_interface(&self,
                          out: &mut Self::Out,
@@ -73,10 +70,10 @@ pub trait PackageProcessor
         self.do_populate_files(|_, _| Ok(()))
     }
 
-    fn do_populate_files<'a, F>(&'a self,
+    fn do_populate_files<'b, F>(&'b self,
                                 mut callback: F)
                                 -> Result<BTreeMap<&RpVersionedPackage, Self::Out>>
-        where F: FnMut(&'a RpTypeId, &'a RpLoc<RpDecl>) -> Result<()>
+        where F: FnMut(&'b RpTypeId, &'b RpLoc<RpDecl>) -> Result<()>
     {
         let mut files = BTreeMap::new();
 
@@ -108,33 +105,6 @@ pub trait PackageProcessor
         Ok(files)
     }
 
-    /// Identify if a character is unsafe for use in a package name.
-    fn package_version_unsafe(c: char) -> bool {
-        match c {
-            '.' | '-' | '~' => true,
-            _ => false,
-        }
-    }
-
-    /// Default strategy for building the version package.
-    fn version_package(input: &Version) -> String {
-        format!("_{}", input).replace(Self::package_version_unsafe, "_")
-    }
-
-    /// Build the full package of a versioned package.
-    ///
-    /// This includes the prefixed configured in `self.options`, if specified.
-    ///
-    /// This uses a relatively safe strategy for encoding the version number. This can be adjusted
-    /// by overriding `version_package`.
-    fn package(&self, package: &RpVersionedPackage) -> RpPackage {
-        self.package_prefix()
-            .clone()
-            .map(|prefix| prefix.join_versioned(package))
-            .unwrap_or_else(|| package.clone())
-            .into_package(Self::version_package)
-    }
-
     fn resolve_full_path(&self, package: &RpPackage) -> Result<PathBuf> {
         let full_path = self.out_path().to_owned();
         let mut full_path = package.parts.iter().fold(full_path, |a, b| a.join(b));
@@ -157,7 +127,7 @@ pub trait PackageProcessor
 
     fn write_files(&self, files: BTreeMap<&RpVersionedPackage, Self::Out>) -> Result<()> {
         for (package, out) in files {
-            let package = self.package(package);
+            let package = self.processed_package(package);
             let full_path = self.setup_module_path(&package)?;
 
             debug!("+module: {}", full_path.display());

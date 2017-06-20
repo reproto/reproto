@@ -1,5 +1,4 @@
-use backend::*;
-use super::processor::*;
+use super::*;
 
 pub struct Module {
 }
@@ -11,7 +10,7 @@ impl Module {
 }
 
 impl Listeners for Module {
-    fn configure(&self, options: &mut ProcessorOptions) -> Result<()> {
+    fn configure(&self, options: &mut JavaOptions) -> Result<()> {
         options.immutable = false;
         Ok(())
     }

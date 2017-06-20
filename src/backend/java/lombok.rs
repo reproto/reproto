@@ -1,7 +1,5 @@
 /// Module that adds lombok annotations to generated classes.
-use backend::*;
-use codeviz::java::*;
-use super::processor::*;
+use super::*;
 
 pub struct Module {
     data: ClassType,
@@ -14,7 +12,7 @@ impl Module {
 }
 
 impl Listeners for Module {
-    fn configure(&self, options: &mut ProcessorOptions) -> Result<()> {
+    fn configure(&self, options: &mut JavaOptions) -> Result<()> {
         // lombok builds these automatically.
         options.build_getters = false;
         options.build_constructor = false;

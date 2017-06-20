@@ -11,8 +11,6 @@ fn setup_module(module: &str) -> Result<Box<processor::Listeners>> {
 }
 
 pub fn resolve(options: Options, env: Environment) -> Result<processor::Processor> {
-    let out_path = options.out_path;
-
     let package_prefix = options.package_prefix
         .clone()
         .map(|prefix| RpPackage::new(prefix.split(".").map(ToOwned::to_owned).collect()));
@@ -29,9 +27,5 @@ pub fn resolve(options: Options, env: Environment) -> Result<processor::Processo
         listener.configure(&mut options)?;
     }
 
-    return Ok(processor::Processor::new(options,
-                                        env,
-                                        out_path,
-                                        package_prefix,
-                                        Box::new(listeners)));
+    return Ok(processor::Processor::new(options, env, package_prefix, Box::new(listeners)));
 }

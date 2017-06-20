@@ -1,9 +1,7 @@
-use codeviz::java::*;
-use super::models::*;
-use super::processor::{Processor, ProcessorOptions};
+use super::*;
 
 pub struct ClassAdded<'a> {
-    pub processor: &'a Processor,
+    pub backend: &'a JavaBackend,
     pub type_id: &'a RpTypeId,
     pub fields: &'a Vec<JavaField<'a>>,
     pub class_type: &'a ClassType,
@@ -39,7 +37,7 @@ pub struct SubTypeAdded<'a> {
 }
 
 pub trait Listeners {
-    fn configure(&self, _options: &mut ProcessorOptions) -> Result<()> {
+    fn configure(&self, _: &mut JavaOptions) -> Result<()> {
         Ok(())
     }
 
@@ -66,9 +64,9 @@ pub trait Listeners {
 
 /// A vector of listeners is a valid listener.
 impl Listeners for Vec<Box<Listeners>> {
-    fn configure(&self, processor: &mut ProcessorOptions) -> Result<()> {
+    fn configure(&self, options: &mut JavaOptions) -> Result<()> {
         for l in self {
-            l.configure(processor)?;
+            l.configure(options)?;
         }
 
         Ok(())

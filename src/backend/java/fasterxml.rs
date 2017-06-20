@@ -1,12 +1,5 @@
 /// Module that adds fasterxml annotations to generated classes.
-use codeviz::java::*;
-use super::converter::Converter;
-use super::decode::Decode;
-use super::match_decode::MatchDecode;
-use super::models::*;
-use super::processor::*;
-use super::super::environment::Environment;
-use super::value_builder::ValueBuilder;
+use super::*;
 
 pub struct Module {
     override_: ClassType,
@@ -324,7 +317,7 @@ impl Module {
                           match_decl: &RpMatchDecl,
                           model: &ClassSpec,
                           class_type: &ClassType,
-                          processor: &Processor)
+                          backend: &JavaBackend)
                           -> Result<ClassSpec> {
         // TODO: mostly common code for setting up a deserializer with tuple_deserializer.
         let mut deserializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
@@ -345,7 +338,7 @@ impl Module {
         deserialize.returns(&class_type);
 
         let match_decode = FasterXmlMatchDecode {
-            processor: processor,
+            backend: backend,
             module: self,
         };
 
@@ -374,7 +367,7 @@ impl Module {
                                 &event.match_decl,
                                 &model,
                                 &event.class_type,
-                                &event.processor)?;
+                                &event.backend)?;
 
         let deserializer_type =
             Type::class(&event.class_type.package,
@@ -485,7 +478,7 @@ impl Listeners for Module {
 }
 
 struct FasterXmlMatchDecode<'a> {
-    processor: &'a Processor,
+    backend: &'a JavaBackend,
     module: &'a Module,
 }
 
@@ -525,14 +518,14 @@ impl<'a> FasterXmlMatchDecode<'a> {
     }
 }
 
-impl<'a> Decode for FasterXmlMatchDecode<'a> {
-    fn decode(&self,
-              type_id: &RpTypeId,
-              pos: &RpPos,
-              ty: &RpType,
-              input: &Self::Stmt)
-              -> Result<Self::Stmt> {
-        let ty = self.processor.into_java_type(pos, type_id, ty)?;
+impl<'a> BaseDecode for FasterXmlMatchDecode<'a> {
+    fn base_decode(&self,
+                   type_id: &RpTypeId,
+                   pos: &RpPos,
+                   ty: &RpType,
+                   input: &Self::Stmt)
+                   -> Result<Self::Stmt> {
+        let ty = self.backend.into_java_type(pos, type_id, ty)?;
         let (_, reader) = self.module.deserialize_method_for_type(&ty, input)?;
         Ok(reader)
     }
@@ -567,7 +560,7 @@ impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
                   result: Statement,
                   value: &RpByTypeMatch)
                   -> Result<Elements> {
-        let variable_ty = self.processor
+        let variable_ty = self.backend
             .into_java_type(value.variable.pos(), type_id, &value.variable.ty)?;
 
         let mut value_body = Elements::new();
@@ -593,60 +586,60 @@ impl<'a> Converter for FasterXmlMatchDecode<'a> {
     }
 
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
-        self.processor.convert_type(pos, type_id)
+        self.backend.convert_type(pos, type_id)
     }
 }
 
 impl<'a> ValueBuilder for FasterXmlMatchDecode<'a> {
     fn env(&self) -> &Environment {
-        self.processor.env()
+        self.backend.env()
     }
 
     fn identifier(&self, identifier: &str) -> Result<Self::Stmt> {
-        self.processor.identifier(identifier)
+        self.backend.identifier(identifier)
     }
 
     fn optional_empty(&self) -> Result<Self::Stmt> {
-        self.processor.optional_empty()
+        self.backend.optional_empty()
     }
 
     fn constant(&self, ty: Self::Type) -> Result<Self::Stmt> {
-        self.processor.constant(ty)
+        self.backend.constant(ty)
     }
 
     fn instance(&self, ty: Self::Type, arguments: Vec<Self::Stmt>) -> Result<Self::Stmt> {
-        self.processor.instance(ty, arguments)
+        self.backend.instance(ty, arguments)
     }
 
     fn number(&self, number: &RpNumber) -> Result<Self::Stmt> {
-        self.processor.number(number)
+        self.backend.number(number)
     }
 
     fn signed(&self, number: &RpNumber, size: &Option<usize>) -> Result<Self::Stmt> {
-        self.processor.signed(number, size)
+        self.backend.signed(number, size)
     }
 
     fn unsigned(&self, number: &RpNumber, size: &Option<usize>) -> Result<Self::Stmt> {
-        self.processor.unsigned(number, size)
+        self.backend.unsigned(number, size)
     }
 
     fn float(&self, number: &RpNumber) -> Result<Self::Stmt> {
-        self.processor.float(number)
+        self.backend.float(number)
     }
 
     fn double(&self, number: &RpNumber) -> Result<Self::Stmt> {
-        self.processor.double(number)
+        self.backend.double(number)
     }
 
     fn boolean(&self, boolean: &bool) -> Result<Self::Stmt> {
-        self.processor.boolean(boolean)
+        self.backend.boolean(boolean)
     }
 
     fn string(&self, string: &str) -> Result<Self::Stmt> {
-        self.processor.string(string)
+        self.backend.string(string)
     }
 
     fn array(&self, values: Vec<Self::Stmt>) -> Result<Self::Stmt> {
-        self.processor.array(values)
+        self.backend.array(values)
     }
 }

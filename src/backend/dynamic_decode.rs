@@ -1,13 +1,7 @@
 //! # Helper trait for building a dynamic-language decode method
 
 use codeviz::common::Element;
-use core::*;
-use super::container::Container;
-use super::converter::Converter;
-use super::decode::Decode;
-use super::dynamic_converter::DynamicConverter;
-use super::errors::*;
-use super::match_decode::MatchDecode;
+use super::*;
 
 pub trait DynamicDecode
     where Self: Converter,
@@ -111,15 +105,15 @@ pub trait DynamicDecode
 }
 
 /// Dynamic decode is a valid decoding mechanism
-impl<T> Decode for T
+impl<T> BaseDecode for T
     where T: DynamicDecode
 {
-    fn decode(&self,
-              type_id: &RpTypeId,
-              pos: &RpPos,
-              ty: &RpType,
-              input: &Self::Stmt)
-              -> Result<Self::Stmt> {
+    fn base_decode(&self,
+                   type_id: &RpTypeId,
+                   pos: &RpPos,
+                   ty: &RpType,
+                   input: &Self::Stmt)
+                   -> Result<Self::Stmt> {
         DynamicDecode::decode(self, type_id, pos, ty, input)
     }
 }

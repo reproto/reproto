@@ -1,12 +1,11 @@
 use linked_hash_map::{self, LinkedHashMap};
 use parser;
-use reproto_core::*;
 use reproto_parser::ast::IntoModel;
 use reproto_repository::Resolver;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
-use super::errors::*;
+use super::*;
 
 pub type InitFields = HashMap<String, RpLoc<RpFieldInit>>;
 

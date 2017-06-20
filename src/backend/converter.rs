@@ -2,9 +2,8 @@
 
 use codeviz::common::Element;
 use codeviz::common::VariableFormat;
-use core::*;
-use super::container::Container;
-use super::errors::*;
+use super::*;
+use super::Container;
 
 pub trait Converter {
     type Elements: Clone + Into<Element<Self::Variable>> + Container<Self::Variable>;

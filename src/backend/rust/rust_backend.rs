@@ -1,52 +1,10 @@
-use backend::*;
-use backend::collecting::Collecting;
 use backend::for_context::ForContext;
-use backend::package_processor::PackageProcessor;
-use codeviz::rust::*;
-use core::*;
-use errors::*;
 use naming::{self, FromNaming};
-use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
 use std::rc::Rc;
+use super::*;
 
-const MOD: &str = "mod";
-const EXT: &str = "rs";
-const RUST_CONTEXT: &str = "rust";
-
-pub trait Listeners {
-    fn configure(&self, _processor: &mut ProcessorOptions) -> Result<()> {
-        Ok(())
-    }
-}
-
-/// A vector of listeners is a valid listener.
-impl Listeners for Vec<Box<Listeners>> {
-    fn configure(&self, processor: &mut ProcessorOptions) -> Result<()> {
-        for listeners in self {
-            listeners.configure(processor)?;
-        }
-
-        Ok(())
-    }
-}
-
-pub struct ProcessorOptions {
-}
-
-impl ProcessorOptions {
-    pub fn new() -> ProcessorOptions {
-        ProcessorOptions {}
-    }
-}
-
-pub struct Processor {
-    env: Environment,
-    out_path: PathBuf,
+pub struct RustBackend {
+    pub env: Environment,
     id_converter: Option<Box<naming::Naming>>,
     package_prefix: Option<RpPackage>,
     listeners: Box<Listeners>,
@@ -55,17 +13,15 @@ pub struct Processor {
     json_value: ImportedName,
 }
 
-impl Processor {
-    pub fn new(_options: ProcessorOptions,
+impl RustBackend {
+    pub fn new(_: RustOptions,
                env: Environment,
-               out_path: PathBuf,
                id_converter: Option<Box<naming::Naming>>,
                package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
-               -> Processor {
-        Processor {
+               -> RustBackend {
+        RustBackend {
             env: env,
-            out_path: out_path,
             id_converter: id_converter,
             package_prefix: package_prefix,
             listeners: listeners,
@@ -174,114 +130,12 @@ impl Processor {
         Ok(elements.into())
     }
 
-    fn write_mod_files(&self, files: &BTreeMap<&RpVersionedPackage, FileSpec>) -> Result<()> {
-        let mut packages: BTreeMap<PathBuf, BTreeSet<String>> = BTreeMap::new();
-        let mut root_names = BTreeSet::new();
-
-        for (key, _) in files {
-            let mut current = self.out_path().to_owned();
-
-            let mut it = self.package(key).parts.into_iter().peekable();
-
-            if let Some(root) = it.peek() {
-                root_names.insert(root.to_owned());
-            }
-
-            while let Some(part) = it.next() {
-                current = current.join(part);
-
-                if let Some(next) = it.peek() {
-                    let mut full_path = current.join(MOD);
-                    full_path.set_extension(self.ext());
-
-                    packages.entry(full_path)
-                        .or_insert_with(BTreeSet::new)
-                        .insert(next.clone());
-                }
-            }
-        }
-
-        let mut root_mod = self.out_path().join(MOD);
-        root_mod.set_extension(self.ext());
-        packages.insert(root_mod, root_names);
-
-        for (full_path, children) in packages {
-            if let Some(parent) = full_path.parent() {
-                if !parent.is_dir() {
-                    debug!("+dir: {}", parent.display());
-                    fs::create_dir_all(parent)?;
-                }
-            }
-
-            if !full_path.is_file() {
-                debug!("+mod: {}", full_path.display());
-                let mut f = File::create(full_path)?;
-
-                for child in children {
-                    writeln!(f, "pub mod {};", child)?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl Backend for Processor {
-    fn process(&self) -> Result<()> {
-        let files = self.populate_files()?;
-        self.write_mod_files(&files)?;
-        self.write_files(files)
-    }
-
-    fn verify(&self) -> Result<Vec<Error>> {
-        Ok(vec![])
-    }
-}
-
-impl Collecting for FileSpec {
-    type Processor = Processor;
-
-    fn new() -> Self {
-        FileSpec::new()
-    }
-
-    fn into_bytes(self, _: &Self::Processor) -> Result<Vec<u8>> {
-        let mut out = String::new();
-        self.format(&mut out)?;
-        Ok(out.into_bytes())
-    }
-}
-
-impl PackageProcessor for Processor {
-    type Out = FileSpec;
-
-    fn ext(&self) -> &str {
-        EXT
-    }
-
-    fn env(&self) -> &Environment {
-        &self.env
-    }
-
-    fn package_prefix(&self) -> &Option<RpPackage> {
-        &self.package_prefix
-    }
-
-    fn out_path(&self) -> &Path {
-        &self.out_path
-    }
-
-    fn default_process(&self, _out: &mut Self::Out, _type_id: &RpTypeId, _: &RpPos) -> Result<()> {
-        Ok(())
-    }
-
-    fn process_tuple(&self,
-                     out: &mut Self::Out,
-                     type_id: &RpTypeId,
-                     _: &RpPos,
-                     body: Rc<RpTupleBody>)
-                     -> Result<()> {
+    pub fn process_tuple(&self,
+                         out: &mut FileSpec,
+                         type_id: &RpTypeId,
+                         _: &RpPos,
+                         body: Rc<RpTupleBody>)
+                         -> Result<()> {
         let mut fields = Statement::new();
 
         for field in &body.fields {
@@ -296,12 +150,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_enum(&self,
-                    out: &mut Self::Out,
-                    _: &RpTypeId,
-                    _: &RpPos,
-                    body: Rc<RpEnumBody>)
-                    -> Result<()> {
+    pub fn process_enum(&self,
+                        out: &mut FileSpec,
+                        _: &RpTypeId,
+                        _: &RpPos,
+                        body: Rc<RpEnumBody>)
+                        -> Result<()> {
         let mut enum_spec = EnumSpec::new(&body.name);
         enum_spec.public();
 
@@ -313,12 +167,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_type(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    _: &RpPos,
-                    body: Rc<RpTypeBody>)
-                    -> Result<()> {
+    pub fn process_type(&self,
+                        out: &mut FileSpec,
+                        type_id: &RpTypeId,
+                        _: &RpPos,
+                        body: Rc<RpTypeBody>)
+                        -> Result<()> {
         let mut fields = Elements::new();
 
         for field in &body.fields {
@@ -339,12 +193,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_interface(&self,
-                         out: &mut Self::Out,
-                         type_id: &RpTypeId,
-                         _: &RpPos,
-                         body: Rc<RpInterfaceBody>)
-                         -> Result<()> {
+    pub fn process_interface(&self,
+                             out: &mut FileSpec,
+                             type_id: &RpTypeId,
+                             _: &RpPos,
+                             body: Rc<RpInterfaceBody>)
+                             -> Result<()> {
         let mut enum_spec = EnumSpec::new(&body.name);
         enum_spec.public();
 
@@ -378,5 +232,38 @@ impl PackageProcessor for Processor {
         out.push(enum_spec);
 
         Ok(())
+    }
+}
+
+impl<'a> Collecting<'a> for FileSpec {
+    type Processor = RustCompiler<'a>;
+
+    fn new() -> Self {
+        FileSpec::new()
+    }
+
+    fn into_bytes(self, _: &Self::Processor) -> Result<Vec<u8>> {
+        let mut out = String::new();
+        self.format(&mut out)?;
+        Ok(out.into_bytes())
+    }
+}
+
+impl PackageUtils for RustBackend {
+    fn package_prefix(&self) -> &Option<RpPackage> {
+        &self.package_prefix
+    }
+}
+
+impl Backend for RustBackend {
+    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
+        Ok(Box::new(RustCompiler {
+            out_path: options.out_path,
+            backend: self,
+        }))
+    }
+
+    fn verify(&self) -> Result<Vec<Error>> {
+        Ok(vec![])
     }
 }

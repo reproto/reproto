@@ -1,5 +1,4 @@
 use backend;
-use backend::environment::Environment;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::*;
 use errors::*;
@@ -40,6 +39,14 @@ pub struct CompileOptions {
 }
 
 pub fn compile_options<'a, 'b>(name: &str) -> App<'a, 'b> {
+    shared_options(name).arg(Arg::with_name("out")
+        .long("out")
+        .short("o")
+        .takes_value(true)
+        .help("Output directory."))
+}
+
+pub fn shared_options<'a, 'b>(name: &str) -> App<'a, 'b> {
     SubCommand::with_name(name)
         .arg(Arg::with_name("backend")
             .long("backend")
@@ -61,11 +68,6 @@ pub fn compile_options<'a, 'b>(name: &str) -> App<'a, 'b> {
             .multiple(true)
             .number_of_values(1)
             .help("Paths to look for definitions."))
-        .arg(Arg::with_name("out")
-            .long("out")
-            .short("o")
-            .takes_value(true)
-            .help("Output directory."))
         .arg(Arg::with_name("id-converter")
             .long("id-converter")
             .takes_value(true)
@@ -108,7 +110,7 @@ fn parse_package(input: &str) -> Result<RpRequiredPackage> {
 
 fn setup_compiler<'a>
     (matches: &'a ArgMatches)
-     -> Result<(Vec<&'a Path>, Vec<RpRequiredPackage>, Environment, Options, &'a str)> {
+     -> Result<(Vec<&'a Path>, Vec<RpRequiredPackage>, backend::Environment, Options, &'a str)> {
     let paths: Vec<::std::path::PathBuf> = matches.values_of("path")
         .into_iter()
         .flat_map(|it| it)
@@ -117,9 +119,6 @@ fn setup_compiler<'a>
         .collect();
 
     let backend = matches.value_of("backend").ok_or("--backend <backend> is required")?;
-    let out_path = matches.value_of("out").ok_or("--out <dir> is required")?;
-
-    let out_path = Path::new(&out_path);
 
     let package_prefix = matches.value_of("package-prefix").map(ToOwned::to_owned);
 
@@ -133,7 +132,6 @@ fn setup_compiler<'a>
     };
 
     let options = Options {
-        out_path: out_path.to_path_buf(),
         package_prefix: package_prefix,
         id_converter: id_converter,
         modules: modules,
@@ -154,7 +152,7 @@ fn setup_compiler<'a>
         }
     }
 
-    let env = Environment::new(Box::new(Resolvers::new(resolvers)));
+    let env = backend::Environment::new(Box::new(Resolvers::new(resolvers)));
 
     let files: Vec<&Path> = matches.values_of("file")
         .into_iter()
@@ -214,8 +212,13 @@ fn do_compile(matches: &ArgMatches) -> Result<Box<backend::Backend>> {
 
 pub fn compile(matches: &ArgMatches) -> Result<()> {
     let backend = do_compile(matches)?;
-    backend.process()?;
-    Ok(())
+
+    let out_path = matches.value_of("out").ok_or("--out <dir> is required")?;
+    let out_path = Path::new(&out_path);
+
+    let compiler = backend.compiler(backend::CompilerOptions { out_path: out_path.to_owned() })?;
+
+    compiler.compile()
 }
 
 pub fn verify(matches: &ArgMatches) -> Result<()> {
@@ -233,6 +236,6 @@ pub fn verify(matches: &ArgMatches) -> Result<()> {
 pub fn commands<'a, 'b>() -> Vec<App<'a, 'b>> {
     let mut commands = Vec::new();
     commands.push(compile_options("compile").about("Compile .reproto declarations"));
-    commands.push(compile_options("verify").about("Verify .reproto declarations"));
+    commands.push(shared_options("verify").about("Verify .reproto declarations"));
     commands
 }

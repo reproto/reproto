@@ -10,11 +10,7 @@
 //!
 //! In this example, the second field is a `float`, and the third field is a `double`.
 
-use core::*;
-use super::converter::Converter;
-use super::environment::Environment;
-use super::errors::*;
-use super::variables::*;
+use super::*;
 
 pub struct ValueBuilderEnv<'a> {
     package: &'a RpVersionedPackage,

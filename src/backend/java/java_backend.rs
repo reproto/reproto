@@ -1,57 +1,10 @@
-use backend::*;
 use backend::for_context::ForContext;
-use codeviz::java::*;
 use naming::{self, FromNaming};
-use std::fs;
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
-use super::converter::Converter;
-pub use super::listeners::*;
-use super::models::*;
-use super::value_builder::*;
-use super::variables::Variables;
+use super::*;
 
-const JAVA_CONTEXT: &str = "java";
-
-pub struct ProcessorOptions {
-    /// Should fields be nullable?
-    pub nullable: bool,
-    /// Should the type be immutable?
-    pub immutable: bool,
-    /// Build setters?
-    pub build_setters: bool,
-    /// Build getters?
-    pub build_getters: bool,
-    /// Build a constructor?
-    pub build_constructor: bool,
-    /// Build a Object#hashCode() implementation.
-    pub build_hash_code: bool,
-    /// Build a Object#equals() implementation.
-    pub build_equals: bool,
-    /// Build a Object#toString() implementation.
-    pub build_to_string: bool,
-}
-
-impl ProcessorOptions {
-    pub fn new() -> ProcessorOptions {
-        ProcessorOptions {
-            nullable: false,
-            immutable: true,
-            build_setters: true,
-            build_getters: true,
-            build_constructor: true,
-            build_hash_code: true,
-            build_equals: true,
-            build_to_string: true,
-        }
-    }
-}
-
-pub struct Processor {
-    options: ProcessorOptions,
-    env: Environment,
-    out_path: PathBuf,
+pub struct JavaBackend {
+    options: JavaOptions,
+    pub env: Environment,
     listeners: Box<Listeners>,
     package_prefix: Option<RpPackage>,
     snake_to_upper_camel: Box<naming::Naming>,
@@ -70,17 +23,15 @@ pub struct Processor {
     immutable_list: ClassType,
 }
 
-impl Processor {
-    pub fn new(options: ProcessorOptions,
+impl JavaBackend {
+    pub fn new(options: JavaOptions,
                env: Environment,
-               out_path: PathBuf,
                package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
-               -> Processor {
-        Processor {
+               -> JavaBackend {
+        JavaBackend {
             options: options,
             env: env,
-            out_path: out_path,
             package_prefix: package_prefix,
             snake_to_upper_camel: naming::SnakeCase::new().to_upper_camel(),
             snake_to_lower_camel: naming::SnakeCase::new().to_lower_camel(),
@@ -123,7 +74,7 @@ impl Processor {
     /// Build the java package of a given package.
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
-    fn java_package(&self, pkg: &RpVersionedPackage) -> RpPackage {
+    pub fn java_package(&self, pkg: &RpVersionedPackage) -> RpPackage {
         self.package_prefix
             .clone()
             .map(|prefix| prefix.join_versioned(pkg))
@@ -667,7 +618,7 @@ impl Processor {
 
         self.listeners
             .class_added(&mut ClassAdded {
-                processor: self,
+                backend: self,
                 type_id: type_id,
                 fields: &fields,
                 class_type: &class_type,
@@ -754,7 +705,7 @@ impl Processor {
 
             self.listeners
                 .class_added(&mut ClassAdded {
-                    processor: self,
+                    backend: self,
                     type_id: &type_id,
                     fields: &fields,
                     class_type: &class_type,
@@ -836,26 +787,7 @@ impl Processor {
         Ok(self.new_field_spec(&field_type, &ident))
     }
 
-    fn process_files<F>(&self, mut consumer: F) -> Result<()>
-        where F: FnMut(PathBuf, &RpTypeId, &RpDecl) -> Result<()>
-    {
-        let root_dir = &self.out_path;
-
-        // Process all types discovered so far.
-        for (ref type_id, ref decl) in &self.env.decls {
-            let out_dir = self.java_package(&type_id.package)
-                .parts
-                .iter()
-                .fold(root_dir.clone(), |current, next| current.join(next));
-
-            let full_path = out_dir.join(format!("{}.java", decl.name()));
-            consumer(full_path, type_id, decl)?;
-        }
-
-        Ok(())
-    }
-
-    fn build_file_spec(&self, type_id: &RpTypeId, decl: &RpDecl) -> Result<FileSpec> {
+    pub fn build_file_spec(&self, type_id: &RpTypeId, decl: &RpDecl) -> Result<FileSpec> {
         match *decl {
             RpDecl::Interface(ref interface) => self.process_interface(type_id, interface),
             RpDecl::Type(ref ty) => self.process_type(type_id, ty),
@@ -866,48 +798,20 @@ impl Processor {
     }
 }
 
-impl Backend for Processor {
-    fn process(&self) -> Result<()> {
-        self.process_files(|full_path, type_id, decl| {
-            debug!("+class: {}", full_path.display());
-
-            if let Some(out_dir) = full_path.parent() {
-                if !out_dir.is_dir() {
-                    debug!("+dir: {}", out_dir.display());
-                    fs::create_dir_all(&out_dir)?;
-                }
-            }
-
-            let file_spec = self.build_file_spec(type_id, decl)?;
-
-            let mut out = String::new();
-            file_spec.format(&mut out)?;
-
-            let mut f = File::create(full_path)?;
-            f.write_all(&out.into_bytes())?;
-            f.flush()?;
-
-            Ok(())
-        })
+impl Backend for JavaBackend {
+    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
+        Ok(Box::new(JavaCompiler {
+            out_path: options.out_path,
+            backend: self,
+        }))
     }
 
     fn verify(&self) -> Result<Vec<Error>> {
-        let mut errors = Vec::new();
-
-        self.process_files(|_, type_id, decl| {
-                match self.build_file_spec(type_id, decl) {
-                    Err(e) => errors.push(e),
-                    _ => {}
-                };
-
-                Ok(())
-            })?;
-
-        Ok(errors)
+        Ok(vec![])
     }
 }
 
-impl Converter for Processor {
+impl Converter for JavaBackend {
     type Type = Type;
     type Stmt = Statement;
     type Elements = Elements;
@@ -923,7 +827,7 @@ impl Converter for Processor {
 }
 
 /// Build values in python.
-impl ValueBuilder for Processor {
+impl ValueBuilder for JavaBackend {
     fn env(&self) -> &Environment {
         &self.env
     }

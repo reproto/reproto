@@ -1,6 +1,4 @@
 use backend::*;
-use backend::collecting::Collecting;
-use backend::package_processor::PackageProcessor;
 use core::*;
 use errors::*;
 use serde_json;
@@ -37,7 +35,6 @@ impl Listeners for Vec<Box<Listeners>> {
 
 pub struct Processor {
     env: Environment,
-    out_path: PathBuf,
     package_prefix: Option<RpPackage>,
     listeners: Box<Listeners>,
 }
@@ -47,13 +44,11 @@ const EXT: &str = "json";
 impl Processor {
     pub fn new(_options: ProcessorOptions,
                env: Environment,
-               out_path: PathBuf,
                package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
                -> Processor {
         Processor {
             env: env,
-            out_path: out_path,
             package_prefix: package_prefix,
             listeners: listeners,
         }
@@ -68,8 +63,8 @@ pub struct Collector {
     buffer: String,
 }
 
-impl Collecting for Collector {
-    type Processor = Processor;
+impl<'a> Collecting<'a> for Collector {
+    type Processor = JsonCompiler<'a>;
 
     fn new() -> Self {
         Collector { buffer: String::new() }
@@ -86,7 +81,26 @@ impl FmtWrite for Collector {
     }
 }
 
-impl PackageProcessor for Processor {
+impl PackageUtils for Processor {
+    fn package_prefix(&self) -> &Option<RpPackage> {
+        &self.package_prefix
+    }
+}
+
+pub struct JsonCompiler<'a> {
+    out_path: PathBuf,
+    processor: &'a Processor,
+}
+
+impl<'a> Compiler<'a> for JsonCompiler<'a> {
+    fn compile(&self) -> Result<()> {
+        let files = self.populate_files()?;
+        self.write_files(files)?;
+        Ok(())
+    }
+}
+
+impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     type Out = Collector;
 
     fn ext(&self) -> &str {
@@ -94,15 +108,15 @@ impl PackageProcessor for Processor {
     }
 
     fn env(&self) -> &Environment {
-        &self.env
-    }
-
-    fn package_prefix(&self) -> &Option<RpPackage> {
-        &self.package_prefix
+        &self.processor.env
     }
 
     fn out_path(&self) -> &Path {
         &self.out_path
+    }
+
+    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
+        self.processor.package(package)
     }
 
     fn default_process(&self, _: &mut Self::Out, _: &RpTypeId, _: &RpPos) -> Result<()> {
@@ -110,7 +124,7 @@ impl PackageProcessor for Processor {
     }
 
     fn resolve_full_path(&self, package: &RpPackage) -> Result<PathBuf> {
-        let mut full_path = self.out_path().join(self.package_file(package));
+        let mut full_path = self.out_path().join(self.processor.package_file(package));
         full_path.set_extension(self.ext());
         Ok(full_path)
     }
@@ -167,10 +181,11 @@ impl PackageProcessor for Processor {
 }
 
 impl Backend for Processor {
-    fn process(&self) -> Result<()> {
-        let files = self.populate_files()?;
-        self.write_files(files)?;
-        Ok(())
+    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
+        Ok(Box::new(JsonCompiler {
+            out_path: options.out_path,
+            processor: self,
+        }))
     }
 
     fn verify(&self) -> Result<Vec<Error>> {

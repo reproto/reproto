@@ -1,83 +1,10 @@
-use backend::*;
-use backend::collecting::Collecting;
 use backend::for_context::ForContext;
-use backend::package_processor::PackageProcessor;
-use backend::value_builder::*;
-use backend::variables::Variables;
-use codeviz::python::*;
-use core::*;
-use errors::*;
 use naming::{self, FromNaming};
-use std::collections::BTreeMap;
-use std::fs;
-use std::fs::File;
-use std::path::Path;
-use std::path::PathBuf;
 use std::rc::Rc;
-use super::converter::Converter;
-use super::dynamic_converter::DynamicConverter;
-use super::dynamic_decode::DynamicDecode;
-use super::dynamic_encode::DynamicEncode;
-use super::match_decode::MatchDecode;
+use super::*;
 
-const TYPE: &str = "type";
-const INIT_PY: &str = "__init__.py";
-const EXT: &str = "py";
-const PYTHON_CONTEXT: &str = "python";
-
-pub trait Listeners {
-    fn configure(&self, _processor: &mut ProcessorOptions) -> Result<()> {
-        Ok(())
-    }
-}
-
-/// A vector of listeners is a valid listener.
-impl Listeners for Vec<Box<Listeners>> {
-    fn configure(&self, processor: &mut ProcessorOptions) -> Result<()> {
-        for listeners in self {
-            listeners.configure(processor)?;
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Clone)]
-pub struct Field<'a> {
-    pub modifier: &'a RpModifier,
-    pub ty: &'a RpType,
-    pub name: &'a str,
-    pub ident: String,
-}
-
-impl<'a> Field<'a> {
-    pub fn with_ident(self, ident: String) -> Field<'a> {
-        Field {
-            modifier: self.modifier,
-            ty: self.ty,
-            name: self.name,
-            ident: ident,
-        }
-    }
-}
-
-pub struct ProcessorOptions {
-    pub build_getters: bool,
-    pub build_constructor: bool,
-}
-
-impl ProcessorOptions {
-    pub fn new() -> ProcessorOptions {
-        ProcessorOptions {
-            build_getters: true,
-            build_constructor: true,
-        }
-    }
-}
-
-pub struct Processor {
-    env: Environment,
-    out_path: PathBuf,
+pub struct PythonBackend {
+    pub env: Environment,
     id_converter: Option<Box<naming::Naming>>,
     package_prefix: Option<RpPackage>,
     listeners: Box<Listeners>,
@@ -94,17 +21,15 @@ pub struct Processor {
     type_var: Variable,
 }
 
-impl Processor {
-    pub fn new(_options: ProcessorOptions,
+impl PythonBackend {
+    pub fn new(_: PythonOptions,
                env: Environment,
-               out_path: PathBuf,
                id_converter: Option<Box<naming::Naming>>,
                package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
-               -> Processor {
-        Processor {
+               -> PythonBackend {
+        PythonBackend {
             env: env,
-            out_path: out_path,
             id_converter: id_converter,
             package_prefix: package_prefix,
             listeners: listeners,
@@ -404,29 +329,6 @@ impl Processor {
         Ok(result)
     }
 
-    fn populate_files(&self) -> Result<BTreeMap<&RpVersionedPackage, FileSpec>> {
-        let mut enums = Vec::new();
-
-        let mut files = self.do_populate_files(|type_id, decl| {
-                if let RpDecl::Enum(ref body) = *decl.as_ref() {
-                    enums.push((type_id, body));
-                }
-
-                Ok(())
-            })?;
-
-        /// process static initialization of enums at bottom of file
-        for (type_id, body) in enums {
-            if let Some(ref mut file_spec) = files.get_mut(&type_id.package) {
-                file_spec.push(self.enum_variants(type_id, body)?);
-            } else {
-                return Err(format!("no such package: {}", &type_id.package).into());
-            }
-        }
-
-        Ok(files)
-    }
-
     fn convert_type_id<F>(&self, pos: &RpPos, type_id: &RpTypeId, path_syntax: F) -> Result<Name>
         where F: Fn(Vec<&str>) -> String
     {
@@ -444,7 +346,7 @@ impl Processor {
         Ok(Name::local(&name).into())
     }
 
-    fn enum_variants(&self, type_id: &RpTypeId, body: &RpEnumBody) -> Result<Statement> {
+    pub fn enum_variants(&self, type_id: &RpTypeId, body: &RpEnumBody) -> Result<Statement> {
         let mut arguments = Statement::new();
 
         let variables = Variables::new();
@@ -515,62 +417,13 @@ impl Processor {
     fn into_python_field<'a>(&self, field: &'a RpLoc<RpField>) -> RpLoc<Field<'a>> {
         self.into_python_field_with(field, |ident| ident)
     }
-}
 
-impl Backend for Processor {
-    fn process(&self) -> Result<()> {
-        let files = self.populate_files()?;
-        self.write_files(files)
-    }
-
-    fn verify(&self) -> Result<Vec<Error>> {
-        Ok(vec![])
-    }
-}
-
-impl Collecting for FileSpec {
-    type Processor = Processor;
-
-    fn new() -> Self {
-        FileSpec::new()
-    }
-
-    fn into_bytes(self, _: &Self::Processor) -> Result<Vec<u8>> {
-        let mut out = String::new();
-        self.format(&mut out)?;
-        Ok(out.into_bytes())
-    }
-}
-
-impl PackageProcessor for Processor {
-    type Out = FileSpec;
-
-    fn ext(&self) -> &str {
-        EXT
-    }
-
-    fn env(&self) -> &Environment {
-        &self.env
-    }
-
-    fn package_prefix(&self) -> &Option<RpPackage> {
-        &self.package_prefix
-    }
-
-    fn out_path(&self) -> &Path {
-        &self.out_path
-    }
-
-    fn default_process(&self, _out: &mut Self::Out, type_id: &RpTypeId, _: &RpPos) -> Result<()> {
-        Err(format!("not supported: {:?}", type_id).into())
-    }
-
-    fn process_tuple(&self,
-                     out: &mut Self::Out,
-                     type_id: &RpTypeId,
-                     pos: &RpPos,
-                     body: Rc<RpTupleBody>)
-                     -> Result<()> {
+    pub fn process_tuple(&self,
+                         out: &mut FileSpec,
+                         type_id: &RpTypeId,
+                         pos: &RpPos,
+                         body: Rc<RpTupleBody>)
+                         -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
 
         let fields: Vec<RpLoc<Field>> = body.fields
@@ -607,12 +460,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_enum(&self,
-                    out: &mut Self::Out,
-                    _: &RpTypeId,
-                    _: &RpPos,
-                    body: Rc<RpEnumBody>)
-                    -> Result<()> {
+    pub fn process_enum(&self,
+                        out: &mut FileSpec,
+                        _: &RpTypeId,
+                        _: &RpPos,
+                        body: Rc<RpEnumBody>)
+                        -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
 
         let fields: Vec<RpLoc<Field>> = body.fields
@@ -650,12 +503,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_type(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    pos: &RpPos,
-                    body: Rc<RpTypeBody>)
-                    -> Result<()> {
+    pub fn process_type(&self,
+                        out: &mut FileSpec,
+                        type_id: &RpTypeId,
+                        pos: &RpPos,
+                        body: Rc<RpTypeBody>)
+                        -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
 
         let fields: Vec<RpLoc<Field>> = body.fields
@@ -695,12 +548,12 @@ impl PackageProcessor for Processor {
         Ok(())
     }
 
-    fn process_interface(&self,
-                         out: &mut Self::Out,
-                         type_id: &RpTypeId,
-                         _: &RpPos,
-                         body: Rc<RpInterfaceBody>)
-                         -> Result<()> {
+    pub fn process_interface(&self,
+                             out: &mut FileSpec,
+                             type_id: &RpTypeId,
+                             _: &RpPos,
+                             body: Rc<RpInterfaceBody>)
+                             -> Result<()> {
         let mut interface_spec = ClassSpec::new(&body.name);
 
         interface_spec.push(self.interface_decode_method(type_id, &body)?);
@@ -766,38 +619,15 @@ impl PackageProcessor for Processor {
 
         Ok(())
     }
+}
 
-    fn resolve_full_path(&self, package: &RpPackage) -> Result<PathBuf> {
-        let mut full_path = self.out_path().to_owned();
-        let mut iter = package.parts.iter().peekable();
-
-        while let Some(part) = iter.next() {
-            full_path = full_path.join(part);
-
-            if iter.peek().is_none() {
-                continue;
-            }
-
-            if !full_path.is_dir() {
-                debug!("+dir: {}", full_path.display());
-                fs::create_dir_all(&full_path)?;
-            }
-
-            let init_path = full_path.join(INIT_PY);
-
-            if !init_path.is_file() {
-                debug!("+init: {}", init_path.display());
-                File::create(init_path)?;
-            }
-        }
-
-        // path to final file
-        full_path.set_extension(self.ext());
-        Ok(full_path)
+impl PackageUtils for PythonBackend {
+    fn package_prefix(&self) -> &Option<RpPackage> {
+        &self.package_prefix
     }
 }
 
-impl Converter for Processor {
+impl Converter for PythonBackend {
     type Type = Name;
     type Stmt = Statement;
     type Elements = Elements;
@@ -817,7 +647,7 @@ impl Converter for Processor {
 }
 
 /// Build values in python.
-impl ValueBuilder for Processor {
+impl ValueBuilder for PythonBackend {
     fn env(&self) -> &Environment {
         &self.env
     }
@@ -867,7 +697,7 @@ impl ValueBuilder for Processor {
     }
 }
 
-impl DynamicConverter for Processor {
+impl DynamicConverter for PythonBackend {
     fn is_native(&self, ty: &RpType) -> bool {
         match *ty {
             RpType::Signed { size: _ } |
@@ -895,7 +725,7 @@ impl DynamicConverter for Processor {
     }
 }
 
-impl DynamicDecode for Processor {
+impl DynamicDecode for PythonBackend {
     type Method = MethodSpec;
 
     fn name_decode(&self, input: &Statement, name: Self::Type) -> Self::Stmt {
@@ -940,7 +770,7 @@ impl DynamicDecode for Processor {
     }
 }
 
-impl DynamicEncode for Processor {
+impl DynamicEncode for PythonBackend {
     fn name_encode(&self, input: &Statement, _: Self::Type) -> Self::Stmt {
         stmt![input, ".encode()"]
     }
@@ -955,7 +785,7 @@ impl DynamicEncode for Processor {
     }
 }
 
-impl MatchDecode for Processor {
+impl MatchDecode for PythonBackend {
     fn match_value(&self,
                    data: &Statement,
                    _value: &RpValue,
@@ -994,5 +824,18 @@ impl MatchDecode for Processor {
         value_body.push_nested(stmt!["return ", &result]);
 
         Ok(value_body)
+    }
+}
+
+impl Backend for PythonBackend {
+    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
+        Ok(Box::new(PythonCompiler {
+            out_path: options.out_path,
+            backend: self,
+        }))
+    }
+
+    fn verify(&self) -> Result<Vec<Error>> {
+        Ok(vec![])
     }
 }
