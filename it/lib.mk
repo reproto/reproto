@@ -13,7 +13,6 @@ EXPECTED = expected
 OUTPUT = output
 PATHS := proto $(PATHS)
 
-SUITES ?= python java js rust
 TARGETS ?= test
 FILTERED ?=
 
@@ -21,26 +20,41 @@ java_out = $(OUTPUT)/java
 python_out = $(OUTPUT)/python
 js_out = $(OUTPUT)/js
 rust_out = $(OUTPUT)/rust
+doc_out = $(OUTPUT)/doc
+
+java_expected = $(EXPECTED)/java
+python_expected = $(EXPECTED)/python
+js_expected = $(EXPECTED)/js
+rust_expected = $(EXPECTED)/rust
+doc_expected = $(EXPECTED)/doc
 
 PYTHON_EXTRA ?=
 JAVA_EXTRA ?= -m builder
 JS_EXTRA ?=
 RUST_EXTRA ?=
+DOC_EXTRA ?=
+
+SUITES ?= python java js rust doc
+PROJECTS ?= python java js rust
 
 # projects that are filtered
-FILTERED_PROJECTS ?=
+EXCLUDE ?=
 # projects that are supported after checking that necessary tools are available
-SUPPORTED_PROJECTS ?= %
+INCLUDE ?= %
 
-SUITES := $(filter-out $(FILTERED),$(SUITES))
-PROJECTS ?= $(filter $(SUPPORTED_PROJECTS), $(filter-out $(FILTERED_PROJECTS),$(SUITES)))
+SUITES := $(filter $(INCLUDE), $(filter-out $(EXCLUDE),$(SUITES)))
+PROJECTS ?= $(filter $(INCLUDE), $(filter-out $(EXCLUDE),$(PROJECTS)))
 
 PACKAGES := $(TARGETS:%=--package %)
 
-project_targets := $(PROJECTS:%=project-%)
 suite_targets := $(SUITES:%=suite-%)
+suite_diffs := $(SUITES:%=suitediff-%)
+suite_updates := $(SUITES:%=suiteupdate-%)
+
+project_targets := $(PROJECTS:%=project-%)
 project_diffs := $(PROJECTS:%=projectdiff-%)
 project_updates := $(PROJECTS:%=projectupdate-%)
+
 paths := $(PATHS:%=--path %)
 
 DEBUG ?= no
@@ -65,6 +79,8 @@ python_project := -b python -o workdir-python/generated
 rust_suite := -b rust $(RUST_EXTRA)
 rust_project := -b rust -o workdir-rust/src --package-prefix generated
 
+doc_suite := -b doc $(DOC_EXTRA)
+
 .PHONY: all clean suites projects update update-projects
 
 all: suites projects
@@ -80,19 +96,26 @@ clean-suites:
 
 clean: clean-projects clean-suites
 
-suites: $(suite_targets) diff
+suites: $(suite_targets) $(suite_diffs)
+
+update-suites: $(suite_targets) $(suite_updates)
 
 projects: $(project_targets) $(project_diffs)
 
 update-projects: $(project_targets) $(project_updates)
 
-update-suites: $(suite_targets)
-	$Oecho "Updating Suites"
-	$O$(RSYNC) --delete -ra $(OUTPUT)/ $(EXPECTED)/
+suiteupdate-%:
+	$Oecho "Updating Suite: $*"
+	$O$(RSYNC) --delete -ra $($*_out)/ $($*_expected)/
 
-diff:
-	$Oecho "Verifying Diffs"
-	$O$(DIFF) -ur $(EXPECTED) $(OUTPUT)
+suitediff-%:
+	$Oecho "Verifying Diffs: $*"
+	$O$(DIFF) -ur $($*_expected) $($*_out)
+
+# rule to build suite output
+suite-%: $(TOOL)
+	$Oecho "Suite: $*"
+	$O$(reproto) compile $($*_suite) -o $($*_out) $(paths) $(PACKAGES)
 
 # rule to diff a projects expected output, with actual.
 projectdiff-%:
@@ -110,11 +133,6 @@ project-%: $(TOOL)
 	$O$(reproto) compile $($*_project) $(paths) $(PACKAGES)
 	$Ocd workdir-$* && make
 	$O$(SCRIPT_INPUT) workdir-$*/script.sh
-
-# rule to build suite output
-suite-%: $(TOOL)
-	$Oecho "Suite: $*"
-	$O$(reproto) compile $($*_suite) -o $($*_out) $(paths) $(PACKAGES)
 
 $(DEFAULT_TOOL):
 	$Oecho "Building $(DEFAULT_TOOL)"

@@ -1,14 +1,16 @@
 .PHONY: all suites projects clean
 
-DEFAULT_TOOL := $(CURDIR)/target/release/reproto
+DEFAULT_TOOL := $(CURDIR)/target/debug/reproto
 
 PYTHON ?= python3
 PROJECTS ?= $(shell PYTHON=$(PYTHON) tools/check-project-deps)
 TOOL ?= $(DEFAULT_TOOL)
-ENVIRONMENT = SUPPORTED_PROJECTS="$(PROJECTS)" PYTHON="$(PYTHON)" TOOL="$(TOOL)"
+ENVIRONMENT = INCLUDE="$(PROJECTS)" PYTHON="$(PYTHON)" TOOL="$(TOOL)"
 EACH := tools/for-each-it
 
 all: suites projects
+
+update: update-suites update-projects
 
 tests:
 	cargo test
@@ -44,17 +46,21 @@ help:
 	@echo "Please read 'Suites & Projects' in README.md"
 	@echo ""
 	@echo "Variables (specified like 'make VARIABLE=VALUE <target>'):"
-	@echo "  PROJECTS=\"foo\" - only build the listed kinds of projects"
-	@echo "  DEBUG=yes        - verbose output (very)"
+	@echo "  PROJECTS=foo - only build the listed kinds of projects"
+	@echo "  DEBUG=yes    - (very) verbose output"
+	@echo "  EXCLUDE=rust - exclude the named targets"
+	@echo "  INCLUDE=rust - only include the named targets"
 	@echo ""
 	@echo "Targets:"
-	@echo "  tests           - run unit tests for project"
-	@echo "  clean           - clean build and tests"
+	@echo "  all    - default target (suites projects)"
+	@echo "  tests  - run unit tests for project"
+	@echo "  clean  - clean build and tests"
+	@echo "  update - update everything (update-suites update-projects)"
 	@echo ""
 	@echo "Suite Targets:"
-	@echo "  suites          - run it suites"
-	@echo "  update-suites   - update expected output for it suites"
-	@echo "  clean-suites    - clean it suites"
+	@echo "  suites        - run it suites"
+	@echo "  update-suites - update expected output for it suites"
+	@echo "  clean-suites  - clean it suites"
 	@echo ""
 	@echo "Project Targets:"
 	@echo "  projects        - run it projects"
@@ -71,4 +77,4 @@ help:
 	@echo ""
 
 $(DEFAULT_TOOL):
-	cargo build --release
+	cargo build

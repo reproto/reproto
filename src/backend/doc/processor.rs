@@ -305,8 +305,8 @@ impl Processor {
                 write!(out, "<ul>")?;
 
                 for package in packages {
-                    let package = self.package(&package);
-                    let name = package.parts.join(".");
+                    let name = format!("{}", package);
+                    let package = self.package(package);
                     let url = format!("{}.{}", self.package_file(&package), self.ext());
 
                     write!(out,
@@ -393,6 +393,10 @@ impl PackageProcessor for Processor {
 
     fn out_path(&self) -> &Path {
         &self.out_path
+    }
+
+    fn version_package(input: &Version) -> String {
+        format!("{}", input).replace(Self::package_version_unsafe, "_")
     }
 
     fn default_process(&self, out: &mut Self::Out, type_id: &RpTypeId, _: &RpPos) -> Result<()> {

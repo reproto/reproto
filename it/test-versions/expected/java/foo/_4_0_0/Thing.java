@@ -1,7 +1,6 @@
 package foo._4_0_0;
 
 import bar._1_0_0.Other;
-import bar._2_0_0.Other;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
@@ -10,13 +9,13 @@ import java.util.Optional;
 public class Thing {
   private final String name;
   private final Other other;
-  private final Other other2;
+  private final bar._2_0_0.Other other2;
 
   @JsonCreator
   public Thing(
     @JsonProperty("name") final String name, 
     @JsonProperty("other") final Other other, 
-    @JsonProperty("other2") final Other other2
+    @JsonProperty("other2") final bar._2_0_0.Other other2
   ) {
     Objects.requireNonNull(name, "name");
     this.name = name;
@@ -34,7 +33,7 @@ public class Thing {
     return this.other;
   }
 
-  public Other getOther2() {
+  public bar._2_0_0.Other getOther2() {
     return this.other2;
   }
 
@@ -97,7 +96,7 @@ public class Thing {
   public static class Builder {
     private Optional<String> name = Optional.empty();
     private Optional<Other> other = Optional.empty();
-    private Optional<Other> other2 = Optional.empty();
+    private Optional<bar._2_0_0.Other> other2 = Optional.empty();
 
     public Builder name(final String name) {
       this.name = Optional.of(name);
@@ -109,7 +108,7 @@ public class Thing {
       return this;
     }
 
-    public Builder other2(final Other other2) {
+    public Builder other2(final bar._2_0_0.Other other2) {
       this.other2 = Optional.of(other2);
       return this;
     }
@@ -117,7 +116,7 @@ public class Thing {
     public Thing build() {
       final String name = this.name.orElseThrow(() -> new RuntimeException("name: is required"));
       final Other other = this.other.orElseThrow(() -> new RuntimeException("other: is required"));
-      final Other other2 = this.other2.orElseThrow(() -> new RuntimeException("other2: is required"));
+      final bar._2_0_0.Other other2 = this.other2.orElseThrow(() -> new RuntimeException("other2: is required"));
 
       return new Thing(name, other, other2);
     }

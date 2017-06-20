@@ -6,24 +6,24 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Other {
-  private final String name;
+  private final String name2;
 
   @JsonCreator
   public Other(
-    @JsonProperty("name") final String name
+    @JsonProperty("name2") final String name2
   ) {
-    Objects.requireNonNull(name, "name");
-    this.name = name;
+    Objects.requireNonNull(name2, "name2");
+    this.name2 = name2;
   }
 
-  public String getName() {
-    return this.name;
+  public String getName2() {
+    return this.name2;
   }
 
   @Override
   public int hashCode() {
     int result = 1;
-    result = result * 31 + this.name.hashCode();
+    result = result * 31 + this.name2.hashCode();
     return result;
   }
 
@@ -40,7 +40,7 @@ public class Other {
     @SuppressWarnings("unchecked")
     final Other o = (Other) other;
 
-    if (!this.name.equals(o.name)) {
+    if (!this.name2.equals(o.name2)) {
       return false;
     }
 
@@ -53,25 +53,25 @@ public class Other {
 
     b.append("Other");
     b.append("(");
-    b.append("name=");
-    b.append(this.name.toString());
+    b.append("name2=");
+    b.append(this.name2.toString());
     b.append(")");
 
     return b.toString();
   }
 
   public static class Builder {
-    private Optional<String> name = Optional.empty();
+    private Optional<String> name2 = Optional.empty();
 
-    public Builder name(final String name) {
-      this.name = Optional.of(name);
+    public Builder name2(final String name2) {
+      this.name2 = Optional.of(name2);
       return this;
     }
 
     public Other build() {
-      final String name = this.name.orElseThrow(() -> new RuntimeException("name: is required"));
+      final String name2 = this.name2.orElseThrow(() -> new RuntimeException("name2: is required"));
 
-      return new Other(name);
+      return new Other(name2);
     }
   }
 }
