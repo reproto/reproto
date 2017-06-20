@@ -46,10 +46,6 @@ impl<'a> PackageProcessor<'a> for JsCompiler<'a> {
         self.backend.package(package)
     }
 
-    fn default_process(&self, _out: &mut Self::Out, type_id: &RpTypeId, _: &RpPos) -> Result<()> {
-        Err(format!("not supported: {:?}", type_id).into())
-    }
-
     fn process_tuple(&self,
                      out: &mut Self::Out,
                      type_id: &RpTypeId,

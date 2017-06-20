@@ -17,7 +17,10 @@ pub trait PackageProcessor<'a>
 
     fn out_path(&self) -> &Path;
 
-    fn default_process(&self, out: &mut Self::Out, type_id: &RpTypeId, pos: &RpPos) -> Result<()>;
+    fn default_process(&self, _: &mut Self::Out, type_id: &RpTypeId, _: &RpPos) -> Result<()> {
+        warn!("not supported: {}", type_id);
+        Ok(())
+    }
 
     fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage;
 
