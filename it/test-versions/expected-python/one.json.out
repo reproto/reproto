@@ -1,1 +1,1 @@
-<Entry thing: <Thing name: 'The Thing', other: <Other name: 'The Other Thing'>>>
+<Entry thing: <Thing name: 'The Thing', other: <Other name: 'The Other Thing'>, other2: <Other name2: 'The Other-Other Thing'>>>

@@ -6,7 +6,7 @@ use codeviz::rust::*;
 use core::*;
 use errors::*;
 use naming::{self, FromNaming};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -174,7 +174,7 @@ impl Processor {
     }
 
     fn write_mod_files(&self, files: &BTreeMap<&RpVersionedPackage, FileSpec>) -> Result<()> {
-        let mut packages: BTreeMap<PathBuf, Vec<String>> = BTreeMap::new();
+        let mut packages: BTreeMap<PathBuf, BTreeSet<String>> = BTreeMap::new();
 
         for (key, _) in files {
             let mut current = self.out_path().to_owned();
@@ -191,8 +191,8 @@ impl Processor {
                     full_path.set_extension(self.ext());
 
                     packages.entry(full_path)
-                        .or_insert_with(Vec::new)
-                        .push(next.clone());
+                        .or_insert_with(BTreeSet::new)
+                        .insert(next.clone());
                 }
             }
         }
