@@ -14,6 +14,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+const MOD: &str = "mod";
 const EXT: &str = "rs";
 const RUST_CONTEXT: &str = "rust";
 
@@ -175,19 +176,22 @@ impl Processor {
 
     fn write_mod_files(&self, files: &BTreeMap<&RpVersionedPackage, FileSpec>) -> Result<()> {
         let mut packages: BTreeMap<PathBuf, BTreeSet<String>> = BTreeMap::new();
+        let mut root_names = BTreeSet::new();
 
         for (key, _) in files {
             let mut current = self.out_path().to_owned();
 
             let mut it = self.package(key).parts.into_iter().peekable();
 
+            if let Some(root) = it.peek() {
+                root_names.insert(root.to_owned());
+            }
+
             while let Some(part) = it.next() {
                 current = current.join(part);
 
                 if let Some(next) = it.peek() {
-                    let mut full_path = current.clone();
-
-                    full_path = full_path.join("mod");
+                    let mut full_path = current.join(MOD);
                     full_path.set_extension(self.ext());
 
                     packages.entry(full_path)
@@ -196,6 +200,10 @@ impl Processor {
                 }
             }
         }
+
+        let mut root_mod = self.out_path().join(MOD);
+        root_mod.set_extension(self.ext());
+        packages.insert(root_mod, root_names);
 
         for (full_path, children) in packages {
             if let Some(parent) = full_path.parent() {
