@@ -3,7 +3,6 @@ use super::errors::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
-    Path(RpPath),
     String(String),
     Number(RpNumber),
     Boolean(bool),
@@ -27,7 +26,6 @@ impl IntoModel for Value {
             Value::Instance(instance) => RpValue::Instance(instance.into_model(path)?),
             Value::Constant(name) => RpValue::Constant(name.into_model(path)?),
             Value::Array(inner) => RpValue::Array(inner.into_model(path)?),
-            _ => return Err(format!("not supported: {:?}", self).into()),
         };
 
         Ok(out)

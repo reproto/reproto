@@ -4,7 +4,6 @@ use super::errors::*;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(tag = "type", content="value", rename_all="snake_case")]
 pub enum RpValue {
-    Path(RpPath),
     String(String),
     Number(RpNumber),
     Boolean(bool),
@@ -18,7 +17,6 @@ pub enum RpValue {
 impl RpValue {
     pub fn as_match_kind(&self) -> RpMatchKind {
         match *self {
-            RpValue::Path(_) => RpMatchKind::String,
             RpValue::String(_) => RpMatchKind::String,
             RpValue::Number(_) => RpMatchKind::Number,
             RpValue::Boolean(_) => RpMatchKind::Boolean,
@@ -41,7 +39,6 @@ impl RpValue {
 impl ::std::fmt::Display for RpValue {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         let out = match *self {
-            RpValue::Path(_) => "<path>",
             RpValue::String(_) => "<string>",
             RpValue::Number(_) => "<number>",
             RpValue::Boolean(_) => "<boolean>",

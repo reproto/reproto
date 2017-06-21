@@ -510,14 +510,14 @@ pub mod tests {
                                  digits: (-1242).into(),
                                  decimal: 6,
                              }),
-                             9)];
+                             8)];
 
         assert_eq!(expected, tokenize("-12.42e-4").unwrap());
     }
 
     #[test]
     pub fn test_number_2() {
-        assert_eq!(vec![(0, Number(12.into()), 2)], tokenize("12").unwrap());
+        assert_eq!(vec![(0, Number(12.into()), 1)], tokenize("12").unwrap());
     }
 
     #[test]
@@ -551,24 +551,18 @@ pub mod tests {
     pub fn test_comments() {
         let tokens = tokenize("// hello \n world");
         let comment = vec![" hello ".into()];
-        assert_eq!(vec![(11, Identifier(Commented::new(comment, "world".into())), 16)],
+        assert_eq!(vec![(11, Identifier(Commented::new(comment, "world".into())), 15)],
                    tokens.unwrap());
 
         let tokens = tokenize("he/* this is a comment */llo");
-        assert_eq!(vec![(0, Identifier(Commented::empty("hello".into())), 28)],
+        assert_eq!(vec![(0, Identifier(Commented::empty("hello".into())), 27)],
                    tokens.unwrap());
 
         let tokens = tokenize("// test\n// this\nhello");
         let comment = vec![" test".into(), " this".into()];
 
-        assert_eq!(vec![(16, Identifier(Commented::new(comment, "hello".into())), 21)],
+        assert_eq!(vec![(16, Identifier(Commented::new(comment, "hello".into())), 20)],
                    tokens.unwrap());
-    }
-
-    #[test]
-    pub fn test_path() {
-        let tokens = tokenize("/hello_world/{path:string}?{multiple:[string]}&{single:unsigned}");
-        println!("tokens = {:?}", tokens);
     }
 
     #[test]
