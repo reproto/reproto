@@ -1,36 +1,43 @@
 use num::Zero;
 use num::bigint::BigInt;
 use reproto_core::RpNumber;
+use std::str::CharIndices;
 use super::errors::*;
 use super::token::*;
 
 macro_rules! take {
     ($slf:expr, $current:expr, $first:pat $(| $rest:pat)*) => {{
-        let mut end: usize = $current;
+        let mut __end: usize = $current;
         $slf.buffer.clear();
 
-        while let Some((pos, c)) = $slf.one() {
-            if let Some((_, '/', '*')) = $slf.two() {
-                $slf.block_comment();
-                continue;
+        loop {
+            if let Some((pos, c)) = $slf.one() {
+                if let Some((_, '/', '*')) = $slf.two() {
+                    $slf.block_comment();
+                    continue;
+                }
+
+                __end = pos;
+
+                match c {
+                    $first $(| $rest)* => $slf.buffer.push(c),
+                    _ => break,
+                }
+
+                $slf.step();
+            } else {
+                __end = $slf.source_len;
+                break;
             }
-
-            end = pos;
-
-            match c {
-                $first $(| $rest)* => $slf.buffer.push(c),
-                _ => break,
-            }
-
-            $slf.step();
         }
 
-        (end, &$slf.buffer)
+        (__end, &$slf.buffer)
     }}
 }
 
-pub struct Lexer<I> {
-    source: I,
+pub struct Lexer<'a> {
+    source: CharIndices<'a>,
+    source_len: usize,
     n0: Option<Option<(usize, char)>>,
     n1: Option<Option<(usize, char)>>,
     last_comment: Vec<String>,
@@ -39,9 +46,7 @@ pub struct Lexer<I> {
     code_block: Option<usize>,
 }
 
-impl<I> Lexer<I>
-    where I: Iterator<Item = (usize, char)>
-{
+impl<'a> Lexer<'a> {
     /// Advance the source iterator.
     #[inline]
     fn step(&mut self) {
@@ -360,9 +365,7 @@ impl<I> Lexer<I>
     }
 }
 
-impl<I> Iterator for Lexer<I>
-    where I: Iterator<Item = (usize, char)>
-{
+impl<'a> Iterator for Lexer<'a> {
     type Item = Result<(usize, Token, usize)>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -457,11 +460,10 @@ impl<I> Iterator for Lexer<I>
     }
 }
 
-pub fn lex<I>(input: I) -> Lexer<I>
-    where I: Iterator<Item = (usize, char)>
-{
+pub fn lex(input: &str) -> Lexer {
     Lexer {
-        source: input,
+        source: input.char_indices(),
+        source_len: input.len(),
         n0: None,
         n1: None,
         last_comment: Vec::new(),
@@ -477,7 +479,7 @@ pub mod tests {
     use super::Token::*;
 
     fn tokenize(input: &str) -> Result<Vec<(usize, Token, usize)>> {
-        lex(input.char_indices()).collect()
+        lex(input).collect()
     }
 
     #[test]
@@ -510,14 +512,14 @@ pub mod tests {
                                  digits: (-1242).into(),
                                  decimal: 6,
                              }),
-                             8)];
+                             9)];
 
         assert_eq!(expected, tokenize("-12.42e-4").unwrap());
     }
 
     #[test]
     pub fn test_number_2() {
-        assert_eq!(vec![(0, Number(12.into()), 1)], tokenize("12").unwrap());
+        assert_eq!(vec![(0, Number(12.into()), 2)], tokenize("12").unwrap());
     }
 
     #[test]
@@ -551,17 +553,17 @@ pub mod tests {
     pub fn test_comments() {
         let tokens = tokenize("// hello \n world");
         let comment = vec![" hello ".into()];
-        assert_eq!(vec![(11, Identifier(Commented::new(comment, "world".into())), 15)],
+        assert_eq!(vec![(11, Identifier(Commented::new(comment, "world".into())), 16)],
                    tokens.unwrap());
 
         let tokens = tokenize("he/* this is a comment */llo");
-        assert_eq!(vec![(0, Identifier(Commented::empty("hello".into())), 27)],
+        assert_eq!(vec![(0, Identifier(Commented::empty("hello".into())), 28)],
                    tokens.unwrap());
 
         let tokens = tokenize("// test\n// this\nhello");
         let comment = vec![" test".into(), " this".into()];
 
-        assert_eq!(vec![(16, Identifier(Commented::new(comment, "hello".into())), 20)],
+        assert_eq!(vec![(16, Identifier(Commented::new(comment, "hello".into())), 21)],
                    tokens.unwrap());
     }
 
