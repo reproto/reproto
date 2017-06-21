@@ -1,6 +1,6 @@
-mod models;
 #[macro_use]
 mod utils;
+mod models;
 pub mod listeners;
 pub mod js_backend;
 pub mod js_compiler;

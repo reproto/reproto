@@ -15,14 +15,12 @@ enum Node {
         parent: Option<Rc<RefCell<Node>>>,
         url: RpLoc<String>,
         options: Vec<RpLoc<RpOptionDecl>>,
-        #[allow(dead_code)]
         comment: Vec<String>,
         returns: Vec<RpServiceReturns>,
     },
     Star {
         parent: Option<Rc<RefCell<Node>>>,
         options: Vec<RpLoc<RpOptionDecl>>,
-        #[allow(dead_code)]
         comment: Vec<String>,
         returns: Vec<RpServiceReturns>,
     },
@@ -31,12 +29,15 @@ enum Node {
 impl Node {
     fn push_returns(&mut self, input: RpServiceReturns) {
         match *self {
-            Node::Endpoint { url: _, parent: _, options: _, comment: _, ref mut returns } => {
-                returns.push(input)
-            }
-            Node::Star { parent: _, options: _, comment: _, ref mut returns } => {
-                returns.push(input)
-            }
+            Node::Endpoint { ref mut returns, .. } => returns.push(input),
+            Node::Star { ref mut returns, .. } => returns.push(input),
+        }
+    }
+
+    fn comment(&self) -> &Vec<String> {
+        match *self {
+            Node::Endpoint { ref comment, .. } => comment,
+            Node::Star { ref comment, .. } => comment,
         }
     }
 }
@@ -82,15 +83,16 @@ fn convert_return(path: &Path,
     })
 }
 
-fn unwind(parent: Option<Rc<RefCell<Node>>>) -> Result<RpServiceEndpoint> {
+/// Recursively unwind all inherited information about the given node, and convert to a service
+/// endpoint.
+fn unwind(node: Option<Rc<RefCell<Node>>>, comment: Vec<String>) -> Result<RpServiceEndpoint> {
     use self::Node::*;
 
     let mut url: Vec<String> = Vec::new();
     let mut options: Vec<RpLoc<RpOptionDecl>> = Vec::new();
     let mut returns = Vec::new();
-    let mut comment = Vec::new();
 
-    let mut current = parent;
+    let mut current = node;
 
     while let Some(step) = current {
         match *step.borrow() {
@@ -98,21 +100,19 @@ fn unwind(parent: Option<Rc<RefCell<Node>>>) -> Result<RpServiceEndpoint> {
                        url: ref next_url,
                        options: ref next_options,
                        returns: ref next_returns,
-                       comment: ref next_comment } => {
+                       .. } => {
                 current = next_parent.clone();
                 url.push(next_url.as_ref().to_owned());
                 options.extend(next_options.iter().map(Clone::clone).rev());
                 returns.extend(next_returns.iter().map(Clone::clone).rev());
-                comment.extend(next_comment.iter().map(Clone::clone).rev());
             }
             Star { parent: ref next_parent,
                    options: ref next_options,
                    returns: ref next_returns,
-                   comment: ref next_comment } => {
+                   .. } => {
                 current = next_parent.clone();
                 options.extend(next_options.iter().map(Clone::clone).rev());
                 returns.extend(next_returns.iter().map(Clone::clone).rev());
-                comment.extend(next_comment.iter().map(Clone::clone).rev());
             }
         }
     }
@@ -134,7 +134,6 @@ fn unwind(parent: Option<Rc<RefCell<Node>>>) -> Result<RpServiceEndpoint> {
     let method: Option<String> = options.find_one_string("method")?
         .map(Loc::move_inner);
 
-    let comment = comment.into_iter().rev().collect();
     let returns = returns.into_iter().rev().collect();
 
     Ok(RpServiceEndpoint {
@@ -196,7 +195,13 @@ impl<'a> IntoModel for ServiceBody<'a> {
             }
 
             if is_terminus {
-                endpoints.push(unwind(parent.clone())?);
+                let comment = if let Some(ref parent) = parent {
+                    parent.try_borrow()?.comment().clone()
+                } else {
+                    Vec::new()
+                };
+
+                endpoints.push(unwind(parent.clone(), comment)?);
                 continue;
             }
         }

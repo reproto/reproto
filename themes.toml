@@ -1,7 +1,11 @@
 [light]
+half_margin="5px"
+margin="10px"
+double_margin="20px"
+
 font_size="14px"
 font_family="Roboto, Helvetica, sans-serif"
-bg="#EAE1DF"
+bg="#FFFFFF"
 
 title_bg="#F2F2F2"
 title_border_color="#D9D9D9"

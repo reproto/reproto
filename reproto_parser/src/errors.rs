@@ -13,6 +13,7 @@ error_chain! {
         FromUtf8Error(::std::string::FromUtf8Error);
         ParseBigIntError(::num::bigint::ParseBigIntError);
         BorrowMutError(::std::cell::BorrowMutError);
+        BorrowError(::std::cell::BorrowError);
     }
 
     errors {

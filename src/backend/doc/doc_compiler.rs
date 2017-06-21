@@ -49,31 +49,31 @@ impl<'a> DocCompiler<'a> {
                       packages: &Vec<RpVersionedPackage>,
                       current: Option<&RpVersionedPackage>)
                       -> Result<()> {
-        write!(out, "<section class=\"packages\">")?;
+        html!(out, section {class => "section-content section-packages"} => {
+            html!(out, h1 {class => "section-title"} ~ "Packages");
 
-        write!(out, "<h1>Packages</h1>")?;
+            html!(out, div {class => "section-body"} => {
+                html!(out, ul {class => "packages-list"} => {
+                    for package in packages {
+                        let name = format!("{}", package);
 
-        write!(out, "<ul class=\"packages-list\">")?;
+                        if let Some(current) = current {
+                            if package == current {
+                                html!(out, li {} ~ format!("<b>{}</b>", name));
+                                continue;
+                            }
+                        }
 
-        for package in packages {
-            let name = format!("{}", package);
+                        let package = self.processor.package(package);
+                        let url = format!("{}.{}", self.processor.package_file(&package), self.ext());
 
-            if let Some(current) = current {
-                if package == current {
-                    write!(out, "<li><b>{name}</b></li>", name = name)?;
-                    continue;
-                }
-            }
-
-            let package = self.processor.package(package);
-            let url = format!("{}.{}", self.processor.package_file(&package), self.ext());
-
-            write!(out, "<li><a href=\"{}\">{}</a></li>", url, name)?;
-        }
-
-        write!(out, "</ul>")?;
-
-        write!(out, "</section>")?;
+                        html!(out, li {} => {
+                            html!(out, a {href => url} ~ name);
+                        });
+                    }
+                });
+            });
+        });
 
         Ok(())
     }
@@ -109,6 +109,8 @@ impl<'a> DocCompiler<'a> {
                            files: &mut BTreeMap<&RpVersionedPackage, DocCollector>)
                            -> Result<()> {
         for (package, out) in files.iter_mut() {
+            out.set_package_title(format!("{}", package));
+
             let mut package_writer = out.new_package();
             let mut out = package_writer.get_mut();
             self.write_packages(out, packages, Some(*package))?;
@@ -149,9 +151,9 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
         self.processor.package(package)
     }
 
-    fn default_process(&self, out: &mut Self::Out, type_id: &RpTypeId, _: &RpPos) -> Result<()> {
+    fn default_process(&self, _: &mut Self::Out, type_id: &RpTypeId, _: &RpPos) -> Result<()> {
         let type_id = type_id.clone();
-        write!(out, "<h1>unknown `{:?}`</h1>\n", &type_id)?;
+        warn!("Cannot handle: `{:?}", &type_id);
         Ok(())
     }
 

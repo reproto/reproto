@@ -16,30 +16,6 @@ pub struct DocBackend {
 
 include!(concat!(env!("OUT_DIR"), "/themes.rs"));
 
-macro_rules! html {
-    ($element:ident {$($key:ident => $value:expr),*}, $out:expr => $body:expr) => {{
-        write!($out, "<{}", stringify!($element))?;
-        $(
-            write!($out, " {}=\"{}\"", stringify!($key), $value)?;
-        )*
-        write!($out, ">")?;
-
-        $body
-
-        write!($out, "</{}>", stringify!($element))?;
-    }};
-
-    ($element:ident {$($key:ident => $value:expr),*}, $out:expr, $body:expr) => {
-        html!($element {$($key=> $value),*}, $out => {
-            write!($out, "{}", $body)?
-        })
-    };
-
-    ($element:ident, $out:expr => $body:expr) => {
-        html!($element {}, $out => $body)
-    };
-}
-
 fn build_themes() -> HashMap<&'static str, &'static [u8]> {
     let mut m = HashMap::new();
 
@@ -104,11 +80,9 @@ impl DocBackend {
     }
 
     fn write_description(&self, out: &mut FmtWrite, comment: &Vec<String>) -> Result<()> {
-        if comment.is_empty() {
-            html!(div { class => "description" }, out, "<em>no description</em>");
-        } else {
+        if !comment.is_empty() {
             let comment = comment.join("\n");
-            html!(div { class => "description" }, out, Self::markdown(&comment));
+            html!(out, div { class => "description" } ~ Self::markdown(&comment));
         }
 
         Ok(())
@@ -117,13 +91,21 @@ impl DocBackend {
     fn write_variants<'b, I>(&self, out: &mut FmtWrite, variants: I) -> Result<()>
         where I: Iterator<Item = &'b RpLoc<Rc<RpEnumVariant>>>
     {
-        html!(div {class => "variants"}, out => {
+        html!(out, div {class => "variants"} => {
             for variant in variants {
-                html!(div {class => "variant"}, out => {
-                    html!(h4 {class => "name"}, out, variant.name);
+                html!(out, div {class => "variant"} => {
+                    html!(out, h4 {class => "name"} ~ &variant.name);
                     self.write_description(out, &variant.comment)?;
                 });
             }
+        });
+
+        Ok(())
+    }
+
+    fn write_simple_type(&self, out: &mut FmtWrite, name: &'static str) -> Result<()> {
+        html!(out, span {class => format!("type-{}", name)} => {
+            html!(out, code {class => "type-name"} ~ name);
         });
 
         Ok(())
@@ -138,61 +120,55 @@ impl DocBackend {
         write!(out, "<span class=\"ty\">")?;
 
         match *ty {
-            RpType::Double => {
-                html!(span {class => "ty-double"}, out, "double");
-            }
-            RpType::Float => {
-                write!(out, "<span class=\"ty-float\">float</span>")?;
-            }
+            RpType::Double => self.write_simple_type(out, "double")?,
+            RpType::Float => self.write_simple_type(out, "float")?,
+            RpType::Boolean => self.write_simple_type(out, "boolean")?,
+            RpType::String => self.write_simple_type(out, "string")?,
+            RpType::Bytes => self.write_simple_type(out, "bytes")?,
+            RpType::Any => self.write_simple_type(out, "any")?,
             RpType::Signed { ref size } => {
-                if let Some(ref size) = *size {
-                    write!(out, "<span class=\"ty-signed\">signed/{}</span>", size)?;
-                } else {
-                    write!(out, "<span class=\"ty-signed\">signed</span>")?;
-                }
+                html!(out, span {class => "type-signed"} => {
+                    html!(out, code {class => "type-name"} ~ "signed");
+
+                    if let Some(ref size) = *size {
+                        html!(out, span {class => "type-size-sep"} ~ "/");
+                        html!(out, span {class => "type-size"} ~ format!("{}", size));
+                    }
+                });
             }
             RpType::Unsigned { ref size } => {
-                if let Some(ref size) = *size {
-                    write!(out, "<span class=\"ty-unsigned\">unsigned/{}</span>", size)?;
-                } else {
-                    write!(out, "<span class=\"ty-unsigned\">unsigned</span>")?;
-                }
-            }
-            RpType::Boolean => {
-                write!(out, "<span class=\"ty-boolean\">boolean</span>")?;
-            }
-            RpType::String => {
-                html!(span {class => "ty-string"}, out, "string");
-            }
-            RpType::Bytes => {
-                write!(out, "<span class=\"ty-bytes\">bytes</span>")?;
-            }
-            RpType::Any => {
-                write!(out, "<span class=\"ty-any\">any</span>")?;
+                html!(out, span {class => "type-unsigned"} => {
+                    html!(out, code {class => "type-name"} ~ "unsigned");
+
+                    if let Some(ref size) = *size {
+                        html!(out, span {class => "type-size-sep"} ~ "/");
+                        html!(out, span {class => "type-size"} ~ format!("{}", size));
+                    }
+                });
             }
             RpType::Name { ref name } => {
                 let url = self.type_url(pos, &type_id.with_name(name.clone()))?;
                 let name = name.parts.join(".");
 
-                write!(out, "<span class=\"ty-name\">")?;
-                write!(out, "<a href=\"{url}\">{name}</a>", url = url, name = name)?;
-                write!(out, "</span>")?;
+                html!(out, span {class => "type-rp-name"} => {
+                    html!(out, a {href => url} ~ name);
+                });
             }
             RpType::Array { ref inner } => {
-                write!(out, "<span class=\"ty-array\">")?;
-                write!(out, "<span class=\"ty-array-left\">[</span>")?;
-                self.write_type(out, pos, type_id, inner)?;
-                write!(out, "<span class=\"ty-array-right\">]</span>")?;
-                write!(out, "</span>")?;
+                html!(out, span {class => "type-array"} => {
+                    html!(out, span {class => "type-array-left"} ~ "[");
+                    self.write_type(out, pos, type_id, inner)?;
+                    html!(out, span {class => "type-array-right"} ~ "]");
+                });
             }
             RpType::Map { ref key, ref value } => {
-                write!(out, "<span class=\"ty-map\">")?;
-                write!(out, "<span class=\"ty-map-key\">{{</span>")?;
-                self.write_type(out, pos, type_id, key)?;
-                write!(out, "<span class=\"ty-map-separator\">:</span>")?;
-                self.write_type(out, pos, type_id, value)?;
-                write!(out, "<span class=\"ty-map-value\">}}</span>")?;
-                write!(out, "</span>")?;
+                html!(out, span {class => "type-map"} => {
+                    html!(out, span {class => "type-map-left"} ~ "{");
+                    self.write_type(out, pos, type_id, key)?;
+                    html!(out, span {class => "type-map-sep"} ~ "{");
+                    self.write_type(out, pos, type_id, value)?;
+                    html!(out, span {class => "type-map-right"} ~ "}");
+                });
             }
         }
 
@@ -203,43 +179,52 @@ impl DocBackend {
     fn write_fields<'b, I>(&self, out: &mut FmtWrite, type_id: &RpTypeId, fields: I) -> Result<()>
         where I: Iterator<Item = &'b RpLoc<RpField>>
     {
-        write!(out, "<div class=\"fields\">")?;
+        html!(out, div {class => "fields"} => {
+            for field in fields {
+                let (field, pos) = field.ref_both();
 
-        for field in fields {
-            let (field, pos) = field.ref_both();
+                let mut classes = vec!["field"];
 
-            write!(out, "<div class=\"field\">")?;
+                if field.is_optional() {
+                    classes.push("optional");
+                } else {
+                    classes.push("required");
+                }
 
-            let mut name = format!("<span>{}</span>", field.ident());
-            let mut class = "name".to_owned();
+                html!(out, div {class => classes} => {
+                    let ident = field.ident();
+                    let name = field.name();
 
-            if field.is_optional() {
-                class = format!("{} optional", class);
-                name = format!("{}<span class=\"modifier\">?:</span>", name);
-            } else {
-                name = format!("{}<span class=\"modifier\">:</span>", name);
-            };
+                    html!(out, span {class => "field-ident"} ~ ident);
 
-            write!(out, "<div class=\"{class}\">", class = class)?;
-            write!(out, "{name}", name = name)?;
-            self.write_type(out, pos, type_id, &field.ty)?;
-            write!(out, "</div>")?;
+                    if field.is_optional() {
+                        html!(out, span {class => "field-modifier"} ~ "?");
+                    }
 
-            self.write_description(out, &field.comment)?;
+                    html!(out, span {class => "field-type"} => {
+                        self.write_type(out, pos, type_id, &field.ty)?;
+                    });
 
-            write!(out, "</div>")?;
-        }
+                    if name != ident {
+                        html!(out, span {class => "field-alias"} => {
+                            html!(out, span {class => "field-alias-as"} ~ "as");
+                            html!(out, code {class => "field-alias-name"} ~ format!("\"{}\"", name));
+                        });
+                    }
+                });
 
-        write!(out, "</div>")?;
+                self.write_description(out, &field.comment)?;
+            }
+        });
 
         Ok(())
     }
 
     fn section_title(&self, out: &mut FmtWrite, ty: &str, name: &str) -> Result<()> {
-        write!(out, "<h1>")?;
-        write!(out, "{name}", name = name)?;
-        write!(out, "<span class=\"type\">{}</span>", ty)?;
-        write!(out, "</h1>")?;
+        html!(out, h1 {class => "section-title"} => {
+            write!(out, "{name}", name = name)?;
+            html!(out, span {class => "type"} ~ ty);
+        });
 
         Ok(())
     }
@@ -247,18 +232,25 @@ impl DocBackend {
     pub fn write_doc<Body>(&self, out: &mut FmtWrite, body: Body) -> Result<()>
         where Body: FnOnce(&mut FmtWrite) -> Result<()>
     {
-        html!(html, out => {
-            html!(head, out => {
-                write!(out,
-                       "<link rel=\"stylesheet\" type=\"text/css\" href=\"{normalize_css}\">",
-                       normalize_css = NORMALIZE_CSS_NAME)?;
+        html!(out, html {} => {
+            html!(out, head {} => {
+                html!(@open out, meta {
+                    name => "viewport",
+                    content => "width=device-width, initial-scale=1.0"
+                });
 
-                write!(out,
-                       "<link rel=\"stylesheet\" type=\"text/css\" href=\"{doc_css}\">",
-                       doc_css = DOC_CSS_NAME)?;
+                html!(@open out, link {
+                    rel => "stylesheet", type => "text/css", href => NORMALIZE_CSS_NAME
+                });
+
+                html!(@open out, link {
+                    rel => "stylesheet", type => "text/css", href => DOC_CSS_NAME
+                });
             });
 
-            html!(body, out => { body(out)?; });
+            html!(out, body {} => {
+                body(out)?;
+            });
         });
 
         Ok(())
@@ -272,60 +264,58 @@ impl DocBackend {
         let method: String =
             endpoint.method.as_ref().map(AsRef::as_ref).unwrap_or("GET").to_owned();
 
-        let class = format!("endpoint-title {}", method.to_lowercase());
+        html!(out, div {class => format!("endpoint {}", method.to_lowercase())} => {
+            html!(out, h2 {class => "endpoint-title"} => {
+                html!(out, span {class => "method"} ~ method);
+                html!(out, span {class => "url"} ~ endpoint.url);
+            });
 
-        html!(h2 {class => class}, out => {
-            write!(out, "<span class=\"method\">{}</span>", method)?;
-            write!(out, "<span class=\"url\">{}</span>", endpoint.url)?;
-        });
+            html!(out, div {class => "endpoint-body"} => {
+                self.write_description(out, &endpoint.comment)?;
 
-        html!(div {class => "endpoint-body"}, out => {
-            self.write_description(out, &endpoint.comment)?;
+                if !endpoint.accepts.is_empty() {
+                    html!(out, h2 {} ~ "Accepts");
 
-            if !endpoint.accepts.is_empty() {
-                write!(out, "<h4>Accepts:</h4>")?;
-
-                for accept in &endpoint.accepts {
-                    write!(out, "<div class=\"accept\">")?;
-                    write!(out, "<span>{}</span>", accept)?;
-                    write!(out, "</div>")?;
-                }
-            }
-
-            if !endpoint.returns.is_empty() {
-                write!(out, "<table class=\"returns\">")?;
-
-                for response in &endpoint.returns {
-                    write!(out, "<tr>")?;
-
-                    let (ty, pos) = response.ty.ref_both();
-
-                    let status = response.status
-                        .as_ref()
-                        .map(|status| format!("{}", status))
-                        .unwrap_or("<em>no status</em>".to_owned());
-
-                    let produces = response.produces
-                        .as_ref()
-                        .map(|m| format!("{}", m))
-                        .unwrap_or("*/*".to_owned());
-
-                    write!(out, "<td class=\"status\">{}</td>", status)?;
-                    write!(out, "<td class=\"content-type\">{}</td>", produces)?;
-
-                    write!(out, "<td class=\"ty\">")?;
-                    self.write_type(out, pos, type_id, ty)?;
-                    write!(out, "</td>")?;
-
-                    write!(out, "<td class=\"description\">")?;
-                    self.write_markdown(out, &response.comment)?;
-                    write!(out, "</td>")?;
-
-                    write!(out, "</tr>")?;
+                    for accept in &endpoint.accepts {
+                        html!(out, div {class => "accept"} => {
+                            html!(out, span {} ~ accept);
+                        });
+                    }
                 }
 
-                write!(out, "</table>")?;
-            }
+                if !endpoint.returns.is_empty() {
+                    html!(out, h2 {} ~ "Returns");
+
+                    html!(out, table {class => "returns"} => {
+                        for response in &endpoint.returns {
+                            html!(out, tr {} => {
+                                let (ty, pos) = response.ty.ref_both();
+
+                                let status = response.status
+                                    .as_ref()
+                                    .map(|status| format!("{}", status))
+                                    .unwrap_or("<em>no status</em>".to_owned());
+
+                                let produces = response.produces
+                                    .as_ref()
+                                    .map(|m| format!("{}", m))
+                                    .unwrap_or("*/*".to_owned());
+
+                                html!(out, td {class => "status"} ~ status);
+                                html!(out, td {class => "content-type"} ~ produces);
+
+                                html!(out, td {class => "ty"} => {
+                                    self.write_type(out, pos, type_id, ty)?;
+                                });
+
+                                html!(out, td {class => "description"} => {
+                                    self.write_markdown(out, &response.comment)?;
+                                });
+                            });
+                        }
+                    });
+                }
+            });
         });
 
         Ok(())
@@ -340,10 +330,10 @@ impl DocBackend {
         let mut service_out = out.new_service();
         let mut out = service_out.get_mut();
 
-        html!(section {id => body.name, class => "section-service"}, out => {
+        html!(out, section {id => body.name, class => "section-content section-service"} => {
             self.section_title(out, "service", &body.name)?;
 
-            html!(section {class => "section-body"}, out => {
+            html!(out, div {class => "section-body"} => {
                 self.write_description(out, &body.comment)?;
 
                 for endpoint in &body.endpoints {
@@ -361,10 +351,13 @@ impl DocBackend {
                         _: &RpPos,
                         body: Rc<RpEnumBody>)
                         -> Result<()> {
-        html!(section {id => body.name, class => "section-enum"}, out => {
+        let mut writer = out.new_type();
+        let mut out = writer.get_mut();
+
+        html!(out, section {id => body.name, class => "section-content section-enum"} => {
             self.section_title(out, "enum", &body.name)?;
 
-            html!(section {class => "section-body"}, out => {
+            html!(out, div {class => "section-body"} => {
                 self.write_description(out, &body.comment)?;
                 self.write_variants(out, body.variants.iter())?;
             });
@@ -379,10 +372,13 @@ impl DocBackend {
                              _: &RpPos,
                              body: Rc<RpInterfaceBody>)
                              -> Result<()> {
-        html!(section {id => body.name, class => "section-interface"}, out => {
+        let mut writer = out.new_type();
+        let mut out = writer.get_mut();
+
+        html!(out, section {id => body.name, class => "section-content section-interface"} => {
             self.section_title(out, "interface", &body.name)?;
 
-            html!(section {class => "section-body"}, out => {
+            html!(out, div {class => "section-body"} => {
                 self.write_description(out, &body.comment)?;
 
                 for (name, sub_type) in &body.sub_types {
@@ -406,10 +402,16 @@ impl DocBackend {
                         _: &RpPos,
                         body: Rc<RpTypeBody>)
                         -> Result<()> {
-        html!(section {id => body.name, class => "section-type"}, out => {
+        let mut writer = out.new_type();
+        let mut out = writer.get_mut();
+
+        html!(out, section {id => body.name, class => "section-content section-type"} => {
             self.section_title(out, "type", &body.name)?;
-            self.write_description(out, &body.comment)?;
-            self.write_fields(out, type_id, body.fields.iter())?;
+
+            html!(out, div {class => "section-body"} => {
+                self.write_description(out, &body.comment)?;
+                self.write_fields(out, type_id, body.fields.iter())?;
+            });
         });
 
         Ok(())
@@ -421,10 +423,13 @@ impl DocBackend {
                          _: &RpPos,
                          body: Rc<RpTupleBody>)
                          -> Result<()> {
-        html!(section {id => body.name, class => "section-tuple"}, out => {
+        let mut writer = out.new_type();
+        let mut out = writer.get_mut();
+
+        html!(out, section {id => body.name, class => "section-content section-tuple"} => {
             self.section_title(out, "tuple", &body.name)?;
 
-            html!(section {class => "section-body"}, out => {
+            html!(out, div {class => "section-body"} => {
                 self.write_description(out, &body.comment)?;
                 self.write_fields(out, type_id, body.fields.iter())?;
             });
