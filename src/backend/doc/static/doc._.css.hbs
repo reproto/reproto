@@ -121,13 +121,15 @@ ul.packages-list li {
 }
 
 .variants {
+  padding: 0px {{margin}};
 }
 
 .fields {
+  padding: 0px {{margin}};
 }
 
 .fields > .field {
-  margin: {{half_margin}} 0px;
+  margin: {{double_margin}} 0px;
 }
 
 .fields > .field > .name {
@@ -216,28 +218,34 @@ ul.packages-list li {
   margin: 0 0.1em;
 }
 
-table.returns {
+table.spaced {
+  width: 100%;
 }
 
-table.returns > tbody > tr > td:first-child {
+table.spaced > tbody > tr > td:first-child {
   padding-left: 0px;
 }
 
-table.returns > tbody > tr > td:last-child {
+table.spaced > tbody > tr > td:last-child {
   padding-right: 0px;
 }
 
-table.returns td {
+table.spaced td {
   vertical-align: top;
   padding: {{margin}} {{half_margin}};
 }
 
-table.returns td.description {
+table.spaced td.type {
+  width: 20%;
+}
+
+table.spaced td.description {
+  width: 50%;
   padding: {{half_margin}} {{half_margin}};
   margin: {{half_margin}} 0;
 }
 
-table.returns td.description p {
+table.spaced td.description p {
   margin: {{half_margin}} 0;
 }
 
@@ -245,6 +253,57 @@ table.returns td.description p {
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
   margin-bottom: {{margin}};
+}
+
+.endpoint.short {
+  border-width: 0 !important;
+  margin: 0 !important;
+}
+
+.endpoint.short .endpoint-title {
+  border-radius: 0px;
+  padding: {{half_margin}};
+}
+
+.endpoint.short .endpoint-body {
+  padding: {{margin}} 0;
+}
+
+.endpoint.short .endpoint-body * {
+  margin: 0;
+  padding: 0;
+  font-size: 1em;
+  font-weight: normal;
+}
+
+.section-service-overview .section-body {
+  padding: {{margin}};
+}
+
+.section-service-overview .description {
+  margin: {{margin}} 0;
+  padding: 0;
+}
+
+.section-types-overview .section-body {
+  padding: {{margin}};
+}
+
+.section-types-overview h2 {
+  margin: {{margin}} 0;
+  font-size: 100%;
+}
+
+.section-types-overview .description {
+  margin: {{margin}} 0;
+  padding: 0;
+}
+
+.section-types-overview .description * {
+  margin: 0;
+  padding: 0;
+  font-size: 1em;
+  font-weight: normal;
 }
 
 .endpoint.get {
@@ -264,14 +323,19 @@ table.returns td.description p {
 }
 
 .endpoint-title {
+  display: block;
+
   margin: 0;
 
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
 
+  color: black;
   font-family: {{endpoint_title_font}};
   font-size: {{endpoint_font_size}};
+  font-weight: bold;
   padding: 12px;
+  text-decoration: none;
 }
 
 .endpoint-title .method {

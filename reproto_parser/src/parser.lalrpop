@@ -111,6 +111,13 @@ ServiceNested: ServiceNested<'input> = {
             children: children,
         }
     },
+    <star:"*"> "{" <options:Loc<OptionDecl>*> <children:ServiceNested*> "}" => {
+        ServiceNested::Star {
+            comment: star,
+            options: options,
+            children: children,
+        }
+    },
     <returns:"returns"> <ty:Loc<TypeSpec>> "{" <options:Loc<OptionDecl>*> "}" => {
         ServiceNested::Returns {
             comment: returns,
@@ -118,11 +125,11 @@ ServiceNested: ServiceNested<'input> = {
             options: options,
         }
     },
-    <star:"*"> "{" <options:Loc<OptionDecl>*> <children:ServiceNested*> "}" => {
-        ServiceNested::Star {
-            comment: star,
+    <accepts:"accepts"> <ty:Loc<TypeSpec>> "{" <options:Loc<OptionDecl>*> "}" => {
+        ServiceNested::Accepts {
+            comment: accepts,
+            ty: ty,
             options: options,
-            children: children,
         }
     },
 };
@@ -336,6 +343,7 @@ extern {
         false => Token::FalseKeyword,
         "endpoint" => Token::EndpointKeyword(<Vec<&'input str>>),
         "returns" => Token::ReturnsKeyword(<Vec<&'input str>>),
+        "accepts" => Token::AcceptsKeyword(<Vec<&'input str>>),
         "*" => Token::Star(<Vec<&'input str>>),
     }
 }

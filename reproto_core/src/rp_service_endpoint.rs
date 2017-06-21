@@ -4,7 +4,7 @@ use super::*;
 pub struct RpServiceEndpoint {
     pub url: String,
     pub comment: Vec<String>,
-    pub accepts: Vec<Mime>,
+    pub accepts: Vec<RpServiceAccepts>,
     pub returns: Vec<RpServiceReturns>,
     pub method: Option<String>,
 }

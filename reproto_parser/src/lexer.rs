@@ -95,14 +95,19 @@ impl<'input> Lexer<'input> {
         self.n0.and_then(|n| n).map(|n| n.0).unwrap_or(0usize)
     }
 
+    fn take_last_comment(&mut self) -> Vec<&'input str> {
+        let comment = self.last_comment.clone();
+        self.last_comment.clear();
+        comment
+    }
+
     fn identifier(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
         // strip leading _
         let (stripped, _) = take!(self, start, '_');
-        let (end, content) = take!(self, start, 'a'...'z' | '_' | '0'...'9');
+        let (end, content) = take!(self, stripped, 'a'...'z' | '_' | '0'...'9');
 
         if stripped != start {
-            let identifier = commented(self.last_comment.clone(), content);
-            self.last_comment.clear();
+            let identifier = commented(self.take_last_comment(), content);
             let token = Token::Identifier(identifier);
             return Ok((start, token, end));
         }
@@ -128,19 +133,11 @@ impl<'input> Lexer<'input> {
             "bytes" => Token::BytesKeyword,
             "true" => Token::TrueKeyword,
             "false" => Token::FalseKeyword,
-            "endpoint" => {
-                let comment = self.last_comment.clone();
-                self.last_comment.clear();
-                Token::EndpointKeyword(comment)
-            }
-            "returns" => {
-                let comment = self.last_comment.clone();
-                self.last_comment.clear();
-                Token::ReturnsKeyword(comment)
-            }
+            "endpoint" => Token::EndpointKeyword(self.take_last_comment()),
+            "returns" => Token::ReturnsKeyword(self.take_last_comment()),
+            "accepts" => Token::AcceptsKeyword(self.take_last_comment()),
             identifier => {
-                let identifier = commented(self.last_comment.clone(), identifier);
-                self.last_comment.clear();
+                let identifier = commented(self.take_last_comment(), identifier);
                 let token = Token::Identifier(identifier);
                 return Ok((start, token, end));
             }
@@ -151,8 +148,7 @@ impl<'input> Lexer<'input> {
 
     fn type_identifier(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
         let (end, content) = take!(self, start, 'A'...'Z' | 'a'...'z' | '_' | '0'...'9');
-        let type_identifier = commented(self.last_comment.clone(), content);
-        self.last_comment.clear();
+        let type_identifier = commented(self.take_last_comment(), content);
         Ok((start, Token::TypeIdentifier(type_identifier), end))
     }
 
@@ -440,11 +436,7 @@ impl<'input> Iterator for Lexer<'input> {
                     '&' => Token::And,
                     '/' => Token::Slash,
                     '=' => Token::Equals,
-                    '*' => {
-                        let comment = self.last_comment.clone();
-                        self.last_comment.clear();
-                        Token::Star(comment)
-                    }
+                    '*' => Token::Star(self.take_last_comment()),
                     '@' => {
                         return Some(self.version());
                     }
@@ -586,6 +578,16 @@ pub mod tests {
 
         assert_eq!(vec![(16, Identifier(commented(comment, "hello")), 21)],
                    tokens.unwrap());
+    }
+
+    #[test]
+    pub fn test_identifier_stripping() {
+        let a = &tokenize("my_version").unwrap()[0].1;
+        let b = &tokenize("_my_version").unwrap()[0].1;
+        let c = &tokenize("__my_version").unwrap()[0].1;
+
+        assert_eq!(a, b);
+        assert_eq!(a, c);
     }
 
     #[test]

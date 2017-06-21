@@ -1,5 +1,6 @@
 //! # Collector of results from the doc backend
 
+use std::rc::Rc;
 use super::*;
 
 pub struct DocWriter<'a> {
@@ -23,7 +24,11 @@ pub struct DocCollector {
     package_title: Option<String>,
     packages: Vec<String>,
     services: Vec<String>,
+    service_overviews: Vec<String>,
+    types_overview: Vec<String>,
     types: Vec<String>,
+    pub service_bodies: Vec<Rc<RpServiceBody>>,
+    pub decl_bodies: Vec<RpDecl>,
 }
 
 impl DocCollector {
@@ -31,9 +36,25 @@ impl DocCollector {
         self.package_title = Some(title);
     }
 
-    pub fn new_service(&mut self) -> DocWriter {
+    pub fn new_service(&mut self, service_body: Rc<RpServiceBody>) -> DocWriter {
+        self.service_bodies.push(service_body);
+
         DocWriter {
             dest: &mut self.services,
+            buffer: String::new(),
+        }
+    }
+
+    pub fn new_service_overview(&mut self) -> DocWriter {
+        DocWriter {
+            dest: &mut self.service_overviews,
+            buffer: String::new(),
+        }
+    }
+
+    pub fn new_types_overview(&mut self) -> DocWriter {
+        DocWriter {
+            dest: &mut self.types_overview,
             buffer: String::new(),
         }
     }
@@ -45,7 +66,9 @@ impl DocCollector {
         }
     }
 
-    pub fn new_type(&mut self) -> DocWriter {
+    pub fn new_type(&mut self, decl: RpDecl) -> DocWriter {
+        self.decl_bodies.push(decl);
+
         DocWriter {
             dest: &mut self.types,
             buffer: String::new(),
@@ -61,7 +84,11 @@ impl<'a> Collecting<'a> for DocCollector {
             package_title: None,
             packages: Vec::new(),
             services: Vec::new(),
+            service_overviews: Vec::new(),
+            types_overview: Vec::new(),
             types: Vec::new(),
+            service_bodies: Vec::new(),
+            decl_bodies: Vec::new(),
         }
     }
 
@@ -80,6 +107,14 @@ impl<'a> Collecting<'a> for DocCollector {
                     html!(out, div {class => "grid-packages"} => {
                         if let Some(package) = self.packages.iter().nth(0) {
                             out.write_str(package.as_str())?;
+                        }
+
+                        if let Some(service_overview) = self.service_overviews.iter().nth(0) {
+                            out.write_str(service_overview.as_str())?;
+                        }
+
+                        if let Some(decl_overview) = self.types_overview.iter().nth(0) {
+                            out.write_str(decl_overview.as_str())?;
                         }
                     });
 

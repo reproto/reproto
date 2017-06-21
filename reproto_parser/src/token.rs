@@ -62,5 +62,6 @@ pub enum Token<'input> {
     FalseKeyword,
     EndpointKeyword(Vec<&'input str>),
     ReturnsKeyword(Vec<&'input str>),
+    AcceptsKeyword(Vec<&'input str>),
     Star(Vec<&'input str>),
 }

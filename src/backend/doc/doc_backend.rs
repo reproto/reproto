@@ -79,8 +79,13 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_description(&self, out: &mut FmtWrite, comment: &Vec<String>) -> Result<()> {
-        if !comment.is_empty() {
+    fn write_description<'a, I>(&self, out: &mut FmtWrite, comment: I) -> Result<()>
+        where I: IntoIterator<Item = &'a String>
+    {
+        let mut it = comment.into_iter().peekable();
+
+        if it.peek().is_some() {
+            let comment = it.map(ToOwned::to_owned).collect::<Vec<_>>();
             let comment = comment.join("\n");
             html!(out, div { class => "description" } ~ Self::markdown(&comment));
         }
@@ -89,15 +94,28 @@ impl DocBackend {
     }
 
     fn write_variants<'b, I>(&self, out: &mut FmtWrite, variants: I) -> Result<()>
-        where I: Iterator<Item = &'b RpLoc<Rc<RpEnumVariant>>>
+        where I: IntoIterator<Item = &'b RpLoc<Rc<RpEnumVariant>>>
     {
+        let mut it = variants.into_iter().peekable();
+
+        if it.peek().is_none() {
+            return Ok(());
+        }
+
         html!(out, div {class => "variants"} => {
-            for variant in variants {
-                html!(out, div {class => "variant"} => {
-                    html!(out, h4 {class => "name"} ~ &variant.name);
-                    self.write_description(out, &variant.comment)?;
-                });
-            }
+            html!(out, h2 {} ~ "Variants");
+
+            html!(out, table {class => "spaced"} => {
+                for variant in it {
+                    html!(out, tr {} => {
+                        html!(out, td {class => "name"} ~ &variant.name);
+
+                        html!(out, td {class => "description"} => {
+                            self.write_description(out, &variant.comment)?;
+                        });
+                    });
+                }
+            });
         });
 
         Ok(())
@@ -180,41 +198,49 @@ impl DocBackend {
         where I: Iterator<Item = &'b RpLoc<RpField>>
     {
         html!(out, div {class => "fields"} => {
-            for field in fields {
-                let (field, pos) = field.ref_both();
+            html!(out, h2 {} ~ "Fields");
 
-                let mut classes = vec!["field"];
+            html!(out, table {class => "spaced"} => {
+                for field in fields {
+                    let (field, pos) = field.ref_both();
 
-                if field.is_optional() {
-                    classes.push("optional");
-                } else {
-                    classes.push("required");
-                }
-
-                html!(out, div {class => classes} => {
-                    let ident = field.ident();
-                    let name = field.name();
-
-                    html!(out, span {class => "field-ident"} ~ ident);
+                    let mut classes = vec!["field"];
 
                     if field.is_optional() {
-                        html!(out, span {class => "field-modifier"} ~ "?");
+                        classes.push("optional");
+                    } else {
+                        classes.push("required");
                     }
 
-                    html!(out, span {class => "field-type"} => {
-                        self.write_type(out, pos, type_id, &field.ty)?;
-                    });
+                    html!(out, tr {classes => classes} => {
+                        html!(out, td {class => "mime"} => {
+                            let ident = field.ident();
+                            let name = field.name();
 
-                    if name != ident {
-                        html!(out, span {class => "field-alias"} => {
-                            html!(out, span {class => "field-alias-as"} ~ "as");
-                            html!(out, code {class => "field-alias-name"} ~ format!("\"{}\"", name));
+                            html!(out, span {class => "field-ident"} ~ ident);
+
+                            if field.is_optional() {
+                                html!(out, span {class => "field-modifier"} ~ "?");
+                            }
+
+                            if name != ident {
+                                html!(out, span {class => "field-alias"} => {
+                                    html!(out, span {class => "field-alias-as"} ~ "as");
+                                    html!(out, code {class => "field-alias-name"} ~ format!("\"{}\"", name));
+                                });
+                            }
                         });
-                    }
-                });
 
-                self.write_description(out, &field.comment)?;
-            }
+                        html!(out, td {class => "type"} => {
+                            self.write_type(out, pos, type_id, &field.ty)?;
+                        });
+
+                        html!(out, td {class => "description"} => {
+                            self.write_markdown(out, &field.comment)?;
+                        });
+                    });
+                }
+            });
         });
 
         Ok(())
@@ -256,15 +282,65 @@ impl DocBackend {
         Ok(())
     }
 
+    fn write_endpoint_short(&self,
+                            out: &mut FmtWrite,
+                            index: usize,
+                            body: &Rc<RpServiceBody>,
+                            endpoint: &RpServiceEndpoint)
+                            -> Result<()> {
+        let method: String =
+            endpoint.method.as_ref().map(AsRef::as_ref).unwrap_or("GET").to_owned();
+
+        let id = self.endpoint_id(index, &method, body, endpoint);
+
+        html!(out, div {class => format!("endpoint short {}", method.to_lowercase())} => {
+            html!(out, a {class => "endpoint-title", href => format!("#{}", id)} => {
+                html!(out, span {class => "method"} ~ method);
+                html!(out, span {class => "url"} ~ endpoint.url);
+            });
+
+            html!(out, div {class => "endpoint-body"} => {
+                self.write_description(out, endpoint.comment.iter().take(1))?;
+            });
+        });
+
+        Ok(())
+    }
+
+    fn url_filter(&self, url: &str) -> String {
+        url.replace(|c| match c {
+                        'a'...'z' | 'A'...'Z' | '0'...'9' => false,
+                        _ => true,
+                    },
+                    "_")
+    }
+
+    fn endpoint_id(&self,
+                   index: usize,
+                   method: &str,
+                   body: &Rc<RpServiceBody>,
+                   endpoint: &RpServiceEndpoint)
+                   -> String {
+        format!("{}_{}_{}_{}",
+                method,
+                self.url_filter(&body.name),
+                self.url_filter(&endpoint.url),
+                index)
+    }
+
     fn write_endpoint(&self,
                       out: &mut FmtWrite,
+                      index: usize,
                       type_id: &RpTypeId,
+                      body: &Rc<RpServiceBody>,
                       endpoint: &RpServiceEndpoint)
                       -> Result<()> {
         let method: String =
             endpoint.method.as_ref().map(AsRef::as_ref).unwrap_or("GET").to_owned();
 
-        html!(out, div {class => format!("endpoint {}", method.to_lowercase())} => {
+        let id = self.endpoint_id(index, &method, body, endpoint);
+
+        html!(out, div {class => format!("endpoint {}", method.to_lowercase()), id => id} => {
             html!(out, h2 {class => "endpoint-title"} => {
                 html!(out, span {class => "method"} ~ method);
                 html!(out, span {class => "url"} ~ endpoint.url);
@@ -276,17 +352,36 @@ impl DocBackend {
                 if !endpoint.accepts.is_empty() {
                     html!(out, h2 {} ~ "Accepts");
 
-                    for accept in &endpoint.accepts {
-                        html!(out, div {class => "accept"} => {
-                            html!(out, span {} ~ accept);
-                        });
-                    }
+                    html!(out, table {class => "spaced"} => {
+                        for accept in &endpoint.accepts {
+                            html!(out, tr {} => {
+                                let (ty, pos) = accept.ty.ref_both();
+
+                                let accepts = accept.accepts
+                                    .as_ref()
+                                    .map(|m| format!("{}", m))
+                                    .unwrap_or("*/*".to_owned());
+
+                                html!(out, td {class => "mime"} => {
+                                    html!(out, code {} ~ accepts)
+                                });
+
+                                html!(out, td {class => "type"} => {
+                                    self.write_type(out, pos, type_id, ty)?;
+                                });
+
+                                html!(out, td {class => "description"} => {
+                                    self.write_markdown(out, &accept.comment)?;
+                                });
+                            });
+                        }
+                    });
                 }
 
                 if !endpoint.returns.is_empty() {
                     html!(out, h2 {} ~ "Returns");
 
-                    html!(out, table {class => "returns"} => {
+                    html!(out, table {class => "spaced"} => {
                         for response in &endpoint.returns {
                             html!(out, tr {} => {
                                 let (ty, pos) = response.ty.ref_both();
@@ -302,9 +397,11 @@ impl DocBackend {
                                     .unwrap_or("*/*".to_owned());
 
                                 html!(out, td {class => "status"} ~ status);
-                                html!(out, td {class => "content-type"} ~ produces);
+                                html!(out, td {class => "mime"} => {
+                                    html!(out, code {} ~ produces)
+                                });
 
-                                html!(out, td {class => "ty"} => {
+                                html!(out, td {class => "type"} => {
                                     self.write_type(out, pos, type_id, ty)?;
                                 });
 
@@ -321,13 +418,101 @@ impl DocBackend {
         Ok(())
     }
 
+    /// Write a packages index.
+    ///
+    /// * `current` if some value indicates which the current package is.
+    pub fn write_packages(&self,
+                          out: &mut FmtWrite,
+                          packages: &Vec<RpVersionedPackage>,
+                          current: Option<&RpVersionedPackage>)
+                          -> Result<()> {
+        html!(out, section {class => "section-content section-packages"} => {
+            html!(out, h1 {class => "section-title"} ~ "Packages");
+
+            html!(out, div {class => "section-body"} => {
+                html!(out, ul {class => "packages-list"} => {
+                    for package in packages {
+                        let name = format!("{}", package);
+
+                        if let Some(current) = current {
+                            if package == current {
+                                html!(out, li {} ~ format!("<b>{}</b>", name));
+                                continue;
+                            }
+                        }
+
+                        let package = self.package(package);
+                        let url = format!("{}.{}", self.package_file(&package), EXT);
+
+                        html!(out, li {} => {
+                            html!(out, a {href => url} ~ name);
+                        });
+                    }
+                });
+            });
+        });
+
+        Ok(())
+    }
+
+    pub fn write_service_overview(&self,
+                                  out: &mut FmtWrite,
+                                  service_bodies: Vec<Rc<RpServiceBody>>)
+                                  -> Result<()> {
+        if service_bodies.is_empty() {
+            return Ok(());
+        }
+
+        html!(out, section {class => "section-content section-service-overview"} => {
+            html!(out, h1 {class => "section-title"} ~ "Services");
+
+            html!(out, div {class => "section-body"} => {
+                for body in service_bodies {
+                    html!(out, h2 {} ~ body.name);
+
+                    self.write_description(out, body.comment.iter().take(1))?;
+
+                    for (index, endpoint) in body.endpoints.iter().enumerate() {
+                        self.write_endpoint_short(out, index, &body, endpoint)?;
+                    }
+                }
+            })
+        });
+
+        Ok(())
+    }
+
+    pub fn write_types_overview(&self, out: &mut FmtWrite, decls: Vec<RpDecl>) -> Result<()> {
+        if decls.is_empty() {
+            return Ok(());
+        }
+
+        html!(out, section {class => "section-content section-types-overview"} => {
+            html!(out, h1 {class => "section-title"} ~ "Types");
+
+            html!(out, div {class => "section-body"} => {
+                for decl in decls {
+                    let href = format!("#{}", decl.name());
+
+                    html!(out, h2 {} => {
+                        html!(out, a {href => href} ~ decl.name());
+                    });
+
+                    self.write_description(out, decl.comment().iter().take(1))?;
+                }
+            })
+        });
+
+        Ok(())
+    }
+
     pub fn process_service(&self,
                            out: &mut DocCollector,
                            type_id: &RpTypeId,
                            _: &RpPos,
                            body: Rc<RpServiceBody>)
                            -> Result<()> {
-        let mut service_out = out.new_service();
+        let mut service_out = out.new_service(body.clone());
         let mut out = service_out.get_mut();
 
         html!(out, section {id => body.name, class => "section-content section-service"} => {
@@ -336,8 +521,8 @@ impl DocBackend {
             html!(out, div {class => "section-body"} => {
                 self.write_description(out, &body.comment)?;
 
-                for endpoint in &body.endpoints {
-                    self.write_endpoint(out, type_id, endpoint)?;
+                for (index, endpoint) in body.endpoints.iter().enumerate() {
+                    self.write_endpoint(out, index, type_id, &body, endpoint)?;
                 }
             });
         });
@@ -351,7 +536,7 @@ impl DocBackend {
                         _: &RpPos,
                         body: Rc<RpEnumBody>)
                         -> Result<()> {
-        let mut writer = out.new_type();
+        let mut writer = out.new_type(RpDecl::Enum(body.clone()));
         let mut out = writer.get_mut();
 
         html!(out, section {id => body.name, class => "section-content section-enum"} => {
@@ -372,7 +557,7 @@ impl DocBackend {
                              _: &RpPos,
                              body: Rc<RpInterfaceBody>)
                              -> Result<()> {
-        let mut writer = out.new_type();
+        let mut writer = out.new_type(RpDecl::Interface(body.clone()));
         let mut out = writer.get_mut();
 
         html!(out, section {id => body.name, class => "section-content section-interface"} => {
@@ -402,7 +587,7 @@ impl DocBackend {
                         _: &RpPos,
                         body: Rc<RpTypeBody>)
                         -> Result<()> {
-        let mut writer = out.new_type();
+        let mut writer = out.new_type(RpDecl::Type(body.clone()));
         let mut out = writer.get_mut();
 
         html!(out, section {id => body.name, class => "section-content section-type"} => {
@@ -423,7 +608,7 @@ impl DocBackend {
                          _: &RpPos,
                          body: Rc<RpTupleBody>)
                          -> Result<()> {
-        let mut writer = out.new_type();
+        let mut writer = out.new_type(RpDecl::Tuple(body.clone()));
         let mut out = writer.get_mut();
 
         html!(out, section {id => body.name, class => "section-content section-tuple"} => {

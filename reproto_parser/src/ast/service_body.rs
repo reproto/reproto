@@ -10,35 +10,26 @@ pub struct ServiceBody<'a> {
     pub children: Vec<ServiceNested<'a>>,
 }
 
-enum Node {
-    Endpoint {
-        parent: Option<Rc<RefCell<Node>>>,
-        url: RpLoc<String>,
-        options: Vec<RpLoc<RpOptionDecl>>,
-        comment: Vec<String>,
-        returns: Vec<RpServiceReturns>,
-    },
-    Star {
-        parent: Option<Rc<RefCell<Node>>>,
-        options: Vec<RpLoc<RpOptionDecl>>,
-        comment: Vec<String>,
-        returns: Vec<RpServiceReturns>,
-    },
+struct Node {
+    parent: Option<Rc<RefCell<Node>>>,
+    url: Option<RpLoc<String>>,
+    options: Vec<RpLoc<RpOptionDecl>>,
+    comment: Vec<String>,
+    returns: Vec<RpServiceReturns>,
+    accepts: Vec<RpServiceAccepts>,
 }
 
 impl Node {
     fn push_returns(&mut self, input: RpServiceReturns) {
-        match *self {
-            Node::Endpoint { ref mut returns, .. } => returns.push(input),
-            Node::Star { ref mut returns, .. } => returns.push(input),
-        }
+        self.returns.push(input);
+    }
+
+    fn push_accepts(&mut self, input: RpServiceAccepts) {
+        self.accepts.push(input);
     }
 
     fn comment(&self) -> &Vec<String> {
-        match *self {
-            Node::Endpoint { ref comment, .. } => comment,
-            Node::Star { ref comment, .. } => comment,
-        }
+        &self.comment
     }
 }
 
@@ -83,38 +74,54 @@ fn convert_return(path: &Path,
     })
 }
 
+fn convert_accepts(path: &Path,
+                   comment: Vec<String>,
+                   ty: AstLoc<RpType>,
+                   options: Vec<AstLoc<OptionDecl>>)
+                   -> Result<RpServiceAccepts> {
+    let options = Options::new(options.into_model(path)?);
+
+    let accepts: Option<RpLoc<String>> = options.find_one_string("accept")?;
+
+    let accepts = if let Some(accepts) = accepts {
+        let (accepts, pos) = accepts.both();
+
+        let accepts = accepts.parse()
+            .chain_err(|| ErrorKind::Pos("not a valid mime type".to_owned(), pos.clone()))?;
+
+        Some(accepts)
+    } else {
+        None
+    };
+
+    Ok(RpServiceAccepts {
+        comment: comment,
+        ty: ty.into_model(path)?,
+        accepts: accepts,
+    })
+}
+
 /// Recursively unwind all inherited information about the given node, and convert to a service
 /// endpoint.
 fn unwind(node: Option<Rc<RefCell<Node>>>, comment: Vec<String>) -> Result<RpServiceEndpoint> {
-    use self::Node::*;
-
     let mut url: Vec<String> = Vec::new();
     let mut options: Vec<RpLoc<RpOptionDecl>> = Vec::new();
     let mut returns = Vec::new();
+    let mut accepts = Vec::new();
 
     let mut current = node;
 
     while let Some(step) = current {
-        match *step.borrow() {
-            Endpoint { parent: ref next_parent,
-                       url: ref next_url,
-                       options: ref next_options,
-                       returns: ref next_returns,
-                       .. } => {
-                current = next_parent.clone();
-                url.push(next_url.as_ref().to_owned());
-                options.extend(next_options.iter().map(Clone::clone).rev());
-                returns.extend(next_returns.iter().map(Clone::clone).rev());
-            }
-            Star { parent: ref next_parent,
-                   options: ref next_options,
-                   returns: ref next_returns,
-                   .. } => {
-                current = next_parent.clone();
-                options.extend(next_options.iter().map(Clone::clone).rev());
-                returns.extend(next_returns.iter().map(Clone::clone).rev());
-            }
+        let next = step.borrow();
+        current = next.parent.clone();
+
+        if let Some(ref next_url) = next.url {
+            url.push(next_url.as_ref().to_owned());
         }
+
+        options.extend(next.options.iter().map(Clone::clone).rev());
+        returns.extend(next.returns.iter().map(Clone::clone));
+        accepts.extend(next.accepts.iter().map(Clone::clone));
     }
 
     let url: Vec<_> = url.into_iter().rev().collect();
@@ -122,25 +129,14 @@ fn unwind(node: Option<Rc<RefCell<Node>>>, comment: Vec<String>) -> Result<RpSer
 
     let options = Options::new(options.into_iter().rev().collect());
 
-    let mut accepts: Vec<Mime> = Vec::new();
-
-    for accept in options.find_all_strings("accept")? {
-        let (value, pos) = accept.both();
-
-        accepts.push(value.parse()
-            .chain_err(|| ErrorKind::Pos("invalid mime type".to_owned(), pos.clone()))?);
-    }
-
     let method: Option<String> = options.find_one_string("method")?
         .map(Loc::move_inner);
-
-    let returns = returns.into_iter().rev().collect();
 
     Ok(RpServiceEndpoint {
         url: url,
         comment: comment,
-        accepts: accepts,
         returns: returns,
+        accepts: accepts,
         method: method,
     })
 }
@@ -155,29 +151,32 @@ impl<'a> IntoModel for ServiceBody<'a> {
         queue.push((None, self.children));
 
         while let Some((parent, children)) = queue.pop() {
-            let is_terminus = children.iter().all(ServiceNested::is_returns);
+            let is_terminus = children.iter().all(ServiceNested::is_terminus);
 
             for child in children {
                 match child {
                     // add to previous, including url changes.
                     ServiceNested::Endpoint { url, comment, options, children } => {
-                        let node = Rc::new(RefCell::new(Node::Endpoint {
+                        let node = Rc::new(RefCell::new(Node {
                             parent: parent.as_ref().map(Clone::clone),
-                            url: url.into_model(path)?,
+                            url: Some(url.into_model(path)?),
                             options: options.into_model(path)?,
                             comment: comment.into_iter().map(ToOwned::to_owned).collect(),
                             returns: Vec::new(),
+                            accepts: Vec::new(),
                         }));
 
                         queue.push((Some(node.clone()), children));
                     }
                     // just add to previous without url changes.
                     ServiceNested::Star { comment, options, children } => {
-                        let node = Rc::new(RefCell::new(Node::Star {
+                        let node = Rc::new(RefCell::new(Node {
                             parent: parent.as_ref().map(Clone::clone),
+                            url: None,
                             options: options.into_model(path)?,
                             comment: comment.into_iter().map(ToOwned::to_owned).collect(),
                             returns: Vec::new(),
+                            accepts: Vec::new(),
                         }));
 
                         queue.push((Some(node.clone()), children));
@@ -185,10 +184,18 @@ impl<'a> IntoModel for ServiceBody<'a> {
                     // end node, manifest an endpoint.
                     ServiceNested::Returns { comment, ty, options } => {
                         let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-                        let response = convert_return(path, comment, ty, options)?;
+                        let returns = convert_return(path, comment, ty, options)?;
 
                         if let Some(parent) = parent.as_ref() {
-                            parent.try_borrow_mut()?.push_returns(response);
+                            parent.try_borrow_mut()?.push_returns(returns);
+                        }
+                    }
+                    ServiceNested::Accepts { comment, ty, options } => {
+                        let comment = comment.into_iter().map(ToOwned::to_owned).collect();
+                        let accepts = convert_accepts(path, comment, ty, options)?;
+
+                        if let Some(parent) = parent.as_ref() {
+                            parent.try_borrow_mut()?.push_accepts(accepts);
                         }
                     }
                 }

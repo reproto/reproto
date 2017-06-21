@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -41,49 +40,12 @@ impl<'a> DocCompiler<'a> {
         Ok(())
     }
 
-    /// Write a packages index.
-    ///
-    /// * `current` if some value indicates which the current package is.
-    fn write_packages(&self,
-                      out: &mut FmtWrite,
-                      packages: &Vec<RpVersionedPackage>,
-                      current: Option<&RpVersionedPackage>)
-                      -> Result<()> {
-        html!(out, section {class => "section-content section-packages"} => {
-            html!(out, h1 {class => "section-title"} ~ "Packages");
-
-            html!(out, div {class => "section-body"} => {
-                html!(out, ul {class => "packages-list"} => {
-                    for package in packages {
-                        let name = format!("{}", package);
-
-                        if let Some(current) = current {
-                            if package == current {
-                                html!(out, li {} ~ format!("<b>{}</b>", name));
-                                continue;
-                            }
-                        }
-
-                        let package = self.processor.package(package);
-                        let url = format!("{}.{}", self.processor.package_file(&package), self.ext());
-
-                        html!(out, li {} => {
-                            html!(out, a {href => url} ~ name);
-                        });
-                    }
-                });
-            });
-        });
-
-        Ok(())
-    }
-
     fn write_index(&self, packages: &Vec<RpVersionedPackage>) -> Result<()> {
         let mut out = String::new();
 
         self.processor
             .write_doc(&mut out, move |out| {
-                self.write_packages(out, packages, None)?;
+                self.processor.write_packages(out, packages, None)?;
                 Ok(())
             })?;
 
@@ -104,16 +66,32 @@ impl<'a> DocCompiler<'a> {
         Ok(())
     }
 
-    fn write_package_index(&self,
-                           packages: &Vec<RpVersionedPackage>,
-                           files: &mut BTreeMap<&RpVersionedPackage, DocCollector>)
-                           -> Result<()> {
-        for (package, out) in files.iter_mut() {
-            out.set_package_title(format!("{}", package));
+    fn write_overviews(&self,
+                       packages: &Vec<RpVersionedPackage>,
+                       files: &mut BTreeMap<&RpVersionedPackage, DocCollector>)
+                       -> Result<()> {
+        for (package, collector) in files.iter_mut() {
+            collector.set_package_title(format!("{}", package));
 
-            let mut package_writer = out.new_package();
-            let mut out = package_writer.get_mut();
-            self.write_packages(out, packages, Some(*package))?;
+            {
+                let mut package_writer = collector.new_package();
+                let mut out = package_writer.get_mut();
+                self.processor.write_packages(out, packages, Some(*package))?;
+            }
+
+            {
+                let service_bodies = collector.service_bodies.clone();
+                let mut writer = collector.new_service_overview();
+                let mut out = writer.get_mut();
+                self.processor.write_service_overview(out, service_bodies)?;
+            }
+
+            {
+                let decl_bodies = collector.decl_bodies.clone();
+                let mut writer = collector.new_types_overview();
+                let mut out = writer.get_mut();
+                self.processor.write_types_overview(out, decl_bodies)?;
+            }
         }
 
         Ok(())
@@ -126,7 +104,7 @@ impl<'a> Compiler<'a> for DocCompiler<'a> {
         self.write_stylesheets()?;
         let packages: Vec<_> = files.keys().map(|p| (*p).clone()).collect();
         self.write_index(&packages)?;
-        self.write_package_index(&packages, &mut files)?;
+        self.write_overviews(&packages, &mut files)?;
         self.write_files(files)?;
         Ok(())
     }

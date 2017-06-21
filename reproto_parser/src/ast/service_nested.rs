@@ -18,12 +18,18 @@ pub enum ServiceNested<'a> {
         ty: AstLoc<RpType>,
         options: Vec<AstLoc<OptionDecl>>,
     },
+    Accepts {
+        comment: Vec<&'a str>,
+        ty: AstLoc<RpType>,
+        options: Vec<AstLoc<OptionDecl>>,
+    },
 }
 
 impl<'a> ServiceNested<'a> {
-    pub fn is_returns(&self) -> bool {
+    pub fn is_terminus(&self) -> bool {
         match *self {
             ServiceNested::Returns { .. } => true,
+            ServiceNested::Accepts { .. } => true,
             _ => false,
         }
     }

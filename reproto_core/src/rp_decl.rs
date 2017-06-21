@@ -22,6 +22,16 @@ impl RpDecl {
             RpDecl::Service(ref body) => &body.name,
         }
     }
+
+    pub fn comment(&self) -> &Vec<String> {
+        match *self {
+            RpDecl::Type(ref body) => &body.comment,
+            RpDecl::Interface(ref body) => &body.comment,
+            RpDecl::Enum(ref body) => &body.comment,
+            RpDecl::Tuple(ref body) => &body.comment,
+            RpDecl::Service(ref body) => &body.comment,
+        }
+    }
 }
 
 impl ::std::fmt::Display for RpDecl {
