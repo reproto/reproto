@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::io::Write;
@@ -40,28 +41,49 @@ impl<'a> DocCompiler<'a> {
         Ok(())
     }
 
-    fn write_index<'b, I>(&self, packages: I) -> Result<()>
-        where I: Iterator<Item = &'b RpVersionedPackage>
-    {
+    /// Write a packages index.
+    ///
+    /// * `current` if some value indicates which the current package is.
+    fn write_packages(&self,
+                      out: &mut FmtWrite,
+                      packages: &Vec<RpVersionedPackage>,
+                      current: Option<&RpVersionedPackage>)
+                      -> Result<()> {
+        write!(out, "<section class=\"packages\">")?;
+
+        write!(out, "<h1>Packages</h1>")?;
+
+        write!(out, "<ul class=\"packages-list\">")?;
+
+        for package in packages {
+            let name = format!("{}", package);
+
+            if let Some(current) = current {
+                if package == current {
+                    write!(out, "<li><b>{name}</b></li>", name = name)?;
+                    continue;
+                }
+            }
+
+            let package = self.processor.package(package);
+            let url = format!("{}.{}", self.processor.package_file(&package), self.ext());
+
+            write!(out, "<li><a href=\"{}\">{}</a></li>", url, name)?;
+        }
+
+        write!(out, "</ul>")?;
+
+        write!(out, "</section>")?;
+
+        Ok(())
+    }
+
+    fn write_index(&self, packages: &Vec<RpVersionedPackage>) -> Result<()> {
         let mut out = String::new();
 
         self.processor
             .write_doc(&mut out, move |out| {
-                write!(out, "<ul>")?;
-
-                for package in packages {
-                    let name = format!("{}", package);
-                    let package = self.processor.package(package);
-                    let url = format!("{}.{}", self.processor.package_file(&package), self.ext());
-
-                    write!(out,
-                           "<li><a href=\"{url}\">{name}</a></li>",
-                           url = url,
-                           name = name)?;
-                }
-
-                write!(out, "</ul>")?;
-
+                self.write_packages(out, packages, None)?;
                 Ok(())
             })?;
 
@@ -81,13 +103,28 @@ impl<'a> DocCompiler<'a> {
 
         Ok(())
     }
+
+    fn write_package_index(&self,
+                           packages: &Vec<RpVersionedPackage>,
+                           files: &mut BTreeMap<&RpVersionedPackage, DocCollector>)
+                           -> Result<()> {
+        for (package, out) in files.iter_mut() {
+            let mut package_writer = out.new_package();
+            let mut out = package_writer.get_mut();
+            self.write_packages(out, packages, Some(*package))?;
+        }
+
+        Ok(())
+    }
 }
 
 impl<'a> Compiler<'a> for DocCompiler<'a> {
     fn compile(&self) -> Result<()> {
-        let files = self.populate_files()?;
+        let mut files = self.populate_files()?;
         self.write_stylesheets()?;
-        self.write_index(files.keys().map(|p| *p))?;
+        let packages: Vec<_> = files.keys().map(|p| (*p).clone()).collect();
+        self.write_index(&packages)?;
+        self.write_package_index(&packages, &mut files)?;
         self.write_files(files)?;
         Ok(())
     }

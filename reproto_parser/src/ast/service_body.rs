@@ -189,7 +189,7 @@ impl<'a> IntoModel for ServiceBody<'a> {
                         let response = convert_return(path, comment, ty, options)?;
 
                         if let Some(parent) = parent.as_ref() {
-                            parent.borrow_mut().push_returns(response);
+                            parent.try_borrow_mut()?.push_returns(response);
                         }
                     }
                 }

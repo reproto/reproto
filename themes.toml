@@ -6,6 +6,7 @@ bg="#EAE1DF"
 title_bg="#F2F2F2"
 title_border_color="#D9D9D9"
 
+packages_bg="#FFFFFF"
 type_bg="#FFFFFF"
 interface_bg="#FFFFFF"
 enum_bg="#FFFFFF"

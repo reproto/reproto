@@ -16,6 +16,30 @@ pub struct DocBackend {
 
 include!(concat!(env!("OUT_DIR"), "/themes.rs"));
 
+macro_rules! html {
+    ($element:ident {$($key:ident => $value:expr),*}, $out:expr => $body:expr) => {{
+        write!($out, "<{}", stringify!($element))?;
+        $(
+            write!($out, " {}=\"{}\"", stringify!($key), $value)?;
+        )*
+        write!($out, ">")?;
+
+        $body
+
+        write!($out, "</{}>", stringify!($element))?;
+    }};
+
+    ($element:ident {$($key:ident => $value:expr),*}, $out:expr, $body:expr) => {
+        html!($element {$($key=> $value),*}, $out => {
+            write!($out, "{}", $body)?
+        })
+    };
+
+    ($element:ident, $out:expr => $body:expr) => {
+        html!($element {}, $out => $body)
+    };
+}
+
 fn build_themes() -> HashMap<&'static str, &'static [u8]> {
     let mut m = HashMap::new();
 
@@ -81,14 +105,10 @@ impl DocBackend {
 
     fn write_description(&self, out: &mut FmtWrite, comment: &Vec<String>) -> Result<()> {
         if comment.is_empty() {
-            write!(out,
-                   "<div class=\"description\"><em>no description</em></div>")?;
+            html!(div { class => "description" }, out, "<em>no description</em>");
         } else {
             let comment = comment.join("\n");
-
-            write!(out,
-                   "<div class=\"description\">{}</div>",
-                   Self::markdown(&comment))?;
+            html!(div { class => "description" }, out, Self::markdown(&comment));
         }
 
         Ok(())
@@ -97,18 +117,14 @@ impl DocBackend {
     fn write_variants<'b, I>(&self, out: &mut FmtWrite, variants: I) -> Result<()>
         where I: Iterator<Item = &'b RpLoc<Rc<RpEnumVariant>>>
     {
-        write!(out, "<div class=\"variants\">")?;
-
-        for variant in variants {
-            write!(out, "<div class=\"variant\">")?;
-            write!(out, "<h4 class=\"name\">{}</h4>", variant.name)?;
-
-            self.write_description(out, &variant.comment)?;
-
-            write!(out, "</div>")?;
-        }
-
-        write!(out, "</div>")?;
+        html!(div {class => "variants"}, out => {
+            for variant in variants {
+                html!(div {class => "variant"}, out => {
+                    html!(h4 {class => "name"}, out, variant.name);
+                    self.write_description(out, &variant.comment)?;
+                });
+            }
+        });
 
         Ok(())
     }
@@ -123,7 +139,7 @@ impl DocBackend {
 
         match *ty {
             RpType::Double => {
-                write!(out, "<span class=\"ty-double\">double</span>")?;
+                html!(span {class => "ty-double"}, out, "double");
             }
             RpType::Float => {
                 write!(out, "<span class=\"ty-float\">float</span>")?;
@@ -146,7 +162,7 @@ impl DocBackend {
                 write!(out, "<span class=\"ty-boolean\">boolean</span>")?;
             }
             RpType::String => {
-                write!(out, "<span class=\"ty-string\">string</span>")?;
+                html!(span {class => "ty-string"}, out, "string");
             }
             RpType::Bytes => {
                 write!(out, "<span class=\"ty-bytes\">bytes</span>")?;
@@ -231,55 +247,39 @@ impl DocBackend {
     pub fn write_doc<Body>(&self, out: &mut FmtWrite, body: Body) -> Result<()>
         where Body: FnOnce(&mut FmtWrite) -> Result<()>
     {
-        write!(out, "<html>")?;
-        write!(out, "<head>")?;
+        html!(html, out => {
+            html!(head, out => {
+                write!(out,
+                       "<link rel=\"stylesheet\" type=\"text/css\" href=\"{normalize_css}\">",
+                       normalize_css = NORMALIZE_CSS_NAME)?;
 
-        write!(out,
-               "<link rel=\"stylesheet\" type=\"text/css\" href=\"{normalize_css}\">",
-               normalize_css = NORMALIZE_CSS_NAME)?;
+                write!(out,
+                       "<link rel=\"stylesheet\" type=\"text/css\" href=\"{doc_css}\">",
+                       doc_css = DOC_CSS_NAME)?;
+            });
 
-        write!(out,
-               "<link rel=\"stylesheet\" type=\"text/css\" href=\"{doc_css}\">",
-               doc_css = DOC_CSS_NAME)?;
-
-        write!(out, "</head>")?;
-        write!(out, "<body>")?;
-
-        body(out)?;
-
-        write!(out, "</body>")?;
-        write!(out, "</html>")?;
+            html!(body, out => { body(out)?; });
+        });
 
         Ok(())
     }
 
-    pub fn process_service(&self,
-                           out: &mut DocCollector,
-                           type_id: &RpTypeId,
-                           _: &RpPos,
-                           body: Rc<RpServiceBody>)
-                           -> Result<()> {
-        write!(out,
-               "<section id=\"{}\" class=\"section-service\">",
-               body.name)?;
+    fn write_endpoint(&self,
+                      out: &mut FmtWrite,
+                      type_id: &RpTypeId,
+                      endpoint: &RpServiceEndpoint)
+                      -> Result<()> {
+        let method: String =
+            endpoint.method.as_ref().map(AsRef::as_ref).unwrap_or("GET").to_owned();
 
-        self.section_title(out, "service", &body.name)?;
-        self.write_description(out, &body.comment)?;
+        let class = format!("endpoint-title {}", method.to_lowercase());
 
-        for endpoint in &body.endpoints {
-            let method: String =
-                endpoint.method.as_ref().map(AsRef::as_ref).unwrap_or("GET").to_owned();
-
-            write!(out,
-                   "<h2 class=\"endpoint-title {method}\">",
-                   method = method.to_lowercase())?;
-
+        html!(h2 {class => class}, out => {
             write!(out, "<span class=\"method\">{}</span>", method)?;
             write!(out, "<span class=\"url\">{}</span>", endpoint.url)?;
-            write!(out, "</h2>")?;
+        });
 
-            write!(out, "<div class=\"endpoint-body\">")?;
-
+        html!(div {class => "endpoint-body"}, out => {
             self.write_description(out, &endpoint.comment)?;
 
             if !endpoint.accepts.is_empty() {
@@ -326,11 +326,32 @@ impl DocBackend {
 
                 write!(out, "</table>")?;
             }
+        });
 
-            write!(out, "</div>")?;
-        }
+        Ok(())
+    }
 
-        write!(out, "</section>")?;
+    pub fn process_service(&self,
+                           out: &mut DocCollector,
+                           type_id: &RpTypeId,
+                           _: &RpPos,
+                           body: Rc<RpServiceBody>)
+                           -> Result<()> {
+        let mut service_out = out.new_service();
+        let mut out = service_out.get_mut();
+
+        html!(section {id => body.name, class => "section-service"}, out => {
+            self.section_title(out, "service", &body.name)?;
+
+            html!(section {class => "section-body"}, out => {
+                self.write_description(out, &body.comment)?;
+
+                for endpoint in &body.endpoints {
+                    self.write_endpoint(out, type_id, endpoint)?;
+                }
+            });
+        });
+
         Ok(())
     }
 
@@ -340,13 +361,15 @@ impl DocBackend {
                         _: &RpPos,
                         body: Rc<RpEnumBody>)
                         -> Result<()> {
-        write!(out, "<section id=\"{}\" class=\"section-enum\">", body.name)?;
+        html!(section {id => body.name, class => "section-enum"}, out => {
+            self.section_title(out, "enum", &body.name)?;
 
-        self.section_title(out, "enum", &body.name)?;
-        self.write_description(out, &body.comment)?;
-        self.write_variants(out, body.variants.iter())?;
+            html!(section {class => "section-body"}, out => {
+                self.write_description(out, &body.comment)?;
+                self.write_variants(out, body.variants.iter())?;
+            });
+        });
 
-        write!(out, "</section>")?;
         Ok(())
     }
 
@@ -356,24 +379,24 @@ impl DocBackend {
                              _: &RpPos,
                              body: Rc<RpInterfaceBody>)
                              -> Result<()> {
-        write!(out,
-               "<section id=\"{}\" class=\"section-interface\">",
-               body.name)?;
+        html!(section {id => body.name, class => "section-interface"}, out => {
+            self.section_title(out, "interface", &body.name)?;
 
-        self.section_title(out, "interface", &body.name)?;
-        self.write_description(out, &body.comment)?;
+            html!(section {class => "section-body"}, out => {
+                self.write_description(out, &body.comment)?;
 
-        for (name, sub_type) in &body.sub_types {
-            let id = format!("{}_{}", body.name, sub_type.name);
-            write!(out, "<h2 id=\"{id}\">{name}</h2>", id = id, name = name)?;
+                for (name, sub_type) in &body.sub_types {
+                    let id = format!("{}_{}", body.name, sub_type.name);
+                    write!(out, "<h2 id=\"{id}\">{name}</h2>", id = id, name = name)?;
 
-            let fields = body.fields.iter().chain(sub_type.fields.iter());
+                    let fields = body.fields.iter().chain(sub_type.fields.iter());
 
-            self.write_description(out, &sub_type.comment)?;
-            self.write_fields(out, type_id, fields)?;
-        }
+                    self.write_description(out, &sub_type.comment)?;
+                    self.write_fields(out, type_id, fields)?;
+                }
+            });
+        });
 
-        write!(out, "</section>")?;
         Ok(())
     }
 
@@ -383,13 +406,12 @@ impl DocBackend {
                         _: &RpPos,
                         body: Rc<RpTypeBody>)
                         -> Result<()> {
-        write!(out, "<section id=\"{}\" class=\"section-type\">", body.name)?;
+        html!(section {id => body.name, class => "section-type"}, out => {
+            self.section_title(out, "type", &body.name)?;
+            self.write_description(out, &body.comment)?;
+            self.write_fields(out, type_id, body.fields.iter())?;
+        });
 
-        self.section_title(out, "type", &body.name)?;
-        self.write_description(out, &body.comment)?;
-        self.write_fields(out, type_id, body.fields.iter())?;
-
-        write!(out, "</section>")?;
         Ok(())
     }
 
@@ -399,15 +421,15 @@ impl DocBackend {
                          _: &RpPos,
                          body: Rc<RpTupleBody>)
                          -> Result<()> {
-        write!(out,
-               "<section id=\"{}\" class=\"section-tuple\">",
-               body.name)?;
+        html!(section {id => body.name, class => "section-tuple"}, out => {
+            self.section_title(out, "tuple", &body.name)?;
 
-        self.section_title(out, "tuple", &body.name)?;
-        self.write_description(out, &body.comment)?;
-        self.write_fields(out, type_id, body.fields.iter())?;
+            html!(section {class => "section-body"}, out => {
+                self.write_description(out, &body.comment)?;
+                self.write_fields(out, type_id, body.fields.iter())?;
+            });
+        });
 
-        write!(out, "</section>")?;
         Ok(())
     }
 }

@@ -14,6 +14,7 @@ error_chain! {
     }
 
     foreign_links {
+        BorrowMutError(::std::cell::BorrowMutError);
         Io(::std::io::Error);
         Fmt(::std::fmt::Error);
         Log(::log::SetLoggerError);

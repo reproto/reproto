@@ -12,6 +12,7 @@ error_chain! {
         ParseFloat(::std::num::ParseFloatError);
         FromUtf8Error(::std::string::FromUtf8Error);
         ParseBigIntError(::num::bigint::ParseBigIntError);
+        BorrowMutError(::std::cell::BorrowMutError);
     }
 
     errors {

@@ -84,7 +84,7 @@ pub trait PackageProcessor<'a>
         for (type_id, decl) in &self.env().decls {
             callback(type_id, decl)?;
 
-            let mut out = files.entry(&type_id.package).or_insert_with(|| Self::Out::new());
+            let mut out = files.entry(&type_id.package).or_insert_with(Self::Out::new);
 
             match ***decl {
                 RpDecl::Interface(ref body) => {
