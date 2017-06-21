@@ -1,0 +1,11 @@
+package common@1.0.0;
+
+type Entry {
+  name: string;
+}
+
+// # Error me
+type ErrorMessage {
+  message: string;
+  status_code: unsigned;
+}
