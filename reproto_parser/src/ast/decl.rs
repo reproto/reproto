@@ -2,15 +2,15 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub enum Decl {
-    Type(TypeBody),
-    Tuple(TupleBody),
-    Interface(InterfaceBody),
-    Enum(EnumBody),
-    Service(ServiceBody),
+pub enum Decl<'a> {
+    Type(TypeBody<'a>),
+    Tuple(TupleBody<'a>),
+    Interface(InterfaceBody<'a>),
+    Enum(EnumBody<'a>),
+    Service(ServiceBody<'a>),
 }
 
-impl IntoModel for Decl {
+impl<'a> IntoModel for Decl<'a> {
     type Output = RpDecl;
 
     fn into_model(self, pos: &Path) -> Result<RpDecl> {

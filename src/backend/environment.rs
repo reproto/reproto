@@ -290,7 +290,8 @@ impl Environment {
                      package: Option<&RpPackage>,
                      version_req: Option<&VersionReq>)
                      -> Result<Option<(RpVersionedPackage, RpFile)>> {
-        let file = parser::parse_file(&path)?.into_model(path)?;
+        let content = parser::read_file(&path)?;
+        let file = parser::parse_file(&path, content.as_str())?.into_model(path)?;
 
         if let Some(version_req) = version_req {
             match file.package_decl.version {

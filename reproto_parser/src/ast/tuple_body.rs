@@ -3,13 +3,13 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct TupleBody {
-    pub name: String,
-    pub comment: Vec<String>,
-    pub members: Vec<AstLoc<Member>>,
+pub struct TupleBody<'a> {
+    pub name: &'a str,
+    pub comment: Vec<&'a str>,
+    pub members: Vec<AstLoc<Member<'a>>>,
 }
 
-impl IntoModel for TupleBody {
+impl<'a> IntoModel for TupleBody<'a> {
     type Output = Rc<RpTupleBody>;
 
     fn into_model(self, path: &Path) -> Result<Rc<RpTupleBody>> {
@@ -18,8 +18,8 @@ impl IntoModel for TupleBody {
         let _options = Options::new(options);
 
         let tuple_body = RpTupleBody {
-            name: self.name,
-            comment: self.comment,
+            name: self.name.to_owned(),
+            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             fields: fields,
             codes: codes,
             match_decl: match_decl,

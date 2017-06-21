@@ -4,10 +4,10 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct ServiceBody {
-    pub name: String,
-    pub comment: Vec<String>,
-    pub children: Vec<ServiceNested>,
+pub struct ServiceBody<'a> {
+    pub name: &'a str,
+    pub comment: Vec<&'a str>,
+    pub children: Vec<ServiceNested<'a>>,
 }
 
 enum Node {
@@ -146,7 +146,7 @@ fn unwind(parent: Option<Rc<RefCell<Node>>>) -> Result<RpServiceEndpoint> {
     })
 }
 
-impl IntoModel for ServiceBody {
+impl<'a> IntoModel for ServiceBody<'a> {
     type Output = Rc<RpServiceBody>;
 
     fn into_model(self, path: &Path) -> Result<Rc<RpServiceBody>> {
@@ -166,7 +166,7 @@ impl IntoModel for ServiceBody {
                             parent: parent.as_ref().map(Clone::clone),
                             url: url.into_model(path)?,
                             options: options.into_model(path)?,
-                            comment: comment,
+                            comment: comment.into_iter().map(ToOwned::to_owned).collect(),
                             returns: Vec::new(),
                         }));
 
@@ -177,7 +177,7 @@ impl IntoModel for ServiceBody {
                         let node = Rc::new(RefCell::new(Node::Star {
                             parent: parent.as_ref().map(Clone::clone),
                             options: options.into_model(path)?,
-                            comment: comment,
+                            comment: comment.into_iter().map(ToOwned::to_owned).collect(),
                             returns: Vec::new(),
                         }));
 
@@ -185,6 +185,7 @@ impl IntoModel for ServiceBody {
                     }
                     // end node, manifest an endpoint.
                     ServiceNested::Returns { comment, ty, options } => {
+                        let comment = comment.into_iter().map(ToOwned::to_owned).collect();
                         let response = convert_return(path, comment, ty, options)?;
 
                         if let Some(parent) = parent.as_ref() {
@@ -203,8 +204,8 @@ impl IntoModel for ServiceBody {
         let endpoints = endpoints.into_iter().rev().collect();
 
         let service_body = RpServiceBody {
-            name: self.name,
-            comment: self.comment,
+            name: self.name.to_owned(),
+            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             endpoints: endpoints,
         };
 

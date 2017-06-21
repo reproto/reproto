@@ -5,9 +5,9 @@ use super::ast::*;
 use reproto_core::*;
 use super::utils::*;
 
-grammar;
+grammar<'input>;
 
-pub File: File = {
+pub File: File<'input> = {
     <package_decl:Loc<PackageDecl>> <options:Loc<OptionDecl>*> <uses:Loc<Use>*> <decls:Loc<Decl>*> => File {
         package_decl: package_decl,
         options: options,
@@ -30,7 +30,7 @@ PackageDecl: PackageDecl = "package" <package:Package> <version:Loc<"@version">?
 };
 Package: RpPackage = <parts:OneOrMore<".", IdentifierValue>> => RpPackage::new(parts);
 
-Decl: Decl = {
+Decl: Decl<'input> = {
     <en:Enum> => Decl::Enum(en),
     <interface:Interface> => Decl::Interface(interface),
     <ty:Type> => Decl::Type(ty),
@@ -38,7 +38,7 @@ Decl: Decl = {
     <service:Service> => Decl::Service(service),
 };
 
-Enum: EnumBody =
+Enum: EnumBody<'input> =
     "enum" <name:TypeIdentifier> "{"
       <variants:Loc<EnumVariant>*>
       <members:Loc<Member>*>
@@ -52,7 +52,7 @@ Enum: EnumBody =
     }
 };
 
-Interface: InterfaceBody =
+Interface: InterfaceBody<'input> =
     "interface" <name:TypeIdentifier> "{"
       <members:Loc<Member>*>
       <sub_types:Loc<SubType>*>
@@ -66,7 +66,7 @@ Interface: InterfaceBody =
     }
 };
 
-Type: TypeBody =
+Type: TypeBody<'input> =
     "type" <name:TypeIdentifier> "{"
       <members:Loc<Member>*>
     "}" =>
@@ -78,7 +78,7 @@ Type: TypeBody =
     }
 };
 
-Tuple: TupleBody =
+Tuple: TupleBody<'input> =
     "tuple" <name:TypeIdentifier> "{"
       <members:Loc<Member>*>
     "}" =>
@@ -90,7 +90,7 @@ Tuple: TupleBody =
     }
 };
 
-Service: ServiceBody =
+Service: ServiceBody<'input> =
     "service" <name:TypeIdentifier> "{"
         <children:ServiceNested*>
     "}" =>
@@ -102,7 +102,7 @@ Service: ServiceBody =
     }
 };
 
-ServiceNested: ServiceNested = {
+ServiceNested: ServiceNested<'input> = {
     <endpoint:"endpoint"> <url:Loc<string>> "{" <options:Loc<OptionDecl>*> <children:ServiceNested*> "}" => {
         ServiceNested::Endpoint {
             url: url,
@@ -127,7 +127,7 @@ ServiceNested: ServiceNested = {
     },
 };
 
-EnumVariant: EnumVariant =
+EnumVariant: EnumVariant<'input> =
     <name:Loc<TypeIdentifier>>
     <arguments:("(" OneOrMore<",", Loc<Value>> ")")?>
     <ordinal:("=" Loc<Value>)?>
@@ -143,7 +143,7 @@ EnumVariant: EnumVariant =
     }
 };
 
-pub Member: Member = {
+pub Member: Member<'input> = {
     <name:Identifier> <modifier:"?"?> ":" <ty:TypeSpec> <alias:("as" Loc<Value>)?> ";" => {
          let field = Field {
              modifier: modifier.map(|_| RpModifier::Optional).unwrap_or(RpModifier::Required),
@@ -169,7 +169,7 @@ pub Member: Member = {
     },
 
     <context:IdentifierValue> "{{" <content:code> "}}" => {
-        let content = strip_code_block(&content);
+        let content = strip_code_block(content);
         Member::Code(context, content)
     },
 };
@@ -196,7 +196,7 @@ MatchVariable: MatchVariable = <name:IdentifierValue> ":" <ty:TypeSpec> => Match
     ty: ty,
 };
 
-SubType: SubType = {
+SubType: SubType<'input> = {
     <name:TypeIdentifier> "{" <members:Loc<Member>*> "}" => {
          SubType {
              name: name.value,
@@ -281,8 +281,8 @@ OneOrMore<Sep, T>: Vec<T> = {
     }
 };
 
-IdentifierValue: String = <identifier:Identifier> => identifier.value;
-TypeIdentifierValue: String = <identifier:TypeIdentifier> => identifier.value;
+IdentifierValue: String = <identifier:Identifier> => identifier.value.to_owned();
+TypeIdentifierValue: String = <identifier:TypeIdentifier> => identifier.value.to_owned();
 
 Loc<Inner>: AstLoc<Inner> = <s:@L> <inner:Inner> <e:@R> => AstLoc::new(inner, (s, e));
 
@@ -290,9 +290,9 @@ extern {
     type Location = usize;
     type Error = Error;
 
-    enum Token {
-        TypeIdentifier => Token::TypeIdentifier(<Commented<String>>),
-        Identifier => Token::Identifier(<Commented<String>>),
+    enum Token<'input> {
+        TypeIdentifier => Token::TypeIdentifier(<Commented<'input, &'input str>>),
+        Identifier => Token::Identifier(<Commented<'input, &'input str>>),
         Number => Token::Number(<RpNumber>),
         "@version" => Token::Version(<String>),
         "match" => Token::MatchKeyword,
@@ -310,7 +310,7 @@ extern {
         "}" => Token::RightCurly,
         "{{" => Token::CodeOpen,
         "}}" => Token::CodeClose,
-        code => Token::CodeContent(<String>),
+        code => Token::CodeContent(<&'input str>),
         string => Token::String(<String>),
         "[" => Token::LeftBracket,
         "]" => Token::RightBracket,
@@ -334,8 +334,8 @@ extern {
         "bytes" => Token::BytesKeyword,
         true => Token::TrueKeyword,
         false => Token::FalseKeyword,
-        "endpoint" => Token::EndpointKeyword(<Vec<String>>),
-        "returns" => Token::ReturnsKeyword(<Vec<String>>),
-        "*" => Token::Star(<Vec<String>>),
+        "endpoint" => Token::EndpointKeyword(<Vec<&'input str>>),
+        "returns" => Token::ReturnsKeyword(<Vec<&'input str>>),
+        "*" => Token::Star(<Vec<&'input str>>),
     }
 }

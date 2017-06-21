@@ -1,31 +1,22 @@
 use reproto_core::RpNumber;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Commented<T> {
-    pub comment: Vec<String>,
+pub struct Commented<'input, T> {
+    pub comment: Vec<&'input str>,
     pub value: T,
 }
 
-impl<T> Commented<T> {
-    pub fn new(comment: Vec<String>, value: T) -> Commented<T> {
-        Commented {
-            comment: comment,
-            value: value,
-        }
-    }
-
-    pub fn empty(value: T) -> Commented<T> {
-        Commented {
-            comment: vec![],
-            value: value,
-        }
+pub fn commented<'input, T>(comment: Vec<&'input str>, value: T) -> Commented<'input, T> {
+    Commented {
+        comment: comment,
+        value: value,
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Token {
-    Identifier(Commented<String>),
-    TypeIdentifier(Commented<String>),
+pub enum Token<'input> {
+    Identifier(Commented<'input, &'input str>),
+    TypeIdentifier(Commented<'input, &'input str>),
     Number(RpNumber),
     Version(String),
     LeftCurly,
@@ -46,7 +37,7 @@ pub enum Token {
     HashRocket,
     CodeOpen,
     CodeClose,
-    CodeContent(String),
+    CodeContent(&'input str),
     String(String),
     // identifier-style keywords
     InterfaceKeyword,
@@ -69,7 +60,7 @@ pub enum Token {
     BytesKeyword,
     TrueKeyword,
     FalseKeyword,
-    EndpointKeyword(Vec<String>),
-    ReturnsKeyword(Vec<String>),
-    Star(Vec<String>),
+    EndpointKeyword(Vec<&'input str>),
+    ReturnsKeyword(Vec<&'input str>),
+    Star(Vec<&'input str>),
 }

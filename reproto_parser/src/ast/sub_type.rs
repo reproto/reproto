@@ -4,13 +4,13 @@ use super::errors::*;
 
 /// Sub-types in interface declarations.
 #[derive(Debug)]
-pub struct SubType {
-    pub name: String,
-    pub comment: Vec<String>,
-    pub members: Vec<AstLoc<Member>>,
+pub struct SubType<'a> {
+    pub name: &'a str,
+    pub comment: Vec<&'a str>,
+    pub members: Vec<AstLoc<Member<'a>>>,
 }
 
-impl IntoModel for SubType {
+impl<'a> IntoModel for SubType<'a> {
     type Output = Rc<RpSubType>;
 
     fn into_model(self, path: &Path) -> Result<Rc<RpSubType>> {
@@ -56,8 +56,8 @@ impl IntoModel for SubType {
         let names = options.find_all_strings("name")?;
 
         let sub_type = RpSubType {
-            name: self.name,
-            comment: self.comment,
+            name: self.name.to_owned(),
+            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             fields: fields,
             codes: codes,
             names: names,

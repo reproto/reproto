@@ -4,13 +4,13 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct TypeBody {
-    pub name: String,
-    pub comment: Vec<String>,
-    pub members: Vec<AstLoc<Member>>,
+pub struct TypeBody<'a> {
+    pub name: &'a str,
+    pub comment: Vec<&'a str>,
+    pub members: Vec<AstLoc<Member<'a>>>,
 }
 
-impl IntoModel for TypeBody {
+impl<'a> IntoModel for TypeBody<'a> {
     type Output = Rc<RpTypeBody>;
 
     fn into_model(self, path: &Path) -> Result<Rc<RpTypeBody>> {
@@ -22,8 +22,8 @@ impl IntoModel for TypeBody {
             options.find_all_identifiers("reserved")?.into_iter().collect();
 
         let type_body = RpTypeBody {
-            name: self.name,
-            comment: self.comment,
+            name: self.name.to_owned(),
+            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             fields: fields,
             codes: codes,
             match_decl: match_decl,

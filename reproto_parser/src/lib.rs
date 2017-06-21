@@ -60,13 +60,15 @@ pub fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (us
     Err("bad file position".into())
 }
 
-pub fn parse_file(path: &Path) -> Result<ast::File> {
+pub fn read_file(path: &Path) -> Result<String> {
     let mut f = fs::File::open(path)?;
     let mut content = String::new();
-
     f.read_to_string(&mut content)?;
+    Ok(content)
+}
 
-    let lexer = lexer::lex(content.as_str());
+pub fn parse_file<'a>(path: &Path, input: &'a str) -> Result<ast::File<'a>> {
+    let lexer = lexer::lex(input);
 
     match parser::parse_File(lexer) {
         Ok(file) => Ok(file),

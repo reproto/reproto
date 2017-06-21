@@ -2,15 +2,15 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct Field {
+pub struct Field<'a> {
     pub modifier: RpModifier,
-    pub name: String,
-    pub comment: Vec<String>,
+    pub name: &'a str,
+    pub comment: Vec<&'a str>,
     pub ty: RpType,
     pub field_as: Option<AstLoc<Value>>,
 }
 
-impl Field {
+impl<'a> Field<'a> {
     pub fn is_optional(&self) -> bool {
         match self.modifier {
             RpModifier::Optional => true,
@@ -19,7 +19,7 @@ impl Field {
     }
 }
 
-impl IntoModel for Field {
+impl<'a> IntoModel for Field<'a> {
     type Output = RpField;
 
     fn into_model(self, path: &Path) -> Result<RpField> {
@@ -34,6 +34,8 @@ impl IntoModel for Field {
             None
         };
 
-        Ok(RpField::new(self.modifier, self.name, self.comment, self.ty, field_as))
+        let name = self.name.to_owned();
+        let comment = self.comment.into_iter().map(ToOwned::to_owned).collect();
+        Ok(RpField::new(self.modifier, name, comment, self.ty, field_as))
     }
 }

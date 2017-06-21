@@ -4,14 +4,14 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct InterfaceBody {
-    pub name: String,
-    pub comment: Vec<String>,
-    pub members: Vec<AstLoc<Member>>,
-    pub sub_types: Vec<AstLoc<SubType>>,
+pub struct InterfaceBody<'a> {
+    pub name: &'a str,
+    pub comment: Vec<&'a str>,
+    pub members: Vec<AstLoc<Member<'a>>>,
+    pub sub_types: Vec<AstLoc<SubType<'a>>>,
 }
 
-impl IntoModel for InterfaceBody {
+impl<'a> IntoModel for InterfaceBody<'a> {
     type Output = Rc<RpInterfaceBody>;
 
     fn into_model(self, path: &Path) -> Result<Rc<RpInterfaceBody>> {
@@ -36,8 +36,8 @@ impl IntoModel for InterfaceBody {
         let _options = Options::new(options);
 
         let interface_body = RpInterfaceBody {
-            name: self.name,
-            comment: self.comment,
+            name: self.name.to_owned(),
+            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             fields: fields,
             codes: codes,
             match_decl: match_decl,

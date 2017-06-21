@@ -43,6 +43,14 @@ impl<T> IntoModel for Option<T>
     }
 }
 
+impl<'a> IntoModel for &'a str {
+    type Output = String;
+
+    fn into_model(self, _: &Path) -> Result<String> {
+        Ok(self.to_owned())
+    }
+}
+
 impl IntoModel for String {
     type Output = String;
 

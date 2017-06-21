@@ -3,14 +3,14 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct EnumBody {
-    pub name: String,
-    pub comment: Vec<String>,
-    pub variants: Vec<AstLoc<EnumVariant>>,
-    pub members: Vec<AstLoc<Member>>,
+pub struct EnumBody<'a> {
+    pub name: &'a str,
+    pub comment: Vec<&'a str>,
+    pub variants: Vec<AstLoc<EnumVariant<'a>>>,
+    pub members: Vec<AstLoc<Member<'a>>>,
 }
 
-impl IntoModel for EnumBody {
+impl<'a> IntoModel for EnumBody<'a> {
     type Output = Rc<RpEnumBody>;
 
     fn into_model(self, path: &Path) -> Result<Rc<RpEnumBody>> {
@@ -57,8 +57,8 @@ impl IntoModel for EnumBody {
             .unwrap_or(false);
 
         let en = RpEnumBody {
-            name: self.name,
-            comment: self.comment,
+            name: self.name.to_owned(),
+            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             variants: variants,
             fields: fields,
             codes: codes,
