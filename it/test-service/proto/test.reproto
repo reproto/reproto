@@ -10,7 +10,9 @@ type Entry {
 service Example {
   // Gets all the good stuff!
   endpoint "/foo" {
-    // Search for a list of foos.
+    // # Search for a list of foos.
+    //
+    // This uses method `GET` because it is _good_.
     * {
       method "GET";
     }
@@ -18,6 +20,7 @@ service Example {
     // Create a new foo.
     * {
       method "POST";
+      accept "application/json";
     }
 
     endpoint "/{id}" {
