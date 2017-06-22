@@ -7,7 +7,7 @@ pub struct Field<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
     pub ty: RpType,
-    pub field_as: Option<AstLoc<'input, Value<'input>>>,
+    pub field_as: Option<RpLoc<Value<'input>>>,
 }
 
 impl<'input> Field<'input> {
@@ -28,7 +28,9 @@ impl<'input> IntoModel for Field<'input> {
         let field_as = if let Some(field_as) = field_as {
             match field_as.both() {
                 (RpValue::String(name), pos) => Some(RpLoc::new(name, pos)),
-                (_, pos) => return Err(ErrorKind::Pos("must be a string".to_owned(), pos).into()),
+                (_, pos) => {
+                    return Err(ErrorKind::Pos("must be a string".to_owned(), pos.into()).into())
+                }
             }
         } else {
             None

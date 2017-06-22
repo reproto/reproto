@@ -64,7 +64,7 @@ pub trait DynamicDecode
                 self.map_decode(input, key, value)
             }
             ref ty => {
-                return Err(Error::pos(format!("type `{}` not supported", ty).into(), pos.clone()))
+                return Err(Error::pos(format!("type `{}` not supported", ty).into(), pos.into()))
             }
         };
 

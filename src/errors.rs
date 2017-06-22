@@ -1,5 +1,5 @@
 use codeviz::errors as codeviz;
-use reproto_core::{RpPos, RpTypeId};
+use reproto_core::{ErrorPos, RpTypeId};
 use reproto_core::errors as core;
 use reproto_parser::errors as parser;
 use reproto_repository::errors as repository;
@@ -22,7 +22,7 @@ error_chain! {
     }
 
     errors {
-        Pos(message: String, pos: RpPos) {
+        Pos(message: String, pos: ErrorPos) {
             description("position error")
             display("{}", message)
         }
@@ -36,7 +36,7 @@ error_chain! {
         }
 
         /// An instance creation is missing a set of required fields.
-        MissingRequired(names: Vec<String>, pos: RpPos, fields: Vec<RpPos>) {
+        MissingRequired(names: Vec<String>, pos: ErrorPos, fields: Vec<ErrorPos>) {
             description("missing required")
         }
 
@@ -48,7 +48,7 @@ error_chain! {
 }
 
 impl Error {
-    pub fn pos(message: String, pos: RpPos) -> Error {
+    pub fn pos(message: String, pos: ErrorPos) -> Error {
         ErrorKind::Pos(message, pos).into()
     }
 }

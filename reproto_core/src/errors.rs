@@ -1,5 +1,5 @@
 use mime;
-use super::{RpPos, RpTypeId};
+use super::{ErrorPos, RpTypeId};
 
 error_chain! {
     foreign_links {
@@ -13,37 +13,37 @@ error_chain! {
             display("{:?}", error)
         }
 
-        Pos(message: String, pos: RpPos) {
+        Pos(message: String, pos: ErrorPos) {
             description("position error")
             display("{}", message)
         }
 
-        DeclMerge(message: String, source: RpPos, target: RpPos) {
+        DeclMerge(message: String, source: ErrorPos, target: ErrorPos) {
             description("declaration merge")
             display("{}", message)
         }
 
-        FieldConflict(message: String, source: RpPos, target: RpPos) {
+        FieldConflict(message: String, source: ErrorPos, target: ErrorPos) {
             description("field conflict")
             display("{}", message)
         }
 
-        ExtendEnum(message: String, source: RpPos, enum_pos: RpPos) {
+        ExtendEnum(message: String, source: ErrorPos, enum_pos: ErrorPos) {
             description("extend enum")
             display("{}", message)
         }
 
-        ReservedField(field_pos: RpPos, reserved_pos: RpPos) {
+        ReservedField(field_pos: ErrorPos, reserved_pos: ErrorPos) {
             description("field reserved")
             display("field reserved")
         }
 
-        MatchConflict(source: RpPos, target: RpPos) {
+        MatchConflict(source: ErrorPos, target: ErrorPos) {
             description("match conflict")
         }
 
         /// An instance creation is missing a set of required fields.
-        MissingRequired(names: Vec<String>, pos: RpPos, fields: Vec<RpPos>) {
+        MissingRequired(names: Vec<String>, pos: ErrorPos, fields: Vec<ErrorPos>) {
             description("missing required")
         }
 

@@ -4,7 +4,7 @@ use super::errors::*;
 #[derive(Debug, PartialEq, Clone)]
 pub struct Instance<'input> {
     pub name: RpName,
-    pub arguments: AstLoc<'input, Vec<AstLoc<'input, FieldInit<'input>>>>,
+    pub arguments: RpLoc<Vec<RpLoc<FieldInit<'input>>>>,
 }
 
 impl<'input> IntoModel for Instance<'input> {

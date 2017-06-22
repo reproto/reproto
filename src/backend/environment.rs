@@ -173,16 +173,16 @@ impl Environment {
                         target: &RpName)
                         -> Result<&'a RpRegistered> {
         let (_, reg_constant) = self.lookup(package, constant)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
 
         let (_, reg_target) = self.lookup(package, target)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
 
         if !reg_target.is_assignable_from(reg_constant) {
             return Err(Error::pos(format!("expected instance of `{}` but found `{}`",
                                           reg_target.display(),
                                           reg_constant.display()),
-                                  pos.clone()));
+                                  pos.into()));
         }
 
         Ok(reg_constant)
@@ -197,16 +197,16 @@ impl Environment {
                         target: &RpName)
                         -> Result<(&'a RpRegistered, InitFields)> {
         let (_, reg_instance) = self.lookup(package, &instance.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
 
         let (_, reg_target) = self.lookup(package, target)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
 
         if !reg_target.is_assignable_from(reg_instance) {
             return Err(Error::pos(format!("expected instance of `{}` but found `{}`",
                                           reg_target.display(),
                                           reg_instance.display()),
-                                  pos.clone()));
+                                  pos.into()));
         }
 
         let required_fields = match *reg_instance {
@@ -215,7 +215,7 @@ impl Environment {
                 Box::new(parent.fields().chain(sub_type.fields()))
             }
             RpRegistered::Tuple(ref tuple) => tuple.fields(),
-            _ => return Err(Error::pos("expected instantiable type".into(), pos.clone())),
+            _ => return Err(Error::pos("expected instantiable type".into(), pos.into())),
         };
 
         // pick required fields.
@@ -234,7 +234,7 @@ impl Environment {
                 known.insert(field.ident().to_owned(), init.clone());
                 required.remove(field.name());
             } else {
-                return Err(Error::pos("no such field".to_owned(), init.pos().clone()));
+                return Err(Error::pos("no such field".to_owned(), init.pos().into()));
             }
         }
 
@@ -245,11 +245,11 @@ impl Environment {
             let names: Vec<String> =
                 required.iter().map(|&(ref name, _)| name.to_owned()).collect();
 
-            let positions: Vec<RpPos> =
-                required.iter().map(|&(_, ref t)| t.pos().clone()).collect();
+            let positions: Vec<ErrorPos> =
+                required.iter().map(|&(_, ref t)| t.pos().into()).collect();
 
             return Err(ErrorKind::MissingRequired(names,
-                                                  instance.arguments.pos().clone(),
+                                                  instance.arguments.pos().into(),
                                                   positions)
                 .into());
         }
@@ -291,7 +291,7 @@ impl Environment {
                      version_req: Option<&VersionReq>)
                      -> Result<Option<(RpVersionedPackage, RpFile)>> {
         let content = parser::read_file(&path)?;
-        let file = parser::parse_file(&path, content.as_str())?.into_model(path)?;
+        let file = parser::parse_file(&path, content.as_str())?.into_model()?;
 
         if let Some(version_req) = version_req {
             match file.package_decl.version {
@@ -339,7 +339,7 @@ impl Environment {
             }
 
             let error = "no matching package found".to_owned();
-            return Err(ErrorKind::Pos(error, use_decl.pos().clone()).into());
+            return Err(ErrorKind::Pos(error, use_decl.pos().into()).into());
         }
 
         Ok(())

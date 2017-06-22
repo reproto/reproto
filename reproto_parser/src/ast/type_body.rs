@@ -7,7 +7,7 @@ use super::errors::*;
 pub struct TypeBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub members: Vec<AstLoc<'input, Member<'input>>>,
+    pub members: Vec<RpLoc<Member<'input>>>,
 }
 
 impl<'input> IntoModel for TypeBody<'input> {

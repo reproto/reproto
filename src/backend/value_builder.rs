@@ -101,7 +101,7 @@ pub trait ValueBuilder
                 let inner = match expected {
                     Some(&RpType::Array { ref inner }) => Some(&**inner),
                     Some(other) => {
-                        return Err(Error::pos(format!("expected `{}`", other), value.pos().clone()))
+                        return Err(Error::pos(format!("expected `{}`", other), value.pos().into()))
                     }
                     None => None,
                 };
@@ -128,7 +128,7 @@ pub trait ValueBuilder
                     }
                     _ => {
                         return Err(Error::pos("not a valid enum constant".into(),
-                                              value.pos().clone()))
+                                              value.pos().into()))
                     }
                 }
             }
@@ -159,22 +159,22 @@ pub trait ValueBuilder
                         if !self.env().is_assignable_from(&env.package, expected, variable_type)? {
                             return Err(Error::pos(format!("not assignable to `{}`", expected)
                                                       .into(),
-                                                  value.pos().clone()));
+                                                  value.pos().into()));
                         }
                     }
 
                     return self.identifier(identifier);
                 } else {
-                    return Err(Error::pos("missing variable".into(), value.pos().clone()));
+                    return Err(Error::pos("missing variable".into(), value.pos().into()));
                 }
             }
             _ => {}
         }
 
         if let Some(ty) = ty {
-            Err(Error::pos(format!("expected `{}`", ty), value.pos().clone()))
+            Err(Error::pos(format!("expected `{}`", ty), value.pos().into()))
         } else {
-            Err(Error::pos("unexpected value".into(), value.pos().clone()))
+            Err(Error::pos("unexpected value".into(), value.pos().into()))
         }
     }
 }

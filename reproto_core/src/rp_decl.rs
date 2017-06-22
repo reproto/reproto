@@ -63,8 +63,8 @@ impl Merge for RpLoc<RpDecl> {
                         return Err(ErrorKind::ExtendEnum("cannot extend enum with additional \
                                                        variants"
                                                              .to_owned(),
-                                                         variant.pos().clone(),
-                                                         dest_pos.clone())
+                                                         variant.pos().into(),
+                                                         dest_pos.into())
                             .into());
                     }
 
@@ -72,8 +72,8 @@ impl Merge for RpLoc<RpDecl> {
                         return Err(ErrorKind::ExtendEnum("cannot extend enum with additional \
                                                           fields"
                                                              .to_owned(),
-                                                         field.pos().clone(),
-                                                         dest_pos.clone())
+                                                         field.pos().into(),
+                                                         dest_pos.into())
                             .into());
                     }
 
@@ -99,8 +99,8 @@ impl Merge for RpLoc<RpDecl> {
         }
 
         return Err(ErrorKind::DeclMerge(format!("cannot merge with {}", source),
-                                        source.pos().clone(),
-                                        dest_pos.clone())
+                                        source.pos().into(),
+                                        dest_pos.into())
             .into());
     }
 }

@@ -28,7 +28,7 @@ impl Options {
         if let Some(next) = it.next() {
             if let Some(s) = it.next() {
                 return Err(ErrorKind::Pos(format!("{}: only one value may be present", name),
-                                          s.pos().clone())
+                                          s.pos().into())
                     .into());
             }
 
@@ -50,8 +50,7 @@ impl Options {
                     out.push(RpLoc::new(string.clone(), (*pos).clone()));
                 }
                 (_, ref pos) => {
-                    return Err(ErrorKind::Pos(format!("{}: expected string", name),
-                                              (*pos).clone())
+                    return Err(ErrorKind::Pos(format!("{}: expected string", name), (*pos).into())
                         .into());
                 }
             }
@@ -69,8 +68,7 @@ impl Options {
                     out.push(RpLoc::new(number.clone(), (*pos).clone()));
                 }
                 (_, ref pos) => {
-                    return Err(ErrorKind::Pos(format!("{}: expected number", name),
-                                              (*pos).clone())
+                    return Err(ErrorKind::Pos(format!("{}: expected number", name), (*pos).into())
                         .into());
                 }
             }
@@ -90,7 +88,7 @@ impl Options {
                     return Ok(Some(RpLoc::new(identifier.clone(), (*pos).clone())));
                 }
                 (_, ref pos) => {
-                    return Err(ErrorKind::Pos("expected identifier".to_owned(), (*pos).clone())
+                    return Err(ErrorKind::Pos("expected identifier".to_owned(), (*pos).into())
                         .into());
                 }
             }
@@ -106,7 +104,7 @@ impl Options {
                     return Ok(Some(RpLoc::new(string.to_owned(), (*pos).clone())));
                 }
                 (_, ref pos) => {
-                    return Err(ErrorKind::Pos("expected string".to_owned(), (*pos).clone()).into());
+                    return Err(ErrorKind::Pos("expected string".to_owned(), (*pos).into()).into());
                 }
             }
         }
@@ -121,7 +119,7 @@ impl Options {
                     return Ok(Some(RpLoc::new(number.clone(), (*pos).clone())));
                 }
                 (_, ref pos) => {
-                    return Err(ErrorKind::Pos("expected number".to_owned(), (*pos).clone()).into());
+                    return Err(ErrorKind::Pos("expected number".to_owned(), (*pos).into()).into());
                 }
             }
         }
@@ -136,8 +134,7 @@ impl Options {
                     return Ok(Some(RpLoc::new(boolean.clone(), (*pos).clone())));
                 }
                 (_, ref pos) => {
-                    return Err(ErrorKind::Pos("expected boolean".to_owned(), (*pos).clone())
-                        .into());
+                    return Err(ErrorKind::Pos("expected boolean".to_owned(), (*pos).into()).into());
                 }
             }
         }
@@ -158,7 +155,7 @@ impl Options {
                 }
                 (_, ref pos) => {
                     return Err(ErrorKind::Pos(format!("{}: expected identifier", name),
-                                              (*pos).clone())
+                                              (*pos).into())
                         .into());
                 }
             }

@@ -7,8 +7,8 @@ use super::errors::*;
 pub struct InterfaceBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub members: Vec<AstLoc<'input, Member<'input>>>,
-    pub sub_types: Vec<AstLoc<'input, SubType<'input>>>,
+    pub members: Vec<RpLoc<Member<'input>>>,
+    pub sub_types: Vec<RpLoc<SubType<'input>>>,
 }
 
 impl<'input> IntoModel for InterfaceBody<'input> {

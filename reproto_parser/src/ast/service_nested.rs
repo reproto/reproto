@@ -3,25 +3,25 @@ use super::*;
 #[derive(Debug)]
 pub enum ServiceNested<'input> {
     Endpoint {
-        url: AstLoc<'input, String>,
+        url: RpLoc<String>,
         comment: Vec<&'input str>,
-        options: Vec<AstLoc<'input, OptionDecl<'input>>>,
+        options: Vec<RpLoc<OptionDecl<'input>>>,
         children: Vec<ServiceNested<'input>>,
     },
     Star {
         comment: Vec<&'input str>,
-        options: Vec<AstLoc<'input, OptionDecl<'input>>>,
+        options: Vec<RpLoc<OptionDecl<'input>>>,
         children: Vec<ServiceNested<'input>>,
     },
     Returns {
         comment: Vec<&'input str>,
-        ty: AstLoc<'input, RpType>,
-        options: Vec<AstLoc<'input, OptionDecl<'input>>>,
+        ty: RpLoc<RpType>,
+        options: Vec<RpLoc<OptionDecl<'input>>>,
     },
     Accepts {
         comment: Vec<&'input str>,
-        ty: AstLoc<'input, RpType>,
-        options: Vec<AstLoc<'input, OptionDecl<'input>>>,
+        ty: RpLoc<RpType>,
+        options: Vec<RpLoc<OptionDecl<'input>>>,
     },
 }
 

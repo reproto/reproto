@@ -334,7 +334,7 @@ impl PythonBackend {
     {
         let (package, registered) = self.env
             .lookup(&type_id.package, &type_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
 
         let name = path_syntax(registered.name());
 
@@ -493,7 +493,7 @@ impl PythonBackend {
                 class.push(self.encode_enum_method(field)?);
                 class.push(self.decode_enum_method(field)?);
             } else {
-                return Err(Error::pos(format!("no field named: {}", s), s.pos().clone()));
+                return Err(Error::pos(format!("no field named: {}", s), s.pos().into()));
             }
         }
 

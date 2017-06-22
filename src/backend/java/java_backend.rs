@@ -89,7 +89,7 @@ impl JavaBackend {
     fn convert_type_id(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
         let (package, registered) = self.env
             .lookup(&type_id.package, &type_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
 
         let package_name = self.java_package_name(package);
         Ok(Type::class(&package_name, &registered.name().join(".")).into())
@@ -128,7 +128,7 @@ impl JavaBackend {
             }
             RpType::Any => self.object.clone().into(),
             ref t => {
-                return Err(Error::pos(format!("unsupported type: {:?}", t), pos.clone()));
+                return Err(Error::pos(format!("unsupported type: {:?}", t), pos.into()));
             }
         };
 
@@ -523,7 +523,7 @@ impl JavaBackend {
                 from_value = Some(self.enum_from_value_method(&field, &class_type)?);
                 to_value = Some(self.enum_to_value_method(&field)?);
             } else {
-                return Err(Error::pos(format!("no field named: {}", s), s.pos().clone()));
+                return Err(Error::pos(format!("no field named: {}", s), s.pos().into()));
             }
         }
 

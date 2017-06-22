@@ -4,10 +4,10 @@ use super::errors::*;
 
 #[derive(Debug)]
 pub struct EnumVariant<'input> {
-    pub name: AstLoc<'input, &'input str>,
+    pub name: RpLoc<&'input str>,
     pub comment: Vec<&'input str>,
-    pub arguments: Vec<AstLoc<'input, Value<'input>>>,
-    pub ordinal: Option<AstLoc<'input, Value<'input>>>,
+    pub arguments: Vec<RpLoc<Value<'input>>>,
+    pub ordinal: Option<RpLoc<Value<'input>>>,
 }
 
 /// enum value with assigned ordinal

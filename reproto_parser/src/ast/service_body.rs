@@ -34,8 +34,8 @@ impl Node {
 }
 
 fn convert_return(comment: Vec<String>,
-                  ty: AstLoc<RpType>,
-                  options: Vec<AstLoc<OptionDecl>>)
+                  ty: RpLoc<RpType>,
+                  options: Vec<RpLoc<OptionDecl>>)
                   -> Result<RpServiceReturns> {
     let options = Options::new(options.into_model()?);
 
@@ -45,7 +45,7 @@ fn convert_return(comment: Vec<String>,
         let (produces, pos) = produces.both();
 
         let produces = produces.parse()
-            .chain_err(|| ErrorKind::Pos("not a valid mime type".to_owned(), pos.clone()))?;
+            .chain_err(|| ErrorKind::Pos("not a valid mime type".to_owned(), pos.into()))?;
 
         Some(produces)
     } else {
@@ -58,7 +58,7 @@ fn convert_return(comment: Vec<String>,
         let (status, pos) = status.both();
 
         let status = status.to_u32()
-            .ok_or_else(|| ErrorKind::Pos("not a valid status".to_owned(), pos.clone()))?;
+            .ok_or_else(|| ErrorKind::Pos("not a valid status".to_owned(), pos.into()))?;
 
         Some(status)
     } else {
@@ -74,8 +74,8 @@ fn convert_return(comment: Vec<String>,
 }
 
 fn convert_accepts(comment: Vec<String>,
-                   ty: AstLoc<RpType>,
-                   options: Vec<AstLoc<OptionDecl>>)
+                   ty: RpLoc<RpType>,
+                   options: Vec<RpLoc<OptionDecl>>)
                    -> Result<RpServiceAccepts> {
     let options = Options::new(options.into_model()?);
 
@@ -85,7 +85,7 @@ fn convert_accepts(comment: Vec<String>,
         let (accepts, pos) = accepts.both();
 
         let accepts = accepts.parse()
-            .chain_err(|| ErrorKind::Pos("not a valid mime type".to_owned(), pos.clone()))?;
+            .chain_err(|| ErrorKind::Pos("not a valid mime type".to_owned(), pos.into()))?;
 
         Some(accepts)
     } else {

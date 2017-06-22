@@ -4,6 +4,6 @@ use super::*;
 pub enum Member<'input> {
     Field(Field<'input>),
     Code(&'input str, Vec<String>),
-    Option(AstLoc<'input, OptionDecl<'input>>),
+    Option(RpLoc<OptionDecl<'input>>),
     Match(MatchDecl<'input>),
 }

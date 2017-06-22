@@ -45,8 +45,8 @@ impl RpMatchDecl {
                         self.by_type.iter().find(|e| e.0 == match_kind || e.0 == RpMatchKind::Any);
 
                     if let Some(&(_, ref existing_value)) = result {
-                        let err = ErrorKind::MatchConflict(member.condition.pos().clone(),
-                                                           existing_value.instance.pos().clone());
+                        let err = ErrorKind::MatchConflict(member.condition.pos().into(),
+                                                           existing_value.instance.pos().into());
                         return Err(err.into());
                     }
                 }
@@ -63,8 +63,8 @@ impl RpMatchDecl {
                     let result = self.by_value.iter().find(|e| e.0.as_ref() == value.as_ref());
 
                     if let Some(&(_, ref existing_value)) = result {
-                        let err = ErrorKind::MatchConflict(member.condition.pos().clone(),
-                                                           existing_value.instance.pos().clone());
+                        let err = ErrorKind::MatchConflict(member.condition.pos().into(),
+                                                           existing_value.instance.pos().into());
                         return Err(err.into());
                     }
                 }

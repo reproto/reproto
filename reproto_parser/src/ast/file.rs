@@ -3,10 +3,10 @@ use super::errors::*;
 
 #[derive(Debug)]
 pub struct File<'input> {
-    pub package_decl: AstLoc<'input, PackageDecl<'input>>,
-    pub options: Vec<AstLoc<'input, OptionDecl<'input>>>,
-    pub uses: Vec<AstLoc<'input, UseDecl<'input>>>,
-    pub decls: Vec<AstLoc<'input, Decl<'input>>>,
+    pub package_decl: RpLoc<PackageDecl>,
+    pub options: Vec<RpLoc<OptionDecl<'input>>>,
+    pub uses: Vec<RpLoc<UseDecl<'input>>>,
+    pub decls: Vec<RpLoc<Decl<'input>>>,
 }
 
 impl<'input> IntoModel for File<'input> {

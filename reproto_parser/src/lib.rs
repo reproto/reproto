@@ -21,6 +21,7 @@ use std::fs;
 use std::io::BufReader;
 use std::io::Read;
 use std::path::Path;
+use std::rc::Rc;
 
 static NL: u8 = '\n' as u8;
 static CR: u8 = '\r' as u8;
@@ -70,45 +71,46 @@ pub fn read_file(path: &Path) -> Result<String> {
 pub fn parse_file<'input>(path: &'input Path, input: &'input str) -> Result<ast::File<'input>> {
     use self::ErrorKind::*;
 
+    let path = Rc::new(path.to_owned());
     let lexer = lexer::lex(input);
 
-    match parser::parse_File(path, lexer) {
+    match parser::parse_File(&path, lexer) {
         Ok(file) => Ok(file),
         Err(e) => {
             match e {
                 ParseError::InvalidToken { location } => {
-                    let pos = (path.to_owned(), location, location);
-                    Err(Syntax(Some(pos), vec![]).into())
+                    let pos = (path.clone(), location, location);
+                    Err(Syntax(Some(pos.into()), vec![]).into())
                 }
                 ParseError::UnrecognizedToken { token, expected } => {
-                    let pos = token.map(|(start, _, end)| (path.to_owned(), start, end));
-                    Err(Syntax(pos, expected).into())
+                    let pos = token.map(|(start, _, end)| (path.clone(), start, end));
+                    Err(Syntax(pos.map(Into::into), expected).into())
                 }
                 ParseError::User { error } => {
                     match error {
                         token::Error::UnterminatedString { start } => {
-                            let pos = (path.to_owned(), start, start);
-                            return Err(Parse("unterminated string", pos).into());
+                            let pos = (path.clone(), start, start);
+                            return Err(Parse("unterminated string", pos.into()).into());
                         }
                         token::Error::UnterminatedEscape { start } => {
-                            let pos = (path.to_owned(), start, start);
-                            return Err(Parse("unterminated escape sequence", pos).into());
+                            let pos = (path.clone(), start, start);
+                            return Err(Parse("unterminated escape sequence", pos.into()).into());
                         }
                         token::Error::InvalidEscape { pos, message } => {
-                            let pos = (path.to_owned(), pos, pos);
-                            return Err(Parse(message, pos).into());
+                            let pos = (path.clone(), pos, pos);
+                            return Err(Parse(message, pos.into()).into());
                         }
                         token::Error::UnterminatedCodeBlock { start } => {
-                            let pos = (path.to_owned(), start, start);
-                            return Err(Parse("unterminated code block", pos).into());
+                            let pos = (path.clone(), start, start);
+                            return Err(Parse("unterminated code block", pos.into()).into());
                         }
                         token::Error::InvalidNumber { pos, message } => {
-                            let pos = (path.to_owned(), pos, pos);
-                            return Err(Parse(message, pos).into());
+                            let pos = (path.clone(), pos, pos);
+                            return Err(Parse(message, pos.into()).into());
                         }
                         token::Error::Unexpected { pos } => {
-                            let pos = (path.to_owned(), pos, pos);
-                            return Err(Parse("unexpected input", pos).into());
+                            let pos = (path.clone(), pos, pos);
+                            return Err(Parse("unexpected input", pos.into()).into());
                         }
                     }
                 }
@@ -122,18 +124,21 @@ pub fn parse_file<'input>(path: &'input Path, input: &'input str) -> Result<ast:
 mod tests {
     use super::*;
     use super::ast::*;
+    use std::path::PathBuf;
 
     /// Check that a parsed value equals expected.
     macro_rules! assert_value_eq {
         ($expected:expr, $input:expr) => {{
-            let v = parser::parse_Value(parse($input)).unwrap();
+            let path = Rc::new(PathBuf::from(""));
+            let v = parser::parse_Value(&path, parse($input)).unwrap();
             assert_eq!($expected, v);
         }}
     }
 
     macro_rules! assert_type_spec_eq {
         ($expected:expr, $input:expr) => {{
-            let v = parser::parse_TypeSpec(parse($input)).unwrap();
+            let path = Rc::new(PathBuf::from(""));
+            let v = parser::parse_TypeSpec(&path, parse($input)).unwrap();
             assert_eq!($expected, v);
         }}
     }
@@ -146,15 +151,18 @@ mod tests {
     }
 
     fn parse_file(input: &'static str) -> File {
-        parser::parse_File(parse(input)).unwrap()
+        let path = Rc::new(PathBuf::from(""));
+        parser::parse_File(&path, parse(input)).unwrap()
     }
 
     fn parse_member(input: &'static str) -> Member {
-        parser::parse_Member(parse(input)).unwrap()
+        let path = Rc::new(PathBuf::from(""));
+        parser::parse_Member(&path, parse(input)).unwrap()
     }
 
     fn parse_type_spec(input: &'static str) -> RpType {
-        parser::parse_TypeSpec(parse(input)).unwrap()
+        let path = Rc::new(PathBuf::from(""));
+        parser::parse_TypeSpec(&path, parse(input)).unwrap()
     }
 
     #[test]
@@ -224,24 +232,26 @@ mod tests {
 
     #[test]
     fn test_instance() {
+        let path = Rc::new(PathBuf::from(""));
+
         let c = RpName {
             prefix: None,
             parts: vec!["Foo".to_owned(), "Bar".to_owned()],
         };
 
         let field = FieldInit {
-            name: AstLoc::new("hello", (8, 13)),
-            value: AstLoc::new(Value::Number(12.into()), (15, 17)),
+            name: RpLoc::new("hello", (path.clone(), 8, 13)),
+            value: RpLoc::new(Value::Number(12.into()), (path.clone(), 15, 17)),
         };
 
-        let field = AstLoc::new(field, (8, 17));
+        let field = RpLoc::new(field, (path.clone(), 8, 17));
 
         let instance = Instance {
             name: c,
-            arguments: AstLoc::new(vec![field], (8, 17)),
+            arguments: RpLoc::new(vec![field], (path.clone(), 8, 17)),
         };
 
-        assert_value_eq!(Value::Instance(AstLoc::new(instance, (0, 18))),
+        assert_value_eq!(Value::Instance(RpLoc::new(instance, (path.clone(), 0, 18))),
                          "Foo.Bar(hello: 12)");
     }
 

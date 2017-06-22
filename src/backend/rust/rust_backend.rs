@@ -42,7 +42,7 @@ impl RustBackend {
     fn convert_type_id(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
         let (package, registered) = self.env
             .lookup(&type_id.package, &type_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
 
         let name = registered.name().join(".");
 
@@ -103,7 +103,7 @@ impl RustBackend {
             }
             RpType::Any => stmt![&self.json_value],
             ref t => {
-                return Err(Error::pos(format!("unsupported type: {:?}", t), pos.clone()));
+                return Err(Error::pos(format!("unsupported type: {:?}", t), pos.into()));
             }
         };
 

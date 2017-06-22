@@ -3,12 +3,12 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct PackageDecl<'input> {
+pub struct PackageDecl {
     pub package: RpPackage,
-    pub version: Option<AstLoc<'input, String>>,
+    pub version: Option<RpLoc<String>>,
 }
 
-impl<'input> IntoModel for PackageDecl<'input> {
+impl IntoModel for PackageDecl {
     type Output = RpPackageDecl;
 
     fn into_model(self) -> Result<RpPackageDecl> {
@@ -17,7 +17,7 @@ impl<'input> IntoModel for PackageDecl<'input> {
 
             match Version::parse(&version) {
                 Ok(version) => Some(RpLoc::new(version, pos)),
-                Err(e) => return Err(ErrorKind::Pos(e.description().to_owned(), pos).into()),
+                Err(e) => return Err(ErrorKind::Pos(e.description().to_owned(), pos.into()).into()),
             }
         } else {
             None

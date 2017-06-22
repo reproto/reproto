@@ -47,31 +47,5 @@ pub use self::tuple_body::*;
 pub use self::type_body::*;
 pub use self::use_decl::*;
 pub use self::value::*;
+
 pub(crate) use super::errors;
-
-/// Position relative in file where the declaration is present.
-pub type Pos<'input> = (&'input Path, usize, usize);
-pub type AstLoc<'input, T> = Loc<T, Pos<'input>>;
-
-use std::path::Path;
-
-impl<'input, T> IntoModel for Loc<T, (&'input Path, usize, usize)>
-    where T: IntoModel
-{
-    type Output = RpLoc<T::Output>;
-
-    fn into_model(self) -> errors::Result<Self::Output> {
-        let (value, pos) = self.both();
-        let value = value.into_model()?;
-        let pos = (pos.0.to_owned(), pos.1, pos.2);
-        Ok(RpLoc::new(value, pos))
-    }
-}
-
-impl IntoModel for RpName {
-    type Output = RpName;
-
-    fn into_model(self) -> errors::Result<Self::Output> {
-        Ok(self)
-    }
-}

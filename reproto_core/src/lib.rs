@@ -25,6 +25,7 @@ mod rp_instance;
 mod rp_interface_body;
 mod rp_loc;
 mod rp_match_condition;
+mod error_pos;
 mod rp_match_decl;
 mod rp_match_kind;
 mod rp_match_member;
@@ -54,6 +55,7 @@ mod rp_value;
 mod rp_versioned_package;
 pub mod errors;
 
+pub use self::error_pos::*;
 pub use self::loc::*;
 pub use self::merge::*;
 pub use self::options::*;

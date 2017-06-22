@@ -4,9 +4,9 @@ use super::errors::*;
 
 #[derive(Debug)]
 pub struct UseDecl<'input> {
-    pub package: AstLoc<'input, RpPackage>,
-    pub version_req: Option<AstLoc<'input, String>>,
-    pub alias: Option<String>,
+    pub package: RpLoc<RpPackage>,
+    pub version_req: Option<RpLoc<String>>,
+    pub alias: Option<&'input str>,
 }
 
 impl<'input> IntoModel for UseDecl<'input> {
@@ -18,7 +18,7 @@ impl<'input> IntoModel for UseDecl<'input> {
 
             match VersionReq::parse(&version_req) {
                 Ok(version_req) => Some(RpLoc::new(version_req, pos)),
-                Err(e) => return Err(ErrorKind::Pos(e.description().to_owned(), pos).into()),
+                Err(e) => return Err(ErrorKind::Pos(e.description().to_owned(), pos.into()).into()),
             }
         } else {
             None
@@ -27,7 +27,7 @@ impl<'input> IntoModel for UseDecl<'input> {
         let use_decl = RpUseDecl {
             package: self.package.into_model()?,
             version_req: version_req,
-            alias: self.alias,
+            alias: self.alias.map(ToOwned::to_owned),
         };
 
         Ok(use_decl)

@@ -45,7 +45,7 @@ impl DocBackend {
     fn type_url(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<String> {
         let (package, registered) = self.env
             .lookup(&type_id.package, &type_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
 
         if let Some(_) = type_id.name.prefix {
             let package = self.package(package);

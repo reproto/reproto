@@ -7,7 +7,7 @@ use super::errors::*;
 pub struct SubType<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub members: Vec<AstLoc<'input, Member<'input>>>,
+    pub members: Vec<RpLoc<Member<'input>>>,
 }
 
 impl<'input> IntoModel for SubType<'input> {
@@ -20,8 +20,7 @@ impl<'input> IntoModel for SubType<'input> {
         let mut match_decl = RpMatchDecl::new();
 
         for member in self.members {
-            let (member, member_pos) = member.both();
-            let pos = (member_pos.0.to_owned(), member_pos.1, member_pos.2);
+            let (member, pos) = member.both();
 
             match member {
                 Member::Field(field) => {
@@ -30,8 +29,8 @@ impl<'input> IntoModel for SubType<'input> {
                     if let Some(other) = fields.iter()
                         .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
                         return Err(ErrorKind::FieldConflict(field.ident().to_owned(),
-                                                            pos,
-                                                            other.pos().clone())
+                                                            pos.into(),
+                                                            other.pos().into())
                             .into());
                     }
 

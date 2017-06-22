@@ -13,6 +13,18 @@ pub trait IntoModel {
 }
 
 /// Generic implementation for vectors.
+impl<T> IntoModel for RpLoc<T>
+    where T: IntoModel
+{
+    type Output = RpLoc<T::Output>;
+
+    fn into_model(self) -> Result<Self::Output> {
+        let (value, pos) = self.both();
+        Ok(RpLoc::new(value.into_model()?, pos))
+    }
+}
+
+/// Generic implementation for vectors.
 impl<T> IntoModel for Vec<T>
     where T: IntoModel
 {
@@ -71,6 +83,14 @@ impl IntoModel for RpType {
     type Output = RpType;
 
     fn into_model(self) -> Result<Self::Output> {
+        Ok(self)
+    }
+}
+
+impl IntoModel for RpName {
+    type Output = RpName;
+
+    fn into_model(self) -> errors::Result<Self::Output> {
         Ok(self)
     }
 }

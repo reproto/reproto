@@ -3,8 +3,8 @@ use super::errors::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldInit<'input> {
-    pub name: AstLoc<'input, &'input str>,
-    pub value: AstLoc<'input, Value<'input>>,
+    pub name: RpLoc<&'input str>,
+    pub value: RpLoc<Value<'input>>,
 }
 
 impl<'input> IntoModel for FieldInit<'input> {

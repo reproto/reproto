@@ -6,8 +6,8 @@ use super::errors::*;
 pub struct EnumBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub variants: Vec<AstLoc<'input, EnumVariant<'input>>>,
-    pub members: Vec<AstLoc<'input, Member<'input>>>,
+    pub variants: Vec<RpLoc<EnumVariant<'input>>>,
+    pub members: Vec<RpLoc<Member<'input>>>,
 }
 
 impl<'input> IntoModel for EnumBody<'input> {
@@ -22,24 +22,22 @@ impl<'input> IntoModel for EnumBody<'input> {
 
         for variant in self.variants {
             let (variant, variant_pos) = variant.both();
-            let variant_pos = variant_pos.into_model()?;
+            let pos = &variant_pos;
 
             let ordinal = ordinals.next(&variant.ordinal)
-                .chain_err(|| {
-                    ErrorKind::Pos("failed to generate ordinal".to_owned(), variant_pos.clone())
-                })?;
+                .chain_err(|| ErrorKind::Pos("failed to generate ordinal".to_owned(), pos.into()))?;
 
             if fields.len() != variant.arguments.len() {
                 return Err(ErrorKind::Pos(format!("expected {} arguments", fields.len()),
-                                          variant_pos)
+                                          pos.into())
                     .into());
             }
 
-            let variant = RpLoc::new((variant, ordinal).into_model()?, variant_pos);
+            let variant = RpLoc::new((variant, ordinal).into_model()?, pos.clone());
 
             if let Some(other) = variants.iter().find(|v| *v.name == *variant.name) {
-                return Err(ErrorKind::EnumVariantConflict(other.name.pos().clone(),
-                                                          variant.name.pos().clone())
+                return Err(ErrorKind::EnumVariantConflict(other.name.pos().into(),
+                                                          variant.name.pos().into())
                     .into());
             }
 

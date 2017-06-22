@@ -319,7 +319,7 @@ impl JsBackend {
                 return Ok(elements.into());
             }
 
-            return Err(Error::pos(format!("no field named: {}", s), s.pos().clone()));
+            return Err(Error::pos(format!("no field named: {}", s), s.pos().into()));
         }
 
         if body.serialized_as_name {
@@ -612,7 +612,7 @@ impl Converter for JsBackend {
     fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
         let (package, registered) = self.env
             .lookup(&type_id.package, &type_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.clone()))?;
+            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
 
         let name = registered.name().join("_");
 

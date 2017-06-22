@@ -3,9 +3,10 @@ use super::token::{self, Token};
 use super::ast::*;
 use reproto_core::*;
 use super::utils::*;
-use std::path::Path;
+use std::path::PathBuf;
+use std::rc::Rc;
 
-grammar<'input>(path: &'input Path);
+grammar<'input, 'path>(path: &'path Rc<PathBuf>);
 
 pub File: File<'input> = {
     <package_decl:Loc<PackageDecl>> <options:Loc<OptionDecl>*> <uses:Loc<Use>*> <decls:Loc<Decl>*> => File {
@@ -20,11 +21,11 @@ Use: UseDecl<'input> = {
     "use" <package:Loc<Package>> <version_req:Loc<"@version">?> <alias:("as" Identifier)?> ";" => UseDecl {
         package: package,
         version_req: version_req,
-        alias: alias.map(|t| t.1.to_owned()),
+        alias: alias.map(|t| t.1),
     },
 };
 
-PackageDecl: PackageDecl<'input> = "package" <package:Package> <version:Loc<"@version">?> ";" => PackageDecl {
+PackageDecl: PackageDecl = "package" <package:Package> <version:Loc<"@version">?> ";" => PackageDecl {
     package: package,
     version: version,
 };
@@ -313,7 +314,7 @@ OneOrMore<Sep, T>: Vec<T> = {
     }
 };
 
-Loc<Inner>: AstLoc<'input, Inner> = <s:@L> <inner:Inner> <e:@R> => AstLoc::new(inner, (path, s, e));
+Loc<Inner>: RpLoc<Inner> = <s:@L> <inner:Inner> <e:@R> => RpLoc::new(inner, ((*path).clone(), s, e));
 
 extern {
     type Location = usize;

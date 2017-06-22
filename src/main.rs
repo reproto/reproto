@@ -33,10 +33,14 @@ fn setup_logger(matches: &clap::ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn print_error(m: &str, p: &core::RpPos) -> Result<()> {
-    let (line, lines, range) = parser::find_line(&p.0, (p.1, p.2))?;
+fn print_error(m: &str, p: &core::ErrorPos) -> Result<()> {
+    let (line, lines, range) = parser::find_line(&p.path, (p.start, p.end))?;
 
-    println!("{}:{}:{}-{}:", p.0.display(), lines + 1, range.0, range.1);
+    println!("{}:{}:{}-{}:",
+             p.path.display(),
+             lines + 1,
+             range.0,
+             range.1);
 
     let line_no = format!("{:>3}", lines + 1);
     let diff = range.1 - range.0;

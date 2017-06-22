@@ -1,9 +1,10 @@
 use loc;
 use std::path::PathBuf;
+use std::rc::Rc;
 use super::errors::*;
 use super::merge::Merge;
 
-pub type RpPos = (PathBuf, usize, usize);
+pub type RpPos = (Rc<PathBuf>, usize, usize);
 pub type RpLoc<T> = loc::Loc<T, RpPos>;
 
 impl<T> Merge for RpLoc<T>

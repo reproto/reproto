@@ -17,7 +17,7 @@ impl RpTypeBody {
     pub fn verify(&self) -> Result<()> {
         for reserved in &self.reserved {
             if let Some(field) = self.fields.iter().find(|f| f.name() == reserved.as_ref()) {
-                return Err(ErrorKind::ReservedField(field.pos().clone(), reserved.pos().clone())
+                return Err(ErrorKind::ReservedField(field.pos().into(), reserved.pos().into())
                     .into());
             }
         }

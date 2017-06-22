@@ -15,7 +15,7 @@ pub fn code(pos: RpPos, context: String, lines: Vec<String>) -> RpLoc<RpCode> {
     RpLoc::new(code, pos)
 }
 
-pub fn members_into_model(members: Vec<AstLoc<Member>>)
+pub fn members_into_model(members: Vec<RpLoc<Member>>)
                           -> Result<(Fields, Codes, OptionVec, RpMatchDecl)> {
     let mut fields: Vec<RpLoc<RpField>> = Vec::new();
     let mut codes = Vec::new();
@@ -23,24 +23,24 @@ pub fn members_into_model(members: Vec<AstLoc<Member>>)
     let mut match_decl = RpMatchDecl::new();
 
     for member in members {
-        let pos = member.pos().into_model()?;
+        let (value, pos) = member.both();
 
-        match member.move_inner() {
+        match value {
             Member::Field(field) => {
                 let field = field.into_model()?;
 
                 if let Some(other) = fields.iter()
                     .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
                     return Err(ErrorKind::FieldConflict(field.ident().to_owned(),
-                                                        pos,
-                                                        other.pos().clone())
+                                                        pos.into(),
+                                                        other.pos().into())
                         .into());
                 }
 
-                fields.push(RpLoc::new(field, pos));
+                fields.push(RpLoc::new(field, pos.into()));
             }
             Member::Code(context, lines) => {
-                codes.push(code(pos, context.to_owned(), lines));
+                codes.push(code(pos.into(), context.to_owned(), lines));
             }
             Member::Option(option) => {
                 options.push(option.into_model()?);
@@ -70,24 +70,23 @@ impl OrdinalGenerator {
         }
     }
 
-    pub fn next(&mut self, ordinal: &Option<AstLoc<Value>>) -> Result<u32> {
+    pub fn next(&mut self, ordinal: &Option<RpLoc<Value>>) -> Result<u32> {
         if let Some(ref ordinal) = *ordinal {
-            let pos = ordinal.pos().into_model()?;
+            let pos = ordinal.pos();
 
             if let Value::Number(ref number) = *ordinal.as_ref() {
-                let n: u32 = number.to_u32().ok_or_else(|| ErrorKind::Overflow(pos.clone()))?;
+                let n: u32 = number.to_u32().ok_or_else(|| ErrorKind::Overflow(pos.into()))?;
 
                 if let Some(other) = self.ordinals.get(&n) {
-                    return Err(ErrorKind::Pos("duplicate ordinal".to_owned(), other.clone())
-                        .into());
+                    return Err(ErrorKind::Pos("duplicate ordinal".to_owned(), other.into()).into());
                 }
 
-                self.ordinals.insert(n, pos);
+                self.ordinals.insert(n, pos.clone());
                 self.next_ordinal = n + 1;
                 return Ok(n);
             }
 
-            return Err(ErrorKind::Pos("must be a number".to_owned(), pos).into());
+            return Err(ErrorKind::Pos("must be a number".to_owned(), pos.into()).into());
         }
 
         let o = self.next_ordinal;
@@ -96,7 +95,7 @@ impl OrdinalGenerator {
 
         if let Some(other) = self.ordinals.get(&o) {
             return Err(ErrorKind::Pos(format!("generated ordinal {} conflicts with existing", o),
-                                      other.clone())
+                                      other.into())
                 .into());
         }
 
