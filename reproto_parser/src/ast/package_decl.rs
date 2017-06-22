@@ -3,16 +3,16 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct PackageDecl {
+pub struct PackageDecl<'input> {
     pub package: RpPackage,
-    pub version: Option<AstLoc<String>>,
+    pub version: Option<AstLoc<'input, String>>,
 }
 
-impl IntoModel for PackageDecl {
+impl<'input> IntoModel for PackageDecl<'input> {
     type Output = RpPackageDecl;
 
-    fn into_model(self, path: &Path) -> Result<RpPackageDecl> {
-        let version = if let Some(version) = self.version.into_model(path)? {
+    fn into_model(self) -> Result<RpPackageDecl> {
+        let version = if let Some(version) = self.version.into_model()? {
             let (version, pos) = version.both();
 
             match Version::parse(&version) {

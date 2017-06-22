@@ -3,8 +3,9 @@ use super::token::{self, Token};
 use super::ast::*;
 use reproto_core::*;
 use super::utils::*;
+use std::path::Path;
 
-grammar<'input>;
+grammar<'input>(path: &'input Path);
 
 pub File: File<'input> = {
     <package_decl:Loc<PackageDecl>> <options:Loc<OptionDecl>*> <uses:Loc<Use>*> <decls:Loc<Decl>*> => File {
@@ -15,7 +16,7 @@ pub File: File<'input> = {
     },
 };
 
-Use: UseDecl = {
+Use: UseDecl<'input> = {
     "use" <package:Loc<Package>> <version_req:Loc<"@version">?> <alias:("as" Identifier)?> ";" => UseDecl {
         package: package,
         version_req: version_req,
@@ -23,7 +24,7 @@ Use: UseDecl = {
     },
 };
 
-PackageDecl: PackageDecl = "package" <package:Package> <version:Loc<"@version">?> ";" => PackageDecl {
+PackageDecl: PackageDecl<'input> = "package" <package:Package> <version:Loc<"@version">?> ";" => PackageDecl {
     package: package,
     version: version,
 };
@@ -312,7 +313,7 @@ OneOrMore<Sep, T>: Vec<T> = {
     }
 };
 
-Loc<Inner>: AstLoc<Inner> = <s:@L> <inner:Inner> <e:@R> => AstLoc::new(inner, (s, e));
+Loc<Inner>: AstLoc<'input, Inner> = <s:@L> <inner:Inner> <e:@R> => AstLoc::new(inner, (path, s, e));
 
 extern {
     type Location = usize;
@@ -344,7 +345,7 @@ extern {
         "]" => Token::RightBracket,
         ";" => Token::SemiColon,
         ":" => Token::Colon,
-        "?" => Token::Optional,
+        "?" => Token::QuestionMark,
         "/" => Token::Slash,
         "=" => Token::Equals,
         "=>" => Token::HashRocket,

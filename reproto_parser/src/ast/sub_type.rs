@@ -7,13 +7,13 @@ use super::errors::*;
 pub struct SubType<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub members: Vec<AstLoc<Member<'input>>>,
+    pub members: Vec<AstLoc<'input, Member<'input>>>,
 }
 
 impl<'input> IntoModel for SubType<'input> {
     type Output = Rc<RpSubType>;
 
-    fn into_model(self, path: &Path) -> Result<Rc<RpSubType>> {
+    fn into_model(self) -> Result<Rc<RpSubType>> {
         let mut fields: Vec<RpLoc<RpField>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
@@ -21,11 +21,11 @@ impl<'input> IntoModel for SubType<'input> {
 
         for member in self.members {
             let (member, member_pos) = member.both();
-            let pos = (path.to_owned(), member_pos.0, member_pos.1);
+            let pos = (member_pos.0.to_owned(), member_pos.1, member_pos.2);
 
             match member {
                 Member::Field(field) => {
-                    let field = field.into_model(path)?;
+                    let field = field.into_model()?;
 
                     if let Some(other) = fields.iter()
                         .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
@@ -41,11 +41,11 @@ impl<'input> IntoModel for SubType<'input> {
                     codes.push(utils::code(pos, context.to_owned(), lines));
                 }
                 Member::Option(option) => {
-                    options.push(option.into_model(path)?);
+                    options.push(option.into_model()?);
                 }
                 Member::Match(m) => {
                     for member in m.members {
-                        match_decl.push(member.into_model(path)?)?;
+                        match_decl.push(member.into_model()?)?;
                     }
                 }
             }

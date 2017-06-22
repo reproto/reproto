@@ -50,20 +50,20 @@ pub use self::value::*;
 pub(crate) use super::errors;
 
 /// Position relative in file where the declaration is present.
-pub type Pos = (usize, usize);
-pub type AstLoc<T> = Loc<T, Pos>;
+pub type Pos<'input> = (&'input Path, usize, usize);
+pub type AstLoc<'input, T> = Loc<T, Pos<'input>>;
 
 use std::path::Path;
 
-impl<T> IntoModel for Loc<T, (usize, usize)>
+impl<'input, T> IntoModel for Loc<T, (&'input Path, usize, usize)>
     where T: IntoModel
 {
     type Output = RpLoc<T::Output>;
 
-    fn into_model(self, path: &Path) -> errors::Result<Self::Output> {
+    fn into_model(self) -> errors::Result<Self::Output> {
         let (value, pos) = self.both();
-        let value = value.into_model(path)?;
-        let pos = (path.to_owned(), pos.0, pos.1);
+        let value = value.into_model()?;
+        let pos = (pos.0.to_owned(), pos.1, pos.2);
         Ok(RpLoc::new(value, pos))
     }
 }
@@ -71,7 +71,7 @@ impl<T> IntoModel for Loc<T, (usize, usize)>
 impl IntoModel for RpName {
     type Output = RpName;
 
-    fn into_model(self, _pos: &Path) -> errors::Result<Self::Output> {
+    fn into_model(self) -> errors::Result<Self::Output> {
         Ok(self)
     }
 }

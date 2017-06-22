@@ -3,17 +3,17 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct TupleBody<'a> {
-    pub name: &'a str,
-    pub comment: Vec<&'a str>,
-    pub members: Vec<AstLoc<Member<'a>>>,
+pub struct TupleBody<'input> {
+    pub name: &'input str,
+    pub comment: Vec<&'input str>,
+    pub members: Vec<AstLoc<'input, Member<'input>>>,
 }
 
-impl<'a> IntoModel for TupleBody<'a> {
+impl<'input> IntoModel for TupleBody<'input> {
     type Output = Rc<RpTupleBody>;
 
-    fn into_model(self, path: &Path) -> Result<Rc<RpTupleBody>> {
-        let (fields, codes, options, match_decl) = utils::members_into_model(path, self.members)?;
+    fn into_model(self) -> Result<Rc<RpTupleBody>> {
+        let (fields, codes, options, match_decl) = utils::members_into_model(self.members)?;
 
         let _options = Options::new(options);
 

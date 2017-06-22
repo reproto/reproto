@@ -1,6 +1,6 @@
 //! Implementations for converting asts into models.
 
-pub use std::path::Path;
+pub use std::path::{Path, PathBuf};
 use super::*;
 use super::errors::*;
 
@@ -9,7 +9,7 @@ pub trait IntoModel {
     type Output;
 
     /// Convert the current type to a model.
-    fn into_model(self, pos: &Path) -> Result<Self::Output>;
+    fn into_model(self) -> Result<Self::Output>;
 }
 
 /// Generic implementation for vectors.
@@ -18,11 +18,11 @@ impl<T> IntoModel for Vec<T>
 {
     type Output = Vec<T::Output>;
 
-    fn into_model(self, pos: &Path) -> Result<Self::Output> {
+    fn into_model(self) -> Result<Self::Output> {
         let mut out = Vec::new();
 
         for v in self {
-            out.push(v.into_model(pos)?);
+            out.push(v.into_model()?);
         }
 
         Ok(out)
@@ -34,9 +34,9 @@ impl<T> IntoModel for Option<T>
 {
     type Output = Option<T::Output>;
 
-    fn into_model(self, pos: &Path) -> Result<Self::Output> {
+    fn into_model(self) -> Result<Self::Output> {
         if let Some(value) = self {
-            return Ok(Some(value.into_model(pos)?));
+            return Ok(Some(value.into_model()?));
         }
 
         Ok(None)
@@ -46,7 +46,7 @@ impl<T> IntoModel for Option<T>
 impl<'a> IntoModel for &'a str {
     type Output = String;
 
-    fn into_model(self, _: &Path) -> Result<String> {
+    fn into_model(self) -> Result<Self::Output> {
         Ok(self.to_owned())
     }
 }
@@ -54,7 +54,7 @@ impl<'a> IntoModel for &'a str {
 impl IntoModel for String {
     type Output = String;
 
-    fn into_model(self, _: &Path) -> Result<String> {
+    fn into_model(self) -> Result<Self::Output> {
         Ok(self)
     }
 }
@@ -62,7 +62,7 @@ impl IntoModel for String {
 impl IntoModel for RpPackage {
     type Output = RpPackage;
 
-    fn into_model(self, _: &Path) -> Result<RpPackage> {
+    fn into_model(self) -> Result<Self::Output> {
         Ok(self)
     }
 }
@@ -70,7 +70,15 @@ impl IntoModel for RpPackage {
 impl IntoModel for RpType {
     type Output = RpType;
 
-    fn into_model(self, _: &Path) -> Result<RpType> {
+    fn into_model(self) -> Result<Self::Output> {
         Ok(self)
+    }
+}
+
+impl<'input> IntoModel for (&'input Path, usize, usize) {
+    type Output = (PathBuf, usize, usize);
+
+    fn into_model(self) -> Result<Self::Output> {
+        Ok((self.0.to_owned(), self.1, self.2))
     }
 }

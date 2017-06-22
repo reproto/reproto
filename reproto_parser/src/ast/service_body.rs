@@ -4,10 +4,10 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct ServiceBody<'a> {
-    pub name: &'a str,
-    pub comment: Vec<&'a str>,
-    pub children: Vec<ServiceNested<'a>>,
+pub struct ServiceBody<'input> {
+    pub name: &'input str,
+    pub comment: Vec<&'input str>,
+    pub children: Vec<ServiceNested<'input>>,
 }
 
 struct Node {
@@ -33,12 +33,11 @@ impl Node {
     }
 }
 
-fn convert_return(path: &Path,
-                  comment: Vec<String>,
+fn convert_return(comment: Vec<String>,
                   ty: AstLoc<RpType>,
                   options: Vec<AstLoc<OptionDecl>>)
                   -> Result<RpServiceReturns> {
-    let options = Options::new(options.into_model(path)?);
+    let options = Options::new(options.into_model()?);
 
     let produces: Option<RpLoc<String>> = options.find_one_string("produces")?;
 
@@ -68,18 +67,17 @@ fn convert_return(path: &Path,
 
     Ok(RpServiceReturns {
         comment: comment,
-        ty: ty.into_model(path)?,
+        ty: ty.into_model()?,
         produces: produces,
         status: status,
     })
 }
 
-fn convert_accepts(path: &Path,
-                   comment: Vec<String>,
+fn convert_accepts(comment: Vec<String>,
                    ty: AstLoc<RpType>,
                    options: Vec<AstLoc<OptionDecl>>)
                    -> Result<RpServiceAccepts> {
-    let options = Options::new(options.into_model(path)?);
+    let options = Options::new(options.into_model()?);
 
     let accepts: Option<RpLoc<String>> = options.find_one_string("accept")?;
 
@@ -96,7 +94,7 @@ fn convert_accepts(path: &Path,
 
     Ok(RpServiceAccepts {
         comment: comment,
-        ty: ty.into_model(path)?,
+        ty: ty.into_model()?,
         accepts: accepts,
     })
 }
@@ -141,10 +139,10 @@ fn unwind(node: Option<Rc<RefCell<Node>>>, comment: Vec<String>) -> Result<RpSer
     })
 }
 
-impl<'a> IntoModel for ServiceBody<'a> {
+impl<'input> IntoModel for ServiceBody<'input> {
     type Output = Rc<RpServiceBody>;
 
-    fn into_model(self, path: &Path) -> Result<Rc<RpServiceBody>> {
+    fn into_model(self) -> Result<Rc<RpServiceBody>> {
         let mut endpoints: Vec<RpServiceEndpoint> = Vec::new();
 
         let mut queue: Vec<(Option<Rc<RefCell<Node>>>, Vec<ServiceNested>)> = Vec::new();
@@ -159,8 +157,8 @@ impl<'a> IntoModel for ServiceBody<'a> {
                     ServiceNested::Endpoint { url, comment, options, children } => {
                         let node = Rc::new(RefCell::new(Node {
                             parent: parent.as_ref().map(Clone::clone),
-                            url: Some(url.into_model(path)?),
-                            options: options.into_model(path)?,
+                            url: Some(url.into_model()?),
+                            options: options.into_model()?,
                             comment: comment.into_iter().map(ToOwned::to_owned).collect(),
                             returns: Vec::new(),
                             accepts: Vec::new(),
@@ -173,7 +171,7 @@ impl<'a> IntoModel for ServiceBody<'a> {
                         let node = Rc::new(RefCell::new(Node {
                             parent: parent.as_ref().map(Clone::clone),
                             url: None,
-                            options: options.into_model(path)?,
+                            options: options.into_model()?,
                             comment: comment.into_iter().map(ToOwned::to_owned).collect(),
                             returns: Vec::new(),
                             accepts: Vec::new(),
@@ -184,7 +182,7 @@ impl<'a> IntoModel for ServiceBody<'a> {
                     // end node, manifest an endpoint.
                     ServiceNested::Returns { comment, ty, options } => {
                         let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-                        let returns = convert_return(path, comment, ty, options)?;
+                        let returns = convert_return(comment, ty, options)?;
 
                         if let Some(parent) = parent.as_ref() {
                             parent.try_borrow_mut()?.push_returns(returns);
@@ -192,7 +190,7 @@ impl<'a> IntoModel for ServiceBody<'a> {
                     }
                     ServiceNested::Accepts { comment, ty, options } => {
                         let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-                        let accepts = convert_accepts(path, comment, ty, options)?;
+                        let accepts = convert_accepts(comment, ty, options)?;
 
                         if let Some(parent) = parent.as_ref() {
                             parent.try_borrow_mut()?.push_accepts(accepts);

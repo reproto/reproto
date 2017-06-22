@@ -10,9 +10,9 @@ pub struct MatchVariable<'input> {
 impl<'input> IntoModel for MatchVariable<'input> {
     type Output = RpMatchVariable;
 
-    fn into_model(self, path: &Path) -> Result<RpMatchVariable> {
+    fn into_model(self) -> Result<RpMatchVariable> {
         let match_variable = RpMatchVariable {
-            name: self.name.into_model(path)?,
+            name: self.name.into_model()?,
             ty: self.ty,
         };
 

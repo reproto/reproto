@@ -67,12 +67,12 @@ pub fn read_file(path: &Path) -> Result<String> {
     Ok(content)
 }
 
-pub fn parse_file<'a>(path: &Path, input: &'a str) -> Result<ast::File<'a>> {
+pub fn parse_file<'input>(path: &'input Path, input: &'input str) -> Result<ast::File<'input>> {
     use self::ErrorKind::*;
 
     let lexer = lexer::lex(input);
 
-    match parser::parse_File(lexer) {
+    match parser::parse_File(path, lexer) {
         Ok(file) => Ok(file),
         Err(e) => {
             match e {
@@ -141,7 +141,7 @@ mod tests {
     const FILE1: &[u8] = include_bytes!("tests/file1.reproto");
     const INTERFACE1: &[u8] = include_bytes!("tests/interface1.reproto");
 
-    fn parse(input: &'static str) -> Box<Iterator<Item = Result<(usize, token::Token, usize)>>> {
+    fn parse(input: &'static str) -> Box<Iterator<Item = token::Result<(usize, token::Token<'static>, usize)>>> {
         Box::new(lexer::lex(input))
     }
 
@@ -230,7 +230,7 @@ mod tests {
         };
 
         let field = FieldInit {
-            name: AstLoc::new("hello".to_owned(), (8, 13)),
+            name: AstLoc::new("hello", (8, 13)),
             value: AstLoc::new(Value::Number(12.into()), (15, 17)),
         };
 

@@ -1,5 +1,6 @@
 use reproto_core::RpNumber;
 
+#[derive(Debug)]
 pub enum Error {
     UnterminatedString { start: usize },
     UnterminatedEscape { start: usize },
@@ -29,7 +30,7 @@ pub enum Token<'input> {
     Comma,
     Dot,
     Scope,
-    Optional,
+    QuestionMark,
     And,
     Slash,
     Equals,
@@ -63,4 +64,6 @@ pub enum Token<'input> {
     ReturnsKeyword,
     AcceptsKeyword,
     Star,
+    Tick,
+    PathSegment(String),
 }

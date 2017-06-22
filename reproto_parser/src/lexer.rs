@@ -72,6 +72,9 @@ pub struct Lexer<'input> {
     buffer: String,
     code_block: Option<(usize, usize)>,
     code_close: Option<(usize, usize)>,
+    path_mode: bool,
+    path_variable_nesting: usize,
+    path_buffer: String,
 }
 
 impl<'input> Lexer<'input> {
@@ -292,6 +295,12 @@ impl<'input> Lexer<'input> {
             'n' => '\n',
             'r' => '\r',
             't' => '\t',
+            '{' => '{',
+            '}' => '}',
+            '/' => '/',
+            '?' => '?',
+            '&' => '&',
+            '=' => '=',
             'u' => {
                 let seq_start = self.step_n(1);
 
@@ -328,6 +337,7 @@ impl<'input> Lexer<'input> {
             if c == '\\' {
                 let c = self.escape(pos)?;
                 self.buffer.push(c);
+                continue;
             }
 
             if c == '"' {
@@ -412,12 +422,101 @@ impl<'input> Lexer<'input> {
 
         return Ok((start, Token::Version(content.to_owned()), end));
     }
-}
 
-impl<'input> Iterator for Lexer<'input> {
-    type Item = Result<(usize, Token<'input>, usize)>;
+    fn path_variable_mode_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
+        loop {
+            if let Some((start, c)) = self.one() {
+                let token = match c {
+                    ':' => Token::Colon,
+                    '{' => {
+                        self.path_variable_nesting += 1;
+                        Token::LeftCurly
+                    }
+                    '}' => {
+                        self.path_variable_nesting -= 1;
+                        Token::RightCurly
+                    }
+                    ' ' | '\n' | '\r' | '\t' => {
+                        self.step();
+                        continue;
+                    }
+                    '_' | 'a'...'z' => return Some(self.identifier(start)),
+                    _ => break,
+                };
 
-    fn next(&mut self) -> Option<Self::Item> {
+                let end = self.step_n(1);
+                return Some(Ok((start, token, end)));
+            } else {
+                return None;
+            }
+        }
+
+        Some(Err(Error::Unexpected { pos: self.pos() }))
+    }
+
+    fn take_path_buffer(&mut self) -> Option<String> {
+        if self.path_buffer.is_empty() {
+            return None;
+        }
+
+        let buffer = self.path_buffer.clone();
+        self.path_buffer.clear();
+        return Some(buffer);
+    }
+
+    fn path_mode_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
+        while let Some((pos, c)) = self.one() {
+            let token = match c {
+                '\\' => {
+                    let c = match self.escape(pos) {
+                        Ok(c) => c,
+                        Err(e) => return Some(Err(e)),
+                    };
+
+                    self.path_buffer.push(c);
+                    continue;
+                }
+                '{' => {
+                    if let Some(buffer) = self.take_path_buffer() {
+                        return Some(Ok((pos - buffer.len(), Token::PathSegment(buffer), pos)));
+                    }
+
+                    self.path_variable_nesting = 1;
+                    Token::LeftCurly
+                }
+                '`' => {
+                    if let Some(buffer) = self.take_path_buffer() {
+                        return Some(Ok((pos - buffer.len(), Token::PathSegment(buffer), pos)));
+                    }
+
+                    self.path_mode = false;
+                    Token::Tick
+                }
+                '/' => {
+                    if let Some(buffer) = self.take_path_buffer() {
+                        return Some(Ok((pos - buffer.len(), Token::PathSegment(buffer), pos)));
+                    }
+
+                    Token::Slash
+                }
+                '?' => Token::QuestionMark,
+                '&' => Token::And,
+                '=' => Token::Equals,
+                c => {
+                    self.path_buffer.push(c);
+                    self.step();
+                    continue;
+                }
+            };
+
+            let end = self.step_n(1);
+            return Some(Ok((pos, token, end)));
+        }
+
+        Some(Err(Error::Unexpected { pos: self.pos() }))
+    }
+
+    fn normal_mode_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
         // dispatch a CodeClose.
         if let Some((start, end)) = self.code_close {
             self.code_close = None;
@@ -465,6 +564,11 @@ impl<'input> Iterator for Lexer<'input> {
             // one character keywords
             if let Some((start, c)) = self.one() {
                 let token = match c {
+                    '`' => {
+                        self.path_mode = true;
+                        self.path_buffer.clear();
+                        Token::Tick
+                    }
                     '{' => Token::LeftCurly,
                     '}' => Token::RightCurly,
                     '[' => Token::LeftBracket,
@@ -475,7 +579,7 @@ impl<'input> Iterator for Lexer<'input> {
                     ':' => Token::Colon,
                     ',' => Token::Comma,
                     '.' => Token::Dot,
-                    '?' => Token::Optional,
+                    '?' => Token::QuestionMark,
                     '&' => Token::And,
                     '/' => Token::Slash,
                     '=' => Token::Equals,
@@ -495,14 +599,30 @@ impl<'input> Iterator for Lexer<'input> {
                     _ => break,
                 };
 
-                self.step();
-                return Some(Ok((start, token, start + 1)));
+                let end = self.step_n(1);
+                return Some(Ok((start, token, end)));
             } else {
                 return None;
             }
         }
 
         Some(Err(Error::Unexpected { pos: self.pos() }))
+    }
+}
+
+impl<'input> Iterator for Lexer<'input> {
+    type Item = Result<(usize, Token<'input>, usize)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.path_variable_nesting > 0 {
+            return self.path_variable_mode_next();
+        }
+
+        if self.path_mode {
+            return self.path_mode_next();
+        }
+
+        self.normal_mode_next()
     }
 }
 
@@ -523,6 +643,9 @@ pub fn lex(input: &str) -> Lexer {
         buffer: String::new(),
         code_block: None,
         code_close: None,
+        path_mode: false,
+        path_variable_nesting: 0usize,
+        path_buffer: String::new(),
     }
 }
 
@@ -587,6 +710,12 @@ pub mod tests {
     }
 
     #[test]
+    pub fn test_strings() {
+        let expected = vec![(0, String("foo\nbar".to_owned()), 10)];
+        assert_eq!(expected, tokenize("\"foo\\nbar\"").unwrap());
+    }
+
+    #[test]
     pub fn test_instance() {
         let expected = vec![(0, Identifier("foo"), 3),
                             (3, Scope, 5),
@@ -605,19 +734,14 @@ pub mod tests {
     #[test]
     pub fn test_comments() {
         let tokens = tokenize("// hello \n world");
-        let comment = vec![" hello "];
-        assert_eq!(vec![(11, Identifier(commented(comment, "world")), 16)],
-                   tokens.unwrap());
+        assert_eq!(vec![(11, Identifier("world"), 16)], tokens.unwrap());
 
         let tokens = tokenize("he/* this is a comment */llo");
         assert_eq!(vec![(0, Identifier("he"), 2), (25, Identifier("llo"), 28)],
                    tokens.unwrap());
 
         let tokens = tokenize("// test\n// this\nhello");
-        let comment = vec![" test", " this"];
-
-        assert_eq!(vec![(16, Identifier(commented(comment, "hello")), 21)],
-                   tokens.unwrap());
+        assert_eq!(vec![(16, Identifier("hello"), 21)], tokens.unwrap());
     }
 
     #[test]
@@ -633,6 +757,12 @@ pub mod tests {
     #[test]
     pub fn test_doc_comment() {
         let tokens = tokenize("/// foo\n\r      /// bar \r\n     /// baz ").unwrap();
+        println!("tokens = {:?}", tokens);
+    }
+
+    #[test]
+    pub fn test_path() {
+        let tokens = tokenize("`/foo/first_\\/{id:{string: unsigned}}`").unwrap();
         println!("tokens = {:?}", tokens);
     }
 

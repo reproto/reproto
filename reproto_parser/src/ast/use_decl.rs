@@ -3,17 +3,17 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct UseDecl {
-    pub package: AstLoc<RpPackage>,
-    pub version_req: Option<AstLoc<String>>,
+pub struct UseDecl<'input> {
+    pub package: AstLoc<'input, RpPackage>,
+    pub version_req: Option<AstLoc<'input, String>>,
     pub alias: Option<String>,
 }
 
-impl IntoModel for UseDecl {
+impl<'input> IntoModel for UseDecl<'input> {
     type Output = RpUseDecl;
 
-    fn into_model(self, path: &Path) -> Result<RpUseDecl> {
-        let version_req = if let Some(version_req) = self.version_req.into_model(path)? {
+    fn into_model(self) -> Result<RpUseDecl> {
+        let version_req = if let Some(version_req) = self.version_req.into_model()? {
             let (version_req, pos) = version_req.both();
 
             match VersionReq::parse(&version_req) {
@@ -25,7 +25,7 @@ impl IntoModel for UseDecl {
         };
 
         let use_decl = RpUseDecl {
-            package: self.package.into_model(path)?,
+            package: self.package.into_model()?,
             version_req: version_req,
             alias: self.alias,
         };

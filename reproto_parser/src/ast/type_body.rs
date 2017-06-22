@@ -4,17 +4,17 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct TypeBody<'a> {
-    pub name: &'a str,
-    pub comment: Vec<&'a str>,
-    pub members: Vec<AstLoc<Member<'a>>>,
+pub struct TypeBody<'input> {
+    pub name: &'input str,
+    pub comment: Vec<&'input str>,
+    pub members: Vec<AstLoc<'input, Member<'input>>>,
 }
 
-impl<'a> IntoModel for TypeBody<'a> {
+impl<'input> IntoModel for TypeBody<'input> {
     type Output = Rc<RpTypeBody>;
 
-    fn into_model(self, path: &Path) -> Result<Rc<RpTypeBody>> {
-        let (fields, codes, options, match_decl) = utils::members_into_model(path, self.members)?;
+    fn into_model(self) -> Result<Rc<RpTypeBody>> {
+        let (fields, codes, options, match_decl) = utils::members_into_model(self.members)?;
 
         let options = Options::new(options);
 

@@ -15,8 +15,7 @@ pub fn code(pos: RpPos, context: String, lines: Vec<String>) -> RpLoc<RpCode> {
     RpLoc::new(code, pos)
 }
 
-pub fn members_into_model(path: &Path,
-                          members: Vec<AstLoc<Member>>)
+pub fn members_into_model(members: Vec<AstLoc<Member>>)
                           -> Result<(Fields, Codes, OptionVec, RpMatchDecl)> {
     let mut fields: Vec<RpLoc<RpField>> = Vec::new();
     let mut codes = Vec::new();
@@ -24,11 +23,11 @@ pub fn members_into_model(path: &Path,
     let mut match_decl = RpMatchDecl::new();
 
     for member in members {
-        let pos = (path.to_owned(), member.pos().0, member.pos().1);
+        let pos = member.pos().into_model()?;
 
         match member.move_inner() {
             Member::Field(field) => {
-                let field = field.into_model(path)?;
+                let field = field.into_model()?;
 
                 if let Some(other) = fields.iter()
                     .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
@@ -44,11 +43,11 @@ pub fn members_into_model(path: &Path,
                 codes.push(code(pos, context.to_owned(), lines));
             }
             Member::Option(option) => {
-                options.push(option.into_model(path)?);
+                options.push(option.into_model()?);
             }
             Member::Match(m) => {
                 for member in m.members {
-                    match_decl.push(member.into_model(path)?)?;
+                    match_decl.push(member.into_model()?)?;
                 }
             }
         }
@@ -71,9 +70,9 @@ impl OrdinalGenerator {
         }
     }
 
-    pub fn next(&mut self, ordinal: &Option<AstLoc<Value>>, path: &Path) -> Result<u32> {
+    pub fn next(&mut self, ordinal: &Option<AstLoc<Value>>) -> Result<u32> {
         if let Some(ref ordinal) = *ordinal {
-            let pos = (path.to_owned(), ordinal.pos().0, ordinal.pos().1);
+            let pos = ordinal.pos().into_model()?;
 
             if let Value::Number(ref number) = *ordinal.as_ref() {
                 let n: u32 = number.to_u32().ok_or_else(|| ErrorKind::Overflow(pos.clone()))?;

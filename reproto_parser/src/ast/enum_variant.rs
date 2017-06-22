@@ -4,24 +4,24 @@ use super::errors::*;
 
 #[derive(Debug)]
 pub struct EnumVariant<'input> {
-    pub name: AstLoc<&'input str>,
+    pub name: AstLoc<'input, &'input str>,
     pub comment: Vec<&'input str>,
-    pub arguments: Vec<AstLoc<Value<'input>>>,
-    pub ordinal: Option<AstLoc<Value<'input>>>,
+    pub arguments: Vec<AstLoc<'input, Value<'input>>>,
+    pub ordinal: Option<AstLoc<'input, Value<'input>>>,
 }
 
 /// enum value with assigned ordinal
 impl<'input> IntoModel for (EnumVariant<'input>, u32) {
     type Output = Rc<RpEnumVariant>;
 
-    fn into_model(self, path: &Path) -> Result<Self::Output> {
+    fn into_model(self) -> Result<Self::Output> {
         let value = self.0;
         let ordinal = self.1;
 
         let value = RpEnumVariant {
-            name: value.name.into_model(path)?,
+            name: value.name.into_model()?,
             comment: value.comment.into_iter().map(ToOwned::to_owned).collect(),
-            arguments: value.arguments.into_model(path)?,
+            arguments: value.arguments.into_model()?,
             ordinal: ordinal,
         };
 

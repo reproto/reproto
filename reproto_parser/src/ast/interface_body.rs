@@ -4,22 +4,22 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct InterfaceBody<'a> {
-    pub name: &'a str,
-    pub comment: Vec<&'a str>,
-    pub members: Vec<AstLoc<Member<'a>>>,
-    pub sub_types: Vec<AstLoc<SubType<'a>>>,
+pub struct InterfaceBody<'input> {
+    pub name: &'input str,
+    pub comment: Vec<&'input str>,
+    pub members: Vec<AstLoc<'input, Member<'input>>>,
+    pub sub_types: Vec<AstLoc<'input, SubType<'input>>>,
 }
 
-impl<'a> IntoModel for InterfaceBody<'a> {
+impl<'input> IntoModel for InterfaceBody<'input> {
     type Output = Rc<RpInterfaceBody>;
 
-    fn into_model(self, path: &Path) -> Result<Rc<RpInterfaceBody>> {
-        let (fields, codes, options, match_decl) = utils::members_into_model(path, self.members)?;
+    fn into_model(self) -> Result<Rc<RpInterfaceBody>> {
+        let (fields, codes, options, match_decl) = utils::members_into_model(self.members)?;
 
         let mut sub_types: BTreeMap<String, RpLoc<Rc<RpSubType>>> = BTreeMap::new();
 
-        for sub_type in self.sub_types.into_model(path)? {
+        for sub_type in self.sub_types.into_model()? {
             // key has to be owned by entry
             let key = sub_type.name.clone();
 

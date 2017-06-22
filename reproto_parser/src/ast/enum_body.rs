@@ -3,28 +3,28 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct EnumBody<'a> {
-    pub name: &'a str,
-    pub comment: Vec<&'a str>,
-    pub variants: Vec<AstLoc<EnumVariant<'a>>>,
-    pub members: Vec<AstLoc<Member<'a>>>,
+pub struct EnumBody<'input> {
+    pub name: &'input str,
+    pub comment: Vec<&'input str>,
+    pub variants: Vec<AstLoc<'input, EnumVariant<'input>>>,
+    pub members: Vec<AstLoc<'input, Member<'input>>>,
 }
 
-impl<'a> IntoModel for EnumBody<'a> {
+impl<'input> IntoModel for EnumBody<'input> {
     type Output = Rc<RpEnumBody>;
 
-    fn into_model(self, path: &Path) -> Result<Rc<RpEnumBody>> {
+    fn into_model(self) -> Result<Rc<RpEnumBody>> {
         let mut variants: Vec<RpLoc<Rc<RpEnumVariant>>> = Vec::new();
 
         let mut ordinals = utils::OrdinalGenerator::new();
 
-        let (fields, codes, options, match_decl) = utils::members_into_model(path, self.members)?;
+        let (fields, codes, options, match_decl) = utils::members_into_model(self.members)?;
 
         for variant in self.variants {
             let (variant, variant_pos) = variant.both();
-            let variant_pos = (path.to_owned(), variant_pos.0, variant_pos.1);
+            let variant_pos = variant_pos.into_model()?;
 
-            let ordinal = ordinals.next(&variant.ordinal, path)
+            let ordinal = ordinals.next(&variant.ordinal)
                 .chain_err(|| {
                     ErrorKind::Pos("failed to generate ordinal".to_owned(), variant_pos.clone())
                 })?;
@@ -35,7 +35,7 @@ impl<'a> IntoModel for EnumBody<'a> {
                     .into());
             }
 
-            let variant = RpLoc::new((variant, ordinal).into_model(path)?, variant_pos);
+            let variant = RpLoc::new((variant, ordinal).into_model()?, variant_pos);
 
             if let Some(other) = variants.iter().find(|v| *v.name == *variant.name) {
                 return Err(ErrorKind::EnumVariantConflict(other.name.pos().clone(),

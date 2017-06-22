@@ -7,7 +7,7 @@ pub struct Field<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
     pub ty: RpType,
-    pub field_as: Option<AstLoc<Value<'input>>>,
+    pub field_as: Option<AstLoc<'input, Value<'input>>>,
 }
 
 impl<'input> Field<'input> {
@@ -22,8 +22,8 @@ impl<'input> Field<'input> {
 impl<'input> IntoModel for Field<'input> {
     type Output = RpField;
 
-    fn into_model(self, path: &Path) -> Result<RpField> {
-        let field_as = self.field_as.into_model(path)?;
+    fn into_model(self) -> Result<RpField> {
+        let field_as = self.field_as.into_model()?;
 
         let field_as = if let Some(field_as) = field_as {
             match field_as.both() {
