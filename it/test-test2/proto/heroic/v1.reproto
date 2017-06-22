@@ -17,7 +17,7 @@ enum SI {
 }
 
 enum TimeUnit {
-  // Seconds, what do you think?
+  /// Seconds, what do you think?
   SECONDS("seconds", 1000);
   MINUTES("minutes", 60000);
 

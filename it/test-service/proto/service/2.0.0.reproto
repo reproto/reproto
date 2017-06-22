@@ -2,46 +2,46 @@ package _service@2.0.0;
 
 use common as c;
 
-// # HUGE Example Service
-//
-// This is a test to see if the documentation makes _any_ sense.
+/// # HUGE Example Service
+///
+/// This is a test to see if the documentation makes _any_ sense.
 service MyService {
-  // Gets all the good stuff!
+  /// Gets all the good stuff!
   endpoint "/v2/foo" {
-    // # Search for a list of foos.
-    //
-    // This uses method `GET` because it is _good_.
+    /// # Search for a list of foos.
+    ///
+    /// This uses method `GET` because it is _good_.
     * {
       method "GET";
     }
 
-    // Create a new foo.
+    /// Create a new foo.
     * {
       method "POST";
 
-      // Only acceptable when I'm ~drunk~ Sober!
+      /// Only acceptable when I'm ~drunk~ Sober!
       accepts any {
         accept "application/json";
       }
     }
 
     endpoint "/{id}" {
-      // # Get the foo with the current ID.
-      //
-      // These things cannot do shit.
-      //
-      // ```yaml
-      // foo: 1234
-      // ```
+      /// # Get the foo with the current ID.
+      ///
+      /// These things cannot do shit.
+      ///
+      /// ```yaml
+      /// foo: 1234
+      /// ```
       * {
         method "GET";
       }
 
-      // #### Delete the entity with the given id `{id}`
+      /// #### Delete the entity with the given id `{id}`
       * {
         method "DELETE";
 
-        // Redirect stuff.
+        /// Redirect stuff.
         returns any {
           status 302;
           produces "application/json";
@@ -49,21 +49,21 @@ service MyService {
       }
     }
 
-    // resource not found
-    //
-    // Something else?
+    /// resource not found
+    ///
+    /// Something else?
     returns any {
       status 404;
       produces "text/plain";
     }
 
-    // returned on internal server errors
+    /// returned on internal server errors
     returns c::ErrorMessage {
       status 500;
       produces "application/json";
     }
 
-    // other, interesting stuff
+    /// other, interesting stuff
     returns c::ErrorMessage {
       status 501;
       produces "application/json";

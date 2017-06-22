@@ -4,7 +4,7 @@ type Entry {
   name: string;
 }
 
-// # Error me
+/// # Error me
 type ErrorMessage {
   message: string;
   status_code: unsigned;
