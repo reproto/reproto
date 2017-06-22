@@ -569,14 +569,21 @@ impl DocBackend {
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
 
-                for (name, sub_type) in &body.sub_types {
-                    let id = format!("{}_{}", body.name, sub_type.name);
-                    write!(out, "<h2 id=\"{id}\">{name}</h2>", id = id, name = name)?;
+                if !body.sub_types.is_empty() {
+                    html!(out, div {class => "sub-types"} => {
+                        for (name, sub_type) in &body.sub_types {
+                            let id = format!("{}_{}", body.name, sub_type.name);
 
-                    let fields = body.fields.iter().chain(sub_type.fields.iter());
+                            html!(out, h2 {id => id, class => "sub-type-title"} => {
+                                html!(out, a {class => "link", href => format!("#{}", id)} ~ name);
+                            });
 
-                    self.write_description(&mut out, &sub_type.comment)?;
-                    self.write_fields(&mut out, type_id, fields)?;
+                            self.write_description(&mut out, &body.comment)?;
+
+                            let fields = body.fields.iter().chain(sub_type.fields.iter());
+                            self.write_fields(&mut out, type_id, fields)?;
+                        }
+                    });
                 }
             });
         });
