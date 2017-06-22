@@ -31,18 +31,16 @@ error_chain! {
             description("enum value conflict")
         }
 
-        InvalidEscape {
-        }
-
         Syntax(pos: Option<RpPos>, expected: Vec<String>) {
             description("syntax error")
         }
 
-        Overflow {
+        Parse(message: &'static str, pos: RpPos) {
+            description("parse error")
+            display("parse error: {}", message)
         }
 
-        IllegalToken(pos: usize) {
-            description("illegal token")
+        Overflow(pos: RpPos) {
         }
     }
 }

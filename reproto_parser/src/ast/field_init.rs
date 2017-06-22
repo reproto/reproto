@@ -2,12 +2,12 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct FieldInit {
-    pub name: AstLoc<String>,
-    pub value: AstLoc<Value>,
+pub struct FieldInit<'input> {
+    pub name: AstLoc<&'input str>,
+    pub value: AstLoc<Value<'input>>,
 }
 
-impl IntoModel for FieldInit {
+impl<'input> IntoModel for FieldInit<'input> {
     type Output = RpFieldInit;
 
     fn into_model(self, path: &Path) -> Result<RpFieldInit> {

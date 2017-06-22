@@ -2,18 +2,18 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Value {
+pub enum Value<'input> {
     String(String),
     Number(RpNumber),
     Boolean(bool),
     Identifier(String),
     Type(RpType),
-    Instance(AstLoc<Instance>),
+    Instance(AstLoc<Instance<'input>>),
     Constant(AstLoc<RpName>),
-    Array(Vec<AstLoc<Value>>),
+    Array(Vec<AstLoc<Value<'input>>>),
 }
 
-impl IntoModel for Value {
+impl<'input> IntoModel for Value<'input> {
     type Output = RpValue;
 
     fn into_model(self, path: &Path) -> Result<RpValue> {

@@ -1,22 +1,21 @@
 use reproto_core::RpNumber;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Commented<'input, T> {
-    pub comment: Vec<&'input str>,
-    pub value: T,
+pub enum Error {
+    UnterminatedString { start: usize },
+    UnterminatedEscape { start: usize },
+    InvalidEscape { message: &'static str, pos: usize },
+    UnterminatedCodeBlock { start: usize },
+    InvalidNumber { message: &'static str, pos: usize },
+    Unexpected { pos: usize },
 }
 
-pub fn commented<'input, T>(comment: Vec<&'input str>, value: T) -> Commented<'input, T> {
-    Commented {
-        comment: comment,
-        value: value,
-    }
-}
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token<'input> {
-    Identifier(Commented<'input, &'input str>),
-    TypeIdentifier(Commented<'input, &'input str>),
+    Identifier(&'input str),
+    TypeIdentifier(&'input str),
+    DocComment(Vec<&'input str>),
     Number(RpNumber),
     Version(String),
     LeftCurly,
@@ -60,8 +59,8 @@ pub enum Token<'input> {
     BytesKeyword,
     TrueKeyword,
     FalseKeyword,
-    EndpointKeyword(Vec<&'input str>),
-    ReturnsKeyword(Vec<&'input str>),
-    AcceptsKeyword(Vec<&'input str>),
-    Star(Vec<&'input str>),
+    EndpointKeyword,
+    ReturnsKeyword,
+    AcceptsKeyword,
+    Star,
 }

@@ -68,6 +68,8 @@ pub fn read_file(path: &Path) -> Result<String> {
 }
 
 pub fn parse_file<'a>(path: &Path, input: &'a str) -> Result<ast::File<'a>> {
+    use self::ErrorKind::*;
+
     let lexer = lexer::lex(input);
 
     match parser::parse_File(lexer) {
@@ -76,13 +78,40 @@ pub fn parse_file<'a>(path: &Path, input: &'a str) -> Result<ast::File<'a>> {
             match e {
                 ParseError::InvalidToken { location } => {
                     let pos = (path.to_owned(), location, location);
-                    Err(ErrorKind::Syntax(Some(pos), vec![]).into())
+                    Err(Syntax(Some(pos), vec![]).into())
                 }
                 ParseError::UnrecognizedToken { token, expected } => {
                     let pos = token.map(|(start, _, end)| (path.to_owned(), start, end));
-                    Err(ErrorKind::Syntax(pos, expected).into())
+                    Err(Syntax(pos, expected).into())
                 }
-                ParseError::User { error } => Err(error),
+                ParseError::User { error } => {
+                    match error {
+                        token::Error::UnterminatedString { start } => {
+                            let pos = (path.to_owned(), start, start);
+                            return Err(Parse("unterminated string", pos).into());
+                        }
+                        token::Error::UnterminatedEscape { start } => {
+                            let pos = (path.to_owned(), start, start);
+                            return Err(Parse("unterminated escape sequence", pos).into());
+                        }
+                        token::Error::InvalidEscape { pos, message } => {
+                            let pos = (path.to_owned(), pos, pos);
+                            return Err(Parse(message, pos).into());
+                        }
+                        token::Error::UnterminatedCodeBlock { start } => {
+                            let pos = (path.to_owned(), start, start);
+                            return Err(Parse("unterminated code block", pos).into());
+                        }
+                        token::Error::InvalidNumber { pos, message } => {
+                            let pos = (path.to_owned(), pos, pos);
+                            return Err(Parse(message, pos).into());
+                        }
+                        token::Error::Unexpected { pos } => {
+                            let pos = (path.to_owned(), pos, pos);
+                            return Err(Parse("unexpected input", pos).into());
+                        }
+                    }
+                }
                 _ => Err("parse error".into()),
             }
         }

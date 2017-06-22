@@ -2,14 +2,14 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct File<'a> {
+pub struct File<'input> {
     pub package_decl: AstLoc<PackageDecl>,
-    pub options: Vec<AstLoc<OptionDecl>>,
+    pub options: Vec<AstLoc<OptionDecl<'input>>>,
     pub uses: Vec<AstLoc<UseDecl>>,
-    pub decls: Vec<AstLoc<Decl<'a>>>,
+    pub decls: Vec<AstLoc<Decl<'input>>>,
 }
 
-impl<'a> IntoModel for File<'a> {
+impl<'input> IntoModel for File<'input> {
     type Output = RpFile;
 
     fn into_model(self, path: &Path) -> Result<RpFile> {

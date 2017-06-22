@@ -41,7 +41,7 @@ pub fn members_into_model(path: &Path,
                 fields.push(RpLoc::new(field, pos));
             }
             Member::Code(context, lines) => {
-                codes.push(code(pos, context, lines));
+                codes.push(code(pos, context.to_owned(), lines));
             }
             Member::Option(option) => {
                 options.push(option.into_model(path)?);
@@ -76,7 +76,7 @@ impl OrdinalGenerator {
             let pos = (path.to_owned(), ordinal.pos().0, ordinal.pos().1);
 
             if let Value::Number(ref number) = *ordinal.as_ref() {
-                let n: u32 = number.to_u32().ok_or_else(|| ErrorKind::Overflow)?;
+                let n: u32 = number.to_u32().ok_or_else(|| ErrorKind::Overflow(pos.clone()))?;
 
                 if let Some(other) = self.ordinals.get(&n) {
                     return Err(ErrorKind::Pos("duplicate ordinal".to_owned(), other.clone())

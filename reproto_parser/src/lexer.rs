@@ -1,10 +1,43 @@
 use num::Zero;
 use num::bigint::BigInt;
 use reproto_core::RpNumber;
+use std::result;
 use std::str::CharIndices;
-use super::errors::*;
 use super::token::*;
 
+/// Take until the givern pattern matches.
+/// This will return content up-until the pattern matches, and consume the pattern itself.
+macro_rules! take_until {
+    ($slf:expr, $start:expr, $first:pat $(| $rest:pat)*) => {{
+        let mut __end = $start;
+        let mut __content_end = $start;
+
+        loop {
+            if let Some((e, c)) = $slf.one() {
+                __content_end = e;
+
+                match c {
+                    $first $(| $rest)* => {
+                        let (e, _) = take!($slf, e, $first $(| $rest)*);
+                        __end = e;
+                        break;
+                    }
+                    _ => {
+                        __end = e;
+                        $slf.step();
+                    }
+                }
+            } else {
+                __content_end = $slf.source_len;
+                break;
+            }
+        }
+
+        (__end, &$slf.source_str[$start..__content_end])
+    }}
+}
+
+/// Take while pattern matches.
 macro_rules! take {
     ($slf:expr, $start:expr, $first:pat $(| $rest:pat)*) => {{
         let mut __end: usize = $start;
@@ -33,11 +66,10 @@ pub struct Lexer<'input> {
     source: CharIndices<'input>,
     source_len: usize,
     source_str: &'input str,
-    n0: Option<Option<(usize, char)>>,
-    n1: Option<Option<(usize, char)>>,
-    last_comment: Vec<&'input str>,
+    n0: Option<(usize, char)>,
+    n1: Option<(usize, char)>,
+    n2: Option<(usize, char)>,
     buffer: String,
-    illegal: bool,
     code_block: Option<(usize, usize)>,
     code_close: Option<(usize, usize)>,
 }
@@ -46,14 +78,9 @@ impl<'input> Lexer<'input> {
     /// Advance the source iterator.
     #[inline]
     fn step(&mut self) {
-        // shift
-        if let Some(n1) = self.n1 {
-            self.n0 = Some(n1);
-            self.n1 = Some(self.source.next());
-        } else {
-            self.n0 = Some(self.source.next());
-            self.n1 = Some(self.source.next());
-        }
+        self.n0 = self.n1;
+        self.n1 = self.n2;
+        self.n2 = self.source.next();
     }
 
     #[inline]
@@ -62,28 +89,17 @@ impl<'input> Lexer<'input> {
             self.step();
         }
 
-        self.n0.and_then(|n| n).map(|n| n.0).unwrap_or_else(|| self.source_str.len())
+        self.n0.map(|n| n.0).unwrap_or_else(|| self.source_str.len())
     }
 
     #[inline]
     fn one(&mut self) -> Option<(usize, char)> {
-        if self.n0.is_none() {
-            self.step();
-        }
-
-        match self.n0 {
-            Some(n0) => n0,
-            None => None,
-        }
+        self.n0
     }
 
     #[inline]
     fn two(&mut self) -> Option<(usize, char, char)> {
-        if self.n0.is_none() {
-            self.step();
-        }
-
-        if let (Some((pos, a)), Some((_, b))) = (self.n0.unwrap_or(None), self.n1.unwrap_or(None)) {
+        if let (Some((pos, a)), Some((_, b))) = (self.n0, self.n1) {
             Some((pos, a, b))
         } else {
             None
@@ -91,14 +107,17 @@ impl<'input> Lexer<'input> {
     }
 
     #[inline]
-    fn pos(&self) -> usize {
-        self.n0.and_then(|n| n).map(|n| n.0).unwrap_or(0usize)
+    fn three(&mut self) -> Option<(usize, char, char, char)> {
+        if let (Some((pos, a)), Some((_, b)), Some((_, c))) = (self.n0, self.n1, self.n2) {
+            Some((pos, a, b, c))
+        } else {
+            None
+        }
     }
 
-    fn take_last_comment(&mut self) -> Vec<&'input str> {
-        let comment = self.last_comment.clone();
-        self.last_comment.clear();
-        comment
+    #[inline]
+    fn pos(&self) -> usize {
+        self.n0.map(|n| n.0).unwrap_or(self.source_len)
     }
 
     fn identifier(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
@@ -107,9 +126,7 @@ impl<'input> Lexer<'input> {
         let (end, content) = take!(self, stripped, 'a'...'z' | '_' | '0'...'9');
 
         if stripped != start {
-            let identifier = commented(self.take_last_comment(), content);
-            let token = Token::Identifier(identifier);
-            return Ok((start, token, end));
+            return Ok((start, Token::Identifier(content), end));
         }
 
         let token = match content {
@@ -133,13 +150,11 @@ impl<'input> Lexer<'input> {
             "bytes" => Token::BytesKeyword,
             "true" => Token::TrueKeyword,
             "false" => Token::FalseKeyword,
-            "endpoint" => Token::EndpointKeyword(self.take_last_comment()),
-            "returns" => Token::ReturnsKeyword(self.take_last_comment()),
-            "accepts" => Token::AcceptsKeyword(self.take_last_comment()),
+            "endpoint" => Token::EndpointKeyword,
+            "returns" => Token::ReturnsKeyword,
+            "accepts" => Token::AcceptsKeyword,
             identifier => {
-                let identifier = commented(self.take_last_comment(), identifier);
-                let token = Token::Identifier(identifier);
-                return Ok((start, token, end));
+                return Ok((start, Token::Identifier(identifier), end));
             }
         };
 
@@ -148,18 +163,17 @@ impl<'input> Lexer<'input> {
 
     fn type_identifier(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
         let (end, content) = take!(self, start, 'A'...'Z' | 'a'...'z' | '_' | '0'...'9');
-        let type_identifier = commented(self.take_last_comment(), content);
-        Ok((start, Token::TypeIdentifier(type_identifier), end))
+        Ok((start, Token::TypeIdentifier(content), end))
     }
 
-    fn parse_fraction(input: &str) -> Result<(usize, BigInt)> {
+    fn parse_fraction(input: &str) -> result::Result<(usize, BigInt), &'static str> {
         let dec = input.chars()
             .enumerate()
             .find(|&(_, ref c)| *c != '0')
             .map(|(i, _)| i)
             .unwrap_or(0usize);
 
-        let fraction: BigInt = input.parse()?;
+        let fraction: BigInt = input.parse().map_err(|_| "illegal fraction")?;
 
         Ok((dec, fraction))
     }
@@ -197,6 +211,20 @@ impl<'input> Lexer<'input> {
     }
 
     fn number(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
+        let (end, number) = self.parse_number(start)
+            .map_err(|(message, offset)| {
+                Error::InvalidNumber {
+                    message: message,
+                    pos: start + offset,
+                }
+            })?;
+
+        Ok((start, Token::Number(number), end))
+    }
+
+    fn parse_number(&mut self,
+                    start: usize)
+                    -> result::Result<(usize, RpNumber), (&'static str, usize)> {
         let (negative, offset) = if let Some((_, '-')) = self.one() {
             (true, self.step_n(1))
         } else {
@@ -205,7 +233,7 @@ impl<'input> Lexer<'input> {
 
         let (mut end, mut digits) = {
             let (end, whole) = take!(self, offset, '0'...'9');
-            (end, whole.parse::<BigInt>()?)
+            (end, whole.parse::<BigInt>().map_err(|_| ("illegal number", end))?)
         };
 
         let mut decimal = 0usize;
@@ -216,7 +244,7 @@ impl<'input> Lexer<'input> {
             {
                 let (e, fraction) = take!(self, offset, '0'...'9');
                 end = e;
-                let (dec, fraction) = Self::parse_fraction(fraction)?;
+                let (dec, fraction) = Self::parse_fraction(fraction).map_err(|e| (e, end))?;
                 Self::apply_fraction(&mut digits, &mut decimal, dec, fraction);
             }
 
@@ -225,7 +253,7 @@ impl<'input> Lexer<'input> {
 
                 let (e, content) = take!(self, offset, '-' | '0'...'9');
                 end = e;
-                let exponent: i32 = content.parse()?;
+                let exponent: i32 = content.parse().map_err(|_| ("illegal exponent", end))?;
                 Self::apply_exponent(&mut digits, &mut decimal, exponent);
             }
         }
@@ -237,21 +265,57 @@ impl<'input> Lexer<'input> {
             decimal: decimal,
         };
 
-        self.last_comment.clear();
-        Ok((start, Token::Number(number), end))
+        Ok((end, number))
     }
 
-    fn decode_unicode4(&mut self) -> Result<char> {
+    // decode a sequence of 4 unicode characters
+    fn decode_unicode4(&mut self) -> result::Result<char, (&'static str, usize)> {
         let mut res = 0u32;
 
         for x in 0..4u32 {
-            let c = self.one().map(|(_, c)| c).ok_or("expected hex character")?.to_string();
-            let c = u32::from_str_radix(&c, 16)?;
+            let c = self.one().ok_or_else(|| ("expected digit", x as usize))?.1.to_string();
+            let c = u32::from_str_radix(&c, 16).map_err(|_| ("expected hex digit", x as usize))?;
             res += c << (4 * (3 - x));
             self.step();
         }
 
-        Ok(::std::char::from_u32(res).ok_or("expected valid character")?)
+        Ok(::std::char::from_u32(res).ok_or_else(|| ("invalid character", 0usize))?)
+    }
+
+    fn escape(&mut self, pos: usize) -> Result<char> {
+        self.step();
+
+        let (_, escape) = self.one()
+            .ok_or_else(|| Error::UnterminatedEscape { start: self.pos() })?;
+
+        let escaped = match escape {
+            'n' => '\n',
+            'r' => '\r',
+            't' => '\t',
+            'u' => {
+                let seq_start = self.step_n(1);
+
+                let c = self.decode_unicode4()
+                    .map_err(|(message, offset)| {
+                        Error::InvalidEscape {
+                            message: message,
+                            pos: seq_start + offset,
+                        }
+                    })?;
+
+                return Ok(c);
+            }
+            _ => {
+                return Err(Error::InvalidEscape {
+                        message: "unrecognized escape, should be one of: \\n, \\r, \\t, or \\uXXXX",
+                        pos: pos,
+                    }
+                    .into());
+            }
+        };
+
+        self.step();
+        return Ok(escaped);
     }
 
     /// Tokenize string.
@@ -260,30 +324,14 @@ impl<'input> Lexer<'input> {
 
         self.step();
 
-        while let Some((_, c)) = self.one() {
+        while let Some((pos, c)) = self.one() {
             if c == '\\' {
-                self.step();
-
-                if let Some((_, escape)) = self.one() {
-                    let escaped = match escape {
-                        'n' => '\n',
-                        'r' => '\r',
-                        't' => '\t',
-                        'u' => self.decode_unicode4()?,
-                        _ => break,
-                    };
-
-                    self.step();
-                    self.buffer.push(escaped);
-                    continue;
-                }
-
-                break;
+                let c = self.escape(pos)?;
+                self.buffer.push(c);
             }
 
             if c == '"' {
                 let end = self.step_n(1);
-                self.last_comment.clear();
                 return Ok((start, Token::String(self.buffer.clone()), end));
             }
 
@@ -291,7 +339,7 @@ impl<'input> Lexer<'input> {
             self.step();
         }
 
-        self.illegal()
+        Err(Error::UnterminatedString { start: start }.into())
     }
 
     /// Tokenize code block.
@@ -315,28 +363,29 @@ impl<'input> Lexer<'input> {
             self.step();
         }
 
-        self.illegal()
+        Err(Error::UnterminatedCodeBlock { start: start }.into())
+    }
+
+    fn doc_comments(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
+        let mut comment: Vec<&'input str> = Vec::new();
+
+        loop {
+            // take leading whitespace
+            let (end, _) = take!(self, start, ' ' | '\n' | '\r' | '\t');
+
+            if let Some((_, '/', '/', '/')) = self.three() {
+                let start = self.step_n(3);
+                let (_, content) = take_until!(self, start, '\n' | '\r');
+                comment.push(content);
+            } else {
+                return Ok((start, Token::DocComment(comment), end));
+            }
+        }
     }
 
     fn line_comment(&mut self) {
         let start = self.step_n(2);
-        let mut end = start;
-
-        while let Some((e, c)) = self.one() {
-            match c {
-                '\n' | '\r' => {
-                    end = e;
-                    self.step();
-                    break;
-                }
-                _ => {
-                    end = e;
-                    self.step();
-                }
-            }
-        }
-
-        self.last_comment.push(&self.source_str[start..end]);
+        let _ = take_until!(self, start, '\n' | '\r');
     }
 
     // block comments have no semantics and are completely ignored.
@@ -363,21 +412,12 @@ impl<'input> Lexer<'input> {
 
         return Ok((start, Token::Version(content.to_owned()), end));
     }
-
-    fn illegal<T>(&mut self) -> Result<T> {
-        self.illegal = true;
-        Err(ErrorKind::IllegalToken(self.pos()).into())
-    }
 }
 
 impl<'input> Iterator for Lexer<'input> {
     type Item = Result<(usize, Token<'input>, usize)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.illegal {
-            return Some(self.illegal());
-        }
-
         // dispatch a CodeClose.
         if let Some((start, end)) = self.code_close {
             self.code_close = None;
@@ -390,6 +430,11 @@ impl<'input> Iterator for Lexer<'input> {
         }
 
         loop {
+            // doc comments
+            if let Some((start, '/', '/', '/')) = self.three() {
+                return Some(self.doc_comments(start));
+            }
+
             // two character keywords
             if let Some((start, a, b)) = self.two() {
                 let token = match (a, b) {
@@ -404,7 +449,6 @@ impl<'input> Iterator for Lexer<'input> {
                     ('{', '{') => {
                         let end = self.step_n(2);
                         self.code_block = Some((start, end));
-                        self.last_comment.clear();
                         return Some(Ok((start, Token::CodeOpen, end)));
                     }
                     (':', ':') => Some(Token::Scope),
@@ -414,7 +458,6 @@ impl<'input> Iterator for Lexer<'input> {
 
                 if let Some(token) = token {
                     let end = self.step_n(2);
-                    self.last_comment.clear();
                     return Some(Ok((start, token, end)));
                 }
             }
@@ -436,7 +479,7 @@ impl<'input> Iterator for Lexer<'input> {
                     '&' => Token::And,
                     '/' => Token::Slash,
                     '=' => Token::Equals,
-                    '*' => Token::Star(self.take_last_comment()),
+                    '*' => Token::Star,
                     '@' => {
                         return Some(self.version());
                     }
@@ -452,7 +495,6 @@ impl<'input> Iterator for Lexer<'input> {
                     _ => break,
                 };
 
-                self.last_comment.clear();
                 self.step();
                 return Some(Ok((start, token, start + 1)));
             } else {
@@ -460,20 +502,25 @@ impl<'input> Iterator for Lexer<'input> {
             }
         }
 
-        Some(self.illegal())
+        Some(Err(Error::Unexpected { pos: self.pos() }))
     }
 }
 
 pub fn lex(input: &str) -> Lexer {
+    let mut source = input.char_indices();
+
+    let n0 = source.next();
+    let n1 = source.next();
+    let n2 = source.next();
+
     Lexer {
-        source: input.char_indices(),
+        source: source,
         source_len: input.len(),
         source_str: input,
-        n0: None,
-        n1: None,
-        last_comment: Vec::new(),
+        n0: n0,
+        n1: n1,
+        n2: n2,
         buffer: String::new(),
-        illegal: false,
         code_block: None,
         code_close: None,
     }
@@ -484,21 +531,14 @@ pub mod tests {
     use super::*;
     use super::Token::*;
 
-    pub fn empty<'input, T>(value: T) -> Commented<'input, T> {
-        Commented {
-            comment: vec![],
-            value: value,
-        }
-    }
-
     fn tokenize(input: &str) -> Result<Vec<(usize, Token, usize)>> {
         lex(input).collect()
     }
 
     #[test]
     pub fn test_lexer() {
-        let expected = vec![(0, Identifier(empty("hello")), 5),
-                            (6, TypeIdentifier(empty("World")), 11),
+        let expected = vec![(0, Identifier("hello"), 5),
+                            (6, TypeIdentifier("World"), 11),
                             (12, LeftCurly, 13),
                             (14, UseKeyword, 17),
                             (18, AsKeyword, 20),
@@ -537,24 +577,24 @@ pub mod tests {
 
     #[test]
     pub fn test_name() {
-        let expected = vec![(0, Identifier(empty("foo")), 3),
+        let expected = vec![(0, Identifier("foo"), 3),
                             (3, Scope, 5),
-                            (5, TypeIdentifier(empty("Bar")), 8),
+                            (5, TypeIdentifier("Bar"), 8),
                             (8, Dot, 9),
-                            (9, TypeIdentifier(empty("Baz")), 12)];
+                            (9, TypeIdentifier("Baz"), 12)];
 
         assert_eq!(expected, tokenize("foo::Bar.Baz").unwrap());
     }
 
     #[test]
     pub fn test_instance() {
-        let expected = vec![(0, Identifier(empty("foo")), 3),
+        let expected = vec![(0, Identifier("foo"), 3),
                             (3, Scope, 5),
-                            (5, TypeIdentifier(empty("Bar")), 8),
+                            (5, TypeIdentifier("Bar"), 8),
                             (8, Dot, 9),
-                            (9, TypeIdentifier(empty("Baz")), 12),
+                            (9, TypeIdentifier("Baz"), 12),
                             (12, LeftParen, 13),
-                            (13, Identifier(empty("hello")), 18),
+                            (13, Identifier("hello"), 18),
                             (18, Colon, 19),
                             (20, Number(12.into()), 22),
                             (22, RightParen, 23)];
@@ -570,7 +610,7 @@ pub mod tests {
                    tokens.unwrap());
 
         let tokens = tokenize("he/* this is a comment */llo");
-        assert_eq!(vec![(0, Identifier(empty("he")), 2), (25, Identifier(empty("llo")), 28)],
+        assert_eq!(vec![(0, Identifier("he"), 2), (25, Identifier("llo"), 28)],
                    tokens.unwrap());
 
         let tokens = tokenize("// test\n// this\nhello");
@@ -588,6 +628,12 @@ pub mod tests {
 
         assert_eq!(a, b);
         assert_eq!(a, c);
+    }
+
+    #[test]
+    pub fn test_doc_comment() {
+        let tokens = tokenize("/// foo\n\r      /// bar \r\n     /// baz ").unwrap();
+        println!("tokens = {:?}", tokens);
     }
 
     #[test]

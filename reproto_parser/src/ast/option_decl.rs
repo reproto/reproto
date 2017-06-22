@@ -2,17 +2,17 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug, Clone)]
-pub struct OptionDecl {
-    pub name: String,
-    pub values: Vec<AstLoc<Value>>,
+pub struct OptionDecl<'input> {
+    pub name: &'input str,
+    pub values: Vec<AstLoc<Value<'input>>>,
 }
 
-impl IntoModel for OptionDecl {
+impl<'input> IntoModel for OptionDecl<'input> {
     type Output = RpOptionDecl;
 
     fn into_model(self, path: &Path) -> Result<RpOptionDecl> {
         let decl = RpOptionDecl {
-            name: self.name,
+            name: self.name.to_owned(),
             values: self.values.into_model(path)?,
         };
 

@@ -3,15 +3,15 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct EnumVariant<'a> {
-    pub name: AstLoc<&'a str>,
-    pub comment: Vec<&'a str>,
-    pub arguments: Vec<AstLoc<Value>>,
-    pub ordinal: Option<AstLoc<Value>>,
+pub struct EnumVariant<'input> {
+    pub name: AstLoc<&'input str>,
+    pub comment: Vec<&'input str>,
+    pub arguments: Vec<AstLoc<Value<'input>>>,
+    pub ordinal: Option<AstLoc<Value<'input>>>,
 }
 
 /// enum value with assigned ordinal
-impl<'a> IntoModel for (EnumVariant<'a>, u32) {
+impl<'input> IntoModel for (EnumVariant<'input>, u32) {
     type Output = Rc<RpEnumVariant>;
 
     fn into_model(self, path: &Path) -> Result<Self::Output> {

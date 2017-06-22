@@ -116,6 +116,10 @@ fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<bool> {
 
             true
         }
+        Parse(ref message, ref pos) => {
+            print_error(message, pos)?;
+            true
+        }
         FieldConflict(ref name, ref source, ref target) => {
             print_error(&format!("conflict in field `{}`", name), source)?;
             print_error("previous declaration here", target)?;

@@ -2,12 +2,12 @@ use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
-pub struct MatchMember {
-    pub condition: AstLoc<MatchCondition>,
-    pub value: AstLoc<Value>,
+pub struct MatchMember<'input> {
+    pub condition: AstLoc<MatchCondition<'input>>,
+    pub value: AstLoc<Value<'input>>,
 }
 
-impl IntoModel for MatchMember {
+impl<'input> IntoModel for MatchMember<'input> {
     type Output = RpMatchMember;
 
     fn into_model(self, path: &Path) -> Result<RpMatchMember> {

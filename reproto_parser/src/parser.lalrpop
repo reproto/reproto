@@ -1,6 +1,5 @@
 // vim: ft=rust
-use super::errors::Error;
-use super::token::*;
+use super::token::{self, Token};
 use super::ast::*;
 use reproto_core::*;
 use super::utils::*;
@@ -17,10 +16,10 @@ pub File: File<'input> = {
 };
 
 Use: UseDecl = {
-    "use" <package:Loc<Package>> <version_req:Loc<"@version">?> <alias:("as" IdentifierValue)?> ";" => UseDecl {
+    "use" <package:Loc<Package>> <version_req:Loc<"@version">?> <alias:("as" Identifier)?> ";" => UseDecl {
         package: package,
         version_req: version_req,
-        alias: alias.map(|t| t.1),
+        alias: alias.map(|t| t.1.to_owned()),
     },
 };
 
@@ -28,7 +27,10 @@ PackageDecl: PackageDecl = "package" <package:Package> <version:Loc<"@version">?
     package: package,
     version: version,
 };
-Package: RpPackage = <parts:OneOrMore<".", IdentifierValue>> => RpPackage::new(parts);
+
+Package: RpPackage = <parts:OneOrMore<".", Identifier>> => {
+    RpPackage::new(parts.into_iter().map(ToOwned::to_owned).collect())
+};
 
 Decl: Decl<'input> = {
     <en:Enum> => Decl::Enum(en),
@@ -39,95 +41,114 @@ Decl: Decl<'input> = {
 };
 
 Enum: EnumBody<'input> =
+    <comment:"///"?>
     "enum" <name:TypeIdentifier> "{"
       <variants:Loc<EnumVariant>*>
       <members:Loc<Member>*>
     "}" =>
 {
     EnumBody {
-        name: name.value,
-        comment: name.comment,
+        name: name,
+        comment: comment.unwrap_or_else(Vec::new),
         variants: variants,
         members: members,
     }
 };
 
 Interface: InterfaceBody<'input> =
+    <comment:"///"?>
     "interface" <name:TypeIdentifier> "{"
       <members:Loc<Member>*>
       <sub_types:Loc<SubType>*>
     "}" =>
 {
     InterfaceBody {
-        name: name.value,
-        comment: name.comment,
+        name: name,
+        comment: comment.unwrap_or_else(Vec::new),
         members: members,
         sub_types: sub_types,
     }
 };
 
 Type: TypeBody<'input> =
+    <comment:"///"?>
     "type" <name:TypeIdentifier> "{"
       <members:Loc<Member>*>
     "}" =>
 {
     TypeBody {
-        name: name.value,
-        comment: name.comment,
+        name: name,
+        comment: comment.unwrap_or_else(Vec::new),
         members: members,
     }
 };
 
 Tuple: TupleBody<'input> =
+    <comment:"///"?>
     "tuple" <name:TypeIdentifier> "{"
       <members:Loc<Member>*>
     "}" =>
 {
     TupleBody {
-        name: name.value,
-        comment: name.comment,
+        name: name,
+        comment: comment.unwrap_or_else(Vec::new),
         members: members,
     }
 };
 
 Service: ServiceBody<'input> =
+    <comment:"///"?>
     "service" <name:TypeIdentifier> "{"
         <children:ServiceNested*>
     "}" =>
 {
     ServiceBody {
-        name: name.value,
-        comment: name.comment,
+        name: name,
+        comment: comment.unwrap_or_else(Vec::new),
         children: children,
     }
 };
 
 ServiceNested: ServiceNested<'input> = {
-    <endpoint:"endpoint"> <url:Loc<string>> "{" <options:Loc<OptionDecl>*> <children:ServiceNested*> "}" => {
+    <comment:"///"?>
+    "endpoint" <url:Loc<string>> "{"
+        <options:Loc<OptionDecl>*>
+        <children:ServiceNested*>
+    "}" => {
         ServiceNested::Endpoint {
             url: url,
-            comment: endpoint,
+            comment: comment.unwrap_or_else(Vec::new),
             options: options,
             children: children,
         }
     },
-    <star:"*"> "{" <options:Loc<OptionDecl>*> <children:ServiceNested*> "}" => {
+    <comment:"///"?>
+    "*" "{"
+        <options:Loc<OptionDecl>*>
+        <children:ServiceNested*>
+    "}" => {
         ServiceNested::Star {
-            comment: star,
+            comment: comment.unwrap_or_else(Vec::new),
             options: options,
             children: children,
         }
     },
-    <returns:"returns"> <ty:Loc<TypeSpec>> "{" <options:Loc<OptionDecl>*> "}" => {
+    <comment:"///"?>
+    "returns" <ty:Loc<TypeSpec>> "{"
+        <options:Loc<OptionDecl>*>
+    "}" => {
         ServiceNested::Returns {
-            comment: returns,
+            comment: comment.unwrap_or_else(Vec::new),
             ty: ty,
             options: options,
         }
     },
-    <accepts:"accepts"> <ty:Loc<TypeSpec>> "{" <options:Loc<OptionDecl>*> "}" => {
+    <comment:"///"?>
+    "accepts" <ty:Loc<TypeSpec>> "{"
+        <options:Loc<OptionDecl>*>
+    "}" => {
         ServiceNested::Accepts {
-            comment: accepts,
+            comment: comment.unwrap_or_else(Vec::new),
             ty: ty,
             options: options,
         }
@@ -135,27 +156,27 @@ ServiceNested: ServiceNested<'input> = {
 };
 
 EnumVariant: EnumVariant<'input> =
+    <comment:"///"?>
     <name:Loc<TypeIdentifier>>
     <arguments:("(" OneOrMore<",", Loc<Value>> ")")?>
     <ordinal:("=" Loc<Value>)?>
     ";" =>
 {
-    let comment = name.comment.clone();
-
     EnumVariant {
-        name: name.map_into(|n| n.value),
-        comment: comment,
+        name: name,
+        comment: comment.unwrap_or_else(Vec::new),
         arguments: arguments.map(|a| a.1).unwrap_or_else(|| vec![]),
         ordinal: ordinal.map(|o| o.1),
     }
 };
 
 pub Member: Member<'input> = {
+    <comment:"///"?>
     <name:Identifier> <modifier:"?"?> ":" <ty:TypeSpec> <alias:("as" Loc<Value>)?> ";" => {
          let field = Field {
              modifier: modifier.map(|_| RpModifier::Optional).unwrap_or(RpModifier::Required),
-             name: name.value,
-             comment: name.comment,
+             name: name,
+             comment: comment.unwrap_or_else(Vec::new),
              ty: ty,
              field_as: alias.map(|a| a.1),
          };
@@ -175,45 +196,48 @@ pub Member: Member<'input> = {
          Member::Option(option)
     },
 
-    <context:IdentifierValue> "{{" <content:code> "}}" => {
+    <context:Identifier> "{{" <content:code> "}}" => {
         let content = strip_code_block(content);
         Member::Code(context, content)
     },
 };
 
-OptionDecl: OptionDecl = <name:IdentifierValue> <values:OneOrMore<",", Loc<Value>>> ";" => OptionDecl {
+OptionDecl: OptionDecl<'input> = <name:Identifier> <values:OneOrMore<",", Loc<Value>>> ";" => OptionDecl {
     name: name,
     values: values,
 };
 
-MatchMember: MatchMember = {
+MatchMember: MatchMember<'input> = {
     <condition:Loc<MatchCondition>> "=>" <value:Loc<Value>> ";" => MatchMember {
         condition: condition,
         value: value,
     },
 };
 
-MatchCondition: MatchCondition = {
+MatchCondition: MatchCondition<'input> = {
     <variable:Loc<MatchVariable>> => MatchCondition::Type(variable),
     <value:Loc<Value>> => MatchCondition::Value(value),
 };
 
-MatchVariable: MatchVariable = <name:IdentifierValue> ":" <ty:TypeSpec> => MatchVariable {
-    name: name.to_owned(),
+MatchVariable: MatchVariable<'input> = <name:Identifier> ":" <ty:TypeSpec> => MatchVariable {
+    name: name,
     ty: ty,
 };
 
 SubType: SubType<'input> = {
-    <name:TypeIdentifier> "{" <members:Loc<Member>*> "}" => {
+    <comment:"///"?>
+    <name:TypeIdentifier> "{"
+        <members:Loc<Member>*>
+    "}" => {
          SubType {
-             name: name.value,
-             comment: name.comment,
+             name: name,
+             comment: comment.unwrap_or_else(Vec::new),
              members: members,
          }
     },
 };
 
-pub Value: Value = {
+pub Value: Value<'input> = {
     "[" <values:ZeroOrMore<",", Loc<Value>>> "]" => Value::Array(values),
     <instance:Loc<Instance>> => Value::Instance(instance),
     <constant:Loc<Name>> => Value::Constant(constant),
@@ -221,18 +245,18 @@ pub Value: Value = {
     <number:Number> => Value::Number(number),
     <true> => Value::Boolean(true),
     <false> => Value::Boolean(false),
-    <identifier:IdentifierValue> => Value::Identifier(identifier),
+    <identifier:Identifier> => Value::Identifier(identifier.to_owned()),
 };
 
-Instance: Instance = {
+Instance: Instance<'input> = {
     <name:Name> "(" <arguments:Loc<ZeroOrMore<",", Loc<FieldInit>>>> ")" => Instance {
         name: name,
         arguments: arguments,
     },
 };
 
-FieldInit: FieldInit = {
-    <name:Loc<IdentifierValue>> ":" <value:Loc<Value>> => FieldInit {
+FieldInit: FieldInit<'input> = {
+    <name:Loc<Identifier>> ":" <value:Loc<Value>> => FieldInit {
         name: name,
         value: value,
     },
@@ -264,9 +288,9 @@ pub TypeSpec: RpType = {
 };
 
 Name: RpName = {
-    <prefix:(IdentifierValue "::")?> <parts:OneOrMore<".", TypeIdentifierValue>> => RpName {
-        prefix: prefix.map(|p| p.0),
-        parts: parts,
+    <prefix:(Identifier "::")?> <parts:OneOrMore<".", TypeIdentifier>> => RpName {
+        prefix: prefix.map(|p| p.0.to_owned()),
+        parts: parts.into_iter().map(ToOwned::to_owned).collect(),
     }
 };
 
@@ -288,18 +312,15 @@ OneOrMore<Sep, T>: Vec<T> = {
     }
 };
 
-IdentifierValue: String = <identifier:Identifier> => identifier.value.to_owned();
-TypeIdentifierValue: String = <identifier:TypeIdentifier> => identifier.value.to_owned();
-
 Loc<Inner>: AstLoc<Inner> = <s:@L> <inner:Inner> <e:@R> => AstLoc::new(inner, (s, e));
 
 extern {
     type Location = usize;
-    type Error = Error;
+    type Error = token::Error;
 
     enum Token<'input> {
-        TypeIdentifier => Token::TypeIdentifier(<Commented<'input, &'input str>>),
-        Identifier => Token::Identifier(<Commented<'input, &'input str>>),
+        TypeIdentifier => Token::TypeIdentifier(<&'input str>),
+        Identifier => Token::Identifier(<&'input str>),
         Number => Token::Number(<RpNumber>),
         "@version" => Token::Version(<String>),
         "match" => Token::MatchKeyword,
@@ -341,9 +362,10 @@ extern {
         "bytes" => Token::BytesKeyword,
         true => Token::TrueKeyword,
         false => Token::FalseKeyword,
-        "endpoint" => Token::EndpointKeyword(<Vec<&'input str>>),
-        "returns" => Token::ReturnsKeyword(<Vec<&'input str>>),
-        "accepts" => Token::AcceptsKeyword(<Vec<&'input str>>),
-        "*" => Token::Star(<Vec<&'input str>>),
+        "endpoint" => Token::EndpointKeyword,
+        "returns" => Token::ReturnsKeyword,
+        "accepts" => Token::AcceptsKeyword,
+        "*" => Token::Star,
+        "///" => Token::DocComment(<Vec<&'input str>>),
     }
 }

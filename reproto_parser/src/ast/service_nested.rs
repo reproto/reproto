@@ -1,31 +1,31 @@
 use super::*;
 
 #[derive(Debug)]
-pub enum ServiceNested<'a> {
+pub enum ServiceNested<'input> {
     Endpoint {
         url: AstLoc<String>,
-        comment: Vec<&'a str>,
-        options: Vec<AstLoc<OptionDecl>>,
-        children: Vec<ServiceNested<'a>>,
+        comment: Vec<&'input str>,
+        options: Vec<AstLoc<OptionDecl<'input>>>,
+        children: Vec<ServiceNested<'input>>,
     },
     Star {
-        comment: Vec<&'a str>,
-        options: Vec<AstLoc<OptionDecl>>,
-        children: Vec<ServiceNested<'a>>,
+        comment: Vec<&'input str>,
+        options: Vec<AstLoc<OptionDecl<'input>>>,
+        children: Vec<ServiceNested<'input>>,
     },
     Returns {
-        comment: Vec<&'a str>,
+        comment: Vec<&'input str>,
         ty: AstLoc<RpType>,
-        options: Vec<AstLoc<OptionDecl>>,
+        options: Vec<AstLoc<OptionDecl<'input>>>,
     },
     Accepts {
-        comment: Vec<&'a str>,
+        comment: Vec<&'input str>,
         ty: AstLoc<RpType>,
-        options: Vec<AstLoc<OptionDecl>>,
+        options: Vec<AstLoc<OptionDecl<'input>>>,
     },
 }
 
-impl<'a> ServiceNested<'a> {
+impl<'input> ServiceNested<'input> {
     pub fn is_terminus(&self) -> bool {
         match *self {
             ServiceNested::Returns { .. } => true,
