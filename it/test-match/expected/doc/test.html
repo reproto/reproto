@@ -1,1 +1,329 @@
-<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" type="text/css" href="normalize.css"><link rel="stylesheet" type="text/css" href="doc.css"></head><body><h1 class="document-title">Package: test</h1><div class="grid-container"><div class="grid-packages"><section class="section-content section-packages"><h1 class="section-title">Packages</h1><div class="section-body"><ul class="packages-list"><li><b>test</b></li></ul></div></section><section class="section-content section-types-overview"><h1 class="section-title">Types</h1><div class="section-body"><h2><a href="#Entry">Entry</a></h2><h2><a href="#Data">Data</a></h2><h2><a href="#Point">Point</a></h2><h2><a href="#Interface">Interface</a></h2><h2><a href="#Type">Type</a></h2></div></section></div><div class="grid-decls"><section id="Entry" class="section-content section-type"><h1 class="section-title">Entry<span class="type">type</span></h1><div class="section-body"><div class="fields"><h2>Fields</h2><table class="spaced"><tr classes="field optional"><td class="mime"><span class="field-ident">data</span><span class="field-modifier">?</span></td><td class="type"><span class="ty"><span class="type-rp-name"><a href="#Data">Data</a></span></span></td><td class="description"></td></tr><tr classes="field optional"><td class="mime"><span class="field-ident">point</span><span class="field-modifier">?</span></td><td class="type"><span class="ty"><span class="type-rp-name"><a href="#Point">Point</a></span></span></td><td class="description"></td></tr><tr classes="field optional"><td class="mime"><span class="field-ident">interface_field</span><span class="field-modifier">?</span><span class="field-alias"><span class="field-alias-as">as</span><code class="field-alias-name">"interface"</code></span></td><td class="type"><span class="ty"><span class="type-rp-name"><a href="#Interface">Interface</a></span></span></td><td class="description"></td></tr><tr classes="field optional"><td class="mime"><span class="field-ident">type_field</span><span class="field-modifier">?</span><span class="field-alias"><span class="field-alias-as">as</span><code class="field-alias-name">"type"</code></span></td><td class="type"><span class="ty"><span class="type-rp-name"><a href="#Type">Type</a></span></span></td><td class="description"></td></tr></table></div></div></section><section id="Data" class="section-content section-type"><h1 class="section-title">Data<span class="type">type</span></h1><div class="section-body"><div class="fields"><h2>Fields</h2><table class="spaced"><tr classes="field required"><td class="mime"><span class="field-ident">name</span></td><td class="type"><span class="ty"><span class="type-string"><code class="type-name">string</code></span></span></td><td class="description"></td></tr></table></div></div></section><section id="Point" class="section-content section-tuple"><h1 class="section-title">Point<span class="type">tuple</span></h1><div class="section-body"><div class="fields"><h2>Fields</h2><table class="spaced"><tr classes="field required"><td class="mime"><span class="field-ident">timestamp</span><span class="field-alias"><span class="field-alias-as">as</span><code class="field-alias-name">"TS"</code></span></td><td class="type"><span class="ty"><span class="type-unsigned"><code class="type-name">unsigned</code><span class="type-size-sep">/</span><span class="type-size">64</span></span></span></td><td class="description"></td></tr><tr classes="field required"><td class="mime"><span class="field-ident">value</span></td><td class="type"><span class="ty"><span class="type-double"><code class="type-name">double</code></span></span></td><td class="description"></td></tr></table></div></div></section><section id="Interface" class="section-content section-interface"><h1 class="section-title">Interface<span class="type">interface</span></h1><div class="section-body"><h2 id="Interface_One">One</h2><div class="fields"><h2>Fields</h2><table class="spaced"><tr classes="field required"><td class="mime"><span class="field-ident">name</span></td><td class="type"><span class="ty"><span class="type-string"><code class="type-name">string</code></span></span></td><td class="description"></td></tr><tr classes="field optional"><td class="mime"><span class="field-ident">other</span><span class="field-modifier">?</span></td><td class="type"><span class="ty"><span class="type-unsigned"><code class="type-name">unsigned</code></span></span></td><td class="description"></td></tr><tr classes="field required"><td class="mime"><span class="field-ident">data</span></td><td class="type"><span class="ty"><span class="type-rp-name"><a href="#Data">Data</a></span></span></td><td class="description"></td></tr></table></div><h2 id="Interface_Two">Two</h2><div class="fields"><h2>Fields</h2><table class="spaced"><tr classes="field required"><td class="mime"><span class="field-ident">name</span></td><td class="type"><span class="ty"><span class="type-string"><code class="type-name">string</code></span></span></td><td class="description"></td></tr><tr classes="field optional"><td class="mime"><span class="field-ident">other</span><span class="field-modifier">?</span></td><td class="type"><span class="ty"><span class="type-unsigned"><code class="type-name">unsigned</code></span></span></td><td class="description"></td></tr><tr classes="field required"><td class="mime"><span class="field-ident">data</span></td><td class="type"><span class="ty"><span class="type-rp-name"><a href="#Data">Data</a></span></span></td><td class="description"></td></tr></table></div></div></section><section id="Type" class="section-content section-type"><h1 class="section-title">Type<span class="type">type</span></h1><div class="section-body"><div class="fields"><h2>Fields</h2><table class="spaced"><tr classes="field required"><td class="mime"><span class="field-ident">data</span></td><td class="type"><span class="ty"><span class="type-string"><code class="type-name">string</code></span></span></td><td class="description"></td></tr><tr classes="field optional"><td class="mime"><span class="field-ident">other</span><span class="field-modifier">?</span></td><td class="type"><span class="ty"><span class="type-unsigned"><code class="type-name">unsigned</code></span></span></td><td class="description"></td></tr></table></div></div></section></div></div></body></html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="normalize.css">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+  <body>
+    <h1 class="document-title">
+      Package: test
+    </h1>
+    <div class="grid-container">
+      <div class="grid-packages">
+        <section class="section-content section-packages">
+  <h1 class="section-title">Packages</h1>
+  <div class="section-body">
+    <ul class="packages-list">
+      <li><b>test</b></li>
+    </ul>
+  </div>
+</section>
+<section class="section-content section-types-overview">
+  <h1 class="section-title">Types</h1>
+  <div class="section-body">
+    <h2>
+      <a href="#Entry">Entry</a>
+    </h2>
+    <h2>
+      <a href="#Data">Data</a>
+    </h2>
+    <h2>
+      <a href="#Point">Point</a>
+    </h2>
+    <h2>
+      <a href="#Interface">Interface</a>
+    </h2>
+    <h2>
+      <a href="#Type">Type</a>
+    </h2>
+  </div>
+</section>
+
+      </div>
+      <div class="grid-decls">
+        <section id="Entry" class="section-content section-type">
+  <h1 class="section-title">
+    Entry<span class="type">type</span>
+  </h1>
+  <div class="section-body">
+    <div class="fields">
+      <h2>Fields</h2>
+      <table class="spaced">
+        <tr classes="field optional">
+          <td class="mime">
+            <span class="field-ident">data</span>
+            <span class="field-modifier">?</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-rp-name">
+              <a href="#Data">Data</a>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+        <tr classes="field optional">
+          <td class="mime">
+            <span class="field-ident">point</span>
+            <span class="field-modifier">?</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-rp-name">
+              <a href="#Point">Point</a>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+        <tr classes="field optional">
+          <td class="mime">
+            <span class="field-ident">interface_field</span>
+            <span class="field-modifier">?</span>
+            <span class="field-alias">
+              <span class="field-alias-as">as</span>
+              <code class="field-alias-name">"interface"</code>
+            </span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-rp-name">
+              <a href="#Interface">Interface</a>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+        <tr classes="field optional">
+          <td class="mime">
+            <span class="field-ident">type_field</span>
+            <span class="field-modifier">?</span>
+            <span class="field-alias">
+              <span class="field-alias-as">as</span>
+              <code class="field-alias-name">"type"</code>
+            </span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-rp-name">
+              <a href="#Type">Type</a>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</section>
+<section id="Data" class="section-content section-type">
+  <h1 class="section-title">
+    Data<span class="type">type</span>
+  </h1>
+  <div class="section-body">
+    <div class="fields">
+      <h2>Fields</h2>
+      <table class="spaced">
+        <tr classes="field required">
+          <td class="mime">
+            <span class="field-ident">name</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-string">
+              <code class="type-name">string</code>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</section>
+<section id="Point" class="section-content section-tuple">
+  <h1 class="section-title">
+    Point<span class="type">tuple</span>
+  </h1>
+  <div class="section-body">
+    <div class="fields">
+      <h2>Fields</h2>
+      <table class="spaced">
+        <tr classes="field required">
+          <td class="mime">
+            <span class="field-ident">timestamp</span>
+            <span class="field-alias">
+              <span class="field-alias-as">as</span>
+              <code class="field-alias-name">"TS"</code>
+            </span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-unsigned">
+              <code class="type-name">unsigned</code>
+              <span class="type-size-sep">/</span>
+              <span class="type-size">64</span>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+        <tr classes="field required">
+          <td class="mime">
+            <span class="field-ident">value</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-double">
+              <code class="type-name">double</code>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</section>
+<section id="Interface" class="section-content section-interface">
+  <h1 class="section-title">
+    Interface<span class="type">interface</span>
+  </h1>
+  <div class="section-body">
+    <h2 id="Interface_One">One</h2><div class="fields">
+      <h2>Fields</h2>
+      <table class="spaced">
+        <tr classes="field required">
+          <td class="mime">
+            <span class="field-ident">name</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-string">
+              <code class="type-name">string</code>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+        <tr classes="field optional">
+          <td class="mime">
+            <span class="field-ident">other</span>
+            <span class="field-modifier">?</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-unsigned">
+              <code class="type-name">unsigned</code>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+        <tr classes="field required">
+          <td class="mime">
+            <span class="field-ident">data</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-rp-name">
+              <a href="#Data">Data</a>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+      </table>
+    </div>
+    <h2 id="Interface_Two">Two</h2><div class="fields">
+      <h2>Fields</h2>
+      <table class="spaced">
+        <tr classes="field required">
+          <td class="mime">
+            <span class="field-ident">name</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-string">
+              <code class="type-name">string</code>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+        <tr classes="field optional">
+          <td class="mime">
+            <span class="field-ident">other</span>
+            <span class="field-modifier">?</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-unsigned">
+              <code class="type-name">unsigned</code>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+        <tr classes="field required">
+          <td class="mime">
+            <span class="field-ident">data</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-rp-name">
+              <a href="#Data">Data</a>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</section>
+<section id="Type" class="section-content section-type">
+  <h1 class="section-title">
+    Type<span class="type">type</span>
+  </h1>
+  <div class="section-body">
+    <div class="fields">
+      <h2>Fields</h2>
+      <table class="spaced">
+        <tr classes="field required">
+          <td class="mime">
+            <span class="field-ident">data</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-string">
+              <code class="type-name">string</code>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+        <tr classes="field optional">
+          <td class="mime">
+            <span class="field-ident">other</span>
+            <span class="field-modifier">?</span>
+          </td>
+          <td class="type">
+            <span class="ty"><span class="type-unsigned">
+              <code class="type-name">unsigned</code>
+            </span>
+            </span>
+          </td>
+          <td class="description">
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+      </div>
+    </div>
+  </body>
+</html>
