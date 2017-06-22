@@ -68,11 +68,20 @@ ul {
 
 /* type indicator at top-right of each section */
 .section-title .type {
+  float: right;
+  font-size: 50%;
+
   color: #000000;
   font-weight: bold;
-  font-size: 50%;
-  float: right;
-  text-transform: uppercase;
+}
+
+.section-title .link {
+  color: black;
+  text-decoration: none;
+}
+
+.section-title .link:hover {
+  text-decoration: underline;
 }
 
 /* different type of sections */
@@ -346,6 +355,12 @@ table.spaced td.description p {
 
 .endpoint-title .url {
   margin-left: {{margin}};
+  color: black;
+  text-decoration: none;
+}
+
+.endpoint-title .url:hover {
+  text-decoration: underline;
 }
 
 .endpoint-body {

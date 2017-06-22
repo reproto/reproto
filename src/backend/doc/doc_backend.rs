@@ -245,9 +245,9 @@ impl DocBackend {
         Ok(())
     }
 
-    fn section_title(&self, out: &mut DocBuilder, ty: &str, name: &str) -> Result<()> {
+    fn section_title(&self, out: &mut DocBuilder, ty: &str, name: &str, id: &str) -> Result<()> {
         html!(out, h1 {class => "section-title"} => {
-            write!(out, "{name}", name = name)?;
+            html!(out, a {class => "link", href => format!("#{}", id)} ~ name);
             html!(out, span {class => "type"} ~ ty);
         });
 
@@ -346,7 +346,7 @@ impl DocBackend {
         html!(out, div {class => format!("endpoint {}", method.to_lowercase()), id => id} => {
             html!(out, h2 {class => "endpoint-title"} => {
                 html!(out, span {class => "method"} ~ method);
-                html!(out, span {class => "url"} ~ endpoint.url);
+                html!(out, a {class => "url", href => format!("#{}", id)} ~ endpoint.url);
             });
 
             html!(out, div {class => "endpoint-body"} => {
@@ -519,7 +519,7 @@ impl DocBackend {
         let mut out = DefaultDocBuilder::new(&mut new_service);
 
         html!(out, section {id => body.name, class => "section-content section-service"} => {
-            self.section_title(&mut out, "service", &body.name)?;
+            self.section_title(&mut out, "service", &body.name, &body.name)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
@@ -543,7 +543,7 @@ impl DocBackend {
         let mut out = DefaultDocBuilder::new(&mut new_enum);
 
         html!(out, section {id => body.name, class => "section-content section-enum"} => {
-            self.section_title(&mut out, "enum", &body.name)?;
+            self.section_title(&mut out, "enum", &body.name, &body.name)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
@@ -564,7 +564,7 @@ impl DocBackend {
         let mut out = DefaultDocBuilder::new(&mut new_interface);
 
         html!(out, section {id => body.name, class => "section-content section-interface"} => {
-            self.section_title(&mut out, "interface", &body.name)?;
+            self.section_title(&mut out, "interface", &body.name, &body.name)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
@@ -594,7 +594,7 @@ impl DocBackend {
         let mut out = DefaultDocBuilder::new(&mut new_type);
 
         html!(out, section {id => body.name, class => "section-content section-type"} => {
-            self.section_title(&mut out, "type", &body.name)?;
+            self.section_title(&mut out, "type", &body.name, &body.name)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
@@ -615,7 +615,7 @@ impl DocBackend {
         let mut out = DefaultDocBuilder::new(&mut new_tuple);
 
         html!(out, section {id => body.name, class => "section-content section-tuple"} => {
-            self.section_title(&mut out, "tuple", &body.name)?;
+            self.section_title(&mut out, "tuple", &body.name, &body.name)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
