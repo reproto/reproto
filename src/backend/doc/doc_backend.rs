@@ -264,9 +264,13 @@ impl DocBackend {
                     content => "width=device-width, initial-scale=1.0"
                 });
 
+                out.new_line()?;
+
                 html!(@open out, link {
                     rel => "stylesheet", type => "text/css", href => NORMALIZE_CSS_NAME
                 });
+
+                out.new_line()?;
 
                 html!(@open out, link {
                     rel => "stylesheet", type => "text/css", href => DOC_CSS_NAME
@@ -511,7 +515,8 @@ impl DocBackend {
                            _: &RpPos,
                            body: Rc<RpServiceBody>)
                            -> Result<()> {
-        let mut out = out.new_service(body.clone());
+        let mut new_service = out.new_service(body.clone());
+        let mut out = DefaultDocBuilder::new(&mut new_service);
 
         html!(out, section {id => body.name, class => "section-content section-service"} => {
             self.section_title(&mut out, "service", &body.name)?;
@@ -534,7 +539,8 @@ impl DocBackend {
                         _: &RpPos,
                         body: Rc<RpEnumBody>)
                         -> Result<()> {
-        let mut out = out.new_type(RpDecl::Enum(body.clone()));
+        let mut new_enum = out.new_type(RpDecl::Enum(body.clone()));
+        let mut out = DefaultDocBuilder::new(&mut new_enum);
 
         html!(out, section {id => body.name, class => "section-content section-enum"} => {
             self.section_title(&mut out, "enum", &body.name)?;
@@ -554,7 +560,8 @@ impl DocBackend {
                              _: &RpPos,
                              body: Rc<RpInterfaceBody>)
                              -> Result<()> {
-        let mut out = out.new_type(RpDecl::Interface(body.clone()));
+        let mut new_interface = out.new_type(RpDecl::Interface(body.clone()));
+        let mut out = DefaultDocBuilder::new(&mut new_interface);
 
         html!(out, section {id => body.name, class => "section-content section-interface"} => {
             self.section_title(&mut out, "interface", &body.name)?;
@@ -583,7 +590,8 @@ impl DocBackend {
                         _: &RpPos,
                         body: Rc<RpTypeBody>)
                         -> Result<()> {
-        let mut out = out.new_type(RpDecl::Type(body.clone()));
+        let mut new_type = out.new_type(RpDecl::Type(body.clone()));
+        let mut out = DefaultDocBuilder::new(&mut new_type);
 
         html!(out, section {id => body.name, class => "section-content section-type"} => {
             self.section_title(&mut out, "type", &body.name)?;
@@ -603,7 +611,8 @@ impl DocBackend {
                          _: &RpPos,
                          body: Rc<RpTupleBody>)
                          -> Result<()> {
-        let mut out = out.new_type(RpDecl::Tuple(body.clone()));
+        let mut new_tuple = out.new_type(RpDecl::Tuple(body.clone()));
+        let mut out = DefaultDocBuilder::new(&mut new_tuple);
 
         html!(out, section {id => body.name, class => "section-content section-tuple"} => {
             self.section_title(&mut out, "tuple", &body.name)?;

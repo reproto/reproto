@@ -1,11 +1,12 @@
 #[macro_use]
 mod macros;
 mod doc_backend;
-mod doc_compiler;
-mod doc_collector;
-mod doc_options;
-mod doc_listeners;
 mod doc_builder;
+mod doc_collector;
+mod doc_compiler;
+mod doc_listeners;
+mod doc_options;
+mod doc_writer;
 
 pub use backend::*;
 pub use core::*;
@@ -17,6 +18,7 @@ pub use self::doc_collector::*;
 pub use self::doc_compiler::*;
 pub use self::doc_listeners::*;
 pub use self::doc_options::*;
+pub use self::doc_writer::*;
 pub use self::macros::*;
 
 pub(crate) const NORMALIZE_CSS_NAME: &str = "normalize.css";

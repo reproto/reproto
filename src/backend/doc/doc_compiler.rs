@@ -41,10 +41,10 @@ impl<'a> DocCompiler<'a> {
     }
 
     fn write_index(&self, packages: &Vec<RpVersionedPackage>) -> Result<()> {
-        let mut out = String::new();
+        let mut buffer = String::new();
 
         self.processor
-            .write_doc(&mut out, |out| {
+            .write_doc(&mut DefaultDocBuilder::new(&mut buffer), |out| {
                 self.processor.write_packages(out, packages, None)?;
                 Ok(())
             })?;
@@ -61,7 +61,7 @@ impl<'a> DocCompiler<'a> {
         debug!("+index: {}", path.display());
 
         let mut f = fs::File::create(path)?;
-        f.write_all(&out.into_bytes())?;
+        f.write_all(&buffer.into_bytes())?;
 
         Ok(())
     }
@@ -74,19 +74,22 @@ impl<'a> DocCompiler<'a> {
             collector.set_package_title(format!("{}", package));
 
             {
-                let mut out = collector.new_package();
+                let mut new_package = collector.new_package();
+                let mut out = DefaultDocBuilder::new(&mut new_package);
                 self.processor.write_packages(&mut out, packages, Some(*package))?;
             }
 
             {
                 let service_bodies = collector.service_bodies.clone();
-                let mut out = collector.new_service_overview();
+                let mut new_service_overview = collector.new_service_overview();
+                let mut out = DefaultDocBuilder::new(&mut new_service_overview);
                 self.processor.write_service_overview(&mut out, service_bodies)?;
             }
 
             {
                 let decl_bodies = collector.decl_bodies.clone();
-                let mut out = collector.new_types_overview();
+                let mut new_type_overview = collector.new_types_overview();
+                let mut out = DefaultDocBuilder::new(&mut new_type_overview);
                 self.processor.write_types_overview(&mut out, decl_bodies)?;
             }
         }

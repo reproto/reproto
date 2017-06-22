@@ -1,30 +1,7 @@
 //! # Collector of results from the doc backend
 
-use std::fmt;
-use std::fmt::Write;
 use std::rc::Rc;
 use super::*;
-
-pub struct DocWriter<'a> {
-    dest: &'a mut Vec<String>,
-    buffer: String,
-}
-
-impl<'a> DocBuilder for DocWriter<'a> {
-    fn write_str(&mut self, string: &str) -> fmt::Result {
-        Write::write_str(&mut self.buffer, string)
-    }
-
-    fn write_fmt(&mut self, args: fmt::Arguments) -> fmt::Result {
-        Write::write_fmt(&mut self.buffer, args)
-    }
-}
-
-impl<'a> Drop for DocWriter<'a> {
-    fn drop(&mut self) {
-        self.dest.push(self.buffer.clone());
-    }
-}
 
 pub struct DocCollector {
     package_title: Option<String>,
@@ -44,41 +21,24 @@ impl DocCollector {
 
     pub fn new_service(&mut self, service_body: Rc<RpServiceBody>) -> DocWriter {
         self.service_bodies.push(service_body);
-
-        DocWriter {
-            dest: &mut self.services,
-            buffer: String::new(),
-        }
+        DocWriter::new(&mut self.services)
     }
 
     pub fn new_service_overview(&mut self) -> DocWriter {
-        DocWriter {
-            dest: &mut self.service_overviews,
-            buffer: String::new(),
-        }
+        DocWriter::new(&mut self.service_overviews)
     }
 
     pub fn new_types_overview(&mut self) -> DocWriter {
-        DocWriter {
-            dest: &mut self.types_overview,
-            buffer: String::new(),
-        }
+        DocWriter::new(&mut self.types_overview)
     }
 
     pub fn new_package(&mut self) -> DocWriter {
-        DocWriter {
-            dest: &mut self.packages,
-            buffer: String::new(),
-        }
+        DocWriter::new(&mut self.packages)
     }
 
     pub fn new_type(&mut self, decl: RpDecl) -> DocWriter {
         self.decl_bodies.push(decl);
-
-        DocWriter {
-            dest: &mut self.types,
-            buffer: String::new(),
-        }
+        DocWriter::new(&mut self.types)
     }
 }
 
@@ -99,10 +59,10 @@ impl<'a> Collecting<'a> for DocCollector {
     }
 
     fn into_bytes(self, compiler: &Self::Processor) -> Result<Vec<u8>> {
-        let mut out = String::new();
+        let mut buffer = String::new();
 
         compiler.processor
-            .write_doc(&mut out, move |out| {
+            .write_doc(&mut DefaultDocBuilder::new(&mut buffer), move |out| {
                 if let Some(package_title) = self.package_title {
                     html!(out, h1 {class => "document-title"} => {
                         write!(out, "Package: {}", package_title)?;
@@ -138,6 +98,6 @@ impl<'a> Collecting<'a> for DocCollector {
                 Ok(())
             })?;
 
-        Ok(out.into_bytes())
+        Ok(buffer.into_bytes())
     }
 }

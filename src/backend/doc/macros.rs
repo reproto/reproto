@@ -46,17 +46,27 @@ macro_rules! html {
         write!($out, ">")?;
     }};
 
-    ($out:ident, $element:ident {$($key:ident => $value:expr),*} => $body:block) => {{
-        html!(@open $out, $element {$($key=> $value),*});
-        $body;
+    (@close $out:ident, $element:ident) => {{
         write!($out, "</{}>", stringify!($element))?;
     }};
 
-    ($out:ident, $element:ident {$($key:ident => $value:expr),*} ~ $body:expr) => {
-        html!($out, $element {$($key=> $value),*} => {
-            write!($out, "{}", $body)?
-        })
-    };
+    ($out:ident, $element:ident {$($key:ident => $value:expr),*} => $body:block) => {{
+        html!(@open $out, $element {$($key=> $value),*});
+        $out.new_line()?;
+        $out.indent();
+        $body;
+        $out.new_line_unless_empty()?;
+        $out.unindent();
+        html!(@close $out, $element);
+        $out.new_line()?;
+    }};
+
+    ($out:ident, $element:ident {$($key:ident => $value:expr),*} ~ $body:expr) => {{
+        html!(@open $out, $element {$($key=> $value),*});
+        write!($out, "{}", $body)?;
+        html!(@close $out, $element);
+        $out.new_line()?;
+    }};
 
     ($out:ident, $element:ident {$($key:ident => $value:expr),*}) => {
         html!($element {$($key=> $value),*}, $out => {})
