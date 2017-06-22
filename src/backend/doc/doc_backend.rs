@@ -1,6 +1,5 @@
 use pulldown_cmark as markdown;
 use std::collections::HashMap;
-use std::fmt::Write as FmtWrite;
 use std::rc::Rc;
 use super::*;
 
@@ -70,7 +69,7 @@ impl DocBackend {
         package.parts.join("_")
     }
 
-    fn write_markdown(&self, out: &mut FmtWrite, comment: &Vec<String>) -> Result<()> {
+    fn write_markdown(&self, out: &mut DocBuilder, comment: &Vec<String>) -> Result<()> {
         if !comment.is_empty() {
             let comment = comment.join("\n");
             write!(out, "{}", Self::markdown(&comment))?;
@@ -79,7 +78,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_description<'a, I>(&self, out: &mut FmtWrite, comment: I) -> Result<()>
+    fn write_description<'a, I>(&self, out: &mut DocBuilder, comment: I) -> Result<()>
         where I: IntoIterator<Item = &'a String>
     {
         let mut it = comment.into_iter().peekable();
@@ -93,7 +92,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_variants<'b, I>(&self, out: &mut FmtWrite, variants: I) -> Result<()>
+    fn write_variants<'b, I>(&self, out: &mut DocBuilder, variants: I) -> Result<()>
         where I: IntoIterator<Item = &'b RpLoc<Rc<RpEnumVariant>>>
     {
         let mut it = variants.into_iter().peekable();
@@ -121,7 +120,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_simple_type(&self, out: &mut FmtWrite, name: &'static str) -> Result<()> {
+    fn write_simple_type(&self, out: &mut DocBuilder, name: &'static str) -> Result<()> {
         html!(out, span {class => format!("type-{}", name)} => {
             html!(out, code {class => "type-name"} ~ name);
         });
@@ -130,7 +129,7 @@ impl DocBackend {
     }
 
     fn write_type(&self,
-                  out: &mut FmtWrite,
+                  out: &mut DocBuilder,
                   pos: &RpPos,
                   type_id: &RpTypeId,
                   ty: &RpType)
@@ -194,7 +193,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_fields<'b, I>(&self, out: &mut FmtWrite, type_id: &RpTypeId, fields: I) -> Result<()>
+    fn write_fields<'b, I>(&self, out: &mut DocBuilder, type_id: &RpTypeId, fields: I) -> Result<()>
         where I: Iterator<Item = &'b RpLoc<RpField>>
     {
         html!(out, div {class => "fields"} => {
@@ -246,7 +245,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn section_title(&self, out: &mut FmtWrite, ty: &str, name: &str) -> Result<()> {
+    fn section_title(&self, out: &mut DocBuilder, ty: &str, name: &str) -> Result<()> {
         html!(out, h1 {class => "section-title"} => {
             write!(out, "{name}", name = name)?;
             html!(out, span {class => "type"} ~ ty);
@@ -255,8 +254,8 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn write_doc<Body>(&self, out: &mut FmtWrite, body: Body) -> Result<()>
-        where Body: FnOnce(&mut FmtWrite) -> Result<()>
+    pub fn write_doc<Body>(&self, out: &mut DocBuilder, body: Body) -> Result<()>
+        where Body: FnOnce(&mut DocBuilder) -> Result<()>
     {
         html!(out, html {} => {
             html!(out, head {} => {
@@ -283,7 +282,7 @@ impl DocBackend {
     }
 
     fn write_endpoint_short(&self,
-                            out: &mut FmtWrite,
+                            out: &mut DocBuilder,
                             index: usize,
                             body: &Rc<RpServiceBody>,
                             endpoint: &RpServiceEndpoint)
@@ -329,7 +328,7 @@ impl DocBackend {
     }
 
     fn write_endpoint(&self,
-                      out: &mut FmtWrite,
+                      out: &mut DocBuilder,
                       index: usize,
                       type_id: &RpTypeId,
                       body: &Rc<RpServiceBody>,
@@ -422,7 +421,7 @@ impl DocBackend {
     ///
     /// * `current` if some value indicates which the current package is.
     pub fn write_packages(&self,
-                          out: &mut FmtWrite,
+                          out: &mut DocBuilder,
                           packages: &Vec<RpVersionedPackage>,
                           current: Option<&RpVersionedPackage>)
                           -> Result<()> {
@@ -456,7 +455,7 @@ impl DocBackend {
     }
 
     pub fn write_service_overview(&self,
-                                  out: &mut FmtWrite,
+                                  out: &mut DocBuilder,
                                   service_bodies: Vec<Rc<RpServiceBody>>)
                                   -> Result<()> {
         if service_bodies.is_empty() {
@@ -482,7 +481,7 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn write_types_overview(&self, out: &mut FmtWrite, decls: Vec<RpDecl>) -> Result<()> {
+    pub fn write_types_overview(&self, out: &mut DocBuilder, decls: Vec<RpDecl>) -> Result<()> {
         if decls.is_empty() {
             return Ok(());
         }
@@ -512,17 +511,16 @@ impl DocBackend {
                            _: &RpPos,
                            body: Rc<RpServiceBody>)
                            -> Result<()> {
-        let mut service_out = out.new_service(body.clone());
-        let mut out = service_out.get_mut();
+        let mut out = out.new_service(body.clone());
 
         html!(out, section {id => body.name, class => "section-content section-service"} => {
-            self.section_title(out, "service", &body.name)?;
+            self.section_title(&mut out, "service", &body.name)?;
 
             html!(out, div {class => "section-body"} => {
-                self.write_description(out, &body.comment)?;
+                self.write_description(&mut out, &body.comment)?;
 
                 for (index, endpoint) in body.endpoints.iter().enumerate() {
-                    self.write_endpoint(out, index, type_id, &body, endpoint)?;
+                    self.write_endpoint(&mut out, index, type_id, &body, endpoint)?;
                 }
             });
         });
@@ -536,15 +534,14 @@ impl DocBackend {
                         _: &RpPos,
                         body: Rc<RpEnumBody>)
                         -> Result<()> {
-        let mut writer = out.new_type(RpDecl::Enum(body.clone()));
-        let mut out = writer.get_mut();
+        let mut out = out.new_type(RpDecl::Enum(body.clone()));
 
         html!(out, section {id => body.name, class => "section-content section-enum"} => {
-            self.section_title(out, "enum", &body.name)?;
+            self.section_title(&mut out, "enum", &body.name)?;
 
             html!(out, div {class => "section-body"} => {
-                self.write_description(out, &body.comment)?;
-                self.write_variants(out, body.variants.iter())?;
+                self.write_description(&mut out, &body.comment)?;
+                self.write_variants(&mut out, body.variants.iter())?;
             });
         });
 
@@ -557,14 +554,13 @@ impl DocBackend {
                              _: &RpPos,
                              body: Rc<RpInterfaceBody>)
                              -> Result<()> {
-        let mut writer = out.new_type(RpDecl::Interface(body.clone()));
-        let mut out = writer.get_mut();
+        let mut out = out.new_type(RpDecl::Interface(body.clone()));
 
         html!(out, section {id => body.name, class => "section-content section-interface"} => {
-            self.section_title(out, "interface", &body.name)?;
+            self.section_title(&mut out, "interface", &body.name)?;
 
             html!(out, div {class => "section-body"} => {
-                self.write_description(out, &body.comment)?;
+                self.write_description(&mut out, &body.comment)?;
 
                 for (name, sub_type) in &body.sub_types {
                     let id = format!("{}_{}", body.name, sub_type.name);
@@ -572,8 +568,8 @@ impl DocBackend {
 
                     let fields = body.fields.iter().chain(sub_type.fields.iter());
 
-                    self.write_description(out, &sub_type.comment)?;
-                    self.write_fields(out, type_id, fields)?;
+                    self.write_description(&mut out, &sub_type.comment)?;
+                    self.write_fields(&mut out, type_id, fields)?;
                 }
             });
         });
@@ -587,15 +583,14 @@ impl DocBackend {
                         _: &RpPos,
                         body: Rc<RpTypeBody>)
                         -> Result<()> {
-        let mut writer = out.new_type(RpDecl::Type(body.clone()));
-        let mut out = writer.get_mut();
+        let mut out = out.new_type(RpDecl::Type(body.clone()));
 
         html!(out, section {id => body.name, class => "section-content section-type"} => {
-            self.section_title(out, "type", &body.name)?;
+            self.section_title(&mut out, "type", &body.name)?;
 
             html!(out, div {class => "section-body"} => {
-                self.write_description(out, &body.comment)?;
-                self.write_fields(out, type_id, body.fields.iter())?;
+                self.write_description(&mut out, &body.comment)?;
+                self.write_fields(&mut out, type_id, body.fields.iter())?;
             });
         });
 
@@ -608,15 +603,14 @@ impl DocBackend {
                          _: &RpPos,
                          body: Rc<RpTupleBody>)
                          -> Result<()> {
-        let mut writer = out.new_type(RpDecl::Tuple(body.clone()));
-        let mut out = writer.get_mut();
+        let mut out = out.new_type(RpDecl::Tuple(body.clone()));
 
         html!(out, section {id => body.name, class => "section-content section-tuple"} => {
-            self.section_title(out, "tuple", &body.name)?;
+            self.section_title(&mut out, "tuple", &body.name)?;
 
             html!(out, div {class => "section-body"} => {
-                self.write_description(out, &body.comment)?;
-                self.write_fields(out, type_id, body.fields.iter())?;
+                self.write_description(&mut out, &body.comment)?;
+                self.write_fields(&mut out, type_id, body.fields.iter())?;
             });
         });
 

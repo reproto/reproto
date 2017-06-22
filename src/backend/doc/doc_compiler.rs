@@ -44,7 +44,7 @@ impl<'a> DocCompiler<'a> {
         let mut out = String::new();
 
         self.processor
-            .write_doc(&mut out, move |out| {
+            .write_doc(&mut out, |out| {
                 self.processor.write_packages(out, packages, None)?;
                 Ok(())
             })?;
@@ -74,23 +74,20 @@ impl<'a> DocCompiler<'a> {
             collector.set_package_title(format!("{}", package));
 
             {
-                let mut package_writer = collector.new_package();
-                let mut out = package_writer.get_mut();
-                self.processor.write_packages(out, packages, Some(*package))?;
+                let mut out = collector.new_package();
+                self.processor.write_packages(&mut out, packages, Some(*package))?;
             }
 
             {
                 let service_bodies = collector.service_bodies.clone();
-                let mut writer = collector.new_service_overview();
-                let mut out = writer.get_mut();
-                self.processor.write_service_overview(out, service_bodies)?;
+                let mut out = collector.new_service_overview();
+                self.processor.write_service_overview(&mut out, service_bodies)?;
             }
 
             {
                 let decl_bodies = collector.decl_bodies.clone();
-                let mut writer = collector.new_types_overview();
-                let mut out = writer.get_mut();
-                self.processor.write_types_overview(out, decl_bodies)?;
+                let mut out = collector.new_types_overview();
+                self.processor.write_types_overview(&mut out, decl_bodies)?;
             }
         }
 

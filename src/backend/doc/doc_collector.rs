@@ -1,5 +1,7 @@
 //! # Collector of results from the doc backend
 
+use std::fmt;
+use std::fmt::Write;
 use std::rc::Rc;
 use super::*;
 
@@ -8,9 +10,13 @@ pub struct DocWriter<'a> {
     buffer: String,
 }
 
-impl<'a> DocWriter<'a> {
-    pub fn get_mut(&mut self) -> &mut String {
-        &mut self.buffer
+impl<'a> DocBuilder for DocWriter<'a> {
+    fn write_str(&mut self, string: &str) -> fmt::Result {
+        Write::write_str(&mut self.buffer, string)
+    }
+
+    fn write_fmt(&mut self, args: fmt::Arguments) -> fmt::Result {
+        Write::write_fmt(&mut self.buffer, args)
     }
 }
 

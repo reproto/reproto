@@ -1,36 +1,36 @@
-use std::fmt;
-
 pub trait FormatAttribute {
-    fn format_attribute(&self, f: &mut fmt::Write) -> fmt::Result;
+    fn format_attribute(&self) -> String;
 }
 
 impl<T> FormatAttribute for Vec<T>
     where T: FormatAttribute
 {
-    fn format_attribute(&self, f: &mut fmt::Write) -> fmt::Result {
+    fn format_attribute(&self) -> String {
+        let mut out = String::new();
+
         let mut it = self.iter().peekable();
 
         while let Some(next) = it.next() {
-            next.format_attribute(f)?;
+            out.push_str(&next.format_attribute());
 
             if !it.peek().is_none() {
-                write!(f, " ")?;
+                out.push_str(" ");
             }
         }
 
-        Ok(())
+        out
     }
 }
 
 impl<'a> FormatAttribute for &'a str {
-    fn format_attribute(&self, f: &mut fmt::Write) -> fmt::Result {
-        write!(f, "{}", self)
+    fn format_attribute(&self) -> String {
+        (*self).to_owned()
     }
 }
 
 impl FormatAttribute for String {
-    fn format_attribute(&self, f: &mut fmt::Write) -> fmt::Result {
-        write!(f, "{}", self)
+    fn format_attribute(&self) -> String {
+        self.clone()
     }
 }
 
@@ -40,7 +40,7 @@ macro_rules! html {
         write!($out, "<{}", stringify!($element))?;
         $(
             write!($out, " {}=\"", stringify!($key))?;
-            $value.format_attribute($out)?;
+            $out.write_str(&$value.format_attribute())?;
             write!($out, "\"")?;
         )*
         write!($out, ">")?;

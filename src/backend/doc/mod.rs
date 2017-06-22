@@ -5,12 +5,14 @@ mod doc_compiler;
 mod doc_collector;
 mod doc_options;
 mod doc_listeners;
+mod doc_builder;
 
 pub use backend::*;
 pub use core::*;
 pub use errors::*;
 pub use options::Options;
 pub use self::doc_backend::*;
+pub use self::doc_builder::*;
 pub use self::doc_collector::*;
 pub use self::doc_compiler::*;
 pub use self::doc_listeners::*;
