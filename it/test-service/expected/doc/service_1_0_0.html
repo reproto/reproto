@@ -1,5 +1,6 @@
 <html>
   <head>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="normalize.css">
     <link rel="stylesheet" type="text/css" href="doc.css">
@@ -34,7 +35,7 @@
     <div class="description"><h1>HUGE Example Service</h1>
 </div>
     <div class="endpoint short get">
-      <a class="endpoint-title" href="#GET_MyService__v1_foo_0">
+      <a class="endpoint-title" href="#MyService_GET_v1_foo_0">
         <span class="method">GET</span>
         <span class="url">/v1/foo</span>
       </a>
@@ -44,7 +45,7 @@
       </div>
     </div>
     <div class="endpoint short post">
-      <a class="endpoint-title" href="#POST_MyService__v1_foo_1">
+      <a class="endpoint-title" href="#MyService_POST_v1_foo_1">
         <span class="method">POST</span>
         <span class="url">/v1/foo</span>
       </a>
@@ -53,8 +54,18 @@
 </div>
       </div>
     </div>
+    <div class="endpoint short delete">
+      <a class="endpoint-title" href="#MyService_DELETE_v1_foo_id_2">
+        <span class="method">DELETE</span>
+        <span class="url">/v1/foo/{id}</span>
+      </a>
+      <div class="endpoint-body">
+        <div class="description"><h1>Delete the foo with the given ID.</h1>
+</div>
+      </div>
+    </div>
     <div class="endpoint short get">
-      <a class="endpoint-title" href="#GET_MyService__v1_foo__id__2">
+      <a class="endpoint-title" href="#MyService_GET_v1_foo_id_3">
         <span class="method">GET</span>
         <span class="url">/v1/foo/{id}</span>
       </a>
@@ -64,12 +75,12 @@
       </div>
     </div>
     <div class="endpoint short delete">
-      <a class="endpoint-title" href="#DELETE_MyService__v1_foo__id__3">
+      <a class="endpoint-title" href="#MyService_DELETE_v1_foo_%C3%A5berg%20%3C%3E_4">
         <span class="method">DELETE</span>
-        <span class="url">/v1/foo/{id}</span>
+        <span class="url">/v1/foo/åberg &lt;&gt;</span>
       </a>
       <div class="endpoint-body">
-        <div class="description"><h1>Delete the foo with the given ID.</h1>
+        <div class="description"><p>Specifically delete this last name.</p>
 </div>
       </div>
     </div>
@@ -87,10 +98,10 @@
     <div class="description"><h1>HUGE Example Service</h1>
 <p>This is a test to see if the documentation makes <em>any</em> sense.</p>
 </div>
-    <div class="endpoint get" id="GET_MyService__v1_foo_0">
+    <div class="endpoint get" id="MyService_GET_v1_foo_0">
       <h2 class="endpoint-title">
         <span class="method">GET</span>
-        <a class="url" href="#GET_MyService__v1_foo_0">/v1/foo</a>
+        <a class="url" href="#MyService_GET_v1_foo_0">/v1/foo</a>
       </h2>
       <div class="endpoint-body">
         <div class="description"><h1>Search for a list of foos.</h1>
@@ -150,10 +161,10 @@
         </table>
       </div>
     </div>
-    <div class="endpoint post" id="POST_MyService__v1_foo_1">
+    <div class="endpoint post" id="MyService_POST_v1_foo_1">
       <h2 class="endpoint-title">
         <span class="method">POST</span>
-        <a class="url" href="#POST_MyService__v1_foo_1">/v1/foo</a>
+        <a class="url" href="#MyService_POST_v1_foo_1">/v1/foo</a>
       </h2>
       <div class="endpoint-body">
         <div class="description"><p>Create a new foo.</p>
@@ -230,10 +241,88 @@
         </table>
       </div>
     </div>
-    <div class="endpoint get" id="GET_MyService__v1_foo__id__2">
+    <div class="endpoint delete" id="MyService_DELETE_v1_foo_id_2">
+      <h2 class="endpoint-title">
+        <span class="method">DELETE</span>
+        <a class="url" href="#MyService_DELETE_v1_foo_id_2">/v1/foo/{id}</a>
+      </h2>
+      <div class="endpoint-body">
+        <div class="description"><h1>Delete the foo with the given ID.</h1>
+</div>
+        <h2>Returns</h2>
+        <table class="spaced">
+          <tr>
+            <td class="status">302</td>
+            <td class="mime">
+              <code>application/json</code>
+            </td>
+            <td class="type">
+              <span class="ty"><span class="type-any">
+                <code class="type-name">any</code>
+              </span>
+              </span>
+            </td>
+            <td class="description">
+              <p>Redirect stuff.</p>
+
+            </td>
+          </tr>
+          <tr>
+            <td class="status">404</td>
+            <td class="mime">
+              <code>text/plain</code>
+            </td>
+            <td class="type">
+              <span class="ty"><span class="type-any">
+                <code class="type-name">any</code>
+              </span>
+              </span>
+            </td>
+            <td class="description">
+              <p>resource not found</p>
+<p>Something else?</p>
+
+            </td>
+          </tr>
+          <tr>
+            <td class="status">500</td>
+            <td class="mime">
+              <code>application/json</code>
+            </td>
+            <td class="type">
+              <span class="ty"><span class="type-rp-name">
+                <a href="common_1_0_0.html#ErrorMessage">ErrorMessage</a>
+              </span>
+              </span>
+            </td>
+            <td class="description">
+              <p>returned on internal server errors</p>
+
+            </td>
+          </tr>
+          <tr>
+            <td class="status">501</td>
+            <td class="mime">
+              <code>application/json</code>
+            </td>
+            <td class="type">
+              <span class="ty"><span class="type-rp-name">
+                <a href="common_1_0_0.html#ErrorMessage">ErrorMessage</a>
+              </span>
+              </span>
+            </td>
+            <td class="description">
+              <p>other, interesting stuff</p>
+
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div class="endpoint get" id="MyService_GET_v1_foo_id_3">
       <h2 class="endpoint-title">
         <span class="method">GET</span>
-        <a class="url" href="#GET_MyService__v1_foo__id__2">/v1/foo/{id}</a>
+        <a class="url" href="#MyService_GET_v1_foo_id_3">/v1/foo/{id}</a>
       </h2>
       <div class="endpoint-body">
         <div class="description"><h1>Get the foo with the current ID.</h1>
@@ -295,13 +384,13 @@
         </table>
       </div>
     </div>
-    <div class="endpoint delete" id="DELETE_MyService__v1_foo__id__3">
+    <div class="endpoint delete" id="MyService_DELETE_v1_foo_%C3%A5berg%20%3C%3E_4">
       <h2 class="endpoint-title">
         <span class="method">DELETE</span>
-        <a class="url" href="#DELETE_MyService__v1_foo__id__3">/v1/foo/{id}</a>
+        <a class="url" href="#MyService_DELETE_v1_foo_%C3%A5berg%20%3C%3E_4">/v1/foo/åberg &lt;&gt;</a>
       </h2>
       <div class="endpoint-body">
-        <div class="description"><h1>Delete the foo with the given ID.</h1>
+        <div class="description"><p>Specifically delete this last name.</p>
 </div>
         <h2>Returns</h2>
         <table class="spaced">
@@ -317,8 +406,6 @@
               </span>
             </td>
             <td class="description">
-              <p>Redirect stuff.</p>
-
             </td>
           </tr>
           <tr>

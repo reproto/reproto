@@ -7,25 +7,22 @@ use common as c;
 /// This is a test to see if the documentation makes _any_ sense.
 service MyService {
   /// Gets all the good stuff!
-  endpoint "/v2/foo" {
+  `v2/foo` {
     /// # Search for a list of foos.
     ///
     /// This uses method `GET` because it is _good_.
-    * {
-      method "GET";
+    GET {
     }
 
     /// Create a new foo.
-    * {
-      method "POST";
-
+    POST {
       /// Only acceptable when I'm ~drunk~ Sober!
       accepts any {
         accept "application/json";
       }
     }
 
-    endpoint "/{id}" {
+    `{id: string}` {
       /// # Get the foo with the current ID.
       ///
       /// These things cannot do shit.
@@ -33,14 +30,11 @@ service MyService {
       /// ```yaml
       /// foo: 1234
       /// ```
-      * {
-        method "GET";
+      GET {
       }
 
       /// #### Delete the entity with the given id `{id}`
-      * {
-        method "DELETE";
-
+      DELETE {
         /// Redirect stuff.
         returns any {
           status 302;

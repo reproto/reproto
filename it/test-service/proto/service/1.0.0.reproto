@@ -7,45 +7,44 @@ use common as c;
 /// This is a test to see if the documentation makes _any_ sense.
 service MyService {
   /// Gets all the good stuff!
-  endpoint "/v1/foo" {
+  `v1/foo` {
     /// # Search for a list of foos.
     ///
     /// This uses method `GET` because it is _good_.
-    * {
-      method "GET";
+    GET {
     }
 
     /// Create a new foo.
-    * {
-      method "POST";
-
+    POST {
       /// Only acceptable when I'm ~drunk~ Sober!
       accepts any {
         accept "application/json";
       }
     }
 
-    endpoint "/{id}" {
-      /// # Get the foo with the current ID.
-      ///
-      /// These things cannot do shit.
-      ///
-      /// ```yaml
-      /// foo: 1234
-      /// ```
-      * {
-        method "GET";
-      }
-
+    /// # Get the foo with the current ID.
+    ///
+    /// These things cannot do shit.
+    ///
+    /// ```yaml
+    /// foo: 1234
+    /// ```
+    GET `{id:string}` {
       /// # Delete the foo with the given ID.
-      * {
-        method "DELETE";
-
+      DELETE {
         /// Redirect stuff.
         returns any {
           status 302;
           produces "application/json";
         }
+      }
+    }
+
+    /// Specifically delete this last name.
+    DELETE "åberg <>" {
+      returns any {
+        status 302;
+        produces "application/json";
       }
     }
 
