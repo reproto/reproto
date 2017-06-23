@@ -1,9 +1,10 @@
+#[macro_use]
+extern crate log;
 extern crate reproto_core;
 extern crate reproto_parser;
 extern crate clap;
 extern crate reproto;
-#[macro_use]
-extern crate log;
+extern crate ansi_term;
 
 use reproto::commands;
 use reproto::errors::*;
@@ -33,28 +34,27 @@ fn setup_logger(matches: &clap::ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn print_error(m: &str, p: &core::ErrorPos) -> Result<()> {
-    let (line, lines, range) = parser::find_line(&p.path, (p.start, p.end))?;
+fn print_error<S: AsRef<str>>(m: S, p: &core::ErrorPos) -> Result<()> {
+    use std::iter::repeat;
+    use std::cmp::max;
+    use ansi_term::Colour::{Blue, Red};
 
-    println!("{}:{}:{}-{}:",
-             p.path.display(),
-             lines + 1,
-             range.0,
-             range.1);
+    let (line_str, line, (s, e)) = parser::find_line(&p.path, (p.start, p.end))?;
 
-    let line_no = format!("{:>3}", lines + 1);
-    let diff = range.1 - range.0;
-    let diff = if diff < 1 { 1 } else { diff };
+    println!("{}:{}:{}-{}:", p.path.display(), line + 1, s + 1, e + 1);
 
-    let mut line_indicator = String::new();
+    let line_no = format!("{:>3}:", line + 1);
 
-    line_indicator.push_str(&::std::iter::repeat(" ")
-        .take(line_no.len() + range.0 + 1)
-        .collect::<String>());
-    line_indicator.push_str(&::std::iter::repeat("^").take(diff).collect::<String>());
+    let mut indicator = String::new();
 
-    println!("{}: {}", line_no, line);
-    println!("{} - {}", line_indicator, m);
+    indicator.extend(repeat(' ').take(line_no.len() + s + 1));
+    indicator.extend(repeat('^').take(max(1, e - s)));
+
+    println!("{} {}", Blue.paint(line_no), line_str);
+    println!("{}{}{}",
+             Red.paint(indicator),
+             Red.paint(" - "),
+             Red.paint(m.as_ref()));
 
     Ok(())
 }
@@ -100,6 +100,7 @@ fn handle_core_error(e: &core::errors::ErrorKind) -> Result<bool> {
 
 fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<bool> {
     use parser::errors::ErrorKind::*;
+    use ansi_term::Colour::Red;
 
     let out = match *e {
         Pos(ref m, ref p) => {
@@ -110,12 +111,16 @@ fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<bool> {
             return handle_core_error(e);
         }
         Syntax(ref p, ref expected) => {
-            if let Some(ref pos) = *p {
-                print_error("syntax error", pos)?;
-            }
+            let m = if !expected.is_empty() {
+                format!("unexpected token, expected one of: {}", expected.join(", "))
+            } else {
+                String::from("syntax error")
+            };
 
-            if !expected.is_empty() {
-                println!("Expected one of: {}", expected.join(", "));
+            if let Some(ref pos) = *p {
+                print_error(m, pos)?;
+            } else {
+                println!("{}", Red.paint(m));
             }
 
             true
