@@ -2,7 +2,7 @@
 name = "reproto"
 version = "0.0.19"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
-license = "Apache-2.0"
+license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
