@@ -12,7 +12,8 @@ pub struct ServiceBody<'input> {
 
 struct Node {
     parent: Option<Rc<RefCell<Node>>>,
-    url: Option<RpLoc<String>>,
+    method: Option<RpLoc<String>>,
+    path: Option<RpLoc<RpPathSpec>>,
     options: Vec<RpLoc<RpOptionDecl>>,
     comment: Vec<String>,
     returns: Vec<RpServiceReturns>,
@@ -26,10 +27,6 @@ impl Node {
 
     fn push_accepts(&mut self, input: RpServiceAccepts) {
         self.accepts.push(input);
-    }
-
-    fn comment(&self) -> &Vec<String> {
-        &self.comment
     }
 }
 
@@ -101,41 +98,45 @@ fn convert_accepts(comment: Vec<String>,
 
 /// Recursively unwind all inherited information about the given node, and convert to a service
 /// endpoint.
-fn unwind(node: Option<Rc<RefCell<Node>>>, comment: Vec<String>) -> Result<RpServiceEndpoint> {
-    let mut url: Vec<String> = Vec::new();
+fn unwind(node: Rc<RefCell<Node>>) -> Result<RpServiceEndpoint> {
+    let mut method: Option<RpLoc<String>> = None;
+    let mut path = Vec::new();
     let mut options: Vec<RpLoc<RpOptionDecl>> = Vec::new();
     let mut returns = Vec::new();
     let mut accepts = Vec::new();
 
-    let mut current = node;
+    let comment = node.try_borrow()?.comment.clone();
+
+    let mut current = Some(node);
 
     while let Some(step) = current {
-        let next = step.borrow();
-        current = next.parent.clone();
+        let next = step.try_borrow()?;
 
-        if let Some(ref next_url) = next.url {
-            url.push(next_url.as_ref().to_owned());
+        // set method if not set
+        method = method.or_else(|| next.method.clone());
+
+        if let Some(ref next_url) = next.path {
+            // correct order by extending in reverse
+            path.extend(next_url.as_ref().segments.iter().rev().map(Clone::clone));
         }
 
         options.extend(next.options.iter().map(Clone::clone).rev());
         returns.extend(next.returns.iter().map(Clone::clone));
         accepts.extend(next.accepts.iter().map(Clone::clone));
+
+        current = next.parent.clone();
     }
 
-    let url: Vec<_> = url.into_iter().rev().collect();
-    let url = url.join("");
+    let path = RpPathSpec { segments: path.into_iter().rev().collect() };
 
-    let options = Options::new(options.into_iter().rev().collect());
-
-    let method: Option<String> = options.find_one_string("method")?
-        .map(Loc::move_inner);
+    let _options = Options::new(options.into_iter().rev().collect());
 
     Ok(RpServiceEndpoint {
-        url: url,
+        method: method,
+        path: path,
         comment: comment,
         returns: returns,
         accepts: accepts,
-        method: method,
     })
 }
 
@@ -149,28 +150,13 @@ impl<'input> IntoModel for ServiceBody<'input> {
         queue.push((None, self.children));
 
         while let Some((parent, children)) = queue.pop() {
-            let is_terminus = children.iter().all(ServiceNested::is_terminus);
-
             for child in children {
                 match child {
-                    // add to previous, including url changes.
-                    ServiceNested::Endpoint { url, comment, options, children } => {
+                    ServiceNested::Endpoint { method, path, comment, options, children } => {
                         let node = Rc::new(RefCell::new(Node {
                             parent: parent.as_ref().map(Clone::clone),
-                            url: Some(url.into_model()?),
-                            options: options.into_model()?,
-                            comment: comment.into_iter().map(ToOwned::to_owned).collect(),
-                            returns: Vec::new(),
-                            accepts: Vec::new(),
-                        }));
-
-                        queue.push((Some(node.clone()), children));
-                    }
-                    // just add to previous without url changes.
-                    ServiceNested::Star { comment, options, children } => {
-                        let node = Rc::new(RefCell::new(Node {
-                            parent: parent.as_ref().map(Clone::clone),
-                            url: None,
+                            method: method.into_model()?,
+                            path: path.into_model()?,
                             options: options.into_model()?,
                             comment: comment.into_iter().map(ToOwned::to_owned).collect(),
                             returns: Vec::new(),
@@ -199,16 +185,15 @@ impl<'input> IntoModel for ServiceBody<'input> {
                 }
             }
 
-            if is_terminus {
-                let comment = if let Some(ref parent) = parent {
-                    parent.try_borrow()?.comment().clone()
-                } else {
-                    Vec::new()
-                };
+            if let Some(ref parent) = parent {
+                let p = parent.try_borrow()?;
 
-                endpoints.push(unwind(parent.clone(), comment)?);
-                continue;
+                if p.method.is_some() {
+                    endpoints.push(unwind(parent.clone())?);
+                }
             }
+
+            continue;
         }
 
         let endpoints = endpoints.into_iter().rev().collect();

@@ -60,7 +60,6 @@ pub enum Token<'input> {
     BytesKeyword,
     TrueKeyword,
     FalseKeyword,
-    EndpointKeyword,
     ReturnsKeyword,
     AcceptsKeyword,
     Star,

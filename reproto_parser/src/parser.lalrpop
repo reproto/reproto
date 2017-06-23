@@ -1,12 +1,12 @@
 // vim: ft=rust
-use super::token::{self, Token};
-use super::ast::*;
 use reproto_core::*;
-use super::utils::*;
 use std::path::PathBuf;
 use std::rc::Rc;
+use super::ast::*;
+use super::token::{self, Token};
+use super::utils::*;
 
-grammar<'input, 'path>(path: &'path Rc<PathBuf>);
+grammar<'input, 'path>(input_path: &'path Rc<PathBuf>);
 
 pub File: File<'input> = {
     <package_decl:Loc<PackageDecl>> <options:Loc<OptionDecl>*> <uses:Loc<Use>*> <decls:Loc<Decl>*> => File {
@@ -113,23 +113,13 @@ Service: ServiceBody<'input> =
 
 ServiceNested: ServiceNested<'input> = {
     <comment:"///"?>
-    "endpoint" <url:Loc<string>> "{"
+    <method:Loc<TypeIdentifier>?> <path:Loc<PathSpec>?> "{"
         <options:Loc<OptionDecl>*>
         <children:ServiceNested*>
     "}" => {
         ServiceNested::Endpoint {
-            url: url,
-            comment: comment.unwrap_or_else(Vec::new),
-            options: options,
-            children: children,
-        }
-    },
-    <comment:"///"?>
-    "*" "{"
-        <options:Loc<OptionDecl>*>
-        <children:ServiceNested*>
-    "}" => {
-        ServiceNested::Star {
+            method: method,
+            path: path,
             comment: comment.unwrap_or_else(Vec::new),
             options: options,
             children: children,
@@ -154,6 +144,31 @@ ServiceNested: ServiceNested<'input> = {
             ty: ty,
             options: options,
         }
+    },
+};
+
+PathSpec: PathSpec<'input> = {
+    // escape needed to capture variables
+    "`" <segments:OneOrMore<"/", PathSegment>> "`" => {
+        PathSpec {
+            segments: segments,
+        }
+    },
+
+    // if spec is string, use as a single, literal segment
+    <value:Loc<string>> => {
+        PathSpec {
+            segments: vec![PathSegment::Literal { value: value }],
+        }
+    },
+};
+
+PathSegment: PathSegment<'input> = {
+    "{" <name:Loc<Identifier>> ":" <ty:Loc<TypeSpec>> "}" => {
+        PathSegment::Variable { name: name, ty: ty }
+    },
+    <value:Loc<path_segment>> => {
+        PathSegment::Literal { value: value }
     },
 };
 
@@ -314,7 +329,9 @@ OneOrMore<Sep, T>: Vec<T> = {
     }
 };
 
-Loc<Inner>: RpLoc<Inner> = <s:@L> <inner:Inner> <e:@R> => RpLoc::new(inner, ((*path).clone(), s, e));
+Loc<Inner>: RpLoc<Inner> = <s:@L> <inner:Inner> <e:@R> => {
+    RpLoc::new(inner, ((*input_path).clone(), s, e))
+};
 
 extern {
     type Location = usize;
@@ -342,6 +359,7 @@ extern {
         "}}" => Token::CodeClose,
         code => Token::CodeContent(<&'input str>),
         string => Token::String(<String>),
+        path_segment => Token::PathSegment(<String>),
         "[" => Token::LeftBracket,
         "]" => Token::RightBracket,
         ";" => Token::SemiColon,
@@ -364,10 +382,10 @@ extern {
         "bytes" => Token::BytesKeyword,
         true => Token::TrueKeyword,
         false => Token::FalseKeyword,
-        "endpoint" => Token::EndpointKeyword,
         "returns" => Token::ReturnsKeyword,
         "accepts" => Token::AcceptsKeyword,
         "*" => Token::Star,
+        "`" => Token::Tick,
         "///" => Token::DocComment(<Vec<&'input str>>),
     }
 }

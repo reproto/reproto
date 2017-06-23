@@ -107,7 +107,7 @@ impl DocBackend {
             html!(out, table {class => "spaced"} => {
                 for variant in it {
                     html!(out, tr {} => {
-                        html!(out, td {class => "name"} ~ &variant.name);
+                        html!(out, td {class => "name"} ~ variant.name.as_ref());
 
                         html!(out, td {class => "description"} => {
                             self.write_description(out, &variant.comment)?;
@@ -247,7 +247,7 @@ impl DocBackend {
 
     fn section_title(&self, out: &mut DocBuilder, ty: &str, name: &str, id: &str) -> Result<()> {
         html!(out, h1 {class => "section-title"} => {
-            html!(out, a {class => "link", href => format!("#{}", id)} ~ name);
+            html!(out, a {class => "link", href => format!("#{}", id)} ~ Escape(name));
             html!(out, span {class => "type"} ~ ty);
         });
 
@@ -259,17 +259,18 @@ impl DocBackend {
     {
         html!(out, html {} => {
             html!(out, head {} => {
+                html!(@open out, meta {charset => "utf-8"});
+                out.new_line()?;
+
                 html!(@open out, meta {
                     name => "viewport",
                     content => "width=device-width, initial-scale=1.0"
                 });
-
                 out.new_line()?;
 
                 html!(@open out, link {
                     rel => "stylesheet", type => "text/css", href => NORMALIZE_CSS_NAME
                 });
-
                 out.new_line()?;
 
                 html!(@open out, link {
@@ -291,15 +292,14 @@ impl DocBackend {
                             body: &Rc<RpServiceBody>,
                             endpoint: &RpServiceEndpoint)
                             -> Result<()> {
-        let method: String =
-            endpoint.method.as_ref().map(AsRef::as_ref).unwrap_or("GET").to_owned();
-
-        let id = self.endpoint_id(index, &method, body, endpoint);
+        let method = endpoint.method().unwrap_or("GET").to_owned();
+        let id =
+            format!("{}_{}_{}", body.name, endpoint.id_parts(Self::fragment_filter).join("_"), index);
 
         html!(out, div {class => format!("endpoint short {}", method.to_lowercase())} => {
             html!(out, a {class => "endpoint-title", href => format!("#{}", id)} => {
-                html!(out, span {class => "method"} ~ method);
-                html!(out, span {class => "url"} ~ endpoint.url);
+                html!(out, span {class => "method"} ~ Escape(method.as_ref()));
+                html!(out, span {class => "url"} ~ Escape(endpoint.url().as_ref()));
             });
 
             html!(out, div {class => "endpoint-body"} => {
@@ -310,25 +310,32 @@ impl DocBackend {
         Ok(())
     }
 
-    fn url_filter(&self, url: &str) -> String {
-        url.replace(|c| match c {
-                        'a'...'z' | 'A'...'Z' | '0'...'9' => false,
-                        _ => true,
-                    },
-                    "_")
-    }
+    fn fragment_filter(url: &str) -> String {
+        let mut bytes = [0u8; 4];
+        let mut buffer = String::with_capacity(url.len());
 
-    fn endpoint_id(&self,
-                   index: usize,
-                   method: &str,
-                   body: &Rc<RpServiceBody>,
-                   endpoint: &RpServiceEndpoint)
-                   -> String {
-        format!("{}_{}_{}_{}",
-                method,
-                self.url_filter(&body.name),
-                self.url_filter(&endpoint.url),
-                index)
+        for c in url.chars() {
+            let encode = match c {
+                'a'...'z' | 'A'...'Z' | '0'...'9' => false,
+                '!' | '$' | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | ';' => false,
+                '-' | '.' | '_' | '~' | ':' | '@' | '/' | '?' => false,
+                _ => true,
+            };
+
+            if encode {
+                let result = c.encode_utf8(&mut bytes);
+
+                for b in result.bytes() {
+                    buffer.extend(format!("%{:X}", b).chars());
+                }
+
+                continue;
+            }
+
+            buffer.push(c);
+        }
+
+        buffer
     }
 
     fn write_endpoint(&self,
@@ -338,15 +345,16 @@ impl DocBackend {
                       body: &Rc<RpServiceBody>,
                       endpoint: &RpServiceEndpoint)
                       -> Result<()> {
-        let method: String =
-            endpoint.method.as_ref().map(AsRef::as_ref).unwrap_or("GET").to_owned();
-
-        let id = self.endpoint_id(index, &method, body, endpoint);
+        let method = endpoint.method().unwrap_or("GET").to_owned();
+        let id =
+            format!("{}_{}_{}", body.name, endpoint.id_parts(Self::fragment_filter).join("_"), index);
 
         html!(out, div {class => format!("endpoint {}", method.to_lowercase()), id => id} => {
             html!(out, h2 {class => "endpoint-title"} => {
-                html!(out, span {class => "method"} ~ method);
-                html!(out, a {class => "url", href => format!("#{}", id)} ~ endpoint.url);
+                html!(out, span {class => "method"} ~ Escape(method.as_ref()));
+
+                html!(out, a {class => "url", href => format!("#{}", id)}
+                    ~ Escape(endpoint.url().as_ref()));
             });
 
             html!(out, div {class => "endpoint-body"} => {
@@ -366,7 +374,7 @@ impl DocBackend {
                                     .unwrap_or("*/*".to_owned());
 
                                 html!(out, td {class => "mime"} => {
-                                    html!(out, code {} ~ accepts)
+                                    html!(out, code {} ~ Escape(accepts.as_ref()))
                                 });
 
                                 html!(out, td {class => "type"} => {
@@ -401,7 +409,7 @@ impl DocBackend {
 
                                 html!(out, td {class => "status"} ~ status);
                                 html!(out, td {class => "mime"} => {
-                                    html!(out, code {} ~ produces)
+                                    html!(out, code {} ~ Escape(produces.as_ref()))
                                 });
 
                                 html!(out, td {class => "type"} => {
@@ -439,7 +447,7 @@ impl DocBackend {
 
                         if let Some(current) = current {
                             if package == current {
-                                html!(out, li {} ~ format!("<b>{}</b>", name));
+                                html!(out, li {} ~ format!("<b>{}</b>", Escape(name.as_ref())));
                                 continue;
                             }
                         }
@@ -448,7 +456,7 @@ impl DocBackend {
                         let url = format!("{}.{}", self.package_file(&package), EXT);
 
                         html!(out, li {} => {
-                            html!(out, a {href => url} ~ name);
+                            html!(out, a {href => url} ~ Escape(name.as_ref()));
                         });
                     }
                 });
@@ -471,7 +479,7 @@ impl DocBackend {
 
             html!(out, div {class => "section-body"} => {
                 for body in service_bodies {
-                    html!(out, h2 {} ~ body.name);
+                    html!(out, h2 {} ~ &body.name);
 
                     self.write_description(out, body.comment.iter().take(1))?;
 

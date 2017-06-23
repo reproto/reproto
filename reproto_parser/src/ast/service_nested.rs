@@ -3,12 +3,8 @@ use super::*;
 #[derive(Debug)]
 pub enum ServiceNested<'input> {
     Endpoint {
-        url: RpLoc<String>,
-        comment: Vec<&'input str>,
-        options: Vec<RpLoc<OptionDecl<'input>>>,
-        children: Vec<ServiceNested<'input>>,
-    },
-    Star {
+        method: Option<RpLoc<&'input str>>,
+        path: Option<RpLoc<PathSpec<'input>>>,
         comment: Vec<&'input str>,
         options: Vec<RpLoc<OptionDecl<'input>>>,
         children: Vec<ServiceNested<'input>>,

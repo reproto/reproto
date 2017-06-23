@@ -153,7 +153,6 @@ impl<'input> Lexer<'input> {
             "bytes" => Token::BytesKeyword,
             "true" => Token::TrueKeyword,
             "false" => Token::FalseKeyword,
-            "endpoint" => Token::EndpointKeyword,
             "returns" => Token::ReturnsKeyword,
             "accepts" => Token::AcceptsKeyword,
             identifier => {
