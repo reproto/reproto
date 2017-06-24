@@ -18,8 +18,10 @@ See [TODO](todo.md) for things that are work in progress.
 
 ReProto is geared towards being an expressive and productive protocol specification.
 
-The choice of using a DSL over something existing like JSON or YAML is an attempt to improve signal-to-noise ratio.
-Concise markup, and relatively intuitive syntax should hopefully mean that more effort can be spent on designing good data models.
+The choice of using a DSL over something existing like JSON or YAML is an attempt to improve
+signal-to-noise ratio.
+Concise markup, and relatively intuitive syntax should hopefully mean that more effort can be spent
+on designing good data models.
 
 The following is an example specification for a simple time-series database:
 
@@ -379,8 +381,6 @@ Assume you have a type called `Foo` in the `foo` package.
 
 ```reproto
 // file: protos/foo.reproto
-package foo;
-
 type Foo {
   field: string;
 }
@@ -390,8 +390,6 @@ You can now add extend existing types by specifying the same type somewhere else
 
 ```reproto
 // file: ext/foo.reproto
-package foo;
-
 type Foo {
   other?: string;
 
@@ -410,8 +408,6 @@ This should _primarily_ be done in [extensions](extensions), to adapt a given se
 your application.
 
 ```reproto
-package foo;
-
 type Foo {
   field: string;
 
