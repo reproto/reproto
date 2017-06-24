@@ -3,12 +3,18 @@
 See [TODO](todo.md) for things that are work in progress.
 
 * [Introduction](#introduction)
+* [File Structure](#file-structure)
+* [Distribution](#distribution)
+* [Specifications](#specifications)
+  * [Versioned Specifications](#versioned-specifications)
+  * [Ephemeral Specifications](#ephemeral-specifications)
+* [Imports](#imports)
 * [Built-In Types](#built-in-types)
-* [Version Requirements](#version-requirements)
 * [Types](#types)
 * [Interfaces](#interfaces)
 * [Tuples](#tuples)
 * [Enums](#enums)
+* [Services](#services)
 * [Match](#match)
 * [Reserved Fields](#reserved-fields)
 * [Extensions](#extensions)
@@ -79,6 +85,85 @@ final GraphsResponse response =
 
 [fasterxml]: https://github.com/FasterXML/jackson-databind
 
+## File Structure
+
+The compiler expects that multiple _paths_ are provided to it.
+
+For each path, it expected the following package structure (example with package `foo.bar.baz`):
+
+```
+foo/bar/baz.reproto
+foo/bar/baz-1.0.0.reproto
+foo/bar/baz-1.0.1-beta1.reproto
+```
+
+Note that the file may be suffixed with a version number.
+If this is present it is called a [versioned specification](#versioned-specifications).
+
+Otherwise, it is known as an [ephemeral specification](#ephemeral-specifications).
+
+## Specifications
+
+A specification is a UTF-8 encoded file containing declarations.
+
+Conceptually specifications belong to a package, and can have a version.
+
+Specifications without a version are called _ephemeral_ specifications.
+
+## Distribution
+
+**WIP: this feature is not finished**
+
+Specifications are intended to be distributed.
+
+This can be done by uploading a specification to a repository, after which it can be pulled in for
+use by other projects through ReProto's repository system.
+
+### Versioned specifications
+
+A versioned specification is one that has a version in its filename.
+
+The version string follows [Semantic Versioning][semver], but the following is a brief
+description of what is permitted.
+
+The version number must follow semantic versioning (`1.2.0`).
+Pre-releases are also supported by appending a hyphen and a series of dot-separated identifiers
+(e.g. `1.2.1-beta1`).
+
+[semver-2]: https://semver.org
+
+### Ephemeral specifications
+
+An ephemeral specification is one that does _not_ have a version in its filename.
+
+They can be used as a compiler target (e.g. `--package foo`), but can not be deployed to
+a repository.
+
+## Imports
+
+Declarations can be imported from other specifications using the `use` keyword at the top of your
+specification.
+
+This may also include a local alias for the imported specification.
+
+```
+use foo.bar as b;
+```
+
+A version requirement may also be present during the import.
+
+```
+use foo.bar@^1 as b1;
+use foo.bar@>=2.0.0 as b2;
+```
+
+A full list of supported specification is documented in the [`semver` package
+documentation][semver-package-requirements].
+
+Note that multiple versions of the same package may be imported.
+
+[semver-package-requirements]: https://docs.rs/semver/0.7.0/semver/#requirements
+
 ## Built-In Types
 
 There are a number of built-in types available:
@@ -93,27 +178,6 @@ There are a number of built-in types available:
 | `boolean`          | Boolean values, `true` or `false` |
 | `[<type>]`         | Arrays which store the given type  |
 | `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` due to limitations in JSON, but might be subject to change if other formats are supported in the future) |
-
-## Version Requirements
-
-Every specification can be versioned in reproto.
-
-To specify which version a particular specification belongs to, move the file to a location that
-corresponds to `<package>/<version>.reproto`. For example: `foo/bar/1.0.0.reproto`.
-
-To import a particular version of a specification, a similar syntax can be used for `use`
-statements.
-
-```reproto
-use foo.bar@^1.0;
-
-// ...
-```
-
-Multiple versions of the same package can co-exist.
-For a given version specification, the latest matching version will be pulled in.
-Packages for versioned specifications will be mangled so that they do not conflict, using a method
-specific to what is supported by the target language.
 
 ## Types
 
@@ -148,45 +212,35 @@ Each interface lists all the types that it contains in the declaration.
 The following is an example interface with two sub-types.
 
 ```reproto
-/**
- * Describes how a time series should be sampled.
- *
- * Sampling is when a time series which is very dense is samples to reduce its size.
- */
+/// Describes how a time series should be sampled.
+///
+/// Sampling is when a time series which is very dense is samples to reduce its size.
 interface Sampling {
-    // size of the sample.
+    /// size of the sample.
     sample_size: unsigned/32;
-    // unit of the sample.
+    /// unit of the sample.
     sample_unit: Unit;
 
-    /**
-     * Take the average value for each sample.
-     */
+    /// Take the average value for each sample.
     Average {
         name "average";
     }
 
-    /**
-     * Take the first value encountered for each sample.
-     */
+    /// Take the first value encountered for each sample.
     First {
         name "first";
     }
 
-    /**
-     * Take the last value encountered for each sample.
-     */
+    /// Take the last value encountered for each sample.
     Last {
         name "last";
     }
 
-    /**
-     * Take the value which is in the given percentile for each sample.
-     */
+    /// Take the value which is in the given percentile for each sample.
     Percentile {
         name "percentile";
 
-        // Which percentile to sample, as a value between 0-1.0
+        /// Which percentile to sample, as a value between 0-1.0
         percentile: float;
     }
 }
@@ -265,7 +319,7 @@ enum SI {
     KILO("kilo", "k", 1e3);
     MEGA("mega", "M", 1e6);
 
-    // select which field to serialize as.
+    /// select which field to serialize as.
     serialized_as unit_name;
 
     unit_name: string;
@@ -299,6 +353,58 @@ Indicates that the enum should be serialized as the given field |
 #### `serialized_as_name`
 
 Indicates that the enum should be serialized as its `name`.
+
+## Services
+
+The `service` declaration describes API endpoints that requests can be sent against.
+
+```reproto
+service PingService {
+  /// an error occured
+  returns Error {
+    mime "application/json";
+  }
+
+  /// redirect
+  returns {
+    status 302;
+  }
+
+  GET "ping" {
+    returns Pong {
+      status 200;
+      mime "application/json";
+    }
+  }
+
+  /// Endpoint showcasing that special characters can be included, and will be escaped
+  /// appropriately.
+  GET "foo/bar" {
+  }
+
+  /// delete the post with the given id `id`.
+  DELETE `post/{id:string}` {
+  }
+}
+
+/// Point response data structure.
+type Pong {
+}
+
+interface Error {
+  /// Error message.
+  message: string;
+
+  Validation {
+    name "validation";
+
+    /// Path to where the validation error happened.
+    path: string;
+  }
+}
+```
+
+Declares a new service
 
 ## Match
 
