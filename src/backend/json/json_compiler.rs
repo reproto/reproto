@@ -1,60 +1,9 @@
-use backend::*;
-use core::*;
-use errors::*;
 use serde_json;
 use std::fmt::Write as FmtWrite;
 use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
-
-pub struct ProcessorOptions {
-}
-
-impl ProcessorOptions {
-    pub fn new() -> ProcessorOptions {
-        ProcessorOptions {}
-    }
-}
-
-pub trait Listeners {
-    fn configure(&self, _processor: &mut ProcessorOptions) -> Result<()> {
-        Ok(())
-    }
-}
-
-/// A vector of listeners is a valid listener.
-impl Listeners for Vec<Box<Listeners>> {
-    fn configure(&self, processor: &mut ProcessorOptions) -> Result<()> {
-        for listeners in self {
-            listeners.configure(processor)?;
-        }
-
-        Ok(())
-    }
-}
-
-pub struct Processor {
-    env: Environment,
-    listeners: Box<Listeners>,
-}
-
-const EXT: &str = "json";
-
-impl Processor {
-    pub fn new(_options: ProcessorOptions,
-               env: Environment,
-               listeners: Box<Listeners>)
-               -> Processor {
-        Processor {
-            env: env,
-            listeners: listeners,
-        }
-    }
-
-    fn package_file(&self, package: &RpPackage) -> String {
-        package.parts.join("_")
-    }
-}
+use super::*;
 
 pub struct Collector {
     buffer: String,
@@ -78,11 +27,9 @@ impl FmtWrite for Collector {
     }
 }
 
-impl PackageUtils for Processor {}
-
 pub struct JsonCompiler<'a> {
-    out_path: PathBuf,
-    processor: &'a Processor,
+    pub out_path: PathBuf,
+    pub processor: &'a JsonBackend,
 }
 
 impl<'a> Compiler<'a> for JsonCompiler<'a> {
@@ -170,18 +117,5 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
                      -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
-    }
-}
-
-impl Backend for Processor {
-    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
-        Ok(Box::new(JsonCompiler {
-            out_path: options.out_path,
-            processor: self,
-        }))
-    }
-
-    fn verify(&self) -> Result<Vec<Error>> {
-        Ok(vec![])
     }
 }
