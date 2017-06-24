@@ -182,7 +182,7 @@ impl DocBackend {
                 html!(out, span {class => "type-map"} => {
                     html!(out, span {class => "type-map-left"} ~ "{");
                     self.write_type(out, pos, type_id, key)?;
-                    html!(out, span {class => "type-map-sep"} ~ "{");
+                    html!(out, span {class => "type-map-sep"} ~ ":");
                     self.write_type(out, pos, type_id, value)?;
                     html!(out, span {class => "type-map-right"} ~ "}");
                 });
