@@ -70,7 +70,7 @@ impl<'a> Collecting<'a> for DocCollector {
                 }
 
                 html!(out, div {class => "grid-container"} => {
-                    html!(out, div {class => "grid-packages"} => {
+                    html!(out, div {class => "grid-overview"} => {
                         if let Some(package) = self.packages.iter().nth(0) {
                             out.write_str(package.as_str())?;
                         }

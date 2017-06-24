@@ -302,9 +302,11 @@ impl DocBackend {
                 html!(out, span {class => "url"} ~ Escape(endpoint.url().as_ref()));
             });
 
-            html!(out, div {class => "endpoint-body"} => {
-                self.write_description(out, endpoint.comment.iter().take(1))?;
-            });
+            if !endpoint.comment.is_empty() {
+                html!(out, div {class => "endpoint-body"} => {
+                    self.write_description(out, endpoint.comment.iter().take(1))?;
+                });
+            }
         });
 
         Ok(())
