@@ -125,7 +125,7 @@ ServiceNested: ServiceNested<'input> = {
         }
     },
     <comment:"///"?>
-    "returns" <ty:Loc<TypeSpec>> "{"
+    "returns" <ty:Loc<TypeSpec>?> "{"
         <options:Loc<OptionDecl>*>
     "}" => {
         ServiceNested::Returns {

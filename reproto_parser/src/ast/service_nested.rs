@@ -11,7 +11,7 @@ pub enum ServiceNested<'input> {
     },
     Returns {
         comment: Vec<&'input str>,
-        ty: RpLoc<RpType>,
+        ty: Option<RpLoc<RpType>>,
         options: Vec<RpLoc<OptionDecl<'input>>>,
     },
     Accepts {

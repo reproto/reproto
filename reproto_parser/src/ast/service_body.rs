@@ -31,7 +31,7 @@ impl Node {
 }
 
 fn convert_return(comment: Vec<String>,
-                  ty: RpLoc<RpType>,
+                  ty: Option<RpLoc<RpType>>,
                   options: Vec<RpLoc<OptionDecl>>)
                   -> Result<RpServiceReturns> {
     let options = Options::new(options.into_model()?);

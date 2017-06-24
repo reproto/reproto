@@ -397,8 +397,6 @@ impl DocBackend {
                     html!(out, table {class => "spaced"} => {
                         for response in &endpoint.returns {
                             html!(out, tr {} => {
-                                let (ty, pos) = response.ty.ref_both();
-
                                 let status = response.status
                                     .as_ref()
                                     .map(|status| format!("{}", status))
@@ -415,7 +413,12 @@ impl DocBackend {
                                 });
 
                                 html!(out, td {class => "type"} => {
-                                    self.write_type(out, pos, type_id, ty)?;
+                                    if let Some(ref ty) = response.ty {
+                                        let (ty, pos) = ty.ref_both();
+                                        self.write_type(out, pos, type_id, ty)?;
+                                    } else {
+                                        html!(out, em {} ~ "no body");
+                                    }
                                 });
 
                                 html!(out, td {class => "description"} => {
