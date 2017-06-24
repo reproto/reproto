@@ -44,11 +44,7 @@ ul {
   margin-top: 0;
 }
 
-@media only screen and (min-width: 600px) {
-  body {
-    padding: 0 10px;
-  }
-
+@media only screen and (min-width: 800px) {
   .grid-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -66,7 +62,7 @@ ul {
   background-color: #FFFFFF;
 }
 
-.grid-packages {
+.grid-overview {
 }
 
 .grid-decls {
@@ -74,14 +70,15 @@ ul {
 
 .section-content {
   margin: 10px 0;
+  padding: 10px;
 }
 
-.section-content:first-child {
-  margin-bottom: 0;
+.grid-container .section-content {
+  padding: 0;
 }
 
-.section-content:last-child {
-  margin-bottom: 0;
+.grid-container .section-body {
+  padding: 0 10px;
 }
 
 /* title at the top of each section */
@@ -99,6 +96,23 @@ ul {
 
   color: #000000;
   font-weight: bold;
+}
+
+.section-body {
+  margin: 10px 0;
+  padding: 0 10px;
+}
+
+.section-body:last-child {
+  margin-bottom: 0;
+}
+
+.section-body > .description {
+  margin: 20px 0;
+}
+
+.section-body *:last-child {
+  margin-bottom: 0;
 }
 
 /* different type of sections */
@@ -126,36 +140,9 @@ ul {
   background-color: #FFFFFF;
 }
 
-.section-body {
-}
-
-.section-body > .description {
-  margin: 20px 10px;
-}
-
-.section-body *:last-child {
-  margin-bottom: 0;
-}
-
-.packages-list {
-  padding: 0 10px;
-}
-
 ul.packages-list li {
   list-style: none;
   margin: 10px 0;
-}
-
-.variants {
-  padding: 0px 10px;
-}
-
-.sub-types {
-  padding: 0px 10px;
-}
-
-.fields {
-  padding: 0px 10px;
 }
 
 .fields > .field {
@@ -282,12 +269,12 @@ table.spaced td.description p {
 .endpoint {
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
-  margin-bottom: 10px;
+  margin: 10px -10px;
 }
 
 .endpoint.short {
   border-width: 0 !important;
-  margin: 0 !important;
+  margin: 0 -10px !important;
 }
 
 .endpoint.short .endpoint-title {
@@ -306,17 +293,9 @@ table.spaced td.description p {
   font-weight: normal;
 }
 
-.section-service-overview .section-body {
-  padding: 10px;
-}
-
 .section-service-overview .description {
   margin: 10px 0;
   padding: 0;
-}
-
-.section-types-overview .section-body {
-  padding: 10px;
 }
 
 .section-types-overview h2 {
@@ -386,10 +365,6 @@ table.spaced td.description p {
 
 .endpoint-body {
   padding: 10px 20px;
-}
-
-.endpoint-body > .description {
-  margin: 20px 0;
 }
 
 .endpoint.get .endpoint-title {

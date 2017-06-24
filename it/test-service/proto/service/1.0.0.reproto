@@ -4,6 +4,26 @@ use common as c;
 ///
 /// This is a test to see if the documentation makes _any_ sense.
 service MyService {
+  /// resource not found
+  ///
+  /// Something else?
+  returns any {
+    status 404;
+    produces "text/plain";
+  }
+
+  /// returned on internal server errors
+  returns c::ErrorMessage {
+    status 500;
+    produces "application/json";
+  }
+
+  /// other, interesting stuff
+  returns c::ErrorMessage {
+    status 501;
+    produces "application/json";
+  }
+
   /// Gets all the good stuff!
   `v1/foo` {
     /// # Search for a list of foos.
@@ -44,26 +64,6 @@ service MyService {
         status 302;
         produces "application/json";
       }
-    }
-
-    /// resource not found
-    ///
-    /// Something else?
-    returns any {
-      status 404;
-      produces "text/plain";
-    }
-
-    /// returned on internal server errors
-    returns c::ErrorMessage {
-      status 500;
-      produces "application/json";
-    }
-
-    /// other, interesting stuff
-    returns c::ErrorMessage {
-      status 501;
-      produces "application/json";
     }
   }
 }
