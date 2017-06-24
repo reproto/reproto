@@ -308,18 +308,8 @@ impl Environment {
             }
         }
 
-        if let Some(package) = package {
-            if file.package_decl.package != *package {
-                return Err(format!("Expected package ({}) in file {}, but was ({})",
-                                   package,
-                                   path.display(),
-                                   file.package_decl.package)
-                    .into());
-            }
-        }
-
         let version = file.version.as_ref().map(AsRef::as_ref).map(Clone::clone);
-        let package = RpVersionedPackage::new(file.package_decl.package.clone(), version);
+        let package = RpVersionedPackage::new(package.map(Clone::clone), version);
         Ok(Some((package, file)))
     }
 
@@ -399,15 +389,17 @@ impl Environment {
                                     required: &RpRequiredPackage)
                                     -> Option<RpVersionedPackage> {
         for visited in &self.visited {
-            if visited.package == required.package {
-                if let Some(ref version_req) = required.version_req {
-                    if let Some(ref actual_version) = visited.version {
-                        if version_req.matches(actual_version) {
-                            return Some(visited.clone());
+            if let Some(ref visited_package) = visited.package {
+                if *visited_package == required.package {
+                    if let Some(ref version_req) = required.version_req {
+                        if let Some(ref actual_version) = visited.version {
+                            if version_req.matches(actual_version) {
+                                return Some(visited.clone());
+                            }
                         }
+                    } else {
+                        return Some(visited.clone());
                     }
-                } else {
-                    return Some(visited.clone());
                 }
             }
         }

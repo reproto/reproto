@@ -1,5 +1,3 @@
-package test;
-
 type Entry {
   data?: Data;
   point?: Point;

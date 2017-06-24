@@ -1,5 +1,3 @@
-package heroic.v1;
-
 version "1.0.0";
 
 use heroic.common@[=1] as c;

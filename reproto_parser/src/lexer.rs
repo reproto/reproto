@@ -142,7 +142,6 @@ impl<'input> Lexer<'input> {
             "enum" => Token::EnumKeyword,
             "tuple" => Token::TupleKeyword,
             "service" => Token::ServiceKeyword,
-            "package" => Token::PackageKeyword,
             "match" => Token::MatchKeyword,
             "use" => Token::UseKeyword,
             "as" => Token::AsKeyword,
@@ -800,21 +799,6 @@ pub mod tests {
 
         assert_eq!(a, b);
         assert_eq!(a, c);
-    }
-
-    #[test]
-    pub fn test_package() {
-        let tokens = tokenize("package foo.bar.baz;").unwrap();
-
-        let reference = [(0, PackageKeyword, 7),
-                         (8, Identifier("foo"), 11),
-                         (11, Dot, 12),
-                         (12, Identifier("bar"), 15),
-                         (15, Dot, 16),
-                         (16, Identifier("baz"), 19),
-                         (19, SemiColon, 20)];
-
-        assert_eq!(reference, &tokens[..]);
     }
 
     #[test]

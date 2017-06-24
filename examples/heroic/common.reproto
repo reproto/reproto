@@ -1,5 +1,3 @@
-package heroic.common;
-
 service Heroic {
   // An internal server error occured.
   (status: 500) => any;

@@ -3,7 +3,6 @@ use super::errors::*;
 
 #[derive(Debug)]
 pub struct File<'input> {
-    pub package_decl: RpLoc<PackageDecl>,
     pub version: Option<RpLoc<Version>>,
     pub options: Vec<RpLoc<OptionDecl<'input>>>,
     pub uses: Vec<RpLoc<UseDecl<'input>>>,
@@ -17,7 +16,6 @@ impl<'input> IntoModel for File<'input> {
         let options = Options::new(self.options.into_model()?);
 
         let file = RpFile {
-            package_decl: self.package_decl.into_model()?,
             version: self.version,
             options: options,
             uses: self.uses.into_model()?,

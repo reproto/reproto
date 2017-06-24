@@ -12,8 +12,12 @@ impl RpPackage {
 
     pub fn join_versioned(&self, other: &RpVersionedPackage) -> RpVersionedPackage {
         let mut parts = self.parts.clone();
-        parts.extend(other.package.parts.clone());
-        RpVersionedPackage::new(RpPackage::new(parts), other.version.clone())
+
+        if let Some(ref package) = other.package {
+            parts.extend(package.parts.clone());
+        }
+
+        RpVersionedPackage::new(Some(RpPackage::new(parts)), other.version.clone())
     }
 
     pub fn join(&self, other: &RpPackage) -> RpPackage {
@@ -23,7 +27,7 @@ impl RpPackage {
     }
 
     pub fn into_type_id(&self, version: Option<Version>, name: RpName) -> RpTypeId {
-        RpTypeId::new(RpVersionedPackage::new(self.clone(), version), name)
+        RpTypeId::new(RpVersionedPackage::new(Some(self.clone()), version), name)
     }
 }
 

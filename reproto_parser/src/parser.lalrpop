@@ -9,12 +9,10 @@ use super::utils::*;
 grammar<'input, 'path>(input_path: &'path Rc<PathBuf>);
 
 pub File: File<'input> = {
-    <package_decl:Loc<PackageDecl>>
     <version:VersionDecl?>
     <options:Loc<OptionDecl>*>
     <uses:Loc<Use>*>
     <decls:Loc<Decl>*> => File {
-        package_decl: package_decl,
         version: version,
         options: options,
         uses: uses,
@@ -35,10 +33,6 @@ Use: UseDecl<'input> = {
         version_req: version_req.map(|v| v.1),
         alias: alias.map(|t| t.1),
     },
-};
-
-PackageDecl: PackageDecl = "package" <package:Package> ";" => PackageDecl {
-    package: package,
 };
 
 Package: RpPackage = <parts:OneOrMore<".", Identifier>> => {

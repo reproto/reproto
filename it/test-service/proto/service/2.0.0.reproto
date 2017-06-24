@@ -1,5 +1,3 @@
-package _service;
-
 version 2.0.0;
 
 use common as c;
