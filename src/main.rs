@@ -185,27 +185,18 @@ fn handle_error(e: &Error) -> Result<bool> {
 }
 
 fn entry() -> Result<()> {
-    let mut opts = setup_opts();
-
-    // setup subcommands
-    for subcommand in commands::commands() {
-        opts = opts.subcommand(subcommand);
-    }
-
+    let opts = setup_opts();
+    let opts = commands::commands(opts);
     let matches = opts.get_matches();
-
     setup_logger(&matches)?;
 
     let (name, matches) = matches.subcommand();
+    let matches = matches.ok_or_else(|| "no subcommand")?;
 
-    if let Some(matches) = matches {
-        match name {
-            "compile" => commands::compile(matches),
-            "verify" => commands::verify(matches),
-            _ => Err(format!("No such command: {}", name).into()),
-        }
-    } else {
-        Err("No matching subcommand".into())
+    match name {
+        "compile" => commands::compile(matches),
+        "verify" => commands::verify(matches),
+        _ => Err(format!("No such command: {}", name).into()),
     }
 }
 
