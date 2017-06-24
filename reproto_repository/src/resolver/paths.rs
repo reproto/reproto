@@ -24,7 +24,10 @@ impl Paths {
         Paths { paths: paths }
     }
 
-    pub fn find_versioned(&self, path: &Path, version_req: &VersionReq) -> Result<Vec<PathBuf>> {
+    pub fn find_versioned(&self,
+                          path: &Path,
+                          version_req: Option<&VersionReq>)
+                          -> Result<Vec<(Option<Version>, PathBuf)>> {
         let mut files = Vec::new();
 
         for e in fs::read_dir(path)? {
@@ -35,9 +38,12 @@ impl Paths {
             }
 
             // match if file stem is a valid version.
-            if let Some(Ok(v)) = p.file_stem().and_then(|s| s.to_str()).map(Version::parse) {
-                if version_req.matches(&v) {
-                    files.push(p.clone());
+            if let Some(ref version) = p.file_stem().and_then(::std::ffi::OsStr::to_str) {
+                // only include files which are valid version specs
+                if let Ok(version) = Version::parse(version) {
+                    if version_req.map(|req| req.matches(&version)).unwrap_or(true) {
+                        files.push((Some(version), p.clone()));
+                    }
                 }
             }
         }
@@ -47,7 +53,7 @@ impl Paths {
 }
 
 impl Resolver for Paths {
-    fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<PathBuf>> {
+    fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
         let mut files = Vec::new();
 
         for path in &self.paths {
@@ -57,17 +63,18 @@ impl Resolver for Paths {
                 path = path.join(part);
             }
 
-            // if there is a version requirement, find versioned files in sub-directory.
-            if let Some(ref version_req) = package.version_req {
-                if path.is_dir() {
-                    files.extend(self.find_versioned(&path, version_req)?);
-                }
+            // look into package directory.
+            if path.is_dir() {
+                files.extend(self.find_versioned(&path, package.version_req.as_ref())?);
             }
 
             path.set_extension(EXT);
 
-            if path.is_file() {
-                files.push(path.clone());
+            // only match top-level files if there is no version requirement.
+            if let None = package.version_req {
+                if path.is_file() {
+                    files.push((None, path.clone()));
+                }
             }
         }
 

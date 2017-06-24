@@ -9,19 +9,13 @@ use super::utils::*;
 grammar<'input, 'path>(input_path: &'path Rc<PathBuf>);
 
 pub File: File<'input> = {
-    <version:VersionDecl?>
     <options:Loc<OptionDecl>*>
     <uses:Loc<Use>*>
     <decls:Loc<Decl>*> => File {
-        version: version,
         options: options,
         uses: uses,
         decls: decls,
     },
-};
-
-VersionDecl: RpLoc<Version> = {
-    "version" <version:Loc<Version>> ";" => version,
 };
 
 Use: UseDecl<'input> = {
@@ -346,7 +340,6 @@ extern {
         TypeIdentifier => Token::TypeIdentifier(<&'input str>),
         Identifier => Token::Identifier(<&'input str>),
         Number => Token::Number(<RpNumber>),
-        Version => Token::Version(<Version>),
         VersionReq => Token::VersionReq(<VersionReq>),
         "match" => Token::MatchKeyword,
         "use" => Token::UseKeyword,
@@ -390,7 +383,6 @@ extern {
         false => Token::FalseKeyword,
         "returns" => Token::ReturnsKeyword,
         "accepts" => Token::AcceptsKeyword,
-        "version" => Token::VersionKeyword,
         "*" => Token::Star,
         "@" => Token::At,
         "`" => Token::Tick,

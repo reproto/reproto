@@ -12,5 +12,5 @@ pub(crate) use super::errors::*;
 pub(crate) use super::metadata::Metadata;
 
 pub trait Resolver {
-    fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<PathBuf>>;
+    fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>>;
 }

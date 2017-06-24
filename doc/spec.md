@@ -24,8 +24,6 @@ Concise markup, and relatively intuitive syntax should hopefully mean that more 
 The following is an example specification for a simple time-series database:
 
 ```reproto
-package proto.v1;
-
 use common as c;
 
 tuple Sample {
@@ -96,29 +94,24 @@ There are a number of built-in types available:
 
 ## Version Requirements
 
-ReProto supports deep versioning of specifications.
+Every specification can be versioned in reproto.
 
-To specify which version a particular specification belongs to, the following can be added to the
-package:
-
-```reproto
-package foo.bar@1.0.0;
-```
+To specify which version a particular specification belongs to, move the file to a location that
+corresponds to `<package>/<version>.reproto`. For example: `foo/bar/1.0.0.reproto`.
 
 To import a particular version of a specification, a similar syntax can be used for `use`
 statements.
 
 ```reproto
-package other;
-
 use foo.bar@^1.0;
 
 // ...
 ```
 
-Multiple versions of the same specification _may_ co-exist.
+Multiple versions of the same package can co-exist.
+For a given version specification, the latest matching version will be pulled in.
 Packages for versioned specifications will be mangled so that they do not conflict, using a method
-specific to what is supported by a target language.
+specific to what is supported by the target language.
 
 ## Types
 

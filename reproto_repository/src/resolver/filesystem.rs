@@ -17,7 +17,7 @@ impl Filesystem {
 }
 
 impl Resolver for Filesystem {
-    fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<PathBuf>> {
+    fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
         let path = package.package.parts.iter().fold(self.path.clone(), |a, b| a.join(b));
         let metadata_path = path.join(METADATA);
 
@@ -49,7 +49,7 @@ impl Resolver for Filesystem {
                 continue;
             }
 
-            out.push(path);
+            out.push((Some(version), path));
         }
 
         Ok(out)

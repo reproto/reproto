@@ -287,29 +287,12 @@ impl Environment {
 
     pub fn load_file(&mut self,
                      path: &Path,
-                     package: Option<&RpPackage>,
-                     version_req: Option<&VersionReq>)
+                     version: Option<Version>,
+                     package: Option<RpPackage>)
                      -> Result<Option<(RpVersionedPackage, RpFile)>> {
         let content = parser::read_file(&path)?;
         let file = parser::parse_file(&path, content.as_str())?.into_model()?;
-
-        if let Some(version_req) = version_req {
-            match file.version {
-                Some(ref version) => {
-                    if !version_req.matches(version.as_ref()) {
-                        return Ok(None);
-                    }
-                }
-                None => {
-                    if *version_req != VersionReq::any() {
-                        return Ok(None);
-                    }
-                }
-            }
-        }
-
-        let version = file.version.as_ref().map(AsRef::as_ref).map(Clone::clone);
-        let package = RpVersionedPackage::new(package.map(Clone::clone), version);
+        let package = RpVersionedPackage::new(package, version);
         Ok(Some((package, file)))
     }
 
@@ -407,12 +390,8 @@ impl Environment {
         None
     }
 
-    pub fn import_file(&mut self,
-                       path: &Path,
-                       package: Option<&RpPackage>,
-                       version_req: Option<&VersionReq>)
-                       -> Result<Option<RpVersionedPackage>> {
-        if let Some((package, file)) = self.load_file(path, package, version_req)? {
+    pub fn import_file(&mut self, path: &Path) -> Result<Option<RpVersionedPackage>> {
+        if let Some((package, file)) = self.load_file(path, None, None)? {
             if !self.visited.contains(&package) {
                 self.process_file(&package, file)?;
                 self.visited.insert(package.clone());
@@ -428,6 +407,7 @@ impl Environment {
         debug!("import: {}", required);
 
         if let Some(existing) = self.find_visited_by_required(required) {
+            debug!("already loaded: {} ({})", existing, required);
             return Ok(Some(existing));
         }
 
@@ -435,12 +415,10 @@ impl Environment {
 
         let mut candidates: BTreeMap<RpVersionedPackage, Vec<_>> = BTreeMap::new();
 
-        for path in files {
+        for (version, path) in files {
             debug!("loading: {}", path.display());
 
-            let loaded = self.load_file(&path,
-                           Some(&required.package),
-                           required.version_req.as_ref())?;
+            let loaded = self.load_file(&path, version, Some(required.package.clone()))?;
 
             if let Some((package, file)) = loaded {
                 candidates.entry(package).or_insert_with(Vec::new).push((path, file));
@@ -448,11 +426,7 @@ impl Environment {
         }
 
         if let Some((versioned, files)) = candidates.into_iter().nth(0) {
-            if let Some(ref version_req) = required.version_req {
-                debug!("found: {} ({})", versioned, version_req);
-            } else {
-                debug!("found: {}", versioned);
-            }
+            debug!("found: {} ({})", versioned, required);
 
             for (path, file) in files.into_iter() {
                 debug!("in: {}", path.display());

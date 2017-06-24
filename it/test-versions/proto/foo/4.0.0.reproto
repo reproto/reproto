@@ -1,5 +1,3 @@
-version 4.0.0;
-
 use bar@^1;
 use bar@^2 as bar2;
 

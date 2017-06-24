@@ -1,4 +1,4 @@
-use reproto_core::{RpNumber, Version, VersionReq};
+use reproto_core::{RpNumber, VersionReq};
 
 #[derive(Debug)]
 pub enum Error {
@@ -20,7 +20,6 @@ pub enum Token<'input> {
     TypeIdentifier(&'input str),
     DocComment(Vec<&'input str>),
     Number(RpNumber),
-    Version(Version),
     VersionReq(VersionReq),
     LeftCurly,
     RightCurly,
@@ -65,7 +64,6 @@ pub enum Token<'input> {
     FalseKeyword,
     ReturnsKeyword,
     AcceptsKeyword,
-    VersionKeyword,
     Star,
     Tick,
     At,

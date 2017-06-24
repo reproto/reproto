@@ -178,7 +178,7 @@ fn do_compile(matches: &ArgMatches) -> Result<Box<backend::Backend>> {
     let mut failed: Vec<backend::errors::Error> = Vec::new();
 
     for file in files {
-        if let Err(e) = env.import_file(file, None, None) {
+        if let Err(e) = env.import_file(file) {
             failed.push(e);
         }
     }
