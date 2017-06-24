@@ -21,6 +21,7 @@ pub mod errors;
 pub mod logger;
 pub(crate) mod naming;
 pub(crate) mod options;
+pub(crate) mod compiler_options;
 
 // external parts
 

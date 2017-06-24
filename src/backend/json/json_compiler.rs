@@ -32,8 +32,8 @@ pub struct JsonCompiler<'a> {
     pub processor: &'a JsonBackend,
 }
 
-impl<'a> Compiler<'a> for JsonCompiler<'a> {
-    fn compile(&self) -> Result<()> {
+impl<'a> JsonCompiler<'a> {
+    pub fn compile(&self) -> Result<()> {
         let files = self.populate_files()?;
         self.write_files(files)?;
         Ok(())

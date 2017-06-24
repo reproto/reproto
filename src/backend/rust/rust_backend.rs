@@ -5,27 +5,38 @@ use super::*;
 
 pub struct RustBackend {
     pub env: Environment,
-    id_converter: Option<Box<naming::Naming>>,
     listeners: Box<Listeners>,
+    id_converter: Option<Box<naming::Naming>>,
     to_lower_snake: Box<naming::Naming>,
     hash_map: ImportedName,
     json_value: ImportedName,
 }
 
 impl RustBackend {
-    pub fn new(_: RustOptions,
-               env: Environment,
-               id_converter: Option<Box<naming::Naming>>,
-               listeners: Box<Listeners>)
+    pub fn new(env: Environment,
+               _: RustOptions,
+               listeners: Box<Listeners>,
+               id_converter: Option<Box<naming::Naming>>)
                -> RustBackend {
         RustBackend {
             env: env,
-            id_converter: id_converter,
             listeners: listeners,
+            id_converter: id_converter,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             hash_map: Name::imported("std::collections", "HashMap"),
             json_value: Name::imported_alias("serde_json", "Value", "json"),
         }
+    }
+
+    pub fn compiler(&self, options: CompilerOptions) -> Result<RustCompiler> {
+        Ok(RustCompiler {
+            out_path: options.out_path,
+            backend: self,
+        })
+    }
+
+    pub fn verify(&self) -> Result<()> {
+        Ok(())
     }
 
     fn ident(&self, name: &str) -> String {
@@ -247,16 +258,3 @@ impl<'a> Collecting<'a> for FileSpec {
 }
 
 impl PackageUtils for RustBackend {}
-
-impl Backend for RustBackend {
-    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
-        Ok(Box::new(RustCompiler {
-            out_path: options.out_path,
-            backend: self,
-        }))
-    }
-
-    fn verify(&self) -> Result<Vec<Error>> {
-        Ok(vec![])
-    }
-}

@@ -6,6 +6,7 @@ mod python_options;
 
 use backend::*;
 pub(crate) use backend::*;
+use clap::{App, ArgMatches};
 pub(crate) use codeviz::python::*;
 pub(crate) use core::*;
 pub(crate) use errors::*;
@@ -27,13 +28,11 @@ fn setup_module(module: &str) -> Result<Box<Listeners>> {
     };
 }
 
-pub fn resolve(options: Options, env: Environment) -> Result<PythonBackend> {
-    let id_converter = options.id_converter;
+pub fn setup_listeners(modules: Vec<String>) -> Result<(PythonOptions, Box<Listeners>)> {
+    let mut listeners: Vec<Box<Listeners>> = Vec::new();
 
-    let mut listeners = Vec::new();
-
-    for module in &options.modules {
-        listeners.push(setup_module(module)?);
+    for module in modules {
+        listeners.push(setup_module(module.as_str())?);
     }
 
     let mut options = PythonOptions::new();
@@ -42,5 +41,32 @@ pub fn resolve(options: Options, env: Environment) -> Result<PythonBackend> {
         listener.configure(&mut options)?;
     }
 
-    return Ok(PythonBackend::new(options, env, id_converter, Box::new(listeners)));
+    Ok((options, Box::new(listeners)))
+}
+
+pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+    out.about("Compile for Python")
+}
+
+pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+    out.about("Verify for Python")
+}
+
+pub fn compile(env: Environment,
+               opts: Options,
+               compiler_options: CompilerOptions,
+               _matches: &ArgMatches)
+               -> Result<()> {
+    let id_converter = opts.id_converter;
+    let (options, listeners) = setup_listeners(opts.modules)?;
+    let backend = PythonBackend::new(env, options, listeners, id_converter);
+    let compiler = backend.compiler(compiler_options)?;
+    compiler.compile()
+}
+
+pub fn verify(env: Environment, opts: Options, _matches: &ArgMatches) -> Result<()> {
+    let id_converter = opts.id_converter;
+    let (options, listeners) = setup_listeners(opts.modules)?;
+    let backend = PythonBackend::new(env, options, listeners, id_converter);
+    backend.verify()
 }

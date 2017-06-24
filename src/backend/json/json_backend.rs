@@ -6,11 +6,22 @@ pub struct JsonBackend {
 }
 
 impl JsonBackend {
-    pub fn new(_options: JsonOptions, env: Environment, listeners: Box<Listeners>) -> JsonBackend {
+    pub fn new(env: Environment, _options: JsonOptions, listeners: Box<Listeners>) -> JsonBackend {
         JsonBackend {
             env: env,
             listeners: listeners,
         }
+    }
+
+    pub fn compiler(&self, options: CompilerOptions) -> Result<JsonCompiler> {
+        Ok(JsonCompiler {
+            out_path: options.out_path,
+            processor: self,
+        })
+    }
+
+    pub fn verify(&self) -> Result<()> {
+        Ok(())
     }
 
     pub fn package_file(&self, package: &RpPackage) -> String {
@@ -19,16 +30,3 @@ impl JsonBackend {
 }
 
 impl PackageUtils for JsonBackend {}
-
-impl Backend for JsonBackend {
-    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
-        Ok(Box::new(JsonCompiler {
-            out_path: options.out_path,
-            processor: self,
-        }))
-    }
-
-    fn verify(&self) -> Result<Vec<Error>> {
-        Ok(vec![])
-    }
-}

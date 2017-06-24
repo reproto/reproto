@@ -13,6 +13,16 @@ pub struct DocCompiler<'a> {
 }
 
 impl<'a> DocCompiler<'a> {
+    pub fn compile(&self) -> Result<()> {
+        let mut files = self.populate_files()?;
+        self.write_stylesheets()?;
+        let packages: Vec<_> = files.keys().map(|p| (*p).clone()).collect();
+        self.write_index(&packages)?;
+        self.write_overviews(&packages, &mut files)?;
+        self.write_files(files)?;
+        Ok(())
+    }
+
     fn write_stylesheets(&self) -> Result<()> {
         if !self.out_path.is_dir() {
             debug!("+dir: {}", self.out_path.display());
@@ -94,18 +104,6 @@ impl<'a> DocCompiler<'a> {
             }
         }
 
-        Ok(())
-    }
-}
-
-impl<'a> Compiler<'a> for DocCompiler<'a> {
-    fn compile(&self) -> Result<()> {
-        let mut files = self.populate_files()?;
-        self.write_stylesheets()?;
-        let packages: Vec<_> = files.keys().map(|p| (*p).clone()).collect();
-        self.write_index(&packages)?;
-        self.write_overviews(&packages, &mut files)?;
-        self.write_files(files)?;
         Ok(())
     }
 }

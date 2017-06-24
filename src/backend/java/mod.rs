@@ -11,6 +11,7 @@ mod mutable;
 mod nullable;
 
 use backend::*;
+use clap::{App, ArgMatches};
 pub(crate) use codeviz::java::*;
 pub(crate) use errors::*;
 use options::Options;
@@ -22,8 +23,8 @@ pub(crate) use self::models::*;
 
 pub const JAVA_CONTEXT: &str = "java";
 
-fn setup_module(module: &str) -> Result<Box<listeners::Listeners>> {
-    let module: Box<listeners::Listeners> = match module {
+fn setup_module(module: &str) -> Result<Box<Listeners>> {
+    let module: Box<Listeners> = match module {
         "builder" => Box::new(builder::Module::new()),
         "constructor_properties" => Box::new(constructor_properties::Module::new()),
         "fasterxml" => Box::new(fasterxml::Module::new()),
@@ -36,8 +37,8 @@ fn setup_module(module: &str) -> Result<Box<listeners::Listeners>> {
     Ok(module)
 }
 
-pub fn resolve(options: Options, env: Environment) -> Result<JavaBackend> {
-    let mut listeners: Vec<Box<listeners::Listeners>> = Vec::new();
+pub fn setup_listeners(options: Options) -> Result<(JavaOptions, Box<Listeners>)> {
+    let mut listeners: Vec<Box<Listeners>> = Vec::new();
 
     for module in &options.modules {
         listeners.push(setup_module(module)?);
@@ -49,5 +50,30 @@ pub fn resolve(options: Options, env: Environment) -> Result<JavaBackend> {
         listener.configure(&mut options)?;
     }
 
-    Ok(JavaBackend::new(options, env, Box::new(listeners)))
+    Ok((options, Box::new(listeners)))
+}
+
+pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+    out.about("Compile for Java")
+}
+
+pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+    out.about("Verify for Java")
+}
+
+pub fn compile(env: Environment,
+               options: Options,
+               compiler_options: CompilerOptions,
+               _matches: &ArgMatches)
+               -> Result<()> {
+    let (options, listeners) = setup_listeners(options)?;
+    let backend = JavaBackend::new(env, options, listeners);
+    let compiler = backend.compiler(compiler_options)?;
+    compiler.compile()
+}
+
+pub fn verify(env: Environment, options: Options, _matches: &ArgMatches) -> Result<()> {
+    let (options, listeners) = setup_listeners(options)?;
+    let backend = JavaBackend::new(env, options, listeners);
+    backend.verify()
 }

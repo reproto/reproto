@@ -3,8 +3,8 @@ use naming::{self, FromNaming};
 use super::*;
 
 pub struct JavaBackend {
-    options: JavaOptions,
     pub env: Environment,
+    options: JavaOptions,
     listeners: Box<Listeners>,
     snake_to_upper_camel: Box<naming::Naming>,
     snake_to_lower_camel: Box<naming::Naming>,
@@ -23,10 +23,10 @@ pub struct JavaBackend {
 }
 
 impl JavaBackend {
-    pub fn new(options: JavaOptions, env: Environment, listeners: Box<Listeners>) -> JavaBackend {
+    pub fn new(env: Environment, options: JavaOptions, listeners: Box<Listeners>) -> JavaBackend {
         JavaBackend {
-            options: options,
             env: env,
+            options: options,
             snake_to_upper_camel: naming::SnakeCase::new().to_upper_camel(),
             snake_to_lower_camel: naming::SnakeCase::new().to_lower_camel(),
             null_string: Variable::String("null".to_owned()),
@@ -43,6 +43,17 @@ impl JavaBackend {
             illegal_argument: Type::class("java.lang", "IllegalArgumentException"),
             immutable_list: Type::class("com.google.common.collect", "ImmutableList"),
         }
+    }
+
+    pub fn compiler(&self, options: CompilerOptions) -> Result<JavaCompiler> {
+        Ok(JavaCompiler {
+            out_path: options.out_path,
+            backend: self,
+        })
+    }
+
+    pub fn verify(&self) -> Result<()> {
+        Ok(())
     }
 
     fn field_mods(&self) -> Modifiers {
@@ -785,19 +796,6 @@ impl JavaBackend {
             RpDecl::Enum(ref ty) => self.process_enum(type_id, ty),
             RpDecl::Service(ref ty) => self.process_service(type_id, ty),
         }
-    }
-}
-
-impl Backend for JavaBackend {
-    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
-        Ok(Box::new(JavaCompiler {
-            out_path: options.out_path,
-            backend: self,
-        }))
-    }
-
-    fn verify(&self) -> Result<Vec<Error>> {
-        Ok(vec![])
     }
 }
 

@@ -67,19 +67,19 @@ O := @
 reproto := $(TOOL)
 endif
 
-java_suite := -b java $(JAVA_EXTRA)
-java_project := -b java -m fasterxml -o workdir-java/target/generated-sources/reproto
+java_suite := java $(JAVA_EXTRA)
+java_project := java -m fasterxml -o workdir-java/target/generated-sources/reproto
 
-js_suite := -b js $(JS_EXTRA)
-js_project := -b js -o workdir-js/generated
+js_suite := js $(JS_EXTRA)
+js_project := js -o workdir-js/generated
 
-python_suite := -b python $(PYTHON_EXTRA)
-python_project := -b python -o workdir-python/generated
+python_suite := python $(PYTHON_EXTRA)
+python_project := python -o workdir-python/generated
 
-rust_suite := -b rust $(RUST_EXTRA)
-rust_project := -b rust -o workdir-rust/src --package-prefix generated
+rust_suite := rust $(RUST_EXTRA)
+rust_project := rust -o workdir-rust/src --package-prefix generated
 
-doc_suite := -b doc $(DOC_EXTRA)
+doc_suite := doc $(DOC_EXTRA)
 
 .PHONY: all clean suites projects update update-projects
 

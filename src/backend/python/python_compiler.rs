@@ -9,8 +9,8 @@ pub struct PythonCompiler<'a> {
     pub backend: &'a PythonBackend,
 }
 
-impl<'a> Compiler<'a> for PythonCompiler<'a> {
-    fn compile(&self) -> Result<()> {
+impl<'a> PythonCompiler<'a> {
+    pub fn compile(&self) -> Result<()> {
         let files = self.populate_files()?;
         self.write_files(files)
     }

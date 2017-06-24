@@ -7,23 +7,10 @@ pub struct JsCompiler<'a> {
     pub backend: &'a JsBackend,
 }
 
-impl<'a> Compiler<'a> for JsCompiler<'a> {
-    fn compile(&self) -> Result<()> {
+impl<'a> JsCompiler<'a> {
+    pub fn compile(&self) -> Result<()> {
         let files = self.populate_files()?;
         self.write_files(files)
-    }
-}
-
-impl Backend for JsBackend {
-    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
-        Ok(Box::new(JsCompiler {
-            out_path: options.out_path,
-            backend: self,
-        }))
-    }
-
-    fn verify(&self) -> Result<Vec<Error>> {
-        Ok(vec![])
     }
 }
 

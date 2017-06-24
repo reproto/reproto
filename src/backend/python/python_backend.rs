@@ -5,8 +5,8 @@ use super::*;
 
 pub struct PythonBackend {
     pub env: Environment,
-    id_converter: Option<Box<naming::Naming>>,
     listeners: Box<Listeners>,
+    id_converter: Option<Box<naming::Naming>>,
     to_lower_snake: Box<naming::Naming>,
     staticmethod: BuiltInName,
     classmethod: BuiltInName,
@@ -21,15 +21,15 @@ pub struct PythonBackend {
 }
 
 impl PythonBackend {
-    pub fn new(_: PythonOptions,
-               env: Environment,
-               id_converter: Option<Box<naming::Naming>>,
-               listeners: Box<Listeners>)
+    pub fn new(env: Environment,
+               _: PythonOptions,
+               listeners: Box<Listeners>,
+               id_converter: Option<Box<naming::Naming>>)
                -> PythonBackend {
         PythonBackend {
             env: env,
-            id_converter: id_converter,
             listeners: listeners,
+            id_converter: id_converter,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             staticmethod: Name::built_in("staticmethod"),
             classmethod: Name::built_in("classmethod"),
@@ -42,6 +42,17 @@ impl PythonBackend {
             enum_enum: Name::imported("enum", "Enum"),
             type_var: Variable::String(TYPE.to_owned()),
         }
+    }
+
+    pub fn compiler(&self, options: CompilerOptions) -> Result<PythonCompiler> {
+        Ok(PythonCompiler {
+            out_path: options.out_path,
+            backend: self,
+        })
+    }
+
+    pub fn verify(&self) -> Result<()> {
+        Ok(())
     }
 
     fn find_field<'a>(&self,
@@ -817,18 +828,5 @@ impl MatchDecode for PythonBackend {
         value_body.push_nested(stmt!["return ", &result]);
 
         Ok(value_body)
-    }
-}
-
-impl Backend for PythonBackend {
-    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
-        Ok(Box::new(PythonCompiler {
-            out_path: options.out_path,
-            backend: self,
-        }))
-    }
-
-    fn verify(&self) -> Result<Vec<Error>> {
-        Ok(vec![])
     }
 }

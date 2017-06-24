@@ -1,4 +1,4 @@
-use backend::{Backend, CompilerOptions, Environment, resolve};
+use backend::{self, CompilerOptions, Environment};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::{RpPackage, RpRequiredPackage, VersionReq};
 use errors::*;
@@ -38,22 +38,40 @@ fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
 pub struct CompileOptions {
 }
 
-pub fn compile_options<'a, 'b>(name: &str) -> App<'a, 'b> {
-    shared_options(name).arg(Arg::with_name("out")
+pub fn compile_options<'a, 'b>() -> App<'a, 'b> {
+    let out = SubCommand::with_name("compile").about("Compile .reproto specifications");
+    let out = out.subcommand(backend::doc::compile_options(compile_base("doc")));
+    let out = out.subcommand(backend::java::compile_options(compile_base("java")));
+    let out = out.subcommand(backend::js::compile_options(compile_base("js")));
+    let out = out.subcommand(backend::python::compile_options(compile_base("python")));
+    let out = out.subcommand(backend::rust::compile_options(compile_base("rust")));
+    out
+}
+
+pub fn verify_options<'a, 'b>() -> App<'a, 'b> {
+    let out = SubCommand::with_name("verify").about("Verify .reproto specifications");
+    let out = out.subcommand(backend::doc::verify_options(shared_base("doc")));
+    let out = out.subcommand(backend::java::verify_options(shared_base("java")));
+    let out = out.subcommand(backend::js::verify_options(shared_base("js")));
+    let out = out.subcommand(backend::python::verify_options(shared_base("python")));
+    let out = out.subcommand(backend::rust::verify_options(shared_base("rust")));
+    out
+}
+
+pub fn compile_base<'a, 'b>(name: &str) -> App<'a, 'b> {
+    let out = shared_base(name).about("Compile .reproto specifications");
+
+    let out = out.arg(Arg::with_name("out")
         .long("out")
         .short("o")
         .takes_value(true)
-        .help("Output directory."))
+        .help("Output directory."));
+
+    out
 }
 
-pub fn shared_options<'a, 'b>(name: &str) -> App<'a, 'b> {
+pub fn shared_base<'a, 'b>(name: &str) -> App<'a, 'b> {
     SubCommand::with_name(name)
-        .arg(Arg::with_name("backend")
-            .long("backend")
-            .short("b")
-            .help("Backend to used to emit code")
-            .takes_value(true)
-            .required(true))
         .arg(Arg::with_name("module")
             .long("module")
             .short("m")
@@ -71,11 +89,11 @@ pub fn shared_options<'a, 'b>(name: &str) -> App<'a, 'b> {
         .arg(Arg::with_name("id-converter")
             .long("id-converter")
             .takes_value(true)
-            .help("Convert arguments"))
+            .help("Conversion method to use when naming fields by default"))
         .arg(Arg::with_name("package-prefix")
             .long("package-prefix")
             .takes_value(true)
-            .help("RpPackage prefix to use when generating classes"))
+            .help("Package prefix to use when generating classes"))
         .arg(Arg::with_name("file")
             .long("file")
             .help("File to compile")
@@ -178,77 +196,82 @@ fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<&'a Path> {
     matches.values_of("file").into_iter().flat_map(|it| it).map(Path::new).collect()
 }
 
-fn setup_backend(matches: &ArgMatches, env: Environment) -> Result<Box<Backend>> {
-    let backend = matches.value_of("backend").ok_or("--backend <backend> is required")?;
-    let options = setup_options(matches)?;
-    resolve(backend, options, env)
-}
-
-fn do_compile(matches: &ArgMatches) -> Result<Box<Backend>> {
+fn setup_env(matches: &ArgMatches) -> Result<Environment> {
     let files = setup_files(matches);
     let packages = setup_packages(matches)?;
     let mut env = setup_environment(matches);
 
-    let mut failed = Vec::new();
+    let mut errors = Vec::new();
 
     for file in files {
         if let Err(e) = env.import_file(file) {
-            failed.push(e);
+            errors.push(e);
         }
     }
 
     for package in packages {
         if let Err(e) = env.import(&package) {
-            failed.push(e);
+            errors.push(e);
         }
     }
 
     if let Err(e) = env.verify() {
-        failed.push(e);
+        errors.push(e);
     }
 
-    let backend = setup_backend(matches, env);
-
-    match backend {
-        Err(e) => {
-            failed.push(e);
-            Err(ErrorKind::Errors(failed).into())
-        }
-        Ok(backend) => {
-            if failed.is_empty() {
-                Ok(backend)
-            } else {
-                Err(ErrorKind::Errors(failed).into())
-            }
-        }
+    if !errors.is_empty() {
+        return Err(ErrorKind::Errors(errors).into());
     }
+
+    Ok(env)
 }
 
-pub fn compile(matches: &ArgMatches) -> Result<()> {
-    let backend = do_compile(matches)?;
-
+fn setup_compiler_options(matches: &ArgMatches) -> Result<CompilerOptions> {
     let out_path = matches.value_of("out").ok_or("--out <dir> is required")?;
     let out_path = Path::new(&out_path);
 
-    let compiler = backend.compiler(CompilerOptions { out_path: out_path.to_owned() })?;
+    Ok(CompilerOptions { out_path: out_path.to_owned() })
+}
 
-    compiler.compile()
+pub fn compile(matches: &ArgMatches) -> Result<()> {
+    let (name, matches) = matches.subcommand();
+    let matches = matches.ok_or_else(|| "no subcommand")?;
+
+    let env = setup_env(matches)?;
+    let options = setup_options(matches)?;
+    let compiler_options = setup_compiler_options(matches)?;
+
+    match name {
+        "doc" => backend::doc::compile(env, options, compiler_options, matches),
+        "java" => backend::java::compile(env, options, compiler_options, matches),
+        "js" => backend::js::compile(env, options, compiler_options, matches),
+        "json" => backend::json::compile(env, options, compiler_options, matches),
+        "python" => backend::python::compile(env, options, compiler_options, matches),
+        "rust" => backend::rust::compile(env, options, compiler_options, matches),
+        _ => unreachable!("bad subcommand"),
+    }
 }
 
 pub fn verify(matches: &ArgMatches) -> Result<()> {
-    let backend = do_compile(matches)?;
+    let (name, matches) = matches.subcommand();
+    let matches = matches.ok_or_else(|| "no subcommand")?;
 
-    let errors = backend.verify()?;
+    let env = setup_env(matches)?;
+    let options = setup_options(matches)?;
 
-    if errors.is_empty() {
-        return Ok(());
+    match name {
+        "doc" => backend::doc::verify(env, options, matches),
+        "java" => backend::java::verify(env, options, matches),
+        "js" => backend::js::verify(env, options, matches),
+        "json" => backend::json::verify(env, options, matches),
+        "python" => backend::python::verify(env, options, matches),
+        "rust" => backend::rust::verify(env, options, matches),
+        _ => unreachable!("bad subcommand"),
     }
-
-    Err(ErrorKind::Errors(errors).into())
 }
 
 pub fn commands<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    let out = out.subcommand(compile_options("compile").about("Compile .reproto declarations"));
-    let out = out.subcommand(shared_options("verify").about("Verify .reproto declarations"));
+    let out = out.subcommand(compile_options());
+    let out = out.subcommand(verify_options());
     out
 }

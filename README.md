@@ -28,14 +28,14 @@ This will install the command into `~/.cargo/bin`, make sure it is in your `$PAT
 Build documentation:
 
 ```bash
-$> reproto compile -b doc -o target/doc --path examples --package heroic.service
+$> reproto compile doc -o target/doc --path examples --package heroic.service
 $> open target/doc/index.html
 ```
 
 Using the [FasterXML][fasterxml] backend for Java:
 
 ```bash
-$> reproto compile -b java -m fasterxml -o target/java \
+$> reproto compile java -m fasterxml -o target/java \
   --path examples \
   --package heroic.service
 ```
@@ -43,7 +43,7 @@ $> reproto compile -b java -m fasterxml -o target/java \
 Using the Python backend:
 
 ```bash
-$> reproto compile -b python -o target/python \
+$> reproto compile python -o target/python \
   --path examples \
   --package heroic.service
 ```

@@ -4,6 +4,7 @@ mod json_options;
 mod listeners;
 
 use backend::*;
+use clap::{App, ArgMatches};
 use options::Options;
 pub(crate) use self::json_backend::*;
 pub(crate) use self::json_compiler::*;
@@ -18,11 +19,11 @@ fn setup_module(module: &str) -> Result<Box<Listeners>> {
     };
 }
 
-pub fn resolve(options: Options, env: Environment) -> Result<JsonBackend> {
-    let mut listeners = Vec::new();
+pub fn setup_listeners(modules: Vec<String>) -> Result<(JsonOptions, Box<Listeners>)> {
+    let mut listeners: Vec<Box<Listeners>> = Vec::new();
 
-    for module in &options.modules {
-        listeners.push(setup_module(module)?);
+    for module in modules {
+        listeners.push(setup_module(module.as_str())?);
     }
 
     let mut options = JsonOptions::new();
@@ -31,5 +32,30 @@ pub fn resolve(options: Options, env: Environment) -> Result<JsonBackend> {
         listener.configure(&mut options)?;
     }
 
-    return Ok(JsonBackend::new(options, env, Box::new(listeners)));
+    Ok((options, Box::new(listeners)))
+}
+
+pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+    out.about("Compile to JSON")
+}
+
+pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+    out.about("Verify for JSON")
+}
+
+pub fn compile(env: Environment,
+               opts: Options,
+               compiler_options: CompilerOptions,
+               _matches: &ArgMatches)
+               -> Result<()> {
+    let (options, listeners) = setup_listeners(opts.modules)?;
+    let backend = JsonBackend::new(env, options, listeners);
+    let compiler = backend.compiler(compiler_options)?;
+    compiler.compile()
+}
+
+pub fn verify(env: Environment, opts: Options, _matches: &ArgMatches) -> Result<()> {
+    let (options, listeners) = setup_listeners(opts.modules)?;
+    let backend = JsonBackend::new(env, options, listeners);
+    backend.verify()
 }

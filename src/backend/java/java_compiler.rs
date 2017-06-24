@@ -9,29 +9,7 @@ pub struct JavaCompiler<'a> {
 }
 
 impl<'a> JavaCompiler<'a> {
-    fn process_files<F>(&self, mut consumer: F) -> Result<()>
-        where F: FnMut(PathBuf, &RpTypeId, &RpDecl) -> Result<()>
-    {
-        let root_dir = &self.out_path;
-
-        // Process all types discovered so far.
-        for (ref type_id, ref decl) in &self.backend.env.decls {
-            let out_dir = self.backend
-                .java_package(&type_id.package)
-                .parts
-                .iter()
-                .fold(root_dir.clone(), |current, next| current.join(next));
-
-            let full_path = out_dir.join(format!("{}.java", decl.name()));
-            consumer(full_path, type_id, decl)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl<'a> Compiler<'a> for JavaCompiler<'a> {
-    fn compile(&self) -> Result<()> {
+    pub fn compile(&self) -> Result<()> {
         self.process_files(|full_path, type_id, decl| {
             debug!("+class: {}", full_path.display());
 
@@ -53,5 +31,25 @@ impl<'a> Compiler<'a> for JavaCompiler<'a> {
 
             Ok(())
         })
+    }
+
+    fn process_files<F>(&self, mut consumer: F) -> Result<()>
+        where F: FnMut(PathBuf, &RpTypeId, &RpDecl) -> Result<()>
+    {
+        let root_dir = &self.out_path;
+
+        // Process all types discovered so far.
+        for (ref type_id, ref decl) in &self.backend.env.decls {
+            let out_dir = self.backend
+                .java_package(&type_id.package)
+                .parts
+                .iter()
+                .fold(root_dir.clone(), |current, next| current.join(next));
+
+            let full_path = out_dir.join(format!("{}.java", decl.name()));
+            consumer(full_path, type_id, decl)?;
+        }
+
+        Ok(())
     }
 }

@@ -4,11 +4,11 @@ use std::rc::Rc;
 use super::*;
 
 pub struct DocBackend {
+    pub env: Environment,
     #[allow(dead_code)]
     options: DocOptions,
-    pub env: Environment,
-    pub theme: String,
     listeners: Box<DocListeners>,
+    pub theme: String,
     pub themes: HashMap<&'static str, &'static [u8]>,
 }
 
@@ -25,18 +25,29 @@ fn build_themes() -> HashMap<&'static str, &'static [u8]> {
 }
 
 impl DocBackend {
-    pub fn new(options: DocOptions,
-               env: Environment,
-               theme: String,
-               listeners: Box<DocListeners>)
+    pub fn new(env: Environment,
+               options: DocOptions,
+               listeners: Box<DocListeners>,
+               theme: String)
                -> DocBackend {
         DocBackend {
-            options: options,
             env: env,
-            theme: theme,
+            options: options,
             listeners: listeners,
+            theme: theme,
             themes: build_themes(),
         }
+    }
+
+    pub fn compiler(&self, options: CompilerOptions) -> Result<DocCompiler> {
+        Ok(DocCompiler {
+            out_path: options.out_path,
+            processor: self,
+        })
+    }
+
+    pub fn verify(&self) -> Result<()> {
+        Ok(())
     }
 
     fn type_url(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<String> {
@@ -647,18 +658,5 @@ impl DocBackend {
 impl PackageUtils for DocBackend {
     fn version_package(input: &Version) -> String {
         format!("{}", input).replace(Self::package_version_unsafe, "_")
-    }
-}
-
-impl Backend for DocBackend {
-    fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {
-        Ok(Box::new(DocCompiler {
-            out_path: options.out_path,
-            processor: self,
-        }))
-    }
-
-    fn verify(&self) -> Result<Vec<Error>> {
-        Ok(vec![])
     }
 }

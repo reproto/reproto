@@ -11,6 +11,12 @@ pub struct RustCompiler<'a> {
 }
 
 impl<'a> RustCompiler<'a> {
+    pub fn compile(&self) -> Result<()> {
+        let files = self.populate_files()?;
+        self.write_mod_files(&files)?;
+        self.write_files(files)
+    }
+
     fn write_mod_files(&self, files: &BTreeMap<&RpVersionedPackage, FileSpec>) -> Result<()> {
         let mut packages: BTreeMap<PathBuf, BTreeSet<String>> = BTreeMap::new();
         let mut root_names = BTreeSet::new();
@@ -61,14 +67,6 @@ impl<'a> RustCompiler<'a> {
         }
 
         Ok(())
-    }
-}
-
-impl<'a> Compiler<'a> for RustCompiler<'a> {
-    fn compile(&self) -> Result<()> {
-        let files = self.populate_files()?;
-        self.write_mod_files(&files)?;
-        self.write_files(files)
     }
 }
 

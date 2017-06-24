@@ -19,8 +19,8 @@ impl<'a> Collecting<'a> for FileSpec {
 
 pub struct JsBackend {
     pub env: Environment,
-    id_converter: Option<Box<naming::Naming>>,
     listeners: Box<Listeners>,
+    id_converter: Option<Box<naming::Naming>>,
     to_lower_snake: Box<naming::Naming>,
     type_var: Variable,
     values: Statement,
@@ -29,21 +29,32 @@ pub struct JsBackend {
 }
 
 impl JsBackend {
-    pub fn new(_: JsOptions,
-               env: Environment,
-               id_converter: Option<Box<naming::Naming>>,
-               listeners: Box<Listeners>)
+    pub fn new(env: Environment,
+               _: JsOptions,
+               listeners: Box<Listeners>,
+               id_converter: Option<Box<naming::Naming>>)
                -> JsBackend {
         JsBackend {
             env: env,
-            id_converter: id_converter,
             listeners: listeners,
+            id_converter: id_converter,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             type_var: string(TYPE),
             values: stmt!["values"],
             enum_ordinal: Variable::Literal("ordinal".to_owned()),
             enum_name: Variable::Literal("name".to_owned()),
         }
+    }
+
+    pub fn compiler(&self, options: CompilerOptions) -> Result<JsCompiler> {
+        Ok(JsCompiler {
+            out_path: options.out_path,
+            backend: self,
+        })
+    }
+
+    pub fn verify(&self) -> Result<()> {
+        Ok(())
     }
 
     fn find_field<'b>(&self,
