@@ -13,7 +13,7 @@ See [Examples][examples] for some example API specifications.
 [spec]: /doc/spec.md
 [examples]: /examples
 
-# Example
+# Examples
 
 Make you have [gotten started with Rust][rust-get-started].
 
@@ -25,33 +25,34 @@ $> cargo install reproto
 
 This will install the command into `~/.cargo/bin`, make sure it is in your `$PATH`.
 
+Build documentation:
+
+```bash
+$> reproto compile -b doc -o target/doc --path examples --package heroic.service
+$> open target/doc/index.html
+```
+
 Using the [FasterXML][fasterxml] backend for Java:
 
 ```bash
-$> reproto --debug compile -b java -m fasterxml -o target/java \
+$> reproto compile -b java -m fasterxml -o target/java \
   --path examples \
-  --package heroic.v1
+  --package heroic.service
 ```
 
-Multiple paths can be included, and the same declarations will extend each other:
+Using the Python backend:
 
 ```bash
-$> reproto --debug compile -b java -m fasterxml -o target/java \
+$> reproto compile -b python -o target/python \
   --path examples \
-  --path examples/ext \
-  --package heroic.v1
+  --package heroic.service
 ```
 
-This will generate code for the plain python backend:
-
-```bash
-$> reproto --debug compile -b python -o target/python \
-  --path examples \
-  heroic.v1
-```
+For more example, please have a look at our [integration tests][it].
 
 [rust-get-started]: https://doc.rust-lang.org/book/getting-started.html
 [fasterxml]: https://github.com/FasterXML/jackson-annotations
+[it]: /it
 
 ## [Maven Plugin][maven-plugin]
 

@@ -1,5 +1,3 @@
-version 1.0.0;
-
 type Query {
   query_id?: string;
 

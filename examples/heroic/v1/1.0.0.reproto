@@ -1,13 +1,11 @@
-version "1.0.0";
-
-use heroic.common@[=1] as c;
+use heroic.common@=1 as c;
 
 type Sampling {
-    // Unit of sampling
+    /// Unit of sampling
     unit?: TimeUnit;
-    // Size of the sampling.
+    /// Size of the sampling.
     size: unsigned;
-    // Extend ot the sampling.
+    /// Extend ot the sampling.
     extent?: unsigned;
 }
 
@@ -20,16 +18,16 @@ enum SI {
 }
 
 enum TimeUnit {
-  // Seconds
+  /// Seconds
   SECONDS("seconds", 1000);
-  // Minutes
+  /// Minutes
   MINUTES("minutes", 60000);
 
   serialized_as number;
 
-  // The name of the time unit
+  /// The name of the time unit
   name: string;
-  // The number of the time unit
+  /// The number of the time unit
   number: double;
 
   java {{
@@ -39,15 +37,15 @@ enum TimeUnit {
   }}
 }
 
-// # Models a single sampled point
-//
-// Events are ways to store arbitrary pieces of information over time.
-//
-// # Example
-//
-// ```json
-// [12, 42.0]
-// ```
+/// # Models a single sampled point
+///
+/// Events are ways to store arbitrary pieces of information over time.
+///
+/// # Example
+///
+/// ```json
+/// [12, 42.0]
+/// ```
 tuple Point {
   match {
     n: unsigned => Point(timestamp: n, value: 0.0);
@@ -57,19 +55,19 @@ tuple Point {
   value: double;
 }
 
-// # Models a single sampled point
-//
-// Points store numeric values over time.
-//
-// # Examples
-//
-// ```json
-// [12, "hello"]
-// ```
-//
-// ```json
-// [12, {"foo": "bar"}]
-// ```
+/// # Models a single sampled point
+///
+/// Points store numeric values over time.
+///
+/// # Examples
+///
+/// ```json
+/// [12, "hello"]
+/// ```
+///
+/// ```json
+/// [12, {"foo": "bar"}]
+/// ```
 tuple Event {
   timestamp: unsigned/64;
   payload?: any;
@@ -80,24 +78,24 @@ interface Samples {
     name: string => Samples.Points(name: name, data: []);
   }
 
-  // Name of the current set of samples
-  //
-  // ```
-  // This is an example code-block.
-  // ```
+  /// Name of the current set of samples
+  ///
+  /// ```
+  /// This is an example code-block.
+  /// ```
   name: string;
 
   Points {
     name "points";
 
-    // List of points
+    /// List of points
     data: [Point];
   }
 
   Events {
     name "events";
 
-    // List of events
+    /// List of events
     data: [Event];
   }
 }
