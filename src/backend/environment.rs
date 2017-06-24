@@ -111,12 +111,14 @@ impl Environment {
 
             let key = (source_package.clone(), alias.clone());
 
+            debug!("add alias {} ({})", alias, source_package);
+
             match self.used.entry(key) {
                 linked_hash_map::Entry::Vacant(entry) => {
                     entry.insert(use_package.clone());
                 }
                 linked_hash_map::Entry::Occupied(_) => {
-                    return Err(format!("alias {} already in used", alias).into())
+                    return Err(format!("alias {} already in use", alias).into())
                 }
             };
         }

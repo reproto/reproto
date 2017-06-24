@@ -24,26 +24,60 @@ impl Paths {
         Paths { paths: paths }
     }
 
-    pub fn find_versioned(&self,
-                          path: &Path,
-                          version_req: Option<&VersionReq>)
-                          -> Result<Vec<(Option<Version>, PathBuf)>> {
+    fn parse_stem<'a>(&self, stem: &'a str) -> Result<(&'a str, Option<Version>)> {
+        let mut it = stem.splitn(2, '-');
+
+        if let (Some(name_base), Some(name_version)) = (it.next(), it.next()) {
+            let version = Version::parse(name_version).map_err(|_| format!("bad version"))?;
+
+            return Ok((name_base, Some(version)));
+        }
+
+        Ok((stem, None))
+    }
+
+    pub fn find_versions(&self,
+                         path: &Path,
+                         base: &str,
+                         version_req: Option<&VersionReq>)
+                         -> Result<Vec<(Option<Version>, PathBuf)>> {
         let mut files = Vec::new();
 
         for e in fs::read_dir(path)? {
             let p = e?.path();
 
+            // only look for files
+            if !p.is_file() {
+                continue;
+            }
+
             if p.extension().map(|ext| ext != EXT).unwrap_or(true) {
                 continue;
             }
 
-            // match if file stem is a valid version.
-            if let Some(ref version) = p.file_stem().and_then(::std::ffi::OsStr::to_str) {
-                // only include files which are valid version specs
-                if let Ok(version) = Version::parse(version) {
-                    if version_req.map(|req| req.matches(&version)).unwrap_or(true) {
-                        files.push((Some(version), p.clone()));
+            if let Some(stem) = p.file_stem().and_then(::std::ffi::OsStr::to_str) {
+                let (name_base, version) = self.parse_stem(stem)
+                    .map_err(|m| format!("{}: {}", p.display(), m))?;
+
+                if name_base != base {
+                    continue;
+                }
+
+                if let Some(version_req) = version_req {
+                    if let Some(version) = version {
+                        if version_req.matches(&version) {
+                            files.push((Some(version), p.clone()));
+                        }
+
+                        continue;
                     }
+
+                    if *version_req == VersionReq::any() {
+                        files.push((None, p.clone()));
+                        continue;
+                    }
+                } else {
+                    files.push((version, p.clone()));
                 }
             }
         }
@@ -55,26 +89,22 @@ impl Paths {
 impl Resolver for Paths {
     fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
         let mut files = Vec::new();
+        let version_req = package.version_req.as_ref();
 
         for path in &self.paths {
             let mut path: PathBuf = path.to_owned();
+            let mut it = package.package.parts.iter().peekable();
 
-            for part in &package.package.parts {
-                path = path.join(part);
-            }
+            while let Some(step) = it.next() {
+                if it.peek().is_none() {
+                    if path.is_dir() {
+                        files.extend(self.find_versions(&path, step, version_req)?);
+                    }
 
-            // look into package directory.
-            if path.is_dir() {
-                files.extend(self.find_versioned(&path, package.version_req.as_ref())?);
-            }
-
-            path.set_extension(EXT);
-
-            // only match top-level files if there is no version requirement.
-            if let None = package.version_req {
-                if path.is_file() {
-                    files.push((None, path.clone()));
+                    break;
                 }
+
+                path = path.join(step);
             }
         }
 

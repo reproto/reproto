@@ -20,7 +20,7 @@ impl ::std::fmt::Display for RpRequiredPackage {
         write!(f, "{}", self.package)?;
 
         if let Some(ref version_req) = self.version_req {
-            write!(f, "@[{}]", version_req)?;
+            write!(f, "@{}", version_req)?;
         }
 
         Ok(())
