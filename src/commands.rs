@@ -135,8 +135,6 @@ fn setup_resolvers(matches: &ArgMatches) -> Box<Resolver> {
 }
 
 fn setup_options(matches: &ArgMatches) -> Result<Options> {
-    let package_prefix = matches.value_of("package-prefix").map(ToOwned::to_owned);
-
     let id_converter = if let Some(id_converter) = matches.value_of("id-converter") {
         Some(parse_id_converter(&id_converter)?)
     } else {
@@ -147,7 +145,6 @@ fn setup_options(matches: &ArgMatches) -> Result<Options> {
         matches.values_of("module").into_iter().flat_map(|it| it).map(ToOwned::to_owned).collect();
 
     Ok(Options {
-        package_prefix: package_prefix,
         id_converter: id_converter,
         modules: modules,
     })
@@ -168,7 +165,13 @@ fn setup_packages(matches: &ArgMatches) -> Result<Vec<RpRequiredPackage>> {
 
 fn setup_environment(matches: &ArgMatches) -> Environment {
     let resolvers = setup_resolvers(matches);
-    Environment::new(resolvers)
+
+    let package_prefix = matches.value_of("package-prefix").map(ToOwned::to_owned);
+
+    let package_prefix = package_prefix.clone()
+        .map(|prefix| RpPackage::new(prefix.split(".").map(ToOwned::to_owned).collect()));
+
+    Environment::new(package_prefix, resolvers)
 }
 
 fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<&'a Path> {

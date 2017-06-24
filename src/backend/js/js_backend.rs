@@ -20,7 +20,6 @@ impl<'a> Collecting<'a> for FileSpec {
 pub struct JsBackend {
     pub env: Environment,
     id_converter: Option<Box<naming::Naming>>,
-    package_prefix: Option<RpPackage>,
     listeners: Box<Listeners>,
     to_lower_snake: Box<naming::Naming>,
     type_var: Variable,
@@ -33,13 +32,11 @@ impl JsBackend {
     pub fn new(_: JsOptions,
                env: Environment,
                id_converter: Option<Box<naming::Naming>>,
-               package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
                -> JsBackend {
         JsBackend {
             env: env,
             id_converter: id_converter,
-            package_prefix: package_prefix,
             listeners: listeners,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             type_var: string(TYPE),
@@ -593,11 +590,7 @@ impl JsBackend {
     }
 }
 
-impl PackageUtils for JsBackend {
-    fn package_prefix(&self) -> &Option<RpPackage> {
-        &self.package_prefix
-    }
-}
+impl PackageUtils for JsBackend {}
 
 impl Converter for JsBackend {
     type Type = Name;

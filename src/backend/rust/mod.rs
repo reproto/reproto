@@ -27,10 +27,6 @@ fn setup_module(module: &str) -> Result<Box<Listeners>> {
 pub fn resolve(options: Options, env: Environment) -> Result<RustBackend> {
     let id_converter = options.id_converter;
 
-    let package_prefix = options.package_prefix
-        .clone()
-        .map(|prefix| RpPackage::new(prefix.split(".").map(ToOwned::to_owned).collect()));
-
     let mut listeners = Vec::new();
 
     for module in &options.modules {
@@ -43,9 +39,5 @@ pub fn resolve(options: Options, env: Environment) -> Result<RustBackend> {
         listener.configure(&mut options)?;
     }
 
-    return Ok(RustBackend::new(options,
-                               env,
-                               id_converter,
-                               package_prefix,
-                               Box::new(listeners)));
+    return Ok(RustBackend::new(options, env, id_converter, Box::new(listeners)));
 }

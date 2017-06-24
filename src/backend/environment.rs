@@ -10,6 +10,7 @@ use super::*;
 pub type InitFields = HashMap<String, RpLoc<RpFieldInit>>;
 
 pub struct Environment {
+    package_prefix: Option<RpPackage>,
     resolver: Box<Resolver>,
     visited: HashSet<RpVersionedPackage>,
     pub types: LinkedHashMap<RpTypeId, RpLoc<RpRegistered>>,
@@ -18,8 +19,9 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn new(resolver: Box<Resolver>) -> Environment {
+    pub fn new(package_prefix: Option<RpPackage>, resolver: Box<Resolver>) -> Environment {
         Environment {
+            package_prefix: package_prefix,
             resolver: resolver,
             visited: HashSet::new(),
             types: LinkedHashMap::new(),
@@ -33,6 +35,12 @@ impl Environment {
                             decl: Rc<RpLoc<RpDecl>>)
                             -> Result<Vec<(RpTypeId, RpLoc<RpRegistered>)>> {
         let mut out = Vec::new();
+
+        // apply package prefix, if needed
+        let package = self.package_prefix
+            .as_ref()
+            .map(|prefix| prefix.join_versioned(package))
+            .unwrap_or_else(|| package.clone());
 
         match **decl {
             RpDecl::Type(ref ty) => {

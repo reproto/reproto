@@ -37,10 +37,6 @@ fn setup_module(module: &str) -> Result<Box<listeners::Listeners>> {
 }
 
 pub fn resolve(options: Options, env: Environment) -> Result<JavaBackend> {
-    let package_prefix = options.package_prefix
-        .clone()
-        .map(|prefix| RpPackage::new(prefix.split(".").map(ToOwned::to_owned).collect()));
-
     let mut listeners: Vec<Box<listeners::Listeners>> = Vec::new();
 
     for module in &options.modules {
@@ -53,5 +49,5 @@ pub fn resolve(options: Options, env: Environment) -> Result<JavaBackend> {
         listener.configure(&mut options)?;
     }
 
-    Ok(JavaBackend::new(options, env, package_prefix, Box::new(listeners)))
+    Ok(JavaBackend::new(options, env, Box::new(listeners)))
 }

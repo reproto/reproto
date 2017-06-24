@@ -6,7 +6,6 @@ use super::*;
 pub struct PythonBackend {
     pub env: Environment,
     id_converter: Option<Box<naming::Naming>>,
-    package_prefix: Option<RpPackage>,
     listeners: Box<Listeners>,
     to_lower_snake: Box<naming::Naming>,
     staticmethod: BuiltInName,
@@ -25,13 +24,11 @@ impl PythonBackend {
     pub fn new(_: PythonOptions,
                env: Environment,
                id_converter: Option<Box<naming::Naming>>,
-               package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
                -> PythonBackend {
         PythonBackend {
             env: env,
             id_converter: id_converter,
-            package_prefix: package_prefix,
             listeners: listeners,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             staticmethod: Name::built_in("staticmethod"),
@@ -621,11 +618,7 @@ impl PythonBackend {
     }
 }
 
-impl PackageUtils for PythonBackend {
-    fn package_prefix(&self) -> &Option<RpPackage> {
-        &self.package_prefix
-    }
-}
+impl PackageUtils for PythonBackend {}
 
 impl Converter for PythonBackend {
     type Type = Name;

@@ -6,7 +6,6 @@ use super::*;
 pub struct RustBackend {
     pub env: Environment,
     id_converter: Option<Box<naming::Naming>>,
-    package_prefix: Option<RpPackage>,
     listeners: Box<Listeners>,
     to_lower_snake: Box<naming::Naming>,
     hash_map: ImportedName,
@@ -17,13 +16,11 @@ impl RustBackend {
     pub fn new(_: RustOptions,
                env: Environment,
                id_converter: Option<Box<naming::Naming>>,
-               package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
                -> RustBackend {
         RustBackend {
             env: env,
             id_converter: id_converter,
-            package_prefix: package_prefix,
             listeners: listeners,
             to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
             hash_map: Name::imported("std::collections", "HashMap"),
@@ -249,11 +246,7 @@ impl<'a> Collecting<'a> for FileSpec {
     }
 }
 
-impl PackageUtils for RustBackend {
-    fn package_prefix(&self) -> &Option<RpPackage> {
-        &self.package_prefix
-    }
-}
+impl PackageUtils for RustBackend {}
 
 impl Backend for RustBackend {
     fn compiler<'a>(&'a self, options: CompilerOptions) -> Result<Box<Compiler<'a> + 'a>> {

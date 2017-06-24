@@ -1,7 +1,6 @@
 pub mod processor;
 
 use backend::*;
-use core::*;
 use options::Options;
 
 fn setup_module(module: &str) -> Result<Box<processor::Listeners>> {
@@ -11,10 +10,6 @@ fn setup_module(module: &str) -> Result<Box<processor::Listeners>> {
 }
 
 pub fn resolve(options: Options, env: Environment) -> Result<processor::Processor> {
-    let package_prefix = options.package_prefix
-        .clone()
-        .map(|prefix| RpPackage::new(prefix.split(".").map(ToOwned::to_owned).collect()));
-
     let mut listeners = Vec::new();
 
     for module in &options.modules {
@@ -27,5 +22,5 @@ pub fn resolve(options: Options, env: Environment) -> Result<processor::Processo
         listener.configure(&mut options)?;
     }
 
-    return Ok(processor::Processor::new(options, env, package_prefix, Box::new(listeners)));
+    return Ok(processor::Processor::new(options, env, Box::new(listeners)));
 }

@@ -6,7 +6,6 @@ pub struct JavaBackend {
     options: JavaOptions,
     pub env: Environment,
     listeners: Box<Listeners>,
-    package_prefix: Option<RpPackage>,
     snake_to_upper_camel: Box<naming::Naming>,
     snake_to_lower_camel: Box<naming::Naming>,
     null_string: Variable,
@@ -24,15 +23,10 @@ pub struct JavaBackend {
 }
 
 impl JavaBackend {
-    pub fn new(options: JavaOptions,
-               env: Environment,
-               package_prefix: Option<RpPackage>,
-               listeners: Box<Listeners>)
-               -> JavaBackend {
+    pub fn new(options: JavaOptions, env: Environment, listeners: Box<Listeners>) -> JavaBackend {
         JavaBackend {
             options: options,
             env: env,
-            package_prefix: package_prefix,
             snake_to_upper_camel: naming::SnakeCase::new().to_upper_camel(),
             snake_to_lower_camel: naming::SnakeCase::new().to_lower_camel(),
             null_string: Variable::String("null".to_owned()),
@@ -75,11 +69,7 @@ impl JavaBackend {
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
     pub fn java_package(&self, pkg: &RpVersionedPackage) -> RpPackage {
-        self.package_prefix
-            .clone()
-            .map(|prefix| prefix.join_versioned(pkg))
-            .unwrap_or_else(|| pkg.clone())
-            .into_package(|version| format!("_{}", version).replace(".", "_").replace("-", "_"))
+        pkg.into_package(|version| format!("_{}", version).replace(".", "_").replace("-", "_"))
     }
 
     fn java_package_name(&self, pkg: &RpVersionedPackage) -> String {

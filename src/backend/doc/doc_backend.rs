@@ -7,7 +7,6 @@ pub struct DocBackend {
     #[allow(dead_code)]
     options: DocOptions,
     pub env: Environment,
-    package_prefix: Option<RpPackage>,
     pub theme: String,
     listeners: Box<DocListeners>,
     pub themes: HashMap<&'static str, &'static [u8]>,
@@ -28,14 +27,12 @@ fn build_themes() -> HashMap<&'static str, &'static [u8]> {
 impl DocBackend {
     pub fn new(options: DocOptions,
                env: Environment,
-               package_prefix: Option<RpPackage>,
                theme: String,
                listeners: Box<DocListeners>)
                -> DocBackend {
         DocBackend {
             options: options,
             env: env,
-            package_prefix: package_prefix,
             theme: theme,
             listeners: listeners,
             themes: build_themes(),
@@ -650,10 +647,6 @@ impl DocBackend {
 impl PackageUtils for DocBackend {
     fn version_package(input: &Version) -> String {
         format!("{}", input).replace(Self::package_version_unsafe, "_")
-    }
-
-    fn package_prefix(&self) -> &Option<RpPackage> {
-        &self.package_prefix
     }
 }
 

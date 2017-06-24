@@ -35,7 +35,6 @@ impl Listeners for Vec<Box<Listeners>> {
 
 pub struct Processor {
     env: Environment,
-    package_prefix: Option<RpPackage>,
     listeners: Box<Listeners>,
 }
 
@@ -44,12 +43,10 @@ const EXT: &str = "json";
 impl Processor {
     pub fn new(_options: ProcessorOptions,
                env: Environment,
-               package_prefix: Option<RpPackage>,
                listeners: Box<Listeners>)
                -> Processor {
         Processor {
             env: env,
-            package_prefix: package_prefix,
             listeners: listeners,
         }
     }
@@ -81,11 +78,7 @@ impl FmtWrite for Collector {
     }
 }
 
-impl PackageUtils for Processor {
-    fn package_prefix(&self) -> &Option<RpPackage> {
-        &self.package_prefix
-    }
-}
+impl PackageUtils for Processor {}
 
 pub struct JsonCompiler<'a> {
     out_path: PathBuf,
