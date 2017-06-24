@@ -1,10 +1,12 @@
-[light]
+# default variable set for all themes
+[default]
 half_margin="5px"
 margin="10px"
 double_margin="20px"
 
 font_size="14px"
 font_family="Roboto, Helvetica, sans-serif"
+body_bg="#DDDDDD"
 bg="#FFFFFF"
 
 title_bg="#F2F2F2"
@@ -32,12 +34,11 @@ put_method_bg="#FCF8E3"
 delete_method_fg="#D9534F"
 delete_method_bg="#F2DEDE"
 
-[dark]
-bg="#000000"
-title_bg="#8AA083"
+[light]
+bg="#FFFFFF"
+title_bg="#F2F2F2"
 
-type_bg="#FFFFFF"
-interface_bg="#FFFFFF"
-enum_bg="#FFFFFF"
-tuple_bg="#FFFFFF"
-service_bg="#FFFFFF"
+[dark]
+bg="#999999"
+title_bg="#F2F2F2"
+body_bg="#000000"

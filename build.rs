@@ -90,8 +90,17 @@ fn process_colors() -> Result<()> {
     let mut entries = Vec::new();
     let mut themes = String::new();
 
+    let default =
+        schemes.get("default").unwrap().as_table().ok_or_else(|| Error::Message("not a table"))?;
+
     for (key, value) in schemes {
-        let colors_in = value.as_table().ok_or_else(|| Error::Message("not a table"))?;
+        if key == "default" {
+            continue;
+        }
+
+        let mut colors_in = default.clone();
+        colors_in.extend(value.as_table().ok_or_else(|| Error::Message("not a table"))?.clone());
+
         let mut colors = Map::new();
 
         for (k, color) in colors_in {
