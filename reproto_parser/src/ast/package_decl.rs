@@ -1,31 +1,15 @@
-use std::error::Error;
 use super::*;
 use super::errors::*;
 
 #[derive(Debug)]
 pub struct PackageDecl {
     pub package: RpPackage,
-    pub version: Option<RpLoc<String>>,
 }
 
 impl IntoModel for PackageDecl {
     type Output = RpPackageDecl;
 
     fn into_model(self) -> Result<RpPackageDecl> {
-        let version = if let Some(version) = self.version.into_model()? {
-            let (version, pos) = version.both();
-
-            match Version::parse(&version) {
-                Ok(version) => Some(RpLoc::new(version, pos)),
-                Err(e) => return Err(ErrorKind::Pos(e.description().to_owned(), pos.into()).into()),
-            }
-        } else {
-            None
-        };
-
-        Ok(RpPackageDecl {
-            package: self.package,
-            version: version,
-        })
+        Ok(RpPackageDecl { package: self.package })
     }
 }

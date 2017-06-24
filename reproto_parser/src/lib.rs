@@ -118,6 +118,14 @@ pub fn parse_file<'input>(path: &'input Path, input: &'input str) -> Result<ast:
                             let pos = (path.clone(), pos, pos);
                             return Err(Parse("unexpected input", pos.into()).into());
                         }
+                        token::Error::InvalidVersion { start, end } => {
+                            let pos = (path.clone(), start, end);
+                            return Err(Parse("invalid version", pos.into()).into());
+                        }
+                        token::Error::InvalidVersionReq { start, end } => {
+                            let pos = (path.clone(), start, end);
+                            return Err(Parse("invalid version requirement", pos.into()).into());
+                        }
                     }
                 }
                 _ => Err("parse error".into()),

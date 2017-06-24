@@ -9,25 +9,36 @@ use super::utils::*;
 grammar<'input, 'path>(input_path: &'path Rc<PathBuf>);
 
 pub File: File<'input> = {
-    <package_decl:Loc<PackageDecl>> <options:Loc<OptionDecl>*> <uses:Loc<Use>*> <decls:Loc<Decl>*> => File {
+    <package_decl:Loc<PackageDecl>>
+    <version:VersionDecl?>
+    <options:Loc<OptionDecl>*>
+    <uses:Loc<Use>*>
+    <decls:Loc<Decl>*> => File {
         package_decl: package_decl,
+        version: version,
         options: options,
         uses: uses,
         decls: decls,
     },
 };
 
+VersionDecl: RpLoc<Version> = {
+    "version" <version:Loc<Version>> ";" => version,
+};
+
 Use: UseDecl<'input> = {
-    "use" <package:Loc<Package>> <version_req:Loc<"@version">?> <alias:("as" Identifier)?> ";" => UseDecl {
+    "use" <package:Loc<Package>>
+        <version_req:("@" Loc<VersionReq>)?>
+        <alias:("as" Identifier)?>
+    ";" => UseDecl {
         package: package,
-        version_req: version_req,
+        version_req: version_req.map(|v| v.1),
         alias: alias.map(|t| t.1),
     },
 };
 
-PackageDecl: PackageDecl = "package" <package:Package> <version:Loc<"@version">?> ";" => PackageDecl {
+PackageDecl: PackageDecl = "package" <package:Package> ";" => PackageDecl {
     package: package,
-    version: version,
 };
 
 Package: RpPackage = <parts:OneOrMore<".", Identifier>> => {
@@ -341,7 +352,8 @@ extern {
         TypeIdentifier => Token::TypeIdentifier(<&'input str>),
         Identifier => Token::Identifier(<&'input str>),
         Number => Token::Number(<RpNumber>),
-        "@version" => Token::Version(<String>),
+        Version => Token::Version(<Version>),
+        VersionReq => Token::VersionReq(<VersionReq>),
         "match" => Token::MatchKeyword,
         "use" => Token::UseKeyword,
         "as" => Token::AsKeyword,
@@ -384,7 +396,9 @@ extern {
         false => Token::FalseKeyword,
         "returns" => Token::ReturnsKeyword,
         "accepts" => Token::AcceptsKeyword,
+        "version" => Token::VersionKeyword,
         "*" => Token::Star,
+        "@" => Token::At,
         "`" => Token::Tick,
         "///" => Token::DocComment(<Vec<&'input str>>),
     }

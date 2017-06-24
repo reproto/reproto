@@ -1,4 +1,4 @@
-use reproto_core::RpNumber;
+use reproto_core::{RpNumber, Version, VersionReq};
 
 #[derive(Debug)]
 pub enum Error {
@@ -8,6 +8,8 @@ pub enum Error {
     UnterminatedCodeBlock { start: usize },
     InvalidNumber { message: &'static str, pos: usize },
     Unexpected { pos: usize },
+    InvalidVersion { start: usize, end: usize },
+    InvalidVersionReq { start: usize, end: usize },
 }
 
 pub type Result<T> = ::std::result::Result<T, Error>;
@@ -18,7 +20,8 @@ pub enum Token<'input> {
     TypeIdentifier(&'input str),
     DocComment(Vec<&'input str>),
     Number(RpNumber),
-    Version(String),
+    Version(Version),
+    VersionReq(VersionReq),
     LeftCurly,
     RightCurly,
     LeftBracket,
@@ -62,7 +65,9 @@ pub enum Token<'input> {
     FalseKeyword,
     ReturnsKeyword,
     AcceptsKeyword,
+    VersionKeyword,
     Star,
     Tick,
+    At,
     PathSegment(String),
 }

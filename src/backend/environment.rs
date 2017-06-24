@@ -294,7 +294,7 @@ impl Environment {
         let file = parser::parse_file(&path, content.as_str())?.into_model()?;
 
         if let Some(version_req) = version_req {
-            match file.package_decl.version {
+            match file.version {
                 Some(ref version) => {
                     if !version_req.matches(version.as_ref()) {
                         return Ok(None);
@@ -318,7 +318,7 @@ impl Environment {
             }
         }
 
-        let version = file.package_decl.version.as_ref().map(AsRef::as_ref).map(Clone::clone);
+        let version = file.version.as_ref().map(AsRef::as_ref).map(Clone::clone);
         let package = RpVersionedPackage::new(file.package_decl.package.clone(), version);
         Ok(Some((package, file)))
     }

@@ -1,4 +1,6 @@
-package bar@1.0.0;
+package bar;
+
+version 1.0.0;
 
 type Other {
   name: string;

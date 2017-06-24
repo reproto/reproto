@@ -1,6 +1,6 @@
 use num::Zero;
 use num::bigint::BigInt;
-use reproto_core::RpNumber;
+use reproto_core::{RpNumber, Version, VersionReq};
 use std::result;
 use std::str::CharIndices;
 use super::token::*;
@@ -75,6 +75,8 @@ pub struct Lexer<'input> {
     path_mode: bool,
     path_variable_nesting: usize,
     path_buffer: String,
+    version_mode: bool,
+    version_req_mode: bool,
 }
 
 impl<'input> Lexer<'input> {
@@ -155,6 +157,10 @@ impl<'input> Lexer<'input> {
             "false" => Token::FalseKeyword,
             "returns" => Token::ReturnsKeyword,
             "accepts" => Token::AcceptsKeyword,
+            "version" => {
+                self.version_mode = true;
+                Token::VersionKeyword
+            }
             identifier => {
                 return Ok((start, Token::Identifier(identifier), end));
             }
@@ -412,14 +418,45 @@ impl<'input> Lexer<'input> {
         }
     }
 
-    fn version(&mut self) -> Result<(usize, Token<'input>, usize)> {
-        let start = self.step_n(1);
-        let (start, _) = take!(self, start, ' ' | '\n' | '\r' | '\t');
+    fn version(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
+        let (end, content) = take!(self, start, '.' | '-' | '0'...'9' | 'a'...'z');
 
+        let version = Version::parse(content).map_err(|_| {
+                Error::InvalidVersion {
+                    start: start,
+                    end: end,
+                }
+            })?;
+
+        Ok((start, Token::Version(version), end))
+    }
+
+    fn version_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
+        let (start, _) = take!(self, self.pos(), ' ' | '\n' | '\r' | '\t');
+        let version = self.version(start);
+        self.version_mode = false;
+        return Some(version);
+    }
+
+    fn version_req(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
         let (end, content) =
             take!(self, start, '^' | '<' | '>' | '=' | '.' | '-' | '0'...'9' | 'a'...'z');
 
-        return Ok((start, Token::Version(content.to_owned()), end));
+        let version_req = VersionReq::parse(content).map_err(|_| {
+                Error::InvalidVersionReq {
+                    start: start,
+                    end: end,
+                }
+            })?;
+
+        Ok((start, Token::VersionReq(version_req), end))
+    }
+
+    fn version_req_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
+        let (start, _) = take!(self, self.pos(), ' ' | '\n' | '\r' | '\t');
+        let version_req = self.version_req(start);
+        self.version_req_mode = false;
+        return Some(version_req);
     }
 
     fn path_variable_mode_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
@@ -584,7 +621,8 @@ impl<'input> Lexer<'input> {
                     '=' => Token::Equals,
                     '*' => Token::Star,
                     '@' => {
-                        return Some(self.version());
+                        self.version_req_mode = true;
+                        Token::At
                     }
                     '_' | 'a'...'z' => return Some(self.identifier(start)),
                     'A'...'Z' => return Some(self.type_identifier(start)),
@@ -613,6 +651,14 @@ impl<'input> Iterator for Lexer<'input> {
     type Item = Result<(usize, Token<'input>, usize)>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.version_mode {
+            return self.version_next();
+        }
+
+        if self.version_req_mode {
+            return self.version_req_next();
+        }
+
         if self.path_variable_nesting > 0 {
             return self.path_variable_mode_next();
         }
@@ -645,11 +691,14 @@ pub fn lex(input: &str) -> Lexer {
         path_mode: false,
         path_variable_nesting: 0usize,
         path_buffer: String::new(),
+        version_req_mode: false,
+        version_mode: false,
     }
 }
 
 #[cfg(test)]
 pub mod tests {
+    use reproto_core::{Version, VersionReq};
     use super::*;
     use super::Token::*;
 
@@ -754,20 +803,63 @@ pub mod tests {
     }
 
     #[test]
+    pub fn test_package() {
+        let tokens = tokenize("package foo.bar.baz;").unwrap();
+
+        let reference = [(0, PackageKeyword, 7),
+                         (8, Identifier("foo"), 11),
+                         (11, Dot, 12),
+                         (12, Identifier("bar"), 15),
+                         (15, Dot, 16),
+                         (16, Identifier("baz"), 19),
+                         (19, SemiColon, 20)];
+
+        assert_eq!(reference, &tokens[..]);
+    }
+
+    #[test]
     pub fn test_doc_comment() {
         let tokens = tokenize("/// foo\n\r      /// bar \r\n     /// baz ").unwrap();
-        println!("tokens = {:?}", tokens);
+        let reference = [(0, DocComment(vec![" foo", " bar ", " baz "]), 38)];
+        assert_eq!(reference, &tokens[..]);
     }
 
     #[test]
     pub fn test_path() {
         let tokens = tokenize("`/foo/first_\\/{id:{string: unsigned}}`").unwrap();
-        println!("tokens = {:?}", tokens);
+
+        let reference = [(0, Tick, 1),
+                         (1, Slash, 2),
+                         (2, PathSegment("foo".into()), 5),
+                         (5, Slash, 6),
+                         (7, PathSegment("first_/".into()), 14),
+                         (14, LeftCurly, 15),
+                         (15, Identifier("id"), 17),
+                         (17, Colon, 18),
+                         (18, LeftCurly, 19),
+                         (19, StringKeyword, 25),
+                         (25, Colon, 26),
+                         (27, UnsignedKeyword, 35),
+                         (35, RightCurly, 36),
+                         (36, RightCurly, 37),
+                         (37, Tick, 38)];
+
+        assert_eq!(reference, &tokens[..]);
+    }
+
+    #[test]
+    pub fn test_version() {
+        let tokens = tokenize("version 1.2.312-beta1").unwrap();
+        let version = Version::parse("1.2.312-beta1").unwrap();
+        let reference = [(0, VersionKeyword, 7), (8, Version(version), 21)];
+        assert_eq!(reference, &tokens[..]);
     }
 
     #[test]
     pub fn test_version_req() {
-        let tokens = tokenize("@>=1.0");
-        println!("tokens = {:?}", tokens);
+        let tokens = tokenize("@>=1.0").unwrap();
+        let version_req = VersionReq::parse(">=1.0").unwrap();
+        let reference = [(0, At, 1), (1, VersionReq(version_req), 6)];
+        assert_eq!(reference, &tokens[..]);
     }
 }

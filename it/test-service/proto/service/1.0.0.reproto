@@ -1,4 +1,6 @@
-package _service@1.0.0;
+package _service;
+
+version 1.0.0;
 
 use common as c;
 
