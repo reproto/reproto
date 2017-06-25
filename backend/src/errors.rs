@@ -1,4 +1,4 @@
-use reproto_backend::errors as backend;
+use codeviz::errors as codeviz;
 use reproto_core::{ErrorPos, RpTypeId};
 use reproto_core::errors as core;
 use reproto_parser::errors as parser;
@@ -9,15 +9,14 @@ error_chain! {
     links {
         Parser(parser::Error, parser::ErrorKind);
         Core(core::Error, core::ErrorKind);
+        Codeviz(codeviz::Error, codeviz::ErrorKind);
         Repository(repository::Error, repository::ErrorKind);
-        Backend(backend::Error, backend::ErrorKind);
     }
 
     foreign_links {
         BorrowMutError(::std::cell::BorrowMutError);
         Io(::std::io::Error);
         Fmt(::std::fmt::Error);
-        Log(::log::SetLoggerError);
         Json(json::Error);
     }
 

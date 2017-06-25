@@ -1,13 +1,7 @@
-use backend::{self, CompilerOptions, Environment};
-use clap::{App, Arg, ArgMatches, SubCommand};
-use core::{RpPackage, RpRequiredPackage, VersionReq};
-use errors::*;
-use naming;
-use options::Options;
-use reproto_repository::{Filesystem, Paths, Resolver, Resolvers};
 use std::env;
 use std::error::Error;
 use std::path::Path;
+use super::*;
 
 fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
     let mut parts = input.split(":");
@@ -40,21 +34,21 @@ pub struct CompileOptions {
 
 pub fn compile_options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("compile").about("Compile .reproto specifications");
-    let out = out.subcommand(backend::doc::compile_options(compile_base("doc")));
-    let out = out.subcommand(backend::java::compile_options(compile_base("java")));
-    let out = out.subcommand(backend::js::compile_options(compile_base("js")));
-    let out = out.subcommand(backend::python::compile_options(compile_base("python")));
-    let out = out.subcommand(backend::rust::compile_options(compile_base("rust")));
+    let out = out.subcommand(backend_doc::compile_options(compile_base("doc")));
+    let out = out.subcommand(backend_java::compile_options(compile_base("java")));
+    let out = out.subcommand(backend_js::compile_options(compile_base("js")));
+    let out = out.subcommand(backend_python::compile_options(compile_base("python")));
+    let out = out.subcommand(backend_rust::compile_options(compile_base("rust")));
     out
 }
 
 pub fn verify_options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("verify").about("Verify .reproto specifications");
-    let out = out.subcommand(backend::doc::verify_options(shared_base("doc")));
-    let out = out.subcommand(backend::java::verify_options(shared_base("java")));
-    let out = out.subcommand(backend::js::verify_options(shared_base("js")));
-    let out = out.subcommand(backend::python::verify_options(shared_base("python")));
-    let out = out.subcommand(backend::rust::verify_options(shared_base("rust")));
+    let out = out.subcommand(backend_doc::verify_options(shared_base("doc")));
+    let out = out.subcommand(backend_java::verify_options(shared_base("java")));
+    let out = out.subcommand(backend_js::verify_options(shared_base("js")));
+    let out = out.subcommand(backend_python::verify_options(shared_base("python")));
+    let out = out.subcommand(backend_rust::verify_options(shared_base("rust")));
     out
 }
 
@@ -205,18 +199,18 @@ fn setup_env(matches: &ArgMatches) -> Result<Environment> {
 
     for file in files {
         if let Err(e) = env.import_file(file) {
-            errors.push(e);
+            errors.push(e.into());
         }
     }
 
     for package in packages {
         if let Err(e) = env.import(&package) {
-            errors.push(e);
+            errors.push(e.into());
         }
     }
 
     if let Err(e) = env.verify() {
-        errors.push(e);
+        errors.push(e.into());
     }
 
     if !errors.is_empty() {
@@ -241,15 +235,17 @@ pub fn compile(matches: &ArgMatches) -> Result<()> {
     let options = setup_options(matches)?;
     let compiler_options = setup_compiler_options(matches)?;
 
-    match name {
-        "doc" => backend::doc::compile(env, options, compiler_options, matches),
-        "java" => backend::java::compile(env, options, compiler_options, matches),
-        "js" => backend::js::compile(env, options, compiler_options, matches),
-        "json" => backend::json::compile(env, options, compiler_options, matches),
-        "python" => backend::python::compile(env, options, compiler_options, matches),
-        "rust" => backend::rust::compile(env, options, compiler_options, matches),
+    let result = match name {
+        "doc" => backend_doc::compile(env, options, compiler_options, matches),
+        "java" => backend_java::compile(env, options, compiler_options, matches),
+        "js" => backend_js::compile(env, options, compiler_options, matches),
+        "json" => backend_json::compile(env, options, compiler_options, matches),
+        "python" => backend_python::compile(env, options, compiler_options, matches),
+        "rust" => backend_rust::compile(env, options, compiler_options, matches),
         _ => unreachable!("bad subcommand"),
-    }
+    };
+
+    Ok(result?)
 }
 
 pub fn verify(matches: &ArgMatches) -> Result<()> {
@@ -259,15 +255,17 @@ pub fn verify(matches: &ArgMatches) -> Result<()> {
     let env = setup_env(matches)?;
     let options = setup_options(matches)?;
 
-    match name {
-        "doc" => backend::doc::verify(env, options, matches),
-        "java" => backend::java::verify(env, options, matches),
-        "js" => backend::js::verify(env, options, matches),
-        "json" => backend::json::verify(env, options, matches),
-        "python" => backend::python::verify(env, options, matches),
-        "rust" => backend::rust::verify(env, options, matches),
+    let result = match name {
+        "doc" => backend_doc::verify(env, options, matches),
+        "java" => backend_java::verify(env, options, matches),
+        "js" => backend_js::verify(env, options, matches),
+        "json" => backend_json::verify(env, options, matches),
+        "python" => backend_python::verify(env, options, matches),
+        "rust" => backend_rust::verify(env, options, matches),
         _ => unreachable!("bad subcommand"),
-    }
+    };
+
+    Ok(result?)
 }
 
 pub fn commands<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
