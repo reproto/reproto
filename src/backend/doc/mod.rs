@@ -58,6 +58,10 @@ pub fn shared_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
         .takes_value(true)
         .help("Theme to use"));
 
+    let out = out.arg(Arg::with_name("skip_static")
+        .long("skip-static")
+        .help("Skip building with static files"));
+
     out
 }
 
@@ -75,9 +79,11 @@ pub fn compile(env: Environment,
                matches: &ArgMatches)
                -> Result<()> {
     let theme = matches.value_of("theme").unwrap_or(DEFAULT_THEME).to_owned();
+    let skip_static = matches.is_present("skip_static");
+
     let (options, listeners) = setup_listeners(options)?;
     let backend = DocBackend::new(env, options, listeners, theme);
-    let compiler = backend.compiler(compiler_options)?;
+    let compiler = DocCompiler::new(&backend, compiler_options.out_path, skip_static);
     compiler.compile()
 }
 

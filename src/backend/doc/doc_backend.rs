@@ -39,13 +39,6 @@ impl DocBackend {
         }
     }
 
-    pub fn compiler(&self, options: CompilerOptions) -> Result<DocCompiler> {
-        Ok(DocCompiler {
-            out_path: options.out_path,
-            processor: self,
-        })
-    }
-
     pub fn verify(&self) -> Result<()> {
         Ok(())
     }

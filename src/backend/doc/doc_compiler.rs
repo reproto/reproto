@@ -8,14 +8,27 @@ use super::*;
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
 pub struct DocCompiler<'a> {
+    pub backend: &'a DocBackend,
     pub out_path: PathBuf,
-    pub processor: &'a DocBackend,
+    pub skip_static: bool,
 }
 
 impl<'a> DocCompiler<'a> {
+    pub fn new(backend: &'a DocBackend, out_path: PathBuf, skip_static: bool) -> DocCompiler {
+        DocCompiler {
+            backend: backend,
+            out_path: out_path,
+            skip_static: skip_static,
+        }
+    }
+
     pub fn compile(&self) -> Result<()> {
         let mut files = self.populate_files()?;
-        self.write_stylesheets()?;
+
+        if !self.skip_static {
+            self.write_stylesheets()?;
+        }
+
         let packages: Vec<_> = files.keys().map(|p| (*p).clone()).collect();
         self.write_index(&packages)?;
         self.write_overviews(&packages, &mut files)?;
@@ -37,14 +50,14 @@ impl<'a> DocCompiler<'a> {
 
         let doc_css = self.out_path.join(DOC_CSS_NAME);
 
-        let content = self.processor.themes.get(self.processor.theme.as_str());
+        let content = self.backend.themes.get(self.backend.theme.as_str());
 
         if let Some(content) = content {
             debug!("+css: {}", doc_css.display());
             let mut f = fs::File::create(doc_css)?;
             f.write_all(content)?;
         } else {
-            return Err(format!("no such theme: {}", &self.processor.theme).into());
+            return Err(format!("no such theme: {}", &self.backend.theme).into());
         }
 
         Ok(())
@@ -53,9 +66,9 @@ impl<'a> DocCompiler<'a> {
     fn write_index(&self, packages: &Vec<RpVersionedPackage>) -> Result<()> {
         let mut buffer = String::new();
 
-        self.processor
+        self.backend
             .write_doc(&mut DefaultDocBuilder::new(&mut buffer), |out| {
-                self.processor.write_packages(out, packages, None)?;
+                self.backend.write_packages(out, packages, None)?;
                 Ok(())
             })?;
 
@@ -86,21 +99,21 @@ impl<'a> DocCompiler<'a> {
             {
                 let mut new_package = collector.new_package();
                 let mut out = DefaultDocBuilder::new(&mut new_package);
-                self.processor.write_packages(&mut out, packages, Some(*package))?;
+                self.backend.write_packages(&mut out, packages, Some(*package))?;
             }
 
             {
                 let service_bodies = collector.service_bodies.clone();
                 let mut new_service_overview = collector.new_service_overview();
                 let mut out = DefaultDocBuilder::new(&mut new_service_overview);
-                self.processor.write_service_overview(&mut out, service_bodies)?;
+                self.backend.write_service_overview(&mut out, service_bodies)?;
             }
 
             {
                 let decl_bodies = collector.decl_bodies.clone();
                 let mut new_type_overview = collector.new_types_overview();
                 let mut out = DefaultDocBuilder::new(&mut new_type_overview);
-                self.processor.write_types_overview(&mut out, decl_bodies)?;
+                self.backend.write_types_overview(&mut out, decl_bodies)?;
             }
         }
 
@@ -116,7 +129,7 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
     }
 
     fn env(&self) -> &Environment {
-        &self.processor.env
+        &self.backend.env
     }
 
     fn out_path(&self) -> &Path {
@@ -124,7 +137,7 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
     }
 
     fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
-        self.processor.package(package)
+        self.backend.package(package)
     }
 
     fn default_process(&self, _: &mut Self::Out, type_id: &RpTypeId, _: &RpPos) -> Result<()> {
@@ -134,7 +147,7 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
     }
 
     fn resolve_full_path(&self, package: &RpPackage) -> Result<PathBuf> {
-        let mut full_path = self.out_path().join(self.processor.package_file(package));
+        let mut full_path = self.out_path().join(self.backend.package_file(package));
         full_path.set_extension(self.ext());
         Ok(full_path)
     }
@@ -145,7 +158,7 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
                        pos: &RpPos,
                        body: Rc<RpServiceBody>)
                        -> Result<()> {
-        self.processor.process_service(out, type_id, pos, body)
+        self.backend.process_service(out, type_id, pos, body)
     }
 
     fn process_enum(&self,
@@ -154,7 +167,7 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
                     pos: &RpPos,
                     body: Rc<RpEnumBody>)
                     -> Result<()> {
-        self.processor.process_enum(out, type_id, pos, body)
+        self.backend.process_enum(out, type_id, pos, body)
     }
 
     fn process_interface(&self,
@@ -163,7 +176,7 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
                          pos: &RpPos,
                          body: Rc<RpInterfaceBody>)
                          -> Result<()> {
-        self.processor.process_interface(out, type_id, pos, body)
+        self.backend.process_interface(out, type_id, pos, body)
     }
 
     fn process_type(&self,
@@ -172,7 +185,7 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
                     pos: &RpPos,
                     body: Rc<RpTypeBody>)
                     -> Result<()> {
-        self.processor.process_type(out, type_id, pos, body)
+        self.backend.process_type(out, type_id, pos, body)
     }
 
     fn process_tuple(&self,
@@ -181,6 +194,6 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
                      pos: &RpPos,
                      body: Rc<RpTupleBody>)
                      -> Result<()> {
-        self.processor.process_tuple(out, type_id, pos, body)
+        self.backend.process_tuple(out, type_id, pos, body)
     }
 }

@@ -61,7 +61,7 @@ impl<'a> Collecting<'a> for DocCollector {
     fn into_bytes(self, compiler: &Self::Processor) -> Result<Vec<u8>> {
         let mut buffer = String::new();
 
-        compiler.processor
+        compiler.backend
             .write_doc(&mut DefaultDocBuilder::new(&mut buffer), move |out| {
                 if let Some(package_title) = self.package_title {
                     html!(out, h1 {class => "document-title"} => {
