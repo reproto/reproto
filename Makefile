@@ -14,8 +14,9 @@ update: update-suites update-projects
 
 tests:
 	cargo test
-	cd reproto_core && cargo test
-	cd reproto_parser && cargo test
+	cd backend && make tests
+	cd core && cargo test
+	cd parser && cargo test
 
 clean:
 	cargo clean
