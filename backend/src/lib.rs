@@ -3,7 +3,7 @@
 extern crate error_chain;
 #[macro_use]
 extern crate log;
-extern crate codeviz;
+extern crate codeviz_common;
 extern crate reproto_core;
 extern crate reproto_parser;
 extern crate reproto_repository;

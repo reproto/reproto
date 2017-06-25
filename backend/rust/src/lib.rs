@@ -2,7 +2,8 @@
 extern crate log;
 extern crate reproto_backend;
 #[macro_use]
-extern crate codeviz;
+extern crate codeviz_macros;
+extern crate codeviz_rust;
 
 mod listeners;
 mod rust_backend;
@@ -10,7 +11,7 @@ mod rust_compiler;
 mod rust_file_spec;
 mod rust_options;
 
-pub(crate) use codeviz::rust::*;
+pub(crate) use codeviz_rust::*;
 pub(crate) use reproto_backend::*;
 pub(crate) use reproto_backend::errors::*;
 pub(crate) use self::listeners::*;

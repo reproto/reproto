@@ -15,7 +15,7 @@ build = "build.rs"
 [dependencies]
 log = "0.3.7"
 pulldown-cmark = "0.0.14"
-codeviz = "0.0.16"
+codeviz_common = "0.1.0"
 reproto_backend = {path = ".."}
 
 [build-dependencies]

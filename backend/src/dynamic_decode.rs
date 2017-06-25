@@ -1,6 +1,6 @@
 //! # Helper trait for building a dynamic-language decode method
 
-use codeviz::common::Element;
+use codeviz_common::Element;
 use super::*;
 
 pub trait DynamicDecode

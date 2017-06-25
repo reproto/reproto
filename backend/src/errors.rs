@@ -1,4 +1,4 @@
-use codeviz::errors as codeviz;
+use codeviz_common::errors as codeviz;
 use reproto_core::{ErrorPos, RpTypeId};
 use reproto_core::errors as core;
 use reproto_parser::errors as parser;

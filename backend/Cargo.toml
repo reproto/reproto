@@ -17,7 +17,7 @@ log = "0.3.7"
 linked-hash-map = "0.4.2"
 clap = "2.24.2"
 serde_json = "1.0.2"
-codeviz = "0.0.16"
+codeviz_common = "0.1.0"
 reproto_core = {path = "../core"}
 reproto_parser = {path = "../parser"}
 reproto_repository = {path = "../repository"}

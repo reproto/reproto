@@ -1,7 +1,7 @@
 //! # Converter for core data structures into processor-specific ones.
 
-use codeviz::common::Element;
-use codeviz::common::VariableFormat;
+use codeviz_common::Element;
+use codeviz_common::VariableFormat;
 use super::*;
 use super::Container;
 

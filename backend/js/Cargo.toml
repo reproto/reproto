@@ -12,5 +12,6 @@ Rethinking Protocol Generators
 """
 
 [dependencies]
-codeviz = "0.0.16"
+codeviz_js = "0.1.0"
+codeviz_macros = "0.1.0"
 reproto_backend = {path = ".."}

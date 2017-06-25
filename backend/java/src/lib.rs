@@ -1,7 +1,8 @@
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate codeviz;
+extern crate codeviz_macros;
+extern crate codeviz_java;
 extern crate reproto_backend;
 
 mod builder;
@@ -16,7 +17,7 @@ mod models;
 mod mutable;
 mod nullable;
 
-pub(crate) use codeviz::java::*;
+pub(crate) use codeviz_java::*;
 pub(crate) use reproto_backend::*;
 pub(crate) use reproto_backend::errors::*;
 pub(crate) use self::java_backend::*;

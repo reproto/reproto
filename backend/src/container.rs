@@ -1,6 +1,6 @@
-use codeviz::common::Element;
-use codeviz::common::Elements;
-use codeviz::common::VariableFormat;
+use codeviz_common::Element;
+use codeviz_common::Elements;
+use codeviz_common::VariableFormat;
 
 /// A container is a data structure that can push elements of itself.
 pub trait Container<Var>

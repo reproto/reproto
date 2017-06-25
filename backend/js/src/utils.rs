@@ -1,4 +1,4 @@
-use codeviz::js::*;
+use super::*;
 
 pub fn is_defined<S>(stmt: S) -> Statement
     where S: Into<Statement>

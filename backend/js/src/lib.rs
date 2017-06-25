@@ -1,6 +1,7 @@
 extern crate reproto_backend;
 #[macro_use]
-extern crate codeviz;
+extern crate codeviz_macros;
+extern crate codeviz_js;
 
 #[macro_use]
 mod utils;
@@ -11,7 +12,7 @@ mod js_compiler;
 mod js_file_spec;
 mod js_options;
 
-pub(crate) use codeviz::js::*;
+pub(crate) use codeviz_js::*;
 pub(crate) use reproto_backend::*;
 pub(crate) use reproto_backend::errors::*;
 pub(crate) use self::js_backend::*;

@@ -1,7 +1,8 @@
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate codeviz;
+extern crate codeviz_macros;
+extern crate codeviz_python;
 extern crate reproto_backend;
 
 mod field;
@@ -11,7 +12,7 @@ mod python_compiler;
 mod python_file_spec;
 mod python_options;
 
-pub(crate) use codeviz::python::*;
+pub(crate) use codeviz_python::*;
 pub(crate) use reproto_backend::*;
 pub(crate) use reproto_backend::errors::*;
 pub(crate) use self::field::*;
