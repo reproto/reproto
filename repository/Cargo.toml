@@ -14,14 +14,6 @@ Rethinking Protocol Generators
 [dependencies]
 error-chain = "0.10.0"
 toml = "0.4.1"
-
-[dependencies.serde]
-version = "1.0.8"
-features = ["rc"]
-
-[dependencies.serde_derive]
-version = "1.0.8"
-
-[dependencies.reproto_core]
-version = "0.0.0"
-path = "../core"
+reproto_core = {path = "../core"}
+serde = {version = "1.0.8", features = ["rc"]}
+serde_derive = "1.0.8"

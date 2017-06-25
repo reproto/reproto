@@ -21,13 +21,8 @@ error-chain = "0.10.0"
 log = "0.3.7"
 linked-hash-map = "0.4.2"
 num = "0.1.37"
+reproto_core = {path = "../core"}
+lalrpop-util = "0.13.0"
 
-[dependencies.reproto_core]
-version = "0.0.0"
-path = "../core"
-
-[dependencies.lalrpop-util]
-version = "0.13.0"
-
-[build-dependencies.lalrpop-snap]
-version = "0.13.0"
+[build-dependencies]
+lalrpop-snap = "0.13.0"

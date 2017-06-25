@@ -11,9 +11,6 @@ description = """
 Rethinking Protocol Generators
 """
 
-[dependencies.codeviz]
-version = "0.0.16"
-
-[dependencies.reproto_backend]
-version = "0.0.0"
-path = ".."
+[dependencies]
+codeviz = "0.0.16"
+reproto_backend = {path = ".."}

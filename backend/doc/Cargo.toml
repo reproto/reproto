@@ -15,13 +15,8 @@ build = "build.rs"
 [dependencies]
 log = "0.3.7"
 pulldown-cmark = "0.0.14"
-
-[dependencies.codeviz]
-version = "0.0.16"
-
-[dependencies.reproto_backend]
-version = "0.0.0"
-path = ".."
+codeviz = "0.0.16"
+reproto_backend = {path = ".."}
 
 [build-dependencies]
 toml = "0.4.1"

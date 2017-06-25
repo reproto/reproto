@@ -15,14 +15,6 @@ Rethinking Protocol Generators
 error-chain = "0.10.0"
 num = "0.1.37"
 mime = "0.3.2"
-
-[dependencies.serde]
-version = "1.0.8"
-features = ["rc"]
-
-[dependencies.serde_derive]
-version = "1.0.8"
-
-[dependencies.semver]
-version = "0.7.0"
-features = ["serde"]
+serde = {version = "1.0.8", features = ["rc"]}
+serde_derive = "1.0.8"
+semver = {version = "0.7.0", features = ["serde"]}
