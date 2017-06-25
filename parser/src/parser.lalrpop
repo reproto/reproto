@@ -349,7 +349,6 @@ extern {
         "interface" => Token::InterfaceKeyword,
         "tuple" => Token::TupleKeyword,
         "service" => Token::ServiceKeyword,
-        "package" => Token::PackageKeyword,
         "(" => Token::LeftParen,
         ")" => Token::RightParen,
         "{" => Token::LeftCurly,

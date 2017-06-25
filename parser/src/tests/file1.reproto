@@ -1,7 +1,3 @@
-package foo.bar.baz;
-
-version 1.0.0;
-
 use foo.bar@^2;
 use foo as bar2;
 

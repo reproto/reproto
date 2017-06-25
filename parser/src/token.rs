@@ -47,7 +47,6 @@ pub enum Token<'input> {
     EnumKeyword,
     TupleKeyword,
     ServiceKeyword,
-    PackageKeyword,
     MatchKeyword,
     UseKeyword,
     AsKeyword,

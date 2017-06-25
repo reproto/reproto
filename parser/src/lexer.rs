@@ -667,7 +667,7 @@ pub fn lex(input: &str) -> Lexer {
 
 #[cfg(test)]
 pub mod tests {
-    use reproto_core::{Version, VersionReq};
+    use reproto_core::VersionReq;
     use super::*;
     use super::Token::*;
 

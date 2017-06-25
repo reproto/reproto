@@ -1,5 +1,3 @@
-package foo.bar;
-
 interface Foo {
   reserved 1, 2, 3;
 
