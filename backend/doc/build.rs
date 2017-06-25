@@ -140,7 +140,5 @@ fn process_colors() -> Result<()> {
 
 fn main() {
     println!("cargo:rerun-if-changed=themes.toml");
-    println!("cargo:rerun-if-changed=src/parser/parser.lalrpop");
-
     process_colors().unwrap();
 }
