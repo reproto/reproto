@@ -35,12 +35,12 @@ version = "0.0.16"
 
 [dependencies.reproto_core]
 version = "0.0.0"
-path = "./reproto_core"
+path = "./core"
 
 [dependencies.reproto_parser]
 version = "0.0.0"
-path = "./reproto_parser"
+path = "./parser"
 
 [dependencies.reproto_repository]
 version = "0.0.0"
-path = "./reproto_repository"
+path = "./repository"
