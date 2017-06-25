@@ -79,7 +79,7 @@ python_project := python -o workdir-python/generated
 rust_suite := rust $(RUST_EXTRA)
 rust_project := rust -o workdir-rust/src --package-prefix generated
 
-doc_suite := doc $(DOC_EXTRA)
+doc_suite := doc --skip-static $(DOC_EXTRA)
 
 .PHONY: all clean suites projects update update-projects
 
