@@ -3,7 +3,6 @@ use reproto_core::{ErrorPos, RpTypeId};
 use reproto_core::errors as core;
 use reproto_parser::errors as parser;
 use reproto_repository::errors as repository;
-use serde_json as json;
 
 error_chain! {
     links {
@@ -18,7 +17,8 @@ error_chain! {
         Io(::std::io::Error);
         Fmt(::std::fmt::Error);
         Log(::log::SetLoggerError);
-        Json(json::Error);
+        Toml(::toml::de::Error);
+        UrlParseError(::url::ParseError);
     }
 
     errors {

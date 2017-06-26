@@ -6,9 +6,9 @@ extern crate clap;
 extern crate reproto;
 extern crate ansi_term;
 
-use reproto::commands;
 use reproto::errors::*;
 use reproto::logger;
+use reproto::ops;
 use reproto_core as core;
 use reproto_parser as parser;
 
@@ -186,7 +186,7 @@ fn handle_error(e: &Error) -> Result<bool> {
 
 fn entry() -> Result<()> {
     let opts = setup_opts();
-    let opts = commands::commands(opts);
+    let opts = ops::options(opts);
     let matches = opts.get_matches();
     setup_logger(&matches)?;
 
@@ -194,8 +194,8 @@ fn entry() -> Result<()> {
     let matches = matches.ok_or_else(|| "no subcommand")?;
 
     match name {
-        "compile" => commands::compile(matches),
-        "verify" => commands::verify(matches),
+        "compile" => ops::compile::entry(matches),
+        "verify" => ops::verify::entry(matches),
         _ => Err(format!("No such command: {}", name).into()),
     }
 }

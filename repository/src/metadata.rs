@@ -1,21 +1,12 @@
 use reproto_core::Version;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Metadata {
-    #[serde(default)]
-    pub versions: Vec<Version>,
-    #[serde(default)]
-    snapshots: Vec<String>,
+pub struct Deployment {
+    pub version: Version,
+    pub object: String,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use toml;
-
-    #[test]
-    fn test_deserialize() {
-        let metadata: Metadata = toml::from_str("versions = [\"0.0.1\", \"0.0.2\"]").unwrap();
-        println!("metadata = {:?}", metadata);
-    }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Metadata {
+    pub deployments: Vec<Deployment>,
 }

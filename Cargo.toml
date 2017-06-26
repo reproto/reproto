@@ -20,46 +20,21 @@ error-chain = "0.10.0"
 log = "0.3.7"
 clap = "2.24.2"
 linked-hash-map = "0.4.2"
-serde_json = "1.0.2"
+toml = "0.4.1"
+serde = "1.0.8"
+serde_derive = "1.0.8"
 pulldown-cmark = "0.0.14"
 ansi_term = "0.9.0"
+reproto_core = {path = "./core"}
+reproto_parser = {path = "./parser"}
+reproto_repository = {path = "./repository"}
+reproto_backend = {path = "./backend"}
+reproto_backend_doc = {path = "./backend/doc"}
+reproto_backend_java = {path = "./backend/java"}
+reproto_backend_js = {path = "./backend/js"}
+reproto_backend_json = {path = "./backend/json"}
+reproto_backend_python = {path = "./backend/python"}
+reproto_backend_rust = {path = "./backend/rust"}
 
-[dependencies.reproto_core]
-version = "0.0.0"
-path = "./core"
-
-[dependencies.reproto_parser]
-version = "0.0.0"
-path = "./parser"
-
-[dependencies.reproto_repository]
-version = "0.0.0"
-path = "./repository"
-
-[dependencies.reproto_backend]
-version = "0.0.0"
-path = "./backend"
-
-[dependencies.reproto_backend_java]
-version = "0.0.0"
-path = "./backend/java"
-
-[dependencies.reproto_backend_js]
-version = "0.0.0"
-path = "./backend/js"
-
-[dependencies.reproto_backend_json]
-version = "0.0.0"
-path = "./backend/json"
-
-[dependencies.reproto_backend_doc]
-version = "0.0.0"
-path = "./backend/doc"
-
-[dependencies.reproto_backend_rust]
-version = "0.0.0"
-path = "./backend/rust"
-
-[dependencies.reproto_backend_python]
-version = "0.0.0"
-path = "./backend/python"
+url = "1.5.1"
+url_serde = "0.2.0"
