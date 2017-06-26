@@ -1,8 +1,0 @@
-type Date {
-  field: unsigned/64;
-}
-
-type ErrorMessage {
-  message: string;
-  status?: unsigned;
-}

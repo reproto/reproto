@@ -2,16 +2,17 @@
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
 [![crates.io](https://img.shields.io/crates/v/reproto.svg)](https://crates.io/crates/reproto)
 
-The ReProto project is a language-neutral protocol specification, aimed towards describing and generating
-code for handling messages exchanged through JSON-based APIs.
+The ReProto project is a language-neutral protocol specification, aimed towards describing and
+generating code for handling messages exchanged through JSON-based APIs.
 
 See [Specification][spec] for details on what the syntax of `.reproto` files is.
-See [Examples][examples] for some example API specifications.
+See [Integreation Tests][it] for some examples of protocol specifications.
 
-**Note:** This project is in an Alpha-stage.
+**Note:** This project is in an Alpha-stage. Things will change a lot.
 
 [spec]: /doc/spec.md
 [examples]: /examples
+[it]: /it
 
 # Examples
 
@@ -28,30 +29,16 @@ This will install the command into `~/.cargo/bin`, make sure it is in your `$PAT
 Build documentation:
 
 ```bash
-$> reproto compile doc -o target/doc --path examples --package heroic.service
+$> reproto compile doc -o target/doc --path it/test-service/proto \
+  --package test \
+  --package service@1.0.0 \
+  --package service@2.0.0
 $> open target/doc/index.html
-```
-
-Using the [FasterXML][fasterxml] backend for Java:
-
-```bash
-$> reproto compile java -m fasterxml -o target/java \
-  --path examples \
-  --package heroic.service
-```
-
-Using the Python backend:
-
-```bash
-$> reproto compile python -o target/python \
-  --path examples \
-  --package heroic.service
 ```
 
 For more example, please have a look at our [integration tests][it].
 
 [rust-get-started]: https://doc.rust-lang.org/book/getting-started.html
-[fasterxml]: https://github.com/FasterXML/jackson-annotations
 [it]: /it
 
 ## [Maven Plugin][maven-plugin]
