@@ -7,18 +7,36 @@ generating code for handling messages exchanged through JSON-based APIs.
 
 ReProto specifies a [DSL][dsl] that described JSON types and services.
 Using this, models can be generated using multiple different target languages.
-See [Specification][spec] for details on what the syntax of `.reproto` files is.
 
-See [Examples][examples] for some example protocol specifications.
-
-See [Integration Tests][it] for some examples of how protocol specifications can be used.
+* See [Specification][spec] for details on what the syntax of `.reproto` files is.
+* See [TODO][todo] for details on things that still needs to be done.
+* See [Examples][examples] for some example protocol specifications.
+* See [Integration Tests][it] for some examples of how protocol specifications can be used.
 
 **Note:** This project is in an Alpha-stage. Things will change a lot.
 
 [dsl]: #the-reproto-dsl
 [spec]: /doc/spec.md
+[todo]: /doc/todo.md
 [examples]: /examples
 [it]: /it
+
+# Supported Backends
+
+* Java (`java`)
+  * Data models using [fasterxml jackson][jackson] (`-m fasterxml`), and/or
+    [lombok][lombok] (`-m lombok`).
+* JavaScript (`js`)
+  * ES2015 classes, that can be transpiled using babel (see [Integration Test][js-it]).
+* Python (`python`)
+  * Plain-python classes, compatible with 2 and 3 for databinding.
+* Rust (`rust`)
+  * Serde-based serialization.
+* Doc (`doc`)
+  * HTML-based documentation, based from contextual markdown comments.
+
+[jackson]: https://github.com/FasterXML/jackson-databind
+[js-it]: /it/js
 
 # Examples
 
