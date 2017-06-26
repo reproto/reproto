@@ -1,0 +1,22 @@
+/// # ReProto Petstore
+///
+/// A sample API that uses a petstore as an example to demonstrate features in the ReProto
+/// specification
+service Petstore {
+  "api" {
+    /// Returns all pets from the system that the user has access to.
+    GET "pets" {
+      /// A list of pets.
+      returns [Pet] {
+        status 200;
+        produces "application/json";
+      }
+    }
+  }
+}
+
+type Pet {
+  id: unsigned/64;
+  name: string;
+  tag?: string;
+}

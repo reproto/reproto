@@ -5,11 +5,17 @@
 The ReProto project is a language-neutral protocol specification, aimed towards describing and
 generating code for handling messages exchanged through JSON-based APIs.
 
+ReProto specifies a [DSL][dsl] that described JSON types and services.
+Using this, models can be generated using multiple different target languages.
 See [Specification][spec] for details on what the syntax of `.reproto` files is.
-See [Integreation Tests][it] for some examples of protocol specifications.
+
+See [Examples][examples] for some example protocol specifications.
+
+See [Integration Tests][it] for some examples of how protocol specifications can be used.
 
 **Note:** This project is in an Alpha-stage. Things will change a lot.
 
+[dsl]: #the-reproto-dsl
 [spec]: /doc/spec.md
 [examples]: /examples
 [it]: /it
@@ -18,10 +24,10 @@ See [Integreation Tests][it] for some examples of protocol specifications.
 
 Make you have [gotten started with Rust][rust-get-started].
 
-Install reproto through cargo:
+Build ReProto using cargo:
 
 ```bash
-$> cargo install reproto
+$> cargo build
 ```
 
 This will install the command into `~/.cargo/bin`, make sure it is in your `$PATH`.
@@ -29,7 +35,7 @@ This will install the command into `~/.cargo/bin`, make sure it is in your `$PAT
 Build documentation:
 
 ```bash
-$> reproto compile doc -o target/doc --path it/test-service/proto \
+$> target/debug/reproto compile doc -o target/doc --path it/test-service/proto \
   --package test \
   --package service@1.0.0 \
   --package service@2.0.0
@@ -72,3 +78,125 @@ To run all tests, do:
 ```bash
 $> make clean all
 ```
+
+# The ReProto DSL
+
+The goal is to provide an intuitive and productive specification language.
+For this reason, ReProto uses a DSL that is not based on existing markup (JSON, YAML, ...).
+This is also reduces the signal to noise ratio.
+
+As a comparison, the following is a specification using [OpenAPI 2.0][openapi-2], compared with ReProto.
+
+```json
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "Swagger Petstore",
+    "description": "A sample API that uses a petstore as an example to demonstrate features in the swagger-2.0 specification",
+    "termsOfService": "http://swagger.io/terms/",
+    "contact": {
+      "name": "Swagger API Team"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "host": "petstore.swagger.io",
+  "basePath": "/api",
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/pets": {
+      "get": {
+        "description": "Returns all pets from the system that the user has access to",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of pets.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Pet"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Pet": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+
+```
+/// # ReProto Petstore
+///
+/// A sample API that uses a petstore as an example to demonstrate features in the ReProto
+/// specification
+service Petstore {
+  "api" {
+    /// Returns all pets from the system that the user has access to.
+    GET "pets" {
+      /// A list of pets.
+      returns [Pet] {
+        status 200;
+        produces "application/json";
+      }
+    }
+  }
+}
+
+type Pet {
+  id: unsigned/64;
+  name: string;
+  tag?: string;
+}
+```
+
+You can compile the above into documentation using the following command:
+
+```bash
+$> target/debug/reproto --debug compile doc --out target/petstore \
+  --path examples/petstore \
+  --package petstore@1.0.0 \
+```
+
+If you miss JSON, you can compile the specification to JSON as well.
+
+```bash
+$> target/debug/reproto --debug compile json --out target/petstore-json \
+  --path examples/petstore \
+  --package petstore@1.0.0 \
+```
+
+[openapi-2]: https://github.com/OAI/OpenAPI-Specification
