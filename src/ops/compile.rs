@@ -1,7 +1,9 @@
 use super::*;
 
 fn base<'a, 'b>(name: &str) -> App<'a, 'b> {
-    let out = compiler_base(name).about("Compile .reproto specifications");
+    let out = SubCommand::with_name(name);
+
+    let out = compiler_base(out).about("Compile .reproto specifications");
 
     let out = out.arg(Arg::with_name("out")
         .long("out")

@@ -9,6 +9,7 @@
 //!
 //! The second form is only used when a version requirement is present.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use super::*;
@@ -41,7 +42,7 @@ impl Paths {
                          base: &str,
                          version_req: Option<&VersionReq>)
                          -> Result<Vec<(Option<Version>, PathBuf)>> {
-        let mut files = Vec::new();
+        let mut files = BTreeMap::new();
 
         for e in fs::read_dir(path)? {
             let p = e?.path();
@@ -66,23 +67,23 @@ impl Paths {
                 if let Some(version_req) = version_req {
                     if let Some(version) = version {
                         if version_req.matches(&version) {
-                            files.push((Some(version), p.clone()));
+                            files.insert(Some(version), p.clone());
                         }
 
                         continue;
                     }
 
                     if *version_req == VersionReq::any() {
-                        files.push((None, p.clone()));
+                        files.insert(None, p.clone());
                         continue;
                     }
                 } else {
-                    files.push((version, p.clone()));
+                    files.insert(version, p.clone());
                 }
             }
         }
 
-        Ok(files)
+        Ok(files.into_iter().collect())
     }
 }
 

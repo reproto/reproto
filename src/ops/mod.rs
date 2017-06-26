@@ -1,5 +1,6 @@
 pub mod verify;
 pub mod compile;
+pub mod publish;
 
 use reproto_backend_doc as doc;
 use reproto_backend_java as java;
@@ -40,43 +41,67 @@ fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
     return Err(format!("Invalid --id-conversion argument: {}", input).into());
 }
 
+pub fn path_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+    let out = out.arg(Arg::with_name("index")
+        .long("index")
+        .short("I")
+        .takes_value(true)
+        .help("URL for index to use when looking up packages."));
+
+    let out = out.arg(Arg::with_name("objects")
+        .long("objects")
+        .short("O")
+        .takes_value(true)
+        .help("URL for objects storage to use when looking up packages."));
+
+    let out = out.arg(Arg::with_name("path")
+        .long("path")
+        .short("p")
+        .takes_value(true)
+        .multiple(true)
+        .number_of_values(1)
+        .help("Paths to look for definitions."));
+
+    out
+}
+
 /// Setup base compiler options.
-pub fn compiler_base<'a, 'b>(name: &str) -> App<'a, 'b> {
-    SubCommand::with_name(name)
-        .arg(Arg::with_name("module")
-            .long("module")
-            .short("m")
-            .takes_value(true)
-            .multiple(true)
-            .number_of_values(1)
-            .help("Modules to load for a given backend"))
-        .arg(Arg::with_name("path")
-            .long("path")
-            .short("p")
-            .takes_value(true)
-            .multiple(true)
-            .number_of_values(1)
-            .help("Paths to look for definitions."))
-        .arg(Arg::with_name("id-converter")
-            .long("id-converter")
-            .takes_value(true)
-            .help("Conversion method to use when naming fields by default"))
-        .arg(Arg::with_name("package-prefix")
-            .long("package-prefix")
-            .takes_value(true)
-            .help("Package prefix to use when generating classes"))
-        .arg(Arg::with_name("file")
-            .long("file")
-            .help("File to compile")
-            .takes_value(true)
-            .multiple(true)
-            .number_of_values(1))
-        .arg(Arg::with_name("package")
-            .long("package")
-            .help("Packages to compile")
-            .takes_value(true)
-            .multiple(true)
-            .number_of_values(1))
+pub fn compiler_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+    let out = path_base(out);
+
+    let out = out.arg(Arg::with_name("package")
+        .long("package")
+        .help("Packages to compile")
+        .takes_value(true)
+        .multiple(true)
+        .number_of_values(1));
+
+    let out = out.arg(Arg::with_name("module")
+        .long("module")
+        .short("m")
+        .takes_value(true)
+        .multiple(true)
+        .number_of_values(1)
+        .help("Modules to load for a given backend"));
+
+    let out = out.arg(Arg::with_name("id-converter")
+        .long("id-converter")
+        .takes_value(true)
+        .help("Conversion method to use when naming fields by default"));
+
+    let out = out.arg(Arg::with_name("package-prefix")
+        .long("package-prefix")
+        .takes_value(true)
+        .help("Package prefix to use when generating classes"));
+
+    let out = out.arg(Arg::with_name("file")
+        .long("file")
+        .help("File to compile")
+        .takes_value(true)
+        .multiple(true)
+        .number_of_values(1));
+
+    out
 }
 
 fn parse_package(input: &str) -> Result<RpRequiredPackage> {
@@ -97,9 +122,48 @@ fn parse_package(input: &str) -> Result<RpRequiredPackage> {
     Ok(RpRequiredPackage::new(package, version_req))
 }
 
-fn setup_resolvers(matches: &ArgMatches) -> Result<Box<Resolver>> {
-    let mut resolvers: Vec<Box<Resolver>> = Vec::new();
+fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
+    let mut index = matches.value_of("index").map(ToOwned::to_owned);
+    let mut objects = matches.value_of("objects").map(ToOwned::to_owned);
 
+    if let Some(home_dir) = env::home_dir() {
+        let reproto_dir = home_dir.join(".reproto");
+        let config = reproto_dir.join("config.toml");
+
+        if !config.is_file() {
+            return Ok(None);
+        }
+
+        let config = read_config(config)?;
+
+        // set values from configuration (if not already set).
+        index = index.or(config.repository.index);
+        objects = objects.or(config.repository.objects);
+    }
+
+    if let Some(ref index_url) = index {
+        let index_url = Url::parse(index_url)?;
+        let index = index_from_url(&index_url)?;
+
+        let objects_url = if let Some(ref objects) = objects {
+            Url::parse(objects)?
+        } else {
+            index.objects_url()?
+        };
+
+        debug!("index: {}", index_url);
+        debug!("objects: {}", objects_url);
+
+        let objects = objects_from_url(&objects_url)?;
+        let repository = Repository::new(index, objects);
+
+        return Ok(Some(repository));
+    }
+
+    Ok(None)
+}
+
+fn setup_path_resolver(matches: &ArgMatches) -> Result<Option<Box<Resolver>>> {
     let paths: Vec<::std::path::PathBuf> = matches.values_of("path")
         .into_iter()
         .flat_map(|it| it)
@@ -107,36 +171,22 @@ fn setup_resolvers(matches: &ArgMatches) -> Result<Box<Resolver>> {
         .map(ToOwned::to_owned)
         .collect();
 
-    if !paths.is_empty() {
-        resolvers.push(Box::new(Paths::new(paths)));
+    if paths.is_empty() {
+        return Ok(None);
     }
 
-    if let Some(home_dir) = env::home_dir() {
-        let reproto_dir = home_dir.join(".reproto");
-        let config = reproto_dir.join("config.toml");
+    Ok(Some(Box::new(Paths::new(paths))))
+}
 
-        if config.is_file() {
-            let config = read_config(config)?;
+fn setup_resolvers(matches: &ArgMatches) -> Result<Box<Resolver>> {
+    let mut resolvers: Vec<Box<Resolver>> = Vec::new();
 
-            if let Some(ref index_url) = config.repository.index {
-                let index_url = Url::parse(index_url)?;
-                let index = index_from_url(&index_url)?;
+    if let Some(resolver) = setup_path_resolver(matches)? {
+        resolvers.push(resolver);
+    }
 
-                let objects_url = if let Some(ref objects) = config.repository.objects {
-                    Url::parse(objects)?
-                } else {
-                    index.objects_url()?
-                };
-
-                debug!("index: {}", index_url);
-                debug!("objects: {}", objects_url);
-
-                let objects = objects_from_url(&objects_url)?;
-                let repository = Repository::new(index, objects);
-
-                resolvers.push(Box::new(repository));
-            }
-        }
+    if let Some(repository) = setup_repository(matches)? {
+        resolvers.push(Box::new(repository));
     }
 
     Ok(Box::new(Resolvers::new(resolvers)))
@@ -219,5 +269,6 @@ fn setup_env(matches: &ArgMatches) -> Result<Environment> {
 pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.subcommand(compile::options());
     let out = out.subcommand(verify::options());
+    let out = out.subcommand(publish::options());
     out
 }

@@ -425,7 +425,7 @@ impl Environment {
 
         let mut candidates: BTreeMap<RpVersionedPackage, Vec<_>> = BTreeMap::new();
 
-        for (version, path) in files {
+        if let Some((version, path)) = files.into_iter().last() {
             debug!("loading: {}", path.display());
 
             let loaded = self.load_file(&path, version, Some(required.package.clone()))?;
@@ -435,7 +435,7 @@ impl Environment {
             }
         }
 
-        if let Some((versioned, files)) = candidates.into_iter().nth(0) {
+        if let Some((versioned, files)) = candidates.into_iter().last() {
             debug!("found: {} ({})", versioned, required);
 
             for (path, file) in files.into_iter() {

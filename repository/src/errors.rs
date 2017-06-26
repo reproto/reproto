@@ -8,6 +8,7 @@ error_chain! {
         TomlDe(toml::de::Error);
         SerdeJson(serde_json::Error);
         UrlParseError(::url::ParseError);
+        OpenSSL(::openssl::error::ErrorStack);
     }
 
     errors {

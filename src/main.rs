@@ -196,6 +196,7 @@ fn entry() -> Result<()> {
     match name {
         "compile" => ops::compile::entry(matches),
         "verify" => ops::verify::entry(matches),
+        "publish" => ops::publish::entry(matches),
         _ => Err(format!("No such command: {}", name).into()),
     }
 }

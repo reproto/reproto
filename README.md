@@ -11,6 +11,7 @@ Using this, models can be generated using multiple different target languages.
 * See [Specification][spec] for details on what the syntax of `.reproto` files is.
 * See [TODO][todo] for details on things that still needs to be done.
 * See [Examples][examples] for some example protocol specifications.
+* See [Config][config] for how to configure ReProto.
 * See [Integration Tests][it] for some examples of how protocol specifications can be used.
 
 **Note:** This project is in an Alpha-stage. Things will change a lot.
@@ -18,6 +19,7 @@ Using this, models can be generated using multiple different target languages.
 [dsl]: #the-reproto-dsl
 [spec]: /doc/spec.md
 [todo]: /doc/todo.md
+[config]: /doc/config.md
 [examples]: /examples
 [it]: /it
 
@@ -35,6 +37,7 @@ Using this, models can be generated using multiple different target languages.
 * Doc (`doc`)
   * HTML-based documentation, based from contextual markdown comments.
 
+[lombok]: https://projectlombok.org/
 [jackson]: https://github.com/FasterXML/jackson-databind
 [js-it]: /it/js
 

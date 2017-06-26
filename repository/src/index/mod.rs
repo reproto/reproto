@@ -1,19 +1,40 @@
 mod file_index;
 
 pub use reproto_core::{RpPackage, Version, VersionReq};
+use sha256::Checksum;
 use std::path::Path;
 use url::Url;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Deployment {
     pub version: Version,
-    pub object: String,
+    pub object: Checksum,
+}
+
+impl Deployment {
+    pub fn new(version: Version, object: Checksum) -> Deployment {
+        Deployment {
+            version: version,
+            object: object,
+        }
+    }
 }
 
 use errors::*;
 
 pub trait Index {
-    fn resolve(&self, package: &RpPackage, version_req: &VersionReq) -> Result<Vec<Deployment>>;
+    fn resolve(&self,
+               package: &RpPackage,
+               version_req: Option<&VersionReq>)
+               -> Result<Vec<Deployment>>;
+
+    fn put_version(&self,
+                   checksum: &Checksum,
+                   package: &RpPackage,
+                   version: &Version)
+                   -> Result<()>;
+
+    fn get_deployments(&self, package: &RpPackage, version: &Version) -> Result<Vec<Deployment>>;
 
     fn objects_url(&self) -> Result<Url>;
 }

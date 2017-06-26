@@ -1,12 +1,18 @@
 use super::*;
 
+fn base<'a, 'b>(name: &str) -> App<'a, 'b> {
+    let out = SubCommand::with_name(name);
+    let out = compiler_base(out).about("Verify .reproto specifications");
+    out
+}
+
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("verify").about("Verify .reproto specifications");
-    let out = out.subcommand(doc::verify_options(compiler_base("doc")));
-    let out = out.subcommand(java::verify_options(compiler_base("java")));
-    let out = out.subcommand(js::verify_options(compiler_base("js")));
-    let out = out.subcommand(python::verify_options(compiler_base("python")));
-    let out = out.subcommand(rust::verify_options(compiler_base("rust")));
+    let out = out.subcommand(doc::verify_options(base("doc")));
+    let out = out.subcommand(java::verify_options(base("java")));
+    let out = out.subcommand(js::verify_options(base("js")));
+    let out = out.subcommand(python::verify_options(base("python")));
+    let out = out.subcommand(rust::verify_options(base("rust")));
     out
 }
 
