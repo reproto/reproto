@@ -22,7 +22,8 @@ Some of these are just ideas, but are written down for posterity.
 - [ ] replace match value with instance.
 
 # Repository
-- [ ] Support downloading specifications from a shared repository.
+- [*] Simple filsystem prototype.
+- [ ] Support downloading specifications from a shared repository (over git + https).
 
 # Maven Plugin + Maven Artifacts w/ Static Builds
 - [x] Basic plugin for clean integration with Java ecosystem.
