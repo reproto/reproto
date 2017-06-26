@@ -57,6 +57,8 @@ A VIM plugin that provides syntax highlighting.
 
 This project includes an extensive set of integration tests.
 
+See `make help` for documentation on what can be done.
+
 Suites are tests which compiled a given set of rules, and compares with expected output.
 
 Projects are complete project tests.
