@@ -1,7 +1,7 @@
 use errors::*;
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use toml;
 
 #[derive(Debug, Deserialize)]
@@ -12,6 +12,8 @@ pub struct Repository {
     /// URL to objects source.
     /// FIXME: Can't use Url type directly here with `url_serde`, since it's not seen as optional.
     pub objects: Option<String>,
+    /// Where to store local checkouts of repos.
+    pub local_repos: Option<PathBuf>,
 }
 
 impl Default for Repository {
@@ -19,12 +21,14 @@ impl Default for Repository {
         Repository {
             index: None,
             objects: None,
+            local_repos: None,
         }
     }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    /// Repository configuration.
     pub repository: Repository,
 }
 

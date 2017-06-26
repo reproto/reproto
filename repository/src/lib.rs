@@ -14,6 +14,7 @@ extern crate url;
 extern crate url_serde;
 extern crate openssl;
 extern crate hex;
+extern crate git2;
 
 mod hex_slice;
 mod index;
@@ -22,9 +23,10 @@ mod objects;
 mod repository;
 mod resolver;
 mod sha256;
+mod git;
 pub mod errors;
 
-pub use self::index::{Index, index_from_url};
-pub use self::objects::{Objects, objects_from_url};
+pub use self::index::{Index, index_from_url, IndexConfig};
+pub use self::objects::{Objects, objects_from_url, ObjectsConfig};
 pub use self::repository::*;
 pub use self::resolver::*;

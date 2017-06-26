@@ -1,9 +1,19 @@
 mod file_index;
+mod git_index;
 
+use git;
 pub use reproto_core::{RpPackage, Version, VersionReq};
+use self::file_index::*;
+use self::git_index::*;
 use sha256::Checksum;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use url::Url;
+
+/// Configuration file for objects backends.
+pub struct IndexConfig {
+    /// Root path when checking out local repositories.
+    pub repos: Option<PathBuf>,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Deployment {
@@ -49,9 +59,34 @@ pub fn index_from_file(url: &Url) -> Result<Box<Index>> {
     Ok(Box::new(file_index::FileIndex::new(&path)))
 }
 
-pub fn index_from_url(url: &Url) -> Result<Box<Index>> {
-    match url.scheme() {
+pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Result<Box<Index>>
+    where I: IntoIterator<Item = &'a str>
+{
+    let mut scheme = scheme.into_iter();
+
+    let sub_scheme = scheme.next()
+        .ok_or_else(|| {
+            format!("invalid scheme ({}), expected git+file, git+https, or git+ssh",
+                    url.scheme())
+        })?;
+
+    let repos = config.repos.ok_or_else(|| "repos: not specified")?;
+
+    let git_repo = git::setup_git_repo(&repos, sub_scheme, url)?;
+
+    let file_objects = FileIndex::new(git_repo.path());
+    let index = GitIndex::new(git_repo, file_objects);
+
+    Ok(Box::new(index))
+}
+
+pub fn index_from_url(config: IndexConfig, url: &Url) -> Result<Box<Index>> {
+    let mut scheme = url.scheme().split("+");
+    let first = scheme.next().ok_or_else(|| format!("invalid scheme: {}", url))?;
+
+    match first {
         "file" => index_from_file(url),
+        "git" => index_from_git(config, scheme, url),
         scheme => Err(format!("unsupported scheme ({}): {}", scheme, url).into()),
     }
 }

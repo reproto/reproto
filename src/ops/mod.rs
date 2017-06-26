@@ -125,25 +125,37 @@ fn parse_package(input: &str) -> Result<RpRequiredPackage> {
 fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
     let mut index = matches.value_of("index").map(ToOwned::to_owned);
     let mut objects = matches.value_of("objects").map(ToOwned::to_owned);
+    let mut index_config = IndexConfig { repos: None };
+    let mut objects_config = ObjectsConfig { repos: None };
 
     if let Some(home_dir) = env::home_dir() {
         let reproto_dir = home_dir.join(".reproto");
         let config = reproto_dir.join("config.toml");
+        let reproto_dir = home_dir.join(".reproto");
+        let default_local_repos = reproto_dir.join("repos");
 
-        if !config.is_file() {
-            return Ok(None);
+        if config.is_file() {
+            let config = read_config(config)?;
+
+            // set values from configuration (if not already set).
+            index = index.or(config.repository.index);
+            objects = objects.or(config.repository.objects);
+
+            let local_repos = config.repository.local_repos;
+
+            index_config.repos = index_config.repos.or_else(|| local_repos.clone());
+            objects_config.repos = objects_config.repos.or_else(|| local_repos.clone());
         }
 
-        let config = read_config(config)?;
-
-        // set values from configuration (if not already set).
-        index = index.or(config.repository.index);
-        objects = objects.or(config.repository.objects);
+        index_config.repos = Some(index_config.repos
+            .unwrap_or_else(|| default_local_repos.clone()));
+        objects_config.repos = Some(objects_config.repos
+            .unwrap_or_else(|| default_local_repos.clone()));
     }
 
     if let Some(ref index_url) = index {
         let index_url = Url::parse(index_url)?;
-        let index = index_from_url(&index_url)?;
+        let index = index_from_url(index_config, &index_url)?;
 
         let objects_url = if let Some(ref objects) = objects {
             Url::parse(objects)?
@@ -154,7 +166,7 @@ fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
         debug!("index: {}", index_url);
         debug!("objects: {}", objects_url);
 
-        let objects = objects_from_url(&objects_url)?;
+        let objects = objects_from_url(objects_config, &objects_url)?;
         let repository = Repository::new(index, objects);
 
         return Ok(Some(repository));
