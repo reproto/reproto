@@ -47,6 +47,11 @@ pub trait Index {
     fn get_deployments(&self, package: &RpPackage, version: &Version) -> Result<Vec<Deployment>>;
 
     fn objects_url(&self) -> Result<Url>;
+
+    /// Update local caches related to the index.
+    fn update(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 pub fn index_from_file(url: &Url) -> Result<Box<Index>> {
@@ -65,10 +70,7 @@ pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Re
     let mut scheme = scheme.into_iter();
 
     let sub_scheme = scheme.next()
-        .ok_or_else(|| {
-            format!("invalid scheme ({}), expected git+file, git+https, or git+ssh",
-                    url.scheme())
-        })?;
+        .ok_or_else(|| format!("invalid scheme ({}), expected git+scheme", url.scheme()))?;
 
     let repos = config.repos.ok_or_else(|| "repos: not specified")?;
 

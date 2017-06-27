@@ -189,16 +189,8 @@ fn entry() -> Result<()> {
     let opts = ops::options(opts);
     let matches = opts.get_matches();
     setup_logger(&matches)?;
-
-    let (name, matches) = matches.subcommand();
-    let matches = matches.ok_or_else(|| "no subcommand")?;
-
-    match name {
-        "compile" => ops::compile::entry(matches),
-        "verify" => ops::verify::entry(matches),
-        "publish" => ops::publish::entry(matches),
-        _ => Err(format!("No such command: {}", name).into()),
-    }
+    ops::entry(&matches)?;
+    Ok(())
 }
 
 fn print_root_error(e: &Error) {

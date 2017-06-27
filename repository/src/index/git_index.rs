@@ -38,4 +38,8 @@ impl Index for GitIndex {
     fn objects_url(&self) -> Result<Url> {
         self.file_index.objects_url()
     }
+
+    fn update(&self) -> Result<()> {
+        self.git_repo.update()
+    }
 }

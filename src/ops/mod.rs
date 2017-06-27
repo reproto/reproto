@@ -1,6 +1,7 @@
 pub mod verify;
 pub mod compile;
 pub mod publish;
+pub mod update;
 
 use reproto_backend_doc as doc;
 use reproto_backend_java as java;
@@ -132,7 +133,7 @@ fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
         let reproto_dir = home_dir.join(".reproto");
         let config = reproto_dir.join("config.toml");
         let reproto_dir = home_dir.join(".reproto");
-        let default_local_repos = reproto_dir.join("repos");
+        let default_local_repos = reproto_dir.join("git");
 
         if config.is_file() {
             let config = read_config(config)?;
@@ -163,11 +164,11 @@ fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
             index.objects_url()?
         };
 
-        debug!("index: {}", index_url);
-        debug!("objects: {}", objects_url);
-
         let objects = objects_from_url(objects_config, &objects_url)?;
         let repository = Repository::new(index, objects);
+
+        debug!("index: {}", index_url);
+        debug!("objects: {}", objects_url);
 
         return Ok(Some(repository));
     }
@@ -282,5 +283,19 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.subcommand(compile::options());
     let out = out.subcommand(verify::options());
     let out = out.subcommand(publish::options());
+    let out = out.subcommand(update::options());
     out
+}
+
+pub fn entry(matches: &ArgMatches) -> Result<()> {
+    let (name, matches) = matches.subcommand();
+    let matches = matches.ok_or_else(|| "no subcommand")?;
+
+    match name {
+        "compile" => ops::compile::entry(matches),
+        "verify" => ops::verify::entry(matches),
+        "publish" => ops::publish::entry(matches),
+        "update" => ops::update::entry(matches),
+        _ => Err(format!("No such command: {}", name).into()),
+    }
 }

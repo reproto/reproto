@@ -21,20 +21,27 @@ impl GitRepo {
     pub fn with_remote<P: AsRef<Path>>(path: P, remote: Url, revspec: String) -> Result<GitRepo> {
         let path = path.as_ref();
 
-        let repository = if !path.is_dir() {
-            debug!("initializing git repo {}", path.display());
+        let (repository, new) = if !path.is_dir() {
+            trace!("Initializing git repo {}", path.display());
             fs::create_dir_all(path)?;
-            git2::Repository::init(path)?
+            (git2::Repository::init(path)?, true)
         } else {
-            git2::Repository::open(path)?
+            trace!("Opening git repo {}", path.display());
+            (git2::Repository::open(path)?, false)
         };
 
-        Ok(GitRepo {
+        let git_repo = GitRepo {
             repository: repository,
             path: path.to_owned(),
             remote: remote,
             revspec: revspec,
-        })
+        };
+
+        if new {
+            git_repo.update()?;
+        }
+
+        Ok(git_repo)
     }
 
     pub fn path(&self) -> &Path {
@@ -260,7 +267,7 @@ impl GitRepo {
         Ok(())
     }
 
-    pub fn fetch(&self) -> Result<()> {
+    pub fn update(&self) -> Result<()> {
         info!("Updating {}", self.remote);
 
         self.with_authentication(&self.repository.config()?, |f| {

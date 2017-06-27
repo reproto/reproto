@@ -25,4 +25,8 @@ impl Objects for GitObjects {
     fn get_object(&self, checksum: &Checksum) -> Result<Option<PathBuf>> {
         self.file_objects.get_object(checksum)
     }
+
+    fn update(&self) -> Result<()> {
+        self.git_repo.update()
+    }
 }

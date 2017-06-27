@@ -25,6 +25,11 @@ pub trait Objects {
     /// This might cause the object to be downloaded if it's not already present in the local
     /// filesystem.
     fn get_object(&self, checksum: &Checksum) -> Result<Option<PathBuf>>;
+
+    /// Update local caches related to the object store.
+    fn update(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 pub fn objects_from_file(url: &Url) -> Result<Box<Objects>> {
@@ -46,10 +51,7 @@ pub fn objects_from_git<'a, I>(config: ObjectsConfig,
     let mut scheme = scheme.into_iter();
 
     let sub_scheme = scheme.next()
-        .ok_or_else(|| {
-            format!("invalid scheme ({}), expected git+file, git+https, or git+ssh",
-                    url.scheme())
-        })?;
+        .ok_or_else(|| format!("invalid scheme ({}), expected git+scheme", url.scheme()))?;
 
     let repos = config.repos.ok_or_else(|| "repos: not specified")?;
 

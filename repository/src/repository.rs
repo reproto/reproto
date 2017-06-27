@@ -20,6 +20,12 @@ impl Repository {
         }
     }
 
+    pub fn update(&self) -> Result<()> {
+        self.index.update()?;
+        self.objects.update()?;
+        Ok(())
+    }
+
     pub fn publish<P>(&self, source: &P, package: &RpPackage, version: &Version) -> Result<()>
         where P: AsRef<Path>
     {

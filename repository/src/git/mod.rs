@@ -50,6 +50,5 @@ pub fn setup_git_repo<'a, P: AsRef<Path>>(repos: &P,
     let refspec = refspec.unwrap_or_else(|| DEFAULT_REMOTE_REF.to_owned());
 
     let git_repo = GitRepo::with_remote(&path, remote, refspec)?;
-    git_repo.fetch()?;
     Ok(git_repo)
 }
