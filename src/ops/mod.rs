@@ -1,7 +1,8 @@
-pub mod verify;
-pub mod compile;
-pub mod publish;
-pub mod update;
+mod verify;
+mod compile;
+mod publish;
+mod update;
+mod repo;
 
 use reproto_backend_doc as doc;
 use reproto_backend_java as java;
@@ -158,26 +159,28 @@ fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
         let index_url = url::Url::parse(index_url)?;
         let index = index_from_url(index_config, &index_url)?;
 
-        let objects_url = if let Some(objects) = objects {
-            objects
-        } else {
-            index.objects_url()?
-        };
+        let objects = {
+            let objects_url = if let Some(ref objects) = objects {
+                objects.as_ref()
+            } else {
+                index.objects_url()?
+            };
 
-        let objects = match url::Url::parse(&objects_url) {
-            /// Relative to index index repository!
+            debug!("index: {}", index_url);
+            debug!("objects: {}", objects_url);
+
+            match url::Url::parse(objects_url) {
+                /// Relative to index index repository!
             Err(url::ParseError::RelativeUrlWithoutBase) => {
-                let relative_path = Path::new(&objects_url);
-                index.objects_from_index(&relative_path)?
+                    let relative_path = Path::new(objects_url);
+                    index.objects_from_index(&relative_path)?
+                }
+                Err(e) => return Err(e.into()),
+                Ok(url) => objects_from_url(objects_config, &url)?,
             }
-            Err(e) => return Err(e.into()),
-            Ok(url) => objects_from_url(objects_config, &url)?,
         };
 
         let repository = Repository::new(index, objects);
-
-        debug!("index: {}", index_url);
-        debug!("objects: {}", objects_url);
 
         return Ok(Some(repository));
     }
@@ -293,6 +296,7 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.subcommand(verify::options());
     let out = out.subcommand(publish::options());
     let out = out.subcommand(update::options());
+    let out = out.subcommand(repo::options());
     out
 }
 
@@ -305,6 +309,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         "verify" => ops::verify::entry(matches),
         "publish" => ops::publish::entry(matches),
         "update" => ops::update::entry(matches),
+        "repo" => ops::repo::entry(matches),
         _ => Err(format!("No such command: {}", name).into()),
     }
 }

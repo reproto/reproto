@@ -4,7 +4,7 @@ mod git_index;
 use git;
 use objects::Objects;
 pub use reproto_core::{RpPackage, Version, VersionReq};
-use self::file_index::*;
+pub use self::file_index::init_file_index;
 use self::git_index::*;
 use sha256::Checksum;
 use std::path::{Path, PathBuf};
@@ -51,7 +51,7 @@ pub trait Index {
     /// Get an objects URL as configured in the index.
     ///
     /// If relative, will cause objects to be loaded from the same repository as the index.
-    fn objects_url(&self) -> Result<String>;
+    fn objects_url(&self) -> Result<&str>;
 
     /// Load objects relative to the index repository.
     fn objects_from_index(&self, relative_path: &Path) -> Result<Box<Objects>>;
@@ -69,7 +69,7 @@ pub fn index_from_file(url: &Url) -> Result<Box<Index>> {
         return Err(format!("no such directory: {}", path.display()).into());
     }
 
-    Ok(Box::new(file_index::FileIndex::new(&path)))
+    Ok(Box::new(file_index::FileIndex::new(&path)?))
 }
 
 pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Result<Box<Index>>
@@ -84,7 +84,7 @@ pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Re
 
     let git_repo = Rc::new(git::setup_git_repo(&repos, sub_scheme, url)?);
 
-    let file_objects = FileIndex::new(git_repo.path());
+    let file_objects = file_index::FileIndex::new(git_repo.path())?;
     let index = GitIndex::new(url.clone(), git_repo, file_objects);
 
     Ok(Box::new(index))

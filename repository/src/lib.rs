@@ -25,7 +25,9 @@ mod sha256;
 mod git;
 pub mod errors;
 
-pub use self::index::{Index, index_from_url, IndexConfig};
+use reproto_core as core;
+
+pub use self::index::{Index, index_from_url, IndexConfig, init_file_index};
 pub use self::objects::{Objects, objects_from_url, ObjectsConfig};
 pub use self::repository::*;
 pub use self::resolver::*;

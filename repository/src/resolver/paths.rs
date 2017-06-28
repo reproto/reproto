@@ -9,10 +9,12 @@
 //!
 //! The second form is only used when a version requirement is present.
 
+use core::{RpRequiredPackage, Version, VersionReq};
+use errors::*;
+use resolver::Resolver;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use super::*;
 
 const EXT: &str = "reproto";
 

@@ -1,25 +1,43 @@
-use objects::FileObjects;
+use core::{RpPackage, Version, VersionReq};
+use errors::*;
+use index::{Deployment, Index};
+use objects::{FileObjects, Objects};
 use serde_json;
+use sha256::Checksum;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
-use super::*;
 
+/// Default to objects relative to index repo.
+const DEFAULT_OBJECTS: &'static str = ".objects";
+/// Index configuration file.
 const CONFIG_JSON: &'static str = "config.json";
+/// Name of metadata file for each package.
 const METADATA_JSON: &'static str = "metadata.json";
 
-#[derive(Deserialize)]
+fn default_objects() -> String {
+    DEFAULT_OBJECTS.to_owned()
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct Config {
+    #[serde(default = "default_objects")]
     objects: String,
 }
 
 pub struct FileIndex {
     path: PathBuf,
+    config: Config,
 }
 
 impl FileIndex {
-    pub fn new<P: AsRef<Path> + ?Sized>(path: &P) -> FileIndex {
-        FileIndex { path: path.as_ref().to_owned() }
+    pub fn new<P: AsRef<Path> + ?Sized>(path: &P) -> Result<FileIndex> {
+        let config = read_config(path)?;
+
+        Ok(FileIndex {
+            path: path.as_ref().to_owned(),
+            config: config,
+        })
     }
 
     /// Path to root of file index
@@ -135,16 +153,52 @@ impl Index for FileIndex {
         Ok(Box::new(FileObjects::new(&path)))
     }
 
-    fn objects_url(&self) -> Result<String> {
-        let config = self.path.join(CONFIG_JSON);
-
-        let mut f = File::open(&config)?;
-        let mut content = String::new();
-        f.read_to_string(&mut content)?;
-
-        let config: Config = serde_json::from_str(content.as_str())
-            .map_err(|e| format!("{}: bad config file: {}", config.display(), e))?;
-
-        Ok(config.objects)
+    fn objects_url(&self) -> Result<&str> {
+        Ok(self.config.objects.as_str())
     }
+}
+
+pub fn init_file_index<P: AsRef<Path> + ?Sized>(path: &P) -> Result<()> {
+    let path = path.as_ref();
+
+    if !path.is_dir() {
+        fs::create_dir_all(path)?;
+    }
+
+    let config_path = path.join(CONFIG_JSON);
+
+    if !config_path.is_file() {
+        let mut f = File::create(config_path)?;
+        let config = Config { objects: DEFAULT_OBJECTS.to_owned() };
+        let config_content = serde_json::to_value(&config)?;
+        writeln!(f, "{:#}", config_content)?;
+    }
+
+    Ok(())
+}
+
+/// Read the configuration from the given path.
+fn read_config<P: AsRef<Path> + ?Sized>(path: &P) -> Result<Config> {
+    let path = path.as_ref();
+
+    if !path.is_dir() {
+        return Err(format!("{}: not a directory", path.display()).into());
+    }
+
+    let config_path = path.join(CONFIG_JSON);
+
+    if !config_path.is_file() {
+        return Err(format!("{}: not an index, missing {}", path.display(), CONFIG_JSON).into());
+    }
+
+    let mut f = File::open(&config_path)
+        .map_err(|e| format!("failed to open {}: {}", config_path.display(), e))?;
+
+    let mut content = String::new();
+    f.read_to_string(&mut content)?;
+
+    let config: Config = serde_json::from_str(content.as_str())
+        .map_err(|e| format!("{}: bad config file: {}", config_path.display(), e))?;
+
+    Ok(config)
 }

@@ -1,17 +1,21 @@
+use core::{RpPackage, Version, VersionReq};
+use errors::*;
 use git::GitRepo;
+use index::{Deployment, Index, file_index};
 use objects::{FileObjects, GitObjects, Objects};
+use sha256::Checksum;
+use std::path::Path;
 use std::rc::Rc;
-use super::*;
 use url::Url;
 
 pub struct GitIndex {
     url: Url,
     git_repo: Rc<GitRepo>,
-    file_index: FileIndex,
+    file_index: file_index::FileIndex,
 }
 
 impl GitIndex {
-    pub fn new(url: Url, git_repo: Rc<GitRepo>, file_index: FileIndex) -> GitIndex {
+    pub fn new(url: Url, git_repo: Rc<GitRepo>, file_index: file_index::FileIndex) -> GitIndex {
         GitIndex {
             url: url,
             git_repo: git_repo,
@@ -36,7 +40,7 @@ impl Index for GitIndex {
         self.file_index.get_deployments(package, version)
     }
 
-    fn objects_url(&self) -> Result<String> {
+    fn objects_url(&self) -> Result<&str> {
         self.file_index.objects_url()
     }
 

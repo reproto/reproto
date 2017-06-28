@@ -1,4 +1,7 @@
-use super::*;
+use core::{RpRequiredPackage, Version};
+use errors::*;
+use resolver::Resolver;
+use std::path::PathBuf;
 
 pub struct Resolvers {
     resolvers: Vec<Box<Resolver>>,
