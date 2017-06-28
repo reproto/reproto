@@ -356,55 +356,116 @@ Indicates that the enum should be serialized as its `name`.
 
 ## Services
 
-The `service` declaration describes API endpoints that requests can be sent against.
+Service declarations describe endpoints that HTTP-requests can be sent against.
+
+Services are declared using the `service` keyword.
 
 ```reproto
-service PingService {
-  /// an error occured
-  returns Error {
-    mime "application/json";
-  }
-
-  /// redirect
-  returns {
-    status 302;
-  }
-
-  GET "ping" {
-    returns Pong {
-      status 200;
-      mime "application/json";
-    }
-  }
-
-  /// Endpoint showcasing that special characters can be included, and will be escaped
-  /// appropriately.
-  GET "foo/bar" {
-  }
-
-  /// delete the post with the given id `id`.
-  DELETE `post/{id:string}` {
-  }
+/// My Service
+service MyService {
+   // ...
 }
+```
 
-/// Point response data structure.
-type Pong {
-}
+Inside of a service, endpoints are declared by describing it with one of the HTTP-method keywords
+(`GET`, `POST`, `DELETE`, `PUT`, or `UPDATE`).
+Optionally they can also be declared with a path.
 
-interface Error {
-  /// Error message.
-  message: string;
+```reproto
+service MyService {
+  /// Default endpoint
+  GET {
+    // ...
+  }
 
-  Validation {
-    name "validation";
-
-    /// Path to where the validation error happened.
-    path: string;
+  GET "posts" {
+    // ...
   }
 }
 ```
 
-Declares a new service
+Paths are composed in hierarchies. Any declaration that is nested inside of another inherits the
+path from the parent.
+
+They can also capture variable if the are declared using back-ticks, like `` `posts/{id:string}` ``.
+
+```reproto
+service MyService {
+  "posts" {
+    /// Get all posts.
+    GET {
+      // the complete path for this resource is "posts"
+    }
+
+    /// Get the post with the id `id`
+    GET `{id:string}` {
+      // the complete path for this resource is `posts/{id:string}`
+    }
+  }
+}
+```
+
+Return values are declared using the `returns` keyword.
+
+```reproto
+service MyService {
+  GET "posts" {
+    returns [Post] {
+      status 200;
+
+      // multiple mime types are supported
+      mime "text/yaml";
+      mime "application/json";
+    }
+  }
+}
+
+type Post {
+  title: string;
+  author: string;
+}
+```
+
+Return statements can be inherited. As an example, any error type returned by any endpoint in the
+service can be declared in the root.
+
+```
+service MyService {
+  returns Error {
+    status 500;
+    mime "application/json";
+  }
+
+  // ...
+}
+
+type Error {
+  message: string;
+}
+```
+
+If your endpoint accepts a body, this is declared using the `accepts` keyword.
+
+```reproto
+service MyService {
+  POST "posts" {
+    accepts Post {
+      // multiple mime types are supported.
+      accept "application/json";
+      accept "text/yaml";
+    }
+
+    returns any {
+      status 200;
+    }
+  }
+}
+
+type Post {
+  title: string;
+  author: string;
+}
+```
 
 ## Match
 
