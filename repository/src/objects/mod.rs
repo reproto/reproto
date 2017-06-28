@@ -59,7 +59,7 @@ pub fn objects_from_git<'a, I>(config: ObjectsConfig,
     let git_repo = Rc::new(git::setup_git_repo(&repos, sub_scheme, url)?);
 
     let file_objects = FileObjects::new(git_repo.path());
-    let objects = GitObjects::new(git_repo, file_objects);
+    let objects = GitObjects::new(url.clone(), git_repo, file_objects);
 
     Ok(Box::new(objects))
 }

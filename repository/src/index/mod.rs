@@ -85,7 +85,7 @@ pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Re
     let git_repo = Rc::new(git::setup_git_repo(&repos, sub_scheme, url)?);
 
     let file_objects = FileIndex::new(git_repo.path());
-    let index = GitIndex::new(git_repo, file_objects);
+    let index = GitIndex::new(url.clone(), git_repo, file_objects);
 
     Ok(Box::new(index))
 }

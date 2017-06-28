@@ -13,5 +13,14 @@ error_chain! {
     }
 
     errors {
+        NoPublishIndex(url: String) {
+            description("index does not support publishing")
+            display("index does not support publishing: {}", url)
+        }
+
+        NoPublishObjects(url: String) {
+            description("object storage does not support publishing")
+            display("object storage does not support publishing: {}", url)
+        }
     }
 }

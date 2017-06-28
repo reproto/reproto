@@ -2,15 +2,18 @@ use git::GitRepo;
 use objects::{FileObjects, GitObjects, Objects};
 use std::rc::Rc;
 use super::*;
+use url::Url;
 
 pub struct GitIndex {
+    url: Url,
     git_repo: Rc<GitRepo>,
     file_index: FileIndex,
 }
 
 impl GitIndex {
-    pub fn new(git_repo: Rc<GitRepo>, file_index: FileIndex) -> GitIndex {
+    pub fn new(url: Url, git_repo: Rc<GitRepo>, file_index: FileIndex) -> GitIndex {
         GitIndex {
+            url: url,
             git_repo: git_repo,
             file_index: file_index,
         }
@@ -25,12 +28,8 @@ impl Index for GitIndex {
         self.file_index.resolve(package, version_req)
     }
 
-    fn put_version(&self,
-                   checksum: &Checksum,
-                   package: &RpPackage,
-                   version: &Version)
-                   -> Result<()> {
-        self.file_index.put_version(checksum, package, version)
+    fn put_version(&self, _: &Checksum, _: &RpPackage, _: &Version) -> Result<()> {
+        Err(ErrorKind::NoPublishIndex(self.url.to_string()).into())
     }
 
     fn get_deployments(&self, package: &RpPackage, version: &Version) -> Result<Vec<Deployment>> {
@@ -45,7 +44,14 @@ impl Index for GitIndex {
         let git_repo = self.git_repo.clone();
         let path = self.file_index.path().join(relative_path);
         let file_objects = FileObjects::new(&path);
-        Ok(Box::new(GitObjects::new(git_repo, file_objects)))
+
+        let url = if let Some(path) = relative_path.to_str() {
+            self.url.join(path)?
+        } else {
+            self.url.clone()
+        };
+
+        Ok(Box::new(GitObjects::new(url, git_repo, file_objects)))
     }
 
     fn update(&self) -> Result<()> {
