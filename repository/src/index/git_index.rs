@@ -1,13 +1,15 @@
 use git::GitRepo;
+use objects::{FileObjects, GitObjects, Objects};
+use std::rc::Rc;
 use super::*;
 
 pub struct GitIndex {
-    git_repo: GitRepo,
+    git_repo: Rc<GitRepo>,
     file_index: FileIndex,
 }
 
 impl GitIndex {
-    pub fn new(git_repo: GitRepo, file_index: FileIndex) -> GitIndex {
+    pub fn new(git_repo: Rc<GitRepo>, file_index: FileIndex) -> GitIndex {
         GitIndex {
             git_repo: git_repo,
             file_index: file_index,
@@ -35,8 +37,15 @@ impl Index for GitIndex {
         self.file_index.get_deployments(package, version)
     }
 
-    fn objects_url(&self) -> Result<Url> {
+    fn objects_url(&self) -> Result<String> {
         self.file_index.objects_url()
+    }
+
+    fn objects_from_index(&self, relative_path: &Path) -> Result<Box<Objects>> {
+        let git_repo = self.git_repo.clone();
+        let path = self.file_index.path().join(relative_path);
+        let file_objects = FileObjects::new(&path);
+        Ok(Box::new(GitObjects::new(git_repo, file_objects)))
     }
 
     fn update(&self) -> Result<()> {

@@ -2,11 +2,13 @@ mod file_index;
 mod git_index;
 
 use git;
+use objects::Objects;
 pub use reproto_core::{RpPackage, Version, VersionReq};
 use self::file_index::*;
 use self::git_index::*;
 use sha256::Checksum;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use url::Url;
 
 /// Configuration file for objects backends.
@@ -46,7 +48,13 @@ pub trait Index {
 
     fn get_deployments(&self, package: &RpPackage, version: &Version) -> Result<Vec<Deployment>>;
 
-    fn objects_url(&self) -> Result<Url>;
+    /// Get an objects URL as configured in the index.
+    ///
+    /// If relative, will cause objects to be loaded from the same repository as the index.
+    fn objects_url(&self) -> Result<String>;
+
+    /// Load objects relative to the index repository.
+    fn objects_from_index(&self, relative_path: &Path) -> Result<Box<Objects>>;
 
     /// Update local caches related to the index.
     fn update(&self) -> Result<()> {
@@ -74,7 +82,7 @@ pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Re
 
     let repos = config.repos.ok_or_else(|| "repos: not specified")?;
 
-    let git_repo = git::setup_git_repo(&repos, sub_scheme, url)?;
+    let git_repo = Rc::new(git::setup_git_repo(&repos, sub_scheme, url)?);
 
     let file_objects = FileIndex::new(git_repo.path());
     let index = GitIndex::new(git_repo, file_objects);

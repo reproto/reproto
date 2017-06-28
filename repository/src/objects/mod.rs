@@ -3,10 +3,11 @@ mod git_objects;
 
 use errors::*;
 use git;
-use self::file_objects::*;
-use self::git_objects::*;
-pub use sha256::Checksum;
+pub use self::file_objects::FileObjects;
+pub use self::git_objects::GitObjects;
+use sha256::Checksum;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use url::Url;
 
 /// Configuration file for objects backends.
@@ -55,7 +56,7 @@ pub fn objects_from_git<'a, I>(config: ObjectsConfig,
 
     let repos = config.repos.ok_or_else(|| "repos: not specified")?;
 
-    let git_repo = git::setup_git_repo(&repos, sub_scheme, url)?;
+    let git_repo = Rc::new(git::setup_git_repo(&repos, sub_scheme, url)?);
 
     let file_objects = FileObjects::new(git_repo.path());
     let objects = GitObjects::new(git_repo, file_objects);

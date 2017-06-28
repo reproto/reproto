@@ -14,7 +14,7 @@ use std::env;
 use std::error::Error;
 use std::path::Path;
 use super::*;
-use url::Url;
+use url;
 
 fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
     let mut parts = input.split(":");
@@ -155,16 +155,25 @@ fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
     }
 
     if let Some(ref index_url) = index {
-        let index_url = Url::parse(index_url)?;
+        let index_url = url::Url::parse(index_url)?;
         let index = index_from_url(index_config, &index_url)?;
 
-        let objects_url = if let Some(ref objects) = objects {
-            Url::parse(objects)?
+        let objects_url = if let Some(objects) = objects {
+            objects
         } else {
             index.objects_url()?
         };
 
-        let objects = objects_from_url(objects_config, &objects_url)?;
+        let objects = match url::Url::parse(&objects_url) {
+            /// Relative to index index repository!
+            Err(url::ParseError::RelativeUrlWithoutBase) => {
+                let relative_path = Path::new(&objects_url);
+                index.objects_from_index(&relative_path)?
+            }
+            Err(e) => return Err(e.into()),
+            Ok(url) => objects_from_url(objects_config, &url)?,
+        };
+
         let repository = Repository::new(index, objects);
 
         debug!("index: {}", index_url);

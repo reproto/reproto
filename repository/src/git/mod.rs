@@ -11,6 +11,7 @@ pub fn setup_git_repo<'a, P: AsRef<Path>>(repos: &P,
                                           scheme: &str,
                                           url: &'a Url)
                                           -> Result<GitRepo> {
+
     let mut remote = url.clone();
     remote.set_scheme(scheme).map_err(|_| format!("cannot set scheme for url: {}", url))?;
 

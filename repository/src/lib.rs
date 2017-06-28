@@ -11,7 +11,6 @@ extern crate toml;
 extern crate serde;
 extern crate serde_json;
 extern crate url;
-extern crate url_serde;
 extern crate openssl;
 extern crate hex;
 extern crate git2;

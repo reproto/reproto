@@ -21,7 +21,6 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("publish").about("Publish specifications");
     let out = path_base(out);
     let out = out.arg(Arg::with_name("package").multiple(true));
-
     out
 }
 

@@ -1,14 +1,15 @@
 use git::GitRepo;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use super::*;
 
 pub struct GitObjects {
-    git_repo: GitRepo,
+    git_repo: Rc<GitRepo>,
     file_objects: FileObjects,
 }
 
 impl GitObjects {
-    pub fn new(git_repo: GitRepo, file_objects: FileObjects) -> GitObjects {
+    pub fn new(git_repo: Rc<GitRepo>, file_objects: FileObjects) -> GitObjects {
         GitObjects {
             git_repo: git_repo,
             file_objects: file_objects,

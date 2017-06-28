@@ -1,17 +1,16 @@
+use objects::FileObjects;
 use serde_json;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use super::*;
-use url_serde;
 
 const CONFIG_JSON: &'static str = "config.json";
 const METADATA_JSON: &'static str = "metadata.json";
 
 #[derive(Deserialize)]
 pub struct Config {
-    #[serde(with="url_serde")]
-    objects: Url,
+    objects: String,
 }
 
 pub struct FileIndex {
@@ -21,6 +20,11 @@ pub struct FileIndex {
 impl FileIndex {
     pub fn new<P: AsRef<Path> + ?Sized>(path: &P) -> FileIndex {
         FileIndex { path: path.as_ref().to_owned() }
+    }
+
+    /// Path to root of file index
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
     /// # read package metadata
@@ -126,7 +130,12 @@ impl Index for FileIndex {
         self.read_package(package, |d| d.version == *version).map(|r| r.0)
     }
 
-    fn objects_url(&self) -> Result<Url> {
+    fn objects_from_index(&self, relative_path: &Path) -> Result<Box<Objects>> {
+        let path = self.path.join(relative_path);
+        Ok(Box::new(FileObjects::new(&path)))
+    }
+
+    fn objects_url(&self) -> Result<String> {
         let config = self.path.join(CONFIG_JSON);
 
         let mut f = File::open(&config)?;
