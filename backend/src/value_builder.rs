@@ -19,6 +19,21 @@ pub struct ValueContext<'a> {
     ty: Option<&'a RpType>,
 }
 
+impl<'a> ValueContext<'a> {
+    pub fn new(package: &'a RpVersionedPackage,
+               variables: &'a Variables,
+               value: &'a Loc<RpValue>,
+               ty: Option<&'a RpType>)
+               -> ValueContext<'a> {
+        ValueContext {
+            package: package,
+            variables: variables,
+            value: value,
+            ty: ty,
+        }
+    }
+}
+
 pub struct ObjectContext<'a> {
     package: &'a RpVersionedPackage,
     variables: &'a Variables<'a>,
@@ -39,19 +54,6 @@ impl<'a> ObjectContext<'a> {
             ty: ty,
         }
     }
-}
-
-pub fn new_env<'a>(package: &'a RpVersionedPackage,
-                   variables: &'a Variables,
-                   value: &'a Loc<RpValue>,
-                   ty: Option<&'a RpType>)
-                   -> Box<ValueContext<'a>> {
-    Box::new(ValueContext {
-        package: package,
-        variables: variables,
-        value: value,
-        ty: ty,
-    })
 }
 
 pub trait ValueBuilder
@@ -121,9 +123,11 @@ pub trait ValueBuilder
 
                 for f in registered.fields()? {
                     if let Some(init) = known.get(f.ident()) {
-                        let new_env =
-                            new_env(&ctx.package, &ctx.variables, &init.value, Some(&f.ty));
-                        arguments.push(self.value(&*new_env)?);
+                        let ctx = ValueContext::new(&ctx.package,
+                                                    &ctx.variables,
+                                                    &init.value,
+                                                    Some(&f.ty));
+                        arguments.push(self.value(ctx)?);
                     } else {
                         arguments.push(self.optional_empty()?);
                     }
@@ -143,9 +147,9 @@ pub trait ValueBuilder
         }
     }
 
-    fn value(&self, env: &ValueContext) -> Result<Self::Stmt> {
-        let value = env.value;
-        let ty = env.ty;
+    fn value(&self, ctx: ValueContext) -> Result<Self::Stmt> {
+        let value = ctx.value;
+        let ty = ctx.ty;
 
         match (&**value, ty) {
             (&RpValue::String(ref string), Some(&RpType::String)) |
@@ -183,18 +187,18 @@ pub trait ValueBuilder
                 let mut array_values = Vec::new();
 
                 for v in values {
-                    let new_env = new_env(&env.package, &env.variables, v, inner);
-                    array_values.push(self.value(&*new_env)?)
+                    let ctx = ValueContext::new(&ctx.package, &ctx.variables, v, inner);
+                    array_values.push(self.value(ctx)?)
                 }
 
                 return self.array(array_values);
             }
             // identifier with any type.
             (&RpValue::Identifier(ref identifier), expected) => {
-                if let Some(variable_type) = env.variables.get(identifier) {
+                if let Some(variable_type) = ctx.variables.get(identifier) {
                     // if expected is set
                     if let Some(expected) = expected {
-                        if !self.env().is_assignable_from(&env.package, expected, variable_type)? {
+                        if !self.env().is_assignable_from(&ctx.package, expected, variable_type)? {
                             return Err(Error::pos(format!("not assignable to `{}`", expected)
                                                       .into(),
                                                   value.pos().into()));

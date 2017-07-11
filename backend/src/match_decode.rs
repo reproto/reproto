@@ -39,7 +39,8 @@ pub trait MatchDecode
         let mut elements = Self::Elements::new();
 
         for &(ref value, ref result) in &match_decl.by_value {
-            let value_stmt = self.value(&new_env(&type_id.package, &variables, &value, None))?;
+            let value_stmt =
+                self.value(ValueContext::new(&type_id.package, &variables, &value, None))?;
 
             let result_stmt = self.object(ObjectContext::new(&type_id.package,
                                            &variables,

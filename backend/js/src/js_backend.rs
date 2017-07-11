@@ -442,8 +442,8 @@ impl JsBackend {
             value_arguments.push(string(&*variant.name));
 
             for (value, field) in variant.arguments.iter().zip(fields.iter()) {
-                let env = new_env(&type_id.package, &variables, &value, Some(&field.ty));
-                value_arguments.push(self.value(&env)?);
+                let ctx = ValueContext::new(&type_id.package, &variables, &value, Some(&field.ty));
+                value_arguments.push(self.value(ctx)?);
             }
 
             let arguments = js![new &body.name, value_arguments];

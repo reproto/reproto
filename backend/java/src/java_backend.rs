@@ -500,8 +500,9 @@ impl JavaBackend {
                 let mut value_arguments = Statement::new();
 
                 for (value, field) in variant.arguments.iter().zip(fields.iter()) {
-                    let env = new_env(&type_id.package, &variables, &value, Some(&field.ty));
-                    value_arguments.push(self.value(&env)?);
+                    let ctx =
+                        ValueContext::new(&type_id.package, &variables, &value, Some(&field.ty));
+                    value_arguments.push(self.value(ctx)?);
                 }
 
                 enum_stmt.push(stmt!["(", value_arguments.join(", "), ")"]);
