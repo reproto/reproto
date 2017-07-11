@@ -19,6 +19,7 @@ error_chain! {
         Log(::log::SetLoggerError);
         Toml(::toml::de::Error);
         UrlParseError(::url::ParseError);
+        FromUtf8Error(::std::string::FromUtf8Error);
     }
 
     errors {

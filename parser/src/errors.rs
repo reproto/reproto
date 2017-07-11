@@ -10,7 +10,6 @@ error_chain! {
         Io(::std::io::Error);
         ParseInt(::std::num::ParseIntError);
         ParseFloat(::std::num::ParseFloatError);
-        FromUtf8Error(::std::string::FromUtf8Error);
         ParseBigIntError(::num::bigint::ParseBigIntError);
         BorrowMutError(::std::cell::BorrowMutError);
         BorrowError(::std::cell::BorrowError);

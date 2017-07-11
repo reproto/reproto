@@ -2,13 +2,61 @@ use errors::*;
 use reproto_backend as backend;
 use reproto_core as core;
 use reproto_parser as parser;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+
+const NL: u8 = '\n' as u8;
+
+fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (usize, usize))> {
+    let file = File::open(path)?;
+
+    let mut line = 0usize;
+    let mut current = 0usize;
+    let mut buffer: Vec<u8> = Vec::new();
+
+    let start = pos.0;
+    let end = pos.1;
+
+    let mut it = file.bytes().peekable();
+    let mut read = 0usize;
+
+    while let Some(b) = it.next() {
+        let b = b?;
+        read += 1;
+
+        match b {
+            NL => {}
+            _ => {
+                buffer.push(b);
+                continue;
+            }
+        }
+
+        let start_of_line = current;
+        current += read;
+
+        if current >= start {
+            let buffer = String::from_utf8(buffer)?;
+            let end = ::std::cmp::min(end, current);
+            let range = (start - start_of_line, end - start_of_line);
+            return Ok((buffer, line, range));
+        }
+
+        read = 0usize;
+        line += 1;
+        buffer.clear();
+    }
+
+    Err("bad file position".into())
+}
 
 fn print_error<S: AsRef<str>>(m: S, p: &core::ErrorPos) -> Result<()> {
     use std::iter::repeat;
     use std::cmp::max;
     use ansi_term::Colour::{Blue, Red};
 
-    let (line_str, line, (s, e)) = parser::find_line(&p.path, (p.start, p.end))?;
+    let (line_str, line, (s, e)) = find_line(&p.path, (p.start, p.end))?;
 
     println!("{}:{}:{}-{}:", p.path.display(), line + 1, s + 1, e + 1);
 
