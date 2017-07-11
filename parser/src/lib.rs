@@ -221,8 +221,10 @@ mod tests {
             arguments: Loc::new(vec![field], (path.clone(), 8, 17)),
         };
 
-        assert_value_eq!(Value::Instance(Loc::new(instance, (path.clone(), 0, 18))),
-                         "Foo.Bar(hello: 12)");
+        let instance = Loc::new(instance, (path.clone(), 0, 18));
+        let object = Loc::new(Object::Instance(instance), (path.clone(), 0, 18));
+
+        assert_value_eq!(Value::Object(object), "Foo.Bar(hello: 12)");
     }
 
     #[test]
@@ -279,8 +281,7 @@ mod tests {
             assert_eq!(4, option.values.len());
 
             assert_eq!(Value::Boolean(true), *option.values[0].as_ref());
-            assert_eq!(Value::Identifier("foo".to_owned()),
-                       *option.values[1].as_ref());
+            assert_eq!(Value::Identifier("foo"), *option.values[1].as_ref());
             assert_eq!(Value::String("bar".to_owned()), *option.values[2].as_ref());
             assert_eq!(Value::Number(12u32.into()), *option.values[3].as_ref());
             return;
