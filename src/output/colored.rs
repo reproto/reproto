@@ -17,7 +17,7 @@ impl<T> Colored<T> {
 impl<T> Output for Colored<T>
     where T: 'static + LockableWrite
 {
-    fn logger(&self) -> Box<'static + log::Log> {
+    fn logger(&self) -> Box<log::Log + 'static> {
         Box::new(ColoredLogger { out: self.out.open_new() })
     }
 

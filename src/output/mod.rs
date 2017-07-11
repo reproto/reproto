@@ -16,7 +16,7 @@ pub use self::non_colored::NonColored;
 pub trait LockableWrite where Self: Sync + Send {
     fn open_new(&self) -> Self;
 
-    fn lock<'a>(&'a self) -> Box<'a + Write>;
+    fn lock<'a>(&'a self) -> Box<Write + 'a>;
 }
 
 impl LockableWrite for io::Stdout {
@@ -24,7 +24,7 @@ impl LockableWrite for io::Stdout {
         io::stdout()
     }
 
-    fn lock<'a>(&'a self) -> Box<'a + Write> {
+    fn lock<'a>(&'a self) -> Box<Write + 'a> {
         Box::new(self.lock())
     }
 }
@@ -225,7 +225,7 @@ pub trait Output {
         Ok(out)
     }
 
-    fn logger(&self) -> Box<'static + log::Log>;
+    fn logger(&self) -> Box<log::Log + 'static>;
 
     fn print(&self, m: &str) -> Result<()>;
 

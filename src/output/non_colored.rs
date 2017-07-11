@@ -18,7 +18,7 @@ impl<T> NonColored<T> {
 }
 
 impl<T> log::Log for NonColoredLogger<T>
-    where T: LockableWrite + Send + Sync
+    where T: LockableWrite
 {
     fn enabled(&self, metadata: &log::LogMetadata) -> bool {
         metadata.level() <= log::LogLevel::Debug
@@ -36,7 +36,7 @@ impl<T> log::Log for NonColoredLogger<T>
 impl<T> Output for NonColored<T>
     where T: 'static + LockableWrite
 {
-    fn logger(&self) -> Box<'static + log::Log> {
+    fn logger(&self) -> Box<log::Log + 'static> {
         Box::new(NonColoredLogger { out: self.out.open_new() })
     }
 
