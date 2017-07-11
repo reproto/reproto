@@ -102,7 +102,6 @@ fn handle_core_error(e: &core::errors::ErrorKind) -> Result<bool> {
 
 fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<bool> {
     use backend::errors::ErrorKind::*;
-    use ansi_term::Colour::Red;
 
     let out = match *e {
         Pos(ref m, ref p) => {

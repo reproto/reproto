@@ -265,6 +265,7 @@ pub Value: Value<'input> = {
     <true> => Value::Boolean(true),
     <false> => Value::Boolean(false),
     <identifier:Identifier> => Value::Identifier(identifier),
+    <object:Loc<Object>> => Value::Object(object),
 };
 
 Instance: Instance<'input> = {

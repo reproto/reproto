@@ -16,20 +16,20 @@ pub struct ValueContext<'a> {
     package: &'a RpVersionedPackage,
     variables: &'a Variables<'a>,
     value: &'a Loc<RpValue>,
-    ty: Option<&'a RpType>,
+    expected: Option<&'a RpType>,
 }
 
 impl<'a> ValueContext<'a> {
     pub fn new(package: &'a RpVersionedPackage,
                variables: &'a Variables,
                value: &'a Loc<RpValue>,
-               ty: Option<&'a RpType>)
+               expected: Option<&'a RpType>)
                -> ValueContext<'a> {
         ValueContext {
             package: package,
             variables: variables,
             value: value,
-            ty: ty,
+            expected: expected,
         }
     }
 }
@@ -38,20 +38,20 @@ pub struct ObjectContext<'a> {
     package: &'a RpVersionedPackage,
     variables: &'a Variables<'a>,
     object: &'a Loc<RpObject>,
-    ty: Option<&'a RpType>,
+    expected: Option<&'a RpType>,
 }
 
 impl<'a> ObjectContext<'a> {
     pub fn new(package: &'a RpVersionedPackage,
                variables: &'a Variables,
                object: &'a Loc<RpObject>,
-               ty: Option<&'a RpType>)
+               expected: Option<&'a RpType>)
                -> ObjectContext<'a> {
         ObjectContext {
             package: package,
             variables: variables,
             object: object,
-            ty: ty,
+            expected: expected,
         }
     }
 }
@@ -95,9 +95,9 @@ pub trait ValueBuilder
 
     fn object(&self, ctx: ObjectContext) -> Result<Self::Stmt> {
         let object = ctx.object;
-        let ty = ctx.ty;
+        let expected = ctx.expected;
 
-        match (&**object, ty) {
+        match (object.as_ref(), expected) {
             (&RpObject::Constant(ref constant), Some(&RpType::Name { ref name })) => {
                 let reg_constant = self.env()
                     .constant(object.pos(), &ctx.package, constant, name)?;
@@ -140,8 +140,8 @@ pub trait ValueBuilder
             _ => {}
         }
 
-        if let Some(ty) = ty {
-            Err(Error::pos(format!("expected `{}`", ty), object.pos().into()))
+        if let Some(expected) = expected {
+            Err(Error::pos(format!("expected `{}`", expected), object.pos().into()))
         } else {
             Err(Error::pos("unexpected value".into(), object.pos().into()))
         }
@@ -149,9 +149,9 @@ pub trait ValueBuilder
 
     fn value(&self, ctx: ValueContext) -> Result<Self::Stmt> {
         let value = ctx.value;
-        let ty = ctx.ty;
+        let expected = ctx.expected;
 
-        match (&**value, ty) {
+        match (value.as_ref(), expected) {
             (&RpValue::String(ref string), Some(&RpType::String)) |
             (&RpValue::String(ref string), None) => {
                 return self.string(string);
@@ -210,11 +210,14 @@ pub trait ValueBuilder
                     return Err(Error::pos("missing variable".into(), value.pos().into()));
                 }
             }
+            (&RpValue::Object(ref object), expected) => {
+                return self.object(ObjectContext::new(&ctx.package, &ctx.variables, object, expected));
+            }
             _ => {}
         }
 
-        if let Some(ty) = ty {
-            Err(Error::pos(format!("expected `{}`", ty), value.pos().into()))
+        if let Some(expected) = expected {
+            Err(Error::pos(format!("expected `{}`", expected), value.pos().into()))
         } else {
             Err(Error::pos("unexpected value".into(), value.pos().into()))
         }

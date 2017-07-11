@@ -9,6 +9,7 @@ pub enum RpValue {
     Boolean(bool),
     Identifier(String),
     Array(Vec<Loc<RpValue>>),
+    Object(Loc<RpObject>),
 }
 
 impl RpValue {
@@ -19,6 +20,7 @@ impl RpValue {
             RpValue::Boolean(_) => RpMatchKind::Boolean,
             RpValue::Identifier(_) => RpMatchKind::Any,
             RpValue::Array(_) => RpMatchKind::Array,
+            RpValue::Object(_) => RpMatchKind::Any,
         }
     }
 
@@ -38,6 +40,7 @@ impl ::std::fmt::Display for RpValue {
             RpValue::Boolean(_) => "<boolean>",
             RpValue::Identifier(_) => "<identifier>",
             RpValue::Array(_) => "<array>",
+            RpValue::Object(_) => "<object>",
         };
 
         write!(f, "{}", out)

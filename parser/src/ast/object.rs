@@ -1,7 +1,7 @@
 use super::*;
 use super::errors::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Object<'input> {
     Instance(Loc<Instance<'input>>),
     Constant(Loc<RpName>),

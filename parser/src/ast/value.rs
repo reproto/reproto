@@ -8,6 +8,7 @@ pub enum Value<'input> {
     Boolean(bool),
     Identifier(&'input str),
     Array(Vec<Loc<Value<'input>>>),
+    Object(Loc<Object<'input>>),
 }
 
 impl<'input> IntoModel for Value<'input> {
@@ -20,6 +21,7 @@ impl<'input> IntoModel for Value<'input> {
             Value::Boolean(boolean) => RpValue::Boolean(boolean),
             Value::Identifier(identifier) => RpValue::Identifier(identifier.to_owned()),
             Value::Array(inner) => RpValue::Array(inner.into_model()?),
+            Value::Object(object) => RpValue::Object(object.into_model()?),
         };
 
         Ok(out)
