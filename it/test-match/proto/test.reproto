@@ -13,7 +13,6 @@ tuple Point {
   match {
     42 => Point(timestamp: 42, value: 41.2);
     n: unsigned => Point(timestamp: n, value: 42.0);
-    p: Point => p;
   }
 
   timestamp: unsigned/64 as "TS";

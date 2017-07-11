@@ -100,10 +100,6 @@ class Point:
       n = data
       return Point(n, 42)
 
-    if isinstance(data, dict):
-      p = Point.decode(data)
-      return p
-
     f_timestamp = data[0]
 
     f_value = data[1]

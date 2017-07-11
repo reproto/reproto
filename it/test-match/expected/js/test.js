@@ -109,11 +109,6 @@ export class Point {
       return new Point(n, 42);
     }
 
-    if (data.constructor === Object) {
-      p = Point.decode(data)
-      return p;
-    }
-
     const v_timestamp = data[0];
 
     if (v_timestamp === null || v_timestamp === undefined) {
