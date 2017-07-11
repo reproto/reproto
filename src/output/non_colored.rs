@@ -3,21 +3,23 @@ use log;
 use reproto_core::ErrorPos;
 use super::{LockableWrite, Output, find_line};
 
-pub struct NonColored {
-    out: Box<LockableWrite>,
+pub struct NonColored<T> {
+    out: T,
 }
 
-pub struct NonColoredLogger {
-    out: Box<LockableWrite>,
+pub struct NonColoredLogger<T> {
+    out: T,
 }
 
-impl NonColored {
-    pub fn new(out: Box<LockableWrite>) -> NonColored {
+impl<T> NonColored<T> {
+    pub fn new(out: T) -> NonColored<T> {
         NonColored { out: out }
     }
 }
 
-impl log::Log for NonColoredLogger {
+impl<T> log::Log for NonColoredLogger<T>
+    where T: LockableWrite + Send + Sync
+{
     fn enabled(&self, metadata: &log::LogMetadata) -> bool {
         metadata.level() <= log::LogLevel::Debug
     }
@@ -31,8 +33,10 @@ impl log::Log for NonColoredLogger {
 }
 
 
-impl Output for NonColored {
-    fn logger(&self) -> Box<log::Log> {
+impl<T> Output for NonColored<T>
+    where T: 'static + LockableWrite
+{
+    fn logger(&self) -> Box<'static + log::Log> {
         Box::new(NonColoredLogger { out: self.out.open_new() })
     }
 

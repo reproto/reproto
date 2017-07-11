@@ -14,14 +14,14 @@ pub use self::colored::Colored;
 pub use self::non_colored::NonColored;
 
 pub trait LockableWrite where Self: Sync + Send {
-    fn open_new(&self) -> Box<LockableWrite>;
+    fn open_new(&self) -> Self;
 
     fn lock<'a>(&'a self) -> Box<'a + Write>;
 }
 
 impl LockableWrite for io::Stdout {
-    fn open_new(&self) -> Box<LockableWrite> {
-        Box::new(io::stdout())
+    fn open_new(&self) -> Self {
+        io::stdout()
     }
 
     fn lock<'a>(&'a self) -> Box<'a + Write> {
@@ -77,8 +77,7 @@ fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (usize,
     Err("bad file position".into())
 }
 
-pub trait Output
-{
+pub trait Output {
     fn handle_core_error(&self, e: &core::errors::ErrorKind) -> Result<bool> {
         use self::core::errors::ErrorKind::*;
 
@@ -226,7 +225,7 @@ pub trait Output
         Ok(out)
     }
 
-    fn logger(&self) -> Box<log::Log>;
+    fn logger(&self) -> Box<'static + log::Log>;
 
     fn print(&self, m: &str) -> Result<()>;
 

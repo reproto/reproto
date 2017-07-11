@@ -66,9 +66,9 @@ fn main() {
                   !matches.is_present("no-color") && atty::is(atty::Stream::Stdout);
 
     let mut output: Box<output::Output> = if colored {
-        Box::new(output::Colored::new(Box::new(io::stdout())))
+        Box::new(output::Colored::new(io::stdout()))
     } else {
-        Box::new(output::NonColored::new(Box::new(io::stdout())))
+        Box::new(output::NonColored::new(io::stdout()))
     };
 
     if let Err(e) = compiler_entry(matches, output.as_mut()) {
