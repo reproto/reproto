@@ -11,7 +11,7 @@ pub trait MatchDecode
                    data: &Self::Stmt,
                    value: &RpValue,
                    value_stmt: Self::Stmt,
-                   result: &RpValue,
+                   result: &RpObject,
                    result_stmt: Self::Stmt)
                    -> Result<Self::Elements>;
 
@@ -41,12 +41,12 @@ pub trait MatchDecode
         for &(ref value, ref result) in &match_decl.by_value {
             let value_stmt = self.value(&new_env(&type_id.package, &variables, &value, None))?;
 
-            let result_stmt = self.value(&new_env(&type_id.package,
-                                &variables,
-                                &result.instance,
-                                Some(&RpType::Name { name: type_id.name.clone() })))?;
+            let result_stmt = self.object(ObjectContext::new(&type_id.package,
+                                           &variables,
+                                           &result.object,
+                                           Some(&RpType::Name { name: type_id.name.clone() })))?;
 
-            elements.push(&self.match_value(data, value, value_stmt, &result.instance, result_stmt)?);
+            elements.push(&self.match_value(data, value, value_stmt, &result.object, result_stmt)?);
         }
 
         Ok(Some(elements))
@@ -72,10 +72,10 @@ pub trait MatchDecode
             let decode =
                 self.base_decode(type_id, result.variable.pos(), &result.variable.ty, data)?;
 
-            let result_value = self.value(&new_env(&type_id.package,
-                                &variables,
-                                &result.instance,
-                                Some(&RpType::Name { name: type_id.name.clone() })))?;
+            let result_value = self.object(ObjectContext::new(&type_id.package,
+                                           &variables,
+                                           &result.object,
+                                           Some(&RpType::Name { name: type_id.name.clone() })))?;
 
             elements.push(&self.match_type(type_id, data, kind, variable, decode, result_value, result)?);
         }

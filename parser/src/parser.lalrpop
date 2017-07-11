@@ -224,10 +224,15 @@ OptionDecl: OptionDecl<'input> = <name:Identifier> <values:OneOrMore<",", Loc<Va
 };
 
 MatchMember: MatchMember<'input> = {
-    <condition:Loc<MatchCondition>> "=>" <value:Loc<Value>> ";" => MatchMember {
+    <condition:Loc<MatchCondition>> "=>" <object:Loc<Object>> ";" => MatchMember {
         condition: condition,
-        value: value,
+        object: object,
     },
+};
+
+Object: Object<'input> = {
+    <instance:Loc<Instance>> => Object::Instance(instance),
+    <name:Loc<Name>> => Object::Constant(name),
 };
 
 MatchCondition: MatchCondition<'input> = {
@@ -255,13 +260,11 @@ SubType: SubType<'input> = {
 
 pub Value: Value<'input> = {
     "[" <values:ZeroOrMore<",", Loc<Value>>> "]" => Value::Array(values),
-    <instance:Loc<Instance>> => Value::Instance(instance),
-    <constant:Loc<Name>> => Value::Constant(constant),
     <string:string> => Value::String(string),
     <number:Number> => Value::Number(number),
     <true> => Value::Boolean(true),
     <false> => Value::Boolean(false),
-    <identifier:Identifier> => Value::Identifier(identifier.to_owned()),
+    <identifier:Identifier> => Value::Identifier(identifier),
 };
 
 Instance: Instance<'input> = {

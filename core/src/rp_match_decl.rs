@@ -46,7 +46,7 @@ impl RpMatchDecl {
 
                     if let Some(&(_, ref existing_value)) = result {
                         let err = ErrorKind::MatchConflict(member.condition.pos().into(),
-                                                           existing_value.instance.pos().into());
+                                                           existing_value.object.pos().into());
                         return Err(err.into());
                     }
                 }
@@ -54,7 +54,7 @@ impl RpMatchDecl {
                 self.by_type.push((match_kind,
                                    RpByTypeMatch {
                                        variable: variable.clone(),
-                                       instance: member.value.clone(),
+                                       object: member.object.clone(),
                                    }));
             }
             RpMatchCondition::Value(ref value) => {
@@ -64,13 +64,13 @@ impl RpMatchDecl {
 
                     if let Some(&(_, ref existing_value)) = result {
                         let err = ErrorKind::MatchConflict(member.condition.pos().into(),
-                                                           existing_value.instance.pos().into());
+                                                           existing_value.object.pos().into());
                         return Err(err.into());
                     }
                 }
 
                 self.by_value
-                    .push((value.clone(), RpByValueMatch { instance: member.value.clone() }));
+                    .push((value.clone(), RpByValueMatch { object: member.object.clone() }));
             }
         }
 

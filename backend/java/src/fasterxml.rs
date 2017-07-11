@@ -536,7 +536,7 @@ impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
                    data: &Statement,
                    value: &RpValue,
                    value_stmt: Statement,
-                   _result: &RpValue,
+                   _result: &RpObject,
                    result_stmt: Statement)
                    -> Result<Elements> {
         let mut value_body = Elements::new();

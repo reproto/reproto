@@ -6,10 +6,7 @@ pub enum Value<'input> {
     String(String),
     Number(RpNumber),
     Boolean(bool),
-    Identifier(String),
-    Type(RpType),
-    Instance(Loc<Instance<'input>>),
-    Constant(Loc<RpName>),
+    Identifier(&'input str),
     Array(Vec<Loc<Value<'input>>>),
 }
 
@@ -21,10 +18,7 @@ impl<'input> IntoModel for Value<'input> {
             Value::String(string) => RpValue::String(string),
             Value::Number(number) => RpValue::Number(number),
             Value::Boolean(boolean) => RpValue::Boolean(boolean),
-            Value::Identifier(identifier) => RpValue::Identifier(identifier),
-            Value::Type(ty) => RpValue::Type(ty),
-            Value::Instance(instance) => RpValue::Instance(instance.into_model()?),
-            Value::Constant(name) => RpValue::Constant(name.into_model()?),
+            Value::Identifier(identifier) => RpValue::Identifier(identifier.to_owned()),
             Value::Array(inner) => RpValue::Array(inner.into_model()?),
         };
 

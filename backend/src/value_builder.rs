@@ -12,19 +12,41 @@
 
 use super::*;
 
-pub struct ValueBuilderEnv<'a> {
+pub struct ValueContext<'a> {
     package: &'a RpVersionedPackage,
     variables: &'a Variables<'a>,
     value: &'a Loc<RpValue>,
     ty: Option<&'a RpType>,
 }
 
+pub struct ObjectContext<'a> {
+    package: &'a RpVersionedPackage,
+    variables: &'a Variables<'a>,
+    object: &'a Loc<RpObject>,
+    ty: Option<&'a RpType>,
+}
+
+impl<'a> ObjectContext<'a> {
+    pub fn new(package: &'a RpVersionedPackage,
+               variables: &'a Variables,
+               object: &'a Loc<RpObject>,
+               ty: Option<&'a RpType>)
+               -> ObjectContext<'a> {
+        ObjectContext {
+            package: package,
+            variables: variables,
+            object: object,
+            ty: ty,
+        }
+    }
+}
+
 pub fn new_env<'a>(package: &'a RpVersionedPackage,
                    variables: &'a Variables,
                    value: &'a Loc<RpValue>,
                    ty: Option<&'a RpType>)
-                   -> Box<ValueBuilderEnv<'a>> {
-    Box::new(ValueBuilderEnv {
+                   -> Box<ValueContext<'a>> {
+    Box::new(ValueContext {
         package: package,
         variables: variables,
         value: value,
@@ -69,7 +91,59 @@ pub trait ValueBuilder
 
     fn identifier(&self, identifier: &str) -> Result<Self::Stmt>;
 
-    fn value(&self, env: &ValueBuilderEnv) -> Result<Self::Stmt> {
+    fn object(&self, ctx: ObjectContext) -> Result<Self::Stmt> {
+        let object = ctx.object;
+        let ty = ctx.ty;
+
+        match (&**object, ty) {
+            (&RpObject::Constant(ref constant), Some(&RpType::Name { ref name })) => {
+                let reg_constant = self.env()
+                    .constant(object.pos(), &ctx.package, constant, name)?;
+
+                match *reg_constant {
+                    RpRegistered::EnumConstant { parent: _, variant: _ } => {
+                        let ty = self.convert_constant(object.pos(),
+                                              &ctx.package
+                                                  .into_type_id(constant.as_ref().clone()))?;
+                        return self.constant(ty);
+                    }
+                    _ => {
+                        return Err(Error::pos("not a valid enum constant".into(),
+                                              object.pos().into()))
+                    }
+                }
+            }
+            (&RpObject::Instance(ref instance), Some(&RpType::Name { ref name })) => {
+                let (registered, known) = self.env()
+                    .instance(object.pos(), ctx.package, instance, name)?;
+
+                let mut arguments = Vec::new();
+
+                for f in registered.fields()? {
+                    if let Some(init) = known.get(f.ident()) {
+                        let new_env =
+                            new_env(&ctx.package, &ctx.variables, &init.value, Some(&f.ty));
+                        arguments.push(self.value(&*new_env)?);
+                    } else {
+                        arguments.push(self.optional_empty()?);
+                    }
+                }
+
+                let ty = self.convert_type(object.pos(),
+                                  &ctx.package.into_type_id(instance.name.clone()))?;
+                return self.instance(ty, arguments);
+            }
+            _ => {}
+        }
+
+        if let Some(ty) = ty {
+            Err(Error::pos(format!("expected `{}`", ty), object.pos().into()))
+        } else {
+            Err(Error::pos("unexpected value".into(), object.pos().into()))
+        }
+    }
+
+    fn value(&self, env: &ValueContext) -> Result<Self::Stmt> {
         let value = env.value;
         let ty = env.ty;
 
@@ -114,42 +188,6 @@ pub trait ValueBuilder
                 }
 
                 return self.array(array_values);
-            }
-            (&RpValue::Constant(ref constant), Some(&RpType::Name { ref name })) => {
-                let reg_constant = self.env()
-                    .constant(value.pos(), &env.package, constant, name)?;
-
-                match *reg_constant {
-                    RpRegistered::EnumConstant { parent: _, variant: _ } => {
-                        let ty = self.convert_constant(value.pos(),
-                                              &env.package
-                                                  .into_type_id(constant.as_ref().clone()))?;
-                        return self.constant(ty);
-                    }
-                    _ => {
-                        return Err(Error::pos("not a valid enum constant".into(),
-                                              value.pos().into()))
-                    }
-                }
-            }
-            (&RpValue::Instance(ref instance), Some(&RpType::Name { ref name })) => {
-                let (registered, known) = self.env()
-                    .instance(value.pos(), env.package, instance, name)?;
-
-                let mut arguments = Vec::new();
-
-                for f in registered.fields()? {
-                    if let Some(init) = known.get(f.ident()) {
-                        let new_env = new_env(env.package, env.variables, &init.value, Some(&f.ty));
-                        arguments.push(self.value(&*new_env)?);
-                    } else {
-                        arguments.push(self.optional_empty()?);
-                    }
-                }
-
-                let ty = self.convert_type(value.pos(),
-                                  &env.package.into_type_id(instance.name.clone()))?;
-                return self.instance(ty, arguments);
             }
             // identifier with any type.
             (&RpValue::Identifier(ref identifier), expected) => {

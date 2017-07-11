@@ -8,9 +8,6 @@ pub enum RpValue {
     Number(RpNumber),
     Boolean(bool),
     Identifier(String),
-    Type(RpType),
-    Instance(Loc<RpInstance>),
-    Constant(Loc<RpName>),
     Array(Vec<Loc<RpValue>>),
 }
 
@@ -21,9 +18,6 @@ impl RpValue {
             RpValue::Number(_) => RpMatchKind::Number,
             RpValue::Boolean(_) => RpMatchKind::Boolean,
             RpValue::Identifier(_) => RpMatchKind::Any,
-            RpValue::Type(_) => RpMatchKind::Any,
-            RpValue::Instance(_) => RpMatchKind::Object,
-            RpValue::Constant(_) => RpMatchKind::Any,
             RpValue::Array(_) => RpMatchKind::Array,
         }
     }
@@ -43,9 +37,6 @@ impl ::std::fmt::Display for RpValue {
             RpValue::Number(_) => "<number>",
             RpValue::Boolean(_) => "<boolean>",
             RpValue::Identifier(_) => "<identifier>",
-            RpValue::Type(_) => "<type>",
-            RpValue::Instance(_) => "<instance>",
-            RpValue::Constant(_) => "<constant>",
             RpValue::Array(_) => "<array>",
         };
 
