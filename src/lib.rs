@@ -7,6 +7,7 @@ extern crate error_chain;
 #[macro_use]
 extern crate log;
 
+extern crate atty;
 extern crate ansi_term;
 extern crate clap;
 extern crate linked_hash_map;
@@ -28,8 +29,7 @@ extern crate url_serde;
 pub mod ops;
 pub mod config;
 pub mod errors;
-pub mod logger;
-pub mod error_handling;
+pub mod output;
 
 pub(crate) use clap::{App, Arg, ArgMatches, SubCommand};
 pub(crate) use config::read_config;

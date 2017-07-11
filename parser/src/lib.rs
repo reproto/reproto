@@ -23,9 +23,14 @@ use std::path::Path;
 use std::rc::Rc;
 
 pub fn read_file(path: &Path) -> Result<String> {
-    let mut f = fs::File::open(path)?;
+    let mut f = fs::File::open(path)
+        .map_err(|e| ErrorKind::File(format!("could not open file: {}", e), path.to_owned()))?;
+
     let mut content = String::new();
-    f.read_to_string(&mut content)?;
+
+    f.read_to_string(&mut content)
+        .map_err(|e| ErrorKind::File(format!("could not read file: {}", e), path.to_owned()))?;
+
     Ok(content)
 }
 
@@ -44,7 +49,6 @@ pub fn parse_file<'input>(path: &'input Path, input: &'input str) -> Result<ast:
                     Err(Syntax(Some(pos.into()), vec![]).into())
                 }
                 ParseError::UnrecognizedToken { token, expected } => {
-                    println!("Token = {:?}", token);
                     let pos = token.map(|(start, _, end)| (path.clone(), start, end));
                     Err(Syntax(pos.map(Into::into), expected).into())
                 }

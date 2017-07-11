@@ -1,5 +1,6 @@
 use reproto_core::ErrorPos;
 use reproto_core::errors as core;
+use std::path::PathBuf;
 
 error_chain! {
     links {
@@ -19,6 +20,11 @@ error_chain! {
         Pos(message: String, pos: ErrorPos) {
             description("position error")
             display("{}", message)
+        }
+
+        File(message: String, file: PathBuf) {
+            description("file error")
+            display("{}: {}", file.display(), message)
         }
 
         FieldConflict(message: String, source: ErrorPos, target: ErrorPos) {

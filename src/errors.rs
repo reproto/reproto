@@ -3,6 +3,7 @@ use reproto_core::{ErrorPos, RpTypeId};
 use reproto_core::errors as core;
 use reproto_parser::errors as parser;
 use reproto_repository::errors as repository;
+use std::path::PathBuf;
 
 error_chain! {
     links {
@@ -26,6 +27,11 @@ error_chain! {
         Pos(message: String, pos: ErrorPos) {
             description("position error")
             display("{}", message)
+        }
+
+        File(message: String, file: PathBuf) {
+            description("file error")
+            display("{}: {}", file.display(), message)
         }
 
         Errors(errors: Vec<Error>) {

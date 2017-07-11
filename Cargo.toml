@@ -16,6 +16,7 @@ Rethinking Protocol Generators
 tracing = []
 
 [dependencies]
+atty = "0.2.2"
 error-chain = "0.10.0"
 log = "0.3.7"
 clap = "2.24.2"
