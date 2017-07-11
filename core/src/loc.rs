@@ -73,27 +73,6 @@ impl<T, P> Loc<T, P>
     }
 }
 
-pub trait WithPrefix<T> {
-    type Prefix;
-    type Output;
-
-    fn with_prefix(self, prefix: Self::Prefix) -> Loc<T, Self::Output>;
-}
-
-impl<T, B, C> WithPrefix<T> for Loc<T, (B, C)>
-    where T: Clone,
-          B: Clone,
-          C: Clone
-{
-    type Prefix = PathBuf;
-    type Output = (PathBuf, B, C);
-
-    fn with_prefix(self, prefix: Self::Prefix) -> Loc<T, Self::Output> {
-        let (b, c) = self.pos.clone();
-        Loc::new(self.inner.clone(), (prefix, b, c))
-    }
-}
-
 impl<T, P> ::std::fmt::Display for Loc<T, P>
     where T: ::std::fmt::Display
 {
