@@ -89,6 +89,7 @@ pub fn parse_file<'input>(path: &'input Path, input: &'input str) -> Result<ast:
                     Err(Syntax(Some(pos.into()), vec![]).into())
                 }
                 ParseError::UnrecognizedToken { token, expected } => {
+                    println!("Token = {:?}", token);
                     let pos = token.map(|(start, _, end)| (path.clone(), start, end));
                     Err(Syntax(pos.map(Into::into), expected).into())
                 }

@@ -1,5 +1,5 @@
 use mime;
-use super::{ErrorPos, RpTypeId};
+use super::ErrorPos;
 
 error_chain! {
     foreign_links {
@@ -40,16 +40,6 @@ error_chain! {
 
         MatchConflict(source: ErrorPos, target: ErrorPos) {
             description("match conflict")
-        }
-
-        /// An instance creation is missing a set of required fields.
-        MissingRequired(names: Vec<String>, pos: ErrorPos, fields: Vec<ErrorPos>) {
-            description("missing required")
-        }
-
-        RegisteredTypeConflict(type_id: RpTypeId) {
-            description("registered type conflict")
-            display("registered type conflict with: {:?}", type_id)
         }
 
         /// Error thrown by Rc::get_mut

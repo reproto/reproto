@@ -2,6 +2,7 @@
 extern crate log;
 extern crate reproto_core;
 extern crate reproto_parser;
+extern crate reproto_backend;
 extern crate clap;
 extern crate reproto;
 extern crate ansi_term;
@@ -9,6 +10,7 @@ extern crate ansi_term;
 use reproto::errors::*;
 use reproto::logger;
 use reproto::ops;
+use reproto_backend as backend;
 use reproto_core as core;
 use reproto_parser as parser;
 
@@ -98,6 +100,37 @@ fn handle_core_error(e: &core::errors::ErrorKind) -> Result<bool> {
     Ok(out)
 }
 
+fn handle_backend_error(e: &backend::errors::ErrorKind) -> Result<bool> {
+    use backend::errors::ErrorKind::*;
+    use ansi_term::Colour::Red;
+
+    let out = match *e {
+        Pos(ref m, ref p) => {
+            print_error(m, p)?;
+            true
+        }
+        Core(ref e) => {
+            return handle_core_error(e);
+        }
+        Parser(ref e) => {
+            return handle_parser_error(e);
+        }
+        MissingRequired(ref names, ref location, ref fields) => {
+            print_error(&format!("missing required fields: {}", names.join(", ")),
+                        location)?;
+
+            for f in fields {
+                print_error("required field", f)?;
+            }
+
+            true
+        }
+        _ => false,
+    };
+
+    Ok(out)
+}
+
 fn handle_parser_error(e: &parser::errors::ErrorKind) -> Result<bool> {
     use parser::errors::ErrorKind::*;
     use ansi_term::Colour::Red;
@@ -168,15 +201,8 @@ fn handle_error(e: &Error) -> Result<bool> {
         Parser(ref e) => {
             return handle_parser_error(e);
         }
-        MissingRequired(ref names, ref location, ref fields) => {
-            print_error(&format!("missing required fields: {}", names.join(", ")),
-                        location)?;
-
-            for f in fields {
-                print_error("required field", f)?;
-            }
-
-            true
+        Backend(ref e) => {
+            return handle_backend_error(e);
         }
         _ => false,
     };
