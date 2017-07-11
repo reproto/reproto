@@ -1,11 +1,6 @@
 use std::collections::HashSet;
 use super::errors::*;
-use super::into_model::IntoModel;
-use super::rp_code::RpCode;
-use super::rp_field::RpField;
-use super::rp_loc::{RpLoc, RpPos};
-use super::rp_match_decl::RpMatchDecl;
-use super::rp_option_decl::RpOptionDecl;
+use super::*;
 
 type Fields = Vec<RpLoc<RpField>>;
 type Codes = Vec<RpLoc<RpCode>>;
