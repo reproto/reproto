@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+# shared target directory to avoid rebuilding common dependencies
+TARGET=$PWD/target
+
+while read crate; do
+    dir=$(dirname $crate)
+    echo "Testing: $crate"
+    cd $dir && CARGO_TARGET_DIR=$TARGET cargo test
+done < <(find . -path ./it -prune -o -type f -name Cargo.toml -print)

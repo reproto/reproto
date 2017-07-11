@@ -8,15 +8,14 @@ TOOL ?= $(DEFAULT_TOOL)
 ENVIRONMENT = INCLUDE="$(PROJECTS)" PYTHON="$(PYTHON)" TOOL="$(TOOL)"
 EACH := tools/for-each-it
 
+CARGO_TARGET_DIR=$(CURDIR)/target
+
 all: suites projects
 
 update: update-suites update-projects
 
 tests:
-	cargo test
-	cd backend && make tests
-	cd core && cargo test
-	cd parser && cargo test
+	tools/test-all-crates
 
 clean:
 	cargo clean
