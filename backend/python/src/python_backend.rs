@@ -81,7 +81,7 @@ impl PythonBackend {
 
     fn encode_method<E>(&self,
                         type_id: &RpTypeId,
-                        fields: &Vec<Loc<Field>>,
+                        fields: &[Loc<Field>],
                         builder: &BuiltInName,
                         extra: E)
                         -> Result<MethodSpec>
@@ -129,10 +129,7 @@ impl PythonBackend {
         Ok(encode)
     }
 
-    fn encode_tuple_method(&self,
-                           type_id: &RpTypeId,
-                           fields: &Vec<Loc<Field>>)
-                           -> Result<MethodSpec> {
+    fn encode_tuple_method(&self, type_id: &RpTypeId, fields: &[Loc<Field>]) -> Result<MethodSpec> {
         let mut values = Statement::new();
 
         let mut encode = MethodSpec::new("encode");
@@ -245,7 +242,7 @@ impl PythonBackend {
                         type_id: &RpTypeId,
                         pos: &Pos,
                         match_decl: &RpMatchDecl,
-                        fields: &Vec<Loc<Field>>,
+                        fields: &[Loc<Field>],
                         variable_fn: F)
                         -> Result<MethodSpec>
         where F: Fn(usize, &Field) -> Variable
@@ -310,7 +307,7 @@ impl PythonBackend {
         self.ident(field.ident())
     }
 
-    fn build_constructor(&self, fields: &Vec<Loc<Field>>) -> MethodSpec {
+    fn build_constructor(&self, fields: &[Loc<Field>]) -> MethodSpec {
         let mut constructor = MethodSpec::new("__init__");
         constructor.push_argument(stmt!["self"]);
 
@@ -322,7 +319,7 @@ impl PythonBackend {
         constructor
     }
 
-    fn build_getters(&self, fields: &Vec<Loc<Field>>) -> Result<Vec<MethodSpec>> {
+    fn build_getters(&self, fields: &[Loc<Field>]) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
         for field in fields {

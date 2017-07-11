@@ -407,7 +407,7 @@ impl JavaBackend {
         constructor
     }
 
-    fn find_field<'a>(&self, fields: &Vec<JavaField<'a>>, name: &str) -> Option<JavaField<'a>> {
+    fn find_field<'a>(&self, fields: &[JavaField<'a>], name: &str) -> Option<JavaField<'a>> {
         for field in fields {
             if field.name == name {
                 return Some(field.clone());

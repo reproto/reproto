@@ -48,10 +48,7 @@ impl Module {
     }
 
     /// RpName serialize implementation for tuples.
-    fn tuple_serializer(&self,
-                        fields: &Vec<JavaField>,
-                        class_type: &ClassType)
-                        -> Result<ClassSpec> {
+    fn tuple_serializer(&self, fields: &[JavaField], class_type: &ClassType) -> Result<ClassSpec> {
         let mut serializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
                                             "Serializer");
 
@@ -171,7 +168,7 @@ impl Module {
 
     /// RpName deserialize implementation for tuples.
     fn tuple_deserializer(&self,
-                          fields: &Vec<JavaField>,
+                          fields: &[JavaField],
                           class_type: &ClassType)
                           -> Result<ClassSpec> {
         let mut deserializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
@@ -232,7 +229,7 @@ impl Module {
         Ok(deserializer)
     }
 
-    fn add_class_annotations(&self, spec: &mut ClassSpec, fields: &Vec<JavaField>) -> Result<()> {
+    fn add_class_annotations(&self, spec: &mut ClassSpec, fields: &[JavaField]) -> Result<()> {
         if spec.constructors.len() != 1 {
             return Err("Expected exactly one constructor".into());
         }
@@ -261,7 +258,7 @@ impl Module {
         Ok(())
     }
 
-    fn build_model(&self, fields: &Vec<JavaField>) -> ClassSpec {
+    fn build_model(&self, fields: &[JavaField]) -> ClassSpec {
         let mut model = ClassSpec::new(mods![Modifier::Public, Modifier::Static], "Model");
 
         for field in fields {

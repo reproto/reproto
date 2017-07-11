@@ -44,7 +44,7 @@ impl JsBackend {
     }
 
     fn find_field<'b>(&self,
-                      fields: &'b Vec<Loc<JsField>>,
+                      fields: &'b [Loc<JsField>],
                       name: &str)
                       -> Option<(usize, &JsField<'b>)> {
         for (i, field) in fields.iter().enumerate() {
@@ -66,7 +66,7 @@ impl JsBackend {
 
     fn encode_method<E, B>(&self,
                            type_id: &RpTypeId,
-                           fields: &Vec<Loc<JsField>>,
+                           fields: &[Loc<JsField>],
                            builder: B,
                            extra: E)
                            -> Result<MethodSpec>
@@ -114,7 +114,7 @@ impl JsBackend {
 
     fn encode_tuple_method(&self,
                            type_id: &RpTypeId,
-                           fields: &Vec<Loc<JsField>>)
+                           fields: &[Loc<JsField>])
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
 
@@ -176,7 +176,7 @@ impl JsBackend {
     fn decode_method<F>(&self,
                         type_id: &RpTypeId,
                         match_decl: &RpMatchDecl,
-                        fields: &Vec<Loc<JsField>>,
+                        fields: &[Loc<JsField>],
                         class: &ClassSpec,
                         variable_fn: F)
                         -> Result<MethodSpec>
@@ -265,7 +265,7 @@ impl JsBackend {
         }
     }
 
-    fn build_constructor(&self, fields: &Vec<Loc<JsField>>) -> ConstructorSpec {
+    fn build_constructor(&self, fields: &[Loc<JsField>]) -> ConstructorSpec {
         let mut ctor = ConstructorSpec::new();
         let mut assignments = Elements::new();
 
@@ -278,7 +278,7 @@ impl JsBackend {
         ctor
     }
 
-    fn build_enum_constructor(&self, fields: &Vec<Loc<JsField>>) -> ConstructorSpec {
+    fn build_enum_constructor(&self, fields: &[Loc<JsField>]) -> ConstructorSpec {
         let mut ctor = ConstructorSpec::new();
         let mut assignments = Elements::new();
 
@@ -299,7 +299,7 @@ impl JsBackend {
 
     fn enum_encode_decode(&self,
                           body: &RpEnumBody,
-                          fields: &Vec<Loc<JsField>>,
+                          fields: &[Loc<JsField>],
                           class: &ClassSpec)
                           -> Result<Element> {
         // lookup serialized_as if specified.
@@ -332,7 +332,7 @@ impl JsBackend {
         Ok(elements.into())
     }
 
-    fn build_getters(&self, fields: &Vec<Loc<JsField>>) -> Result<Vec<MethodSpec>> {
+    fn build_getters(&self, fields: &[Loc<JsField>]) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
         for field in fields {
@@ -480,7 +480,7 @@ impl JsBackend {
                         _: &Pos,
                         body: Rc<RpTypeBody>)
                         -> Result<()> {
-        let fields = body.fields.iter().map(|f| self.into_js_field(f)).collect();
+        let fields: Vec<_> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         let mut class = ClassSpec::new(&body.name);
         class.export();
@@ -539,7 +539,7 @@ impl JsBackend {
             let mut class = ClassSpec::new(&format!("{}_{}", &body.name, &sub_type.name));
             class.export();
 
-            let fields = interface_fields.clone()
+            let fields: Vec<_> = interface_fields.clone()
                 .into_iter()
                 .chain(sub_type.fields.iter().map(|f| self.into_js_field(f)))
                 .collect();

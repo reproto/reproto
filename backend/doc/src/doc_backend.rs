@@ -71,7 +71,7 @@ impl DocBackend {
         package.parts.join("_")
     }
 
-    fn write_markdown(&self, out: &mut DocBuilder, comment: &Vec<String>) -> Result<()> {
+    fn write_markdown(&self, out: &mut DocBuilder, comment: &[String]) -> Result<()> {
         if !comment.is_empty() {
             let comment = comment.join("\n");
             write!(out, "{}", Self::markdown(&comment))?;
@@ -441,7 +441,7 @@ impl DocBackend {
     /// * `current` if some value indicates which the current package is.
     pub fn write_packages(&self,
                           out: &mut DocBuilder,
-                          packages: &Vec<RpVersionedPackage>,
+                          packages: &[RpVersionedPackage],
                           current: Option<&RpVersionedPackage>)
                           -> Result<()> {
         html!(out, section {class => "section-content section-packages"} => {

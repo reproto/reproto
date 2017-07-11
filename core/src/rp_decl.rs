@@ -23,7 +23,7 @@ impl RpDecl {
         }
     }
 
-    pub fn comment(&self) -> &Vec<String> {
+    pub fn comment(&self) -> &[String] {
         match *self {
             RpDecl::Type(ref body) => &body.comment,
             RpDecl::Interface(ref body) => &body.comment,

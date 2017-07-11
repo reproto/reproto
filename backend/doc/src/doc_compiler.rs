@@ -63,7 +63,7 @@ impl<'a> DocCompiler<'a> {
         Ok(())
     }
 
-    fn write_index(&self, packages: &Vec<RpVersionedPackage>) -> Result<()> {
+    fn write_index(&self, packages: &[RpVersionedPackage]) -> Result<()> {
         let mut buffer = String::new();
 
         self.backend
@@ -90,7 +90,7 @@ impl<'a> DocCompiler<'a> {
     }
 
     fn write_overviews(&self,
-                       packages: &Vec<RpVersionedPackage>,
+                       packages: &[RpVersionedPackage],
                        files: &mut BTreeMap<&RpVersionedPackage, DocCollector>)
                        -> Result<()> {
         for (package, collector) in files.iter_mut() {
