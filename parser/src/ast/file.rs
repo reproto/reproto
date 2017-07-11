@@ -3,9 +3,9 @@ use super::errors::*;
 
 #[derive(Debug)]
 pub struct File<'input> {
-    pub options: Vec<RpLoc<OptionDecl<'input>>>,
-    pub uses: Vec<RpLoc<UseDecl<'input>>>,
-    pub decls: Vec<RpLoc<Decl<'input>>>,
+    pub options: Vec<Loc<OptionDecl<'input>>>,
+    pub uses: Vec<Loc<UseDecl<'input>>>,
+    pub decls: Vec<Loc<Decl<'input>>>,
 }
 
 impl<'input> IntoModel for File<'input> {

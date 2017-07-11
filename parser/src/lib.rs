@@ -18,7 +18,7 @@ mod utils;
 use lalrpop_util::ParseError;
 use self::errors::*;
 use std::fs;
-use std::io::{Read};
+use std::io::Read;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -42,7 +42,7 @@ pub fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (us
         read += 1;
 
         match b {
-            NL => {},
+            NL => {}
             _ => {
                 buffer.push(b);
                 continue;
@@ -136,9 +136,9 @@ pub fn parse_file<'input>(path: &'input Path, input: &'input str) -> Result<ast:
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
     use super::*;
     use super::ast::*;
-    use std::path::PathBuf;
 
     /// Check that a parsed value equals expected.
     macro_rules! assert_value_eq {
@@ -160,7 +160,8 @@ mod tests {
     const FILE1: &[u8] = include_bytes!("tests/file1.reproto");
     const INTERFACE1: &[u8] = include_bytes!("tests/interface1.reproto");
 
-    fn parse(input: &'static str) -> Box<Iterator<Item = token::Result<(usize, token::Token<'static>, usize)>>> {
+    fn parse(input: &'static str)
+             -> Box<Iterator<Item = token::Result<(usize, token::Token<'static>, usize)>>> {
         Box::new(lexer::lex(input))
     }
 
@@ -249,18 +250,18 @@ mod tests {
         };
 
         let field = FieldInit {
-            name: RpLoc::new("hello", (path.clone(), 8, 13)),
-            value: RpLoc::new(Value::Number(12.into()), (path.clone(), 15, 17)),
+            name: Loc::new("hello", (path.clone(), 8, 13)),
+            value: Loc::new(Value::Number(12.into()), (path.clone(), 15, 17)),
         };
 
-        let field = RpLoc::new(field, (path.clone(), 8, 17));
+        let field = Loc::new(field, (path.clone(), 8, 17));
 
         let instance = Instance {
             name: c,
-            arguments: RpLoc::new(vec![field], (path.clone(), 8, 17)),
+            arguments: Loc::new(vec![field], (path.clone(), 8, 17)),
         };
 
-        assert_value_eq!(Value::Instance(RpLoc::new(instance, (path.clone(), 0, 18))),
+        assert_value_eq!(Value::Instance(Loc::new(instance, (path.clone(), 0, 18))),
                          "Foo.Bar(hello: 12)");
     }
 
@@ -318,7 +319,8 @@ mod tests {
             assert_eq!(4, option.values.len());
 
             assert_eq!(Value::Boolean(true), *option.values[0].as_ref());
-            assert_eq!(Value::Identifier("foo".to_owned()), *option.values[1].as_ref());
+            assert_eq!(Value::Identifier("foo".to_owned()),
+                       *option.values[1].as_ref());
             assert_eq!(Value::String("bar".to_owned()), *option.values[2].as_ref());
             assert_eq!(Value::Number(12u32.into()), *option.values[3].as_ref());
             return;
@@ -327,4 +329,3 @@ mod tests {
         panic!("option did not match");
     }
 }
-

@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::path::PathBuf;
-use super::RpPos;
+use super::Pos;
 
 #[derive(Debug)]
 pub struct ErrorPos {
@@ -9,7 +9,7 @@ pub struct ErrorPos {
     pub end: usize,
 }
 
-impl<T: Borrow<RpPos>> From<T> for ErrorPos {
+impl<T: Borrow<Pos>> From<T> for ErrorPos {
     fn from(value: T) -> ErrorPos {
         let value = value.borrow();
 

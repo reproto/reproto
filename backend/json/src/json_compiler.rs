@@ -37,7 +37,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
         self.processor.package(package)
     }
 
-    fn default_process(&self, _: &mut Self::Out, _: &RpTypeId, _: &RpPos) -> Result<()> {
+    fn default_process(&self, _: &mut Self::Out, _: &RpTypeId, _: &Pos) -> Result<()> {
         Ok(())
     }
 
@@ -50,7 +50,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     fn process_service(&self,
                        out: &mut Self::Out,
                        _: &RpTypeId,
-                       _: &RpPos,
+                       _: &Pos,
                        body: Rc<RpServiceBody>)
                        -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
@@ -60,7 +60,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     fn process_enum(&self,
                     out: &mut Self::Out,
                     _: &RpTypeId,
-                    _: &RpPos,
+                    _: &Pos,
                     body: Rc<RpEnumBody>)
                     -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
@@ -70,7 +70,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     fn process_interface(&self,
                          out: &mut Self::Out,
                          _: &RpTypeId,
-                         _: &RpPos,
+                         _: &Pos,
                          body: Rc<RpInterfaceBody>)
                          -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
@@ -80,7 +80,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     fn process_type(&self,
                     out: &mut Self::Out,
                     _: &RpTypeId,
-                    _: &RpPos,
+                    _: &Pos,
                     body: Rc<RpTypeBody>)
                     -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
@@ -90,7 +90,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     fn process_tuple(&self,
                      out: &mut Self::Out,
                      _: &RpTypeId,
-                     _: &RpPos,
+                     _: &Pos,
                      body: Rc<RpTupleBody>)
                      -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;

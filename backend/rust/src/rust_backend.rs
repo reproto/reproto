@@ -47,7 +47,7 @@ impl RustBackend {
         }
     }
 
-    fn convert_type_id(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
+    fn convert_type_id(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Name> {
         let (package, registered) = self.env
             .lookup(&type_id.package, &type_id.name)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
@@ -62,7 +62,7 @@ impl RustBackend {
         Ok(Name::Local(Name::local(&name)))
     }
 
-    fn into_type(&self, type_id: &RpTypeId, field: &RpLoc<RpField>) -> Result<Statement> {
+    fn into_type(&self, type_id: &RpTypeId, field: &Loc<RpField>) -> Result<Statement> {
         let stmt = self.into_rust_type(type_id, field.pos(), &field.ty)?;
 
         if field.is_optional() {
@@ -72,11 +72,7 @@ impl RustBackend {
         Ok(stmt)
     }
 
-    pub fn into_rust_type(&self,
-                          type_id: &RpTypeId,
-                          pos: &RpPos,
-                          ty: &RpType)
-                          -> Result<Statement> {
+    pub fn into_rust_type(&self, type_id: &RpTypeId, pos: &Pos, ty: &RpType) -> Result<Statement> {
         let ty = match *ty {
             RpType::String => stmt!["String"],
             RpType::Signed { ref size } => {
@@ -119,7 +115,7 @@ impl RustBackend {
     }
 
     // Build the corresponding element out of a field declaration.
-    fn field_element(&self, type_id: &RpTypeId, field: &RpLoc<RpField>) -> Result<Element> {
+    fn field_element(&self, type_id: &RpTypeId, field: &Loc<RpField>) -> Result<Element> {
         let mut elements = Elements::new();
 
         let ident = self.ident(field.ident());
@@ -141,7 +137,7 @@ impl RustBackend {
     pub fn process_tuple(&self,
                          out: &mut RustFileSpec,
                          type_id: &RpTypeId,
-                         _: &RpPos,
+                         _: &Pos,
                          body: Rc<RpTupleBody>)
                          -> Result<()> {
         let mut fields = Statement::new();
@@ -161,7 +157,7 @@ impl RustBackend {
     pub fn process_enum(&self,
                         out: &mut RustFileSpec,
                         _: &RpTypeId,
-                        _: &RpPos,
+                        _: &Pos,
                         body: Rc<RpEnumBody>)
                         -> Result<()> {
         let mut enum_spec = EnumSpec::new(&body.name);
@@ -178,7 +174,7 @@ impl RustBackend {
     pub fn process_type(&self,
                         out: &mut RustFileSpec,
                         type_id: &RpTypeId,
-                        _: &RpPos,
+                        _: &Pos,
                         body: Rc<RpTypeBody>)
                         -> Result<()> {
         let mut fields = Elements::new();
@@ -204,7 +200,7 @@ impl RustBackend {
     pub fn process_interface(&self,
                              out: &mut RustFileSpec,
                              type_id: &RpTypeId,
-                             _: &RpPos,
+                             _: &Pos,
                              body: Rc<RpInterfaceBody>)
                              -> Result<()> {
         let mut enum_spec = EnumSpec::new(&body.name);

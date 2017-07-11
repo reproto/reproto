@@ -1,12 +1,12 @@
 use std::collections::HashSet;
-use super::errors::*;
 use super::*;
+use super::errors::*;
 
-type Fields = Vec<RpLoc<RpField>>;
-type Codes = Vec<RpLoc<RpCode>>;
-type OptionVec = Vec<RpLoc<RpOptionDecl>>;
+type Fields = Vec<Loc<RpField>>;
+type Codes = Vec<Loc<RpCode>>;
+type OptionVec = Vec<Loc<RpOptionDecl>>;
 
-pub fn code(pos: &RpPos, ast_pos: ast::Pos, context: String, lines: Vec<String>) -> RpLoc<RpCode> {
+pub fn code(pos: &Pos, ast_pos: ast::Pos, context: String, lines: Vec<String>) -> Loc<RpCode> {
     let pos = (pos.0.clone(), ast_pos.0, ast_pos.1);
 
     let code = RpCode {
@@ -14,15 +14,15 @@ pub fn code(pos: &RpPos, ast_pos: ast::Pos, context: String, lines: Vec<String>)
         lines: lines,
     };
 
-    RpLoc::new(code, pos)
+    Loc::new(code, pos)
 }
 
-pub fn members_into_model(pos: &RpPos,
+pub fn members_into_model(pos: &Pos,
                           members: Vec<ast::AstLoc<ast::Member>>)
                           -> Result<(Fields, Codes, OptionVec, RpMatchDecl)> {
-    let mut fields: Vec<RpLoc<RpField>> = Vec::new();
+    let mut fields: Vec<Loc<RpField>> = Vec::new();
     let mut codes = Vec::new();
-    let mut options: Vec<RpLoc<RpOptionDecl>> = Vec::new();
+    let mut options: Vec<Loc<RpOptionDecl>> = Vec::new();
     let mut match_decl = RpMatchDecl::new();
 
     for member in members {
@@ -36,7 +36,7 @@ pub fn members_into_model(pos: &RpPos,
                     return Err(Error::field_conflict(field.name.clone(), pos, other.pos.clone()));
                 }
 
-                fields.push(RpLoc::new(field, pos));
+                fields.push(Loc::new(field, pos));
             }
             ast::Member::Code(context, lines) => {
                 codes.push(code(&pos, member.pos, context, lines));
@@ -69,7 +69,7 @@ impl OrdinalGenerator {
         }
     }
 
-    pub fn next(&mut self, ordinal: &Option<ast::AstLoc<ast::Value>>, pos: &RpPos) -> Result<u32> {
+    pub fn next(&mut self, ordinal: &Option<ast::AstLoc<ast::Value>>, pos: &Pos) -> Result<u32> {
         if let Some(ref ordinal) = *ordinal {
             let pos = (pos.0.to_owned(), ordinal.pos.0, ordinal.pos.1);
 

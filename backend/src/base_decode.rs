@@ -7,7 +7,7 @@ pub trait BaseDecode
 {
     fn base_decode(&self,
                    type_id: &RpTypeId,
-                   pos: &RpPos,
+                   pos: &Pos,
                    ty: &RpType,
                    input: &Self::Stmt)
                    -> Result<Self::Stmt>;

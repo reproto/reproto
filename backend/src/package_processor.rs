@@ -17,7 +17,7 @@ pub trait PackageProcessor<'a>
 
     fn out_path(&self) -> &Path;
 
-    fn default_process(&self, _: &mut Self::Out, type_id: &RpTypeId, _: &RpPos) -> Result<()> {
+    fn default_process(&self, _: &mut Self::Out, type_id: &RpTypeId, _: &Pos) -> Result<()> {
         warn!("not supported: {}", type_id);
         Ok(())
     }
@@ -27,7 +27,7 @@ pub trait PackageProcessor<'a>
     fn process_interface(&self,
                          out: &mut Self::Out,
                          type_id: &RpTypeId,
-                         pos: &RpPos,
+                         pos: &Pos,
                          _: Rc<RpInterfaceBody>)
                          -> Result<()> {
         self.default_process(out, type_id, pos)
@@ -36,7 +36,7 @@ pub trait PackageProcessor<'a>
     fn process_type(&self,
                     out: &mut Self::Out,
                     type_id: &RpTypeId,
-                    pos: &RpPos,
+                    pos: &Pos,
                     _: Rc<RpTypeBody>)
                     -> Result<()> {
         self.default_process(out, type_id, pos)
@@ -45,7 +45,7 @@ pub trait PackageProcessor<'a>
     fn process_tuple(&self,
                      out: &mut Self::Out,
                      type_id: &RpTypeId,
-                     pos: &RpPos,
+                     pos: &Pos,
                      _: Rc<RpTupleBody>)
                      -> Result<()> {
         self.default_process(out, type_id, pos)
@@ -54,7 +54,7 @@ pub trait PackageProcessor<'a>
     fn process_enum(&self,
                     out: &mut Self::Out,
                     type_id: &RpTypeId,
-                    pos: &RpPos,
+                    pos: &Pos,
                     _: Rc<RpEnumBody>)
                     -> Result<()> {
         self.default_process(out, type_id, pos)
@@ -63,7 +63,7 @@ pub trait PackageProcessor<'a>
     fn process_service(&self,
                        out: &mut Self::Out,
                        type_id: &RpTypeId,
-                       pos: &RpPos,
+                       pos: &Pos,
                        _: Rc<RpServiceBody>)
                        -> Result<()> {
         self.default_process(out, type_id, pos)
@@ -76,7 +76,7 @@ pub trait PackageProcessor<'a>
     fn do_populate_files<'b, F>(&'b self,
                                 mut callback: F)
                                 -> Result<BTreeMap<&RpVersionedPackage, Self::Out>>
-        where F: FnMut(&'b RpTypeId, &'b RpLoc<RpDecl>) -> Result<()>
+        where F: FnMut(&'b RpTypeId, &'b Loc<RpDecl>) -> Result<()>
     {
         let mut files = BTreeMap::new();
 

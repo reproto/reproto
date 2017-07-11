@@ -56,7 +56,7 @@ impl PythonBackend {
     }
 
     fn find_field<'a>(&self,
-                      fields: &'a Vec<RpLoc<Field>>,
+                      fields: &'a Vec<Loc<Field>>,
                       name: &str)
                       -> Option<(usize, &Field<'a>)> {
         for (i, field) in fields.iter().enumerate() {
@@ -81,7 +81,7 @@ impl PythonBackend {
 
     fn encode_method<E>(&self,
                         type_id: &RpTypeId,
-                        fields: &Vec<RpLoc<Field>>,
+                        fields: &Vec<Loc<Field>>,
                         builder: &BuiltInName,
                         extra: E)
                         -> Result<MethodSpec>
@@ -131,7 +131,7 @@ impl PythonBackend {
 
     fn encode_tuple_method(&self,
                            type_id: &RpTypeId,
-                           fields: &Vec<RpLoc<Field>>)
+                           fields: &Vec<Loc<Field>>)
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
 
@@ -195,7 +195,7 @@ impl PythonBackend {
         Ok(decode)
     }
 
-    fn repr_method(&self, name: &str, fields: &[RpLoc<Field>]) -> MethodSpec {
+    fn repr_method(&self, name: &str, fields: &[Loc<Field>]) -> MethodSpec {
         let mut repr = MethodSpec::new("__repr__");
         repr.push_argument(stmt!["self"]);
 
@@ -243,9 +243,9 @@ impl PythonBackend {
 
     fn decode_method<F>(&self,
                         type_id: &RpTypeId,
-                        pos: &RpPos,
+                        pos: &Pos,
                         match_decl: &RpMatchDecl,
-                        fields: &Vec<RpLoc<Field>>,
+                        fields: &Vec<Loc<Field>>,
                         variable_fn: F)
                         -> Result<MethodSpec>
         where F: Fn(usize, &Field) -> Variable
@@ -306,11 +306,11 @@ impl PythonBackend {
         }
     }
 
-    fn field_ident(&self, field: &RpLoc<RpField>) -> String {
+    fn field_ident(&self, field: &Loc<RpField>) -> String {
         self.ident(field.ident())
     }
 
-    fn build_constructor(&self, fields: &Vec<RpLoc<Field>>) -> MethodSpec {
+    fn build_constructor(&self, fields: &Vec<Loc<Field>>) -> MethodSpec {
         let mut constructor = MethodSpec::new("__init__");
         constructor.push_argument(stmt!["self"]);
 
@@ -322,7 +322,7 @@ impl PythonBackend {
         constructor
     }
 
-    fn build_getters(&self, fields: &Vec<RpLoc<Field>>) -> Result<Vec<MethodSpec>> {
+    fn build_getters(&self, fields: &Vec<Loc<Field>>) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
         for field in fields {
@@ -337,7 +337,7 @@ impl PythonBackend {
         Ok(result)
     }
 
-    fn convert_type_id<F>(&self, pos: &RpPos, type_id: &RpTypeId, path_syntax: F) -> Result<Name>
+    fn convert_type_id<F>(&self, pos: &Pos, type_id: &RpTypeId, path_syntax: F) -> Result<Name>
         where F: Fn(Vec<&str>) -> String
     {
         let (package, registered) = self.env
@@ -405,9 +405,9 @@ impl PythonBackend {
     }
 
     fn into_python_field_with<'a, F>(&self,
-                                     field: &'a RpLoc<RpField>,
+                                     field: &'a Loc<RpField>,
                                      python_field_f: F)
-                                     -> RpLoc<Field<'a>>
+                                     -> Loc<Field<'a>>
         where F: Fn(Field<'a>) -> Field<'a>
     {
         let ident = self.field_ident(field);
@@ -422,19 +422,19 @@ impl PythonBackend {
         })
     }
 
-    fn into_python_field<'a>(&self, field: &'a RpLoc<RpField>) -> RpLoc<Field<'a>> {
+    fn into_python_field<'a>(&self, field: &'a Loc<RpField>) -> Loc<Field<'a>> {
         self.into_python_field_with(field, |ident| ident)
     }
 
     pub fn process_tuple(&self,
                          out: &mut PythonFileSpec,
                          type_id: &RpTypeId,
-                         pos: &RpPos,
+                         pos: &Pos,
                          body: Rc<RpTupleBody>)
                          -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
 
-        let fields: Vec<RpLoc<Field>> = body.fields
+        let fields: Vec<Loc<Field>> = body.fields
             .iter()
             .map(|f| self.into_python_field(f))
             .collect();
@@ -471,12 +471,12 @@ impl PythonBackend {
     pub fn process_enum(&self,
                         out: &mut PythonFileSpec,
                         _: &RpTypeId,
-                        _: &RpPos,
+                        _: &Pos,
                         body: Rc<RpEnumBody>)
                         -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
 
-        let fields: Vec<RpLoc<Field>> = body.fields
+        let fields: Vec<Loc<Field>> = body.fields
             .iter()
             .map(|f| self.into_python_field_with(f, Self::enum_ident))
             .collect();
@@ -514,12 +514,12 @@ impl PythonBackend {
     pub fn process_type(&self,
                         out: &mut PythonFileSpec,
                         type_id: &RpTypeId,
-                        pos: &RpPos,
+                        pos: &Pos,
                         body: Rc<RpTypeBody>)
                         -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
 
-        let fields: Vec<RpLoc<Field>> = body.fields
+        let fields: Vec<Loc<Field>> = body.fields
             .iter()
             .map(|f| self.into_python_field(f))
             .collect();
@@ -559,7 +559,7 @@ impl PythonBackend {
     pub fn process_interface(&self,
                              out: &mut PythonFileSpec,
                              type_id: &RpTypeId,
-                             _: &RpPos,
+                             _: &Pos,
                              body: Rc<RpInterfaceBody>)
                              -> Result<()> {
         let mut interface_spec = ClassSpec::new(&body.name);
@@ -581,7 +581,7 @@ impl PythonBackend {
 
             class.push(stmt!["TYPE = ", Variable::String(sub_type.name().to_owned())]);
 
-            let fields: Vec<RpLoc<Field>> = body.fields
+            let fields: Vec<Loc<Field>> = body.fields
                 .iter()
                 .chain(sub_type.fields.iter())
                 .map(|f| self.into_python_field(f))
@@ -641,11 +641,11 @@ impl Converter for PythonBackend {
         stmt![name]
     }
 
-    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
+    fn convert_type(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Name> {
         self.convert_type_id(pos, type_id, |v| v.join("_"))
     }
 
-    fn convert_constant(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
+    fn convert_constant(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Name> {
         self.convert_type_id(pos, type_id, |v| v.join("."))
     }
 }
@@ -752,7 +752,7 @@ impl DynamicDecode for PythonBackend {
     fn check_type_var(&self,
                       _data: &Self::Stmt,
                       type_var: &Self::Stmt,
-                      name: &RpLoc<String>,
+                      name: &Loc<String>,
                       type_name: &Self::Type)
                       -> Self::Elements {
         let mut check = Elements::new();

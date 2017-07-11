@@ -8,7 +8,7 @@ pub struct RpField {
     pub comment: Vec<String>,
     #[serde(rename="type")]
     pub ty: RpType,
-    pub field_as: Option<RpLoc<String>>,
+    pub field_as: Option<Loc<String>>,
 }
 
 impl RpField {
@@ -16,7 +16,7 @@ impl RpField {
                name: String,
                comment: Vec<String>,
                ty: RpType,
-               field_as: Option<RpLoc<String>>)
+               field_as: Option<Loc<String>>)
                -> RpField {
         RpField {
             modifier: modifier,
@@ -47,8 +47,8 @@ impl RpField {
     }
 }
 
-impl Merge for Vec<RpLoc<RpField>> {
-    fn merge(&mut self, source: Vec<RpLoc<RpField>>) -> Result<()> {
+impl Merge for Vec<Loc<RpField>> {
+    fn merge(&mut self, source: Vec<Loc<RpField>>) -> Result<()> {
         for f in source {
             if let Some(field) = self.iter().find(|e| e.name == f.name) {
                 return Err(ErrorKind::FieldConflict(f.name.clone(),

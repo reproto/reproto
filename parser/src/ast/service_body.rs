@@ -12,9 +12,9 @@ pub struct ServiceBody<'input> {
 
 struct Node {
     parent: Option<Rc<RefCell<Node>>>,
-    method: Option<RpLoc<String>>,
-    path: Option<RpLoc<RpPathSpec>>,
-    options: Vec<RpLoc<RpOptionDecl>>,
+    method: Option<Loc<String>>,
+    path: Option<Loc<RpPathSpec>>,
+    options: Vec<Loc<RpOptionDecl>>,
     comment: Vec<String>,
     returns: Vec<RpServiceReturns>,
     accepts: Vec<RpServiceAccepts>,
@@ -31,12 +31,12 @@ impl Node {
 }
 
 fn convert_return(comment: Vec<String>,
-                  ty: Option<RpLoc<RpType>>,
-                  options: Vec<RpLoc<OptionDecl>>)
+                  ty: Option<Loc<RpType>>,
+                  options: Vec<Loc<OptionDecl>>)
                   -> Result<RpServiceReturns> {
     let options = Options::new(options.into_model()?);
 
-    let produces: Option<RpLoc<String>> = options.find_one_string("produces")?;
+    let produces: Option<Loc<String>> = options.find_one_string("produces")?;
 
     let produces = if let Some(produces) = produces {
         let (produces, pos) = produces.both();
@@ -49,7 +49,7 @@ fn convert_return(comment: Vec<String>,
         None
     };
 
-    let status: Option<RpLoc<RpNumber>> = options.find_one_number("status")?;
+    let status: Option<Loc<RpNumber>> = options.find_one_number("status")?;
 
     let status = if let Some(status) = status {
         let (status, pos) = status.both();
@@ -71,12 +71,12 @@ fn convert_return(comment: Vec<String>,
 }
 
 fn convert_accepts(comment: Vec<String>,
-                   ty: RpLoc<RpType>,
-                   options: Vec<RpLoc<OptionDecl>>)
+                   ty: Loc<RpType>,
+                   options: Vec<Loc<OptionDecl>>)
                    -> Result<RpServiceAccepts> {
     let options = Options::new(options.into_model()?);
 
-    let accepts: Option<RpLoc<String>> = options.find_one_string("accept")?;
+    let accepts: Option<Loc<String>> = options.find_one_string("accept")?;
 
     let accepts = if let Some(accepts) = accepts {
         let (accepts, pos) = accepts.both();
@@ -99,9 +99,9 @@ fn convert_accepts(comment: Vec<String>,
 /// Recursively unwind all inherited information about the given node, and convert to a service
 /// endpoint.
 fn unwind(node: Rc<RefCell<Node>>) -> Result<RpServiceEndpoint> {
-    let mut method: Option<RpLoc<String>> = None;
+    let mut method: Option<Loc<String>> = None;
     let mut path = Vec::new();
-    let mut options: Vec<RpLoc<RpOptionDecl>> = Vec::new();
+    let mut options: Vec<Loc<RpOptionDecl>> = Vec::new();
     let mut returns = Vec::new();
     let mut accepts = Vec::new();
 

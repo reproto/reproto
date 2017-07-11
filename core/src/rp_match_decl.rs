@@ -3,7 +3,7 @@ use super::errors::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpMatchDecl {
-    pub by_value: Vec<(RpLoc<RpValue>, RpByValueMatch)>,
+    pub by_value: Vec<(Loc<RpValue>, RpByValueMatch)>,
     pub by_type: Vec<(RpMatchKind, RpByTypeMatch)>,
 }
 
@@ -34,7 +34,7 @@ impl RpMatchDecl {
         }
     }
 
-    pub fn push(&mut self, member: RpLoc<RpMatchMember>) -> Result<()> {
+    pub fn push(&mut self, member: Loc<RpMatchMember>) -> Result<()> {
         match *member.condition {
             RpMatchCondition::Type(ref variable) => {
                 let match_kind = self.identify_match_kind(variable);

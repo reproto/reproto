@@ -3,8 +3,8 @@ use super::errors::*;
 
 #[derive(Debug)]
 pub struct MatchMember<'input> {
-    pub condition: RpLoc<MatchCondition<'input>>,
-    pub value: RpLoc<Value<'input>>,
+    pub condition: Loc<MatchCondition<'input>>,
+    pub value: Loc<Value<'input>>,
 }
 
 impl<'input> IntoModel for MatchMember<'input> {

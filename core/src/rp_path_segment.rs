@@ -2,11 +2,8 @@ use super::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum RpPathSegment {
-    Literal { value: RpLoc<String> },
-    Variable {
-        name: RpLoc<String>,
-        ty: RpLoc<RpType>,
-    },
+    Literal { value: Loc<String> },
+    Variable { name: Loc<String>, ty: Loc<RpType> },
 }
 
 impl RpPathSegment {

@@ -6,15 +6,15 @@ use super::errors::*;
 pub struct EnumBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub variants: Vec<RpLoc<EnumVariant<'input>>>,
-    pub members: Vec<RpLoc<Member<'input>>>,
+    pub variants: Vec<Loc<EnumVariant<'input>>>,
+    pub members: Vec<Loc<Member<'input>>>,
 }
 
 impl<'input> IntoModel for EnumBody<'input> {
     type Output = Rc<RpEnumBody>;
 
     fn into_model(self) -> Result<Rc<RpEnumBody>> {
-        let mut variants: Vec<RpLoc<Rc<RpEnumVariant>>> = Vec::new();
+        let mut variants: Vec<Loc<Rc<RpEnumVariant>>> = Vec::new();
 
         let mut ordinals = utils::OrdinalGenerator::new();
 
@@ -33,7 +33,7 @@ impl<'input> IntoModel for EnumBody<'input> {
                     .into());
             }
 
-            let variant = RpLoc::new((variant, ordinal).into_model()?, pos.clone());
+            let variant = Loc::new((variant, ordinal).into_model()?, pos.clone());
 
             if let Some(other) = variants.iter().find(|v| *v.name == *variant.name) {
                 return Err(ErrorKind::EnumVariantConflict(other.name.pos().into(),
@@ -46,7 +46,7 @@ impl<'input> IntoModel for EnumBody<'input> {
 
         let options = Options::new(options);
 
-        let serialized_as: Option<RpLoc<String>> = options.find_one_identifier("serialized_as")?
+        let serialized_as: Option<Loc<String>> = options.find_one_identifier("serialized_as")?
             .to_owned();
 
         let serialized_as_name = options.find_one_boolean("serialized_as_name")?

@@ -7,8 +7,8 @@ use super::errors::*;
 pub struct InterfaceBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub members: Vec<RpLoc<Member<'input>>>,
-    pub sub_types: Vec<RpLoc<SubType<'input>>>,
+    pub members: Vec<Loc<Member<'input>>>,
+    pub sub_types: Vec<Loc<SubType<'input>>>,
 }
 
 impl<'input> IntoModel for InterfaceBody<'input> {
@@ -17,7 +17,7 @@ impl<'input> IntoModel for InterfaceBody<'input> {
     fn into_model(self) -> Result<Rc<RpInterfaceBody>> {
         let (fields, codes, options, match_decl) = utils::members_into_model(self.members)?;
 
-        let mut sub_types: BTreeMap<String, RpLoc<Rc<RpSubType>>> = BTreeMap::new();
+        let mut sub_types: BTreeMap<String, Loc<Rc<RpSubType>>> = BTreeMap::new();
 
         for sub_type in self.sub_types.into_model()? {
             // key has to be owned by entry

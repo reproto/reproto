@@ -6,7 +6,7 @@ use super::errors::*;
 pub struct TupleBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub members: Vec<RpLoc<Member<'input>>>,
+    pub members: Vec<Loc<Member<'input>>>,
 }
 
 impl<'input> IntoModel for TupleBody<'input> {

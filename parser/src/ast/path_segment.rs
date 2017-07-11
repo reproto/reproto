@@ -3,10 +3,10 @@ use super::errors::*;
 
 #[derive(Debug)]
 pub enum PathSegment<'input> {
-    Literal { value: RpLoc<String> },
+    Literal { value: Loc<String> },
     Variable {
-        name: RpLoc<&'input str>,
-        ty: RpLoc<RpType>,
+        name: Loc<&'input str>,
+        ty: Loc<RpType>,
     },
 }
 

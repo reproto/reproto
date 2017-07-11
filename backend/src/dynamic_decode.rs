@@ -15,7 +15,7 @@ pub trait DynamicDecode
     fn check_type_var(&self,
                       data: &Self::Stmt,
                       type_var: &Self::Stmt,
-                      name: &RpLoc<String>,
+                      name: &Loc<String>,
                       type_name: &Self::Type)
                       -> Self::Elements;
 
@@ -31,7 +31,7 @@ pub trait DynamicDecode
 
     fn decode(&self,
               type_id: &RpTypeId,
-              pos: &RpPos,
+              pos: &Pos,
               ty: &RpType,
               input: &Self::Stmt)
               -> Result<Self::Stmt> {
@@ -110,7 +110,7 @@ impl<T> BaseDecode for T
 {
     fn base_decode(&self,
                    type_id: &RpTypeId,
-                   pos: &RpPos,
+                   pos: &Pos,
                    ty: &RpType,
                    input: &Self::Stmt)
                    -> Result<Self::Stmt> {

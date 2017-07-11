@@ -1,4 +1,4 @@
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Other {
-  name2: String,
+    name2: String,
 }

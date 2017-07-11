@@ -3,21 +3,21 @@ use super::*;
 #[derive(Debug)]
 pub enum ServiceNested<'input> {
     Endpoint {
-        method: Option<RpLoc<&'input str>>,
-        path: Option<RpLoc<PathSpec<'input>>>,
+        method: Option<Loc<&'input str>>,
+        path: Option<Loc<PathSpec<'input>>>,
         comment: Vec<&'input str>,
-        options: Vec<RpLoc<OptionDecl<'input>>>,
+        options: Vec<Loc<OptionDecl<'input>>>,
         children: Vec<ServiceNested<'input>>,
     },
     Returns {
         comment: Vec<&'input str>,
-        ty: Option<RpLoc<RpType>>,
-        options: Vec<RpLoc<OptionDecl<'input>>>,
+        ty: Option<Loc<RpType>>,
+        options: Vec<Loc<OptionDecl<'input>>>,
     },
     Accepts {
         comment: Vec<&'input str>,
-        ty: RpLoc<RpType>,
-        options: Vec<RpLoc<OptionDecl<'input>>>,
+        ty: Loc<RpType>,
+        options: Vec<Loc<OptionDecl<'input>>>,
     },
 }
 

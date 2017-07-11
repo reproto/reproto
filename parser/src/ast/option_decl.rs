@@ -4,7 +4,7 @@ use super::errors::*;
 #[derive(Debug, Clone)]
 pub struct OptionDecl<'input> {
     pub name: &'input str,
-    pub values: Vec<RpLoc<Value<'input>>>,
+    pub values: Vec<Loc<Value<'input>>>,
 }
 
 impl<'input> IntoModel for OptionDecl<'input> {

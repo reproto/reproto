@@ -521,7 +521,7 @@ impl<'a> FasterXmlMatchDecode<'a> {
 impl<'a> BaseDecode for FasterXmlMatchDecode<'a> {
     fn base_decode(&self,
                    type_id: &RpTypeId,
-                   pos: &RpPos,
+                   pos: &Pos,
                    ty: &RpType,
                    input: &Self::Stmt)
                    -> Result<Self::Stmt> {
@@ -585,7 +585,7 @@ impl<'a> Converter for FasterXmlMatchDecode<'a> {
         stmt![name]
     }
 
-    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
+    fn convert_type(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Type> {
         self.backend.convert_type(pos, type_id)
     }
 }

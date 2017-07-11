@@ -7,8 +7,8 @@ pub struct RpCode {
     pub lines: Vec<String>,
 }
 
-impl Merge for Vec<RpLoc<RpCode>> {
-    fn merge(&mut self, source: Vec<RpLoc<RpCode>>) -> Result<()> {
+impl Merge for Vec<Loc<RpCode>> {
+    fn merge(&mut self, source: Vec<Loc<RpCode>>) -> Result<()> {
         self.extend(source);
         Ok(())
     }

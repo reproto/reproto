@@ -9,9 +9,9 @@ pub enum RpValue {
     Boolean(bool),
     Identifier(String),
     Type(RpType),
-    Instance(RpLoc<RpInstance>),
-    Constant(RpLoc<RpName>),
-    Array(Vec<RpLoc<RpValue>>),
+    Instance(Loc<RpInstance>),
+    Constant(Loc<RpName>),
+    Array(Vec<Loc<RpValue>>),
 }
 
 impl RpValue {

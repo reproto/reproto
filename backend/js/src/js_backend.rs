@@ -44,7 +44,7 @@ impl JsBackend {
     }
 
     fn find_field<'b>(&self,
-                      fields: &'b Vec<RpLoc<JsField>>,
+                      fields: &'b Vec<Loc<JsField>>,
                       name: &str)
                       -> Option<(usize, &JsField<'b>)> {
         for (i, field) in fields.iter().enumerate() {
@@ -66,7 +66,7 @@ impl JsBackend {
 
     fn encode_method<E, B>(&self,
                            type_id: &RpTypeId,
-                           fields: &Vec<RpLoc<JsField>>,
+                           fields: &Vec<Loc<JsField>>,
                            builder: B,
                            extra: E)
                            -> Result<MethodSpec>
@@ -114,7 +114,7 @@ impl JsBackend {
 
     fn encode_tuple_method(&self,
                            type_id: &RpTypeId,
-                           fields: &Vec<RpLoc<JsField>>)
+                           fields: &Vec<Loc<JsField>>)
                            -> Result<MethodSpec> {
         let mut values = Statement::new();
 
@@ -176,7 +176,7 @@ impl JsBackend {
     fn decode_method<F>(&self,
                         type_id: &RpTypeId,
                         match_decl: &RpMatchDecl,
-                        fields: &Vec<RpLoc<JsField>>,
+                        fields: &Vec<Loc<JsField>>,
                         class: &ClassSpec,
                         variable_fn: F)
                         -> Result<MethodSpec>
@@ -265,7 +265,7 @@ impl JsBackend {
         }
     }
 
-    fn build_constructor(&self, fields: &Vec<RpLoc<JsField>>) -> ConstructorSpec {
+    fn build_constructor(&self, fields: &Vec<Loc<JsField>>) -> ConstructorSpec {
         let mut ctor = ConstructorSpec::new();
         let mut assignments = Elements::new();
 
@@ -278,7 +278,7 @@ impl JsBackend {
         ctor
     }
 
-    fn build_enum_constructor(&self, fields: &Vec<RpLoc<JsField>>) -> ConstructorSpec {
+    fn build_enum_constructor(&self, fields: &Vec<Loc<JsField>>) -> ConstructorSpec {
         let mut ctor = ConstructorSpec::new();
         let mut assignments = Elements::new();
 
@@ -299,7 +299,7 @@ impl JsBackend {
 
     fn enum_encode_decode(&self,
                           body: &RpEnumBody,
-                          fields: &Vec<RpLoc<JsField>>,
+                          fields: &Vec<Loc<JsField>>,
                           class: &ClassSpec)
                           -> Result<Element> {
         // lookup serialized_as if specified.
@@ -332,7 +332,7 @@ impl JsBackend {
         Ok(elements.into())
     }
 
-    fn build_getters(&self, fields: &Vec<RpLoc<JsField>>) -> Result<Vec<MethodSpec>> {
+    fn build_getters(&self, fields: &Vec<Loc<JsField>>) -> Result<Vec<MethodSpec>> {
         let mut result = Vec::new();
 
         for field in fields {
@@ -354,10 +354,7 @@ impl JsBackend {
         }
     }
 
-    fn into_js_field_with<'b, F>(&self,
-                                 field: &'b RpLoc<RpField>,
-                                 js_field_f: F)
-                                 -> RpLoc<JsField<'b>>
+    fn into_js_field_with<'b, F>(&self, field: &'b Loc<RpField>, js_field_f: F) -> Loc<JsField<'b>>
         where F: Fn(JsField<'b>) -> JsField<'b>
     {
         let ident = self.field_ident(&field);
@@ -372,21 +369,20 @@ impl JsBackend {
         })
     }
 
-    fn into_js_field<'b>(&self, field: &'b RpLoc<RpField>) -> RpLoc<JsField<'b>> {
+    fn into_js_field<'b>(&self, field: &'b Loc<RpField>) -> Loc<JsField<'b>> {
         self.into_js_field_with(field, |ident| ident)
     }
 
     pub fn process_tuple(&self,
                          out: &mut JsFileSpec,
                          type_id: &RpTypeId,
-                         _: &RpPos,
+                         _: &Pos,
                          body: Rc<RpTupleBody>)
                          -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
         class.export();
 
-        let fields: Vec<RpLoc<JsField>> =
-            body.fields.iter().map(|f| self.into_js_field(f)).collect();
+        let fields: Vec<Loc<JsField>> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         class.push(self.build_constructor(&fields));
 
@@ -419,13 +415,13 @@ impl JsBackend {
     pub fn process_enum(&self,
                         out: &mut JsFileSpec,
                         type_id: &RpTypeId,
-                        _: &RpPos,
+                        _: &Pos,
                         body: Rc<RpEnumBody>)
                         -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
         class.export();
 
-        let fields: Vec<RpLoc<JsField>> = body.fields
+        let fields: Vec<Loc<JsField>> = body.fields
             .iter()
             .map(|f| self.into_js_field_with(f, Self::enum_ident))
             .collect();
@@ -481,7 +477,7 @@ impl JsBackend {
     pub fn process_type(&self,
                         out: &mut JsFileSpec,
                         type_id: &RpTypeId,
-                        _: &RpPos,
+                        _: &Pos,
                         body: Rc<RpTypeBody>)
                         -> Result<()> {
         let fields = body.fields.iter().map(|f| self.into_js_field(f)).collect();
@@ -520,7 +516,7 @@ impl JsBackend {
     pub fn process_interface(&self,
                              out: &mut JsFileSpec,
                              type_id: &RpTypeId,
-                             _: &RpPos,
+                             _: &Pos,
                              body: Rc<RpInterfaceBody>)
                              -> Result<()> {
         let mut classes = Elements::new();
@@ -530,7 +526,7 @@ impl JsBackend {
 
         interface_spec.push(self.interface_decode_method(type_id, &body)?);
 
-        let interface_fields: Vec<RpLoc<JsField>> =
+        let interface_fields: Vec<Loc<JsField>> =
             body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         for code in body.codes.for_context(JS_CONTEXT) {
@@ -599,7 +595,7 @@ impl Converter for JsBackend {
         stmt![name]
     }
 
-    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Name> {
+    fn convert_type(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Name> {
         let (package, registered) = self.env
             .lookup(&type_id.package, &type_id.name)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
@@ -718,7 +714,7 @@ impl DynamicDecode for JsBackend {
     fn check_type_var(&self,
                       data: &Self::Stmt,
                       type_var: &Self::Stmt,
-                      name: &RpLoc<String>,
+                      name: &Loc<String>,
                       type_name: &Self::Type)
                       -> Self::Elements {
         let mut body = Elements::new();

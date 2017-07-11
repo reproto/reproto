@@ -46,8 +46,8 @@ impl ::std::fmt::Display for RpDecl {
     }
 }
 
-impl Merge for RpLoc<RpDecl> {
-    fn merge(&mut self, source: RpLoc<RpDecl>) -> Result<()> {
+impl Merge for Loc<RpDecl> {
+    fn merge(&mut self, source: Loc<RpDecl>) -> Result<()> {
         let dest_pos = self.pos().clone();
         let m = self.as_mut();
 

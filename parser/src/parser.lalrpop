@@ -328,8 +328,8 @@ OneOrMore<Sep, T>: Vec<T> = {
     }
 };
 
-Loc<Inner>: RpLoc<Inner> = <s:@L> <inner:Inner> <e:@R> => {
-    RpLoc::new(inner, ((*input_path).clone(), s, e))
+Loc<Inner>: Loc<Inner> = <s:@L> <inner:Inner> <e:@R> => {
+    Loc::new(inner, ((*input_path).clone(), s, e))
 };
 
 extern {

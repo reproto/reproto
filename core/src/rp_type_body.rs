@@ -6,11 +6,11 @@ use super::errors::*;
 pub struct RpTypeBody {
     pub name: String,
     pub comment: Vec<String>,
-    pub fields: Vec<RpLoc<RpField>>,
-    pub codes: Vec<RpLoc<RpCode>>,
+    pub fields: Vec<Loc<RpField>>,
+    pub codes: Vec<Loc<RpCode>>,
     pub match_decl: RpMatchDecl,
     // Set of fields which are reserved for this type.
-    pub reserved: HashSet<RpLoc<String>>,
+    pub reserved: HashSet<Loc<String>>,
 }
 
 impl RpTypeBody {
@@ -25,7 +25,7 @@ impl RpTypeBody {
         Ok(())
     }
 
-    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpLoc<RpField>> + 'a> {
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Loc<RpField>> + 'a> {
         Box::new(self.fields.iter())
     }
 }

@@ -87,7 +87,7 @@ impl JavaBackend {
         self.java_package(pkg).parts.join(".")
     }
 
-    fn convert_type_id(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
+    fn convert_type_id(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Type> {
         let (package, registered) = self.env
             .lookup(&type_id.package, &type_id.name)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
@@ -97,7 +97,7 @@ impl JavaBackend {
     }
 
     /// Convert the given type to a java type.
-    pub fn into_java_type(&self, pos: &RpPos, type_id: &RpTypeId, ty: &RpType) -> Result<Type> {
+    pub fn into_java_type(&self, pos: &Pos, type_id: &RpTypeId, ty: &RpType) -> Result<Type> {
         let ty = match *ty {
             RpType::String => self.string.clone().into(),
             RpType::Signed { ref size } |
@@ -746,7 +746,7 @@ impl JavaBackend {
 
     fn convert_field<'a>(&self,
                          type_id: &RpTypeId,
-                         field: &'a RpLoc<RpField>)
+                         field: &'a Loc<RpField>)
                          -> Result<JavaField<'a>> {
         let java_type = self.into_java_type(field.pos(), type_id, &field.ty)?;
         let camel_name = self.snake_to_upper_camel.convert(field.ident());
@@ -766,7 +766,7 @@ impl JavaBackend {
 
     fn convert_fields<'a>(&self,
                           type_id: &RpTypeId,
-                          fields: &'a Vec<RpLoc<RpField>>)
+                          fields: &'a Vec<Loc<RpField>>)
                           -> Result<Vec<JavaField<'a>>> {
         let mut out = Vec::new();
 
@@ -809,7 +809,7 @@ impl Converter for JavaBackend {
         stmt![name]
     }
 
-    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Type> {
+    fn convert_type(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Type> {
         self.convert_type_id(pos, type_id)
     }
 }

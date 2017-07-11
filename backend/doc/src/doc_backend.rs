@@ -44,7 +44,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn type_url(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<String> {
+    fn type_url(&self, pos: &Pos, type_id: &RpTypeId) -> Result<String> {
         let (package, registered) = self.env
             .lookup(&type_id.package, &type_id.name)
             .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
@@ -95,7 +95,7 @@ impl DocBackend {
     }
 
     fn write_variants<'b, I>(&self, out: &mut DocBuilder, variants: I) -> Result<()>
-        where I: IntoIterator<Item = &'b RpLoc<Rc<RpEnumVariant>>>
+        where I: IntoIterator<Item = &'b Loc<Rc<RpEnumVariant>>>
     {
         let mut it = variants.into_iter().peekable();
 
@@ -132,7 +132,7 @@ impl DocBackend {
 
     fn write_type(&self,
                   out: &mut DocBuilder,
-                  pos: &RpPos,
+                  pos: &Pos,
                   type_id: &RpTypeId,
                   ty: &RpType)
                   -> Result<()> {
@@ -196,7 +196,7 @@ impl DocBackend {
     }
 
     fn write_fields<'b, I>(&self, out: &mut DocBuilder, type_id: &RpTypeId, fields: I) -> Result<()>
-        where I: Iterator<Item = &'b RpLoc<RpField>>
+        where I: Iterator<Item = &'b Loc<RpField>>
     {
         html!(out, div {class => "fields"} => {
             html!(out, h2 {} ~ "Fields");
@@ -527,7 +527,7 @@ impl DocBackend {
     pub fn process_service(&self,
                            out: &mut DocCollector,
                            type_id: &RpTypeId,
-                           _: &RpPos,
+                           _: &Pos,
                            body: Rc<RpServiceBody>)
                            -> Result<()> {
         let mut new_service = out.new_service(body.clone());
@@ -551,7 +551,7 @@ impl DocBackend {
     pub fn process_enum(&self,
                         out: &mut DocCollector,
                         _: &RpTypeId,
-                        _: &RpPos,
+                        _: &Pos,
                         body: Rc<RpEnumBody>)
                         -> Result<()> {
         let mut new_enum = out.new_type(RpDecl::Enum(body.clone()));
@@ -572,7 +572,7 @@ impl DocBackend {
     pub fn process_interface(&self,
                              out: &mut DocCollector,
                              type_id: &RpTypeId,
-                             _: &RpPos,
+                             _: &Pos,
                              body: Rc<RpInterfaceBody>)
                              -> Result<()> {
         let mut new_interface = out.new_type(RpDecl::Interface(body.clone()));
@@ -609,7 +609,7 @@ impl DocBackend {
     pub fn process_type(&self,
                         out: &mut DocCollector,
                         type_id: &RpTypeId,
-                        _: &RpPos,
+                        _: &Pos,
                         body: Rc<RpTypeBody>)
                         -> Result<()> {
         let mut new_type = out.new_type(RpDecl::Type(body.clone()));
@@ -630,7 +630,7 @@ impl DocBackend {
     pub fn process_tuple(&self,
                          out: &mut DocCollector,
                          type_id: &RpTypeId,
-                         _: &RpPos,
+                         _: &Pos,
                          body: Rc<RpTupleBody>)
                          -> Result<()> {
         let mut new_tuple = out.new_type(RpDecl::Tuple(body.clone()));

@@ -7,7 +7,7 @@ pub trait BaseEncode {
 
     fn base_encode(&self,
                    type_id: &RpTypeId,
-                   pos: &RpPos,
+                   pos: &Pos,
                    ty: &RpType,
                    input: &Self::Stmt)
                    -> Result<Self::Stmt>;

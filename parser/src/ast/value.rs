@@ -8,9 +8,9 @@ pub enum Value<'input> {
     Boolean(bool),
     Identifier(String),
     Type(RpType),
-    Instance(RpLoc<Instance<'input>>),
-    Constant(RpLoc<RpName>),
-    Array(Vec<RpLoc<Value<'input>>>),
+    Instance(Loc<Instance<'input>>),
+    Constant(Loc<RpName>),
+    Array(Vec<Loc<Value<'input>>>),
 }
 
 impl<'input> IntoModel for Value<'input> {

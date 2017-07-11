@@ -4,7 +4,7 @@ use super::*;
 #[serde(tag = "type", rename_all="snake_case")]
 pub enum RpMatchCondition {
     /// Match a specific value.
-    Value(RpLoc<RpValue>),
+    Value(Loc<RpValue>),
     /// Match a type, and add a binding for the given name that can be resolved in the action.
-    Type(RpLoc<RpMatchVariable>),
+    Type(Loc<RpMatchVariable>),
 }

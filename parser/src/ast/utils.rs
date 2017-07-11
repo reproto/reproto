@@ -2,24 +2,24 @@ use std::collections::HashMap;
 use super::*;
 use super::errors::*;
 
-type Fields = Vec<RpLoc<RpField>>;
-type Codes = Vec<RpLoc<RpCode>>;
-type OptionVec = Vec<RpLoc<RpOptionDecl>>;
+type Fields = Vec<Loc<RpField>>;
+type Codes = Vec<Loc<RpCode>>;
+type OptionVec = Vec<Loc<RpOptionDecl>>;
 
-pub fn code(pos: RpPos, context: String, lines: Vec<String>) -> RpLoc<RpCode> {
+pub fn code(pos: Pos, context: String, lines: Vec<String>) -> Loc<RpCode> {
     let code = RpCode {
         context: context,
         lines: lines,
     };
 
-    RpLoc::new(code, pos)
+    Loc::new(code, pos)
 }
 
-pub fn members_into_model(members: Vec<RpLoc<Member>>)
+pub fn members_into_model(members: Vec<Loc<Member>>)
                           -> Result<(Fields, Codes, OptionVec, RpMatchDecl)> {
-    let mut fields: Vec<RpLoc<RpField>> = Vec::new();
+    let mut fields: Vec<Loc<RpField>> = Vec::new();
     let mut codes = Vec::new();
-    let mut options: Vec<RpLoc<RpOptionDecl>> = Vec::new();
+    let mut options: Vec<Loc<RpOptionDecl>> = Vec::new();
     let mut match_decl = RpMatchDecl::new();
 
     for member in members {
@@ -37,7 +37,7 @@ pub fn members_into_model(members: Vec<RpLoc<Member>>)
                         .into());
                 }
 
-                fields.push(RpLoc::new(field, pos.into()));
+                fields.push(Loc::new(field, pos.into()));
             }
             Member::Code(context, lines) => {
                 codes.push(code(pos.into(), context.to_owned(), lines));
@@ -59,7 +59,7 @@ pub fn members_into_model(members: Vec<RpLoc<Member>>)
 /// Generate ordinal values.
 pub struct OrdinalGenerator {
     next_ordinal: u32,
-    ordinals: HashMap<u32, RpPos>,
+    ordinals: HashMap<u32, Pos>,
 }
 
 impl OrdinalGenerator {
@@ -70,7 +70,7 @@ impl OrdinalGenerator {
         }
     }
 
-    pub fn next(&mut self, ordinal: &Option<RpLoc<Value>>) -> Result<u32> {
+    pub fn next(&mut self, ordinal: &Option<Loc<Value>>) -> Result<u32> {
         if let Some(ref ordinal) = *ordinal {
             let pos = ordinal.pos();
 

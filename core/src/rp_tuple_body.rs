@@ -5,13 +5,13 @@ use super::errors::*;
 pub struct RpTupleBody {
     pub name: String,
     pub comment: Vec<String>,
-    pub fields: Vec<RpLoc<RpField>>,
-    pub codes: Vec<RpLoc<RpCode>>,
+    pub fields: Vec<Loc<RpField>>,
+    pub codes: Vec<Loc<RpCode>>,
     pub match_decl: RpMatchDecl,
 }
 
 impl RpTupleBody {
-    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &RpLoc<RpField>> + 'a> {
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Loc<RpField>> + 'a> {
         Box::new(self.fields.iter())
     }
 }

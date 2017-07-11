@@ -6,11 +6,11 @@ use super::errors::*;
 pub struct RpEnumBody {
     pub name: String,
     pub comment: Vec<String>,
-    pub variants: Vec<RpLoc<Rc<RpEnumVariant>>>,
-    pub fields: Vec<RpLoc<RpField>>,
-    pub codes: Vec<RpLoc<RpCode>>,
+    pub variants: Vec<Loc<Rc<RpEnumVariant>>>,
+    pub fields: Vec<Loc<RpField>>,
+    pub codes: Vec<Loc<RpCode>>,
     pub match_decl: RpMatchDecl,
-    pub serialized_as: Option<RpLoc<String>>,
+    pub serialized_as: Option<Loc<String>>,
     pub serialized_as_name: bool,
 }
 

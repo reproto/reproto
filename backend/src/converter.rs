@@ -13,9 +13,9 @@ pub trait Converter {
 
     fn new_var(&self, name: &str) -> Self::Stmt;
 
-    fn convert_type(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Self::Type>;
+    fn convert_type(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Self::Type>;
 
-    fn convert_constant(&self, pos: &RpPos, type_id: &RpTypeId) -> Result<Self::Type> {
+    fn convert_constant(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Self::Type> {
         self.convert_type(pos, type_id)
     }
 }

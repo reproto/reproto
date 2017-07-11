@@ -20,8 +20,8 @@ pub enum RpRegistered {
 }
 
 impl RpRegistered {
-    pub fn fields<'a>(&'a self) -> Result<Box<Iterator<Item = &RpLoc<RpField>> + 'a>> {
-        let it: Box<Iterator<Item = &RpLoc<RpField>>> = match *self {
+    pub fn fields<'a>(&'a self) -> Result<Box<Iterator<Item = &Loc<RpField>> + 'a>> {
+        let it: Box<Iterator<Item = &Loc<RpField>>> = match *self {
             RpRegistered::Type(ref body) => Box::new(body.fields.iter()),
             RpRegistered::Tuple(ref body) => Box::new(body.fields.iter()),
             RpRegistered::SubType { ref parent, ref sub_type } => {
@@ -35,7 +35,7 @@ impl RpRegistered {
         Ok(it)
     }
 
-    pub fn field_by_ident(&self, ident: &str) -> Result<Option<&RpLoc<RpField>>> {
+    pub fn field_by_ident(&self, ident: &str) -> Result<Option<&Loc<RpField>>> {
         for field in self.fields()? {
             if field.ident() == ident {
                 return Ok(Some(field));

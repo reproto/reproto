@@ -7,14 +7,14 @@ use super::errors::*;
 pub struct SubType<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub members: Vec<RpLoc<Member<'input>>>,
+    pub members: Vec<Loc<Member<'input>>>,
 }
 
 impl<'input> IntoModel for SubType<'input> {
     type Output = Rc<RpSubType>;
 
     fn into_model(self) -> Result<Rc<RpSubType>> {
-        let mut fields: Vec<RpLoc<RpField>> = Vec::new();
+        let mut fields: Vec<Loc<RpField>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
         let mut match_decl = RpMatchDecl::new();
@@ -34,7 +34,7 @@ impl<'input> IntoModel for SubType<'input> {
                             .into());
                     }
 
-                    fields.push(RpLoc::new(field, pos));
+                    fields.push(Loc::new(field, pos));
                 }
                 Member::Code(context, lines) => {
                     codes.push(utils::code(pos, context.to_owned(), lines));

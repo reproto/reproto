@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpServiceEndpoint {
-    pub method: Option<RpLoc<String>>,
+    pub method: Option<Loc<String>>,
     pub path: RpPathSpec,
     pub comment: Vec<String>,
     pub accepts: Vec<RpServiceAccepts>,

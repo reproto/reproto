@@ -15,13 +15,13 @@ use super::*;
 pub struct ValueBuilderEnv<'a> {
     package: &'a RpVersionedPackage,
     variables: &'a Variables<'a>,
-    value: &'a RpLoc<RpValue>,
+    value: &'a Loc<RpValue>,
     ty: Option<&'a RpType>,
 }
 
 pub fn new_env<'a>(package: &'a RpVersionedPackage,
                    variables: &'a Variables,
-                   value: &'a RpLoc<RpValue>,
+                   value: &'a Loc<RpValue>,
                    ty: Option<&'a RpType>)
                    -> Box<ValueBuilderEnv<'a>> {
     Box::new(ValueBuilderEnv {

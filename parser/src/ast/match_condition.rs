@@ -4,9 +4,9 @@ use super::errors::*;
 #[derive(Debug)]
 pub enum MatchCondition<'input> {
     /// Match a specific value.
-    Value(RpLoc<Value<'input>>),
+    Value(Loc<Value<'input>>),
     /// Match a type, and add a binding for the given name that can be resolved in the action.
-    Type(RpLoc<MatchVariable<'input>>),
+    Type(Loc<MatchVariable<'input>>),
 }
 
 impl<'input> IntoModel for MatchCondition<'input> {

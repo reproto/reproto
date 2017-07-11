@@ -7,7 +7,7 @@ use super::errors::*;
 pub struct TypeBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub members: Vec<RpLoc<Member<'input>>>,
+    pub members: Vec<Loc<Member<'input>>>,
 }
 
 impl<'input> IntoModel for TypeBody<'input> {
@@ -18,7 +18,7 @@ impl<'input> IntoModel for TypeBody<'input> {
 
         let options = Options::new(options);
 
-        let reserved: HashSet<RpLoc<String>> =
+        let reserved: HashSet<Loc<String>> =
             options.find_all_identifiers("reserved")?.into_iter().collect();
 
         let type_body = RpTypeBody {

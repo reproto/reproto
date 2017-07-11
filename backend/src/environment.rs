@@ -7,14 +7,14 @@ use std::path::Path;
 use std::rc::Rc;
 use super::*;
 
-pub type InitFields = HashMap<String, RpLoc<RpFieldInit>>;
+pub type InitFields = HashMap<String, Loc<RpFieldInit>>;
 
 pub struct Environment {
     package_prefix: Option<RpPackage>,
     resolver: Box<Resolver>,
     visited: HashSet<RpVersionedPackage>,
-    pub types: LinkedHashMap<RpTypeId, RpLoc<RpRegistered>>,
-    pub decls: LinkedHashMap<RpTypeId, Rc<RpLoc<RpDecl>>>,
+    pub types: LinkedHashMap<RpTypeId, Loc<RpRegistered>>,
+    pub decls: LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>,
     pub used: LinkedHashMap<(RpVersionedPackage, String), RpVersionedPackage>,
 }
 
@@ -32,8 +32,8 @@ impl Environment {
 
     fn into_registered_type(&self,
                             package: &RpVersionedPackage,
-                            decl: Rc<RpLoc<RpDecl>>)
-                            -> Result<Vec<(RpTypeId, RpLoc<RpRegistered>)>> {
+                            decl: Rc<Loc<RpDecl>>)
+                            -> Result<Vec<(RpTypeId, Loc<RpRegistered>)>> {
         let mut out = Vec::new();
 
         // apply package prefix, if needed
@@ -45,14 +45,14 @@ impl Environment {
         match **decl {
             RpDecl::Type(ref ty) => {
                 let type_id = package.into_type_id(RpName::with_parts(vec![ty.name.clone()]));
-                let token = RpLoc::new(RpRegistered::Type(ty.clone()), decl.pos().clone());
+                let token = Loc::new(RpRegistered::Type(ty.clone()), decl.pos().clone());
                 out.push((type_id, token));
             }
             RpDecl::Interface(ref interface) => {
                 let current = vec![interface.name.clone()];
                 let type_id = RpTypeId::new(package.clone(), RpName::with_parts(current.clone()));
-                let token = RpLoc::new(RpRegistered::Interface(interface.clone()),
-                                       decl.pos().clone());
+                let token = Loc::new(RpRegistered::Interface(interface.clone()),
+                                     decl.pos().clone());
 
                 for (name, sub_type) in &interface.sub_types {
                     let sub_type = RpRegistered::SubType {
@@ -60,7 +60,7 @@ impl Environment {
                         sub_type: sub_type.as_ref().clone(),
                     };
 
-                    let token = RpLoc::new(sub_type, decl.pos().clone());
+                    let token = Loc::new(sub_type, decl.pos().clone());
 
                     let mut current = current.clone();
                     current.push(name.to_owned());
@@ -72,14 +72,14 @@ impl Environment {
             RpDecl::Enum(ref en) => {
                 let current = vec![en.name.clone()];
                 let type_id = RpTypeId::new(package.clone(), RpName::with_parts(current.clone()));
-                let token = RpLoc::new(RpRegistered::Enum(en.clone()), decl.pos().clone());
+                let token = Loc::new(RpRegistered::Enum(en.clone()), decl.pos().clone());
 
                 for variant in &en.variants {
                     let enum_constant = RpRegistered::EnumConstant {
                         parent: en.clone(),
                         variant: variant.as_ref().clone(),
                     };
-                    let token = RpLoc::new(enum_constant, decl.pos().clone());
+                    let token = Loc::new(enum_constant, decl.pos().clone());
 
                     let mut current = current.clone();
                     current.push((*variant.name).to_owned());
@@ -91,13 +91,13 @@ impl Environment {
             RpDecl::Tuple(ref tuple) => {
                 let type_id = RpTypeId::new(package.clone(),
                                             RpName::with_parts(vec![tuple.name.clone()]));
-                let token = RpLoc::new(RpRegistered::Tuple(tuple.clone()), decl.pos().clone());
+                let token = Loc::new(RpRegistered::Tuple(tuple.clone()), decl.pos().clone());
                 out.push((type_id, token));
             }
             RpDecl::Service(ref service) => {
                 let type_id = RpTypeId::new(package.clone(),
                                             RpName::with_parts(vec![service.name.clone()]));
-                let token = RpLoc::new(RpRegistered::Service(service.clone()), decl.pos().clone());
+                let token = Loc::new(RpRegistered::Service(service.clone()), decl.pos().clone());
                 out.push((type_id, token));
             }
         }
@@ -107,7 +107,7 @@ impl Environment {
 
     fn register_alias(&mut self,
                       source_package: &RpVersionedPackage,
-                      use_decl: RpLoc<RpUseDecl>,
+                      use_decl: Loc<RpUseDecl>,
                       use_package: &RpVersionedPackage)
                       -> Result<()> {
         if let Some(used) = use_decl.package.parts.iter().last() {
@@ -177,7 +177,7 @@ impl Environment {
     }
 
     pub fn constant<'a>(&'a self,
-                        pos: &RpPos,
+                        pos: &Pos,
                         package: &'a RpVersionedPackage,
                         constant: &RpName,
                         target: &RpName)
@@ -201,7 +201,7 @@ impl Environment {
     /// Convert instance arguments to the known registered type of the instance, and a map
     /// containing the arguments being instantiated.
     pub fn instance<'a>(&'a self,
-                        pos: &RpPos,
+                        pos: &Pos,
                         package: &'a RpVersionedPackage,
                         instance: &RpInstance,
                         target: &RpName)
@@ -231,10 +231,10 @@ impl Environment {
         // pick required fields.
         let required_fields = required_fields.filter(|f| f.modifier == RpModifier::Required);
 
-        let mut known: HashMap<String, RpLoc<RpFieldInit>> = HashMap::new();
+        let mut known: HashMap<String, Loc<RpFieldInit>> = HashMap::new();
 
         // check that all required fields are set.
-        let mut required: BTreeMap<String, RpLoc<RpField>> = required_fields.map(Clone::clone)
+        let mut required: BTreeMap<String, Loc<RpField>> = required_fields.map(Clone::clone)
             .map(|f| (f.name().to_owned(), f))
             .collect();
 
@@ -249,7 +249,7 @@ impl Environment {
         }
 
         if !required.is_empty() {
-            let required: Vec<(String, RpLoc<RpField>)> = required.into_iter()
+            let required: Vec<(String, Loc<RpField>)> = required.into_iter()
                 .collect();
 
             let names: Vec<String> =
@@ -308,7 +308,7 @@ impl Environment {
 
     pub fn process_uses(&mut self,
                         package: &RpVersionedPackage,
-                        uses: Vec<RpLoc<RpUseDecl>>)
+                        uses: Vec<Loc<RpUseDecl>>)
                         -> Result<()> {
         for use_decl in uses {
             let version_req = use_decl.version_req.as_ref().map(AsRef::as_ref).map(Clone::clone);
@@ -329,8 +329,8 @@ impl Environment {
     }
 
     pub fn process_decls(package: &RpVersionedPackage,
-                         input: Vec<RpLoc<RpDecl>>)
-                         -> Result<LinkedHashMap<RpTypeId, Rc<RpLoc<RpDecl>>>> {
+                         input: Vec<Loc<RpDecl>>)
+                         -> Result<LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>> {
         let mut decls = LinkedHashMap::new();
 
         for decl in input {
@@ -352,8 +352,8 @@ impl Environment {
 
     pub fn process_types(&mut self,
                          package: &RpVersionedPackage,
-                         decls: &LinkedHashMap<RpTypeId, Rc<RpLoc<RpDecl>>>)
-                         -> Result<LinkedHashMap<RpTypeId, RpLoc<RpRegistered>>> {
+                         decls: &LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>)
+                         -> Result<LinkedHashMap<RpTypeId, Loc<RpRegistered>>> {
         let mut types = LinkedHashMap::new();
 
         for (_, decl) in decls {

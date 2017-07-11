@@ -2,8 +2,8 @@ use super::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpEnumVariant {
-    pub name: RpLoc<String>,
+    pub name: Loc<String>,
     pub comment: Vec<String>,
-    pub arguments: Vec<RpLoc<RpValue>>,
+    pub arguments: Vec<Loc<RpValue>>,
     pub ordinal: u32,
 }
