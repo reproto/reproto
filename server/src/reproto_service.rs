@@ -4,7 +4,7 @@ use futures::Stream;
 use futures::future::{BoxFuture, Future, ok};
 use futures_cpupool::CpuPool;
 use hyper::{self, Method, StatusCode};
-use hyper::header::{ContentEncoding, ContentLength, Encoding};
+use hyper::header::{ContentEncoding, ContentLength, Encoding, Headers};
 use hyper::server::{Request, Response, Service};
 use reproto_repository::{Checksum, Objects, to_checksum};
 use std::fs::File;
@@ -38,6 +38,17 @@ impl ReprotoService {
 
     fn gzip_encoding(input: &File) -> Result<Box<Read>> {
         Ok(Box::new(input.try_clone()?.gz_decode()?))
+    }
+
+    fn pick_encoding(headers: &Headers) -> fn(&File) -> Result<Box<Read>> {
+        if let Some(h) = headers.get::<ContentEncoding>() {
+            // client encoded as gzip
+            if h.0.iter().find(|encoding| **encoding == Encoding::Gzip).is_some() {
+                return Self::gzip_encoding;
+            }
+        }
+
+        Self::no_encoding
     }
 
     fn not_found() -> Response {
@@ -83,14 +94,7 @@ impl ReprotoService {
             return Err(ErrorKind::BadRequest("missing content-length").into());
         }
 
-        let mut encoding: fn(&File) -> Result<Box<Read>> = Self::no_encoding;
-
-        if let Some(h) = req.headers().get::<ContentEncoding>() {
-            // client encoded as gzip
-            if h.0.iter().find(|encoding| **encoding == Encoding::Gzip).is_some() {
-                encoding = Self::gzip_encoding;
-            }
-        }
+        let encoding = Self::pick_encoding(req.headers());
 
         info!("Creating temporary file");
         /// TODO: make temporary
