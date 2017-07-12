@@ -55,11 +55,18 @@ impl ReprotoService {
         Response::new().with_status(StatusCode::NotFound)
     }
 
-    fn get_objects(&self, path: &str) -> Result<BoxFuture<Response, Error>> {
+    fn get_objects<'a, I>(&self, path: I) -> Result<BoxFuture<Response, Error>>
+        where I: IntoIterator<Item = &'a str>
+    {
+        let id = if let Some(id) = path.into_iter().next() {
+            id
+        } else {
+            return Ok(ok(Self::not_found()).boxed());
+        };
+
         let objects = self.objects.clone();
 
-        let checksum =
-            Checksum::from_str(&path[..]).map_err(|_| ErrorKind::BadRequest("bad object id"))?;
+        let checksum = Checksum::from_str(id).map_err(|_| ErrorKind::BadRequest("bad object id"))?;
 
         // No async I/O, use pool
         Ok(self.pool
@@ -82,9 +89,16 @@ impl ReprotoService {
             .boxed())
     }
 
-    fn put_objects(&self, req: Request, path: &str) -> Result<BoxFuture<Response, Error>> {
-        let checksum =
-            Checksum::from_str(&path[..]).map_err(|_| ErrorKind::BadRequest("bad object id"))?;
+    fn put_objects<'a, I>(&self, req: Request, path: I) -> Result<BoxFuture<Response, Error>>
+        where I: IntoIterator<Item = &'a str>
+    {
+        let id = if let Some(id) = path.into_iter().next() {
+            id
+        } else {
+            return Ok(ok(Self::not_found()).boxed());
+        };
+
+        let checksum = Checksum::from_str(id).map_err(|_| ErrorKind::BadRequest("bad object id"))?;
 
         if let Some(len) = req.headers().get::<ContentLength>() {
             if len.0 > self.max_file_size {
@@ -149,11 +163,15 @@ impl ReprotoService {
         Ok(upload.boxed())
     }
 
-    fn inner_call(&self, req: Request, path: &str) -> Result<BoxFuture<Response, Error>> {
-        if let Some(len) = path.find('/') {
-            match (req.method(), &path[0..len]) {
-                (&Method::Get, "objects") => return self.get_objects(&path[len + 1..]),
-                (&Method::Put, "objects") => return self.put_objects(req, &path[len + 1..]),
+    fn inner_call<'a, I>(&self, req: Request, path: I) -> Result<BoxFuture<Response, Error>>
+        where I: IntoIterator<Item = &'a str>
+    {
+        let mut it = path.into_iter();
+
+        if let Some(part) = it.next() {
+            match (req.method(), part) {
+                (&Method::Get, "objects") => return self.get_objects(it),
+                (&Method::Put, "objects") => return self.put_objects(req, it),
                 _ => return Ok(ok(Self::not_found()).boxed()),
             }
         }
@@ -183,14 +201,11 @@ impl Service for ReprotoService {
     type Future = BoxFuture<Response, hyper::Error>;
 
     fn call(&self, req: Request) -> Self::Future {
-        let mut path = String::from(req.path());
+        let full_path = String::from(req.path());
 
-        // remove leading slash
-        if let Some(len) = path.find('/') {
-            path.drain(..len + 1);
-        }
+        let path = full_path.split('/').skip(1);
 
-        self.inner_call(req, path.as_str())
+        self.inner_call(req, path)
             .unwrap_or_else(|e| ok(Self::handle_error(e)).boxed())
             .or_else(|e| ok(Self::handle_error(e)))
             .boxed()
