@@ -29,8 +29,14 @@ pub fn to_sha256<R: Read>(mut reader: R) -> Result<Checksum> {
     Ok(checksum)
 }
 
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
 pub struct Checksum(Vec<u8>);
+
+impl Checksum {
+    pub fn from_str(input: &str) -> Result<Checksum> {
+        Ok(Checksum(FromHex::from_hex(input)?))
+    }
+}
 
 impl AsRef<[u8]> for Checksum {
     fn as_ref(&self) -> &[u8] {
@@ -92,8 +98,7 @@ impl<'de> Visitor<'de> for ChecksumVisitor {
     fn visit_str<E>(self, value: &str) -> result::Result<Self::Value, E>
         where E: Error
     {
-        let bytes: Vec<u8> = FromHex::from_hex(value).map_err(Error::custom)?;
-        Ok(Checksum(bytes))
+        Checksum::from_str(value).map_err(Error::custom)
     }
 
     fn visit_string<E>(self, value: String) -> result::Result<Self::Value, E>

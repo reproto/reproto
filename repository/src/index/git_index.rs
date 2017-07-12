@@ -5,17 +5,20 @@ use index::{Deployment, Index, file_index};
 use objects::{FileObjects, GitObjects, Objects};
 use sha256::Checksum;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use url::Url;
 
 pub struct GitIndex {
     url: Url,
-    git_repo: Rc<GitRepo>,
+    git_repo: Arc<Mutex<GitRepo>>,
     file_index: file_index::FileIndex,
 }
 
 impl GitIndex {
-    pub fn new(url: Url, git_repo: Rc<GitRepo>, file_index: file_index::FileIndex) -> GitIndex {
+    pub fn new(url: Url,
+               git_repo: Arc<Mutex<GitRepo>>,
+               file_index: file_index::FileIndex)
+               -> GitIndex {
         GitIndex {
             url: url,
             git_repo: git_repo,
@@ -59,6 +62,6 @@ impl Index for GitIndex {
     }
 
     fn update(&self) -> Result<()> {
-        self.git_repo.update()
+        self.git_repo.lock().map_err(|_| ErrorKind::PoisonError)?.update()
     }
 }

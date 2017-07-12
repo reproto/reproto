@@ -1,5 +1,6 @@
 use hex_slice::HexSlice;
-use std::fs;
+use std::fs::{self, File};
+use std::io;
 use std::path::{Path, PathBuf};
 use super::*;
 
@@ -20,7 +21,7 @@ impl FileObjects {
 }
 
 impl Objects for FileObjects {
-    fn put_object(&self, checksum: &Checksum, source: &Path) -> Result<()> {
+    fn put_object(&self, checksum: &Checksum, source: &mut Read) -> Result<()> {
         let target = self.checksum_path(checksum)?;
 
         // no need to write same file again
@@ -35,9 +36,13 @@ impl Objects for FileObjects {
             let mut tmp_target = target.clone();
             tmp_target.set_extension(".tmp");
 
-            debug!("writing: {} (from: {})", target.display(), source.display());
+            debug!("writing: {}", target.display());
 
-            fs::copy(source, &tmp_target)?;
+            {
+                let mut f = File::create(&tmp_target)?;
+                io::copy(source, &mut f)?;
+            }
+
             fs::rename(tmp_target, target)?;
         }
 

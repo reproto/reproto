@@ -8,7 +8,7 @@ pub use self::file_index::init_file_index;
 use self::git_index::*;
 use sha256::Checksum;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use url::Url;
 
 /// Configuration file for objects backends.
@@ -82,9 +82,10 @@ pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Re
 
     let repos = config.repos.ok_or_else(|| "repos: not specified")?;
 
-    let git_repo = Rc::new(git::setup_git_repo(&repos, sub_scheme, url)?);
-
+    let git_repo = git::setup_git_repo(&repos, sub_scheme, url)?;
     let file_objects = file_index::FileIndex::new(git_repo.path())?;
+
+    let git_repo = Arc::new(Mutex::new(git_repo));
     let index = GitIndex::new(url.clone(), git_repo, file_objects);
 
     Ok(Box::new(index))

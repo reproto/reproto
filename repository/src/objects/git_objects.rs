@@ -1,17 +1,18 @@
 use git::GitRepo;
-use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::io::Read;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use super::*;
 use url::Url;
 
 pub struct GitObjects {
     url: Url,
-    git_repo: Rc<GitRepo>,
+    git_repo: Arc<Mutex<GitRepo>>,
     file_objects: FileObjects,
 }
 
 impl GitObjects {
-    pub fn new(url: Url, git_repo: Rc<GitRepo>, file_objects: FileObjects) -> GitObjects {
+    pub fn new(url: Url, git_repo: Arc<Mutex<GitRepo>>, file_objects: FileObjects) -> GitObjects {
         GitObjects {
             url: url,
             git_repo: git_repo,
@@ -21,7 +22,7 @@ impl GitObjects {
 }
 
 impl Objects for GitObjects {
-    fn put_object(&self, _: &Checksum, _: &Path) -> Result<()> {
+    fn put_object(&self, _: &Checksum, _: &mut Read) -> Result<()> {
         Err(ErrorKind::NoPublishObjects(self.url.to_string()).into())
     }
 
@@ -30,6 +31,6 @@ impl Objects for GitObjects {
     }
 
     fn update(&self) -> Result<()> {
-        self.git_repo.update()
+        self.git_repo.lock().map_err(|_| ErrorKind::PoisonError)?.update()
     }
 }

@@ -1,0 +1,27 @@
+[package]
+name = "reproto-server"
+version = "0.0.1"
+authors = ["John-John Tedro <udoprog@tedro.se>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/reproto/reproto"
+homepage = "https://github.com/reproto/reproto"
+documentation = "https://docs.rs/reproto"
+description = """
+Rethinking Protocol Generators
+"""
+
+[features]
+# Enable to emit very detailed tracing, potentially performance sensitive.
+tracing = []
+
+[dependencies]
+futures = "0.1.14"
+futures-cpupool = "0.1.5"
+hyper = "0.11.1"
+pretty_env_logger = "0.1.1"
+reproto_repository = {path = "../repository"}
+log = "0.3"
+error-chain = "0.10.0"
+tempfile = "2.1.5"
+flate2 = "0.2.19"

@@ -10,6 +10,7 @@ error_chain! {
         UrlParseError(::url::ParseError);
         OpenSSL(::openssl::error::ErrorStack);
         Git2(::git2::Error);
+        FromHexError(::hex::FromHexError);
     }
 
     errors {
@@ -21,6 +22,10 @@ error_chain! {
         NoPublishObjects(url: String) {
             description("object storage does not support publishing")
             display("object storage does not support publishing: {}", url)
+        }
+
+        PoisonError {
+            description("mutex poisoned")
         }
     }
 }

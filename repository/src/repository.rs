@@ -36,7 +36,12 @@ impl Repository {
         }
 
         let checksum = to_sha256(File::open(source)?)?;
-        self.objects.put_object(&checksum, source)?;
+
+        {
+            let mut f = File::open(source)?;
+            self.objects.put_object(&checksum, &mut f)?;
+        }
+
         self.index.put_version(&checksum, package, version)?;
         Ok(())
     }

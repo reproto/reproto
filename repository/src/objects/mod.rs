@@ -6,8 +6,9 @@ use git;
 pub use self::file_objects::FileObjects;
 pub use self::git_objects::GitObjects;
 use sha256::Checksum;
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use url::Url;
 
 /// Configuration file for objects backends.
@@ -16,11 +17,11 @@ pub struct ObjectsConfig {
     pub repos: Option<PathBuf>,
 }
 
-pub trait Objects {
+pub trait Objects: Send {
     /// Put the given object into the database.
     /// This will cause the object denoted by the given checksum to be uploaded to the objects
     /// store.
-    fn put_object(&self, checksum: &Checksum, source: &Path) -> Result<()>;
+    fn put_object(&self, checksum: &Checksum, source: &mut Read) -> Result<()>;
 
     /// Get a path to the object with the given checksum.
     /// This might cause the object to be downloaded if it's not already present in the local
@@ -33,14 +34,14 @@ pub trait Objects {
     }
 }
 
-pub fn objects_from_file(url: &Url) -> Result<Box<Objects>> {
-    let path = Path::new(url.path());
+pub fn objects_from_file<P: AsRef<Path>>(path: P) -> Result<Box<Objects>> {
+    let path = path.as_ref();
 
     if !path.is_dir() {
         return Err(format!("no such directory: {}", path.display()).into());
     }
 
-    Ok(Box::new(FileObjects::new(&path)))
+    Ok(Box::new(FileObjects::new(path)))
 }
 
 pub fn objects_from_git<'a, I>(config: ObjectsConfig,
@@ -56,9 +57,11 @@ pub fn objects_from_git<'a, I>(config: ObjectsConfig,
 
     let repos = config.repos.ok_or_else(|| "repos: not specified")?;
 
-    let git_repo = Rc::new(git::setup_git_repo(&repos, sub_scheme, url)?);
+    let git_repo = git::setup_git_repo(&repos, sub_scheme, url)?;
 
     let file_objects = FileObjects::new(git_repo.path());
+
+    let git_repo = Arc::new(Mutex::new(git_repo));
     let objects = GitObjects::new(url.clone(), git_repo, file_objects);
 
     Ok(Box::new(objects))
@@ -69,7 +72,10 @@ pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>
     let first = scheme.next().ok_or_else(|| format!("invalid scheme: {}", url))?;
 
     match first {
-        "file" => objects_from_file(url),
+        "file" => {
+            let path = Path::new(url.path());
+            objects_from_file(path).map(|r| r as Box<Objects>)
+        }
         "git" => objects_from_git(config, scheme, url),
         scheme => Err(format!("unsupported scheme ({}): {}", scheme, url).into()),
     }

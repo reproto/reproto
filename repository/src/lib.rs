@@ -28,6 +28,7 @@ pub mod errors;
 use reproto_core as core;
 
 pub use self::index::{Index, index_from_url, IndexConfig, init_file_index};
-pub use self::objects::{Objects, objects_from_url, ObjectsConfig};
+pub use self::objects::{Objects, objects_from_url, objects_from_file, ObjectsConfig};
 pub use self::repository::*;
 pub use self::resolver::*;
+pub use self::sha256::{Checksum, to_sha256 as to_checksum, Sha256 as Digest};
