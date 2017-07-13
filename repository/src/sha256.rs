@@ -34,7 +34,13 @@ pub struct Checksum(Vec<u8>);
 
 impl Checksum {
     pub fn from_str(input: &str) -> Result<Checksum> {
-        Ok(Checksum(FromHex::from_hex(input)?))
+        let bytes: Vec<u8> = FromHex::from_hex(input)?;
+
+        if bytes.len() != 32usize {
+            return Err("expected 32 bytes".into());
+        }
+
+        Ok(Checksum(bytes))
     }
 }
 

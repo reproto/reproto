@@ -10,5 +10,6 @@ extern crate pretty_env_logger;
 extern crate reproto_repository;
 extern crate tempfile;
 
+mod io;
 pub mod errors;
 pub mod reproto_service;

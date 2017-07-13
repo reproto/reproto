@@ -1,21 +1,22 @@
 use errors::*;
 use flate2::FlateReadExt;
-use futures::Stream;
-use futures::future::{BoxFuture, Future, ok};
+use futures::future::{Future, ok};
 use futures_cpupool::CpuPool;
 use hyper::{self, Method, StatusCode};
-use hyper::header::{ContentEncoding, ContentLength, Encoding, Headers};
+use hyper::header::{ContentEncoding, ContentLength, ContentType, Encoding, Headers};
+use hyper::mime;
 use hyper::server::{Request, Response, Service};
+use io;
 use reproto_repository::{Checksum, Objects, to_checksum};
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 use std::io::Read;
-use std::io::Write;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tempfile;
 
-static CHECKSUM_MISMATCH: &'static [u8] = b"Checksum Mismatch";
+const CHECKSUM_MISMATCH: &'static str = "checksum mismatch";
+const BAD_OBJECT_ID: &'static str = "bad object id";
 
 /// ## Read the contents of the file into a byte-vector
 fn read_contents<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
@@ -31,13 +32,15 @@ pub struct ReprotoService {
     pub objects: Arc<Mutex<Box<Objects>>>,
 }
 
+type EncodingFn = fn(&File) -> Result<Box<Read>>;
+
 impl ReprotoService {
     fn no_encoding(input: &File) -> Result<Box<Read>> {
         Ok(Box::new(input.try_clone()?))
     }
 
     fn gzip_encoding(input: &File) -> Result<Box<Read>> {
-        Ok(Box::new(input.try_clone()?.gz_decode()?))
+        Ok(Box::new(input.try_clone()?.gz_decode().chain_err(|| "failed to open gz file")?))
     }
 
     fn pick_encoding(headers: &Headers) -> fn(&File) -> Result<Box<Read>> {
@@ -55,7 +58,7 @@ impl ReprotoService {
         Response::new().with_status(StatusCode::NotFound)
     }
 
-    fn get_objects<'a, I>(&self, path: I) -> Result<BoxFuture<Response, Error>>
+    fn get_objects<'a, I>(&self, path: I) -> Result<Box<Future<Item = Response, Error = Error>>>
         where I: IntoIterator<Item = &'a str>
     {
         let id = if let Some(id) = path.into_iter().next() {
@@ -66,7 +69,7 @@ impl ReprotoService {
 
         let objects = self.objects.clone();
 
-        let checksum = Checksum::from_str(id).map_err(|_| ErrorKind::BadRequest("bad object id"))?;
+        let checksum = Checksum::from_str(id).map_err(|_| ErrorKind::BadRequest(BAD_OBJECT_ID))?;
 
         // No async I/O, use pool
         Ok(self.pool
@@ -89,7 +92,54 @@ impl ReprotoService {
             .boxed())
     }
 
-    fn put_objects<'a, I>(&self, req: Request, path: I) -> Result<BoxFuture<Response, Error>>
+    /// Put the uploaded object into the object repository.
+    fn put_uploaded_object<F>(&self,
+                              body: F,
+                              checksum: Checksum,
+                              encoding: EncodingFn)
+                              -> Box<Future<Item = Response, Error = Error>>
+        where F: 'static + Future<Item = File, Error = Error>
+    {
+        let pool = self.pool.clone();
+        let objects = self.objects.clone();
+
+        let upload = body.and_then(move |mut tmp| {
+            pool.spawn_fn(move || {
+                tmp.seek(SeekFrom::Start(0))?;
+                let mut checksum_read = encoding(&tmp)?;
+
+                let actual =
+                    to_checksum(&mut checksum_read).chain_err(|| "failed to calculate checksum")?;
+
+                if actual != checksum {
+                    info!("{} != {}", actual, checksum);
+
+                    return Ok(Response::new()
+                        .with_body(CHECKSUM_MISMATCH)
+                        .with_status(StatusCode::BadRequest));
+                }
+
+                info!("Uploading object: {}", checksum);
+
+                tmp.seek(SeekFrom::Start(0))?;
+                let mut read = encoding(&tmp)?;
+
+                objects.lock()
+                    .map_err(|_| ErrorKind::PoisonError)?
+                    .put_object(&checksum, &mut read)
+                    .chain_err(|| "failed to put object")?;
+
+                Ok(Response::new().with_status(StatusCode::Ok))
+            })
+        });
+
+        Box::new(upload)
+    }
+
+    fn put_objects<'a, I>(&self,
+                          req: Request,
+                          path: I)
+                          -> Result<Box<Future<Item = Response, Error = Error>>>
         where I: IntoIterator<Item = &'a str>
     {
         let id = if let Some(id) = path.into_iter().next() {
@@ -98,7 +148,7 @@ impl ReprotoService {
             return Ok(ok(Self::not_found()).boxed());
         };
 
-        let checksum = Checksum::from_str(id).map_err(|_| ErrorKind::BadRequest("bad object id"))?;
+        let checksum = Checksum::from_str(id).map_err(|_| ErrorKind::BadRequest(BAD_OBJECT_ID))?;
 
         if let Some(len) = req.headers().get::<ContentLength>() {
             if len.0 > self.max_file_size {
@@ -111,59 +161,14 @@ impl ReprotoService {
         let encoding = Self::pick_encoding(req.headers());
 
         info!("Creating temporary file");
-        /// TODO: make temporary
-        let tmp = tempfile::tempfile()?;
-
-        let pool = self.pool.clone();
-
-        /// Write file in chunks as it becomes available
-        let body = req.body()
-            .map_err::<Error, _>(Into::into)
-            .fold((pool, tmp), |(pool, mut tmp), chunk| {
-                /// Write chunks on cpu-pool
-                let write = pool.spawn_fn(move || {
-                    tmp.write_all(chunk.as_ref())?;
-                    Ok(tmp) as Result<File>
-                });
-
-                write.map(|tmp| (pool, tmp))
-            })
-            .map(|(_, tmp)| tmp);
-
-        let pool = self.pool.clone();
-        let objects = self.objects.clone();
-
-        let upload = body.and_then(move |mut tmp| {
-            pool.spawn_fn(move || {
-                tmp.seek(SeekFrom::Start(0))?;
-
-                let mut checksum_read = encoding(&tmp)?;
-                let actual = to_checksum(&mut checksum_read)?;
-
-                if actual != checksum {
-                    info!("{} != {}", actual, checksum);
-
-                    return Ok(Response::new()
-                        .with_body(CHECKSUM_MISMATCH)
-                        .with_status(StatusCode::BadRequest));
-                }
-
-                info!("Uploading object: {}", checksum);
-
-                let mut read = encoding(&tmp)?;
-
-                objects.lock()
-                    .map_err(|_| ErrorKind::PoisonError)?
-                    .put_object(&checksum, &mut read)?;
-
-                Ok(Response::new().with_status(StatusCode::Ok))
-            })
-        });
-
-        Ok(upload.boxed())
+        let body = io::stream_to_file(tempfile::tempfile()?, self.pool.clone(), req.body());
+        Ok(self.put_uploaded_object(body, checksum, encoding))
     }
 
-    fn inner_call<'a, I>(&self, req: Request, path: I) -> Result<BoxFuture<Response, Error>>
+    fn inner_call<'a, I>(&self,
+                         req: Request,
+                         path: I)
+                         -> Result<Box<Future<Item = Response, Error = Error>>>
         where I: IntoIterator<Item = &'a str>
     {
         let mut it = path.into_iter();
@@ -185,9 +190,20 @@ impl ReprotoService {
                 return Response::new()
                     .with_status(StatusCode::BadRequest)
                     .with_header(ContentLength(message.len() as u64))
+                    .with_header(ContentType(mime::TEXT_PLAIN))
                     .with_body(*message)
             }
             _ => {
+                error!("{}", e);
+
+                for e in e.iter().skip(1) {
+                    error!("caused by: {}", e);
+                }
+
+                if let Some(backtrace) = e.backtrace() {
+                    error!("{:?}", backtrace);
+                }
+
                 return Response::new().with_status(StatusCode::InternalServerError);
             }
         }
@@ -198,16 +214,15 @@ impl Service for ReprotoService {
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
-    type Future = BoxFuture<Response, hyper::Error>;
+    type Future = Box<Future<Item = Response, Error = hyper::Error>>;
 
     fn call(&self, req: Request) -> Self::Future {
         let full_path = String::from(req.path());
 
         let path = full_path.split('/').skip(1);
 
-        self.inner_call(req, path)
+        Box::new(self.inner_call(req, path)
             .unwrap_or_else(|e| ok(Self::handle_error(e)).boxed())
-            .or_else(|e| ok(Self::handle_error(e)))
-            .boxed()
+            .or_else(|e| ok(Self::handle_error(e))))
     }
 }

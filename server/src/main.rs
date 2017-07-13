@@ -45,7 +45,15 @@ fn entry() -> Result<()> {
 
 fn main() {
     if let Err(e) = entry() {
-        error!("ERROR - {}", e);
+        error!("{}", e);
+
+        for e in e.iter().skip(1) {
+            error!("caused by: {}", e);
+        }
+
+        if let Some(backtrace) = e.backtrace() {
+            error!("{:?}", backtrace);
+        }
     }
 
     info!("Shutting down");
