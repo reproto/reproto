@@ -5,20 +5,17 @@ use index::{Deployment, Index, file_index};
 use objects::{FileObjects, GitObjects, Objects};
 use sha256::Checksum;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
 use url::Url;
 
 pub struct GitIndex {
     url: Url,
-    git_repo: Arc<Mutex<GitRepo>>,
+    git_repo: Rc<GitRepo>,
     file_index: file_index::FileIndex,
 }
 
 impl GitIndex {
-    pub fn new(url: Url,
-               git_repo: Arc<Mutex<GitRepo>>,
-               file_index: file_index::FileIndex)
-               -> GitIndex {
+    pub fn new(url: Url, git_repo: Rc<GitRepo>, file_index: file_index::FileIndex) -> GitIndex {
         GitIndex {
             url: url,
             git_repo: git_repo,
@@ -48,7 +45,6 @@ impl Index for GitIndex {
     }
 
     fn objects_from_index(&self, relative_path: &Path) -> Result<Box<Objects>> {
-        let git_repo = self.git_repo.clone();
         let path = self.file_index.path().join(relative_path);
         let file_objects = FileObjects::new(&path);
 
@@ -58,10 +54,10 @@ impl Index for GitIndex {
             self.url.clone()
         };
 
-        Ok(Box::new(GitObjects::new(url, git_repo, file_objects)))
+        Ok(Box::new(GitObjects::new(url, self.git_repo.clone(), file_objects)))
     }
 
     fn update(&self) -> Result<()> {
-        self.git_repo.lock().map_err(|_| ErrorKind::PoisonError)?.update()
+        self.git_repo.update()
     }
 }

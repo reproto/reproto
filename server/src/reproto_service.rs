@@ -7,7 +7,7 @@ use hyper::header::{ContentEncoding, ContentLength, ContentType, Encoding, Heade
 use hyper::mime;
 use hyper::server::{Request, Response, Service};
 use io;
-use reproto_repository::{Checksum, Objects, to_checksum};
+use reproto_repository::{Checksum, Objects, FileObjects, to_checksum};
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 use std::io::Read;
@@ -29,7 +29,7 @@ fn read_contents<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
 pub struct ReprotoService {
     pub max_file_size: u64,
     pub pool: Arc<CpuPool>,
-    pub objects: Arc<Mutex<Box<Objects>>>,
+    pub objects: Arc<Mutex<FileObjects>>,
 }
 
 type EncodingFn = fn(&File) -> Result<Box<Read>>;

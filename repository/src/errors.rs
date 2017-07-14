@@ -1,3 +1,4 @@
+use hyper;
 use serde_json;
 use std::io;
 use toml;
@@ -11,6 +12,8 @@ error_chain! {
         OpenSSL(::openssl::error::ErrorStack);
         Git2(::git2::Error);
         FromHexError(::hex::FromHexError);
+        HyperUriError(hyper::error::UriError);
+        HyperError(hyper::Error);
     }
 
     errors {

@@ -8,5 +8,5 @@ pub use self::resolvers::Resolvers;
 use std::path::PathBuf;
 
 pub trait Resolver {
-    fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>>;
+    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>>;
 }

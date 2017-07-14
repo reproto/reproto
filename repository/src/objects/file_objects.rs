@@ -21,7 +21,7 @@ impl FileObjects {
 }
 
 impl Objects for FileObjects {
-    fn put_object(&self, checksum: &Checksum, source: &mut Read) -> Result<()> {
+    fn put_object(&mut self, checksum: &Checksum, source: &mut Read) -> Result<()> {
         let target = self.checksum_path(checksum)?;
 
         // no need to write same file again
@@ -49,7 +49,7 @@ impl Objects for FileObjects {
         Ok(())
     }
 
-    fn get_object(&self, checksum: &Checksum) -> Result<Option<PathBuf>> {
+    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<PathBuf>> {
         let target = self.checksum_path(checksum)?;
 
         if target.is_file() {

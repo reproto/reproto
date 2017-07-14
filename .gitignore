@@ -12,3 +12,4 @@ __pycache__
 # generated
 /src/backend/doc/static/doc.*.css
 /src/backend/doc/themes.rs
+/server/objects

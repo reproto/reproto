@@ -90,7 +90,7 @@ impl Paths {
 }
 
 impl Resolver for Paths {
-    fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
+    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
         let mut files = Vec::new();
         let version_req = package.version_req.as_ref();
 

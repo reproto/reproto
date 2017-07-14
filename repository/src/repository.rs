@@ -26,7 +26,7 @@ impl Repository {
         Ok(())
     }
 
-    pub fn publish<P>(&self, source: &P, package: &RpPackage, version: &Version) -> Result<()>
+    pub fn publish<P>(&mut self, source: &P, package: &RpPackage, version: &Version) -> Result<()>
         where P: AsRef<Path>
     {
         let source = source.as_ref();
@@ -48,7 +48,7 @@ impl Repository {
 }
 
 impl Resolver for Repository {
-    fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
+    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
         let mut out = Vec::new();
 
         let deployments = self.index.resolve(&package.package, package.version_req.as_ref())?;

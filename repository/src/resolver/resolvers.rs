@@ -14,10 +14,10 @@ impl Resolvers {
 }
 
 impl Resolver for Resolvers {
-    fn resolve(&self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
+    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
         let mut out = Vec::new();
 
-        for resolver in &self.resolvers {
+        for resolver in &mut self.resolvers.iter_mut() {
             out.extend(resolver.resolve(package)?);
         }
 
