@@ -14,12 +14,16 @@ pub trait Object: Send + fmt::Display + fmt::Debug {
 
 #[derive(Debug)]
 pub struct BytesObject {
+    name: String,
     bytes: Vec<u8>,
 }
 
 impl BytesObject {
-    pub fn new(bytes: Vec<u8>) -> BytesObject {
-        BytesObject { bytes: bytes }
+    pub fn new(name: String, bytes: Vec<u8>) -> BytesObject {
+        BytesObject {
+            name: name,
+            bytes: bytes,
+        }
     }
 }
 
@@ -35,7 +39,7 @@ impl Object for BytesObject {
 
 impl fmt::Display for BytesObject {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "<bytes>")
+        write!(formatter, "<{}>", self.name)
     }
 }
 

@@ -1,6 +1,5 @@
 use object::Object;
 use std::borrow::Borrow;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use super::Pos;
 

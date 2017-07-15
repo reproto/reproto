@@ -83,11 +83,9 @@ impl Objects for HttpObjects {
 
     fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>> {
         let url = self.checksum_url(checksum)?;
+        let name = url.to_string();
 
-        let handle = self.core.handle();
-        let client = Client::new(&handle);
-
-        let mut request = Request::new(Method::Get, url);
+        let request = Request::new(Method::Get, url);
 
         let work = self.handle_request(request).and_then(|(body, status)| {
             if status.is_success() {
@@ -106,7 +104,7 @@ impl Objects for HttpObjects {
         });
 
         let out = self.core.run(work)?;
-        let out = out.map(|bytes| Box::new(BytesObject::new(bytes)) as Box<Object>);
+        let out = out.map(|bytes| Box::new(BytesObject::new(name, bytes)) as Box<Object>);
         Ok(out)
     }
 }
