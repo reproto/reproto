@@ -14,6 +14,8 @@ pub struct Repository {
     pub objects: Option<String>,
     /// Where to store local checkouts of repos.
     pub local_repos: Option<PathBuf>,
+    /// Objects cache location.
+    pub objects_cache: Option<PathBuf>,
 }
 
 impl Default for Repository {
@@ -22,6 +24,7 @@ impl Default for Repository {
             index: None,
             objects: None,
             local_repos: None,
+            objects_cache: None,
         }
     }
 }

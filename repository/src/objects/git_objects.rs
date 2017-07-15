@@ -22,7 +22,7 @@ impl GitObjects {
 }
 
 impl Objects for GitObjects {
-    fn put_object(&mut self, _: &Checksum, _: &mut Read) -> Result<()> {
+    fn put_object(&mut self, _: &Checksum, _: &mut Read, _: bool) -> Result<()> {
         Err(ErrorKind::NoPublishObjects(self.url.to_string()).into())
     }
 

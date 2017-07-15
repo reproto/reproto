@@ -15,6 +15,7 @@ use reproto_repository::*;
 use std::env;
 use std::error::Error;
 use std::path::Path;
+use std::time::Duration;
 use super::*;
 use url;
 
@@ -129,13 +130,19 @@ fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
     let mut index = matches.value_of("index").map(ToOwned::to_owned);
     let mut objects = matches.value_of("objects").map(ToOwned::to_owned);
     let mut index_config = IndexConfig { repos: None };
-    let mut objects_config = ObjectsConfig { repos: None };
+
+    let mut objects_config = ObjectsConfig {
+        repos: None,
+        objects_cache: None,
+        missing_cache_time: Some(Duration::new(60, 0)),
+    };
 
     if let Some(home_dir) = env::home_dir() {
         let reproto_dir = home_dir.join(".reproto");
         let config = reproto_dir.join("config.toml");
         let reproto_dir = home_dir.join(".reproto");
         let default_local_repos = reproto_dir.join("git");
+        let mut objects_cache = reproto_dir.join("cache");
 
         if config.is_file() {
             let config = read_config(config)?;
@@ -143,6 +150,7 @@ fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
             // set values from configuration (if not already set).
             index = index.or(config.repository.index);
             objects = objects.or(config.repository.objects);
+            objects_cache = config.repository.objects_cache.unwrap_or(objects_cache);
 
             let local_repos = config.repository.local_repos;
 
@@ -154,6 +162,7 @@ fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
             .unwrap_or_else(|| default_local_repos.clone()));
         objects_config.repos = Some(objects_config.repos
             .unwrap_or_else(|| default_local_repos.clone()));
+        objects_config.objects_cache = Some(objects_cache);
     }
 
     if let Some(ref index_url) = index {

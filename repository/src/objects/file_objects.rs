@@ -22,11 +22,11 @@ impl FileObjects {
 }
 
 impl Objects for FileObjects {
-    fn put_object(&mut self, checksum: &Checksum, source: &mut Read) -> Result<()> {
+    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, force: bool) -> Result<()> {
         let target = self.checksum_path(checksum)?;
 
         // no need to write same file again
-        if !target.is_file() {
+        if !target.is_file() || force {
             if let Some(parent) = target.parent() {
                 if !parent.is_dir() {
                     debug!("creating directory: {}", parent.display());
@@ -38,12 +38,7 @@ impl Objects for FileObjects {
             tmp_target.set_extension(".tmp");
 
             debug!("writing: {}", target.display());
-
-            {
-                let mut f = File::create(&tmp_target)?;
-                io::copy(source, &mut f)?;
-            }
-
+            io::copy(source, &mut File::create(&tmp_target)?)?;
             fs::rename(tmp_target, target)?;
         }
 

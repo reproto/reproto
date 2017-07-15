@@ -1,8 +1,10 @@
+use reproto_core::errors as core;
 use reproto_repository::errors as repository;
 
 error_chain!{
     links {
         Repository(repository::Error, repository::ErrorKind);
+        Core(core::Error, core::ErrorKind);
     }
 
     foreign_links {

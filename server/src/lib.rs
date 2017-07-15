@@ -8,6 +8,7 @@ extern crate hyper;
 extern crate log;
 extern crate pretty_env_logger;
 extern crate reproto_repository;
+extern crate reproto_core;
 extern crate tempfile;
 
 mod io;

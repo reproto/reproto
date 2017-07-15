@@ -12,6 +12,7 @@ use sha256::Checksum;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::time::Duration;
 use tokio_core::reactor::Core;
 use url::Url;
 
@@ -19,13 +20,15 @@ use url::Url;
 pub struct ObjectsConfig {
     /// Root path when checking out local repositories.
     pub repos: Option<PathBuf>,
+    pub objects_cache: Option<PathBuf>,
+    pub missing_cache_time: Option<Duration>,
 }
 
 pub trait Objects {
     /// Put the given object into the database.
     /// This will cause the object denoted by the given checksum to be uploaded to the objects
     /// store.
-    fn put_object(&mut self, checksum: &Checksum, source: &mut Read) -> Result<()>;
+    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, force: bool) -> Result<()>;
 
     /// Get a path to the object with the given checksum.
     /// This might cause the object to be downloaded if it's not already present in the local
@@ -71,9 +74,15 @@ pub fn objects_from_git<'a, I>(config: ObjectsConfig,
     Ok(Box::new(objects))
 }
 
-pub fn objects_from_http(_config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
+pub fn objects_from_http(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
     let core = Core::new()?;
-    let http_objects = HttpObjects::new(url.clone(), core);
+
+    let objects_cache = config.objects_cache.ok_or_else(|| "objects_cache: not specified")?;
+
+    let missing_cache_time = config.missing_cache_time
+        .ok_or_else(|| "missing_cache_time: not specified")?;
+
+    let http_objects = HttpObjects::new(objects_cache, missing_cache_time, url.clone(), core);
     Ok(Box::new(http_objects))
 }
 

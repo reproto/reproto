@@ -2,6 +2,7 @@ use hyper;
 use reproto_core::errors as core;
 use serde_json;
 use std::io;
+use std::time;
 use toml;
 
 error_chain! {
@@ -19,6 +20,7 @@ error_chain! {
         FromHexError(::hex::FromHexError);
         HyperUriError(hyper::error::UriError);
         HyperError(hyper::Error);
+        SystemTimeError(time::SystemTimeError);
     }
 
     errors {

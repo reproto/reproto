@@ -62,7 +62,7 @@ fn find_line<'a, R: AsMut<Read + 'a>>(mut reader: R,
         let start_of_line = current;
         current += read;
 
-        if current >= start {
+        if current > start {
             let buffer = String::from_utf8(buffer)?;
             let end = ::std::cmp::min(end, current);
             let range = (start - start_of_line, end - start_of_line);

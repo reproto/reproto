@@ -130,12 +130,15 @@ impl Index for FileIndex {
     fn put_version(&self,
                    checksum: &Checksum,
                    package: &RpPackage,
-                   version: &Version)
+                   version: &Version,
+                   force: bool)
                    -> Result<()> {
         let (mut deployments, other_match) = self.read_package(package, |d| d.version != *version)?;
 
         if other_match {
-            return Err(format!("{}@{}: already published", package, version).into());
+            if !force {
+                return Err(format!("{}@{}: already published", package, version).into());
+            }
         }
 
         deployments.push(Deployment::new(version.clone(), checksum.clone()));

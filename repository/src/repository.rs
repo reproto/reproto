@@ -25,19 +25,28 @@ impl Repository {
         Ok(())
     }
 
-    pub fn publish<O>(&mut self, object: O, package: &RpPackage, version: &Version) -> Result<()>
+    pub fn publish<O>(&mut self,
+                      object: O,
+                      package: &RpPackage,
+                      version: &Version,
+                      force: bool)
+                      -> Result<()>
         where O: AsRef<Object>
     {
-        let object = object.as_ref();
-
         if !self.index.get_deployments(package, version)?.is_empty() {
-            return Err(format!("{}@{}: already published", package, version).into());
+            if !force {
+                return Err(format!("{}@{}: already published", package, version).into());
+            } else {
+                info!("{}@{}: already published (forced)", package, version);
+            }
         }
 
+        let object = object.as_ref();
         let checksum = to_sha256(object.read()?)?;
-        self.objects.put_object(&checksum, &mut object.read()?)?;
 
-        self.index.put_version(&checksum, package, version)?;
+        self.objects.put_object(&checksum, &mut object.read()?, force)?;
+        self.index.put_version(&checksum, package, version, force)?;
+
         Ok(())
     }
 }

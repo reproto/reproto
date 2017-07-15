@@ -43,7 +43,8 @@ pub trait Index {
     fn put_version(&self,
                    checksum: &Checksum,
                    package: &RpPackage,
-                   version: &Version)
+                   version: &Version,
+                   force: bool)
                    -> Result<()>;
 
     fn get_deployments(&self, package: &RpPackage, version: &Version) -> Result<Vec<Deployment>>;

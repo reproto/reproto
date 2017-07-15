@@ -7,11 +7,10 @@ use hyper::header::{ContentEncoding, ContentLength, ContentType, Encoding, Heade
 use hyper::mime;
 use hyper::server::{Request, Response, Service};
 use io;
-use reproto_repository::{Checksum, Objects, FileObjects, to_checksum};
+use reproto_repository::{Checksum, FileObjects, Objects, to_checksum};
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 use std::io::Read;
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tempfile;
 
@@ -19,10 +18,9 @@ const CHECKSUM_MISMATCH: &'static str = "checksum mismatch";
 const BAD_OBJECT_ID: &'static str = "bad object id";
 
 /// ## Read the contents of the file into a byte-vector
-fn read_contents<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
-    let mut f = File::open(path)?;
+fn read_contents<'a, R: AsMut<Read + 'a>>(mut reader: R) -> Result<Vec<u8>> {
     let mut content = Vec::new();
-    f.read_to_end(&mut content)?;
+    reader.as_mut().read_to_end(&mut content)?;
     Ok(content)
 }
 
@@ -77,12 +75,12 @@ impl ReprotoService {
                 let result =
                     objects.lock().map_err(|_| ErrorKind::PoisonError)?.get_object(&checksum)?;
 
-                let path = match result {
-                    Some(path) => path,
+                let object = match result {
+                    Some(object) => object,
                     None => return Ok(Self::not_found()),
                 };
 
-                let bytes = read_contents(path)?;
+                let bytes = read_contents(object.read()?)?;
 
                 Ok(Response::new()
                     .with_status(StatusCode::Ok)

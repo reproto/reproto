@@ -20,6 +20,9 @@ impl<'a> fmt::Display for DisplayMatch<'a> {
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("publish").about("Publish specifications");
     let out = path_base(out);
+    let out = out.arg(Arg::with_name("force")
+        .long("force")
+        .help("Force a publish, even if it already exists"));
     let out = out.arg(Arg::with_name("package").multiple(true));
     out
 }
@@ -56,7 +59,8 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
               version,
               object);
 
-        repository.publish(&object, &package.package, &version)?;
+        let force = matches.is_present("force");
+        repository.publish(&object, &package.package, &version, force)?;
     }
 
     Ok(())
