@@ -35,3 +35,4 @@ pub use self::objects::{FileObjects, Objects, objects_from_url, objects_from_fil
 pub use self::repository::*;
 pub use self::resolver::*;
 pub use self::sha256::{Checksum, to_sha256 as to_checksum, Sha256 as Digest};
+pub(crate) use reproto_core::object as object;

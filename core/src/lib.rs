@@ -9,6 +9,7 @@ extern crate serde_derive;
 extern crate error_chain;
 pub extern crate semver;
 
+pub mod object;
 mod error_pos;
 mod loc;
 mod merge;

@@ -5,8 +5,8 @@ use hex_slice::HexSlice;
 use hyper;
 use hyper::{Client, Method, Request, StatusCode};
 use hyper::header::ContentLength;
+use object::{BytesObject, Object};
 use std::io::Read;
-use std::path::PathBuf;
 use super::*;
 use tokio_core::reactor::Core;
 use url::Url;
@@ -81,19 +81,32 @@ impl Objects for HttpObjects {
         Ok(())
     }
 
-    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<PathBuf>> {
+    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>> {
         let url = self.checksum_url(checksum)?;
 
         let handle = self.core.handle();
         let client = Client::new(&handle);
 
-        let work = client.get(url)
-            .and_then(|res| res.body().for_each(|_| ok(())))
-            .map(|_| {
-                println!("\n\nDone.");
-            });
+        let mut request = Request::new(Method::Get, url);
 
-        self.core.run(work)?;
-        Err("not path yet".into())
+        let work = self.handle_request(request).and_then(|(body, status)| {
+            if status.is_success() {
+                return ok(Some(body));
+            }
+
+            if status == StatusCode::NotFound {
+                return ok(None);
+            }
+
+            if let Ok(body) = String::from_utf8(body) {
+                return err(format!("bad response: {}: {}", status, body).into());
+            }
+
+            return err(format!("bad response: {}", status).into());
+        });
+
+        let out = self.core.run(work)?;
+        let out = out.map(|bytes| Box::new(BytesObject::new(bytes)) as Box<Object>);
+        Ok(out)
     }
 }

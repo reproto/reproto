@@ -1,10 +1,12 @@
+use object::Object;
 use std::borrow::Borrow;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use super::Pos;
 
 #[derive(Debug)]
 pub struct ErrorPos {
-    pub path: PathBuf,
+    pub object: Arc<Mutex<Box<Object>>>,
     pub start: usize,
     pub end: usize,
 }
@@ -14,7 +16,7 @@ impl<T: Borrow<Pos>> From<T> for ErrorPos {
         let value = value.borrow();
 
         ErrorPos {
-            path: value.0.as_ref().to_owned(),
+            object: value.0.clone(),
             start: value.1,
             end: value.2,
         }

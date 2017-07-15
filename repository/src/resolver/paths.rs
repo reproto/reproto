@@ -11,6 +11,7 @@
 
 use core::{RpRequiredPackage, Version, VersionReq};
 use errors::*;
+use object::{Object, PathObject};
 use resolver::Resolver;
 use std::collections::BTreeMap;
 use std::fs;
@@ -43,8 +44,8 @@ impl Paths {
                          path: &Path,
                          base: &str,
                          version_req: Option<&VersionReq>)
-                         -> Result<Vec<(Option<Version>, PathBuf)>> {
-        let mut files = BTreeMap::new();
+                         -> Result<Vec<(Option<Version>, Box<Object>)>> {
+        let mut files: BTreeMap<_, Box<Object>> = BTreeMap::new();
 
         for e in fs::read_dir(path)? {
             let p = e?.path();
@@ -69,18 +70,21 @@ impl Paths {
                 if let Some(version_req) = version_req {
                     if let Some(version) = version {
                         if version_req.matches(&version) {
-                            files.insert(Some(version), p.clone());
+                            let object = PathObject::new(&p);
+                            files.insert(Some(version), Box::new(object));
                         }
 
                         continue;
                     }
 
                     if *version_req == VersionReq::any() {
-                        files.insert(None, p.clone());
+                        let object = PathObject::new(&p);
+                        files.insert(None, Box::new(object));
                         continue;
                     }
                 } else {
-                    files.insert(version, p.clone());
+                    let object = PathObject::new(&p);
+                    files.insert(version, Box::new(object));
                 }
             }
         }
@@ -90,7 +94,9 @@ impl Paths {
 }
 
 impl Resolver for Paths {
-    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
+    fn resolve(&mut self,
+               package: &RpRequiredPackage)
+               -> Result<Vec<(Option<Version>, Box<Object>)>> {
         let mut files = Vec::new();
         let version_req = package.version_req.as_ref();
 

@@ -4,6 +4,7 @@ mod http_objects;
 
 use errors::*;
 use git;
+use object::Object;
 pub use self::file_objects::FileObjects;
 pub use self::git_objects::GitObjects;
 pub use self::http_objects::HttpObjects;
@@ -29,7 +30,7 @@ pub trait Objects {
     /// Get a path to the object with the given checksum.
     /// This might cause the object to be downloaded if it's not already present in the local
     /// filesystem.
-    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<PathBuf>>;
+    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>>;
 
     /// Update local caches related to the object store.
     fn update(&self) -> Result<()> {

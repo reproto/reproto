@@ -6,14 +6,15 @@ use log;
 use reproto_backend as backend;
 use reproto_core as core;
 use reproto_parser as parser;
-use std::fs::File;
-use std::io::{self, Read, Write};
-use std::path::Path;
+use reproto_repository as repository;
 
 pub use self::colored::Colored;
 pub use self::non_colored::NonColored;
+use std::io::{self, Read, Write};
 
-pub trait LockableWrite where Self: Sync + Send {
+pub trait LockableWrite
+    where Self: Sync + Send
+{
     fn open_new(&self) -> Self;
 
     fn lock<'a>(&'a self) -> Box<Write + 'a>;
@@ -31,8 +32,10 @@ impl LockableWrite for io::Stdout {
 
 const NL: u8 = '\n' as u8;
 
-fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (usize, usize))> {
-    let file = File::open(path)?;
+fn find_line<'a, R: AsMut<Read + 'a>>(mut reader: R,
+                                      pos: (usize, usize))
+                                      -> Result<(String, usize, (usize, usize))> {
+    let r = reader.as_mut();
 
     let mut line = 0usize;
     let mut current = 0usize;
@@ -41,7 +44,7 @@ fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (usize,
     let start = pos.0;
     let end = pos.1;
 
-    let mut it = file.bytes().peekable();
+    let mut it = r.bytes().peekable();
     let mut read = 0usize;
 
     while let Some(b) = it.next() {
@@ -60,10 +63,7 @@ fn find_line(path: &Path, pos: (usize, usize)) -> Result<(String, usize, (usize,
         current += read;
 
         if current >= start {
-            let buffer = String::from_utf8(buffer).map_err(|_| {
-                    ErrorKind::File("file does not contain valid utf-8".into(), path.to_owned())
-                })?;
-
+            let buffer = String::from_utf8(buffer)?;
             let end = ::std::cmp::min(end, current);
             let range = (start - start_of_line, end - start_of_line);
             return Ok((buffer, line, range));
@@ -193,6 +193,19 @@ pub trait Output {
         Ok(out)
     }
 
+    fn handle_repository_error(&self, e: &repository::errors::ErrorKind) -> Result<bool> {
+        use self::repository::errors::ErrorKind::*;
+
+        let out = match *e {
+            Core(ref e) => {
+                return self.handle_core_error(e);
+            }
+            _ => false,
+        };
+
+        Ok(out)
+    }
+
     fn handle_error(&self, e: &Error) -> Result<bool> {
         use errors::ErrorKind::*;
 
@@ -218,6 +231,9 @@ pub trait Output {
             }
             Backend(ref e) => {
                 return self.handle_backend_error(e);
+            }
+            Repository(ref e) => {
+                return self.handle_repository_error(e);
             }
             _ => false,
         };

@@ -1,6 +1,6 @@
 use git::GitRepo;
+use object::Object;
 use std::io::Read;
-use std::path::PathBuf;
 use std::rc::Rc;
 use super::*;
 use url::Url;
@@ -26,7 +26,7 @@ impl Objects for GitObjects {
         Err(ErrorKind::NoPublishObjects(self.url.to_string()).into())
     }
 
-    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<PathBuf>> {
+    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>> {
         self.file_objects.get_object(checksum)
     }
 

@@ -1,18 +1,18 @@
-use reproto_core::Version;
+use core::Version;
+use core::object::Object;
 use std::fmt;
-use std::path::PathBuf;
 use super::*;
 
-struct DisplayMatch<'a>(&'a (Option<Version>, PathBuf));
+struct DisplayMatch<'a>(&'a (Option<Version>, Box<Object>));
 
 impl<'a> fmt::Display for DisplayMatch<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let inner = &self.0;
 
         if let Some(ref version) = inner.0 {
-            write!(f, "{}@{}", inner.1.display(), version)
+            write!(f, "{}@{}", inner.1, version)
         } else {
-            write!(f, "{} (no version)", inner.1.display())
+            write!(f, "{} (no version)", inner.1)
         }
     }
 }
@@ -48,16 +48,15 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
             return Err("more than one matching package found".into());
         }
 
-        let (version, path) = first;
-        let version =
-            version.ok_or_else(|| format!("{}: package without a version", path.display()))?;
+        let (version, object) = first;
+        let version = version.ok_or_else(|| format!("{}: package without a version", object))?;
 
         info!("publishing: {}@{} (from {})",
               package.package,
               version,
-              path.display());
+              object);
 
-        repository.publish(&path, &package.package, &version)?;
+        repository.publish(&object, &package.package, &version)?;
     }
 
     Ok(())

@@ -1,4 +1,5 @@
 use hex_slice::HexSlice;
+use object::{Object, PathObject};
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -49,11 +50,11 @@ impl Objects for FileObjects {
         Ok(())
     }
 
-    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<PathBuf>> {
+    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>> {
         let target = self.checksum_path(checksum)?;
 
         if target.is_file() {
-            return Ok(Some(target));
+            return Ok(Some(Box::new(PathObject::new(target))));
         }
 
         Ok(None)

@@ -1,12 +1,13 @@
 // vim: ft=rust
 use reproto_core::*;
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::sync::{Mutex, Arc};
 use super::ast::*;
 use super::token::{self, Token};
 use super::utils::*;
+use reproto_core::object;
 
-grammar<'input, 'path>(input_path: &'path Rc<PathBuf>);
+grammar<'input, 'object>(input_object: &'object Arc<Mutex<Box<object::Object>>>);
 
 pub File: File<'input> = {
     <options:Loc<OptionDecl>*>
@@ -333,7 +334,7 @@ OneOrMore<Sep, T>: Vec<T> = {
 };
 
 Loc<Inner>: Loc<Inner> = <s:@L> <inner:Inner> <e:@R> => {
-    Loc::new(inner, ((*input_path).clone(), s, e))
+    Loc::new(inner, (input_object.clone(), s, e))
 };
 
 extern {

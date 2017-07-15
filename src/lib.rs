@@ -35,4 +35,4 @@ pub(crate) use clap::{App, Arg, ArgMatches, SubCommand};
 pub(crate) use config::read_config;
 pub(crate) use errors::*;
 pub(crate) use reproto_backend::{CompilerOptions, Environment, Options, naming};
-pub(crate) use reproto_core::{RpPackage, RpRequiredPackage, VersionReq};
+pub(crate) use reproto_core::{RpPackage, RpRequiredPackage, VersionReq, self as core};

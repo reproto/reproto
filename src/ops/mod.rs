@@ -4,6 +4,7 @@ mod publish;
 mod update;
 mod repo;
 
+use core::object::{Object, PathObject};
 use reproto_backend_doc as doc;
 use reproto_backend_java as java;
 use reproto_backend_js as js;
@@ -257,8 +258,12 @@ fn setup_environment(matches: &ArgMatches) -> Result<Environment> {
     Ok(Environment::new(package_prefix, resolvers))
 }
 
-fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<&'a Path> {
-    matches.values_of("file").into_iter().flat_map(|it| it).map(Path::new).collect()
+fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<Box<Object>> {
+    matches.values_of("file")
+        .into_iter()
+        .flat_map(|it| it)
+        .map(|file| Box::new(PathObject::new(file)) as Box<Object>)
+        .collect()
 }
 
 fn setup_env(matches: &ArgMatches) -> Result<Environment> {

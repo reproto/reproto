@@ -51,6 +51,10 @@ error_chain! {
             description("registered type conflict")
             display("registered type conflict with: {}", type_id)
         }
+
+        PoisonError {
+            description("poison error")
+        }
     }
 }
 

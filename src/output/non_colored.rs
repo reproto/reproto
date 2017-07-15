@@ -1,6 +1,6 @@
+use core::ErrorPos;
 use errors::*;
 use log;
-use reproto_core::ErrorPos;
 use super::{LockableWrite, Output, find_line};
 
 pub struct NonColored<T> {
@@ -51,8 +51,9 @@ impl<T> Output for NonColored<T>
         use std::cmp::max;
 
         let mut o = self.out.lock();
+        let object = p.object.lock().map_err(|_| ErrorKind::PoisonError)?;
 
-        let (line_str, line, (s, e)) = find_line(&p.path, (p.start, p.end))?;
+        let (line_str, line, (s, e)) = find_line(object.read()?, (p.start, p.end))?;
 
         let line_no = format!("{:>3}:", line + 1);
 
@@ -61,7 +62,7 @@ impl<T> Output for NonColored<T>
         indicator.extend(repeat(' ').take(line_no.len() + s + 1));
         indicator.extend(repeat('^').take(max(1, e - s)));
 
-        writeln!(o, "{}:{}:{}-{}:", p.path.display(), line + 1, s + 1, e + 1)?;
+        writeln!(o, "{}:{}:{}-{}:", object, line + 1, s + 1, e + 1)?;
         writeln!(o, "{} {}", line_no, line_str)?;
         writeln!(o, "{}{}{}", indicator, " - ", m)?;
 

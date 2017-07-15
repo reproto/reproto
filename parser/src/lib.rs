@@ -17,73 +17,67 @@ mod utils;
 
 use lalrpop_util::ParseError;
 use self::errors::*;
-use std::fs;
 use std::io::Read;
-use std::path::Path;
-use std::rc::Rc;
+use reproto_core::object::Object;
+use std::sync::{Arc, Mutex};
 
-pub fn read_file(path: &Path) -> Result<String> {
-    let mut f = fs::File::open(path)
-        .map_err(|e| ErrorKind::File(format!("could not open file: {}", e), path.to_owned()))?;
-
+pub fn read_reader<'a, R>(mut reader: R) -> Result<String>
+    where R: AsMut<Read + 'a>
+{
     let mut content = String::new();
-
-    f.read_to_string(&mut content)
-        .map_err(|e| ErrorKind::File(format!("could not read file: {}", e), path.to_owned()))?;
-
+    reader.as_mut().read_to_string(&mut content)?;
     Ok(content)
 }
 
-pub fn parse_file<'input>(path: &'input Path, input: &'input str) -> Result<ast::File<'input>> {
+pub fn parse_string<'input>(object: Arc<Mutex<Box<Object>>>, input: &'input str) -> Result<ast::File<'input>> {
     use self::ErrorKind::*;
 
-    let path = Rc::new(path.to_owned());
     let lexer = lexer::lex(input);
 
-    match parser::parse_File(&path, lexer) {
+    match parser::parse_File(&object, lexer) {
         Ok(file) => Ok(file),
         Err(e) => {
             match e {
                 ParseError::InvalidToken { location } => {
-                    let pos = (path.clone(), location, location);
+                    let pos = (object.clone(), location, location);
                     Err(Syntax(Some(pos.into()), vec![]).into())
                 }
                 ParseError::UnrecognizedToken { token, expected } => {
-                    let pos = token.map(|(start, _, end)| (path.clone(), start, end));
+                    let pos = token.map(|(start, _, end)| (object.clone(), start, end));
                     Err(Syntax(pos.map(Into::into), expected).into())
                 }
                 ParseError::User { error } => {
                     match error {
                         token::Error::UnterminatedString { start } => {
-                            let pos = (path.clone(), start, start);
+                            let pos = (object.clone(), start, start);
                             return Err(Parse("unterminated string", pos.into()).into());
                         }
                         token::Error::UnterminatedEscape { start } => {
-                            let pos = (path.clone(), start, start);
+                            let pos = (object.clone(), start, start);
                             return Err(Parse("unterminated escape sequence", pos.into()).into());
                         }
                         token::Error::InvalidEscape { pos, message } => {
-                            let pos = (path.clone(), pos, pos);
+                            let pos = (object.clone(), pos, pos);
                             return Err(Parse(message, pos.into()).into());
                         }
                         token::Error::UnterminatedCodeBlock { start } => {
-                            let pos = (path.clone(), start, start);
+                            let pos = (object.clone(), start, start);
                             return Err(Parse("unterminated code block", pos.into()).into());
                         }
                         token::Error::InvalidNumber { pos, message } => {
-                            let pos = (path.clone(), pos, pos);
+                            let pos = (object.clone(), pos, pos);
                             return Err(Parse(message, pos.into()).into());
                         }
                         token::Error::Unexpected { pos } => {
-                            let pos = (path.clone(), pos, pos);
+                            let pos = (object.clone(), pos, pos);
                             return Err(Parse("unexpected input", pos.into()).into());
                         }
                         token::Error::InvalidVersion { start, end } => {
-                            let pos = (path.clone(), start, end);
+                            let pos = (object.clone(), start, end);
                             return Err(Parse("invalid version", pos.into()).into());
                         }
                         token::Error::InvalidVersionReq { start, end } => {
-                            let pos = (path.clone(), start, end);
+                            let pos = (object.clone(), start, end);
                             return Err(Parse("invalid version requirement", pos.into()).into());
                         }
                     }

@@ -1,9 +1,14 @@
 use hyper;
+use reproto_core::errors as core;
 use serde_json;
 use std::io;
 use toml;
 
 error_chain! {
+    links {
+        Core(core::Error, core::ErrorKind);
+    }
+
     foreign_links {
         Io(io::Error);
         TomlDe(toml::de::Error);

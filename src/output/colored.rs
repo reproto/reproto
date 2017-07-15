@@ -32,8 +32,9 @@ impl<T> Output for Colored<T>
         use std::cmp::max;
 
         let mut o = self.out.lock();
+        let object = p.object.lock().map_err(|_| ErrorKind::PoisonError)?;
 
-        let (line_str, line, (s, e)) = find_line(&p.path, (p.start, p.end))?;
+        let (line_str, line, (s, e)) = find_line(object.read()?, (p.start, p.end))?;
 
         let line_no = format!("{:>3}:", line + 1);
 
@@ -42,7 +43,7 @@ impl<T> Output for Colored<T>
         indicator.extend(repeat(' ').take(line_no.len() + s + 1));
         indicator.extend(repeat('^').take(max(1, e - s)));
 
-        writeln!(o, "{}:{}:{}-{}:", p.path.display(), line + 1, s + 1, e + 1)?;
+        writeln!(o, "{}:{}:{}-{}:", object, line + 1, s + 1, e + 1)?;
         writeln!(o, "{} {}", Blue.paint(line_no), line_str)?;
         writeln!(o,
                  "{}{}{}",

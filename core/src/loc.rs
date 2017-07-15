@@ -1,15 +1,55 @@
-use std::path::PathBuf;
-use std::rc::Rc;
+use object::Object;
+use std::cmp;
+use std::hash;
+use std::sync::{Arc, Mutex};
 use super::errors::*;
 use super::merge::Merge;
 
-pub type Pos = (Rc<PathBuf>, usize, usize);
+pub type Pos = (Arc<Mutex<Box<Object>>>, usize, usize);
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Clone, Serialize)]
 pub struct Loc<T> {
     #[serde(rename = "value")]
     inner: T,
+    #[serde(skip_serializing)]
     pos: Pos,
+}
+
+impl<T> cmp::PartialEq for Loc<T>
+    where T: cmp::PartialEq
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.eq(other)
+    }
+}
+
+impl<T> cmp::Eq for Loc<T> where T: cmp::Eq {}
+
+impl<T> cmp::PartialOrd for Loc<T>
+    where T: cmp::PartialOrd
+{
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.inner.partial_cmp(other)
+    }
+}
+
+impl<T> cmp::Ord for Loc<T>
+    where T: cmp::Ord,
+          Self: cmp::PartialOrd + cmp::Eq
+{
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.inner.cmp(other)
+    }
+}
+
+impl<T> hash::Hash for Loc<T>
+    where T: hash::Hash
+{
+    fn hash<H>(&self, state: &mut H)
+        where H: hash::Hasher
+    {
+        self.inner.hash(state)
+    }
 }
 
 impl<T> Merge for Loc<T>

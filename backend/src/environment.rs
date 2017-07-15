@@ -1,10 +1,11 @@
 use linked_hash_map::{self, LinkedHashMap};
+use reproto_core::object::Object;
 use reproto_parser as parser;
 use reproto_parser::ast::IntoModel;
 use reproto_repository::Resolver;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::path::Path;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use super::*;
 
 pub type InitFields = HashMap<String, Loc<RpFieldInit>>;
@@ -296,13 +297,19 @@ impl Environment {
     }
 
     pub fn load_file(&mut self,
-                     path: &Path,
+                     object: Box<Object>,
                      version: Option<Version>,
                      package: Option<RpPackage>)
                      -> Result<Option<(RpVersionedPackage, RpFile)>> {
-        let content = parser::read_file(&path)?;
-        let file = parser::parse_file(&path, content.as_str())?.into_model()?;
         let package = RpVersionedPackage::new(package, version);
+
+        let file = {
+            let content = parser::read_reader(object.read()?)?;
+            let object = Arc::new(Mutex::new(object));
+            let file = parser::parse_string(object, content.as_str())?.into_model()?;
+            file
+        };
+
         Ok(Some((package, file)))
     }
 
@@ -400,8 +407,8 @@ impl Environment {
         None
     }
 
-    pub fn import_file(&mut self, path: &Path) -> Result<Option<RpVersionedPackage>> {
-        if let Some((package, file)) = self.load_file(path, None, None)? {
+    pub fn import_file(&mut self, object: Box<Object>) -> Result<Option<RpVersionedPackage>> {
+        if let Some((package, file)) = self.load_file(object, None, None)? {
             if !self.visited.contains(&package) {
                 self.process_file(&package, file)?;
                 self.visited.insert(package.clone());
@@ -425,21 +432,24 @@ impl Environment {
 
         let mut candidates: BTreeMap<RpVersionedPackage, Vec<_>> = BTreeMap::new();
 
-        if let Some((version, path)) = files.into_iter().last() {
-            debug!("loading: {}", path.display());
+        if let Some((version, object)) = files.into_iter().last() {
+            if let Some(path) = object.path() {
+                debug!("loading: {}", path.display());
+            }
 
-            let loaded = self.load_file(&path, version, Some(required.package.clone()))?;
+            let loaded = self.load_file(object, version, Some(required.package.clone()))?;
 
             if let Some((package, file)) = loaded {
-                candidates.entry(package).or_insert_with(Vec::new).push((path, file));
+                candidates.entry(package)
+                    .or_insert_with(Vec::new)
+                    .push(file);
             }
         }
 
         if let Some((versioned, files)) = candidates.into_iter().last() {
             debug!("found: {} ({})", versioned, required);
 
-            for (path, file) in files.into_iter() {
-                debug!("in: {}", path.display());
+            for file in files.into_iter() {
                 self.process_file(&versioned, file)?;
             }
 

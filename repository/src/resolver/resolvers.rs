@@ -1,7 +1,7 @@
 use core::{RpRequiredPackage, Version};
 use errors::*;
+use object::Object;
 use resolver::Resolver;
-use std::path::PathBuf;
 
 pub struct Resolvers {
     resolvers: Vec<Box<Resolver>>,
@@ -14,7 +14,9 @@ impl Resolvers {
 }
 
 impl Resolver for Resolvers {
-    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<(Option<Version>, PathBuf)>> {
+    fn resolve(&mut self,
+               package: &RpRequiredPackage)
+               -> Result<Vec<(Option<Version>, Box<Object>)>> {
         let mut out = Vec::new();
 
         for resolver in &mut self.resolvers.iter_mut() {
