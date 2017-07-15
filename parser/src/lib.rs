@@ -18,7 +18,7 @@ mod utils;
 use lalrpop_util::ParseError;
 use self::errors::*;
 use std::io::Read;
-use reproto_core::object::Object;
+use reproto_core::object;
 use std::sync::{Arc, Mutex};
 
 pub fn read_reader<'a, R>(mut reader: R) -> Result<String>
@@ -29,7 +29,7 @@ pub fn read_reader<'a, R>(mut reader: R) -> Result<String>
     Ok(content)
 }
 
-pub fn parse_string<'input>(object: Arc<Mutex<Box<Object>>>, input: &'input str) -> Result<ast::File<'input>> {
+pub fn parse_string<'input>(object: Arc<Mutex<Box<object::Object>>>, input: &'input str) -> Result<ast::File<'input>> {
     use self::ErrorKind::*;
 
     let lexer = lexer::lex(input);
@@ -90,23 +90,26 @@ pub fn parse_string<'input>(object: Arc<Mutex<Box<Object>>>, input: &'input str)
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
     use super::*;
     use super::ast::*;
+    use std::sync::{Arc, Mutex};
+    use reproto_core::object;
+
+    fn new_context() -> Arc<Mutex<Box<object::Object>>> {
+        Arc::new(Mutex::new(Box::new(object::BytesObject::new(String::from(""), vec![]))))
+    }
 
     /// Check that a parsed value equals expected.
     macro_rules! assert_value_eq {
         ($expected:expr, $input:expr) => {{
-            let path = Rc::new(PathBuf::from(""));
-            let v = parser::parse_Value(&path, parse($input)).unwrap();
+            let v = parser::parse_Value(&new_context(), parse($input)).unwrap();
             assert_eq!($expected, v);
         }}
     }
 
     macro_rules! assert_type_spec_eq {
         ($expected:expr, $input:expr) => {{
-            let path = Rc::new(PathBuf::from(""));
-            let v = parser::parse_TypeSpec(&path, parse($input)).unwrap();
+            let v = parser::parse_TypeSpec(&new_context(), parse($input)).unwrap();
             assert_eq!($expected, v);
         }}
     }
@@ -120,18 +123,15 @@ mod tests {
     }
 
     fn parse_file(input: &'static str) -> File {
-        let path = Rc::new(PathBuf::from(""));
-        parser::parse_File(&path, parse(input)).unwrap()
+        parser::parse_File(&new_context(), parse(input)).unwrap()
     }
 
     fn parse_member(input: &'static str) -> Member {
-        let path = Rc::new(PathBuf::from(""));
-        parser::parse_Member(&path, parse(input)).unwrap()
+        parser::parse_Member(&new_context(), parse(input)).unwrap()
     }
 
     fn parse_type_spec(input: &'static str) -> RpType {
-        let path = Rc::new(PathBuf::from(""));
-        parser::parse_TypeSpec(&path, parse(input)).unwrap()
+        parser::parse_TypeSpec(&new_context(), parse(input)).unwrap()
     }
 
     #[test]
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_instance() {
-        let path = Rc::new(PathBuf::from(""));
+        let context = new_context();
 
         let c = RpName {
             prefix: None,
@@ -204,19 +204,19 @@ mod tests {
         };
 
         let field = FieldInit {
-            name: Loc::new("hello", (path.clone(), 8, 13)),
-            value: Loc::new(Value::Number(12.into()), (path.clone(), 15, 17)),
+            name: Loc::new("hello", (context.clone(), 8, 13)),
+            value: Loc::new(Value::Number(12.into()), (context.clone(), 15, 17)),
         };
 
-        let field = Loc::new(field, (path.clone(), 8, 17));
+        let field = Loc::new(field, (context.clone(), 8, 17));
 
         let instance = Instance {
             name: c,
-            arguments: Loc::new(vec![field], (path.clone(), 8, 17)),
+            arguments: Loc::new(vec![field], (context.clone(), 8, 17)),
         };
 
-        let instance = Loc::new(instance, (path.clone(), 0, 18));
-        let object = Loc::new(Object::Instance(instance), (path.clone(), 0, 18));
+        let instance = Loc::new(instance, (context.clone(), 0, 18));
+        let object = Loc::new(Object::Instance(instance), (context.clone(), 0, 18));
 
         assert_value_eq!(Value::Object(object), "Foo.Bar(hello: 12)");
     }
