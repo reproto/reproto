@@ -1,4 +1,4 @@
-use super::*;
+use core::{RpPackage, RpVersionedPackage, Version};
 
 pub trait PackageUtils {
     /// Identify if a character is unsafe for use in a package name.

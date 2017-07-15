@@ -16,8 +16,8 @@ mod doc_options;
 mod doc_writer;
 mod escape;
 
-pub(crate) use reproto_backend::*;
 pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::doc_backend::*;
 pub(crate) use self::doc_builder::*;
 pub(crate) use self::doc_collector::*;

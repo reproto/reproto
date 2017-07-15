@@ -1,7 +1,13 @@
 //! # Helper trait for building a dynamic-language decode method
 
+use base_decode::BaseDecode;
 use codeviz_common::Element;
-use super::*;
+use container::Container;
+use converter::Converter;
+use core::{Loc, Pos, RpInterfaceBody, RpType, RpTypeId};
+use dynamic_converter::DynamicConverter;
+use errors::*;
+use match_decode::MatchDecode;
 
 pub trait DynamicDecode
     where Self: Converter,

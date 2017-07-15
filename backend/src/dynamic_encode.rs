@@ -1,6 +1,9 @@
 //! # Helper trait for building a dynamic-language encode method
 
-use super::*;
+use base_encode::BaseEncode;
+use core::{Pos, RpType, RpTypeId};
+use dynamic_converter::DynamicConverter;
+use errors::*;
 
 pub trait DynamicEncode
     where Self: DynamicConverter

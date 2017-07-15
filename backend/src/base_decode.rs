@@ -1,6 +1,8 @@
 //! # Helper trait for building a dynamic-language decode method
 
-use super::*;
+use converter::Converter;
+use core::{Pos, RpType, RpTypeId};
+use errors::*;
 
 pub trait BaseDecode
     where Self: Converter

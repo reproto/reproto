@@ -18,8 +18,8 @@ mod mutable;
 mod nullable;
 
 pub(crate) use codeviz_java::*;
-pub(crate) use reproto_backend::*;
 pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::java_backend::*;
 pub(crate) use self::java_compiler::*;
 pub(crate) use self::java_options::*;

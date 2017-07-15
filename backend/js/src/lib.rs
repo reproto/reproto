@@ -13,8 +13,8 @@ mod js_file_spec;
 mod js_options;
 
 pub(crate) use codeviz_js::*;
-pub(crate) use reproto_backend::*;
 pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::js_backend::*;
 pub(crate) use self::js_compiler::*;
 pub(crate) use self::js_file_spec::*;

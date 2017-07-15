@@ -1,4 +1,4 @@
-use super::*;
+use errors::*;
 
 pub trait Collecting<'a> {
     type Processor: 'a;

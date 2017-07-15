@@ -1,13 +1,11 @@
-use reproto_backend::for_context::ForContext;
-use reproto_backend::naming::{self, FromNaming};
 use std::rc::Rc;
 use super::*;
 
 pub struct JsBackend {
     pub env: Environment,
     listeners: Box<Listeners>,
-    id_converter: Option<Box<naming::Naming>>,
-    to_lower_snake: Box<naming::Naming>,
+    id_converter: Option<Box<Naming>>,
+    to_lower_snake: Box<Naming>,
     type_var: Variable,
     values: Statement,
     enum_ordinal: Variable,
@@ -18,13 +16,13 @@ impl JsBackend {
     pub fn new(env: Environment,
                _: JsOptions,
                listeners: Box<Listeners>,
-               id_converter: Option<Box<naming::Naming>>)
+               id_converter: Option<Box<Naming>>)
                -> JsBackend {
         JsBackend {
             env: env,
             listeners: listeners,
             id_converter: id_converter,
-            to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
+            to_lower_snake: SnakeCase::new().to_lower_snake(),
             type_var: string(TYPE),
             values: stmt!["values"],
             enum_ordinal: Variable::Literal("ordinal".to_owned()),

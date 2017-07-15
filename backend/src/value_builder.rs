@@ -10,7 +10,11 @@
 //!
 //! In this example, the second field is a `float`, and the third field is a `double`.
 
-use super::*;
+use converter::Converter;
+use core::{Loc, RpNumber, RpObject, RpRegistered, RpType, RpValue, RpVersionedPackage};
+use environment::Environment;
+use errors::*;
+use variables::Variables;
 
 pub struct ValueContext<'a> {
     package: &'a RpVersionedPackage,

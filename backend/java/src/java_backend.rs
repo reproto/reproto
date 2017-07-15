@@ -1,13 +1,11 @@
-use naming::{self, FromNaming};
-use reproto_backend::for_context::ForContext;
 use super::*;
 
 pub struct JavaBackend {
     pub env: Environment,
     options: JavaOptions,
     listeners: Box<Listeners>,
-    snake_to_upper_camel: Box<naming::Naming>,
-    snake_to_lower_camel: Box<naming::Naming>,
+    snake_to_upper_camel: Box<Naming>,
+    snake_to_lower_camel: Box<Naming>,
     null_string: Variable,
     suppress_warnings: ClassType,
     string_builder: ClassType,
@@ -27,8 +25,8 @@ impl JavaBackend {
         JavaBackend {
             env: env,
             options: options,
-            snake_to_upper_camel: naming::SnakeCase::new().to_upper_camel(),
-            snake_to_lower_camel: naming::SnakeCase::new().to_lower_camel(),
+            snake_to_upper_camel: SnakeCase::new().to_upper_camel(),
+            snake_to_lower_camel: SnakeCase::new().to_lower_camel(),
             null_string: Variable::String("null".to_owned()),
             listeners: listeners,
             override_: Type::class("java.lang", "Override"),

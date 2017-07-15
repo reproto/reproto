@@ -1,4 +1,4 @@
-pub use super::*;
+use core::{Loc, RpCode};
 
 pub trait ForContext {
     type Output;

@@ -12,8 +12,8 @@ mod rust_file_spec;
 mod rust_options;
 
 pub(crate) use codeviz_rust::*;
-pub(crate) use reproto_backend::*;
 pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::listeners::*;
 pub(crate) use self::rust_backend::*;
 pub(crate) use self::rust_compiler::*;

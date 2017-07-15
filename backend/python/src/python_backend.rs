@@ -1,13 +1,11 @@
-use reproto_backend::for_context::ForContext;
-use reproto_backend::naming::{self, FromNaming};
 use std::rc::Rc;
 use super::*;
 
 pub struct PythonBackend {
     pub env: Environment,
     listeners: Box<Listeners>,
-    id_converter: Option<Box<naming::Naming>>,
-    to_lower_snake: Box<naming::Naming>,
+    id_converter: Option<Box<Naming>>,
+    to_lower_snake: Box<Naming>,
     staticmethod: BuiltInName,
     classmethod: BuiltInName,
     isinstance: BuiltInName,
@@ -24,13 +22,13 @@ impl PythonBackend {
     pub fn new(env: Environment,
                _: PythonOptions,
                listeners: Box<Listeners>,
-               id_converter: Option<Box<naming::Naming>>)
+               id_converter: Option<Box<Naming>>)
                -> PythonBackend {
         PythonBackend {
             env: env,
             listeners: listeners,
             id_converter: id_converter,
-            to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
+            to_lower_snake: SnakeCase::new().to_lower_snake(),
             staticmethod: Name::built_in("staticmethod"),
             classmethod: Name::built_in("classmethod"),
             isinstance: Name::built_in("isinstance"),

@@ -1,10 +1,14 @@
+use collecting::Collecting;
+use core::{Loc, Pos, RpDecl, RpEnumBody, RpInterfaceBody, RpPackage, RpServiceBody, RpTupleBody,
+           RpTypeBody, RpTypeId, RpVersionedPackage};
+use environment::Environment;
+use errors::*;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
-use super::*;
 
 pub trait PackageProcessor<'a>
     where Self: 'a + Sized

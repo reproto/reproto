@@ -1,5 +1,5 @@
+use core::RpType;
 use std::collections::HashMap;
-use super::*;
 
 pub struct Variables<'a> {
     variables: HashMap<String, &'a RpType>,

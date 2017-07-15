@@ -1,6 +1,7 @@
 //! # Helper trait for building a dynamic-language encode method
 
-use super::*;
+use core::{Pos, RpType, RpTypeId};
+use errors::*;
 
 pub trait BaseEncode {
     type Stmt;

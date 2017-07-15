@@ -1,3 +1,7 @@
+use core::{ErrorPos, Loc, Merge, Pos, RpDecl, RpField, RpFieldInit, RpFile, RpInstance,
+           RpModifier, RpName, RpPackage, RpRegistered, RpRequiredPackage, RpType, RpTypeId,
+           RpUseDecl, RpVersionedPackage, Version};
+use errors::*;
 use linked_hash_map::{self, LinkedHashMap};
 use reproto_core::object::Object;
 use reproto_parser as parser;
@@ -6,7 +10,6 @@ use reproto_repository::Resolver;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use super::*;
 
 pub type InitFields = HashMap<String, Loc<RpFieldInit>>;
 

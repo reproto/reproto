@@ -16,3 +16,4 @@ log = "0.3.7"
 codeviz_python = "0.1.0"
 codeviz_macros = "0.1.0"
 reproto_backend = {path = ".."}
+reproto_core = {path = "../../core"}

@@ -7,8 +7,8 @@ mod json_compiler;
 mod json_options;
 mod listeners;
 
-pub(crate) use reproto_backend::*;
 pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::collector::*;
 pub(crate) use self::json_backend::*;
 pub(crate) use self::json_compiler::*;

@@ -1,6 +1,12 @@
 //! # Helper trait to implement match-based decoding
 
-use super::*;
+use base_decode::BaseDecode;
+use container::Container;
+use converter::Converter;
+use core::{RpByTypeMatch, RpMatchDecl, RpMatchKind, RpObject, RpType, RpTypeId, RpValue};
+use errors::*;
+use value_builder::{ObjectContext, ValueBuilder, ValueContext};
+use variables::Variables;
 
 pub trait MatchDecode
     where Self: ValueBuilder,

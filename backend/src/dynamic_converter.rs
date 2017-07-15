@@ -1,6 +1,7 @@
 //! # Converter for core data structures into processor-specific ones.
 
-use super::*;
+use converter::Converter;
+use core::RpType;
 
 pub trait DynamicConverter
     where Self: Converter

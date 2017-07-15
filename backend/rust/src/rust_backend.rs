@@ -1,13 +1,11 @@
-use naming::{self, FromNaming};
-use reproto_backend::for_context::ForContext;
 use std::rc::Rc;
 use super::*;
 
 pub struct RustBackend {
     pub env: Environment,
     listeners: Box<Listeners>,
-    id_converter: Option<Box<naming::Naming>>,
-    to_lower_snake: Box<naming::Naming>,
+    id_converter: Option<Box<Naming>>,
+    to_lower_snake: Box<Naming>,
     hash_map: ImportedName,
     json_value: ImportedName,
 }
@@ -16,13 +14,13 @@ impl RustBackend {
     pub fn new(env: Environment,
                _: RustOptions,
                listeners: Box<Listeners>,
-               id_converter: Option<Box<naming::Naming>>)
+               id_converter: Option<Box<Naming>>)
                -> RustBackend {
         RustBackend {
             env: env,
             listeners: listeners,
             id_converter: id_converter,
-            to_lower_snake: naming::SnakeCase::new().to_lower_snake(),
+            to_lower_snake: SnakeCase::new().to_lower_snake(),
             hash_map: Name::imported("std::collections", "HashMap"),
             json_value: Name::imported_alias("serde_json", "Value", "json"),
         }
