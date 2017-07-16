@@ -1,0 +1,16 @@
+#!/bin/bash
+
+version="$1"
+
+if [[ -z $version ]]; then
+    echo "Usage: $0 <version>"
+    exit 1
+fi
+
+while read manifest; do
+    sed -i $manifest -e "s/^version = \".\\+\"$/version = \"$version\"/"
+    git add $manifest
+    git --no-pager diff HEAD $manifest
+done < <(find . -type d -name it -prune -o -name Cargo.toml -print)
+
+exit 0
