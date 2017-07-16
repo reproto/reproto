@@ -1,3 +1,5 @@
+//! ## Load objects through a local git repo
+
 use git::GitRepo;
 use object::Object;
 use std::io::Read;

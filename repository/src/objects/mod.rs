@@ -1,10 +1,12 @@
 mod file_objects;
 mod git_objects;
 mod http_objects;
+mod cached_objects;
 
 use errors::*;
 use git;
 use object::Object;
+pub use self::cached_objects::CachedObjects;
 pub use self::file_objects::FileObjects;
 pub use self::git_objects::GitObjects;
 pub use self::http_objects::HttpObjects;
@@ -77,12 +79,13 @@ pub fn objects_from_git<'a, I>(config: ObjectsConfig,
 pub fn objects_from_http(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
     let core = Core::new()?;
 
-    let objects_cache = config.objects_cache.ok_or_else(|| "objects_cache: not specified")?;
+    let http_objects = HttpObjects::new(url.clone(), core);
 
-    let missing_cache_time = config.missing_cache_time
-        .ok_or_else(|| "missing_cache_time: not specified")?;
+    if let Some(objects_cache) = config.objects_cache {
+        let missing_cache_time = config.missing_cache_time.unwrap_or_else(|| Duration::new(60, 0));
+        return Ok(Box::new(CachedObjects::new(objects_cache, missing_cache_time, http_objects)));
+    }
 
-    let http_objects = HttpObjects::new(objects_cache, missing_cache_time, url.clone(), core);
     Ok(Box::new(http_objects))
 }
 
@@ -92,8 +95,8 @@ pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>
 
     match first {
         "file" => {
-            let path = Path::new(url.path());
-            objects_from_file(path).map(|objects| Box::new(objects) as Box<Objects>)
+            objects_from_file(Path::new(url.path()))
+                .map(|objects| Box::new(objects) as Box<Objects>)
         }
         "git" => objects_from_git(config, scheme, url),
         "http" => objects_from_http(config, url),

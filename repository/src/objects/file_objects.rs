@@ -1,3 +1,5 @@
+//! ## Load objects through a local directory
+
 use hex_slice::HexSlice;
 use object::{Object, PathObject};
 use std::fs::{self, File};

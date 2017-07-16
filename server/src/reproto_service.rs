@@ -1,4 +1,5 @@
 use errors::*;
+use errors::ErrorKind::*;
 use flate2::FlateReadExt;
 use futures::future::{Future, ok};
 use futures_cpupool::CpuPool;
@@ -67,13 +68,12 @@ impl ReprotoService {
 
         let objects = self.objects.clone();
 
-        let checksum = Checksum::from_str(id).map_err(|_| ErrorKind::BadRequest(BAD_OBJECT_ID))?;
+        let checksum = Checksum::from_str(id).map_err(|_| BadRequest(BAD_OBJECT_ID))?;
 
         // No async I/O, use pool
         Ok(self.pool
             .spawn_fn(move || {
-                let result =
-                    objects.lock().map_err(|_| ErrorKind::PoisonError)?.get_object(&checksum)?;
+                let result = objects.lock().map_err(|_| PoisonError)?.get_object(&checksum)?;
 
                 let object = match result {
                     Some(object) => object,
@@ -123,7 +123,7 @@ impl ReprotoService {
                 let mut read = encoding(&tmp)?;
 
                 objects.lock()
-                    .map_err(|_| ErrorKind::PoisonError)?
+                    .map_err(|_| PoisonError)?
                     .put_object(&checksum, &mut read, false)
                     .chain_err(|| "failed to put object")?;
 
@@ -146,14 +146,14 @@ impl ReprotoService {
             return Ok(ok(Self::not_found()).boxed());
         };
 
-        let checksum = Checksum::from_str(id).map_err(|_| ErrorKind::BadRequest(BAD_OBJECT_ID))?;
+        let checksum = Checksum::from_str(id).map_err(|_| BadRequest(BAD_OBJECT_ID))?;
 
         if let Some(len) = req.headers().get::<ContentLength>() {
             if len.0 > self.max_file_size {
-                return Err(ErrorKind::BadRequest("file too large").into());
+                return Err(BadRequest("file too large").into());
             }
         } else {
-            return Err(ErrorKind::BadRequest("missing content-length").into());
+            return Err(BadRequest("missing content-length").into());
         }
 
         let encoding = Self::pick_encoding(req.headers());
@@ -184,7 +184,7 @@ impl ReprotoService {
 
     fn handle_error(e: Error) -> Response {
         match *e.kind() {
-            ErrorKind::BadRequest(ref message) => {
+            BadRequest(ref message) => {
                 return Response::new()
                     .with_status(StatusCode::BadRequest)
                     .with_header(ContentLength(message.len() as u64))
