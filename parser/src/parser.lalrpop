@@ -309,7 +309,7 @@ pub TypeSpec: RpType = {
 };
 
 Name: RpName = {
-    <prefix:(Identifier "::")?> <parts:OneOrMore<".", TypeIdentifier>> => RpName {
+    <prefix:(Identifier "::")?> <parts:OneOrMore<"::", TypeIdentifier>> => RpName {
         prefix: prefix.map(|p| p.0.to_owned()),
         parts: parts.into_iter().map(ToOwned::to_owned).collect(),
     }

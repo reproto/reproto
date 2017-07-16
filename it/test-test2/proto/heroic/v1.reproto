@@ -48,7 +48,7 @@ tuple Event {
 
 interface Samples {
   match {
-    name: string => Samples.Points(name: name, data: []);
+    name: string => Samples::Points(name: name, data: []);
   }
 
   name: string;
@@ -88,7 +88,7 @@ interface Duration {
 
 interface Aggregation {
   match {
-    chain: [Aggregation] => Aggregation.Chain(chain: chain);
+    chain: [Aggregation] => Aggregation::Chain(chain: chain);
   }
 
   Sum {
@@ -115,8 +115,8 @@ interface Aggregation {
 }
 
 enum ComplexEnum {
-  FIRST(Sampling(size: 42), SI.NANO, Samples.Points(name: "points", data: []));
-  SECOND(Sampling(size: 9), SI.MILLI, Samples.Points(name: "b", data: []));
+  FIRST(Sampling(size: 42), SI::NANO, Samples::Points(name: "points", data: []));
+  SECOND(Sampling(size: 9), SI::MILLI, Samples::Points(name: "b", data: []));
 
   si: Sampling;
   other: SI;

@@ -21,7 +21,7 @@ tuple Point {
 
 interface Interface {
   match {
-    name: string => Interface.One(name: name, data: Data(name: "data"));
+    name: string => Interface::One(name: name, data: Data(name: "data"));
   }
 
   name: string;
