@@ -4,7 +4,6 @@ mod publish;
 mod update;
 mod repo;
 
-use core::object::{Object, PathObject};
 use reproto_backend_doc as doc;
 use reproto_backend_java as java;
 use reproto_backend_js as js;
@@ -14,7 +13,7 @@ use reproto_backend_rust as rust;
 use reproto_repository::*;
 use std::env;
 use std::error::Error;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use super::*;
 use url;
@@ -267,11 +266,12 @@ fn setup_environment(matches: &ArgMatches) -> Result<Environment> {
     Ok(Environment::new(package_prefix, resolvers))
 }
 
-fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<Box<Object>> {
+fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<PathBuf> {
     matches.values_of("file")
         .into_iter()
         .flat_map(|it| it)
-        .map(|file| Box::new(PathObject::new(file)) as Box<Object>)
+        .map(Path::new)
+        .map(ToOwned::to_owned)
         .collect()
 }
 
@@ -289,8 +289,10 @@ fn setup_env(matches: &ArgMatches) -> Result<Environment> {
     }
 
     for package in packages {
-        if let Err(e) = env.import(&package) {
-            errors.push(e.into());
+        match env.import(&package) {
+            Err(e) => errors.push(e.into()),
+            Ok(None) => errors.push(format!("no matching package: {}", package).into()),
+            _ => {}
         }
     }
 

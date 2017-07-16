@@ -69,3 +69,9 @@ impl fmt::Display for PathObject {
         write!(formatter, "{}", self.path.display())
     }
 }
+
+impl From<PathObject> for Box<Object> {
+    fn from(value: PathObject) -> Box<Object> {
+        Box::new(value)
+    }
+}

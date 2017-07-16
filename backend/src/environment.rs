@@ -3,11 +3,12 @@ use core::{ErrorPos, Loc, Merge, Pos, RpDecl, RpField, RpFieldInit, RpFile, RpIn
            RpUseDecl, RpVersionedPackage, Version};
 use errors::*;
 use linked_hash_map::{self, LinkedHashMap};
-use reproto_core::object::Object;
+use reproto_core::object::{Object, PathObject};
 use reproto_parser as parser;
 use reproto_parser::ast::IntoModel;
 use reproto_repository::Resolver;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::path::Path;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
@@ -22,6 +23,7 @@ pub struct Environment {
     pub used: LinkedHashMap<(RpVersionedPackage, String), RpVersionedPackage>,
 }
 
+/// Environment containing all loaded declarations.
 impl Environment {
     pub fn new(package_prefix: Option<RpPackage>, resolver: Box<Resolver>) -> Environment {
         Environment {
@@ -34,6 +36,7 @@ impl Environment {
         }
     }
 
+    /// Convert a package and declaration into all registered types.
     fn into_registered_type(&self,
                             package: &RpVersionedPackage,
                             decl: Rc<Loc<RpDecl>>)
@@ -299,14 +302,15 @@ impl Environment {
         return Err(format!("no such type: {}", lookup_name).into());
     }
 
-    pub fn load_file(&mut self,
-                     object: Box<Object>,
-                     version: Option<Version>,
-                     package: Option<RpPackage>)
-                     -> Result<Option<(RpVersionedPackage, RpFile)>> {
+    pub fn load_object<O: Into<Box<Object>>>(&mut self,
+                                             object: O,
+                                             version: Option<Version>,
+                                             package: Option<RpPackage>)
+                                             -> Result<Option<(RpVersionedPackage, RpFile)>> {
         let package = RpVersionedPackage::new(package, version);
 
         let file = {
+            let object = object.into();
             let content = parser::read_reader(object.read()?)?;
             let object = Arc::new(Mutex::new(object));
             let file = parser::parse_string(object, content.as_str())?.into_model()?;
@@ -410,8 +414,10 @@ impl Environment {
         None
     }
 
-    pub fn import_file(&mut self, object: Box<Object>) -> Result<Option<RpVersionedPackage>> {
-        if let Some((package, file)) = self.load_file(object, None, None)? {
+    pub fn import_file<P: AsRef<Path>>(&mut self, path: P) -> Result<Option<RpVersionedPackage>> {
+        let object = PathObject::new(path);
+
+        if let Some((package, file)) = self.load_object(object, None, None)? {
             if !self.visited.contains(&package) {
                 self.process_file(&package, file)?;
                 self.visited.insert(package.clone());
@@ -436,11 +442,9 @@ impl Environment {
         let mut candidates: BTreeMap<RpVersionedPackage, Vec<_>> = BTreeMap::new();
 
         if let Some((version, object)) = files.into_iter().last() {
-            if let Some(path) = object.path() {
-                debug!("loading: {}", path.display());
-            }
+            debug!("loading: {}", object);
 
-            let loaded = self.load_file(object, version, Some(required.package.clone()))?;
+            let loaded = self.load_object(object, version, Some(required.package.clone()))?;
 
             if let Some((package, file)) = loaded {
                 candidates.entry(package)
