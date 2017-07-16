@@ -124,7 +124,7 @@ impl ReprotoService {
 
                 objects.lock()
                     .map_err(|_| ErrorKind::PoisonError)?
-                    .put_object(&checksum, &mut read)
+                    .put_object(&checksum, &mut read, false)
                     .chain_err(|| "failed to put object")?;
 
                 Ok(Response::new().with_status(StatusCode::Ok))
