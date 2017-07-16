@@ -15,7 +15,17 @@ impl<T: Borrow<Pos>> From<T> for ErrorPos {
         let value = value.borrow();
 
         ErrorPos {
-            object: value.0.clone(),
+            object: value.object.clone(),
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
+
+impl From<(Arc<Mutex<Box<Object>>>, usize, usize)> for ErrorPos {
+    fn from(value: (Arc<Mutex<Box<Object>>>, usize, usize)) -> Self {
+        ErrorPos {
+            object: value.0,
             start: value.1,
             end: value.2,
         }

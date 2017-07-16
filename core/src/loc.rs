@@ -1,18 +1,52 @@
-use object::Object;
+use pos::Pos;
 use std::cmp;
 use std::hash;
-use std::sync::{Arc, Mutex};
 use super::errors::*;
 use super::merge::Merge;
-
-pub type Pos = (Arc<Mutex<Box<Object>>>, usize, usize);
 
 #[derive(Clone, Serialize)]
 pub struct Loc<T> {
     #[serde(rename = "value")]
     inner: T,
-    #[serde(skip_serializing)]
     pos: Pos,
+}
+
+impl<T> Loc<T> {
+    pub fn new<P: Into<Pos>>(inner: T, pos: P) -> Loc<T> {
+        Loc {
+            inner: inner,
+            pos: pos.into(),
+        }
+    }
+
+    pub fn move_inner(self) -> T {
+        self.inner
+    }
+
+    pub fn pos(&self) -> &Pos {
+        &self.pos
+    }
+
+    pub fn map_into<M, U>(self, map: M) -> Loc<U>
+        where M: FnOnce(T) -> U
+    {
+        Loc::new(map(self.inner), self.pos)
+    }
+
+    pub fn map<'a, M, U>(&'a self, map: M) -> Loc<U>
+        where M: FnOnce(&'a T) -> U,
+              U: 'a
+    {
+        Loc::new(map(&self.inner), self.pos.clone())
+    }
+
+    pub fn both(self) -> (T, Pos) {
+        (self.inner, self.pos)
+    }
+
+    pub fn ref_both(&self) -> (&T, &Pos) {
+        (&self.inner, &self.pos)
+    }
 }
 
 impl<T> cmp::PartialEq for Loc<T>
@@ -84,44 +118,6 @@ impl<T> ::std::convert::AsRef<T> for Loc<T> {
 impl<T> ::std::convert::AsMut<T> for Loc<T> {
     fn as_mut(&mut self) -> &mut T {
         &mut self.inner
-    }
-}
-
-impl<T> Loc<T> {
-    pub fn new(inner: T, pos: Pos) -> Loc<T> {
-        Loc {
-            inner: inner,
-            pos: pos,
-        }
-    }
-
-    pub fn move_inner(self) -> T {
-        self.inner
-    }
-
-    pub fn pos(&self) -> &Pos {
-        &self.pos
-    }
-
-    pub fn map_into<M, U>(self, map: M) -> Loc<U>
-        where M: FnOnce(T) -> U
-    {
-        Loc::new(map(self.inner), self.pos)
-    }
-
-    pub fn map<'a, M, U>(&'a self, map: M) -> Loc<U>
-        where M: FnOnce(&'a T) -> U,
-              U: 'a
-    {
-        Loc::new(map(&self.inner), self.pos.clone())
-    }
-
-    pub fn both(self) -> (T, Pos) {
-        (self.inner, self.pos)
-    }
-
-    pub fn ref_both(&self) -> (&T, &Pos) {
-        (&self.inner, &self.pos)
     }
 }
 

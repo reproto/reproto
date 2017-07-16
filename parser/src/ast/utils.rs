@@ -37,7 +37,7 @@ pub fn members_into_model(members: Vec<Loc<Member>>)
                         .into());
                 }
 
-                fields.push(Loc::new(field, pos.into()));
+                fields.push(Loc::new(field, pos));
             }
             Member::Code(context, lines) => {
                 codes.push(code(pos.into(), context.to_owned(), lines));

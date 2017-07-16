@@ -3,9 +3,9 @@ use std::collections::btree_map;
 use std::rc::Rc;
 use super::errors::*;
 
-/// Adds the into_model() method for all types that supports ConvertToModel.
+/// Merging of models.
 pub trait Merge {
-    /// Convert the current type to a model.
+    /// Merge the current model with another.
     fn merge(&mut self, other: Self) -> Result<()>;
 }
 
