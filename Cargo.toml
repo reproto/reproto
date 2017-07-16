@@ -39,3 +39,17 @@ reproto_backend_rust = {path = "./backend/rust"}
 
 url = "1.5.1"
 url_serde = "0.2.0"
+
+[workspace]
+members = [
+    "core",
+    "parser",
+    "repository",
+    "backend",
+    "backend/doc",
+    "backend/java",
+    "backend/js",
+    "backend/json",
+    "backend/python",
+    "backend/rust"
+]

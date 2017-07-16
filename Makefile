@@ -15,7 +15,7 @@ all: suites projects
 update: update-suites update-projects
 
 tests:
-	tools/test-all-crates
+	cargo test --all
 
 clean:
 	cargo clean
