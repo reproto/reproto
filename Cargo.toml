@@ -45,6 +45,7 @@ members = [
     "core",
     "parser",
     "repository",
+    "server",
     "backend",
     "backend/doc",
     "backend/java",
