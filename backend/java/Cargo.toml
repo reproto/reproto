@@ -12,7 +12,7 @@ Rethinking Protocol Generators
 """
 
 [dependencies]
-log = "0.3.7"
-codeviz_java = "0.1.0"
-codeviz_macros = "0.1.0"
 reproto_backend = {path = ".."}
+log = "0.3"
+codeviz_java = "0.1"
+codeviz_macros = "0.1"

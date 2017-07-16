@@ -17,12 +17,12 @@ build = "build.rs"
 tracing = []
 
 [dependencies]
-error-chain = "0.10.0"
-log = "0.3.7"
-linked-hash-map = "0.4.2"
-num = "0.1.37"
 reproto_core = {path = "../core"}
-lalrpop-util = "0.13.1"
+error-chain = "0.10"
+lalrpop-util = "0.13"
+linked-hash-map = "0.4"
+log = "0.3"
+num = "0.1"
 
 [build-dependencies]
-lalrpop-snap = "0.13.1"
+lalrpop-snap = "0.13"

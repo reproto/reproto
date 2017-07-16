@@ -12,9 +12,9 @@ Rethinking Protocol Generators
 """
 
 [dependencies]
-error-chain = "0.10.0"
-num = "0.1.37"
-mime = "0.3.2"
-serde = {version = "1.0.8", features = ["rc"]}
-serde_derive = "1.0.8"
-semver = {version = "0.7.0", features = ["serde"]}
+error-chain = "0.10"
+num = "0.1"
+mime = "0.3"
+serde = {version = "1.0", features = ["rc"]}
+serde_derive = "1.0"
+semver = {version = "0.7", features = ["serde"]}
