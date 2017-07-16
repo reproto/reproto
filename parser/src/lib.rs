@@ -9,17 +9,17 @@ extern crate linked_hash_map;
 
 pub mod ast;
 pub mod errors;
-pub mod lexer;
+mod lexer;
 #[allow(unused)]
 mod parser;
 mod token;
 mod utils;
 
-use lalrpop_util::ParseError;
 use self::errors::*;
 use std::io::Read;
-use reproto_core::object;
+use core::object;
 use std::sync::{Arc, Mutex};
+pub(crate) use reproto_core as core;
 
 pub fn read_reader<'a, R>(mut reader: R) -> Result<String>
     where R: AsMut<Read + 'a>
@@ -31,6 +31,8 @@ pub fn read_reader<'a, R>(mut reader: R) -> Result<String>
 
 pub fn parse_string<'input>(object: Arc<Mutex<Box<object::Object>>>, input: &'input str) -> Result<ast::File<'input>> {
     use self::ErrorKind::*;
+    use lalrpop_util::ParseError::*;
+    use token::Error::*;
 
     let lexer = lexer::lex(input);
 
@@ -38,45 +40,41 @@ pub fn parse_string<'input>(object: Arc<Mutex<Box<object::Object>>>, input: &'in
         Ok(file) => Ok(file),
         Err(e) => {
             match e {
-                ParseError::InvalidToken { location } => {
+                InvalidToken { location } => {
                     let pos = (object.clone(), location, location);
                     Err(Syntax(Some(pos.into()), vec![]).into())
                 }
-                ParseError::UnrecognizedToken { token, expected } => {
+                UnrecognizedToken { token, expected } => {
                     let pos = token.map(|(start, _, end)| (object.clone(), start, end));
                     Err(Syntax(pos.map(Into::into), expected).into())
                 }
-                ParseError::User { error } => {
+                User { error } => {
                     match error {
-                        token::Error::UnterminatedString { start } => {
+                        UnterminatedString { start } => {
                             let pos = (object.clone(), start, start);
                             return Err(Parse("unterminated string", pos.into()).into());
                         }
-                        token::Error::UnterminatedEscape { start } => {
+                        UnterminatedEscape { start } => {
                             let pos = (object.clone(), start, start);
                             return Err(Parse("unterminated escape sequence", pos.into()).into());
                         }
-                        token::Error::InvalidEscape { pos, message } => {
+                        InvalidEscape { pos, message } => {
                             let pos = (object.clone(), pos, pos);
                             return Err(Parse(message, pos.into()).into());
                         }
-                        token::Error::UnterminatedCodeBlock { start } => {
+                        UnterminatedCodeBlock { start } => {
                             let pos = (object.clone(), start, start);
                             return Err(Parse("unterminated code block", pos.into()).into());
                         }
-                        token::Error::InvalidNumber { pos, message } => {
+                        InvalidNumber { pos, message } => {
                             let pos = (object.clone(), pos, pos);
                             return Err(Parse(message, pos.into()).into());
                         }
-                        token::Error::Unexpected { pos } => {
+                        Unexpected { pos } => {
                             let pos = (object.clone(), pos, pos);
                             return Err(Parse("unexpected input", pos.into()).into());
                         }
-                        token::Error::InvalidVersion { start, end } => {
-                            let pos = (object.clone(), start, end);
-                            return Err(Parse("invalid version", pos.into()).into());
-                        }
-                        token::Error::InvalidVersionReq { start, end } => {
+                        InvalidVersionReq { start, end } => {
                             let pos = (object.clone(), start, end);
                             return Err(Parse("invalid version requirement", pos.into()).into());
                         }
@@ -218,7 +216,7 @@ mod tests {
         let instance = Loc::new(instance, (context.clone(), 0, 18));
         let object = Loc::new(Object::Instance(instance), (context.clone(), 0, 18));
 
-        assert_value_eq!(Value::Object(object), "Foo.Bar(hello: 12)");
+        assert_value_eq!(Value::Object(object), "Foo::Bar(hello: 12)");
     }
 
     #[test]
@@ -263,7 +261,7 @@ mod tests {
         };
 
         assert_type_spec_eq!(RpType::String, "string");
-        assert_type_spec_eq!(RpType::Name { name: c }, "Hello.World");
+        assert_type_spec_eq!(RpType::Name { name: c }, "Hello::World");
     }
 
     #[test]

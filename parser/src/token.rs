@@ -8,7 +8,6 @@ pub enum Error {
     UnterminatedCodeBlock { start: usize },
     InvalidNumber { message: &'static str, pos: usize },
     Unexpected { pos: usize },
-    InvalidVersion { start: usize, end: usize },
     InvalidVersionReq { start: usize, end: usize },
 }
 
