@@ -42,15 +42,19 @@ url_serde = "0.2"
 
 [workspace]
 members = [
-    "core",
-    "parser",
-    "repository",
-    "server",
-    "backend",
-    "backend/doc",
-    "backend/java",
-    "backend/js",
-    "backend/json",
-    "backend/python",
-    "backend/rust"
+  "core",
+  "parser",
+  "repository",
+  "server",
+  "backend",
+  "backend/doc",
+  "backend/java",
+  "backend/js",
+  "backend/json",
+  "backend/python",
+  "backend/rust",
+]
+
+exclude = [
+  "it",
 ]
