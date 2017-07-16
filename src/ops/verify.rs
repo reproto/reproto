@@ -11,6 +11,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = out.subcommand(doc::verify_options(base("doc")));
     let out = out.subcommand(java::verify_options(base("java")));
     let out = out.subcommand(js::verify_options(base("js")));
+    let out = out.subcommand(json::verify_options(base("json")));
     let out = out.subcommand(python::verify_options(base("python")));
     let out = out.subcommand(rust::verify_options(base("rust")));
     out

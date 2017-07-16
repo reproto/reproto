@@ -26,6 +26,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = out.subcommand(doc::compile_options(base("doc")));
     let out = out.subcommand(java::compile_options(base("java")));
     let out = out.subcommand(js::compile_options(base("js")));
+    let out = out.subcommand(json::compile_options(base("json")));
     let out = out.subcommand(python::compile_options(base("python")));
     let out = out.subcommand(rust::compile_options(base("rust")));
     out
