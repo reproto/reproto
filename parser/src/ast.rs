@@ -398,12 +398,8 @@ impl<'input> IntoModel for MatchCondition<'input> {
 }
 
 #[derive(Debug)]
-pub struct MatchDecl<'input> {
-    pub members: Vec<Loc<MatchMember<'input>>>,
-}
-
-#[derive(Debug)]
 pub struct MatchMember<'input> {
+    pub comment: Vec<&'input str>,
     pub condition: Loc<MatchCondition<'input>>,
     pub object: Loc<Object<'input>>,
 }
@@ -413,6 +409,7 @@ impl<'input> IntoModel for MatchMember<'input> {
 
     fn into_model(self) -> Result<RpMatchMember> {
         let member = RpMatchMember {
+            comment: self.comment.into_model()?,
             condition: self.condition.into_model()?,
             object: self.object.into_model()?,
         };
@@ -444,8 +441,8 @@ impl<'input> IntoModel for MatchVariable<'input> {
 pub enum Member<'input> {
     Field(Field<'input>),
     Code(&'input str, Vec<String>),
-    Option(Loc<OptionDecl<'input>>),
-    Match(MatchDecl<'input>),
+    Option(OptionDecl<'input>),
+    Match(MatchMember<'input>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -803,12 +800,10 @@ impl<'input> IntoModel for SubType<'input> {
                     codes.push(code(pos, context.to_owned(), lines));
                 }
                 Member::Option(option) => {
-                    options.push(option.into_model()?);
+                    options.push(Loc::new(option.into_model()?, pos));
                 }
                 Member::Match(m) => {
-                    for member in m.members {
-                        match_decl.push(member.into_model()?)?;
-                    }
+                    match_decl.push(Loc::new(m.into_model()?, pos))?;
                 }
             }
         }
@@ -924,6 +919,8 @@ pub fn code(pos: Pos, context: String, lines: Vec<String>) -> Loc<RpCode> {
 
 pub fn members_into_model(members: Vec<Loc<Member>>)
                           -> Result<(Fields, Codes, OptionVec, RpMatchDecl)> {
+    use self::Member::*;
+
     let mut fields: Vec<Loc<RpField>> = Vec::new();
     let mut codes = Vec::new();
     let mut options: Vec<Loc<RpOptionDecl>> = Vec::new();
@@ -933,7 +930,7 @@ pub fn members_into_model(members: Vec<Loc<Member>>)
         let (value, pos) = member.both();
 
         match value {
-            Member::Field(field) => {
+            Field(field) => {
                 let field = field.into_model()?;
 
                 if let Some(other) = fields.iter()
@@ -946,16 +943,14 @@ pub fn members_into_model(members: Vec<Loc<Member>>)
 
                 fields.push(Loc::new(field, pos));
             }
-            Member::Code(context, lines) => {
+            Code(context, lines) => {
                 codes.push(code(pos.into(), context.to_owned(), lines));
             }
-            Member::Option(option) => {
-                options.push(option.into_model()?);
+            Option(option) => {
+                options.push(Loc::new(option.into_model()?, pos));
             }
-            Member::Match(m) => {
-                for member in m.members {
-                    match_decl.push(member.into_model()?)?;
-                }
+            Match(m) => {
+                match_decl.push(Loc::new(m.into_model()?, pos))?;
             }
         }
     }

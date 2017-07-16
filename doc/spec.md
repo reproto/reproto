@@ -469,35 +469,18 @@ type Post {
 
 ## Match
 
-Match declarations exist to allow types to be created from non-objects.
+Match declarations exist to allow types to be created from unrelated JSON types.
 
-With the example below, `Foo` can now be created from a `string`, or a `number` as well as an
-object.
+They define a mapping _from_ a given value, to an instance of the type encapsulated by the match.
 
-```reproto
-type Foo {
-    match {
-        s: string => Foo(name: s);
-        n: unsigned => Foo(name: "from unsigned", value: n);
-        true => Foo(name: "from true", value: 1),
-    }
-
-    name: string;
-    value?: unsigned;
-}
-```
-
-When a match declaration is present, _only_ the variants listed in it are permitted ways of
-decoding that object.
-
-To permit `Foo` from being created from an object again, the following must be added.
+With the example below, `Foo` can now be created from a `string`, or a `number` as well as the
+boolean value `true`.
 
 ```reproto
 type Foo {
-    match {
-        /* omitted */
-        foo: Foo => foo;
-    }
+    true => Foo(name: "from true", value: 1)
+    (s: string) => Foo(name: s);
+    (n: unsigned) => Foo(name: "from unsigned", value: n);
 
     name: string;
     value?: unsigned;

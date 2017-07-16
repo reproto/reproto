@@ -32,10 +32,8 @@ enum TimeUnit {
 }
 
 tuple Point {
-  match {
-    42 => Point(timestamp: 42, value: 41.2);
-    n: unsigned => Point(timestamp: n, value: 42.0);
-  }
+  42 => Point(timestamp: 42, value: 41.2);
+  (n: unsigned) => Point(timestamp: n, value: 42.0);
 
   timestamp: unsigned/64 as "TS";
   value: double;
@@ -47,9 +45,7 @@ tuple Event {
 }
 
 interface Samples {
-  match {
-    name: string => Samples::Points(name: name, data: []);
-  }
+  (name: string) => Samples::Points(name: name, data: []);
 
   name: string;
 
@@ -67,9 +63,7 @@ interface Samples {
 }
 
 type Query {
-  match {
-    query: string => Query(query: query);
-  }
+  (query: string) => Query(query: query);
 
   query?: string;
   aggregation?: Aggregation;
@@ -87,9 +81,7 @@ interface Duration {
 }
 
 interface Aggregation {
-  match {
-    chain: [Aggregation] => Aggregation::Chain(chain: chain);
-  }
+  (chain: [Aggregation]) => Aggregation::Chain(chain: chain);
 
   Sum {
     name "sum";

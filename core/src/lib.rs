@@ -503,6 +503,7 @@ pub enum RpMatchKind {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpMatchMember {
+    pub comment: Vec<String>,
     pub condition: Loc<RpMatchCondition>,
     pub object: Loc<RpObject>,
 }

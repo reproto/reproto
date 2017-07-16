@@ -135,13 +135,11 @@ impl<'input> Lexer<'input> {
 
         let token = match content {
             "any" => Token::AnyKeyword,
-            "on" => Token::OnKeyword,
             "interface" => Token::InterfaceKeyword,
             "type" => Token::TypeKeyword,
             "enum" => Token::EnumKeyword,
             "tuple" => Token::TupleKeyword,
             "service" => Token::ServiceKeyword,
-            "match" => Token::MatchKeyword,
             "use" => Token::UseKeyword,
             "as" => Token::AsKeyword,
             "float" => Token::FloatKeyword,

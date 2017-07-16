@@ -10,19 +10,15 @@ type Data {
 }
 
 tuple Point {
-  match {
-    42 => Point(timestamp: 42, value: 41.2);
-    n: unsigned => Point(timestamp: n, value: 42.0);
-  }
+  42 => Point(timestamp: 42, value: 41.2);
+  (n: unsigned) => Point(timestamp: n, value: 42.0);
 
   timestamp: unsigned/64 as "TS";
   value: double;
 }
 
 interface Interface {
-  match {
-    name: string => Interface::One(name: name, data: Data(name: "data"));
-  }
+  (name: string) => Interface::One(name: name, data: Data(name: "data"));
 
   name: string;
   other?: unsigned;
@@ -39,10 +35,8 @@ interface Interface {
 }
 
 type Type {
-  match {
-    data: string => Type(data: data);
-    "foo" => Type(data: "foo");
-  }
+  (data: string) => Type(data: data);
+  "foo" => Type(data: "foo");
 
   data: string;
   other?: unsigned;

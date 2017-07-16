@@ -201,15 +201,18 @@ pub Member: Member<'input> = {
          Member::Field(field)
     },
 
-    "match" "{" <members:Loc<MatchMember>*> "}" => {
-         let m = MatchDecl {
-             members: members
-         };
+    <comment:"///"?>
+    <condition:Loc<MatchCondition>> "=>" <object:Loc<Object>> ";" => {
+        let m = MatchMember {
+            comment: comment.unwrap_or_else(Vec::new),
+            condition: condition,
+            object: object,
+        };
 
-         Member::Match(m)
+        Member::Match(m)
     },
 
-    <option:Loc<OptionDecl>> => {
+    <option:OptionDecl> => {
          Member::Option(option)
     },
 
@@ -224,21 +227,14 @@ OptionDecl: OptionDecl<'input> = <name:Identifier> <values:OneOrMore<",", Loc<Va
     values: values,
 };
 
-MatchMember: MatchMember<'input> = {
-    <condition:Loc<MatchCondition>> "=>" <object:Loc<Object>> ";" => MatchMember {
-        condition: condition,
-        object: object,
-    },
-};
-
 Object: Object<'input> = {
     <instance:Loc<Instance>> => Object::Instance(instance),
     <name:Loc<Name>> => Object::Constant(name),
 };
 
 MatchCondition: MatchCondition<'input> = {
-    <variable:Loc<MatchVariable>> => MatchCondition::Type(variable),
-    <value:Loc<Value>> => MatchCondition::Value(value),
+    "(" <variable:Loc<MatchVariable>> ")" => MatchCondition::Type(variable),
+    <value:Loc<MatchValue>> => MatchCondition::Value(value),
 };
 
 MatchVariable: MatchVariable<'input> = <name:Identifier> ":" <ty:TypeSpec> => MatchVariable {
@@ -267,6 +263,13 @@ pub Value: Value<'input> = {
     <false> => Value::Boolean(false),
     <identifier:Identifier> => Value::Identifier(identifier),
     <object:Loc<Object>> => Value::Object(object),
+};
+
+MatchValue: Value<'input> = {
+    <string:string> => Value::String(string),
+    <number:Number> => Value::Number(number),
+    <true> => Value::Boolean(true),
+    <false> => Value::Boolean(false),
 };
 
 Instance: Instance<'input> = {
@@ -346,7 +349,6 @@ extern {
         Identifier => Token::Identifier(<&'input str>),
         Number => Token::Number(<RpNumber>),
         VersionReq => Token::VersionReq(<VersionReq>),
-        "match" => Token::MatchKeyword,
         "use" => Token::UseKeyword,
         "as" => Token::AsKeyword,
         "enum" => Token::EnumKeyword,
@@ -375,7 +377,6 @@ extern {
         "." => Token::Dot,
         "::" => Token::Scope,
         "any" => Token::AnyKeyword,
-        "on" => Token::OnKeyword,
         "float" => Token::FloatKeyword,
         "double" => Token::DoubleKeyword,
         "signed" => Token::SignedKeyword,
