@@ -8,7 +8,7 @@ repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
 documentation = "https://docs.rs/reproto-repository"
 description = """
-Rethinking Protocol Generators
+ReProto Repository
 """
 
 [dependencies]
