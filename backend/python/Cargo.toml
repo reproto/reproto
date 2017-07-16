@@ -1,5 +1,5 @@
 [package]
-name = "reproto_backend_python"
+name = "reproto-backend-python"
 version = "0.0.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
@@ -12,8 +12,8 @@ Rethinking Protocol Generators
 """
 
 [dependencies]
-reproto_backend = {path = ".."}
-reproto_core = {path = "../../core"}
+reproto-backend = {path = "..", version = "0.0"}
+reproto-core = {path = "../../core", version = "0.0"}
 
 log = "0.3"
 codeviz_python = "0.1"

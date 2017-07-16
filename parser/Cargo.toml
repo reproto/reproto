@@ -1,5 +1,5 @@
 [package]
-name = "reproto_parser"
+name = "reproto-parser"
 version = "0.0.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
@@ -17,7 +17,7 @@ build = "build.rs"
 tracing = []
 
 [dependencies]
-reproto_core = {path = "../core"}
+reproto-core = {path = "../core", version = "0.0"}
 error-chain = "0.10"
 lalrpop-util = "0.13"
 linked-hash-map = "0.4"

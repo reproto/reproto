@@ -16,16 +16,16 @@ Rethinking Protocol Generators
 tracing = []
 
 [dependencies]
-reproto_core = {path = "./core"}
-reproto_parser = {path = "./parser"}
-reproto_repository = {path = "./repository"}
-reproto_backend = {path = "./backend"}
-reproto_backend_doc = {path = "./backend/doc"}
-reproto_backend_java = {path = "./backend/java"}
-reproto_backend_js = {path = "./backend/js"}
-reproto_backend_json = {path = "./backend/json"}
-reproto_backend_python = {path = "./backend/python"}
-reproto_backend_rust = {path = "./backend/rust"}
+reproto-core = {path = "./core", version = "0.0"}
+reproto-parser = {path = "./parser", version = "0.0"}
+reproto-repository = {path = "./repository", version = "0.0"}
+reproto-backend = {path = "./backend", version = "0.0"}
+reproto-backend-doc = {path = "./backend/doc", version = "0.0"}
+reproto-backend-java = {path = "./backend/java", version = "0.0"}
+reproto-backend-js = {path = "./backend/js", version = "0.0"}
+reproto-backend-json = {path = "./backend/json", version = "0.0"}
+reproto-backend-python = {path = "./backend/python", version = "0.0"}
+reproto-backend-rust = {path = "./backend/rust", version = "0.0"}
 
 ansi_term = "0.9"
 atty = "0.2"

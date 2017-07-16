@@ -1,5 +1,5 @@
 [package]
-name = "reproto_backend_js"
+name = "reproto-backend-js"
 version = "0.0.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
@@ -12,6 +12,7 @@ Rethinking Protocol Generators
 """
 
 [dependencies]
-reproto_backend = {path = ".."}
+reproto-backend = {path = "..", version = "0.0"}
+
 codeviz_js = "0.1"
 codeviz_macros = "0.1"
