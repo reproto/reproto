@@ -2,7 +2,7 @@ use core::{ErrorPos, Loc, Merge, Pos, RpDecl, RpField, RpFieldInit, RpFile, RpIn
            RpModifier, RpName, RpPackage, RpRegistered, RpRequiredPackage, RpType, RpTypeId,
            RpUseDecl, RpVersionedPackage, Version};
 use errors::*;
-use linked_hash_map::{self, LinkedHashMap};
+use linked_hash_map::LinkedHashMap;
 use reproto_core::object::{Object, PathObject};
 use reproto_parser as parser;
 use reproto_parser::ast::IntoModel;
@@ -36,111 +36,32 @@ impl Environment {
         }
     }
 
-    /// Convert a package and declaration into all registered types.
-    fn into_registered_type(&self,
-                            package: &RpVersionedPackage,
-                            decl: Rc<Loc<RpDecl>>)
-                            -> Result<Vec<(RpTypeId, Loc<RpRegistered>)>> {
-        let mut out = Vec::new();
-
-        // apply package prefix, if needed
-        let package = self.package_prefix
-            .as_ref()
-            .map(|prefix| prefix.join_versioned(package))
-            .unwrap_or_else(|| package.clone());
-
-        match **decl {
-            RpDecl::Type(ref ty) => {
-                let type_id = package.into_type_id(RpName::with_parts(vec![ty.name.clone()]));
-                let token = Loc::new(RpRegistered::Type(ty.clone()), decl.pos().clone());
-                out.push((type_id, token));
-            }
-            RpDecl::Interface(ref interface) => {
-                let current = vec![interface.name.clone()];
-                let type_id = RpTypeId::new(package.clone(), RpName::with_parts(current.clone()));
-                let token = Loc::new(RpRegistered::Interface(interface.clone()),
-                                     decl.pos().clone());
-
-                for (name, sub_type) in &interface.sub_types {
-                    let sub_type = RpRegistered::SubType {
-                        parent: interface.clone(),
-                        sub_type: sub_type.as_ref().clone(),
-                    };
-
-                    let token = Loc::new(sub_type, decl.pos().clone());
-
-                    let mut current = current.clone();
-                    current.push(name.to_owned());
-                    out.push((type_id.with_name(RpName::with_parts(current)), token));
-                }
-
-                out.push((type_id, token));
-            }
-            RpDecl::Enum(ref en) => {
-                let current = vec![en.name.clone()];
-                let type_id = RpTypeId::new(package.clone(), RpName::with_parts(current.clone()));
-                let token = Loc::new(RpRegistered::Enum(en.clone()), decl.pos().clone());
-
-                for variant in &en.variants {
-                    let enum_constant = RpRegistered::EnumConstant {
-                        parent: en.clone(),
-                        variant: variant.as_ref().clone(),
-                    };
-                    let token = Loc::new(enum_constant, decl.pos().clone());
-
-                    let mut current = current.clone();
-                    current.push((*variant.name).to_owned());
-                    out.push((type_id.with_name(RpName::with_parts(current)), token));
-                }
-
-                out.push((type_id, token));
-            }
-            RpDecl::Tuple(ref tuple) => {
-                let type_id = RpTypeId::new(package.clone(),
-                                            RpName::with_parts(vec![tuple.name.clone()]));
-                let token = Loc::new(RpRegistered::Tuple(tuple.clone()), decl.pos().clone());
-                out.push((type_id, token));
-            }
-            RpDecl::Service(ref service) => {
-                let type_id = RpTypeId::new(package.clone(),
-                                            RpName::with_parts(vec![service.name.clone()]));
-                let token = Loc::new(RpRegistered::Service(service.clone()), decl.pos().clone());
-                out.push((type_id, token));
-            }
-        }
-
-        Ok(out)
-    }
-
+    /// Registered an alias.
     fn register_alias(&mut self,
                       source_package: &RpVersionedPackage,
                       use_decl: Loc<RpUseDecl>,
                       use_package: &RpVersionedPackage)
                       -> Result<()> {
-        if let Some(used) = use_decl.package.parts.iter().last() {
-            let alias = if let Some(ref next) = use_decl.alias {
-                next
-            } else {
-                used
-            };
+        use linked_hash_map::Entry::*;
 
+        if let Some(used) = use_decl.package.parts.iter().last() {
+            let alias = use_decl.alias.as_ref().unwrap_or(used);
             let key = (source_package.clone(), alias.clone());
 
             debug!("add alias {} ({})", alias, source_package);
 
             match self.used.entry(key) {
-                linked_hash_map::Entry::Vacant(entry) => {
+                Vacant(entry) => {
                     entry.insert(use_package.clone());
                 }
-                linked_hash_map::Entry::Occupied(_) => {
-                    return Err(format!("alias {} already in use", alias).into())
-                }
+                Occupied(_) => return Err(format!("alias {} already in use", alias).into()),
             };
         }
 
         Ok(())
     }
 
+    /// Check if source is assignable to target.
     pub fn is_assignable_from(&self,
                               package: &RpVersionedPackage,
                               target: &RpType,
@@ -183,6 +104,7 @@ impl Environment {
         }
     }
 
+    /// Lookup registered constant.
     pub fn constant<'a>(&'a self,
                         pos: &Pos,
                         package: &'a RpVersionedPackage,
@@ -302,24 +224,21 @@ impl Environment {
         return Err(format!("no such type: {}", lookup_name).into());
     }
 
+    /// Load the provided Object into a `RpFile`.
     pub fn load_object<O: Into<Box<Object>>>(&mut self,
                                              object: O,
                                              version: Option<Version>,
                                              package: Option<RpPackage>)
                                              -> Result<Option<(RpVersionedPackage, RpFile)>> {
         let package = RpVersionedPackage::new(package, version);
-
-        let file = {
-            let object = object.into();
-            let content = parser::read_reader(object.read()?)?;
-            let object = Arc::new(Mutex::new(object));
-            let file = parser::parse_string(object, content.as_str())?.into_model()?;
-            file
-        };
-
+        let object = object.into();
+        let content = parser::read_reader(object.read()?)?;
+        let object = Arc::new(Mutex::new(object));
+        let file = parser::parse_string(object, content.as_str())?.into_model()?;
         Ok(Some((package, file)))
     }
 
+    /// Process use declarations.
     pub fn process_uses(&mut self,
                         package: &RpVersionedPackage,
                         uses: Vec<Loc<RpUseDecl>>)
@@ -342,20 +261,27 @@ impl Environment {
         Ok(())
     }
 
-    pub fn process_decls(package: &RpVersionedPackage,
-                         input: Vec<Loc<RpDecl>>)
-                         -> Result<LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>> {
+    /// Process and merge declarations.
+    ///
+    /// Declarations are considered the same if they have the same type_id.
+    /// The same declarations are merged using `Merge`.
+    pub fn process_decls<I>(package: &RpVersionedPackage,
+                            input: I)
+                            -> Result<LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>>
+        where I: IntoIterator<Item = Loc<RpDecl>>
+    {
+        use linked_hash_map::Entry::*;
+
         let mut decls = LinkedHashMap::new();
 
         for decl in input {
-            let custom = RpName::with_parts(vec![decl.name().to_owned()]);
-            let key = package.into_type_id(custom);
+            let key = package.into_type_id(RpName::with_parts(vec![decl.name().to_owned()]));
 
             match decls.entry(key) {
-                linked_hash_map::Entry::Vacant(entry) => {
+                Vacant(entry) => {
                     entry.insert(Rc::new(decl));
                 }
-                linked_hash_map::Entry::Occupied(entry) => {
+                Occupied(entry) => {
                     entry.into_mut().merge(Rc::new(decl))?;
                 }
             }
@@ -368,15 +294,17 @@ impl Environment {
                          package: &RpVersionedPackage,
                          decls: &LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>)
                          -> Result<LinkedHashMap<RpTypeId, Loc<RpRegistered>>> {
+        // apply package prefix, if needed
+        let package = self.package_prefix
+            .as_ref()
+            .map(|prefix| prefix.join_versioned(package))
+            .unwrap_or_else(|| package.clone());
+
         let mut types = LinkedHashMap::new();
 
-        for (_, decl) in decls {
-            let registered_types = self.into_registered_type(package, decl.clone())?;
-
-            for (key, t) in registered_types.into_iter() {
-                if let Some(_) = types.insert(key.clone(), t) {
-                    return Err(ErrorKind::RegisteredTypeConflict(key.clone()).into());
-                }
+        for (key, t) in decls.values().flat_map(|d| d.into_registered_type(&package, d.pos())) {
+            if types.insert(key.clone(), t).is_some() {
+                return Err(ErrorKind::RegisteredTypeConflict(key.clone()).into());
             }
         }
 

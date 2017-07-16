@@ -32,6 +32,77 @@ impl RpDecl {
             RpDecl::Service(ref body) => &body.comment,
         }
     }
+
+    /// Convert a declaration into its registered types.
+    pub fn into_registered_type(&self,
+                                package: &RpVersionedPackage,
+                                pos: &Pos)
+                                -> Vec<(RpTypeId, Loc<RpRegistered>)> {
+        match *self {
+            RpDecl::Type(ref ty) => {
+                let type_id = package.into_type_id(RpName::with_parts(vec![ty.name.clone()]));
+                let token = Loc::new(RpRegistered::Type(ty.clone()), pos.clone());
+                vec![(type_id, token)]
+            }
+            RpDecl::Interface(ref interface) => {
+                let mut out = Vec::new();
+
+                let current = vec![interface.name.clone()];
+                let type_id = RpTypeId::new(package.clone(), RpName::with_parts(current.clone()));
+                let token = Loc::new(RpRegistered::Interface(interface.clone()), pos.clone());
+
+                for (name, sub_type) in &interface.sub_types {
+                    let sub_type = RpRegistered::SubType {
+                        parent: interface.clone(),
+                        sub_type: sub_type.as_ref().clone(),
+                    };
+
+                    let token = Loc::new(sub_type, pos.clone());
+
+                    let mut current = current.clone();
+                    current.push(name.to_owned());
+                    out.push((type_id.with_name(RpName::with_parts(current)), token));
+                }
+
+                out.push((type_id, token));
+                out
+            }
+            RpDecl::Enum(ref en) => {
+                let mut out = Vec::new();
+
+                let current = vec![en.name.clone()];
+                let type_id = RpTypeId::new(package.clone(), RpName::with_parts(current.clone()));
+                let token = Loc::new(RpRegistered::Enum(en.clone()), pos.clone());
+
+                for variant in &en.variants {
+                    let enum_constant = RpRegistered::EnumConstant {
+                        parent: en.clone(),
+                        variant: variant.as_ref().clone(),
+                    };
+                    let token = Loc::new(enum_constant, pos.clone());
+
+                    let mut current = current.clone();
+                    current.push((*variant.name).to_owned());
+                    out.push((type_id.with_name(RpName::with_parts(current)), token));
+                }
+
+                out.push((type_id, token));
+                out
+            }
+            RpDecl::Tuple(ref tuple) => {
+                let type_id = RpTypeId::new(package.clone(),
+                                            RpName::with_parts(vec![tuple.name.clone()]));
+                let token = Loc::new(RpRegistered::Tuple(tuple.clone()), pos.clone());
+                vec![(type_id, token)]
+            }
+            RpDecl::Service(ref service) => {
+                let type_id = RpTypeId::new(package.clone(),
+                                            RpName::with_parts(vec![service.name.clone()]));
+                let token = Loc::new(RpRegistered::Service(service.clone()), pos.clone());
+                vec![(type_id, token)]
+            }
+        }
+    }
 }
 
 impl ::std::fmt::Display for RpDecl {
