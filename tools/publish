@@ -1,0 +1,33 @@
+#!/bin/bash
+# Handles publishing of components in the right order.
+# use SKIP environment variable to specify modules to skip
+
+target=$PWD/target
+root=$PWD
+
+candidates="core parser repository backend"
+
+for manifest in $root/backend/*/Cargo.toml; do
+    b=$(basename $(dirname $manifest))
+    candidates="$candidates backend/$b"
+done
+
+candidates="$candidates server"
+
+targets=""
+
+for candidate in $candidates; do
+    if [[ $SKIP != *"$candidate"* ]]; then
+        targets="$targets $candidate"
+    fi
+done
+
+echo "TARGETS: $targets"
+
+export CARGO_TARGET_DIR=$target 
+
+for target in $targets; do
+    cargo publish --manifest-path=$root/$target/Cargo.toml
+done
+
+cargo publish --manifest-path=$root/Cargo.toml
