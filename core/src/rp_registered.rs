@@ -21,10 +21,12 @@ pub enum RpRegistered {
 
 impl RpRegistered {
     pub fn fields<'a>(&'a self) -> Result<Box<Iterator<Item = &Loc<RpField>> + 'a>> {
+        use self::RpRegistered::*;
+
         let it: Box<Iterator<Item = &Loc<RpField>>> = match *self {
-            RpRegistered::Type(ref body) => Box::new(body.fields.iter()),
-            RpRegistered::Tuple(ref body) => Box::new(body.fields.iter()),
-            RpRegistered::SubType { ref parent, ref sub_type } => {
+            Type(ref body) => Box::new(body.fields.iter()),
+            Tuple(ref body) => Box::new(body.fields.iter()),
+            SubType { ref parent, ref sub_type } => {
                 Box::new(parent.fields.iter().chain(sub_type.fields.iter()))
             }
             _ => {
@@ -46,45 +48,35 @@ impl RpRegistered {
     }
 
     pub fn is_assignable_from(&self, other: &RpRegistered) -> bool {
+        use self::RpRegistered::*;
+
         match (self, other) {
             // exact type
-            (&RpRegistered::Type(ref target), &RpRegistered::Type(ref source)) => {
-                Rc::ptr_eq(target, source)
-            }
+            (&Type(ref target), &Type(ref source)) => Rc::ptr_eq(target, source),
             // exact tuple
-            (&RpRegistered::Tuple(ref target), &RpRegistered::Tuple(ref source)) => {
-                Rc::ptr_eq(target, source)
-            }
+            (&Tuple(ref target), &Tuple(ref source)) => Rc::ptr_eq(target, source),
             // exact service
-            (&RpRegistered::Service(ref target), &RpRegistered::Service(ref source)) => {
-                Rc::ptr_eq(target, source)
-            }
+            (&Service(ref target), &Service(ref source)) => Rc::ptr_eq(target, source),
             // exact interface, with unknown sub-type.
-            (&RpRegistered::Interface(ref target), &RpRegistered::Interface(ref source)) => {
-                Rc::ptr_eq(target, source)
-            }
+            (&Interface(ref target), &Interface(ref source)) => Rc::ptr_eq(target, source),
             // exact enum, with unknown value
-            (&RpRegistered::Enum(ref target), &RpRegistered::Enum(ref source)) => {
-                Rc::ptr_eq(target, source)
-            }
+            (&Enum(ref target), &Enum(ref source)) => Rc::ptr_eq(target, source),
             // sub-type to parent
-            (&RpRegistered::Interface(ref target),
-             &RpRegistered::SubType { parent: ref source, sub_type: _ }) => {
+            (&Interface(ref target), &SubType { parent: ref source, sub_type: _ }) => {
                 Rc::ptr_eq(target, source)
             }
             // enum constant to parent type
-            (&RpRegistered::Enum(ref target),
-             &RpRegistered::EnumConstant { parent: ref source, variant: _ }) => {
+            (&Enum(ref target), &EnumConstant { parent: ref source, variant: _ }) => {
                 Rc::ptr_eq(target, source)
             }
             // exact matching sub-type
-            (&RpRegistered::SubType { parent: ref target_parent, sub_type: ref target },
-             &RpRegistered::SubType { parent: ref source_parent, sub_type: ref source }) => {
+            (&SubType { parent: ref target_parent, sub_type: ref target },
+             &SubType { parent: ref source_parent, sub_type: ref source }) => {
                 Rc::ptr_eq(target_parent, source_parent) && Rc::ptr_eq(target, source)
             }
             // exact matching constant
-            (&RpRegistered::EnumConstant { parent: ref target_parent, variant: ref target },
-             &RpRegistered::EnumConstant { parent: ref source_parent, variant: ref source }) => {
+            (&EnumConstant { parent: ref target_parent, variant: ref target },
+             &EnumConstant { parent: ref source_parent, variant: ref source }) => {
                 Rc::ptr_eq(target_parent, source_parent) && Rc::ptr_eq(target, source)
             }
             _ => false,
@@ -92,34 +84,34 @@ impl RpRegistered {
     }
 
     pub fn display(&self) -> String {
+        use self::RpRegistered::*;
+
         match *self {
-            RpRegistered::Type(ref body) => format!("type {}", body.name.to_owned()),
-            RpRegistered::Interface(ref body) => format!("interface {}", body.name.to_owned()),
-            RpRegistered::Enum(ref body) => format!("enum {}", body.name.to_owned()),
-            RpRegistered::Tuple(ref body) => format!("tuple {}", body.name.to_owned()),
-            RpRegistered::Service(ref body) => format!("service {}", body.name.to_owned()),
-            RpRegistered::SubType { ref parent, ref sub_type } => {
+            Type(ref body) => format!("type {}", body.name.to_owned()),
+            Interface(ref body) => format!("interface {}", body.name.to_owned()),
+            Enum(ref body) => format!("enum {}", body.name.to_owned()),
+            Tuple(ref body) => format!("tuple {}", body.name.to_owned()),
+            Service(ref body) => format!("service {}", body.name.to_owned()),
+            SubType { ref parent, ref sub_type } => {
                 format!("type {}.{}", parent.name, sub_type.name)
             }
-            RpRegistered::EnumConstant { ref parent, ref variant } => {
+            EnumConstant { ref parent, ref variant } => {
                 format!("{}.{}", parent.name, *variant.name)
             }
         }
     }
 
     pub fn name(&self) -> Vec<&str> {
+        use self::RpRegistered::*;
+
         match *self {
-            RpRegistered::Type(ref body) => vec![&body.name],
-            RpRegistered::Interface(ref body) => vec![&body.name],
-            RpRegistered::Enum(ref body) => vec![&body.name],
-            RpRegistered::Tuple(ref body) => vec![&body.name],
-            RpRegistered::Service(ref body) => vec![&body.name],
-            RpRegistered::SubType { ref parent, ref sub_type } => {
-                vec![&parent.name, &sub_type.name]
-            }
-            RpRegistered::EnumConstant { ref parent, ref variant } => {
-                vec![&parent.name, &variant.name]
-            }
+            Type(ref body) => vec![&body.name],
+            Interface(ref body) => vec![&body.name],
+            Enum(ref body) => vec![&body.name],
+            Tuple(ref body) => vec![&body.name],
+            Service(ref body) => vec![&body.name],
+            SubType { ref parent, ref sub_type } => vec![&parent.name, &sub_type.name],
+            EnumConstant { ref parent, ref variant } => vec![&parent.name, &variant.name],
         }
     }
 }
