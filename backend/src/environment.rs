@@ -208,7 +208,7 @@ impl Environment {
     pub fn lookup<'a>(&'a self,
                       package: &'a RpVersionedPackage,
                       lookup_name: &RpName)
-                      -> Result<(&'a RpVersionedPackage, &'a RpRegistered)> {
+                      -> Result<(&RpVersionedPackage, &'a RpRegistered)> {
         let (package, name) = if let Some(ref prefix) = lookup_name.prefix {
             (self.lookup_used(package, prefix)?, lookup_name.without_prefix())
         } else {
@@ -250,7 +250,8 @@ impl Environment {
             let use_package = self.import(&required)?;
 
             if let Some(use_package) = use_package {
-                self.register_alias(package, use_decl, &use_package)?;
+                let use_package = self.package_prefix(&use_package);
+                self.register_alias(&package, use_decl, &use_package)?;
                 continue;
             }
 
@@ -261,11 +262,20 @@ impl Environment {
         Ok(())
     }
 
+    /// Apply package prefix
+    fn package_prefix(&self, package: &RpVersionedPackage) -> RpVersionedPackage {
+        self.package_prefix
+            .as_ref()
+            .map(|prefix| prefix.join_versioned(package))
+            .unwrap_or_else(|| package.clone())
+    }
+
     /// Process and merge declarations.
     ///
     /// Declarations are considered the same if they have the same type_id.
     /// The same declarations are merged using `Merge`.
-    pub fn process_decls<I>(package: &RpVersionedPackage,
+    pub fn process_decls<I>(&self,
+                            package: &RpVersionedPackage,
                             input: I)
                             -> Result<LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>>
         where I: IntoIterator<Item = Loc<RpDecl>>
@@ -294,12 +304,6 @@ impl Environment {
                          package: &RpVersionedPackage,
                          decls: &LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>)
                          -> Result<LinkedHashMap<RpTypeId, Loc<RpRegistered>>> {
-        // apply package prefix, if needed
-        let package = self.package_prefix
-            .as_ref()
-            .map(|prefix| prefix.join_versioned(package))
-            .unwrap_or_else(|| package.clone());
-
         let mut types = LinkedHashMap::new();
 
         for (key, t) in decls.values().flat_map(|d| d.into_registered_type(&package, d.pos())) {
@@ -312,8 +316,9 @@ impl Environment {
     }
 
     pub fn process_file(&mut self, package: &RpVersionedPackage, file: RpFile) -> Result<()> {
+        let package = self.package_prefix(package);
         self.process_uses(&package, file.uses)?;
-        let decls = Self::process_decls(&package, file.decls)?;
+        let decls = self.process_decls(&package, file.decls)?;
         let types = self.process_types(&package, &decls)?;
         self.decls.extend(decls);
         self.types.extend(types);
