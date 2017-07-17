@@ -8,6 +8,7 @@ use hyper;
 use hyper::{Client, Method, Request, StatusCode};
 use hyper::header::ContentLength;
 use object::{BytesObject, Object};
+use std::sync::Arc;
 use super::*;
 use tokio_core::reactor::Core;
 use url::Url;
@@ -105,6 +106,7 @@ impl Objects for HttpObjects {
         });
 
         let out = self.core.run(work)?;
+        let out = out.map(Arc::new);
         Ok(out.map(|out| Box::new(BytesObject::new(name, out)) as Box<Object>))
     }
 }

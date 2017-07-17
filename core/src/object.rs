@@ -3,6 +3,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 pub trait Object: Send + fmt::Display + fmt::Debug {
     /// Get a path to the object, if one exists.
@@ -17,11 +18,11 @@ pub trait Object: Send + fmt::Display + fmt::Debug {
 #[derive(Debug)]
 pub struct BytesObject {
     name: String,
-    bytes: Vec<u8>,
+    bytes: Arc<Vec<u8>>,
 }
 
 impl BytesObject {
-    pub fn new(name: String, bytes: Vec<u8>) -> BytesObject {
+    pub fn new(name: String, bytes: Arc<Vec<u8>>) -> BytesObject {
         BytesObject {
             name: name,
             bytes: bytes,
@@ -35,7 +36,7 @@ impl Object for BytesObject {
     }
 
     fn read<'a>(&'a self) -> Result<Box<Read + 'a>> {
-        Ok(Box::new(Cursor::new(&self.bytes)))
+        Ok(Box::new(Cursor::new(self.bytes.as_ref())))
     }
 
     fn clone(&self) -> Box<Object> {
