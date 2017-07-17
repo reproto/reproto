@@ -32,8 +32,6 @@ on designing good data models.
 The following is an example specification for a simple time-series database:
 
 ```reproto
-use common as c;
-
 tuple Sample {
   timestamp: unsigned/64;
   value: double;
