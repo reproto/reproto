@@ -8,6 +8,7 @@ pub struct JavaField<'a> {
     pub camel_name: String,
     pub name: &'a str,
     pub ident: String,
+    pub java_value_type: Type,
     pub java_type: Type,
     pub java_spec: FieldSpec,
 }
@@ -37,14 +38,7 @@ impl<'a> JavaField<'a> {
     pub fn getter_without_body(&self) -> Result<MethodSpec> {
         let name = format!("get{}", self.camel_name);
         let mut getter = MethodSpec::new(mods![Modifier::Public], &name);
-
-        if *self.modifier == RpModifier::Optional {
-            let optional = Type::class("java.util", "Optional");
-            getter.returns(optional.with_arguments(vec![&self.java_type]));
-        } else {
-            getter.returns(&self.java_type);
-        }
-
+        getter.returns(&self.java_type);
         Ok(getter)
     }
 

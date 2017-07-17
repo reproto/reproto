@@ -522,7 +522,7 @@ impl<'a> BaseDecode for FasterXmlMatchDecode<'a> {
                    ty: &RpType,
                    input: &Self::Stmt)
                    -> Result<Self::Stmt> {
-        let ty = self.backend.into_java_type(pos, type_id, ty)?;
+        let ty = self.backend.into_java_type(pos, ty, type_id)?;
         let (_, reader) = self.module.deserialize_method_for_type(&ty, input)?;
         Ok(reader)
     }
@@ -558,7 +558,7 @@ impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
                   value: &RpByTypeMatch)
                   -> Result<Elements> {
         let variable_ty = self.backend
-            .into_java_type(value.variable.pos(), type_id, &value.variable.ty)?;
+            .into_java_type(value.variable.pos(), &value.variable.ty, type_id)?;
 
         let mut value_body = Elements::new();
         let check = self.type_check(data, kind);

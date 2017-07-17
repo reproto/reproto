@@ -95,8 +95,8 @@ impl JavaBackend {
     }
 
     /// Convert the given type to a java type.
-    pub fn into_java_type(&self, pos: &Pos, type_id: &RpTypeId, ty: &RpType) -> Result<Type> {
-        let ty = match *ty {
+    pub fn into_java_type(&self, pos: &Pos, ty: &RpType, type_id: &RpTypeId) -> Result<Type> {
+        let ty: Type = match *ty {
             RpType::String => self.string.clone().into(),
             RpType::Signed { ref size } |
             RpType::Unsigned { ref size } => {
@@ -113,16 +113,16 @@ impl JavaBackend {
             RpType::Double => DOUBLE.into(),
             RpType::Boolean => BOOLEAN.into(),
             RpType::Array { ref inner } => {
-                let argument = self.into_java_type(pos, type_id, inner)?;
+                let argument = self.into_java_type(pos, inner, type_id)?;
                 self.list.with_arguments(vec![argument]).into()
             }
             RpType::Name { ref name } => {
                 let type_id = type_id.with_name(name.clone());
-                return self.convert_type_id(pos, &type_id);
+                self.convert_type_id(pos, &type_id)?.into()
             }
             RpType::Map { ref key, ref value } => {
-                let key = self.into_java_type(pos, type_id, key)?;
-                let value = self.into_java_type(pos, type_id, value)?;
+                let key = self.into_java_type(pos, key, type_id)?;
+                let value = self.into_java_type(pos, value, type_id)?;
                 self.map.with_arguments(vec![key, value]).into()
             }
             RpType::Any => self.object.clone().into(),
@@ -747,7 +747,13 @@ impl JavaBackend {
                          type_id: &RpTypeId,
                          field: &'a Loc<RpField>)
                          -> Result<JavaField<'a>> {
-        let java_type = self.into_java_type(field.pos(), type_id, &field.ty)?;
+        let java_value_type = self.into_java_type(field.pos(), &field.ty, type_id)?;
+
+        let java_type = match field.is_optional() {
+            true => self.optional.with_arguments(vec![java_value_type.clone()]).into(),
+            false => java_value_type.clone(),
+        };
+
         let camel_name = self.snake_to_upper_camel.convert(field.ident());
         let ident = self.snake_to_lower_camel.convert(field.ident());
         let java_spec = self.build_field_spec(&java_type, field)?;
@@ -758,6 +764,7 @@ impl JavaBackend {
             ty: &field.ty,
             camel_name: camel_name,
             ident: ident,
+            java_value_type: java_value_type,
             java_type: java_type,
             java_spec: java_spec,
         })
@@ -777,12 +784,6 @@ impl JavaBackend {
     }
 
     fn build_field_spec(&self, field_type: &Type, field: &RpField) -> Result<FieldSpec> {
-        let field_type = if field.is_optional() {
-            self.optional.with_arguments(vec![field_type]).into()
-        } else {
-            field_type.clone()
-        };
-
         let ident = self.snake_to_lower_camel.convert(field.ident());
         Ok(self.new_field_spec(&field_type, &ident))
     }

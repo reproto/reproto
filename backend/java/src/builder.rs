@@ -32,7 +32,8 @@ impl Module {
     fn setter_method(&self, field: &JavaField, source: &FieldSpec) -> MethodSpec {
         let mut setter = MethodSpec::new(mods![Modifier::Public], &source.name);
 
-        let argument = ArgumentSpec::new(mods![Modifier::Final], &field.java_type, &source.name);
+        let argument =
+            ArgumentSpec::new(mods![Modifier::Final], &field.java_value_type, &source.name);
 
         let value = stmt![&self.optional, ".of(", &argument, ")"];
 
