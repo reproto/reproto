@@ -1,14 +1,23 @@
 use pos::Pos;
+use serde;
 use std::cmp;
 use std::hash;
+use std::result;
 use super::errors::*;
 use super::merge::Merge;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone)]
 pub struct Loc<T> {
-    #[serde(rename = "value")]
     inner: T,
     pos: Pos,
+}
+
+impl<T: serde::Serialize> serde::Serialize for Loc<T> {
+    fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        self.inner.serialize(serializer)
+    }
 }
 
 impl<T> Loc<T> {

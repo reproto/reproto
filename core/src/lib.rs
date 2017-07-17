@@ -514,28 +514,14 @@ pub struct RpMatchVariable {
     #[serde(rename="type")]
     pub ty: RpType,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-#[serde(tag = "type", rename_all="snake_case")]
+#[serde(rename_all="snake_case")]
 pub enum RpModifier {
     Required,
     Optional,
-    Repeated,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct RpModifiers {
-    pub modifiers: HashSet<RpModifier>,
-}
-
-impl RpModifiers {
-    pub fn new(modifiers: HashSet<RpModifier>) -> RpModifiers {
-        RpModifiers { modifiers: modifiers }
-    }
-
-    pub fn test(&self, modifier: &RpModifier) -> bool {
-        self.modifiers.contains(modifier)
-    }
-}
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct RpName {
     pub prefix: Option<String>,
@@ -792,6 +778,7 @@ impl fmt::Display for RpPackage {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all="snake_case")]
 pub enum RpPathSegment {
     Literal { value: Loc<String> },
     Variable { name: Loc<String>, ty: Loc<RpType> },
