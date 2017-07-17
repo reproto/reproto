@@ -10,6 +10,8 @@ pub trait Object: Send + fmt::Display + fmt::Debug {
 
     /// Open a reader to the object.
     fn read<'a>(&'a self) -> Result<Box<Read + 'a>>;
+
+    fn clone(&self) -> Box<Object>;
 }
 
 #[derive(Debug)]
@@ -34,6 +36,13 @@ impl Object for BytesObject {
 
     fn read<'a>(&'a self) -> Result<Box<Read + 'a>> {
         Ok(Box::new(Cursor::new(&self.bytes)))
+    }
+
+    fn clone(&self) -> Box<Object> {
+        Box::new(BytesObject {
+            name: self.name.clone(),
+            bytes: self.bytes.clone(),
+        })
     }
 }
 
@@ -61,6 +70,10 @@ impl Object for PathObject {
 
     fn read(&self) -> Result<Box<Read>> {
         Ok(Box::new(File::open(&self.path)?))
+    }
+
+    fn clone(&self) -> Box<Object> {
+        Box::new(PathObject { path: self.path.clone() })
     }
 }
 

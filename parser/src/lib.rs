@@ -18,7 +18,7 @@ mod utils;
 use self::errors::*;
 use std::io::Read;
 use core::object;
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
 pub(crate) use reproto_core as core;
 
 pub fn read_reader<'a, R>(mut reader: R) -> Result<String>
@@ -29,7 +29,7 @@ pub fn read_reader<'a, R>(mut reader: R) -> Result<String>
     Ok(content)
 }
 
-pub fn parse_string<'input>(object: Arc<Mutex<Box<object::Object>>>, input: &'input str) -> Result<ast::File<'input>> {
+pub fn parse_string<'input>(object: Rc<Box<object::Object>>, input: &'input str) -> Result<ast::File<'input>> {
     use self::ErrorKind::*;
     use lalrpop_util::ParseError::*;
     use token::Error::*;
@@ -90,11 +90,11 @@ pub fn parse_string<'input>(object: Arc<Mutex<Box<object::Object>>>, input: &'in
 mod tests {
     use super::*;
     use super::ast::*;
-    use std::sync::{Arc, Mutex};
+    use std::rc::Rc;
     use reproto_core::object;
 
-    fn new_context() -> Arc<Mutex<Box<object::Object>>> {
-        Arc::new(Mutex::new(Box::new(object::BytesObject::new(String::from(""), vec![]))))
+    fn new_context() -> Rc<Box<object::Object>> {
+        Rc::new(Box::new(object::BytesObject::new(String::from(""), vec![])))
     }
 
     /// Check that a parsed value equals expected.

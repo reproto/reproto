@@ -10,7 +10,6 @@ use reproto_repository::Resolver;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 
 pub type InitFields = HashMap<String, Loc<RpFieldInit>>;
 
@@ -233,7 +232,7 @@ impl Environment {
         let package = RpVersionedPackage::new(package, version);
         let object = object.into();
         let content = parser::read_reader(object.read()?)?;
-        let object = Arc::new(Mutex::new(object));
+        let object = Rc::new(object);
         let file = parser::parse_string(object, content.as_str())?.into_model()?;
         Ok(Some((package, file)))
     }

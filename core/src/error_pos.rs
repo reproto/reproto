@@ -1,11 +1,11 @@
 use object::Object;
 use std::borrow::Borrow;
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
 use super::Pos;
 
 #[derive(Debug)]
 pub struct ErrorPos {
-    pub object: Arc<Mutex<Box<Object>>>,
+    pub object: Box<Object>,
     pub start: usize,
     pub end: usize,
 }
@@ -15,17 +15,17 @@ impl<T: Borrow<Pos>> From<T> for ErrorPos {
         let value = value.borrow();
 
         ErrorPos {
-            object: value.object.clone(),
+            object: (**value.object).clone(),
             start: value.start,
             end: value.end,
         }
     }
 }
 
-impl From<(Arc<Mutex<Box<Object>>>, usize, usize)> for ErrorPos {
-    fn from(value: (Arc<Mutex<Box<Object>>>, usize, usize)) -> Self {
+impl From<(Rc<Box<Object>>, usize, usize)> for ErrorPos {
+    fn from(value: (Rc<Box<Object>>, usize, usize)) -> Self {
         ErrorPos {
-            object: value.0,
+            object: (**value.0).clone(),
             start: value.1,
             end: value.2,
         }

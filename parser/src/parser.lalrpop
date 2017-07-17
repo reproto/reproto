@@ -1,13 +1,13 @@
 // vim: ft=rust
 use reproto_core::*;
 use std::path::PathBuf;
-use std::sync::{Mutex, Arc};
+use std::rc::Rc;
 use super::ast::*;
 use super::token::{self, Token};
 use super::utils::*;
 use reproto_core::object;
 
-grammar<'input, 'object>(input_object: &'object Arc<Mutex<Box<object::Object>>>);
+grammar<'input, 'object>(input_object: &'object Rc<Box<object::Object>>);
 
 pub File: File<'input> = {
     <options:Loc<OptionDecl>*>
