@@ -89,6 +89,8 @@ pub trait ValueBuilder
 
     fn array(&self, values: Vec<Self::Stmt>) -> Result<Self::Stmt>;
 
+    fn optional_of(&self, value: Self::Stmt) -> Result<Self::Stmt>;
+
     fn optional_empty(&self) -> Result<Self::Stmt>;
 
     fn constant(&self, ty: Self::Type) -> Result<Self::Stmt>;
@@ -131,8 +133,21 @@ pub trait ValueBuilder
                                                     &ctx.variables,
                                                     &init.value,
                                                     Some(&f.ty));
-                        arguments.push(self.value(ctx)?);
+                        let value = self.value(ctx)?;
+
+                        let value = match f.is_optional() {
+                            true => self.optional_of(value)?,
+                            false => value,
+                        };
+
+                        arguments.push(value);
                     } else {
+                        if !f.is_optional() {
+                            return Err(Error::pos(format!("missing required parameter `{}`",
+                                                          f.ident()),
+                                                  object.pos().into()));
+                        }
+
                         arguments.push(self.optional_empty()?);
                     }
                 }

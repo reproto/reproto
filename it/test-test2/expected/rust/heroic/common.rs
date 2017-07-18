@@ -1,4 +1,4 @@
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Date {
-    field: u64,
+  field: u64,
 }

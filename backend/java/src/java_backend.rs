@@ -828,6 +828,10 @@ impl ValueBuilder for JavaBackend {
         Ok(stmt![&self.optional, ".empty()"])
     }
 
+    fn optional_of(&self, value: Self::Stmt) -> Result<Self::Stmt> {
+        Ok(stmt![&self.optional, ".of(", value, ")"])
+    }
+
     fn constant(&self, ty: Self::Type) -> Result<Self::Stmt> {
         return Ok(stmt![ty]);
     }

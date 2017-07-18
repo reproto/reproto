@@ -174,7 +174,7 @@ public class Query {
     public Query deserialize(final JsonParser parser, final DeserializationContext ctxt) throws IOException {
       if (parser.getCurrentToken() == JsonToken.VALUE_STRING) {
         final String query = parser.getText();
-        return new Query(query, Optional.empty(), Optional.empty(), Optional.empty());
+        return new Query(Optional.of(query), Optional.empty(), Optional.empty(), Optional.empty());
       }
 
       final Model m = parser.readValueAs(Model.class);

@@ -1,3 +1,4 @@
+!.gitkeep
 target/
 **/*.rs.bk
 Cargo.lock

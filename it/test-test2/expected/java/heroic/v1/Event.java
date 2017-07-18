@@ -3,6 +3,7 @@ package heroic.v1;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonSerializer;
@@ -106,7 +107,7 @@ public class Event {
 
       final long v_timestamp = parser.getLongValue();
 
-      final Optional<Object> v_payload = parser.readValueAs(Object.class);
+      final Optional<Object> v_payload = parser.readValueAs(new TypeReference<Optional<Object>>(){});
 
       if (parser.nextToken() != JsonToken.END_ARRAY) {
         throw ctxt.wrongTokenException(parser, JsonToken.END_ARRAY, null);

@@ -623,6 +623,10 @@ impl ValueBuilder for JsBackend {
         Ok(stmt!["null"])
     }
 
+    fn optional_of(&self, value: Self::Stmt) -> Result<Self::Stmt> {
+        Ok(value)
+    }
+
     fn constant(&self, ty: Self::Type) -> Result<Self::Stmt> {
         return Ok(stmt![ty]);
     }
