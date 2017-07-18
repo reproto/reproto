@@ -92,9 +92,10 @@ mod tests {
     use super::ast::*;
     use std::rc::Rc;
     use reproto_core::object;
+    use std::sync::Arc;
 
     fn new_context() -> Rc<Box<object::Object>> {
-        Rc::new(Box::new(object::BytesObject::new(String::from(""), vec![])))
+        Rc::new(Box::new(object::BytesObject::new(String::from(""), Arc::new(vec![]))))
     }
 
     /// Check that a parsed value equals expected.
