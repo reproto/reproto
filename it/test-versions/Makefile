@@ -1,3 +1,1 @@
-JAVA_EXTRA = -m builder -m fasterxml
-
-include ../lib.mk
+java-extra = -m builder -m fasterxml

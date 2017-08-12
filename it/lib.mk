@@ -1,139 +1,137 @@
-SCRIPT_INPUT=$(CURDIR)/../tools/script-input
+ifeq ($(ROOT),)
+$(error "ROOT: missing variable")
+endif
 
-ROOT ?= ../..
+ifeq ($(PROJECTS),)
+$(error "PROJECTS: missing variable")
+endif
 
-DEFAULT_TOOL := $(ROOT)/target/debug/reproto
+target-file ?= Makefile
+
+script-input := $(ROOT)/tools/script-input
+default-reproto := $(ROOT)/target/debug/reproto
 
 DIFF ?= diff
 RSYNC ?= rsync
-TOOL ?= $(DEFAULT_TOOL)
+REPROTO ?= $(default-reproto)
 CARGO ?= cargo
-
-EXPECTED = expected
-OUTPUT = output
-PATHS := proto $(PATHS)
-
-TARGETS ?= test
-FILTERED ?=
-
-java_out = $(OUTPUT)/java
-python_out = $(OUTPUT)/python
-js_out = $(OUTPUT)/js
-rust_out = $(OUTPUT)/rust
-doc_out = $(OUTPUT)/doc
-
-java_expected = $(EXPECTED)/java
-python_expected = $(EXPECTED)/python
-js_expected = $(EXPECTED)/js
-rust_expected = $(EXPECTED)/rust
-doc_expected = $(EXPECTED)/doc
-
-PYTHON_EXTRA ?=
-JAVA_EXTRA ?= -m builder
-JS_EXTRA ?=
-RUST_EXTRA ?=
-DOC_EXTRA ?=
-
-SUITES ?= python java js rust doc
-PROJECTS ?= python java js rust
-
-# projects that are filtered
+# projects that are excluded
 EXCLUDE ?=
-# projects that are supported after checking that necessary tools are available
-INCLUDE ?= %
 
-SUITES := $(filter $(INCLUDE), $(filter-out $(EXCLUDE), $(SUITES)))
-PROJECTS := $(filter $(INCLUDE), $(filter-out $(EXCLUDE), $(PROJECTS)))
+reproto-cmd := $(REPROTO) $(REPROTO_ARGS)
 
-PACKAGES := $(TARGETS:%=--package %)
+expected := expected
+output := output
 
-suite_targets := $(SUITES:%=suite-%)
-suite_diffs := $(SUITES:%=suitediff-%)
-suite_updates := $(SUITES:%=suiteupdate-%)
+targets := test
 
-project_targets := $(PROJECTS:%=project-%)
-project_diffs := $(PROJECTS:%=projectdiff-%)
-project_updates := $(PROJECTS:%=projectupdate-%)
+java-out := $(output)/java
+python-out := $(output)/python
+js-out := $(output)/js
+rust-out := $(output)/rust
+doc-out := $(output)/doc
 
-paths := $(PATHS:%=--path %)
+java-expected := $(expected)/java
+python-expected := $(expected)/python
+js-expected := $(expected)/js
+rust-expected := $(expected)/rust
+doc-expected := $(expected)/doc
 
-DEBUG ?= no
+python-extra :=
+java-extra := -m builder
+js-extra :=
+rust-extra :=
+doc-extra :=
+suites := python java js rust doc
 
-ifeq ($(DEBUG),yes)
-O :=
-reproto := $(TOOL) --debug
-else
-O := @
-reproto := $(TOOL)
-endif
+paths := proto
+exclude :=
 
-java_suite := java $(JAVA_EXTRA)
-java_project := java -m fasterxml -o workdir-java/target/generated-sources/reproto
+include $(target-file)
 
-js_suite := js $(JS_EXTRA)
-js_project := js -o workdir-js/generated
+exclude := $(exclude) $(EXCLUDE)
 
-python_suite := python $(PYTHON_EXTRA)
-python_project := python -o workdir-python/generated
+suites := $(filter-out $(exclude), $(suites))
+projects := $(filter-out $(exclude), $(PROJECTS))
 
-rust_suite := rust $(RUST_EXTRA)
-rust_project := rust -o workdir-rust/src --package-prefix generated
+packages-args := $(targets:%=--package %)
 
-doc_suite := doc --skip-static $(DOC_EXTRA)
+suite-diffs := $(suites:%=suite-diff/%)
+suite-updates := $(suites:%=suite-update/%)
 
-.PHONY: all clean suites projects update update-projects
+project-diffs := $(projects:%=project-diff/%)
+project-updates := $(projects:%=project-update/%)
+
+java-suite := java $(java-extra)
+js-suite := js $(js-extra)
+python-suite := python $(python-extra)
+rust-suite := rust $(rust-extra)
+doc-suite := doc --skip-static $(doc-extra)
+
+java-project := java -m fasterxml -o workdir-java/target/generated-sources/reproto
+js-project := js -o workdir-js/generated
+python-project := python -o workdir-python/generated
+rust-project := rust -o workdir-rust/src --package-prefix generated
+
+paths-args := $(paths:%=--path %)
+
+.PHONY: all clean update
+.PHONY: projects clean-projects update-projects
+.PHONY: suites clean-suites update-suites
 
 all: suites projects
 
-update: update-suites update-projects
-
-clean-projects:
-	$Orm -rf workdir-*
-	$Orm -rf output-*
-
-clean-suites:
-	$Orm -rf output
-
 clean: clean-projects clean-suites
 
-suites: $(suite_targets) $(suite_diffs)
+update: update-suites update-projects
 
-update-suites: $(suite_targets) $(suite_updates)
+suites: $(suite-diffs)
 
-projects: $(project_targets) $(project_diffs)
+clean-suites:
+	rm -rf output
 
-update-projects: $(project_targets) $(project_updates)
+update-suites: $(suite-updates)
 
-suiteupdate-%:
-	$Oecho "Updating Suite: $*"
-	$O$(RSYNC) --delete -ra $($*_out)/ $($*_expected)/
+projects: $(project-diffs)
 
-suitediff-%:
-	$Oecho "Verifying Diffs: $*"
-	$O$(DIFF) -ur $($*_expected) $($*_out)
+clean-projects:
+	rm -rf workdir-*
+	rm -rf output-*
 
-# rule to build suite output
-suite-%: $(TOOL)
-	$Oecho "Suite: $*"
-	$O$(reproto) compile $($*_suite) -o $($*_out) $(paths) $(PACKAGES)
+update-projects: $(project-updates)
+
+suite-build/%: $(REPROTO)
+	@echo "Suite: $*"
+	$(reproto-cmd) compile $($*-suite) -o $($*-out) $(paths-args) $(packages-args)
+
+suite-update/%: suite-build/%
+	@echo "Updating Suite: $*"
+	$(RSYNC) --delete -ra $($*-out)/ $($*-expected)/
+
+suite-diff/%: suite-build/%
+	@echo "Verifying Diffs: $*"
+	$(DIFF) -ur $($*-expected) $($*-out)
+
+project-build/%: $(REPROTO) output-% expected-%
+	@echo "Building Project: $*"
+	$(RSYNC) --delete -ra ../$*/ workdir-$*
+	$(reproto-cmd) compile $($*-project) $(paths-args) $(packages-args)
+	cd workdir-$* && make
+	$(script-input) workdir-$*/script.sh
 
 # rule to diff a projects expected output, with actual.
-projectdiff-%:
-	$Oecho "Diffing Project: $*"
-	$O$(DIFF) -ur expected-$* output-$*
+project-diff/%: project-build/%
+	@echo "Diffing Project: $*"
+	$(DIFF) -ur expected-$* output-$*
 
 # rule to update a projects expected output, with its actual
-projectupdate-%:
-	$Oecho "Updating Project: $*"
-	$O$(RSYNC) --delete -ra output-$*/ expected-$*/
+project-update/%: project-build/%
+	@echo "Updating Project: $*"
+	$(RSYNC) --delete -ra output-$*/ expected-$*/
 
-# rule to build output for a project
-project-%: $(TOOL)
-	$O$(RSYNC) --delete -ra ../$*/ workdir-$*
-	$O$(reproto) compile $($*_project) $(paths) $(PACKAGES)
-	$Ocd workdir-$* && make
-	$O$(SCRIPT_INPUT) workdir-$*/script.sh
+$(default-reproto):
+	@echo "Building $(default-reproto)"
+	cd $(ROOT) && $(CARGO) build
 
-$(DEFAULT_TOOL):
-	$Oecho "Building $(DEFAULT_TOOL)"
-	$O$(CARGO) build
+expected-% output-%:
+	mkdir -p $@

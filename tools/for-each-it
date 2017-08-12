@@ -6,22 +6,17 @@ nc="\033[0m"
 
 overall_exit_code=0
 
-while read test; do
-    echo $test
+while read path; do
+    dir=$(dirname $path)
+    name=$(basename $dir)
 
-    dir=$(dirname $test)
-    test=$(basename $dir)
-
-    make -C $dir "$@"
-    exit_code=$?
-
-    if [[ $exit_code -ne 0 ]]; then
-        tput bold
-        echo -e "${red}Failed: ${test} ($@)${nc}"
+    if ! $MAKE -C "$dir" -f "$ROOT/it/lib.mk" "$@"; then
         overall_exit_code=1
+        tput bold
+        echo -e "${red}Failed: ${name} ($@)${nc}"
     else
         tput bold
-        echo -e "${green}Succeeded: ${test} ($@)${nc}"
+        echo -e "${green}Succeeded: ${name} ($@)${nc}"
     fi
 done < <(ls -1 it/test-*/Makefile)
 

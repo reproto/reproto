@@ -1,5 +1,3 @@
-TARGETS = test heroic.v1
-EXCLUDE = rust
-JAVA_EXTRA = -m builder -m fasterxml
-
-include ../lib.mk
+targets := test heroic.v1
+exclude := rust
+java-extra := -m builder -m fasterxml

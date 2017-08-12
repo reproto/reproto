@@ -1,14 +1,25 @@
 .PHONY: all suites projects clean
 
-DEFAULT_TOOL := $(CURDIR)/target/debug/reproto
+default-reproto := $(CURDIR)/target/debug/reproto
 
+ROOT ?= $(CURDIR)
 PYTHON ?= python3
-PROJECTS ?= $(shell PYTHON=$(PYTHON) tools/check-project-deps)
-TOOL ?= $(DEFAULT_TOOL)
-ENVIRONMENT := INCLUDE="$(PROJECTS)" PYTHON="$(PYTHON)" TOOL="$(TOOL)"
+REPROTO ?= $(default-reproto)
 EACH := tools/for-each-it
 
-CARGO_TARGET_DIR=$(CURDIR)/target
+ifeq ($(DEBUG),yes)
+REPROTO_ARGS := --debug
+else
+EACH := $(EACH) --no-print-directory -s
+REPROTO_ARGS :=
+endif
+
+export ROOT
+export PROJECTS := $(shell PYTHON=$(PYTHON) $(ROOT)/tools/check-project-deps)
+export PYTHON
+export MAKE
+export REPROTO
+export REPROTO_ARGS
 
 all: suites projects
 
@@ -19,27 +30,30 @@ tests:
 
 clean:
 	cargo clean
-	$(EACH) clean
+	+$(EACH) clean
 
 # simplified set of suites
-suites: $(TOOL)
-	$(EACH) TOOL="$(TOOL)" suites
+suites: $(REPROTO)
+	+$(EACH) suites
 
-update-suites: $(TOOL)
-	$(EACH) TOOL="$(TOOL)" update-suites
+update-suites: $(REPROTO)
+	+$(EACH) update-suites
 
-clean-suites: $(TOOL)
-	$(EACH) TOOL="$(TOOL)" clean-suites
+clean-suites: $(REPROTO)
+	+$(EACH) clean-suites
 
 # extensive project-building test suites
-projects: $(TOOL)
-	$(EACH) $(ENVIRONMENT) --no-print-directory projects
+projects: $(REPROTO)
+	+$(EACH) projects
 
-update-projects: $(TOOL)
-	$(EACH) $(ENVIRONMENT) --no-print-directory update-projects
+update-projects: $(REPROTO)
+	+$(EACH) update-projects
 
-clean-projects: $(TOOL)
-	$(EACH) $(ENVIRONMENT) --no-print-directory clean-projects
+clean-projects: $(REPROTO)
+	+$(EACH) clean-projects
+
+$(default-reproto):
+	cargo build
 
 help:
 	@echo ""
@@ -75,6 +89,3 @@ help:
 	@echo "  A single set of projects:"
 	@echo "    make -C it/test-match clean-projects projects"
 	@echo ""
-
-$(DEFAULT_TOOL):
-	cargo build

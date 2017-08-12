@@ -6,14 +6,9 @@ tuple Tuple {
   second: double;
 }
 
-// hello
-
 type Foo {
   reserved "foo";
 
-  /**
-   * Captured doc?
-   */
   name: string;
   map: {string: unsigned/32};
 
