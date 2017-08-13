@@ -2,15 +2,18 @@
 /// https://github.com/rust-lang/cargo/commit/def249f9c18280d84f29fd96978389689fb61051
 
 use errors::*;
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use url::Url;
 
-const GIT: &'static str = "git";
+const GIT_BIN_ENV: &'static str = "REPROTO_GIT_BIN";
+const DEFAULT_GIT_COMMAND: &'static str = "git";
 const FETCH_HEAD: &'static str = "FETCH_HEAD";
 
 pub struct GitRepo {
+    git_command: String,
     work_tree: PathBuf,
     git_dir: PathBuf,
     remote: Url,
@@ -21,7 +24,10 @@ impl GitRepo {
     pub fn with_remote<P: AsRef<Path>>(path: P, remote: Url, revspec: String) -> Result<GitRepo> {
         let path = path.as_ref();
 
+        let git_command = find_git_command()?;
+
         let git_repo = GitRepo {
+            git_command: git_command,
             work_tree: path.to_owned(),
             git_dir: path.join(".git"),
             remote: remote,
@@ -43,7 +49,7 @@ impl GitRepo {
     }
 
     pub fn git(&self, args: &[&str]) -> Result<()> {
-        let mut command = Command::new(GIT);
+        let mut command = Command::new(&self.git_command);
 
         command.args(args).env("GIT_DIR", &self.git_dir).env(
             "GIT_WORK_TREE",
@@ -76,4 +82,13 @@ impl GitRepo {
         )?;
         self.reset(FETCH_HEAD)
     }
+}
+
+fn find_git_command() -> Result<String> {
+    match env::var(GIT_BIN_ENV) {
+        Ok(git_bin) => return Ok(git_bin.to_owned()),
+        Err(_) => {}
+    };
+
+    Ok(DEFAULT_GIT_COMMAND.to_owned())
 }
