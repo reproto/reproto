@@ -11,12 +11,12 @@ extern crate toml;
 extern crate serde;
 extern crate serde_json;
 extern crate url;
-extern crate openssl;
 extern crate hex;
 extern crate git2;
 extern crate tokio_core;
 extern crate hyper;
 extern crate futures;
+extern crate ring;
 
 mod hex_slice;
 mod index;

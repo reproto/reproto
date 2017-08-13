@@ -15,7 +15,6 @@ error_chain! {
         TomlDe(toml::de::Error);
         SerdeJson(serde_json::Error);
         UrlParseError(::url::ParseError);
-        OpenSSL(::openssl::error::ErrorStack);
         Git2(::git2::Error);
         FromHexError(::hex::FromHexError);
         HyperUriError(hyper::error::UriError);

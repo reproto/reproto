@@ -1,12 +1,11 @@
 use errors::*;
 use hex::FromHex;
 use hex_slice::HexSlice;
-use openssl::hash::{Hasher, MessageDigest};
+use ring::digest;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error, Visitor};
 use std::fmt;
 use std::io::Read;
-use std::io::Write;
 use std::ops::Index;
 use std::ops::Range;
 use std::result;
@@ -60,21 +59,20 @@ impl Index<Range<usize>> for Checksum {
 }
 
 pub struct Sha256 {
-    hasher: Hasher,
+    context: digest::Context,
 }
 
 impl Sha256 {
     pub fn new() -> Sha256 {
-        Sha256 { hasher: Hasher::new(MessageDigest::sha256()).unwrap() }
+        Sha256 { context: digest::Context::new(&digest::SHA256) }
     }
 
     pub fn update(&mut self, bytes: &[u8]) {
-        let _ = self.hasher.write_all(bytes);
+        self.context.update(bytes);
     }
 
-    pub fn finish(&mut self) -> Result<Checksum> {
-        let data = self.hasher.finish2()?.to_vec();
-        Ok(Checksum(data))
+    pub fn finish(self) -> Result<Checksum> {
+        Ok(Checksum(self.context.finish().as_ref().to_vec()))
     }
 }
 
