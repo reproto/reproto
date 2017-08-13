@@ -75,8 +75,9 @@ impl GitRepo {
     /// credentials until we give it a reason to not do so. To ensure we don't
     /// just sit here looping forever we keep track of authentications we've
     /// attempted and we don't try the same ones again.
-    fn with_authentication<T, F>(&self, cfg: &git2::Config, mut f: F) -> Result<T>
-        where F: FnMut(&mut git2::Credentials) -> Result<T>
+    fn with_authentication<T, F>(&self, cfg: &git2::Config, mut callback: F) -> Result<T>
+    where
+        F: FnMut(&mut git2::Credentials) -> Result<T>,
     {
         let url = self.remote.as_str();
 
@@ -89,8 +90,9 @@ impl GitRepo {
         let mut any_attempts = false;
         let mut tried_sshkey = false;
 
-        let mut res = f(&mut |url, username, allowed| {
+        let mut res = callback(&mut |url, username, allowed| {
             any_attempts = true;
+
             // libgit2's "USERNAME" authentication actually means that it's just
             // asking us for a username to keep going. This is currently only really
             // used for SSH authentication and isn't really an authentication type.
@@ -166,14 +168,16 @@ impl GitRepo {
         //
         // We have to restart the authentication session each time (due to
         // constraints in libssh2 I guess? maybe this is inherent to ssh?), so we
-        // call our callback, `f`, in a loop here.
+        // call our callback, `callback`, in a loop here.
         if ssh_username_requested {
             debug_assert!(res.is_err());
             let mut attempts = Vec::new();
             attempts.push("git".to_string());
+
             if let Ok(s) = env::var("USER").or_else(|_| env::var("USERNAME")) {
                 attempts.push(s);
             }
+
             if let Some(ref s) = cred_helper.username {
                 attempts.push(s.clone());
             }
@@ -185,18 +189,22 @@ impl GitRepo {
                 // we bail out.
                 let mut attempts = 0;
 
-                res = f(&mut |_url, username, allowed| {
+                res = callback(&mut |_url, username, allowed| {
                     if allowed.contains(git2::USERNAME) {
                         return git2::Cred::username(&s);
                     }
+
                     if allowed.contains(git2::SSH_KEY) {
                         debug_assert_eq!(Some(&s[..]), username);
+
                         attempts += 1;
+
                         if attempts == 1 {
                             ssh_agent_attempts.push(s.to_string());
                             return git2::Cred::ssh_key_from_agent(&s);
                         }
                     }
+
                     Err(git2::Error::from_str("no authentication available"))
                 });
 
@@ -229,22 +237,30 @@ impl GitRepo {
             let mut msg = "failed to authenticate when downloading repository".to_string();
 
             if !ssh_agent_attempts.is_empty() {
-                let names = ssh_agent_attempts.iter()
+                let names = ssh_agent_attempts
+                    .iter()
                     .map(|s| format!("`{}`", s))
                     .collect::<Vec<_>>()
                     .join(", ");
-                msg.push_str(&format!("\nattempted ssh-agent authentication, but none of the \
-                                       usernames {} succeeded",
-                                      names));
+
+                msg.push_str(&format!(
+                    "\nattempted ssh-agent authentication, but none of the \
+                     usernames ({}) succeeded",
+                    names
+                ));
             }
 
             if let Some(failed_cred_helper) = cred_helper_bad {
                 if failed_cred_helper {
-                    msg.push_str("\nattempted to find username/password via git's \
-                                  `credential.helper` support, but failed");
+                    msg.push_str(
+                        "\nattempted to find username/password via git's `credential.helper` \
+                         support, but failed",
+                    );
                 } else {
-                    msg.push_str("\nattempted to find username/password via `credential.helper`, \
-                                  but maybe the found credentials were incorrect");
+                    msg.push_str(
+                        "\nattempted to find username/password via `credential.helper`, but maybe \
+                         the found credentials were incorrect",
+                    );
                 }
             }
 
@@ -270,22 +286,29 @@ impl GitRepo {
     pub fn update(&self) -> Result<()> {
         info!("Updating {}", self.remote);
 
-        self.with_authentication(&self.repository.config()?, |f| {
-                let mut cb = git2::RemoteCallbacks::new();
-                cb.credentials(f);
-
-                let url = self.remote.as_str();
+        self.with_authentication(
+            &self.repository.config()?,
+            |callback| {
+                let mut remote_callbacks = git2::RemoteCallbacks::new();
+                remote_callbacks.credentials(callback);
 
                 // Create a local anonymous remote in the repository to fetch the url
-                let mut remote = self.repository.remote_anonymous(url)?;
+                let mut remote = self.repository.remote_anonymous(self.remote.as_str())?;
                 let mut opts = git2::FetchOptions::new();
 
-                opts.remote_callbacks(cb)
-                    .download_tags(git2::AutotagOption::All);
+                opts.remote_callbacks(remote_callbacks).download_tags(
+                    git2::AutotagOption::All,
+                );
 
-                remote.fetch(&[self.revspec.as_str()], Some(&mut opts), None)?;
+                remote.fetch(
+                    &[self.revspec.as_str()],
+                    Some(&mut opts),
+                    None,
+                )?;
+
                 Ok(())
-            })?;
+            },
+        )?;
 
         self.reset(FETCH_HEAD)
     }
