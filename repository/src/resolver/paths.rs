@@ -32,7 +32,9 @@ impl Paths {
         let mut it = stem.splitn(2, '-');
 
         if let (Some(name_base), Some(name_version)) = (it.next(), it.next()) {
-            let version = Version::parse(name_version).map_err(|_| format!("bad version"))?;
+            let version = Version::parse(name_version).map_err(
+                |_| format!("bad version"),
+            )?;
 
             return Ok((name_base, Some(version)));
         }
@@ -40,11 +42,12 @@ impl Paths {
         Ok((stem, None))
     }
 
-    pub fn find_versions(&self,
-                         path: &Path,
-                         base: &str,
-                         version_req: Option<&VersionReq>)
-                         -> Result<Vec<(Option<Version>, Box<Object>)>> {
+    pub fn find_versions(
+        &self,
+        path: &Path,
+        base: &str,
+        version_req: Option<&VersionReq>,
+    ) -> Result<Vec<(Option<Version>, Box<Object>)>> {
         let mut files: BTreeMap<_, Box<Object>> = BTreeMap::new();
 
         for e in fs::read_dir(path)? {
@@ -60,8 +63,9 @@ impl Paths {
             }
 
             if let Some(stem) = p.file_stem().and_then(::std::ffi::OsStr::to_str) {
-                let (name_base, version) = self.parse_stem(stem)
-                    .map_err(|m| format!("{}: {}", p.display(), m))?;
+                let (name_base, version) = self.parse_stem(stem).map_err(|m| {
+                    format!("{}: {}", p.display(), m)
+                })?;
 
                 if name_base != base {
                     continue;
@@ -94,9 +98,10 @@ impl Paths {
 }
 
 impl Resolver for Paths {
-    fn resolve(&mut self,
-               package: &RpRequiredPackage)
-               -> Result<Vec<(Option<Version>, Box<Object>)>> {
+    fn resolve(
+        &mut self,
+        package: &RpRequiredPackage,
+    ) -> Result<Vec<(Option<Version>, Box<Object>)>> {
         let mut files = Vec::new();
         let version_req = package.version_req.as_ref();
 

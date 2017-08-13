@@ -3,13 +3,13 @@ mod git_objects;
 mod http_objects;
 mod cached_objects;
 
-use errors::*;
-use git;
-use object::Object;
 pub use self::cached_objects::CachedObjects;
 pub use self::file_objects::FileObjects;
 pub use self::git_objects::GitObjects;
 pub use self::http_objects::HttpObjects;
+use errors::*;
+use git;
+use object::Object;
 use sha256::Checksum;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -53,16 +53,19 @@ pub fn objects_from_file<P: AsRef<Path>>(path: P) -> Result<FileObjects> {
     Ok(FileObjects::new(path))
 }
 
-pub fn objects_from_git<'a, I>(config: ObjectsConfig,
-                               scheme: I,
-                               url: &'a Url)
-                               -> Result<Box<Objects>>
-    where I: IntoIterator<Item = &'a str>
+pub fn objects_from_git<'a, I>(
+    config: ObjectsConfig,
+    scheme: I,
+    url: &'a Url,
+) -> Result<Box<Objects>>
+where
+    I: IntoIterator<Item = &'a str>,
 {
     let mut scheme = scheme.into_iter();
 
-    let sub_scheme = scheme.next()
-        .ok_or_else(|| format!("invalid scheme ({}), expected git+scheme", url.scheme()))?;
+    let sub_scheme = scheme.next().ok_or_else(|| {
+        format!("invalid scheme ({}), expected git+scheme", url.scheme())
+    })?;
 
     let repos = config.repos.ok_or_else(|| "repos: not specified")?;
 
@@ -82,8 +85,14 @@ pub fn objects_from_http(config: ObjectsConfig, url: &Url) -> Result<Box<Objects
     let http_objects = HttpObjects::new(url.clone(), core);
 
     if let Some(objects_cache) = config.objects_cache {
-        let missing_cache_time = config.missing_cache_time.unwrap_or_else(|| Duration::new(60, 0));
-        return Ok(Box::new(CachedObjects::new(objects_cache, missing_cache_time, http_objects)));
+        let missing_cache_time = config.missing_cache_time.unwrap_or_else(
+            || Duration::new(60, 0),
+        );
+        return Ok(Box::new(CachedObjects::new(
+            objects_cache,
+            missing_cache_time,
+            http_objects,
+        )));
     }
 
     Ok(Box::new(http_objects))
@@ -91,12 +100,15 @@ pub fn objects_from_http(config: ObjectsConfig, url: &Url) -> Result<Box<Objects
 
 pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
     let mut scheme = url.scheme().split("+");
-    let first = scheme.next().ok_or_else(|| format!("invalid scheme: {}", url))?;
+    let first = scheme.next().ok_or_else(
+        || format!("invalid scheme: {}", url),
+    )?;
 
     match first {
         "file" => {
-            objects_from_file(Path::new(url.path()))
-                .map(|objects| Box::new(objects) as Box<Objects>)
+            objects_from_file(Path::new(url.path())).map(|objects| {
+                Box::new(objects) as Box<Objects>
+            })
         }
         "git" => objects_from_git(config, scheme, url),
         "http" => objects_from_http(config, url),

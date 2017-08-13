@@ -1,11 +1,11 @@
 mod file_index;
 mod git_index;
 
+pub use self::file_index::init_file_index;
+use self::git_index::*;
 use git;
 use objects::Objects;
 pub use reproto_core::{RpPackage, Version, VersionReq};
-pub use self::file_index::init_file_index;
-use self::git_index::*;
 use sha256::Checksum;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -35,17 +35,19 @@ impl Deployment {
 use errors::*;
 
 pub trait Index {
-    fn resolve(&self,
-               package: &RpPackage,
-               version_req: Option<&VersionReq>)
-               -> Result<Vec<Deployment>>;
+    fn resolve(
+        &self,
+        package: &RpPackage,
+        version_req: Option<&VersionReq>,
+    ) -> Result<Vec<Deployment>>;
 
-    fn put_version(&self,
-                   checksum: &Checksum,
-                   package: &RpPackage,
-                   version: &Version,
-                   force: bool)
-                   -> Result<()>;
+    fn put_version(
+        &self,
+        checksum: &Checksum,
+        package: &RpPackage,
+        version: &Version,
+        force: bool,
+    ) -> Result<()>;
 
     fn get_deployments(&self, package: &RpPackage, version: &Version) -> Result<Vec<Deployment>>;
 
@@ -74,12 +76,14 @@ pub fn index_from_file(url: &Url) -> Result<Box<Index>> {
 }
 
 pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Result<Box<Index>>
-    where I: IntoIterator<Item = &'a str>
+where
+    I: IntoIterator<Item = &'a str>,
 {
     let mut scheme = scheme.into_iter();
 
-    let sub_scheme = scheme.next()
-        .ok_or_else(|| format!("invalid scheme ({}), expected git+scheme", url.scheme()))?;
+    let sub_scheme = scheme.next().ok_or_else(|| {
+        format!("invalid scheme ({}), expected git+scheme", url.scheme())
+    })?;
 
     let repos = config.repos.ok_or_else(|| "repos: not specified")?;
 
@@ -94,7 +98,9 @@ pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Re
 
 pub fn index_from_url(config: IndexConfig, url: &Url) -> Result<Box<Index>> {
     let mut scheme = url.scheme().split("+");
-    let first = scheme.next().ok_or_else(|| format!("invalid scheme: {}", url))?;
+    let first = scheme.next().ok_or_else(
+        || format!("invalid scheme: {}", url),
+    )?;
 
     match first {
         "file" => index_from_file(url),

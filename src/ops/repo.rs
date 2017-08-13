@@ -1,5 +1,5 @@
-use reproto_repository::init_file_index;
 use super::*;
+use reproto_repository::init_file_index;
 
 fn init(matches: &ArgMatches) -> Result<()> {
     for path in matches.values_of("path").into_iter().flat_map(|it| it) {
@@ -13,9 +13,10 @@ fn init(matches: &ArgMatches) -> Result<()> {
 fn init_options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("init").about("Initialize a new repository");
 
-    let out = out.arg(Arg::with_name("path")
-        .required(true)
-        .help("Path to repository to initialize"));
+    let out = out.arg(Arg::with_name("path").required(true).help(
+        "Path to repository \
+         to initialize",
+    ));
 
     out
 }

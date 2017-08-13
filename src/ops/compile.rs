@@ -5,11 +5,13 @@ fn base<'a, 'b>(name: &str) -> App<'a, 'b> {
 
     let out = compiler_base(out).about("Compile .reproto specifications");
 
-    let out = out.arg(Arg::with_name("out")
-        .long("out")
-        .short("o")
-        .takes_value(true)
-        .help("Output directory."));
+    let out = out.arg(
+        Arg::with_name("out")
+            .long("out")
+            .short("o")
+            .takes_value(true)
+            .help("Output directory."),
+    );
 
     out
 }

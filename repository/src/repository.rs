@@ -25,13 +25,15 @@ impl Repository {
         Ok(())
     }
 
-    pub fn publish<O>(&mut self,
-                      object: O,
-                      package: &RpPackage,
-                      version: &Version,
-                      force: bool)
-                      -> Result<()>
-        where O: AsRef<Object>
+    pub fn publish<O>(
+        &mut self,
+        object: O,
+        package: &RpPackage,
+        version: &Version,
+        force: bool,
+    ) -> Result<()>
+    where
+        O: AsRef<Object>,
     {
         if !self.index.get_deployments(package, version)?.is_empty() {
             if !force {
@@ -44,7 +46,11 @@ impl Repository {
         let object = object.as_ref();
         let checksum = to_sha256(object.read()?)?;
 
-        self.objects.put_object(&checksum, &mut object.read()?, force)?;
+        self.objects.put_object(
+            &checksum,
+            &mut object.read()?,
+            force,
+        )?;
         self.index.put_version(&checksum, package, version, force)?;
 
         Ok(())
@@ -52,12 +58,16 @@ impl Repository {
 }
 
 impl Resolver for Repository {
-    fn resolve(&mut self,
-               package: &RpRequiredPackage)
-               -> Result<Vec<(Option<Version>, Box<Object>)>> {
+    fn resolve(
+        &mut self,
+        package: &RpRequiredPackage,
+    ) -> Result<Vec<(Option<Version>, Box<Object>)>> {
         let mut out = Vec::new();
 
-        let deployments = self.index.resolve(&package.package, package.version_req.as_ref())?;
+        let deployments = self.index.resolve(
+            &package.package,
+            package.version_req.as_ref(),
+        )?;
 
         for deployment in deployments {
             if let Some(path) = self.objects.get_object(&deployment.object)? {

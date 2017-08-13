@@ -1,10 +1,10 @@
 //! ## Load objects through a local git repo
 
+use super::*;
 use git::GitRepo;
 use object::Object;
 use std::io::Read;
 use std::rc::Rc;
-use super::*;
 use url::Url;
 
 pub struct GitObjects {

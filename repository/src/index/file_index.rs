@@ -50,7 +50,8 @@ impl FileIndex {
     /// returns a tuple where the first is all matching deployments, and the second is a boolean
     /// indicating if some deployments have been omitted or not.
     fn read_package<F>(&self, package: &RpPackage, filter: F) -> Result<(Vec<Deployment>, bool)>
-        where F: Fn(&Deployment) -> bool
+    where
+        F: Fn(&Deployment) -> bool,
     {
         let path = self.path_for(package).join(METADATA_JSON);
 
@@ -67,11 +68,13 @@ impl FileIndex {
             let line = line?;
 
             let deployment: Deployment = serde_json::from_str(&line).map_err(|e| {
-                    format!("{}: bad deployment on line #{}: {}",
-                            path.display(),
-                            i + 1,
-                            e)
-                })?;
+                format!(
+                    "{}: bad deployment on line #{}: {}",
+                    path.display(),
+                    i + 1,
+                    e
+                )
+            })?;
 
             if filter(&deployment) {
                 out.push(deployment);
@@ -84,7 +87,8 @@ impl FileIndex {
     }
 
     fn write_package<I>(&self, package: &RpPackage, deployments: I) -> Result<()>
-        where I: IntoIterator<Item = Deployment>
+    where
+        I: IntoIterator<Item = Deployment>,
     {
         let target = self.path_for(package).join(METADATA_JSON);
         debug!("writing: {}", target.display());
@@ -113,26 +117,30 @@ impl FileIndex {
     }
 
     fn path_for(&self, package: &RpPackage) -> PathBuf {
-        package.parts.iter().fold(self.path.clone(), |path, next| path.join(next))
+        package.parts.iter().fold(self.path.clone(), |path, next| {
+            path.join(next)
+        })
     }
 }
 
 impl Index for FileIndex {
-    fn resolve(&self,
-               package: &RpPackage,
-               version_req: Option<&VersionReq>)
-               -> Result<Vec<Deployment>> {
-        self.read_package(package,
-                          |d| version_req.map(|v| v.matches(&d.version)).unwrap_or(true))
-            .map(|r| r.0)
+    fn resolve(
+        &self,
+        package: &RpPackage,
+        version_req: Option<&VersionReq>,
+    ) -> Result<Vec<Deployment>> {
+        self.read_package(package, |d| {
+            version_req.map(|v| v.matches(&d.version)).unwrap_or(true)
+        }).map(|r| r.0)
     }
 
-    fn put_version(&self,
-                   checksum: &Checksum,
-                   package: &RpPackage,
-                   version: &Version,
-                   force: bool)
-                   -> Result<()> {
+    fn put_version(
+        &self,
+        checksum: &Checksum,
+        package: &RpPackage,
+        version: &Version,
+        force: bool,
+    ) -> Result<()> {
         let (mut deployments, other_match) = self.read_package(package, |d| d.version != *version)?;
 
         if other_match {
@@ -148,7 +156,9 @@ impl Index for FileIndex {
     }
 
     fn get_deployments(&self, package: &RpPackage, version: &Version) -> Result<Vec<Deployment>> {
-        self.read_package(package, |d| d.version == *version).map(|r| r.0)
+        self.read_package(package, |d| d.version == *version).map(
+            |r| r.0,
+        )
     }
 
     fn objects_from_index(&self, relative_path: &Path) -> Result<Box<Objects>> {
@@ -191,17 +201,21 @@ fn read_config<P: AsRef<Path> + ?Sized>(path: &P) -> Result<Config> {
     let config_path = path.join(CONFIG_JSON);
 
     if !config_path.is_file() {
-        return Err(format!("{}: not an index, missing {}", path.display(), CONFIG_JSON).into());
+        return Err(
+            format!("{}: not an index, missing {}", path.display(), CONFIG_JSON).into(),
+        );
     }
 
-    let mut f = File::open(&config_path)
-        .map_err(|e| format!("failed to open {}: {}", config_path.display(), e))?;
+    let mut f = File::open(&config_path).map_err(|e| {
+        format!("failed to open {}: {}", config_path.display(), e)
+    })?;
 
     let mut content = String::new();
     f.read_to_string(&mut content)?;
 
-    let config: Config = serde_json::from_str(content.as_str())
-        .map_err(|e| format!("{}: bad config file: {}", config_path.display(), e))?;
+    let config: Config = serde_json::from_str(content.as_str()).map_err(|e| {
+        format!("{}: bad config file: {}", config_path.display(), e)
+    })?;
 
     Ok(config)
 }

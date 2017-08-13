@@ -25,10 +25,11 @@ impl GitIndex {
 }
 
 impl Index for GitIndex {
-    fn resolve(&self,
-               package: &RpPackage,
-               version_req: Option<&VersionReq>)
-               -> Result<Vec<Deployment>> {
+    fn resolve(
+        &self,
+        package: &RpPackage,
+        version_req: Option<&VersionReq>,
+    ) -> Result<Vec<Deployment>> {
         self.file_index.resolve(package, version_req)
     }
 
@@ -54,7 +55,9 @@ impl Index for GitIndex {
             self.url.clone()
         };
 
-        Ok(Box::new(GitObjects::new(url, self.git_repo.clone(), file_objects)))
+        Ok(Box::new(
+            GitObjects::new(url, self.git_repo.clone(), file_objects),
+        ))
     }
 
     fn update(&self) -> Result<()> {

@@ -1,11 +1,11 @@
 //! ## Load objects through a local directory
 
+use super::*;
 use hex_slice::HexSlice;
 use object::{Object, PathObject};
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
-use super::*;
 
 pub struct FileObjects {
     path: PathBuf,
@@ -17,7 +17,9 @@ impl FileObjects {
     }
 
     fn checksum_path(&self, checksum: &Checksum) -> Result<PathBuf> {
-        let path = self.path.join(format!("{}", HexSlice::new(&checksum[0..1])));
+        let path = self.path.join(
+            format!("{}", HexSlice::new(&checksum[0..1])),
+        );
         let path = path.join(format!("{}", HexSlice::new(&checksum[1..2])));
         Ok(path.join(format!("{}", HexSlice::new(&checksum))))
     }

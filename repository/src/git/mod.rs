@@ -1,51 +1,57 @@
 mod git_repo;
 
-use errors::*;
 pub use self::git_repo::GitRepo;
+use errors::*;
+use sha256;
 use std::path::Path;
 use url::Url;
 
 const DEFAULT_REMOTE_REF: &'static str = "refs/heads/master";
 
-pub fn setup_git_repo<'a, P: AsRef<Path>>(repos: &P,
-                                          scheme: &str,
-                                          url: &'a Url)
-                                          -> Result<GitRepo> {
-
+pub fn setup_git_repo<'a, P: AsRef<Path>>(
+    repos: &P,
+    scheme: &str,
+    url: &'a Url,
+) -> Result<GitRepo> {
     let mut remote = url.clone();
-    remote.set_scheme(scheme).map_err(|_| format!("cannot set scheme for url: {}", url))?;
 
-    let mut path = repos.as_ref().to_owned();
+    remote.set_scheme(scheme).map_err(|_| {
+        format!("cannot set scheme for url: {}", url)
+    })?;
 
-    if scheme == "file" {
-        path = path.join("local");
-    }
+    let path = repos.as_ref().to_owned();
 
-    if let Some(host) = remote.host() {
-        path = path.join(format!("{}", host));
-    }
+    let path = if scheme == "file" {
+        path.join("local")
+    } else {
+        path
+    };
 
-    match remote.path() {
-        "" => {}
-        p => {
-            path = p.split("/").skip(1).fold(path, |p, n| p.join(n));
-        }
-    }
+    let tail = {
+        let mut tail = sha256::Sha256::new();
+        tail.update(&remote.to_string().as_bytes());
+        tail.finish()
+    }?;
 
-    let refspec = remote.query_pairs()
-        .find(|e| e.0 == "ref")
-        .map(|e| e.1.into_owned());
+    let path = match remote.host() {
+        Some(host) => path.join(format!("{}-{}", host, tail)),
+        _ => path.join(format!("unknown-{}", tail)),
+    };
 
-    let refspec = refspec.or_else(|| {
-        remote.query_pairs()
-            .find(|e| e.0 == "branch")
-            .map(|e| format!("refs/heads/{}", e.1.into_owned()))
+    let refspec = remote.query_pairs().find(|e| e.0 == "ref").map(|e| {
+        e.1.into_owned()
     });
 
     let refspec = refspec.or_else(|| {
-        remote.query_pairs()
-            .find(|e| e.0 == "tag")
-            .map(|e| format!("refs/tags/{}", e.1.into_owned()))
+        remote.query_pairs().find(|e| e.0 == "branch").map(|e| {
+            format!("refs/heads/{}", e.1.into_owned())
+        })
+    });
+
+    let refspec = refspec.or_else(|| {
+        remote.query_pairs().find(|e| e.0 == "tag").map(|e| {
+            format!("refs/tags/{}", e.1.into_owned())
+        })
     });
 
     let refspec = refspec.unwrap_or_else(|| DEFAULT_REMOTE_REF.to_owned());

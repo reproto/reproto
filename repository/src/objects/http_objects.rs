@@ -1,5 +1,6 @@
 //! ## Load objects from a remote repository over HTTP
 
+use super::*;
 use errors::*;
 use futures::{Future, Stream};
 use futures::future::{err, ok};
@@ -9,7 +10,6 @@ use hyper::{Client, Method, Request, StatusCode};
 use hyper::header::ContentLength;
 use object::{BytesObject, Object};
 use std::sync::Arc;
-use super::*;
 use tokio_core::reactor::Core;
 use url::Url;
 
@@ -32,13 +32,15 @@ impl HttpObjects {
         Ok(url)
     }
 
-    fn handle_request(&mut self,
-                      request: Request)
-                      -> Box<Future<Item = (Vec<u8>, StatusCode), Error = Error>> {
+    fn handle_request(
+        &mut self,
+        request: Request,
+    ) -> Box<Future<Item = (Vec<u8>, StatusCode), Error = Error>> {
         let handle = self.core.handle();
         let client = Client::new(&handle);
 
-        let body_and_status = client.request(request)
+        let body_and_status = client
+            .request(request)
             .map_err::<_, Error>(Into::into)
             .and_then(|res| {
                 let status = res.status().clone();
@@ -64,7 +66,9 @@ impl Objects for HttpObjects {
         let url = self.checksum_url(checksum)?;
 
         let mut request = Request::new(Method::Put, url);
-        request.headers_mut().set(ContentLength(buffer.len() as u64));
+        request.headers_mut().set(
+            ContentLength(buffer.len() as u64),
+        );
         request.set_body(buffer);
 
         let work = self.handle_request(request).and_then(|(body, status)| {
@@ -107,6 +111,8 @@ impl Objects for HttpObjects {
 
         let out = self.core.run(work)?;
         let out = out.map(Arc::new);
-        Ok(out.map(|out| Box::new(BytesObject::new(name, out)) as Box<Object>))
+        Ok(out.map(|out| {
+            Box::new(BytesObject::new(name, out)) as Box<Object>
+        }))
     }
 }

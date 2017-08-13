@@ -84,7 +84,8 @@ impl fmt::Display for Checksum {
 
 impl Serialize for Checksum {
     fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
-        where S: Serializer
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&format!("{}", HexSlice::new(&self.0[..])))
     }
@@ -100,13 +101,15 @@ impl<'de> Visitor<'de> for ChecksumVisitor {
     }
 
     fn visit_str<E>(self, value: &str) -> result::Result<Self::Value, E>
-        where E: Error
+    where
+        E: Error,
     {
         Checksum::from_str(value).map_err(Error::custom)
     }
 
     fn visit_string<E>(self, value: String) -> result::Result<Self::Value, E>
-        where E: Error
+    where
+        E: Error,
     {
         self.visit_str(value.as_str())
     }
@@ -114,7 +117,8 @@ impl<'de> Visitor<'de> for ChecksumVisitor {
 
 impl<'de> Deserialize<'de> for Checksum {
     fn deserialize<D>(deserializer: D) -> result::Result<Self, D::Error>
-        where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         deserializer.deserialize_str(ChecksumVisitor)
     }

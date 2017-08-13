@@ -4,6 +4,7 @@ mod publish;
 mod update;
 mod repo;
 
+use super::*;
 use reproto_backend_doc as doc;
 use reproto_backend_java as java;
 use reproto_backend_js as js;
@@ -15,8 +16,9 @@ use std::env;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use super::*;
 use url;
+
+const DEFAULT_INDEX: &'static str = "git+https://github.com/reproto/reproto-index";
 
 fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
     let mut parts = input.split(":");
@@ -41,29 +43,37 @@ fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
         }
     }
 
-    return Err(format!("Invalid --id-conversion argument: {}", input).into());
+    return Err(
+        format!("Invalid --id-conversion argument: {}", input).into(),
+    );
 }
 
 pub fn path_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    let out = out.arg(Arg::with_name("index")
-        .long("index")
-        .short("I")
-        .takes_value(true)
-        .help("URL for index to use when looking up packages."));
+    let out = out.arg(
+        Arg::with_name("index")
+            .long("index")
+            .short("I")
+            .takes_value(true)
+            .help("URL for index to use when looking up packages."),
+    );
 
-    let out = out.arg(Arg::with_name("objects")
-        .long("objects")
-        .short("O")
-        .takes_value(true)
-        .help("URL for objects storage to use when looking up packages."));
+    let out = out.arg(
+        Arg::with_name("objects")
+            .long("objects")
+            .short("O")
+            .takes_value(true)
+            .help("URL for objects storage to use when looking up packages."),
+    );
 
-    let out = out.arg(Arg::with_name("path")
-        .long("path")
-        .short("p")
-        .takes_value(true)
-        .multiple(true)
-        .number_of_values(1)
-        .help("Paths to look for definitions."));
+    let out = out.arg(
+        Arg::with_name("path")
+            .long("path")
+            .short("p")
+            .takes_value(true)
+            .multiple(true)
+            .number_of_values(1)
+            .help("Paths to look for definitions."),
+    );
 
     out
 }
@@ -72,37 +82,47 @@ pub fn path_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 pub fn compiler_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = path_base(out);
 
-    let out = out.arg(Arg::with_name("package")
-        .long("package")
-        .help("Packages to compile")
-        .takes_value(true)
-        .multiple(true)
-        .number_of_values(1));
+    let out = out.arg(
+        Arg::with_name("package")
+            .long("package")
+            .help("Packages to compile")
+            .takes_value(true)
+            .multiple(true)
+            .number_of_values(1),
+    );
 
-    let out = out.arg(Arg::with_name("module")
-        .long("module")
-        .short("m")
-        .takes_value(true)
-        .multiple(true)
-        .number_of_values(1)
-        .help("Modules to load for a given backend"));
+    let out = out.arg(
+        Arg::with_name("module")
+            .long("module")
+            .short("m")
+            .takes_value(true)
+            .multiple(true)
+            .number_of_values(1)
+            .help("Modules to load for a given backend"),
+    );
 
-    let out = out.arg(Arg::with_name("id-converter")
-        .long("id-converter")
-        .takes_value(true)
-        .help("Conversion method to use when naming fields by default"));
+    let out = out.arg(
+        Arg::with_name("id-converter")
+            .long("id-converter")
+            .takes_value(true)
+            .help("Conversion method to use when naming fields by default"),
+    );
 
-    let out = out.arg(Arg::with_name("package-prefix")
-        .long("package-prefix")
-        .takes_value(true)
-        .help("Package prefix to use when generating classes"));
+    let out = out.arg(
+        Arg::with_name("package-prefix")
+            .long("package-prefix")
+            .takes_value(true)
+            .help("Package prefix to use when generating classes"),
+    );
 
-    let out = out.arg(Arg::with_name("file")
-        .long("file")
-        .help("File to compile")
-        .takes_value(true)
-        .multiple(true)
-        .number_of_values(1));
+    let out = out.arg(
+        Arg::with_name("file")
+            .long("file")
+            .help("File to compile")
+            .takes_value(true)
+            .multiple(true)
+            .number_of_values(1),
+    );
 
     out
 }
@@ -117,7 +137,9 @@ fn parse_package(input: &str) -> Result<RpRequiredPackage> {
     };
 
     let version_req = if let Some(version) = it.next() {
-        Some(VersionReq::parse(version).map_err(|e| e.description().to_owned())?)
+        Some(VersionReq::parse(version).map_err(
+            |e| e.description().to_owned(),
+        )?)
     } else {
         None
     };
@@ -125,7 +147,7 @@ fn parse_package(input: &str) -> Result<RpRequiredPackage> {
     Ok(RpRequiredPackage::new(package, version_req))
 }
 
-fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
+fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
     let mut index = matches.value_of("index").map(ToOwned::to_owned);
     let mut objects = matches.value_of("objects").map(ToOwned::to_owned);
     let mut index_config = IndexConfig { repos: None };
@@ -157,48 +179,48 @@ fn setup_repository(matches: &ArgMatches) -> Result<Option<Repository>> {
             objects_config.repos = objects_config.repos.or_else(|| local_repos.clone());
         }
 
-        index_config.repos = Some(index_config.repos
-            .unwrap_or_else(|| default_local_repos.clone()));
-        objects_config.repos = Some(objects_config.repos
-            .unwrap_or_else(|| default_local_repos.clone()));
+        index_config.repos = Some(index_config.repos.unwrap_or_else(
+            || default_local_repos.clone(),
+        ));
+        objects_config.repos = Some(objects_config.repos.unwrap_or_else(
+            || default_local_repos.clone(),
+        ));
         objects_config.objects_cache = Some(objects_cache);
     }
 
-    if let Some(ref index_url) = index {
-        let index_url = url::Url::parse(index_url)?;
-        let index = index_from_url(index_config, &index_url)?;
+    let index_url = index.unwrap_or_else(|| DEFAULT_INDEX.to_owned());
 
-        let objects = {
-            let objects_url = if let Some(ref objects) = objects {
-                objects.as_ref()
-            } else {
-                index.objects_url()?
-            };
+    let index_url = url::Url::parse(index_url.as_ref())?;
+    let index = index_from_url(index_config, &index_url)?;
 
-            debug!("index: {}", index_url);
-            debug!("objects: {}", objects_url);
-
-            match url::Url::parse(objects_url) {
-                /// Relative to index index repository!
-            Err(url::ParseError::RelativeUrlWithoutBase) => {
-                    let relative_path = Path::new(objects_url);
-                    index.objects_from_index(&relative_path)?
-                }
-                Err(e) => return Err(e.into()),
-                Ok(url) => objects_from_url(objects_config, &url)?,
-            }
+    let objects = {
+        let objects_url = if let Some(ref objects) = objects {
+            objects.as_ref()
+        } else {
+            index.objects_url()?
         };
 
-        let repository = Repository::new(index, objects);
+        debug!("index: {}", index_url);
+        debug!("objects: {}", objects_url);
 
-        return Ok(Some(repository));
-    }
+        match url::Url::parse(objects_url) {
+            /// Relative to index index repository!
+            Err(url::ParseError::RelativeUrlWithoutBase) => {
+                let relative_path = Path::new(objects_url);
+                index.objects_from_index(&relative_path)?
+            }
+            Err(e) => return Err(e.into()),
+            Ok(url) => objects_from_url(objects_config, &url)?,
+        }
+    };
 
-    Ok(None)
+    let repository = Repository::new(index, objects);
+    return Ok(repository);
 }
 
 fn setup_path_resolver(matches: &ArgMatches) -> Result<Option<Box<Resolver>>> {
-    let paths: Vec<::std::path::PathBuf> = matches.values_of("path")
+    let paths: Vec<::std::path::PathBuf> = matches
+        .values_of("path")
         .into_iter()
         .flat_map(|it| it)
         .map(Path::new)
@@ -219,10 +241,7 @@ fn setup_resolvers(matches: &ArgMatches) -> Result<Box<Resolver>> {
         resolvers.push(resolver);
     }
 
-    if let Some(repository) = setup_repository(matches)? {
-        resolvers.push(Box::new(repository));
-    }
-
+    resolvers.push(Box::new(setup_repository(matches)?));
     Ok(Box::new(Resolvers::new(resolvers)))
 }
 
@@ -233,8 +252,12 @@ fn setup_options(matches: &ArgMatches) -> Result<Options> {
         None
     };
 
-    let modules =
-        matches.values_of("module").into_iter().flat_map(|it| it).map(ToOwned::to_owned).collect();
+    let modules = matches
+        .values_of("module")
+        .into_iter()
+        .flat_map(|it| it)
+        .map(ToOwned::to_owned)
+        .collect();
 
     Ok(Options {
         id_converter: id_converter,
@@ -247,8 +270,9 @@ fn setup_packages(matches: &ArgMatches) -> Result<Vec<RpRequiredPackage>> {
 
     for package in matches.values_of("package").into_iter().flat_map(|it| it) {
         let parsed = parse_package(package);
-        let parsed =
-            parsed.chain_err(|| format!("failed to parse --package argument: {}", package))?;
+        let parsed = parsed.chain_err(|| {
+            format!("failed to parse --package argument: {}", package)
+        })?;
         packages.push(parsed);
     }
 
@@ -260,14 +284,16 @@ fn setup_environment(matches: &ArgMatches) -> Result<Environment> {
 
     let package_prefix = matches.value_of("package-prefix").map(ToOwned::to_owned);
 
-    let package_prefix = package_prefix.clone()
-        .map(|prefix| RpPackage::new(prefix.split(".").map(ToOwned::to_owned).collect()));
+    let package_prefix = package_prefix.clone().map(|prefix| {
+        RpPackage::new(prefix.split(".").map(ToOwned::to_owned).collect())
+    });
 
     Ok(Environment::new(package_prefix, resolvers))
 }
 
 fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<PathBuf> {
-    matches.values_of("file")
+    matches
+        .values_of("file")
         .into_iter()
         .flat_map(|it| it)
         .map(Path::new)
