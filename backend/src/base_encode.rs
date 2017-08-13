@@ -6,10 +6,11 @@ use errors::*;
 pub trait BaseEncode {
     type Stmt;
 
-    fn base_encode(&self,
-                   type_id: &RpTypeId,
-                   pos: &Pos,
-                   ty: &RpType,
-                   input: &Self::Stmt)
-                   -> Result<Self::Stmt>;
+    fn base_encode(
+        &self,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        ty: &RpType,
+        input: &Self::Stmt,
+    ) -> Result<Self::Stmt>;
 }

@@ -1,7 +1,7 @@
+use super::{LockableWrite, Output, find_line};
 use core::ErrorPos;
 use errors::*;
 use log;
-use super::{LockableWrite, Output, find_line};
 
 pub struct NonColored<T> {
     out: T,
@@ -18,7 +18,8 @@ impl<T> NonColored<T> {
 }
 
 impl<T> log::Log for NonColoredLogger<T>
-    where T: LockableWrite
+where
+    T: LockableWrite,
 {
     fn enabled(&self, metadata: &log::LogMetadata) -> bool {
         metadata.level() <= log::LogLevel::Debug
@@ -34,7 +35,8 @@ impl<T> log::Log for NonColoredLogger<T>
 
 
 impl<T> Output for NonColored<T>
-    where T: 'static + LockableWrite
+where
+    T: 'static + LockableWrite,
 {
     fn logger(&self) -> Box<log::Log + 'static> {
         Box::new(NonColoredLogger { out: self.out.open_new() })

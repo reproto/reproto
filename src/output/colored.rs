@@ -1,8 +1,8 @@
+use super::{LockableWrite, Output, find_line};
 use ansi_term::Colour::{Blue, Red};
 use errors::*;
 use log;
 use reproto_core::ErrorPos;
-use super::{LockableWrite, Output, find_line};
 
 pub struct Colored<T> {
     out: T,
@@ -15,7 +15,8 @@ impl<T> Colored<T> {
 }
 
 impl<T> Output for Colored<T>
-    where T: 'static + LockableWrite
+where
+    T: 'static + LockableWrite,
 {
     fn logger(&self) -> Box<log::Log + 'static> {
         Box::new(ColoredLogger { out: self.out.open_new() })
@@ -44,11 +45,13 @@ impl<T> Output for Colored<T>
 
         writeln!(o, "{}:{}:{}-{}:", p.object, line + 1, s + 1, e + 1)?;
         writeln!(o, "{} {}", Blue.paint(line_no), line_str)?;
-        writeln!(o,
-                 "{}{}{}",
-                 Red.paint(indicator),
-                 Red.paint(" - "),
-                 Red.paint(m.as_ref()))?;
+        writeln!(
+            o,
+            "{}{}{}",
+            Red.paint(indicator),
+            Red.paint(" - "),
+            Red.paint(m.as_ref())
+        )?;
 
         Ok(())
     }
@@ -77,7 +80,8 @@ pub struct ColoredLogger<T> {
 }
 
 impl<T> log::Log for ColoredLogger<T>
-    where T: LockableWrite
+where
+    T: LockableWrite,
 {
     fn enabled(&self, metadata: &log::LogMetadata) -> bool {
         metadata.level() <= log::LogLevel::Debug

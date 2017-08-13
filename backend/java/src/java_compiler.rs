@@ -1,7 +1,7 @@
+use super::*;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
-use super::*;
 
 pub struct JavaCompiler<'a> {
     pub out_path: PathBuf,
@@ -34,7 +34,8 @@ impl<'a> JavaCompiler<'a> {
     }
 
     fn process_files<F>(&self, mut consumer: F) -> Result<()>
-        where F: FnMut(PathBuf, &RpTypeId, &RpDecl) -> Result<()>
+    where
+        F: FnMut(PathBuf, &RpTypeId, &RpDecl) -> Result<()>,
     {
         let root_dir = &self.out_path;
 

@@ -39,7 +39,6 @@ impl Module {
 
         let mut setter_body = Elements::new();
 
-        /// Use separate element to get nice spacing
         setter_body.push(stmt!["this.", &source.name, " = ", value, ";"]);
         setter_body.push("return this;");
 
@@ -69,7 +68,13 @@ impl Listeners for Module {
                     let message = Variable::String(format!("{}: is required", source.name));
                     let throw_stmt = stmt!["new ", &self.runtime_exception, "(", message, ")"];
 
-                    stmt!["this.", &source.name, ".orElseThrow(() -> ", throw_stmt, ")"]
+                    stmt![
+                        "this.",
+                        &source.name,
+                        ".orElseThrow(() -> ",
+                        throw_stmt,
+                        ")",
+                    ]
                 }
                 _ => stmt!["this.", &source.name],
             };
@@ -82,11 +87,13 @@ impl Listeners for Module {
         let mut build = MethodSpec::new(mods![Modifier::Public], "build");
         build.returns(event.class_type);
         build.push(build_variable_assign);
-        build.push(stmt!["return new ",
-                         event.class_type,
-                         "(",
-                         build_constructor_arguments.join(", "),
-                         ");"]);
+        build.push(stmt![
+            "return new ",
+            event.class_type,
+            "(",
+            build_constructor_arguments.join(", "),
+            ");",
+        ]);
 
         builder.push(build);
 

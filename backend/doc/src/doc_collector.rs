@@ -1,8 +1,8 @@
 //! # Collector of results from the doc backend
 
+use super::*;
 use macros::FormatAttribute;
 use std::rc::Rc;
-use super::*;
 
 pub struct DocCollector {
     package_title: Option<String>,
@@ -62,8 +62,9 @@ impl<'a> Collecting<'a> for DocCollector {
     fn into_bytes(self, compiler: &Self::Processor) -> Result<Vec<u8>> {
         let mut buffer = String::new();
 
-        compiler.backend
-            .write_doc(&mut DefaultDocBuilder::new(&mut buffer), move |out| {
+        compiler.backend.write_doc(
+            &mut DefaultDocBuilder::new(&mut buffer),
+            move |out| {
                 if let Some(package_title) = self.package_title {
                     html!(out, h1 {class => "document-title"} => {
                         write!(out, "Package: {}", package_title)?;
@@ -97,7 +98,8 @@ impl<'a> Collecting<'a> for DocCollector {
                 });
 
                 Ok(())
-            })?;
+            },
+        )?;
 
         Ok(buffer.into_bytes())
     }

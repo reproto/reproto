@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use super::*;
+use std::rc::Rc;
 
 pub struct JsBackend {
     pub env: Environment,
@@ -13,11 +13,12 @@ pub struct JsBackend {
 }
 
 impl JsBackend {
-    pub fn new(env: Environment,
-               _: JsOptions,
-               listeners: Box<Listeners>,
-               id_converter: Option<Box<Naming>>)
-               -> JsBackend {
+    pub fn new(
+        env: Environment,
+        _: JsOptions,
+        listeners: Box<Listeners>,
+        id_converter: Option<Box<Naming>>,
+    ) -> JsBackend {
         JsBackend {
             env: env,
             listeners: listeners,
@@ -41,10 +42,11 @@ impl JsBackend {
         Ok(())
     }
 
-    fn find_field<'b>(&self,
-                      fields: &'b [Loc<JsField>],
-                      name: &str)
-                      -> Option<(usize, &JsField<'b>)> {
+    fn find_field<'b>(
+        &self,
+        fields: &'b [Loc<JsField>],
+        name: &str,
+    ) -> Option<(usize, &JsField<'b>)> {
         for (i, field) in fields.iter().enumerate() {
             if field.name == name {
                 return Some((i, field.as_ref()));
@@ -56,20 +58,23 @@ impl JsBackend {
 
     /// Build a function that throws an exception if the given value `stmt` is None.
     fn throw_if_null<S>(&self, stmt: S, field: &JsField) -> Elements
-        where S: Into<Statement>
+    where
+        S: Into<Statement>,
     {
         let required_error = string(format!("{}: is a required field", field.name));
         js![if is_not_defined(stmt), js![throw required_error]]
     }
 
-    fn encode_method<E, B>(&self,
-                           type_id: &RpTypeId,
-                           fields: &[Loc<JsField>],
-                           builder: B,
-                           extra: E)
-                           -> Result<MethodSpec>
-        where E: FnOnce(&mut Elements) -> (),
-              B: Into<Variable>
+    fn encode_method<E, B>(
+        &self,
+        type_id: &RpTypeId,
+        fields: &[Loc<JsField>],
+        builder: B,
+        extra: E,
+    ) -> Result<MethodSpec>
+    where
+        E: FnOnce(&mut Elements) -> (),
+        B: Into<Variable>,
     {
         let mut encode = MethodSpec::new("encode");
         let mut body = Elements::new();
@@ -110,10 +115,11 @@ impl JsBackend {
         Ok(encode)
     }
 
-    fn encode_tuple_method(&self,
-                           type_id: &RpTypeId,
-                           fields: &[Loc<JsField>])
-                           -> Result<MethodSpec> {
+    fn encode_tuple_method(
+        &self,
+        type_id: &RpTypeId,
+        fields: &[Loc<JsField>],
+    ) -> Result<MethodSpec> {
         let mut values = Statement::new();
 
         let mut encode = MethodSpec::new("encode");
@@ -160,7 +166,9 @@ impl JsBackend {
         body.push(js![if cond, js![return &member]]);
 
         let loop_init = stmt!["let ", &i, " = 0, ", &l, " = ", &members, ".length"];
-        member_loop.push(js![for loop_init; stmt![&i, " < ", &l]; stmt![&i, "++"], body.join(Spacing)]);
+        member_loop.push(
+            js![for loop_init; stmt![&i, " < ", &l]; stmt![&i, "++"], body.join(Spacing)],
+        );
 
         let mut body = Elements::new();
 
@@ -171,14 +179,16 @@ impl JsBackend {
         Ok(decode)
     }
 
-    fn decode_method<F>(&self,
-                        type_id: &RpTypeId,
-                        match_decl: &RpMatchDecl,
-                        fields: &[Loc<JsField>],
-                        class: &ClassSpec,
-                        variable_fn: F)
-                        -> Result<MethodSpec>
-        where F: Fn(usize, &JsField) -> Variable
+    fn decode_method<F>(
+        &self,
+        type_id: &RpTypeId,
+        match_decl: &RpMatchDecl,
+        fields: &[Loc<JsField>],
+        class: &ClassSpec,
+        variable_fn: F,
+    ) -> Result<MethodSpec>
+    where
+        F: Fn(usize, &JsField) -> Variable,
     {
         let mut decode = MethodSpec::with_static("decode");
         let data = stmt!["data"];
@@ -209,7 +219,12 @@ impl JsBackend {
                 }
                 _ => {
                     let var_stmt = stmt![&data, "[", &var, "]"];
-                    let var_stmt = self.decode(type_id, field.pos(), &field.ty, &var_stmt.into())?;
+                    let var_stmt = self.decode(
+                        type_id,
+                        field.pos(),
+                        &field.ty,
+                        &var_stmt.into(),
+                    )?;
 
                     let mut check = Elements::new();
 
@@ -281,7 +296,13 @@ impl JsBackend {
         let mut assignments = Elements::new();
 
         ctor.push_argument(&self.enum_ordinal);
-        assignments.push(stmt!["this.", &self.enum_ordinal, " = ", &self.enum_ordinal, ";"]);
+        assignments.push(stmt![
+            "this.",
+            &self.enum_ordinal,
+            " = ",
+            &self.enum_ordinal,
+            ";",
+        ]);
 
         ctor.push_argument(&self.enum_name);
         assignments.push(stmt!["this.", &self.enum_name, " = ", &self.enum_name, ";"]);
@@ -295,11 +316,12 @@ impl JsBackend {
         ctor
     }
 
-    fn enum_encode_decode(&self,
-                          body: &RpEnumBody,
-                          fields: &[Loc<JsField>],
-                          class: &ClassSpec)
-                          -> Result<Element> {
+    fn enum_encode_decode(
+        &self,
+        body: &RpEnumBody,
+        fields: &[Loc<JsField>],
+        class: &ClassSpec,
+    ) -> Result<Element> {
         // lookup serialized_as if specified.
         if let Some(ref s) = body.serialized_as {
             let mut elements = Elements::new();
@@ -353,7 +375,8 @@ impl JsBackend {
     }
 
     fn into_js_field_with<'b, F>(&self, field: &'b Loc<RpField>, js_field_f: F) -> Loc<JsField<'b>>
-        where F: Fn(JsField<'b>) -> JsField<'b>
+    where
+        F: Fn(JsField<'b>) -> JsField<'b>,
     {
         let ident = self.field_ident(&field);
 
@@ -371,12 +394,13 @@ impl JsBackend {
         self.into_js_field_with(field, |ident| ident)
     }
 
-    pub fn process_tuple(&self,
-                         out: &mut JsFileSpec,
-                         type_id: &RpTypeId,
-                         _: &Pos,
-                         body: Rc<RpTupleBody>)
-                         -> Result<()> {
+    pub fn process_tuple(
+        &self,
+        out: &mut JsFileSpec,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpTupleBody>,
+    ) -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
         class.export();
 
@@ -391,11 +415,13 @@ impl JsBackend {
             }
         }
 
-        let decode = self.decode_method(type_id,
-                           &body.match_decl,
-                           &fields,
-                           &class,
-                           Self::field_by_index)?;
+        let decode = self.decode_method(
+            type_id,
+            &body.match_decl,
+            &fields,
+            &class,
+            Self::field_by_index,
+        )?;
 
         class.push(decode);
 
@@ -410,12 +436,13 @@ impl JsBackend {
         Ok(())
     }
 
-    pub fn process_enum(&self,
-                        out: &mut JsFileSpec,
-                        type_id: &RpTypeId,
-                        _: &Pos,
-                        body: Rc<RpEnumBody>)
-                        -> Result<()> {
+    pub fn process_enum(
+        &self,
+        out: &mut JsFileSpec,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpEnumBody>,
+    ) -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
         class.export();
 
@@ -444,7 +471,7 @@ impl JsBackend {
                 value_arguments.push(self.value(ctx)?);
             }
 
-            let arguments = js![new &body.name, value_arguments];
+            let arguments = js![new & body.name, value_arguments];
             let member = stmt![&class.name, ".", &*variant.name];
 
             values.push(js![= &member, arguments]);
@@ -472,12 +499,13 @@ impl JsBackend {
     }
 
 
-    pub fn process_type(&self,
-                        out: &mut JsFileSpec,
-                        type_id: &RpTypeId,
-                        _: &Pos,
-                        body: Rc<RpTypeBody>)
-                        -> Result<()> {
+    pub fn process_type(
+        &self,
+        out: &mut JsFileSpec,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpTypeBody>,
+    ) -> Result<()> {
         let fields: Vec<_> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         let mut class = ClassSpec::new(&body.name);
@@ -493,11 +521,13 @@ impl JsBackend {
             }
         }
 
-        let decode = self.decode_method(type_id,
-                           &body.match_decl,
-                           &fields,
-                           &class,
-                           Self::field_by_name)?;
+        let decode = self.decode_method(
+            type_id,
+            &body.match_decl,
+            &fields,
+            &class,
+            Self::field_by_name,
+        )?;
         class.push(decode);
 
         let encode = self.encode_method(type_id, &fields, "{}", |_| {})?;
@@ -511,12 +541,13 @@ impl JsBackend {
         Ok(())
     }
 
-    pub fn process_interface(&self,
-                             out: &mut JsFileSpec,
-                             type_id: &RpTypeId,
-                             _: &Pos,
-                             body: Rc<RpInterfaceBody>)
-                             -> Result<()> {
+    pub fn process_interface(
+        &self,
+        out: &mut JsFileSpec,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpInterfaceBody>,
+    ) -> Result<()> {
         let mut classes = Elements::new();
 
         let mut interface_spec = ClassSpec::new(&body.name);
@@ -537,7 +568,8 @@ impl JsBackend {
             let mut class = ClassSpec::new(&format!("{}_{}", &body.name, &sub_type.name));
             class.export();
 
-            let fields: Vec<_> = interface_fields.clone()
+            let fields: Vec<_> = interface_fields
+                .clone()
                 .into_iter()
                 .chain(sub_type.fields.iter().map(|f| self.into_js_field(f)))
                 .collect();
@@ -552,19 +584,24 @@ impl JsBackend {
                 }
             }
 
-            let decode = self.decode_method(type_id,
-                               &sub_type.match_decl,
-                               &fields,
-                               &class,
-                               Self::field_by_name)?;
+            let decode = self.decode_method(
+                type_id,
+                &sub_type.match_decl,
+                &fields,
+                &class,
+                Self::field_by_name,
+            )?;
 
             class.push(decode);
 
             let type_stmt = stmt!["data[", &self.type_var, "] = ", &class.name, ".TYPE;"];
 
-            let encode = self.encode_method(type_id, &fields, "{}", move |elements| {
-                    elements.push(type_stmt);
-                })?;
+            let encode = self.encode_method(
+                type_id,
+                &fields,
+                "{}",
+                move |elements| { elements.push(type_stmt); },
+            )?;
 
             class.push(encode);
 
@@ -573,7 +610,13 @@ impl JsBackend {
             }
 
             classes.push(&class);
-            classes.push(stmt![&class.name, ".TYPE", " = ", string(sub_type.name.clone()), ";"]);
+            classes.push(stmt![
+                &class.name,
+                ".TYPE",
+                " = ",
+                string(sub_type.name.clone()),
+                ";",
+            ]);
         }
 
         out.0.push(classes.join(Spacing));
@@ -594,9 +637,11 @@ impl Converter for JsBackend {
     }
 
     fn convert_type(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Name> {
-        let (package, registered) = self.env
-            .lookup(&type_id.package, &type_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+        let (package, registered) = self.env.lookup(&type_id.package, &type_id.name).map_err(
+            |e| {
+                Error::pos(e.description().to_owned(), pos.into())
+            },
+        )?;
 
         let name = registered.name().join("_");
 
@@ -706,19 +751,26 @@ impl DynamicDecode for JsBackend {
     fn map_decode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
         let body = stmt!["[", &key, ", ", &value, "]"];
         // TODO: these functions need to be implemented and hoisted into the module
-        stmt!["to_object(from_object(", input, ").map(function(t) { return ", &body, "; }))"]
+        stmt![
+            "to_object(from_object(",
+            input,
+            ").map(function(t) { return ",
+            &body,
+            "; }))",
+        ]
     }
 
     fn assign_type_var(&self, data: &Self::Stmt, type_var: &Self::Stmt) -> Self::Stmt {
         stmt!["const ", type_var, " = ", data, "[", &self.type_var, "]"]
     }
 
-    fn check_type_var(&self,
-                      data: &Self::Stmt,
-                      type_var: &Self::Stmt,
-                      name: &Loc<String>,
-                      type_name: &Self::Type)
-                      -> Self::Elements {
+    fn check_type_var(
+        &self,
+        data: &Self::Stmt,
+        type_var: &Self::Stmt,
+        name: &Loc<String>,
+        type_name: &Self::Type,
+    ) -> Self::Elements {
         let mut body = Elements::new();
         let cond = stmt![type_var, " === ", string(name.as_ref())];
         body.push(js![if cond, js![return type_name, ".decode(", &data, ")"]]);
@@ -749,18 +801,25 @@ impl DynamicEncode for JsBackend {
     fn map_encode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
         let body = stmt!["[", &key, ", ", &value, "]"];
         // TODO: these functions need to be implemented and hoisted into the module
-        stmt!["to_object(from_object(", input, ").map(function(t) { return ", &body, "; }))"]
+        stmt![
+            "to_object(from_object(",
+            input,
+            ").map(function(t) { return ",
+            &body,
+            "; }))",
+        ]
     }
 }
 
 impl MatchDecode for JsBackend {
-    fn match_value(&self,
-                   data: &Statement,
-                   _value: &RpValue,
-                   value_stmt: Statement,
-                   _result: &RpObject,
-                   result_stmt: Statement)
-                   -> Result<Elements> {
+    fn match_value(
+        &self,
+        data: &Statement,
+        _value: &RpValue,
+        value_stmt: Statement,
+        _result: &RpObject,
+        result_stmt: Statement,
+    ) -> Result<Elements> {
         let mut value_body = Elements::new();
         value_body.push(stmt!["if (", data, " == ", value_stmt, ") {"]);
         value_body.push_nested(stmt!["return ", result_stmt]);
@@ -768,15 +827,16 @@ impl MatchDecode for JsBackend {
         Ok(value_body)
     }
 
-    fn match_type(&self,
-                  _type_id: &RpTypeId,
-                  data: &Statement,
-                  kind: &RpMatchKind,
-                  variable: &str,
-                  decode: Statement,
-                  result: Statement,
-                  _value: &RpByTypeMatch)
-                  -> Result<Elements> {
+    fn match_type(
+        &self,
+        _type_id: &RpTypeId,
+        data: &Statement,
+        kind: &RpMatchKind,
+        variable: &str,
+        decode: Statement,
+        result: Statement,
+        _value: &RpByTypeMatch,
+    ) -> Result<Elements> {
         let check = match *kind {
             RpMatchKind::Any => stmt!["true"],
             RpMatchKind::Object => stmt![data, ".constructor === Object"],

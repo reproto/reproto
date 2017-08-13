@@ -16,20 +16,24 @@ mod token;
 mod utils;
 
 use self::errors::*;
-use std::io::Read;
 use core::object;
-use std::rc::Rc;
 pub(crate) use reproto_core as core;
+use std::io::Read;
+use std::rc::Rc;
 
 pub fn read_reader<'a, R>(mut reader: R) -> Result<String>
-    where R: AsMut<Read + 'a>
+where
+    R: AsMut<Read + 'a>,
 {
     let mut content = String::new();
     reader.as_mut().read_to_string(&mut content)?;
     Ok(content)
 }
 
-pub fn parse_string<'input>(object: Rc<Box<object::Object>>, input: &'input str) -> Result<ast::File<'input>> {
+pub fn parse_string<'input>(
+    object: Rc<Box<object::Object>>,
+    input: &'input str,
+) -> Result<ast::File<'input>> {
     use self::ErrorKind::*;
     use lalrpop_util::ParseError::*;
     use token::Error::*;
@@ -90,12 +94,14 @@ pub fn parse_string<'input>(object: Rc<Box<object::Object>>, input: &'input str)
 mod tests {
     use super::*;
     use super::ast::*;
-    use std::rc::Rc;
     use reproto_core::object;
+    use std::rc::Rc;
     use std::sync::Arc;
 
     fn new_context() -> Rc<Box<object::Object>> {
-        Rc::new(Box::new(object::BytesObject::new(String::from(""), Arc::new(vec![]))))
+        Rc::new(Box::new(
+            object::BytesObject::new(String::from(""), Arc::new(vec![])),
+        ))
     }
 
     /// Check that a parsed value equals expected.
@@ -116,8 +122,9 @@ mod tests {
     const FILE1: &[u8] = include_bytes!("tests/file1.reproto");
     const INTERFACE1: &[u8] = include_bytes!("tests/interface1.reproto");
 
-    fn parse(input: &'static str)
-             -> Box<Iterator<Item = token::Result<(usize, token::Token<'static>, usize)>>> {
+    fn parse(
+        input: &'static str,
+    ) -> Box<Iterator<Item = token::Result<(usize, token::Token<'static>, usize)>>> {
         Box::new(lexer::lex(input))
     }
 
@@ -229,29 +236,37 @@ mod tests {
     fn test_numbers() {
         assert_value_eq!(Value::Number(1.into()), "1");
 
-        assert_value_eq!(Value::Number(RpNumber {
-                             digits: 125.into(),
-                             decimal: 2,
-                         }),
-                         "1.25");
+        assert_value_eq!(
+            Value::Number(RpNumber {
+                digits: 125.into(),
+                decimal: 2,
+            }),
+            "1.25"
+        );
 
-        assert_value_eq!(Value::Number(RpNumber {
-                             digits: 12500.into(),
-                             decimal: 0,
-                         }),
-                         "1.25e4");
+        assert_value_eq!(
+            Value::Number(RpNumber {
+                digits: 12500.into(),
+                decimal: 0,
+            }),
+            "1.25e4"
+        );
 
-        assert_value_eq!(Value::Number(RpNumber {
-                             digits: (-12500).into(),
-                             decimal: 0,
-                         }),
-                         "-1.25e4");
+        assert_value_eq!(
+            Value::Number(RpNumber {
+                digits: (-12500).into(),
+                decimal: 0,
+            }),
+            "-1.25e4"
+        );
 
-        assert_value_eq!(Value::Number(RpNumber {
-                             digits: (1234).into(),
-                             decimal: 8,
-                         }),
-                         "0.00001234");
+        assert_value_eq!(
+            Value::Number(RpNumber {
+                digits: (1234).into(),
+                decimal: 8,
+            }),
+            "0.00001234"
+        );
     }
 
     #[test]

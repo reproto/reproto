@@ -1,9 +1,9 @@
+use super::*;
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use super::*;
 
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
@@ -66,11 +66,13 @@ impl<'a> DocCompiler<'a> {
     fn write_index(&self, packages: &[RpVersionedPackage]) -> Result<()> {
         let mut buffer = String::new();
 
-        self.backend
-            .write_doc(&mut DefaultDocBuilder::new(&mut buffer), |out| {
+        self.backend.write_doc(
+            &mut DefaultDocBuilder::new(&mut buffer),
+            |out| {
                 self.backend.write_packages(out, packages, None)?;
                 Ok(())
-            })?;
+            },
+        )?;
 
         let mut path = self.out_path.join(INDEX);
         path.set_extension(EXT);
@@ -89,24 +91,32 @@ impl<'a> DocCompiler<'a> {
         Ok(())
     }
 
-    fn write_overviews(&self,
-                       packages: &[RpVersionedPackage],
-                       files: &mut BTreeMap<&RpVersionedPackage, DocCollector>)
-                       -> Result<()> {
+    fn write_overviews(
+        &self,
+        packages: &[RpVersionedPackage],
+        files: &mut BTreeMap<&RpVersionedPackage, DocCollector>,
+    ) -> Result<()> {
         for (package, collector) in files.iter_mut() {
             collector.set_package_title(format!("{}", package));
 
             {
                 let mut new_package = collector.new_package();
                 let mut out = DefaultDocBuilder::new(&mut new_package);
-                self.backend.write_packages(&mut out, packages, Some(*package))?;
+                self.backend.write_packages(
+                    &mut out,
+                    packages,
+                    Some(*package),
+                )?;
             }
 
             {
                 let service_bodies = collector.service_bodies.clone();
                 let mut new_service_overview = collector.new_service_overview();
                 let mut out = DefaultDocBuilder::new(&mut new_service_overview);
-                self.backend.write_service_overview(&mut out, service_bodies)?;
+                self.backend.write_service_overview(
+                    &mut out,
+                    service_bodies,
+                )?;
             }
 
             {
@@ -152,48 +162,53 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
         Ok(full_path)
     }
 
-    fn process_service(&self,
-                       out: &mut Self::Out,
-                       type_id: &RpTypeId,
-                       pos: &Pos,
-                       body: Rc<RpServiceBody>)
-                       -> Result<()> {
+    fn process_service(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpServiceBody>,
+    ) -> Result<()> {
         self.backend.process_service(out, type_id, pos, body)
     }
 
-    fn process_enum(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    pos: &Pos,
-                    body: Rc<RpEnumBody>)
-                    -> Result<()> {
+    fn process_enum(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpEnumBody>,
+    ) -> Result<()> {
         self.backend.process_enum(out, type_id, pos, body)
     }
 
-    fn process_interface(&self,
-                         out: &mut Self::Out,
-                         type_id: &RpTypeId,
-                         pos: &Pos,
-                         body: Rc<RpInterfaceBody>)
-                         -> Result<()> {
+    fn process_interface(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpInterfaceBody>,
+    ) -> Result<()> {
         self.backend.process_interface(out, type_id, pos, body)
     }
 
-    fn process_type(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    pos: &Pos,
-                    body: Rc<RpTypeBody>)
-                    -> Result<()> {
+    fn process_type(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpTypeBody>,
+    ) -> Result<()> {
         self.backend.process_type(out, type_id, pos, body)
     }
 
-    fn process_tuple(&self,
-                     out: &mut Self::Out,
-                     type_id: &RpTypeId,
-                     pos: &Pos,
-                     body: Rc<RpTupleBody>)
-                     -> Result<()> {
+    fn process_tuple(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpTupleBody>,
+    ) -> Result<()> {
         self.backend.process_tuple(out, type_id, pos, body)
     }
 }

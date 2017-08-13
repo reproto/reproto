@@ -7,13 +7,13 @@ mod json_compiler;
 mod json_options;
 mod listeners;
 
-pub(crate) use reproto_backend::errors::*;
-pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::collector::*;
 pub(crate) use self::json_backend::*;
 pub(crate) use self::json_compiler::*;
 pub(crate) use self::json_options::*;
 pub(crate) use self::listeners::*;
+pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 
 pub(crate) const EXT: &str = "json";
 
@@ -47,11 +47,12 @@ pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out.about("Verify for JSON")
 }
 
-pub fn compile(env: Environment,
-               opts: Options,
-               compiler_options: CompilerOptions,
-               _matches: &ArgMatches)
-               -> Result<()> {
+pub fn compile(
+    env: Environment,
+    opts: Options,
+    compiler_options: CompilerOptions,
+    _matches: &ArgMatches,
+) -> Result<()> {
     let (options, listeners) = setup_listeners(opts.modules)?;
     let backend = JsonBackend::new(env, options, listeners);
     let compiler = backend.compiler(compiler_options)?;

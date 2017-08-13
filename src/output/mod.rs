@@ -1,19 +1,20 @@
 mod colored;
 mod non_colored;
 
+
+pub use self::colored::Colored;
+pub use self::non_colored::NonColored;
 use errors::*;
 use log;
 use reproto_backend as backend;
 use reproto_core as core;
 use reproto_parser as parser;
 use reproto_repository as repository;
-
-pub use self::colored::Colored;
-pub use self::non_colored::NonColored;
 use std::io::{self, Read, Write};
 
 pub trait LockableWrite
-    where Self: Sync + Send
+where
+    Self: Sync + Send,
 {
     fn open_new(&self) -> Self;
 
@@ -32,9 +33,10 @@ impl LockableWrite for io::Stdout {
 
 const NL: u8 = '\n' as u8;
 
-fn find_line<'a, R: AsMut<Read + 'a>>(mut reader: R,
-                                      pos: (usize, usize))
-                                      -> Result<(String, usize, (usize, usize))> {
+fn find_line<'a, R: AsMut<Read + 'a>>(
+    mut reader: R,
+    pos: (usize, usize),
+) -> Result<(String, usize, (usize, usize))> {
     let r = reader.as_mut();
 
     let mut line = 0usize;
@@ -92,7 +94,10 @@ pub trait Output {
                 true
             }
             FieldConflict(ref name, ref source, ref target) => {
-                self.print_error(&format!("conflict in field `{}`", name), source)?;
+                self.print_error(
+                    &format!("conflict in field `{}`", name),
+                    source,
+                )?;
                 self.print_error("previous declaration here", target)?;
                 true
             }
@@ -132,8 +137,13 @@ pub trait Output {
                 return self.handle_parser_error(e);
             }
             MissingRequired(ref names, ref location, ref fields) => {
-                self.print_error(&format!("missing required fields: {}", names.join(", ")),
-                                 location)?;
+                self.print_error(
+                    &format!(
+                        "missing required fields: {}",
+                        names.join(", ")
+                    ),
+                    location,
+                )?;
 
                 for f in fields {
                     self.print_error("required field", f)?;
@@ -178,7 +188,10 @@ pub trait Output {
                 true
             }
             FieldConflict(ref name, ref source, ref target) => {
-                self.print_error(&format!("conflict in field `{}`", name), source)?;
+                self.print_error(
+                    &format!("conflict in field `{}`", name),
+                    source,
+                )?;
                 self.print_error("previous declaration here", target)?;
                 true
             }

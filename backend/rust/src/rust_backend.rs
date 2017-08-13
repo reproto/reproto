@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use super::*;
+use std::rc::Rc;
 
 pub struct RustBackend {
     pub env: Environment,
@@ -11,11 +11,12 @@ pub struct RustBackend {
 }
 
 impl RustBackend {
-    pub fn new(env: Environment,
-               _: RustOptions,
-               listeners: Box<Listeners>,
-               id_converter: Option<Box<Naming>>)
-               -> RustBackend {
+    pub fn new(
+        env: Environment,
+        _: RustOptions,
+        listeners: Box<Listeners>,
+        id_converter: Option<Box<Naming>>,
+    ) -> RustBackend {
         RustBackend {
             env: env,
             listeners: listeners,
@@ -46,15 +47,19 @@ impl RustBackend {
     }
 
     fn convert_type_id(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Name> {
-        let (package, registered) = self.env
-            .lookup(&type_id.package, &type_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+        let (package, registered) = self.env.lookup(&type_id.package, &type_id.name).map_err(
+            |e| {
+                Error::pos(e.description().to_owned(), pos.into())
+            },
+        )?;
 
         let name = registered.name().join(".");
 
         if let Some(ref prefix) = type_id.name.prefix {
             let package_name = self.package(package).parts.join("::");
-            return Ok(Name::Imported(Name::imported_alias(&package_name, &name, prefix)));
+            return Ok(Name::Imported(
+                Name::imported_alias(&package_name, &name, prefix),
+            ));
         }
 
         Ok(Name::Local(Name::local(&name)))
@@ -124,7 +129,11 @@ impl RustBackend {
         }
 
         if field.name() != ident {
-            elements.push(stmt!["#[serde(rename = ", Variable::String(field.name().to_owned()), ")]"]);
+            elements.push(stmt![
+                "#[serde(rename = ",
+                Variable::String(field.name().to_owned()),
+                ")]",
+            ]);
         }
 
         elements.push(stmt![ident, ": ", type_spec, ","]);
@@ -132,12 +141,13 @@ impl RustBackend {
         Ok(elements.into())
     }
 
-    pub fn process_tuple(&self,
-                         out: &mut RustFileSpec,
-                         type_id: &RpTypeId,
-                         _: &Pos,
-                         body: Rc<RpTupleBody>)
-                         -> Result<()> {
+    pub fn process_tuple(
+        &self,
+        out: &mut RustFileSpec,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpTupleBody>,
+    ) -> Result<()> {
         let mut fields = Statement::new();
 
         for field in &body.fields {
@@ -152,12 +162,13 @@ impl RustBackend {
         Ok(())
     }
 
-    pub fn process_enum(&self,
-                        out: &mut RustFileSpec,
-                        _: &RpTypeId,
-                        _: &Pos,
-                        body: Rc<RpEnumBody>)
-                        -> Result<()> {
+    pub fn process_enum(
+        &self,
+        out: &mut RustFileSpec,
+        _: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpEnumBody>,
+    ) -> Result<()> {
         let mut enum_spec = EnumSpec::new(&body.name);
         enum_spec.public();
 
@@ -169,12 +180,13 @@ impl RustBackend {
         Ok(())
     }
 
-    pub fn process_type(&self,
-                        out: &mut RustFileSpec,
-                        type_id: &RpTypeId,
-                        _: &Pos,
-                        body: Rc<RpTypeBody>)
-                        -> Result<()> {
+    pub fn process_type(
+        &self,
+        out: &mut RustFileSpec,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpTypeBody>,
+    ) -> Result<()> {
         let mut fields = Elements::new();
 
         for field in &body.fields {
@@ -195,12 +207,13 @@ impl RustBackend {
         Ok(())
     }
 
-    pub fn process_interface(&self,
-                             out: &mut RustFileSpec,
-                             type_id: &RpTypeId,
-                             _: &Pos,
-                             body: Rc<RpInterfaceBody>)
-                             -> Result<()> {
+    pub fn process_interface(
+        &self,
+        out: &mut RustFileSpec,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpInterfaceBody>,
+    ) -> Result<()> {
         let mut enum_spec = EnumSpec::new(&body.name);
         enum_spec.public();
 
@@ -215,9 +228,11 @@ impl RustBackend {
             let mut elements = Elements::new();
 
             if let Some(name) = sub_type.names.first() {
-                elements.push(stmt!["#[serde(rename = ",
-                                    Variable::String((**name).to_owned()),
-                                    ")]"]);
+                elements.push(stmt![
+                    "#[serde(rename = ",
+                    Variable::String((**name).to_owned()),
+                    ")]",
+                ]);
             }
 
             elements.push(stmt![&sub_type.name, " {"]);

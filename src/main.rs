@@ -16,9 +16,17 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 fn setup_opts<'a, 'b>() -> App<'a, 'b> {
     let app = App::new("reproto").version(VERSION);
-    let app = app.arg(Arg::with_name("debug").long("debug").short("D").help("Enable debug output"));
-    let app = app.arg(Arg::with_name("color").long("color").help("Force colored output"));
-    let app = app.arg(Arg::with_name("no-color").long("no-color").help("Disable colored output"));
+    let app = app.arg(Arg::with_name("debug").long("debug").short("D").help(
+        "Enable debug \
+         output",
+    ));
+    let app = app.arg(Arg::with_name("color").long("color").help(
+        "Force colored output",
+    ));
+    let app = app.arg(Arg::with_name("no-color").long("no-color").help(
+        "Disable colored \
+         output",
+    ));
     app
 }
 
@@ -63,7 +71,7 @@ fn main() {
     let matches = opts.get_matches();
 
     let colored = matches.is_present("color") ||
-                  !matches.is_present("no-color") && atty::is(atty::Stream::Stdout);
+        !matches.is_present("no-color") && atty::is(atty::Stream::Stdout);
 
     let mut output: Box<output::Output> = if colored {
         Box::new(output::Colored::new(io::stdout()))

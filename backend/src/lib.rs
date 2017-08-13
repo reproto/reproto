@@ -32,7 +32,7 @@ mod options;
 pub mod imports;
 mod compiler_options;
 
-pub(crate) use reproto_core as core;
 pub use self::compiler_options::CompilerOptions;
 pub use self::environment::Environment;
 pub use self::options::Options;
+pub(crate) use reproto_core as core;

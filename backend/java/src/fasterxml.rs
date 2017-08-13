@@ -32,16 +32,22 @@ impl Module {
             sub_types: Type::class("com.fasterxml.jackson.annotation", "JsonSubTypes"),
             type_info: Type::class("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
             serialize: Type::class("com.fasterxml.jackson.databind.annotation", "JsonSerialize"),
-            deserialize: Type::class("com.fasterxml.jackson.databind.annotation",
-                                     "JsonDeserialize"),
+            deserialize: Type::class(
+                "com.fasterxml.jackson.databind.annotation",
+                "JsonDeserialize",
+            ),
             serializer: Type::class("com.fasterxml.jackson.databind", "JsonSerializer"),
             deserializer: Type::class("com.fasterxml.jackson.databind", "JsonDeserializer"),
             generator: Type::class("com.fasterxml.jackson.core", "JsonGenerator"),
-            serializer_provider: Type::class("com.fasterxml.jackson.databind",
-                                             "SerializerProvider"),
+            serializer_provider: Type::class(
+                "com.fasterxml.jackson.databind",
+                "SerializerProvider",
+            ),
             parser: Type::class("com.fasterxml.jackson.core", "JsonParser"),
-            deserialization_context: Type::class("com.fasterxml.jackson.databind",
-                                                 "DeserializationContext"),
+            deserialization_context: Type::class(
+                "com.fasterxml.jackson.databind",
+                "DeserializationContext",
+            ),
             type_reference: Type::class("com.fasterxml.jackson.core.type", "TypeReference"),
             token: Type::class("com.fasterxml.jackson.core", "JsonToken"),
             string: Type::class("java.lang", "String"),
@@ -51,16 +57,18 @@ impl Module {
 
     /// RpName serialize implementation for tuples.
     fn tuple_serializer(&self, fields: &[JavaField], class_type: &ClassType) -> Result<ClassSpec> {
-        let mut serializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
-                                            "Serializer");
+        let mut serializer =
+            ClassSpec::new(mods![Modifier::Public, Modifier::Static], "Serializer");
 
         serializer.extends(self.serializer.with_arguments(vec![&class_type]));
 
         let value = ArgumentSpec::new(mods![Modifier::Final], &class_type, "value");
         let jgen = ArgumentSpec::new(mods![Modifier::Final], &self.generator, "jgen");
-        let provider = ArgumentSpec::new(mods![Modifier::Final],
-                                         &self.serializer_provider,
-                                         "provider");
+        let provider = ArgumentSpec::new(
+            mods![Modifier::Final],
+            &self.serializer_provider,
+            "provider",
+        );
 
         let mut serialize = MethodSpec::new(mods![Modifier::Public], "serialize");
         serialize.throws(&self.io_exception);
@@ -106,27 +114,44 @@ impl Module {
         Ok(serializer)
     }
 
-    fn deserialize_method_for_type<A>(&self,
-                                      ty: &Type,
-                                      parser: &A)
-                                      -> Result<(Option<(Statement, &str)>, Statement)>
-        where A: Into<Variable> + Clone
+    fn deserialize_method_for_type<A>(
+        &self,
+        ty: &Type,
+        parser: &A,
+    ) -> Result<(Option<(Statement, &str)>, Statement)>
+    where
+        A: Into<Variable> + Clone,
     {
         let (token, reader) = match *ty {
             Type::Primitive(ref primitive) => {
                 let test = stmt!["!", parser, ".nextToken().isNumeric()"];
 
                 match *primitive {
-                    SHORT => (Some((test, "VALUE_NUMBER_INT")), stmt![parser, ".getShortValue()"]),
-                    LONG => (Some((test, "VALUE_NUMBER_INT")), stmt![parser, ".getLongValue()"]),
+                    SHORT => (
+                        Some((test, "VALUE_NUMBER_INT")),
+                        stmt![parser, ".getShortValue()"],
+                    ),
+                    LONG => (
+                        Some((test, "VALUE_NUMBER_INT")),
+                        stmt![parser, ".getLongValue()"],
+                    ),
                     INTEGER => {
-                        (Some((test, "VALUE_NUMBER_INT")), stmt![parser, ".getIntegerValue()"])
+                        (
+                            Some((test, "VALUE_NUMBER_INT")),
+                            stmt![parser, ".getIntegerValue()"],
+                        )
                     }
                     FLOAT => {
-                        (Some((test, "VALUE_NUMBER_FLOAT")), stmt![parser, ".getFloatValue()"])
+                        (
+                            Some((test, "VALUE_NUMBER_FLOAT")),
+                            stmt![parser, ".getFloatValue()"],
+                        )
                     }
                     DOUBLE => {
-                        (Some((test, "VALUE_NUMBER_FLOAT")), stmt![parser, ".getDoubleValue()"])
+                        (
+                            Some((test, "VALUE_NUMBER_FLOAT")),
+                            stmt![parser, ".getDoubleValue()"],
+                        )
                     }
                     _ => return Err("cannot deserialize type".into()),
                 }
@@ -140,7 +165,11 @@ impl Module {
                     let argument = if class.arguments.is_empty() {
                         stmt![class, ".class"]
                     } else {
-                        stmt!["new ", self.type_reference.with_arguments(vec![class]), "(){}"]
+                        stmt![
+                            "new ",
+                            self.type_reference.with_arguments(vec![class]),
+                            "(){}",
+                        ]
                     };
 
                     (None, stmt![parser, ".readValueAs(", argument, ")"])
@@ -154,33 +183,43 @@ impl Module {
         Ok((token, reader))
     }
 
-    fn wrong_token_exception(&self,
-                             ctxt: &ArgumentSpec,
-                             parser: &ArgumentSpec,
-                             token: &str)
-                             -> Statement {
+    fn wrong_token_exception(
+        &self,
+        ctxt: &ArgumentSpec,
+        parser: &ArgumentSpec,
+        token: &str,
+    ) -> Statement {
         let mut arguments = Statement::new();
         arguments.push(parser);
         arguments.push(stmt![&self.token, ".", token]);
         arguments.push("null");
 
-        stmt!["throw ", ctxt, ".wrongTokenException(", arguments.join(", "), ");"]
+        stmt![
+            "throw ",
+            ctxt,
+            ".wrongTokenException(",
+            arguments.join(", "),
+            ");",
+        ]
     }
 
     /// RpName deserialize implementation for tuples.
-    fn tuple_deserializer(&self,
-                          fields: &[JavaField],
-                          class_type: &ClassType)
-                          -> Result<ClassSpec> {
-        let mut deserializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
-                                              "Deserializer");
+    fn tuple_deserializer(
+        &self,
+        fields: &[JavaField],
+        class_type: &ClassType,
+    ) -> Result<ClassSpec> {
+        let mut deserializer =
+            ClassSpec::new(mods![Modifier::Public, Modifier::Static], "Deserializer");
 
         deserializer.extends(self.deserializer.with_arguments(vec![&class_type]));
 
         let parser = ArgumentSpec::new(mods![Modifier::Final], &self.parser, "parser");
-        let ctxt = ArgumentSpec::new(mods![Modifier::Final],
-                                     &self.deserialization_context,
-                                     "ctxt");
+        let ctxt = ArgumentSpec::new(
+            mods![Modifier::Final],
+            &self.deserialization_context,
+            "ctxt",
+        );
 
         let mut deserialize = MethodSpec::new(mods![Modifier::Public], "deserialize");
         deserialize.throws(&self.io_exception);
@@ -192,7 +231,13 @@ impl Module {
         let current_token = stmt![&parser, ".getCurrentToken()"];
 
         let mut start_array = Elements::new();
-        start_array.push(stmt!["if (", &current_token, " != ", &self.token, ".START_ARRAY) {"]);
+        start_array.push(stmt![
+            "if (",
+            &current_token,
+            " != ",
+            &self.token,
+            ".START_ARRAY) {",
+        ]);
         start_array.push_nested(self.wrong_token_exception(&ctxt, &parser, "START_ARRAY"));
         start_array.push("}");
         deserialize.push(start_array);
@@ -211,7 +256,16 @@ impl Module {
             }
 
             let variable = stmt!["v_", &field.java_spec.name];
-            let assign = stmt!["final ", &field.java_type, " ", &variable, " = ", reader, ";"];
+            let assign =
+                stmt![
+                "final ",
+                &field.java_type,
+                " ",
+                &variable,
+                " = ",
+                reader,
+                ";",
+            ];
             deserialize.push(assign);
             arguments.push(variable);
         }
@@ -219,12 +273,24 @@ impl Module {
         let next_token = stmt![&parser, ".nextToken()"];
 
         let mut end_array = Elements::new();
-        end_array.push(stmt!["if (", &next_token, " != ", &self.token, ".END_ARRAY) {"]);
+        end_array.push(stmt![
+            "if (",
+            &next_token,
+            " != ",
+            &self.token,
+            ".END_ARRAY) {",
+        ]);
         end_array.push_nested(self.wrong_token_exception(&ctxt, &parser, "END_ARRAY"));
         end_array.push("}");
         deserialize.push(end_array);
 
-        deserialize.push(stmt!["return new ", &class_type, "(", arguments.join(", "), ");"]);
+        deserialize.push(stmt![
+            "return new ",
+            &class_type,
+            "(",
+            arguments.join(", "),
+            ");",
+        ]);
 
         deserializer.push(deserialize);
         Ok(deserializer)
@@ -238,11 +304,14 @@ impl Module {
         let constructor = &mut spec.constructors[0];
 
         if constructor.arguments.len() != fields.len() {
-            return Err(format!("the number of constructor arguments ({}) did not match \
-                                the number of fields ({})",
-                               constructor.arguments.len(),
-                               fields.len())
-                .into());
+            return Err(
+                format!(
+                    "the number of constructor arguments ({}) did not match the number of fields \
+                     ({})",
+                    constructor.arguments.len(),
+                    fields.len()
+                ).into(),
+            );
         }
 
         let creator_annotation = AnnotationSpec::new(&self.creator);
@@ -281,18 +350,26 @@ impl Module {
     }
 
     /// Build the fallback method used when matching to deserialize using a companion model.
-    fn deserialize_using_model(&self,
-                               model: &ClassSpec,
-                               class_type: &ClassType,
-                               parser: &ArgumentSpec)
-                               -> Result<Elements> {
+    fn deserialize_using_model(
+        &self,
+        model: &ClassSpec,
+        class_type: &ClassType,
+        parser: &ArgumentSpec,
+    ) -> Result<Elements> {
         let mut elements = Elements::new();
 
         // fallback to deserializing model and assigning fields from it.
         let model_name = stmt!["m"];
 
         let var_decl = stmt!["final ", &model.name, " ", &model_name];
-        elements.push(stmt![var_decl, " = ", parser, ".readValueAs(", &model.name, ".class);"]);
+        elements.push(stmt![
+            var_decl,
+            " = ",
+            parser,
+            ".readValueAs(",
+            &model.name,
+            ".class);",
+        ]);
 
         let mut arguments = Statement::new();
 
@@ -300,7 +377,13 @@ impl Module {
             arguments.push(stmt![&model_name, ".", &field.name]);
         }
 
-        elements.push(stmt!["return new ", class_type, "(", arguments.join(", "), ");"]);
+        elements.push(stmt![
+            "return new ",
+            class_type,
+            "(",
+            arguments.join(", "),
+            ");",
+        ]);
 
         Ok(elements)
     }
@@ -310,23 +393,26 @@ impl Module {
     /// * `match_decl` - The declaration to to use when deserializing.
     /// * `model` - The model to return when falling back to default deserialization.
     /// * `class_type` - The class to deserialize to.
-    fn match_deserializer(&self,
-                          type_id: &RpTypeId,
-                          match_decl: &RpMatchDecl,
-                          model: &ClassSpec,
-                          class_type: &ClassType,
-                          backend: &JavaBackend)
-                          -> Result<ClassSpec> {
+    fn match_deserializer(
+        &self,
+        type_id: &RpTypeId,
+        match_decl: &RpMatchDecl,
+        model: &ClassSpec,
+        class_type: &ClassType,
+        backend: &JavaBackend,
+    ) -> Result<ClassSpec> {
         // TODO: mostly common code for setting up a deserializer with tuple_deserializer.
-        let mut deserializer = ClassSpec::new(mods![Modifier::Public, Modifier::Static],
-                                              "Deserializer");
+        let mut deserializer =
+            ClassSpec::new(mods![Modifier::Public, Modifier::Static], "Deserializer");
 
         deserializer.extends(self.deserializer.with_arguments(vec![&class_type]));
 
         let parser = ArgumentSpec::new(mods![Modifier::Final], &self.parser, "parser");
-        let ctxt = ArgumentSpec::new(mods![Modifier::Final],
-                                     &self.deserialization_context,
-                                     "ctxt");
+        let ctxt = ArgumentSpec::new(
+            mods![Modifier::Final],
+            &self.deserialization_context,
+            "ctxt",
+        );
 
         let mut deserialize = MethodSpec::new(mods![Modifier::Public], "deserialize");
         deserialize.throws(&self.io_exception);
@@ -361,15 +447,18 @@ impl Module {
         let mut model = self.build_model(event.fields);
         self.add_class_annotations(&mut model, &event.fields)?;
 
-        let deserializer = self.match_deserializer(&event.type_id,
-                                &event.match_decl,
-                                &model,
-                                &event.class_type,
-                                &event.backend)?;
+        let deserializer = self.match_deserializer(
+            &event.type_id,
+            &event.match_decl,
+            &model,
+            &event.class_type,
+            &event.backend,
+        )?;
 
-        let deserializer_type =
-            Type::class(&event.class_type.package,
-                        &format!("{}.{}", &event.class_type.name, &deserializer.name));
+        let deserializer_type = Type::class(
+            &event.class_type.package,
+            &format!("{}.{}", &event.class_type.name, &deserializer.name),
+        );
 
         let mut deserialize_annotation: AnnotationSpec = self.deserialize.clone().into();
         deserialize_annotation.push_argument(stmt!["using = ", deserializer_type, ".class"]);
@@ -396,9 +485,10 @@ impl Listeners for Module {
     fn tuple_added(&self, event: &mut TupleAdded) -> Result<()> {
         let serializer = self.tuple_serializer(&event.fields, &event.class_type)?;
 
-        let serializer_type =
-            Type::class(&event.class_type.package,
-                        &format!("{}.{}", event.class_type.name, serializer.name));
+        let serializer_type = Type::class(
+            &event.class_type.package,
+            &format!("{}.{}", event.class_type.name, serializer.name),
+        );
 
         let mut serialize_annotation: AnnotationSpec = self.serialize.clone().into();
         serialize_annotation.push_argument(stmt!["using = ", serializer_type, ".class"]);
@@ -408,9 +498,10 @@ impl Listeners for Module {
 
         let deserializer = self.tuple_deserializer(&event.fields, &event.class_type)?;
 
-        let deserializer_type =
-            Type::class(&event.class_type.package,
-                        &format!("{}.{}", &event.class_type.name, deserializer.name));
+        let deserializer_type = Type::class(
+            &event.class_type.package,
+            &format!("{}.{}", &event.class_type.name, deserializer.name),
+        );
 
         let mut deserialize_annotation: AnnotationSpec = self.deserialize.clone().into();
         deserialize_annotation.push_argument(stmt!["using = ", deserializer_type, ".class"]);
@@ -485,26 +576,49 @@ impl<'a> FasterXmlMatchDecode<'a> {
         match *kind {
             RpMatchKind::Any => stmt!["true"],
             RpMatchKind::Object => {
-                stmt![stmt![data, ".getCurrentToken() == ", &self.module.token, ".START_OBJECT"]]
+                stmt![
+                    stmt![
+                        data,
+                        ".getCurrentToken() == ",
+                        &self.module.token,
+                        ".START_OBJECT",
+                    ],
+                ]
             }
             RpMatchKind::Array => {
-                stmt![data, ".getCurrentToken() == ", &self.module.token, ".START_ARRAY"]
+                stmt![
+                    data,
+                    ".getCurrentToken() == ",
+                    &self.module.token,
+                    ".START_ARRAY",
+                ]
             }
             RpMatchKind::String => {
-                stmt![data, ".getCurrentToken() == ", &self.module.token, ".VALUE_STRING"]
+                stmt![
+                    data,
+                    ".getCurrentToken() == ",
+                    &self.module.token,
+                    ".VALUE_STRING",
+                ]
             }
             RpMatchKind::Boolean => {
-                stmt![data, ".getCurrentToken() == ", &self.module.token, ".VALUE_BOOLEAN"]
+                stmt![
+                    data,
+                    ".getCurrentToken() == ",
+                    &self.module.token,
+                    ".VALUE_BOOLEAN",
+                ]
             }
             RpMatchKind::Number => stmt![data, ".getCurrentToken().isNumeric()"],
         }
     }
 
-    fn value_check(&self,
-                   data: &Statement,
-                   kind: &RpMatchKind,
-                   other: &Statement)
-                   -> Result<Statement> {
+    fn value_check(
+        &self,
+        data: &Statement,
+        kind: &RpMatchKind,
+        other: &Statement,
+    ) -> Result<Statement> {
         match *kind {
             RpMatchKind::String => return Ok(stmt![data, ".getText() == ", &other]),
             RpMatchKind::Boolean => return Ok(stmt![data, ".getBooleanValue() == ", &other]),
@@ -517,12 +631,13 @@ impl<'a> FasterXmlMatchDecode<'a> {
 }
 
 impl<'a> BaseDecode for FasterXmlMatchDecode<'a> {
-    fn base_decode(&self,
-                   type_id: &RpTypeId,
-                   pos: &Pos,
-                   ty: &RpType,
-                   input: &Self::Stmt)
-                   -> Result<Self::Stmt> {
+    fn base_decode(
+        &self,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        ty: &RpType,
+        input: &Self::Stmt,
+    ) -> Result<Self::Stmt> {
         let ty = self.backend.into_java_type(pos, ty, type_id)?;
         let (_, reader) = self.module.deserialize_method_for_type(&ty, input)?;
         Ok(reader)
@@ -530,13 +645,14 @@ impl<'a> BaseDecode for FasterXmlMatchDecode<'a> {
 }
 
 impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
-    fn match_value(&self,
-                   data: &Statement,
-                   value: &RpValue,
-                   value_stmt: Statement,
-                   _result: &RpObject,
-                   result_stmt: Statement)
-                   -> Result<Elements> {
+    fn match_value(
+        &self,
+        data: &Statement,
+        value: &RpValue,
+        value_stmt: Statement,
+        _result: &RpObject,
+        result_stmt: Statement,
+    ) -> Result<Elements> {
         let mut value_body = Elements::new();
         let kind = value.as_match_kind();
         let check = self.type_check(data, &kind);
@@ -549,23 +665,35 @@ impl<'a> MatchDecode for FasterXmlMatchDecode<'a> {
         Ok(value_body)
     }
 
-    fn match_type(&self,
-                  type_id: &RpTypeId,
-                  data: &Statement,
-                  kind: &RpMatchKind,
-                  variable: &str,
-                  decode: Statement,
-                  result: Statement,
-                  value: &RpByTypeMatch)
-                  -> Result<Elements> {
-        let variable_ty = self.backend
-            .into_java_type(value.variable.pos(), &value.variable.ty, type_id)?;
+    fn match_type(
+        &self,
+        type_id: &RpTypeId,
+        data: &Statement,
+        kind: &RpMatchKind,
+        variable: &str,
+        decode: Statement,
+        result: Statement,
+        value: &RpByTypeMatch,
+    ) -> Result<Elements> {
+        let variable_ty = self.backend.into_java_type(
+            value.variable.pos(),
+            &value.variable.ty,
+            type_id,
+        )?;
 
         let mut value_body = Elements::new();
         let check = self.type_check(data, kind);
 
         value_body.push(stmt!["if (", check, ") {"]);
-        value_body.push_nested(stmt!["final ", &variable_ty, " ", &variable, " = ", decode, ";"]);
+        value_body.push_nested(stmt![
+            "final ",
+            &variable_ty,
+            " ",
+            &variable,
+            " = ",
+            decode,
+            ";",
+        ]);
         value_body.push_nested(stmt!["return ", &result, ";"]);
         value_body.push("}");
 

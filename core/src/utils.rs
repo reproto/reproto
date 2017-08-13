@@ -1,6 +1,7 @@
-use std::collections::HashSet;
+
 use super::*;
 use super::errors::*;
+use std::collections::HashSet;
 
 type Fields = Vec<Loc<RpField>>;
 type Codes = Vec<Loc<RpCode>>;
@@ -17,9 +18,10 @@ pub fn code(pos: &Pos, ast_pos: ast::Pos, context: String, lines: Vec<String>) -
     Loc::new(code, pos)
 }
 
-pub fn members_into_model(pos: &Pos,
-                          members: Vec<ast::AstLoc<ast::Member>>)
-                          -> Result<(Fields, Codes, OptionVec, RpMatchDecl)> {
+pub fn members_into_model(
+    pos: &Pos,
+    members: Vec<ast::AstLoc<ast::Member>>,
+) -> Result<(Fields, Codes, OptionVec, RpMatchDecl)> {
     let mut fields: Vec<Loc<RpField>> = Vec::new();
     let mut codes = Vec::new();
     let mut options: Vec<Loc<RpOptionDecl>> = Vec::new();
@@ -33,7 +35,11 @@ pub fn members_into_model(pos: &Pos,
                 let field = field.into_model(&pos)?;
 
                 if let Some(other) = fields.iter().find(|f| f.name == field.name) {
-                    return Err(Error::field_conflict(field.name.clone(), pos, other.pos.clone()));
+                    return Err(Error::field_conflict(
+                        field.name.clone(),
+                        pos,
+                        other.pos.clone(),
+                    ));
                 }
 
                 fields.push(Loc::new(field, pos));
@@ -95,8 +101,10 @@ impl OrdinalGenerator {
         self.next_ordinal += 1;
 
         if self.ordinals.contains(&o) {
-            return Err(Error::pos(format!("generated ordinal {} conflicts with existing", o),
-                                  pos.clone()));
+            return Err(Error::pos(
+                format!("generated ordinal {} conflicts with existing", o),
+                pos.clone(),
+            ));
         }
 
         Ok(o)

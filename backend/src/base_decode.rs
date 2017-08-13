@@ -5,12 +5,14 @@ use core::{Pos, RpType, RpTypeId};
 use errors::*;
 
 pub trait BaseDecode
-    where Self: Converter
+where
+    Self: Converter,
 {
-    fn base_decode(&self,
-                   type_id: &RpTypeId,
-                   pos: &Pos,
-                   ty: &RpType,
-                   input: &Self::Stmt)
-                   -> Result<Self::Stmt>;
+    fn base_decode(
+        &self,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        ty: &RpType,
+        input: &Self::Stmt,
+    ) -> Result<Self::Stmt>;
 }

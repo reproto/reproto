@@ -39,13 +39,19 @@ impl ReprotoService {
     }
 
     fn gzip_encoding(input: &File) -> Result<Box<Read>> {
-        Ok(Box::new(input.try_clone()?.gz_decode().chain_err(|| "failed to open gz file")?))
+        Ok(Box::new(input.try_clone()?.gz_decode().chain_err(
+            || "failed to open gz file",
+        )?))
     }
 
     fn pick_encoding(headers: &Headers) -> fn(&File) -> Result<Box<Read>> {
         if let Some(h) = headers.get::<ContentEncoding>() {
             // client encoded as gzip
-            if h.0.iter().find(|encoding| **encoding == Encoding::Gzip).is_some() {
+            if h.0
+                .iter()
+                .find(|encoding| **encoding == Encoding::Gzip)
+                .is_some()
+            {
                 return Self::gzip_encoding;
             }
         }
@@ -58,7 +64,8 @@ impl ReprotoService {
     }
 
     fn get_objects<'a, I>(&self, path: I) -> Result<Box<Future<Item = Response, Error = Error>>>
-        where I: IntoIterator<Item = &'a str>
+    where
+        I: IntoIterator<Item = &'a str>,
     {
         let id = if let Some(id) = path.into_iter().next() {
             id
@@ -68,35 +75,45 @@ impl ReprotoService {
 
         let objects = self.objects.clone();
 
-        let checksum = Checksum::from_str(id).map_err(|_| BadRequest(BAD_OBJECT_ID))?;
+        let checksum = Checksum::from_str(id).map_err(
+            |_| BadRequest(BAD_OBJECT_ID),
+        )?;
 
         // No async I/O, use pool
-        Ok(self.pool
-            .spawn_fn(move || {
-                let result = objects.lock().map_err(|_| PoisonError)?.get_object(&checksum)?;
+        Ok(
+            self.pool
+                .spawn_fn(move || {
+                    let result = objects.lock().map_err(|_| PoisonError)?.get_object(
+                        &checksum,
+                    )?;
 
-                let object = match result {
-                    Some(object) => object,
-                    None => return Ok(Self::not_found()),
-                };
+                    let object = match result {
+                        Some(object) => object,
+                        None => return Ok(Self::not_found()),
+                    };
 
-                let bytes = read_contents(object.read()?)?;
+                    let bytes = read_contents(object.read()?)?;
 
-                Ok(Response::new()
-                    .with_status(StatusCode::Ok)
-                    .with_header(ContentLength(bytes.len() as u64))
-                    .with_body(bytes))
-            })
-            .boxed())
+                    Ok(
+                        Response::new()
+                            .with_status(StatusCode::Ok)
+                            .with_header(ContentLength(bytes.len() as u64))
+                            .with_body(bytes),
+                    )
+                })
+                .boxed(),
+        )
     }
 
     /// Put the uploaded object into the object repository.
-    fn put_uploaded_object<F>(&self,
-                              body: F,
-                              checksum: Checksum,
-                              encoding: EncodingFn)
-                              -> Box<Future<Item = Response, Error = Error>>
-        where F: 'static + Future<Item = File, Error = Error>
+    fn put_uploaded_object<F>(
+        &self,
+        body: F,
+        checksum: Checksum,
+        encoding: EncodingFn,
+    ) -> Box<Future<Item = Response, Error = Error>>
+    where
+        F: 'static + Future<Item = File, Error = Error>,
     {
         let pool = self.pool.clone();
         let objects = self.objects.clone();
@@ -106,15 +123,16 @@ impl ReprotoService {
                 tmp.seek(SeekFrom::Start(0))?;
                 let mut checksum_read = encoding(&tmp)?;
 
-                let actual =
-                    to_checksum(&mut checksum_read).chain_err(|| "failed to calculate checksum")?;
+                let actual = to_checksum(&mut checksum_read).chain_err(|| {
+                    "failed to calculate checksum"
+                })?;
 
                 if actual != checksum {
                     info!("{} != {}", actual, checksum);
 
-                    return Ok(Response::new()
-                        .with_body(CHECKSUM_MISMATCH)
-                        .with_status(StatusCode::BadRequest));
+                    return Ok(Response::new().with_body(CHECKSUM_MISMATCH).with_status(
+                        StatusCode::BadRequest,
+                    ));
                 }
 
                 info!("Uploading object: {}", checksum);
@@ -122,7 +140,8 @@ impl ReprotoService {
                 tmp.seek(SeekFrom::Start(0))?;
                 let mut read = encoding(&tmp)?;
 
-                objects.lock()
+                objects
+                    .lock()
                     .map_err(|_| PoisonError)?
                     .put_object(&checksum, &mut read, false)
                     .chain_err(|| "failed to put object")?;
@@ -134,11 +153,13 @@ impl ReprotoService {
         Box::new(upload)
     }
 
-    fn put_objects<'a, I>(&self,
-                          req: Request,
-                          path: I)
-                          -> Result<Box<Future<Item = Response, Error = Error>>>
-        where I: IntoIterator<Item = &'a str>
+    fn put_objects<'a, I>(
+        &self,
+        req: Request,
+        path: I,
+    ) -> Result<Box<Future<Item = Response, Error = Error>>>
+    where
+        I: IntoIterator<Item = &'a str>,
     {
         let id = if let Some(id) = path.into_iter().next() {
             id
@@ -146,7 +167,9 @@ impl ReprotoService {
             return Ok(ok(Self::not_found()).boxed());
         };
 
-        let checksum = Checksum::from_str(id).map_err(|_| BadRequest(BAD_OBJECT_ID))?;
+        let checksum = Checksum::from_str(id).map_err(
+            |_| BadRequest(BAD_OBJECT_ID),
+        )?;
 
         if let Some(len) = req.headers().get::<ContentLength>() {
             if len.0 > self.max_file_size {
@@ -163,11 +186,13 @@ impl ReprotoService {
         Ok(self.put_uploaded_object(body, checksum, encoding))
     }
 
-    fn inner_call<'a, I>(&self,
-                         req: Request,
-                         path: I)
-                         -> Result<Box<Future<Item = Response, Error = Error>>>
-        where I: IntoIterator<Item = &'a str>
+    fn inner_call<'a, I>(
+        &self,
+        req: Request,
+        path: I,
+    ) -> Result<Box<Future<Item = Response, Error = Error>>>
+    where
+        I: IntoIterator<Item = &'a str>,
     {
         let mut it = path.into_iter();
 
@@ -219,8 +244,10 @@ impl Service for ReprotoService {
 
         let path = full_path.split('/').skip(1);
 
-        Box::new(self.inner_call(req, path)
-            .unwrap_or_else(|e| ok(Self::handle_error(e)).boxed())
-            .or_else(|e| ok(Self::handle_error(e))))
+        Box::new(
+            self.inner_call(req, path)
+                .unwrap_or_else(|e| ok(Self::handle_error(e)).boxed())
+                .or_else(|e| ok(Self::handle_error(e))),
+        )
     }
 }

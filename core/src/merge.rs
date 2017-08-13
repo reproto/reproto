@@ -1,7 +1,7 @@
+use super::errors::*;
 use std::collections::BTreeMap;
 use std::collections::btree_map;
 use std::rc::Rc;
-use super::errors::*;
 
 /// Merging of models.
 pub trait Merge {
@@ -10,7 +10,8 @@ pub trait Merge {
 }
 
 impl<T> Merge for Rc<T>
-    where T: Merge
+where
+    T: Merge,
 {
     fn merge(&mut self, source: Rc<T>) -> Result<()> {
         let mut rc = Rc::get_mut(self).ok_or(ErrorKind::RcGetMut)?;
@@ -21,8 +22,9 @@ impl<T> Merge for Rc<T>
 }
 
 impl<K, T> Merge for BTreeMap<K, T>
-    where T: Merge,
-          K: ::std::cmp::Ord
+where
+    T: Merge,
+    K: ::std::cmp::Ord,
 {
     fn merge(&mut self, source: BTreeMap<K, T>) -> Result<()> {
         for (key, value) in source {

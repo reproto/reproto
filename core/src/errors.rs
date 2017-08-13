@@ -1,5 +1,5 @@
-use mime;
 use super::ErrorPos;
+use mime;
 
 error_chain! {
     foreign_links {

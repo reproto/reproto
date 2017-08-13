@@ -24,11 +24,12 @@ pub struct ValueContext<'a> {
 }
 
 impl<'a> ValueContext<'a> {
-    pub fn new(package: &'a RpVersionedPackage,
-               variables: &'a Variables,
-               value: &'a Loc<RpValue>,
-               expected: Option<&'a RpType>)
-               -> ValueContext<'a> {
+    pub fn new(
+        package: &'a RpVersionedPackage,
+        variables: &'a Variables,
+        value: &'a Loc<RpValue>,
+        expected: Option<&'a RpType>,
+    ) -> ValueContext<'a> {
         ValueContext {
             package: package,
             variables: variables,
@@ -46,11 +47,12 @@ pub struct ObjectContext<'a> {
 }
 
 impl<'a> ObjectContext<'a> {
-    pub fn new(package: &'a RpVersionedPackage,
-               variables: &'a Variables,
-               object: &'a Loc<RpObject>,
-               expected: Option<&'a RpType>)
-               -> ObjectContext<'a> {
+    pub fn new(
+        package: &'a RpVersionedPackage,
+        variables: &'a Variables,
+        object: &'a Loc<RpObject>,
+        expected: Option<&'a RpType>,
+    ) -> ObjectContext<'a> {
         ObjectContext {
             package: package,
             variables: variables,
@@ -61,7 +63,8 @@ impl<'a> ObjectContext<'a> {
 }
 
 pub trait ValueBuilder
-    where Self: Converter
+where
+    Self: Converter,
 {
     fn env(&self) -> &Environment;
 
@@ -105,34 +108,50 @@ pub trait ValueBuilder
 
         match (object.as_ref(), expected) {
             (&RpObject::Constant(ref constant), Some(&RpType::Name { ref name })) => {
-                let reg_constant = self.env()
-                    .constant(object.pos(), &ctx.package, constant, name)?;
+                let reg_constant = self.env().constant(
+                    object.pos(),
+                    &ctx.package,
+                    constant,
+                    name,
+                )?;
 
                 match *reg_constant {
-                    RpRegistered::EnumConstant { parent: _, variant: _ } => {
-                        let ty = self.convert_constant(object.pos(),
-                                              &ctx.package
-                                                  .into_type_id(constant.as_ref().clone()))?;
+                    RpRegistered::EnumConstant {
+                        parent: _,
+                        variant: _,
+                    } => {
+                        let ty = self.convert_constant(
+                            object.pos(),
+                            &ctx.package.into_type_id(constant.as_ref().clone()),
+                        )?;
                         return self.constant(ty);
                     }
                     _ => {
-                        return Err(Error::pos("not a valid enum constant".into(),
-                                              object.pos().into()))
+                        return Err(Error::pos(
+                            "not a valid enum constant".into(),
+                            object.pos().into(),
+                        ))
                     }
                 }
             }
             (&RpObject::Instance(ref instance), Some(&RpType::Name { ref name })) => {
-                let (registered, known) = self.env()
-                    .instance(object.pos(), ctx.package, instance, name)?;
+                let (registered, known) = self.env().instance(
+                    object.pos(),
+                    ctx.package,
+                    instance,
+                    name,
+                )?;
 
                 let mut arguments = Vec::new();
 
                 for f in registered.fields()? {
                     if let Some(init) = known.get(f.ident()) {
-                        let ctx = ValueContext::new(&ctx.package,
-                                                    &ctx.variables,
-                                                    &init.value,
-                                                    Some(&f.ty));
+                        let ctx = ValueContext::new(
+                            &ctx.package,
+                            &ctx.variables,
+                            &init.value,
+                            Some(&f.ty),
+                        );
                         let value = self.value(ctx)?;
 
                         let value = match f.is_optional() {
@@ -143,24 +162,30 @@ pub trait ValueBuilder
                         arguments.push(value);
                     } else {
                         if !f.is_optional() {
-                            return Err(Error::pos(format!("missing required parameter `{}`",
-                                                          f.ident()),
-                                                  object.pos().into()));
+                            return Err(Error::pos(
+                                format!("missing required parameter `{}`", f.ident()),
+                                object.pos().into(),
+                            ));
                         }
 
                         arguments.push(self.optional_empty()?);
                     }
                 }
 
-                let ty = self.convert_type(object.pos(),
-                                  &ctx.package.into_type_id(instance.name.clone()))?;
+                let ty = self.convert_type(
+                    object.pos(),
+                    &ctx.package.into_type_id(instance.name.clone()),
+                )?;
                 return self.instance(ty, arguments);
             }
             _ => {}
         }
 
         if let Some(expected) = expected {
-            Err(Error::pos(format!("expected `{}`", expected), object.pos().into()))
+            Err(Error::pos(
+                format!("expected `{}`", expected),
+                object.pos().into(),
+            ))
         } else {
             Err(Error::pos("unexpected value".into(), object.pos().into()))
         }
@@ -198,7 +223,10 @@ pub trait ValueBuilder
                 let inner = match expected {
                     Some(&RpType::Array { ref inner }) => Some(&**inner),
                     Some(other) => {
-                        return Err(Error::pos(format!("expected `{}`", other), value.pos().into()))
+                        return Err(Error::pos(
+                            format!("expected `{}`", other),
+                            value.pos().into(),
+                        ))
                     }
                     None => None,
                 };
@@ -217,10 +245,16 @@ pub trait ValueBuilder
                 if let Some(variable_type) = ctx.variables.get(identifier) {
                     // if expected is set
                     if let Some(expected) = expected {
-                        if !self.env().is_assignable_from(&ctx.package, expected, variable_type)? {
-                            return Err(Error::pos(format!("not assignable to `{}`", expected)
-                                                      .into(),
-                                                  value.pos().into()));
+                        if !self.env().is_assignable_from(
+                            &ctx.package,
+                            expected,
+                            variable_type,
+                        )?
+                        {
+                            return Err(Error::pos(
+                                format!("not assignable to `{}`", expected).into(),
+                                value.pos().into(),
+                            ));
                         }
                     }
 
@@ -230,13 +264,21 @@ pub trait ValueBuilder
                 }
             }
             (&RpValue::Object(ref object), expected) => {
-                return self.object(ObjectContext::new(&ctx.package, &ctx.variables, object, expected));
+                return self.object(ObjectContext::new(
+                    &ctx.package,
+                    &ctx.variables,
+                    object,
+                    expected,
+                ));
             }
             _ => {}
         }
 
         if let Some(expected) = expected {
-            Err(Error::pos(format!("expected `{}`", expected), value.pos().into()))
+            Err(Error::pos(
+                format!("expected `{}`", expected),
+                value.pos().into(),
+            ))
         } else {
             Err(Error::pos("unexpected value".into(), value.pos().into()))
         }

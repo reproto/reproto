@@ -1,21 +1,24 @@
 use super::*;
 
 pub fn is_defined<S>(stmt: S) -> Statement
-    where S: Into<Statement>
+where
+    S: Into<Statement>,
 {
     let s = stmt.into();
     stmt![&s, " !== null && ", &s, " !== undefined"]
 }
 
 pub fn is_not_defined<S>(stmt: S) -> Statement
-    where S: Into<Statement>
+where
+    S: Into<Statement>,
 {
     let s = stmt.into();
     stmt![&s, " === null || ", &s, " === undefined"]
 }
 
 pub fn string<S>(s: S) -> Variable
-    where S: ToString
+where
+    S: ToString,
 {
     Variable::String(s.to_string())
 }

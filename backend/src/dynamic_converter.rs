@@ -4,7 +4,8 @@ use converter::Converter;
 use core::RpType;
 
 pub trait DynamicConverter
-    where Self: Converter
+where
+    Self: Converter,
 {
     /// If the type deeply compatible already with the language and need no conversion.
     fn is_native(&self, &RpType) -> bool;

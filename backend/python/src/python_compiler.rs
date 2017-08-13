@@ -1,8 +1,8 @@
+use super::*;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use super::*;
 
 pub struct PythonCompiler<'a> {
     pub out_path: PathBuf,
@@ -35,39 +35,43 @@ impl<'a> PackageProcessor<'a> for PythonCompiler<'a> {
         self.backend.package(package)
     }
 
-    fn process_tuple(&self,
-                     out: &mut Self::Out,
-                     type_id: &RpTypeId,
-                     pos: &Pos,
-                     body: Rc<RpTupleBody>)
-                     -> Result<()> {
+    fn process_tuple(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpTupleBody>,
+    ) -> Result<()> {
         self.backend.process_tuple(out, type_id, pos, body)
     }
 
-    fn process_enum(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    pos: &Pos,
-                    body: Rc<RpEnumBody>)
-                    -> Result<()> {
+    fn process_enum(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpEnumBody>,
+    ) -> Result<()> {
         self.backend.process_enum(out, type_id, pos, body)
     }
 
-    fn process_type(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    pos: &Pos,
-                    body: Rc<RpTypeBody>)
-                    -> Result<()> {
+    fn process_type(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpTypeBody>,
+    ) -> Result<()> {
         self.backend.process_type(out, type_id, pos, body)
     }
 
-    fn process_interface(&self,
-                         out: &mut Self::Out,
-                         type_id: &RpTypeId,
-                         pos: &Pos,
-                         body: Rc<RpInterfaceBody>)
-                         -> Result<()> {
+    fn process_interface(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpInterfaceBody>,
+    ) -> Result<()> {
         self.backend.process_interface(out, type_id, pos, body)
     }
 
@@ -75,14 +79,13 @@ impl<'a> PackageProcessor<'a> for PythonCompiler<'a> {
         let mut enums = Vec::new();
 
         let mut files = self.do_populate_files(|type_id, decl| {
-                if let RpDecl::Enum(ref body) = *decl.as_ref() {
-                    enums.push((type_id, body));
-                }
+            if let RpDecl::Enum(ref body) = *decl.as_ref() {
+                enums.push((type_id, body));
+            }
 
-                Ok(())
-            })?;
+            Ok(())
+        })?;
 
-        /// process static initialization of enums at bottom of file
         for (type_id, body) in enums {
             if let Some(ref mut file_spec) = files.get_mut(&type_id.package) {
                 file_spec.0.push(self.backend.enum_variants(type_id, body)?);

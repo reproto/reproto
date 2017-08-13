@@ -1,5 +1,4 @@
-pub struct JsonOptions {
-}
+pub struct JsonOptions {}
 
 impl JsonOptions {
     pub fn new() -> JsonOptions {

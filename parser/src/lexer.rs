@@ -1,9 +1,9 @@
+use super::token::*;
 use num::Zero;
 use num::bigint::BigInt;
 use reproto_core::{RpNumber, VersionReq};
 use std::result;
 use std::str::CharIndices;
-use super::token::*;
 
 /// Take until the givern pattern matches.
 /// This will return content up-until the pattern matches, and consume the pattern itself.
@@ -93,7 +93,9 @@ impl<'input> Lexer<'input> {
             self.step();
         }
 
-        self.n0.map(|n| n.0).unwrap_or_else(|| self.source_str.len())
+        self.n0.map(|n| n.0).unwrap_or_else(
+            || self.source_str.len(),
+        )
     }
 
     #[inline]
@@ -167,7 +169,8 @@ impl<'input> Lexer<'input> {
     }
 
     fn parse_fraction(input: &str) -> result::Result<(usize, BigInt), &'static str> {
-        let dec = input.chars()
+        let dec = input
+            .chars()
             .enumerate()
             .find(|&(_, ref c)| *c != '0')
             .map(|(i, _)| i)
@@ -211,20 +214,20 @@ impl<'input> Lexer<'input> {
     }
 
     fn number(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
-        let (end, number) = self.parse_number(start)
-            .map_err(|(message, offset)| {
-                Error::InvalidNumber {
-                    message: message,
-                    pos: start + offset,
-                }
-            })?;
+        let (end, number) = self.parse_number(start).map_err(|(message, offset)| {
+            Error::InvalidNumber {
+                message: message,
+                pos: start + offset,
+            }
+        })?;
 
         Ok((start, Token::Number(number), end))
     }
 
-    fn parse_number(&mut self,
-                    start: usize)
-                    -> result::Result<(usize, RpNumber), (&'static str, usize)> {
+    fn parse_number(
+        &mut self,
+        start: usize,
+    ) -> result::Result<(usize, RpNumber), (&'static str, usize)> {
         let (negative, offset) = if let Some((_, '-')) = self.one() {
             (true, self.step_n(1))
         } else {
@@ -233,7 +236,10 @@ impl<'input> Lexer<'input> {
 
         let (mut end, mut digits) = {
             let (end, whole) = take!(self, offset, '0'...'9');
-            (end, whole.parse::<BigInt>().map_err(|_| ("illegal number", end))?)
+            (
+                end,
+                whole.parse::<BigInt>().map_err(|_| ("illegal number", end))?,
+            )
         };
 
         let mut decimal = 0usize;
@@ -273,20 +279,28 @@ impl<'input> Lexer<'input> {
         let mut res = 0u32;
 
         for x in 0..4u32 {
-            let c = self.one().ok_or_else(|| ("expected digit", x as usize))?.1.to_string();
-            let c = u32::from_str_radix(&c, 16).map_err(|_| ("expected hex digit", x as usize))?;
+            let c = self.one()
+                .ok_or_else(|| ("expected digit", x as usize))?
+                .1
+                .to_string();
+            let c = u32::from_str_radix(&c, 16).map_err(|_| {
+                ("expected hex digit", x as usize)
+            })?;
             res += c << (4 * (3 - x));
             self.step();
         }
 
-        Ok(::std::char::from_u32(res).ok_or_else(|| ("invalid character", 0usize))?)
+        Ok(::std::char::from_u32(res).ok_or_else(
+            || ("invalid character", 0usize),
+        )?)
     }
 
     fn escape(&mut self, pos: usize) -> Result<char> {
         self.step();
 
-        let (_, escape) = self.one()
-            .ok_or_else(|| Error::UnterminatedEscape { start: self.pos() })?;
+        let (_, escape) = self.one().ok_or_else(
+            || Error::UnterminatedEscape { start: self.pos() },
+        )?;
 
         let escaped = match escape {
             'n' => '\n',
@@ -301,22 +315,22 @@ impl<'input> Lexer<'input> {
             'u' => {
                 let seq_start = self.step_n(1);
 
-                let c = self.decode_unicode4()
-                    .map_err(|(message, offset)| {
-                        Error::InvalidEscape {
-                            message: message,
-                            pos: seq_start + offset,
-                        }
-                    })?;
+                let c = self.decode_unicode4().map_err(|(message, offset)| {
+                    Error::InvalidEscape {
+                        message: message,
+                        pos: seq_start + offset,
+                    }
+                })?;
 
                 return Ok(c);
             }
             _ => {
-                return Err(Error::InvalidEscape {
+                return Err(
+                    Error::InvalidEscape {
                         message: "unrecognized escape, should be one of: \\n, \\r, \\t, or \\uXXXX",
                         pos: pos,
-                    }
-                    .into());
+                    }.into(),
+                );
             }
         };
 
@@ -351,10 +365,11 @@ impl<'input> Lexer<'input> {
 
     /// Tokenize code block.
     /// TODO: support escape sequences for languages where `}}` might occur.
-    fn code_block(&mut self,
-                  code_start: usize,
-                  start: usize)
-                  -> Result<(usize, Token<'input>, usize)> {
+    fn code_block(
+        &mut self,
+        code_start: usize,
+        start: usize,
+    ) -> Result<(usize, Token<'input>, usize)> {
         while let Some((end, a, b)) = self.two() {
             if ('}', '}') == (a, b) {
                 let code_end = self.step_n(2);
@@ -415,11 +430,11 @@ impl<'input> Lexer<'input> {
             take!(self, start, '^' | '<' | '>' | '=' | '.' | '-' | '0'...'9' | 'a'...'z');
 
         let version_req = VersionReq::parse(content).map_err(|_| {
-                Error::InvalidVersionReq {
-                    start: start,
-                    end: end,
-                }
-            })?;
+            Error::InvalidVersionReq {
+                start: start,
+                end: end,
+            }
+        })?;
 
         Ok((start, Token::VersionReq(version_req), end))
     }
@@ -665,9 +680,9 @@ pub fn lex(input: &str) -> Lexer {
 
 #[cfg(test)]
 pub mod tests {
-    use reproto_core::VersionReq;
     use super::*;
     use super::Token::*;
+    use reproto_core::VersionReq;
 
     fn tokenize(input: &str) -> Result<Vec<(usize, Token, usize)>> {
         lex(input).collect()
@@ -675,35 +690,45 @@ pub mod tests {
 
     #[test]
     pub fn test_lexer() {
-        let expected = vec![(0, Identifier("hello"), 5),
-                            (6, TypeIdentifier("World"), 11),
-                            (12, LeftCurly, 13),
-                            (14, UseKeyword, 17),
-                            (18, AsKeyword, 20),
-                            (21, RightCurly, 22),
-                            (23, String("hello world".into()), 36)];
+        let expected = vec![
+            (0, Identifier("hello"), 5),
+            (6, TypeIdentifier("World"), 11),
+            (12, LeftCurly, 13),
+            (14, UseKeyword, 17),
+            (18, AsKeyword, 20),
+            (21, RightCurly, 22),
+            (23, String("hello world".into()), 36),
+        ];
 
-        assert_eq!(expected,
-                   tokenize("hello World { use as } \"hello world\"").unwrap());
+        assert_eq!(
+            expected,
+            tokenize("hello World { use as } \"hello world\"").unwrap()
+        );
     }
 
     #[test]
     pub fn test_code_block() {
-        let expected = vec![(0, CodeOpen, 2),
-                            (0, CodeContent(" foo bar baz \n zing ".into()), 24),
-                            (22, CodeClose, 24)];
+        let expected = vec![
+            (0, CodeOpen, 2),
+            (0, CodeContent(" foo bar baz \n zing ".into()), 24),
+            (22, CodeClose, 24),
+        ];
 
         assert_eq!(expected, tokenize("{{ foo bar baz \n zing }}").unwrap());
     }
 
     #[test]
     pub fn test_complex_number() {
-        let expected = vec![(0,
-                             Number(RpNumber {
-                                 digits: (-1242).into(),
-                                 decimal: 6,
-                             }),
-                             9)];
+        let expected = vec![
+            (
+                0,
+                Number(RpNumber {
+                    digits: (-1242).into(),
+                    decimal: 6,
+                }),
+                9
+            ),
+        ];
 
         assert_eq!(expected, tokenize("-12.42e-4").unwrap());
     }
@@ -715,11 +740,13 @@ pub mod tests {
 
     #[test]
     pub fn test_name() {
-        let expected = vec![(0, Identifier("foo"), 3),
-                            (3, Scope, 5),
-                            (5, TypeIdentifier("Bar"), 8),
-                            (8, Dot, 9),
-                            (9, TypeIdentifier("Baz"), 12)];
+        let expected = vec![
+            (0, Identifier("foo"), 3),
+            (3, Scope, 5),
+            (5, TypeIdentifier("Bar"), 8),
+            (8, Dot, 9),
+            (9, TypeIdentifier("Baz"), 12),
+        ];
 
         assert_eq!(expected, tokenize("foo::Bar.Baz").unwrap());
     }
@@ -732,16 +759,18 @@ pub mod tests {
 
     #[test]
     pub fn test_instance() {
-        let expected = vec![(0, Identifier("foo"), 3),
-                            (3, Scope, 5),
-                            (5, TypeIdentifier("Bar"), 8),
-                            (8, Dot, 9),
-                            (9, TypeIdentifier("Baz"), 12),
-                            (12, LeftParen, 13),
-                            (13, Identifier("hello"), 18),
-                            (18, Colon, 19),
-                            (20, Number(12.into()), 22),
-                            (22, RightParen, 23)];
+        let expected = vec![
+            (0, Identifier("foo"), 3),
+            (3, Scope, 5),
+            (5, TypeIdentifier("Bar"), 8),
+            (8, Dot, 9),
+            (9, TypeIdentifier("Baz"), 12),
+            (12, LeftParen, 13),
+            (13, Identifier("hello"), 18),
+            (18, Colon, 19),
+            (20, Number(12.into()), 22),
+            (22, RightParen, 23),
+        ];
 
         assert_eq!(expected, tokenize("foo::Bar.Baz(hello: 12)").unwrap());
     }
@@ -752,8 +781,10 @@ pub mod tests {
         assert_eq!(vec![(11, Identifier("world"), 16)], tokens.unwrap());
 
         let tokens = tokenize("he/* this is a comment */llo");
-        assert_eq!(vec![(0, Identifier("he"), 2), (25, Identifier("llo"), 28)],
-                   tokens.unwrap());
+        assert_eq!(
+            vec![(0, Identifier("he"), 2), (25, Identifier("llo"), 28)],
+            tokens.unwrap()
+        );
 
         let tokens = tokenize("// test\n// this\nhello");
         assert_eq!(vec![(16, Identifier("hello"), 21)], tokens.unwrap());
@@ -780,21 +811,23 @@ pub mod tests {
     pub fn test_path() {
         let tokens = tokenize("`/foo/first_\\/{id:{string: unsigned}}`").unwrap();
 
-        let reference = [(0, Tick, 1),
-                         (1, Slash, 2),
-                         (2, PathSegment("foo".into()), 5),
-                         (5, Slash, 6),
-                         (7, PathSegment("first_/".into()), 14),
-                         (14, LeftCurly, 15),
-                         (15, Identifier("id"), 17),
-                         (17, Colon, 18),
-                         (18, LeftCurly, 19),
-                         (19, StringKeyword, 25),
-                         (25, Colon, 26),
-                         (27, UnsignedKeyword, 35),
-                         (35, RightCurly, 36),
-                         (36, RightCurly, 37),
-                         (37, Tick, 38)];
+        let reference = [
+            (0, Tick, 1),
+            (1, Slash, 2),
+            (2, PathSegment("foo".into()), 5),
+            (5, Slash, 6),
+            (7, PathSegment("first_/".into()), 14),
+            (14, LeftCurly, 15),
+            (15, Identifier("id"), 17),
+            (17, Colon, 18),
+            (18, LeftCurly, 19),
+            (19, StringKeyword, 25),
+            (25, Colon, 26),
+            (27, UnsignedKeyword, 35),
+            (35, RightCurly, 36),
+            (36, RightCurly, 37),
+            (37, Tick, 38),
+        ];
 
         assert_eq!(reference, &tokens[..]);
     }

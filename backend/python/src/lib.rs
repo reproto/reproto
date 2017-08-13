@@ -12,15 +12,15 @@ mod python_compiler;
 mod python_file_spec;
 mod python_options;
 
-pub(crate) use codeviz_python::*;
-pub(crate) use reproto_backend::errors::*;
-pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::field::*;
 pub(crate) use self::listeners::*;
 pub(crate) use self::python_backend::*;
 pub(crate) use self::python_compiler::*;
 pub(crate) use self::python_file_spec::*;
 pub(crate) use self::python_options::*;
+pub(crate) use codeviz_python::*;
+pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 
 pub(crate) const TYPE: &str = "type";
 pub(crate) const INIT_PY: &str = "__init__.py";
@@ -57,11 +57,12 @@ pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out.about("Verify for Python")
 }
 
-pub fn compile(env: Environment,
-               opts: Options,
-               compiler_options: CompilerOptions,
-               _matches: &ArgMatches)
-               -> Result<()> {
+pub fn compile(
+    env: Environment,
+    opts: Options,
+    compiler_options: CompilerOptions,
+    _matches: &ArgMatches,
+) -> Result<()> {
     let id_converter = opts.id_converter;
     let (options, listeners) = setup_listeners(opts.modules)?;
     let backend = PythonBackend::new(env, options, listeners, id_converter);

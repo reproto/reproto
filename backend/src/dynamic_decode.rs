@@ -10,20 +10,22 @@ use errors::*;
 use match_decode::MatchDecode;
 
 pub trait DynamicDecode
-    where Self: Converter,
-          Self: DynamicConverter,
-          Self: MatchDecode
+where
+    Self: Converter,
+    Self: DynamicConverter,
+    Self: MatchDecode,
 {
     type Method;
 
     fn assign_type_var(&self, data: &Self::Stmt, type_var: &Self::Stmt) -> Self::Stmt;
 
-    fn check_type_var(&self,
-                      data: &Self::Stmt,
-                      type_var: &Self::Stmt,
-                      name: &Loc<String>,
-                      type_name: &Self::Type)
-                      -> Self::Elements;
+    fn check_type_var(
+        &self,
+        data: &Self::Stmt,
+        type_var: &Self::Stmt,
+        name: &Loc<String>,
+        type_name: &Self::Type,
+    ) -> Self::Elements;
 
     fn raise_bad_type(&self, type_var: &Self::Stmt) -> Self::Stmt;
 
@@ -35,12 +37,13 @@ pub trait DynamicDecode
 
     fn map_decode(&self, input: &Self::Stmt, key: Self::Stmt, value: Self::Stmt) -> Self::Stmt;
 
-    fn decode(&self,
-              type_id: &RpTypeId,
-              pos: &Pos,
-              ty: &RpType,
-              input: &Self::Stmt)
-              -> Result<Self::Stmt> {
+    fn decode(
+        &self,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        ty: &RpType,
+        input: &Self::Stmt,
+    ) -> Result<Self::Stmt> {
         if self.is_native(ty) {
             return Ok(input.clone());
         }
@@ -70,17 +73,21 @@ pub trait DynamicDecode
                 self.map_decode(input, key, value)
             }
             ref ty => {
-                return Err(Error::pos(format!("type `{}` not supported", ty).into(), pos.into()))
+                return Err(Error::pos(
+                    format!("type `{}` not supported", ty).into(),
+                    pos.into(),
+                ))
             }
         };
 
         Ok(input)
     }
 
-    fn interface_decode_method(&self,
-                               type_id: &RpTypeId,
-                               body: &RpInterfaceBody)
-                               -> Result<Self::Method> {
+    fn interface_decode_method(
+        &self,
+        type_id: &RpTypeId,
+        body: &RpInterfaceBody,
+    ) -> Result<Self::Method> {
         let data = self.new_var("data");
 
         let mut decode_body = Self::Elements::new();
@@ -106,20 +113,25 @@ pub trait DynamicDecode
 
         decode_body.push(&self.raise_bad_type(&type_var));
 
-        Ok(self.new_decode_method(&data, decode_body.join(Element::Spacing)))
+        Ok(self.new_decode_method(
+            &data,
+            decode_body.join(Element::Spacing),
+        ))
     }
 }
 
 /// Dynamic decode is a valid decoding mechanism
 impl<T> BaseDecode for T
-    where T: DynamicDecode
+where
+    T: DynamicDecode,
 {
-    fn base_decode(&self,
-                   type_id: &RpTypeId,
-                   pos: &Pos,
-                   ty: &RpType,
-                   input: &Self::Stmt)
-                   -> Result<Self::Stmt> {
+    fn base_decode(
+        &self,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        ty: &RpType,
+        input: &Self::Stmt,
+    ) -> Result<Self::Stmt> {
         DynamicDecode::decode(self, type_id, pos, ty, input)
     }
 }

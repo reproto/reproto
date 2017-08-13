@@ -17,14 +17,14 @@ mod models;
 mod mutable;
 mod nullable;
 
-pub(crate) use codeviz_java::*;
-pub(crate) use reproto_backend::errors::*;
-pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::java_backend::*;
 pub(crate) use self::java_compiler::*;
 pub(crate) use self::java_options::*;
 pub(crate) use self::listeners::*;
 pub(crate) use self::models::*;
+pub(crate) use codeviz_java::*;
+pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 
 pub const JAVA_CONTEXT: &str = "java";
 
@@ -66,11 +66,12 @@ pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out.about("Verify for Java")
 }
 
-pub fn compile(env: Environment,
-               options: Options,
-               compiler_options: CompilerOptions,
-               _matches: &ArgMatches)
-               -> Result<()> {
+pub fn compile(
+    env: Environment,
+    options: Options,
+    compiler_options: CompilerOptions,
+    _matches: &ArgMatches,
+) -> Result<()> {
     let (options, listeners) = setup_listeners(options)?;
     let backend = JavaBackend::new(env, options, listeners);
     let compiler = backend.compiler(compiler_options)?;

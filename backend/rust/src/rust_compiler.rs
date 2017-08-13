@@ -1,9 +1,9 @@
+use super::*;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use super::*;
 
 pub struct RustCompiler<'a> {
     pub out_path: PathBuf,
@@ -37,7 +37,8 @@ impl<'a> RustCompiler<'a> {
                     let mut full_path = current.join(MOD);
                     full_path.set_extension(self.ext());
 
-                    packages.entry(full_path)
+                    packages
+                        .entry(full_path)
                         .or_insert_with(BTreeSet::new)
                         .insert(next.clone());
                 }
@@ -93,39 +94,43 @@ impl<'a> PackageProcessor<'a> for RustCompiler<'a> {
         Ok(())
     }
 
-    fn process_tuple(&self,
-                     out: &mut Self::Out,
-                     type_id: &RpTypeId,
-                     pos: &Pos,
-                     body: Rc<RpTupleBody>)
-                     -> Result<()> {
+    fn process_tuple(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpTupleBody>,
+    ) -> Result<()> {
         self.backend.process_tuple(out, type_id, pos, body)
     }
 
-    fn process_enum(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    pos: &Pos,
-                    body: Rc<RpEnumBody>)
-                    -> Result<()> {
+    fn process_enum(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpEnumBody>,
+    ) -> Result<()> {
         self.backend.process_enum(out, type_id, pos, body)
     }
 
-    fn process_type(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    pos: &Pos,
-                    body: Rc<RpTypeBody>)
-                    -> Result<()> {
+    fn process_type(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpTypeBody>,
+    ) -> Result<()> {
         self.backend.process_type(out, type_id, pos, body)
     }
 
-    fn process_interface(&self,
-                         out: &mut Self::Out,
-                         type_id: &RpTypeId,
-                         pos: &Pos,
-                         body: Rc<RpInterfaceBody>)
-                         -> Result<()> {
+    fn process_interface(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpInterfaceBody>,
+    ) -> Result<()> {
         self.backend.process_interface(out, type_id, pos, body)
     }
 }

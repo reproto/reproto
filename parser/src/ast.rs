@@ -56,21 +56,26 @@ impl<'input> IntoModel for EnumBody<'input> {
             let (variant, variant_pos) = variant.both();
             let pos = &variant_pos;
 
-            let ordinal = ordinals.next(&variant.ordinal)
-                .chain_err(|| ErrorKind::Pos("failed to generate ordinal".to_owned(), pos.into()))?;
+            let ordinal = ordinals.next(&variant.ordinal).chain_err(|| {
+                ErrorKind::Pos("failed to generate ordinal".to_owned(), pos.into())
+            })?;
 
             if fields.len() != variant.arguments.len() {
-                return Err(ErrorKind::Pos(format!("expected {} arguments", fields.len()),
-                                          pos.into())
-                    .into());
+                return Err(
+                    ErrorKind::Pos(format!("expected {} arguments", fields.len()), pos.into())
+                        .into(),
+                );
             }
 
             let variant = Loc::new((variant, ordinal).into_model()?, pos.clone());
 
             if let Some(other) = variants.iter().find(|v| *v.name == *variant.name) {
-                return Err(ErrorKind::EnumVariantConflict(other.name.pos().into(),
-                                                          variant.name.pos().into())
-                    .into());
+                return Err(
+                    ErrorKind::EnumVariantConflict(
+                        other.name.pos().into(),
+                        variant.name.pos().into(),
+                    ).into(),
+                );
             }
 
             variants.push(variant);
@@ -78,10 +83,11 @@ impl<'input> IntoModel for EnumBody<'input> {
 
         let options = Options::new(options);
 
-        let serialized_as: Option<Loc<String>> = options.find_one_identifier("serialized_as")?
-            .to_owned();
+        let serialized_as: Option<Loc<String>> =
+            options.find_one_identifier("serialized_as")?.to_owned();
 
-        let serialized_as_name = options.find_one_boolean("serialized_as_name")?
+        let serialized_as_name = options
+            .find_one_boolean("serialized_as_name")?
             .to_owned()
             .map(|t| t.move_inner())
             .unwrap_or(false);
@@ -175,7 +181,9 @@ impl<'input> IntoModel for Field<'input> {
             match field_as.both() {
                 (RpValue::String(name), pos) => Some(Loc::new(name, pos)),
                 (_, pos) => {
-                    return Err(ErrorKind::Pos("must be a string".to_owned(), pos.into()).into())
+                    return Err(
+                        ErrorKind::Pos("must be a string".to_owned(), pos.into()).into(),
+                    )
                 }
             }
         } else {
@@ -184,7 +192,13 @@ impl<'input> IntoModel for Field<'input> {
 
         let name = self.name.to_owned();
         let comment = self.comment.into_iter().map(ToOwned::to_owned).collect();
-        Ok(RpField::new(self.modifier, name, comment, self.ty, field_as))
+        Ok(RpField::new(
+            self.modifier,
+            name,
+            comment,
+            self.ty,
+            field_as,
+        ))
     }
 }
 
@@ -287,7 +301,8 @@ pub trait IntoModel {
 
 /// Generic implementation for vectors.
 impl<T> IntoModel for Loc<T>
-    where T: IntoModel
+where
+    T: IntoModel,
 {
     type Output = Loc<T::Output>;
 
@@ -299,7 +314,8 @@ impl<T> IntoModel for Loc<T>
 
 /// Generic implementation for vectors.
 impl<T> IntoModel for Vec<T>
-    where T: IntoModel
+where
+    T: IntoModel,
 {
     type Output = Vec<T::Output>;
 
@@ -315,7 +331,8 @@ impl<T> IntoModel for Vec<T>
 }
 
 impl<T> IntoModel for Option<T>
-    where T: IntoModel
+where
+    T: IntoModel,
 {
     type Output = Option<T::Output>;
 
@@ -552,10 +569,11 @@ impl Node {
     }
 }
 
-fn convert_return(comment: Vec<String>,
-                  ty: Option<Loc<RpType>>,
-                  options: Vec<Loc<OptionDecl>>)
-                  -> Result<RpServiceReturns> {
+fn convert_return(
+    comment: Vec<String>,
+    ty: Option<Loc<RpType>>,
+    options: Vec<Loc<OptionDecl>>,
+) -> Result<RpServiceReturns> {
     let options = Options::new(options.into_model()?);
 
     let produces: Option<Loc<String>> = options.find_one_string("produces")?;
@@ -563,8 +581,9 @@ fn convert_return(comment: Vec<String>,
     let produces = if let Some(produces) = produces {
         let (produces, pos) = produces.both();
 
-        let produces = produces.parse()
-            .chain_err(|| ErrorKind::Pos("not a valid mime type".to_owned(), pos.into()))?;
+        let produces = produces.parse().chain_err(|| {
+            ErrorKind::Pos("not a valid mime type".to_owned(), pos.into())
+        })?;
 
         Some(produces)
     } else {
@@ -576,8 +595,9 @@ fn convert_return(comment: Vec<String>,
     let status = if let Some(status) = status {
         let (status, pos) = status.both();
 
-        let status = status.to_u32()
-            .ok_or_else(|| ErrorKind::Pos("not a valid status".to_owned(), pos.into()))?;
+        let status = status.to_u32().ok_or_else(|| {
+            ErrorKind::Pos("not a valid status".to_owned(), pos.into())
+        })?;
 
         Some(status)
     } else {
@@ -592,10 +612,11 @@ fn convert_return(comment: Vec<String>,
     })
 }
 
-fn convert_accepts(comment: Vec<String>,
-                   ty: Loc<RpType>,
-                   options: Vec<Loc<OptionDecl>>)
-                   -> Result<RpServiceAccepts> {
+fn convert_accepts(
+    comment: Vec<String>,
+    ty: Loc<RpType>,
+    options: Vec<Loc<OptionDecl>>,
+) -> Result<RpServiceAccepts> {
     let options = Options::new(options.into_model()?);
 
     let accepts: Option<Loc<String>> = options.find_one_string("accept")?;
@@ -603,8 +624,9 @@ fn convert_accepts(comment: Vec<String>,
     let accepts = if let Some(accepts) = accepts {
         let (accepts, pos) = accepts.both();
 
-        let accepts = accepts.parse()
-            .chain_err(|| ErrorKind::Pos("not a valid mime type".to_owned(), pos.into()))?;
+        let accepts = accepts.parse().chain_err(|| {
+            ErrorKind::Pos("not a valid mime type".to_owned(), pos.into())
+        })?;
 
         Some(accepts)
     } else {
@@ -685,7 +707,13 @@ impl<'input> IntoModel for ServiceBody<'input> {
         while let Some((parent, children)) = queue.pop() {
             for child in children {
                 match child {
-                    ServiceNested::Endpoint { method, path, comment, options, children } => {
+                    ServiceNested::Endpoint {
+                        method,
+                        path,
+                        comment,
+                        options,
+                        children,
+                    } => {
                         let node = Rc::new(RefCell::new(Node {
                             parent: Some(parent.clone()),
                             method: method.into_model()?,
@@ -699,12 +727,20 @@ impl<'input> IntoModel for ServiceBody<'input> {
                         queue.push((node, children));
                     }
                     // end node, manifest an endpoint.
-                    ServiceNested::Returns { comment, ty, options } => {
+                    ServiceNested::Returns {
+                        comment,
+                        ty,
+                        options,
+                    } => {
                         let comment = comment.into_iter().map(ToOwned::to_owned).collect();
                         let returns = convert_return(comment, ty, options)?;
                         parent.try_borrow_mut()?.push_returns(returns);
                     }
-                    ServiceNested::Accepts { comment, ty, options } => {
+                    ServiceNested::Accepts {
+                        comment,
+                        ty,
+                        options,
+                    } => {
                         let comment = comment.into_iter().map(ToOwned::to_owned).collect();
                         let accepts = convert_accepts(comment, ty, options)?;
                         parent.try_borrow_mut()?.push_accepts(accepts);
@@ -786,12 +822,17 @@ impl<'input> IntoModel for SubType<'input> {
                 Member::Field(field) => {
                     let field = field.into_model()?;
 
-                    if let Some(other) = fields.iter()
-                        .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
-                        return Err(ErrorKind::FieldConflict(field.ident().to_owned(),
-                                                            pos.into(),
-                                                            other.pos().into())
-                            .into());
+                    if let Some(other) = fields.iter().find(|f| {
+                        f.name() == field.name() || f.ident() == field.ident()
+                    })
+                    {
+                        return Err(
+                            ErrorKind::FieldConflict(
+                                field.ident().to_owned(),
+                                pos.into(),
+                                other.pos().into(),
+                            ).into(),
+                        );
                     }
 
                     fields.push(Loc::new(field, pos));
@@ -867,8 +908,10 @@ impl<'input> IntoModel for TypeBody<'input> {
 
         let options = Options::new(options);
 
-        let reserved: HashSet<Loc<String>> =
-            options.find_all_identifiers("reserved")?.into_iter().collect();
+        let reserved: HashSet<Loc<String>> = options
+            .find_all_identifiers("reserved")?
+            .into_iter()
+            .collect();
 
         let type_body = RpTypeBody {
             name: self.name.to_owned(),
@@ -917,8 +960,9 @@ pub fn code(pos: Pos, context: String, lines: Vec<String>) -> Loc<RpCode> {
     Loc::new(code, pos)
 }
 
-pub fn members_into_model(members: Vec<Loc<Member>>)
-                          -> Result<(Fields, Codes, OptionVec, RpMatchDecl)> {
+pub fn members_into_model(
+    members: Vec<Loc<Member>>,
+) -> Result<(Fields, Codes, OptionVec, RpMatchDecl)> {
     use self::Member::*;
 
     let mut fields: Vec<Loc<RpField>> = Vec::new();
@@ -933,12 +977,17 @@ pub fn members_into_model(members: Vec<Loc<Member>>)
             Field(field) => {
                 let field = field.into_model()?;
 
-                if let Some(other) = fields.iter()
-                    .find(|f| f.name() == field.name() || f.ident() == field.ident()) {
-                    return Err(ErrorKind::FieldConflict(field.ident().to_owned(),
-                                                        pos.into(),
-                                                        other.pos().into())
-                        .into());
+                if let Some(other) = fields.iter().find(|f| {
+                    f.name() == field.name() || f.ident() == field.ident()
+                })
+                {
+                    return Err(
+                        ErrorKind::FieldConflict(
+                            field.ident().to_owned(),
+                            pos.into(),
+                            other.pos().into(),
+                        ).into(),
+                    );
                 }
 
                 fields.push(Loc::new(field, pos));
@@ -977,10 +1026,14 @@ impl OrdinalGenerator {
             let pos = ordinal.pos();
 
             if let Value::Number(ref number) = *ordinal.as_ref() {
-                let n: u32 = number.to_u32().ok_or_else(|| ErrorKind::Overflow(pos.into()))?;
+                let n: u32 = number.to_u32().ok_or_else(
+                    || ErrorKind::Overflow(pos.into()),
+                )?;
 
                 if let Some(other) = self.ordinals.get(&n) {
-                    return Err(ErrorKind::Pos("duplicate ordinal".to_owned(), other.into()).into());
+                    return Err(
+                        ErrorKind::Pos("duplicate ordinal".to_owned(), other.into()).into(),
+                    );
                 }
 
                 self.ordinals.insert(n, pos.clone());
@@ -988,7 +1041,9 @@ impl OrdinalGenerator {
                 return Ok(n);
             }
 
-            return Err(ErrorKind::Pos("must be a number".to_owned(), pos.into()).into());
+            return Err(
+                ErrorKind::Pos("must be a number".to_owned(), pos.into()).into(),
+            );
         }
 
         let o = self.next_ordinal;
@@ -996,9 +1051,12 @@ impl OrdinalGenerator {
         self.next_ordinal += 1;
 
         if let Some(other) = self.ordinals.get(&o) {
-            return Err(ErrorKind::Pos(format!("generated ordinal {} conflicts with existing", o),
-                                      other.into())
-                .into());
+            return Err(
+                ErrorKind::Pos(
+                    format!("generated ordinal {} conflicts with existing", o),
+                    other.into(),
+                ).into(),
+            );
         }
 
         Ok(o)

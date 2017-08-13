@@ -11,14 +11,14 @@ mod rust_compiler;
 mod rust_file_spec;
 mod rust_options;
 
-pub(crate) use codeviz_rust::*;
-pub(crate) use reproto_backend::errors::*;
-pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::listeners::*;
 pub(crate) use self::rust_backend::*;
 pub(crate) use self::rust_compiler::*;
 pub(crate) use self::rust_file_spec::*;
 pub(crate) use self::rust_options::*;
+pub(crate) use codeviz_rust::*;
+pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 
 pub(crate) const MOD: &str = "mod";
 pub(crate) const EXT: &str = "rs";
@@ -54,11 +54,12 @@ pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out.about("Verify for Rust")
 }
 
-pub fn compile(env: Environment,
-               opts: Options,
-               compiler_options: CompilerOptions,
-               _matches: &ArgMatches)
-               -> Result<()> {
+pub fn compile(
+    env: Environment,
+    opts: Options,
+    compiler_options: CompilerOptions,
+    _matches: &ArgMatches,
+) -> Result<()> {
     let id_converter = opts.id_converter;
     let (options, listeners) = setup_listeners(opts.modules)?;
     let backend = RustBackend::new(env, options, listeners, id_converter);

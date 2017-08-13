@@ -16,8 +16,6 @@ mod doc_options;
 mod doc_writer;
 mod escape;
 
-pub(crate) use reproto_backend::errors::*;
-pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::doc_backend::*;
 pub(crate) use self::doc_builder::*;
 pub(crate) use self::doc_collector::*;
@@ -26,6 +24,8 @@ pub(crate) use self::doc_listeners::*;
 pub(crate) use self::doc_options::*;
 pub(crate) use self::doc_writer::*;
 pub(crate) use self::escape::*;
+pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 
 pub(crate) const NORMALIZE_CSS_NAME: &str = "normalize.css";
 pub(crate) const DOC_CSS_NAME: &str = "doc.css";
@@ -56,14 +56,18 @@ pub fn setup_listeners(options: Options) -> Result<(DocOptions, Box<DocListeners
 }
 
 pub fn shared_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    let out = out.arg(Arg::with_name("theme")
-        .long("theme")
-        .takes_value(true)
-        .help("Theme to use"));
+    let out = out.arg(
+        Arg::with_name("theme")
+            .long("theme")
+            .takes_value(true)
+            .help("Theme to use"),
+    );
 
-    let out = out.arg(Arg::with_name("skip_static")
-        .long("skip-static")
-        .help("Skip building with static files"));
+    let out = out.arg(Arg::with_name("skip_static").long("skip-static").help(
+        "Skip building \
+         with static \
+         files",
+    ));
 
     out
 }
@@ -76,12 +80,16 @@ pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     shared_options(out).about("Verify for Documentation")
 }
 
-pub fn compile(env: Environment,
-               options: Options,
-               compiler_options: CompilerOptions,
-               matches: &ArgMatches)
-               -> Result<()> {
-    let theme = matches.value_of("theme").unwrap_or(DEFAULT_THEME).to_owned();
+pub fn compile(
+    env: Environment,
+    options: Options,
+    compiler_options: CompilerOptions,
+    matches: &ArgMatches,
+) -> Result<()> {
+    let theme = matches
+        .value_of("theme")
+        .unwrap_or(DEFAULT_THEME)
+        .to_owned();
     let skip_static = matches.is_present("skip_static");
 
     let (options, listeners) = setup_listeners(options)?;

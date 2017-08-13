@@ -1,5 +1,4 @@
-pub struct DocOptions {
-}
+pub struct DocOptions {}
 
 impl DocOptions {
     pub fn new() -> DocOptions {

@@ -3,7 +3,8 @@ pub trait FormatAttribute {
 }
 
 impl<T> FormatAttribute for Vec<T>
-    where T: FormatAttribute
+where
+    T: FormatAttribute,
 {
     fn format_attribute(&self) -> String {
         let mut out = String::new();

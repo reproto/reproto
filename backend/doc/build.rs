@@ -66,7 +66,9 @@ impl From<toml::de::Error> for Error {
 type Result<T> = result::Result<T, Error>;
 
 fn read_file(path: &str) -> String {
-    let mut f = File::open(path).map_err(|e| format!("cannot open: {}: {}", path, e)).unwrap();
+    let mut f = File::open(path)
+        .map_err(|e| format!("cannot open: {}: {}", path, e))
+        .unwrap();
     let mut content = String::new();
     f.read_to_string(&mut content).unwrap();
     content
@@ -81,7 +83,9 @@ fn process_colors() -> Result<()> {
     let template_content = read_file("src/static/doc._.css.hbs");
 
     let value: toml::Value = colors_content.parse()?;
-    let schemes = value.as_table().ok_or_else(|| Error::Message("not a table"))?;
+    let schemes = value.as_table().ok_or_else(
+        || Error::Message("not a table"),
+    )?;
 
     let mut handlebar = handlebars::Handlebars::new();
 
@@ -90,8 +94,9 @@ fn process_colors() -> Result<()> {
     let mut entries = Vec::new();
     let mut themes = String::new();
 
-    let default =
-        schemes.get("default").unwrap().as_table().ok_or_else(|| Error::Message("not a table"))?;
+    let default = schemes.get("default").unwrap().as_table().ok_or_else(|| {
+        Error::Message("not a table")
+    })?;
 
     for (key, value) in schemes {
         if key == "default" {
@@ -99,12 +104,19 @@ fn process_colors() -> Result<()> {
         }
 
         let mut colors_in = default.clone();
-        colors_in.extend(value.as_table().ok_or_else(|| Error::Message("not a table"))?.clone());
+        colors_in.extend(
+            value
+                .as_table()
+                .ok_or_else(|| Error::Message("not a table"))?
+                .clone(),
+        );
 
         let mut colors = Map::new();
 
         for (k, color) in colors_in {
-            let value = color.as_str().ok_or_else(|| Error::Message("expected string"))?;
+            let value = color.as_str().ok_or_else(
+                || Error::Message("expected string"),
+            )?;
             colors.insert(k.to_owned(), handlebars::to_json(&value));
         }
 
@@ -114,11 +126,13 @@ fn process_colors() -> Result<()> {
 
         let name = format!("doc.{}.css", key);
 
-        writeln!(themes,
-                 "const DOC_CSS_{}: &[u8] = include_bytes!(\"{}/{}\");",
-                 key_upper,
-                 out_path.display(),
-                 name)?;
+        writeln!(
+            themes,
+            "const DOC_CSS_{}: &[u8] = include_bytes!(\"{}/{}\");",
+            key_upper,
+            out_path.display(),
+            name
+        )?;
 
         entries.push(format!("(\"{}\", DOC_CSS_{})", key, key_upper));
 
@@ -127,8 +141,10 @@ fn process_colors() -> Result<()> {
     }
 
     writeln!(themes, "")?;
-    writeln!(themes,
-             "pub fn build_themes_vec() -> Vec<(&'static str, &'static [u8])> {{")?;
+    writeln!(
+        themes,
+        "pub fn build_themes_vec() -> Vec<(&'static str, &'static [u8])> {{"
+    )?;
     writeln!(themes, "  vec![{}]", entries.join(", "))?;
     writeln!(themes, "}}")?;
 

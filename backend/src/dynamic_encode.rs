@@ -6,7 +6,8 @@ use dynamic_converter::DynamicConverter;
 use errors::*;
 
 pub trait DynamicEncode
-    where Self: DynamicConverter
+where
+    Self: DynamicConverter,
 {
     fn name_encode(&self, input: &Self::Stmt, name: Self::Type) -> Self::Stmt;
 
@@ -14,12 +15,13 @@ pub trait DynamicEncode
 
     fn map_encode(&self, input: &Self::Stmt, key: Self::Stmt, value: Self::Stmt) -> Self::Stmt;
 
-    fn encode(&self,
-              type_id: &RpTypeId,
-              pos: &Pos,
-              ty: &RpType,
-              input: &Self::Stmt)
-              -> Result<Self::Stmt> {
+    fn encode(
+        &self,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        ty: &RpType,
+        input: &Self::Stmt,
+    ) -> Result<Self::Stmt> {
         if self.is_native(ty) {
             return Ok(input.clone());
         }
@@ -57,16 +59,18 @@ pub trait DynamicEncode
 
 /// Dynamic encode is a valid decoding mechanism
 impl<T> BaseEncode for T
-    where T: DynamicEncode
+where
+    T: DynamicEncode,
 {
     type Stmt = T::Stmt;
 
-    fn base_encode(&self,
-                   type_id: &RpTypeId,
-                   pos: &Pos,
-                   ty: &RpType,
-                   input: &Self::Stmt)
-                   -> Result<Self::Stmt> {
+    fn base_encode(
+        &self,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        ty: &RpType,
+        input: &Self::Stmt,
+    ) -> Result<Self::Stmt> {
         DynamicEncode::encode(self, type_id, pos, ty, input)
     }
 }

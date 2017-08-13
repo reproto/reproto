@@ -1,8 +1,8 @@
+use super::*;
 use macros::FormatAttribute;
 use pulldown_cmark as markdown;
 use std::collections::HashMap;
 use std::rc::Rc;
-use super::*;
 
 pub struct DocBackend {
     pub env: Environment,
@@ -26,11 +26,12 @@ fn build_themes() -> HashMap<&'static str, &'static [u8]> {
 }
 
 impl DocBackend {
-    pub fn new(env: Environment,
-               options: DocOptions,
-               listeners: Box<DocListeners>,
-               theme: String)
-               -> DocBackend {
+    pub fn new(
+        env: Environment,
+        options: DocOptions,
+        listeners: Box<DocListeners>,
+        theme: String,
+    ) -> DocBackend {
         DocBackend {
             env: env,
             options: options,
@@ -45,9 +46,11 @@ impl DocBackend {
     }
 
     fn type_url(&self, pos: &Pos, type_id: &RpTypeId) -> Result<String> {
-        let (package, registered) = self.env
-            .lookup(&type_id.package, &type_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+        let (package, registered) = self.env.lookup(&type_id.package, &type_id.name).map_err(
+            |e| {
+                Error::pos(e.description().to_owned(), pos.into())
+            },
+        )?;
 
         if let Some(_) = type_id.name.prefix {
             let package = self.package(package);
@@ -81,7 +84,8 @@ impl DocBackend {
     }
 
     fn write_description<'a, I>(&self, out: &mut DocBuilder, comment: I) -> Result<()>
-        where I: IntoIterator<Item = &'a String>
+    where
+        I: IntoIterator<Item = &'a String>,
     {
         let mut it = comment.into_iter().peekable();
 
@@ -95,7 +99,8 @@ impl DocBackend {
     }
 
     fn write_variants<'b, I>(&self, out: &mut DocBuilder, variants: I) -> Result<()>
-        where I: IntoIterator<Item = &'b Loc<Rc<RpEnumVariant>>>
+    where
+        I: IntoIterator<Item = &'b Loc<Rc<RpEnumVariant>>>,
     {
         let mut it = variants.into_iter().peekable();
 
@@ -130,12 +135,13 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_type(&self,
-                  out: &mut DocBuilder,
-                  pos: &Pos,
-                  type_id: &RpTypeId,
-                  ty: &RpType)
-                  -> Result<()> {
+    fn write_type(
+        &self,
+        out: &mut DocBuilder,
+        pos: &Pos,
+        type_id: &RpTypeId,
+        ty: &RpType,
+    ) -> Result<()> {
         write!(out, "<span class=\"ty\">")?;
 
         match *ty {
@@ -196,7 +202,8 @@ impl DocBackend {
     }
 
     fn write_fields<'b, I>(&self, out: &mut DocBuilder, type_id: &RpTypeId, fields: I) -> Result<()>
-        where I: Iterator<Item = &'b Loc<RpField>>
+    where
+        I: Iterator<Item = &'b Loc<RpField>>,
     {
         html!(out, div {class => "fields"} => {
             html!(out, h2 {} ~ "Fields");
@@ -257,7 +264,8 @@ impl DocBackend {
     }
 
     pub fn write_doc<Body>(&self, out: &mut DocBuilder, body: Body) -> Result<()>
-        where Body: FnOnce(&mut DocBuilder) -> Result<()>
+    where
+        Body: FnOnce(&mut DocBuilder) -> Result<()>,
     {
         html!(out, html {} => {
             html!(out, head {} => {
@@ -288,15 +296,15 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_endpoint_short(&self,
-                            out: &mut DocBuilder,
-                            index: usize,
-                            body: &Rc<RpServiceBody>,
-                            endpoint: &RpServiceEndpoint)
-                            -> Result<()> {
+    fn write_endpoint_short(
+        &self,
+        out: &mut DocBuilder,
+        index: usize,
+        body: &Rc<RpServiceBody>,
+        endpoint: &RpServiceEndpoint,
+    ) -> Result<()> {
         let method = endpoint.method().unwrap_or("GET").to_owned();
-        let id =
-            format!("{}_{}_{}", body.name, endpoint.id_parts(Self::fragment_filter).join("_"), index);
+        let id = format!("{}_{}_{}", body.name, endpoint.id_parts(Self::fragment_filter).join("_"), index);
 
         html!(out, div {class => format!("endpoint short {}", method.to_lowercase())} => {
             html!(out, a {class => "endpoint-title", href => format!("#{}", id)} => {
@@ -342,16 +350,16 @@ impl DocBackend {
         buffer
     }
 
-    fn write_endpoint(&self,
-                      out: &mut DocBuilder,
-                      index: usize,
-                      type_id: &RpTypeId,
-                      body: &Rc<RpServiceBody>,
-                      endpoint: &RpServiceEndpoint)
-                      -> Result<()> {
+    fn write_endpoint(
+        &self,
+        out: &mut DocBuilder,
+        index: usize,
+        type_id: &RpTypeId,
+        body: &Rc<RpServiceBody>,
+        endpoint: &RpServiceEndpoint,
+    ) -> Result<()> {
         let method = endpoint.method().unwrap_or("GET").to_owned();
-        let id =
-            format!("{}_{}_{}", body.name, endpoint.id_parts(Self::fragment_filter).join("_"), index);
+        let id = format!("{}_{}_{}", body.name, endpoint.id_parts(Self::fragment_filter).join("_"), index);
 
         html!(out, div {class => format!("endpoint {}", method.to_lowercase()), id => id} => {
             html!(out, h2 {class => "endpoint-title"} => {
@@ -439,11 +447,12 @@ impl DocBackend {
     /// Write a packages index.
     ///
     /// * `current` if some value indicates which the current package is.
-    pub fn write_packages(&self,
-                          out: &mut DocBuilder,
-                          packages: &[RpVersionedPackage],
-                          current: Option<&RpVersionedPackage>)
-                          -> Result<()> {
+    pub fn write_packages(
+        &self,
+        out: &mut DocBuilder,
+        packages: &[RpVersionedPackage],
+        current: Option<&RpVersionedPackage>,
+    ) -> Result<()> {
         html!(out, section {class => "section-content section-packages"} => {
             html!(out, h1 {class => "section-title"} ~ "Packages");
 
@@ -473,10 +482,11 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn write_service_overview(&self,
-                                  out: &mut DocBuilder,
-                                  service_bodies: Vec<Rc<RpServiceBody>>)
-                                  -> Result<()> {
+    pub fn write_service_overview(
+        &self,
+        out: &mut DocBuilder,
+        service_bodies: Vec<Rc<RpServiceBody>>,
+    ) -> Result<()> {
         if service_bodies.is_empty() {
             return Ok(());
         }
@@ -524,12 +534,13 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn process_service(&self,
-                           out: &mut DocCollector,
-                           type_id: &RpTypeId,
-                           _: &Pos,
-                           body: Rc<RpServiceBody>)
-                           -> Result<()> {
+    pub fn process_service(
+        &self,
+        out: &mut DocCollector,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpServiceBody>,
+    ) -> Result<()> {
         let mut new_service = out.new_service(body.clone());
         let mut out = DefaultDocBuilder::new(&mut new_service);
 
@@ -548,12 +559,13 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn process_enum(&self,
-                        out: &mut DocCollector,
-                        _: &RpTypeId,
-                        _: &Pos,
-                        body: Rc<RpEnumBody>)
-                        -> Result<()> {
+    pub fn process_enum(
+        &self,
+        out: &mut DocCollector,
+        _: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpEnumBody>,
+    ) -> Result<()> {
         let mut new_enum = out.new_type(RpDecl::Enum(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_enum);
 
@@ -569,12 +581,13 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn process_interface(&self,
-                             out: &mut DocCollector,
-                             type_id: &RpTypeId,
-                             _: &Pos,
-                             body: Rc<RpInterfaceBody>)
-                             -> Result<()> {
+    pub fn process_interface(
+        &self,
+        out: &mut DocCollector,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpInterfaceBody>,
+    ) -> Result<()> {
         let mut new_interface = out.new_type(RpDecl::Interface(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_interface);
 
@@ -606,12 +619,13 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn process_type(&self,
-                        out: &mut DocCollector,
-                        type_id: &RpTypeId,
-                        _: &Pos,
-                        body: Rc<RpTypeBody>)
-                        -> Result<()> {
+    pub fn process_type(
+        &self,
+        out: &mut DocCollector,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpTypeBody>,
+    ) -> Result<()> {
         let mut new_type = out.new_type(RpDecl::Type(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_type);
 
@@ -627,12 +641,13 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn process_tuple(&self,
-                         out: &mut DocCollector,
-                         type_id: &RpTypeId,
-                         _: &Pos,
-                         body: Rc<RpTupleBody>)
-                         -> Result<()> {
+    pub fn process_tuple(
+        &self,
+        out: &mut DocCollector,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpTupleBody>,
+    ) -> Result<()> {
         let mut new_tuple = out.new_type(RpDecl::Tuple(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_tuple);
 

@@ -1,7 +1,7 @@
+use super::Pos;
 use object::Object;
 use std::borrow::Borrow;
 use std::rc::Rc;
-use super::Pos;
 
 #[derive(Debug)]
 pub struct ErrorPos {

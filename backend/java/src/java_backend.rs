@@ -78,7 +78,9 @@ impl JavaBackend {
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
     pub fn java_package(&self, pkg: &RpVersionedPackage) -> RpPackage {
-        pkg.into_package(|version| format!("_{}", version).replace(".", "_").replace("-", "_"))
+        pkg.into_package(|version| {
+            format!("_{}", version).replace(".", "_").replace("-", "_")
+        })
     }
 
     fn java_package_name(&self, pkg: &RpVersionedPackage) -> String {
@@ -86,12 +88,16 @@ impl JavaBackend {
     }
 
     fn convert_type_id(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Type> {
-        let (package, registered) = self.env
-            .lookup(&type_id.package, &type_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+        let (package, registered) = self.env.lookup(&type_id.package, &type_id.name).map_err(
+            |e| {
+                Error::pos(e.description().to_owned(), pos.into())
+            },
+        )?;
 
         let package_name = self.java_package_name(package);
-        Ok(Type::class(&package_name, &registered.name().join(".")).into())
+        Ok(
+            Type::class(&package_name, &registered.name().join(".")).into(),
+        )
     }
 
     /// Convert the given type to a java type.
@@ -135,7 +141,8 @@ impl JavaBackend {
     }
 
     fn build_constructor<C>(&self, class: &C) -> ConstructorSpec
-        where C: ClassLike
+    where
+        C: ClassLike,
     {
         let mut constructor = ConstructorSpec::new(mods![Modifier::Public]);
 
@@ -168,7 +175,8 @@ impl JavaBackend {
     }
 
     fn build_hash_code<C>(&self, class: &C) -> MethodSpec
-        where C: ClassLike
+    where
+        C: ClassLike,
     {
         let mut hash_code = MethodSpec::new(mods![Modifier::Public], "hashCode");
 
@@ -213,7 +221,8 @@ impl JavaBackend {
     }
 
     fn build_equals<C>(&self, class_type: &ClassType, class: &C) -> MethodSpec
-        where C: ClassLike
+    where
+        C: ClassLike,
     {
         let mut equals = MethodSpec::new(mods![Modifier::Public], "equals");
 
@@ -239,7 +248,13 @@ impl JavaBackend {
         {
             let mut instanceof_check = Elements::new();
 
-            instanceof_check.push(stmt!["if (!(", &argument, " instanceof ", class_type, ")) {"]);
+            instanceof_check.push(stmt![
+                "if (!(",
+                &argument,
+                " instanceof ",
+                class_type,
+                ")) {",
+            ]);
             instanceof_check.push_nested("return false;");
             instanceof_check.push("}");
 
@@ -255,7 +270,17 @@ impl JavaBackend {
         suppress_warnings.push_argument(Variable::String("unchecked".to_owned()));
 
         cast.push(suppress_warnings);
-        cast.push(stmt!["final ", class_type, " ", &o, " = (", class_type, ") ", argument, ";"]);
+        cast.push(stmt![
+            "final ",
+            class_type,
+            " ",
+            &o,
+            " = (",
+            class_type,
+            ") ",
+            argument,
+            ";",
+        ]);
 
         equals.push(cast);
 
@@ -301,7 +326,8 @@ impl JavaBackend {
     }
 
     fn build_to_string<C>(&self, class_type: &ClassType, class: &C) -> MethodSpec
-        where C: ClassLike
+    where
+        C: ClassLike,
     {
         let mut to_string = MethodSpec::new(mods![Modifier::Public], "toString");
 
@@ -312,7 +338,14 @@ impl JavaBackend {
 
         let new_string_builder = stmt!["new ", &self.string_builder, "();"];
 
-        to_string.push(stmt!["final ", &self.string_builder, " ", &b, " = ", &new_string_builder]);
+        to_string.push(stmt![
+            "final ",
+            &self.string_builder,
+            " ",
+            &b,
+            " = ",
+            &new_string_builder,
+        ]);
 
         let mut fields = Elements::new();
 
@@ -349,10 +382,25 @@ impl JavaBackend {
 
         let mut class_appends = Elements::new();
 
-        class_appends.push(stmt![&b, ".append(", Variable::String(class_type.name.clone()), ");"]);
-        class_appends.push(stmt![&b, ".append(", Variable::String("(".to_owned()), ");"]);
+        class_appends.push(stmt![
+            &b,
+            ".append(",
+            Variable::String(class_type.name.clone()),
+            ");",
+        ]);
+        class_appends.push(stmt![
+            &b,
+            ".append(",
+            Variable::String("(".to_owned()),
+            ");",
+        ]);
         class_appends.push(fields.join(field_joiner));
-        class_appends.push(stmt![&b, ".append(", Variable::String(")".to_owned()), ");"]);
+        class_appends.push(stmt![
+            &b,
+            ".append(",
+            Variable::String(")".to_owned()),
+            ");",
+        ]);
 
         to_string.push(class_appends);
         to_string.push(stmt!["return ", &b, ".toString();"]);
@@ -361,7 +409,8 @@ impl JavaBackend {
     }
 
     fn add_class<C>(&self, class_type: &ClassType, class: &mut C) -> Result<()>
-        where C: ClassLike + ContainerSpec
+    where
+        C: ClassLike + ContainerSpec,
     {
         if self.options.build_constructor {
             let constructor = self.build_constructor(class);
@@ -415,10 +464,11 @@ impl JavaBackend {
         None
     }
 
-    fn enum_from_value_method(&self,
-                              field: &JavaField,
-                              class_type: &ClassType)
-                              -> Result<MethodSpec> {
+    fn enum_from_value_method(
+        &self,
+        field: &JavaField,
+        class_type: &ClassType,
+    ) -> Result<MethodSpec> {
         let argument = ArgumentSpec::new(mods![Modifier::Final], &field.java_type, &field.name);
 
         let value = stmt!["value"];
@@ -436,16 +486,30 @@ impl JavaBackend {
 
         let mut value_loop = Elements::new();
 
-        value_loop.push(stmt!["for (final ", class_type, " ", &value, " : ", "values()) {"]);
+        value_loop.push(stmt![
+            "for (final ",
+            class_type,
+            " ",
+            &value,
+            " : ",
+            "values()) {",
+        ]);
 
         value_loop.push_nested(return_matched);
         value_loop.push("}");
 
-        let mut from_value = MethodSpec::new(mods![Modifier::Public, Modifier::Static],
-                                             "fromValue");
+        let mut from_value =
+            MethodSpec::new(mods![Modifier::Public, Modifier::Static], "fromValue");
 
         let argument_name = Variable::String(argument.name.clone());
-        let throw = stmt!["throw new ", &self.illegal_argument, "(", argument_name, ");"];
+        let throw =
+            stmt![
+            "throw new ",
+            &self.illegal_argument,
+            "(",
+            argument_name,
+            ");",
+        ];
 
         from_value.returns(class_type);
         from_value.push_argument(argument);
@@ -527,15 +591,14 @@ impl JavaBackend {
             }
         }
 
-        self.listeners
-            .enum_added(&mut EnumAdded {
-                body: body,
-                fields: &fields,
-                class_type: &class_type,
-                from_value: &mut from_value,
-                to_value: &mut to_value,
-                spec: &mut spec,
-            })?;
+        self.listeners.enum_added(&mut EnumAdded {
+            body: body,
+            fields: &fields,
+            class_type: &class_type,
+            from_value: &mut from_value,
+            to_value: &mut to_value,
+            spec: &mut spec,
+        })?;
 
         if let Some(from_value) = from_value {
             spec.push(from_value);
@@ -577,12 +640,11 @@ impl JavaBackend {
 
         self.add_class(&class_type, &mut spec)?;
 
-        self.listeners
-            .tuple_added(&mut TupleAdded {
-                fields: &fields,
-                class_type: &class_type,
-                spec: &mut spec,
-            })?;
+        self.listeners.tuple_added(&mut TupleAdded {
+            fields: &fields,
+            class_type: &class_type,
+            spec: &mut spec,
+        })?;
 
         let mut file_spec = self.new_file_spec(&type_id.package);
         file_spec.push(&spec);
@@ -616,15 +678,14 @@ impl JavaBackend {
 
         self.add_class(&class_type, &mut spec)?;
 
-        self.listeners
-            .class_added(&mut ClassAdded {
-                backend: self,
-                type_id: type_id,
-                fields: &fields,
-                class_type: &class_type,
-                match_decl: &body.match_decl,
-                spec: &mut spec,
-            })?;
+        self.listeners.class_added(&mut ClassAdded {
+            backend: self,
+            type_id: type_id,
+            fields: &fields,
+            class_type: &class_type,
+            match_decl: &body.match_decl,
+            spec: &mut spec,
+        })?;
 
         let mut file_spec = self.new_file_spec(&type_id.package);
         file_spec.push(&spec);
@@ -632,10 +693,11 @@ impl JavaBackend {
         Ok(file_spec)
     }
 
-    fn process_interface(&self,
-                         type_id: &RpTypeId,
-                         interface: &RpInterfaceBody)
-                         -> Result<FileSpec> {
+    fn process_interface(
+        &self,
+        type_id: &RpTypeId,
+        interface: &RpInterfaceBody,
+    ) -> Result<FileSpec> {
         let parent_type = Type::class(&self.java_package_name(&type_id.package), &interface.name);
 
         let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
@@ -703,34 +765,31 @@ impl JavaBackend {
 
             self.add_class(&class_type, &mut class)?;
 
-            self.listeners
-                .class_added(&mut ClassAdded {
-                    backend: self,
-                    type_id: &type_id,
-                    fields: &fields,
-                    class_type: &class_type,
-                    match_decl: &sub_type.match_decl,
-                    spec: &mut class,
-                })?;
+            self.listeners.class_added(&mut ClassAdded {
+                backend: self,
+                type_id: &type_id,
+                fields: &fields,
+                class_type: &class_type,
+                match_decl: &sub_type.match_decl,
+                spec: &mut class,
+            })?;
 
-            self.listeners
-                .sub_type_added(&mut SubTypeAdded {
-                    fields: &fields,
-                    interface: interface,
-                    sub_type: sub_type,
-                    spec: &mut class,
-                })?;
+            self.listeners.sub_type_added(&mut SubTypeAdded {
+                fields: &fields,
+                interface: interface,
+                sub_type: sub_type,
+                spec: &mut class,
+            })?;
 
             interface_spec.push(&class);
         }
 
         let mut file_spec = self.new_file_spec(&type_id.package);
 
-        self.listeners
-            .interface_added(&mut InterfaceAdded {
-                interface: interface,
-                spec: &mut interface_spec,
-            })?;
+        self.listeners.interface_added(&mut InterfaceAdded {
+            interface: interface,
+            spec: &mut interface_spec,
+        })?;
 
         file_spec.push(&interface_spec);
         Ok(file_spec)
@@ -743,14 +802,19 @@ impl JavaBackend {
         Ok(file_spec)
     }
 
-    fn convert_field<'a>(&self,
-                         type_id: &RpTypeId,
-                         field: &'a Loc<RpField>)
-                         -> Result<JavaField<'a>> {
+    fn convert_field<'a>(
+        &self,
+        type_id: &RpTypeId,
+        field: &'a Loc<RpField>,
+    ) -> Result<JavaField<'a>> {
         let java_value_type = self.into_java_type(field.pos(), &field.ty, type_id)?;
 
         let java_type = match field.is_optional() {
-            true => self.optional.with_arguments(vec![java_value_type.clone()]).into(),
+            true => {
+                self.optional
+                    .with_arguments(vec![java_value_type.clone()])
+                    .into()
+            }
             false => java_value_type.clone(),
         };
 
@@ -770,10 +834,11 @@ impl JavaBackend {
         })
     }
 
-    fn convert_fields<'a>(&self,
-                          type_id: &RpTypeId,
-                          fields: &'a Vec<Loc<RpField>>)
-                          -> Result<Vec<JavaField<'a>>> {
+    fn convert_fields<'a>(
+        &self,
+        type_id: &RpTypeId,
+        fields: &'a Vec<Loc<RpField>>,
+    ) -> Result<Vec<JavaField<'a>>> {
         let mut out = Vec::new();
 
         for field in fields {
@@ -893,6 +958,11 @@ impl ValueBuilder for JavaBackend {
             arguments.push(v);
         }
 
-        Ok(stmt![&self.immutable_list, ".of(", arguments.join(", "), ")"])
+        Ok(stmt![
+            &self.immutable_list,
+            ".of(",
+            arguments.join(", "),
+            ")",
+        ])
     }
 }

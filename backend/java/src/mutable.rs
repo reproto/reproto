@@ -1,7 +1,6 @@
 use super::*;
 
-pub struct Module {
-}
+pub struct Module {}
 
 impl Module {
     pub fn new() -> Module {

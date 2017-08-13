@@ -13,7 +13,9 @@ pub trait SourceOperator {
 }
 
 pub trait Source {
-    fn operate<O>(&self, input: &str, operator: &O) -> String where O: SourceOperator;
+    fn operate<O>(&self, input: &str, operator: &O) -> String
+    where
+        O: SourceOperator;
 }
 
 pub trait FromNaming {
@@ -31,15 +33,21 @@ pub trait Naming {
 }
 
 pub struct LowerCamelNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     source: S,
 }
 
-impl<S> LowerCamelNaming<S> where S: Source {}
+impl<S> LowerCamelNaming<S>
+where
+    S: Source,
+{
+}
 
 impl<S> Naming for LowerCamelNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     fn convert(&self, input: &str) -> String {
         self.source.operate(input, self)
@@ -47,7 +55,8 @@ impl<S> Naming for LowerCamelNaming<S>
 }
 
 impl<S> SourceOperator for LowerCamelNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     fn first(&self, c: char) -> Box<Iterator<Item = char>> {
         Box::new(c.to_lowercase())
@@ -67,15 +76,21 @@ impl<S> SourceOperator for LowerCamelNaming<S>
 }
 
 pub struct UpperCamelNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     source: S,
 }
 
-impl<S> UpperCamelNaming<S> where S: Source {}
+impl<S> UpperCamelNaming<S>
+where
+    S: Source,
+{
+}
 
 impl<S> Naming for UpperCamelNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     fn convert(&self, input: &str) -> String {
         self.source.operate(input, self)
@@ -83,7 +98,8 @@ impl<S> Naming for UpperCamelNaming<S>
 }
 
 impl<S> SourceOperator for UpperCamelNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     fn first(&self, c: char) -> Box<Iterator<Item = char>> {
         Box::new(c.to_uppercase())
@@ -103,15 +119,21 @@ impl<S> SourceOperator for UpperCamelNaming<S>
 }
 
 pub struct LowerSnakeNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     source: S,
 }
 
-impl<S> LowerSnakeNaming<S> where S: Source {}
+impl<S> LowerSnakeNaming<S>
+where
+    S: Source,
+{
+}
 
 impl<S> Naming for LowerSnakeNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     fn convert(&self, input: &str) -> String {
         self.source.operate(input, self)
@@ -119,7 +141,8 @@ impl<S> Naming for LowerSnakeNaming<S>
 }
 
 impl<S> SourceOperator for LowerSnakeNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     fn first(&self, c: char) -> Box<Iterator<Item = char>> {
         Box::new(c.to_lowercase())
@@ -139,15 +162,21 @@ impl<S> SourceOperator for LowerSnakeNaming<S>
 }
 
 pub struct UpperSnakeNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     source: S,
 }
 
-impl<S> UpperSnakeNaming<S> where S: Source {}
+impl<S> UpperSnakeNaming<S>
+where
+    S: Source,
+{
+}
 
 impl<S> Naming for UpperSnakeNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     fn convert(&self, input: &str) -> String {
         self.source.operate(input, self)
@@ -155,7 +184,8 @@ impl<S> Naming for UpperSnakeNaming<S>
 }
 
 impl<S> SourceOperator for UpperSnakeNaming<S>
-    where S: Source
+where
+    S: Source,
 {
     fn first(&self, c: char) -> Box<Iterator<Item = char>> {
         Box::new(c.to_uppercase())
@@ -175,8 +205,7 @@ impl<S> SourceOperator for UpperSnakeNaming<S>
 }
 
 #[derive(Clone)]
-pub struct CamelCase {
-}
+pub struct CamelCase {}
 
 impl CamelCase {
     pub fn new() -> CamelCase {
@@ -187,7 +216,8 @@ impl CamelCase {
 /// A source for camel-cased strings.
 impl Source for CamelCase {
     fn operate<O>(&self, input: &str, operator: &O) -> String
-        where O: SourceOperator
+    where
+        O: SourceOperator,
     {
         let mut out = Vec::new();
         let mut buffer = String::new();
@@ -251,8 +281,7 @@ impl FromNaming for CamelCase {
 }
 
 #[derive(Clone)]
-pub struct SnakeCase {
-}
+pub struct SnakeCase {}
 
 impl SnakeCase {
     pub fn new() -> SnakeCase {
@@ -263,7 +292,8 @@ impl SnakeCase {
 /// A source for snake-cased strings.
 impl Source for SnakeCase {
     fn operate<O>(&self, input: &str, operator: &O) -> String
-        where O: SourceOperator
+    where
+        O: SourceOperator,
     {
         let mut out = Vec::new();
         let mut buffer = String::new();

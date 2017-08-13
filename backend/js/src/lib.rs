@@ -12,9 +12,6 @@ mod js_compiler;
 mod js_file_spec;
 mod js_options;
 
-pub(crate) use codeviz_js::*;
-pub(crate) use reproto_backend::errors::*;
-pub(crate) use reproto_backend::imports::*;
 pub(crate) use self::js_backend::*;
 pub(crate) use self::js_compiler::*;
 pub(crate) use self::js_file_spec::*;
@@ -22,6 +19,9 @@ pub(crate) use self::js_options::*;
 pub(crate) use self::listeners::*;
 pub(crate) use self::models::*;
 pub(crate) use self::utils::*;
+pub(crate) use codeviz_js::*;
+pub(crate) use reproto_backend::errors::*;
+pub(crate) use reproto_backend::imports::*;
 
 pub(crate) const TYPE: &str = "type";
 pub(crate) const EXT: &str = "js";
@@ -57,11 +57,12 @@ pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out.about("Verify for JavaScript")
 }
 
-pub fn compile(env: Environment,
-               opts: Options,
-               compiler_options: CompilerOptions,
-               _matches: &ArgMatches)
-               -> Result<()> {
+pub fn compile(
+    env: Environment,
+    opts: Options,
+    compiler_options: CompilerOptions,
+    _matches: &ArgMatches,
+) -> Result<()> {
     let id_converter = opts.id_converter;
     let (options, listeners) = setup_listeners(opts.modules)?;
     let backend = JsBackend::new(env, options, listeners, id_converter);

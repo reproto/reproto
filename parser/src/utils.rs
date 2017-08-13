@@ -8,7 +8,11 @@ fn is_indent(c: char) -> bool {
 
 /// Find the number of whitespace characters that the given string is indented.
 fn find_indent(input: &str) -> Option<usize> {
-    input.chars().enumerate().find(|&(_, c)| !is_indent(c)).map(|(i, _)| i)
+    input
+        .chars()
+        .enumerate()
+        .find(|&(_, c)| !is_indent(c))
+        .map(|(i, _)| i)
 }
 
 pub fn code_block_indent(input: &str) -> Option<(usize, usize, usize)> {
@@ -41,15 +45,14 @@ pub fn code_block_indent(input: &str) -> Option<(usize, usize, usize)> {
 /// Strip common indent from all input lines.
 pub fn strip_code_block(input: &str) -> Vec<String> {
     if let Some((indent, empty_start, len)) = code_block_indent(input) {
-        input.lines()
+        input
+            .lines()
             .skip(empty_start)
             .take(len)
-            .map(|line| {
-                if line.len() < indent {
-                    line.to_owned()
-                } else {
-                    (&line[indent..]).to_owned()
-                }
+            .map(|line| if line.len() < indent {
+                line.to_owned()
+            } else {
+                (&line[indent..]).to_owned()
             })
             .collect()
     } else {

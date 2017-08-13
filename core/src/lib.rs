@@ -18,16 +18,16 @@ mod options;
 pub mod errors;
 
 
-use errors::*;
-use num::bigint::BigInt;
-use num::integer::Integer;
-use num::traits::Signed;
-use num::traits::cast::ToPrimitive;
 pub use self::error_pos::*;
 pub use self::loc::*;
 pub use self::merge::*;
 pub use self::options::*;
 pub use self::pos::*;
+use errors::*;
+use num::bigint::BigInt;
+use num::integer::Integer;
+use num::traits::Signed;
+use num::traits::cast::ToPrimitive;
 pub use semver::Version;
 pub use semver::VersionReq;
 use std::collections::BTreeMap;
@@ -42,7 +42,8 @@ pub struct Mime(mime::Mime);
 
 impl serde::Serialize for Mime {
     fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
-        where S: serde::Serializer
+    where
+        S: serde::Serializer,
     {
         serializer.serialize_str(&format!("{}", self.0))
     }
@@ -52,7 +53,9 @@ impl FromStr for Mime {
     type Err = errors::Error;
 
     fn from_str(s: &str) -> errors::Result<Self> {
-        Ok(Mime(s.parse().map_err(errors::ErrorKind::MimeFromStrError)?))
+        Ok(Mime(
+            s.parse().map_err(errors::ErrorKind::MimeFromStrError)?,
+        ))
     }
 }
 
@@ -87,7 +90,7 @@ impl Merge for Vec<Loc<RpCode>> {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all="snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpDecl {
     Type(Rc<RpTypeBody>),
     Interface(Rc<RpInterfaceBody>),
@@ -122,10 +125,11 @@ impl RpDecl {
     }
 
     /// Convert a declaration into its registered types.
-    pub fn into_registered_type(&self,
-                                package: &RpVersionedPackage,
-                                pos: &Pos)
-                                -> Vec<(RpTypeId, Loc<RpRegistered>)> {
+    pub fn into_registered_type(
+        &self,
+        package: &RpVersionedPackage,
+        pos: &Pos,
+    ) -> Vec<(RpTypeId, Loc<RpRegistered>)> {
         use self::RpDecl::*;
 
         match *self {
@@ -180,14 +184,18 @@ impl RpDecl {
                 out
             }
             Tuple(ref tuple) => {
-                let type_id = RpTypeId::new(package.clone(),
-                                            RpName::with_parts(vec![tuple.name.clone()]));
+                let type_id = RpTypeId::new(
+                    package.clone(),
+                    RpName::with_parts(vec![tuple.name.clone()]),
+                );
                 let token = Loc::new(RpRegistered::Tuple(tuple.clone()), pos.clone());
                 vec![(type_id, token)]
             }
             Service(ref service) => {
-                let type_id = RpTypeId::new(package.clone(),
-                                            RpName::with_parts(vec![service.name.clone()]));
+                let type_id = RpTypeId::new(
+                    package.clone(),
+                    RpName::with_parts(vec![service.name.clone()]),
+                );
                 let token = Loc::new(RpRegistered::Service(service.clone()), pos.clone());
                 vec![(type_id, token)]
             }
@@ -225,21 +233,23 @@ impl Merge for Loc<RpDecl> {
             Enum(ref mut body) => {
                 if let Enum(ref other) = *source {
                     if let Some(variant) = other.variants.iter().next() {
-                        return Err(ErrorKind::ExtendEnum("cannot extend enum with additional \
-                                                       variants"
-                                                             .to_owned(),
-                                                         variant.pos().into(),
-                                                         dest_pos.into())
-                            .into());
+                        return Err(
+                            ErrorKind::ExtendEnum(
+                                "cannot extend enum with additional variants".to_owned(),
+                                variant.pos().into(),
+                                dest_pos.into(),
+                            ).into(),
+                        );
                     }
 
                     if let Some(field) = other.fields.iter().next() {
-                        return Err(ErrorKind::ExtendEnum("cannot extend enum with additional \
-                                                          fields"
-                                                             .to_owned(),
-                                                         field.pos().into(),
-                                                         dest_pos.into())
-                            .into());
+                        return Err(
+                            ErrorKind::ExtendEnum(
+                                "cannot extend enum with additional fields".to_owned(),
+                                field.pos().into(),
+                                dest_pos.into(),
+                            ).into(),
+                        );
                     }
 
 
@@ -263,10 +273,13 @@ impl Merge for Loc<RpDecl> {
             }
         }
 
-        return Err(ErrorKind::DeclMerge(format!("cannot merge with {}", source),
-                                        source.pos().into(),
-                                        dest_pos.into())
-            .into());
+        return Err(
+            ErrorKind::DeclMerge(
+                format!("cannot merge with {}", source),
+                source.pos().into(),
+                dest_pos.into(),
+            ).into(),
+        );
     }
 }
 
@@ -308,18 +321,19 @@ pub struct RpField {
     pub modifier: RpModifier,
     name: String,
     pub comment: Vec<String>,
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub ty: RpType,
     pub field_as: Option<Loc<String>>,
 }
 
 impl RpField {
-    pub fn new(modifier: RpModifier,
-               name: String,
-               comment: Vec<String>,
-               ty: RpType,
-               field_as: Option<Loc<String>>)
-               -> RpField {
+    pub fn new(
+        modifier: RpModifier,
+        name: String,
+        comment: Vec<String>,
+        ty: RpType,
+        field_as: Option<Loc<String>>,
+    ) -> RpField {
         RpField {
             modifier: modifier,
             name: name,
@@ -341,7 +355,9 @@ impl RpField {
     }
 
     pub fn name(&self) -> &str {
-        self.field_as.as_ref().map(AsRef::as_ref).unwrap_or(&self.name)
+        self.field_as.as_ref().map(AsRef::as_ref).unwrap_or(
+            &self.name,
+        )
     }
 
     pub fn display(&self) -> String {
@@ -353,10 +369,10 @@ impl Merge for Vec<Loc<RpField>> {
     fn merge(&mut self, source: Vec<Loc<RpField>>) -> Result<()> {
         for f in source {
             if let Some(field) = self.iter().find(|e| e.name == f.name) {
-                return Err(ErrorKind::FieldConflict(f.name.clone(),
-                                                    f.pos().into(),
-                                                    field.pos().into())
-                    .into());
+                return Err(
+                    ErrorKind::FieldConflict(f.name.clone(), f.pos().into(), field.pos().into())
+                        .into(),
+                );
             }
 
             self.push(f);
@@ -405,7 +421,7 @@ impl Merge for RpInterfaceBody {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all="snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpMatchCondition {
     /// Match a specific value.
     Value(Loc<RpValue>),
@@ -453,36 +469,47 @@ impl RpMatchDecl {
 
                 {
                     // conflicting when type matches
-                    let result =
-                        self.by_type.iter().find(|e| e.0 == match_kind || e.0 == RpMatchKind::Any);
+                    let result = self.by_type.iter().find(|e| {
+                        e.0 == match_kind || e.0 == RpMatchKind::Any
+                    });
 
                     if let Some(&(_, ref existing_value)) = result {
-                        let err = ErrorKind::MatchConflict(member.condition.pos().into(),
-                                                           existing_value.object.pos().into());
+                        let err = ErrorKind::MatchConflict(
+                            member.condition.pos().into(),
+                            existing_value.object.pos().into(),
+                        );
                         return Err(err.into());
                     }
                 }
 
-                self.by_type.push((match_kind,
-                                   RpByTypeMatch {
-                                       variable: variable.clone(),
-                                       object: member.object.clone(),
-                                   }));
+                self.by_type.push((
+                    match_kind,
+                    RpByTypeMatch {
+                        variable: variable.clone(),
+                        object: member.object.clone(),
+                    },
+                ));
             }
             RpMatchCondition::Value(ref value) => {
                 {
                     // conflicting when value matches
-                    let result = self.by_value.iter().find(|e| e.0.as_ref() == value.as_ref());
+                    let result = self.by_value.iter().find(
+                        |e| e.0.as_ref() == value.as_ref(),
+                    );
 
                     if let Some(&(_, ref existing_value)) = result {
-                        let err = ErrorKind::MatchConflict(member.condition.pos().into(),
-                                                           existing_value.object.pos().into());
+                        let err = ErrorKind::MatchConflict(
+                            member.condition.pos().into(),
+                            existing_value.object.pos().into(),
+                        );
                         return Err(err.into());
                     }
                 }
 
-                self.by_value
-                    .push((value.clone(), RpByValueMatch { object: member.object.clone() }));
+                self.by_value.push((
+                    value.clone(),
+                    RpByValueMatch { object: member.object.clone() },
+                ));
             }
         }
 
@@ -491,7 +518,7 @@ impl RpMatchDecl {
 }
 /// Simplified types that _can_ be uniquely matched over for JSON.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-#[serde(tag = "type", rename_all="snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpMatchKind {
     Any,
     Object,
@@ -511,12 +538,12 @@ pub struct RpMatchMember {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct RpMatchVariable {
     pub name: String,
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub ty: RpType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-#[serde(rename_all="snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum RpModifier {
     Required,
     Optional,
@@ -587,9 +614,7 @@ impl RpNumber {
     pub fn to_u64(&self) -> Option<u64> {
         let m = self.multiple();
 
-        self.digits
-            .checked_div(&m)
-            .and_then(|r| r.to_u64())
+        self.digits.checked_div(&m).and_then(|r| r.to_u64())
     }
 
     pub fn to_u32(&self) -> Option<u32> {
@@ -605,8 +630,11 @@ impl RpNumber {
         let (base, decimal) = self.digits.div_mod_floor(&multiple);
 
         base.to_f64().and_then(|base| {
-            decimal.to_f64()
-                .and_then(|decimal| multiple.to_f64().map(|multiple| base + (decimal / multiple)))
+            decimal.to_f64().and_then(|decimal| {
+                multiple.to_f64().map(
+                    |multiple| base + (decimal / multiple),
+                )
+            })
         })
     }
 }
@@ -670,7 +698,8 @@ impl fmt::Display for RpNumber {
 
 impl serde::Serialize for RpNumber {
     fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
-        where S: serde::Serializer
+    where
+        S: serde::Serializer,
     {
         let n = self.to_f64().unwrap();
         serializer.serialize_f64(n)
@@ -778,7 +807,7 @@ impl fmt::Display for RpPackage {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all="snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpPathSegment {
     Literal { value: Loc<String> },
     Variable { name: Loc<String>, ty: Loc<RpType> },
@@ -840,9 +869,10 @@ impl RpRegistered {
         let it: Box<Iterator<Item = &Loc<RpField>>> = match *self {
             Type(ref body) => Box::new(body.fields.iter()),
             Tuple(ref body) => Box::new(body.fields.iter()),
-            SubType { ref parent, ref sub_type } => {
-                Box::new(parent.fields.iter().chain(sub_type.fields.iter()))
-            }
+            SubType {
+                ref parent,
+                ref sub_type,
+            } => Box::new(parent.fields.iter().chain(sub_type.fields.iter())),
             _ => {
                 return Err("has no fields".into());
             }
@@ -876,23 +906,35 @@ impl RpRegistered {
             // exact enum, with unknown value
             (&Enum(ref target), &Enum(ref source)) => Rc::ptr_eq(target, source),
             // sub-type to parent
-            (&Interface(ref target), &SubType { parent: ref source, sub_type: _ }) => {
-                Rc::ptr_eq(target, source)
-            }
+            (&Interface(ref target),
+             &SubType {
+                 parent: ref source,
+                 sub_type: _,
+             }) => Rc::ptr_eq(target, source),
             // enum constant to parent type
-            (&Enum(ref target), &EnumConstant { parent: ref source, variant: _ }) => {
-                Rc::ptr_eq(target, source)
-            }
+            (&Enum(ref target),
+             &EnumConstant {
+                 parent: ref source,
+                 variant: _,
+             }) => Rc::ptr_eq(target, source),
             // exact matching sub-type
-            (&SubType { parent: ref target_parent, sub_type: ref target },
-             &SubType { parent: ref source_parent, sub_type: ref source }) => {
-                Rc::ptr_eq(target_parent, source_parent) && Rc::ptr_eq(target, source)
-            }
+            (&SubType {
+                 parent: ref target_parent,
+                 sub_type: ref target,
+             },
+             &SubType {
+                 parent: ref source_parent,
+                 sub_type: ref source,
+             }) => Rc::ptr_eq(target_parent, source_parent) && Rc::ptr_eq(target, source),
             // exact matching constant
-            (&EnumConstant { parent: ref target_parent, variant: ref target },
-             &EnumConstant { parent: ref source_parent, variant: ref source }) => {
-                Rc::ptr_eq(target_parent, source_parent) && Rc::ptr_eq(target, source)
-            }
+            (&EnumConstant {
+                 parent: ref target_parent,
+                 variant: ref target,
+             },
+             &EnumConstant {
+                 parent: ref source_parent,
+                 variant: ref source,
+             }) => Rc::ptr_eq(target_parent, source_parent) && Rc::ptr_eq(target, source),
             _ => false,
         }
     }
@@ -906,12 +948,14 @@ impl RpRegistered {
             Enum(ref body) => format!("enum {}", body.name.to_owned()),
             Tuple(ref body) => format!("tuple {}", body.name.to_owned()),
             Service(ref body) => format!("service {}", body.name.to_owned()),
-            SubType { ref parent, ref sub_type } => {
-                format!("type {}.{}", parent.name, sub_type.name)
-            }
-            EnumConstant { ref parent, ref variant } => {
-                format!("{}.{}", parent.name, *variant.name)
-            }
+            SubType {
+                ref parent,
+                ref sub_type,
+            } => format!("type {}.{}", parent.name, sub_type.name),
+            EnumConstant {
+                ref parent,
+                ref variant,
+            } => format!("{}.{}", parent.name, *variant.name),
         }
     }
 
@@ -924,8 +968,14 @@ impl RpRegistered {
             Enum(ref body) => vec![&body.name],
             Tuple(ref body) => vec![&body.name],
             Service(ref body) => vec![&body.name],
-            SubType { ref parent, ref sub_type } => vec![&parent.name, &sub_type.name],
-            EnumConstant { ref parent, ref variant } => vec![&parent.name, &variant.name],
+            SubType {
+                ref parent,
+                ref sub_type,
+            } => vec![&parent.name, &sub_type.name],
+            EnumConstant {
+                ref parent,
+                ref variant,
+            } => vec![&parent.name, &variant.name],
         }
     }
 }
@@ -992,7 +1042,8 @@ impl RpServiceEndpoint {
     }
 
     pub fn id_parts<F>(&self, filter: F) -> Vec<String>
-        where F: Fn(&str) -> String
+    where
+        F: Fn(&str) -> String,
     {
         let mut parts = Vec::new();
 
@@ -1088,8 +1139,9 @@ impl RpTypeBody {
     pub fn verify(&self) -> Result<()> {
         for reserved in &self.reserved {
             if let Some(field) = self.fields.iter().find(|f| f.name() == reserved.as_ref()) {
-                return Err(ErrorKind::ReservedField(field.pos().into(), reserved.pos().into())
-                    .into());
+                return Err(
+                    ErrorKind::ReservedField(field.pos().into(), reserved.pos().into()).into(),
+                );
             }
         }
 
@@ -1145,7 +1197,7 @@ impl fmt::Display for RpTypeId {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-#[serde(tag = "type", rename_all="snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpType {
     Double,
     Float,
@@ -1207,7 +1259,7 @@ pub struct RpUseDecl {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-#[serde(tag = "type", content="value", rename_all="snake_case")]
+#[serde(tag = "type", content = "value", rename_all = "snake_case")]
 pub enum RpValue {
     String(String),
     Number(RpNumber),
@@ -1271,7 +1323,8 @@ impl RpVersionedPackage {
     }
 
     pub fn into_package<F>(&self, version_fn: F) -> RpPackage
-        where F: FnOnce(&Version) -> String
+    where
+        F: FnOnce(&Version) -> String,
     {
         let mut parts = Vec::new();
 

@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use super::*;
+use std::rc::Rc;
 
 pub struct PythonBackend {
     pub env: Environment,
@@ -19,11 +19,12 @@ pub struct PythonBackend {
 }
 
 impl PythonBackend {
-    pub fn new(env: Environment,
-               _: PythonOptions,
-               listeners: Box<Listeners>,
-               id_converter: Option<Box<Naming>>)
-               -> PythonBackend {
+    pub fn new(
+        env: Environment,
+        _: PythonOptions,
+        listeners: Box<Listeners>,
+        id_converter: Option<Box<Naming>>,
+    ) -> PythonBackend {
         PythonBackend {
             env: env,
             listeners: listeners,
@@ -53,10 +54,11 @@ impl PythonBackend {
         Ok(())
     }
 
-    fn find_field<'a>(&self,
-                      fields: &'a Vec<Loc<Field>>,
-                      name: &str)
-                      -> Option<(usize, &Field<'a>)> {
+    fn find_field<'a>(
+        &self,
+        fields: &'a Vec<Loc<Field>>,
+        name: &str,
+    ) -> Option<(usize, &Field<'a>)> {
         for (i, field) in fields.iter().enumerate() {
             if field.name == name {
                 return Some((i, field.as_ref()));
@@ -77,13 +79,15 @@ impl PythonBackend {
         raise_if_none
     }
 
-    fn encode_method<E>(&self,
-                        type_id: &RpTypeId,
-                        fields: &[Loc<Field>],
-                        builder: &BuiltInName,
-                        extra: E)
-                        -> Result<MethodSpec>
-        where E: FnOnce(&mut Elements) -> ()
+    fn encode_method<E>(
+        &self,
+        type_id: &RpTypeId,
+        fields: &[Loc<Field>],
+        builder: &BuiltInName,
+        extra: E,
+    ) -> Result<MethodSpec>
+    where
+        E: FnOnce(&mut Elements) -> (),
     {
         let mut encode = MethodSpec::new("encode");
         encode.push_argument(stmt!["self"]);
@@ -177,7 +181,13 @@ impl PythonBackend {
 
         let mut member_loop = Elements::new();
 
-        member_loop.push(stmt!["for ", &value, " in ", &cls, ".__members__.values():"]);
+        member_loop.push(stmt![
+            "for ",
+            &value,
+            " in ",
+            &cls,
+            ".__members__.values():",
+        ]);
         member_loop.push_nested(check);
 
         let mismatch = Variable::String("data does not match enum".to_owned());
@@ -203,11 +213,13 @@ impl PythonBackend {
         }
 
         let format = format!("<{} {}>", name, arguments.join(", "));
-        repr.push(stmt!["return ",
-                        Variable::String(format),
-                        ".format(",
-                        variables.join(", "),
-                        ")"]);
+        repr.push(stmt![
+            "return ",
+            Variable::String(format),
+            ".format(",
+            variables.join(", "),
+            ")",
+        ]);
 
         repr
     }
@@ -236,14 +248,16 @@ impl PythonBackend {
         check.into()
     }
 
-    fn decode_method<F>(&self,
-                        type_id: &RpTypeId,
-                        pos: &Pos,
-                        match_decl: &RpMatchDecl,
-                        fields: &[Loc<Field>],
-                        variable_fn: F)
-                        -> Result<MethodSpec>
-        where F: Fn(usize, &Field) -> Variable
+    fn decode_method<F>(
+        &self,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        match_decl: &RpMatchDecl,
+        fields: &[Loc<Field>],
+        variable_fn: F,
+    ) -> Result<MethodSpec>
+    where
+        F: Fn(usize, &Field) -> Variable,
     {
         let data = stmt!["data"];
 
@@ -275,7 +289,12 @@ impl PythonBackend {
                 }
                 _ => {
                     let var_stmt = stmt!["data[", &var, "]"];
-                    let var_stmt = self.decode(type_id, field.pos(), &field.ty, &var_stmt.into())?;
+                    let var_stmt = self.decode(
+                        type_id,
+                        field.pos(),
+                        &field.ty,
+                        &var_stmt.into(),
+                    )?;
                     stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
@@ -333,11 +352,14 @@ impl PythonBackend {
     }
 
     fn convert_type_id<F>(&self, pos: &Pos, type_id: &RpTypeId, path_syntax: F) -> Result<Name>
-        where F: Fn(Vec<&str>) -> String
+    where
+        F: Fn(Vec<&str>) -> String,
     {
-        let (package, registered) = self.env
-            .lookup(&type_id.package, &type_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+        let (package, registered) = self.env.lookup(&type_id.package, &type_id.name).map_err(
+            |e| {
+                Error::pos(e.description().to_owned(), pos.into())
+            },
+        )?;
 
         let name = path_syntax(registered.name());
 
@@ -380,16 +402,18 @@ impl PythonBackend {
 
         let class_name = Variable::String(body.name.to_owned());
 
-        Ok(stmt![&body.name,
-                 " = ",
-                 &self.enum_enum,
-                 "(",
-                 class_name,
-                 ", [",
-                 arguments.join(", "),
-                 "], type=",
-                 &body.name,
-                 ")"])
+        Ok(stmt![
+            &body.name,
+            " = ",
+            &self.enum_enum,
+            "(",
+            class_name,
+            ", [",
+            arguments.join(", "),
+            "], type=",
+            &body.name,
+            ")",
+        ])
     }
 
     fn enum_ident(field: Field) -> Field {
@@ -400,11 +424,13 @@ impl PythonBackend {
         }
     }
 
-    fn into_python_field_with<'a, F>(&self,
-                                     field: &'a Loc<RpField>,
-                                     python_field_f: F)
-                                     -> Loc<Field<'a>>
-        where F: Fn(Field<'a>) -> Field<'a>
+    fn into_python_field_with<'a, F>(
+        &self,
+        field: &'a Loc<RpField>,
+        python_field_f: F,
+    ) -> Loc<Field<'a>>
+    where
+        F: Fn(Field<'a>) -> Field<'a>,
     {
         let ident = self.field_ident(field);
 
@@ -422,12 +448,13 @@ impl PythonBackend {
         self.into_python_field_with(field, |ident| ident)
     }
 
-    pub fn process_tuple(&self,
-                         out: &mut PythonFileSpec,
-                         type_id: &RpTypeId,
-                         pos: &Pos,
-                         body: Rc<RpTupleBody>)
-                         -> Result<()> {
+    pub fn process_tuple(
+        &self,
+        out: &mut PythonFileSpec,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpTupleBody>,
+    ) -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
 
         let fields: Vec<Loc<Field>> = body.fields
@@ -448,11 +475,13 @@ impl PythonBackend {
             class.push(code.move_inner().lines);
         }
 
-        let decode = self.decode_method(type_id,
-                           pos,
-                           &body.match_decl,
-                           &fields,
-                           |i, _| Variable::Literal(i.to_string()))?;
+        let decode = self.decode_method(
+            type_id,
+            pos,
+            &body.match_decl,
+            &fields,
+            |i, _| Variable::Literal(i.to_string()),
+        )?;
         class.push(decode);
 
         let encode = self.encode_tuple_method(&type_id, &fields)?;
@@ -464,12 +493,13 @@ impl PythonBackend {
         Ok(())
     }
 
-    pub fn process_enum(&self,
-                        out: &mut PythonFileSpec,
-                        _: &RpTypeId,
-                        _: &Pos,
-                        body: Rc<RpEnumBody>)
-                        -> Result<()> {
+    pub fn process_enum(
+        &self,
+        out: &mut PythonFileSpec,
+        _: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpEnumBody>,
+    ) -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
 
         let fields: Vec<Loc<Field>> = body.fields
@@ -507,12 +537,13 @@ impl PythonBackend {
         Ok(())
     }
 
-    pub fn process_type(&self,
-                        out: &mut PythonFileSpec,
-                        type_id: &RpTypeId,
-                        pos: &Pos,
-                        body: Rc<RpTypeBody>)
-                        -> Result<()> {
+    pub fn process_type(
+        &self,
+        out: &mut PythonFileSpec,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        body: Rc<RpTypeBody>,
+    ) -> Result<()> {
         let mut class = ClassSpec::new(&body.name);
 
         let fields: Vec<Loc<Field>> = body.fields
@@ -530,11 +561,13 @@ impl PythonBackend {
             }
         }
 
-        let decode = self.decode_method(type_id,
-                           pos,
-                           &body.match_decl,
-                           &fields,
-                           |_, field| Variable::String(field.name.to_owned()))?;
+        let decode = self.decode_method(
+            type_id,
+            pos,
+            &body.match_decl,
+            &fields,
+            |_, field| Variable::String(field.name.to_owned()),
+        )?;
 
         class.push(decode);
 
@@ -552,12 +585,13 @@ impl PythonBackend {
         Ok(())
     }
 
-    pub fn process_interface(&self,
-                             out: &mut PythonFileSpec,
-                             type_id: &RpTypeId,
-                             _: &Pos,
-                             body: Rc<RpInterfaceBody>)
-                             -> Result<()> {
+    pub fn process_interface(
+        &self,
+        out: &mut PythonFileSpec,
+        type_id: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpInterfaceBody>,
+    ) -> Result<()> {
         let mut interface_spec = ClassSpec::new(&body.name);
 
         interface_spec.push(self.interface_decode_method(type_id, &body)?);
@@ -575,7 +609,10 @@ impl PythonBackend {
             let mut class = ClassSpec::new(&name);
             class.extends(Name::local(&body.name));
 
-            class.push(stmt!["TYPE = ", Variable::String(sub_type.name().to_owned())]);
+            class.push(stmt![
+                "TYPE = ",
+                Variable::String(sub_type.name().to_owned()),
+            ]);
 
             let fields: Vec<Loc<Field>> = body.fields
                 .iter()
@@ -593,22 +630,30 @@ impl PythonBackend {
                 }
             }
 
-            let decode = self.decode_method(&type_id,
-                               sub_type.pos(),
-                               &sub_type.match_decl,
-                               &fields,
-                               |_, field| Variable::String(field.ident.to_owned()))?;
+            let decode = self.decode_method(
+                &type_id,
+                sub_type.pos(),
+                &sub_type.match_decl,
+                &fields,
+                |_, field| Variable::String(field.ident.to_owned()),
+            )?;
 
             class.push(decode);
 
-            let type_stmt = stmt!["data[",
-                                  &self.type_var,
-                                  "] = ",
-                                  Variable::String(sub_type.name().to_owned())];
+            let type_stmt =
+                stmt![
+                "data[",
+                &self.type_var,
+                "] = ",
+                Variable::String(sub_type.name().to_owned()),
+            ];
 
-            let encode = self.encode_method(&type_id, &fields, &self.dict, move |elements| {
-                    elements.push(type_stmt);
-                })?;
+            let encode = self.encode_method(
+                &type_id,
+                &fields,
+                &self.dict,
+                move |elements| { elements.push(type_stmt); },
+            )?;
 
             class.push(encode);
 
@@ -742,27 +787,47 @@ impl DynamicDecode for PythonBackend {
 
     fn map_decode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
         let body = stmt!["(", &key, ", ", &value, ")"];
-        stmt![&self.dict, "(map(lambda t: ", &body, ", ", input, ".items()))"]
+        stmt![
+            &self.dict,
+            "(map(lambda t: ",
+            &body,
+            ", ",
+            input,
+            ".items()))",
+        ]
     }
 
     fn assign_type_var(&self, data: &Self::Stmt, type_var: &Self::Stmt) -> Self::Stmt {
         stmt![type_var, " = ", data, "[", &self.type_var, "]"]
     }
 
-    fn check_type_var(&self,
-                      _data: &Self::Stmt,
-                      type_var: &Self::Stmt,
-                      name: &Loc<String>,
-                      type_name: &Self::Type)
-                      -> Self::Elements {
+    fn check_type_var(
+        &self,
+        _data: &Self::Stmt,
+        type_var: &Self::Stmt,
+        name: &Loc<String>,
+        type_name: &Self::Type,
+    ) -> Self::Elements {
         let mut check = Elements::new();
-        check.push(stmt!["if ", type_var, " == ", Variable::String(name.as_ref().to_owned()), ":"]);
+        check.push(stmt![
+            "if ",
+            type_var,
+            " == ",
+            Variable::String(name.as_ref().to_owned()),
+            ":",
+        ]);
         check.push_nested(stmt!["return ", type_name, ".decode(data)"]);
         check
     }
 
     fn raise_bad_type(&self, type_var: &Self::Stmt) -> Self::Stmt {
-        stmt!["raise Exception(", Variable::String("bad type".to_owned()), " + ", type_var, ")"]
+        stmt![
+            "raise Exception(",
+            Variable::String("bad type".to_owned()),
+            " + ",
+            type_var,
+            ")",
+        ]
     }
 
     fn new_decode_method(&self, data: &Self::Stmt, body: Self::Elements) -> Self::Method {
@@ -785,33 +850,42 @@ impl DynamicEncode for PythonBackend {
 
     fn map_encode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
         let body = stmt!["(", &key, ", ", &value, ")"];
-        stmt![&self.dict, "(", input, ".items().map(lambda t: ", &body, "))"]
+        stmt![
+            &self.dict,
+            "(",
+            input,
+            ".items().map(lambda t: ",
+            &body,
+            "))",
+        ]
     }
 }
 
 impl MatchDecode for PythonBackend {
-    fn match_value(&self,
-                   data: &Statement,
-                   _value: &RpValue,
-                   value_stmt: Statement,
-                   _result: &RpObject,
-                   result_stmt: Statement)
-                   -> Result<Elements> {
+    fn match_value(
+        &self,
+        data: &Statement,
+        _value: &RpValue,
+        value_stmt: Statement,
+        _result: &RpObject,
+        result_stmt: Statement,
+    ) -> Result<Elements> {
         let mut value_body = Elements::new();
         value_body.push(stmt!["if ", &data, " == ", value_stmt, ":"]);
         value_body.push_nested(stmt!["return ", result_stmt]);
         Ok(value_body)
     }
 
-    fn match_type(&self,
-                  _type_id: &RpTypeId,
-                  data: &Statement,
-                  kind: &RpMatchKind,
-                  variable: &str,
-                  decode: Statement,
-                  result: Statement,
-                  _value: &RpByTypeMatch)
-                  -> Result<Elements> {
+    fn match_type(
+        &self,
+        _type_id: &RpTypeId,
+        data: &Statement,
+        kind: &RpMatchKind,
+        variable: &str,
+        decode: Statement,
+        result: Statement,
+        _value: &RpByTypeMatch,
+    ) -> Result<Elements> {
         let check = match *kind {
             RpMatchKind::Any => stmt!["true"],
             RpMatchKind::Object => stmt![&self.isinstance, "(", data, ", ", &self.dict, ")"],

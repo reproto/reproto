@@ -1,5 +1,5 @@
-use std::fmt::Write;
 use super::*;
+use std::fmt::Write;
 
 pub struct Collector {
     buffer: String,

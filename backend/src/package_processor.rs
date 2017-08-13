@@ -11,7 +11,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 pub trait PackageProcessor<'a>
-    where Self: 'a + Sized
+where
+    Self: 'a + Sized,
 {
     type Out: Collecting<'a, Processor = Self>;
 
@@ -28,48 +29,53 @@ pub trait PackageProcessor<'a>
 
     fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage;
 
-    fn process_interface(&self,
-                         out: &mut Self::Out,
-                         type_id: &RpTypeId,
-                         pos: &Pos,
-                         _: Rc<RpInterfaceBody>)
-                         -> Result<()> {
+    fn process_interface(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        _: Rc<RpInterfaceBody>,
+    ) -> Result<()> {
         self.default_process(out, type_id, pos)
     }
 
-    fn process_type(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    pos: &Pos,
-                    _: Rc<RpTypeBody>)
-                    -> Result<()> {
+    fn process_type(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        _: Rc<RpTypeBody>,
+    ) -> Result<()> {
         self.default_process(out, type_id, pos)
     }
 
-    fn process_tuple(&self,
-                     out: &mut Self::Out,
-                     type_id: &RpTypeId,
-                     pos: &Pos,
-                     _: Rc<RpTupleBody>)
-                     -> Result<()> {
+    fn process_tuple(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        _: Rc<RpTupleBody>,
+    ) -> Result<()> {
         self.default_process(out, type_id, pos)
     }
 
-    fn process_enum(&self,
-                    out: &mut Self::Out,
-                    type_id: &RpTypeId,
-                    pos: &Pos,
-                    _: Rc<RpEnumBody>)
-                    -> Result<()> {
+    fn process_enum(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        _: Rc<RpEnumBody>,
+    ) -> Result<()> {
         self.default_process(out, type_id, pos)
     }
 
-    fn process_service(&self,
-                       out: &mut Self::Out,
-                       type_id: &RpTypeId,
-                       pos: &Pos,
-                       _: Rc<RpServiceBody>)
-                       -> Result<()> {
+    fn process_service(
+        &self,
+        out: &mut Self::Out,
+        type_id: &RpTypeId,
+        pos: &Pos,
+        _: Rc<RpServiceBody>,
+    ) -> Result<()> {
         self.default_process(out, type_id, pos)
     }
 
@@ -77,10 +83,12 @@ pub trait PackageProcessor<'a>
         self.do_populate_files(|_, _| Ok(()))
     }
 
-    fn do_populate_files<'b, F>(&'b self,
-                                mut callback: F)
-                                -> Result<BTreeMap<&RpVersionedPackage, Self::Out>>
-        where F: FnMut(&'b RpTypeId, &'b Loc<RpDecl>) -> Result<()>
+    fn do_populate_files<'b, F>(
+        &'b self,
+        mut callback: F,
+    ) -> Result<BTreeMap<&RpVersionedPackage, Self::Out>>
+    where
+        F: FnMut(&'b RpTypeId, &'b Loc<RpDecl>) -> Result<()>,
     {
         let mut files = BTreeMap::new();
 
@@ -92,19 +100,44 @@ pub trait PackageProcessor<'a>
 
             match ***decl {
                 RpDecl::Interface(ref body) => {
-                    self.process_interface(&mut out, type_id, decl.pos(), body.clone())?
+                    self.process_interface(
+                        &mut out,
+                        type_id,
+                        decl.pos(),
+                        body.clone(),
+                    )?
                 }
                 RpDecl::Type(ref body) => {
-                    self.process_type(&mut out, type_id, decl.pos(), body.clone())?
+                    self.process_type(
+                        &mut out,
+                        type_id,
+                        decl.pos(),
+                        body.clone(),
+                    )?
                 }
                 RpDecl::Tuple(ref body) => {
-                    self.process_tuple(&mut out, type_id, decl.pos(), body.clone())?
+                    self.process_tuple(
+                        &mut out,
+                        type_id,
+                        decl.pos(),
+                        body.clone(),
+                    )?
                 }
                 RpDecl::Enum(ref body) => {
-                    self.process_enum(&mut out, type_id, decl.pos(), body.clone())?
+                    self.process_enum(
+                        &mut out,
+                        type_id,
+                        decl.pos(),
+                        body.clone(),
+                    )?
                 }
                 RpDecl::Service(ref body) => {
-                    self.process_service(&mut out, type_id, decl.pos(), body.clone())?
+                    self.process_service(
+                        &mut out,
+                        type_id,
+                        decl.pos(),
+                        body.clone(),
+                    )?
                 }
             };
         }

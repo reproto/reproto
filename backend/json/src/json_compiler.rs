@@ -1,9 +1,9 @@
+use super::*;
 use serde_json;
 use std::fmt::Write as FmtWrite;
 use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
-use super::*;
 
 pub struct JsonCompiler<'a> {
     pub out_path: PathBuf,
@@ -47,52 +47,57 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
         Ok(full_path)
     }
 
-    fn process_service(&self,
-                       out: &mut Self::Out,
-                       _: &RpTypeId,
-                       _: &Pos,
-                       body: Rc<RpServiceBody>)
-                       -> Result<()> {
+    fn process_service(
+        &self,
+        out: &mut Self::Out,
+        _: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpServiceBody>,
+    ) -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
     }
 
-    fn process_enum(&self,
-                    out: &mut Self::Out,
-                    _: &RpTypeId,
-                    _: &Pos,
-                    body: Rc<RpEnumBody>)
-                    -> Result<()> {
+    fn process_enum(
+        &self,
+        out: &mut Self::Out,
+        _: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpEnumBody>,
+    ) -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
     }
 
-    fn process_interface(&self,
-                         out: &mut Self::Out,
-                         _: &RpTypeId,
-                         _: &Pos,
-                         body: Rc<RpInterfaceBody>)
-                         -> Result<()> {
+    fn process_interface(
+        &self,
+        out: &mut Self::Out,
+        _: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpInterfaceBody>,
+    ) -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
     }
 
-    fn process_type(&self,
-                    out: &mut Self::Out,
-                    _: &RpTypeId,
-                    _: &Pos,
-                    body: Rc<RpTypeBody>)
-                    -> Result<()> {
+    fn process_type(
+        &self,
+        out: &mut Self::Out,
+        _: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpTypeBody>,
+    ) -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
     }
 
-    fn process_tuple(&self,
-                     out: &mut Self::Out,
-                     _: &RpTypeId,
-                     _: &Pos,
-                     body: Rc<RpTupleBody>)
-                     -> Result<()> {
+    fn process_tuple(
+        &self,
+        out: &mut Self::Out,
+        _: &RpTypeId,
+        _: &Pos,
+        body: Rc<RpTupleBody>,
+    ) -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
     }

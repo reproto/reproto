@@ -36,11 +36,12 @@ impl Environment {
     }
 
     /// Registered an alias.
-    fn register_alias(&mut self,
-                      source_package: &RpVersionedPackage,
-                      use_decl: Loc<RpUseDecl>,
-                      use_package: &RpVersionedPackage)
-                      -> Result<()> {
+    fn register_alias(
+        &mut self,
+        source_package: &RpVersionedPackage,
+        use_decl: Loc<RpUseDecl>,
+        use_package: &RpVersionedPackage,
+    ) -> Result<()> {
         use linked_hash_map::Entry::*;
 
         if let Some(used) = use_decl.package.parts.iter().last() {
@@ -61,11 +62,12 @@ impl Environment {
     }
 
     /// Check if source is assignable to target.
-    pub fn is_assignable_from(&self,
-                              package: &RpVersionedPackage,
-                              target: &RpType,
-                              source: &RpType)
-                              -> Result<bool> {
+    pub fn is_assignable_from(
+        &self,
+        package: &RpVersionedPackage,
+        target: &RpType,
+        source: &RpType,
+    ) -> Result<bool> {
         match (target, source) {
             (&RpType::Double, &RpType::Double) => Ok(true),
             (&RpType::Float, &RpType::Float) => Ok(true),
@@ -91,8 +93,14 @@ impl Environment {
             (&RpType::Array { inner: ref target }, &RpType::Array { inner: ref source }) => {
                 return self.is_assignable_from(package, target, source);
             }
-            (&RpType::Map { key: ref target_key, value: ref target_value },
-             &RpType::Map { key: ref source_key, value: ref source_value }) => {
+            (&RpType::Map {
+                 key: ref target_key,
+                 value: ref target_value,
+             },
+             &RpType::Map {
+                 key: ref source_key,
+                 value: ref source_value,
+             }) => {
                 let key_assignable = self.is_assignable_from(package, target_key, source_key)?;
                 let value_assignable =
                     self.is_assignable_from(package, target_value, source_value)?;
@@ -104,23 +112,30 @@ impl Environment {
     }
 
     /// Lookup registered constant.
-    pub fn constant<'a>(&'a self,
-                        pos: &Pos,
-                        package: &'a RpVersionedPackage,
-                        constant: &RpName,
-                        target: &RpName)
-                        -> Result<&'a RpRegistered> {
-        let (_, reg_constant) = self.lookup(package, constant)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+    pub fn constant<'a>(
+        &'a self,
+        pos: &Pos,
+        package: &'a RpVersionedPackage,
+        constant: &RpName,
+        target: &RpName,
+    ) -> Result<&'a RpRegistered> {
+        let (_, reg_constant) = self.lookup(package, constant).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
-        let (_, reg_target) = self.lookup(package, target)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+        let (_, reg_target) = self.lookup(package, target).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
         if !reg_target.is_assignable_from(reg_constant) {
-            return Err(Error::pos(format!("expected instance of `{}` but found `{}`",
-                                          reg_target.display(),
-                                          reg_constant.display()),
-                                  pos.into()));
+            return Err(Error::pos(
+                format!(
+                    "expected instance of `{}` but found `{}`",
+                    reg_target.display(),
+                    reg_constant.display()
+                ),
+                pos.into(),
+            ));
         }
 
         Ok(reg_constant)
@@ -128,30 +143,38 @@ impl Environment {
 
     /// Convert instance arguments to the known registered type of the instance, and a map
     /// containing the arguments being instantiated.
-    pub fn instance<'a>(&'a self,
-                        pos: &Pos,
-                        package: &'a RpVersionedPackage,
-                        instance: &RpInstance,
-                        target: &RpName)
-                        -> Result<(&'a RpRegistered, InitFields)> {
-        let (_, reg_instance) = self.lookup(package, &instance.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+    pub fn instance<'a>(
+        &'a self,
+        pos: &Pos,
+        package: &'a RpVersionedPackage,
+        instance: &RpInstance,
+        target: &RpName,
+    ) -> Result<(&'a RpRegistered, InitFields)> {
+        let (_, reg_instance) = self.lookup(package, &instance.name).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
-        let (_, reg_target) = self.lookup(package, target)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+        let (_, reg_target) = self.lookup(package, target).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
         if !reg_target.is_assignable_from(reg_instance) {
-            return Err(Error::pos(format!("expected instance of `{}` but found `{}`",
-                                          reg_target.display(),
-                                          reg_instance.display()),
-                                  pos.into()));
+            return Err(Error::pos(
+                format!(
+                    "expected instance of `{}` but found `{}`",
+                    reg_target.display(),
+                    reg_instance.display()
+                ),
+                pos.into(),
+            ));
         }
 
         let required_fields = match *reg_instance {
             RpRegistered::Type(ref ty) => ty.fields(),
-            RpRegistered::SubType { ref parent, ref sub_type } => {
-                Box::new(parent.fields().chain(sub_type.fields()))
-            }
+            RpRegistered::SubType {
+                ref parent,
+                ref sub_type,
+            } => Box::new(parent.fields().chain(sub_type.fields())),
             RpRegistered::Tuple(ref tuple) => tuple.fields(),
             _ => return Err(Error::pos("expected instantiable type".into(), pos.into())),
         };
@@ -162,7 +185,8 @@ impl Environment {
         let mut known: HashMap<String, Loc<RpFieldInit>> = HashMap::new();
 
         // check that all required fields are set.
-        let mut required: BTreeMap<String, Loc<RpField>> = required_fields.map(Clone::clone)
+        let mut required: BTreeMap<String, Loc<RpField>> = required_fields
+            .map(Clone::clone)
             .map(|f| (f.name().to_owned(), f))
             .collect();
 
@@ -177,19 +201,20 @@ impl Environment {
         }
 
         if !required.is_empty() {
-            let required: Vec<(String, Loc<RpField>)> = required.into_iter()
-                .collect();
+            let required: Vec<(String, Loc<RpField>)> = required.into_iter().collect();
 
-            let names: Vec<String> =
-                required.iter().map(|&(ref name, _)| name.to_owned()).collect();
+            let names: Vec<String> = required
+                .iter()
+                .map(|&(ref name, _)| name.to_owned())
+                .collect();
 
             let positions: Vec<ErrorPos> =
                 required.iter().map(|&(_, ref t)| t.pos().into()).collect();
 
-            return Err(ErrorKind::MissingRequired(names,
-                                                  instance.arguments.pos().into(),
-                                                  positions)
-                .into());
+            return Err(
+                ErrorKind::MissingRequired(names, instance.arguments.pos().into(), positions)
+                    .into(),
+            );
         }
 
         Ok((reg_instance, known))
@@ -204,12 +229,16 @@ impl Environment {
     }
 
     /// Lookup the declaration matching the custom type.
-    pub fn lookup<'a>(&'a self,
-                      package: &'a RpVersionedPackage,
-                      lookup_name: &RpName)
-                      -> Result<(&RpVersionedPackage, &'a RpRegistered)> {
+    pub fn lookup<'a>(
+        &'a self,
+        package: &'a RpVersionedPackage,
+        lookup_name: &RpName,
+    ) -> Result<(&RpVersionedPackage, &'a RpRegistered)> {
         let (package, name) = if let Some(ref prefix) = lookup_name.prefix {
-            (self.lookup_used(package, prefix)?, lookup_name.without_prefix())
+            (
+                self.lookup_used(package, prefix)?,
+                lookup_name.without_prefix(),
+            )
         } else {
             (package, lookup_name.clone())
         };
@@ -224,11 +253,12 @@ impl Environment {
     }
 
     /// Load the provided Object into a `RpFile`.
-    pub fn load_object<O: Into<Box<Object>>>(&mut self,
-                                             object: O,
-                                             version: Option<Version>,
-                                             package: Option<RpPackage>)
-                                             -> Result<Option<(RpVersionedPackage, RpFile)>> {
+    pub fn load_object<O: Into<Box<Object>>>(
+        &mut self,
+        object: O,
+        version: Option<Version>,
+        package: Option<RpPackage>,
+    ) -> Result<Option<(RpVersionedPackage, RpFile)>> {
         let package = RpVersionedPackage::new(package, version);
         let object = object.into();
         let content = parser::read_reader(object.read()?)?;
@@ -238,12 +268,15 @@ impl Environment {
     }
 
     /// Process use declarations.
-    pub fn process_uses(&mut self,
-                        package: &RpVersionedPackage,
-                        uses: Vec<Loc<RpUseDecl>>)
-                        -> Result<()> {
+    pub fn process_uses(
+        &mut self,
+        package: &RpVersionedPackage,
+        uses: Vec<Loc<RpUseDecl>>,
+    ) -> Result<()> {
         for use_decl in uses {
-            let version_req = use_decl.version_req.as_ref().map(AsRef::as_ref).map(Clone::clone);
+            let version_req = use_decl.version_req.as_ref().map(AsRef::as_ref).map(
+                Clone::clone,
+            );
             let required = RpRequiredPackage::new(use_decl.package.as_ref().clone(), version_req);
 
             let use_package = self.import(&required)?;
@@ -273,11 +306,13 @@ impl Environment {
     ///
     /// Declarations are considered the same if they have the same type_id.
     /// The same declarations are merged using `Merge`.
-    pub fn process_decls<I>(&self,
-                            package: &RpVersionedPackage,
-                            input: I)
-                            -> Result<LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>>
-        where I: IntoIterator<Item = Loc<RpDecl>>
+    pub fn process_decls<I>(
+        &self,
+        package: &RpVersionedPackage,
+        input: I,
+    ) -> Result<LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>>
+    where
+        I: IntoIterator<Item = Loc<RpDecl>>,
     {
         use linked_hash_map::Entry::*;
 
@@ -299,13 +334,17 @@ impl Environment {
         Ok(decls)
     }
 
-    pub fn process_types(&mut self,
-                         package: &RpVersionedPackage,
-                         decls: &LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>)
-                         -> Result<LinkedHashMap<RpTypeId, Loc<RpRegistered>>> {
+    pub fn process_types(
+        &mut self,
+        package: &RpVersionedPackage,
+        decls: &LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>,
+    ) -> Result<LinkedHashMap<RpTypeId, Loc<RpRegistered>>> {
         let mut types = LinkedHashMap::new();
 
-        for (key, t) in decls.values().flat_map(|d| d.into_registered_type(&package, d.pos())) {
+        for (key, t) in decls.values().flat_map(
+            |d| d.into_registered_type(&package, d.pos()),
+        )
+        {
             if types.insert(key.clone(), t).is_some() {
                 return Err(ErrorKind::RegisteredTypeConflict(key.clone()).into());
             }
@@ -324,9 +363,10 @@ impl Environment {
         Ok(())
     }
 
-    pub fn find_visited_by_required(&self,
-                                    required: &RpRequiredPackage)
-                                    -> Option<RpVersionedPackage> {
+    pub fn find_visited_by_required(
+        &self,
+        required: &RpRequiredPackage,
+    ) -> Option<RpVersionedPackage> {
         for visited in &self.visited {
             if let Some(ref visited_package) = visited.package {
                 if *visited_package == required.package {
@@ -376,12 +416,16 @@ impl Environment {
         if let Some((version, object)) = files.into_iter().last() {
             debug!("loading: {}", object);
 
-            let loaded = self.load_object(object, version, Some(required.package.clone()))?;
+            let loaded = self.load_object(
+                object,
+                version,
+                Some(required.package.clone()),
+            )?;
 
             if let Some((package, file)) = loaded {
-                candidates.entry(package)
-                    .or_insert_with(Vec::new)
-                    .push(file);
+                candidates.entry(package).or_insert_with(Vec::new).push(
+                    file,
+                );
             }
         }
 

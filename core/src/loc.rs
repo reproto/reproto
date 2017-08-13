@@ -1,10 +1,10 @@
+use super::errors::*;
+use super::merge::Merge;
 use pos::Pos;
 use serde;
 use std::cmp;
 use std::hash;
 use std::result;
-use super::errors::*;
-use super::merge::Merge;
 
 #[derive(Clone)]
 pub struct Loc<T> {
@@ -14,7 +14,8 @@ pub struct Loc<T> {
 
 impl<T: serde::Serialize> serde::Serialize for Loc<T> {
     fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
-        where S: serde::Serializer
+    where
+        S: serde::Serializer,
     {
         self.inner.serialize(serializer)
     }
@@ -37,14 +38,16 @@ impl<T> Loc<T> {
     }
 
     pub fn map_into<M, U>(self, map: M) -> Loc<U>
-        where M: FnOnce(T) -> U
+    where
+        M: FnOnce(T) -> U,
     {
         Loc::new(map(self.inner), self.pos)
     }
 
     pub fn map<'a, M, U>(&'a self, map: M) -> Loc<U>
-        where M: FnOnce(&'a T) -> U,
-              U: 'a
+    where
+        M: FnOnce(&'a T) -> U,
+        U: 'a,
     {
         Loc::new(map(&self.inner), self.pos.clone())
     }
@@ -59,17 +62,23 @@ impl<T> Loc<T> {
 }
 
 impl<T> cmp::PartialEq for Loc<T>
-    where T: cmp::PartialEq
+where
+    T: cmp::PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         self.inner.eq(other)
     }
 }
 
-impl<T> cmp::Eq for Loc<T> where T: cmp::Eq {}
+impl<T> cmp::Eq for Loc<T>
+where
+    T: cmp::Eq,
+{
+}
 
 impl<T> cmp::PartialOrd for Loc<T>
-    where T: cmp::PartialOrd
+where
+    T: cmp::PartialOrd,
 {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         self.inner.partial_cmp(other)
@@ -77,8 +86,9 @@ impl<T> cmp::PartialOrd for Loc<T>
 }
 
 impl<T> cmp::Ord for Loc<T>
-    where T: cmp::Ord,
-          Self: cmp::PartialOrd + cmp::Eq
+where
+    T: cmp::Ord,
+    Self: cmp::PartialOrd + cmp::Eq,
 {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.inner.cmp(other)
@@ -86,17 +96,20 @@ impl<T> cmp::Ord for Loc<T>
 }
 
 impl<T> hash::Hash for Loc<T>
-    where T: hash::Hash
+where
+    T: hash::Hash,
 {
     fn hash<H>(&self, state: &mut H)
-        where H: hash::Hasher
+    where
+        H: hash::Hasher,
     {
         self.inner.hash(state)
     }
 }
 
 impl<T> Merge for Loc<T>
-    where T: Merge
+where
+    T: Merge,
 {
     fn merge(&mut self, source: Loc<T>) -> Result<()> {
         self.as_mut().merge(source.move_inner())?;
@@ -131,7 +144,8 @@ impl<T> ::std::convert::AsMut<T> for Loc<T> {
 }
 
 impl<T> ::std::fmt::Display for Loc<T>
-    where T: ::std::fmt::Display
+where
+    T: ::std::fmt::Display,
 {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "{}", self.inner)
@@ -139,7 +153,8 @@ impl<T> ::std::fmt::Display for Loc<T>
 }
 
 impl<T> ::std::fmt::Debug for Loc<T>
-    where T: ::std::fmt::Debug
+where
+    T: ::std::fmt::Debug,
 {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "<{:?}@{:?}>", self.inner, self.pos)
