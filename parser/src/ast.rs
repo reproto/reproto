@@ -571,12 +571,14 @@ impl Node {
 
 fn convert_return(
     comment: Vec<String>,
+    status: Option<Loc<RpNumber>>,
+    produces: Option<Loc<String>>,
     ty: Option<Loc<RpType>>,
     options: Vec<Loc<OptionDecl>>,
 ) -> Result<RpServiceReturns> {
     let options = Options::new(options.into_model()?);
 
-    let produces: Option<Loc<String>> = options.find_one_string("produces")?;
+    let produces = produces.or(options.find_one_string("produces")?);
 
     let produces = if let Some(produces) = produces {
         let (produces, pos) = produces.both();
@@ -590,7 +592,7 @@ fn convert_return(
         None
     };
 
-    let status: Option<Loc<RpNumber>> = options.find_one_number("status")?;
+    let status = status.or(options.find_one_number("status")?);
 
     let status = if let Some(status) = status {
         let (status, pos) = status.both();
@@ -614,12 +616,13 @@ fn convert_return(
 
 fn convert_accepts(
     comment: Vec<String>,
-    ty: Loc<RpType>,
+    accepts: Option<Loc<String>>,
+    ty: Option<Loc<RpType>>,
     options: Vec<Loc<OptionDecl>>,
 ) -> Result<RpServiceAccepts> {
     let options = Options::new(options.into_model()?);
 
-    let accepts: Option<Loc<String>> = options.find_one_string("accept")?;
+    let accepts = accepts.or(options.find_one_string("accept")?);
 
     let accepts = if let Some(accepts) = accepts {
         let (accepts, pos) = accepts.both();
@@ -729,20 +732,23 @@ impl<'input> IntoModel for ServiceBody<'input> {
                     // end node, manifest an endpoint.
                     ServiceNested::Returns {
                         comment,
+                        status,
+                        produces,
                         ty,
                         options,
                     } => {
                         let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-                        let returns = convert_return(comment, ty, options)?;
+                        let returns = convert_return(comment, status, produces, ty, options)?;
                         parent.try_borrow_mut()?.push_returns(returns);
                     }
                     ServiceNested::Accepts {
                         comment,
+                        accepts,
                         ty,
                         options,
                     } => {
                         let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-                        let accepts = convert_accepts(comment, ty, options)?;
+                        let accepts = convert_accepts(comment, accepts, ty, options)?;
                         parent.try_borrow_mut()?.push_accepts(accepts);
                     }
                 }
@@ -778,12 +784,15 @@ pub enum ServiceNested<'input> {
     },
     Returns {
         comment: Vec<&'input str>,
+        status: Option<Loc<RpNumber>>,
+        produces: Option<Loc<String>>,
         ty: Option<Loc<RpType>>,
         options: Vec<Loc<OptionDecl<'input>>>,
     },
     Accepts {
         comment: Vec<&'input str>,
-        ty: Loc<RpType>,
+        accepts: Option<Loc<String>>,
+        ty: Option<Loc<RpType>>,
         options: Vec<Loc<OptionDecl<'input>>>,
     },
 }

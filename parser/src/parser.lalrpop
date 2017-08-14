@@ -125,22 +125,46 @@ ServiceNested: ServiceNested<'input> = {
             children: children,
         }
     },
+
     <comment:"///"?>
-    "returns" <ty:Loc<TypeSpec>?> "{"
+    "returns" <status:Loc<Number>?> <produces:Loc<string>?> <ty:Loc<TypeSpec>?> ";" => {
+        ServiceNested::Returns {
+            comment: comment.unwrap_or_else(Vec::new),
+            status: status,
+            produces: produces,
+            ty: ty,
+            options: vec![],
+        }
+    },
+    <comment:"///"?>
+    "returns" <status:Loc<Number>?> <produces:Loc<string>?> <ty:Loc<TypeSpec>?> "{"
         <options:Loc<OptionDecl>*>
     "}" => {
         ServiceNested::Returns {
             comment: comment.unwrap_or_else(Vec::new),
+            status: status,
+            produces: produces,
             ty: ty,
             options: options,
         }
     },
+
     <comment:"///"?>
-    "accepts" <ty:Loc<TypeSpec>> "{"
+    "accepts" <accepts:Loc<string>?> <ty:Loc<TypeSpec>?> ";" => {
+        ServiceNested::Accepts {
+            comment: comment.unwrap_or_else(Vec::new),
+            accepts: accepts,
+            ty: ty,
+            options: vec![],
+        }
+    },
+    <comment:"///"?>
+    "accepts" <accepts:Loc<string>?>  <ty:Loc<TypeSpec>?> "{"
         <options:Loc<OptionDecl>*>
     "}" => {
         ServiceNested::Accepts {
             comment: comment.unwrap_or_else(Vec::new),
+            accepts: accepts,
             ty: ty,
             options: options,
         }

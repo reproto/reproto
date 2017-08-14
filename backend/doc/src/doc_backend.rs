@@ -378,8 +378,6 @@ impl DocBackend {
                     html!(out, table {class => "spaced"} => {
                         for accept in &endpoint.accepts {
                             html!(out, tr {} => {
-                                let (ty, pos) = accept.ty.ref_both();
-
                                 let accepts = accept.accepts
                                     .as_ref()
                                     .map(|m| format!("{}", m))
@@ -390,7 +388,12 @@ impl DocBackend {
                                 });
 
                                 html!(out, td {class => "type"} => {
-                                    self.write_type(out, pos, type_id, ty)?;
+                                    if let Some(ref ty) = accept.ty {
+                                        let (ty, pos) = ty.ref_both();
+                                        self.write_type(out, pos, type_id, ty)?;
+                                    } else {
+                                        html!(out, em {} ~ "no body");
+                                    }
                                 });
 
                                 html!(out, td {class => "description"} => {
