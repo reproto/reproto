@@ -225,17 +225,6 @@ pub Member: Member<'input> = {
          Member::Field(field)
     },
 
-    <comment:"///"?>
-    <condition:Loc<MatchCondition>> "=>" <object:Loc<Object>> ";" => {
-        let m = MatchMember {
-            comment: comment.unwrap_or_else(Vec::new),
-            condition: condition,
-            object: object,
-        };
-
-        Member::Match(m)
-    },
-
     <option:OptionDecl> => {
          Member::Option(option)
     },
@@ -260,16 +249,6 @@ Object: Object<'input> = {
     <name:Loc<Name>> => Object::Constant(name),
 };
 
-MatchCondition: MatchCondition<'input> = {
-    "(" <variable:Loc<MatchVariable>> ")" => MatchCondition::Type(variable),
-    <value:Loc<MatchValue>> => MatchCondition::Value(value),
-};
-
-MatchVariable: MatchVariable<'input> = <name:Identifier> ":" <ty:TypeSpec> => MatchVariable {
-    name: name,
-    ty: ty,
-};
-
 SubType: SubType<'input> = {
     <comment:"///"?>
     <name:TypeIdentifier> "{"
@@ -291,13 +270,6 @@ pub Value: Value<'input> = {
     <false> => Value::Boolean(false),
     <identifier:Identifier> => Value::Identifier(identifier),
     <object:Loc<Object>> => Value::Object(object),
-};
-
-MatchValue: Value<'input> = {
-    <string:string> => Value::String(string),
-    <number:Number> => Value::Number(number),
-    <true> => Value::Boolean(true),
-    <false> => Value::Boolean(false),
 };
 
 Instance: Instance<'input> = {

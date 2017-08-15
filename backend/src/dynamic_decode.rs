@@ -7,13 +7,11 @@ use converter::Converter;
 use core::{Loc, Pos, RpInterfaceBody, RpType, RpTypeId};
 use dynamic_converter::DynamicConverter;
 use errors::*;
-use match_decode::MatchDecode;
 
 pub trait DynamicDecode
 where
     Self: Converter,
     Self: DynamicConverter,
-    Self: MatchDecode,
 {
     type Method;
 
@@ -91,14 +89,6 @@ where
         let data = self.new_var("data");
 
         let mut decode_body = Self::Elements::new();
-
-        if let Some(by_value) = self.decode_by_value(type_id, &body.match_decl, &data)? {
-            decode_body.push(&by_value);
-        }
-
-        if let Some(by_type) = self.decode_by_type(type_id, &body.match_decl, &data)? {
-            decode_body.push(&by_type);
-        }
 
         let type_var = self.new_var("f_type");
         decode_body.push(&self.assign_type_var(&data, &type_var));

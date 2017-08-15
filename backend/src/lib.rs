@@ -21,7 +21,6 @@ mod dynamic_decode;
 mod dynamic_encode;
 mod environment;
 mod for_context;
-mod match_decode;
 mod package_processor;
 mod package_utils;
 mod value_builder;

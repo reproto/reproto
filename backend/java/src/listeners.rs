@@ -5,7 +5,6 @@ pub struct ClassAdded<'a> {
     pub type_id: &'a RpTypeId,
     pub fields: &'a Vec<JavaField<'a>>,
     pub class_type: &'a ClassType,
-    pub match_decl: &'a RpMatchDecl,
     pub spec: &'a mut ClassSpec,
 }
 

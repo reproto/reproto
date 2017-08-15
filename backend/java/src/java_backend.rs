@@ -680,7 +680,6 @@ impl JavaBackend {
             type_id: type_id,
             fields: &fields,
             class_type: &class_type,
-            match_decl: &body.match_decl,
             spec: &mut spec,
         })?;
 
@@ -764,7 +763,6 @@ impl JavaBackend {
                 type_id: &type_id,
                 fields: &fields,
                 class_type: &class_type,
-                match_decl: &sub_type.match_decl,
                 spec: &mut class,
             })?;
 

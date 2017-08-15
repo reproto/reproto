@@ -109,7 +109,7 @@ impl<'input> IntoModel for EnumBody<'input> {
 
         let mut ordinals = OrdinalGenerator::new();
 
-        let (fields, codes, options, match_decl, decls) = members_into_model(scope, self.members)?;
+        let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
 
         for variant in self.variants {
             let (variant, variant_pos) = variant.both();
@@ -158,7 +158,6 @@ impl<'input> IntoModel for EnumBody<'input> {
             variants: variants,
             fields: fields,
             codes: codes,
-            match_decl: match_decl,
             serialized_as: serialized_as,
             serialized_as_name: serialized_as_name,
         };
@@ -326,7 +325,7 @@ impl<'input> IntoModel for InterfaceBody<'input> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use std::collections::btree_map::Entry::*;
 
-        let (fields, codes, options, match_decl, decls) = members_into_model(scope, self.members)?;
+        let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
 
         let mut sub_types: BTreeMap<String, Loc<Rc<RpSubType>>> = BTreeMap::new();
 
@@ -352,7 +351,6 @@ impl<'input> IntoModel for InterfaceBody<'input> {
             decls: decls,
             fields: fields,
             codes: codes,
-            match_decl: match_decl,
             sub_types: sub_types,
         };
 
@@ -487,72 +485,10 @@ impl<'input> IntoModel for (&'input Path, usize, usize) {
 }
 
 #[derive(Debug)]
-pub enum MatchCondition<'input> {
-    /// Match a specific value.
-    Value(Loc<Value<'input>>),
-    /// Match a type, and add a binding for the given name that can be resolved in the action.
-    Type(Loc<MatchVariable<'input>>),
-}
-
-impl<'input> IntoModel for MatchCondition<'input> {
-    type Output = RpMatchCondition;
-
-    fn into_model(self, scope: &Scope) -> Result<RpMatchCondition> {
-        let match_condition = match self {
-            MatchCondition::Value(value) => RpMatchCondition::Value(value.into_model(scope)?),
-            MatchCondition::Type(ty) => RpMatchCondition::Type(ty.into_model(scope)?),
-        };
-
-        Ok(match_condition)
-    }
-}
-
-#[derive(Debug)]
-pub struct MatchMember<'input> {
-    pub comment: Vec<&'input str>,
-    pub condition: Loc<MatchCondition<'input>>,
-    pub object: Loc<Object<'input>>,
-}
-
-impl<'input> IntoModel for MatchMember<'input> {
-    type Output = RpMatchMember;
-
-    fn into_model(self, scope: &Scope) -> Result<RpMatchMember> {
-        let member = RpMatchMember {
-            comment: self.comment.into_model(scope)?,
-            condition: self.condition.into_model(scope)?,
-            object: self.object.into_model(scope)?,
-        };
-
-        Ok(member)
-    }
-}
-
-#[derive(Debug)]
-pub struct MatchVariable<'input> {
-    pub name: &'input str,
-    pub ty: Type,
-}
-
-impl<'input> IntoModel for MatchVariable<'input> {
-    type Output = RpMatchVariable;
-
-    fn into_model(self, scope: &Scope) -> Result<RpMatchVariable> {
-        let match_variable = RpMatchVariable {
-            name: self.name.into_model(scope)?,
-            ty: self.ty.into_model(scope)?,
-        };
-
-        Ok(match_variable)
-    }
-}
-
-#[derive(Debug)]
 pub enum Member<'input> {
     Field(Field<'input>),
     Code(&'input str, Vec<String>),
     Option(OptionDecl<'input>),
-    Match(MatchMember<'input>),
     InnerDecl(Decl<'input>),
 }
 
@@ -933,7 +869,6 @@ impl<'input> IntoModel for SubType<'input> {
         let mut fields: Vec<Loc<RpField>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
-        let mut match_decl = RpMatchDecl::new();
         let mut decls = Vec::new();
 
         for member in self.members {
@@ -964,9 +899,6 @@ impl<'input> IntoModel for SubType<'input> {
                 Option(option) => {
                     options.push(Loc::new(option.into_model(scope)?, pos));
                 }
-                Match(m) => {
-                    match_decl.push(Loc::new(m.into_model(scope)?, pos))?;
-                }
                 InnerDecl(decl) => {
                     decls.push(Rc::new(Loc::new(decl.into_model(scope)?, pos)));
                 }
@@ -984,7 +916,6 @@ impl<'input> IntoModel for SubType<'input> {
             fields: fields,
             codes: codes,
             names: names,
-            match_decl: match_decl,
         };
 
         Ok(Rc::new(sub_type))
@@ -1002,7 +933,7 @@ impl<'input> IntoModel for TupleBody<'input> {
     type Output = Rc<RpTupleBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (fields, codes, options, match_decl, decls) = members_into_model(scope, self.members)?;
+        let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
 
         let _options = Options::new(options);
 
@@ -1012,7 +943,6 @@ impl<'input> IntoModel for TupleBody<'input> {
             decls: decls,
             fields: fields,
             codes: codes,
-            match_decl: match_decl,
         };
 
         Ok(Rc::new(tuple_body))
@@ -1030,7 +960,7 @@ impl<'input> IntoModel for TypeBody<'input> {
     type Output = Rc<RpTypeBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (fields, codes, options, match_decl, decls) = members_into_model(scope, self.members)?;
+        let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
 
         let options = Options::new(options);
 
@@ -1045,7 +975,6 @@ impl<'input> IntoModel for TypeBody<'input> {
             decls: decls,
             fields: fields,
             codes: codes,
-            match_decl: match_decl,
             reserved: reserved,
         };
 
@@ -1090,13 +1019,12 @@ pub fn code(pos: Pos, context: String, lines: Vec<String>) -> Loc<RpCode> {
 pub fn members_into_model(
     scope: &Scope,
     members: Vec<Loc<Member>>,
-) -> Result<(Fields, Codes, OptionVec, RpMatchDecl, Vec<Rc<Loc<RpDecl>>>)> {
+) -> Result<(Fields, Codes, OptionVec, Vec<Rc<Loc<RpDecl>>>)> {
     use self::Member::*;
 
     let mut fields: Vec<Loc<RpField>> = Vec::new();
     let mut codes = Vec::new();
     let mut options: Vec<Loc<RpOptionDecl>> = Vec::new();
-    let mut match_decl = RpMatchDecl::new();
     let mut decls = Vec::new();
 
     for member in members {
@@ -1127,16 +1055,13 @@ pub fn members_into_model(
             Option(option) => {
                 options.push(Loc::new(option.into_model(scope)?, pos));
             }
-            Match(m) => {
-                match_decl.push(Loc::new(m.into_model(scope)?, pos))?;
-            }
             InnerDecl(decl) => {
                 decls.push(Rc::new(Loc::new(decl.into_model(scope)?, pos)));
             }
         }
     }
 
-    Ok((fields, codes, options, match_decl, decls))
+    Ok((fields, codes, options, decls))
 }
 
 /// Generate ordinal values.

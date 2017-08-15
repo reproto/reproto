@@ -184,7 +184,6 @@ impl JsBackend {
     fn decode_method<F>(
         &self,
         type_id: &RpTypeId,
-        match_decl: &RpMatchDecl,
         fields: &[Loc<JsField>],
         class: &ClassSpec,
         variable_fn: F,
@@ -244,14 +243,6 @@ impl JsBackend {
         }
 
         let mut body = Elements::new();
-
-        if let Some(by_value) = self.decode_by_value(type_id, match_decl, &data)? {
-            body.push(by_value.join(Spacing));
-        }
-
-        if let Some(by_type) = self.decode_by_type(type_id, match_decl, &data)? {
-            body.push(by_type.join(Spacing));
-        }
 
         if !assign.is_empty() {
             body.push(assign.join(Spacing));
@@ -419,7 +410,6 @@ impl JsBackend {
 
         let decode = self.decode_method(
             type_id,
-            &body.match_decl,
             &fields,
             &class,
             Self::field_by_index,
@@ -525,7 +515,6 @@ impl JsBackend {
 
         let decode = self.decode_method(
             type_id,
-            &body.match_decl,
             &fields,
             &class,
             Self::field_by_name,
@@ -588,7 +577,6 @@ impl JsBackend {
 
             let decode = self.decode_method(
                 type_id,
-                &sub_type.match_decl,
                 &fields,
                 &class,
                 Self::field_by_name,
@@ -813,51 +801,5 @@ impl DynamicEncode for JsBackend {
             &body,
             "; }))",
         ]
-    }
-}
-
-impl MatchDecode for JsBackend {
-    fn match_value(
-        &self,
-        data: &Statement,
-        _value: &RpValue,
-        value_stmt: Statement,
-        _result: &RpObject,
-        result_stmt: Statement,
-    ) -> Result<Elements> {
-        let mut value_body = Elements::new();
-        value_body.push(stmt!["if (", data, " == ", value_stmt, ") {"]);
-        value_body.push_nested(stmt!["return ", result_stmt]);
-        value_body.push("}");
-        Ok(value_body)
-    }
-
-    fn match_type(
-        &self,
-        _type_id: &RpTypeId,
-        data: &Statement,
-        kind: &RpMatchKind,
-        variable: &str,
-        decode: Statement,
-        result: Statement,
-        _value: &RpByTypeMatch,
-    ) -> Result<Elements> {
-        let check = match *kind {
-            RpMatchKind::Any => stmt!["true"],
-            RpMatchKind::Object => stmt![data, ".constructor === Object"],
-            RpMatchKind::Array => stmt![data, ".constructor === Array"],
-            RpMatchKind::String => stmt!["typeof ", data, " === \"string\""],
-            RpMatchKind::Boolean => stmt!["typeof ", data, " === \"boolean\""],
-            RpMatchKind::Number => stmt!["typeof ", data, " === \"number\""],
-        };
-
-        let mut value_body = Elements::new();
-
-        value_body.push(stmt!["if (", check, ") {"]);
-        value_body.push_nested(stmt![&variable, " = ", decode]);
-        value_body.push_nested(stmt!["return ", &result, ";"]);
-        value_body.push("}");
-
-        Ok(value_body)
     }
 }

@@ -10,12 +10,7 @@ pub struct PythonBackend {
     to_lower_snake: Box<Naming>,
     staticmethod: BuiltInName,
     classmethod: BuiltInName,
-    isinstance: BuiltInName,
     dict: BuiltInName,
-    list: BuiltInName,
-    str_: BuiltInName,
-    boolean: BuiltInName,
-    number: ImportedName,
     enum_enum: ImportedName,
     type_var: Variable,
 }
@@ -34,12 +29,7 @@ impl PythonBackend {
             to_lower_snake: SnakeCase::new().to_lower_snake(),
             staticmethod: Name::built_in("staticmethod"),
             classmethod: Name::built_in("classmethod"),
-            isinstance: Name::built_in("isinstance"),
             dict: Name::built_in("dict"),
-            list: Name::built_in("list"),
-            str_: Name::built_in("str"),
-            boolean: Name::built_in("bool"),
-            number: Name::imported("numbers", "Number"),
             enum_enum: Name::imported("enum", "Enum"),
             type_var: Variable::String(TYPE.to_owned()),
         }
@@ -254,7 +244,6 @@ impl PythonBackend {
         &self,
         type_id: &RpTypeId,
         pos: &Pos,
-        match_decl: &RpMatchDecl,
         fields: &[Loc<Field>],
         variable_fn: F,
     ) -> Result<MethodSpec>
@@ -268,14 +257,6 @@ impl PythonBackend {
         decode.push_argument(&data);
 
         let mut decode_body = Elements::new();
-
-        if let Some(by_value) = self.decode_by_value(type_id, match_decl, &data)? {
-            decode_body.push(by_value.join(Spacing));
-        }
-
-        if let Some(by_type) = self.decode_by_type(type_id, match_decl, &data)? {
-            decode_body.push(by_type.join(Spacing));
-        }
 
         let mut arguments = Statement::new();
 
@@ -487,7 +468,6 @@ impl PythonBackend {
         let decode = self.decode_method(
             type_id,
             pos,
-            &body.match_decl,
             &fields,
             |i, _| Variable::Literal(i.to_string()),
         )?;
@@ -572,13 +552,9 @@ impl PythonBackend {
             }
         }
 
-        let decode = self.decode_method(
-            type_id,
-            pos,
-            &body.match_decl,
-            &fields,
-            |_, field| Variable::String(field.name.to_owned()),
-        )?;
+        let decode = self.decode_method(type_id, pos, &fields, |_, field| {
+            Variable::String(field.name.to_owned())
+        })?;
 
         class.push(decode);
 
@@ -646,7 +622,6 @@ impl PythonBackend {
             let decode = self.decode_method(
                 &type_id,
                 sub_type.pos(),
-                &sub_type.match_decl,
                 &fields,
                 |_, field| Variable::String(field.ident.to_owned()),
             )?;
@@ -880,49 +855,5 @@ impl DynamicEncode for PythonBackend {
             &body,
             "))",
         ]
-    }
-}
-
-impl MatchDecode for PythonBackend {
-    fn match_value(
-        &self,
-        data: &Statement,
-        _value: &RpValue,
-        value_stmt: Statement,
-        _result: &RpObject,
-        result_stmt: Statement,
-    ) -> Result<Elements> {
-        let mut value_body = Elements::new();
-        value_body.push(stmt!["if ", &data, " == ", value_stmt, ":"]);
-        value_body.push_nested(stmt!["return ", result_stmt]);
-        Ok(value_body)
-    }
-
-    fn match_type(
-        &self,
-        _type_id: &RpTypeId,
-        data: &Statement,
-        kind: &RpMatchKind,
-        variable: &str,
-        decode: Statement,
-        result: Statement,
-        _value: &RpByTypeMatch,
-    ) -> Result<Elements> {
-        let check = match *kind {
-            RpMatchKind::Any => stmt!["true"],
-            RpMatchKind::Object => stmt![&self.isinstance, "(", data, ", ", &self.dict, ")"],
-            RpMatchKind::Array => stmt![&self.isinstance, "(", data, ", ", &self.list, ")"],
-            RpMatchKind::String => stmt![&self.isinstance, "(", data, ", ", &self.str_, ")"],
-            RpMatchKind::Boolean => stmt![&self.isinstance, "(", data, ", ", &self.boolean, ")"],
-            RpMatchKind::Number => stmt![&self.isinstance, "(", data, ", ", &self.number, ")"],
-        };
-
-        let mut value_body = Elements::new();
-
-        value_body.push(stmt!["if ", check, ":"]);
-        value_body.push_nested(stmt![&variable, " = ", decode]);
-        value_body.push_nested(stmt!["return ", &result]);
-
-        Ok(value_body)
     }
 }

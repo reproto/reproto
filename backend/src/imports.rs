@@ -12,7 +12,6 @@ pub use dynamic_decode::DynamicDecode;
 pub use dynamic_encode::DynamicEncode;
 pub use environment::{Environment, InitFields, LookupResult};
 pub use for_context::ForContext;
-pub use match_decode::MatchDecode;
 pub use naming::{CamelCase, FromNaming, Naming, SnakeCase};
 pub use options::Options;
 pub use package_processor::PackageProcessor;

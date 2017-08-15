@@ -66,12 +66,6 @@ impl fmt::Display for Mime {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct RpByTypeMatch {
-    pub variable: Loc<RpMatchVariable>,
-    pub object: Loc<RpObject>,
-}
-
-#[derive(Debug, Clone, Serialize)]
 pub struct RpByValueMatch {
     pub object: Loc<RpObject>,
 }
@@ -309,7 +303,6 @@ pub struct RpEnumBody {
     pub variants: Vec<Loc<Rc<RpEnumVariant>>>,
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
-    pub match_decl: RpMatchDecl,
     pub serialized_as: Option<Loc<String>>,
     pub serialized_as_name: bool,
 }
@@ -422,7 +415,6 @@ pub struct RpInterfaceBody {
     pub decls: Vec<Rc<Loc<RpDecl>>>,
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
-    pub match_decl: RpMatchDecl,
     pub sub_types: BTreeMap<String, Loc<Rc<RpSubType>>>,
 }
 
@@ -439,128 +431,6 @@ impl Merge for RpInterfaceBody {
         self.sub_types.merge(source.sub_types)?;
         Ok(())
     }
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum RpMatchCondition {
-    /// Match a specific value.
-    Value(Loc<RpValue>),
-    /// Match a type, and add a binding for the given name that can be resolved in the action.
-    Type(Loc<RpMatchVariable>),
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct RpMatchDecl {
-    pub by_value: Vec<(Loc<RpValue>, RpByValueMatch)>,
-    pub by_type: Vec<(RpMatchKind, RpByTypeMatch)>,
-}
-
-impl RpMatchDecl {
-    pub fn new() -> RpMatchDecl {
-        RpMatchDecl {
-            by_value: Vec::new(),
-            by_type: Vec::new(),
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.by_value.is_empty() && self.by_type.is_empty()
-    }
-
-    pub fn identify_match_kind(&self, variable: &RpMatchVariable) -> RpMatchKind {
-        match variable.ty {
-            RpType::Double |
-            RpType::Float |
-            RpType::Signed { size: _ } |
-            RpType::Unsigned { size: _ } => RpMatchKind::Number,
-            RpType::Boolean => RpMatchKind::Boolean,
-            RpType::String | RpType::Bytes => RpMatchKind::String,
-            RpType::Any => RpMatchKind::Any,
-            RpType::Name { name: _ } |
-            RpType::Map { key: _, value: _ } => RpMatchKind::Object,
-            RpType::Array { inner: _ } => RpMatchKind::Array,
-        }
-    }
-
-    pub fn push(&mut self, member: Loc<RpMatchMember>) -> Result<()> {
-        match *member.condition {
-            RpMatchCondition::Type(ref variable) => {
-                let match_kind = self.identify_match_kind(variable);
-
-                {
-                    // conflicting when type matches
-                    let result = self.by_type.iter().find(|e| {
-                        e.0 == match_kind || e.0 == RpMatchKind::Any
-                    });
-
-                    if let Some(&(_, ref existing_value)) = result {
-                        let err = ErrorKind::MatchConflict(
-                            member.condition.pos().into(),
-                            existing_value.object.pos().into(),
-                        );
-                        return Err(err.into());
-                    }
-                }
-
-                self.by_type.push((
-                    match_kind,
-                    RpByTypeMatch {
-                        variable: variable.clone(),
-                        object: member.object.clone(),
-                    },
-                ));
-            }
-            RpMatchCondition::Value(ref value) => {
-                {
-                    // conflicting when value matches
-                    let result = self.by_value.iter().find(
-                        |e| e.0.as_ref() == value.as_ref(),
-                    );
-
-                    if let Some(&(_, ref existing_value)) = result {
-                        let err = ErrorKind::MatchConflict(
-                            member.condition.pos().into(),
-                            existing_value.object.pos().into(),
-                        );
-                        return Err(err.into());
-                    }
-                }
-
-                self.by_value.push((
-                    value.clone(),
-                    RpByValueMatch { object: member.object.clone() },
-                ));
-            }
-        }
-
-        Ok(())
-    }
-}
-/// Simplified types that _can_ be uniquely matched over for JSON.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum RpMatchKind {
-    Any,
-    Object,
-    Array,
-    String,
-    Boolean,
-    Number,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct RpMatchMember {
-    pub comment: Vec<String>,
-    pub condition: Loc<RpMatchCondition>,
-    pub object: Loc<RpObject>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct RpMatchVariable {
-    pub name: String,
-    #[serde(rename = "type")]
-    pub ty: RpType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
@@ -1135,7 +1005,6 @@ pub struct RpSubType {
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
     pub names: Vec<Loc<String>>,
-    pub match_decl: RpMatchDecl,
 }
 
 impl RpSubType {
@@ -1168,7 +1037,6 @@ pub struct RpTupleBody {
     pub decls: Vec<Rc<Loc<RpDecl>>>,
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
-    pub match_decl: RpMatchDecl,
 }
 
 impl RpTupleBody {
@@ -1192,7 +1060,6 @@ pub struct RpTypeBody {
     pub decls: Vec<Rc<Loc<RpDecl>>>,
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
-    pub match_decl: RpMatchDecl,
     // Set of fields which are reserved for this type.
     pub reserved: HashSet<Loc<String>>,
 }
@@ -1332,17 +1199,6 @@ pub enum RpValue {
 }
 
 impl RpValue {
-    pub fn as_match_kind(&self) -> RpMatchKind {
-        match *self {
-            RpValue::String(_) => RpMatchKind::String,
-            RpValue::Number(_) => RpMatchKind::Number,
-            RpValue::Boolean(_) => RpMatchKind::Boolean,
-            RpValue::Identifier(_) => RpMatchKind::Any,
-            RpValue::Array(_) => RpMatchKind::Array,
-            RpValue::Object(_) => RpMatchKind::Any,
-        }
-    }
-
     pub fn as_str(&self) -> Result<&str> {
         match *self {
             RpValue::String(ref string) => Ok(string),
