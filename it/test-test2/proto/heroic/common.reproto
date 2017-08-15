@@ -1,3 +1,0 @@
-type Date {
-  field: unsigned/64;
-}
