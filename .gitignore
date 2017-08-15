@@ -6,10 +6,6 @@ __pycache__
 *.pyc
 *.class
 .*.un~
-# temporary files for integration tests
-/it/test-*/output
-/it/test-*/workdir-*
-/it/test-*/output-*
 # generated
 /src/backend/doc/static/doc.*.css
 /src/backend/doc/themes.rs

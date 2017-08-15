@@ -1,0 +1,4 @@
+# temporary files for integration tests
+/test-*/output
+/test-*/workdir-*
+/test-*/output-*

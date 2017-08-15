@@ -7,10 +7,16 @@ PYTHON ?= python3
 REPROTO ?= $(default-reproto)
 EACH := tools/for-each-it
 
+ifneq ($(M),)
+RUN := $(MAKE) -C $(M) -f $(ROOT)/it/lib.mk
+else
+RUN := $(EACH)
+endif
+
 ifeq ($(DEBUG),yes)
 REPROTO_ARGS := --debug
 else
-EACH := $(EACH) --no-print-directory -s
+RUN := $(RUN) --no-print-directory -s
 REPROTO_ARGS :=
 endif
 
@@ -30,27 +36,27 @@ tests:
 
 clean:
 	cargo clean
-	+$(EACH) clean
+	+$(RUN) clean
 
 # simplified set of suites
 suites: $(REPROTO)
-	+$(EACH) suites
+	+$(RUN) suites
 
 update-suites: $(REPROTO)
-	+$(EACH) update-suites
+	+$(RUN) update-suites
 
 clean-suites: $(REPROTO)
-	+$(EACH) clean-suites
+	+$(RUN) clean-suites
 
 # extensive project-building test suites
 projects: $(REPROTO)
-	+$(EACH) projects
+	+$(RUN) projects
 
 update-projects: $(REPROTO)
-	+$(EACH) update-projects
+	+$(RUN) update-projects
 
 clean-projects: $(REPROTO)
-	+$(EACH) clean-projects
+	+$(RUN) clean-projects
 
 $(default-reproto):
 	cargo build

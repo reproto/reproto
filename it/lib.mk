@@ -11,6 +11,7 @@ target-file ?= Makefile
 script-input := $(ROOT)/tools/script-input
 default-reproto := $(ROOT)/target/debug/reproto
 
+RM := rm -rf
 DIFF ?= diff
 RSYNC ?= rsync
 REPROTO ?= $(default-reproto)
@@ -88,15 +89,15 @@ update: update-suites update-projects
 suites: $(suite-diffs)
 
 clean-suites:
-	rm -rf output
+	$(RM) $(output)
 
 update-suites: $(suite-updates)
 
 projects: $(project-diffs)
 
 clean-projects:
-	rm -rf workdir-*
-	rm -rf output-*
+	$(RM) workdir-*
+	$(RM) output-*
 
 update-projects: $(project-updates)
 
@@ -106,15 +107,14 @@ suite-build/%: $(REPROTO)
 
 suite-update/%: suite-build/%
 	@echo "Updating Suite: $*"
-	$(RSYNC) --delete -ra $($*-out)/ $($*-expected)/
+	$(RSYNC) -a --delete $($*-out)/ $($*-expected)/
 
 suite-diff/%: suite-build/%
 	@echo "Verifying Diffs: $*"
 	$(DIFF) -ur $($*-expected) $($*-out)
 
-project-build/%: $(REPROTO) output-% expected-%
+project-build/%: $(REPROTO) output-% expected-% workdir-%
 	@echo "Building Project: $*"
-	$(RSYNC) --delete -ra ../$*/ workdir-$*
 	$(reproto-cmd) compile $($*-project) $(paths-args) $(packages-args)
 	cd workdir-$* && make
 	$(script-input) workdir-$*/script.sh
@@ -132,6 +132,9 @@ project-update/%: project-build/%
 $(default-reproto):
 	@echo "Building $(default-reproto)"
 	cd $(ROOT) && $(CARGO) build
+
+workdir-%:
+	$(RSYNC) -a --delete --link-dest=../$*/ ../$*/ workdir-$*/
 
 expected-% output-%:
 	mkdir -p $@
