@@ -42,11 +42,16 @@ include $(target-file)
 suites := $(filter-out $(EXCLUDE) $(exclude-suites), $(suites))
 projects := $(filter-out $(EXCLUDE) $(exclude-projects), $(PROJECTS))
 
-suite-diffs := $(suites:%=suite-diff/%)
-suite-updates := $(suites:%=suite-update/%)
+suite-builds := $(suites:%=suite-build/%)
+suite-diff := $(suites:%=suite-diff/%)
+suite-update := $(suites:%=suite-update/%)
 
-project-diffs := $(projects:%=project-diff/%)
-project-updates := $(projects:%=project-update/%)
+project-workdir := $(projects:%=$(workdir)/%)
+project-script := $(projects:%=$(workdir)/%/script.sh)
+project-run := $(projects:%=project-run/%)
+project-output := $(projects:%=$(output)/project-%)
+project-diff := $(projects:%=project-diff/%)
+project-update := $(projects:%=project-update/%)
 
 reproto-args := $(paths:%=--path %) $(targets:%=--package %)
 
@@ -58,10 +63,10 @@ rust-suite := rust $(reproto-args) $(rust-args)
 doc-suite := doc $(reproto-args) --skip-static $(doc-args)
 
 # how to build projects
-java-project := java -m fasterxml -o $(workdir)/java/target/generated-sources/reproto
-js-project := js -o $(workdir)/js/generated
-python-project := python -o $(workdir)/python/generated
-rust-project := rust -o $(workdir)/rust/src --package-prefix generated
+java-project := java -m fasterxml $(reproto-args) -o $(workdir)/java/target/generated-sources/reproto
+js-project := js $(reproto-args) -o $(workdir)/js/generated
+python-project := python $(reproto-args) -o $(workdir)/python/generated
+rust-project := rust $(reproto-args) -o $(workdir)/rust/src --package-prefix generated
 
 # base command invocations
 reproto-cmd := $(REPROTO) $(REPROTO_ARGS)
@@ -75,9 +80,16 @@ define sync-dirs
 	$(CP) $(1) $(2)
 endef
 
-PHONY += all clean update
-PHONY += projects clean-projects update-projects
-PHONY += suites clean-suites update-suites
+.PHONY: all clean update
+.PHONY: projects clean-projects update-projects
+.PHONY: suites clean-suites update-suites
+.PHONY: $(suite-builds) $(suite-update) $(suite-diff)
+.PHONY: $(project-run) $(project-update) $(project-diff)
+
+# treating script as phony will cause them to rebuild
+ifeq ($(REBUILD),yes)
+.PHONY: $(project-script)
+endif
 
 all: suites projects
 
@@ -85,59 +97,58 @@ clean: clean-projects clean-suites
 
 update: update-suites update-projects
 
-suites: $(suite-diffs)
+suites: $(suite-diff)
 
 clean-suites:
 	$(RM) $(output)/suite-*
 
-update-suites: $(suite-updates)
+update-suites: $(suite-update)
 
-projects: $(project-diffs)
+projects: $(project-diff)
 
 clean-projects:
 	$(RM) $(workdir)
 	$(RM) $(output)/project-*
 
-update-projects: $(project-updates)
+update-projects: $(project-run) $(project-update)
 
-suite-build/%: $(REPROTO) $(output)/suite-%
-	@echo "Suite: $*"
-	$(reproto-compile) $($*-suite) -o $(output)/suite-$*
+$(suite-builds): $(REPROTO)
+	@echo "Suite: $(@F)"
+	$(RM) $(output)/suite-$(@F)
+	$(reproto-compile) $($(@F)-suite) -o $(output)/suite-$(@F)
 
-suite-update/%: $(expected)/suite-% suite-build/%
-	@echo "Updating Suite: $*"
-	$(call sync-dirs,$(output)/suite-$*,$(expected)/suite-$*)
+$(suite-update): $(suite-builds)
+	@echo "Updating Suite: $(@F)"
+	$(call sync-dirs,$(output)/suite-$(@F),$(expected)/suite-$(@F))
 
-suite-diff/%: $(expected)/suite-% suite-build/%
-	@echo "Verifying Diffs: $*"
-	$(call diff-dirs,$(expected)/suite-$*,$(output)/suite-$*)
+$(suite-diff): $(suite-builds)
+	@echo "Verifying Diff: $(@F)"
+	$(call diff-dirs,$(expected)/suite-$(@F),$(output)/suite-$(@F))
 
-project-build/%: $(REPROTO) $(input) $(output)/project-% $(workdir)/%
-	@echo "Building Project: $*"
-	$(reproto-compile) $($*-project)
-	$(MAKE) -C $(workdir)/$*
-	$(run-project) $(workdir)/$*/script.sh \
-		$(foreach in,$(call list-inputs,$(input)),$(input)/$(in) $(output)/project-$*/$(in))
+$(project-workdir): $(workdir)
+	$(call sync-dirs,../$(@F),$@)
 
-project-diff/%: $(expected)/project-% project-build/%
-	@echo "Diffing Project: $*"
-	$(call diff-dirs,$(expected)/project-$*,$(output)/project-$*)
+$(project-script): $(REPROTO) $(input) $(project-workdir)
+	@echo "Building Project: $(notdir $(@D))"
+	$(reproto-compile) $($(notdir $(@D))-project)
+	$(MAKE) -C $(@D)
 
-project-update/%: $(expected)/project-% project-build/%
-	@echo "Updating Project: $*"
-	$(call sync-dirs,$(output)/project-$*,$(expected)/project-$*)
+$(project-run): $(project-script) $(project-output)
+	@echo "Running Project: $(@F)"
+	$(run-project) $(workdir)/$(@F)/script.sh \
+		$(foreach in,$(call list-inputs,$(input)),$(input)/$(in) $(output)/project-$(@F)/$(in))
+
+$(project-update): $(project-run)
+	@echo "Updating Project: $(@F)"
+	$(call sync-dirs,$(output)/project-$(@F),$(expected)/project-$(@F))
+
+$(project-diff): $(project-run)
+	@echo "Diffing Project: $(@F)"
+	$(call diff-dirs,$(expected)/project-$(@F),$(output)/project-$(@F))
+
+$(workdir) $(input) $(project-output):
+	mkdir -p $@
 
 $(default-reproto):
 	@echo "Building $(default-reproto)"
 	cd $(ROOT) && $(CARGO) build
-
-$(workdir)/%:
-	$(call sync-dirs,../$*,$(workdir)/$*)
-
-$(input):
-	mkdir -p $@
-
-$(expected)/suite-% $(expected)/project-% $(output)/suite-% $(output)/project-%:
-	mkdir -p $@
-
-.PHONY: $(PHONY)
