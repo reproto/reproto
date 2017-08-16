@@ -58,13 +58,16 @@ projects := $(filter-out $(EXCLUDE) $(exclude-projects), $(PROJECTS))
 suite-builds := $(suites:%=suite-build/%)
 suite-diff := $(suites:%=suite-diff/%)
 suite-update := $(suites:%=suite-update/%)
+suite-output := $(suites:%=$(output)/suite/%)
+suite-expected := $(suites:%=$(expected)/suite/%)
 
 project-workdir := $(projects:%=$(workdir)/%)
 project-script := $(projects:%=$(workdir)/%/script.sh)
 project-run := $(projects:%=project-run/%)
-project-output := $(projects:%=$(output)/project-%)
 project-diff := $(projects:%=project-diff/%)
 project-update := $(projects:%=project-update/%)
+project-output := $(projects:%=$(output)/project/%)
+project-expected := $(suites:%=$(expected)/project/%)
 
 compile-args := $(paths:%=--path %) $(targets:%=--package %)
 
@@ -113,7 +116,7 @@ update: update-suites update-projects
 suites: $(suite-diff)
 
 clean-suites:
-	$(RM) $(output)/suite-*
+	$(RM) $(output)/suite
 
 update-suites: $(suite-update)
 
@@ -125,18 +128,21 @@ clean-projects:
 
 update-projects: $(project-run) $(project-update)
 
-$(suite-builds): $(REPROTO)
+$(suite-builds): $(REPROTO) $(suite-output)
 	@echo "$(M): Suite: $(@F)"
-	$(RM) $(output)/suite-$(@F)
-	$(reproto-compile) $($(@F)-suite) -o $(output)/suite-$(@F)
+	$(RM) $(output)/suite/$(@F)
+	$(reproto-compile) $($(@F)-suite) -o $(output)/suite/$(@F)
 
-$(suite-update): $(suite-builds)
+$(suite-update): $(suite-builds) $(suite-expected)
 	@echo "$(M): Updating Suite: $(@F)"
-	$(call sync-dirs,$(output)/suite-$(@F),$(expected)/suite-$(@F))
+	$(call sync-dirs,$(output)/suite/$(@F),$(expected)/suite/$(@F))
 
-$(suite-diff): $(suite-builds)
+$(suite-diff): $(suite-builds) $(suite-expected)
 	@echo "$(M): Verifying Diff: $(@F)"
-	$(call diff-dirs,$(expected)/suite-$(@F),$(output)/suite-$(@F))
+	$(call diff-dirs,$(expected)/suite/$(@F),$(output)/suite/$(@F))
+
+$(suite-expected):
+	mkdir -p $@
 
 $(project-workdir): $(workdir)
 	$(call sync-dirs,../$(@F),$@)
@@ -150,15 +156,18 @@ $(project-run): $(project-script) $(project-output)
 	@echo "$(M): Running Project: $(@F)"
 	$(run-project) $(workdir)/$(@F)/script.sh \
 		$(foreach in, \
-			$(call list-inputs,$(input)),$(input)/$(in) $(output)/project-$(@F)/$(in))
+			$(call list-inputs,$(input)),$(input)/$(in) $(output)/project/$(@F)/$(in))
 
-$(project-update): $(project-run)
+$(project-update): $(project-run) $(project-expected)
 	@echo "$(M): Updating Project: $(@F)"
-	$(call sync-dirs,$(output)/project-$(@F),$(expected)/project-$(@F))
+	$(call sync-dirs,$(output)/project/$(@F),$(expected)/project/$(@F))
 
-$(project-diff): $(project-run)
+$(project-diff): $(project-run) $(project-expected)
 	@echo "$(M): Diffing Project: $(@F)"
-	$(call diff-dirs,$(expected)/project-$(@F),$(output)/project-$(@F))
+	$(call diff-dirs,$(expected)/project/$(@F),$(output)/project/$(@F))
+
+$(project-expected):
+	mkdir -p $@
 
 $(workdir) $(input) $(project-output):
 	mkdir -p $@
