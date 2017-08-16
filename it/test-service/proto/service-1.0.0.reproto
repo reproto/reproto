@@ -35,7 +35,7 @@ service MyService {
     /// Create a new foo.
     POST {
       /// Only acceptable when I'm ~drunk~ Sober!
-      accepts any {
+      accepts any as v1_foo {
         accept "application/json";
       }
     }
