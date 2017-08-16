@@ -1,31 +1,23 @@
-.PHONY: all suites projects clean
-
 default-reproto := $(CURDIR)/target/debug/reproto
 
-ROOT ?= $(CURDIR)
-PYTHON ?= python3
-REPROTO ?= $(default-reproto)
-EACH := tools/for-each-it
-
-ifneq ($(M),)
-RUN := $(MAKE) -C $(M) -f $(ROOT)/it/lib.mk
-else
-RUN := $(EACH)
-endif
-
 ifeq ($(DEBUG),yes)
-REPROTO_ARGS := --debug
+make-args :=
 else
-RUN := $(RUN) --no-print-directory -s
-REPROTO_ARGS :=
+make-args := --no-print-directory -s
 endif
 
-export ROOT
-export PROJECTS := $(shell PYTHON=$(PYTHON) $(ROOT)/tools/check-project-deps)
-export PYTHON
-export MAKE
-export REPROTO
-export REPROTO_ARGS
+# set IT="<dir>" to limit which modules to build
+IT ?= $(wildcard it/test-*)
+run = $(MAKE) $(make-args) -f tools/Makefile.each dirs="$(IT)" $(IT) target=$1
+
+export ROOT := $(CURDIR)
+export PYTHON ?= python3
+export PROJECTS := $(shell PYTHON=$(PYTHON) tools/check-project-deps)
+export REPROTO ?= $(default-reproto)
+
+.PHONY: all update tests clean
+.PHONY: suites update-suites clean-suites
+.PHONY: projects update-projects clean-projects
 
 all: suites projects
 
@@ -36,27 +28,27 @@ tests:
 
 clean:
 	cargo clean
-	+$(RUN) clean
+	$(call run,clean)
 
 # simplified set of suites
 suites: $(REPROTO)
-	+$(RUN) suites
+	$(call run,suites)
 
 update-suites: $(REPROTO)
-	+$(RUN) update-suites
+	$(call run,update-suites)
 
 clean-suites: $(REPROTO)
-	+$(RUN) clean-suites
+	$(call run,clean-suites)
 
 # extensive project-building test suites
 projects: $(REPROTO)
-	+$(RUN) projects
+	$(call run,projects)
 
 update-projects: $(REPROTO)
-	+$(RUN) update-projects
+	$(call run,update-projects)
 
 clean-projects: $(REPROTO)
-	+$(RUN) clean-projects
+	$(call run,clean-projects)
 
 $(default-reproto):
 	cargo build

@@ -1,9 +1,22 @@
+M := $(notdir $(CURDIR))
+M := $(M:test-%=%)
+
 ifeq ($(ROOT),)
 $(error "ROOT: missing variable")
 endif
 
 ifeq ($(PROJECTS),)
 $(error "PROJECTS: missing variable")
+endif
+
+ifeq ($(M),)
+$(error "M: missing variable")
+endif
+
+reproto-args := $(REPROTO_ARGS)
+
+ifeq ($(DEBUG),yes)
+reproto-args := $(reproto-args) --debug
 endif
 
 target-file ?= Makefile
@@ -53,23 +66,23 @@ project-output := $(projects:%=$(output)/project-%)
 project-diff := $(projects:%=project-diff/%)
 project-update := $(projects:%=project-update/%)
 
-reproto-args := $(paths:%=--path %) $(targets:%=--package %)
+compile-args := $(paths:%=--path %) $(targets:%=--package %)
 
 # how to build suites
-java-suite := java $(reproto-args) $(java-args)
-js-suite := js $(reproto-args) $(js-args)
-python-suite := python $(reproto-args) $(python-args)
-rust-suite := rust $(reproto-args) $(rust-args)
-doc-suite := doc $(reproto-args) --skip-static $(doc-args)
+java-suite := java $(compile-args) $(java-args)
+js-suite := js $(compile-args) $(js-args)
+python-suite := python $(compile-args) $(python-args)
+rust-suite := rust $(compile-args) $(rust-args)
+doc-suite := doc $(compile-args) --skip-static $(doc-args)
 
 # how to build projects
-java-project := java -m fasterxml $(reproto-args) -o $(workdir)/java/target/generated-sources/reproto
-js-project := js $(reproto-args) -o $(workdir)/js/generated
-python-project := python $(reproto-args) -o $(workdir)/python/generated
-rust-project := rust $(reproto-args) -o $(workdir)/rust/src --package-prefix generated
+java-project := java -m fasterxml $(compile-args) -o $(workdir)/java/target/generated-sources/reproto
+js-project := js $(compile-args) -o $(workdir)/js/generated
+python-project := python $(compile-args) -o $(workdir)/python/generated
+rust-project := rust $(compile-args) -o $(workdir)/rust/src --package-prefix generated
 
 # base command invocations
-reproto-cmd := $(REPROTO) $(REPROTO_ARGS)
+reproto-cmd := $(REPROTO) $(reproto-args)
 reproto-compile := $(reproto-cmd) compile
 
 list-inputs = $(shell ls -1 $(1))
@@ -113,37 +126,38 @@ clean-projects:
 update-projects: $(project-run) $(project-update)
 
 $(suite-builds): $(REPROTO)
-	@echo "Suite: $(@F)"
+	@echo "$(M): Suite: $(@F)"
 	$(RM) $(output)/suite-$(@F)
 	$(reproto-compile) $($(@F)-suite) -o $(output)/suite-$(@F)
 
 $(suite-update): $(suite-builds)
-	@echo "Updating Suite: $(@F)"
+	@echo "$(M): Updating Suite: $(@F)"
 	$(call sync-dirs,$(output)/suite-$(@F),$(expected)/suite-$(@F))
 
 $(suite-diff): $(suite-builds)
-	@echo "Verifying Diff: $(@F)"
+	@echo "$(M): Verifying Diff: $(@F)"
 	$(call diff-dirs,$(expected)/suite-$(@F),$(output)/suite-$(@F))
 
 $(project-workdir): $(workdir)
 	$(call sync-dirs,../$(@F),$@)
 
 $(project-script): $(REPROTO) $(input) $(project-workdir)
-	@echo "Building Project: $(notdir $(@D))"
+	@echo "$(M): Building Project: $(notdir $(@D))"
 	$(reproto-compile) $($(notdir $(@D))-project)
 	$(MAKE) -C $(@D)
 
 $(project-run): $(project-script) $(project-output)
-	@echo "Running Project: $(@F)"
+	@echo "$(M): Running Project: $(@F)"
 	$(run-project) $(workdir)/$(@F)/script.sh \
-		$(foreach in,$(call list-inputs,$(input)),$(input)/$(in) $(output)/project-$(@F)/$(in))
+		$(foreach in, \
+			$(call list-inputs,$(input)),$(input)/$(in) $(output)/project-$(@F)/$(in))
 
 $(project-update): $(project-run)
-	@echo "Updating Project: $(@F)"
+	@echo "$(M): Updating Project: $(@F)"
 	$(call sync-dirs,$(output)/project-$(@F),$(expected)/project-$(@F))
 
 $(project-diff): $(project-run)
-	@echo "Diffing Project: $(@F)"
+	@echo "$(M): Diffing Project: $(@F)"
 	$(call diff-dirs,$(expected)/project-$(@F),$(output)/project-$(@F))
 
 $(workdir) $(input) $(project-output):

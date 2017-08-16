@@ -1,0 +1,12 @@
+ifeq ($(target),)
+$(error "target: missing variable")
+endif
+
+ifeq ($(dirs),)
+$(error "dirs: missing variable")
+endif
+
+.PHONY: $(dirs)
+
+$(dirs):
+	$(MAKE) -f $(ROOT)/it/lib.mk -C $@ $(target)
