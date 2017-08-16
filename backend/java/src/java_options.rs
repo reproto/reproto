@@ -1,3 +1,5 @@
+use super::*;
+
 pub struct JavaOptions {
     /// Should fields be nullable?
     pub nullable: bool,
@@ -15,6 +17,8 @@ pub struct JavaOptions {
     pub build_equals: bool,
     /// Build a Object#toString() implementation.
     pub build_to_string: bool,
+    /// Container to use for asynchronous operations.
+    pub async_container: Option<ClassType>,
 }
 
 impl JavaOptions {
@@ -28,6 +32,7 @@ impl JavaOptions {
             build_hash_code: true,
             build_equals: true,
             build_to_string: true,
+            async_container: None,
         }
     }
 }

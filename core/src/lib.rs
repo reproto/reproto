@@ -940,6 +940,7 @@ pub struct RpServiceAccepts {
     pub comment: Vec<String>,
     pub ty: Option<Loc<RpType>>,
     pub accepts: Option<Mime>,
+    pub alias: Option<Loc<String>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1184,7 +1185,7 @@ impl fmt::Display for RpType {
 pub struct RpUseDecl {
     pub package: Loc<RpPackage>,
     pub version_req: Option<Loc<VersionReq>>,
-    pub alias: Option<String>,
+    pub alias: Option<Loc<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
@@ -1200,9 +1201,21 @@ pub enum RpValue {
 
 impl RpValue {
     pub fn as_str(&self) -> Result<&str> {
+        use self::RpValue::*;
+
         match *self {
-            RpValue::String(ref string) => Ok(string),
+            String(ref string) => Ok(string),
             _ => Err("not a string".into()),
+        }
+    }
+
+    pub fn as_identifier(&self) -> Result<&str> {
+        use self::RpValue::*;
+
+        match *self {
+            String(ref string) => Ok(string),
+            Identifier(ref identifier) => Ok(identifier),
+            _ => Err("unsupported identifier kind".into()),
         }
     }
 }

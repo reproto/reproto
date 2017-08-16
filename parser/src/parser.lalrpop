@@ -22,11 +22,11 @@ pub File: File<'input> = {
 Use: UseDecl<'input> = {
     "use" <package:Loc<Package>>
         <version_req:("@" Loc<VersionReq>)?>
-        <alias:("as" Identifier)?>
+        <alias:Loc<Alias>?>
     ";" => UseDecl {
         package: package,
         version_req: version_req.map(|v| v.1),
-        alias: alias.map(|t| t.1),
+        alias: alias,
     },
 };
 
@@ -150,26 +150,30 @@ ServiceNested: ServiceNested<'input> = {
     },
 
     <comment:"///"?>
-    "accepts" <accepts:Loc<string>?> <ty:Loc<TypeSpec>?> ";" => {
+    "accepts" <accepts:Loc<string>?> <ty:Loc<TypeSpec>?> <alias:Loc<Alias>?> ";" => {
         ServiceNested::Accepts {
             comment: comment.unwrap_or_else(Vec::new),
             accepts: accepts,
+            alias: alias,
             ty: ty,
             options: vec![],
         }
     },
     <comment:"///"?>
-    "accepts" <accepts:Loc<string>?>  <ty:Loc<TypeSpec>?> "{"
+    "accepts" <accepts:Loc<string>?>  <ty:Loc<TypeSpec>?> <alias:Loc<Alias>?> "{"
         <options:Loc<OptionDecl>*>
     "}" => {
         ServiceNested::Accepts {
             comment: comment.unwrap_or_else(Vec::new),
             accepts: accepts,
+            alias: alias,
             ty: ty,
             options: options,
         }
     },
 };
+
+Alias: &'input str = "as" <value:Identifier> => value;
 
 PathSpec: PathSpec<'input> = {
     // escape needed to capture variables
@@ -213,13 +217,13 @@ EnumVariant: EnumVariant<'input> =
 
 pub Member: Member<'input> = {
     <comment:"///"?>
-    <name:Identifier> <modifier:"?"?> ":" <ty:TypeSpec> <alias:("as" Loc<Value>)?> ";" => {
+    <name:Identifier> <modifier:"?"?> ":" <ty:TypeSpec> <alias:Loc<Alias>?> ";" => {
          let field = Field {
              modifier: modifier.map(|_| RpModifier::Optional).unwrap_or(RpModifier::Required),
              name: name,
              comment: comment.unwrap_or_else(Vec::new),
              ty: ty,
-             field_as: alias.map(|a| a.1),
+             field_as: alias,
          };
 
          Member::Field(field)

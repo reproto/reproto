@@ -9,6 +9,7 @@ pub struct JavaBackend {
     null_string: Variable,
     suppress_warnings: ClassType,
     string_builder: ClassType,
+    void: ClassType,
     override_: ClassType,
     objects: ClassType,
     object: ClassType,
@@ -18,10 +19,18 @@ pub struct JavaBackend {
     optional: ClassType,
     illegal_argument: ClassType,
     immutable_list: ClassType,
+    async_container: ClassType,
 }
 
 impl JavaBackend {
     pub fn new(env: Environment, options: JavaOptions, listeners: Box<Listeners>) -> JavaBackend {
+        let async_container =
+            options
+                .async_container
+                .as_ref()
+                .map(Clone::clone)
+                .unwrap_or_else(|| Type::class("java.util.concurrent", "CompletableFuture"));
+
         JavaBackend {
             env: env,
             options: options,
@@ -29,6 +38,7 @@ impl JavaBackend {
             snake_to_lower_camel: SnakeCase::new().to_lower_camel(),
             null_string: Variable::String("null".to_owned()),
             listeners: listeners,
+            void: Type::class("java.lang", "Void"),
             override_: Type::class("java.lang", "Override"),
             objects: Type::class("java.util", "Objects"),
             suppress_warnings: Type::class("java.lang", "SuppressWarnings"),
@@ -40,6 +50,7 @@ impl JavaBackend {
             optional: Type::class("java.util", "Optional"),
             illegal_argument: Type::class("java.lang", "IllegalArgumentException"),
             immutable_list: Type::class("com.google.common.collect", "ImmutableList"),
+            async_container: async_container,
         }
     }
 
@@ -784,8 +795,53 @@ impl JavaBackend {
         Ok(interface_spec)
     }
 
-    fn process_service(&self, _type_id: &RpTypeId, body: &RpServiceBody) -> Result<InterfaceSpec> {
-        Ok(InterfaceSpec::new(mods![Modifier::Public], &body.name))
+    fn process_service(&self, type_id: &RpTypeId, body: &RpServiceBody) -> Result<InterfaceSpec> {
+        let mut spec = InterfaceSpec::new(mods![Modifier::Public], &body.name);
+
+        for endpoint in &body.endpoints {
+            let mut ret: Option<Type> = None;
+
+            for r in &endpoint.returns {
+                let check = match r.status {
+                    Some(200) => true,
+                    Some(_) => false,
+                    None => true,
+                };
+
+                if check {
+                    ret = match r.ty {
+                        Some(ref ret) => {
+                            let ret = self.into_java_type(ret.pos(), ret, type_id)?;
+                            Some(ret.into())
+                        }
+                        None => None,
+                    };
+                }
+            }
+
+            for accept in &endpoint.accepts {
+                if let Some(ref alias) = accept.alias {
+                    let alias = self.snake_to_lower_camel.convert(alias);
+                    let mut method = MethodSpec::new(Modifiers::new(), alias.as_str());
+
+                    if let Some(ref ret) = ret {
+                        method.returns(self.async_container.with_arguments(vec![ret]));
+                    } else {
+                        method.returns(self.async_container.with_arguments(vec![&self.void]));
+                    }
+
+                    if let Some(ref ty) = accept.ty {
+                        let arg: Type = self.into_java_type(ty.pos(), ty, type_id)?.into();
+                        let arg = ArgumentSpec::new(mods![Modifier::Final], arg, "request");
+                        method.push_argument(arg);
+                    }
+
+                    spec.push(method);
+                }
+            }
+        }
+
+        Ok(spec)
     }
 
     fn convert_field<'a>(
@@ -898,7 +954,8 @@ impl JavaBackend {
                 container.push_contained(spec.into());
             }
             RpDecl::Service(ref ty) => {
-                container.push_contained(self.process_service(type_id, ty)?.into());
+                let spec = self.process_service(type_id, ty)?;
+                container.push_contained(spec.into());
             }
         }
 

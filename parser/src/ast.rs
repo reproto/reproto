@@ -218,7 +218,7 @@ pub struct Field<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
     pub ty: Type,
-    pub field_as: Option<Loc<Value<'input>>>,
+    pub field_as: Option<Loc<&'input str>>,
 }
 
 impl<'input> Field<'input> {
@@ -234,30 +234,12 @@ impl<'input> IntoModel for Field<'input> {
     type Output = RpField;
 
     fn into_model(self, scope: &Scope) -> Result<RpField> {
-        let field_as = self.field_as.into_model(scope)?;
-
-        let field_as = if let Some(field_as) = field_as {
-            match field_as.both() {
-                (RpValue::String(name), pos) => Some(Loc::new(name, pos)),
-                (_, pos) => {
-                    return Err(
-                        ErrorKind::Pos("must be a string".to_owned(), pos.into()).into(),
-                    )
-                }
-            }
-        } else {
-            None
-        };
-
-        let name = self.name.to_owned();
-        let comment = self.comment.into_iter().map(ToOwned::to_owned).collect();
-
         Ok(RpField::new(
             self.modifier,
-            name,
-            comment,
+            self.name.to_owned(),
+            self.comment.into_iter().map(ToOwned::to_owned).collect(),
             self.ty.into_model(scope)?,
-            field_as,
+            self.field_as.into_model(scope)?,
         ))
     }
 }
@@ -651,6 +633,7 @@ fn convert_accepts(
     scope: &Scope,
     comment: Vec<String>,
     accepts: Option<Loc<String>>,
+    alias: Option<Loc<String>>,
     ty: Option<Loc<Type>>,
     options: Vec<Loc<OptionDecl>>,
 ) -> Result<RpServiceAccepts> {
@@ -674,6 +657,7 @@ fn convert_accepts(
         comment: comment,
         ty: ty.into_model(scope)?,
         accepts: accepts,
+        alias: alias,
     })
 }
 
@@ -804,11 +788,13 @@ impl<'input> IntoModel for ServiceBody<'input> {
                 ServiceNested::Accepts {
                     comment,
                     accepts,
+                    alias,
                     ty,
                     options,
                 } => {
                     let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-                    let accepts = convert_accepts(scope, comment, accepts, ty, options)?;
+                    let alias = alias.into_model(scope)?;
+                    let accepts = convert_accepts(scope, comment, accepts, alias, ty, options)?;
                     parent.try_borrow_mut()?.push_accepts(accepts);
                 }
             }
@@ -837,6 +823,7 @@ pub enum ServiceNested<'input> {
     Accepts {
         comment: Vec<&'input str>,
         accepts: Option<Loc<String>>,
+        alias: Option<Loc<&'input str>>,
         ty: Option<Loc<Type>>,
         options: Vec<Loc<OptionDecl<'input>>>,
     },
@@ -986,7 +973,7 @@ impl<'input> IntoModel for TypeBody<'input> {
 pub struct UseDecl<'input> {
     pub package: Loc<RpPackage>,
     pub version_req: Option<Loc<VersionReq>>,
-    pub alias: Option<&'input str>,
+    pub alias: Option<Loc<&'input str>>,
 }
 
 impl<'input> IntoModel for UseDecl<'input> {
@@ -996,7 +983,7 @@ impl<'input> IntoModel for UseDecl<'input> {
         let use_decl = RpUseDecl {
             package: self.package.into_model(scope)?,
             version_req: self.version_req,
-            alias: self.alias.map(ToOwned::to_owned),
+            alias: self.alias.into_model(scope)?,
         };
 
         Ok(use_decl)

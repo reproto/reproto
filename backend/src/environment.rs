@@ -52,8 +52,13 @@ impl Environment {
         use linked_hash_map::Entry::*;
 
         if let Some(used) = use_decl.package.parts.iter().last() {
-            let alias = use_decl.alias.as_ref().unwrap_or(used);
-            let key = (source_package.clone(), alias.clone());
+            let alias = use_decl
+                .alias
+                .as_ref()
+                .map(|v| v.as_ref().as_str())
+                .unwrap_or(used);
+
+            let key = (source_package.clone(), alias.to_owned());
 
             debug!("add alias {} ({})", alias, source_package);
 
