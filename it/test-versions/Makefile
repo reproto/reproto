@@ -1,1 +1,1 @@
-java-extra = -m builder -m fasterxml
+java-args := -m builder -m fasterxml

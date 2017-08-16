@@ -8,10 +8,11 @@ endif
 
 target-file ?= Makefile
 
-script-input := $(ROOT)/tools/script-input
+run-project := $(ROOT)/tools/run-project
 default-reproto := $(ROOT)/target/debug/reproto
 
 RM := rm -rf
+CP := cp -ra
 DIFF ?= diff
 RSYNC ?= rsync
 REPROTO ?= $(default-reproto)
@@ -19,43 +20,27 @@ CARGO ?= cargo
 # projects that are excluded
 EXCLUDE ?=
 
-reproto-cmd := $(REPROTO) $(REPROTO_ARGS)
-
 expected := expected
 output := output
-
+workdir := workdir
+input := input
 targets := test
 
-java-out := $(output)/java
-python-out := $(output)/python
-js-out := $(output)/js
-rust-out := $(output)/rust
-doc-out := $(output)/doc
-
-java-expected := $(expected)/java
-python-expected := $(expected)/python
-js-expected := $(expected)/js
-rust-expected := $(expected)/rust
-doc-expected := $(expected)/doc
-
-python-extra :=
-java-extra := -m builder
-js-extra :=
-rust-extra :=
-doc-extra :=
+python-args :=
+java-args := -m builder
+js-args :=
+rust-args :=
+doc-args :=
 suites := python java js rust doc
 
 paths := proto
-exclude :=
+exclude-projects :=
+exclude-suites :=
 
 include $(target-file)
 
-exclude := $(exclude) $(EXCLUDE)
-
-suites := $(filter-out $(exclude), $(suites))
-projects := $(filter-out $(exclude), $(PROJECTS))
-
-packages-args := $(targets:%=--package %)
+suites := $(filter-out $(EXCLUDE) $(exclude-suites), $(suites))
+projects := $(filter-out $(EXCLUDE) $(exclude-projects), $(PROJECTS))
 
 suite-diffs := $(suites:%=suite-diff/%)
 suite-updates := $(suites:%=suite-update/%)
@@ -63,22 +48,36 @@ suite-updates := $(suites:%=suite-update/%)
 project-diffs := $(projects:%=project-diff/%)
 project-updates := $(projects:%=project-update/%)
 
-java-suite := java $(java-extra)
-js-suite := js $(js-extra)
-python-suite := python $(python-extra)
-rust-suite := rust $(rust-extra)
-doc-suite := doc --skip-static $(doc-extra)
+reproto-args := $(paths:%=--path %) $(targets:%=--package %)
 
-java-project := java -m fasterxml -o workdir-java/target/generated-sources/reproto
-js-project := js -o workdir-js/generated
-python-project := python -o workdir-python/generated
-rust-project := rust -o workdir-rust/src --package-prefix generated
+# how to build suites
+java-suite := java $(reproto-args) $(java-args)
+js-suite := js $(reproto-args) $(js-args)
+python-suite := python $(reproto-args) $(python-args)
+rust-suite := rust $(reproto-args) $(rust-args)
+doc-suite := doc $(reproto-args) --skip-static $(doc-args)
 
-paths-args := $(paths:%=--path %)
+# how to build projects
+java-project := java -m fasterxml -o $(workdir)/java/target/generated-sources/reproto
+js-project := js -o $(workdir)/js/generated
+python-project := python -o $(workdir)/python/generated
+rust-project := rust -o $(workdir)/rust/src --package-prefix generated
 
-.PHONY: all clean update
-.PHONY: projects clean-projects update-projects
-.PHONY: suites clean-suites update-suites
+# base command invocations
+reproto-cmd := $(REPROTO) $(REPROTO_ARGS)
+reproto-compile := $(reproto-cmd) compile
+
+list-inputs = $(shell ls -1 $(1))
+diff-dirs = $(DIFF) -ur $(1) $(2)
+
+define sync-dirs
+	$(RM) $(2)
+	$(CP) $(1) $(2)
+endef
+
+PHONY += all clean update
+PHONY += projects clean-projects update-projects
+PHONY += suites clean-suites update-suites
 
 all: suites projects
 
@@ -89,52 +88,56 @@ update: update-suites update-projects
 suites: $(suite-diffs)
 
 clean-suites:
-	$(RM) $(output)
+	$(RM) $(output)/suite-*
 
 update-suites: $(suite-updates)
 
 projects: $(project-diffs)
 
 clean-projects:
-	$(RM) workdir-*
-	$(RM) output-*
+	$(RM) $(workdir)
+	$(RM) $(output)/project-*
 
 update-projects: $(project-updates)
 
-suite-build/%: $(REPROTO)
+suite-build/%: $(REPROTO) $(output)/suite-%
 	@echo "Suite: $*"
-	$(reproto-cmd) compile $($*-suite) -o $($*-out) $(paths-args) $(packages-args)
+	$(reproto-compile) $($*-suite) -o $(output)/suite-$*
 
-suite-update/%: suite-build/%
+suite-update/%: $(expected)/suite-% suite-build/%
 	@echo "Updating Suite: $*"
-	$(RSYNC) -a --delete $($*-out)/ $($*-expected)/
+	$(call sync-dirs,$(output)/suite-$*,$(expected)/suite-$*)
 
-suite-diff/%: suite-build/%
+suite-diff/%: $(expected)/suite-% suite-build/%
 	@echo "Verifying Diffs: $*"
-	$(DIFF) -ur $($*-expected) $($*-out)
+	$(call diff-dirs,$(expected)/suite-$*,$(output)/suite-$*)
 
-project-build/%: $(REPROTO) output-% expected-% workdir-%
+project-build/%: $(REPROTO) $(input) $(output)/project-% $(workdir)/%
 	@echo "Building Project: $*"
-	$(reproto-cmd) compile $($*-project) $(paths-args) $(packages-args)
-	cd workdir-$* && make
-	$(script-input) workdir-$*/script.sh
+	$(reproto-compile) $($*-project)
+	$(MAKE) -C $(workdir)/$*
+	$(run-project) $(workdir)/$*/script.sh \
+		$(foreach in,$(call list-inputs,$(input)),$(input)/$(in) $(output)/project-$*/$(in))
 
-# rule to diff a projects expected output, with actual.
-project-diff/%: project-build/%
+project-diff/%: $(expected)/project-% project-build/%
 	@echo "Diffing Project: $*"
-	$(DIFF) -ur expected-$* output-$*
+	$(call diff-dirs,$(expected)/project-$*,$(output)/project-$*)
 
-# rule to update a projects expected output, with its actual
-project-update/%: project-build/%
+project-update/%: $(expected)/project-% project-build/%
 	@echo "Updating Project: $*"
-	$(RSYNC) --delete -ra output-$*/ expected-$*/
+	$(call sync-dirs,$(output)/project-$*,$(expected)/project-$*)
 
 $(default-reproto):
 	@echo "Building $(default-reproto)"
 	cd $(ROOT) && $(CARGO) build
 
-workdir-%:
-	$(RSYNC) -a --delete --link-dest=../$*/ ../$*/ workdir-$*/
+$(workdir)/%:
+	$(call sync-dirs,../$*,$(workdir)/$*)
 
-expected-% output-%:
+$(input):
 	mkdir -p $@
+
+$(expected)/suite-% $(expected)/project-% $(output)/suite-% $(output)/project-%:
+	mkdir -p $@
+
+.PHONY: $(PHONY)
