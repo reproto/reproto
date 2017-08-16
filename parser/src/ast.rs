@@ -218,7 +218,7 @@ pub struct Field<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
     pub ty: Type,
-    pub field_as: Option<Loc<&'input str>>,
+    pub field_as: Option<Loc<String>>,
 }
 
 impl<'input> Field<'input> {

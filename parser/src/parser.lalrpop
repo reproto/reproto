@@ -175,6 +175,11 @@ ServiceNested: ServiceNested<'input> = {
 
 Alias: &'input str = "as" <value:Identifier> => value;
 
+FieldAlias: String = {
+    "as" <value:Identifier> => value.to_owned(),
+    "as" <value:string> => value,
+};
+
 PathSpec: PathSpec<'input> = {
     // escape needed to capture variables
     "`" <segments:OneOrMore<"/", PathSegment>> "`" => {
@@ -217,7 +222,7 @@ EnumVariant: EnumVariant<'input> =
 
 pub Member: Member<'input> = {
     <comment:"///"?>
-    <name:Identifier> <modifier:"?"?> ":" <ty:TypeSpec> <alias:Loc<Alias>?> ";" => {
+    <name:Identifier> <modifier:"?"?> ":" <ty:TypeSpec> <alias:Loc<FieldAlias>?> ";" => {
          let field = Field {
              modifier: modifier.map(|_| RpModifier::Optional).unwrap_or(RpModifier::Required),
              name: name,
