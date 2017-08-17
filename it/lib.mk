@@ -1,8 +1,8 @@
 M := $(notdir $(CURDIR))
 M := $(M:test-%=%)
 
-ifeq ($(ROOT),)
-$(error "ROOT: missing variable")
+ifeq ($(REPROTO),)
+$(error "REPROTO: missing variable")
 endif
 
 ifeq ($(PROJECTS),)
@@ -20,9 +20,6 @@ reproto-args := $(reproto-args) --debug
 endif
 
 target-file ?= Makefile
-
-run-project := $(ROOT)/tools/run-project
-default-reproto := $(ROOT)/target/debug/reproto
 
 RM := rm -rf
 CP := cp -ra
@@ -55,19 +52,8 @@ include $(target-file)
 suites := $(filter-out $(EXCLUDE) $(exclude-suites), $(suites))
 projects := $(filter-out $(EXCLUDE) $(exclude-projects), $(PROJECTS))
 
-suite-builds := $(suites:%=suite-build/%)
-suite-diff := $(suites:%=suite-diff/%)
-suite-update := $(suites:%=suite-update/%)
-suite-output := $(suites:%=$(output)/suite/%)
-suite-expected := $(suites:%=$(expected)/suite/%)
-
-project-workdir := $(projects:%=$(workdir)/%)
-project-script := $(projects:%=$(workdir)/%/script.sh)
-project-run := $(projects:%=project-run/%)
-project-diff := $(projects:%=project-diff/%)
-project-update := $(projects:%=project-update/%)
-project-output := $(projects:%=$(output)/project/%)
-project-expected := $(suites:%=$(expected)/project/%)
+for-each-suite = $(foreach suite,$(suites),$(eval $(call $1,$(suite))))
+for-each-project = $(foreach project,$(projects),$(eval $(call $1,$(project))))
 
 compile-args := $(paths:%=--path %) $(targets:%=--package %)
 
@@ -88,7 +74,7 @@ rust-project := rust $(compile-args) -o $(workdir)/rust/src --package-prefix gen
 reproto-cmd := $(REPROTO) $(reproto-args)
 reproto-compile := $(reproto-cmd) compile
 
-list-inputs = $(shell ls -1 $(1))
+input-files := $(shell ls -1 $(input))
 diff-dirs = $(DIFF) -ur $(1) $(2)
 
 define sync-dirs
@@ -96,16 +82,72 @@ define sync-dirs
 	$(CP) $(1) $(2)
 endef
 
-.PHONY: all clean update
-.PHONY: projects clean-projects update-projects
-.PHONY: suites clean-suites update-suites
-.PHONY: $(suite-builds) $(suite-update) $(suite-diff)
-.PHONY: $(project-run) $(project-update) $(project-diff)
+define suite-targets
+suite-build += suite-build/$1
+suite-update += suite-update/$1
+suite-diff += suite-diff/$1
 
-# treating script as phony will cause them to rebuild
-ifeq ($(REBUILD),yes)
-.PHONY: $(project-script)
-endif
+suite-build/$1: $$(REPROTO) $$(output)/suite/$1
+	@echo "$$(M): Suite: $1"
+	$$(RM) $$(output)/suite/$1
+	$$(reproto-compile) $$($1-suite) -o $$(output)/suite/$1
+
+$$(expected)/suite/$1:
+	mkdir -p $$@
+
+suite-update/$1: suite-build/$1 $$(expected)/suite/$1
+	@echo "$$(M): Updating Suite: $1"
+	$(call sync-dirs,$$(output)/suite/$1,$$(expected)/suite/$1)
+
+suite-diff/$1: suite-build/$1 $$(expected)/suite/$1
+	@echo "$$(M): Verifying Diff: $1"
+	$(call diff-dirs,$$(expected)/suite/$1,$$(output)/suite/$1)
+endef
+
+define project-run-target
+project-run += project-run/$1/$2
+project-run-$1 += project-run/$1/$2
+
+$(output)/project/$1:
+	mkdir -p $@
+
+project-run/$1/$2: $(workdir)/$1/script.sh $(output)/project/$1
+	@echo "$(M): Running Project: $1 (against $(input)/$2)"
+	$(workdir)/$1/script.sh < $(input)/$2 > $(output)/project/$1/$2
+endef
+
+define project-targets
+project-workdir += $$(workdir)/$1
+project-script += $$(workdir)/$1/script.sh
+project-update += project-update/$1
+project-diff += project-diff/$1
+
+$$(workdir)/$1: $$(workdir)
+	$(call sync-dirs,../$1,$$@)
+
+$$(workdir)/$1/script.sh: $$(workdir)/$1
+	@echo "$$(M): Building Project: $1"
+	$$(reproto-compile) $$($1-project)
+	$$(MAKE) -C $$(workdir)/$1
+
+$(foreach i,$(input-files),$(call project-run-target,$1,$i))
+
+$$(expected)/project/$1:
+	mkdir -p $$@
+
+project-update/$1: $$(project-run-$1) $$(expected)/project/$1
+	@echo "$$(M): Updating Project: $1"
+	$(call sync-dirs,$$(output)/project/$1,$$(expected)/project/$1)
+
+project-diff/$1: $$(project-run-$1) $$(expected)/project/$1
+	@echo "$$(M): Diffing Project: $1"
+	$(call diff-dirs,$$(expected)/project/$1,$$(output)/project/$1)
+endef
+
+.DEFAULT: all
+
+$(call for-each-suite,suite-targets)
+$(call for-each-project,project-targets)
 
 all: suites projects
 
@@ -126,53 +168,17 @@ clean-projects:
 	$(RM) $(workdir)
 	$(RM) $(output)/project-*
 
-update-projects: $(project-run) $(project-update)
+update-projects: $(project-update)
 
-$(suite-builds): $(REPROTO) $(suite-output)
-	@echo "$(M): Suite: $(@F)"
-	$(RM) $(output)/suite/$(@F)
-	$(reproto-compile) $($(@F)-suite) -o $(output)/suite/$(@F)
-
-$(suite-update): $(suite-builds) $(suite-expected)
-	@echo "$(M): Updating Suite: $(@F)"
-	$(call sync-dirs,$(output)/suite/$(@F),$(expected)/suite/$(@F))
-
-$(suite-diff): $(suite-builds) $(suite-expected)
-	@echo "$(M): Verifying Diff: $(@F)"
-	$(call diff-dirs,$(expected)/suite/$(@F),$(output)/suite/$(@F))
-
-$(suite-expected):
+$(workdir) $(input):
 	mkdir -p $@
 
-$(project-workdir): $(workdir)
-	$(call sync-dirs,../$(@F),$@)
+# treating script as phony will cause them to rebuilt
+ifeq ($(REBUILD),yes)
+.PHONY: $(project-script)
+endif
 
-$(project-script): $(REPROTO) $(input) $(project-workdir)
-	@echo "$(M): Building Project: $(notdir $(@D))"
-	$(reproto-compile) $($(notdir $(@D))-project)
-	$(MAKE) -C $(@D)
-
-$(project-run): $(project-script) $(project-output)
-	@echo "$(M): Running Project: $(@F)"
-	$(run-project) $(workdir)/$(@F)/script.sh \
-		$(foreach in, \
-			$(call list-inputs,$(input)), \
-				$(input)/$(in) $(output)/project/$(@F)/$(in))
-
-$(project-update): $(project-run) $(project-expected)
-	@echo "$(M): Updating Project: $(@F)"
-	$(call sync-dirs,$(output)/project/$(@F),$(expected)/project/$(@F))
-
-$(project-diff): $(project-run) $(project-expected)
-	@echo "$(M): Diffing Project: $(@F)"
-	$(call diff-dirs,$(expected)/project/$(@F),$(output)/project/$(@F))
-
-$(project-expected):
-	mkdir -p $@
-
-$(workdir) $(input) $(project-output) $(suite-output):
-	mkdir -p $@
-
-$(default-reproto):
-	@echo "Building $(default-reproto)"
-	cd $(ROOT) && $(CARGO) build
+.PHONY: all clean update
+.PHONY: projects clean-projects update-projects
+.PHONY: suites clean-suites update-suites
+.PHONY: $(suite-build) $(suite-update) $(suite-diff) $(project-run) $(project-update) $(project-diff)

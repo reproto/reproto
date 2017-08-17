@@ -19,7 +19,7 @@ $2: $$($1)
 
 $$($1): $$(REPROTO)
 	@echo "$$(@:$1/%=%): $1"
-	@$$(MAKE) $$(make-args) -f $$(ROOT)/it/lib.mk -C $$(@:$1/%=%) $1
+	$$(MAKE) $$(make-args) -f $$(ROOT)/it/lib.mk -C $$(@:$1/%=%) $1
 
 .PHONY: $2 $$($1)
 endef
