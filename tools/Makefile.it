@@ -183,6 +183,7 @@ ifeq ($(REBUILD),yes)
 endif
 
 .PHONY: all clean update
-.PHONY: projects clean-projects update-projects
 .PHONY: suites clean-suites update-suites
-.PHONY: $(suite-build) $(suite-update) $(suite-diff) $(project-run) $(project-update) $(project-diff)
+.PHONY: $(suite-build) $(suite-update) $(suite-diff)
+.PHONY: projects clean-projects update-projects
+.PHONY: $(project-run) $(project-update) $(project-diff)
