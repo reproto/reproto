@@ -169,7 +169,7 @@ $(project-diff): $(project-run) $(project-expected)
 $(project-expected):
 	mkdir -p $@
 
-$(workdir) $(input) $(project-output):
+$(workdir) $(input) $(project-output) $(suite-output):
 	mkdir -p $@
 
 $(default-reproto):

@@ -8,7 +8,24 @@ endif
 
 # set IT="<dir>" to limit which modules to build
 IT ?= $(wildcard it/test-*)
-run = $(MAKE) $(make-args) -f tools/Makefile.each dirs="$(IT)" $(IT) target=$1
+
+# define target body
+# this generates a PHONY target for each rule, and the specified target.
+# it also sets up a PHONY target matching the name of the target.
+define it-target-body
+$1 := $$(IT:%=$1/%)
+
+$2: $$($1)
+
+$$($1): $$(REPROTO)
+	@echo "$$(@:$1/%=%): $1"
+	@$$(MAKE) $$(make-args) -f $$(ROOT)/it/lib.mk -C $$(@:$1/%=%) $1
+
+.PHONY: $2 $$($1)
+endef
+
+# define a rule that will be called by all defined tests
+it-target = $(eval $(call it-target-body,$1,$(or $2,$1)))
 
 export ROOT := $(CURDIR)
 export PYTHON ?= python3
@@ -26,29 +43,16 @@ update: update-suites update-projects
 tests:
 	cargo test --all
 
-clean:
+clean: it-clean
 	cargo clean
-	$(call run,clean)
 
-# simplified set of suites
-suites: $(REPROTO)
-	$(call run,suites)
-
-update-suites: $(REPROTO)
-	$(call run,update-suites)
-
-clean-suites: $(REPROTO)
-	$(call run,clean-suites)
-
-# extensive project-building test suites
-projects: $(REPROTO)
-	$(call run,projects)
-
-update-projects: $(REPROTO)
-	$(call run,update-projects)
-
-clean-projects: $(REPROTO)
-	$(call run,clean-projects)
+$(call it-target,clean,it-clean)
+$(call it-target,suites)
+$(call it-target,update-suites)
+$(call it-target,clean-suites)
+$(call it-target,projects)
+$(call it-target,update-projects)
+$(call it-target,clean-projects)
 
 $(default-reproto):
 	cargo build
@@ -58,10 +62,9 @@ help:
 	@echo "Please read 'Suites & Projects' in README.md"
 	@echo ""
 	@echo "Variables (specified like 'make VARIABLE=VALUE <target>'):"
-	@echo "  PROJECTS=foo - only build the listed kinds of projects"
-	@echo "  DEBUG=yes    - (very) verbose output"
-	@echo "  EXCLUDE=rust - exclude the named targets"
-	@echo "  INCLUDE=rust - only include the named targets"
+	@echo "  PROJECTS=foo     - only build the listed kinds of projects"
+	@echo "  DEBUG=yes        - (very) verbose output"
+	@echo "  IT=it/test-basic - only build the specifiec integration tests"
 	@echo ""
 	@echo "Targets:"
 	@echo "  all    - default target (suites projects)"
