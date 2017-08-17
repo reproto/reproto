@@ -7,7 +7,26 @@ Each test directory (`test-*`) does the following.
 * Build one or more _projects_, see [Projects](#projects)
 
 Each test is configured in the `Makefile` for that test.
-This is based by a framework defined in [`lib.mk`](lib.mk).
+
+# Running Tests
+
+Tests should be run from the root of the project:
+
+```bash
+$> make suites projects
+```
+
+A single test can be targeted with the `IT` parameter:
+
+```bash
+$> make suites projects IT="it/test-inner"
+```
+
+For more information, see:
+
+```bash
+$> make help
+```
 
 # Projects
 
