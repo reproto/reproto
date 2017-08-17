@@ -3,6 +3,12 @@
 M := $(notdir $(CURDIR))
 M := $(M:test-%=%)
 
+MKDIR ?= mkdir
+RM ?= rm
+CP ?= cp
+DIFF ?= diff
+EXCLUDE ?=
+
 ifeq ($(REPROTO),)
 $(error "REPROTO: missing variable")
 endif
@@ -15,22 +21,13 @@ ifeq ($(M),)
 $(error "M: missing variable")
 endif
 
-reproto-args := $(REPROTO_ARGS)
-
-ifeq ($(DEBUG),yes)
-reproto-args := $(reproto-args) --debug
-endif
-
-target-file ?= Makefile
-
-RM := rm -rf
-CP := cp -ra
-DIFF ?= diff
-RSYNC ?= rsync
-REPROTO ?= $(default-reproto)
-CARGO ?= cargo
-# projects that are excluded
-EXCLUDE ?=
+# which files should trigger rebuilds
+deps-any := Makefile
+deps-python := script.py
+deps-python3 := script.py
+deps-rust := Cargo.toml src/lib.rs src/main.rs
+deps-js := src/script.js
+deps-java := pom.xml src/main/java/Test.java
 
 expected := expected
 output := output
@@ -39,17 +36,18 @@ input := input
 targets := test
 
 python-args :=
+python3-args :=
 java-args := -m builder
 js-args :=
 rust-args :=
 doc-args :=
-suites := python java js rust doc
 
+suites := python python3 java js rust doc
 paths := proto
 exclude-projects :=
 exclude-suites :=
 
-include $(target-file)
+-include $(or $(target-file),Makefile)
 
 suites := $(filter-out $(EXCLUDE) $(exclude-suites), $(suites))
 projects := $(filter-out $(EXCLUDE) $(exclude-projects), $(PROJECTS))
@@ -60,6 +58,7 @@ compile-args := $(paths:%=--path %) $(targets:%=--package %)
 java-suite := java $(compile-args) $(java-args)
 js-suite := js $(compile-args) $(js-args)
 python-suite := python $(compile-args) $(python-args)
+python3-suite := python $(compile-args) $(python-args)
 rust-suite := rust $(compile-args) $(rust-args)
 doc-suite := doc $(compile-args) --skip-static $(doc-args)
 
@@ -67,19 +66,25 @@ doc-suite := doc $(compile-args) --skip-static $(doc-args)
 java-project := java -m fasterxml $(compile-args) -o $(workdir)/java/target/generated-sources/reproto
 js-project := js $(compile-args) -o $(workdir)/js/generated
 python-project := python $(compile-args) -o $(workdir)/python/generated
+python3-project := python $(compile-args) -o $(workdir)/python3/generated
 rust-project := rust $(compile-args) -o $(workdir)/rust/src --package-prefix generated
 
 # base command invocations
-reproto-cmd := $(REPROTO) $(reproto-args)
+reproto-cmd := $(REPROTO) $(REPROTO_FLAGS)
 reproto-compile := $(reproto-cmd) compile
 
-input-files := $(notdir $(wildcard $(input)/*.json))
+input-files = $(notdir $(wildcard $(input)/*.json))
 diff-dirs = $(DIFF) -ur $(1) $(2)
 
-define sync-dirs
-	$(RM) $(2)
-	$(CP) $(1) $(2)
+define \n
 
+
+endef
+
+define sync-dirs
+	@echo "$$(M): sync: $(1) -> $(2)"
+	$(RM) -rf $(2)
+	$(CP) -ra $(1) $(2)
 endef
 
 define suite-targets
@@ -89,11 +94,8 @@ suite-diff += suite-diff/$(1)
 
 suite-build/$(1): $$(REPROTO)
 	@echo "$$(M): Suite: $(1)"
-	$$(RM) $$(output)/suite/$(1)
+	$$(RM) -rf $$(output)/suite/$(1)
 	$$(reproto-compile) $$($(1)-suite) -o $$(output)/suite/$(1)
-
-$$(expected)/suite/$(1):
-	mkdir -p $$@
 
 suite-update/$(1): suite-build/$(1) $$(expected)/suite/$(1)
 	@echo "$$(M): Updating Suite: $(1)"
@@ -103,6 +105,8 @@ suite-diff/$(1): suite-build/$(1) $$(expected)/suite/$(1)
 	@echo "$$(M): Verifying Diff: $(1)"
 	$(call diff-dirs,$$(expected)/suite/$(1),$$(output)/suite/$(1))
 
+$$(expected)/suite/$(1):
+	$$(MKDIR) -p $$@
 endef
 
 define project-run-target
@@ -112,7 +116,6 @@ project-run-$(1) += $$(output)/project/$(1)/$(2)
 $$(output)/project/$(1)/$(2): $$(workdir)/$(1)/script.sh $$(output)/project/$(1)
 	@echo "$$(M): Running Project: $(1) (against $$(input)/$(2))"
 	$$< < $$(input)/$(2) > $$@
-
 endef
 
 define project-targets
@@ -121,21 +124,18 @@ project-script += $$(workdir)/$(1)/script.sh
 project-update += project-update/$(1)
 project-diff += project-diff/$(1)
 
-$$(workdir)/$(1): $$(workdir)
-	$(call sync-dirs,../$(1),$$@)
+deps-$(1) := $$(deps-any) $$(deps-$(1))
+deps-$(1) := $$(deps-$(1):%=../$(1)/%)
 
-$$(workdir)/$(1)/script.sh: $$(workdir)/$(1)
+$$(workdir)/$(1)/script.sh: $$(deps-$(1))
 	@echo "$$(M): Building Project: $(1)"
+	$$(MKDIR) -p $$(workdir)/$(1)
+	$(call sync-dirs,../$(1),$$(workdir)/$(1))
 	$$(reproto-compile) $$($(1)-project)
 	$$(MAKE) -C $$(workdir)/$(1)
 
-$(foreach i,$(input-files),$(call project-run-target,$(1),$(i)))
-
-$$(output)/project/$(1):
-	mkdir -p $$@
-
-$$(expected)/project/$(1):
-	mkdir -p $$@
+$(foreach i,$(input-files),\
+	$(call project-run-target,$(1),$(i)) $(\n))
 
 project-update/$(1): $$(project-run-$(1)) $$(expected)/project/$(1)
 	@echo "$$(M): Updating Project: $(1)"
@@ -145,13 +145,14 @@ project-diff/$(1): $$(project-run-$(1)) $$(expected)/project/$(1) $$(output)/pro
 	@echo "$$(M): Diffing Project: $(1)"
 	$(call diff-dirs,$$(expected)/project/$(1),$$(output)/project/$(1))
 
+$$(output)/project/$(1):
+	$$(MKDIR) -p $$@
+
+$$(expected)/project/$(1):
+	$$(MKDIR) -p $$@
 endef
 
 .DEFAULT: all
-
-$(eval \
-$(foreach s,$(suites),$(call suite-targets,$(s)))\
-$(foreach p,$(projects),$(call project-targets,$(p))))
 
 all: suites projects
 
@@ -159,23 +160,30 @@ clean: clean-projects clean-suites
 
 update: update-suites update-projects
 
+# build generated targets and populate variables
+$(eval \
+	$(foreach s,$(suites), \
+		$(call suite-targets,$(s)) $(\n)) \
+	$(foreach p,$(projects), \
+		$(call project-targets,$(p)) $(\n)))
+
 suites: $(suite-diff)
 
 clean-suites:
-	$(RM) $(output)/suite
+	$(RM) -rf $(output)/suite
 
 update-suites: $(suite-update)
 
 projects: $(project-diff)
 
 clean-projects:
-	$(RM) $(workdir)
-	$(RM) $(output)/project-*
+	$(RM) -rf $(workdir)
+	$(RM) -rf $(output)/project
 
 update-projects: $(project-update)
 
 $(workdir) $(input):
-	mkdir -p $@
+	$(MKDIR) -p $@
 
 # treating script as phony will cause them to rebuilt
 ifeq ($(REBUILD),yes)

@@ -1,20 +1,25 @@
 default-reproto := $(CURDIR)/target/debug/reproto
 
-ifeq ($(DEBUG),yes)
-make-args :=
-else
+ifeq ($(filter all make,$(DEBUG)),)
 make-args := --no-print-directory -s
+endif
+
+ifneq ($(filter all reproto,$(DEBUG)),)
+override REPROTO_FLAGS := --debug
 endif
 
 # set IT="<dir>" to limit which modules to build
 IT ?= $(wildcard it/test-*)
 
+define \n
+
+
+endef
+
 define it-target-body
 $(1) += $(1)/$(2)
-
 $(1)/$(2): $$(REPROTO)
 	$$(MAKE) $$(make-args) -f $$(CURDIR)/tools/Makefile.it -C $(2) $(1)
-
 endef
 
 define it-target-default
@@ -24,13 +29,27 @@ endef
 
 define it-target
 $(eval \
-$(foreach i,$(IT),$(call it-target-body,$(1),$(i)))\
-$(call it-target-default,$(1),$(2)))
+	$(foreach i,$(IT),\
+		$(call it-target-body,$(1),$(i)) $(\n)) \
+	$(call it-target-default,$(1),$(2)) $(\n))
 endef
 
-export PYTHON ?= python3
-export PROJECTS := $(shell PYTHON=$(PYTHON) tools/check-project-deps)
+test-cmd = $(2) 1> /dev/null 2>&1 && echo $(1) || echo "disabled: $(1)" >&2;
+
+export REPROTO_FLAGS
+export PYTHON ?= python
+export PYTHON3 ?= python3
 export REPROTO ?= $(default-reproto)
+
+define check-deps
+$(call test-cmd,java,mvn --version)
+$(call test-cmd,python,$(PYTHON) --version)
+$(call test-cmd,python3,$(PYTHON3) --version)
+$(call test-cmd,rust,cargo --version)
+$(call test-cmd,js,node --version \&\& babel --version)
+endef
+
+export PROJECTS := $(shell $(call check-deps))
 
 .PHONY: all update tests clean
 .PHONY: suites update-suites clean-suites
@@ -63,7 +82,9 @@ help:
 	@echo ""
 	@echo "Variables (specified like 'make VARIABLE=VALUE <target>'):"
 	@echo "  PROJECTS=foo     - only build the listed kinds of projects"
-	@echo "  DEBUG=yes        - (very) verbose output"
+	@echo "  DEBUG=all        - (very) verbose output"
+	@echo "  DEBUG=reproto    - debug ReProto"
+	@echo "  DEBUG=mvn        - debug Maven"
 	@echo "  IT=it/test-basic - only build the specifiec integration tests"
 	@echo ""
 	@echo "Targets:"

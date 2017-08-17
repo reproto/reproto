@@ -1,1 +1,1 @@
-java-args := -m builder -m fasterxml
+java-args += -m fasterxml
