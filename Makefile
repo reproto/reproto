@@ -10,20 +10,20 @@ endif
 IT ?= $(wildcard it/test-*)
 
 define it-target-body
-$1 += $1/$2
+$(1) += $(1)/$(2)
 
-$1/$2: $$(REPROTO)
-	$$(MAKE) $$(make-args) -f $$(CURDIR)/tools/Makefile.it -C $2 $1
+$(1)/$(2): $$(REPROTO)
+	$$(MAKE) $$(make-args) -f $$(CURDIR)/tools/Makefile.it -C $(2) $(1)
 endef
 
 define it-target-default
-$(or $2,$1): $$($1)
-.PHONY: $1 $$($1)
+$(or $(2),$(1)): $$($(1))
+.PHONY: $(1) $$($(1))
 endef
 
 define it-target
-$(foreach it,$(IT),$(eval $(call it-target-body,$1,$(it))))
-$(eval $(call it-target-default,$1,$2))
+$(foreach it,$(IT),$(eval $(call it-target-body,$(1),$(it))))
+$(eval $(call it-target-default,$(1),$(2)))
 endef
 
 export PYTHON ?= python3

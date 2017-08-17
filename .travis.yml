@@ -11,6 +11,7 @@ rust:
   - nightly
 
 script:
+  - make --version
   - make tests
   - make suites
 
