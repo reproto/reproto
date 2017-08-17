@@ -1,1 +1,1 @@
-<Entry foo: <Foo field: 'Field Value'>>
+<Entry foo: <Foo field: u'Field Value'>>
