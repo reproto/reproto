@@ -54,9 +54,6 @@ include $(target-file)
 suites := $(filter-out $(EXCLUDE) $(exclude-suites), $(suites))
 projects := $(filter-out $(EXCLUDE) $(exclude-projects), $(PROJECTS))
 
-for-each-suite = $(foreach suite,$(suites),$(eval $(call $(1),$(suite))))
-for-each-project = $(foreach project,$(projects),$(eval $(call $(1),$(project))))
-
 compile-args := $(paths:%=--path %) $(targets:%=--package %)
 
 # how to build suites
@@ -76,12 +73,13 @@ rust-project := rust $(compile-args) -o $(workdir)/rust/src --package-prefix gen
 reproto-cmd := $(REPROTO) $(reproto-args)
 reproto-compile := $(reproto-cmd) compile
 
-input-files := $(shell ls -1 $(input))
+input-files := $(notdir $(wildcard $(input)/*.json))
 diff-dirs = $(DIFF) -ur $(1) $(2)
 
 define sync-dirs
 	$(RM) $(2)
 	$(CP) $(1) $(2)
+
 endef
 
 define suite-targets
@@ -89,7 +87,7 @@ suite-build += suite-build/$(1)
 suite-update += suite-update/$(1)
 suite-diff += suite-diff/$(1)
 
-suite-build/$(1): $$(REPROTO) $$(output)/suite/$(1)
+suite-build/$(1): $$(REPROTO)
 	@echo "$$(M): Suite: $(1)"
 	$$(RM) $$(output)/suite/$(1)
 	$$(reproto-compile) $$($(1)-suite) -o $$(output)/suite/$(1)
@@ -104,18 +102,17 @@ suite-update/$(1): suite-build/$(1) $$(expected)/suite/$(1)
 suite-diff/$(1): suite-build/$(1) $$(expected)/suite/$(1)
 	@echo "$$(M): Verifying Diff: $(1)"
 	$(call diff-dirs,$$(expected)/suite/$(1),$$(output)/suite/$(1))
+
 endef
 
 define project-run-target
-project-run += project-run/$(1)/$(2)
-project-run-$(1) += project-run/$(1)/$(2)
+project-run += $$(output)/project/$(1)/$(2)
+project-run-$(1) += $$(output)/project/$(1)/$(2)
 
-$(output)/project/$(1):
-	mkdir -p $@
+$$(output)/project/$(1)/$(2): $$(workdir)/$(1)/script.sh $$(output)/project/$(1)
+	@echo "$$(M): Running Project: $(1) (against $$(input)/$(2))"
+	$$< < $$(input)/$(2) > $$@
 
-project-run/$(1)/$(2): $(workdir)/$(1)/script.sh $(output)/project/$(1)
-	@echo "$(M): Running Project: $(1) (against $(input)/$(2))"
-	$(workdir)/$(1)/script.sh < $(input)/$(2) > $(output)/project/$(1)/$(2)
 endef
 
 define project-targets
@@ -132,7 +129,10 @@ $$(workdir)/$(1)/script.sh: $$(workdir)/$(1)
 	$$(reproto-compile) $$($(1)-project)
 	$$(MAKE) -C $$(workdir)/$(1)
 
-$(foreach i,$(input-files),$(call project-run-target,$(1),$i))
+$(foreach i,$(input-files),$(call project-run-target,$(1),$(i)))
+
+$$(output)/project/$(1):
+	mkdir -p $$@
 
 $$(expected)/project/$(1):
 	mkdir -p $$@
@@ -141,15 +141,17 @@ project-update/$(1): $$(project-run-$(1)) $$(expected)/project/$(1)
 	@echo "$$(M): Updating Project: $(1)"
 	$(call sync-dirs,$$(output)/project/$(1),$$(expected)/project/$(1))
 
-project-diff/$(1): $$(project-run-$(1)) $$(expected)/project/$(1)
+project-diff/$(1): $$(project-run-$(1)) $$(expected)/project/$(1) $$(output)/project/$(1)
 	@echo "$$(M): Diffing Project: $(1)"
 	$(call diff-dirs,$$(expected)/project/$(1),$$(output)/project/$(1))
+
 endef
 
 .DEFAULT: all
 
-$(call for-each-suite,suite-targets)
-$(call for-each-project,project-targets)
+$(eval \
+$(foreach s,$(suites),$(call suite-targets,$(s)))\
+$(foreach p,$(projects),$(call project-targets,$(p))))
 
 all: suites projects
 
