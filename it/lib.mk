@@ -156,7 +156,8 @@ $(project-run): $(project-script) $(project-output)
 	@echo "$(M): Running Project: $(@F)"
 	$(run-project) $(workdir)/$(@F)/script.sh \
 		$(foreach in, \
-			$(call list-inputs,$(input)),$(input)/$(in) $(output)/project/$(@F)/$(in))
+			$(call list-inputs,$(input)), \
+				$(input)/$(in) $(output)/project/$(@F)/$(in))
 
 $(project-update): $(project-run) $(project-expected)
 	@echo "$(M): Updating Project: $(@F)"
