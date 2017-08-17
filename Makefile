@@ -9,25 +9,23 @@ endif
 # set IT="<dir>" to limit which modules to build
 IT ?= $(wildcard it/test-*)
 
-# define target body
-# this generates a PHONY target for each rule, and the specified target.
-# it also sets up a PHONY target matching the name of the target.
 define it-target-body
-$1 := $$(IT:%=$1/%)
+$1 += $1/$2
 
-$2: $$($1)
-
-$$($1): $$(REPROTO)
-	@echo "$$(@:$1/%=%): $1"
-	$$(MAKE) $$(make-args) -f $$(ROOT)/it/lib.mk -C $$(@:$1/%=%) $1
-
-.PHONY: $2 $$($1)
+$1/$2: $$(REPROTO)
+	$$(MAKE) $$(make-args) -f $$(CURDIR)/tools/Makefile.it -C $2 $1
 endef
 
-# define a rule that will be called by all defined tests
-it-target = $(eval $(call it-target-body,$1,$(or $2,$1)))
+define it-target-default
+$(or $2,$1): $$($1)
+.PHONY: $1 $$($1)
+endef
 
-export ROOT := $(CURDIR)
+define it-target
+$(foreach it,$(IT),$(eval $(call it-target-body,$1,$(it))))
+$(eval $(call it-target-default,$1,$2))
+endef
+
 export PYTHON ?= python3
 export PROJECTS := $(shell PYTHON=$(PYTHON) tools/check-project-deps)
 export REPROTO ?= $(default-reproto)
