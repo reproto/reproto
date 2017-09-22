@@ -7,11 +7,8 @@ extern crate error_chain;
 #[macro_use]
 extern crate log;
 
-extern crate atty;
 extern crate ansi_term;
 extern crate clap;
-extern crate linked_hash_map;
-extern crate pulldown_cmark;
 extern crate reproto_backend;
 extern crate reproto_backend_doc;
 extern crate reproto_backend_java;
@@ -24,7 +21,6 @@ extern crate reproto_parser;
 extern crate reproto_repository;
 extern crate toml;
 extern crate url;
-extern crate url_serde;
 
 pub mod ops;
 pub mod config;

@@ -1,7 +1,4 @@
 extern crate log;
-extern crate reproto_core;
-extern crate reproto_parser;
-extern crate reproto_backend;
 extern crate clap;
 extern crate reproto;
 extern crate atty;
