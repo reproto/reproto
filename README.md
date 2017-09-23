@@ -106,7 +106,38 @@ The goal is to provide an intuitive and productive specification language.
 For this reason, ReProto uses a DSL that is not based on existing markup (JSON, YAML, ...).
 This is also reduces the signal to noise ratio.
 
-As a comparison, the following is a specification using [OpenAPI 2.0][openapi-2], compared with ReProto.
+```
+/// # ReProto Petstore
+///
+/// A sample API that uses a petstore as an example to demonstrate features in the ReProto
+/// specification
+service Petstore {
+  "api" {
+    /// Returns all pets from the system that the user has access to.
+    GET "pets" {
+      /// A list of pets.
+      returns [Pet] {
+        status 200;
+        produces "application/json";
+      }
+    }
+  }
+}
+
+type Pet {
+  id: unsigned/64;
+  name: string;
+  tag?: string;
+}
+```
+
+You can compile the above into documentation using the following command:
+
+```bash
+$> reproto compile doc --out petstore-doc --path examples/petstore --package petstore@1.0.0
+```
+
+As a comparison the following is a specification using [OpenAPI 2.0][openapi-2].
 
 ```json
 {
@@ -179,45 +210,10 @@ As a comparison, the following is a specification using [OpenAPI 2.0][openapi-2]
 }
 ```
 
-```
-/// # ReProto Petstore
-///
-/// A sample API that uses a petstore as an example to demonstrate features in the ReProto
-/// specification
-service Petstore {
-  "api" {
-    /// Returns all pets from the system that the user has access to.
-    GET "pets" {
-      /// A list of pets.
-      returns [Pet] {
-        status 200;
-        produces "application/json";
-      }
-    }
-  }
-}
-
-type Pet {
-  id: unsigned/64;
-  name: string;
-  tag?: string;
-}
-```
-
-You can compile the above into documentation using the following command:
-
-```bash
-$> target/debug/reproto --debug compile doc --out target/petstore \
-  --path examples/petstore \
-  --package petstore@1.0.0 \
-```
-
 If you miss JSON, you can compile the specification to JSON as well.
 
 ```bash
-$> target/debug/reproto --debug compile json --out target/petstore-json \
-  --path examples/petstore \
-  --package petstore@1.0.0 \
+$> reproto compile json --out petstore-json --path examples/petstore --package petstore@1.0.0
 ```
 
 [openapi-2]: https://github.com/OAI/OpenAPI-Specification
