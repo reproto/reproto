@@ -16,7 +16,7 @@ Using this, models can be generated using multiple different target languages.
 
 **Note:** This project is in an Alpha-stage. Things will change a lot.
 
-[dsl]: #the-reproto-dsl
+[dsl]: #the-dsl
 [spec]: /doc/spec.md
 [todo]: /doc/todo.md
 [config]: /doc/config.md
