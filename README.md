@@ -100,11 +100,14 @@ To run all tests, do:
 $> make clean all
 ```
 
-# The ReProto DSL
+# The DSL
 
-The goal is to provide an intuitive and productive specification language.
-For this reason, ReProto uses a DSL that is not based on existing markup (JSON, YAML, ...).
-This is also reduces the signal to noise ratio.
+ReProto uses a DSL for specifying schemas that is not based on an existing general purpose markup
+like JSON.
+
+The goal is to have a compact, intuitive, and productive language for writing specifications.
+
+The following is a simple petstore example using ReProto.
 
 ```
 /// # ReProto Petstore
@@ -116,10 +119,7 @@ service Petstore {
     /// Returns all pets from the system that the user has access to.
     GET "pets" {
       /// A list of pets.
-      returns [Pet] {
-        status 200;
-        produces "application/json";
-      }
+      returns 200 "application/json" [Pet];
     }
   }
 }

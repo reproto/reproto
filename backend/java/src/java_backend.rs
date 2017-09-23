@@ -391,7 +391,7 @@ impl JavaBackend {
             fields.push(field_append);
         }
 
-        /// join each field with ", "
+        // join each field with ", "
         let field_joiner = stmt![&b, ".append(", Variable::String(", ".to_owned()), ");"];
 
         let mut class_appends = Elements::new();

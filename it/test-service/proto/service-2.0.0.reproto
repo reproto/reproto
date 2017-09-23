@@ -14,10 +14,7 @@ service MyService {
 
     /// Create a new foo.
     POST {
-      /// Only acceptable when I'm ~drunk~ Sober!
-      accepts any {
-        accept "application/json";
-      }
+      accepts "application/json";
     }
 
     `{id: string}` {
@@ -34,31 +31,19 @@ service MyService {
       /// #### Delete the entity with the given id `{id}`
       DELETE {
         /// Redirect stuff.
-        returns any {
-          status 302;
-          produces "application/json";
-        }
+        returns 302 "application/json" c::ErrorMessage;
       }
     }
 
     /// resource not found
     ///
     /// Something else?
-    returns any {
-      status 404;
-      produces "text/plain";
-    }
+    returns 404 "text/plain";
 
     /// returned on internal server errors
-    returns c::ErrorMessage {
-      status 500;
-      produces "application/json";
-    }
+    returns 500 "text/plain" c::ErrorMessage;
 
     /// other, interesting stuff
-    returns c::ErrorMessage {
-      status 501;
-      produces "application/json";
-    }
+    returns 501 "application/json" c::ErrorMessage;
   }
 }
