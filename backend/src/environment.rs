@@ -14,12 +14,18 @@ use std::rc::Rc;
 
 pub type InitFields = HashMap<String, Loc<RpFieldInit>>;
 
+/// Scoped environment for evaluating ReProto IDLs.
 pub struct Environment {
+    /// Global package prefix.
     package_prefix: Option<RpPackage>,
+    /// Index resolver to use.
     resolver: Box<Resolver>,
+    /// Memoized required packages, to avoid unecessary lookups.
     visited: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
-    pub types: LinkedHashMap<RpName, Loc<RpRegistered>>,
-    pub decls: LinkedHashMap<RpName, Rc<Loc<RpDecl>>>,
+    /// Registered types.
+    types: LinkedHashMap<RpName, Loc<RpRegistered>>,
+    /// All declarations.
+    decls: LinkedHashMap<RpName, Rc<Loc<RpDecl>>>,
 }
 
 /// Environment containing all loaded declarations.
@@ -269,6 +275,17 @@ impl Environment {
             .as_ref()
             .map(|prefix| prefix.join_versioned(package))
             .unwrap_or_else(|| package.clone())
+    }
+
+    pub fn for_each_toplevel_decl<F>(&self, mut f: F) -> Result<()>
+    where
+        F: FnMut(Rc<RpName>, Rc<Loc<RpDecl>>) -> Result<()>,
+    {
+        for (name, decl) in &self.decls {
+            f(Rc::new(name.clone()), decl.clone())?;
+        }
+
+        Ok(())
     }
 
     /// Walks the entire tree of declarations and emits them to the provided function.

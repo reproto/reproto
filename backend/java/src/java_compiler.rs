@@ -39,16 +39,15 @@ impl<'a> JavaCompiler<'a> {
     {
         let root_dir = &self.out_path;
 
-        // Process all types discovered so far.
-        for (ref name, ref decl) in &self.backend.env.decls {
+        self.backend.env.for_each_toplevel_decl(|name, decl| {
             let out_dir = self.backend.java_package(&name.package).parts.iter().fold(
                 root_dir.clone(),
                 |current, next| current.join(next),
             );
 
             let full_path = out_dir.join(format!("{}.java", decl.name()));
-            consumer(full_path, name, decl)?;
-        }
+            consumer(full_path, name.as_ref(), decl.as_ref())
+        })?;
 
         Ok(())
     }
