@@ -70,7 +70,7 @@ impl ReprotoService {
         let id = if let Some(id) = path.into_iter().next() {
             id
         } else {
-            return Ok(ok(Self::not_found()).boxed());
+            return Ok(Box::new(ok(Self::not_found())));
         };
 
         let objects = self.objects.clone();
@@ -80,29 +80,25 @@ impl ReprotoService {
         )?;
 
         // No async I/O, use pool
-        Ok(
-            self.pool
-                .spawn_fn(move || {
-                    let result = objects.lock().map_err(|_| PoisonError)?.get_object(
-                        &checksum,
-                    )?;
+        Ok(Box::new(self.pool.spawn_fn(move || {
+            let result = objects.lock().map_err(|_| PoisonError)?.get_object(
+                &checksum,
+            )?;
 
-                    let object = match result {
-                        Some(object) => object,
-                        None => return Ok(Self::not_found()),
-                    };
+            let object = match result {
+                Some(object) => object,
+                None => return Ok(Self::not_found()),
+            };
 
-                    let bytes = read_contents(object.read()?)?;
+            let bytes = read_contents(object.read()?)?;
 
-                    Ok(
-                        Response::new()
-                            .with_status(StatusCode::Ok)
-                            .with_header(ContentLength(bytes.len() as u64))
-                            .with_body(bytes),
-                    )
-                })
-                .boxed(),
-        )
+            Ok(
+                Response::new()
+                    .with_status(StatusCode::Ok)
+                    .with_header(ContentLength(bytes.len() as u64))
+                    .with_body(bytes),
+            )
+        })))
     }
 
     /// Put the uploaded object into the object repository.
@@ -164,7 +160,7 @@ impl ReprotoService {
         let id = if let Some(id) = path.into_iter().next() {
             id
         } else {
-            return Ok(ok(Self::not_found()).boxed());
+            return Ok(Box::new(ok(Self::not_found())));
         };
 
         let checksum = Checksum::from_str(id).map_err(
@@ -200,11 +196,11 @@ impl ReprotoService {
             match (req.method(), part) {
                 (&Method::Get, "objects") => return self.get_objects(it),
                 (&Method::Put, "objects") => return self.put_objects(req, it),
-                _ => return Ok(ok(Self::not_found()).boxed()),
+                _ => return Ok(Box::new(ok(Self::not_found()))),
             }
         }
 
-        Ok(ok(Self::not_found()).boxed())
+        Ok(Box::new(ok(Self::not_found())))
     }
 
     fn handle_error(e: Error) -> Response {
@@ -246,7 +242,7 @@ impl Service for ReprotoService {
 
         Box::new(
             self.inner_call(req, path)
-                .unwrap_or_else(|e| ok(Self::handle_error(e)).boxed())
+                .unwrap_or_else(|e| Box::new(ok(Self::handle_error(e))))
                 .or_else(|e| ok(Self::handle_error(e))),
         )
     }
