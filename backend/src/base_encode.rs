@@ -1,6 +1,6 @@
 //! # Helper trait for building a dynamic-language encode method
 
-use core::{Pos, RpType, RpTypeId};
+use core::{Pos, RpName, RpType};
 use errors::*;
 
 pub trait BaseEncode {
@@ -8,7 +8,7 @@ pub trait BaseEncode {
 
     fn base_encode(
         &self,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         ty: &RpType,
         input: &Self::Stmt,

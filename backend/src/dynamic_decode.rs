@@ -4,7 +4,7 @@ use base_decode::BaseDecode;
 use codeviz_common::Element;
 use container::Container;
 use converter::Converter;
-use core::{Loc, Pos, RpInterfaceBody, RpType, RpTypeId};
+use core::{Loc, Pos, RpInterfaceBody, RpName, RpType};
 use dynamic_converter::DynamicConverter;
 use errors::*;
 
@@ -37,7 +37,7 @@ where
 
     fn decode(
         &self,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         ty: &RpType,
         input: &Self::Stmt,
@@ -54,20 +54,19 @@ where
             RpType::Any => input.clone(),
             RpType::Boolean => input.clone(),
             RpType::Name { ref name } => {
-                let type_id = type_id.with_name(name.clone());
-                let name = self.convert_type(pos, &type_id)?;
+                let name = self.convert_type(pos, name)?;
                 self.name_decode(input, name)
             }
             RpType::Array { ref inner } => {
                 let inner_var = self.array_inner_var();
-                let inner = DynamicDecode::decode(self, type_id, pos, inner, &inner_var)?;
+                let inner = DynamicDecode::decode(self, name, pos, inner, &inner_var)?;
                 self.array_decode(input, inner)
             }
             RpType::Map { ref key, ref value } => {
                 let map_key = self.map_key_var();
-                let key = DynamicDecode::decode(self, type_id, pos, key, &map_key)?;
+                let key = DynamicDecode::decode(self, name, pos, key, &map_key)?;
                 let map_value = self.map_value_var();
-                let value = DynamicDecode::decode(self, type_id, pos, value, &map_value)?;
+                let value = DynamicDecode::decode(self, name, pos, value, &map_value)?;
                 self.map_decode(input, key, value)
             }
             ref ty => {
@@ -83,7 +82,7 @@ where
 
     fn interface_decode_method(
         &self,
-        type_id: &RpTypeId,
+        name: &RpName,
         body: &RpInterfaceBody,
     ) -> Result<Self::Method> {
         let data = self.new_var("data");
@@ -94,10 +93,16 @@ where
         decode_body.push(&self.assign_type_var(&data, &type_var));
 
         for (_, ref sub_type) in &body.sub_types {
-            for name in &sub_type.names {
-                let type_id = type_id.extend(sub_type.name.clone());
-                let type_name = self.convert_type(sub_type.pos(), &type_id)?;
-                decode_body.push(&self.check_type_var(&data, &type_var, name, &type_name));
+            for sub_type_name in &sub_type.names {
+                let name = name.extend(sub_type_name.as_ref().clone());
+                let type_name = self.convert_type(sub_type.pos(), &name)?;
+
+                decode_body.push(&self.check_type_var(
+                    &data,
+                    &type_var,
+                    &sub_type_name,
+                    &type_name,
+                ));
             }
         }
 
@@ -117,11 +122,11 @@ where
 {
     fn base_decode(
         &self,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         ty: &RpType,
         input: &Self::Stmt,
     ) -> Result<Self::Stmt> {
-        DynamicDecode::decode(self, type_id, pos, ty, input)
+        DynamicDecode::decode(self, name, pos, ty, input)
     }
 }

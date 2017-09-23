@@ -1,9 +1,20 @@
+use reproto_core::RpVersionedPackage;
+use std::collections::HashMap;
 use std::rc::Rc;
+
+struct Root {
+    pub package: RpVersionedPackage,
+    pub prefixes: HashMap<String, RpVersionedPackage>,
+}
 
 /// Model of a scope.
 enum Inner {
-    Root,
-    Child { name: String, parent: Rc<Inner> },
+    Root { root: Rc<Root> },
+    Child {
+        root: Rc<Root>,
+        name: String,
+        parent: Rc<Inner>,
+    },
 }
 
 pub struct Scope {
@@ -11,16 +22,45 @@ pub struct Scope {
 }
 
 impl Scope {
-    pub fn new() -> Scope {
-        Scope { inner: Rc::new(Inner::Root) }
+    pub fn new(
+        package: RpVersionedPackage,
+        prefixes: HashMap<String, RpVersionedPackage>,
+    ) -> Scope {
+        let root = Rc::new(Root {
+            package: package,
+            prefixes: prefixes,
+        });
+        let inner_root = Inner::Root { root: root.clone() };
+
+        Scope { inner: Rc::new(inner_root) }
     }
 
     pub fn child<S: AsRef<str>>(&self, name: S) -> Scope {
+        let root = match *self.inner {
+            Inner::Root { ref root, .. } |
+            Inner::Child { ref root, .. } => root.clone(),
+        };
+
         Scope {
             inner: Rc::new(Inner::Child {
+                root: root,
                 name: name.as_ref().to_owned(),
                 parent: self.inner.clone(),
             }),
+        }
+    }
+
+    pub fn lookup_prefix(&self, prefix: &String) -> Option<&RpVersionedPackage> {
+        match *self.inner {
+            Inner::Root { ref root, .. } |
+            Inner::Child { ref root, .. } => root.prefixes.get(prefix),
+        }
+    }
+
+    pub fn package(&self) -> &RpVersionedPackage {
+        match *self.inner {
+            Inner::Root { ref root, .. } |
+            Inner::Child { ref root, .. } => &root.package,
         }
     }
 
@@ -37,15 +77,14 @@ impl Iterator for ScopeWalker {
     type Item = String;
 
     fn next(&mut self) -> Option<String> {
-        use self::Inner::*;
-
         let (next, current) = match *self.current {
-            Root => {
+            Inner::Root { .. } => {
                 return None;
             }
-            Child {
+            Inner::Child {
                 ref name,
                 ref parent,
+                ..
             } => (Some(name.to_owned()), parent.clone()),
         };
 

@@ -1,6 +1,6 @@
+use super::errors::*;
+use super::scope::Scope;
 pub use core::*;
-use errors::*;
-use scope::Scope;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -259,7 +259,6 @@ impl<'input> IntoModel for File<'input> {
 
         Ok(RpFile {
             options: options,
-            uses: self.uses.into_model(scope)?,
             decls: self.decls.into_model(scope)?,
         })
     }
@@ -443,12 +442,24 @@ impl IntoModel for Name {
 
                 RpName {
                     prefix: None,
+                    package: scope.package().clone(),
                     parts: all_parts,
                 }
             }
             Absolute { prefix, parts } => {
+                let package = if let Some(ref prefix) = prefix {
+                    if let Some(package) = scope.lookup_prefix(prefix) {
+                        package.clone()
+                    } else {
+                        return Err(ErrorKind::MissingPrefix(prefix.clone()).into());
+                    }
+                } else {
+                    scope.package().clone()
+                };
+
                 RpName {
                     prefix: prefix,
+                    package: package,
                     parts: parts,
                 }
             }
@@ -974,20 +985,6 @@ pub struct UseDecl<'input> {
     pub package: Loc<RpPackage>,
     pub version_req: Option<Loc<VersionReq>>,
     pub alias: Option<Loc<&'input str>>,
-}
-
-impl<'input> IntoModel for UseDecl<'input> {
-    type Output = RpUseDecl;
-
-    fn into_model(self, scope: &Scope) -> Result<RpUseDecl> {
-        let use_decl = RpUseDecl {
-            package: self.package.into_model(scope)?,
-            version_req: self.version_req,
-            alias: self.alias.into_model(scope)?,
-        };
-
-        Ok(use_decl)
-    }
 }
 
 type Fields = Vec<Loc<RpField>>;

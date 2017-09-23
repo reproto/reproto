@@ -108,22 +108,14 @@ where
 
         match (object.as_ref(), expected) {
             (&RpObject::Constant(ref constant), Some(&RpType::Name { ref name })) => {
-                let reg_constant = self.env().constant(
-                    object.pos(),
-                    &ctx.package,
-                    constant,
-                    name,
-                )?;
+                let reg_constant = self.env().constant(object.pos(), constant, name)?;
 
                 match *reg_constant {
                     RpRegistered::EnumConstant {
                         parent: _,
                         variant: _,
                     } => {
-                        let ty = self.convert_constant(
-                            object.pos(),
-                            &ctx.package.into_type_id(constant.as_ref().clone()),
-                        )?;
+                        let ty = self.convert_constant(object.pos(), constant.as_ref())?;
                         return self.constant(ty);
                     }
                     _ => {
@@ -135,12 +127,7 @@ where
                 }
             }
             (&RpObject::Instance(ref instance), Some(&RpType::Name { ref name })) => {
-                let (registered, known) = self.env().instance(
-                    object.pos(),
-                    ctx.package,
-                    instance,
-                    name,
-                )?;
+                let (registered, known) = self.env().instance(object.pos(), instance, name)?;
 
                 let mut arguments = Vec::new();
 
@@ -172,10 +159,7 @@ where
                     }
                 }
 
-                let ty = self.convert_type(
-                    object.pos(),
-                    &ctx.package.into_type_id(instance.name.clone()),
-                )?;
+                let ty = self.convert_type(object.pos(), &instance.name)?;
                 return self.instance(ty, arguments);
             }
             _ => {}

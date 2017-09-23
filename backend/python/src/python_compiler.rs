@@ -38,62 +38,61 @@ impl<'a> PackageProcessor<'a> for PythonCompiler<'a> {
     fn process_tuple(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
-        self.backend.process_tuple(out, type_id, pos, body)
+        self.backend.process_tuple(out, name, pos, body)
     }
 
     fn process_enum(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
-        self.backend.process_enum(out, type_id, pos, body)
+        self.backend.process_enum(out, name, pos, body)
     }
 
     fn process_type(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
-        self.backend.process_type(out, type_id, pos, body)
+        self.backend.process_type(out, name, pos, body)
     }
 
     fn process_interface(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
-        self.backend.process_interface(out, type_id, pos, body)
+        self.backend.process_interface(out, name, pos, body)
     }
 
     fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, PythonFileSpec>> {
         let mut enums = Vec::new();
 
-        let mut files = self.do_populate_files(|type_id, decl| {
+        let mut files = self.do_populate_files(|name, decl| {
             if let RpDecl::Enum(ref body) = **decl {
-                enums.push((type_id.clone(), body.clone()));
+                enums.push((name.clone(), body.clone()));
             }
 
             Ok(())
         })?;
 
-        for (type_id, body) in enums {
-            if let Some(ref mut file_spec) = files.get_mut(&type_id.package) {
-                file_spec.0.push(self.backend.enum_variants(
-                    type_id.as_ref(),
-                    &body,
-                )?);
+        for (name, body) in enums {
+            if let Some(ref mut file_spec) = files.get_mut(&name.package) {
+                file_spec.0.push(
+                    self.backend.enum_variants(name.as_ref(), &body)?,
+                );
             } else {
-                return Err(format!("no such package: {}", &type_id.package).into());
+                return Err(format!("no such package: {}", &name.package).into());
             }
         }
 

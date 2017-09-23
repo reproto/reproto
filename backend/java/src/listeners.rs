@@ -2,7 +2,7 @@ use super::*;
 
 pub struct ClassAdded<'a> {
     pub backend: &'a JavaBackend,
-    pub type_id: &'a RpTypeId,
+    pub name: &'a RpName,
     pub fields: &'a Vec<JavaField<'a>>,
     pub class_type: &'a ClassType,
     pub spec: &'a mut ClassSpec,

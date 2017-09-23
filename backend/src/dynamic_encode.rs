@@ -1,7 +1,7 @@
 //! # Helper trait for building a dynamic-language encode method
 
 use base_encode::BaseEncode;
-use core::{Pos, RpType, RpTypeId};
+use core::{Pos, RpName, RpType};
 use dynamic_converter::DynamicConverter;
 use errors::*;
 
@@ -17,7 +17,7 @@ where
 
     fn encode(
         &self,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         ty: &RpType,
         input: &Self::Stmt,
@@ -34,20 +34,19 @@ where
             RpType::Any => input.clone(),
             RpType::Boolean => input.clone(),
             RpType::Name { ref name } => {
-                let type_id = type_id.with_name(name.clone());
-                let name = self.convert_type(pos, &type_id)?;
+                let name = self.convert_type(pos, name)?;
                 self.name_encode(&input, name)
             }
             RpType::Array { ref inner } => {
                 let v = self.array_inner_var();
-                let inner = self.encode(type_id, pos, inner, &v)?;
+                let inner = self.encode(name, pos, inner, &v)?;
                 self.array_encode(input, inner)
             }
             RpType::Map { ref key, ref value } => {
                 let map_key = self.map_key_var();
-                let key = self.encode(type_id, pos, key, &map_key)?;
+                let key = self.encode(name, pos, key, &map_key)?;
                 let map_value = self.map_value_var();
-                let value = self.encode(type_id, pos, value, &map_value)?;
+                let value = self.encode(name, pos, value, &map_value)?;
                 self.map_encode(input, key, value)
             }
             _ => input.clone(),
@@ -66,11 +65,11 @@ where
 
     fn base_encode(
         &self,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         ty: &RpType,
         input: &Self::Stmt,
     ) -> Result<Self::Stmt> {
-        DynamicEncode::encode(self, type_id, pos, ty, input)
+        DynamicEncode::encode(self, name, pos, ty, input)
     }
 }

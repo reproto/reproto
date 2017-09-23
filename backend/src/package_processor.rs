@@ -1,6 +1,6 @@
 use collecting::Collecting;
-use core::{Loc, Pos, RpDecl, RpEnumBody, RpInterfaceBody, RpPackage, RpServiceBody, RpTupleBody,
-           RpTypeBody, RpTypeId, RpVersionedPackage};
+use core::{Loc, Pos, RpDecl, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
+           RpTupleBody, RpTypeBody, RpVersionedPackage};
 use environment::Environment;
 use errors::*;
 use std::collections::BTreeMap;
@@ -22,8 +22,8 @@ where
 
     fn out_path(&self) -> &Path;
 
-    fn default_process(&self, _: &mut Self::Out, type_id: &RpTypeId, _: &Pos) -> Result<()> {
-        warn!("not supported: {}", type_id);
+    fn default_process(&self, _: &mut Self::Out, name: &RpName, _: &Pos) -> Result<()> {
+        warn!("not supported: {}", name);
         Ok(())
     }
 
@@ -32,51 +32,51 @@ where
     fn process_interface(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         _: Rc<RpInterfaceBody>,
     ) -> Result<()> {
-        self.default_process(out, type_id, pos)
+        self.default_process(out, name, pos)
     }
 
     fn process_type(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         _: Rc<RpTypeBody>,
     ) -> Result<()> {
-        self.default_process(out, type_id, pos)
+        self.default_process(out, name, pos)
     }
 
     fn process_tuple(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         _: Rc<RpTupleBody>,
     ) -> Result<()> {
-        self.default_process(out, type_id, pos)
+        self.default_process(out, name, pos)
     }
 
     fn process_enum(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         _: Rc<RpEnumBody>,
     ) -> Result<()> {
-        self.default_process(out, type_id, pos)
+        self.default_process(out, name, pos)
     }
 
     fn process_service(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         _: Rc<RpServiceBody>,
     ) -> Result<()> {
-        self.default_process(out, type_id, pos)
+        self.default_process(out, name, pos)
     }
 
     fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, Self::Out>> {
@@ -88,17 +88,17 @@ where
         mut callback: F,
     ) -> Result<BTreeMap<RpVersionedPackage, Self::Out>>
     where
-        F: FnMut(Rc<RpTypeId>, Rc<Loc<RpDecl>>) -> Result<()>,
+        F: FnMut(Rc<RpName>, Rc<Loc<RpDecl>>) -> Result<()>,
     {
         use self::RpDecl::*;
 
         let mut files = BTreeMap::new();
 
         // Process all types discovered so far.
-        self.env().for_each_decl(|type_id, decl| {
-            callback(type_id.clone(), decl.clone())?;
+        self.env().for_each_decl(|name, decl| {
+            callback(name.clone(), decl.clone())?;
 
-            let mut out = files.entry(type_id.package.clone()).or_insert_with(
+            let mut out = files.entry(name.package.clone()).or_insert_with(
                 Self::Out::new,
             );
 
@@ -106,7 +106,7 @@ where
                 Interface(ref body) => {
                     self.process_interface(
                         &mut out,
-                        type_id.as_ref(),
+                        name.as_ref(),
                         decl.pos(),
                         body.clone(),
                     )?;
@@ -114,7 +114,7 @@ where
                 Type(ref body) => {
                     self.process_type(
                         &mut out,
-                        type_id.as_ref(),
+                        name.as_ref(),
                         decl.pos(),
                         body.clone(),
                     )?;
@@ -122,7 +122,7 @@ where
                 Tuple(ref body) => {
                     self.process_tuple(
                         &mut out,
-                        type_id.as_ref(),
+                        name.as_ref(),
                         decl.pos(),
                         body.clone(),
                     )?;
@@ -130,7 +130,7 @@ where
                 Enum(ref body) => {
                     self.process_enum(
                         &mut out,
-                        type_id.as_ref(),
+                        name.as_ref(),
                         decl.pos(),
                         body.clone(),
                     )?;
@@ -138,7 +138,7 @@ where
                 Service(ref body) => {
                     self.process_service(
                         &mut out,
-                        type_id.as_ref(),
+                        name.as_ref(),
                         decl.pos(),
                         body.clone(),
                     )?;

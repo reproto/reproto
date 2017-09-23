@@ -1,5 +1,5 @@
 use reproto_backend::errors as backend;
-use reproto_core::{ErrorPos, RpTypeId};
+use reproto_core::{ErrorPos, RpName};
 use reproto_core::errors as core;
 use reproto_parser::errors as parser;
 use reproto_repository::errors as repository;
@@ -47,9 +47,9 @@ error_chain! {
             description("missing required")
         }
 
-        RegisteredTypeConflict(type_id: RpTypeId) {
+        RegisteredTypeConflict(name: RpName) {
             description("registered type conflict")
-            display("registered type conflict with: {}", type_id)
+            display("registered type conflict with: {}", name)
         }
 
         PoisonError {

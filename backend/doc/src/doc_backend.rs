@@ -45,20 +45,15 @@ impl DocBackend {
         Ok(())
     }
 
-    fn type_url(&self, pos: &Pos, lookup_id: &RpTypeId) -> Result<String> {
-        let LookupResult {
-            package,
-            registered,
-            type_id,
-            ..
-        } = self.env
-            .lookup(&lookup_id.package, &lookup_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+    fn type_url(&self, pos: &Pos, name: &RpName) -> Result<String> {
+        let registered = self.env.lookup(name).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
-        let fragment = registered.local_name(&type_id, |p| p.join("_"), |c| c.join("_"));
+        let fragment = registered.local_name(name, |p| p.join("_"), |c| c.join("_"));
 
-        if let Some(_) = lookup_id.name.prefix {
-            let package = self.package(package);
+        if let Some(_) = name.prefix {
+            let package = self.package(&name.package);
             let package = self.package_file(&package);
             return Ok(format!("{}.html#{}", package, fragment));
         }
@@ -142,7 +137,7 @@ impl DocBackend {
         &self,
         out: &mut DocBuilder,
         pos: &Pos,
-        type_id: &RpTypeId,
+        name: &RpName,
         ty: &RpType,
     ) -> Result<()> {
         write!(out, "<span class=\"ty\">")?;
@@ -175,7 +170,7 @@ impl DocBackend {
                 });
             }
             RpType::Name { ref name } => {
-                let url = self.type_url(pos, &type_id.with_name(name.clone()))?;
+                let url = self.type_url(pos, name)?;
                 let name = name.join("::");
 
                 html!(out, span {class => "type-rp-name"} => {
@@ -185,16 +180,16 @@ impl DocBackend {
             RpType::Array { ref inner } => {
                 html!(out, span {class => "type-array"} => {
                     html!(out, span {class => "type-array-left"} ~ "[");
-                    self.write_type(out, pos, type_id, inner)?;
+                    self.write_type(out, pos, name, inner)?;
                     html!(out, span {class => "type-array-right"} ~ "]");
                 });
             }
             RpType::Map { ref key, ref value } => {
                 html!(out, span {class => "type-map"} => {
                     html!(out, span {class => "type-map-left"} ~ "{");
-                    self.write_type(out, pos, type_id, key)?;
+                    self.write_type(out, pos, name, key)?;
                     html!(out, span {class => "type-map-sep"} ~ ":");
-                    self.write_type(out, pos, type_id, value)?;
+                    self.write_type(out, pos, name, value)?;
                     html!(out, span {class => "type-map-right"} ~ "}");
                 });
             }
@@ -204,7 +199,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_fields<'b, I>(&self, out: &mut DocBuilder, type_id: &RpTypeId, fields: I) -> Result<()>
+    fn write_fields<'b, I>(&self, out: &mut DocBuilder, name: &RpName, fields: I) -> Result<()>
     where
         I: Iterator<Item = &'b Loc<RpField>>,
     {
@@ -243,7 +238,7 @@ impl DocBackend {
                         });
 
                         html!(out, td {class => "type"} => {
-                            self.write_type(out, pos, type_id, &field.ty)?;
+                            self.write_type(out, pos, name, &field.ty)?;
                         });
 
                         html!(out, td {class => "description"} => {
@@ -357,7 +352,7 @@ impl DocBackend {
         &self,
         out: &mut DocBuilder,
         index: usize,
-        type_id: &RpTypeId,
+        name: &RpName,
         body: &Rc<RpServiceBody>,
         endpoint: &RpServiceEndpoint,
     ) -> Result<()> {
@@ -393,7 +388,7 @@ impl DocBackend {
                                 html!(out, td {class => "type"} => {
                                     if let Some(ref ty) = accept.ty {
                                         let (ty, pos) = ty.ref_both();
-                                        self.write_type(out, pos, type_id, ty)?;
+                                        self.write_type(out, pos, name, ty)?;
                                     } else {
                                         html!(out, em {} ~ "no body");
                                     }
@@ -431,7 +426,7 @@ impl DocBackend {
                                 html!(out, td {class => "type"} => {
                                     if let Some(ref ty) = response.ty {
                                         let (ty, pos) = ty.ref_both();
-                                        self.write_type(out, pos, type_id, ty)?;
+                                        self.write_type(out, pos, name, ty)?;
                                     } else {
                                         html!(out, em {} ~ "no body");
                                     }
@@ -543,24 +538,24 @@ impl DocBackend {
     pub fn process_service(
         &self,
         out: &mut DocCollector,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpServiceBody>,
     ) -> Result<()> {
         let mut new_service = out.new_service(body.clone());
         let mut out = DefaultDocBuilder::new(&mut new_service);
 
-        let name = type_id.name.join("::");
-        let id = type_id.name.join("_");
+        let title_text = name.join("::");
+        let id = name.join("_");
 
         html!(out, section {id => &id, class => "section-content section-service"} => {
-            self.section_title(&mut out, "service", &name, &id)?;
+            self.section_title(&mut out, "service", &title_text, &id)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
 
                 for (index, endpoint) in body.endpoints.iter().enumerate() {
-                    self.write_endpoint(&mut out, index, type_id, &body, endpoint)?;
+                    self.write_endpoint(&mut out, index, name, &body, endpoint)?;
                 }
             });
         });
@@ -571,18 +566,18 @@ impl DocBackend {
     pub fn process_enum(
         &self,
         out: &mut DocCollector,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
         let mut new_enum = out.new_type(RpDecl::Enum(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_enum);
 
-        let name = type_id.name.join("::");
-        let id = type_id.name.join("_");
+        let title_text = name.join("::");
+        let id = name.join("_");
 
         html!(out, section {id => &id, class => "section-content section-enum"} => {
-            self.section_title(&mut out, "enum", &name, &id)?;
+            self.section_title(&mut out, "enum", &title_text, &id)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
@@ -596,25 +591,26 @@ impl DocBackend {
     pub fn process_interface(
         &self,
         out: &mut DocCollector,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
         let mut new_interface = out.new_type(RpDecl::Interface(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_interface);
 
-        let name = type_id.name.join("::");
-        let id = type_id.name.join("_");
+        let title_text = name.join("::");
+        let id = name.join("_");
 
         html!(out, section {id => &id, class => "section-content section-interface"} => {
-            self.section_title(&mut out, "interface", &name, &id)?;
+            self.section_title(&mut out, "interface", &title_text, &id)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
 
                 if !body.sub_types.is_empty() {
                     html!(out, div {class => "sub-types"} => {
-                        for (name, sub_type) in &body.sub_types {
+                        for (type_name, sub_type) in &body.sub_types {
+                            let name = name.extend(type_name.to_owned());
                             let id = format!("{}_{}", body.name, sub_type.name);
 
                             html!(out, h2 {id => id, class => "sub-type-title"} => {
@@ -624,7 +620,7 @@ impl DocBackend {
                             self.write_description(&mut out, &body.comment)?;
 
                             let fields = body.fields.iter().chain(sub_type.fields.iter());
-                            self.write_fields(&mut out, type_id, fields)?;
+                            self.write_fields(&mut out, &name, fields)?;
                         }
                     });
                 }
@@ -637,22 +633,22 @@ impl DocBackend {
     pub fn process_type(
         &self,
         out: &mut DocCollector,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
         let mut new_type = out.new_type(RpDecl::Type(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_type);
 
-        let name = type_id.name.join("::");
-        let id = type_id.name.join("_");
+        let title_text = name.join("::");
+        let id = name.join("_");
 
         html!(out, section {id => &id, class => "section-content section-type"} => {
-            self.section_title(&mut out, "type", &name, &id)?;
+            self.section_title(&mut out, "type", &title_text, &id)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
-                self.write_fields(&mut out, type_id, body.fields.iter())?;
+                self.write_fields(&mut out, name, body.fields.iter())?;
             });
         });
 
@@ -662,22 +658,22 @@ impl DocBackend {
     pub fn process_tuple(
         &self,
         out: &mut DocCollector,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
         let mut new_tuple = out.new_type(RpDecl::Tuple(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_tuple);
 
-        let name = type_id.name.join("::");
-        let id = type_id.name.join("_");
+        let id = name.join("_");
+        let title_text = name.join("::");
 
         html!(out, section {id => &id, class => "section-content section-tuple"} => {
-            self.section_title(&mut out, "tuple", &name, &id)?;
+            self.section_title(&mut out, "tuple", &title_text, &id)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
-                self.write_fields(&mut out, type_id, body.fields.iter())?;
+                self.write_fields(&mut out, name, body.fields.iter())?;
             });
         });
 

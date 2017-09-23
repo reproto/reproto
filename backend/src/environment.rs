@@ -1,11 +1,11 @@
 use core::{ErrorPos, Loc, Merge, Pos, RpDecl, RpField, RpFieldInit, RpFile, RpInstance,
-           RpModifier, RpName, RpPackage, RpRegistered, RpRequiredPackage, RpType, RpTypeId,
-           RpUseDecl, RpVersionedPackage, Version};
+           RpModifier, RpName, RpPackage, RpRegistered, RpRequiredPackage, RpType,
+           RpVersionedPackage, Version};
 use errors::*;
 use linked_hash_map::LinkedHashMap;
 use reproto_core::object::{Object, PathObject};
 use reproto_parser as parser;
-use reproto_parser::ast::IntoModel;
+use reproto_parser::ast::{IntoModel, UseDecl};
 use reproto_parser::scope::Scope;
 use reproto_repository::Resolver;
 use std::collections::{BTreeMap, HashMap, LinkedList};
@@ -14,19 +14,12 @@ use std::rc::Rc;
 
 pub type InitFields = HashMap<String, Loc<RpFieldInit>>;
 
-pub struct LookupResult<'a> {
-    pub package: &'a RpVersionedPackage,
-    pub registered: &'a RpRegistered,
-    pub type_id: RpTypeId,
-}
-
 pub struct Environment {
     package_prefix: Option<RpPackage>,
     resolver: Box<Resolver>,
     visited: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
-    pub types: LinkedHashMap<RpTypeId, Loc<RpRegistered>>,
-    pub decls: LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>,
-    pub used: LinkedHashMap<(RpVersionedPackage, String), RpVersionedPackage>,
+    pub types: LinkedHashMap<RpName, Loc<RpRegistered>>,
+    pub decls: LinkedHashMap<RpName, Rc<Loc<RpDecl>>>,
 }
 
 /// Environment containing all loaded declarations.
@@ -38,39 +31,7 @@ impl Environment {
             visited: HashMap::new(),
             types: LinkedHashMap::new(),
             decls: LinkedHashMap::new(),
-            used: LinkedHashMap::new(),
         }
-    }
-
-    /// Registered an alias.
-    fn register_alias(
-        &mut self,
-        source_package: &RpVersionedPackage,
-        use_decl: Loc<RpUseDecl>,
-        use_package: &RpVersionedPackage,
-    ) -> Result<()> {
-        use linked_hash_map::Entry::*;
-
-        if let Some(used) = use_decl.package.parts.iter().last() {
-            let alias = use_decl
-                .alias
-                .as_ref()
-                .map(|v| v.as_ref().as_str())
-                .unwrap_or(used);
-
-            let key = (source_package.clone(), alias.to_owned());
-
-            debug!("add alias {} ({})", alias, source_package);
-
-            match self.used.entry(key) {
-                Vacant(entry) => {
-                    entry.insert(use_package.clone());
-                }
-                Occupied(_) => return Err(format!("alias {} already in use", alias).into()),
-            };
-        }
-
-        Ok(())
     }
 
     /// Check if source is assignable to target.
@@ -97,8 +58,8 @@ impl Environment {
             // everything assignable to any type
             (&RpType::Any, _) => Ok(true),
             (&RpType::Name { name: ref target }, &RpType::Name { name: ref source }) => {
-                let LookupResult { registered: target, .. } = self.lookup(package, target)?;
-                let LookupResult { registered: source, .. } = self.lookup(package, source)?;
+                let target = self.lookup(target)?;
+                let source = self.lookup(source)?;
                 return Ok(target.is_assignable_from(source));
             }
             // arrays match if inner type matches
@@ -127,19 +88,16 @@ impl Environment {
     pub fn constant<'a>(
         &'a self,
         pos: &Pos,
-        package: &'a RpVersionedPackage,
-        constant: &RpName,
-        target: &RpName,
+        constant: &'a RpName,
+        target: &'a RpName,
     ) -> Result<&'a RpRegistered> {
-        let LookupResult { registered: reg_constant, .. } =
-            self.lookup(package, constant).map_err(|e| {
-                Error::pos(e.description().to_owned(), pos.into())
-            })?;
+        let reg_constant = self.lookup(constant).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
-        let LookupResult { registered: reg_target, .. } =
-            self.lookup(package, target).map_err(|e| {
-                Error::pos(e.description().to_owned(), pos.into())
-            })?;
+        let reg_target = self.lookup(target).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
         if !reg_target.is_assignable_from(reg_constant) {
             return Err(Error::pos(
@@ -160,19 +118,16 @@ impl Environment {
     pub fn instance<'a>(
         &'a self,
         pos: &Pos,
-        package: &'a RpVersionedPackage,
-        instance: &RpInstance,
-        target: &RpName,
+        instance: &'a RpInstance,
+        target: &'a RpName,
     ) -> Result<(&'a RpRegistered, InitFields)> {
-        let LookupResult { registered: reg_instance, .. } =
-            self.lookup(package, &instance.name).map_err(|e| {
-                Error::pos(e.description().to_owned(), pos.into())
-            })?;
+        let reg_instance = self.lookup(&instance.name).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
-        let LookupResult { registered: reg_target, .. } =
-            self.lookup(package, target).map_err(|e| {
-                Error::pos(e.description().to_owned(), pos.into())
-            })?;
+        let reg_target = self.lookup(target).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
         if !reg_target.is_assignable_from(reg_instance) {
             return Err(Error::pos(
@@ -236,40 +191,15 @@ impl Environment {
         Ok((reg_instance, known))
     }
 
-    /// Lookup the package declaration a used alias refers to.
-    fn lookup_used(&self, package: &RpVersionedPackage, used: &str) -> Result<&RpVersionedPackage> {
-        // resolve alias
-        self.used
-            .get(&(package.clone(), used.to_owned()))
-            .ok_or_else(|| format!("not import for alias ({})", used).into())
-    }
-
     /// Lookup the declaration matching the custom type.
-    pub fn lookup<'a>(
-        &'a self,
-        lookup_package: &'a RpVersionedPackage,
-        lookup_name: &RpName,
-    ) -> Result<LookupResult<'a>> {
-        let (package, name) = if let Some(ref prefix) = lookup_name.prefix {
-            (
-                self.lookup_used(lookup_package, prefix)?,
-                lookup_name.without_prefix(),
-            )
-        } else {
-            (lookup_package, lookup_name.clone())
-        };
+    pub fn lookup<'a>(&'a self, name: &'a RpName) -> Result<&'a RpRegistered> {
+        let key = name.without_prefix();
 
-        let type_id = RpTypeId::new(package.clone(), name);
-
-        if let Some(registered) = self.types.get(&type_id) {
-            return Ok(LookupResult {
-                package: package,
-                registered: registered,
-                type_id: type_id,
-            });
+        if let Some(registered) = self.types.get(&key) {
+            return Ok(registered);
         }
 
-        return Err(format!("no such type: {}", lookup_name).into());
+        return Err(format!("no such type: {}", name).into());
     }
 
     /// Load the provided Object into a `RpFile`.
@@ -283,18 +213,26 @@ impl Environment {
         let object = object.into();
         let content = parser::read_reader(object.read()?)?;
         let object = Rc::new(object);
-        let file = parser::parse_string(object, content.as_str())?.into_model(
-            &Scope::new(),
-        )?;
+
+        let file = parser::parse_string(object, content.as_str())?;
+
+        let prefixes = self.process_uses(&file.uses)?;
+        let scope = Scope::new(package.clone(), prefixes);
+
+        let file = file.into_model(&scope)?;
+
         Ok(Some((package, file)))
     }
 
     /// Process use declarations.
     pub fn process_uses(
         &mut self,
-        package: &RpVersionedPackage,
-        uses: Vec<Loc<RpUseDecl>>,
-    ) -> Result<()> {
+        uses: &[Loc<UseDecl>],
+    ) -> Result<HashMap<String, RpVersionedPackage>> {
+        use std::collections::hash_map::Entry::*;
+
+        let mut prefixes = HashMap::new();
+
         for use_decl in uses {
             let version_req = use_decl.version_req.as_ref().map(AsRef::as_ref).map(
                 Clone::clone,
@@ -305,7 +243,16 @@ impl Environment {
 
             if let Some(use_package) = use_package {
                 let use_package = self.package_prefix(&use_package);
-                self.register_alias(&package, use_decl, &use_package)?;
+
+                if let Some(used) = use_decl.package.parts.iter().last() {
+                    let alias = use_decl.alias.as_ref().map(|v| **v).unwrap_or(used);
+
+                    match prefixes.entry(alias.to_owned()) {
+                        Vacant(entry) => entry.insert(use_package.clone()),
+                        Occupied(_) => return Err(format!("alias {} already in use", alias).into()),
+                    };
+                }
+
                 continue;
             }
 
@@ -313,7 +260,7 @@ impl Environment {
             return Err(ErrorKind::Pos(error, use_decl.pos().into()).into());
         }
 
-        Ok(())
+        Ok(prefixes)
     }
 
     /// Apply package prefix
@@ -327,7 +274,7 @@ impl Environment {
     /// Walks the entire tree of declarations and emits them to the provided function.
     pub fn for_each_decl<F>(&self, mut f: F) -> Result<()>
     where
-        F: FnMut(Rc<RpTypeId>, Rc<Loc<RpDecl>>) -> Result<()>,
+        F: FnMut(Rc<RpName>, Rc<Loc<RpDecl>>) -> Result<()>,
     {
         let mut queue = LinkedList::new();
         queue.extend(self.decls.iter().map(
@@ -335,12 +282,12 @@ impl Environment {
         ));
 
         while let Some(next) = queue.pop_front() {
-            let (type_id, decl) = next;
-            f(type_id.clone(), decl.clone())?;
+            let (name, decl) = next;
+            f(name.clone(), decl.clone())?;
 
             for d in decl.decls() {
-                let type_id = Rc::new(type_id.extend(d.name().to_owned()));
-                queue.push_back((type_id, d.clone()));
+                let name = Rc::new(name.extend(d.name().to_owned()));
+                queue.push_back((name, d.clone()));
             }
         }
 
@@ -349,13 +296,13 @@ impl Environment {
 
     /// Process and merge declarations.
     ///
-    /// Declarations are considered the same if they have the same type_id.
+    /// Declarations are considered the same if they have the same name.
     /// The same declarations are merged using `Merge`.
     pub fn process_decls<I>(
         &self,
         package: &RpVersionedPackage,
         input: I,
-    ) -> Result<LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>>
+    ) -> Result<LinkedHashMap<RpName, Rc<Loc<RpDecl>>>>
     where
         I: IntoIterator<Item = Loc<RpDecl>>,
     {
@@ -364,9 +311,9 @@ impl Environment {
         let mut decls = LinkedHashMap::new();
 
         for decl in input {
-            let key = package.into_type_id(RpName::with_parts(vec![decl.name().to_owned()]));
+            let name = RpName::new(None, package.clone(), vec![decl.name().to_owned()]);
 
-            match decls.entry(key) {
+            match decls.entry(name) {
                 Vacant(entry) => {
                     entry.insert(Rc::new(decl));
                 }
@@ -382,15 +329,15 @@ impl Environment {
     pub fn process_types(
         &mut self,
         package: &RpVersionedPackage,
-        decls: &LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>,
-    ) -> Result<LinkedHashMap<RpTypeId, Loc<RpRegistered>>> {
+        decls: &LinkedHashMap<RpName, Rc<Loc<RpDecl>>>,
+    ) -> Result<LinkedHashMap<RpName, Loc<RpRegistered>>> {
         let mut types = LinkedHashMap::new();
 
         for d in decls.values() {
-            let type_id = package.into_type_id(RpName::with_parts(vec![d.name().to_owned()]));
+            let name = RpName::new(None, package.clone(), vec![d.name().to_owned()]);
 
-            for (key, t) in d.into_registered_type(&type_id, d.pos()) {
-                if types.insert(key.clone(), t).is_some() {
+            for (key, t) in d.into_registered_type(&name, d.pos()) {
+                if types.insert(key.without_prefix(), t).is_some() {
                     return Err(ErrorKind::RegisteredTypeConflict(key.clone()).into());
                 }
             }
@@ -401,7 +348,6 @@ impl Environment {
 
     pub fn process_file(&mut self, package: &RpVersionedPackage, file: RpFile) -> Result<()> {
         let package = self.package_prefix(package);
-        self.process_uses(&package, file.uses)?;
         let decls = self.process_decls(&package, file.decls)?;
         let types = self.process_types(&package, &decls)?;
         self.decls.extend(decls);

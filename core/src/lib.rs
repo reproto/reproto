@@ -132,9 +132,9 @@ impl RpDecl {
     /// Convert a declaration into its registered types.
     pub fn into_registered_type(
         &self,
-        type_id: &RpTypeId,
+        type_id: &RpName,
         pos: &Pos,
-    ) -> Vec<(RpTypeId, Loc<RpRegistered>)> {
+    ) -> Vec<(RpName, Loc<RpRegistered>)> {
         use self::RpDecl::*;
 
         let mut out = Vec::new();
@@ -396,7 +396,6 @@ impl Merge for Vec<Loc<RpField>> {
 #[derive(Debug)]
 pub struct RpFile {
     pub options: Options,
-    pub uses: Vec<Loc<RpUseDecl>>,
     pub decls: Vec<Loc<RpDecl>>,
 }
 
@@ -441,21 +440,19 @@ pub enum RpModifier {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct RpName {
+    /// Alias used if the name was imported from another package.
     pub prefix: Option<String>,
+    /// Package that name belongs to.
+    pub package: RpVersionedPackage,
+    /// Absolute parts of the name, from the root of the package.
     pub parts: Vec<String>,
 }
 
 impl RpName {
-    pub fn without_prefix(&self) -> RpName {
+    pub fn new(prefix: Option<String>, package: RpVersionedPackage, parts: Vec<String>) -> RpName {
         RpName {
-            prefix: None,
-            parts: self.parts.clone(),
-        }
-    }
-
-    pub fn with_parts(parts: Vec<String>) -> RpName {
-        RpName {
-            prefix: None,
+            prefix: prefix,
+            package: package,
             parts: parts,
         }
     }
@@ -466,6 +463,7 @@ impl RpName {
 
         RpName {
             prefix: self.prefix.clone(),
+            package: self.package.clone(),
             parts: parts,
         }
     }
@@ -473,15 +471,23 @@ impl RpName {
     pub fn join<S: AsRef<str>>(&self, joiner: S) -> String {
         self.parts.join(joiner.as_ref())
     }
+
+    pub fn without_prefix(&self) -> RpName {
+        RpName {
+            prefix: None,
+            package: self.package.clone(),
+            parts: self.parts.clone(),
+        }
+    }
 }
 
 impl fmt::Display for RpName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref prefix) = self.prefix {
-            write!(f, "{}::", prefix)?;
+            write!(f, "{}::{}", prefix, self.parts.join("::"))
+        } else {
+            write!(f, "[{}]::{}", self.package, self.parts.join("::"))
         }
-
-        write!(f, "{}", self.parts.join("."))
     }
 }
 
@@ -688,10 +694,6 @@ impl RpPackage {
         parts.extend(other.parts.clone());
         RpPackage::new(parts)
     }
-
-    pub fn into_type_id(&self, version: Option<Version>, name: RpName) -> RpTypeId {
-        RpTypeId::new(RpVersionedPackage::new(self.clone(), version), name)
-    }
 }
 
 impl fmt::Display for RpPackage {
@@ -875,7 +877,7 @@ impl RpRegistered {
 
     pub fn local_name<PackageFn, InnerFn>(
         &self,
-        type_id: &RpTypeId,
+        name: &RpName,
         package_fn: PackageFn,
         inner_fn: InnerFn,
     ) -> String
@@ -884,8 +886,6 @@ impl RpRegistered {
         InnerFn: Fn(Vec<&str>) -> String,
     {
         use self::RpRegistered::*;
-
-        let name = &type_id.name;
 
         match *self {
             Type(_) | Interface(_) | Enum(_) | Tuple(_) | Service(_) => {
@@ -1090,41 +1090,6 @@ impl Merge for RpTypeBody {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-pub struct RpTypeId {
-    pub package: RpVersionedPackage,
-    pub name: RpName,
-}
-
-impl RpTypeId {
-    pub fn new(package: RpVersionedPackage, name: RpName) -> RpTypeId {
-        RpTypeId {
-            package: package,
-            name: name,
-        }
-    }
-
-    pub fn with_name(&self, name: RpName) -> RpTypeId {
-        RpTypeId {
-            package: self.package.clone(),
-            name: name,
-        }
-    }
-
-    pub fn extend(&self, part: String) -> RpTypeId {
-        RpTypeId {
-            package: self.package.clone(),
-            name: self.name.extend(part),
-        }
-    }
-}
-
-impl fmt::Display for RpTypeId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[{}]::{}", self.package, self.name)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpType {
@@ -1165,26 +1130,13 @@ impl fmt::Display for RpType {
             }
             RpType::Boolean => write!(f, "boolean"),
             RpType::String => write!(f, "string"),
-            RpType::Name { ref name } => {
-                if let Some(ref used) = name.prefix {
-                    write!(f, "{}::{}", used, name.parts.join("."))
-                } else {
-                    write!(f, "{}", name.parts.join("."))
-                }
-            }
+            RpType::Name { ref name } => write!(f, "{}", name),
             RpType::Array { ref inner } => write!(f, "[{}]", inner),
             RpType::Map { ref key, ref value } => write!(f, "{{{}: {}}}", key, value),
             RpType::Any => write!(f, "any"),
             RpType::Bytes => write!(f, "bytes"),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct RpUseDecl {
-    pub package: Loc<RpPackage>,
-    pub version_req: Option<Loc<VersionReq>>,
-    pub alias: Option<Loc<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
@@ -1246,10 +1198,6 @@ impl RpVersionedPackage {
             package: package,
             version: version,
         }
-    }
-
-    pub fn into_type_id(&self, name: RpName) -> RpTypeId {
-        RpTypeId::new(self.clone(), name)
     }
 
     pub fn into_package<F>(&self, version_fn: F) -> RpPackage

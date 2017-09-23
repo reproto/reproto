@@ -10,7 +10,7 @@ pub struct JavaCompiler<'a> {
 
 impl<'a> JavaCompiler<'a> {
     pub fn compile(&self) -> Result<()> {
-        self.process_files(|full_path, type_id, decl| {
+        self.process_files(|full_path, name, decl| {
             debug!("+class: {}", full_path.display());
 
             if let Some(out_dir) = full_path.parent() {
@@ -20,7 +20,7 @@ impl<'a> JavaCompiler<'a> {
                 }
             }
 
-            let file_spec = self.backend.build_file_spec(type_id, decl)?;
+            let file_spec = self.backend.build_file_spec(name, decl)?;
 
             let mut out = String::new();
             file_spec.format(&mut out)?;
@@ -35,20 +35,19 @@ impl<'a> JavaCompiler<'a> {
 
     fn process_files<F>(&self, mut consumer: F) -> Result<()>
     where
-        F: FnMut(PathBuf, &RpTypeId, &RpDecl) -> Result<()>,
+        F: FnMut(PathBuf, &RpName, &RpDecl) -> Result<()>,
     {
         let root_dir = &self.out_path;
 
         // Process all types discovered so far.
-        for (ref type_id, ref decl) in &self.backend.env.decls {
-            let out_dir = self.backend
-                .java_package(&type_id.package)
-                .parts
-                .iter()
-                .fold(root_dir.clone(), |current, next| current.join(next));
+        for (ref name, ref decl) in &self.backend.env.decls {
+            let out_dir = self.backend.java_package(&name.package).parts.iter().fold(
+                root_dir.clone(),
+                |current, next| current.join(next),
+            );
 
             let full_path = out_dir.join(format!("{}.java", decl.name()));
-            consumer(full_path, type_id, decl)?;
+            consumer(full_path, name, decl)?;
         }
 
         Ok(())

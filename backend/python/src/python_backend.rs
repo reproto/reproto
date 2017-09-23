@@ -73,7 +73,7 @@ impl PythonBackend {
 
     fn encode_method<E>(
         &self,
-        type_id: &RpTypeId,
+        name: &RpName,
         fields: &[Loc<Field>],
         builder: &BuiltInName,
         extra: E,
@@ -93,7 +93,7 @@ impl PythonBackend {
         for field in fields {
             let var_string = Variable::String(field.name.to_owned());
             let field_stmt = stmt!["self.", &field.ident];
-            let value_stmt = self.encode(type_id, field.pos(), &field.ty, &field_stmt)?;
+            let value_stmt = self.encode(name, field.pos(), &field.ty, &field_stmt)?;
 
             match *field.modifier {
                 RpModifier::Optional => {
@@ -123,7 +123,7 @@ impl PythonBackend {
         Ok(encode)
     }
 
-    fn encode_tuple_method(&self, type_id: &RpTypeId, fields: &[Loc<Field>]) -> Result<MethodSpec> {
+    fn encode_tuple_method(&self, name: &RpName, fields: &[Loc<Field>]) -> Result<MethodSpec> {
         let mut values = Statement::new();
 
         let mut encode = MethodSpec::new("encode");
@@ -134,7 +134,7 @@ impl PythonBackend {
         for field in fields {
             let stmt = stmt!["self.", &field.ident];
             encode_body.push(self.raise_if_none(&stmt, field));
-            values.push(self.encode(type_id, field.pos(), &field.ty, &stmt)?);
+            values.push(self.encode(name, field.pos(), &field.ty, &stmt)?);
         }
 
         encode_body.push(stmt!["return (", values.join(", "), ")"]);
@@ -242,7 +242,7 @@ impl PythonBackend {
 
     fn decode_method<F>(
         &self,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         fields: &[Loc<Field>],
         variable_fn: F,
@@ -267,17 +267,12 @@ impl PythonBackend {
             let stmt = match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = var_name.clone().into();
-                    let var_stmt = self.decode(type_id, field.pos(), &field.ty, &var_name)?;
+                    let var_stmt = self.decode(name, field.pos(), &field.ty, &var_name)?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
                 _ => {
                     let var_stmt = stmt!["data[", &var, "]"];
-                    let var_stmt = self.decode(
-                        type_id,
-                        field.pos(),
-                        &field.ty,
-                        &var_stmt.into(),
-                    )?;
+                    let var_stmt = self.decode(name, field.pos(), &field.ty, &var_stmt.into())?;
                     stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
@@ -287,7 +282,7 @@ impl PythonBackend {
         }
 
         let arguments = arguments.join(", ");
-        let name = self.convert_type(pos, type_id)?;
+        let name = self.convert_type(pos, name)?;
         decode_body.push(stmt!["return ", name, "(", arguments, ")"]);
 
         decode.push(decode_body.join(Spacing));
@@ -334,47 +329,41 @@ impl PythonBackend {
         Ok(result)
     }
 
-    fn convert_type_id<F>(&self, pos: &Pos, lookup_id: &RpTypeId, path_syntax: F) -> Result<Name>
+    fn convert_type_id<F>(&self, pos: &Pos, name: &RpName, path_syntax: F) -> Result<Name>
     where
         F: Fn(Vec<&str>) -> String,
     {
-        let LookupResult {
-            package,
-            registered,
-            type_id,
-            ..
-        } = self.env
-            .lookup(&lookup_id.package, &lookup_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+        let registered = self.env.lookup(name).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
-        let name = registered.local_name(&type_id, |p| p.join(TYPE_SEP), path_syntax);
+        let local_name = registered.local_name(name, |p| p.join(TYPE_SEP), path_syntax);
 
-        if let Some(ref used) = lookup_id.name.prefix {
-            let package = self.package(package).parts.join(".");
-            return Ok(Name::imported_alias(&package, &name, used).into());
+        if let Some(ref used) = name.prefix {
+            let package = self.package(&name.package).parts.join(".");
+            return Ok(Name::imported_alias(&package, &local_name, used).into());
         }
 
-        Ok(Name::local(&name).into())
+        Ok(Name::local(&local_name).into())
     }
 
-    pub fn enum_variants(&self, type_id: &RpTypeId, body: &RpEnumBody) -> Result<Statement> {
+    pub fn enum_variants(&self, name: &RpName, body: &RpEnumBody) -> Result<Statement> {
         let mut arguments = Statement::new();
 
         let variables = Variables::new();
 
         for variant in &body.variants {
-            let name = Variable::String((*variant.name).to_owned());
+            let var_name = Variable::String((*variant.name).to_owned());
 
             let mut enum_arguments = Statement::new();
 
-            enum_arguments.push(name);
+            enum_arguments.push(var_name);
 
             if !variant.arguments.is_empty() {
                 let mut value_arguments = Statement::new();
 
                 for (value, field) in variant.arguments.iter().zip(body.fields.iter()) {
-                    let ctx =
-                        ValueContext::new(&type_id.package, &variables, &value, Some(&field.ty));
+                    let ctx = ValueContext::new(&name.package, &variables, &value, Some(&field.ty));
                     value_arguments.push(self.value(ctx)?);
                 }
 
@@ -434,18 +423,18 @@ impl PythonBackend {
         self.into_python_field_with(field, |ident| ident)
     }
 
-    fn as_class(&self, type_id: &RpTypeId) -> ClassSpec {
-        ClassSpec::new(type_id.name.join(TYPE_SEP).as_str())
+    fn as_class(&self, name: &RpName) -> ClassSpec {
+        ClassSpec::new(name.join(TYPE_SEP).as_str())
     }
 
     pub fn process_tuple(
         &self,
         out: &mut PythonFileSpec,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
-        let mut class = self.as_class(type_id);
+        let mut class = self.as_class(name);
 
         let fields: Vec<Loc<Field>> = body.fields
             .iter()
@@ -466,14 +455,14 @@ impl PythonBackend {
         }
 
         let decode = self.decode_method(
-            type_id,
+            name,
             pos,
             &fields,
             |i, _| Variable::Literal(i.to_string()),
         )?;
         class.push(decode);
 
-        let encode = self.encode_tuple_method(&type_id, &fields)?;
+        let encode = self.encode_tuple_method(&name, &fields)?;
         class.push(encode);
 
         let repr_method = self.repr_method(&class.name, &fields);
@@ -486,11 +475,11 @@ impl PythonBackend {
     pub fn process_enum(
         &self,
         out: &mut PythonFileSpec,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
-        let mut class = self.as_class(type_id);
+        let mut class = self.as_class(name);
 
         let fields: Vec<Loc<Field>> = body.fields
             .iter()
@@ -531,11 +520,11 @@ impl PythonBackend {
     pub fn process_type(
         &self,
         out: &mut PythonFileSpec,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
-        let mut class = self.as_class(type_id);
+        let mut class = self.as_class(name);
 
         let fields: Vec<Loc<Field>> = body.fields
             .iter()
@@ -552,13 +541,13 @@ impl PythonBackend {
             }
         }
 
-        let decode = self.decode_method(type_id, pos, &fields, |_, field| {
+        let decode = self.decode_method(name, pos, &fields, |_, field| {
             Variable::String(field.name.to_owned())
         })?;
 
         class.push(decode);
 
-        let encode = self.encode_method(type_id, &fields, &self.dict, |_| {})?;
+        let encode = self.encode_method(name, &fields, &self.dict, |_| {})?;
 
         class.push(encode);
 
@@ -576,13 +565,13 @@ impl PythonBackend {
     pub fn process_interface(
         &self,
         out: &mut PythonFileSpec,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
-        let mut interface_spec = self.as_class(type_id);
+        let mut interface_spec = self.as_class(name);
 
-        interface_spec.push(self.interface_decode_method(type_id, &body)?);
+        interface_spec.push(self.interface_decode_method(name, &body)?);
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
             interface_spec.push(code.move_inner().lines);
@@ -593,9 +582,9 @@ impl PythonBackend {
         out.0.push(interface_spec);
 
         for (_, ref sub_type) in &body.sub_types {
-            let type_id = type_id.extend(sub_type.name.clone());
+            let name = name.extend(sub_type.name.clone());
 
-            let mut class = self.as_class(&type_id);
+            let mut class = self.as_class(&name);
             class.extends(&local_name);
 
             class.push(stmt![
@@ -620,7 +609,7 @@ impl PythonBackend {
             }
 
             let decode = self.decode_method(
-                &type_id,
+                &name,
                 sub_type.pos(),
                 &fields,
                 |_, field| Variable::String(field.ident.to_owned()),
@@ -637,7 +626,7 @@ impl PythonBackend {
             ];
 
             let encode = self.encode_method(
-                &type_id,
+                &name,
                 &fields,
                 &self.dict,
                 move |elements| { elements.push(type_stmt); },
@@ -671,13 +660,13 @@ impl Converter for PythonBackend {
         stmt![name]
     }
 
-    fn convert_type(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Name> {
-        self.convert_type_id(pos, type_id, |v| v.join(TYPE_SEP))
+    fn convert_type(&self, pos: &Pos, name: &RpName) -> Result<Name> {
+        self.convert_type_id(pos, name, |v| v.join(TYPE_SEP))
     }
 
-    fn convert_constant(&self, pos: &Pos, type_id: &RpTypeId) -> Result<Name> {
+    fn convert_constant(&self, pos: &Pos, name: &RpName) -> Result<Name> {
         // TODO: only last part in a constant lookup should be separated with dots.
-        self.convert_type_id(pos, type_id, |mut v| {
+        self.convert_type_id(pos, name, |mut v| {
             let at = v.len().saturating_sub(2);
             let last = v.split_off(at).join(".");
 

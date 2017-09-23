@@ -90,47 +90,47 @@ impl<'a> PackageProcessor<'a> for RustCompiler<'a> {
         self.backend.package(package)
     }
 
-    fn default_process(&self, _out: &mut Self::Out, _type_id: &RpTypeId, _: &Pos) -> Result<()> {
+    fn default_process(&self, _out: &mut Self::Out, _: &RpName, _: &Pos) -> Result<()> {
         Ok(())
     }
 
     fn process_tuple(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
-        self.backend.process_tuple(out, type_id, pos, body)
+        self.backend.process_tuple(out, name, pos, body)
     }
 
     fn process_enum(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
-        self.backend.process_enum(out, type_id, pos, body)
+        self.backend.process_enum(out, name, pos, body)
     }
 
     fn process_type(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
-        self.backend.process_type(out, type_id, pos, body)
+        self.backend.process_type(out, name, pos, body)
     }
 
     fn process_interface(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
-        self.backend.process_interface(out, type_id, pos, body)
+        self.backend.process_interface(out, name, pos, body)
     }
 }

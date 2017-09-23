@@ -47,5 +47,10 @@ error_chain! {
 
         Overflow(pos: ErrorPos) {
         }
+
+        MissingPrefix(prefix: String) {
+            description("missing prefix")
+            display("missing prefix: {}", prefix)
+        }
     }
 }

@@ -1,7 +1,7 @@
 //! # Helper trait for building a dynamic-language decode method
 
 use converter::Converter;
-use core::{Pos, RpType, RpTypeId};
+use core::{Pos, RpName, RpType};
 use errors::*;
 
 pub trait BaseDecode
@@ -10,7 +10,7 @@ where
 {
     fn base_decode(
         &self,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         ty: &RpType,
         input: &Self::Stmt,

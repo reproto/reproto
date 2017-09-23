@@ -37,7 +37,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
         self.processor.package(package)
     }
 
-    fn default_process(&self, _: &mut Self::Out, _: &RpTypeId, _: &Pos) -> Result<()> {
+    fn default_process(&self, _: &mut Self::Out, _: &RpName, _: &Pos) -> Result<()> {
         Ok(())
     }
 
@@ -50,7 +50,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     fn process_service(
         &self,
         out: &mut Self::Out,
-        _: &RpTypeId,
+        _: &RpName,
         _: &Pos,
         body: Rc<RpServiceBody>,
     ) -> Result<()> {
@@ -61,7 +61,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     fn process_enum(
         &self,
         out: &mut Self::Out,
-        _: &RpTypeId,
+        _: &RpName,
         _: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
@@ -72,7 +72,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     fn process_interface(
         &self,
         out: &mut Self::Out,
-        _: &RpTypeId,
+        _: &RpName,
         _: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
@@ -83,7 +83,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     fn process_type(
         &self,
         out: &mut Self::Out,
-        _: &RpTypeId,
+        _: &RpName,
         _: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
@@ -94,7 +94,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
     fn process_tuple(
         &self,
         out: &mut Self::Out,
-        _: &RpTypeId,
+        _: &RpName,
         _: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {

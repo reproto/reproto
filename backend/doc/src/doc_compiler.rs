@@ -150,9 +150,8 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
         self.backend.package(package)
     }
 
-    fn default_process(&self, _: &mut Self::Out, type_id: &RpTypeId, _: &Pos) -> Result<()> {
-        let type_id = type_id.clone();
-        warn!("Cannot handle: `{:?}", &type_id);
+    fn default_process(&self, _: &mut Self::Out, name: &RpName, _: &Pos) -> Result<()> {
+        warn!("Cannot handle: `{:?}", name);
         Ok(())
     }
 
@@ -165,50 +164,50 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
     fn process_service(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpServiceBody>,
     ) -> Result<()> {
-        self.backend.process_service(out, type_id, pos, body)
+        self.backend.process_service(out, name, pos, body)
     }
 
     fn process_enum(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
-        self.backend.process_enum(out, type_id, pos, body)
+        self.backend.process_enum(out, name, pos, body)
     }
 
     fn process_interface(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
-        self.backend.process_interface(out, type_id, pos, body)
+        self.backend.process_interface(out, name, pos, body)
     }
 
     fn process_type(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
-        self.backend.process_type(out, type_id, pos, body)
+        self.backend.process_type(out, name, pos, body)
     }
 
     fn process_tuple(
         &self,
         out: &mut Self::Out,
-        type_id: &RpTypeId,
+        name: &RpName,
         pos: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
-        self.backend.process_tuple(out, type_id, pos, body)
+        self.backend.process_tuple(out, name, pos, body)
     }
 }

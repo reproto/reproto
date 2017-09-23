@@ -69,7 +69,7 @@ impl JsBackend {
 
     fn encode_method<E, B>(
         &self,
-        type_id: &RpTypeId,
+        type_id: &RpName,
         fields: &[Loc<JsField>],
         builder: B,
         extra: E,
@@ -117,11 +117,7 @@ impl JsBackend {
         Ok(encode)
     }
 
-    fn encode_tuple_method(
-        &self,
-        type_id: &RpTypeId,
-        fields: &[Loc<JsField>],
-    ) -> Result<MethodSpec> {
+    fn encode_tuple_method(&self, type_id: &RpName, fields: &[Loc<JsField>]) -> Result<MethodSpec> {
         let mut values = Statement::new();
 
         let mut encode = MethodSpec::new("encode");
@@ -183,7 +179,7 @@ impl JsBackend {
 
     fn decode_method<F>(
         &self,
-        type_id: &RpTypeId,
+        type_id: &RpName,
         fields: &[Loc<JsField>],
         class: &ClassSpec,
         variable_fn: F,
@@ -390,11 +386,11 @@ impl JsBackend {
     pub fn process_tuple(
         &self,
         out: &mut JsFileSpec,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
-        let mut class = ClassSpec::new(&type_id.name.join(TYPE_SEP));
+        let mut class = ClassSpec::new(&name.join(TYPE_SEP));
         class.export();
 
         let fields: Vec<Loc<JsField>> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
@@ -409,7 +405,7 @@ impl JsBackend {
         }
 
         let decode = self.decode_method(
-            type_id,
+            name,
             &fields,
             &class,
             Self::field_by_index,
@@ -417,7 +413,7 @@ impl JsBackend {
 
         class.push(decode);
 
-        let encode = self.encode_tuple_method(type_id, &fields)?;
+        let encode = self.encode_tuple_method(name, &fields)?;
         class.push(encode);
 
         for code in body.codes.for_context(JS_CONTEXT) {
@@ -431,11 +427,11 @@ impl JsBackend {
     pub fn process_enum(
         &self,
         out: &mut JsFileSpec,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
-        let mut class = ClassSpec::new(&type_id.name.join(TYPE_SEP));
+        let mut class = ClassSpec::new(&name.join(TYPE_SEP));
         class.export();
 
         let fields: Vec<Loc<JsField>> = body.fields
@@ -459,7 +455,7 @@ impl JsBackend {
             value_arguments.push(string(&*variant.name));
 
             for (value, field) in variant.arguments.iter().zip(fields.iter()) {
-                let ctx = ValueContext::new(&type_id.package, &variables, &value, Some(&field.ty));
+                let ctx = ValueContext::new(&name.package, &variables, &value, Some(&field.ty));
                 value_arguments.push(self.value(ctx)?);
             }
 
@@ -494,13 +490,13 @@ impl JsBackend {
     pub fn process_type(
         &self,
         out: &mut JsFileSpec,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
         let fields: Vec<_> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
-        let mut class = ClassSpec::new(&type_id.name.join(TYPE_SEP));
+        let mut class = ClassSpec::new(&name.join(TYPE_SEP));
         class.export();
 
         let constructor = self.build_constructor(&fields);
@@ -514,14 +510,14 @@ impl JsBackend {
         }
 
         let decode = self.decode_method(
-            type_id,
+            name,
             &fields,
             &class,
             Self::field_by_name,
         )?;
         class.push(decode);
 
-        let encode = self.encode_method(type_id, &fields, "{}", |_| {})?;
+        let encode = self.encode_method(name, &fields, "{}", |_| {})?;
         class.push(encode);
 
         for code in body.codes.for_context(JS_CONTEXT) {
@@ -535,16 +531,16 @@ impl JsBackend {
     pub fn process_interface(
         &self,
         out: &mut JsFileSpec,
-        type_id: &RpTypeId,
+        name: &RpName,
         _: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
         let mut classes = Elements::new();
 
-        let mut interface_spec = ClassSpec::new(&type_id.name.join(TYPE_SEP));
+        let mut interface_spec = ClassSpec::new(&name.join(TYPE_SEP));
         interface_spec.export();
 
-        interface_spec.push(self.interface_decode_method(type_id, &body)?);
+        interface_spec.push(self.interface_decode_method(name, &body)?);
 
         let interface_fields: Vec<Loc<JsField>> =
             body.fields.iter().map(|f| self.into_js_field(f)).collect();
@@ -576,7 +572,7 @@ impl JsBackend {
             }
 
             let decode = self.decode_method(
-                type_id,
+                name,
                 &fields,
                 &class,
                 Self::field_by_name,
@@ -586,12 +582,9 @@ impl JsBackend {
 
             let type_stmt = stmt!["data[", &self.type_var, "] = ", &class.name, ".TYPE;"];
 
-            let encode = self.encode_method(
-                type_id,
-                &fields,
-                "{}",
-                move |elements| { elements.push(type_stmt); },
-            )?;
+            let encode = self.encode_method(name, &fields, "{}", move |elements| {
+                elements.push(type_stmt);
+            })?;
 
             class.push(encode);
 
@@ -626,24 +619,19 @@ impl Converter for JsBackend {
         stmt![name]
     }
 
-    fn convert_type(&self, pos: &Pos, lookup_id: &RpTypeId) -> Result<Name> {
-        let LookupResult {
-            package,
-            registered,
-            type_id,
-            ..
-        } = self.env
-            .lookup(&lookup_id.package, &lookup_id.name)
-            .map_err(|e| Error::pos(e.description().to_owned(), pos.into()))?;
+    fn convert_type(&self, pos: &Pos, name: &RpName) -> Result<Name> {
+        let registered = self.env.lookup(name).map_err(|e| {
+            Error::pos(e.description().to_owned(), pos.into())
+        })?;
 
-        let name = registered.local_name(&type_id, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
+        let local_name = registered.local_name(name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
-        if let Some(ref used) = lookup_id.name.prefix {
-            let package = self.package(package).parts.join(".");
-            return Ok(Name::imported_alias(&package, &name, used).into());
+        if let Some(ref used) = name.prefix {
+            let package = self.package(&name.package).parts.join(".");
+            return Ok(Name::imported_alias(&package, &local_name, used).into());
         }
 
-        Ok(Name::local(&name).into())
+        Ok(Name::local(&local_name).into())
     }
 }
 
