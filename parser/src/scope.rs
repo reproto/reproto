@@ -96,10 +96,15 @@ impl Iterator for ScopeWalker {
 #[cfg(test)]
 mod tests {
     use super::Scope;
+    use reproto_core::{RpPackage, RpVersionedPackage};
+    use std::collections::HashMap;
 
     #[test]
     pub fn test_scope() {
-        let s = Scope::new();
+        let package = RpVersionedPackage::new(RpPackage::empty(), None);
+        let prefixes = HashMap::new();
+        let s = Scope::new(package, prefixes);
+
         let s2 = s.child("foo");
         let s3 = s2.child("bar");
 
