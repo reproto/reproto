@@ -43,6 +43,18 @@ pub trait Objects {
     }
 }
 
+pub struct NoObjects;
+
+impl Objects for NoObjects {
+    fn put_object(&mut self, _: &Checksum, _: &mut Read, _: bool) -> Result<()> {
+        Err(ErrorKind::EmptyObjects.into())
+    }
+
+    fn get_object(&mut self, _: &Checksum) -> Result<Option<Box<Object>>> {
+        Err(ErrorKind::EmptyObjects.into())
+    }
+}
+
 pub fn objects_from_file<P: AsRef<Path>>(path: P) -> Result<FileObjects> {
     let path = path.as_ref();
 

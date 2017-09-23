@@ -22,6 +22,12 @@ error_chain! {
     }
 
     errors {
+        EmptyIndex {
+        }
+
+        EmptyObjects {
+        }
+
         NoPublishIndex(url: String) {
             description("index does not support publishing")
             display("index does not support publishing: {}", url)

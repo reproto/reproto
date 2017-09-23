@@ -58,6 +58,13 @@ pub fn path_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     );
 
     let out = out.arg(
+        Arg::with_name("no-repository")
+            .long("no-repository")
+            .takes_value(false)
+            .help("Completely disable repository operations"),
+    );
+
+    let out = out.arg(
         Arg::with_name("objects")
             .long("objects")
             .short("O")
@@ -148,6 +155,10 @@ fn parse_package(input: &str) -> Result<RpRequiredPackage> {
 }
 
 fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
+    if matches.is_present("no-repository") {
+        return Ok(Repository::new(Box::new(NoIndex), Box::new(NoObjects)));
+    }
+
     let mut index = matches.value_of("index").map(ToOwned::to_owned);
     let mut objects = matches.value_of("objects").map(ToOwned::to_owned);
     let mut index_config = IndexConfig { repos: None };

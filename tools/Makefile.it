@@ -52,7 +52,7 @@ exclude-suites :=
 suites := $(filter-out $(EXCLUDE) $(exclude-suites), $(suites))
 projects := $(filter-out $(EXCLUDE) $(exclude-projects), $(PROJECTS))
 
-compile-args := $(paths:%=--path %) $(targets:%=--package %)
+compile-args := --no-repository $(paths:%=--path %) $(targets:%=--package %)
 
 # how to build suites
 java-suite := java $(compile-args) $(java-args)

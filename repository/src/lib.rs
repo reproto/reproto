@@ -28,8 +28,9 @@ mod git;
 pub mod errors;
 
 
-pub use self::index::{Index, IndexConfig, index_from_url, init_file_index};
-pub use self::objects::{FileObjects, Objects, ObjectsConfig, objects_from_file, objects_from_url};
+pub use self::index::{Index, IndexConfig, NoIndex, index_from_url, init_file_index};
+pub use self::objects::{FileObjects, NoObjects, Objects, ObjectsConfig, objects_from_file,
+                        objects_from_url};
 pub use self::repository::*;
 pub use self::resolver::*;
 pub use self::sha256::{Checksum, Sha256 as Digest, to_sha256 as to_checksum};

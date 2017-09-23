@@ -65,6 +65,34 @@ pub trait Index {
     }
 }
 
+pub struct NoIndex;
+
+impl Index for NoIndex {
+    fn resolve(&self, _: &RpPackage, _: Option<&VersionReq>) -> Result<Vec<Deployment>> {
+        Ok(vec![])
+    }
+
+    fn put_version(&self, _: &Checksum, _: &RpPackage, _: &Version, _: bool) -> Result<()> {
+        Err(ErrorKind::EmptyIndex.into())
+    }
+
+    fn get_deployments(&self, _: &RpPackage, _: &Version) -> Result<Vec<Deployment>> {
+        Ok(vec![])
+    }
+
+    /// Get an objects URL as configured in the index.
+    ///
+    /// If relative, will cause objects to be loaded from the same repository as the index.
+    fn objects_url(&self) -> Result<&str> {
+        Err(ErrorKind::EmptyIndex.into())
+    }
+
+    /// Load objects relative to the index repository.
+    fn objects_from_index(&self, _: &Path) -> Result<Box<Objects>> {
+        Err(ErrorKind::EmptyIndex.into())
+    }
+}
+
 pub fn index_from_file(url: &Url) -> Result<Box<Index>> {
     let path = Path::new(url.path());
 
