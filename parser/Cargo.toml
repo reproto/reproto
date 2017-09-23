@@ -20,7 +20,6 @@ tracing = []
 reproto-core = {path = "../core", version = "0.1"}
 error-chain = "0.11"
 lalrpop-util = "0.13"
-linked-hash-map = "0.4"
 log = "0.3"
 num = "0.1"
 

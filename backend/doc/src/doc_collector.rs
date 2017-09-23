@@ -1,6 +1,6 @@
 //! # Collector of results from the doc backend
 
-use super::*;
+use super::imports::*;
 use macros::FormatAttribute;
 use std::rc::Rc;
 

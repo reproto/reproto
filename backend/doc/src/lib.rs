@@ -15,23 +15,9 @@ mod doc_listeners;
 mod doc_options;
 mod doc_writer;
 mod escape;
+mod imports;
 
-pub(crate) use self::doc_backend::*;
-pub(crate) use self::doc_builder::*;
-pub(crate) use self::doc_collector::*;
-pub(crate) use self::doc_compiler::*;
-pub(crate) use self::doc_listeners::*;
-pub(crate) use self::doc_options::*;
-pub(crate) use self::doc_writer::*;
-pub(crate) use self::escape::*;
-pub(crate) use reproto_backend::errors::*;
-pub(crate) use reproto_backend::imports::*;
-
-pub(crate) const NORMALIZE_CSS_NAME: &str = "normalize.css";
-pub(crate) const DOC_CSS_NAME: &str = "doc.css";
-pub(crate) const EXT: &str = "html";
-pub(crate) const INDEX: &str = "index";
-pub(crate) const DEFAULT_THEME: &str = "light";
+use self::imports::*;
 
 fn setup_module(module: &str) -> Result<Box<DocListeners>> {
     let _module: Box<DocListeners> = match module {

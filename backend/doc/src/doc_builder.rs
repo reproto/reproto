@@ -1,4 +1,4 @@
-use super::*;
+use super::imports::*;
 use codeviz_common::{ElementFormat, ElementFormatter};
 use std::fmt::{self, Write};
 

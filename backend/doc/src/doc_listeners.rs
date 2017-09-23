@@ -1,4 +1,4 @@
-use super::*;
+use super::imports::*;
 
 pub trait DocListeners {
     fn configure(&self, _: &mut DocOptions) -> Result<()> {
