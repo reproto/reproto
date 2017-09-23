@@ -28,8 +28,7 @@ use num::bigint::BigInt;
 use num::integer::Integer;
 use num::traits::Signed;
 use num::traits::cast::ToPrimitive;
-pub use semver::Version;
-pub use semver::VersionReq;
+pub use semver::{Version, VersionReq};
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::fmt;
@@ -674,14 +673,14 @@ impl RpPackage {
         RpPackage { parts: parts }
     }
 
+    pub fn empty() -> RpPackage {
+        RpPackage { parts: vec![] }
+    }
+
     pub fn join_versioned(&self, other: &RpVersionedPackage) -> RpVersionedPackage {
         let mut parts = self.parts.clone();
-
-        if let Some(ref package) = other.package {
-            parts.extend(package.parts.clone());
-        }
-
-        RpVersionedPackage::new(Some(RpPackage::new(parts)), other.version.clone())
+        parts.extend(other.package.parts.clone());
+        RpVersionedPackage::new(RpPackage::new(parts), other.version.clone())
     }
 
     pub fn join(&self, other: &RpPackage) -> RpPackage {
@@ -691,7 +690,7 @@ impl RpPackage {
     }
 
     pub fn into_type_id(&self, version: Option<Version>, name: RpName) -> RpTypeId {
-        RpTypeId::new(RpVersionedPackage::new(Some(self.clone()), version), name)
+        RpTypeId::new(RpVersionedPackage::new(self.clone(), version), name)
     }
 }
 
@@ -908,7 +907,7 @@ impl RpRegistered {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct RpRequiredPackage {
     pub package: RpPackage,
     pub version_req: Option<VersionReq>,
@@ -1237,12 +1236,12 @@ impl fmt::Display for RpValue {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct RpVersionedPackage {
-    pub package: Option<RpPackage>,
+    pub package: RpPackage,
     pub version: Option<Version>,
 }
 
 impl RpVersionedPackage {
-    pub fn new(package: Option<RpPackage>, version: Option<Version>) -> RpVersionedPackage {
+    pub fn new(package: RpPackage, version: Option<Version>) -> RpVersionedPackage {
         RpVersionedPackage {
             package: package,
             version: version,
@@ -1259,9 +1258,7 @@ impl RpVersionedPackage {
     {
         let mut parts = Vec::new();
 
-        if let Some(ref package) = self.package {
-            parts.extend(package.parts.iter().map(Clone::clone));
-        }
+        parts.extend(self.package.parts.iter().cloned());
 
         if let Some(ref version) = self.version {
             parts.push(version_fn(version));
@@ -1273,11 +1270,7 @@ impl RpVersionedPackage {
 
 impl fmt::Display for RpVersionedPackage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(ref package) = self.package {
-            write!(f, "{}", package)?;
-        } else {
-            write!(f, "*empty*")?;
-        }
+        write!(f, "{}", self.package)?;
 
         if let Some(ref version) = self.version {
             write!(f, "@{}", version)?;

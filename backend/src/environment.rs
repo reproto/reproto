@@ -8,7 +8,7 @@ use reproto_parser as parser;
 use reproto_parser::ast::IntoModel;
 use reproto_parser::scope::Scope;
 use reproto_repository::Resolver;
-use std::collections::{BTreeMap, HashMap, HashSet, LinkedList};
+use std::collections::{BTreeMap, HashMap, LinkedList};
 use std::path::Path;
 use std::rc::Rc;
 
@@ -23,7 +23,7 @@ pub struct LookupResult<'a> {
 pub struct Environment {
     package_prefix: Option<RpPackage>,
     resolver: Box<Resolver>,
-    visited: HashSet<RpVersionedPackage>,
+    visited: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
     pub types: LinkedHashMap<RpTypeId, Loc<RpRegistered>>,
     pub decls: LinkedHashMap<RpTypeId, Rc<Loc<RpDecl>>>,
     pub used: LinkedHashMap<(RpVersionedPackage, String), RpVersionedPackage>,
@@ -35,7 +35,7 @@ impl Environment {
         Environment {
             package_prefix: package_prefix,
             resolver: resolver,
-            visited: HashSet::new(),
+            visited: HashMap::new(),
             types: LinkedHashMap::new(),
             decls: LinkedHashMap::new(),
             used: LinkedHashMap::new(),
@@ -277,7 +277,7 @@ impl Environment {
         &mut self,
         object: O,
         version: Option<Version>,
-        package: Option<RpPackage>,
+        package: RpPackage,
     ) -> Result<Option<(RpVersionedPackage, RpFile)>> {
         let package = RpVersionedPackage::new(package, version);
         let object = object.into();
@@ -409,36 +409,15 @@ impl Environment {
         Ok(())
     }
 
-    pub fn find_visited_by_required(
-        &self,
-        required: &RpRequiredPackage,
-    ) -> Option<RpVersionedPackage> {
-        for visited in &self.visited {
-            if let Some(ref visited_package) = visited.package {
-                if *visited_package == required.package {
-                    if let Some(ref version_req) = required.version_req {
-                        if let Some(ref actual_version) = visited.version {
-                            if version_req.matches(actual_version) {
-                                return Some(visited.clone());
-                            }
-                        }
-                    } else {
-                        return Some(visited.clone());
-                    }
-                }
-            }
-        }
-
-        None
-    }
-
     pub fn import_file<P: AsRef<Path>>(&mut self, path: P) -> Result<Option<RpVersionedPackage>> {
         let object = PathObject::new(path);
 
-        if let Some((package, file)) = self.load_object(object, None, None)? {
-            if !self.visited.contains(&package) {
+        if let Some((package, file)) = self.load_object(object, None, RpPackage::empty())? {
+            let required = RpRequiredPackage::new(package.package.clone(), None);
+
+            if !self.visited.contains_key(&required) {
                 self.process_file(&package, file)?;
-                self.visited.insert(package.clone());
+                self.visited.insert(required, Some(package.clone()));
             }
 
             return Ok(Some(package));
@@ -450,9 +429,9 @@ impl Environment {
     pub fn import(&mut self, required: &RpRequiredPackage) -> Result<Option<RpVersionedPackage>> {
         debug!("import: {}", required);
 
-        if let Some(existing) = self.find_visited_by_required(required) {
-            debug!("already loaded: {} ({})", existing, required);
-            return Ok(Some(existing));
+        if let Some(existing) = self.visited.get(required) {
+            debug!("already loaded: {:?} ({})", existing, required);
+            return Ok(existing.as_ref().cloned());
         }
 
         let files = self.resolver.resolve(required)?;
@@ -462,11 +441,7 @@ impl Environment {
         if let Some((version, object)) = files.into_iter().last() {
             debug!("loading: {}", object);
 
-            let loaded = self.load_object(
-                object,
-                version,
-                Some(required.package.clone()),
-            )?;
+            let loaded = self.load_object(object, version, required.package.clone())?;
 
             if let Some((package, file)) = loaded {
                 candidates.entry(package).or_insert_with(Vec::new).push(
@@ -475,18 +450,20 @@ impl Environment {
             }
         }
 
-        if let Some((versioned, files)) = candidates.into_iter().last() {
+        let result = if let Some((versioned, files)) = candidates.into_iter().last() {
             debug!("found: {} ({})", versioned, required);
 
             for file in files.into_iter() {
                 self.process_file(&versioned, file)?;
             }
 
-            self.visited.insert(versioned.clone());
-            return Ok(Some(versioned));
-        }
+            Some(versioned)
+        } else {
+            None
+        };
 
-        Ok(None)
+        self.visited.insert(required.clone(), result.clone());
+        Ok(result)
     }
 
     pub fn verify(&mut self) -> Result<()> {
