@@ -168,12 +168,15 @@ fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
         if config.is_file() {
             let config = read_config(config)?;
 
-            // set values from configuration (if not already set).
-            index = index.or(config.repository.index);
-            objects = objects.or(config.repository.objects);
-            objects_cache = config.repository.objects_cache.unwrap_or(objects_cache);
+            if let Some(repository) = config.repository {
+                // set values from configuration (if not already set).
+                index = index.or(repository.index);
+                objects = objects.or(repository.objects);
+            }
 
-            let local_repos = config.repository.local_repos;
+            objects_cache = config.objects_cache.unwrap_or(objects_cache);
+
+            let local_repos = config.local_repos;
 
             index_config.repos = index_config.repos.or_else(|| local_repos.clone());
             objects_config.repos = objects_config.repos.or_else(|| local_repos.clone());
@@ -182,9 +185,11 @@ fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
         index_config.repos = Some(index_config.repos.unwrap_or_else(
             || default_local_repos.clone(),
         ));
+
         objects_config.repos = Some(objects_config.repos.unwrap_or_else(
             || default_local_repos.clone(),
         ));
+
         objects_config.objects_cache = Some(objects_cache);
     }
 
@@ -204,7 +209,7 @@ fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
         debug!("objects: {}", objects_url);
 
         match url::Url::parse(objects_url) {
-            /// Relative to index index repository!
+            // Relative to index index repository!
             Err(url::ParseError::RelativeUrlWithoutBase) => {
                 let relative_path = Path::new(objects_url);
                 index.objects_from_index(&relative_path)?

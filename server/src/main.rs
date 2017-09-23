@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate log;
-extern crate tempfile;
-extern crate futures;
 extern crate futures_cpupool;
 extern crate hyper;
 extern crate pretty_env_logger;
@@ -13,20 +11,38 @@ use hyper::server::Http;
 use reproto_repository::objects_from_file;
 use reproto_server::errors::*;
 use reproto_server::reproto_service;
+use std::env;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+
+/// Get the configuration path to load.
+fn config_path() -> Result<Option<PathBuf>> {
+    use self::env::VarError;
+
+    match env::var("REPROTO_SERVER_CONFIG") {
+        Ok(path) => Ok(Some(Path::new(path.as_str()).to_owned())),
+        Err(VarError::NotPresent) => Ok(None),
+        Err(e) => return Err(e.into()),
+    }
+}
 
 fn entry() -> Result<()> {
     pretty_env_logger::init()?;
 
-    // TODO: get these from configuration
-    let addr = "127.0.0.1:1234".parse()?;
-    let path = Path::new("./objects");
-    let max_file_size = 10000000;
+    let config = if let Some(path) = config_path()? {
+        reproto_server::config::read_config(path)?
+    } else {
+        reproto_server::config::Config::default()
+    };
+
+    let listen_address = config.listen_address.parse()?;
+    let objects = config.objects;
+    let max_file_size = config.max_file_size;
 
     let pool = Arc::new(CpuPool::new_num_cpus());
     let setup_pool = pool.clone();
-    let objects = Arc::new(Mutex::new(objects_from_file(path)?));
+    let objects = Arc::new(Mutex::new(objects_from_file(objects)?));
 
     let setup = move || {
         Ok(reproto_service::ReprotoService {
@@ -36,7 +52,7 @@ fn entry() -> Result<()> {
         })
     };
 
-    let server = Http::new().bind(&addr, setup)?;
+    let server = Http::new().bind(&listen_address, setup)?;
 
     info!("Listening on http://{}", server.local_addr()?);
     server.run()?;

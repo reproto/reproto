@@ -19,11 +19,11 @@ where
     C: 'static + Send + Deref<Target = [u8]>,
     E: 'static + Into<Error>,
 {
-    /// Write file in chunks as it becomes available
+    // Write file in chunks as it becomes available
     let out = stream
         .map_err(Into::into)
         .fold((pool, file), |(pool, mut file), chunk| {
-            /// Write chunks on cpu-pool
+            // Write chunks on cpu-pool
             let write = pool.spawn_fn(move || {
                 file.write_all(chunk.as_ref()).chain_err(
                     || "failed to write chunk",

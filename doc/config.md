@@ -3,6 +3,11 @@
 Example configuration file (put in `~/.reproto/config.toml`).
 
 ```toml
+# path to where to store local repositories.
+local_repos = "/var/lib/reproto/repos"
+# path to where to store the object lookup cache.
+objects_cache = "/var/lib/reproto/cache"
+
 [repository]
 # Index to use for looking up packages.
 index = "file:///home/me/repo/reproto-index"

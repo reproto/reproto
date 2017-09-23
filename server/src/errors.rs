@@ -12,6 +12,7 @@ error_chain!{
         IoError(::std::io::Error);
         AddParseError(::std::net::AddrParseError);
         Hyper(::hyper::Error);
+        VarError(::std::env::VarError);
     }
 
     errors {
