@@ -1,0 +1,41 @@
+[package]
+name = "reproto"
+version = "0.1.6"
+authors = ["John-John Tedro <udoprog@tedro.se>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/reproto/reproto"
+homepage = "https://github.com/reproto/reproto"
+documentation = "https://docs.rs/reproto"
+description = """
+ReProto Compiler
+"""
+
+[features]
+# Enable to emit very detailed tracing, potentially performance sensitive.
+tracing = []
+
+[dependencies]
+reproto-core = {path = "../core", version = "0.1"}
+reproto-parser = {path = "../parser", version = "0.1"}
+reproto-repository = {path = "../repository", version = "0.1"}
+reproto-backend = {path = "../backend", version = "0.1"}
+reproto-backend-doc = {path = "../backend/doc", version = "0.1"}
+reproto-backend-java = {path = "../backend/java", version = "0.1"}
+reproto-backend-js = {path = "../backend/js", version = "0.1"}
+reproto-backend-json = {path = "../backend/json", version = "0.1"}
+reproto-backend-python = {path = "../backend/python", version = "0.1"}
+reproto-backend-rust = {path = "../backend/rust", version = "0.1"}
+
+ansi_term = "0.9"
+atty = "0.2"
+clap = "2.24"
+error-chain = "0.11"
+linked-hash-map = "0.4"
+log = "0.3"
+pulldown-cmark = "0.0.14"
+serde = "1.0"
+serde_derive = "1.0"
+toml = "0.4"
+url = "1.5"
+url_serde = "0.2"
