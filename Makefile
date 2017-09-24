@@ -73,7 +73,8 @@ $(call it-target,projects)
 $(call it-target,update-projects)
 $(call it-target,clean-projects)
 
-$(default-reproto): cli/Cargo.toml
+$(default-reproto): $(CURDIR)/cli/Cargo.toml
+	@echo "Building: $@"
 	cargo build --manifest-path cli/Cargo.toml
 
 help:
