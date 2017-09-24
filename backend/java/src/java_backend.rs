@@ -536,7 +536,7 @@ impl JavaBackend {
         let class_type = Type::class(&self.java_package_name(&name.package), &body.name);
 
         let mut spec = EnumSpec::new(mods![Modifier::Public], &body.name);
-        let fields = self.convert_fields(name, &body.fields)?;
+        let fields = self.convert_fields(&body.fields)?;
 
         for field in &fields {
             spec.push_field(&field.java_spec);
@@ -618,7 +618,7 @@ impl JavaBackend {
         let class_type = Type::class(&self.java_package_name(&name.package), &body.name);
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
 
-        let fields = self.convert_fields(name, &body.fields)?;
+        let fields = self.convert_fields(&body.fields)?;
 
         for field in &fields {
             spec.push_field(&field.java_spec);
@@ -653,7 +653,7 @@ impl JavaBackend {
         let class_type = Type::class(&self.java_package_name(&name.package), &body.name);
 
         let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
-        let fields = self.convert_fields(name, &body.fields)?;
+        let fields = self.convert_fields(&body.fields)?;
 
         for field in &fields {
             spec.push_field(&field.java_spec);
@@ -686,83 +686,6 @@ impl JavaBackend {
         Ok(spec)
     }
 
-    fn process_sub_type(
-        &self,
-        name: &RpName,
-        sub_type: &RpSubType,
-        parent_type: &ClassType,
-        interface: &RpInterfaceBody,
-        interface_fields: &[JavaField],
-    ) -> Result<ClassSpec> {
-        let name = name.extend(sub_type.name.to_owned());
-
-        let class_type = parent_type.extend(&sub_type.name);
-
-        let mods = mods![Modifier::Public, Modifier::Static];
-        let mut class = ClassSpec::new(mods, &sub_type.name);
-        let sub_type_fields = self.convert_fields(&name, &sub_type.fields)?;
-
-        for code in sub_type.codes.for_context(JAVA_CONTEXT) {
-            class.push(code.take().lines);
-        }
-
-        class.implements(&parent_type);
-
-        // override methods for interface fields.
-        for field in interface_fields {
-            if self.options.build_getters {
-                let mut getter = field.getter()?;
-                getter.push_annotation(&self.override_);
-                class.push(getter);
-            }
-
-            if self.options.build_setters {
-                if let Some(mut setter) = field.setter()? {
-                    setter.push_annotation(&self.override_);
-                    class.push(setter);
-                }
-            }
-        }
-
-        for field in &sub_type_fields {
-            if self.options.build_getters {
-                class.push(field.getter()?);
-            }
-
-            if self.options.build_setters {
-                if let Some(setter) = field.setter()? {
-                    class.push(setter);
-                }
-            }
-        }
-
-        let mut fields = interface_fields.to_vec();
-        fields.extend(sub_type_fields);
-
-        for field in &fields {
-            class.push_field(&field.java_spec);
-        }
-
-        self.add_class(&class_type, &mut class)?;
-
-        self.listeners.class_added(&mut ClassAdded {
-            backend: self,
-            name: &name,
-            fields: &fields,
-            class_type: &class_type,
-            spec: &mut class,
-        })?;
-
-        self.listeners.sub_type_added(&mut SubTypeAdded {
-            fields: &fields,
-            interface: interface,
-            sub_type: sub_type,
-            spec: &mut class,
-        })?;
-
-        Ok(class)
-    }
-
     fn process_interface(
         &self,
         name: &RpName,
@@ -771,7 +694,7 @@ impl JavaBackend {
         let parent_type = Type::class(&self.java_package_name(&name.package), &interface.name);
 
         let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
-        let interface_fields = self.convert_fields(name, &interface.fields)?;
+        let interface_fields = self.convert_fields(&interface.fields)?;
 
         for code in interface.codes.for_context(JAVA_CONTEXT) {
             interface_spec.push(code.take().lines);
@@ -783,13 +706,76 @@ impl JavaBackend {
             }
         }
 
-        for (_, ref sub_type) in &interface.sub_types {
-            let class =
-                self.process_sub_type(name, sub_type, &parent_type, interface, &interface_fields)
-                    .with_pos(sub_type.pos())?;
+        interface.sub_types.values().for_each_loc(|sub_type| {
+            let name = name.extend(sub_type.name.to_owned());
+
+            let class_type = parent_type.extend(&sub_type.name);
+
+            let mods = mods![Modifier::Public, Modifier::Static];
+            let mut class = ClassSpec::new(mods, &sub_type.name);
+            let sub_type_fields = self.convert_fields(&sub_type.fields)?;
+
+            for code in sub_type.codes.for_context(JAVA_CONTEXT) {
+                class.push(code.take().lines);
+            }
+
+            class.implements(&parent_type);
+
+            // override methods for interface fields.
+            for field in &interface_fields {
+                if self.options.build_getters {
+                    let mut getter = field.getter()?;
+                    getter.push_annotation(&self.override_);
+                    class.push(getter);
+                }
+
+                if self.options.build_setters {
+                    if let Some(mut setter) = field.setter()? {
+                        setter.push_annotation(&self.override_);
+                        class.push(setter);
+                    }
+                }
+            }
+
+            for field in &sub_type_fields {
+                if self.options.build_getters {
+                    class.push(field.getter()?);
+                }
+
+                if self.options.build_setters {
+                    if let Some(setter) = field.setter()? {
+                        class.push(setter);
+                    }
+                }
+            }
+
+            let mut fields = interface_fields.to_vec();
+            fields.extend(sub_type_fields);
+
+            for field in &fields {
+                class.push_field(&field.java_spec);
+            }
+
+            self.add_class(&class_type, &mut class)?;
+
+            self.listeners.class_added(&mut ClassAdded {
+                backend: self,
+                name: &name,
+                fields: &fields,
+                class_type: &class_type,
+                spec: &mut class,
+            })?;
+
+            self.listeners.sub_type_added(&mut SubTypeAdded {
+                fields: &fields,
+                interface: interface,
+                sub_type: sub_type,
+                spec: &mut class,
+            })?;
 
             interface_spec.push(class);
-        }
+            Ok(()) as Result<()>
+        })?;
 
         self.listeners.interface_added(&mut InterfaceAdded {
             interface: interface,
@@ -848,7 +834,7 @@ impl JavaBackend {
         Ok(spec)
     }
 
-    fn convert_field<'a>(&self, _: &RpName, field: &'a Loc<RpField>) -> Result<JavaField<'a>> {
+    fn convert_field<'a>(&self, field: &'a RpField) -> Result<JavaField<'a>> {
         let java_value_type = self.into_java_type(&field.ty)?;
 
         let java_type = match field.is_optional() {
@@ -876,16 +862,13 @@ impl JavaBackend {
         })
     }
 
-    fn convert_fields<'a>(
-        &self,
-        name: &RpName,
-        fields: &'a Vec<Loc<RpField>>,
-    ) -> Result<Vec<JavaField<'a>>> {
+    fn convert_fields<'a>(&self, fields: &'a [Loc<RpField>]) -> Result<Vec<JavaField<'a>>> {
         let mut out = Vec::new();
 
-        for field in fields {
-            out.push(self.convert_field(name, field).with_pos(field.pos())?);
-        }
+        fields.for_each_loc(|field| {
+            out.push(self.convert_field(field)?);
+            Ok(()) as Result<()>
+        })?;
 
         Ok(out)
     }

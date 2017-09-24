@@ -1,5 +1,6 @@
 use super::errors::*;
 use super::merge::Merge;
+use super::with_pos::WithPos;
 use pos::Pos;
 use serde;
 use std::cmp;
@@ -45,12 +46,18 @@ impl<T> Loc<T> {
         (&self.inner, &self.pos)
     }
 
-    pub fn map<'a, M, U>(&'a self, map: M) -> Loc<U>
+    pub fn map<'a, U: 'a, O>(&'a self, op: O) -> Loc<U>
     where
-        M: FnOnce(&'a T) -> U,
-        U: 'a,
+        O: FnOnce(&'a T) -> U,
     {
-        Loc::new(map(&self.inner), self.pos.clone())
+        Loc::new(op(&self.inner), self.pos.clone())
+    }
+
+    pub fn and_then<'a, U: 'a, O, E: WithPos>(&'a self, op: O) -> result::Result<U, E>
+    where
+        O: FnOnce(&'a T) -> result::Result<U, E>,
+    {
+        op(&self.inner).with_pos(&self.pos)
     }
 }
 

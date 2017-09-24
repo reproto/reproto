@@ -88,11 +88,10 @@ impl JsBackend {
 
         let mut assign = Elements::new();
 
-        for field in fields {
+        fields.for_each_loc(|field| {
             let var_string = string(field.name.to_owned());
             let field_stmt = stmt!["this.", &field.ident];
-            let value_stmt = self.dynamic_encode(type_id, &field.ty, &field_stmt)
-                .with_pos(field.pos())?;
+            let value_stmt = self.dynamic_encode(type_id, &field.ty, &field_stmt)?;
 
             match *field.modifier {
                 RpModifier::Optional => {
@@ -106,7 +105,9 @@ impl JsBackend {
                     assign.push(stmt);
                 }
             }
-        }
+
+            Ok(()) as Result<()>
+        })?;
 
         if !assign.is_empty() {
             body.push(assign.join(Spacing));
@@ -125,13 +126,12 @@ impl JsBackend {
 
         let mut encode_body = Elements::new();
 
-        for field in fields {
+        fields.for_each_loc(|field| {
             let stmt = stmt!["this.", &field.ident];
             encode_body.push(self.throw_if_null(&stmt, field));
-            values.push(self.dynamic_encode(type_id, &field.ty, &stmt).with_pos(
-                field.pos(),
-            )?);
-        }
+            values.push(self.dynamic_encode(type_id, &field.ty, &stmt)?);
+            Ok(()) as Result<()>
+        })?;
 
         encode_body.push(js![@return [ values ]]);
         encode.push(encode_body.join(Spacing));
@@ -202,11 +202,10 @@ impl JsBackend {
             let var_name = format!("v_{}", field.ident.clone());
             let var = variable_fn(i, field);
 
-            let stmt: Element = match *field.modifier {
+            let stmt = field.and_then(|field| match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = var_name.clone().into();
-                    let var_stmt = self.dynamic_decode(type_id, &field.ty, &var_name)
-                        .with_pos(field.pos())?;
+                    let var_stmt = self.dynamic_decode(type_id, &field.ty, &var_name)?;
 
                     let mut check = Elements::new();
 
@@ -216,7 +215,7 @@ impl JsBackend {
                                       stmt![&var_name, " = ", var_stmt, ";"],
                                       stmt![&var_name, " = null", ";"]]);
 
-                    check.into()
+                    Ok(check.into()) as Result<Element>
                 }
                 _ => {
                     let var_stmt = stmt![&data, "[", &var, "]"];
@@ -229,9 +228,9 @@ impl JsBackend {
                     check.push(js![if is_not_defined(stmt![&var_name]),
                                    js![throw &var, " + ", string(": required field")]]);
 
-                    check.into()
+                    Ok(check.into()) as Result<Element>
                 }
-            };
+            })?;
 
             assign.push(stmt);
             arguments.push(var_name);

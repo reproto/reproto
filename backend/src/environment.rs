@@ -1,6 +1,6 @@
 use core::{ErrorPos, Loc, Merge, Pos, RpDecl, RpField, RpFieldInit, RpFile, RpInstance,
            RpModifier, RpName, RpPackage, RpRegistered, RpRequiredPackage, RpType,
-           RpVersionedPackage, Version};
+           RpVersionedPackage, Version, WithPos};
 use errors::*;
 use linked_hash_map::LinkedHashMap;
 use reproto_core::object::{Object, PathObject};
@@ -300,7 +300,9 @@ impl Environment {
 
         while let Some(next) = queue.pop_front() {
             let (name, decl) = next;
-            f(name.clone(), decl.clone())?;
+            f(name.clone(), decl.clone()).map_err(
+                |e| e.with_pos(decl.pos()),
+            )?;
 
             for d in decl.decls() {
                 let name = Rc::new(name.extend(d.name().to_owned()));

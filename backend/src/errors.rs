@@ -1,6 +1,7 @@
 use codeviz_common::errors as codeviz;
 use reproto_core::{ErrorPos, RpName};
 use reproto_core::errors as core;
+use reproto_core::with_pos::WithPos;
 use reproto_parser::errors as parser;
 use reproto_repository::errors as repository;
 use serde_json as json;
@@ -52,24 +53,17 @@ impl Error {
     }
 }
 
-pub trait PosError {
-    /// Add additional position information, if it's not already present.
-    fn with_pos<E: Into<ErrorPos>>(self, pos: E) -> Self;
-}
-
-impl<T> PosError for ::std::result::Result<T, Error> {
+impl WithPos for Error {
     fn with_pos<E: Into<ErrorPos>>(self, pos: E) -> Self {
         use self::ErrorKind::*;
 
-        self.map_err(|e| {
-            match e.kind() {
-                // A more specific position is already known.
-                &Pos(_, _) |
-                &Errors(_) |
-                &MissingRequired(_, _, _) => e,
-                // Convert to positional error.
-                _ => ErrorKind::Pos(format!("{}", e), pos.into()).into(),
-            }
-        })
+        match self.kind() {
+            // A more specific position is already known.
+            &Pos(_, _) |
+            &Errors(_) |
+            &MissingRequired(_, _, _) => self,
+            // Convert to positional error.
+            _ => ErrorKind::Pos(format!("{}", self), pos.into()).into(),
+        }
     }
 }

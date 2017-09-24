@@ -191,9 +191,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_field(&self, out: &mut DocBuilder, name: &RpName, field: &Loc<RpField>) -> Result<()> {
-        let field = field.as_ref();
-
+    fn write_field(&self, out: &mut DocBuilder, name: &RpName, field: &RpField) -> Result<()> {
         let mut classes = vec!["field"];
 
         if field.is_optional() {
@@ -241,9 +239,9 @@ impl DocBackend {
             html!(out, h2 {} ~ "Fields");
 
             html!(out, table {class => "spaced"} => {
-                for field in fields {
-                    self.write_field(out, name, field).with_pos(field.pos())?;
-                }
+                fields.for_each_loc(|field| {
+                    self.write_field(out, name, field)
+                })?;
             });
         });
 

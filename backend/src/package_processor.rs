@@ -82,15 +82,13 @@ where
                 Self::Out::new,
             );
 
-            let r = match **decl {
+            match **decl {
                 Interface(ref b) => self.process_interface(&mut out, name.as_ref(), b.clone()),
                 Type(ref b) => self.process_type(&mut out, name.as_ref(), b.clone()),
                 Tuple(ref b) => self.process_tuple(&mut out, name.as_ref(), b.clone()),
                 Enum(ref b) => self.process_enum(&mut out, name.as_ref(), b.clone()),
                 Service(ref b) => self.process_service(&mut out, name.as_ref(), b.clone()),
-            };
-
-            r.with_pos(decl.pos())
+            }
         })?;
 
         Ok(files)

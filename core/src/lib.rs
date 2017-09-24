@@ -10,6 +10,8 @@ extern crate error_chain;
 pub extern crate semver;
 
 pub mod object;
+pub mod with_pos;
+pub mod for_each_loc;
 mod error_pos;
 mod loc;
 mod pos;
@@ -19,10 +21,12 @@ pub mod errors;
 
 
 pub use self::error_pos::*;
+pub use self::for_each_loc::ForEachLoc;
 pub use self::loc::*;
 pub use self::merge::*;
 pub use self::options::*;
 pub use self::pos::*;
+pub use self::with_pos::WithPos;
 use errors::*;
 use num::bigint::BigInt;
 use num::integer::Integer;
