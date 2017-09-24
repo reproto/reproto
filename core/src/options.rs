@@ -48,7 +48,7 @@ impl Options {
         let mut out: Vec<Loc<String>> = Vec::new();
 
         for s in self.lookup(name) {
-            match s.ref_both() {
+            match s.as_ref_pair() {
                 (&RpValue::String(ref string), ref pos) => {
                     out.push(Loc::new(string.clone(), (*pos).clone()));
                 }
@@ -68,7 +68,7 @@ impl Options {
         let mut out: Vec<Loc<RpNumber>> = Vec::new();
 
         for s in self.lookup(name) {
-            match s.ref_both() {
+            match s.as_ref_pair() {
                 (&RpValue::Number(ref number), ref pos) => {
                     out.push(Loc::new(number.clone(), (*pos).clone()));
                 }
@@ -90,7 +90,7 @@ impl Options {
     /// error.
     pub fn find_one_identifier(&self, name: &str) -> Result<Option<Loc<String>>> {
         if let Some(t) = self.find_one(name)? {
-            match t.ref_both() {
+            match t.as_ref_pair() {
                 (&RpValue::Identifier(ref identifier), ref pos) => {
                     return Ok(Some(Loc::new(identifier.clone(), (*pos).clone())));
                 }
@@ -107,7 +107,7 @@ impl Options {
 
     pub fn find_one_string(&self, name: &str) -> Result<Option<Loc<String>>> {
         if let Some(t) = self.find_one(name)? {
-            match t.ref_both() {
+            match t.as_ref_pair() {
                 (&RpValue::String(ref string), ref pos) => {
                     return Ok(Some(Loc::new(string.to_owned(), (*pos).clone())));
                 }
@@ -124,7 +124,7 @@ impl Options {
 
     pub fn find_one_number(&self, name: &str) -> Result<Option<Loc<RpNumber>>> {
         if let Some(t) = self.find_one(name)? {
-            match t.ref_both() {
+            match t.as_ref_pair() {
                 (&RpValue::Number(ref number), ref pos) => {
                     return Ok(Some(Loc::new(number.clone(), (*pos).clone())));
                 }
@@ -141,7 +141,7 @@ impl Options {
 
     pub fn find_one_boolean(&self, name: &str) -> Result<Option<Loc<bool>>> {
         if let Some(t) = self.find_one(name)? {
-            match t.ref_both() {
+            match t.as_ref_pair() {
                 (&RpValue::Boolean(ref boolean), ref pos) => {
                     return Ok(Some(Loc::new(boolean.clone(), (*pos).clone())));
                 }
@@ -163,7 +163,7 @@ impl Options {
         let mut out: Vec<Loc<String>> = Vec::new();
 
         for s in self.lookup(name) {
-            match s.ref_both() {
+            match s.as_ref_pair() {
                 (&RpValue::Identifier(ref identifier), ref pos) => {
                     out.push(Loc::new(identifier.clone(), (*pos).clone()));
                 }

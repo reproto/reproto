@@ -385,7 +385,7 @@ impl DocBackend {
 
                                 html!(out, td {class => "type"} => {
                                     if let Some(ref ty) = accept.ty {
-                                        let (ty, pos) = ty.ref_both();
+                                        let (ty, pos) = ty.as_ref_pair();
                                         self.write_type(out, name, ty).with_pos(pos)?;
                                     } else {
                                         html!(out, em {} ~ "no body");
@@ -423,7 +423,7 @@ impl DocBackend {
 
                                 html!(out, td {class => "type"} => {
                                     if let Some(ref ty) = response.ty {
-                                        let (ty, pos) = ty.ref_both();
+                                        let (ty, pos) = ty.as_ref_pair();
                                         self.write_type(out, name, ty).with_pos(pos)?;
                                     } else {
                                         html!(out, em {} ~ "no body");

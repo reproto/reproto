@@ -415,7 +415,7 @@ impl JsBackend {
         class.push(encode);
 
         for code in body.codes.for_context(JS_CONTEXT) {
-            class.push(code.move_inner().lines);
+            class.push(code.take().lines);
         }
 
         out.0.push(class);
@@ -464,7 +464,7 @@ impl JsBackend {
         }
 
         for code in body.codes.for_context(JS_CONTEXT) {
-            class.push(code.move_inner().lines);
+            class.push(code.take().lines);
         }
 
         let mut elements = Elements::new();
@@ -517,7 +517,7 @@ impl JsBackend {
         class.push(encode);
 
         for code in body.codes.for_context(JS_CONTEXT) {
-            class.push(code.move_inner().lines);
+            class.push(code.take().lines);
         }
 
         out.0.push(class);
@@ -541,7 +541,7 @@ impl JsBackend {
             body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         for code in body.codes.for_context(JS_CONTEXT) {
-            interface_spec.push(code.move_inner().lines);
+            interface_spec.push(code.take().lines);
         }
 
         classes.push(interface_spec);
@@ -584,7 +584,7 @@ impl JsBackend {
             class.push(encode);
 
             for code in sub_type.codes.for_context(JS_CONTEXT) {
-                class.push(code.move_inner().lines);
+                class.push(code.take().lines);
             }
 
             classes.push(&class);

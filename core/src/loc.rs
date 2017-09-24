@@ -29,19 +29,20 @@ impl<T> Loc<T> {
         }
     }
 
-    pub fn move_inner(self) -> T {
-        self.inner
-    }
-
     pub fn pos(&self) -> &Pos {
         &self.pos
     }
 
-    pub fn map_into<M, U>(self, map: M) -> Loc<U>
-    where
-        M: FnOnce(T) -> U,
-    {
-        Loc::new(map(self.inner), self.pos)
+    pub fn take(self) -> T {
+        self.inner
+    }
+
+    pub fn take_pair(self) -> (T, Pos) {
+        (self.inner, self.pos)
+    }
+
+    pub fn as_ref_pair(&self) -> (&T, &Pos) {
+        (&self.inner, &self.pos)
     }
 
     pub fn map<'a, M, U>(&'a self, map: M) -> Loc<U>
@@ -50,14 +51,6 @@ impl<T> Loc<T> {
         U: 'a,
     {
         Loc::new(map(&self.inner), self.pos.clone())
-    }
-
-    pub fn both(self) -> (T, Pos) {
-        (self.inner, self.pos)
-    }
-
-    pub fn ref_both(&self) -> (&T, &Pos) {
-        (&self.inner, &self.pos)
     }
 }
 
@@ -112,7 +105,7 @@ where
     T: Merge,
 {
     fn merge(&mut self, source: Loc<T>) -> Result<()> {
-        self.as_mut().merge(source.move_inner())?;
+        self.as_mut().merge(source.take())?;
         Ok(())
     }
 }

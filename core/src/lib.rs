@@ -161,7 +161,7 @@ impl RpDecl {
                     out.push((type_id.clone(), token));
 
                     for d in &sub_type.decls {
-                        let (d, pos) = d.ref_both();
+                        let (d, pos) = d.as_ref_pair();
 
                         out.extend(d.into_registered_type(
                             &type_id.extend(d.name().to_owned()),
@@ -201,7 +201,7 @@ impl RpDecl {
         }
 
         for d in &self.decls() {
-            let (d, pos) = d.ref_both();
+            let (d, pos) = d.as_ref_pair();
 
             out.extend(d.into_registered_type(
                 &type_id.extend(d.name().to_owned()),

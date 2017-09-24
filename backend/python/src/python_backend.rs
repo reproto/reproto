@@ -456,7 +456,7 @@ impl PythonBackend {
         }
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
-            class.push(code.move_inner().lines);
+            class.push(code.take().lines);
         }
 
         let decode = self.decode_method(
@@ -501,7 +501,7 @@ impl PythonBackend {
         }
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
-            class.push(code.move_inner().lines);
+            class.push(code.take().lines);
         }
 
         if let Some(ref s) = body.serialized_as {
@@ -557,7 +557,7 @@ impl PythonBackend {
         class.push(repr_method);
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
-            class.push(code.move_inner().lines);
+            class.push(code.take().lines);
         }
 
         out.0.push(class);
@@ -575,7 +575,7 @@ impl PythonBackend {
         interface_spec.push(self.interface_decode_method(name, &body)?);
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
-            interface_spec.push(code.move_inner().lines);
+            interface_spec.push(code.take().lines);
         }
 
         let local_name = Name::local(&interface_spec.name);
@@ -636,7 +636,7 @@ impl PythonBackend {
             class.push(repr_method);
 
             for code in sub_type.codes.for_context(PYTHON_CONTEXT) {
-                class.push(code.move_inner().lines);
+                class.push(code.take().lines);
             }
 
             out.0.push(class);

@@ -174,7 +174,7 @@ impl RustBackend {
         enum_spec.public();
 
         for code in body.codes.for_context(RUST_CONTEXT) {
-            enum_spec.push(code.move_inner().lines);
+            enum_spec.push(code.take().lines);
         }
 
         out.0.push(enum_spec);
@@ -201,7 +201,7 @@ impl RustBackend {
         struct_spec.push(fields);
 
         for code in body.codes.for_context(RUST_CONTEXT) {
-            struct_spec.push(code.move_inner().lines);
+            struct_spec.push(code.take().lines);
         }
 
         out.0.push(struct_spec);
@@ -222,7 +222,7 @@ impl RustBackend {
         enum_spec.push_attribute("#[serde(tag = \"type\")]");
 
         for code in body.codes.for_context(RUST_CONTEXT) {
-            enum_spec.push(code.move_inner().lines);
+            enum_spec.push(code.take().lines);
         }
 
         for (_, ref sub_type) in &body.sub_types {

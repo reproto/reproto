@@ -553,7 +553,7 @@ impl JavaBackend {
         }
 
         for code in body.codes.for_context(JAVA_CONTEXT) {
-            spec.push(code.move_inner().lines);
+            spec.push(code.take().lines);
         }
 
         let variables = Variables::new();
@@ -635,7 +635,7 @@ impl JavaBackend {
         }
 
         for code in body.codes.for_context(JAVA_CONTEXT) {
-            spec.push(code.move_inner().lines);
+            spec.push(code.take().lines);
         }
 
         self.add_class(&class_type, &mut spec)?;
@@ -670,7 +670,7 @@ impl JavaBackend {
         }
 
         for code in body.codes.for_context(JAVA_CONTEXT) {
-            spec.push(code.move_inner().lines);
+            spec.push(code.take().lines);
         }
 
         self.add_class(&class_type, &mut spec)?;
@@ -703,7 +703,7 @@ impl JavaBackend {
         let sub_type_fields = self.convert_fields(&name, &sub_type.fields)?;
 
         for code in sub_type.codes.for_context(JAVA_CONTEXT) {
-            class.push(code.move_inner().lines);
+            class.push(code.take().lines);
         }
 
         class.implements(&parent_type);
@@ -774,7 +774,7 @@ impl JavaBackend {
         let interface_fields = self.convert_fields(name, &interface.fields)?;
 
         for code in interface.codes.for_context(JAVA_CONTEXT) {
-            interface_spec.push(code.move_inner().lines);
+            interface_spec.push(code.take().lines);
         }
 
         if self.options.build_getters {

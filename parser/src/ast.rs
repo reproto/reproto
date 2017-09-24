@@ -112,7 +112,7 @@ impl<'input> IntoModel for EnumBody<'input> {
         let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
 
         for variant in self.variants {
-            let (variant, variant_pos) = variant.both();
+            let (variant, variant_pos) = variant.take_pair();
             let pos = &variant_pos;
 
             let ordinal = ordinals.next(&variant.ordinal).chain_err(|| {
@@ -148,7 +148,7 @@ impl<'input> IntoModel for EnumBody<'input> {
         let serialized_as_name = options
             .find_one_boolean("serialized_as_name")?
             .to_owned()
-            .map(|t| t.move_inner())
+            .map(|t| t.take())
             .unwrap_or(false);
 
         let en = RpEnumBody {
@@ -355,7 +355,7 @@ where
     type Output = Loc<T::Output>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (value, pos) = self.both();
+        let (value, pos) = self.take_pair();
         Ok(Loc::new(value.into_model(scope)?, pos))
     }
 }
@@ -607,7 +607,7 @@ fn convert_return(
     let produces = produces.or(options.find_one_string("produces")?);
 
     let produces = if let Some(produces) = produces {
-        let (produces, pos) = produces.both();
+        let (produces, pos) = produces.take_pair();
 
         let produces = produces.parse().chain_err(|| {
             ErrorKind::Pos("not a valid mime type".to_owned(), pos.into())
@@ -621,7 +621,7 @@ fn convert_return(
     let status = status.or(options.find_one_number("status")?);
 
     let status = if let Some(status) = status {
-        let (status, pos) = status.both();
+        let (status, pos) = status.take_pair();
 
         let status = status.to_u32().ok_or_else(|| {
             ErrorKind::Pos("not a valid status".to_owned(), pos.into())
@@ -653,7 +653,7 @@ fn convert_accepts(
     let accepts = accepts.or(options.find_one_string("accept")?);
 
     let accepts = if let Some(accepts) = accepts {
-        let (accepts, pos) = accepts.both();
+        let (accepts, pos) = accepts.take_pair();
 
         let accepts = accepts.parse().chain_err(|| {
             ErrorKind::Pos("not a valid mime type".to_owned(), pos.into())
@@ -870,7 +870,7 @@ impl<'input> IntoModel for SubType<'input> {
         let mut decls = Vec::new();
 
         for member in self.members {
-            let (member, pos) = member.both();
+            let (member, pos) = member.take_pair();
 
             match member {
                 Field(field) => {
@@ -1012,7 +1012,7 @@ pub fn members_into_model(
     let mut decls = Vec::new();
 
     for member in members {
-        let (value, pos) = member.both();
+        let (value, pos) = member.take_pair();
 
         match value {
             Field(field) => {
