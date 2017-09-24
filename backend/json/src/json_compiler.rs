@@ -37,7 +37,7 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
         self.processor.package(package)
     }
 
-    fn default_process(&self, _: &mut Self::Out, _: &RpName, _: &Pos) -> Result<()> {
+    fn default_process(&self, _: &mut Self::Out, _: &RpName) -> Result<()> {
         Ok(())
     }
 
@@ -51,20 +51,13 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
         &self,
         out: &mut Self::Out,
         _: &RpName,
-        _: &Pos,
         body: Rc<RpServiceBody>,
     ) -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
     }
 
-    fn process_enum(
-        &self,
-        out: &mut Self::Out,
-        _: &RpName,
-        _: &Pos,
-        body: Rc<RpEnumBody>,
-    ) -> Result<()> {
+    fn process_enum(&self, out: &mut Self::Out, _: &RpName, body: Rc<RpEnumBody>) -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
     }
@@ -73,31 +66,18 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
         &self,
         out: &mut Self::Out,
         _: &RpName,
-        _: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
     }
 
-    fn process_type(
-        &self,
-        out: &mut Self::Out,
-        _: &RpName,
-        _: &Pos,
-        body: Rc<RpTypeBody>,
-    ) -> Result<()> {
+    fn process_type(&self, out: &mut Self::Out, _: &RpName, body: Rc<RpTypeBody>) -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
     }
 
-    fn process_tuple(
-        &self,
-        out: &mut Self::Out,
-        _: &RpName,
-        _: &Pos,
-        body: Rc<RpTupleBody>,
-    ) -> Result<()> {
+    fn process_tuple(&self, out: &mut Self::Out, _: &RpName, body: Rc<RpTupleBody>) -> Result<()> {
         writeln!(out, "{}", serde_json::to_string(&body)?)?;
         Ok(())
     }

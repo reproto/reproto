@@ -45,10 +45,8 @@ impl DocBackend {
         Ok(())
     }
 
-    fn type_url(&self, pos: &Pos, name: &RpName) -> Result<String> {
-        let registered = self.env.lookup(name).map_err(|e| {
-            Error::pos(e.description().to_owned(), pos.into())
-        })?;
+    fn type_url(&self, name: &RpName) -> Result<String> {
+        let registered = self.env.lookup(name)?;
 
         let fragment = registered.local_name(name, |p| p.join("_"), |c| c.join("_"));
 
@@ -133,13 +131,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_type(
-        &self,
-        out: &mut DocBuilder,
-        pos: &Pos,
-        name: &RpName,
-        ty: &RpType,
-    ) -> Result<()> {
+    fn write_type(&self, out: &mut DocBuilder, name: &RpName, ty: &RpType) -> Result<()> {
         write!(out, "<span class=\"ty\">")?;
 
         match *ty {
@@ -170,7 +162,7 @@ impl DocBackend {
                 });
             }
             RpType::Name { ref name } => {
-                let url = self.type_url(pos, name)?;
+                let url = self.type_url(name)?;
                 let name = name.join("::");
 
                 html!(out, span {class => "type-rp-name"} => {
@@ -180,22 +172,64 @@ impl DocBackend {
             RpType::Array { ref inner } => {
                 html!(out, span {class => "type-array"} => {
                     html!(out, span {class => "type-array-left"} ~ "[");
-                    self.write_type(out, pos, name, inner)?;
+                    self.write_type(out, name, inner)?;
                     html!(out, span {class => "type-array-right"} ~ "]");
                 });
             }
             RpType::Map { ref key, ref value } => {
                 html!(out, span {class => "type-map"} => {
                     html!(out, span {class => "type-map-left"} ~ "{");
-                    self.write_type(out, pos, name, key)?;
+                    self.write_type(out, name, key)?;
                     html!(out, span {class => "type-map-sep"} ~ ":");
-                    self.write_type(out, pos, name, value)?;
+                    self.write_type(out, name, value)?;
                     html!(out, span {class => "type-map-right"} ~ "}");
                 });
             }
         }
 
         write!(out, "</span>")?;
+        Ok(())
+    }
+
+    fn write_field(&self, out: &mut DocBuilder, name: &RpName, field: &Loc<RpField>) -> Result<()> {
+        let field = field.as_ref();
+
+        let mut classes = vec!["field"];
+
+        if field.is_optional() {
+            classes.push("optional");
+        } else {
+            classes.push("required");
+        }
+
+        html!(out, tr {classes => classes} => {
+            html!(out, td {class => "mime"} => {
+                let ident = field.ident();
+                let name = field.name();
+
+                html!(out, span {class => "field-ident"} ~ ident);
+
+                if field.is_optional() {
+                    html!(out, span {class => "field-modifier"} ~ "?");
+                }
+
+                if name != ident {
+                    html!(out, span {class => "field-alias"} => {
+                        html!(out, span {class => "field-alias-as"} ~ "as");
+                        html!(out, code {class => "field-alias-name"} ~ format!("\"{}\"", name));
+                    });
+                }
+            });
+
+            html!(out, td {class => "type"} => {
+                self.write_type(out, name, &field.ty)?;
+            });
+
+            html!(out, td {class => "description"} => {
+                self.write_markdown(out, &field.comment)?;
+            });
+        });
+
         Ok(())
     }
 
@@ -208,43 +242,7 @@ impl DocBackend {
 
             html!(out, table {class => "spaced"} => {
                 for field in fields {
-                    let (field, pos) = field.ref_both();
-
-                    let mut classes = vec!["field"];
-
-                    if field.is_optional() {
-                        classes.push("optional");
-                    } else {
-                        classes.push("required");
-                    }
-
-                    html!(out, tr {classes => classes} => {
-                        html!(out, td {class => "mime"} => {
-                            let ident = field.ident();
-                            let name = field.name();
-
-                            html!(out, span {class => "field-ident"} ~ ident);
-
-                            if field.is_optional() {
-                                html!(out, span {class => "field-modifier"} ~ "?");
-                            }
-
-                            if name != ident {
-                                html!(out, span {class => "field-alias"} => {
-                                    html!(out, span {class => "field-alias-as"} ~ "as");
-                                    html!(out, code {class => "field-alias-name"} ~ format!("\"{}\"", name));
-                                });
-                            }
-                        });
-
-                        html!(out, td {class => "type"} => {
-                            self.write_type(out, pos, name, &field.ty)?;
-                        });
-
-                        html!(out, td {class => "description"} => {
-                            self.write_markdown(out, &field.comment)?;
-                        });
-                    });
+                    self.write_field(out, name, field).with_pos(field.pos())?;
                 }
             });
         });
@@ -388,7 +386,7 @@ impl DocBackend {
                                 html!(out, td {class => "type"} => {
                                     if let Some(ref ty) = accept.ty {
                                         let (ty, pos) = ty.ref_both();
-                                        self.write_type(out, pos, name, ty)?;
+                                        self.write_type(out, name, ty).with_pos(pos)?;
                                     } else {
                                         html!(out, em {} ~ "no body");
                                     }
@@ -426,7 +424,7 @@ impl DocBackend {
                                 html!(out, td {class => "type"} => {
                                     if let Some(ref ty) = response.ty {
                                         let (ty, pos) = ty.ref_both();
-                                        self.write_type(out, pos, name, ty)?;
+                                        self.write_type(out, name, ty).with_pos(pos)?;
                                     } else {
                                         html!(out, em {} ~ "no body");
                                     }
@@ -539,7 +537,6 @@ impl DocBackend {
         &self,
         out: &mut DocCollector,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpServiceBody>,
     ) -> Result<()> {
         let mut new_service = out.new_service(body.clone());
@@ -567,7 +564,6 @@ impl DocBackend {
         &self,
         out: &mut DocCollector,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
         let mut new_enum = out.new_type(RpDecl::Enum(body.clone()));
@@ -592,7 +588,6 @@ impl DocBackend {
         &self,
         out: &mut DocCollector,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
         let mut new_interface = out.new_type(RpDecl::Interface(body.clone()));
@@ -634,7 +629,6 @@ impl DocBackend {
         &self,
         out: &mut DocCollector,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
         let mut new_type = out.new_type(RpDecl::Type(body.clone()));
@@ -659,7 +653,6 @@ impl DocBackend {
         &self,
         out: &mut DocCollector,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
         let mut new_tuple = out.new_type(RpDecl::Tuple(body.clone()));

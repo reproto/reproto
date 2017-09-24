@@ -4,7 +4,7 @@ use base_decode::BaseDecode;
 use codeviz_common::Element;
 use container::Container;
 use converter::Converter;
-use core::{Loc, Pos, RpInterfaceBody, RpName, RpType};
+use core::{Loc, RpInterfaceBody, RpName, RpType};
 use dynamic_converter::DynamicConverter;
 use errors::*;
 
@@ -35,13 +35,7 @@ where
 
     fn map_decode(&self, input: &Self::Stmt, key: Self::Stmt, value: Self::Stmt) -> Self::Stmt;
 
-    fn decode(
-        &self,
-        name: &RpName,
-        pos: &Pos,
-        ty: &RpType,
-        input: &Self::Stmt,
-    ) -> Result<Self::Stmt> {
+    fn dynamic_decode(&self, name: &RpName, ty: &RpType, input: &Self::Stmt) -> Result<Self::Stmt> {
         if self.is_native(ty) {
             return Ok(input.clone());
         }
@@ -54,27 +48,22 @@ where
             RpType::Any => input.clone(),
             RpType::Boolean => input.clone(),
             RpType::Name { ref name } => {
-                let name = self.convert_type(pos, name)?;
+                let name = self.convert_type(name)?;
                 self.name_decode(input, name)
             }
             RpType::Array { ref inner } => {
                 let inner_var = self.array_inner_var();
-                let inner = DynamicDecode::decode(self, name, pos, inner, &inner_var)?;
+                let inner = self.dynamic_decode(name, inner, &inner_var)?;
                 self.array_decode(input, inner)
             }
             RpType::Map { ref key, ref value } => {
                 let map_key = self.map_key_var();
-                let key = DynamicDecode::decode(self, name, pos, key, &map_key)?;
+                let key = self.dynamic_decode(name, key, &map_key)?;
                 let map_value = self.map_value_var();
-                let value = DynamicDecode::decode(self, name, pos, value, &map_value)?;
+                let value = self.dynamic_decode(name, value, &map_value)?;
                 self.map_decode(input, key, value)
             }
-            ref ty => {
-                return Err(Error::pos(
-                    format!("type `{}` not supported", ty).into(),
-                    pos.into(),
-                ))
-            }
+            ref ty => return Err(format!("type `{}` not supported", ty).into()),
         };
 
         Ok(input)
@@ -95,7 +84,10 @@ where
         for (_, ref sub_type) in &body.sub_types {
             for sub_type_name in &sub_type.names {
                 let name = name.extend(sub_type_name.as_ref().clone());
-                let type_name = self.convert_type(sub_type.pos(), &name)?;
+
+                let type_name = self.convert_type(&name).map_err(|e| {
+                    ErrorKind::Pos(format!("{}", e), sub_type.pos().into())
+                })?;
 
                 decode_body.push(&self.check_type_var(
                     &data,
@@ -120,13 +112,7 @@ impl<T> BaseDecode for T
 where
     T: DynamicDecode,
 {
-    fn base_decode(
-        &self,
-        name: &RpName,
-        pos: &Pos,
-        ty: &RpType,
-        input: &Self::Stmt,
-    ) -> Result<Self::Stmt> {
-        DynamicDecode::decode(self, name, pos, ty, input)
+    fn base_decode(&self, name: &RpName, ty: &RpType, input: &Self::Stmt) -> Result<Self::Stmt> {
+        self.dynamic_decode(name, ty, input)
     }
 }

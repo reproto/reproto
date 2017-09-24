@@ -91,7 +91,8 @@ impl JsBackend {
         for field in fields {
             let var_string = string(field.name.to_owned());
             let field_stmt = stmt!["this.", &field.ident];
-            let value_stmt = self.encode(type_id, field.pos(), &field.ty, &field_stmt)?;
+            let value_stmt = self.dynamic_encode(type_id, &field.ty, &field_stmt)
+                .with_pos(field.pos())?;
 
             match *field.modifier {
                 RpModifier::Optional => {
@@ -127,7 +128,9 @@ impl JsBackend {
         for field in fields {
             let stmt = stmt!["this.", &field.ident];
             encode_body.push(self.throw_if_null(&stmt, field));
-            values.push(self.encode(type_id, field.pos(), &field.ty, &stmt)?);
+            values.push(self.dynamic_encode(type_id, &field.ty, &stmt).with_pos(
+                field.pos(),
+            )?);
         }
 
         encode_body.push(js![@return [ values ]]);
@@ -202,7 +205,8 @@ impl JsBackend {
             let stmt: Element = match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = var_name.clone().into();
-                    let var_stmt = self.decode(type_id, field.pos(), &field.ty, &var_name)?;
+                    let var_stmt = self.dynamic_decode(type_id, &field.ty, &var_name)
+                        .with_pos(field.pos())?;
 
                     let mut check = Elements::new();
 
@@ -216,12 +220,7 @@ impl JsBackend {
                 }
                 _ => {
                     let var_stmt = stmt![&data, "[", &var, "]"];
-                    let var_stmt = self.decode(
-                        type_id,
-                        field.pos(),
-                        &field.ty,
-                        &var_stmt.into(),
-                    )?;
+                    let var_stmt = self.dynamic_decode(type_id, &field.ty, &var_stmt.into())?;
 
                     let mut check = Elements::new();
 
@@ -387,7 +386,6 @@ impl JsBackend {
         &self,
         out: &mut JsFileSpec,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
         let mut class = ClassSpec::new(&name.join(TYPE_SEP));
@@ -428,7 +426,6 @@ impl JsBackend {
         &self,
         out: &mut JsFileSpec,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
         let mut class = ClassSpec::new(&name.join(TYPE_SEP));
@@ -491,7 +488,6 @@ impl JsBackend {
         &self,
         out: &mut JsFileSpec,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
         let fields: Vec<_> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
@@ -532,7 +528,6 @@ impl JsBackend {
         &self,
         out: &mut JsFileSpec,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
         let mut classes = Elements::new();
@@ -619,10 +614,8 @@ impl Converter for JsBackend {
         stmt![name]
     }
 
-    fn convert_type(&self, pos: &Pos, name: &RpName) -> Result<Name> {
-        let registered = self.env.lookup(name).map_err(|e| {
-            Error::pos(e.description().to_owned(), pos.into())
-        })?;
+    fn convert_type(&self, name: &RpName) -> Result<Name> {
+        let registered = self.env.lookup(name)?;
 
         let local_name = registered.local_name(name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 

@@ -51,3 +51,25 @@ impl Error {
         ErrorKind::Pos(message, pos).into()
     }
 }
+
+pub trait PosError {
+    /// Add additional position information, if it's not already present.
+    fn with_pos<E: Into<ErrorPos>>(self, pos: E) -> Self;
+}
+
+impl<T> PosError for ::std::result::Result<T, Error> {
+    fn with_pos<E: Into<ErrorPos>>(self, pos: E) -> Self {
+        use self::ErrorKind::*;
+
+        self.map_err(|e| {
+            match e.kind() {
+                // A more specific position is already known.
+                &Pos(_, _) |
+                &Errors(_) |
+                &MissingRequired(_, _, _) => e,
+                // Convert to positional error.
+                _ => ErrorKind::Pos(format!("{}", e), pos.into()).into(),
+            }
+        })
+    }
+}

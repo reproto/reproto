@@ -115,7 +115,7 @@ where
                         parent: _,
                         variant: _,
                     } => {
-                        let ty = self.convert_constant(object.pos(), constant.as_ref())?;
+                        let ty = self.convert_constant(constant.as_ref())?;
                         return self.constant(ty);
                     }
                     _ => {
@@ -159,7 +159,7 @@ where
                     }
                 }
 
-                let ty = self.convert_type(object.pos(), &instance.name)?;
+                let ty = self.convert_type(&instance.name)?;
                 return self.instance(ty, arguments);
             }
             _ => {}

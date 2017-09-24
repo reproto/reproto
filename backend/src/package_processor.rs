@@ -1,5 +1,5 @@
 use collecting::Collecting;
-use core::{Loc, Pos, RpDecl, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
+use core::{Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
            RpTupleBody, RpTypeBody, RpVersionedPackage};
 use environment::Environment;
 use errors::*;
@@ -22,7 +22,7 @@ where
 
     fn out_path(&self) -> &Path;
 
-    fn default_process(&self, _: &mut Self::Out, name: &RpName, _: &Pos) -> Result<()> {
+    fn default_process(&self, _: &mut Self::Out, name: &RpName) -> Result<()> {
         warn!("not supported: {}", name);
         Ok(())
     }
@@ -33,50 +33,30 @@ where
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        pos: &Pos,
         _: Rc<RpInterfaceBody>,
     ) -> Result<()> {
-        self.default_process(out, name, pos)
+        self.default_process(out, name)
     }
 
-    fn process_type(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        pos: &Pos,
-        _: Rc<RpTypeBody>,
-    ) -> Result<()> {
-        self.default_process(out, name, pos)
+    fn process_type(&self, out: &mut Self::Out, name: &RpName, _: Rc<RpTypeBody>) -> Result<()> {
+        self.default_process(out, name)
     }
 
-    fn process_tuple(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        pos: &Pos,
-        _: Rc<RpTupleBody>,
-    ) -> Result<()> {
-        self.default_process(out, name, pos)
+    fn process_tuple(&self, out: &mut Self::Out, name: &RpName, _: Rc<RpTupleBody>) -> Result<()> {
+        self.default_process(out, name)
     }
 
-    fn process_enum(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        pos: &Pos,
-        _: Rc<RpEnumBody>,
-    ) -> Result<()> {
-        self.default_process(out, name, pos)
+    fn process_enum(&self, out: &mut Self::Out, name: &RpName, _: Rc<RpEnumBody>) -> Result<()> {
+        self.default_process(out, name)
     }
 
     fn process_service(
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        pos: &Pos,
         _: Rc<RpServiceBody>,
     ) -> Result<()> {
-        self.default_process(out, name, pos)
+        self.default_process(out, name)
     }
 
     fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, Self::Out>> {
@@ -102,50 +82,15 @@ where
                 Self::Out::new,
             );
 
-            match **decl {
-                Interface(ref body) => {
-                    self.process_interface(
-                        &mut out,
-                        name.as_ref(),
-                        decl.pos(),
-                        body.clone(),
-                    )?;
-                }
-                Type(ref body) => {
-                    self.process_type(
-                        &mut out,
-                        name.as_ref(),
-                        decl.pos(),
-                        body.clone(),
-                    )?;
-                }
-                Tuple(ref body) => {
-                    self.process_tuple(
-                        &mut out,
-                        name.as_ref(),
-                        decl.pos(),
-                        body.clone(),
-                    )?;
-                }
-                Enum(ref body) => {
-                    self.process_enum(
-                        &mut out,
-                        name.as_ref(),
-                        decl.pos(),
-                        body.clone(),
-                    )?;
-                }
-                Service(ref body) => {
-                    self.process_service(
-                        &mut out,
-                        name.as_ref(),
-                        decl.pos(),
-                        body.clone(),
-                    )?;
-                }
+            let r = match **decl {
+                Interface(ref b) => self.process_interface(&mut out, name.as_ref(), b.clone()),
+                Type(ref b) => self.process_type(&mut out, name.as_ref(), b.clone()),
+                Tuple(ref b) => self.process_tuple(&mut out, name.as_ref(), b.clone()),
+                Enum(ref b) => self.process_enum(&mut out, name.as_ref(), b.clone()),
+                Service(ref b) => self.process_service(&mut out, name.as_ref(), b.clone()),
             };
 
-            Ok(())
+            r.with_pos(decl.pos())
         })?;
 
         Ok(files)

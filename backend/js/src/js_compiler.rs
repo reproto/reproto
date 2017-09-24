@@ -37,40 +37,26 @@ impl<'a> PackageProcessor<'a> for JsCompiler<'a> {
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        pos: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
-        self.backend.process_tuple(out, name, pos, body)
+        self.backend.process_tuple(out, name, body)
     }
 
-    fn process_enum(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        pos: &Pos,
-        body: Rc<RpEnumBody>,
-    ) -> Result<()> {
-        self.backend.process_enum(out, name, pos, body)
+    fn process_enum(&self, out: &mut Self::Out, name: &RpName, body: Rc<RpEnumBody>) -> Result<()> {
+        self.backend.process_enum(out, name, body)
     }
 
 
-    fn process_type(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        pos: &Pos,
-        body: Rc<RpTypeBody>,
-    ) -> Result<()> {
-        self.backend.process_type(out, name, pos, body)
+    fn process_type(&self, out: &mut Self::Out, name: &RpName, body: Rc<RpTypeBody>) -> Result<()> {
+        self.backend.process_type(out, name, body)
     }
 
     fn process_interface(
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        pos: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
-        self.backend.process_interface(out, name, pos, body)
+        self.backend.process_interface(out, name, body)
     }
 }

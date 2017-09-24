@@ -98,10 +98,8 @@ impl JavaBackend {
         self.java_package(pkg).parts.join(".")
     }
 
-    fn convert_type_id(&self, pos: &Pos, name: &RpName) -> Result<Type> {
-        let registered = self.env.lookup(name).map_err(|e| {
-            Error::pos(e.description().to_owned(), pos.into())
-        })?;
+    fn convert_type_id(&self, name: &RpName) -> Result<Type> {
+        let registered = self.env.lookup(name)?;
 
         let package_name = self.java_package_name(&name.package);
         let name = registered.local_name(name, |p| p.join("."), |c| c.join("."));
@@ -110,7 +108,7 @@ impl JavaBackend {
     }
 
     /// Convert the given type to a java type.
-    pub fn into_java_type(&self, pos: &Pos, ty: &RpType) -> Result<Type> {
+    pub fn into_java_type(&self, ty: &RpType) -> Result<Type> {
         let ty: Type = match *ty {
             RpType::String => self.string.clone().into(),
             RpType::Signed { ref size } |
@@ -128,18 +126,18 @@ impl JavaBackend {
             RpType::Double => DOUBLE.into(),
             RpType::Boolean => BOOLEAN.into(),
             RpType::Array { ref inner } => {
-                let argument = self.into_java_type(pos, inner)?;
+                let argument = self.into_java_type(inner)?;
                 self.list.with_arguments(vec![argument]).into()
             }
-            RpType::Name { ref name } => self.convert_type_id(pos, name)?.into(),
+            RpType::Name { ref name } => self.convert_type_id(name)?.into(),
             RpType::Map { ref key, ref value } => {
-                let key = self.into_java_type(pos, key)?;
-                let value = self.into_java_type(pos, value)?;
+                let key = self.into_java_type(key)?;
+                let value = self.into_java_type(value)?;
                 self.map.with_arguments(vec![key, value]).into()
             }
             RpType::Any => self.object.clone().into(),
             ref t => {
-                return Err(Error::pos(format!("unsupported type: {:?}", t), pos.into()));
+                return Err(format!("unsupported type: {:?}", t).into());
             }
         };
 
@@ -688,6 +686,83 @@ impl JavaBackend {
         Ok(spec)
     }
 
+    fn process_sub_type(
+        &self,
+        name: &RpName,
+        sub_type: &RpSubType,
+        parent_type: &ClassType,
+        interface: &RpInterfaceBody,
+        interface_fields: &[JavaField],
+    ) -> Result<ClassSpec> {
+        let name = name.extend(sub_type.name.to_owned());
+
+        let class_type = parent_type.extend(&sub_type.name);
+
+        let mods = mods![Modifier::Public, Modifier::Static];
+        let mut class = ClassSpec::new(mods, &sub_type.name);
+        let sub_type_fields = self.convert_fields(&name, &sub_type.fields)?;
+
+        for code in sub_type.codes.for_context(JAVA_CONTEXT) {
+            class.push(code.move_inner().lines);
+        }
+
+        class.implements(&parent_type);
+
+        // override methods for interface fields.
+        for field in interface_fields {
+            if self.options.build_getters {
+                let mut getter = field.getter()?;
+                getter.push_annotation(&self.override_);
+                class.push(getter);
+            }
+
+            if self.options.build_setters {
+                if let Some(mut setter) = field.setter()? {
+                    setter.push_annotation(&self.override_);
+                    class.push(setter);
+                }
+            }
+        }
+
+        for field in &sub_type_fields {
+            if self.options.build_getters {
+                class.push(field.getter()?);
+            }
+
+            if self.options.build_setters {
+                if let Some(setter) = field.setter()? {
+                    class.push(setter);
+                }
+            }
+        }
+
+        let mut fields = interface_fields.to_vec();
+        fields.extend(sub_type_fields);
+
+        for field in &fields {
+            class.push_field(&field.java_spec);
+        }
+
+        self.add_class(&class_type, &mut class)?;
+
+        self.listeners.class_added(&mut ClassAdded {
+            backend: self,
+            name: &name,
+            fields: &fields,
+            class_type: &class_type,
+            spec: &mut class,
+        })?;
+
+        self.listeners.sub_type_added(&mut SubTypeAdded {
+            fields: &fields,
+            interface: interface,
+            sub_type: sub_type,
+            spec: &mut class,
+        })?;
+
+        Ok(class)
+    }
+
     fn process_interface(
         &self,
         name: &RpName,
@@ -709,73 +784,11 @@ impl JavaBackend {
         }
 
         for (_, ref sub_type) in &interface.sub_types {
-            let name = name.extend(sub_type.name.to_owned());
+            let class =
+                self.process_sub_type(name, sub_type, &parent_type, interface, &interface_fields)
+                    .with_pos(sub_type.pos())?;
 
-            let class_type = parent_type.extend(&sub_type.name);
-
-            let mods = mods![Modifier::Public, Modifier::Static];
-            let mut class = ClassSpec::new(mods, &sub_type.name);
-            let sub_type_fields = self.convert_fields(&name, &sub_type.fields)?;
-
-            for code in sub_type.codes.for_context(JAVA_CONTEXT) {
-                class.push(code.move_inner().lines);
-            }
-
-            class.implements(&parent_type);
-
-            // override methods for interface fields.
-            for field in &interface_fields {
-                if self.options.build_getters {
-                    let mut getter = field.getter()?;
-                    getter.push_annotation(&self.override_);
-                    class.push(getter);
-                }
-
-                if self.options.build_setters {
-                    if let Some(mut setter) = field.setter()? {
-                        setter.push_annotation(&self.override_);
-                        class.push(setter);
-                    }
-                }
-            }
-
-            for field in &sub_type_fields {
-                if self.options.build_getters {
-                    class.push(field.getter()?);
-                }
-
-                if self.options.build_setters {
-                    if let Some(setter) = field.setter()? {
-                        class.push(setter);
-                    }
-                }
-            }
-
-            let mut fields = interface_fields.clone();
-            fields.extend(sub_type_fields);
-
-            for field in &fields {
-                class.push_field(&field.java_spec);
-            }
-
-            self.add_class(&class_type, &mut class)?;
-
-            self.listeners.class_added(&mut ClassAdded {
-                backend: self,
-                name: &name,
-                fields: &fields,
-                class_type: &class_type,
-                spec: &mut class,
-            })?;
-
-            self.listeners.sub_type_added(&mut SubTypeAdded {
-                fields: &fields,
-                interface: interface,
-                sub_type: sub_type,
-                spec: &mut class,
-            })?;
-
-            interface_spec.push(&class);
+            interface_spec.push(class);
         }
 
         self.listeners.interface_added(&mut InterfaceAdded {
@@ -802,7 +815,7 @@ impl JavaBackend {
                 if check {
                     ret = match r.ty {
                         Some(ref ret) => {
-                            let ret = self.into_java_type(ret.pos(), ret)?;
+                            let ret = self.into_java_type(ret).with_pos(ret.pos())?;
                             Some(ret.into())
                         }
                         None => None,
@@ -822,7 +835,7 @@ impl JavaBackend {
                     }
 
                     if let Some(ref ty) = accept.ty {
-                        let arg: Type = self.into_java_type(ty.pos(), ty)?.into();
+                        let arg: Type = self.into_java_type(ty).with_pos(ty.pos())?.into();
                         let arg = ArgumentSpec::new(mods![Modifier::Final], arg, "request");
                         method.push_argument(arg);
                     }
@@ -836,7 +849,7 @@ impl JavaBackend {
     }
 
     fn convert_field<'a>(&self, _: &RpName, field: &'a Loc<RpField>) -> Result<JavaField<'a>> {
-        let java_value_type = self.into_java_type(field.pos(), &field.ty)?;
+        let java_value_type = self.into_java_type(&field.ty)?;
 
         let java_type = match field.is_optional() {
             true => {
@@ -871,7 +884,7 @@ impl JavaBackend {
         let mut out = Vec::new();
 
         for field in fields {
-            out.push(self.convert_field(name, field)?);
+            out.push(self.convert_field(name, field).with_pos(field.pos())?);
         }
 
         Ok(out)
@@ -966,8 +979,8 @@ impl Converter for JavaBackend {
         stmt![name]
     }
 
-    fn convert_type(&self, pos: &Pos, name: &RpName) -> Result<Type> {
-        self.convert_type_id(pos, name)
+    fn convert_type(&self, name: &RpName) -> Result<Type> {
+        self.convert_type_id(name)
     }
 }
 

@@ -53,10 +53,8 @@ impl RustBackend {
         name.join(TYPE_SEP)
     }
 
-    fn convert_type_id(&self, pos: &Pos, name: &RpName) -> Result<Name> {
-        let registered = self.env.lookup(name).map_err(|e| {
-            Error::pos(e.description().to_owned(), pos.into())
-        })?;
+    fn convert_type_id(&self, name: &RpName) -> Result<Name> {
+        let registered = self.env.lookup(name)?;
 
         let local_name = registered.local_name(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
 
@@ -71,7 +69,7 @@ impl RustBackend {
     }
 
     fn into_type(&self, name: &RpName, field: &Loc<RpField>) -> Result<Statement> {
-        let stmt = self.into_rust_type(name, field.pos(), &field.ty)?;
+        let stmt = self.into_rust_type(name, &field.ty).with_pos(field.pos())?;
 
         if field.is_optional() {
             return Ok(stmt!["Option<", stmt, ">"]);
@@ -80,7 +78,7 @@ impl RustBackend {
         Ok(stmt)
     }
 
-    pub fn into_rust_type(&self, name: &RpName, pos: &Pos, ty: &RpType) -> Result<Statement> {
+    pub fn into_rust_type(&self, name: &RpName, ty: &RpType) -> Result<Statement> {
         let ty = match *ty {
             RpType::String => stmt!["String"],
             RpType::Signed { ref size } => {
@@ -101,18 +99,18 @@ impl RustBackend {
             RpType::Double => stmt!["f64"],
             RpType::Boolean => stmt!["bool"],
             RpType::Array { ref inner } => {
-                let argument = self.into_rust_type(name, pos, inner)?;
+                let argument = self.into_rust_type(name, inner)?;
                 stmt!["Vec<", argument, ">"]
             }
-            RpType::Name { ref name } => stmt![self.convert_type_id(pos, name)?],
+            RpType::Name { ref name } => stmt![self.convert_type_id(name)?],
             RpType::Map { ref key, ref value } => {
-                let key = self.into_rust_type(name, pos, key)?;
-                let value = self.into_rust_type(name, pos, value)?;
+                let key = self.into_rust_type(name, key)?;
+                let value = self.into_rust_type(name, value)?;
                 stmt![&self.hash_map, "<", key, ", ", value, ">"]
             }
             RpType::Any => stmt![&self.json_value],
             ref t => {
-                return Err(Error::pos(format!("unsupported type: {:?}", t), pos.into()));
+                return Err(format!("unsupported type: {:?}", t).into());
             }
         };
 
@@ -147,7 +145,6 @@ impl RustBackend {
         &self,
         out: &mut RustFileSpec,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
         let mut fields = Statement::new();
@@ -170,7 +167,6 @@ impl RustBackend {
         &self,
         out: &mut RustFileSpec,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
         let name = self.convert_type_name(name);
@@ -189,7 +185,6 @@ impl RustBackend {
         &self,
         out: &mut RustFileSpec,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
         let mut fields = Elements::new();
@@ -217,7 +212,6 @@ impl RustBackend {
         &self,
         out: &mut RustFileSpec,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
         let type_name = self.convert_type_name(name);

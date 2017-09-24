@@ -3,7 +3,7 @@
 use codeviz_common::Element;
 use codeviz_common::VariableFormat;
 use container::Container;
-use core::{Pos, RpName};
+use core::RpName;
 use errors::*;
 
 pub trait Converter {
@@ -14,9 +14,9 @@ pub trait Converter {
 
     fn new_var(&self, name: &str) -> Self::Stmt;
 
-    fn convert_type(&self, pos: &Pos, name: &RpName) -> Result<Self::Type>;
+    fn convert_type(&self, name: &RpName) -> Result<Self::Type>;
 
-    fn convert_constant(&self, pos: &Pos, name: &RpName) -> Result<Self::Type> {
-        self.convert_type(pos, name)
+    fn convert_constant(&self, name: &RpName) -> Result<Self::Type> {
+        self.convert_type(name)
     }
 }

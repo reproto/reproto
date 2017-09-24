@@ -93,7 +93,10 @@ impl PythonBackend {
         for field in fields {
             let var_string = Variable::String(field.name.to_owned());
             let field_stmt = stmt!["self.", &field.ident];
-            let value_stmt = self.encode(name, field.pos(), &field.ty, &field_stmt)?;
+
+            let value_stmt = self.dynamic_encode(name, &field.ty, &field_stmt).with_pos(
+                field.pos(),
+            )?;
 
             match *field.modifier {
                 RpModifier::Optional => {
@@ -134,7 +137,10 @@ impl PythonBackend {
         for field in fields {
             let stmt = stmt!["self.", &field.ident];
             encode_body.push(self.raise_if_none(&stmt, field));
-            values.push(self.encode(name, field.pos(), &field.ty, &stmt)?);
+
+            values.push(self.dynamic_encode(name, &field.ty, &stmt).with_pos(
+                field.pos(),
+            )?);
         }
 
         encode_body.push(stmt!["return (", values.join(", "), ")"]);
@@ -243,7 +249,6 @@ impl PythonBackend {
     fn decode_method<F>(
         &self,
         name: &RpName,
-        pos: &Pos,
         fields: &[Loc<Field>],
         variable_fn: F,
     ) -> Result<MethodSpec>
@@ -267,12 +272,15 @@ impl PythonBackend {
             let stmt = match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = var_name.clone().into();
-                    let var_stmt = self.decode(name, field.pos(), &field.ty, &var_name)?;
+                    let var_stmt = self.dynamic_decode(name, &field.ty, &var_name).with_pos(
+                        field.pos(),
+                    )?;
                     self.optional_check(&var_name, &var, &var_stmt)
                 }
                 _ => {
                     let var_stmt = stmt!["data[", &var, "]"];
-                    let var_stmt = self.decode(name, field.pos(), &field.ty, &var_stmt.into())?;
+                    let var_stmt = self.dynamic_decode(name, &field.ty, &var_stmt.into())
+                        .with_pos(field.pos())?;
                     stmt![&var_name, " = ", &var_stmt].into()
                 }
             };
@@ -282,7 +290,7 @@ impl PythonBackend {
         }
 
         let arguments = arguments.join(", ");
-        let name = self.convert_type(pos, name)?;
+        let name = self.convert_type(name)?;
         decode_body.push(stmt!["return ", name, "(", arguments, ")"]);
 
         decode.push(decode_body.join(Spacing));
@@ -329,13 +337,11 @@ impl PythonBackend {
         Ok(result)
     }
 
-    fn convert_type_id<F>(&self, pos: &Pos, name: &RpName, path_syntax: F) -> Result<Name>
+    fn convert_type_id<F>(&self, name: &RpName, path_syntax: F) -> Result<Name>
     where
         F: Fn(Vec<&str>) -> String,
     {
-        let registered = self.env.lookup(name).map_err(|e| {
-            Error::pos(e.description().to_owned(), pos.into())
-        })?;
+        let registered = self.env.lookup(name)?;
 
         let local_name = registered.local_name(name, |p| p.join(TYPE_SEP), path_syntax);
 
@@ -431,7 +437,6 @@ impl PythonBackend {
         &self,
         out: &mut PythonFileSpec,
         name: &RpName,
-        pos: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
         let mut class = self.as_class(name);
@@ -456,7 +461,6 @@ impl PythonBackend {
 
         let decode = self.decode_method(
             name,
-            pos,
             &fields,
             |i, _| Variable::Literal(i.to_string()),
         )?;
@@ -476,7 +480,6 @@ impl PythonBackend {
         &self,
         out: &mut PythonFileSpec,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpEnumBody>,
     ) -> Result<()> {
         let mut class = self.as_class(name);
@@ -506,7 +509,7 @@ impl PythonBackend {
                 class.push(self.encode_enum_method(field)?);
                 class.push(self.decode_enum_method(field)?);
             } else {
-                return Err(Error::pos(format!("no field named: {}", s), s.pos().into()));
+                return Err(format!("no field named: {}", s).into());
             }
         }
 
@@ -521,7 +524,6 @@ impl PythonBackend {
         &self,
         out: &mut PythonFileSpec,
         name: &RpName,
-        pos: &Pos,
         body: Rc<RpTypeBody>,
     ) -> Result<()> {
         let mut class = self.as_class(name);
@@ -541,7 +543,7 @@ impl PythonBackend {
             }
         }
 
-        let decode = self.decode_method(name, pos, &fields, |_, field| {
+        let decode = self.decode_method(name, &fields, |_, field| {
             Variable::String(field.name.to_owned())
         })?;
 
@@ -566,7 +568,6 @@ impl PythonBackend {
         &self,
         out: &mut PythonFileSpec,
         name: &RpName,
-        _: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
         let mut interface_spec = self.as_class(name);
@@ -608,12 +609,9 @@ impl PythonBackend {
                 }
             }
 
-            let decode = self.decode_method(
-                &name,
-                sub_type.pos(),
-                &fields,
-                |_, field| Variable::String(field.ident.to_owned()),
-            )?;
+            let decode = self.decode_method(&name, &fields, |_, field| {
+                Variable::String(field.ident.to_owned())
+            }).with_pos(sub_type.pos())?;
 
             class.push(decode);
 
@@ -660,13 +658,13 @@ impl Converter for PythonBackend {
         stmt![name]
     }
 
-    fn convert_type(&self, pos: &Pos, name: &RpName) -> Result<Name> {
-        self.convert_type_id(pos, name, |v| v.join(TYPE_SEP))
+    fn convert_type(&self, name: &RpName) -> Result<Name> {
+        self.convert_type_id(name, |v| v.join(TYPE_SEP))
     }
 
-    fn convert_constant(&self, pos: &Pos, name: &RpName) -> Result<Name> {
+    fn convert_constant(&self, name: &RpName) -> Result<Name> {
         // TODO: only last part in a constant lookup should be separated with dots.
-        self.convert_type_id(pos, name, |mut v| {
+        self.convert_type_id(name, |mut v| {
             let at = v.len().saturating_sub(2);
             let last = v.split_off(at).join(".");
 

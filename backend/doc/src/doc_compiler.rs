@@ -150,7 +150,7 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
         self.backend.package(package)
     }
 
-    fn default_process(&self, _: &mut Self::Out, name: &RpName, _: &Pos) -> Result<()> {
+    fn default_process(&self, _: &mut Self::Out, name: &RpName) -> Result<()> {
         warn!("Cannot handle: `{:?}", name);
         Ok(())
     }
@@ -165,49 +165,34 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        pos: &Pos,
         body: Rc<RpServiceBody>,
     ) -> Result<()> {
-        self.backend.process_service(out, name, pos, body)
+        self.backend.process_service(out, name, body)
     }
 
-    fn process_enum(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        pos: &Pos,
-        body: Rc<RpEnumBody>,
-    ) -> Result<()> {
-        self.backend.process_enum(out, name, pos, body)
+    fn process_enum(&self, out: &mut Self::Out, name: &RpName, body: Rc<RpEnumBody>) -> Result<()> {
+        self.backend.process_enum(out, name, body)
     }
 
     fn process_interface(
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        pos: &Pos,
         body: Rc<RpInterfaceBody>,
     ) -> Result<()> {
-        self.backend.process_interface(out, name, pos, body)
+        self.backend.process_interface(out, name, body)
     }
 
-    fn process_type(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        pos: &Pos,
-        body: Rc<RpTypeBody>,
-    ) -> Result<()> {
-        self.backend.process_type(out, name, pos, body)
+    fn process_type(&self, out: &mut Self::Out, name: &RpName, body: Rc<RpTypeBody>) -> Result<()> {
+        self.backend.process_type(out, name, body)
     }
 
     fn process_tuple(
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        pos: &Pos,
         body: Rc<RpTupleBody>,
     ) -> Result<()> {
-        self.backend.process_tuple(out, name, pos, body)
+        self.backend.process_tuple(out, name, body)
     }
 }
