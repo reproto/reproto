@@ -48,18 +48,20 @@ Make you have [gotten started with Rust][rust-get-started].
 Build ReProto using cargo:
 
 ```bash
-$> cargo build
+$> cargo install --path $PWD/cli reproto
 ```
 
-This will install the command into `~/.cargo/bin`, make sure it is in your `$PATH`.
+This will install `reproto` into `~/.cargo/bin`, make sure it is in your PATH.
 
-Build documentation:
+The following is an example of how to build documentation for a package.
 
 ```bash
-$> target/debug/reproto compile doc -o target/doc --path it/test-service/proto \
+$> reproto compile doc -o target/doc \
+  --path it/test-service/proto \
   --package test \
   --package service@1.0.0 \
   --package service@2.0.0
+
 $> open target/doc/index.html
 ```
 
