@@ -38,6 +38,7 @@ use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 use std::result;
+use std::slice;
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
@@ -96,17 +97,31 @@ pub enum RpDecl {
     Service(Rc<RpServiceBody>),
 }
 
+pub struct DeclIter<'a> {
+    iter: slice::Iter<'a, Rc<Loc<RpDecl>>>,
+}
+
+impl<'a> Iterator for DeclIter<'a> {
+    type Item = &'a Rc<Loc<RpDecl>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
 impl RpDecl {
-    pub fn decls(&self) -> Vec<&Rc<Loc<RpDecl>>> {
+    pub fn decls(&self) -> DeclIter {
         use self::RpDecl::*;
 
-        match *self {
-            Type(ref body) => body.decls.iter().collect(),
-            Interface(ref body) => body.decls.iter().collect(),
-            Enum(ref body) => body.decls.iter().collect(),
-            Tuple(ref body) => body.decls.iter().collect(),
-            Service(_) => vec![],
-        }
+        let iter = match *self {
+            Type(ref body) => body.decls.iter(),
+            Interface(ref body) => body.decls.iter(),
+            Enum(ref body) => body.decls.iter(),
+            Tuple(ref body) => body.decls.iter(),
+            Service(ref body) => body.decls.iter(),
+        };
+
+        DeclIter { iter: iter }
     }
 
     pub fn name(&self) -> &str {
@@ -204,7 +219,7 @@ impl RpDecl {
             }
         }
 
-        for d in &self.decls() {
+        for d in self.decls() {
             let (d, pos) = d.as_ref_pair();
 
             out.extend(d.into_registered_type(
@@ -957,6 +972,7 @@ pub struct RpServiceBody {
     pub name: String,
     pub comment: Vec<String>,
     pub endpoints: Vec<RpServiceEndpoint>,
+    pub decls: Vec<Rc<Loc<RpDecl>>>,
 }
 
 impl Merge for RpServiceBody {

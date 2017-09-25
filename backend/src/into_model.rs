@@ -606,6 +606,7 @@ impl<'input> IntoModel for ServiceBody<'input> {
             name: self.name.to_owned(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             endpoints: endpoints,
+            decls: vec![],
         };
 
         return Ok(Rc::new(service_body));

@@ -198,13 +198,12 @@ impl Environment {
         Ok((reg_instance, known))
     }
 
-    /// Lookup the declaration matching the custom type.
-    pub fn lookup<'a>(&'a self, name: &'a RpName) -> Result<&'a RpRegistered> {
-        let key = name.clone().without_prefix().with_package(
-            self.package_prefix(
-                &name.package,
-            ),
-        );
+    /// Lookup the declaration matching the given name.
+    ///
+    /// Returns the registered reference, if present.
+    pub fn lookup<'a>(&'a self, name: &RpName) -> Result<&'a RpRegistered> {
+        let package = self.package_prefix(&name.package);
+        let key = name.clone().without_prefix().with_package(package);
 
         if let Some(registered) = self.types.get(&key) {
             return Ok(registered);
@@ -213,7 +212,8 @@ impl Environment {
         return Err(format!("no such type: {}", name).into());
     }
 
-    /// Load the provided Object into a `RpFile`.
+    /// Load the provided Object into a `RpFile` and identify which package and version it belongs
+    /// to.
     pub fn load_object<O: Into<Box<Object>>>(
         &mut self,
         object: O,
@@ -235,20 +235,19 @@ impl Environment {
         Ok(Some((package, file)))
     }
 
-    /// Process use declarations.
+    /// Process use declarations found at the top of each object.
     pub fn process_uses(
         &mut self,
         uses: &[Loc<UseDecl>],
     ) -> Result<HashMap<String, RpVersionedPackage>> {
-        use std::collections::hash_map::Entry::*;
+        use std::collections::hash_map::Entry;
 
         let mut prefixes = HashMap::new();
 
         for use_decl in uses {
-            let version_req = use_decl.version_req.as_ref().map(Loc::value).map(
-                Clone::clone,
-            );
-            let required = RpRequiredPackage::new(use_decl.package.value().clone(), version_req);
+            let package = use_decl.package.value().clone();
+            let version_req = use_decl.version_req.as_ref().map(Loc::value).cloned();
+            let required = RpRequiredPackage::new(package, version_req);
 
             let use_package = self.import(&required)?;
 
@@ -259,8 +258,10 @@ impl Environment {
                     let alias = use_decl.alias.as_ref().map(|v| **v).unwrap_or(used);
 
                     match prefixes.entry(alias.to_owned()) {
-                        Vacant(entry) => entry.insert(use_package.clone()),
-                        Occupied(_) => return Err(format!("alias {} already in use", alias).into()),
+                        Entry::Vacant(entry) => entry.insert(use_package.clone()),
+                        Entry::Occupied(_) => {
+                            return Err(format!("alias {} already in use", alias).into())
+                        }
                     };
                 }
 
@@ -274,7 +275,7 @@ impl Environment {
         Ok(prefixes)
     }
 
-    /// Apply package prefix
+    /// Apply global package prefix.
     fn package_prefix(&self, package: &RpVersionedPackage) -> RpVersionedPackage {
         self.package_prefix
             .as_ref()
@@ -282,32 +283,31 @@ impl Environment {
             .unwrap_or_else(|| package.clone())
     }
 
-    pub fn for_each_toplevel_decl<F>(&self, mut f: F) -> Result<()>
+    /// Iterate over top level declarations of all registered objects.
+    pub fn for_each_toplevel_decl<O>(&self, mut op: O) -> Result<()>
     where
-        F: FnMut(Rc<RpName>, Rc<Loc<RpDecl>>) -> Result<()>,
+        O: FnMut(Rc<RpName>, Rc<Loc<RpDecl>>) -> Result<()>,
     {
         for (name, decl) in &self.decls {
-            f(Rc::new(name.clone()), decl.clone())?;
+            op(Rc::new(name.clone()), decl.clone()).with_pos(decl.pos())?;
         }
 
         Ok(())
     }
 
-    /// Walks the entire tree of declarations and emits them to the provided function.
-    pub fn for_each_decl<F>(&self, mut f: F) -> Result<()>
+    /// Walks the entire tree of declarations recursively of all registered objects.
+    pub fn for_each_decl<O>(&self, mut op: O) -> Result<()>
     where
-        F: FnMut(Rc<RpName>, Rc<Loc<RpDecl>>) -> Result<()>,
+        O: FnMut(Rc<RpName>, Rc<Loc<RpDecl>>) -> Result<()>,
     {
         let mut queue = LinkedList::new();
+
         queue.extend(self.decls.iter().map(
             |(k, v)| (Rc::new(k.clone()), v.clone()),
         ));
 
-        while let Some(next) = queue.pop_front() {
-            let (name, decl) = next;
-            f(name.clone(), decl.clone()).map_err(
-                |e| e.with_pos(decl.pos()),
-            )?;
+        while let Some((name, decl)) = queue.pop_front() {
+            op(name.clone(), decl.clone()).with_pos(decl.pos())?;
 
             for d in decl.decls() {
                 let name = Rc::new(name.extend(d.name().to_owned()));
@@ -318,9 +318,9 @@ impl Environment {
         Ok(())
     }
 
-    /// Process and merge declarations.
+    /// Process, register, and merge declarations.
     ///
-    /// Declarations are considered the same if they have the same name.
+    /// Declarations are considered the same if they have the same qualified name.
     /// The same declarations are merged using `Merge`.
     pub fn process_decls<I>(
         &self,
@@ -350,21 +350,34 @@ impl Environment {
         Ok(decls)
     }
 
-    pub fn process_types(
+    /// Process all declarations and convert into a global collection of registered types.
+    pub fn process_types<'a, I>(
         &mut self,
         package: &RpVersionedPackage,
-        decls: &LinkedHashMap<RpName, Rc<Loc<RpDecl>>>,
-    ) -> Result<LinkedHashMap<RpName, Loc<RpRegistered>>> {
+        decls: I,
+    ) -> Result<LinkedHashMap<RpName, Loc<RpRegistered>>>
+    where
+        I: IntoIterator<Item = &'a Rc<Loc<RpDecl>>>,
+    {
+        use linked_hash_map::Entry;
+
         let mut types = LinkedHashMap::new();
 
-        for d in decls.values() {
+        for d in decls {
             let name = RpName::new(None, package.clone(), vec![d.name().to_owned()]);
 
             for (key, t) in d.into_registered_type(&name, d.pos()) {
                 let key = key.clone().without_prefix();
 
-                if types.insert(key.clone(), t).is_some() {
-                    return Err(ErrorKind::RegisteredTypeConflict(key).into());
+                match types.entry(key) {
+                    Entry::Occupied(entry) => {
+                        return Err(
+                            ErrorKind::RegisteredTypeConflict(entry.key().clone()).into(),
+                        );
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(t);
+                    }
                 }
             }
         }
@@ -375,7 +388,7 @@ impl Environment {
     pub fn process_file(&mut self, package: &RpVersionedPackage, file: RpFile) -> Result<()> {
         let package = self.package_prefix(package);
         let decls = self.process_decls(&package, file.decls)?;
-        let types = self.process_types(&package, &decls)?;
+        let types = self.process_types(&package, decls.values())?;
         self.decls.extend(decls);
         self.types.extend(types);
         Ok(())
@@ -398,6 +411,7 @@ impl Environment {
         Ok(None)
     }
 
+    /// Import a package based on a package and version criteria.
     pub fn import(&mut self, required: &RpRequiredPackage) -> Result<Option<RpVersionedPackage>> {
         debug!("import: {}", required);
 
@@ -406,9 +420,10 @@ impl Environment {
             return Ok(existing.as_ref().cloned());
         }
 
-        let files = self.resolver.resolve(required)?;
+        let mut candidates = BTreeMap::new();
 
-        let mut candidates: BTreeMap<RpVersionedPackage, Vec<_>> = BTreeMap::new();
+        // find all matching objects from the resolver.
+        let files = self.resolver.resolve(required)?;
 
         if let Some((version, object)) = files.into_iter().last() {
             debug!("loading: {}", object);
@@ -438,12 +453,11 @@ impl Environment {
         Ok(result)
     }
 
+    /// Verify all declarations.
     pub fn verify(&mut self) -> Result<()> {
-        for (_, ref ty) in &self.decls {
-            match ****ty {
-                RpDecl::Type(ref ty) => {
-                    ty.verify()?;
-                }
+        for d in self.decls.values() {
+            match ***d {
+                RpDecl::Type(ref ty) => ty.verify()?,
                 _ => {}
             }
         }
