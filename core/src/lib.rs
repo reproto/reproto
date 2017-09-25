@@ -474,11 +474,19 @@ impl RpName {
         self.parts.join(joiner.as_ref())
     }
 
-    pub fn without_prefix(&self) -> RpName {
+    pub fn without_prefix(self) -> RpName {
         RpName {
             prefix: None,
-            package: self.package.clone(),
-            parts: self.parts.clone(),
+            package: self.package,
+            parts: self.parts,
+        }
+    }
+
+    pub fn with_package(self, package: RpVersionedPackage) -> RpName {
+        RpName {
+            prefix: self.prefix,
+            package: package,
+            parts: self.parts,
         }
     }
 }

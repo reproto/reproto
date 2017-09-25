@@ -200,7 +200,11 @@ impl Environment {
 
     /// Lookup the declaration matching the custom type.
     pub fn lookup<'a>(&'a self, name: &'a RpName) -> Result<&'a RpRegistered> {
-        let key = name.without_prefix();
+        let key = name.clone().without_prefix().with_package(
+            self.package_prefix(
+                &name.package,
+            ),
+        );
 
         if let Some(registered) = self.types.get(&key) {
             return Ok(registered);
@@ -357,8 +361,10 @@ impl Environment {
             let name = RpName::new(None, package.clone(), vec![d.name().to_owned()]);
 
             for (key, t) in d.into_registered_type(&name, d.pos()) {
-                if types.insert(key.without_prefix(), t).is_some() {
-                    return Err(ErrorKind::RegisteredTypeConflict(key.clone()).into());
+                let key = key.clone().without_prefix();
+
+                if types.insert(key.clone(), t).is_some() {
+                    return Err(ErrorKind::RegisteredTypeConflict(key).into());
                 }
             }
         }
