@@ -202,8 +202,7 @@ impl Environment {
     ///
     /// Returns the registered reference, if present.
     pub fn lookup<'a>(&'a self, name: &RpName) -> Result<&'a RpRegistered> {
-        let package = self.package_prefix(&name.package);
-        let key = name.clone().without_prefix().with_package(package);
+        let key = name.clone().without_prefix();
 
         if let Some(registered) = self.types.get(&key) {
             return Ok(registered);
@@ -228,11 +227,18 @@ impl Environment {
         let file = parser::parse_string(object, content.as_str())?;
 
         let prefixes = self.process_uses(&file.uses)?;
-        let scope = Scope::new(package.clone(), prefixes);
-
+        let scope = Scope::new(self.package_prefix.clone(), package.clone(), prefixes);
         let file = file.into_model(&scope)?;
 
         Ok(Some((package, file)))
+    }
+
+    /// Apply global package prefix.
+    fn package_prefix(&self, package: &RpVersionedPackage) -> RpVersionedPackage {
+        self.package_prefix
+            .as_ref()
+            .map(|prefix| prefix.join_versioned(package))
+            .unwrap_or_else(|| package.clone())
     }
 
     /// Process use declarations found at the top of each object.
@@ -273,14 +279,6 @@ impl Environment {
         }
 
         Ok(prefixes)
-    }
-
-    /// Apply global package prefix.
-    fn package_prefix(&self, package: &RpVersionedPackage) -> RpVersionedPackage {
-        self.package_prefix
-            .as_ref()
-            .map(|prefix| prefix.join_versioned(package))
-            .unwrap_or_else(|| package.clone())
     }
 
     /// Iterate over top level declarations of all registered objects.
@@ -332,6 +330,8 @@ impl Environment {
     {
         use linked_hash_map::Entry::*;
 
+        let package = self.package_prefix(package);
+
         let mut decls = LinkedHashMap::new();
 
         for decl in input {
@@ -351,22 +351,19 @@ impl Environment {
     }
 
     /// Process all declarations and convert into a global collection of registered types.
-    pub fn process_types<'a, I>(
+    pub fn process_types<'a, I: 'a>(
         &mut self,
-        package: &RpVersionedPackage,
         decls: I,
     ) -> Result<LinkedHashMap<RpName, Loc<RpRegistered>>>
     where
-        I: IntoIterator<Item = &'a Rc<Loc<RpDecl>>>,
+        I: IntoIterator<Item = (&'a RpName, &'a Rc<Loc<RpDecl>>)>,
     {
         use linked_hash_map::Entry;
 
         let mut types = LinkedHashMap::new();
 
-        for d in decls {
-            let name = RpName::new(None, package.clone(), vec![d.name().to_owned()]);
-
-            for (key, t) in d.into_registered_type(&name, d.pos()) {
+        for (name, d) in decls {
+            for (key, t) in d.into_registered_type(name, d.pos()) {
                 let key = key.clone().without_prefix();
 
                 match types.entry(key) {
@@ -386,9 +383,8 @@ impl Environment {
     }
 
     pub fn process_file(&mut self, package: &RpVersionedPackage, file: RpFile) -> Result<()> {
-        let package = self.package_prefix(package);
         let decls = self.process_decls(&package, file.decls)?;
-        let types = self.process_types(&package, decls.values())?;
+        let types = self.process_types(decls.iter())?;
         self.decls.extend(decls);
         self.types.extend(types);
         Ok(())

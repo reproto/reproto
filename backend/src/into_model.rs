@@ -335,7 +335,7 @@ impl IntoModel for Name {
 
                 RpName {
                     prefix: None,
-                    package: scope.package().clone(),
+                    package: scope.package(),
                     parts: all_parts,
                 }
             }
@@ -347,7 +347,7 @@ impl IntoModel for Name {
                         return Err(ErrorKind::MissingPrefix(prefix.clone()).into());
                     }
                 } else {
-                    scope.package().clone()
+                    scope.package()
                 };
 
                 RpName {

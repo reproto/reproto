@@ -151,7 +151,7 @@ impl RpDecl {
     /// Convert a declaration into its registered types.
     pub fn into_registered_type(
         &self,
-        type_id: &RpName,
+        type_name: &RpName,
         pos: &Pos,
     ) -> Vec<(RpName, Loc<RpRegistered>)> {
         use self::RpDecl::*;
@@ -161,13 +161,13 @@ impl RpDecl {
         match *self {
             Type(ref ty) => {
                 let token = Loc::new(RpRegistered::Type(ty.clone()), pos.clone());
-                out.push((type_id.clone(), token));
+                out.push((type_name.clone(), token));
             }
             Interface(ref interface) => {
                 let token = Loc::new(RpRegistered::Interface(interface.clone()), pos.clone());
 
                 for (name, sub_type) in &interface.sub_types {
-                    let type_id = type_id.extend(name.to_owned());
+                    let type_name = type_name.extend(name.to_owned());
 
                     let token = Loc::new(
                         RpRegistered::SubType {
@@ -177,19 +177,19 @@ impl RpDecl {
                         pos.clone(),
                     );
 
-                    out.push((type_id.clone(), token));
+                    out.push((type_name.clone(), token));
 
                     for d in &sub_type.decls {
                         let (d, pos) = d.as_ref_pair();
 
                         out.extend(d.into_registered_type(
-                            &type_id.extend(d.name().to_owned()),
+                            &type_name.extend(d.name().to_owned()),
                             pos,
                         ));
                     }
                 }
 
-                out.push((type_id.clone(), token));
+                out.push((type_name.clone(), token));
             }
             Enum(ref en) => {
                 let token = Loc::new(RpRegistered::Enum(en.clone()), pos.clone());
@@ -203,19 +203,19 @@ impl RpDecl {
                         pos.clone(),
                     );
 
-                    let type_id = type_id.extend(variant.value().name.value().to_owned());
-                    out.push((type_id, token));
+                    let type_name = type_name.extend(variant.value().name.value().to_owned());
+                    out.push((type_name, token));
                 }
 
-                out.push((type_id.clone(), token));
+                out.push((type_name.clone(), token));
             }
             Tuple(ref tuple) => {
                 let token = Loc::new(RpRegistered::Tuple(tuple.clone()), pos.clone());
-                out.push((type_id.clone(), token));
+                out.push((type_name.clone(), token));
             }
             Service(ref service) => {
                 let token = Loc::new(RpRegistered::Service(service.clone()), pos.clone());
-                out.push((type_id.clone(), token));
+                out.push((type_name.clone(), token));
             }
         }
 
@@ -223,7 +223,7 @@ impl RpDecl {
             let (d, pos) = d.as_ref_pair();
 
             out.extend(d.into_registered_type(
-                &type_id.extend(d.name().to_owned()),
+                &type_name.extend(d.name().to_owned()),
                 pos,
             ));
         }
@@ -511,7 +511,7 @@ impl fmt::Display for RpName {
         if let Some(ref prefix) = self.prefix {
             write!(f, "{}::{}", prefix, self.parts.join("::"))
         } else {
-            write!(f, "[{}]::{}", self.package, self.parts.join("::"))
+            write!(f, "{}", self.parts.join("::"))
         }
     }
 }
