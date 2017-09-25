@@ -106,7 +106,7 @@ where
         let object = ctx.object;
         let expected = ctx.expected;
 
-        match (object.as_ref(), expected) {
+        match (object.value(), expected) {
             (&RpObject::Constant(ref constant), Some(&RpType::Name { ref name })) => {
                 let reg_constant = self.env().constant(object.pos(), constant, name)?;
 
@@ -115,7 +115,7 @@ where
                         parent: _,
                         variant: _,
                     } => {
-                        let ty = self.convert_constant(constant.as_ref())?;
+                        let ty = self.convert_constant(constant.value())?;
                         return self.constant(ty);
                     }
                     _ => {
@@ -179,7 +179,7 @@ where
         let value = ctx.value;
         let expected = ctx.expected;
 
-        match (value.as_ref(), expected) {
+        match (value.value(), expected) {
             (&RpValue::String(ref string), Some(&RpType::String)) |
             (&RpValue::String(ref string), None) => {
                 return self.string(string);

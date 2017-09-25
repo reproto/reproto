@@ -22,7 +22,7 @@ where
         F: FnMut(Self::Item) -> result::Result<(), E>,
     {
         for item in self {
-            callback(item.as_ref()).map_err(|e| e.with_pos(item.pos()))?;
+            callback(item.value()).map_err(|e| e.with_pos(item.pos()))?;
         }
 
         Ok(())

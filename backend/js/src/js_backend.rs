@@ -51,7 +51,7 @@ impl JsBackend {
     ) -> Option<(usize, &JsField<'b>)> {
         for (i, field) in fields.iter().enumerate() {
             if field.name == name {
-                return Some((i, field.as_ref()));
+                return Some((i, field.value()));
             }
         }
 
@@ -202,7 +202,7 @@ impl JsBackend {
             let var_name = format!("v_{}", field.ident.clone());
             let var = variable_fn(i, field);
 
-            let stmt = field.and_then(|field| match *field.modifier {
+            let stmt = field.as_ref().and_then(|field| match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = var_name.clone().into();
                     let var_stmt = self.dynamic_decode(type_id, &field.ty, &var_name)?;
@@ -313,7 +313,7 @@ impl JsBackend {
         if let Some(ref s) = body.serialized_as {
             let mut elements = Elements::new();
 
-            if let Some((_, ref field)) = self.find_field(fields, s.as_ref()) {
+            if let Some((_, ref field)) = self.find_field(fields, s.value()) {
                 elements.push(self.encode_enum_method(&field.name)?);
                 let decode = self.decode_enum_method(&class, &field.name)?;
                 elements.push(decode);
@@ -367,7 +367,7 @@ impl JsBackend {
     {
         let ident = self.field_ident(&field);
 
-        field.map(|f| {
+        field.as_ref().map(|f| {
             js_field_f(JsField {
                 modifier: &f.modifier,
                 ty: &f.ty,

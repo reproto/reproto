@@ -5,7 +5,8 @@ use errors::*;
 use linked_hash_map::LinkedHashMap;
 use reproto_core::object::{Object, PathObject};
 use reproto_parser as parser;
-use reproto_parser::ast::{IntoModel, UseDecl};
+use reproto_parser::ast::UseDecl;
+use reproto_parser::into_model::IntoModel;
 use reproto_parser::scope::Scope;
 use reproto_repository::Resolver;
 use std::collections::{BTreeMap, HashMap, LinkedList};
@@ -240,10 +241,10 @@ impl Environment {
         let mut prefixes = HashMap::new();
 
         for use_decl in uses {
-            let version_req = use_decl.version_req.as_ref().map(AsRef::as_ref).map(
+            let version_req = use_decl.version_req.as_ref().map(Loc::value).map(
                 Clone::clone,
             );
-            let required = RpRequiredPackage::new(use_decl.package.as_ref().clone(), version_req);
+            let required = RpRequiredPackage::new(use_decl.package.value().clone(), version_req);
 
             let use_package = self.import(&required)?;
 

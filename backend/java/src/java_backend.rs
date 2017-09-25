@@ -586,7 +586,7 @@ impl JavaBackend {
         let mut to_value: Option<MethodSpec> = None;
 
         if let Some(ref s) = body.serialized_as {
-            if let Some(field) = self.find_field(&fields, s.as_ref()) {
+            if let Some(field) = self.find_field(&fields, s.value()) {
                 from_value = Some(self.enum_from_value_method(&field, &class_type)?);
                 to_value = Some(self.enum_to_value_method(&field)?);
             } else {

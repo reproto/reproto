@@ -396,7 +396,7 @@ impl Listeners for Module {
 
             for (key, sub_type) in &event.interface.sub_types {
                 for name in &sub_type.names {
-                    let name: String = name.as_ref().to_owned();
+                    let name = name.value().to_owned();
 
                     let mut type_args = Statement::new();
 

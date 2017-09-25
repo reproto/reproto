@@ -30,6 +30,10 @@ impl<T> Loc<T> {
         }
     }
 
+    pub fn value(&self) -> &T {
+        &self.inner
+    }
+
     pub fn pos(&self) -> &Pos {
         &self.pos
     }
@@ -42,22 +46,26 @@ impl<T> Loc<T> {
         (self.inner, self.pos)
     }
 
-    pub fn as_ref_pair(&self) -> (&T, &Pos) {
+    pub fn as_ref_pair<'a>(&'a self) -> (&'a T, &'a Pos) {
         (&self.inner, &self.pos)
     }
 
-    pub fn map<'a, U: 'a, O>(&'a self, op: O) -> Loc<U>
+    pub fn map<U, O>(self, op: O) -> Loc<U>
     where
-        O: FnOnce(&'a T) -> U,
+        O: FnOnce(T) -> U,
     {
-        Loc::new(op(&self.inner), self.pos.clone())
+        Loc::new(op(self.inner), self.pos.clone())
     }
 
-    pub fn and_then<'a, U: 'a, O, E: WithPos>(&'a self, op: O) -> result::Result<U, E>
+    pub fn and_then<U, O, E: WithPos>(self, op: O) -> result::Result<U, E>
     where
-        O: FnOnce(&'a T) -> result::Result<U, E>,
+        O: FnOnce(T) -> result::Result<U, E>,
     {
-        op(&self.inner).with_pos(&self.pos)
+        op(self.inner).with_pos(&self.pos)
+    }
+
+    pub fn as_ref<'a>(&'a self) -> Loc<&'a T> {
+        Loc::new(&self.inner, self.pos.clone())
     }
 }
 
@@ -121,18 +129,6 @@ impl<T> ::std::ops::Deref for Loc<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        &self.inner
-    }
-}
-
-impl<T> ::std::borrow::Borrow<T> for Loc<T> {
-    fn borrow(&self) -> &T {
-        &self.inner
-    }
-}
-
-impl<T> ::std::convert::AsRef<T> for Loc<T> {
-    fn as_ref(&self) -> &T {
         &self.inner
     }
 }

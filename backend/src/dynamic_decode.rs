@@ -83,7 +83,7 @@ where
 
         for (_, ref sub_type) in &body.sub_types {
             for sub_type_name in &sub_type.names {
-                let name = name.extend(sub_type_name.as_ref().clone());
+                let name = name.extend(sub_type_name.value().clone());
 
                 let type_name = self.convert_type(&name).map_err(|e| {
                     ErrorKind::Pos(format!("{}", e), sub_type.pos().into())

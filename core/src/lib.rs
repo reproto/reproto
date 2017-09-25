@@ -157,7 +157,7 @@ impl RpDecl {
                     let token = Loc::new(
                         RpRegistered::SubType {
                             parent: interface.clone(),
-                            sub_type: sub_type.as_ref().clone(),
+                            sub_type: sub_type.value().clone(),
                         },
                         pos.clone(),
                     );
@@ -183,12 +183,12 @@ impl RpDecl {
                     let token = Loc::new(
                         RpRegistered::EnumConstant {
                             parent: en.clone(),
-                            variant: variant.as_ref().clone(),
+                            variant: variant.value().clone(),
                         },
                         pos.clone(),
                     );
 
-                    let type_id = type_id.extend(variant.as_ref().name.as_ref().to_owned());
+                    let type_id = type_id.extend(variant.value().name.value().to_owned());
                     out.push((type_id, token));
                 }
 
@@ -370,9 +370,7 @@ impl RpField {
     }
 
     pub fn name(&self) -> &str {
-        self.field_as.as_ref().map(AsRef::as_ref).unwrap_or(
-            &self.name,
-        )
+        self.field_as.as_ref().map(Loc::value).unwrap_or(&self.name)
     }
 
     pub fn display(&self) -> String {
@@ -716,15 +714,15 @@ pub enum RpPathSegment {
 impl RpPathSegment {
     pub fn path(&self) -> String {
         match *self {
-            RpPathSegment::Literal { ref value } => value.as_ref().to_owned(),
-            RpPathSegment::Variable { ref name, .. } => format!("{{{}}}", name.as_ref()),
+            RpPathSegment::Literal { ref value } => value.value().to_owned(),
+            RpPathSegment::Variable { ref name, .. } => format!("{{{}}}", name.value()),
         }
     }
 
     pub fn id(&self) -> &str {
         match *self {
-            RpPathSegment::Literal { ref value } => value.as_ref().as_ref(),
-            RpPathSegment::Variable { ref name, .. } => name.as_ref().as_ref(),
+            RpPathSegment::Literal { ref value } => value.value().as_str(),
+            RpPathSegment::Variable { ref name, .. } => name.value().as_str(),
         }
     }
 }
@@ -980,7 +978,7 @@ impl RpServiceEndpoint {
         let mut parts = Vec::new();
 
         if let Some(ref method) = self.method {
-            parts.push(filter(method.as_ref().as_ref()));
+            parts.push(filter(method.value().as_str()));
         }
 
         parts.extend(self.path.id_fragments().into_iter().map(filter));
@@ -988,7 +986,7 @@ impl RpServiceEndpoint {
     }
 
     pub fn method(&self) -> Option<&str> {
-        self.method.as_ref().map(|v| v.as_ref().as_ref())
+        self.method.as_ref().map(|v| v.value().as_str())
     }
 }
 
@@ -1015,7 +1013,7 @@ impl RpSubType {
     pub fn name(&self) -> &str {
         self.names
             .iter()
-            .map(|t| t.as_ref().as_str())
+            .map(|t| t.value().as_str())
             .nth(0)
             .unwrap_or(&self.name)
     }
@@ -1071,7 +1069,7 @@ pub struct RpTypeBody {
 impl RpTypeBody {
     pub fn verify(&self) -> Result<()> {
         for reserved in &self.reserved {
-            if let Some(field) = self.fields.iter().find(|f| f.name() == reserved.as_ref()) {
+            if let Some(field) = self.fields.iter().find(|f| f.name() == reserved.value()) {
                 return Err(
                     ErrorKind::ReservedField(field.pos().into(), reserved.pos().into()).into(),
                 );

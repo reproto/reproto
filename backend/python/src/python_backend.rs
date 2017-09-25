@@ -53,7 +53,7 @@ impl PythonBackend {
     ) -> Option<(usize, &Field<'a>)> {
         for (i, field) in fields.iter().enumerate() {
             if field.name == name {
-                return Some((i, field.as_ref()));
+                return Some((i, field.value()));
             }
         }
 
@@ -90,13 +90,11 @@ impl PythonBackend {
 
         extra(&mut encode_body);
 
-        for field in fields {
+        fields.for_each_loc(|field| {
             let var_string = Variable::String(field.name.to_owned());
             let field_stmt = stmt!["self.", &field.ident];
 
-            let value_stmt = self.dynamic_encode(name, &field.ty, &field_stmt).with_pos(
-                field.pos(),
-            )?;
+            let value_stmt = self.dynamic_encode(name, &field.ty, &field_stmt)?;
 
             match *field.modifier {
                 RpModifier::Optional => {
@@ -118,7 +116,9 @@ impl PythonBackend {
                     encode_body.push(stmt);
                 }
             }
-        }
+
+            Ok(()) as Result<()>
+        })?;
 
         encode_body.push(stmt!["return data"]);
 
@@ -415,7 +415,7 @@ impl PythonBackend {
     {
         let ident = self.field_ident(field);
 
-        field.map(|f| {
+        field.as_ref().map(|f| {
             python_field_f(Field {
                 modifier: &f.modifier,
                 ty: &f.ty,
@@ -505,7 +505,7 @@ impl PythonBackend {
         }
 
         if let Some(ref s) = body.serialized_as {
-            if let Some((_, ref field)) = self.find_field(&fields, s.as_ref()) {
+            if let Some((_, ref field)) = self.find_field(&fields, s.value()) {
                 class.push(self.encode_enum_method(field)?);
                 class.push(self.decode_enum_method(field)?);
             } else {
@@ -797,7 +797,7 @@ impl DynamicDecode for PythonBackend {
             "if ",
             type_var,
             " == ",
-            Variable::String(name.as_ref().to_owned()),
+            Variable::String(name.value().to_owned()),
             ":",
         ]);
         check.push_nested(stmt!["return ", type_name, ".decode(data)"]);
