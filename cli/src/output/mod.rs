@@ -151,6 +151,19 @@ pub trait Output {
 
                 true
             }
+            FieldConflict(ref name, ref source, ref target) => {
+                self.print_error(
+                    &format!("conflict in field `{}`", name),
+                    source,
+                )?;
+                self.print_error("previous declaration here", target)?;
+                true
+            }
+            EnumVariantConflict(ref pos, ref other) => {
+                self.print_error("conflicting name", pos)?;
+                self.print_error("previous name here", other)?;
+                true
+            }
             _ => false,
         };
 
@@ -185,19 +198,6 @@ pub trait Output {
             }
             Parse(ref message, ref pos) => {
                 self.print_error(message, pos)?;
-                true
-            }
-            FieldConflict(ref name, ref source, ref target) => {
-                self.print_error(
-                    &format!("conflict in field `{}`", name),
-                    source,
-                )?;
-                self.print_error("previous declaration here", target)?;
-                true
-            }
-            EnumVariantConflict(ref pos, ref other) => {
-                self.print_error("conflicting name", pos)?;
-                self.print_error("previous name here", other)?;
                 true
             }
             _ => false,

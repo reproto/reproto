@@ -15,10 +15,11 @@ error_chain! {
     }
 
     foreign_links {
-        BorrowMutError(::std::cell::BorrowMutError);
         Io(::std::io::Error);
         Fmt(::std::fmt::Error);
         Json(json::Error);
+        BorrowMutError(::std::cell::BorrowMutError);
+        BorrowError(::std::cell::BorrowError);
     }
 
     errors {
@@ -43,6 +44,23 @@ error_chain! {
         RegisteredTypeConflict(name: RpName) {
             description("registered type conflict")
             display("registered type conflict with: {}", name)
+        }
+
+        MissingPrefix(prefix: String) {
+            description("missing prefix")
+            display("missing prefix: {}", prefix)
+        }
+
+        Overflow(pos: ErrorPos) {
+        }
+
+        EnumVariantConflict(pos: ErrorPos, other: ErrorPos) {
+            description("enum value conflict")
+        }
+
+        FieldConflict(message: String, source: ErrorPos, target: ErrorPos) {
+            description("field conflict")
+            display("{}", message)
         }
     }
 }

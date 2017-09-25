@@ -10,7 +10,6 @@ documentation = "https://docs.rs/reproto-parser"
 description = """
 ReProto Parser
 """
-build = "build.rs"
 
 [features]
 # Enable to emit very detailed tracing, potentially performance sensitive.

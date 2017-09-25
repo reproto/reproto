@@ -10,8 +10,6 @@ mod lexer;
 mod utils;
 pub mod ast;
 pub mod errors;
-pub mod into_model;
-pub mod scope;
 #[allow(unused)]
 mod parser;
 mod token;

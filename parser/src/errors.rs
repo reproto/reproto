@@ -12,8 +12,6 @@ error_chain! {
         ParseInt(::std::num::ParseIntError);
         ParseFloat(::std::num::ParseFloatError);
         ParseBigIntError(::num::bigint::ParseBigIntError);
-        BorrowMutError(::std::cell::BorrowMutError);
-        BorrowError(::std::cell::BorrowError);
     }
 
     errors {
@@ -27,15 +25,6 @@ error_chain! {
             display("{}: {}", file.display(), message)
         }
 
-        FieldConflict(message: String, source: ErrorPos, target: ErrorPos) {
-            description("field conflict")
-            display("{}", message)
-        }
-
-        EnumVariantConflict(pos: ErrorPos, other: ErrorPos) {
-            description("enum value conflict")
-        }
-
         Syntax(pos: Option<ErrorPos>, expected: Vec<String>) {
             description("syntax error")
         }
@@ -43,14 +32,6 @@ error_chain! {
         Parse(message: &'static str, pos: ErrorPos) {
             description("parse error")
             display("parse error: {}", message)
-        }
-
-        Overflow(pos: ErrorPos) {
-        }
-
-        MissingPrefix(prefix: String) {
-            description("missing prefix")
-            display("missing prefix: {}", prefix)
         }
     }
 }

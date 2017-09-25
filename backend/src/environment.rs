@@ -1,3 +1,5 @@
+use super::into_model::IntoModel;
+use super::scope::Scope;
 use core::{ErrorPos, Loc, Merge, Pos, RpDecl, RpField, RpFieldInit, RpFile, RpInstance,
            RpModifier, RpName, RpPackage, RpRegistered, RpRequiredPackage, RpType,
            RpVersionedPackage, Version, WithPos};
@@ -6,8 +8,6 @@ use linked_hash_map::LinkedHashMap;
 use reproto_core::object::{Object, PathObject};
 use reproto_parser as parser;
 use reproto_parser::ast::UseDecl;
-use reproto_parser::into_model::IntoModel;
-use reproto_parser::scope::Scope;
 use reproto_repository::Resolver;
 use std::collections::{BTreeMap, HashMap, LinkedList};
 use std::path::Path;

@@ -1,7 +1,7 @@
-pub use super::ast::*;
 use super::errors::*;
 use super::scope::Scope;
 pub use reproto_core::*;
+pub use reproto_parser::ast::*;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::HashMap;

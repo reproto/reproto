@@ -11,6 +11,8 @@ extern crate linked_hash_map;
 extern crate clap;
 extern crate serde_json;
 
+mod into_model;
+mod scope;
 mod base_decode;
 mod base_encode;
 mod collecting;
