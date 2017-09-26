@@ -1,9 +1,9 @@
+use checksum::Checksum;
 use core::{RpPackage, Version, VersionReq};
 use errors::*;
 use index::{Deployment, Index};
 use objects::{FileObjects, Objects};
 use serde_json;
-use sha256::Checksum;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};

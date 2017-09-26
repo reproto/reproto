@@ -1,6 +1,7 @@
 //! ## Load objects through a local git repo
 
-use super::{Checksum, FileObjects, Objects};
+use super::{FileObjects, Objects};
+use checksum::Checksum;
 use core::Object;
 use errors::*;
 use git::GitRepo;

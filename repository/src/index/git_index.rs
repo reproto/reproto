@@ -1,9 +1,9 @@
+use checksum::Checksum;
 use core::{RpPackage, Version, VersionReq};
 use errors::*;
 use git::GitRepo;
 use index::{Deployment, Index, file_index};
 use objects::{FileObjects, GitObjects, Objects};
-use sha256::Checksum;
 use std::path::Path;
 use std::rc::Rc;
 use url::Url;

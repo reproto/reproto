@@ -1,6 +1,7 @@
 //! ## Load objects through a local directory
 
-use super::{Checksum, Objects};
+use super::Objects;
+use checksum::Checksum;
 use core::{Object, PathObject};
 use errors::*;
 use hex_slice::HexSlice;

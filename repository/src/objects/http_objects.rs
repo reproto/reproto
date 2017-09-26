@@ -1,6 +1,7 @@
 //! ## Load objects from a remote repository over HTTP
 
-use super::{Checksum, Objects};
+use super::Objects;
+use checksum::Checksum;
 use core::{BytesObject, Object};
 use errors::*;
 use futures::{Future, Stream};

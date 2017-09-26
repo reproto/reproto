@@ -3,10 +3,10 @@ mod git_index;
 
 pub use self::file_index::init_file_index;
 use self::git_index::GitIndex;
+use checksum::Checksum;
 use core::{RpPackage, Version, VersionReq};
 use git;
 use objects::Objects;
-use sha256::Checksum;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use url::Url;

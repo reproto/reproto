@@ -1,5 +1,7 @@
+//! Deployment metadata
+
+use checksum::Checksum;
 use core::Version;
-use sha256::Checksum;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Deployment {
