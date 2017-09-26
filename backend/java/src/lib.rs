@@ -3,7 +3,7 @@ extern crate log;
 #[macro_use]
 extern crate codeviz_macros;
 extern crate codeviz_java;
-extern crate reproto_backend;
+extern crate reproto_backend as backend;
 
 mod builder;
 mod constructor_properties;
@@ -22,9 +22,9 @@ pub(crate) use self::java_compiler::*;
 pub(crate) use self::java_options::*;
 pub(crate) use self::listeners::*;
 pub(crate) use self::models::*;
+pub(crate) use backend::errors::*;
+pub(crate) use backend::imports::*;
 pub(crate) use codeviz_java::*;
-pub(crate) use reproto_backend::errors::*;
-pub(crate) use reproto_backend::imports::*;
 
 pub const JAVA_CONTEXT: &str = "java";
 

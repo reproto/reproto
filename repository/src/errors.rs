@@ -1,5 +1,6 @@
+
+use core::errors as core;
 use hyper;
-use reproto_core::errors as core;
 use serde_json;
 use std::io;
 use std::time;

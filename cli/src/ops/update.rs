@@ -1,4 +1,4 @@
-use super::*;
+use ops::imports::*;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("update").about("Update local repository");

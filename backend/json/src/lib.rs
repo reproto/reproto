@@ -1,4 +1,4 @@
-extern crate reproto_backend;
+extern crate reproto_backend as backend;
 extern crate serde_json;
 
 mod collector;
@@ -12,8 +12,8 @@ pub(crate) use self::json_backend::*;
 pub(crate) use self::json_compiler::*;
 pub(crate) use self::json_options::*;
 pub(crate) use self::listeners::*;
-pub(crate) use reproto_backend::errors::*;
-pub(crate) use reproto_backend::imports::*;
+pub(crate) use backend::errors::*;
+pub(crate) use backend::imports::*;
 
 pub(crate) const EXT: &str = "json";
 

@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate log;
-extern crate reproto_backend;
+extern crate reproto_backend as backend;
 #[macro_use]
 extern crate codeviz_macros;
 extern crate codeviz_rust;
@@ -16,9 +16,9 @@ pub(crate) use self::rust_backend::*;
 pub(crate) use self::rust_compiler::*;
 pub(crate) use self::rust_file_spec::*;
 pub(crate) use self::rust_options::*;
+pub(crate) use backend::errors::*;
+pub(crate) use backend::imports::*;
 pub(crate) use codeviz_rust::*;
-pub(crate) use reproto_backend::errors::*;
-pub(crate) use reproto_backend::imports::*;
 
 pub(crate) const MOD: &str = "mod";
 pub(crate) const EXT: &str = "rs";

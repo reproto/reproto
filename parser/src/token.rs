@@ -1,4 +1,4 @@
-use reproto_core::{RpNumber, VersionReq};
+use core::{RpNumber, VersionReq};
 
 #[derive(Debug)]
 pub enum Error {

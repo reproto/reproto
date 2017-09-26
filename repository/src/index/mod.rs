@@ -2,10 +2,10 @@ mod file_index;
 mod git_index;
 
 pub use self::file_index::init_file_index;
-use self::git_index::*;
+use self::git_index::GitIndex;
+use core::{RpPackage, Version, VersionReq};
 use git;
 use objects::Objects;
-pub use reproto_core::{RpPackage, Version, VersionReq};
 use sha256::Checksum;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;

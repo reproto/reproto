@@ -1,7 +1,7 @@
 use super::token::*;
+use core::{RpNumber, VersionReq};
 use num::Zero;
 use num::bigint::BigInt;
-use reproto_core::{RpNumber, VersionReq};
 use std::result;
 use std::str::CharIndices;
 
@@ -682,7 +682,7 @@ pub fn lex(input: &str) -> Lexer {
 pub mod tests {
     use super::*;
     use super::Token::*;
-    use reproto_core::VersionReq;
+    use core::VersionReq;
 
     fn tokenize(input: &str) -> Result<Vec<(usize, Token, usize)>> {
         lex(input).collect()

@@ -1,5 +1,5 @@
-use super::*;
-use reproto_repository::init_file_index;
+use super::imports::*;
+use repository::init_file_index;
 
 fn init(matches: &ArgMatches) -> Result<()> {
     for path in matches.values_of("path").into_iter().flat_map(|it| it) {

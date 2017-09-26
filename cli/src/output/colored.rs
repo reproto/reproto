@@ -1,8 +1,8 @@
 use super::{LockableWrite, Output, find_line};
 use ansi_term::Colour::{Blue, Red};
+use core::ErrorPos;
 use errors::*;
 use log;
-use reproto_core::ErrorPos;
 
 pub struct Colored<T> {
     out: T,

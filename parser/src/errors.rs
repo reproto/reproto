@@ -1,5 +1,4 @@
-use reproto_core::ErrorPos;
-use reproto_core::errors as core;
+use core::{ErrorPos, errors as core};
 use std::path::PathBuf;
 
 error_chain! {

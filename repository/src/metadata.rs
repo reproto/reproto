@@ -1,4 +1,4 @@
-use reproto_core::Version;
+use core::Version;
 use sha256::Checksum;
 
 #[derive(Serialize, Deserialize, Debug)]

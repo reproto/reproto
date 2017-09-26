@@ -6,8 +6,8 @@ pub use super::doc_listeners::*;
 pub use super::doc_options::*;
 pub use super::doc_writer::*;
 pub use super::escape::*;
-pub use reproto_backend::errors::*;
-pub use reproto_backend::imports::*;
+pub use backend::errors::*;
+pub use backend::imports::*;
 
 pub const NORMALIZE_CSS_NAME: &str = "normalize.css";
 pub const DOC_CSS_NAME: &str = "doc.css";

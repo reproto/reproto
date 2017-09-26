@@ -6,7 +6,7 @@ extern crate log;
 extern crate serde_derive;
 #[macro_use]
 extern crate error_chain;
-extern crate reproto_core;
+extern crate reproto_core as core;
 extern crate toml;
 extern crate serde;
 extern crate serde_json;
@@ -34,5 +34,3 @@ pub use self::objects::{FileObjects, NoObjects, Objects, ObjectsConfig, objects_
 pub use self::repository::*;
 pub use self::resolver::*;
 pub use self::sha256::{Checksum, Sha256 as Digest, to_sha256 as to_checksum};
-use reproto_core as core;
-pub(crate) use reproto_core::object;

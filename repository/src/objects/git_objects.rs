@@ -1,8 +1,9 @@
 //! ## Load objects through a local git repo
 
-use super::*;
+use super::{Checksum, FileObjects, Objects};
+use core::Object;
+use errors::*;
 use git::GitRepo;
-use object::Object;
 use std::io::Read;
 use std::rc::Rc;
 use url::Url;

@@ -1,15 +1,14 @@
 mod colored;
 mod non_colored;
 
-
 pub use self::colored::Colored;
 pub use self::non_colored::NonColored;
+use backend;
+use core;
 use errors::*;
 use log;
-use reproto_backend as backend;
-use reproto_core as core;
-use reproto_parser as parser;
-use reproto_repository as repository;
+use parser;
+use repository;
 use std::io::{self, Read, Write};
 
 pub trait LockableWrite

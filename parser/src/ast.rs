@@ -1,4 +1,4 @@
-use reproto_core::*;
+use core::{Loc, RpModifier, RpNumber, RpPackage, VersionReq};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Type {
@@ -117,7 +117,7 @@ pub enum Member<'input> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Object<'input> {
+pub enum Creator<'input> {
     Instance(Loc<Instance<'input>>),
     Constant(Loc<Name>),
 }
@@ -220,5 +220,5 @@ pub enum Value<'input> {
     Boolean(bool),
     Identifier(&'input str),
     Array(Vec<Loc<Value<'input>>>),
-    Object(Loc<Object<'input>>),
+    Creator(Loc<Creator<'input>>),
 }

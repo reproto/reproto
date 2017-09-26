@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate error_chain;
 extern crate lalrpop_util;
-extern crate reproto_core;
+extern crate reproto_core as core;
 extern crate num;
 
 mod lexer;
@@ -14,9 +14,8 @@ pub mod errors;
 mod parser;
 mod token;
 
+use core::Object;
 use self::errors::*;
-use core::object;
-pub(crate) use reproto_core as core;
 use std::io::Read;
 use std::rc::Rc;
 
@@ -30,7 +29,7 @@ where
 }
 
 pub fn parse_string<'input>(
-    object: Rc<Box<object::Object>>,
+    object: Rc<Box<Object>>,
     input: &'input str,
 ) -> Result<ast::File<'input>> {
     use self::ErrorKind::*;
@@ -93,13 +92,13 @@ pub fn parse_string<'input>(
 mod tests {
     use super::*;
     use super::ast::*;
-    use reproto_core::*;
+    use core::*;
     use std::rc::Rc;
     use std::sync::Arc;
 
-    fn new_context() -> Rc<Box<object::Object>> {
+    fn new_context() -> Rc<Box<Object>> {
         Rc::new(Box::new(
-            object::BytesObject::new(String::from(""), Arc::new(vec![])),
+            BytesObject::new(String::from(""), Arc::new(vec![])),
         ))
     }
 
@@ -221,9 +220,9 @@ mod tests {
         };
 
         let instance = Loc::new(instance, (context.clone(), 0, 18));
-        let object = Loc::new(Object::Instance(instance), (context.clone(), 0, 18));
+        let creator_instance = Loc::new(Creator::Instance(instance), (context.clone(), 0, 18));
 
-        assert_value_eq!(Value::Object(object), "Foo::Bar(hello: 12)");
+        assert_value_eq!(Value::Creator(creator_instance), "Foo::Bar(hello: 12)");
     }
 
     #[test]

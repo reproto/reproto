@@ -1,4 +1,5 @@
-use super::*;
+use super::imports::*;
+use std::path::Path;
 
 fn base<'a, 'b>(name: &str) -> App<'a, 'b> {
     let out = SubCommand::with_name(name);

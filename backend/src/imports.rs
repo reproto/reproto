@@ -16,5 +16,5 @@ pub use naming::{CamelCase, FromNaming, Naming, SnakeCase};
 pub use options::Options;
 pub use package_processor::PackageProcessor;
 pub use package_utils::PackageUtils;
-pub use value_builder::{ObjectContext, ValueBuilder, ValueContext};
+pub use value_builder::{CreatorContext, ValueBuilder, ValueContext};
 pub use variables::Variables;

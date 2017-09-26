@@ -1,6 +1,5 @@
-use core::{RpRequiredPackage, Version};
+use core::{Object, RpRequiredPackage, Version};
 use errors::*;
-use object::Object;
 use resolver::Resolver;
 
 pub struct Resolvers {

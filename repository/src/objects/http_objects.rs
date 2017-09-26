@@ -1,6 +1,7 @@
 //! ## Load objects from a remote repository over HTTP
 
-use super::*;
+use super::{Checksum, Objects};
+use core::{BytesObject, Object};
 use errors::*;
 use futures::{Future, Stream};
 use futures::future::{err, ok};
@@ -8,7 +9,7 @@ use hex_slice::HexSlice;
 use hyper;
 use hyper::{Client, Method, Request, StatusCode};
 use hyper::header::ContentLength;
-use object::{BytesObject, Object};
+use std::io::Read;
 use std::sync::Arc;
 use tokio_core::reactor::Core;
 use url::Url;

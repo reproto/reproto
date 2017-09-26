@@ -1,6 +1,5 @@
-use super::*;
-use core::Version;
-use core::object::Object;
+use super::imports::*;
+use core::{Object, Version};
 use std::fmt;
 
 struct DisplayMatch<'a>(&'a (Option<Version>, Box<Object>));

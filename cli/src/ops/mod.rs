@@ -3,15 +3,11 @@ mod compile;
 mod publish;
 mod update;
 mod repo;
+mod imports;
 
-use super::*;
-use reproto_backend_doc as doc;
-use reproto_backend_java as java;
-use reproto_backend_js as js;
-use reproto_backend_json as json;
-use reproto_backend_python as python;
-use reproto_backend_rust as rust;
-use reproto_repository::*;
+use self::imports::*;
+use backend::naming;
+use repository::*;
 use std::env;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -134,7 +130,7 @@ pub fn compiler_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out
 }
 
-fn parse_package(input: &str) -> Result<RpRequiredPackage> {
+pub fn parse_package(input: &str) -> Result<RpRequiredPackage> {
     let mut it = input.split("@").into_iter();
 
     let package = if let Some(first) = it.next() {
@@ -154,7 +150,7 @@ fn parse_package(input: &str) -> Result<RpRequiredPackage> {
     Ok(RpRequiredPackage::new(package, version_req))
 }
 
-fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
+pub fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
     if matches.is_present("no-repository") {
         return Ok(Repository::new(Box::new(NoIndex), Box::new(NoObjects)));
     }
@@ -234,7 +230,7 @@ fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
     return Ok(repository);
 }
 
-fn setup_path_resolver(matches: &ArgMatches) -> Result<Option<Box<Resolver>>> {
+pub fn setup_path_resolver(matches: &ArgMatches) -> Result<Option<Box<Resolver>>> {
     let paths: Vec<::std::path::PathBuf> = matches
         .values_of("path")
         .into_iter()
@@ -250,7 +246,7 @@ fn setup_path_resolver(matches: &ArgMatches) -> Result<Option<Box<Resolver>>> {
     Ok(Some(Box::new(Paths::new(paths))))
 }
 
-fn setup_resolvers(matches: &ArgMatches) -> Result<Box<Resolver>> {
+pub fn setup_resolvers(matches: &ArgMatches) -> Result<Box<Resolver>> {
     let mut resolvers: Vec<Box<Resolver>> = Vec::new();
 
     if let Some(resolver) = setup_path_resolver(matches)? {
@@ -261,7 +257,7 @@ fn setup_resolvers(matches: &ArgMatches) -> Result<Box<Resolver>> {
     Ok(Box::new(Resolvers::new(resolvers)))
 }
 
-fn setup_options(matches: &ArgMatches) -> Result<Options> {
+pub fn setup_options(matches: &ArgMatches) -> Result<Options> {
     let id_converter = if let Some(id_converter) = matches.value_of("id-converter") {
         Some(parse_id_converter(&id_converter)?)
     } else {
@@ -281,7 +277,7 @@ fn setup_options(matches: &ArgMatches) -> Result<Options> {
     })
 }
 
-fn setup_packages(matches: &ArgMatches) -> Result<Vec<RpRequiredPackage>> {
+pub fn setup_packages(matches: &ArgMatches) -> Result<Vec<RpRequiredPackage>> {
     let mut packages = Vec::new();
 
     for package in matches.values_of("package").into_iter().flat_map(|it| it) {
@@ -295,7 +291,7 @@ fn setup_packages(matches: &ArgMatches) -> Result<Vec<RpRequiredPackage>> {
     Ok(packages)
 }
 
-fn setup_environment(matches: &ArgMatches) -> Result<Environment> {
+pub fn setup_environment(matches: &ArgMatches) -> Result<Environment> {
     let resolvers = setup_resolvers(matches)?;
 
     let package_prefix = matches.value_of("package-prefix").map(ToOwned::to_owned);
@@ -307,7 +303,7 @@ fn setup_environment(matches: &ArgMatches) -> Result<Environment> {
     Ok(Environment::new(package_prefix, resolvers))
 }
 
-fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<PathBuf> {
+pub fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<PathBuf> {
     matches
         .values_of("file")
         .into_iter()
@@ -317,7 +313,7 @@ fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<PathBuf> {
         .collect()
 }
 
-fn setup_env(matches: &ArgMatches) -> Result<Environment> {
+pub fn setup_env(matches: &ArgMatches) -> Result<Environment> {
     let files = setup_files(matches);
     let packages = setup_packages(matches)?;
     let mut env = setup_environment(matches)?;
@@ -363,11 +359,11 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     let matches = matches.ok_or_else(|| "no subcommand")?;
 
     match name {
-        "compile" => ops::compile::entry(matches),
-        "verify" => ops::verify::entry(matches),
-        "publish" => ops::publish::entry(matches),
-        "update" => ops::update::entry(matches),
-        "repo" => ops::repo::entry(matches),
+        "compile" => self::compile::entry(matches),
+        "verify" => self::verify::entry(matches),
+        "publish" => self::publish::entry(matches),
+        "update" => self::update::entry(matches),
+        "repo" => self::repo::entry(matches),
         _ => Err(format!("No such command: {}", name).into()),
     }
 }

@@ -1,9 +1,7 @@
 use codeviz_common::errors as codeviz;
-use reproto_core::{ErrorPos, RpName};
-use reproto_core::errors as core;
-use reproto_core::with_pos::WithPos;
-use reproto_parser::errors as parser;
-use reproto_repository::errors as repository;
+use core::{ErrorPos, RpName, WithPos, errors as core};
+use parser::errors as parser;
+use repository::errors as repository;
 use serde_json as json;
 
 error_chain! {

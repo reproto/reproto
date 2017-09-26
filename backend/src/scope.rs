@@ -1,4 +1,4 @@
-use reproto_core::{RpPackage, RpVersionedPackage};
+use core::{RpPackage, RpVersionedPackage};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -114,7 +114,7 @@ impl Iterator for ScopeWalker {
 #[cfg(test)]
 mod tests {
     use super::Scope;
-    use reproto_core::{RpPackage, RpVersionedPackage};
+    use core::{RpPackage, RpVersionedPackage};
     use std::collections::HashMap;
 
     #[test]

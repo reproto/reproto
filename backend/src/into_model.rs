@@ -1,7 +1,7 @@
 use super::errors::*;
 use super::scope::Scope;
-pub use reproto_core::*;
-pub use reproto_parser::ast::*;
+pub use core::*;
+pub use parser::ast::*;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -370,15 +370,15 @@ impl<'input> IntoModel for (&'input Path, usize, usize) {
     }
 }
 
-impl<'input> IntoModel for Object<'input> {
-    type Output = RpObject;
+impl<'input> IntoModel for Creator<'input> {
+    type Output = RpCreator;
 
-    fn into_model(self, scope: &Scope) -> Result<RpObject> {
-        use self::Object::*;
+    fn into_model(self, scope: &Scope) -> Result<RpCreator> {
+        use self::Creator::*;
 
         let out = match self {
-            Instance(instance) => RpObject::Instance(instance.into_model(scope)?),
-            Constant(constant) => RpObject::Constant(constant.into_model(scope)?),
+            Instance(instance) => RpCreator::Instance(instance.into_model(scope)?),
+            Constant(constant) => RpCreator::Constant(constant.into_model(scope)?),
         };
 
         Ok(out)
@@ -903,7 +903,7 @@ impl<'input> IntoModel for Value<'input> {
             Value::Boolean(boolean) => RpValue::Boolean(boolean),
             Value::Identifier(identifier) => RpValue::Identifier(identifier.to_owned()),
             Value::Array(inner) => RpValue::Array(inner.into_model(scope)?),
-            Value::Object(object) => RpValue::Object(object.into_model(scope)?),
+            Value::Creator(creator) => RpValue::Creator(creator.into_model(scope)?),
         };
 
         Ok(out)

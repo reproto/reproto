@@ -1,8 +1,7 @@
+use super::Objects;
+use core::{Object, RpPackage, RpRequiredPackage, Version};
 use errors::*;
 use index::Index;
-use object::Object;
-use objects::Objects;
-use reproto_core::*;
 use resolver::Resolver;
 use sha256::to_sha256;
 

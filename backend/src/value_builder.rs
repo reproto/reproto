@@ -11,7 +11,7 @@
 //! In this example, the second field is a `float`, and the third field is a `double`.
 
 use converter::Converter;
-use core::{Loc, RpNumber, RpObject, RpRegistered, RpType, RpValue, RpVersionedPackage};
+use core::{Loc, RpCreator, RpNumber, RpRegistered, RpType, RpValue, RpVersionedPackage};
 use environment::Environment;
 use errors::*;
 use variables::Variables;
@@ -39,24 +39,26 @@ impl<'a> ValueContext<'a> {
     }
 }
 
-pub struct ObjectContext<'a> {
+/// Values which are being 'created', either through a new instance of an existing type or as an
+/// enum constant.
+pub struct CreatorContext<'a> {
     package: &'a RpVersionedPackage,
     variables: &'a Variables<'a>,
-    object: &'a Loc<RpObject>,
+    creator: &'a Loc<RpCreator>,
     expected: Option<&'a RpType>,
 }
 
-impl<'a> ObjectContext<'a> {
+impl<'a> CreatorContext<'a> {
     pub fn new(
         package: &'a RpVersionedPackage,
         variables: &'a Variables,
-        object: &'a Loc<RpObject>,
+        creator: &'a Loc<RpCreator>,
         expected: Option<&'a RpType>,
-    ) -> ObjectContext<'a> {
-        ObjectContext {
+    ) -> CreatorContext<'a> {
+        CreatorContext {
             package: package,
             variables: variables,
-            object: object,
+            creator: creator,
             expected: expected,
         }
     }
@@ -102,13 +104,13 @@ where
 
     fn identifier(&self, identifier: &str) -> Result<Self::Stmt>;
 
-    fn object(&self, ctx: ObjectContext) -> Result<Self::Stmt> {
-        let object = ctx.object;
+    fn creator(&self, ctx: CreatorContext) -> Result<Self::Stmt> {
+        let creator = ctx.creator;
         let expected = ctx.expected;
 
-        match (object.value(), expected) {
-            (&RpObject::Constant(ref constant), Some(&RpType::Name { ref name })) => {
-                let reg_constant = self.env().constant(object.pos(), constant, name)?;
+        match (creator.value(), expected) {
+            (&RpCreator::Constant(ref constant), Some(&RpType::Name { ref name })) => {
+                let reg_constant = self.env().constant(creator.pos(), constant, name)?;
 
                 match *reg_constant {
                     RpRegistered::EnumConstant {
@@ -121,13 +123,13 @@ where
                     _ => {
                         return Err(Error::pos(
                             "not a valid enum constant".into(),
-                            object.pos().into(),
+                            creator.pos().into(),
                         ))
                     }
                 }
             }
-            (&RpObject::Instance(ref instance), Some(&RpType::Name { ref name })) => {
-                let (registered, known) = self.env().instance(object.pos(), instance, name)?;
+            (&RpCreator::Instance(ref instance), Some(&RpType::Name { ref name })) => {
+                let (registered, known) = self.env().instance(creator.pos(), instance, name)?;
 
                 let mut arguments = Vec::new();
 
@@ -151,7 +153,7 @@ where
                         if !f.is_optional() {
                             return Err(Error::pos(
                                 format!("missing required parameter `{}`", f.ident()),
-                                object.pos().into(),
+                                creator.pos().into(),
                             ));
                         }
 
@@ -168,10 +170,10 @@ where
         if let Some(expected) = expected {
             Err(Error::pos(
                 format!("expected `{}`", expected),
-                object.pos().into(),
+                creator.pos().into(),
             ))
         } else {
-            Err(Error::pos("unexpected value".into(), object.pos().into()))
+            Err(Error::pos("unexpected value".into(), creator.pos().into()))
         }
     }
 
@@ -247,11 +249,11 @@ where
                     return Err(Error::pos("missing variable".into(), value.pos().into()));
                 }
             }
-            (&RpValue::Object(ref object), expected) => {
-                return self.object(ObjectContext::new(
+            (&RpValue::Creator(ref creator), expected) => {
+                return self.creator(CreatorContext::new(
                     &ctx.package,
                     &ctx.variables,
-                    object,
+                    creator,
                     expected,
                 ));
             }

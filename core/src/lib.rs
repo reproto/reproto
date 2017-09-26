@@ -9,9 +9,9 @@ extern crate serde_derive;
 extern crate error_chain;
 pub extern crate semver;
 
-pub mod object;
-pub mod with_pos;
-pub mod for_each_loc;
+mod object;
+mod with_pos;
+mod for_each_loc;
 mod error_pos;
 mod loc;
 mod pos;
@@ -19,13 +19,13 @@ mod merge;
 mod options;
 pub mod errors;
 
-
-pub use self::error_pos::*;
+pub use self::error_pos::ErrorPos;
 pub use self::for_each_loc::ForEachLoc;
-pub use self::loc::*;
-pub use self::merge::*;
-pub use self::options::*;
-pub use self::pos::*;
+pub use self::loc::Loc;
+pub use self::merge::Merge;
+pub use self::object::{BytesObject, Object, PathObject};
+pub use self::options::Options;
+pub use self::pos::Pos;
 pub use self::with_pos::WithPos;
 use errors::*;
 use num::bigint::BigInt;
@@ -71,7 +71,7 @@ impl fmt::Display for Mime {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpByValueMatch {
-    pub object: Loc<RpObject>,
+    pub object: Loc<RpCreator>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -683,7 +683,7 @@ mod test_numbers {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-pub enum RpObject {
+pub enum RpCreator {
     Instance(Loc<RpInstance>),
     Constant(Loc<RpName>),
 }
@@ -1173,7 +1173,7 @@ pub enum RpValue {
     Boolean(bool),
     Identifier(String),
     Array(Vec<Loc<RpValue>>),
-    Object(Loc<RpObject>),
+    Creator(Loc<RpCreator>),
 }
 
 impl RpValue {
@@ -1205,7 +1205,7 @@ impl fmt::Display for RpValue {
             RpValue::Boolean(_) => "<boolean>",
             RpValue::Identifier(_) => "<identifier>",
             RpValue::Array(_) => "<array>",
-            RpValue::Object(_) => "<object>",
+            RpValue::Creator(_) => "<creator>",
         };
 
         write!(f, "{}", out)

@@ -1,10 +1,11 @@
 //! ## Load objects through a local directory
 
-use super::*;
+use super::{Checksum, Objects};
+use core::{Object, PathObject};
+use errors::*;
 use hex_slice::HexSlice;
-use object::{Object, PathObject};
 use std::fs::{self, File};
-use std::io;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 pub struct FileObjects {

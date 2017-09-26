@@ -1,8 +1,8 @@
-use reproto_backend::errors as backend;
-use reproto_core::{ErrorPos, RpName};
-use reproto_core::errors as core;
-use reproto_parser::errors as parser;
-use reproto_repository::errors as repository;
+use backend::errors as backend;
+use core::{ErrorPos, RpName};
+use core::errors as core;
+use parser::errors as parser;
+use repository::errors as repository;
 use std::path::PathBuf;
 
 error_chain! {

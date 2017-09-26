@@ -9,9 +9,8 @@
 //!
 //! The second form is only used when a version requirement is present.
 
-use core::{RpRequiredPackage, Version, VersionReq};
+use core::{Object, PathObject, RpRequiredPackage, Version, VersionReq};
 use errors::*;
-use object::{Object, PathObject};
 use resolver::Resolver;
 use std::collections::BTreeMap;
 use std::fs;
