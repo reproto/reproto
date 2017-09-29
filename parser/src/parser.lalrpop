@@ -1,5 +1,5 @@
 // vim: ft=rust
-use core::*;
+use core::{RpNumber, Loc, RpModifier, RpPackage, Object, VersionReq};
 use std::path::PathBuf;
 use std::rc::Rc;
 use super::ast::*;
@@ -34,11 +34,11 @@ Package: RpPackage = <parts:OneOrMore<".", Identifier>> => {
 };
 
 Decl: Decl<'input> = {
-    <en:Enum> => Decl::Enum(en),
-    <interface:Interface> => Decl::Interface(interface),
-    <ty:Type> => Decl::Type(ty),
-    <tuple:Tuple> => Decl::Tuple(tuple),
-    <service:Service> => Decl::Service(service),
+    <en:Loc<Enum>> => Decl::Enum(en),
+    <interface:Loc<Interface>> => Decl::Interface(interface),
+    <ty:Loc<Type>> => Decl::Type(ty),
+    <tuple:Loc<Tuple>> => Decl::Tuple(tuple),
+    <service:Loc<Service>> => Decl::Service(service),
 };
 
 Enum: EnumBody<'input> =

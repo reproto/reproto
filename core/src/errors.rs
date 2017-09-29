@@ -1,5 +1,5 @@
 use super::ErrorPos;
-use mime;
+use extern_mime;
 
 error_chain! {
     foreign_links {
@@ -8,7 +8,7 @@ error_chain! {
     }
 
     errors {
-        MimeFromStrError(error: mime::FromStrError) {
+        MimeFromStrError(error: extern_mime::FromStrError) {
             description("couldn't parse mime type")
             display("{:?}", error)
         }

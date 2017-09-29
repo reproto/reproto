@@ -39,16 +39,26 @@ impl<'a> PackageProcessor<'a> for PythonCompiler<'a> {
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        body: Rc<RpTupleBody>,
+        body: Rc<Loc<RpTupleBody>>,
     ) -> Result<()> {
         self.backend.process_tuple(out, name, body)
     }
 
-    fn process_enum(&self, out: &mut Self::Out, name: &RpName, body: Rc<RpEnumBody>) -> Result<()> {
+    fn process_enum(
+        &self,
+        out: &mut Self::Out,
+        name: &RpName,
+        body: Rc<Loc<RpEnumBody>>,
+    ) -> Result<()> {
         self.backend.process_enum(out, name, body)
     }
 
-    fn process_type(&self, out: &mut Self::Out, name: &RpName, body: Rc<RpTypeBody>) -> Result<()> {
+    fn process_type(
+        &self,
+        out: &mut Self::Out,
+        name: &RpName,
+        body: Rc<Loc<RpTypeBody>>,
+    ) -> Result<()> {
         self.backend.process_type(out, name, body)
     }
 
@@ -56,7 +66,7 @@ impl<'a> PackageProcessor<'a> for PythonCompiler<'a> {
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        body: Rc<RpInterfaceBody>,
+        body: Rc<Loc<RpInterfaceBody>>,
     ) -> Result<()> {
         self.backend.process_interface(out, name, body)
     }

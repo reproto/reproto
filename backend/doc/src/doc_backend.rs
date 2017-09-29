@@ -96,7 +96,7 @@ impl DocBackend {
 
     fn write_variants<'b, I>(&self, out: &mut DocBuilder, variants: I) -> Result<()>
     where
-        I: IntoIterator<Item = &'b Loc<Rc<RpEnumVariant>>>,
+        I: IntoIterator<Item = &'b Rc<Loc<RpEnumVariant>>>,
     {
         let mut it = variants.into_iter().peekable();
 
@@ -294,7 +294,7 @@ impl DocBackend {
         &self,
         out: &mut DocBuilder,
         index: usize,
-        body: &Rc<RpServiceBody>,
+        body: &RpServiceBody,
         endpoint: &RpServiceEndpoint,
     ) -> Result<()> {
         let method = endpoint.method().unwrap_or("GET").to_owned();
@@ -349,7 +349,7 @@ impl DocBackend {
         out: &mut DocBuilder,
         index: usize,
         name: &RpName,
-        body: &Rc<RpServiceBody>,
+        body: &RpServiceBody,
         endpoint: &RpServiceEndpoint,
     ) -> Result<()> {
         let method = endpoint.method().unwrap_or("GET").to_owned();
@@ -482,7 +482,7 @@ impl DocBackend {
     pub fn write_service_overview(
         &self,
         out: &mut DocBuilder,
-        service_bodies: Vec<Rc<RpServiceBody>>,
+        service_bodies: Vec<Rc<Loc<RpServiceBody>>>,
     ) -> Result<()> {
         if service_bodies.is_empty() {
             return Ok(());
@@ -535,7 +535,7 @@ impl DocBackend {
         &self,
         out: &mut DocCollector,
         name: &RpName,
-        body: Rc<RpServiceBody>,
+        body: Rc<Loc<RpServiceBody>>,
     ) -> Result<()> {
         let mut new_service = out.new_service(body.clone());
         let mut out = DefaultDocBuilder::new(&mut new_service);
@@ -562,7 +562,7 @@ impl DocBackend {
         &self,
         out: &mut DocCollector,
         name: &RpName,
-        body: Rc<RpEnumBody>,
+        body: Rc<Loc<RpEnumBody>>,
     ) -> Result<()> {
         let mut new_enum = out.new_type(RpDecl::Enum(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_enum);
@@ -586,7 +586,7 @@ impl DocBackend {
         &self,
         out: &mut DocCollector,
         name: &RpName,
-        body: Rc<RpInterfaceBody>,
+        body: Rc<Loc<RpInterfaceBody>>,
     ) -> Result<()> {
         let mut new_interface = out.new_type(RpDecl::Interface(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_interface);
@@ -627,7 +627,7 @@ impl DocBackend {
         &self,
         out: &mut DocCollector,
         name: &RpName,
-        body: Rc<RpTypeBody>,
+        body: Rc<Loc<RpTypeBody>>,
     ) -> Result<()> {
         let mut new_type = out.new_type(RpDecl::Type(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_type);
@@ -651,7 +651,7 @@ impl DocBackend {
         &self,
         out: &mut DocCollector,
         name: &RpName,
-        body: Rc<RpTupleBody>,
+        body: Rc<Loc<RpTupleBody>>,
     ) -> Result<()> {
         let mut new_tuple = out.new_type(RpDecl::Tuple(body.clone()));
         let mut out = DefaultDocBuilder::new(&mut new_tuple);

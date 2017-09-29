@@ -8,6 +8,7 @@ use linked_hash_map::LinkedHashMap;
 use parser;
 use parser::ast::UseDecl;
 use repository::Resolver;
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, LinkedList};
 use std::path::Path;
 use std::rc::Rc;
@@ -16,6 +17,7 @@ pub type InitFields = HashMap<String, Loc<RpFieldInit>>;
 
 /// Scoped environment for evaluating ReProto IDLs.
 pub struct Environment {
+    type_id_allocator: Rc<RefCell<u64>>,
     /// Global package prefix.
     package_prefix: Option<RpPackage>,
     /// Index resolver to use.
@@ -23,7 +25,9 @@ pub struct Environment {
     /// Memoized required packages, to avoid unecessary lookups.
     visited: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
     /// Registered types.
-    types: LinkedHashMap<RpName, Loc<RpRegistered>>,
+    types: LinkedHashMap<RpName, RpRegistered>,
+    /// Registered types by ID.
+    types_by_id: LinkedHashMap<u64, RpRegistered>,
     /// All declarations.
     decls: LinkedHashMap<RpName, Rc<Loc<RpDecl>>>,
 }
@@ -32,10 +36,12 @@ pub struct Environment {
 impl Environment {
     pub fn new(package_prefix: Option<RpPackage>, resolver: Box<Resolver>) -> Environment {
         Environment {
+            type_id_allocator: Rc::new(RefCell::new(0u64)),
             package_prefix: package_prefix,
             resolver: resolver,
             visited: HashMap::new(),
             types: LinkedHashMap::new(),
+            types_by_id: LinkedHashMap::new(),
             decls: LinkedHashMap::new(),
         }
     }
@@ -133,15 +139,17 @@ impl Environment {
             );
         }
 
-        let required_fields = match *reg_instance {
-            RpRegistered::Tuple(..) |
-            RpRegistered::Type(..) |
-            RpRegistered::SubType { .. } => reg_instance.fields()?,
+        let all_fields: Vec<&Loc<RpField>> = match *reg_instance {
+            RpRegistered::Tuple(_) |
+            RpRegistered::Type(_) |
+            RpRegistered::SubType(_, _) => reg_instance.fields()?.collect(),
             _ => return Err("expected instantiable type".into()),
         };
 
         // pick required fields.
-        let required_fields = required_fields.filter(|f| f.modifier == RpModifier::Required);
+        let required_fields = all_fields.iter().cloned().filter(|f| {
+            f.modifier == RpModifier::Required
+        });
 
         let mut known: HashMap<String, Loc<RpFieldInit>> = HashMap::new();
 
@@ -152,7 +160,7 @@ impl Environment {
             .collect();
 
         for init in &*instance.arguments {
-            if let Some(ref field) = reg_instance.field_by_ident(&init.name)? {
+            if let Some(ref field) = all_fields.iter().find(|f| *f.name == *init.name) {
                 // TODO: map out init position, and check that required variables are set.
                 known.insert(field.ident().to_owned(), init.clone());
                 required.remove(field.name());
@@ -179,6 +187,14 @@ impl Environment {
         }
 
         Ok((reg_instance, known))
+    }
+
+    pub fn lookup_by_id<'a>(&'a self, type_id: &u64) -> Result<&'a RpRegistered> {
+        if let Some(registered) = self.types_by_id.get(&type_id) {
+            return Ok(registered);
+        }
+
+        return Err(format!("no such type: {}", type_id).into());
     }
 
     /// Lookup the declaration matching the given name.
@@ -210,7 +226,14 @@ impl Environment {
         let file = parser::parse_string(object, content.as_str())?;
 
         let prefixes = self.process_uses(&file.uses)?;
-        let scope = Scope::new(self.package_prefix.clone(), package.clone(), prefixes);
+
+        let scope = Scope::new(
+            self.type_id_allocator.clone(),
+            self.package_prefix.clone(),
+            package.clone(),
+            prefixes,
+        );
+
         let file = file.into_model(&scope)?;
 
         Ok(Some((package, file)))
@@ -337,7 +360,7 @@ impl Environment {
     pub fn process_types<'a, I: 'a>(
         &mut self,
         decls: I,
-    ) -> Result<LinkedHashMap<RpName, Loc<RpRegistered>>>
+    ) -> Result<LinkedHashMap<RpName, RpRegistered>>
     where
         I: IntoIterator<Item = (&'a RpName, &'a Rc<Loc<RpDecl>>)>,
     {
@@ -346,7 +369,7 @@ impl Environment {
         let mut types = LinkedHashMap::new();
 
         for (name, d) in decls {
-            for (key, t) in d.into_registered_type(name, d.pos()) {
+            for (key, t) in d.into_registered_type(name) {
                 let key = key.clone().without_prefix();
 
                 match types.entry(key) {
@@ -356,6 +379,7 @@ impl Environment {
                         );
                     }
                     Entry::Vacant(entry) => {
+                        self.types_by_id.insert(t.type_id(), t.clone());
                         entry.insert(t);
                     }
                 }

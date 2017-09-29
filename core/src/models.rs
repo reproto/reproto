@@ -1,0 +1,718 @@
+//! Data Models for the final model stage stage.
+
+use super::loc::Loc;
+use super::mime::Mime;
+use super::options::Options;
+use super::rp_modifier::RpModifier;
+use super::rp_number::RpNumber;
+use super::rp_versioned_package::RpVersionedPackage;
+use errors::*;
+use std::collections::BTreeMap;
+use std::collections::HashSet;
+use std::fmt;
+use std::rc::Rc;
+use std::slice;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpByValueMatch {
+    pub object: Loc<RpCreator>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpCode {
+    pub context: String,
+    pub lines: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum RpDecl {
+    Type(Rc<Loc<RpTypeBody>>),
+    Interface(Rc<Loc<RpInterfaceBody>>),
+    Enum(Rc<Loc<RpEnumBody>>),
+    Tuple(Rc<Loc<RpTupleBody>>),
+    Service(Rc<Loc<RpServiceBody>>),
+}
+
+pub struct DeclIter<'a> {
+    iter: slice::Iter<'a, Rc<Loc<RpDecl>>>,
+}
+
+impl<'a> Iterator for DeclIter<'a> {
+    type Item = &'a Rc<Loc<RpDecl>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+impl RpDecl {
+    pub fn decls(&self) -> DeclIter {
+        use self::RpDecl::*;
+
+        let iter = match *self {
+            Type(ref body) => body.decls.iter(),
+            Interface(ref body) => body.decls.iter(),
+            Enum(ref body) => body.decls.iter(),
+            Tuple(ref body) => body.decls.iter(),
+            Service(ref body) => body.decls.iter(),
+        };
+
+        DeclIter { iter: iter }
+    }
+
+    pub fn name(&self) -> &str {
+        use self::RpDecl::*;
+
+        match *self {
+            Type(ref body) => &body.name,
+            Interface(ref body) => &body.name,
+            Enum(ref body) => &body.name,
+            Tuple(ref body) => &body.name,
+            Service(ref body) => &body.name,
+        }
+    }
+
+    pub fn comment(&self) -> &[String] {
+        use self::RpDecl::*;
+
+        match *self {
+            Type(ref body) => &body.comment,
+            Interface(ref body) => &body.comment,
+            Enum(ref body) => &body.comment,
+            Tuple(ref body) => &body.comment,
+            Service(ref body) => &body.comment,
+        }
+    }
+
+    /// Convert a declaration into its registered types.
+    pub fn into_registered_type(&self, type_name: &RpName) -> Vec<(RpName, RpRegistered)> {
+        use self::RpDecl::*;
+
+        let mut out = Vec::new();
+
+        match *self {
+            Type(ref ty) => {
+                out.push((type_name.clone(), RpRegistered::Type(ty.clone())));
+            }
+            Interface(ref interface) => {
+                for (name, sub_type) in &interface.sub_types {
+                    let type_name = type_name.extend(name.to_owned());
+
+                    out.push((
+                        type_name.clone(),
+                        RpRegistered::SubType(interface.clone(), sub_type.clone()),
+                    ));
+
+                    for d in &sub_type.decls {
+                        out.extend(d.into_registered_type(
+                            &type_name.extend(d.name().to_owned()),
+                        ));
+                    }
+                }
+
+                out.push((
+                    type_name.clone(),
+                    RpRegistered::Interface(interface.clone()),
+                ));
+            }
+            Enum(ref en) => {
+                for variant in &en.variants {
+                    let type_name = type_name.extend(variant.value().name.value().to_owned());
+
+                    out.push((
+                        type_name,
+                        RpRegistered::EnumVariant(en.clone(), variant.clone()),
+                    ));
+                }
+
+                out.push((type_name.clone(), RpRegistered::Enum(en.clone())));
+            }
+            Tuple(ref tuple) => {
+                out.push((type_name.clone(), RpRegistered::Tuple(tuple.clone())));
+            }
+            Service(ref service) => {
+                out.push((type_name.clone(), RpRegistered::Service(service.clone())));
+            }
+        }
+
+        for d in self.decls() {
+            out.extend(d.into_registered_type(
+                &type_name.extend(d.name().to_owned()),
+            ));
+        }
+
+        out
+    }
+}
+
+impl fmt::Display for RpDecl {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::RpDecl::*;
+
+        match *self {
+            Type(ref body) => write!(f, "type {}", body.name),
+            Interface(ref body) => write!(f, "interface {}", body.name),
+            Enum(ref body) => write!(f, "enum {}", body.name),
+            Tuple(ref body) => write!(f, "tuple {}", body.name),
+            Service(ref body) => write!(f, "service {}", body.name),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpEnumBody {
+    pub type_id: u64,
+    pub name: String,
+    pub comment: Vec<String>,
+    /// Inner declarations.
+    pub decls: Vec<Rc<Loc<RpDecl>>>,
+    pub variants: Vec<Rc<Loc<RpEnumVariant>>>,
+    pub fields: Vec<Loc<RpField>>,
+    pub codes: Vec<Loc<RpCode>>,
+    pub serialized_as: Option<Loc<String>>,
+    pub serialized_as_name: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpEnumVariant {
+    pub parent_type_id: u64,
+    pub type_id: u64,
+    pub name: Loc<String>,
+    pub comment: Vec<String>,
+    pub arguments: Vec<Loc<RpValue>>,
+    pub ordinal: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+pub struct RpFieldInit {
+    pub name: Loc<String>,
+    pub value: Loc<RpValue>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpField {
+    pub modifier: RpModifier,
+    pub name: String,
+    pub comment: Vec<String>,
+    #[serde(rename = "type")]
+    pub ty: RpType,
+    pub field_as: Option<Loc<String>>,
+}
+
+impl RpField {
+    pub fn new(
+        modifier: RpModifier,
+        name: String,
+        comment: Vec<String>,
+        ty: RpType,
+        field_as: Option<Loc<String>>,
+    ) -> RpField {
+        RpField {
+            modifier: modifier,
+            name: name,
+            comment: comment,
+            ty: ty,
+            field_as: field_as,
+        }
+    }
+
+    pub fn is_optional(&self) -> bool {
+        match self.modifier {
+            RpModifier::Optional => true,
+            _ => false,
+        }
+    }
+
+    pub fn ident(&self) -> &str {
+        &self.name
+    }
+
+    pub fn name(&self) -> &str {
+        self.field_as.as_ref().map(Loc::value).unwrap_or(&self.name)
+    }
+
+    pub fn display(&self) -> String {
+        self.name.to_owned()
+    }
+}
+
+#[derive(Debug)]
+pub struct RpFile {
+    pub options: Options,
+    pub decls: Vec<Loc<RpDecl>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+pub struct RpInstance {
+    pub name: RpName,
+    pub arguments: Loc<Vec<Loc<RpFieldInit>>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpInterfaceBody {
+    pub type_id: u64,
+    pub name: String,
+    pub comment: Vec<String>,
+    /// Inner declarations.
+    pub decls: Vec<Rc<Loc<RpDecl>>>,
+    pub fields: Vec<Loc<RpField>>,
+    pub codes: Vec<Loc<RpCode>>,
+    pub sub_types: BTreeMap<String, Rc<Loc<RpSubType>>>,
+}
+
+impl RpInterfaceBody {
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Loc<RpField>> + 'a> {
+        Box::new(self.fields.iter())
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+pub struct RpName {
+    /// Alias used if the name was imported from another package.
+    pub prefix: Option<String>,
+    /// Package that name belongs to.
+    pub package: RpVersionedPackage,
+    /// Absolute parts of the name, from the root of the package.
+    pub parts: Vec<String>,
+}
+
+impl RpName {
+    pub fn new(prefix: Option<String>, package: RpVersionedPackage, parts: Vec<String>) -> RpName {
+        RpName {
+            prefix: prefix,
+            package: package,
+            parts: parts,
+        }
+    }
+
+    pub fn extend(&self, part: String) -> RpName {
+        let mut parts = self.parts.clone();
+        parts.push(part);
+
+        RpName {
+            prefix: self.prefix.clone(),
+            package: self.package.clone(),
+            parts: parts,
+        }
+    }
+
+    pub fn join<S: AsRef<str>>(&self, joiner: S) -> String {
+        self.parts.join(joiner.as_ref())
+    }
+
+    pub fn without_prefix(self) -> RpName {
+        RpName {
+            prefix: None,
+            package: self.package,
+            parts: self.parts,
+        }
+    }
+
+    pub fn with_package(self, package: RpVersionedPackage) -> RpName {
+        RpName {
+            prefix: self.prefix,
+            package: package,
+            parts: self.parts,
+        }
+    }
+}
+
+impl fmt::Display for RpName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(ref prefix) = self.prefix {
+            write!(f, "{}::{}", prefix, self.parts.join("::"))
+        } else {
+            write!(f, "{}", self.parts.join("::"))
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+pub enum RpCreator {
+    Instance(Loc<RpInstance>),
+    Constant(Loc<RpName>),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpOptionDecl {
+    pub name: String,
+    pub values: Vec<Loc<RpValue>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum RpPathSegment {
+    Literal { value: Loc<String> },
+    Variable { name: Loc<String>, ty: Loc<RpType> },
+}
+
+impl RpPathSegment {
+    pub fn path(&self) -> String {
+        match *self {
+            RpPathSegment::Literal { ref value } => value.value().to_owned(),
+            RpPathSegment::Variable { ref name, .. } => format!("{{{}}}", name.value()),
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        match *self {
+            RpPathSegment::Literal { ref value } => value.value().as_str(),
+            RpPathSegment::Variable { ref name, .. } => name.value().as_str(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpPathSpec {
+    pub segments: Vec<RpPathSegment>,
+}
+
+impl RpPathSpec {
+    pub fn url(&self) -> String {
+        let segments: Vec<String> = self.segments.iter().map(RpPathSegment::path).collect();
+        format!("/{}", segments.join("/"))
+    }
+
+    pub fn id_fragments(&self) -> Vec<&str> {
+        self.segments.iter().map(RpPathSegment::id).collect()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum RpRegistered {
+    Type(Rc<Loc<RpTypeBody>>),
+    Interface(Rc<Loc<RpInterfaceBody>>),
+    Enum(Rc<Loc<RpEnumBody>>),
+    Tuple(Rc<Loc<RpTupleBody>>),
+    SubType(Rc<Loc<RpInterfaceBody>>, Rc<Loc<RpSubType>>),
+    EnumVariant(Rc<Loc<RpEnumBody>>, Rc<Loc<RpEnumVariant>>),
+    Service(Rc<Loc<RpServiceBody>>),
+}
+
+impl RpRegistered {
+    pub fn is_assignable_from(&self, other: &RpRegistered) -> bool {
+        use self::RpRegistered::*;
+
+        match *other {
+            Type(ref target) => target.type_id == other.type_id(),
+            Tuple(ref target) => target.type_id == other.type_id(),
+            Service(ref target) => target.type_id == other.type_id(),
+            Interface(ref target) => target.type_id == other.type_id(),
+            Enum(ref target) => target.type_id == other.type_id(),
+            SubType(_, ref target) => {
+                target.type_id == other.type_id() || target.parent_type_id == other.type_id()
+            }
+            EnumVariant(_, ref target) => {
+                target.type_id == other.type_id() || target.parent_type_id == other.type_id()
+            }
+        }
+    }
+
+    pub fn fields<'a>(&'a self) -> Result<Box<Iterator<Item = &Loc<RpField>> + 'a>> {
+        use self::RpRegistered::*;
+
+        let fields: Box<Iterator<Item = &Loc<RpField>>> = match *self {
+            Type(ref target) => Box::new(target.fields.iter()),
+            Tuple(ref target) => Box::new(target.fields.iter()),
+            Interface(ref target) => Box::new(target.fields.iter()),
+            Enum(ref target) => Box::new(target.fields.iter()),
+            SubType(ref parent, ref target) => Box::new(
+                parent.fields.iter().chain(target.fields.iter()),
+            ),
+            _ => {
+                return Err(
+                    format!("{}: type doesn't have fields", self.display()).into(),
+                )
+            }
+        };
+
+        Ok(fields)
+    }
+
+    pub fn type_id(&self) -> u64 {
+        use self::RpRegistered::*;
+
+        match *self {
+            Type(ref body) => body.type_id,
+            Interface(ref body) => body.type_id,
+            Enum(ref body) => body.type_id,
+            Tuple(ref body) => body.type_id,
+            Service(ref body) => body.type_id,
+            SubType(_, ref sub_type) => sub_type.type_id,
+            EnumVariant(_, ref variant) => variant.type_id,
+        }
+    }
+
+    pub fn display(&self) -> String {
+        use self::RpRegistered::*;
+
+        match *self {
+            Type(ref body) => format!("type {}", body.name.to_owned()),
+            Interface(ref body) => format!("interface {}", body.name.to_owned()),
+            Enum(ref body) => format!("enum {}", body.name.to_owned()),
+            Tuple(ref body) => format!("tuple {}", body.name.to_owned()),
+            Service(ref body) => format!("service {}", body.name.to_owned()),
+            SubType(ref parent, ref sub_type) => {
+                format!("subtype {}.{}", parent.name, sub_type.name)
+            }
+            EnumVariant(ref parent, ref variant) => {
+                format!("variant {}.{}", parent.name, *variant.name)
+            }
+        }
+    }
+
+    pub fn local_name<PackageFn, InnerFn>(
+        &self,
+        name: &RpName,
+        package_fn: PackageFn,
+        inner_fn: InnerFn,
+    ) -> String
+    where
+        PackageFn: Fn(Vec<&str>) -> String,
+        InnerFn: Fn(Vec<&str>) -> String,
+    {
+        use self::RpRegistered::*;
+
+        match *self {
+            Type(_) | Interface(_) | Enum(_) | Tuple(_) | Service(_) => {
+                let p = name.parts.iter().map(String::as_str).collect();
+                package_fn(p)
+            }
+            SubType { .. } |
+            EnumVariant { .. } => {
+                let mut v: Vec<&str> = name.parts.iter().map(String::as_str).collect();
+                let at = v.len().saturating_sub(2);
+                let last = inner_fn(v.split_off(at));
+
+                let mut parts = v.clone();
+                parts.push(last.as_str());
+
+                inner_fn(parts)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpServiceAccepts {
+    pub comment: Vec<String>,
+    pub ty: Option<Loc<RpType>>,
+    pub accepts: Option<Mime>,
+    pub alias: Option<Loc<String>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpServiceBody {
+    pub type_id: u64,
+    pub name: String,
+    pub comment: Vec<String>,
+    pub endpoints: Vec<RpServiceEndpoint>,
+    pub decls: Vec<Rc<Loc<RpDecl>>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpServiceEndpoint {
+    pub method: Option<Loc<String>>,
+    pub path: RpPathSpec,
+    pub comment: Vec<String>,
+    pub accepts: Vec<RpServiceAccepts>,
+    pub returns: Vec<RpServiceReturns>,
+}
+
+impl RpServiceEndpoint {
+    pub fn url(&self) -> String {
+        self.path.url()
+    }
+
+    pub fn id_parts<F>(&self, filter: F) -> Vec<String>
+    where
+        F: Fn(&str) -> String,
+    {
+        let mut parts = Vec::new();
+
+        if let Some(ref method) = self.method {
+            parts.push(filter(method.value().as_str()));
+        }
+
+        parts.extend(self.path.id_fragments().into_iter().map(filter));
+        parts
+    }
+
+    pub fn method(&self) -> Option<&str> {
+        self.method.as_ref().map(|v| v.value().as_str())
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpServiceReturns {
+    pub comment: Vec<String>,
+    pub ty: Option<Loc<RpType>>,
+    pub produces: Option<Mime>,
+    pub status: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpSubType {
+    pub parent_type_id: u64,
+    pub type_id: u64,
+    pub name: String,
+    pub comment: Vec<String>,
+    /// Inner declarations.
+    pub decls: Vec<Rc<Loc<RpDecl>>>,
+    pub fields: Vec<Loc<RpField>>,
+    pub codes: Vec<Loc<RpCode>>,
+    pub names: Vec<Loc<String>>,
+}
+
+impl RpSubType {
+    pub fn name(&self) -> &str {
+        self.names
+            .iter()
+            .map(|t| t.value().as_str())
+            .nth(0)
+            .unwrap_or(&self.name)
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpTupleBody {
+    pub type_id: u64,
+    pub name: String,
+    pub comment: Vec<String>,
+    pub decls: Vec<Rc<Loc<RpDecl>>>,
+    pub fields: Vec<Loc<RpField>>,
+    pub codes: Vec<Loc<RpCode>>,
+}
+
+impl RpTupleBody {
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Loc<RpField>> + 'a> {
+        Box::new(self.fields.iter())
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpTypeBody {
+    pub type_id: u64,
+    pub name: String,
+    pub comment: Vec<String>,
+    pub decls: Vec<Rc<Loc<RpDecl>>>,
+    pub fields: Vec<Loc<RpField>>,
+    pub codes: Vec<Loc<RpCode>>,
+    // Set of fields which are reserved for this type.
+    pub reserved: HashSet<Loc<String>>,
+}
+
+impl RpTypeBody {
+    pub fn verify(&self) -> Result<()> {
+        for reserved in &self.reserved {
+            if let Some(field) = self.fields.iter().find(|f| f.name() == reserved.value()) {
+                return Err(
+                    ErrorKind::ReservedField(field.pos().into(), reserved.pos().into()).into(),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Loc<RpField>> + 'a> {
+        Box::new(self.fields.iter())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum RpType {
+    Double,
+    Float,
+    Signed { size: Option<usize> },
+    Unsigned { size: Option<usize> },
+    Boolean,
+    String,
+    Bytes,
+    Any,
+    Name { name: RpName },
+    Array { inner: Box<RpType> },
+    Map {
+        key: Box<RpType>,
+        value: Box<RpType>,
+    },
+}
+
+impl fmt::Display for RpType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            RpType::Double => write!(f, "double"),
+            RpType::Float => write!(f, "float"),
+            RpType::Signed { ref size } => {
+                if let Some(size) = *size {
+                    write!(f, "signed/{}", size)
+                } else {
+                    write!(f, "signed")
+                }
+            }
+            RpType::Unsigned { ref size } => {
+                if let Some(size) = *size {
+                    write!(f, "unsigned/{}", size)
+                } else {
+                    write!(f, "unsigned")
+                }
+            }
+            RpType::Boolean => write!(f, "boolean"),
+            RpType::String => write!(f, "string"),
+            RpType::Name { ref name } => write!(f, "{}", name),
+            RpType::Array { ref inner } => write!(f, "[{}]", inner),
+            RpType::Map { ref key, ref value } => write!(f, "{{{}: {}}}", key, value),
+            RpType::Any => write!(f, "any"),
+            RpType::Bytes => write!(f, "bytes"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(tag = "type", content = "value", rename_all = "snake_case")]
+pub enum RpValue {
+    String(String),
+    Number(RpNumber),
+    Boolean(bool),
+    Identifier(String),
+    Array(Vec<Loc<RpValue>>),
+    Creator(Loc<RpCreator>),
+}
+
+impl RpValue {
+    pub fn as_str(&self) -> Result<&str> {
+        use self::RpValue::*;
+
+        match *self {
+            String(ref string) => Ok(string),
+            _ => Err("not a string".into()),
+        }
+    }
+
+    pub fn as_identifier(&self) -> Result<&str> {
+        use self::RpValue::*;
+
+        match *self {
+            String(ref string) => Ok(string),
+            Identifier(ref identifier) => Ok(identifier),
+            _ => Err("unsupported identifier kind".into()),
+        }
+    }
+}
+
+impl fmt::Display for RpValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let out = match *self {
+            RpValue::String(_) => "<string>",
+            RpValue::Number(_) => "<number>",
+            RpValue::Boolean(_) => "<boolean>",
+            RpValue::Identifier(_) => "<identifier>",
+            RpValue::Array(_) => "<array>",
+            RpValue::Creator(_) => "<creator>",
+        };
+
+        write!(f, "{}", out)
+    }
+}

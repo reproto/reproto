@@ -385,7 +385,7 @@ impl JsBackend {
         &self,
         out: &mut JsFileSpec,
         name: &RpName,
-        body: Rc<RpTupleBody>,
+        body: Rc<Loc<RpTupleBody>>,
     ) -> Result<()> {
         let mut class = ClassSpec::new(&name.join(TYPE_SEP));
         class.export();
@@ -425,7 +425,7 @@ impl JsBackend {
         &self,
         out: &mut JsFileSpec,
         name: &RpName,
-        body: Rc<RpEnumBody>,
+        body: Rc<Loc<RpEnumBody>>,
     ) -> Result<()> {
         let mut class = ClassSpec::new(&name.join(TYPE_SEP));
         class.export();
@@ -487,7 +487,7 @@ impl JsBackend {
         &self,
         out: &mut JsFileSpec,
         name: &RpName,
-        body: Rc<RpTypeBody>,
+        body: Rc<Loc<RpTypeBody>>,
     ) -> Result<()> {
         let fields: Vec<_> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
@@ -527,7 +527,7 @@ impl JsBackend {
         &self,
         out: &mut JsFileSpec,
         name: &RpName,
-        body: Rc<RpInterfaceBody>,
+        body: Rc<Loc<RpInterfaceBody>>,
     ) -> Result<()> {
         let mut classes = Elements::new();
 

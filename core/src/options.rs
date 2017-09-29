@@ -1,7 +1,9 @@
 //! # Helper data structure do handle option lookups
 
-use super::*;
+use super::{RpOptionDecl, RpValue};
+use super::RpNumber;
 use super::errors::*;
+use super::loc::Loc;
 
 /// Helper for looking up and dealing with options.
 #[derive(Debug, Clone, Serialize)]

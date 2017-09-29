@@ -1,6 +1,6 @@
 use collecting::Collecting;
 use core::{Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
-           RpTupleBody, RpTypeBody, RpVersionedPackage};
+           RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
 use environment::Environment;
 use errors::*;
 use std::collections::BTreeMap;
@@ -33,20 +33,35 @@ where
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        _: Rc<RpInterfaceBody>,
+        _: Rc<Loc<RpInterfaceBody>>,
     ) -> Result<()> {
         self.default_process(out, name)
     }
 
-    fn process_type(&self, out: &mut Self::Out, name: &RpName, _: Rc<RpTypeBody>) -> Result<()> {
+    fn process_type(
+        &self,
+        out: &mut Self::Out,
+        name: &RpName,
+        _: Rc<Loc<RpTypeBody>>,
+    ) -> Result<()> {
         self.default_process(out, name)
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, name: &RpName, _: Rc<RpTupleBody>) -> Result<()> {
+    fn process_tuple(
+        &self,
+        out: &mut Self::Out,
+        name: &RpName,
+        _: Rc<Loc<RpTupleBody>>,
+    ) -> Result<()> {
         self.default_process(out, name)
     }
 
-    fn process_enum(&self, out: &mut Self::Out, name: &RpName, _: Rc<RpEnumBody>) -> Result<()> {
+    fn process_enum(
+        &self,
+        out: &mut Self::Out,
+        name: &RpName,
+        _: Rc<Loc<RpEnumBody>>,
+    ) -> Result<()> {
         self.default_process(out, name)
     }
 
@@ -54,7 +69,7 @@ where
         &self,
         out: &mut Self::Out,
         name: &RpName,
-        _: Rc<RpServiceBody>,
+        _: Rc<Loc<RpServiceBody>>,
     ) -> Result<()> {
         self.default_process(out, name)
     }
@@ -83,11 +98,26 @@ where
             );
 
             match **decl {
-                Interface(ref b) => self.process_interface(&mut out, name.as_ref(), b.clone()),
-                Type(ref b) => self.process_type(&mut out, name.as_ref(), b.clone()),
-                Tuple(ref b) => self.process_tuple(&mut out, name.as_ref(), b.clone()),
-                Enum(ref b) => self.process_enum(&mut out, name.as_ref(), b.clone()),
-                Service(ref b) => self.process_service(&mut out, name.as_ref(), b.clone()),
+                Interface(ref b) => {
+                    self.process_interface(&mut out, name.as_ref(), b.clone())
+                        .with_pos(b.pos())
+                }
+                Type(ref b) => {
+                    self.process_type(&mut out, name.as_ref(), b.clone())
+                        .with_pos(b.pos())
+                }
+                Tuple(ref b) => {
+                    self.process_tuple(&mut out, name.as_ref(), b.clone())
+                        .with_pos(b.pos())
+                }
+                Enum(ref b) => {
+                    self.process_enum(&mut out, name.as_ref(), b.clone())
+                        .with_pos(b.pos())
+                }
+                Service(ref b) => {
+                    self.process_service(&mut out, name.as_ref(), b.clone())
+                        .with_pos(b.pos())
+                }
             }
         })?;
 

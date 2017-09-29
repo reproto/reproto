@@ -17,11 +17,11 @@ pub enum Type {
 
 #[derive(Debug)]
 pub enum Decl<'input> {
-    Type(TypeBody<'input>),
-    Tuple(TupleBody<'input>),
-    Interface(InterfaceBody<'input>),
-    Enum(EnumBody<'input>),
-    Service(ServiceBody<'input>),
+    Type(Loc<TypeBody<'input>>),
+    Tuple(Loc<TupleBody<'input>>),
+    Interface(Loc<InterfaceBody<'input>>),
+    Enum(Loc<EnumBody<'input>>),
+    Service(Loc<ServiceBody<'input>>),
 }
 
 impl<'input> Decl<'input> {

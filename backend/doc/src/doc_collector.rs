@@ -11,7 +11,7 @@ pub struct DocCollector {
     service_overviews: Vec<String>,
     types_overview: Vec<String>,
     types: Vec<String>,
-    pub service_bodies: Vec<Rc<RpServiceBody>>,
+    pub service_bodies: Vec<Rc<Loc<RpServiceBody>>>,
     pub decl_bodies: Vec<RpDecl>,
 }
 
@@ -20,7 +20,7 @@ impl DocCollector {
         self.package_title = Some(title);
     }
 
-    pub fn new_service(&mut self, service_body: Rc<RpServiceBody>) -> DocWriter {
+    pub fn new_service(&mut self, service_body: Rc<Loc<RpServiceBody>>) -> DocWriter {
         self.service_bodies.push(service_body);
         DocWriter::new(&mut self.services)
     }

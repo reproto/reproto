@@ -145,7 +145,7 @@ impl RustBackend {
         &self,
         out: &mut RustFileSpec,
         name: &RpName,
-        body: Rc<RpTupleBody>,
+        body: Rc<Loc<RpTupleBody>>,
     ) -> Result<()> {
         let mut fields = Statement::new();
 
@@ -167,7 +167,7 @@ impl RustBackend {
         &self,
         out: &mut RustFileSpec,
         name: &RpName,
-        body: Rc<RpEnumBody>,
+        body: Rc<Loc<RpEnumBody>>,
     ) -> Result<()> {
         let name = self.convert_type_name(name);
         let mut enum_spec = EnumSpec::new(&name);
@@ -185,7 +185,7 @@ impl RustBackend {
         &self,
         out: &mut RustFileSpec,
         name: &RpName,
-        body: Rc<RpTypeBody>,
+        body: Rc<Loc<RpTypeBody>>,
     ) -> Result<()> {
         let mut fields = Elements::new();
 
@@ -212,7 +212,7 @@ impl RustBackend {
         &self,
         out: &mut RustFileSpec,
         name: &RpName,
-        body: Rc<RpInterfaceBody>,
+        body: Rc<Loc<RpInterfaceBody>>,
     ) -> Result<()> {
         let type_name = self.convert_type_name(name);
         let mut enum_spec = EnumSpec::new(&type_name);

@@ -437,7 +437,7 @@ impl PythonBackend {
         &self,
         out: &mut PythonFileSpec,
         name: &RpName,
-        body: Rc<RpTupleBody>,
+        body: Rc<Loc<RpTupleBody>>,
     ) -> Result<()> {
         let mut class = self.as_class(name);
 
@@ -480,7 +480,7 @@ impl PythonBackend {
         &self,
         out: &mut PythonFileSpec,
         name: &RpName,
-        body: Rc<RpEnumBody>,
+        body: Rc<Loc<RpEnumBody>>,
     ) -> Result<()> {
         let mut class = self.as_class(name);
 
@@ -524,7 +524,7 @@ impl PythonBackend {
         &self,
         out: &mut PythonFileSpec,
         name: &RpName,
-        body: Rc<RpTypeBody>,
+        body: Rc<Loc<RpTypeBody>>,
     ) -> Result<()> {
         let mut class = self.as_class(name);
 
@@ -568,7 +568,7 @@ impl PythonBackend {
         &self,
         out: &mut PythonFileSpec,
         name: &RpName,
-        body: Rc<RpInterfaceBody>,
+        body: Rc<Loc<RpInterfaceBody>>,
     ) -> Result<()> {
         let mut interface_spec = self.as_class(name);
 

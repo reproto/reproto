@@ -113,10 +113,7 @@ where
                 let reg_constant = self.env().constant(constant, name).with_pos(creator.pos())?;
 
                 match *reg_constant {
-                    RpRegistered::EnumConstant {
-                        parent: _,
-                        variant: _,
-                    } => {
+                    RpRegistered::EnumVariant(_, _) => {
                         let ty = self.convert_constant(constant.value())?;
                         return self.constant(ty);
                     }
