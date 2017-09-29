@@ -1,6 +1,6 @@
 use super::into_model::IntoModel;
 use super::scope::Scope;
-use core::{ErrorPos, Loc, Merge, Object, PathObject, Pos, RpDecl, RpField, RpFieldInit, RpFile,
+use core::{ErrorPos, Loc, Merge, Object, PathObject, RpDecl, RpField, RpFieldInit, RpFile,
            RpInstance, RpModifier, RpName, RpPackage, RpRegistered, RpRequiredPackage, RpType,
            RpVersionedPackage, Version, WithPos};
 use errors::*;
@@ -93,27 +93,20 @@ impl Environment {
     /// Lookup registered constant.
     pub fn constant<'a>(
         &'a self,
-        pos: &Pos,
         constant: &'a RpName,
         target: &'a RpName,
     ) -> Result<&'a RpRegistered> {
-        let reg_constant = self.lookup(constant).map_err(|e| {
-            Error::pos(e.description().to_owned(), pos.into())
-        })?;
-
-        let reg_target = self.lookup(target).map_err(|e| {
-            Error::pos(e.description().to_owned(), pos.into())
-        })?;
+        let reg_constant = self.lookup(constant)?;
+        let reg_target = self.lookup(target)?;
 
         if !reg_target.is_assignable_from(reg_constant) {
-            return Err(Error::pos(
+            return Err(
                 format!(
                     "expected instance of `{}` but found `{}`",
                     reg_target.display(),
                     reg_constant.display()
-                ),
-                pos.into(),
-            ));
+                ).into(),
+            );
         }
 
         Ok(reg_constant)
@@ -123,34 +116,28 @@ impl Environment {
     /// containing the arguments being instantiated.
     pub fn instance<'a>(
         &'a self,
-        pos: &Pos,
         instance: &'a RpInstance,
         target: &'a RpName,
     ) -> Result<(&'a RpRegistered, InitFields)> {
-        let reg_instance = self.lookup(&instance.name).map_err(|e| {
-            Error::pos(e.description().to_owned(), pos.into())
-        })?;
+        let reg_instance = self.lookup(&instance.name)?;
 
-        let reg_target = self.lookup(target).map_err(|e| {
-            Error::pos(e.description().to_owned(), pos.into())
-        })?;
+        let reg_target = self.lookup(target)?;
 
         if !reg_target.is_assignable_from(reg_instance) {
-            return Err(Error::pos(
+            return Err(
                 format!(
                     "expected instance of `{}` but found `{}`",
                     reg_target.display(),
                     reg_instance.display()
-                ),
-                pos.into(),
-            ));
+                ).into(),
+            );
         }
 
         let required_fields = match *reg_instance {
             RpRegistered::Tuple(..) |
             RpRegistered::Type(..) |
             RpRegistered::SubType { .. } => reg_instance.fields()?,
-            _ => return Err(Error::pos("expected instantiable type".into(), pos.into())),
+            _ => return Err("expected instantiable type".into()),
         };
 
         // pick required fields.
@@ -170,7 +157,7 @@ impl Environment {
                 known.insert(field.ident().to_owned(), init.clone());
                 required.remove(field.name());
             } else {
-                return Err(Error::pos("no such field".to_owned(), init.pos().into()));
+                return Err("no such field".into()).with_pos(init.pos());
             }
         }
 

@@ -11,7 +11,7 @@
 //! In this example, the second field is a `float`, and the third field is a `double`.
 
 use converter::Converter;
-use core::{Loc, RpCreator, RpNumber, RpRegistered, RpType, RpValue, RpVersionedPackage};
+use core::{Loc, RpCreator, RpNumber, RpRegistered, RpType, RpValue, RpVersionedPackage, WithPos};
 use environment::Environment;
 use errors::*;
 use variables::Variables;
@@ -110,7 +110,7 @@ where
 
         match (creator.value(), expected) {
             (&RpCreator::Constant(ref constant), Some(&RpType::Name { ref name })) => {
-                let reg_constant = self.env().constant(creator.pos(), constant, name)?;
+                let reg_constant = self.env().constant(constant, name).with_pos(creator.pos())?;
 
                 match *reg_constant {
                     RpRegistered::EnumConstant {
@@ -129,7 +129,8 @@ where
                 }
             }
             (&RpCreator::Instance(ref instance), Some(&RpType::Name { ref name })) => {
-                let (registered, known) = self.env().instance(creator.pos(), instance, name)?;
+                let (registered, known) =
+                    self.env().instance(instance, name).with_pos(creator.pos())?;
 
                 let mut arguments = Vec::new();
 
