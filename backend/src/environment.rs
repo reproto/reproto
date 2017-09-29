@@ -147,12 +147,9 @@ impl Environment {
         }
 
         let required_fields = match *reg_instance {
-            RpRegistered::Type(ref ty) => ty.fields(),
-            RpRegistered::SubType {
-                ref parent,
-                ref sub_type,
-            } => Box::new(parent.fields().chain(sub_type.fields())),
-            RpRegistered::Tuple(ref tuple) => tuple.fields(),
+            RpRegistered::Tuple(..) |
+            RpRegistered::Type(..) |
+            RpRegistered::SubType { .. } => reg_instance.fields()?,
             _ => return Err(Error::pos("expected instantiable type".into(), pos.into())),
         };
 
