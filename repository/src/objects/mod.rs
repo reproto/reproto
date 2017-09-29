@@ -21,8 +21,8 @@ use url::Url;
 /// Configuration file for objects backends.
 pub struct ObjectsConfig {
     /// Root path when checking out local repositories.
-    pub repos: Option<PathBuf>,
-    pub objects_cache: Option<PathBuf>,
+    pub repo_dir: PathBuf,
+    pub cache_dir: Option<PathBuf>,
     pub missing_cache_time: Option<Duration>,
 }
 
@@ -79,9 +79,7 @@ where
         format!("invalid scheme ({}), expected git+scheme", url.scheme())
     })?;
 
-    let repos = config.repos.ok_or_else(|| "repos: not specified")?;
-
-    let git_repo = git::setup_git_repo(&repos, sub_scheme, url)?;
+    let git_repo = git::setup_git_repo(&config.repo_dir, sub_scheme, url)?;
 
     let file_objects = FileObjects::new(git_repo.path());
 
@@ -96,12 +94,13 @@ pub fn objects_from_http(config: ObjectsConfig, url: &Url) -> Result<Box<Objects
 
     let http_objects = HttpObjects::new(url.clone(), core);
 
-    if let Some(objects_cache) = config.objects_cache {
+    if let Some(cache_dir) = config.cache_dir {
         let missing_cache_time = config.missing_cache_time.unwrap_or_else(
             || Duration::new(60, 0),
         );
+
         return Ok(Box::new(CachedObjects::new(
-            objects_cache,
+            cache_dir,
             missing_cache_time,
             http_objects,
         )));

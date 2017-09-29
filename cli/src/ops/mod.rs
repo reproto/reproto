@@ -4,11 +4,12 @@ mod publish;
 mod update;
 mod repo;
 mod imports;
+mod config_env;
 
+use self::config_env::ConfigEnv;
 use self::imports::*;
 use backend::naming;
 use repository::*;
-use std::env;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -155,50 +156,27 @@ pub fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
         return Ok(Repository::new(Box::new(NoIndex), Box::new(NoObjects)));
     }
 
+    let mut repo_dir = None;
+    let mut cache_dir = None;
     let mut index = matches.value_of("index").map(ToOwned::to_owned);
     let mut objects = matches.value_of("objects").map(ToOwned::to_owned);
-    let mut index_config = IndexConfig { repos: None };
 
-    let mut objects_config = ObjectsConfig {
-        repos: None,
-        objects_cache: None,
+    if let Some(config_env) = ConfigEnv::new()? {
+        repo_dir = Some(config_env.repo_dir);
+        cache_dir = Some(config_env.cache_dir);
+        index = index.or(config_env.index.clone());
+        objects = objects.or(config_env.objects.clone());
+    }
+
+    let repo_dir = repo_dir.ok_or_else(|| "repo_dir: must be specified")?;
+
+    let index_config = IndexConfig { repo_dir: repo_dir.clone() };
+
+    let objects_config = ObjectsConfig {
+        repo_dir: repo_dir,
+        cache_dir: cache_dir,
         missing_cache_time: Some(Duration::new(60, 0)),
     };
-
-    if let Some(home_dir) = env::home_dir() {
-        let reproto_dir = home_dir.join(".reproto");
-        let config = reproto_dir.join("config.toml");
-        let reproto_dir = home_dir.join(".reproto");
-        let default_local_repos = reproto_dir.join("git");
-        let mut objects_cache = reproto_dir.join("cache");
-
-        if config.is_file() {
-            let config = read_config(config)?;
-
-            if let Some(repository) = config.repository {
-                // set values from configuration (if not already set).
-                index = index.or(repository.index);
-                objects = objects.or(repository.objects);
-            }
-
-            objects_cache = config.objects_cache.unwrap_or(objects_cache);
-
-            let local_repos = config.local_repos;
-
-            index_config.repos = index_config.repos.or_else(|| local_repos.clone());
-            objects_config.repos = objects_config.repos.or_else(|| local_repos.clone());
-        }
-
-        index_config.repos = Some(index_config.repos.unwrap_or_else(
-            || default_local_repos.clone(),
-        ));
-
-        objects_config.repos = Some(objects_config.repos.unwrap_or_else(
-            || default_local_repos.clone(),
-        ));
-
-        objects_config.objects_cache = Some(objects_cache);
-    }
 
     let index_url = index.unwrap_or_else(|| DEFAULT_INDEX.to_owned());
 
@@ -226,8 +204,7 @@ pub fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
         }
     };
 
-    let repository = Repository::new(index, objects);
-    return Ok(repository);
+    Ok(Repository::new(index, objects))
 }
 
 pub fn setup_path_resolver(matches: &ArgMatches) -> Result<Option<Box<Resolver>>> {

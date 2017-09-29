@@ -14,7 +14,7 @@ use url::Url;
 /// Configuration file for objects backends.
 pub struct IndexConfig {
     /// Root path when checking out local repositories.
-    pub repos: Option<PathBuf>,
+    pub repo_dir: PathBuf,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -113,9 +113,7 @@ where
         format!("invalid scheme ({}), expected git+scheme", url.scheme())
     })?;
 
-    let repos = config.repos.ok_or_else(|| "repos: not specified")?;
-
-    let git_repo = git::setup_git_repo(&repos, sub_scheme, url)?;
+    let git_repo = git::setup_git_repo(&config.repo_dir, sub_scheme, url)?;
     let file_objects = file_index::FileIndex::new(git_repo.path())?;
 
     let git_repo = Rc::new(git_repo);

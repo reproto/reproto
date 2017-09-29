@@ -28,9 +28,9 @@ pub struct Config {
     /// Specified repository.
     pub repository: Option<Repository>,
     /// Where to store local checkouts of repos.
-    pub local_repos: Option<PathBuf>,
+    pub repo_dir: Option<PathBuf>,
     /// Objects cache location.
-    pub objects_cache: Option<PathBuf>,
+    pub cache_dir: Option<PathBuf>,
 }
 
 pub fn read_config<P: AsRef<Path>>(path: P) -> Result<Config> {
