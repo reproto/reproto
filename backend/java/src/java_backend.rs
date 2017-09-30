@@ -533,9 +533,9 @@ impl JavaBackend {
     }
 
     fn process_enum(&self, name: &RpName, body: &RpEnumBody) -> Result<EnumSpec> {
-        let class_type = Type::class(&self.java_package_name(&name.package), &body.name);
+        let class_type = Type::class(&self.java_package_name(&name.package), &body.local_name);
 
-        let mut spec = EnumSpec::new(mods![Modifier::Public], &body.name);
+        let mut spec = EnumSpec::new(mods![Modifier::Public], &body.local_name);
         let fields = self.convert_fields(&body.fields)?;
 
         for field in &fields {
@@ -560,7 +560,7 @@ impl JavaBackend {
 
         for variant in &body.variants {
             let mut enum_value = Elements::new();
-            let mut enum_stmt = stmt![&*variant.name];
+            let mut enum_stmt = stmt![&*variant.local_name];
 
             if !variant.arguments.is_empty() {
                 let mut value_arguments = Statement::new();
@@ -615,8 +615,8 @@ impl JavaBackend {
     }
 
     fn process_tuple(&self, name: &RpName, body: &RpTupleBody) -> Result<ClassSpec> {
-        let class_type = Type::class(&self.java_package_name(&name.package), &body.name);
-        let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
+        let class_type = Type::class(&self.java_package_name(&name.package), &body.local_name);
+        let mut spec = ClassSpec::new(mods![Modifier::Public], &body.local_name);
 
         let fields = self.convert_fields(&body.fields)?;
 
@@ -650,9 +650,9 @@ impl JavaBackend {
     }
 
     fn process_type(&self, name: &RpName, body: &RpTypeBody) -> Result<ClassSpec> {
-        let class_type = Type::class(&self.java_package_name(&name.package), &body.name);
+        let class_type = Type::class(&self.java_package_name(&name.package), &body.local_name);
 
-        let mut spec = ClassSpec::new(mods![Modifier::Public], &body.name);
+        let mut spec = ClassSpec::new(mods![Modifier::Public], &body.local_name);
         let fields = self.convert_fields(&body.fields)?;
 
         for field in &fields {
@@ -691,9 +691,12 @@ impl JavaBackend {
         name: &RpName,
         interface: &RpInterfaceBody,
     ) -> Result<InterfaceSpec> {
-        let parent_type = Type::class(&self.java_package_name(&name.package), &interface.name);
+        let parent_type = Type::class(
+            &self.java_package_name(&name.package),
+            &interface.local_name,
+        );
 
-        let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.name);
+        let mut interface_spec = InterfaceSpec::new(mods![Modifier::Public], &interface.local_name);
         let interface_fields = self.convert_fields(&interface.fields)?;
 
         for code in interface.codes.for_context(JAVA_CONTEXT) {
@@ -709,12 +712,12 @@ impl JavaBackend {
         let sub_types = interface.sub_types.values().map(AsRef::as_ref);
 
         sub_types.for_each_loc(|sub_type| {
-            let name = name.extend(sub_type.name.to_owned());
+            let name = &sub_type.name;
 
-            let class_type = parent_type.extend(&sub_type.name);
+            let class_type = parent_type.extend(&sub_type.local_name);
 
             let mods = mods![Modifier::Public, Modifier::Static];
-            let mut class = ClassSpec::new(mods, &sub_type.name);
+            let mut class = ClassSpec::new(mods, &sub_type.local_name);
             let sub_type_fields = self.convert_fields(&sub_type.fields)?;
 
             for code in sub_type.codes.for_context(JAVA_CONTEXT) {
@@ -788,7 +791,7 @@ impl JavaBackend {
     }
 
     fn process_service(&self, _: &RpName, body: &RpServiceBody) -> Result<InterfaceSpec> {
-        let mut spec = InterfaceSpec::new(mods![Modifier::Public], &body.name);
+        let mut spec = InterfaceSpec::new(mods![Modifier::Public], &body.local_name);
 
         for endpoint in &body.endpoints {
             let mut ret: Option<Type> = None;
@@ -892,8 +895,7 @@ impl JavaBackend {
                 let mut spec = self.process_interface(name, interface)?;
 
                 for d in &interface.decls {
-                    let name = name.extend(d.name().to_owned());
-                    self.process_decl(&name, d, depth + 1, &mut spec)?;
+                    self.process_decl(d.name(), d, depth + 1, &mut spec)?;
                 }
 
                 container.push_contained(spec.into());
@@ -907,8 +909,7 @@ impl JavaBackend {
                 }
 
                 for d in &ty.decls {
-                    let name = name.extend(d.name().to_owned());
-                    self.process_decl(&name, d, depth + 1, &mut spec)?;
+                    self.process_decl(d.name(), d, depth + 1, &mut spec)?;
                 }
 
                 container.push_contained(spec.into());
@@ -922,8 +923,7 @@ impl JavaBackend {
                 }
 
                 for d in &ty.decls {
-                    let name = name.extend(d.name().to_owned());
-                    self.process_decl(&name, d, depth + 1, &mut spec)?;
+                    self.process_decl(d.name(), d, depth + 1, &mut spec)?;
                 }
 
                 container.push_contained(spec.into());
@@ -932,8 +932,7 @@ impl JavaBackend {
                 let mut spec = self.process_enum(name, ty)?;
 
                 for d in &ty.decls {
-                    let name = name.extend(d.name().to_owned());
-                    self.process_decl(&name, d, depth + 1, &mut spec)?;
+                    self.process_decl(d.name(), d, depth + 1, &mut spec)?;
                 }
 
                 container.push_contained(spec.into());

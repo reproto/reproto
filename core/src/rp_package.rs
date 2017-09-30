@@ -1,7 +1,7 @@
 use super::rp_versioned_package::RpVersionedPackage;
 use std::fmt;
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpPackage {
     pub parts: Vec<String>,
 }

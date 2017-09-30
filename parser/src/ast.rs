@@ -1,6 +1,6 @@
 use core::{Loc, RpModifier, RpNumber, RpPackage, VersionReq};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub enum Type {
     Double,
     Float,
@@ -54,7 +54,7 @@ pub struct EnumVariant<'input> {
     pub ordinal: Option<Loc<Value<'input>>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct FieldInit<'input> {
     pub name: Loc<&'input str>,
     pub value: Loc<Value<'input>>,
@@ -85,7 +85,7 @@ impl<'input> Field<'input> {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub enum Name {
     Relative { parts: Vec<String> },
     Absolute {
@@ -94,7 +94,7 @@ pub enum Name {
     },
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct Instance<'input> {
     pub name: Name,
     pub arguments: Loc<Vec<Loc<FieldInit<'input>>>>,
@@ -116,13 +116,13 @@ pub enum Member<'input> {
     InnerDecl(Decl<'input>),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub enum Creator<'input> {
     Instance(Loc<Instance<'input>>),
     Constant(Loc<Name>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct OptionDecl<'input> {
     pub name: &'input str,
     pub values: Vec<Loc<Value<'input>>>,
@@ -213,7 +213,7 @@ pub struct UseDecl<'input> {
     pub alias: Option<Loc<&'input str>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub enum Value<'input> {
     String(String),
     Number(RpNumber),

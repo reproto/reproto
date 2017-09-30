@@ -6,7 +6,7 @@ use super::errors::*;
 use super::loc::Loc;
 
 /// Helper for looking up and dealing with options.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Options {
     options: Vec<Loc<RpOptionDecl>>,
 }

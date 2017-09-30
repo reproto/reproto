@@ -290,10 +290,10 @@ impl Environment {
     /// Iterate over top level declarations of all registered objects.
     pub fn for_each_toplevel_decl<O>(&self, mut op: O) -> Result<()>
     where
-        O: FnMut(Rc<RpName>, Rc<Loc<RpDecl>>) -> Result<()>,
+        O: FnMut(Rc<Loc<RpDecl>>) -> Result<()>,
     {
-        for (name, decl) in &self.decls {
-            op(Rc::new(name.clone()), decl.clone()).with_pos(decl.pos())?;
+        for decl in self.decls.values() {
+            op(decl.clone()).with_pos(decl.pos())?;
         }
 
         Ok(())
@@ -302,20 +302,17 @@ impl Environment {
     /// Walks the entire tree of declarations recursively of all registered objects.
     pub fn for_each_decl<O>(&self, mut op: O) -> Result<()>
     where
-        O: FnMut(Rc<RpName>, Rc<Loc<RpDecl>>) -> Result<()>,
+        O: FnMut(Rc<Loc<RpDecl>>) -> Result<()>,
     {
         let mut queue = LinkedList::new();
 
-        queue.extend(self.decls.iter().map(
-            |(k, v)| (Rc::new(k.clone()), v.clone()),
-        ));
+        queue.extend(self.decls.values().map(|v| v.clone()));
 
-        while let Some((name, decl)) = queue.pop_front() {
-            op(name.clone(), decl.clone()).with_pos(decl.pos())?;
+        while let Some(decl) = queue.pop_front() {
+            op(decl.clone()).with_pos(decl.pos())?;
 
             for d in decl.decls() {
-                let name = Rc::new(name.extend(d.name().to_owned()));
-                queue.push_back((name, d.clone()));
+                queue.push_back(d.clone());
             }
         }
 
@@ -326,24 +323,16 @@ impl Environment {
     ///
     /// Declarations are considered the same if they have the same qualified name.
     /// The same declarations are merged using `Merge`.
-    pub fn process_decls<I>(
-        &self,
-        package: &RpVersionedPackage,
-        input: I,
-    ) -> Result<LinkedHashMap<RpName, Rc<Loc<RpDecl>>>>
+    pub fn process_decls<I>(&self, input: I) -> Result<LinkedHashMap<RpName, Rc<Loc<RpDecl>>>>
     where
         I: IntoIterator<Item = Loc<RpDecl>>,
     {
         use linked_hash_map::Entry::*;
 
-        let package = self.package_prefix(package);
-
         let mut decls = LinkedHashMap::new();
 
         for decl in input {
-            let name = RpName::new(None, package.clone(), vec![decl.name().to_owned()]);
-
-            match decls.entry(name) {
+            match decls.entry(decl.name().clone()) {
                 Vacant(entry) => {
                     entry.insert(Rc::new(decl));
                 }
@@ -362,15 +351,15 @@ impl Environment {
         decls: I,
     ) -> Result<LinkedHashMap<RpName, RpRegistered>>
     where
-        I: IntoIterator<Item = (&'a RpName, &'a Rc<Loc<RpDecl>>)>,
+        I: IntoIterator<Item = &'a Rc<Loc<RpDecl>>>,
     {
         use linked_hash_map::Entry;
 
         let mut types = LinkedHashMap::new();
 
-        for (name, d) in decls {
-            for (key, t) in d.into_registered_type(name) {
-                let key = key.clone().without_prefix();
+        for d in decls {
+            for t in d.into_registered_type() {
+                let key = t.name().clone().without_prefix();
 
                 match types.entry(key) {
                     Entry::Occupied(entry) => {
@@ -389,9 +378,9 @@ impl Environment {
         Ok(types)
     }
 
-    pub fn process_file(&mut self, package: &RpVersionedPackage, file: RpFile) -> Result<()> {
-        let decls = self.process_decls(&package, file.decls)?;
-        let types = self.process_types(decls.iter())?;
+    pub fn process_file(&mut self, file: RpFile) -> Result<()> {
+        let decls = self.process_decls(file.decls)?;
+        let types = self.process_types(decls.values())?;
         self.decls.extend(decls);
         self.types.extend(types);
         Ok(())
@@ -404,7 +393,7 @@ impl Environment {
             let required = RpRequiredPackage::new(package.package.clone(), None);
 
             if !self.visited.contains_key(&required) {
-                self.process_file(&package, file)?;
+                self.process_file(file)?;
                 self.visited.insert(required, Some(package.clone()));
             }
 
@@ -444,7 +433,7 @@ impl Environment {
             debug!("found: {} ({})", versioned, required);
 
             for file in files.into_iter() {
-                self.process_file(&versioned, file)?;
+                self.process_file(file)?;
             }
 
             Some(versioned)

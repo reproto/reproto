@@ -448,15 +448,15 @@ impl JsBackend {
             let mut value_arguments = Statement::new();
 
             value_arguments.push(variant.ordinal.to_string());
-            value_arguments.push(string(&*variant.name));
+            value_arguments.push(string(variant.local_name.as_str()));
 
             for (value, field) in variant.arguments.iter().zip(fields.iter()) {
                 let ctx = ValueContext::new(&name.package, &variables, &value, Some(&field.ty));
                 value_arguments.push(self.value(ctx)?);
             }
 
-            let arguments = js![new & body.name, value_arguments];
-            let member = stmt![&class.name, ".", &*variant.name];
+            let arguments = js![new & body.local_name, value_arguments];
+            let member = stmt![&class.name, ".", variant.local_name.as_str()];
 
             values.push(js![= &member, arguments]);
             members.push(member);
@@ -534,7 +534,7 @@ impl JsBackend {
         let mut interface_spec = ClassSpec::new(&name.join(TYPE_SEP));
         interface_spec.export();
 
-        interface_spec.push(self.interface_decode_method(name, &body)?);
+        interface_spec.push(self.interface_decode_method(&body)?);
 
         let interface_fields: Vec<Loc<JsField>> =
             body.fields.iter().map(|f| self.into_js_field(f)).collect();

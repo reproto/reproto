@@ -225,7 +225,9 @@ impl RustBackend {
             enum_spec.push(code.take().lines);
         }
 
-        for (_, ref sub_type) in &body.sub_types {
+        let sub_types = body.sub_types.values().map(AsRef::as_ref);
+
+        sub_types.for_each_loc(|sub_type| {
             let mut elements = Elements::new();
 
             if let Some(sub_type_name) = sub_type.names.first() {
@@ -236,7 +238,7 @@ impl RustBackend {
                 ]);
             }
 
-            elements.push(stmt![&sub_type.name, " {"]);
+            elements.push(stmt![sub_type.local_name.as_str(), " {"]);
 
             for field in body.fields.iter().chain(sub_type.fields.iter()) {
                 elements.push_nested(self.field_element(name, field)?);
@@ -245,7 +247,9 @@ impl RustBackend {
             elements.push("},");
 
             enum_spec.push(elements);
-        }
+
+            Ok(()) as Result<()>
+        })?;
 
         out.0.push(enum_spec);
 

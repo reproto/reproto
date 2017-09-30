@@ -358,8 +358,10 @@ impl PythonBackend {
 
         let variables = Variables::new();
 
-        for variant in &body.variants {
-            let var_name = Variable::String((*variant.name).to_owned());
+        let variants = body.variants.iter().map(AsRef::as_ref);
+
+        variants.for_each_loc(|variant| {
+            let var_name = Variable::String(variant.local_name.to_string());
 
             let mut enum_arguments = Statement::new();
 
@@ -379,12 +381,14 @@ impl PythonBackend {
             }
 
             arguments.push(stmt!["(", enum_arguments.join(", "), ")"]);
-        }
 
-        let class_name = Variable::String(body.name.to_owned());
+            Ok(()) as Result<()>
+        })?;
+
+        let class_name = Variable::String(body.local_name.to_string());
 
         Ok(stmt![
-            &body.name,
+            body.local_name.as_str(),
             " = ",
             &self.enum_enum,
             "(",
@@ -392,7 +396,7 @@ impl PythonBackend {
             ", [",
             arguments.join(", "),
             "], type=",
-            &body.name,
+            body.local_name.as_str(),
             ")",
         ])
     }
@@ -572,7 +576,7 @@ impl PythonBackend {
     ) -> Result<()> {
         let mut interface_spec = self.as_class(name);
 
-        interface_spec.push(self.interface_decode_method(name, &body)?);
+        interface_spec.push(self.interface_decode_method(&body)?);
 
         for code in body.codes.for_context(PYTHON_CONTEXT) {
             interface_spec.push(code.take().lines);
@@ -582,8 +586,10 @@ impl PythonBackend {
 
         out.0.push(interface_spec);
 
-        for (_, ref sub_type) in &body.sub_types {
-            let name = name.extend(sub_type.name.clone());
+        let values = body.sub_types.values().map(AsRef::as_ref);
+
+        values.for_each_loc(|sub_type| {
+            let name = &sub_type.name;
 
             let mut class = self.as_class(&name);
             class.extends(&local_name);
@@ -611,17 +617,17 @@ impl PythonBackend {
 
             let decode = self.decode_method(&name, &fields, |_, field| {
                 Variable::String(field.ident.to_owned())
-            }).with_pos(sub_type.pos())?;
+            })?;
 
             class.push(decode);
 
             let type_stmt =
                 stmt![
-                "data[",
-                &self.type_var,
-                "] = ",
-                Variable::String(sub_type.name().to_owned()),
-            ];
+                    "data[",
+                    &self.type_var,
+                    "] = ",
+                    Variable::String(sub_type.name().to_owned()),
+                ];
 
             let encode = self.encode_method(
                 &name,
@@ -640,7 +646,9 @@ impl PythonBackend {
             }
 
             out.0.push(class);
-        }
+
+            Ok(()) as Result<()>
+        })?;
 
         Ok(())
     }

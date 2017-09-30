@@ -110,7 +110,7 @@ impl DocBackend {
             html!(out, table {class => "spaced"} => {
                 for variant in it {
                     html!(out, tr {} => {
-                        html!(out, td {class => "name"} ~ variant.name.as_ref());
+                        html!(out, td {class => "name"} ~ variant.local_name.as_ref());
 
                         html!(out, td {class => "description"} => {
                             self.write_description(out, &variant.comment)?;
@@ -517,10 +517,10 @@ impl DocBackend {
 
             html!(out, div {class => "section-body"} => {
                 for decl in decls {
-                    let href = format!("#{}", decl.name());
+                    let href = format!("#{}", decl.local_name());
 
                     html!(out, h2 {} => {
-                        html!(out, a {href => href} ~ decl.name());
+                        html!(out, a {href => href} ~ decl.local_name());
                     });
 
                     self.write_description(out, decl.comment().iter().take(1))?;
@@ -602,18 +602,18 @@ impl DocBackend {
 
                 if !body.sub_types.is_empty() {
                     html!(out, div {class => "sub-types"} => {
-                        for (type_name, sub_type) in &body.sub_types {
-                            let name = name.extend(type_name.to_owned());
+                        for sub_type in body.sub_types.values() {
                             let id = format!("{}_{}", body.name, sub_type.name);
 
                             html!(out, h2 {id => id, class => "sub-type-title"} => {
-                                html!(out, a {class => "link", href => format!("#{}", id)} ~ name);
+                                html!(out, a {class => "link", href => format!("#{}", id)} ~
+                                      sub_type.local_name);
                             });
 
                             self.write_description(&mut out, &body.comment)?;
 
                             let fields = body.fields.iter().chain(sub_type.fields.iter());
-                            self.write_fields(&mut out, &name, fields)?;
+                            self.write_fields(&mut out, &sub_type.name, fields)?;
                         }
                     });
                 }

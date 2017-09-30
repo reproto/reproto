@@ -69,11 +69,7 @@ where
         Ok(input)
     }
 
-    fn interface_decode_method(
-        &self,
-        name: &RpName,
-        body: &RpInterfaceBody,
-    ) -> Result<Self::Method> {
+    fn interface_decode_method(&self, body: &RpInterfaceBody) -> Result<Self::Method> {
         let data = self.new_var("data");
 
         let mut decode_body = Self::Elements::new();
@@ -81,11 +77,9 @@ where
         let type_var = self.new_var("f_type");
         decode_body.push(&self.assign_type_var(&data, &type_var));
 
-        for (_, ref sub_type) in &body.sub_types {
+        for sub_type in body.sub_types.values() {
             for sub_type_name in &sub_type.names {
-                let name = name.extend(sub_type_name.value().clone());
-
-                let type_name = self.convert_type(&name).map_err(|e| {
+                let type_name = self.convert_type(&sub_type.name).map_err(|e| {
                     ErrorKind::Pos(format!("{}", e), sub_type.pos().into())
                 })?;
 

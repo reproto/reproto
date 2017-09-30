@@ -39,14 +39,16 @@ impl<'a> JavaCompiler<'a> {
     {
         let root_dir = &self.out_path;
 
-        self.backend.env.for_each_toplevel_decl(|name, decl| {
+        self.backend.env.for_each_toplevel_decl(|decl| {
+            let name = decl.name();
+
             let out_dir = self.backend.java_package(&name.package).parts.iter().fold(
                 root_dir.clone(),
                 |current, next| current.join(next),
             );
 
-            let full_path = out_dir.join(format!("{}.java", decl.name()));
-            consumer(full_path, name.as_ref(), decl.as_ref())
+            let full_path = out_dir.join(format!("{}.java", decl.local_name()));
+            consumer(full_path, name, decl.as_ref())
         })?;
 
         Ok(())

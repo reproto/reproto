@@ -90,7 +90,9 @@ where
         let mut files = BTreeMap::new();
 
         // Process all types discovered so far.
-        self.env().for_each_decl(|name, decl| {
+        self.env().for_each_decl(|decl| {
+            let name = Rc::new(decl.name().clone());
+
             callback(name.clone(), decl.clone())?;
 
             let mut out = files.entry(name.package.clone()).or_insert_with(

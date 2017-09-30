@@ -93,11 +93,14 @@ impl<'input> IntoModel for EnumBody<'input> {
 
             let variant = Loc::new((type_id, variant, ordinal).into_model(scope)?, pos.clone());
 
-            if let Some(other) = variants.iter().find(|v| *v.name == *variant.name) {
+            if let Some(other) = variants.iter().find(
+                |v| *v.local_name == *variant.local_name,
+            )
+            {
                 return Err(
                     ErrorKind::EnumVariantConflict(
-                        other.name.pos().into(),
-                        variant.name.pos().into(),
+                        other.local_name.pos().into(),
+                        variant.local_name.pos().into(),
                     ).into(),
                 );
             }
@@ -118,7 +121,8 @@ impl<'input> IntoModel for EnumBody<'input> {
 
         Ok(RpEnumBody {
             type_id: type_id,
-            name: self.name.to_owned(),
+            name: scope.as_name(),
+            local_name: self.name.to_string(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             decls: decls,
             variants: variants,
@@ -142,7 +146,8 @@ impl<'input> IntoModel for (u64, EnumVariant<'input>, u32) {
         Ok(RpEnumVariant {
             parent_type_id: parent_type_id,
             type_id: scope.next_type_id()?,
-            name: value.name.into_model(scope)?,
+            name: scope.as_name().push(value.name.to_string()),
+            local_name: value.name.clone().map(str::to_string),
             comment: value.comment.into_iter().map(ToOwned::to_owned).collect(),
             arguments: value.arguments.into_model(scope)?,
             ordinal: ordinal,
@@ -220,7 +225,7 @@ impl<'input> IntoModel for InterfaceBody<'input> {
             let sub_type = Rc::new(Loc::new((type_id, sub_type).into_model(scope)?, pos));
 
             // key has to be owned by entry
-            let key = sub_type.name.clone();
+            let key = sub_type.local_name.clone();
 
             match sub_types.entry(key) {
                 Occupied(entry) => {
@@ -236,7 +241,8 @@ impl<'input> IntoModel for InterfaceBody<'input> {
 
         Ok(RpInterfaceBody {
             type_id: type_id,
-            name: self.name.to_owned(),
+            name: scope.as_name(),
+            local_name: self.name.to_string(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             decls: decls,
             fields: fields,
@@ -334,17 +340,7 @@ impl IntoModel for Name {
         use self::Name::*;
 
         let out = match self {
-            Relative { parts } => {
-                let mut all_parts: Vec<_> = scope.walk().collect();
-                all_parts.reverse();
-                all_parts.extend(parts);
-
-                RpName {
-                    prefix: None,
-                    package: scope.package(),
-                    parts: all_parts,
-                }
-            }
+            Relative { parts } => scope.as_name().extend(parts),
             Absolute { prefix, parts } => {
                 let package = if let Some(ref prefix) = prefix {
                     if let Some(package) = scope.lookup_prefix(prefix) {
@@ -610,7 +606,8 @@ impl<'input> IntoModel for ServiceBody<'input> {
 
         return Ok(RpServiceBody {
             type_id: scope.next_type_id()?,
-            name: self.name.to_owned(),
+            name: scope.as_name(),
+            local_name: self.name.to_string(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             endpoints: endpoints,
             decls: vec![],
@@ -734,7 +731,8 @@ impl<'input> IntoModel for (u64, SubType<'input>) {
         let sub_type = RpSubType {
             parent_type_id: parent_type_id,
             type_id: scope.next_type_id()?,
-            name: sub_type.name.to_owned(),
+            name: scope.as_name().push(sub_type.name.to_string()),
+            local_name: sub_type.name.to_string(),
             comment: comment,
             decls: decls,
             fields: fields,
@@ -756,7 +754,8 @@ impl<'input> IntoModel for TupleBody<'input> {
 
         Ok(RpTupleBody {
             type_id: scope.next_type_id()?,
-            name: self.name.to_owned(),
+            name: scope.as_name(),
+            local_name: self.name.to_string(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             decls: decls,
             fields: fields,
@@ -780,7 +779,8 @@ impl<'input> IntoModel for TypeBody<'input> {
 
         Ok(RpTypeBody {
             type_id: scope.next_type_id()?,
-            name: self.name.to_owned(),
+            name: scope.as_name(),
+            local_name: self.name.to_string(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             decls: decls,
             fields: fields,

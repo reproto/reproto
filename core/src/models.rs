@@ -14,6 +14,27 @@ use std::rc::Rc;
 use std::slice;
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum RpDecl {
+    Type(Rc<Loc<RpTypeBody>>),
+    Interface(Rc<Loc<RpInterfaceBody>>),
+    Enum(Rc<Loc<RpEnumBody>>),
+    Tuple(Rc<Loc<RpTupleBody>>),
+    Service(Rc<Loc<RpServiceBody>>),
+}
+
+#[derive(Debug, Clone)]
+pub enum RpRegistered {
+    Type(Rc<Loc<RpTypeBody>>),
+    Interface(Rc<Loc<RpInterfaceBody>>),
+    Enum(Rc<Loc<RpEnumBody>>),
+    Tuple(Rc<Loc<RpTupleBody>>),
+    SubType(Rc<Loc<RpInterfaceBody>>, Rc<Loc<RpSubType>>),
+    EnumVariant(Rc<Loc<RpEnumBody>>, Rc<Loc<RpEnumVariant>>),
+    Service(Rc<Loc<RpServiceBody>>),
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct RpByValueMatch {
     pub object: Loc<RpCreator>,
 }
@@ -22,16 +43,6 @@ pub struct RpByValueMatch {
 pub struct RpCode {
     pub context: String,
     pub lines: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum RpDecl {
-    Type(Rc<Loc<RpTypeBody>>),
-    Interface(Rc<Loc<RpInterfaceBody>>),
-    Enum(Rc<Loc<RpEnumBody>>),
-    Tuple(Rc<Loc<RpTupleBody>>),
-    Service(Rc<Loc<RpServiceBody>>),
 }
 
 pub struct DeclIter<'a> {
@@ -61,7 +72,19 @@ impl RpDecl {
         DeclIter { iter: iter }
     }
 
-    pub fn name(&self) -> &str {
+    pub fn local_name(&self) -> &str {
+        use self::RpDecl::*;
+
+        match *self {
+            Type(ref body) => body.local_name.as_str(),
+            Interface(ref body) => body.local_name.as_str(),
+            Enum(ref body) => body.local_name.as_str(),
+            Tuple(ref body) => body.local_name.as_str(),
+            Service(ref body) => body.local_name.as_str(),
+        }
+    }
+
+    pub fn name(&self) -> &RpName {
         use self::RpDecl::*;
 
         match *self {
@@ -86,60 +109,43 @@ impl RpDecl {
     }
 
     /// Convert a declaration into its registered types.
-    pub fn into_registered_type(&self, type_name: &RpName) -> Vec<(RpName, RpRegistered)> {
+    pub fn into_registered_type(&self) -> Vec<RpRegistered> {
         use self::RpDecl::*;
 
         let mut out = Vec::new();
 
         match *self {
             Type(ref ty) => {
-                out.push((type_name.clone(), RpRegistered::Type(ty.clone())));
+                out.push(RpRegistered::Type(ty.clone()));
             }
             Interface(ref interface) => {
-                for (name, sub_type) in &interface.sub_types {
-                    let type_name = type_name.extend(name.to_owned());
-
-                    out.push((
-                        type_name.clone(),
-                        RpRegistered::SubType(interface.clone(), sub_type.clone()),
-                    ));
+                for sub_type in interface.sub_types.values() {
+                    out.push(RpRegistered::SubType(interface.clone(), sub_type.clone()));
 
                     for d in &sub_type.decls {
-                        out.extend(d.into_registered_type(
-                            &type_name.extend(d.name().to_owned()),
-                        ));
+                        out.extend(d.into_registered_type());
                     }
                 }
 
-                out.push((
-                    type_name.clone(),
-                    RpRegistered::Interface(interface.clone()),
-                ));
+                out.push(RpRegistered::Interface(interface.clone()));
             }
             Enum(ref en) => {
                 for variant in &en.variants {
-                    let type_name = type_name.extend(variant.value().name.value().to_owned());
-
-                    out.push((
-                        type_name,
-                        RpRegistered::EnumVariant(en.clone(), variant.clone()),
-                    ));
+                    out.push(RpRegistered::EnumVariant(en.clone(), variant.clone()));
                 }
 
-                out.push((type_name.clone(), RpRegistered::Enum(en.clone())));
+                out.push(RpRegistered::Enum(en.clone()));
             }
             Tuple(ref tuple) => {
-                out.push((type_name.clone(), RpRegistered::Tuple(tuple.clone())));
+                out.push(RpRegistered::Tuple(tuple.clone()));
             }
             Service(ref service) => {
-                out.push((type_name.clone(), RpRegistered::Service(service.clone())));
+                out.push(RpRegistered::Service(service.clone()));
             }
         }
 
         for d in self.decls() {
-            out.extend(d.into_registered_type(
-                &type_name.extend(d.name().to_owned()),
-            ));
+            out.extend(d.into_registered_type());
         }
 
         out
@@ -163,7 +169,8 @@ impl fmt::Display for RpDecl {
 #[derive(Debug, Clone, Serialize)]
 pub struct RpEnumBody {
     pub type_id: u64,
-    pub name: String,
+    pub name: RpName,
+    pub local_name: String,
     pub comment: Vec<String>,
     /// Inner declarations.
     pub decls: Vec<Rc<Loc<RpDecl>>>,
@@ -178,13 +185,14 @@ pub struct RpEnumBody {
 pub struct RpEnumVariant {
     pub parent_type_id: u64,
     pub type_id: u64,
-    pub name: Loc<String>,
+    pub name: RpName,
+    pub local_name: Loc<String>,
     pub comment: Vec<String>,
     pub arguments: Vec<Loc<RpValue>>,
     pub ordinal: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RpFieldInit {
     pub name: Loc<String>,
     pub value: Loc<RpValue>,
@@ -243,7 +251,7 @@ pub struct RpFile {
     pub decls: Vec<Loc<RpDecl>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RpInstance {
     pub name: RpName,
     pub arguments: Loc<Vec<Loc<RpFieldInit>>>,
@@ -252,7 +260,8 @@ pub struct RpInstance {
 #[derive(Debug, Clone, Serialize)]
 pub struct RpInterfaceBody {
     pub type_id: u64,
-    pub name: String,
+    pub name: RpName,
+    pub local_name: String,
     pub comment: Vec<String>,
     /// Inner declarations.
     pub decls: Vec<Rc<Loc<RpDecl>>>,
@@ -267,7 +276,7 @@ impl RpInterfaceBody {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpName {
     /// Alias used if the name was imported from another package.
     pub prefix: Option<String>,
@@ -286,7 +295,21 @@ impl RpName {
         }
     }
 
-    pub fn extend(&self, part: String) -> RpName {
+    pub fn extend<I>(&self, it: I) -> RpName
+    where
+        I: IntoIterator<Item = String>,
+    {
+        let mut parts = self.parts.clone();
+        parts.extend(it);
+
+        RpName {
+            prefix: self.prefix.clone(),
+            package: self.package.clone(),
+            parts: parts,
+        }
+    }
+
+    pub fn push(&self, part: String) -> RpName {
         let mut parts = self.parts.clone();
         parts.push(part);
 
@@ -328,7 +351,7 @@ impl fmt::Display for RpName {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum RpCreator {
     Instance(Loc<RpInstance>),
     Constant(Loc<RpName>),
@@ -379,18 +402,21 @@ impl RpPathSpec {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum RpRegistered {
-    Type(Rc<Loc<RpTypeBody>>),
-    Interface(Rc<Loc<RpInterfaceBody>>),
-    Enum(Rc<Loc<RpEnumBody>>),
-    Tuple(Rc<Loc<RpTupleBody>>),
-    SubType(Rc<Loc<RpInterfaceBody>>, Rc<Loc<RpSubType>>),
-    EnumVariant(Rc<Loc<RpEnumBody>>, Rc<Loc<RpEnumVariant>>),
-    Service(Rc<Loc<RpServiceBody>>),
-}
-
 impl RpRegistered {
+    pub fn name(&self) -> &RpName {
+        use self::RpRegistered::*;
+
+        match *self {
+            Type(ref target) => &target.name,
+            Tuple(ref target) => &target.name,
+            Service(ref target) => &target.name,
+            Interface(ref target) => &target.name,
+            Enum(ref target) => &target.name,
+            SubType(_, ref target) => &target.name,
+            EnumVariant(_, ref target) => &target.name,
+        }
+    }
+
     pub fn is_assignable_from(&self, other: &RpRegistered) -> bool {
         use self::RpRegistered::*;
 
@@ -448,17 +474,13 @@ impl RpRegistered {
         use self::RpRegistered::*;
 
         match *self {
-            Type(ref body) => format!("type {}", body.name.to_owned()),
-            Interface(ref body) => format!("interface {}", body.name.to_owned()),
-            Enum(ref body) => format!("enum {}", body.name.to_owned()),
-            Tuple(ref body) => format!("tuple {}", body.name.to_owned()),
-            Service(ref body) => format!("service {}", body.name.to_owned()),
-            SubType(ref parent, ref sub_type) => {
-                format!("subtype {}.{}", parent.name, sub_type.name)
-            }
-            EnumVariant(ref parent, ref variant) => {
-                format!("variant {}.{}", parent.name, *variant.name)
-            }
+            Type(ref body) => format!("type {}", body.name),
+            Interface(ref body) => format!("interface {}", body.name),
+            Enum(ref body) => format!("enum {}", body.name),
+            Tuple(ref body) => format!("tuple {}", body.name),
+            Service(ref body) => format!("service {}", body.name),
+            SubType(_, ref sub_type) => format!("subtype {}", sub_type.name),
+            EnumVariant(_, ref variant) => format!("variant {}", variant.name),
         }
     }
 
@@ -505,7 +527,8 @@ pub struct RpServiceAccepts {
 #[derive(Debug, Clone, Serialize)]
 pub struct RpServiceBody {
     pub type_id: u64,
-    pub name: String,
+    pub name: RpName,
+    pub local_name: String,
     pub comment: Vec<String>,
     pub endpoints: Vec<RpServiceEndpoint>,
     pub decls: Vec<Rc<Loc<RpDecl>>>,
@@ -556,7 +579,8 @@ pub struct RpServiceReturns {
 pub struct RpSubType {
     pub parent_type_id: u64,
     pub type_id: u64,
-    pub name: String,
+    pub name: RpName,
+    pub local_name: String,
     pub comment: Vec<String>,
     /// Inner declarations.
     pub decls: Vec<Rc<Loc<RpDecl>>>,
@@ -571,14 +595,15 @@ impl RpSubType {
             .iter()
             .map(|t| t.value().as_str())
             .nth(0)
-            .unwrap_or(&self.name)
+            .unwrap_or(&self.local_name)
     }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpTupleBody {
     pub type_id: u64,
-    pub name: String,
+    pub name: RpName,
+    pub local_name: String,
     pub comment: Vec<String>,
     pub decls: Vec<Rc<Loc<RpDecl>>>,
     pub fields: Vec<Loc<RpField>>,
@@ -594,7 +619,8 @@ impl RpTupleBody {
 #[derive(Debug, Clone, Serialize)]
 pub struct RpTypeBody {
     pub type_id: u64,
-    pub name: String,
+    pub name: RpName,
+    pub local_name: String,
     pub comment: Vec<String>,
     pub decls: Vec<Rc<Loc<RpDecl>>>,
     pub fields: Vec<Loc<RpField>>,
@@ -621,7 +647,7 @@ impl RpTypeBody {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpType {
     Double,
@@ -670,7 +696,7 @@ impl fmt::Display for RpType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", content = "value", rename_all = "snake_case")]
 pub enum RpValue {
     String(String),

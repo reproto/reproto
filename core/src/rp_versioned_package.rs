@@ -2,7 +2,7 @@ use super::Version;
 use super::rp_package::RpPackage;
 use std::fmt;
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpVersionedPackage {
     pub package: RpPackage,
     pub version: Option<Version>,

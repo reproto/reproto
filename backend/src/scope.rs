@@ -1,5 +1,5 @@
 use super::errors::*;
-use core::{RpPackage, RpVersionedPackage};
+use core::{RpName, RpPackage, RpVersionedPackage};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::DerefMut;
@@ -102,6 +102,17 @@ impl Scope {
 
     pub fn walk(&self) -> ScopeWalker {
         ScopeWalker { current: self.inner.clone() }
+    }
+
+    pub fn as_name(&self) -> RpName {
+        let mut parts: Vec<_> = self.walk().collect();
+        parts.reverse();
+
+        RpName {
+            prefix: None,
+            package: self.package(),
+            parts: parts,
+        }
     }
 }
 
