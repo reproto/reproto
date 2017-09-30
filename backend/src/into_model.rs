@@ -72,8 +72,6 @@ impl<'input> IntoModel for EnumBody<'input> {
 
         let mut ordinals = OrdinalGenerator::new();
 
-        let type_id = scope.next_type_id()?;
-
         let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
 
         for variant in self.variants {
@@ -91,7 +89,7 @@ impl<'input> IntoModel for EnumBody<'input> {
                 );
             }
 
-            let variant = Loc::new((type_id, variant, ordinal).into_model(scope)?, pos.clone());
+            let variant = Loc::new((variant, ordinal).into_model(scope)?, pos.clone());
 
             if let Some(other) = variants.iter().find(
                 |v| *v.local_name == *variant.local_name,
@@ -120,7 +118,6 @@ impl<'input> IntoModel for EnumBody<'input> {
             .unwrap_or(false);
 
         Ok(RpEnumBody {
-            type_id: type_id,
             name: scope.as_name(),
             local_name: self.name.to_string(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
@@ -135,17 +132,13 @@ impl<'input> IntoModel for EnumBody<'input> {
 }
 
 /// enum value with assigned ordinal
-impl<'input> IntoModel for (u64, EnumVariant<'input>, u32) {
+impl<'input> IntoModel for (EnumVariant<'input>, u32) {
     type Output = RpEnumVariant;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let parent_type_id = self.0;
-        let value = self.1;
-        let ordinal = self.2;
+        let (value, ordinal) = self;
 
         Ok(RpEnumVariant {
-            parent_type_id: parent_type_id,
-            type_id: scope.next_type_id()?,
             name: scope.as_name().push(value.name.to_string()),
             local_name: value.name.clone().map(str::to_string),
             comment: value.comment.into_iter().map(ToOwned::to_owned).collect(),
@@ -214,15 +207,13 @@ impl<'input> IntoModel for InterfaceBody<'input> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use std::collections::btree_map::Entry::*;
 
-        let type_id = scope.next_type_id()?;
-
         let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
 
         let mut sub_types: BTreeMap<String, Rc<Loc<RpSubType>>> = BTreeMap::new();
 
         for sub_type in self.sub_types {
             let (sub_type, pos) = sub_type.take_pair();
-            let sub_type = Rc::new(Loc::new((type_id, sub_type).into_model(scope)?, pos));
+            let sub_type = Rc::new(Loc::new(sub_type.into_model(scope)?, pos));
 
             // key has to be owned by entry
             let key = sub_type.local_name.clone();
@@ -240,7 +231,6 @@ impl<'input> IntoModel for InterfaceBody<'input> {
         let _options = Options::new(options);
 
         Ok(RpInterfaceBody {
-            type_id: type_id,
             name: scope.as_name(),
             local_name: self.name.to_string(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
@@ -605,7 +595,6 @@ impl<'input> IntoModel for ServiceBody<'input> {
         let endpoints = endpoints.into_iter().rev().collect();
 
         return Ok(RpServiceBody {
-            type_id: scope.next_type_id()?,
             name: scope.as_name(),
             local_name: self.name.to_string(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
@@ -670,21 +659,18 @@ impl<'input> IntoModel for ServiceBody<'input> {
     }
 }
 
-impl<'input> IntoModel for (u64, SubType<'input>) {
+impl<'input> IntoModel for SubType<'input> {
     type Output = RpSubType;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use self::Member::*;
-
-        let parent_type_id = self.0;
-        let sub_type = self.1;
 
         let mut fields: Vec<Loc<RpField>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
         let mut decls = Vec::new();
 
-        for member in sub_type.members {
+        for member in self.members {
             let (member, pos) = member.take_pair();
 
             match member {
@@ -722,25 +708,17 @@ impl<'input> IntoModel for (u64, SubType<'input>) {
 
         let names = options.find_all_strings("name")?;
 
-        let comment = sub_type
-            .comment
-            .into_iter()
-            .map(ToOwned::to_owned)
-            .collect();
+        let comment = self.comment.into_iter().map(ToOwned::to_owned).collect();
 
-        let sub_type = RpSubType {
-            parent_type_id: parent_type_id,
-            type_id: scope.next_type_id()?,
-            name: scope.as_name().push(sub_type.name.to_string()),
-            local_name: sub_type.name.to_string(),
+        Ok(RpSubType {
+            name: scope.as_name().push(self.name.to_string()),
+            local_name: self.name.to_string(),
             comment: comment,
             decls: decls,
             fields: fields,
             codes: codes,
             names: names,
-        };
-
-        Ok(sub_type)
+        })
     }
 }
 
@@ -753,7 +731,6 @@ impl<'input> IntoModel for TupleBody<'input> {
         let _options = Options::new(options);
 
         Ok(RpTupleBody {
-            type_id: scope.next_type_id()?,
             name: scope.as_name(),
             local_name: self.name.to_string(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
@@ -778,7 +755,6 @@ impl<'input> IntoModel for TypeBody<'input> {
             .collect();
 
         Ok(RpTypeBody {
-            type_id: scope.next_type_id()?,
             name: scope.as_name(),
             local_name: self.name.to_string(),
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),

@@ -1,12 +1,8 @@
-use super::errors::*;
 use core::{RpName, RpPackage, RpVersionedPackage};
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ops::DerefMut;
 use std::rc::Rc;
 
 struct Root {
-    pub type_id_allocator: Rc<RefCell<u64>>,
     pub package_prefix: Option<RpPackage>,
     pub package: RpVersionedPackage,
     pub prefixes: HashMap<String, RpVersionedPackage>,
@@ -28,13 +24,11 @@ pub struct Scope {
 
 impl Scope {
     pub fn new(
-        type_id_allocator: Rc<RefCell<u64>>,
         package_prefix: Option<RpPackage>,
         package: RpVersionedPackage,
         prefixes: HashMap<String, RpVersionedPackage>,
     ) -> Scope {
         let root = Rc::new(Root {
-            type_id_allocator: type_id_allocator,
             package_prefix: package_prefix,
             package: package,
             prefixes: prefixes,
@@ -72,18 +66,6 @@ impl Scope {
             Inner::Root { ref root, .. } |
             Inner::Child { ref root, .. } => {
                 self.package_prefix(&root.package_prefix, &root.package)
-            }
-        }
-    }
-
-    pub fn next_type_id(&self) -> Result<u64> {
-        match *self.inner {
-            Inner::Root { ref root, .. } |
-            Inner::Child { ref root, .. } => {
-                let mut b = root.type_id_allocator.try_borrow_mut()?;
-                let value = *b;
-                *b.deref_mut() += 1;
-                Ok(value)
             }
         }
     }
@@ -144,16 +126,13 @@ impl Iterator for ScopeWalker {
 mod tests {
     use super::Scope;
     use core::{RpPackage, RpVersionedPackage};
-    use std::cell::RefCell;
     use std::collections::HashMap;
-    use std::rc::Rc;
 
     #[test]
     pub fn test_scope() {
-        let id = Rc::new(RefCell::new(0u64));
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let prefixes = HashMap::new();
-        let s = Scope::new(id, None, package, prefixes);
+        let s = Scope::new(None, package, prefixes);
 
         let s2 = s.child("foo");
         let s3 = s2.child("bar");

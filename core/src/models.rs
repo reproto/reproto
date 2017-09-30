@@ -17,19 +17,19 @@ use std::slice;
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpDecl {
     Type(Rc<Loc<RpTypeBody>>),
+    Tuple(Rc<Loc<RpTupleBody>>),
     Interface(Rc<Loc<RpInterfaceBody>>),
     Enum(Rc<Loc<RpEnumBody>>),
-    Tuple(Rc<Loc<RpTupleBody>>),
     Service(Rc<Loc<RpServiceBody>>),
 }
 
 #[derive(Debug, Clone)]
 pub enum RpRegistered {
     Type(Rc<Loc<RpTypeBody>>),
-    Interface(Rc<Loc<RpInterfaceBody>>),
-    Enum(Rc<Loc<RpEnumBody>>),
     Tuple(Rc<Loc<RpTupleBody>>),
+    Interface(Rc<Loc<RpInterfaceBody>>),
     SubType(Rc<Loc<RpInterfaceBody>>, Rc<Loc<RpSubType>>),
+    Enum(Rc<Loc<RpEnumBody>>),
     EnumVariant(Rc<Loc<RpEnumBody>>, Rc<Loc<RpEnumVariant>>),
     Service(Rc<Loc<RpServiceBody>>),
 }
@@ -163,7 +163,6 @@ impl fmt::Display for RpDecl {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpEnumBody {
-    pub type_id: u64,
     pub name: RpName,
     pub local_name: String,
     pub comment: Vec<String>,
@@ -178,8 +177,6 @@ pub struct RpEnumBody {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpEnumVariant {
-    pub parent_type_id: u64,
-    pub type_id: u64,
     pub name: RpName,
     pub local_name: Loc<String>,
     pub comment: Vec<String>,
@@ -254,7 +251,6 @@ pub struct RpInstance {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpInterfaceBody {
-    pub type_id: u64,
     pub name: RpName,
     pub local_name: String,
     pub comment: Vec<String>,
@@ -415,18 +411,26 @@ impl RpRegistered {
     pub fn is_assignable_from(&self, other: &RpRegistered) -> bool {
         use self::RpRegistered::*;
 
-        match *other {
-            Type(ref target) => target.type_id == other.type_id(),
-            Tuple(ref target) => target.type_id == other.type_id(),
-            Service(ref target) => target.type_id == other.type_id(),
-            Interface(ref target) => target.type_id == other.type_id(),
-            Enum(ref target) => target.type_id == other.type_id(),
-            SubType(_, ref target) => {
-                target.type_id == other.type_id() || target.parent_type_id == other.type_id()
-            }
-            EnumVariant(_, ref target) => {
-                target.type_id == other.type_id() || target.parent_type_id == other.type_id()
-            }
+        match (self, other) {
+            // same type
+            (&Type(ref s), &Type(ref o)) => Rc::ptr_eq(s, o),
+            // tuple of same type
+            (&Tuple(ref s), &Tuple(ref o)) => Rc::ptr_eq(s, o),
+            // interface of same type
+            (&Interface(ref s), &Interface(ref o)) => Rc::ptr_eq(s, o),
+            // sub type of a given interfacce
+            (&Interface(ref s), &SubType(ref o, _)) => Rc::ptr_eq(s, o),
+            // exact sub type match
+            (&SubType(_, ref s), &SubType(_, ref o)) => Rc::ptr_eq(s, o),
+            // enum of same type
+            (&Enum(ref s), &Enum(ref o)) => Rc::ptr_eq(s, o),
+            // variant of a given enum
+            (&Enum(ref s), &EnumVariant(ref o, _)) => Rc::ptr_eq(s, o),
+            // exact variant match
+            (&EnumVariant(_, ref s), &EnumVariant(_, ref o)) => Rc::ptr_eq(s, o),
+            // same service
+            (&Service(ref s), &Service(ref o)) => Rc::ptr_eq(s, o),
+            _ => false,
         }
     }
 
@@ -449,20 +453,6 @@ impl RpRegistered {
         };
 
         Ok(fields)
-    }
-
-    pub fn type_id(&self) -> u64 {
-        use self::RpRegistered::*;
-
-        match *self {
-            Type(ref body) => body.type_id,
-            Interface(ref body) => body.type_id,
-            Enum(ref body) => body.type_id,
-            Tuple(ref body) => body.type_id,
-            Service(ref body) => body.type_id,
-            SubType(_, ref sub_type) => sub_type.type_id,
-            EnumVariant(_, ref variant) => variant.type_id,
-        }
     }
 
     pub fn display(&self) -> String {
@@ -521,7 +511,6 @@ pub struct RpServiceAccepts {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpServiceBody {
-    pub type_id: u64,
     pub name: RpName,
     pub local_name: String,
     pub comment: Vec<String>,
@@ -572,8 +561,6 @@ pub struct RpServiceReturns {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpSubType {
-    pub parent_type_id: u64,
-    pub type_id: u64,
     pub name: RpName,
     pub local_name: String,
     pub comment: Vec<String>,
@@ -596,7 +583,6 @@ impl RpSubType {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpTupleBody {
-    pub type_id: u64,
     pub name: RpName,
     pub local_name: String,
     pub comment: Vec<String>,
@@ -613,7 +599,6 @@ impl RpTupleBody {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpTypeBody {
-    pub type_id: u64,
     pub name: RpName,
     pub local_name: String,
     pub comment: Vec<String>,
