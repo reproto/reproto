@@ -144,13 +144,16 @@ impl Iterator for ScopeWalker {
 mod tests {
     use super::Scope;
     use core::{RpPackage, RpVersionedPackage};
+    use std::cell::RefCell;
     use std::collections::HashMap;
+    use std::rc::Rc;
 
     #[test]
     pub fn test_scope() {
+        let id = Rc::new(RefCell::new(0u64));
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let prefixes = HashMap::new();
-        let s = Scope::new(None, package, prefixes);
+        let s = Scope::new(id, None, package, prefixes);
 
         let s2 = s.child("foo");
         let s3 = s2.child("bar");

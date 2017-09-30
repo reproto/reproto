@@ -35,11 +35,6 @@ pub enum RpRegistered {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct RpByValueMatch {
-    pub object: Loc<RpCreator>,
-}
-
-#[derive(Debug, Clone, Serialize)]
 pub struct RpCode {
     pub context: String,
     pub lines: Vec<String>,

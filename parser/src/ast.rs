@@ -1,6 +1,6 @@
 use core::{Loc, RpModifier, RpNumber, RpPackage, VersionReq};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Type {
     Double,
     Float,
@@ -15,7 +15,7 @@ pub enum Type {
     Map { key: Box<Type>, value: Box<Type> },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Decl<'input> {
     Type(Loc<TypeBody<'input>>),
     Tuple(Loc<TupleBody<'input>>),
@@ -38,7 +38,7 @@ impl<'input> Decl<'input> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct EnumBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
@@ -46,7 +46,7 @@ pub struct EnumBody<'input> {
     pub members: Vec<Loc<Member<'input>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct EnumVariant<'input> {
     pub name: Loc<&'input str>,
     pub comment: Vec<&'input str>,
@@ -54,13 +54,13 @@ pub struct EnumVariant<'input> {
     pub ordinal: Option<Loc<Value<'input>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct FieldInit<'input> {
     pub name: Loc<&'input str>,
     pub value: Loc<Value<'input>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Field<'input> {
     pub modifier: RpModifier,
     pub name: &'input str,
@@ -69,7 +69,7 @@ pub struct Field<'input> {
     pub field_as: Option<Loc<String>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct File<'input> {
     pub options: Vec<Loc<OptionDecl<'input>>>,
     pub uses: Vec<Loc<UseDecl<'input>>>,
@@ -85,7 +85,7 @@ impl<'input> Field<'input> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Name {
     Relative { parts: Vec<String> },
     Absolute {
@@ -94,13 +94,13 @@ pub enum Name {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Instance<'input> {
     pub name: Name,
     pub arguments: Loc<Vec<Loc<FieldInit<'input>>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct InterfaceBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
@@ -108,7 +108,7 @@ pub struct InterfaceBody<'input> {
     pub sub_types: Vec<Loc<SubType<'input>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Member<'input> {
     Field(Field<'input>),
     Code(&'input str, Vec<String>),
@@ -116,19 +116,19 @@ pub enum Member<'input> {
     InnerDecl(Decl<'input>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Creator<'input> {
     Instance(Loc<Instance<'input>>),
     Constant(Loc<Name>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct OptionDecl<'input> {
     pub name: &'input str,
     pub values: Vec<Loc<Value<'input>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum PathSegment<'input> {
     Literal { value: Loc<String> },
     Variable {
@@ -137,19 +137,19 @@ pub enum PathSegment<'input> {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct PathSpec<'input> {
     pub segments: Vec<PathSegment<'input>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ServiceBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
     pub children: Vec<ServiceNested<'input>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ServiceNested<'input> {
     Endpoint {
         method: Option<Loc<&'input str>>,
@@ -185,35 +185,35 @@ impl<'input> ServiceNested<'input> {
 }
 
 /// Sub-types in interface declarations.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct SubType<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
     pub members: Vec<Loc<Member<'input>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct TupleBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
     pub members: Vec<Loc<Member<'input>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct TypeBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
     pub members: Vec<Loc<Member<'input>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct UseDecl<'input> {
     pub package: Loc<RpPackage>,
     pub version_req: Option<Loc<VersionReq>>,
     pub alias: Option<Loc<&'input str>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Value<'input> {
     String(String),
     Number(RpNumber),
