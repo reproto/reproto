@@ -1,4 +1,8 @@
-use super::loc::Loc;
+//! Helper trait to iterate over containers of locations
+//!
+//! This asserts that any errors raised contains location information.
+
+use super::as_loc::AsLoc;
 use super::with_pos::WithPos;
 use std::result;
 
@@ -11,18 +15,20 @@ pub trait ForEachLoc {
         F: FnMut(Self::Item) -> result::Result<(), E>;
 }
 
-impl<'a, T: 'a, I> ForEachLoc for I
+impl<T, I> ForEachLoc for I
 where
-    I: IntoIterator<Item = &'a Loc<T>>,
+    I: IntoIterator<Item = T>,
+    T: AsLoc,
 {
-    type Item = &'a T;
+    type Item = T::Output;
 
     fn for_each_loc<F, E: WithPos>(self, mut callback: F) -> result::Result<(), E>
     where
         F: FnMut(Self::Item) -> result::Result<(), E>,
     {
         for item in self {
-            callback(item.value()).map_err(|e| e.with_pos(item.pos()))?;
+            let (value, pos) = item.as_loc().take_pair();
+            callback(value).map_err(|e| e.with_pos(pos))?;
         }
 
         Ok(())

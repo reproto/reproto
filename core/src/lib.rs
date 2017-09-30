@@ -9,6 +9,7 @@ extern crate serde_derive;
 extern crate error_chain;
 pub extern crate semver;
 
+mod as_loc;
 mod object;
 mod with_pos;
 mod for_each_loc;

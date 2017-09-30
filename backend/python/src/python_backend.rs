@@ -358,7 +358,7 @@ impl PythonBackend {
 
         let variables = Variables::new();
 
-        let variants = body.variants.iter().map(AsRef::as_ref);
+        let variants = body.variants.iter().map(|l| l.loc_ref());
 
         variants.for_each_loc(|variant| {
             let var_name = Variable::String(variant.local_name.to_string());
@@ -586,7 +586,7 @@ impl PythonBackend {
 
         out.0.push(interface_spec);
 
-        let values = body.sub_types.values().map(AsRef::as_ref);
+        let values = body.sub_types.values().map(|l| l.loc_ref());
 
         values.for_each_loc(|sub_type| {
             let name = &sub_type.name;

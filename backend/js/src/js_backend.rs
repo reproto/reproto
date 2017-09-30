@@ -444,7 +444,9 @@ impl JsBackend {
         let mut values = Elements::new();
         let variables = Variables::new();
 
-        for variant in &body.variants {
+        let variants = body.variants.iter().map(|l| l.loc_ref());
+
+        variants.for_each_loc(|variant| {
             let mut value_arguments = Statement::new();
 
             value_arguments.push(variant.ordinal.to_string());
@@ -460,7 +462,9 @@ impl JsBackend {
 
             values.push(js![= &member, arguments]);
             members.push(member);
-        }
+
+            Ok(()) as Result<()>
+        })?;
 
         for code in body.codes.for_context(JS_CONTEXT) {
             class.push(code.take().lines);
@@ -545,7 +549,9 @@ impl JsBackend {
 
         classes.push(interface_spec);
 
-        for (_, ref sub_type) in &body.sub_types {
+        let sub_types = body.sub_types.values().map(|l| l.loc_ref());
+
+        sub_types.for_each_loc(|sub_type| {
             let mut class = ClassSpec::new(&format!("{}_{}", &body.name, &sub_type.name));
             class.export();
 
@@ -594,7 +600,9 @@ impl JsBackend {
                 string(sub_type.name.clone()),
                 ";",
             ]);
-        }
+
+            Ok(()) as Result<()>
+        })?;
 
         out.0.push(classes.join(Spacing));
         Ok(())

@@ -64,8 +64,12 @@ impl<T> Loc<T> {
         op(self.inner).with_pos(&self.pos)
     }
 
-    pub fn as_ref<'a>(&'a self) -> Loc<&'a T> {
+    pub fn loc_ref<'a>(&'a self) -> Loc<&'a T> {
         Loc::new(&self.inner, self.pos.clone())
+    }
+
+    pub fn as_ref<'a>(&'a self) -> Loc<&'a T> {
+        self.loc_ref()
     }
 }
 

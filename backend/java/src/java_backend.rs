@@ -709,9 +709,7 @@ impl JavaBackend {
             }
         }
 
-        let sub_types = interface.sub_types.values().map(AsRef::as_ref);
-
-        sub_types.for_each_loc(|sub_type| {
+        interface.sub_types.values().for_each_loc(|sub_type| {
             let name = &sub_type.name;
 
             let class_type = parent_type.extend(&sub_type.local_name);
