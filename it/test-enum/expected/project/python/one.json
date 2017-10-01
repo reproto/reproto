@@ -1,0 +1,4 @@
+<Entry explicit: <EnumExplicit.A: 'foo'>, implicit: <EnumImplicit.A: 'A'>>
+{"explicit": "foo", "implicit": "A"}
+<Entry explicit: <EnumExplicit.B: 'bar'>, implicit: <EnumImplicit.B: 'B'>>
+{"explicit": "bar", "implicit": "B"}

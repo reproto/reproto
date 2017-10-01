@@ -18,7 +18,6 @@ pub struct JavaBackend {
     string: ClassType,
     optional: ClassType,
     illegal_argument: ClassType,
-    immutable_list: ClassType,
     async_container: ClassType,
 }
 
@@ -49,7 +48,6 @@ impl JavaBackend {
             string: Type::class("java.lang", "String"),
             optional: Type::class("java.util", "Optional"),
             illegal_argument: Type::class("java.lang", "IllegalArgumentException"),
-            immutable_list: Type::class("com.google.common.collect", "ImmutableList"),
             async_container: async_container,
         }
     }
@@ -109,10 +107,12 @@ impl JavaBackend {
 
     /// Convert the given type to a java type.
     pub fn into_java_type(&self, ty: &RpType) -> Result<Type> {
+        use self::RpType::*;
+
         let ty: Type = match *ty {
-            RpType::String => self.string.clone().into(),
-            RpType::Signed { ref size } |
-            RpType::Unsigned { ref size } => {
+            String => self.string.clone().into(),
+            Signed { ref size } |
+            Unsigned { ref size } => {
                 // default to integer if unspecified.
                 // TODO: should we care about signedness?
                 // TODO: > 64 bits, use BitInteger?
@@ -122,20 +122,20 @@ impl JavaBackend {
                     LONG.into()
                 }
             }
-            RpType::Float => FLOAT.into(),
-            RpType::Double => DOUBLE.into(),
-            RpType::Boolean => BOOLEAN.into(),
-            RpType::Array { ref inner } => {
+            Float => FLOAT.into(),
+            Double => DOUBLE.into(),
+            Boolean => BOOLEAN.into(),
+            Array { ref inner } => {
                 let argument = self.into_java_type(inner)?;
                 self.list.with_arguments(vec![argument]).into()
             }
-            RpType::Name { ref name } => self.convert_type_id(name)?.into(),
-            RpType::Map { ref key, ref value } => {
+            Name { ref name } => self.convert_type_id(name)?.into(),
+            Map { ref key, ref value } => {
                 let key = self.into_java_type(key)?;
                 let value = self.into_java_type(value)?;
                 self.map.with_arguments(vec![key, value]).into()
             }
-            RpType::Any => self.object.clone().into(),
+            Any => self.object.clone().into(),
             ref t => {
                 return Err(format!("unsupported type: {:?}", t).into());
             }
@@ -458,16 +458,6 @@ impl JavaBackend {
         constructor
     }
 
-    fn find_field<'a>(&self, fields: &[JavaField<'a>], name: &str) -> Option<JavaField<'a>> {
-        for field in fields {
-            if field.name == name {
-                return Some(field.clone());
-            }
-        }
-
-        None
-    }
-
     fn enum_from_value_method(
         &self,
         field: &JavaField,
@@ -475,7 +465,8 @@ impl JavaBackend {
     ) -> Result<MethodSpec> {
         let argument = ArgumentSpec::new(mods![Modifier::Final], &field.java_type, &field.name);
 
-        let value = stmt!["value"];
+        // use naming convention that won't be generated
+        let value = stmt!["v_value"];
 
         let cond = match field.java_type {
             Type::Primitive(_) => stmt![&value, ".", &field.name, " == ", &argument],
@@ -490,14 +481,9 @@ impl JavaBackend {
 
         let mut value_loop = Elements::new();
 
-        value_loop.push(stmt![
-            "for (final ",
-            class_type,
-            " ",
-            &value,
-            " : ",
-            "values()) {",
-        ]);
+        value_loop.push(
+            stmt!["for (final ", class_type, " ", &value, " : ", "values()) {", ],
+        );
 
         value_loop.push_nested(return_matched);
         value_loop.push("}");
@@ -506,8 +492,7 @@ impl JavaBackend {
             MethodSpec::new(mods![Modifier::Public, Modifier::Static], "fromValue");
 
         let argument_name = Variable::String(argument.name.clone());
-        let throw =
-            stmt![
+        let throw = stmt![
             "throw new ",
             &self.illegal_argument,
             "(",
@@ -532,84 +517,61 @@ impl JavaBackend {
         Ok(to_value)
     }
 
+    fn enum_type_to_java(&self, ty: &RpEnumType) -> Result<Type> {
+        use self::RpEnumType::*;
+
+        match *ty {
+            String => Ok(self.string.clone().into()),
+            Generated => Ok(self.string.clone().into()),
+        }
+    }
+
     fn process_enum(&self, name: &RpName, body: &RpEnumBody) -> Result<EnumSpec> {
         let class_type = Type::class(&self.java_package_name(&name.package), &body.local_name);
 
         let mut spec = EnumSpec::new(mods![Modifier::Public], &body.local_name);
-        let fields = self.convert_fields(&body.fields)?;
+        let enum_type = self.enum_type_to_java(&body.variant_type)?;
+        let value_field = self.new_field_spec(&enum_type, "value");
 
-        for field in &fields {
-            spec.push_field(&field.java_spec);
-
-            if self.options.build_getters {
-                spec.push(field.getter()?);
-            }
-
-            if self.options.build_setters {
-                if let Some(setter) = field.setter()? {
-                    spec.push(setter);
-                }
-            }
-        }
-
-        for code in body.codes.for_context(JAVA_CONTEXT) {
-            spec.push(code.take().lines);
-        }
-
-        let variables = Variables::new();
+        spec.push_field(&value_field);
 
         for variant in &body.variants {
             let mut enum_value = Elements::new();
             let mut enum_stmt = stmt![&*variant.local_name];
 
-            if !variant.arguments.is_empty() {
-                let mut value_arguments = Statement::new();
-
-                for (value, field) in variant.arguments.iter().zip(fields.iter()) {
-                    let ctx = ValueContext::new(&name.package, &variables, &value, Some(&field.ty));
-                    value_arguments.push(self.value(ctx)?);
-                }
-
-                enum_stmt.push(stmt!["(", value_arguments.join(", "), ")"]);
-            }
+            let value = self.ordinal(variant)?;
+            enum_stmt.push(stmt!["(", value, ")"]);
 
             enum_value.push(enum_stmt);
             spec.push_value(enum_value);
         }
 
-        if !fields.is_empty() {
-            let constructor = self.build_enum_constructor(&spec);
-            spec.push_constructor(constructor);
+        let constructor = self.build_enum_constructor(&spec);
+        spec.push_constructor(constructor);
+
+        for code in body.codes.for_context(JAVA_CONTEXT) {
+            spec.push(code.take().lines);
         }
 
-        let mut from_value: Option<MethodSpec> = None;
-        let mut to_value: Option<MethodSpec> = None;
+        let variant_field = body.variant_type.as_field();
+        let variant_java_field = self.convert_field(&variant_field)?;
 
-        if let Some(ref s) = body.serialized_as {
-            if let Some(field) = self.find_field(&fields, s.value()) {
-                from_value = Some(self.enum_from_value_method(&field, &class_type)?);
-                to_value = Some(self.enum_to_value_method(&field)?);
-            } else {
-                return Err(Error::pos(format!("no field named: {}", s), s.pos().into()));
-            }
-        }
+        let mut from_value: MethodSpec = self.enum_from_value_method(
+            &variant_java_field,
+            &class_type,
+        )?;
+        let mut to_value: MethodSpec = self.enum_to_value_method(&variant_java_field)?;
 
         self.listeners.enum_added(&mut EnumAdded {
             body: body,
-            fields: &fields,
             class_type: &class_type,
             from_value: &mut from_value,
             to_value: &mut to_value,
             spec: &mut spec,
         })?;
 
-        if let Some(from_value) = from_value {
-            spec.push(from_value);
-        }
-
-        if let Some(to_value) = to_value {
-            spec.push(to_value);
-        }
+        spec.push(from_value);
+        spec.push(to_value);
 
         Ok(spec)
     }
@@ -968,89 +930,8 @@ impl Converter for JavaBackend {
 
 /// Build values in python.
 impl ValueBuilder for JavaBackend {
-    fn env(&self) -> &Environment {
-        &self.env
-    }
-
-    fn identifier(&self, identifier: &str) -> Result<Self::Stmt> {
-        Ok(stmt![identifier])
-    }
-
-    fn optional_empty(&self) -> Result<Self::Stmt> {
-        Ok(stmt![&self.optional, ".empty()"])
-    }
-
-    fn optional_of(&self, value: Self::Stmt) -> Result<Self::Stmt> {
-        Ok(stmt![&self.optional, ".of(", value, ")"])
-    }
-
-    fn constant(&self, ty: Self::Type) -> Result<Self::Stmt> {
-        return Ok(stmt![ty]);
-    }
-
-    fn instance(&self, ty: Self::Type, arguments: Vec<Self::Stmt>) -> Result<Self::Stmt> {
-        let mut stmt = Statement::new();
-
-        for a in arguments {
-            stmt.push(a);
-        }
-
-        Ok(stmt!["new ", &ty, "(", stmt.join(", "), ")"])
-    }
-
-    fn number(&self, number: &RpNumber) -> Result<Self::Stmt> {
-        Ok(stmt![number.to_string()])
-    }
-
-    fn signed(&self, number: &RpNumber, size: &Option<usize>) -> Result<Self::Stmt> {
-        let ty: Variable = if size.map(|s| s <= 32usize).unwrap_or(true) {
-            format!("{}", number.to_string()).into()
-        } else {
-            format!("{}L", number.to_string()).into()
-        };
-
-        Ok(ty.into())
-    }
-
-    fn unsigned(&self, number: &RpNumber, size: &Option<usize>) -> Result<Self::Stmt> {
-        let ty: Variable = if size.map(|s| s <= 32usize).unwrap_or(true) {
-            format!("{}", number.to_string()).into()
-        } else {
-            format!("{}L", number.to_string()).into()
-        };
-
-        Ok(ty.into())
-    }
-
-    fn float(&self, number: &RpNumber) -> Result<Self::Stmt> {
-        Ok(stmt![format!("{}F", number.to_string())])
-    }
-
-    fn double(&self, number: &RpNumber) -> Result<Self::Stmt> {
-        Ok(stmt![format!("{}D", number.to_string())])
-    }
-
-    fn boolean(&self, boolean: &bool) -> Result<Self::Stmt> {
-        Ok(stmt![boolean.to_string()])
-    }
-
     fn string(&self, string: &str) -> Result<Self::Stmt> {
         Ok(Variable::String(string.to_owned()).into())
-    }
-
-    fn array(&self, values: Vec<Self::Stmt>) -> Result<Self::Stmt> {
-        let mut arguments = Statement::new();
-
-        for v in values {
-            arguments.push(v);
-        }
-
-        Ok(stmt![
-            &self.immutable_list,
-            ".of(",
-            arguments.join(", "),
-            ")",
-        ])
     }
 }
 

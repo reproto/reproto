@@ -90,11 +90,11 @@ pub fn parse_string<'input>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::ast::*;
     use core::*;
     use std::rc::Rc;
     use std::sync::Arc;
+    use super::*;
+    use super::ast::*;
 
     fn new_context() -> Rc<Box<Object>> {
         Rc::new(Box::new(
@@ -196,33 +196,6 @@ mod tests {
         let input = ::std::str::from_utf8(INTERFACE1).unwrap();
         let file = parse_file(input);
         assert_eq!(1, file.decls.len());
-    }
-
-    #[test]
-    fn test_instance() {
-        let context = new_context();
-
-        let c = Name::Absolute {
-            prefix: None,
-            parts: vec!["Foo".to_owned(), "Bar".to_owned()],
-        };
-
-        let field = FieldInit {
-            name: Loc::new("hello", (context.clone(), 8, 13)),
-            value: Loc::new(Value::Number(12.into()), (context.clone(), 15, 17)),
-        };
-
-        let field = Loc::new(field, (context.clone(), 8, 17));
-
-        let instance = Instance {
-            name: c,
-            arguments: Loc::new(vec![field], (context.clone(), 8, 17)),
-        };
-
-        let instance = Loc::new(instance, (context.clone(), 0, 18));
-        let creator_instance = Loc::new(Creator::Instance(instance), (context.clone(), 0, 18));
-
-        assert_value_eq!(Value::Creator(creator_instance), "Foo::Bar(hello: 12)");
     }
 
     #[test]

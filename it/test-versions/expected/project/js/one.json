@@ -4,3 +4,4 @@ Entry {
      name: 'The Thing',
      other: Other { name: 'The Other Thing' },
      other2: Other { name2: 'The Other-Other Thing' } } }
+{"thing":{"name":"The Thing","other":{"name":"The Other Thing"},"other2":{"name2":"The Other-Other Thing"}}}

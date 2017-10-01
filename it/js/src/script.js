@@ -9,5 +9,7 @@ var rl = readline.createInterface({
 
 rl.on('line', function(line) {
   let data = JSON.parse(line);
+  let decoded = Entry.decode(data);
   console.log(Entry.decode(data));
+  console.log(JSON.stringify(decoded.encode()));
 })

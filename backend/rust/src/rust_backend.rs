@@ -78,6 +78,22 @@ impl RustBackend {
         Ok(stmt)
     }
 
+    fn enum_value_fn(&self, name: &str, match_body: Elements) -> Elements {
+        let mut value_fn = Elements::new();
+        let mut match_decl = Elements::new();
+
+        match_decl.push("match *self {");
+        match_decl.push_nested(match_body);
+        match_decl.push("}");
+
+        value_fn.push("pub fn value(&self) -> &'static str {");
+        value_fn.push_nested(stmt!["use self::", &name, "::*;"]);
+        value_fn.push_nested(match_decl);
+        value_fn.push("}");
+
+        value_fn
+    }
+
     pub fn into_rust_type(&self, name: &RpName, ty: &RpType) -> Result<Statement> {
         let ty = match *ty {
             RpType::String => stmt!["String"],
@@ -172,12 +188,54 @@ impl RustBackend {
         let name = self.convert_type_name(name);
         let mut enum_spec = EnumSpec::new(&name);
         enum_spec.public();
+        enum_spec.push_attribute("#[derive(Serialize, Deserialize, Debug)]");
 
-        for code in body.codes.for_context(RUST_CONTEXT) {
-            enum_spec.push(code.take().lines);
-        }
+        // variant declarations
+        let mut variants = Elements::new();
+        // body of value function
+        let mut match_body = Elements::new();
+
+        body.variants.for_each_loc(|variant| {
+            let value = if let RpEnumOrdinal::String(ref s) = variant.ordinal {
+                if s != variant.local_name.value() {
+                    let rename = stmt!["#[serde(rename = ", Variable::String(s.to_owned()), ")]"];
+                    variants.push(rename);
+                }
+
+                s
+            } else {
+                &variant.local_name
+            };
+
+            match_body.push(stmt![
+                variant.local_name.value(),
+                " => ",
+                Variable::String(value.to_string()),
+                ",",
+            ]);
+
+            variants.push(stmt![variant.local_name.value(), ","]);
+            Ok(()) as Result<()>
+        })?;
+
+        enum_spec.push(variants);
 
         out.0.push(enum_spec);
+
+        let mut impl_ = Elements::new();
+
+        impl_.push(stmt!["impl ", &name, " {"]);
+
+        impl_.push_nested(self.enum_value_fn(&name, match_body));
+
+        // code goes into impl
+        for code in body.codes.for_context(RUST_CONTEXT) {
+            impl_.push_nested(code.take().lines);
+        }
+
+        impl_.push("}");
+
+        out.0.push(impl_);
         Ok(())
     }
 

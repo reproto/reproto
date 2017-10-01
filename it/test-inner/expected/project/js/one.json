@@ -1,3 +1,4 @@
 Entry {
   a: Entry_A { b: Entry_A_B { field: 'value' } },
   b: Entry_A_B { field: 'value' } }
+{"a":{"b":{"field":"value"}},"b":{"field":"value"}}

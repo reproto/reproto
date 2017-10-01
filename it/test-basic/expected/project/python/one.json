@@ -1,1 +1,2 @@
 <Entry foo: <Foo field: u'Field Value'>>
+{"foo": {"field": "Field Value"}}

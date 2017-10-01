@@ -1,0 +1,8 @@
+Entry {
+  explicit: EnumExplicit { name: 'A', value: 'foo' },
+  implicit: EnumImplicit { name: 'A', value: 'A' } }
+{"explicit":"foo","implicit":"A"}
+Entry {
+  explicit: EnumExplicit { name: 'B', value: 'bar' },
+  implicit: EnumImplicit { name: 'B', value: 'B' } }
+{"explicit":"bar","implicit":"B"}
