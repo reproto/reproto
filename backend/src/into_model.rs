@@ -68,7 +68,7 @@ impl<'input> IntoModel for EnumBody<'input> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         let mut variants: Vec<Rc<Loc<RpEnumVariant>>> = Vec::new();
 
-        let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
+        let (fields, codes, _options, decls) = members_into_model(scope, self.members)?;
 
         if fields.len() > 0 {
             return Err("enums can't have fields".into());
@@ -105,8 +105,6 @@ impl<'input> IntoModel for EnumBody<'input> {
 
             variants.push(Rc::new(Loc::new(variant, pos)));
         }
-
-        let _options = Options::new(options);
 
         Ok(RpEnumBody {
             name: scope.as_name(),
@@ -152,13 +150,19 @@ impl<'input> IntoModel for Field<'input> {
     type Output = RpField;
 
     fn into_model(self, scope: &Scope) -> Result<RpField> {
-        Ok(RpField::new(
-            self.modifier,
-            self.name.to_owned(),
-            self.comment.into_iter().map(ToOwned::to_owned).collect(),
-            self.ty.into_model(scope)?,
-            self.field_as.into_model(scope)?,
-        ))
+        let name = &self.name;
+
+        let field_as = self.field_as.into_model(scope)?.or_else(|| {
+            scope.naming().map(|n| n.convert(name))
+        });
+
+        Ok(RpField {
+            modifier: self.modifier,
+            name: self.name.to_string(),
+            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
+            ty: self.ty.into_model(scope)?,
+            field_as: field_as,
+        })
     }
 }
 
@@ -166,7 +170,7 @@ impl<'input> IntoModel for File<'input> {
     type Output = RpFile;
 
     fn into_model(self, scope: &Scope) -> Result<RpFile> {
-        let options = Options::new(self.options.into_model(scope)?);
+        let options = self.options.into_model(scope)?;
 
         Ok(RpFile {
             options: options,
@@ -181,7 +185,7 @@ impl<'input> IntoModel for InterfaceBody<'input> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use std::collections::btree_map::Entry::*;
 
-        let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
+        let (fields, codes, _options, decls) = members_into_model(scope, self.members)?;
 
         let mut sub_types: BTreeMap<String, Rc<Loc<RpSubType>>> = BTreeMap::new();
 
@@ -201,8 +205,6 @@ impl<'input> IntoModel for InterfaceBody<'input> {
                 }
             }
         }
-
-        let _options = Options::new(options);
 
         Ok(RpInterfaceBody {
             name: scope.as_name(),
@@ -342,7 +344,7 @@ impl<'input> IntoModel for OptionDecl<'input> {
     fn into_model(self, scope: &Scope) -> Result<RpOptionDecl> {
         let decl = RpOptionDecl {
             name: self.name.to_owned(),
-            values: self.values.into_model(scope)?,
+            value: self.value.into_model(scope)?,
         };
 
         Ok(decl)
@@ -405,7 +407,7 @@ fn convert_return(
     ty: Option<Loc<Type>>,
     options: Vec<Loc<OptionDecl>>,
 ) -> Result<RpServiceReturns> {
-    let options = Options::new(options.into_model(scope)?);
+    let options = options.into_model(scope)?;
 
     let produces = produces.or(options.find_one_string("produces")?);
 
@@ -421,7 +423,7 @@ fn convert_return(
         None
     };
 
-    let status = status.or(options.find_one_number("status")?);
+    let status = status.or(options.find_one_u32("status")?);
 
     let status = if let Some(status) = status {
         let (status, pos) = status.take_pair();
@@ -451,8 +453,6 @@ fn convert_accepts(
     ty: Option<Loc<Type>>,
     options: Vec<Loc<OptionDecl>>,
 ) -> Result<RpServiceAccepts> {
-    let options = Options::new(options.into_model(scope)?);
-
     let accepts = accepts.or(options.find_one_string("accept")?);
 
     let accepts = if let Some(accepts) = accepts {
@@ -507,8 +507,6 @@ fn unwind(node: Rc<RefCell<Node>>) -> Result<RpServiceEndpoint> {
     }
 
     let path = RpPathSpec { segments: path.into_iter().rev().collect() };
-
-    let _options = Options::new(options.into_iter().rev().collect());
 
     Ok(RpServiceEndpoint {
         method: method,
@@ -663,8 +661,6 @@ impl<'input> IntoModel for SubType<'input> {
             }
         }
 
-        let options = Options::new(options);
-
         let names = options.find_all_strings("name")?;
 
         let comment = self.comment.into_iter().map(ToOwned::to_owned).collect();
@@ -685,9 +681,7 @@ impl<'input> IntoModel for TupleBody<'input> {
     type Output = RpTupleBody;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
-
-        let _options = Options::new(options);
+        let (fields, codes, _options, decls) = members_into_model(scope, self.members)?;
 
         Ok(RpTupleBody {
             name: scope.as_name(),
@@ -705,8 +699,6 @@ impl<'input> IntoModel for TypeBody<'input> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
-
-        let options = Options::new(options);
 
         let reserved: HashSet<Loc<String>> = options
             .find_all_identifiers("reserved")?

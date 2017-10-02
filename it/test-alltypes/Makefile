@@ -1,0 +1,1 @@
+java-args += -m fasterxml

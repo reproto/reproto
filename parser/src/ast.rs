@@ -1,4 +1,5 @@
-use core::{Loc, RpModifier, RpNumber, RpPackage, VersionReq};
+use core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage, VersionReq};
+use std::result;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Type {
@@ -60,7 +61,7 @@ pub struct Field<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
     pub ty: Type,
-    pub field_as: Option<Loc<String>>,
+    pub field_as: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -107,7 +108,34 @@ pub enum Member<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct OptionDecl<'input> {
     pub name: &'input str,
-    pub values: Vec<Loc<Value<'input>>>,
+    pub value: Loc<Value<'input>>,
+}
+
+impl<'input> OptionEntry for OptionDecl<'input> {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn as_string(&self) -> result::Result<String, &'static str> {
+        match *self.value.value() {
+            Value::String(ref string) => Ok(string.to_string()),
+            _ => Err("expected string"),
+        }
+    }
+
+    fn as_number(&self) -> result::Result<RpNumber, &'static str> {
+        match *self.value.value() {
+            Value::Number(ref number) => Ok(number.clone()),
+            _ => Err("expected number"),
+        }
+    }
+
+    fn as_identifier(&self) -> result::Result<String, &'static str> {
+        match *self.value.value() {
+            Value::Identifier(ref identifier) => Ok(identifier.to_string()),
+            _ => Err("expected identifier"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

@@ -1,0 +1,11 @@
+type Entry {
+    string_type?: string;
+    unsigned_type?: unsigned;
+    unsigned_sized_type?: unsigned/32;
+    signed_type?: signed;
+    signed_sized_type?: signed/32;
+    float_type?: float;
+    double_type?: double;
+    array_type?: [Entry];
+    map_type?: {string: Entry};
+}

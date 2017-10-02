@@ -5,16 +5,20 @@ export class Entry {
   }
 
   static decode(data) {
-    const v_explicit = EnumExplicit.decode(data["explicit"]);
+    let v_explicit = data["explicit"];
 
-    if (v_explicit === null || v_explicit === undefined) {
-      throw new Error("explicit" + ": required field");
+    if (v_explicit !== null && v_explicit !== undefined) {
+      v_explicit = EnumExplicit.decode(v_explicit);
+    } else {
+      v_explicit = null;
     }
 
-    const v_implicit = EnumImplicit.decode(data["implicit"]);
+    let v_implicit = data["implicit"];
 
-    if (v_implicit === null || v_implicit === undefined) {
-      throw new Error("implicit" + ": required field");
+    if (v_implicit !== null && v_implicit !== undefined) {
+      v_implicit = EnumImplicit.decode(v_implicit);
+    } else {
+      v_implicit = null;
     }
 
     return new Entry(v_explicit, v_implicit);
@@ -23,17 +27,13 @@ export class Entry {
   encode() {
     const data = {};
 
-    if (this.explicit === null || this.explicit === undefined) {
-      throw new Error("explicit: is a required field");
+    if (this.explicit !== null && this.explicit !== undefined) {
+      data["explicit"] = this.explicit.encode();
     }
 
-    data["explicit"] = this.explicit.encode();
-
-    if (this.implicit === null || this.implicit === undefined) {
-      throw new Error("implicit: is a required field");
+    if (this.implicit !== null && this.implicit !== undefined) {
+      data["implicit"] = this.implicit.encode();
     }
-
-    data["implicit"] = this.implicit.encode();
 
     return data;
   }

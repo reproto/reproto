@@ -7,24 +7,32 @@ class Entry:
 
   @staticmethod
   def decode(data):
-    f_explicit = EnumExplicit.decode(data["explicit"])
+    if "explicit" in data:
+      f_explicit = data["explicit"]
 
-    f_implicit = EnumImplicit.decode(data["implicit"])
+      if f_explicit is not None:
+        f_explicit = EnumExplicit.decode(f_explicit)
+    else:
+      f_explicit = None
+
+    if "implicit" in data:
+      f_implicit = data["implicit"]
+
+      if f_implicit is not None:
+        f_implicit = EnumImplicit.decode(f_implicit)
+    else:
+      f_implicit = None
 
     return Entry(f_explicit, f_implicit)
 
   def encode(self):
     data = dict()
 
-    if self.explicit is None:
-      raise Exception("explicit: is a required field")
+    if self.explicit is not None:
+      data["explicit"] = self.explicit.encode()
 
-    data["explicit"] = self.explicit.encode()
-
-    if self.implicit is None:
-      raise Exception("implicit: is a required field")
-
-    data["implicit"] = self.implicit.encode()
+    if self.implicit is not None:
+      data["implicit"] = self.implicit.encode()
 
     return data
 

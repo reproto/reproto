@@ -1,7 +1,9 @@
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {
-  explicit: EnumExplicit,
-  implicit: EnumImplicit,
+  #[serde(skip_serializing_if="Option::is_none")]
+  explicit: Option<EnumExplicit>,
+  #[serde(skip_serializing_if="Option::is_none")]
+  implicit: Option<EnumImplicit>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

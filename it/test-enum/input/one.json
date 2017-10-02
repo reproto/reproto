@@ -1,2 +1,4 @@
-{"explicit":"foo","implicit":"A"}
-{"explicit":"bar","implicit":"B"}
+{"explicit": "foo"}
+{"explicit": "bar"}
+{"implicit": "A"}
+{"implicit": "B"}

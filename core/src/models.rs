@@ -2,15 +2,15 @@
 
 use super::loc::Loc;
 use super::mime::Mime;
-use super::options::Options;
+use super::option_entry::OptionEntry;
 use super::rp_modifier::RpModifier;
 use super::rp_number::RpNumber;
 use super::rp_versioned_package::RpVersionedPackage;
 use errors::*;
-use std::collections::BTreeMap;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::rc::Rc;
+use std::result;
 use std::slice;
 
 #[derive(Debug, Clone, Serialize)]
@@ -208,13 +208,13 @@ impl RpEnumType {
     }
 
     pub fn as_field(&self) -> RpField {
-        RpField::new(
-            RpModifier::Required,
-            String::from("value"),
-            vec![],
-            self.as_type(),
-            None,
-        )
+        RpField {
+            modifier: RpModifier::Required,
+            name: String::from("value"),
+            comment: vec![],
+            ty: self.as_type(),
+            field_as: None,
+        }
     }
 }
 
@@ -244,26 +244,11 @@ pub struct RpField {
     pub comment: Vec<String>,
     #[serde(rename = "type")]
     pub ty: RpType,
-    pub field_as: Option<Loc<String>>,
+    /// Alias of field in JSON.
+    pub field_as: Option<String>,
 }
 
 impl RpField {
-    pub fn new(
-        modifier: RpModifier,
-        name: String,
-        comment: Vec<String>,
-        ty: RpType,
-        field_as: Option<Loc<String>>,
-    ) -> RpField {
-        RpField {
-            modifier: modifier,
-            name: name,
-            comment: comment,
-            ty: ty,
-            field_as: field_as,
-        }
-    }
-
     pub fn is_optional(&self) -> bool {
         match self.modifier {
             RpModifier::Optional => true,
@@ -276,7 +261,7 @@ impl RpField {
     }
 
     pub fn name(&self) -> &str {
-        self.field_as.as_ref().map(Loc::value).unwrap_or(&self.name)
+        self.field_as.as_ref().unwrap_or(&self.name)
     }
 
     pub fn display(&self) -> String {
@@ -286,7 +271,7 @@ impl RpField {
 
 #[derive(Debug)]
 pub struct RpFile {
-    pub options: Options,
+    pub options: Vec<Loc<RpOptionDecl>>,
     pub decls: Vec<Loc<RpDecl>>,
 }
 
@@ -390,7 +375,34 @@ impl fmt::Display for RpName {
 #[derive(Debug, Clone, Serialize)]
 pub struct RpOptionDecl {
     pub name: String,
-    pub values: Vec<Loc<RpValue>>,
+    pub value: Loc<RpValue>,
+}
+
+impl OptionEntry for RpOptionDecl {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn as_string(&self) -> result::Result<String, &'static str> {
+        match *self.value.value() {
+            RpValue::String(ref string) => Ok(string.to_string()),
+            _ => Err("expected string"),
+        }
+    }
+
+    fn as_number(&self) -> result::Result<RpNumber, &'static str> {
+        match *self.value.value() {
+            RpValue::Number(ref number) => Ok(number.clone()),
+            _ => Err("expected number"),
+        }
+    }
+
+    fn as_identifier(&self) -> result::Result<String, &'static str> {
+        match *self.value.value() {
+            RpValue::Identifier(ref identifier) => Ok(identifier.to_string()),
+            _ => Err("expected identifier"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

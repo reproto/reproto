@@ -1,0 +1,120 @@
+Entry {
+  string_type: 'foo',
+  unsigned_type: null,
+  unsigned_sized_type: null,
+  signed_type: null,
+  signed_sized_type: null,
+  float_type: null,
+  double_type: null,
+  array_type: null,
+  map_type: null }
+{"string_type":"foo"}
+Entry {
+  string_type: null,
+  unsigned_type: 42,
+  unsigned_sized_type: null,
+  signed_type: null,
+  signed_sized_type: null,
+  float_type: null,
+  double_type: null,
+  array_type: null,
+  map_type: null }
+{"unsigned_type":42}
+Entry {
+  string_type: null,
+  unsigned_type: null,
+  unsigned_sized_type: 42,
+  signed_type: null,
+  signed_sized_type: null,
+  float_type: null,
+  double_type: null,
+  array_type: null,
+  map_type: null }
+{"unsigned_sized_type":42}
+Entry {
+  string_type: null,
+  unsigned_type: null,
+  unsigned_sized_type: null,
+  signed_type: -42,
+  signed_sized_type: null,
+  float_type: null,
+  double_type: null,
+  array_type: null,
+  map_type: null }
+{"signed_type":-42}
+Entry {
+  string_type: null,
+  unsigned_type: null,
+  unsigned_sized_type: null,
+  signed_type: null,
+  signed_sized_type: -42,
+  float_type: null,
+  double_type: null,
+  array_type: null,
+  map_type: null }
+{"signed_sized_type":-42}
+Entry {
+  string_type: null,
+  unsigned_type: null,
+  unsigned_sized_type: null,
+  signed_type: null,
+  signed_sized_type: null,
+  float_type: 42.42,
+  double_type: null,
+  array_type: null,
+  map_type: null }
+{"float_type":42.42}
+Entry {
+  string_type: null,
+  unsigned_type: null,
+  unsigned_sized_type: null,
+  signed_type: null,
+  signed_sized_type: null,
+  float_type: null,
+  double_type: 42.42,
+  array_type: null,
+  map_type: null }
+{"double_type":42.42}
+Entry {
+  string_type: null,
+  unsigned_type: null,
+  unsigned_sized_type: null,
+  signed_type: null,
+  signed_sized_type: null,
+  float_type: null,
+  double_type: null,
+  array_type: 
+   [ Entry {
+       string_type: 'foo',
+       unsigned_type: null,
+       unsigned_sized_type: null,
+       signed_type: null,
+       signed_sized_type: null,
+       float_type: null,
+       double_type: null,
+       array_type: null,
+       map_type: null } ],
+  map_type: null }
+{"array_type":[{"string_type":"foo"}]}
+Entry {
+  string_type: null,
+  unsigned_type: null,
+  unsigned_sized_type: null,
+  signed_type: null,
+  signed_sized_type: null,
+  float_type: null,
+  double_type: null,
+  array_type: null,
+  map_type: 
+   { foo: 
+      Entry {
+        string_type: 'foo',
+        unsigned_type: null,
+        unsigned_sized_type: null,
+        signed_type: null,
+        signed_sized_type: null,
+        float_type: null,
+        double_type: null,
+        array_type: null,
+        map_type: null } } }
+{"map_type":{"foo":{"string_type":"foo"}}}

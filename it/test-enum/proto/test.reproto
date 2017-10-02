@@ -1,6 +1,6 @@
 type Entry {
-    explicit: EnumExplicit;
-    implicit: EnumImplicit;
+    explicit?: EnumExplicit;
+    implicit?: EnumImplicit;
 }
 
 /// Explicitly assigned strings

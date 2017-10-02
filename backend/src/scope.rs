@@ -1,3 +1,6 @@
+//! Propagates scope-specific information to `into_model` transformations.
+
+use super::naming::Naming;
 use core::{RpName, RpPackage, RpVersionedPackage};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -6,6 +9,7 @@ struct Root {
     pub package_prefix: Option<RpPackage>,
     pub package: RpVersionedPackage,
     pub prefixes: HashMap<String, RpVersionedPackage>,
+    pub naming: Option<Box<Naming>>,
 }
 
 /// Model of a scope.
@@ -27,16 +31,30 @@ impl Scope {
         package_prefix: Option<RpPackage>,
         package: RpVersionedPackage,
         prefixes: HashMap<String, RpVersionedPackage>,
+        naming: Option<Box<Naming>>,
     ) -> Scope {
         let root = Rc::new(Root {
             package_prefix: package_prefix,
             package: package,
             prefixes: prefixes,
+            naming: naming,
         });
 
         let inner_root = Inner::Root { root: root.clone() };
 
         Scope { inner: Rc::new(inner_root) }
+    }
+
+    /// Apply global package prefix.
+    fn package_prefix(
+        &self,
+        package_prefix: &Option<RpPackage>,
+        package: &RpVersionedPackage,
+    ) -> RpVersionedPackage {
+        package_prefix
+            .as_ref()
+            .map(|prefix| prefix.join_versioned(package))
+            .unwrap_or_else(|| package.clone())
     }
 
     pub fn child<S: AsRef<str>>(&self, name: S) -> Scope {
@@ -70,18 +88,6 @@ impl Scope {
         }
     }
 
-    /// Apply global package prefix.
-    fn package_prefix(
-        &self,
-        package_prefix: &Option<RpPackage>,
-        package: &RpVersionedPackage,
-    ) -> RpVersionedPackage {
-        package_prefix
-            .as_ref()
-            .map(|prefix| prefix.join_versioned(package))
-            .unwrap_or_else(|| package.clone())
-    }
-
     pub fn walk(&self) -> ScopeWalker {
         ScopeWalker { current: self.inner.clone() }
     }
@@ -94,6 +100,13 @@ impl Scope {
             prefix: None,
             package: self.package(),
             parts: parts,
+        }
+    }
+
+    pub fn naming(&self) -> Option<&Naming> {
+        match *self.inner {
+            Inner::Root { ref root, .. } |
+            Inner::Child { ref root, .. } => root.naming.as_ref().map(AsRef::as_ref),
         }
     }
 }

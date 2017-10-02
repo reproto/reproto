@@ -118,8 +118,11 @@ impl Merge for Vec<Loc<RpField>> {
         for f in source {
             if let Some(field) = self.iter().find(|e| e.name == f.name) {
                 return Err(
-                    ErrorKind::FieldConflict(f.name.clone(), f.pos().into(), field.pos().into())
-                        .into(),
+                    ErrorKind::FieldConflict(
+                        f.name.to_string(),
+                        f.pos().into(),
+                        field.pos().into(),
+                    ).into(),
                 );
             }
 

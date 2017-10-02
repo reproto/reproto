@@ -4,11 +4,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
-  private final EnumExplicit explicit;
-  private final EnumImplicit implicit;
+  private final Optional<EnumExplicit> explicit;
+  private final Optional<EnumImplicit> implicit;
 
   public Entry(
-    final EnumExplicit explicit, final EnumImplicit implicit
+    final Optional<EnumExplicit> explicit, final Optional<EnumImplicit> implicit
   ) {
     Objects.requireNonNull(explicit, "explicit");
     this.explicit = explicit;
@@ -16,11 +16,11 @@ public class Entry {
     this.implicit = implicit;
   }
 
-  public EnumExplicit getExplicit() {
+  public Optional<EnumExplicit> getExplicit() {
     return this.explicit;
   }
 
-  public EnumImplicit getImplicit() {
+  public Optional<EnumImplicit> getImplicit() {
     return this.implicit;
   }
 
@@ -87,8 +87,8 @@ public class Entry {
     }
 
     public Entry build() {
-      final EnumExplicit explicit = this.explicit.orElseThrow(() -> new RuntimeException("explicit: is required"));
-      final EnumImplicit implicit = this.implicit.orElseThrow(() -> new RuntimeException("implicit: is required"));
+      final Optional<EnumExplicit> explicit = this.explicit;
+      final Optional<EnumImplicit> implicit = this.implicit;
 
       return new Entry(explicit, implicit);
     }

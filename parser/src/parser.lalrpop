@@ -220,7 +220,7 @@ EnumVariant: EnumVariant<'input> =
 
 pub Member: Member<'input> = {
     <comment:"///"?>
-    <name:Identifier> <modifier:"?"?> ":" <ty:TypeSpec> <alias:Loc<FieldAlias>?> ";" => {
+    <name:Identifier> <modifier:"?"?> ":" <ty:TypeSpec> <alias:FieldAlias?> ";" => {
          let field = Field {
              modifier: modifier.map(|_| RpModifier::Optional).unwrap_or(RpModifier::Required),
              name: name,
@@ -246,9 +246,9 @@ pub Member: Member<'input> = {
     },
 };
 
-OptionDecl: OptionDecl<'input> = <name:Identifier> <values:OneOrMore<",", Loc<Value>>> ";" => OptionDecl {
+OptionDecl: OptionDecl<'input> = <name:Identifier> <value:Loc<Value>> ";" => OptionDecl {
     name: name,
-    values: values,
+    value: value,
 };
 
 SubType: SubType<'input> = {

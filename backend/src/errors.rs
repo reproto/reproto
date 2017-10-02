@@ -1,5 +1,5 @@
 use codeviz_common::errors as codeviz;
-use core::{ErrorPos, RpName, WithPos, errors as core};
+use core::{ErrorPos, Pos, RpName, WithPos, errors as core};
 use parser::errors as parser;
 use repository::errors as repository;
 use serde_json as json;
@@ -85,5 +85,11 @@ impl WithPos for Error {
                 self.chain_err(|| ErrorKind::Pos(message, pos.into()))
             }
         }
+    }
+}
+
+impl<'a> From<(&'a str, Pos)> for Error {
+    fn from(value: (&'a str, Pos)) -> Self {
+        ErrorKind::Pos(value.0.to_string(), value.1.into()).into()
     }
 }

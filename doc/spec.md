@@ -15,8 +15,7 @@ See [TODO](todo.md) for things that are work in progress.
 * [Tuples](#tuples)
 * [Enums](#enums)
 * [Services](#services)
-* [Match](#match)
-* [Reserved Fields](#reserved-fields)
+* [Reserved fields](#reserved-fields)
 * [Extensions](#extensions)
 * [Custom Code](#custom-code)
 
@@ -99,6 +98,21 @@ Note that the file may be suffixed with a version number.
 If this is present it is called a [versioned specification](#versioned-specifications).
 
 Otherwise, it is known as an [ephemeral specification](#ephemeral-specifications).
+
+### File Options
+
+#### `field_naming <naming>`
+
+The default field naming strategy to use.
+
+This option changes the format that a field will take, depending on its name.
+
+Valid options are:
+
+* `lower_camel`, fields would be serialized as `lowerCamel`.
+* `upper_camel`, fields would be serialized as `UpperCamel`.
+* `upper_snake`, fields would be serialized as `UPPER_SNAKE`.
+* `lower_snake`, fields would be serialized as `lower_snake` (default).
 
 ## Specifications
 
@@ -243,16 +257,12 @@ interface Sampling {
     }
 }
 
-enum Unit {
-     MILLISECONDS("ms");
-     SECONDS("s");
-     HOURS("H");
-     DAYS("d");
-     WEEKS("w");
-
-     short: string;
-
-     serialized_as short;
+enum Unit: string {
+     MILLISECONDS = "ms";
+     SECONDS = "s";
+     HOURS = "H";
+     DAYS = "d";
+     WEEKS = "w";
 }
 ```
 
@@ -310,47 +320,20 @@ A single sample (e.g. `new Sample(1, 2.0)`) would be encoded like this in JSON:
 Enums can take on of a given set of constant values.
 
 ```reproto
-enum SI {
-    NANO("nano", "n", 1e-9);
-    MICRO("micro", "μ", 1e-6);
-    MILLI("milli", "m", 1e-3);
-    KILO("kilo", "k", 1e3);
-    MEGA("mega", "M", 1e6);
-
-    /// select which field to serialize as.
-    serialized_as unit_name;
-
-    unit_name: string;
-    symbol: string;
-    factor: double;
+enum SI: string {
+    NANO = "nano";
+    MICRO = "micro";
+    MILLI = "milli";
+    KILO = "kilo";
+    MEGA = "mega";
 }
 ```
-
-*Note*: it is recommended to avoid the fields `name` and `value`, since these are used in some
-        languages by enums natively.
 
 Using this, `SI.NANO` would be serialized as:
 
 ```json
 "nano"
 ```
-
-Associating data with enums permit less specialized code for dealing with them:
-
-```java
-final SI si = deserialize("nano");
-System.out.println(Math.floor((1000.0 / si.factor)) + si.symbol + "s");
-```
-
-The following options are supported by enums:
-
-#### `serialized_as <identifier>`
-
-Indicates that the enum should be serialized as the given field |
-
-#### `serialized_as_name`
-
-Indicates that the enum should be serialized as its `name`.
 
 ## Services
 
@@ -465,31 +448,10 @@ type Post {
 }
 ```
 
-## Match
-
-Match declarations exist to allow types to be created from unrelated JSON types.
-
-They define a mapping _from_ a given value, to an instance of the type encapsulated by the match.
-
-With the example below, `Foo` can now be created from a `string`, or a `number` as well as the
-boolean value `true`.
-
-```reproto
-type Foo {
-    true => Foo(name: "from true", value: 1)
-    (s: string) => Foo(name: s);
-    (n: unsigned) => Foo(name: "from unsigned", value: n);
-
-    name: string;
-    value?: unsigned;
-}
-```
-
 ## Reserved fields
 
 Fields can be reserved using a special option called `reserved`.
-
-Fields which are reserved _cannot_ be added again.
+Fields which are reserved _cannot_ be added to the schema.
 
 Attempting to do so will yield an error like the following:
 
@@ -499,15 +461,12 @@ examples/heroic/v1.reproto:55:3-21:
        ^^^^^^^^^^^^^^^^^^ - field reserved
 examples/heroic/v1.reproto:49:12-21:
  49:   reserved no_can_do;
-                ^^^^^^^^^ - field reserved here
+       ^^^^^^^^^^^^^^^^^^^ - field reserved here
 ```
 
-As long as the reserved statement is preserved, it prevents future or current introductions of
-reserved field.
+As long as the reserved statement is preserved, it prevents future introductions of a given field.
 
-It can also be used to reserve future fields, that you intend to introduce at some point.
-
-Clients who decode a reserved field should ignore them.
+Clients decoding a reserved field should raise an error.
 
 ## Extensions
 

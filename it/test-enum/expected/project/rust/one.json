@@ -1,4 +1,8 @@
-Entry { explicit: A, implicit: A }
-{"explicit":"foo","implicit":"A"}
-Entry { explicit: B, implicit: B }
-{"explicit":"bar","implicit":"B"}
+Entry { explicit: Some(A), implicit: None }
+{"explicit":"foo"}
+Entry { explicit: Some(B), implicit: None }
+{"explicit":"bar"}
+Entry { explicit: None, implicit: Some(A) }
+{"implicit":"A"}
+Entry { explicit: None, implicit: Some(B) }
+{"implicit":"B"}

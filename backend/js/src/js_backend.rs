@@ -599,11 +599,11 @@ impl DynamicConverter for JsBackend {
     }
 
     fn map_key_var(&self) -> Statement {
-        stmt!["t[0]"]
+        stmt!["k"]
     }
 
     fn map_value_var(&self) -> Statement {
-        stmt!["t[1]"]
+        stmt!["data[k]"]
     }
 
     fn array_inner_var(&self) -> Statement {
@@ -618,20 +618,26 @@ impl DynamicDecode for JsBackend {
         stmt![name, ".decode(", input, ")"]
     }
 
+    /// Decoding an Array in JavaScript.
+    ///
+    /// Maps over each decoded value using `Array.map(...)`, decoding each variable.
     fn array_decode(&self, input: &Statement, inner: Statement) -> Self::Stmt {
-        stmt![input, ".map(function(v) { ", inner, "; })"]
+        stmt![input, ".map(function(v) { return ", inner, "; })"]
     }
 
-    fn map_decode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
-        let body = stmt!["[", &key, ", ", &value, "]"];
-        // TODO: these functions need to be implemented and hoisted into the module
-        stmt![
-            "to_object(from_object(",
-            input,
-            ").map(function(t) { return ",
-            &body,
-            "; }))",
-        ]
+    /// Decoding a map in JavaScript.
+    fn map_decode(&self, input: &Statement, _key: Statement, value: Statement) -> Self::Stmt {
+        let mut elements = Statement::new();
+
+        elements.push("(function(data) {");
+        elements.push(" let o = {};");
+        elements.push(" for (let k in data) {");
+        elements.push(stmt![" o[k] = ", &value, ";"]);
+        elements.push(" };");
+        elements.push(" return o;");
+        elements.push(stmt![" })(", input, ")"]);
+
+        elements
     }
 
     fn assign_type_var(&self, data: &Self::Stmt, type_var: &Self::Stmt) -> Self::Stmt {
@@ -672,15 +678,17 @@ impl DynamicEncode for JsBackend {
         stmt![input, ".map(function(v) { return ", inner, "; })"]
     }
 
-    fn map_encode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
-        let body = stmt!["[", &key, ", ", &value, "]"];
-        // TODO: these functions need to be implemented and hoisted into the module
-        stmt![
-            "to_object(from_object(",
-            input,
-            ").map(function(t) { return ",
-            &body,
-            "; }))",
-        ]
+    fn map_encode(&self, input: &Statement, _: Statement, value: Statement) -> Self::Stmt {
+        let mut elements = Statement::new();
+
+        elements.push("(function(data) {");
+        elements.push(" let o = {};");
+        elements.push(" for (let k in data) {");
+        elements.push(stmt![" o[k] = ", &value, ";"]);
+        elements.push(" };");
+        elements.push(" return o;");
+        elements.push(stmt![" })(", input, ")"]);
+
+        elements
     }
 }

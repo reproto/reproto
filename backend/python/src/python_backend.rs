@@ -685,11 +685,11 @@ impl DynamicConverter for PythonBackend {
     }
 
     fn map_key_var(&self) -> Statement {
-        stmt!["t[0]"]
+        stmt!["k"]
     }
 
     fn map_value_var(&self) -> Statement {
-        stmt!["t[1]"]
+        stmt!["v"]
     }
 
     fn array_inner_var(&self) -> Statement {
@@ -705,18 +705,31 @@ impl DynamicDecode for PythonBackend {
     }
 
     fn array_decode(&self, input: &Statement, inner: Statement) -> Self::Stmt {
-        stmt!["map(lambda v: ", inner, ", ", input, ")"]
+        stmt![
+            "[",
+            inner,
+            " for ",
+            self.array_inner_var(),
+            " in ",
+            input,
+            "]",
+        ]
     }
 
     fn map_decode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
-        let body = stmt!["(", &key, ", ", &value, ")"];
         stmt![
             &self.dict,
-            "(map(lambda t: ",
-            &body,
+            "((",
+            &key,
             ", ",
+            &value,
+            ") for (",
+            self.map_key_var(),
+            ", ",
+            self.map_value_var(),
+            ") in ",
             input,
-            ".items()))",
+            ".items())",
         ]
     }
 
@@ -768,18 +781,31 @@ impl DynamicEncode for PythonBackend {
     }
 
     fn array_encode(&self, input: &Statement, inner: Statement) -> Self::Stmt {
-        stmt!["map(lambda v: ", inner, ", ", input, ")"]
+        stmt![
+            "[",
+            inner,
+            " for ",
+            self.array_inner_var(),
+            " in ",
+            input,
+            "]",
+        ]
     }
 
-    fn map_encode(&self, input: &Statement, key: Statement, value: Statement) -> Self::Stmt {
-        let body = stmt!["(", &key, ", ", &value, ")"];
+    fn map_encode(&self, input: &Statement, k: Statement, v: Statement) -> Self::Stmt {
         stmt![
             &self.dict,
-            "(",
+            "((",
+            &k,
+            ", ",
+            &v,
+            ") for (",
+            &k,
+            ", ",
+            self.map_value_var(),
+            ") in ",
             input,
-            ".items().map(lambda t: ",
-            &body,
-            "))",
+            ".items())",
         ]
     }
 }

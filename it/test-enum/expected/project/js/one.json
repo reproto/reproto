@@ -1,8 +1,16 @@
 Entry {
   explicit: EnumExplicit { name: 'A', value: 'foo' },
-  implicit: EnumImplicit { name: 'A', value: 'A' } }
-{"explicit":"foo","implicit":"A"}
+  implicit: null }
+{"explicit":"foo"}
 Entry {
   explicit: EnumExplicit { name: 'B', value: 'bar' },
+  implicit: null }
+{"explicit":"bar"}
+Entry {
+  explicit: null,
+  implicit: EnumImplicit { name: 'A', value: 'A' } }
+{"implicit":"A"}
+Entry {
+  explicit: null,
   implicit: EnumImplicit { name: 'B', value: 'B' } }
-{"explicit":"bar","implicit":"B"}
+{"implicit":"B"}

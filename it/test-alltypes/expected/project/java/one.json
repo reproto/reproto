@@ -1,0 +1,18 @@
+Entry(stringType=Optional[foo], unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"stringType":"foo"}
+Entry(stringType=Optional.empty, unsignedType=Optional[42], unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"unsignedType":42}
+Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional[42], signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"unsignedSizedType":42}
+Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional[-42], signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"signedType":-42}
+Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional[-42], floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"signedSizedType":-42}
+Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional[42.42], doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"floatType":42.42}
+Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional[42.42], arrayType=Optional.empty, mapType=Optional.empty)
+{"doubleType":42.42}
+Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional[[Entry(stringType=Optional[foo], unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)]], mapType=Optional.empty)
+{"arrayType":[{"stringType":"foo"}]}
+Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional[{foo=Entry(stringType=Optional[foo], unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)}])
+{"mapType":{"foo":{"stringType":"foo"}}}
