@@ -9,6 +9,10 @@ CP ?= cp
 DIFF ?= diff
 EXCLUDE ?=
 
+ifeq ($(ROOT),)
+$(error "ROOT: missing variable")
+endif
+
 ifeq ($(REPROTO),)
 $(error "REPROTO: missing variable")
 endif
@@ -34,6 +38,7 @@ output := output
 workdir := workdir
 input := input
 targets := test
+workdir-source := $(ROOT)/it/workdir
 
 python-args :=
 python3-args :=
@@ -125,12 +130,12 @@ project-update += project-update/$(1)
 project-diff += project-diff/$(1)
 
 deps-$(1) := $$(deps-any) $$(deps-$(1))
-deps-$(1) := $$(deps-$(1):%=../$(1)/%)
+deps-$(1) := $$(deps-$(1):%=$$(workdir-source)/$(1)/%)
 
 $$(workdir)/$(1)/script.sh: $$(deps-$(1))
 	@echo "$$(M): Building Project: $(1)"
 	$$(MKDIR) -p $$(workdir)/$(1)
-	$(call sync-dirs,../$(1),$$(workdir)/$(1))
+	$(call sync-dirs,$$(workdir-source)/$(1),$$(workdir)/$(1))
 	$$(reproto-compile) $$($(1)-project)
 	$$(MAKE) -C $$(workdir)/$(1)
 

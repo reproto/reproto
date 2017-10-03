@@ -48,7 +48,8 @@ Each project is expected to fullfill the following protocol:
 
 The base project available are:
 
-* [Java](java)
-* [JavaScript](js)
-* [Rust](rust)
-* [Python](python)
+* [Java](workdir/java)
+* [JavaScript](workdir/js)
+* [Rust](workdir/rust)
+* [Python](workdir/python)
+* [Python 3](workdir/python3)

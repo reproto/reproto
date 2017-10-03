@@ -1,5 +1,7 @@
 default-reproto := $(CURDIR)/target/debug/reproto
 
+export ROOT=$(CURDIR)
+
 ifeq ($(filter all make,$(DEBUG)),)
 make-args := --no-print-directory -s
 endif
