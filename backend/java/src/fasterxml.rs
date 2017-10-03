@@ -314,6 +314,14 @@ impl Module {
             );
         }
 
+        let zipped = spec.fields.iter_mut().zip(fields.iter());
+
+        for (java_field, field) in zipped {
+            let mut property = AnnotationSpec::new(&self.property);
+            property.push_argument(stmt![Variable::String(field.name.to_owned())]);
+            java_field.push_annotation(&property);
+        }
+
         let creator_annotation = AnnotationSpec::new(&self.creator);
         constructor.push_annotation(&creator_annotation);
 

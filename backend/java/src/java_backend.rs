@@ -19,6 +19,7 @@ pub struct JavaBackend {
     optional: ClassType,
     illegal_argument: ClassType,
     async_container: ClassType,
+    byte_buffer: ClassType,
 }
 
 impl JavaBackend {
@@ -49,6 +50,7 @@ impl JavaBackend {
             optional: Type::class("java.util", "Optional"),
             illegal_argument: Type::class("java.lang", "IllegalArgumentException"),
             async_container: async_container,
+            byte_buffer: Type::class("java.nio", "ByteBuffer"),
         }
     }
 
@@ -136,9 +138,7 @@ impl JavaBackend {
                 self.map.with_arguments(vec![key, value]).into()
             }
             Any => self.object.clone().into(),
-            ref t => {
-                return Err(format!("unsupported type: {:?}", t).into());
-            }
+            Bytes => self.byte_buffer.clone().into(),
         };
 
         Ok(ty)

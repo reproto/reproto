@@ -1,7 +1,10 @@
+use serde_json as json;
 use std::collections;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {
+  #[serde(skip_serializing_if="Option::is_none")]
+  boolean_type: Option<bool>,
   #[serde(skip_serializing_if="Option::is_none")]
   string_type: Option<String>,
   #[serde(skip_serializing_if="Option::is_none")]
@@ -16,6 +19,10 @@ pub struct Entry {
   float_type: Option<f32>,
   #[serde(skip_serializing_if="Option::is_none")]
   double_type: Option<f64>,
+  #[serde(skip_serializing_if="Option::is_none")]
+  bytes_type: Option<String>,
+  #[serde(skip_serializing_if="Option::is_none")]
+  any_type: Option<json::Value>,
   #[serde(skip_serializing_if="Option::is_none")]
   array_type: Option<Vec<Entry>>,
   #[serde(skip_serializing_if="Option::is_none")]

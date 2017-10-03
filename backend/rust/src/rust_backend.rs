@@ -95,39 +95,39 @@ impl RustBackend {
     }
 
     pub fn into_rust_type(&self, name: &RpName, ty: &RpType) -> Result<Statement> {
+        use self::RpType::*;
+
         let ty = match *ty {
-            RpType::String => stmt!["String"],
-            RpType::Signed { ref size } => {
+            String => stmt!["String"],
+            Bytes => stmt!["String"],
+            Signed { ref size } => {
                 if size.map(|s| s <= 32usize).unwrap_or(true) {
                     stmt!["i32"]
                 } else {
                     stmt!["i64"]
                 }
             }
-            RpType::Unsigned { ref size } => {
+            Unsigned { ref size } => {
                 if size.map(|s| s <= 32usize).unwrap_or(true) {
                     stmt!["u32"]
                 } else {
                     stmt!["u64"]
                 }
             }
-            RpType::Float => stmt!["f32"],
-            RpType::Double => stmt!["f64"],
-            RpType::Boolean => stmt!["bool"],
-            RpType::Array { ref inner } => {
+            Float => stmt!["f32"],
+            Double => stmt!["f64"],
+            Boolean => stmt!["bool"],
+            Array { ref inner } => {
                 let argument = self.into_rust_type(name, inner)?;
                 stmt!["Vec<", argument, ">"]
             }
-            RpType::Name { ref name } => stmt![self.convert_type_id(name)?],
-            RpType::Map { ref key, ref value } => {
+            Name { ref name } => stmt![self.convert_type_id(name)?],
+            Map { ref key, ref value } => {
                 let key = self.into_rust_type(name, key)?;
                 let value = self.into_rust_type(name, value)?;
                 stmt![&self.hash_map, "<", key, ", ", value, ">"]
             }
-            RpType::Any => stmt![&self.json_value],
-            ref t => {
-                return Err(format!("unsupported type: {:?}", t).into());
-            }
+            Any => stmt![&self.json_value],
         };
 
         Ok(ty)

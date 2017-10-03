@@ -1,5 +1,6 @@
 export class Entry {
-  constructor(string_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, array_type, map_type) {
+  constructor(boolean_type, string_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, bytes_type, any_type, array_type, map_type) {
+    this.boolean_type = boolean_type;
     this.string_type = string_type;
     this.unsigned_type = unsigned_type;
     this.unsigned_sized_type = unsigned_sized_type;
@@ -7,11 +8,21 @@ export class Entry {
     this.signed_sized_type = signed_sized_type;
     this.float_type = float_type;
     this.double_type = double_type;
+    this.bytes_type = bytes_type;
+    this.any_type = any_type;
     this.array_type = array_type;
     this.map_type = map_type;
   }
 
   static decode(data) {
+    let v_boolean_type = data["boolean_type"];
+
+    if (v_boolean_type !== null && v_boolean_type !== undefined) {
+      v_boolean_type = v_boolean_type;
+    } else {
+      v_boolean_type = null;
+    }
+
     let v_string_type = data["string_type"];
 
     if (v_string_type !== null && v_string_type !== undefined) {
@@ -68,6 +79,22 @@ export class Entry {
       v_double_type = null;
     }
 
+    let v_bytes_type = data["bytes_type"];
+
+    if (v_bytes_type !== null && v_bytes_type !== undefined) {
+      v_bytes_type = v_bytes_type;
+    } else {
+      v_bytes_type = null;
+    }
+
+    let v_any_type = data["any_type"];
+
+    if (v_any_type !== null && v_any_type !== undefined) {
+      v_any_type = v_any_type;
+    } else {
+      v_any_type = null;
+    }
+
     let v_array_type = data["array_type"];
 
     if (v_array_type !== null && v_array_type !== undefined) {
@@ -84,11 +111,15 @@ export class Entry {
       v_map_type = null;
     }
 
-    return new Entry(v_string_type, v_unsigned_type, v_unsigned_sized_type, v_signed_type, v_signed_sized_type, v_float_type, v_double_type, v_array_type, v_map_type);
+    return new Entry(v_boolean_type, v_string_type, v_unsigned_type, v_unsigned_sized_type, v_signed_type, v_signed_sized_type, v_float_type, v_double_type, v_bytes_type, v_any_type, v_array_type, v_map_type);
   }
 
   encode() {
     const data = {};
+
+    if (this.boolean_type !== null && this.boolean_type !== undefined) {
+      data["boolean_type"] = this.boolean_type;
+    }
 
     if (this.string_type !== null && this.string_type !== undefined) {
       data["string_type"] = this.string_type;
@@ -116,6 +147,14 @@ export class Entry {
 
     if (this.double_type !== null && this.double_type !== undefined) {
       data["double_type"] = this.double_type;
+    }
+
+    if (this.bytes_type !== null && this.bytes_type !== undefined) {
+      data["bytes_type"] = this.bytes_type;
+    }
+
+    if (this.any_type !== null && this.any_type !== undefined) {
+      data["any_type"] = this.any_type;
     }
 
     if (this.array_type !== null && this.array_type !== undefined) {

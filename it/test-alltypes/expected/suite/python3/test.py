@@ -1,5 +1,6 @@
 class Entry:
-  def __init__(self, string_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, array_type, map_type):
+  def __init__(self, boolean_type, string_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, bytes_type, any_type, array_type, map_type):
+    self.boolean_type = boolean_type
     self.string_type = string_type
     self.unsigned_type = unsigned_type
     self.unsigned_sized_type = unsigned_sized_type
@@ -7,11 +8,21 @@ class Entry:
     self.signed_sized_type = signed_sized_type
     self.float_type = float_type
     self.double_type = double_type
+    self.bytes_type = bytes_type
+    self.any_type = any_type
     self.array_type = array_type
     self.map_type = map_type
 
   @staticmethod
   def decode(data):
+    if "boolean_type" in data:
+      f_boolean_type = data["boolean_type"]
+
+      if f_boolean_type is not None:
+        f_boolean_type = f_boolean_type
+    else:
+      f_boolean_type = None
+
     if "string_type" in data:
       f_string_type = data["string_type"]
 
@@ -68,6 +79,22 @@ class Entry:
     else:
       f_double_type = None
 
+    if "bytes_type" in data:
+      f_bytes_type = data["bytes_type"]
+
+      if f_bytes_type is not None:
+        f_bytes_type = f_bytes_type
+    else:
+      f_bytes_type = None
+
+    if "any_type" in data:
+      f_any_type = data["any_type"]
+
+      if f_any_type is not None:
+        f_any_type = f_any_type
+    else:
+      f_any_type = None
+
     if "array_type" in data:
       f_array_type = data["array_type"]
 
@@ -84,10 +111,13 @@ class Entry:
     else:
       f_map_type = None
 
-    return Entry(f_string_type, f_unsigned_type, f_unsigned_sized_type, f_signed_type, f_signed_sized_type, f_float_type, f_double_type, f_array_type, f_map_type)
+    return Entry(f_boolean_type, f_string_type, f_unsigned_type, f_unsigned_sized_type, f_signed_type, f_signed_sized_type, f_float_type, f_double_type, f_bytes_type, f_any_type, f_array_type, f_map_type)
 
   def encode(self):
     data = dict()
+
+    if self.boolean_type is not None:
+      data["boolean_type"] = self.boolean_type
 
     if self.string_type is not None:
       data["string_type"] = self.string_type
@@ -110,6 +140,12 @@ class Entry:
     if self.double_type is not None:
       data["double_type"] = self.double_type
 
+    if self.bytes_type is not None:
+      data["bytes_type"] = self.bytes_type
+
+    if self.any_type is not None:
+      data["any_type"] = self.any_type
+
     if self.array_type is not None:
       data["array_type"] = [v.encode() for v in self.array_type]
 
@@ -119,4 +155,4 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry string_type: {!r}, unsigned_type: {!r}, unsigned_sized_type: {!r}, signed_type: {!r}, signed_sized_type: {!r}, float_type: {!r}, double_type: {!r}, array_type: {!r}, map_type: {!r}>".format(self.string_type, self.unsigned_type, self.unsigned_sized_type, self.signed_type, self.signed_sized_type, self.float_type, self.double_type, self.array_type, self.map_type)
+    return "<Entry boolean_type: {!r}, string_type: {!r}, unsigned_type: {!r}, unsigned_sized_type: {!r}, signed_type: {!r}, signed_sized_type: {!r}, float_type: {!r}, double_type: {!r}, bytes_type: {!r}, any_type: {!r}, array_type: {!r}, map_type: {!r}>".format(self.boolean_type, self.string_type, self.unsigned_type, self.unsigned_sized_type, self.signed_type, self.signed_sized_type, self.float_type, self.double_type, self.bytes_type, self.any_type, self.array_type, self.map_type)

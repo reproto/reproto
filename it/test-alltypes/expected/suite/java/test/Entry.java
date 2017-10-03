@@ -2,24 +2,41 @@ package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
+  @JsonProperty("boolean_type")
+  private final Optional<Boolean> booleanType;
+  @JsonProperty("string_type")
   private final Optional<String> stringType;
+  @JsonProperty("unsigned_type")
   private final Optional<Integer> unsignedType;
+  @JsonProperty("unsigned_sized_type")
   private final Optional<Integer> unsignedSizedType;
+  @JsonProperty("signed_type")
   private final Optional<Integer> signedType;
+  @JsonProperty("signed_sized_type")
   private final Optional<Integer> signedSizedType;
+  @JsonProperty("float_type")
   private final Optional<Float> floatType;
+  @JsonProperty("double_type")
   private final Optional<Double> doubleType;
+  @JsonProperty("bytes_type")
+  private final Optional<ByteBuffer> bytesType;
+  @JsonProperty("any_type")
+  private final Optional<Object> anyType;
+  @JsonProperty("array_type")
   private final Optional<List<Entry>> arrayType;
+  @JsonProperty("map_type")
   private final Optional<Map<String, Entry>> mapType;
 
   @JsonCreator
   public Entry(
+    @JsonProperty("boolean_type") final Optional<Boolean> booleanType, 
     @JsonProperty("string_type") final Optional<String> stringType, 
     @JsonProperty("unsigned_type") final Optional<Integer> unsignedType, 
     @JsonProperty("unsigned_sized_type") final Optional<Integer> unsignedSizedType, 
@@ -27,9 +44,13 @@ public class Entry {
     @JsonProperty("signed_sized_type") final Optional<Integer> signedSizedType, 
     @JsonProperty("float_type") final Optional<Float> floatType, 
     @JsonProperty("double_type") final Optional<Double> doubleType, 
+    @JsonProperty("bytes_type") final Optional<ByteBuffer> bytesType, 
+    @JsonProperty("any_type") final Optional<Object> anyType, 
     @JsonProperty("array_type") final Optional<List<Entry>> arrayType, 
     @JsonProperty("map_type") final Optional<Map<String, Entry>> mapType
   ) {
+    Objects.requireNonNull(booleanType, "booleanType");
+    this.booleanType = booleanType;
     Objects.requireNonNull(stringType, "stringType");
     this.stringType = stringType;
     Objects.requireNonNull(unsignedType, "unsignedType");
@@ -44,10 +65,18 @@ public class Entry {
     this.floatType = floatType;
     Objects.requireNonNull(doubleType, "doubleType");
     this.doubleType = doubleType;
+    Objects.requireNonNull(bytesType, "bytesType");
+    this.bytesType = bytesType;
+    Objects.requireNonNull(anyType, "anyType");
+    this.anyType = anyType;
     Objects.requireNonNull(arrayType, "arrayType");
     this.arrayType = arrayType;
     Objects.requireNonNull(mapType, "mapType");
     this.mapType = mapType;
+  }
+
+  public Optional<Boolean> getBooleanType() {
+    return this.booleanType;
   }
 
   public Optional<String> getStringType() {
@@ -78,6 +107,14 @@ public class Entry {
     return this.doubleType;
   }
 
+  public Optional<ByteBuffer> getBytesType() {
+    return this.bytesType;
+  }
+
+  public Optional<Object> getAnyType() {
+    return this.anyType;
+  }
+
   public Optional<List<Entry>> getArrayType() {
     return this.arrayType;
   }
@@ -89,6 +126,7 @@ public class Entry {
   @Override
   public int hashCode() {
     int result = 1;
+    result = result * 31 + this.booleanType.hashCode();
     result = result * 31 + this.stringType.hashCode();
     result = result * 31 + this.unsignedType.hashCode();
     result = result * 31 + this.unsignedSizedType.hashCode();
@@ -96,6 +134,8 @@ public class Entry {
     result = result * 31 + this.signedSizedType.hashCode();
     result = result * 31 + this.floatType.hashCode();
     result = result * 31 + this.doubleType.hashCode();
+    result = result * 31 + this.bytesType.hashCode();
+    result = result * 31 + this.anyType.hashCode();
     result = result * 31 + this.arrayType.hashCode();
     result = result * 31 + this.mapType.hashCode();
     return result;
@@ -113,6 +153,10 @@ public class Entry {
 
     @SuppressWarnings("unchecked")
     final Entry o = (Entry) other;
+
+    if (!this.booleanType.equals(o.booleanType)) {
+      return false;
+    }
 
     if (!this.stringType.equals(o.stringType)) {
       return false;
@@ -142,6 +186,14 @@ public class Entry {
       return false;
     }
 
+    if (!this.bytesType.equals(o.bytesType)) {
+      return false;
+    }
+
+    if (!this.anyType.equals(o.anyType)) {
+      return false;
+    }
+
     if (!this.arrayType.equals(o.arrayType)) {
       return false;
     }
@@ -159,6 +211,9 @@ public class Entry {
 
     b.append("Entry");
     b.append("(");
+    b.append("booleanType=");
+    b.append(this.booleanType.toString());
+    b.append(", ");
     b.append("stringType=");
     b.append(this.stringType.toString());
     b.append(", ");
@@ -180,6 +235,12 @@ public class Entry {
     b.append("doubleType=");
     b.append(this.doubleType.toString());
     b.append(", ");
+    b.append("bytesType=");
+    b.append(this.bytesType.toString());
+    b.append(", ");
+    b.append("anyType=");
+    b.append(this.anyType.toString());
+    b.append(", ");
     b.append("arrayType=");
     b.append(this.arrayType.toString());
     b.append(", ");
@@ -191,6 +252,7 @@ public class Entry {
   }
 
   public static class Builder {
+    private Optional<Boolean> booleanType = Optional.empty();
     private Optional<String> stringType = Optional.empty();
     private Optional<Integer> unsignedType = Optional.empty();
     private Optional<Integer> unsignedSizedType = Optional.empty();
@@ -198,8 +260,15 @@ public class Entry {
     private Optional<Integer> signedSizedType = Optional.empty();
     private Optional<Float> floatType = Optional.empty();
     private Optional<Double> doubleType = Optional.empty();
+    private Optional<ByteBuffer> bytesType = Optional.empty();
+    private Optional<Object> anyType = Optional.empty();
     private Optional<List<Entry>> arrayType = Optional.empty();
     private Optional<Map<String, Entry>> mapType = Optional.empty();
+
+    public Builder booleanType(final boolean booleanType) {
+      this.booleanType = Optional.of(booleanType);
+      return this;
+    }
 
     public Builder stringType(final String stringType) {
       this.stringType = Optional.of(stringType);
@@ -236,6 +305,16 @@ public class Entry {
       return this;
     }
 
+    public Builder bytesType(final ByteBuffer bytesType) {
+      this.bytesType = Optional.of(bytesType);
+      return this;
+    }
+
+    public Builder anyType(final Object anyType) {
+      this.anyType = Optional.of(anyType);
+      return this;
+    }
+
     public Builder arrayType(final List<Entry> arrayType) {
       this.arrayType = Optional.of(arrayType);
       return this;
@@ -247,6 +326,7 @@ public class Entry {
     }
 
     public Entry build() {
+      final Optional<Boolean> booleanType = this.booleanType;
       final Optional<String> stringType = this.stringType;
       final Optional<Integer> unsignedType = this.unsignedType;
       final Optional<Integer> unsignedSizedType = this.unsignedSizedType;
@@ -254,10 +334,12 @@ public class Entry {
       final Optional<Integer> signedSizedType = this.signedSizedType;
       final Optional<Float> floatType = this.floatType;
       final Optional<Double> doubleType = this.doubleType;
+      final Optional<ByteBuffer> bytesType = this.bytesType;
+      final Optional<Object> anyType = this.anyType;
       final Optional<List<Entry>> arrayType = this.arrayType;
       final Optional<Map<String, Entry>> mapType = this.mapType;
 
-      return new Entry(stringType, unsignedType, unsignedSizedType, signedType, signedSizedType, floatType, doubleType, arrayType, mapType);
+      return new Entry(booleanType, stringType, unsignedType, unsignedSizedType, signedType, signedSizedType, floatType, doubleType, bytesType, anyType, arrayType, mapType);
     }
   }
 }

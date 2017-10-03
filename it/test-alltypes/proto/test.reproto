@@ -1,4 +1,5 @@
 type Entry {
+    boolean_type?: boolean;
     string_type?: string;
     unsigned_type?: unsigned;
     unsigned_sized_type?: unsigned/32;
@@ -6,6 +7,8 @@ type Entry {
     signed_sized_type?: signed/32;
     float_type?: float;
     double_type?: double;
+    bytes_type?: bytes;
+    any_type?: any;
     array_type?: [Entry];
     map_type?: {string: Entry};
 }

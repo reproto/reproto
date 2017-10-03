@@ -1,18 +1,24 @@
-<Entry string_type: u'foo', unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, array_type: None, map_type: None>
+<Entry boolean_type: True, string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>
+{"boolean_type": true}
+<Entry boolean_type: None, string_type: u'foo', unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>
 {"string_type": "foo"}
-<Entry string_type: None, unsigned_type: 42, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, array_type: None, map_type: None>
+<Entry boolean_type: None, string_type: None, unsigned_type: 42, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>
 {"unsigned_type": 42}
-<Entry string_type: None, unsigned_type: None, unsigned_sized_type: 42, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, array_type: None, map_type: None>
+<Entry boolean_type: None, string_type: None, unsigned_type: None, unsigned_sized_type: 42, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>
 {"unsigned_sized_type": 42}
-<Entry string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: -42, signed_sized_type: None, float_type: None, double_type: None, array_type: None, map_type: None>
+<Entry boolean_type: None, string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: -42, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>
 {"signed_type": -42}
-<Entry string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: -42, float_type: None, double_type: None, array_type: None, map_type: None>
+<Entry boolean_type: None, string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: -42, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>
 {"signed_sized_type": -42}
-<Entry string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: 42.42, double_type: None, array_type: None, map_type: None>
+<Entry boolean_type: None, string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: 42.42, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>
 {"float_type": 42.42}
-<Entry string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: 42.42, array_type: None, map_type: None>
+<Entry boolean_type: None, string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: 42.42, bytes_type: None, any_type: None, array_type: None, map_type: None>
 {"double_type": 42.42}
-<Entry string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, array_type: [<Entry string_type: u'foo', unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, array_type: None, map_type: None>], map_type: None>
+<Entry boolean_type: None, string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: u'YW55IGNhcm5hbCBwbGVhcw==', any_type: None, array_type: None, map_type: None>
+{"bytes_type": "YW55IGNhcm5hbCBwbGVhcw=="}
+<Entry boolean_type: None, string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: {u'foo': u'bar', u'baz': 42}, array_type: None, map_type: None>
+{"any_type": {"foo": "bar", "baz": 42}}
+<Entry boolean_type: None, string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: [<Entry boolean_type: None, string_type: u'foo', unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>], map_type: None>
 {"array_type": [{"string_type": "foo"}]}
-<Entry string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, array_type: None, map_type: {u'foo': <Entry string_type: u'foo', unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, array_type: None, map_type: None>}>
+<Entry boolean_type: None, string_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: {u'foo': <Entry boolean_type: None, string_type: u'foo', unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>}>
 {"map_type": {"foo": {"string_type": "foo"}}}

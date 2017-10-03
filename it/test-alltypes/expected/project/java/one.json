@@ -1,18 +1,24 @@
-Entry(stringType=Optional[foo], unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
-{"stringType":"foo"}
-Entry(stringType=Optional.empty, unsignedType=Optional[42], unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
-{"unsignedType":42}
-Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional[42], signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
-{"unsignedSizedType":42}
-Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional[-42], signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
-{"signedType":-42}
-Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional[-42], floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
-{"signedSizedType":-42}
-Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional[42.42], doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
-{"floatType":42.42}
-Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional[42.42], arrayType=Optional.empty, mapType=Optional.empty)
-{"doubleType":42.42}
-Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional[[Entry(stringType=Optional[foo], unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)]], mapType=Optional.empty)
-{"arrayType":[{"stringType":"foo"}]}
-Entry(stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional[{foo=Entry(stringType=Optional[foo], unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)}])
-{"mapType":{"foo":{"stringType":"foo"}}}
+Entry(booleanType=Optional[true], stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"boolean_type":true}
+Entry(booleanType=Optional.empty, stringType=Optional[foo], unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"string_type":"foo"}
+Entry(booleanType=Optional.empty, stringType=Optional.empty, unsignedType=Optional[42], unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"unsigned_type":42}
+Entry(booleanType=Optional.empty, stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional[42], signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"unsigned_sized_type":42}
+Entry(booleanType=Optional.empty, stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional[-42], signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"signed_type":-42}
+Entry(booleanType=Optional.empty, stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional[-42], floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"signed_sized_type":-42}
+Entry(booleanType=Optional.empty, stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional[42.42], doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"float_type":42.42}
+Entry(booleanType=Optional.empty, stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional[42.42], bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"double_type":42.42}
+Entry(booleanType=Optional.empty, stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional[java.nio.HeapByteBuffer[pos=0 lim=16 cap=16]], anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)
+{"bytes_type":"YW55IGNhcm5hbCBwbGVhcw=="}
+Entry(booleanType=Optional.empty, stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional[{foo=bar, baz=42}], arrayType=Optional.empty, mapType=Optional.empty)
+{"any_type":{"foo":"bar","baz":42}}
+Entry(booleanType=Optional.empty, stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional[[Entry(booleanType=Optional.empty, stringType=Optional[foo], unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)]], mapType=Optional.empty)
+{"array_type":[{"string_type":"foo"}]}
+Entry(booleanType=Optional.empty, stringType=Optional.empty, unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional[{foo=Entry(booleanType=Optional.empty, stringType=Optional[foo], unsignedType=Optional.empty, unsignedSizedType=Optional.empty, signedType=Optional.empty, signedSizedType=Optional.empty, floatType=Optional.empty, doubleType=Optional.empty, bytesType=Optional.empty, anyType=Optional.empty, arrayType=Optional.empty, mapType=Optional.empty)}])
+{"map_type":{"foo":{"string_type":"foo"}}}

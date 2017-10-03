@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
+  @JsonProperty("thing")
   private final Optional<Thing> thing;
 
   @JsonCreator

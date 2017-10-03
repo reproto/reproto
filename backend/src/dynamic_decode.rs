@@ -45,8 +45,9 @@ where
             RpType::Unsigned { size: _ } => input.clone(),
             RpType::Float | RpType::Double => input.clone(),
             RpType::String => input.clone(),
-            RpType::Any => input.clone(),
             RpType::Boolean => input.clone(),
+            RpType::Bytes => input.clone(),
+            RpType::Any => input.clone(),
             RpType::Name { ref name } => {
                 let name = self.convert_type(name)?;
                 self.name_decode(input, name)
@@ -63,7 +64,6 @@ where
                 let value = self.dynamic_decode(name, value, &map_value)?;
                 self.map_decode(input, key, value)
             }
-            ref ty => return Err(format!("type `{}` not supported", ty).into()),
         };
 
         Ok(input)
