@@ -131,38 +131,25 @@ impl JsBackend {
     }
 
     fn decode_enum_method(&self, class: &ClassSpec, ident: &str) -> Result<MethodSpec> {
-        let mut decode = MethodSpec::with_static("decode");
+        let members = stmt![&class.name, ".", &self.values];
+        let loop_init = stmt!["let i = 0, l = ", &members, ".length"];
+        let match_member = stmt!["member.", ident, " === data"];
 
-        let data = stmt!["data"];
-        let i = stmt!["i"];
-        let l = stmt!["l"];
-        let member = stmt!["member"];
-
-        decode.push_argument(data.clone());
+        let mut loop_body = Elements::new();
+        loop_body.push(js![const "member", &members, "[i]"]);
+        loop_body.push(js![if match_member, js![return "member"]]);
 
         let mut member_loop = Elements::new();
+        member_loop.push(js![for loop_init; "i < l"; "i++", loop_body.join(Spacing)]);
 
         let mut body = Elements::new();
-
-        let members = stmt![&class.name, ".", &self.values];
-        body.push(js![const &member, &members, "[", &i, "]"]);
-
-        let cond = stmt![&member, ".", ident, " === ", &data];
-        body.push(js![if cond, js![return &member]]);
-
-        let loop_init = stmt!["let ", &i, " = 0, ", &l, " = ", &members, ".length"];
-        member_loop.push(
-            js![for loop_init; stmt![&i, " < ", &l]; stmt![&i, "++"], body.join(Spacing)],
-        );
-
-        let mut body = Elements::new();
-
         body.push(member_loop);
-        body.push(
-            js![throw string("no matching value: "), stmt![" + "], &data],
-        );
+        body.push(js![throw string("no matching value: "), " + data"]);
 
+        let mut decode = MethodSpec::with_static("decode");
+        decode.push_argument("data");
         decode.push(body.join(Spacing));
+
         Ok(decode)
     }
 
