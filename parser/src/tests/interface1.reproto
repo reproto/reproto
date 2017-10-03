@@ -1,5 +1,5 @@
 interface Foo {
-  reserved 1, 2, 3;
+  reserved 1;
 
   java {{
   }}

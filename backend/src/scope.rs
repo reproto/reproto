@@ -145,7 +145,7 @@ mod tests {
     pub fn test_scope() {
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let prefixes = HashMap::new();
-        let s = Scope::new(None, package, prefixes);
+        let s = Scope::new(None, package, prefixes, None);
 
         let s2 = s.child("foo");
         let s3 = s2.child("bar");

@@ -20,7 +20,7 @@ type Foo {
 }
 
 interface Bar {
-  reserved "a", "b", "c";
+  reserved "a";
 
   java {{
     default int hello() {

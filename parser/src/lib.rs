@@ -253,16 +253,11 @@ mod tests {
 
     #[test]
     fn test_option_decl() {
-        let member = parse_member("foo_bar_baz true, foo, \"bar\", 12;");
+        let member = parse_member("foo_bar_baz true;");
 
         if let Member::Option(option) = member {
             assert_eq!("foo_bar_baz", option.name);
-            assert_eq!(4, option.values.len());
-
-            assert_eq!(Value::Boolean(true), *option.values[0].value());
-            assert_eq!(Value::Identifier("foo"), *option.values[1].value());
-            assert_eq!(Value::String("bar".to_owned()), *option.values[2].value());
-            assert_eq!(Value::Number(12u32.into()), *option.values[3].value());
+            assert_eq!(Value::Boolean(true), *option.value.value());
             return;
         }
 
