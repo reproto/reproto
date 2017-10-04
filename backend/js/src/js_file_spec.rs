@@ -1,17 +1,17 @@
 use super::*;
+use genco::{JavaScript, Tokens};
 
-pub struct JsFileSpec(pub FileSpec);
+pub struct JsFileSpec<'el>(pub Tokens<'el, JavaScript<'el>>);
 
-impl<'a> Collecting<'a> for JsFileSpec {
-    type Processor = JsCompiler<'a>;
-
-    fn new() -> Self {
-        JsFileSpec(FileSpec::new())
+impl<'el> Default for JsFileSpec<'el> {
+    fn default() -> Self {
+        JsFileSpec(Tokens::new())
     }
+}
 
-    fn into_bytes(self, _: &Self::Processor) -> Result<Vec<u8>> {
-        let mut out = String::new();
-        self.0.format(&mut out)?;
+impl<'el> IntoBytes<JsCompiler<'el>> for JsFileSpec<'el> {
+    fn into_bytes(self, _: &JsCompiler<'el>) -> Result<Vec<u8>> {
+        let out = self.0.join_line_spacing().to_file()?;
         Ok(out.into_bytes())
     }
 }

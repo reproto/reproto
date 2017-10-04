@@ -1,13 +1,15 @@
 /// Module that adds lombok annotations to generated classes.
 use super::*;
+use genco::{Cons, Java};
+use genco::java::{Class, imported};
 
 pub struct Module {
-    data: ClassType,
+    data: Java<'static>,
 }
 
 impl Module {
     pub fn new() -> Module {
-        Module { data: Type::class("lombok", "Data") }
+        Module { data: imported("lombok", "Data") }
     }
 }
 
@@ -22,8 +24,8 @@ impl Listeners for Module {
         Ok(())
     }
 
-    fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
-        event.spec.push_annotation(&self.data);
+    fn class_added<'a>(&self, _names: &[Cons<'a>], spec: &mut Class<'a>) -> Result<()> {
+        spec.annotation(toks!["@", self.data.clone()]);
         Ok(())
     }
 }

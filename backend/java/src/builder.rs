@@ -1,104 +1,108 @@
-/// Module that adds fasterxml annotations to generated classes.
+//! Module that adds fasterxml annotations to generated classes.
+
 use super::*;
+use genco::{Cons, Java, Quoted, Tokens};
+use genco::java::{Argument, Class, Field, Method, Modifier, imported, local};
+use std::rc::Rc;
 
 pub struct Module {
-    optional: ClassType,
-    runtime_exception: ClassType,
+    optional: Java<'static>,
+    runtime_exception: Java<'static>,
 }
 
 impl Module {
     pub fn new() -> Module {
         Module {
-            optional: Type::class("java.util", "Optional"),
-            runtime_exception: Type::class("java.lang", "RuntimeException"),
+            optional: imported("java.util", "Optional"),
+            runtime_exception: imported("java.lang", "RuntimeException"),
         }
     }
 }
 
 impl Module {
-    fn builder_field(&self, field: &JavaField, source: &FieldSpec) -> FieldSpec {
-        let field_mods = mods![Modifier::Private];
+    fn builder_field<'el>(&self, field: &Field<'el>) -> Field<'el> {
+        use self::Modifier::*;
 
-        let ty = match *field.modifier {
-            RpModifier::Required => self.optional.with_arguments(vec![&source.ty]).into(),
-            _ => source.ty.clone(),
+        let ty = match field.ty() {
+            optional @ Java::Optional(_) => optional,
+            other => self.optional.with_arguments(vec![other]),
         };
 
-        let mut spec = FieldSpec::new(field_mods, ty, &source.name);
-        spec.initialize(stmt![&self.optional, ".empty()"]);
-        spec
+        let mut field = Field::new(ty, field.var());
+        field.modifiers = vec![Private];
+        field.initializer(toks![self.optional.clone(), ".empty()"]);
+        field
     }
 
-    fn setter_method(&self, field: &JavaField, source: &FieldSpec) -> MethodSpec {
-        let mut setter = MethodSpec::new(mods![Modifier::Public], &source.name);
+    fn setter_method<'el>(&self, field: &Field<'el>) -> Method<'el> {
+        let argument = Argument::new(field.ty().as_value(), field.var());
 
-        let argument =
-            ArgumentSpec::new(mods![Modifier::Final], &field.java_value_type, &source.name);
+        let mut setter = Method::new(field.var());
+        setter.returns = local("Builder");
+        setter.arguments.push(argument.clone());
 
-        let value = stmt![&self.optional, ".of(", &argument, ")"];
-
-        let mut setter_body = Elements::new();
-
-        setter_body.push(stmt!["this.", &source.name, " = ", value, ";"]);
-        setter_body.push("return this;");
-
-        setter.push(setter_body);
-        setter.returns(Type::local("Builder"));
-        setter.push_argument(argument);
+        setter.body.push(toks![
+            "this.",
+            field.var(),
+            " = ",
+            self.optional.clone(), ".of(", argument.var(), ")",
+            ";",
+        ]);
+        setter.body.push("return this;");
 
         setter
     }
 }
 
 impl Listeners for Module {
-    fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
-        let mut builder = ClassSpec::new(mods![Modifier::Public, Modifier::Static], "Builder");
+    fn class_added(&self, _names: &[Cons], spec: &mut Class) -> Result<()> {
+        use self::Modifier::*;
 
-        let mut build_variable_assign = Elements::new();
-        let mut build_constructor_arguments = Statement::new();
+        let mut builder = Class::new("Builder");
+        builder.modifiers = vec![Public, Static];
 
-        for field in event.fields {
-            let source = &field.java_spec;
+        let mut build_variable_assign = Tokens::new();
+        let mut build_constructor_arguments = Tokens::new();
 
-            builder.push_field(self.builder_field(field, source));
-            builder.push(self.setter_method(field, source));
+        for field in &spec.fields {
+            builder.fields.push(self.builder_field(field));
+            builder.methods.push(self.setter_method(field));
 
-            let value = match *field.modifier {
-                RpModifier::Required => {
-                    let message = Variable::String(format!("{}: is required", source.name));
-                    let throw_stmt = stmt!["new ", &self.runtime_exception, "(", message, ")"];
+            let value = if !field.ty().is_optional() {
+                let message = Rc::new(format!("{}: is required", field.var().as_ref())).quoted();
+                let throw_toks = toks!["new ", self.runtime_exception.clone(), "(", message, ")"];
 
-                    stmt![
-                        "this.",
-                        &source.name,
-                        ".orElseThrow(() -> ",
-                        throw_stmt,
-                        ")",
-                    ]
-                }
-                _ => stmt!["this.", &source.name],
+                toks!["this.", field.var(), ".orElseThrow(() -> ", throw_toks, ")"]
+            } else {
+                toks!["this.", field.var()]
             };
 
-            let assign = stmt!["final ", &source.ty, " ", &source.name, " = ", value, ";"];
+            let assign: Tokens<Java> =
+                toks!["final ", field.ty(), " ", field.var(), " = ", value, ";"];
+
             build_variable_assign.push(assign);
-            build_constructor_arguments.push(&source.name);
+            build_constructor_arguments.append(field.var());
         }
 
-        let mut build = MethodSpec::new(mods![Modifier::Public], "build");
-        build.returns(event.class_type);
-        build.push(build_variable_assign);
-        build.push(stmt![
-            "return new ",
-            event.class_type,
-            "(",
-            build_constructor_arguments.join(", "),
-            ");",
-        ]);
+        builder.methods.push({
+            let mut build = Method::new("build");
+            build.returns = local(spec.name());
 
-        builder.push(build);
+            build.body.push(build_variable_assign);
 
-        event.spec.push(builder);
+            build.body.push(toks![
+                "return new ",
+                spec.name(),
+                "(",
+                build_constructor_arguments.join(", "),
+                ");",
+            ]);
 
+            build.body = build.body.join_line_spacing();
+            build
+        });
+
+        spec.body.push(builder);
         Ok(())
     }
 }

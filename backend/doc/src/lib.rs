@@ -1,7 +1,7 @@
 #![recursion_limit = "1000"]
 #[macro_use]
 extern crate log;
-extern crate codeviz_common;
+extern crate genco;
 extern crate reproto_backend as backend;
 extern crate pulldown_cmark;
 

@@ -2,8 +2,7 @@
 extern crate log;
 extern crate reproto_backend as backend;
 #[macro_use]
-extern crate codeviz_macros;
-extern crate codeviz_rust;
+extern crate genco;
 
 mod listeners;
 mod rust_backend;
@@ -18,11 +17,13 @@ pub(crate) use self::rust_file_spec::*;
 pub(crate) use self::rust_options::*;
 pub(crate) use backend::errors::*;
 pub(crate) use backend::imports::*;
-pub(crate) use codeviz_rust::*;
 
 pub(crate) const MOD: &str = "mod";
 pub(crate) const EXT: &str = "rs";
 pub(crate) const RUST_CONTEXT: &str = "rust";
+
+type RustTokens<'a> = self::genco::Tokens<'a, self::genco::Rust<'a>>;
+type RustElement<'a> = self::genco::Element<'a, self::genco::Rust<'a>>;
 
 fn setup_module(module: &str) -> Result<Box<Listeners>> {
     let _module: Box<Listeners> = match module {

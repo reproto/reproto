@@ -1,10 +1,17 @@
 //! # Helper trait for building a dynamic-language encode method
 
-use core::{RpName, RpType};
+use super::converter::Converter;
+use core::RpType;
 use errors::*;
+use genco::Tokens;
 
-pub trait BaseEncode {
-    type Stmt;
-
-    fn base_encode(&self, name: &RpName, ty: &RpType, input: &Self::Stmt) -> Result<Self::Stmt>;
+pub trait BaseEncode<'el>
+where
+    Self: Converter<'el>,
+{
+    fn base_encode(
+        &self,
+        ty: &'el RpType,
+        input: Tokens<'el, Self::Custom>,
+    ) -> Result<Tokens<'el, Self::Custom>>;
 }

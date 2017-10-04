@@ -3,20 +3,21 @@
 use converter::Converter;
 use core::{RpEnumOrdinal, RpEnumVariant};
 use errors::*;
+use genco::{Quoted, Tokens};
+use std::rc::Rc;
 
-pub trait ValueBuilder
+pub trait ValueBuilder<'el>
 where
-    Self: Converter,
+    Self: Converter<'el>,
 {
-    /// Convert the string to a statement.
-    fn string(&self, &str) -> Result<Self::Stmt>;
-
-    fn ordinal(&self, variant: &RpEnumVariant) -> Result<Self::Stmt> {
+    fn ordinal<'a>(&self, variant: &'a RpEnumVariant) -> Result<Tokens<'el, Self::Custom>> {
         use self::RpEnumOrdinal::*;
 
-        match variant.ordinal {
-            String(ref string) => self.string(string),
-            Generated => self.string(&variant.local_name),
-        }
+        let out = match variant.ordinal {
+            String(ref string) => Rc::new(string.as_str().to_string()).quoted().into(),
+            Generated => Rc::new(variant.local_name.to_string()).quoted().into(),
+        };
+
+        Ok(out)
     }
 }

@@ -1,32 +1,27 @@
-/// Module that adds fasterxml annotations to generated classes.
+//! Module that adds fasterxml annotations to generated classes.
+
 use super::*;
+use genco::{Cons, Java, Quoted, Tokens};
+use genco::java::{Class, imported};
 
 pub struct Module {
-    constructor_properties: ClassType,
+    annotation: Java<'static>,
 }
 
 impl Module {
     pub fn new() -> Module {
-        Module { constructor_properties: Type::class("java.beans", "ConstructorProperties") }
+        Module { annotation: imported("java.beans", "ConstructorProperties") }
     }
 }
 
 impl Listeners for Module {
-    fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
-        if event.spec.constructors.len() != 1 {
-            return Err("Expected exactly one constructor".into());
+    fn class_added<'a>(&self, names: &[Cons<'a>], spec: &mut Class<'a>) -> Result<()> {
+        let args: Tokens<Java> = names.iter().cloned().map(Quoted::quoted).collect();
+        let a = toks![self.annotation.clone(), "({", args.join(", "), "})"];
+
+        for c in &mut spec.constructors {
+            c.annotation(a.clone());
         }
-
-        let constructor = &mut event.spec.constructors[0];
-        let mut arguments = Statement::new();
-
-        for field in event.fields {
-            arguments.push(stmt![Variable::String(field.name.to_owned())]);
-        }
-
-        let mut annotation = AnnotationSpec::new(&self.constructor_properties);
-        annotation.push_argument(stmt!["{", arguments.join(", "), "}"]);
-        constructor.push_annotation(&annotation);
 
         Ok(())
     }

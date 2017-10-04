@@ -1,4 +1,3 @@
-use codeviz_common::errors as codeviz;
 use core::{ErrorPos, Pos, RpName, WithPos, errors as core};
 use parser::errors as parser;
 use repository::errors as repository;
@@ -8,7 +7,6 @@ error_chain! {
     links {
         Parser(parser::Error, parser::ErrorKind);
         Core(core::Error, core::ErrorKind);
-        Codeviz(codeviz::Error, codeviz::ErrorKind);
         Repository(repository::Error, repository::ErrorKind);
     }
 

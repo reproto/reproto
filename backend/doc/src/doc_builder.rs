@@ -1,5 +1,4 @@
-use super::imports::*;
-use codeviz_common::{ElementFormat, ElementFormatter};
+use genco::Formatter;
 use std::fmt::{self, Write};
 
 pub trait DocBuilder {
@@ -7,35 +6,26 @@ pub trait DocBuilder {
 
     fn write_fmt(&mut self, args: fmt::Arguments) -> fmt::Result;
 
-    fn new_line(&mut self) -> Result<()>;
+    fn new_line(&mut self) -> fmt::Result;
 
-    fn new_line_unless_empty(&mut self) -> Result<()>;
+    fn new_line_unless_empty(&mut self) -> fmt::Result;
 
     fn indent(&mut self);
 
     fn unindent(&mut self);
 }
 
-pub struct DefaultDocBuilder<'a, W>
-where
-    W: fmt::Write + 'a,
-{
-    formatter: ElementFormatter<'a, W>,
+pub struct DefaultDocBuilder<'a> {
+    formatter: Formatter<'a>,
 }
 
-impl<'a, W> DefaultDocBuilder<'a, W>
-where
-    W: fmt::Write,
-{
-    pub fn new(write: &'a mut W) -> DefaultDocBuilder<'a, W> {
-        DefaultDocBuilder { formatter: ElementFormatter::new(write) }
+impl<'a> DefaultDocBuilder<'a> {
+    pub fn new(write: &'a mut fmt::Write) -> DefaultDocBuilder<'a> {
+        DefaultDocBuilder { formatter: Formatter::new(write) }
     }
 }
 
-impl<'a, W> DocBuilder for DefaultDocBuilder<'a, W>
-where
-    W: fmt::Write,
-{
+impl<'a> DocBuilder for DefaultDocBuilder<'a> {
     fn write_str(&mut self, string: &str) -> fmt::Result {
         self.formatter.write_str(string)
     }
@@ -44,12 +34,12 @@ where
         self.formatter.write_fmt(args)
     }
 
-    fn new_line(&mut self) -> Result<()> {
+    fn new_line(&mut self) -> fmt::Result {
         self.formatter.new_line()?;
         Ok(())
     }
 
-    fn new_line_unless_empty(&mut self) -> Result<()> {
+    fn new_line_unless_empty(&mut self) -> fmt::Result {
         self.formatter.new_line_unless_empty()?;
         Ok(())
     }

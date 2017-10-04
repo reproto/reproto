@@ -131,7 +131,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_type(&self, out: &mut DocBuilder, name: &RpName, ty: &RpType) -> Result<()> {
+    fn write_type(&self, out: &mut DocBuilder, ty: &RpType) -> Result<()> {
         write!(out, "<span class=\"ty\">")?;
 
         match *ty {
@@ -172,16 +172,16 @@ impl DocBackend {
             RpType::Array { ref inner } => {
                 html!(out, span {class => "type-array"} => {
                     html!(out, span {class => "type-array-left"} ~ "[");
-                    self.write_type(out, name, inner)?;
+                    self.write_type(out, inner)?;
                     html!(out, span {class => "type-array-right"} ~ "]");
                 });
             }
             RpType::Map { ref key, ref value } => {
                 html!(out, span {class => "type-map"} => {
                     html!(out, span {class => "type-map-left"} ~ "{");
-                    self.write_type(out, name, key)?;
+                    self.write_type(out, key)?;
                     html!(out, span {class => "type-map-sep"} ~ ":");
-                    self.write_type(out, name, value)?;
+                    self.write_type(out, value)?;
                     html!(out, span {class => "type-map-right"} ~ "}");
                 });
             }
@@ -191,7 +191,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_field(&self, out: &mut DocBuilder, name: &RpName, field: &RpField) -> Result<()> {
+    fn write_field(&self, out: &mut DocBuilder, field: &RpField) -> Result<()> {
         let mut classes = vec!["field"];
 
         if field.is_optional() {
@@ -220,7 +220,7 @@ impl DocBackend {
             });
 
             html!(out, td {class => "type"} => {
-                self.write_type(out, name, &field.ty)?;
+                self.write_type(out, &field.ty)?;
             });
 
             html!(out, td {class => "description"} => {
@@ -231,7 +231,7 @@ impl DocBackend {
         Ok(())
     }
 
-    fn write_fields<'b, I>(&self, out: &mut DocBuilder, name: &RpName, fields: I) -> Result<()>
+    fn write_fields<'b, I>(&self, out: &mut DocBuilder, fields: I) -> Result<()>
     where
         I: Iterator<Item = &'b Loc<RpField>>,
     {
@@ -240,7 +240,7 @@ impl DocBackend {
 
             html!(out, table {class => "spaced"} => {
                 fields.for_each_loc(|field| {
-                    self.write_field(out, name, field)
+                    self.write_field(out, field)
                 })?;
             });
         });
@@ -348,7 +348,6 @@ impl DocBackend {
         &self,
         out: &mut DocBuilder,
         index: usize,
-        name: &RpName,
         body: &RpServiceBody,
         endpoint: &RpServiceEndpoint,
     ) -> Result<()> {
@@ -384,7 +383,7 @@ impl DocBackend {
                                 html!(out, td {class => "type"} => {
                                     if let Some(ref ty) = accept.ty {
                                         let (ty, pos) = ty.as_ref_pair();
-                                        self.write_type(out, name, ty).with_pos(pos)?;
+                                        self.write_type(out, ty).with_pos(pos)?;
                                     } else {
                                         html!(out, em {} ~ "no body");
                                     }
@@ -422,7 +421,7 @@ impl DocBackend {
                                 html!(out, td {class => "type"} => {
                                     if let Some(ref ty) = response.ty {
                                         let (ty, pos) = ty.as_ref_pair();
-                                        self.write_type(out, name, ty).with_pos(pos)?;
+                                        self.write_type(out, ty).with_pos(pos)?;
                                     } else {
                                         html!(out, em {} ~ "no body");
                                     }
@@ -482,7 +481,7 @@ impl DocBackend {
     pub fn write_service_overview(
         &self,
         out: &mut DocBuilder,
-        service_bodies: Vec<Rc<Loc<RpServiceBody>>>,
+        service_bodies: Vec<&RpServiceBody>,
     ) -> Result<()> {
         if service_bodies.is_empty() {
             return Ok(());
@@ -507,7 +506,7 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn write_types_overview(&self, out: &mut DocBuilder, decls: Vec<RpDecl>) -> Result<()> {
+    pub fn write_types_overview(&self, out: &mut DocBuilder, decls: Vec<DocDecl>) -> Result<()> {
         if decls.is_empty() {
             return Ok(());
         }
@@ -531,17 +530,16 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn process_service(
+    pub fn process_service<'p>(
         &self,
-        out: &mut DocCollector,
-        name: &RpName,
-        body: Rc<Loc<RpServiceBody>>,
+        out: &mut DocCollector<'p>,
+        body: &'p RpServiceBody,
     ) -> Result<()> {
-        let mut new_service = out.new_service(body.clone());
+        let mut new_service = out.new_service(body);
         let mut out = DefaultDocBuilder::new(&mut new_service);
 
-        let title_text = name.join("::");
-        let id = name.join("_");
+        let title_text = body.name.join("::");
+        let id = body.name.join("_");
 
         html!(out, section {id => &id, class => "section-content section-service"} => {
             self.section_title(&mut out, "service", &title_text, &id)?;
@@ -550,7 +548,7 @@ impl DocBackend {
                 self.write_description(&mut out, &body.comment)?;
 
                 for (index, endpoint) in body.endpoints.iter().enumerate() {
-                    self.write_endpoint(&mut out, index, name, &body, endpoint)?;
+                    self.write_endpoint(&mut out, index, body, endpoint)?;
                 }
             });
         });
@@ -558,17 +556,12 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn process_enum(
-        &self,
-        out: &mut DocCollector,
-        name: &RpName,
-        body: Rc<Loc<RpEnumBody>>,
-    ) -> Result<()> {
-        let mut new_enum = out.new_type(RpDecl::Enum(body.clone()));
+    pub fn process_enum<'p>(&self, out: &mut DocCollector<'p>, body: &'p RpEnumBody) -> Result<()> {
+        let mut new_enum = out.new_type(DocDecl::Enum(body));
         let mut out = DefaultDocBuilder::new(&mut new_enum);
 
-        let title_text = name.join("::");
-        let id = name.join("_");
+        let title_text = body.name.join("::");
+        let id = body.name.join("_");
 
         html!(out, section {id => &id, class => "section-content section-enum"} => {
             self.section_title(&mut out, "enum", &title_text, &id)?;
@@ -582,17 +575,16 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn process_interface(
+    pub fn process_interface<'p>(
         &self,
-        out: &mut DocCollector,
-        name: &RpName,
-        body: Rc<Loc<RpInterfaceBody>>,
+        out: &mut DocCollector<'p>,
+        body: &'p RpInterfaceBody,
     ) -> Result<()> {
-        let mut new_interface = out.new_type(RpDecl::Interface(body.clone()));
+        let mut new_interface = out.new_type(DocDecl::Interface(body));
         let mut out = DefaultDocBuilder::new(&mut new_interface);
 
-        let title_text = name.join("::");
-        let id = name.join("_");
+        let title_text = body.name.join("::");
+        let id = body.name.join("_");
 
         html!(out, section {id => &id, class => "section-content section-interface"} => {
             self.section_title(&mut out, "interface", &title_text, &id)?;
@@ -613,7 +605,7 @@ impl DocBackend {
                             self.write_description(&mut out, &body.comment)?;
 
                             let fields = body.fields.iter().chain(sub_type.fields.iter());
-                            self.write_fields(&mut out, &sub_type.name, fields)?;
+                            self.write_fields(&mut out, fields)?;
                         }
                     });
                 }
@@ -623,48 +615,42 @@ impl DocBackend {
         Ok(())
     }
 
-    pub fn process_type(
-        &self,
-        out: &mut DocCollector,
-        name: &RpName,
-        body: Rc<Loc<RpTypeBody>>,
-    ) -> Result<()> {
-        let mut new_type = out.new_type(RpDecl::Type(body.clone()));
+    pub fn process_type<'p>(&self, out: &mut DocCollector<'p>, body: &'p RpTypeBody) -> Result<()> {
+        let mut new_type = out.new_type(DocDecl::Type(body));
         let mut out = DefaultDocBuilder::new(&mut new_type);
 
-        let title_text = name.join("::");
-        let id = name.join("_");
+        let title_text = body.name.join("::");
+        let id = body.name.join("_");
 
         html!(out, section {id => &id, class => "section-content section-type"} => {
             self.section_title(&mut out, "type", &title_text, &id)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
-                self.write_fields(&mut out, name, body.fields.iter())?;
+                self.write_fields(&mut out, body.fields.iter())?;
             });
         });
 
         Ok(())
     }
 
-    pub fn process_tuple(
+    pub fn process_tuple<'p>(
         &self,
-        out: &mut DocCollector,
-        name: &RpName,
-        body: Rc<Loc<RpTupleBody>>,
+        out: &mut DocCollector<'p>,
+        body: &'p RpTupleBody,
     ) -> Result<()> {
-        let mut new_tuple = out.new_type(RpDecl::Tuple(body.clone()));
+        let mut new_tuple = out.new_type(DocDecl::Tuple(body));
         let mut out = DefaultDocBuilder::new(&mut new_tuple);
 
-        let id = name.join("_");
-        let title_text = name.join("::");
+        let id = body.name.join("_");
+        let title_text = body.name.join("::");
 
         html!(out, section {id => &id, class => "section-content section-tuple"} => {
             self.section_title(&mut out, "tuple", &title_text, &id)?;
 
             html!(out, div {class => "section-body"} => {
                 self.write_description(&mut out, &body.comment)?;
-                self.write_fields(&mut out, name, body.fields.iter())?;
+                self.write_fields(&mut out, body.fields.iter())?;
             });
         });
 

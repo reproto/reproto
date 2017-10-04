@@ -5,14 +5,14 @@ pub struct Collector {
     buffer: String,
 }
 
-impl<'a> Collecting<'a> for Collector {
-    type Processor = JsonCompiler<'a>;
-
-    fn new() -> Self {
+impl<'a> Default for Collector {
+    fn default() -> Self {
         Collector { buffer: String::new() }
     }
+}
 
-    fn into_bytes(self, _: &Self::Processor) -> Result<Vec<u8>> {
+impl<'a> IntoBytes<JsonCompiler<'a>> for Collector {
+    fn into_bytes(self, _: &JsonCompiler<'a>) -> Result<Vec<u8>> {
         Ok(self.buffer.into_bytes())
     }
 }

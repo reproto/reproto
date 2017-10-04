@@ -1,11 +1,13 @@
 use super::*;
 
+use std::rc::Rc;
+
 #[derive(Clone)]
 pub struct PythonField<'a> {
     pub modifier: &'a RpModifier,
     pub ty: &'a RpType,
     pub name: &'a str,
-    pub ident: String,
+    pub ident: Rc<String>,
 }
 
 impl<'a> PythonField<'a> {
@@ -14,7 +16,7 @@ impl<'a> PythonField<'a> {
             modifier: self.modifier,
             ty: self.ty,
             name: self.name,
-            ident: ident,
+            ident: Rc::new(ident),
         }
     }
 }

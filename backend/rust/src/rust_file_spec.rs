@@ -1,17 +1,20 @@
-use super::*;
+//! The file spec collecting changes.
 
-pub struct RustFileSpec(pub FileSpec);
+use super::{IntoBytes, RustCompiler, RustTokens};
+use backend::errors::*;
+use genco::Tokens;
 
-impl<'a> Collecting<'a> for RustFileSpec {
-    type Processor = RustCompiler<'a>;
+pub struct RustFileSpec<'a>(pub RustTokens<'a>);
 
-    fn new() -> Self {
-        RustFileSpec(FileSpec::new())
+impl<'processor> Default for RustFileSpec<'processor> {
+    fn default() -> Self {
+        RustFileSpec(Tokens::new())
     }
+}
 
-    fn into_bytes(self, _: &Self::Processor) -> Result<Vec<u8>> {
-        let mut out = String::new();
-        self.0.format(&mut out)?;
+impl<'processor> IntoBytes<RustCompiler<'processor>> for RustFileSpec<'processor> {
+    fn into_bytes(self, _: &RustCompiler<'processor>) -> Result<Vec<u8>> {
+        let out = self.0.join_line_spacing().to_file()?;
         Ok(out.into_bytes())
     }
 }

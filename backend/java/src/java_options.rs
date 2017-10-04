@@ -1,4 +1,4 @@
-use super::*;
+use genco::Java;
 
 pub struct JavaOptions {
     /// Should fields be nullable?
@@ -18,7 +18,7 @@ pub struct JavaOptions {
     /// Build a Object#toString() implementation.
     pub build_to_string: bool,
     /// Container to use for asynchronous operations.
-    pub async_container: Option<ClassType>,
+    pub async_container: Option<Java<'static>>,
 }
 
 impl JavaOptions {

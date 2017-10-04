@@ -1,12 +1,17 @@
 //! # Helper trait for building a dynamic-language decode method
 
 use converter::Converter;
-use core::{RpName, RpType};
+use core::RpType;
 use errors::*;
+use genco::Tokens;
 
-pub trait BaseDecode
+pub trait BaseDecode<'el>
 where
-    Self: Converter,
+    Self: Converter<'el>,
 {
-    fn base_decode(&self, name: &RpName, ty: &RpType, input: &Self::Stmt) -> Result<Self::Stmt>;
+    fn base_decode(
+        &self,
+        ty: &'el RpType,
+        input: Tokens<'el, Self::Custom>,
+    ) -> Result<Tokens<'el, Self::Custom>>;
 }

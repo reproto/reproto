@@ -1,57 +1,47 @@
 pub use super::*;
+use genco::Cons;
+use genco::java::{Argument, Field, Method, Modifier};
+use std::rc::Rc;
 
 /// A single field.
 #[derive(Debug, Clone)]
 pub struct JavaField<'a> {
-    pub modifier: &'a RpModifier,
-    pub ty: &'a RpType,
-    pub camel_name: String,
-    pub name: &'a str,
-    pub ident: String,
-    pub java_value_type: Type,
-    pub java_type: Type,
-    pub java_spec: FieldSpec,
+    pub name: Cons<'a>,
+    pub camel_name: Rc<String>,
+    pub spec: Field<'a>,
 }
 
-impl<'a> JavaField<'a> {
-    pub fn setter(&self) -> Result<Option<MethodSpec>> {
-        if self.java_spec.modifiers.contains(&Modifier::Final) {
-            return Ok(None);
+impl<'el> JavaField<'el> {
+    pub fn setter(&self) -> Option<Method<'el>> {
+        if self.spec.modifiers.contains(&Modifier::Final) {
+            return None;
         }
 
-        let name = format!("set{}", self.camel_name);
-        let mut setter = MethodSpec::new(mods![Modifier::Public], &name);
+        let argument = Argument::new(self.spec.ty(), self.spec.var());
+        let mut m = Method::new(Rc::new(format!("set{}", self.camel_name)));
 
-        let argument = ArgumentSpec::new(mods![Modifier::Final], &self.java_type, &self.ident);
+        m.arguments.push(argument.clone());
 
-        setter.push_argument(argument.clone());
-        setter.returns(VOID);
+        m.body.push(toks![
+            "this.",
+            self.spec.var(),
+            " = ",
+            argument.var(),
+            ";",
+        ]);
 
-        let mut method_body = Elements::new();
-
-        method_body.push(stmt!["this.", &self.ident, " = ", &argument, ";"]);
-        setter.push(method_body);
-
-        Ok(Some(setter))
+        Some(m)
     }
 
-    pub fn getter_without_body(&self) -> Result<MethodSpec> {
-        let name = format!("get{}", self.camel_name);
-        let mut getter = MethodSpec::new(mods![Modifier::Public], &name);
-        getter.returns(&self.java_type);
-        Ok(getter)
+    pub fn getter_without_body(&self) -> Method<'el> {
+        let mut method = Method::new(Rc::new(format!("get{}", self.camel_name)));
+        method.returns = self.spec.ty().as_field();
+        method
     }
 
-    pub fn getter(&self) -> Result<MethodSpec> {
-        let mut getter = self.getter_without_body()?;
-        getter.push(stmt!["return this.", &self.ident, ";"]);
-        Ok(getter)
-    }
-
-    pub fn is_optional(&self) -> bool {
-        match *self.modifier {
-            RpModifier::Optional => true,
-            _ => false,
-        }
+    pub fn getter(&self) -> Method<'el> {
+        let mut m = self.getter_without_body();
+        m.body.push(toks!["return this.", self.spec.var(), ";"]);
+        m
     }
 }

@@ -2,25 +2,56 @@
 
 use super::imports::*;
 use macros::FormatAttribute;
-use std::rc::Rc;
 
-pub struct DocCollector {
+#[derive(Debug, Clone)]
+pub enum DocDecl<'p> {
+    Enum(&'p RpEnumBody),
+    Interface(&'p RpInterfaceBody),
+    Type(&'p RpTypeBody),
+    Tuple(&'p RpTupleBody),
+}
+
+impl<'p> DocDecl<'p> {
+    pub fn local_name(&self) -> &str {
+        use self::DocDecl::*;
+
+        match *self {
+            Type(ref body) => body.local_name.as_str(),
+            Interface(ref body) => body.local_name.as_str(),
+            Enum(ref body) => body.local_name.as_str(),
+            Tuple(ref body) => body.local_name.as_str(),
+        }
+    }
+
+    pub fn comment(&self) -> &[String] {
+        use self::DocDecl::*;
+
+        match *self {
+            Type(ref body) => &body.comment,
+            Interface(ref body) => &body.comment,
+            Enum(ref body) => &body.comment,
+            Tuple(ref body) => &body.comment,
+        }
+    }
+}
+
+pub struct DocCollector<'p> {
     package_title: Option<String>,
     packages: Vec<String>,
     services: Vec<String>,
     service_overviews: Vec<String>,
     types_overview: Vec<String>,
     types: Vec<String>,
-    pub service_bodies: Vec<Rc<Loc<RpServiceBody>>>,
-    pub decl_bodies: Vec<RpDecl>,
+    pub service_bodies: Vec<&'p RpServiceBody>,
+    pub decl_bodies: Vec<DocDecl<'p>>,
 }
 
-impl DocCollector {
+impl<'p> DocCollector<'p> {
     pub fn set_package_title(&mut self, title: String) {
         self.package_title = Some(title);
     }
 
-    pub fn new_service(&mut self, service_body: Rc<Loc<RpServiceBody>>) -> DocWriter {
+    pub fn new_service(&mut self, service_body: &'p RpServiceBody) -> DocWriter {
         self.service_bodies.push(service_body);
         DocWriter::new(&mut self.services)
     }
@@ -37,16 +68,14 @@ impl DocCollector {
         DocWriter::new(&mut self.packages)
     }
 
-    pub fn new_type(&mut self, decl: RpDecl) -> DocWriter {
+    pub fn new_type(&mut self, decl: DocDecl<'p>) -> DocWriter {
         self.decl_bodies.push(decl);
         DocWriter::new(&mut self.types)
     }
 }
 
-impl<'a> Collecting<'a> for DocCollector {
-    type Processor = DocCompiler<'a>;
-
-    fn new() -> Self {
+impl<'p> Default for DocCollector<'p> {
+    fn default() -> DocCollector<'p> {
         DocCollector {
             package_title: None,
             packages: Vec::new(),
@@ -58,8 +87,10 @@ impl<'a> Collecting<'a> for DocCollector {
             decl_bodies: Vec::new(),
         }
     }
+}
 
-    fn into_bytes(self, compiler: &Self::Processor) -> Result<Vec<u8>> {
+impl<'p> IntoBytes<DocCompiler<'p>> for DocCollector<'p> {
+    fn into_bytes(self, compiler: &DocCompiler<'p>) -> Result<Vec<u8>> {
         let mut buffer = String::new();
 
         compiler.backend.write_doc(

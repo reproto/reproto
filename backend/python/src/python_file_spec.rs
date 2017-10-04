@@ -1,17 +1,17 @@
 use super::*;
+use genco::{Python, Tokens};
 
-pub struct PythonFileSpec(pub FileSpec);
+pub struct PythonFileSpec<'element>(pub Tokens<'element, Python<'element>>);
 
-impl<'a> Collecting<'a> for PythonFileSpec {
-    type Processor = PythonCompiler<'a>;
-
-    fn new() -> Self {
-        PythonFileSpec(FileSpec::new())
+impl<'element> Default for PythonFileSpec<'element> {
+    fn default() -> Self {
+        PythonFileSpec(Tokens::new())
     }
+}
 
-    fn into_bytes(self, _: &Self::Processor) -> Result<Vec<u8>> {
-        let mut out = String::new();
-        self.0.format(&mut out)?;
+impl<'element> IntoBytes<PythonCompiler<'element>> for PythonFileSpec<'element> {
+    fn into_bytes(self, _: &PythonCompiler<'element>) -> Result<Vec<u8>> {
+        let out = self.0.join_line_spacing().to_file()?;
         Ok(out.into_bytes())
     }
 }

@@ -1,85 +1,72 @@
-use super::*;
-
-pub fn is_defined<S>(stmt: S) -> Statement
+pub fn is_defined<'el, S>(toks: S) -> ::genco::Tokens<'el, ::genco::JavaScript<'el>>
 where
-    S: Into<Statement>,
+    S: Into<::genco::Tokens<'el, ::genco::JavaScript<'el>>>,
 {
-    let s = stmt.into();
-    stmt![&s, " !== null && ", &s, " !== undefined"]
+    let s = toks.into();
+    toks![s.clone(), " !== null && ", s, " !== undefined"]
 }
 
-pub fn is_not_defined<S>(stmt: S) -> Statement
+pub fn is_not_defined<'el, S>(toks: S) -> ::genco::Tokens<'el, ::genco::JavaScript<'el>>
 where
-    S: Into<Statement>,
+    S: Into<::genco::Tokens<'el, ::genco::JavaScript<'el>>>,
 {
-    let s = stmt.into();
-    stmt![&s, " === null || ", &s, " === undefined"]
-}
-
-pub fn string<S>(s: S) -> Variable
-where
-    S: ToString,
-{
-    Variable::String(s.to_string())
+    let s = toks.into();
+    toks![s.clone(), " === null || ", s, " === undefined"]
 }
 
 #[macro_export]
 macro_rules! js {
     ([ $arguments:expr ]) => {{
-        stmt!["[", $arguments.join(", "), "]"]
+        toks!["[", $arguments.join(", "), "]"]
     }};
 
     (= $key:expr, $value:expr) => {{
-        stmt![$key, " = ", $value, ";"]
+        toks![$key, " = ", $value, ";"]
     }};
 
     (throw $($args:expr),*) => {{
-        stmt!["throw new Error(", $($args,)* ");"]
+        toks!["throw new Error(", $($args,)* ");"]
     }};
 
     (@return $($tail:tt)*) => {{
-        stmt!["return ", js![$( $tail )*], ";"]
+        toks!["return ", js![$( $tail )*], ";"]
     }};
 
     (return $($args:expr),*) => {{
-        stmt!["return ", $($args,)* ";"]
+        toks!["return ", $($args,)* ";"]
     }};
 
     (new $type:expr, $arguments:expr) => {{
-        stmt!["new ", $type, "(", $arguments.join(", "), ")"]
-    }};
-
-    (const $name:expr, $($args:expr),*) => {{
-        stmt!["const ", $name, " = ", $($args,)* ""]
+        toks!["new ", $type, "(", $arguments.join(", "), ")"]
     }};
 
     (if $cond:expr, $true:expr) => {{
-        let mut el = Elements::new();
+        let mut el = Tokens::new();
 
-        el.push(stmt!["if (", $cond, ") {"]);
-        el.push_nested($true);
+        el.push(toks!["if (", $cond, ") {"]);
+        el.nested($true);
         el.push("}");
 
         el
     }};
 
     (if $cond:expr, $true:expr, $false:expr) => {{
-        let mut el = Elements::new();
+        let mut el = Tokens::new();
 
-        el.push(stmt!["if (", $cond, ") {"]);
-        el.push_nested($true);
+        el.push(toks!["if (", $cond, ") {"]);
+        el.nested($true);
         el.push("} else {");
-        el.push_nested($false);
+        el.nested($false);
         el.push("}");
 
         el
     }};
 
     (for $init:expr; $while:expr; $next:expr, $($body:expr),*) => {{
-        let mut el = Elements::new();
+        let mut el = Tokens::new();
 
-        el.push(stmt!["for (", $init, "; ", $while, "; ", $next, ") {"]);
-        $(el.push_nested($body.join(Spacing));)*
+        el.push(toks!["for (", $init, "; ", $while, "; ", $next, ") {"]);
+        $(el.nested($body.join_line_spacing());)*
         el.push("}");
 
         el

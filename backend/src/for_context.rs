@@ -1,19 +1,22 @@
 use core::{Loc, RpCode};
 
 pub trait ForContext {
-    type Output;
+    type Item;
 
-    fn for_context(&self, context: &str) -> Self::Output;
+    fn for_context(self, context: &str) -> Vec<Self::Item>;
 }
 
 // TODO: borrow content
-impl ForContext for Vec<Loc<RpCode>> {
-    type Output = Vec<Loc<RpCode>>;
+impl<'a, T> ForContext for T
+where
+    T: IntoIterator<Item = &'a Loc<RpCode>>,
+    Self: 'a,
+{
+    type Item = <Self as IntoIterator>::Item;
 
-    fn for_context(&self, context: &str) -> Self::Output {
-        self.iter()
+    fn for_context(self, context: &str) -> Vec<Self::Item> {
+        self.into_iter()
             .filter(|c| c.as_ref().context == context)
-            .map(|c| c.clone())
             .collect()
     }
 }

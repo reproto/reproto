@@ -3,14 +3,13 @@ use serde_json;
 use std::fmt::Write as FmtWrite;
 use std::path::Path;
 use std::path::PathBuf;
-use std::rc::Rc;
 
-pub struct JsonCompiler<'a> {
+pub struct JsonCompiler<'el> {
     pub out_path: PathBuf,
-    pub processor: &'a JsonBackend,
+    pub processor: &'el JsonBackend,
 }
 
-impl<'a> JsonCompiler<'a> {
+impl<'el> JsonCompiler<'el> {
     pub fn compile(&self) -> Result<()> {
         let files = self.populate_files()?;
         self.write_files(files)?;
@@ -18,14 +17,14 @@ impl<'a> JsonCompiler<'a> {
     }
 }
 
-impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
+impl<'el> PackageProcessor<'el> for JsonCompiler<'el> {
     type Out = Collector;
 
     fn ext(&self) -> &str {
         EXT
     }
 
-    fn env(&self) -> &Environment {
+    fn env(&self) -> &'el Environment {
         &self.processor.env
     }
 
@@ -47,53 +46,32 @@ impl<'a> PackageProcessor<'a> for JsonCompiler<'a> {
         Ok(full_path)
     }
 
-    fn process_service(
-        &self,
-        out: &mut Self::Out,
-        _: &RpName,
-        body: Rc<Loc<RpServiceBody>>,
-    ) -> Result<()> {
-        writeln!(out, "{}", serde_json::to_string(&body)?)?;
+    fn process_service(&self, out: &mut Self::Out, body: &Loc<RpServiceBody>) -> Result<()> {
+        writeln!(out, "{}", serde_json::to_string(body)?)?;
         Ok(())
     }
 
-    fn process_enum(
-        &self,
-        out: &mut Self::Out,
-        _: &RpName,
-        body: Rc<Loc<RpEnumBody>>,
-    ) -> Result<()> {
-        writeln!(out, "{}", serde_json::to_string(&body)?)?;
+    fn process_enum(&self, out: &mut Self::Out, body: &'el Loc<RpEnumBody>) -> Result<()> {
+        writeln!(out, "{}", serde_json::to_string(body)?)?;
         Ok(())
     }
 
     fn process_interface(
         &self,
         out: &mut Self::Out,
-        _: &RpName,
-        body: Rc<Loc<RpInterfaceBody>>,
+        body: &'el Loc<RpInterfaceBody>,
     ) -> Result<()> {
-        writeln!(out, "{}", serde_json::to_string(&body)?)?;
+        writeln!(out, "{}", serde_json::to_string(body)?)?;
         Ok(())
     }
 
-    fn process_type(
-        &self,
-        out: &mut Self::Out,
-        _: &RpName,
-        body: Rc<Loc<RpTypeBody>>,
-    ) -> Result<()> {
-        writeln!(out, "{}", serde_json::to_string(&body)?)?;
+    fn process_type(&self, out: &mut Self::Out, body: &'el Loc<RpTypeBody>) -> Result<()> {
+        writeln!(out, "{}", serde_json::to_string(body)?)?;
         Ok(())
     }
 
-    fn process_tuple(
-        &self,
-        out: &mut Self::Out,
-        _: &RpName,
-        body: Rc<Loc<RpTupleBody>>,
-    ) -> Result<()> {
-        writeln!(out, "{}", serde_json::to_string(&body)?)?;
+    fn process_tuple(&self, out: &mut Self::Out, body: &'el Loc<RpTupleBody>) -> Result<()> {
+        writeln!(out, "{}", serde_json::to_string(body)?)?;
         Ok(())
     }
 }

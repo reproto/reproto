@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
@@ -131,14 +130,14 @@ impl<'a> DocCompiler<'a> {
     }
 }
 
-impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
-    type Out = DocCollector;
+impl<'p> PackageProcessor<'p> for DocCompiler<'p> {
+    type Out = DocCollector<'p>;
 
     fn ext(&self) -> &str {
         EXT
     }
 
-    fn env(&self) -> &Environment {
+    fn env(&self) -> &'p Environment {
         &self.backend.env
     }
 
@@ -161,48 +160,23 @@ impl<'a> PackageProcessor<'a> for DocCompiler<'a> {
         Ok(full_path)
     }
 
-    fn process_service(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpServiceBody>>,
-    ) -> Result<()> {
-        self.backend.process_service(out, name, body)
+    fn process_service(&self, out: &mut Self::Out, body: &'p Loc<RpServiceBody>) -> Result<()> {
+        self.backend.process_service(out, body)
     }
 
-    fn process_enum(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpEnumBody>>,
-    ) -> Result<()> {
-        self.backend.process_enum(out, name, body)
+    fn process_enum(&self, out: &mut Self::Out, body: &'p Loc<RpEnumBody>) -> Result<()> {
+        self.backend.process_enum(out, body)
     }
 
-    fn process_interface(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpInterfaceBody>>,
-    ) -> Result<()> {
-        self.backend.process_interface(out, name, body)
+    fn process_interface(&self, out: &mut Self::Out, body: &'p Loc<RpInterfaceBody>) -> Result<()> {
+        self.backend.process_interface(out, body)
     }
 
-    fn process_type(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpTypeBody>>,
-    ) -> Result<()> {
-        self.backend.process_type(out, name, body)
+    fn process_type(&self, out: &mut Self::Out, body: &'p Loc<RpTypeBody>) -> Result<()> {
+        self.backend.process_type(out, body)
     }
 
-    fn process_tuple(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpTupleBody>>,
-    ) -> Result<()> {
-        self.backend.process_tuple(out, name, body)
+    fn process_tuple(&self, out: &mut Self::Out, body: &'p Loc<RpTupleBody>) -> Result<()> {
+        self.backend.process_tuple(out, body)
     }
 }

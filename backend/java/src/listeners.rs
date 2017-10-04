@@ -1,61 +1,44 @@
 use super::*;
-
-pub struct ClassAdded<'a> {
-    pub backend: &'a JavaBackend,
-    pub name: &'a RpName,
-    pub fields: &'a Vec<JavaField<'a>>,
-    pub class_type: &'a ClassType,
-    pub spec: &'a mut ClassSpec,
-}
-
-pub struct TupleAdded<'a> {
-    pub fields: &'a Vec<JavaField<'a>>,
-    pub class_type: &'a ClassType,
-    pub spec: &'a mut ClassSpec,
-}
-
-pub struct EnumAdded<'a> {
-    pub body: &'a RpEnumBody,
-    pub class_type: &'a ClassType,
-    pub from_value: &'a mut MethodSpec,
-    pub to_value: &'a mut MethodSpec,
-    pub spec: &'a mut EnumSpec,
-}
-
-pub struct InterfaceAdded<'a> {
-    pub interface: &'a RpInterfaceBody,
-    pub spec: &'a mut InterfaceSpec,
-}
-
-pub struct SubTypeAdded<'a> {
-    pub fields: &'a Vec<JavaField<'a>>,
-    pub interface: &'a RpInterfaceBody,
-    pub sub_type: &'a RpSubType,
-    pub spec: &'a mut ClassSpec,
-}
+use genco::Cons;
+use genco::java::{Class, Enum, Interface, Method};
 
 pub trait Listeners {
     fn configure(&self, _: &mut JavaOptions) -> Result<()> {
         Ok(())
     }
 
-    fn class_added(&self, _: &mut ClassAdded) -> Result<()> {
+    fn class_added<'a>(&self, _names: &[Cons<'a>], _spec: &mut Class<'a>) -> Result<()> {
         Ok(())
     }
 
-    fn tuple_added(&self, _: &mut TupleAdded) -> Result<()> {
+    fn tuple_added<'a>(&self, _spec: &mut Class<'a>) -> Result<()> {
         Ok(())
     }
 
-    fn enum_added(&self, _: &mut EnumAdded) -> Result<()> {
+    fn enum_added<'el, 'a, 'b, 'c>(
+        &self,
+        _body: &'el RpEnumBody,
+        _spec: &mut Enum<'a>,
+        _from_value: &mut Method<'b>,
+        _to_value: &mut Method<'c>,
+    ) -> Result<()> {
         Ok(())
     }
 
-    fn interface_added(&self, _: &mut InterfaceAdded) -> Result<()> {
+    fn interface_added<'a>(
+        &self,
+        _interface: &'a RpInterfaceBody,
+        _spec: &mut Interface<'a>,
+    ) -> Result<()> {
         Ok(())
     }
 
-    fn sub_type_added(&self, _: &mut SubTypeAdded) -> Result<()> {
+    fn sub_type_added<'a>(
+        &self,
+        _interface: &'a RpInterfaceBody,
+        _sub_type: &'a RpSubType,
+        _spec: &mut Class<'a>,
+    ) -> Result<()> {
         Ok(())
     }
 }
@@ -63,48 +46,63 @@ pub trait Listeners {
 /// A vector of listeners is a valid listener.
 impl Listeners for Vec<Box<Listeners>> {
     fn configure(&self, options: &mut JavaOptions) -> Result<()> {
-        for l in self {
-            l.configure(options)?;
+        for i in self {
+            i.configure(options)?;
         }
 
         Ok(())
     }
 
-    fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
-        for l in self {
-            l.class_added(event)?;
+    fn class_added<'a>(&self, names: &[Cons<'a>], spec: &mut Class<'a>) -> Result<()> {
+        for i in self {
+            i.class_added(names, spec)?;
         }
 
         Ok(())
     }
 
-    fn tuple_added(&self, event: &mut TupleAdded) -> Result<()> {
-        for l in self {
-            l.tuple_added(event)?;
+    fn tuple_added<'a>(&self, spec: &mut Class<'a>) -> Result<()> {
+        for i in self {
+            i.tuple_added(spec)?;
         }
 
         Ok(())
     }
 
-    fn enum_added(&self, event: &mut EnumAdded) -> Result<()> {
-        for l in self {
-            l.enum_added(event)?;
+    fn enum_added<'el, 'a, 'b, 'c>(
+        &self,
+        body: &'el RpEnumBody,
+        spec: &mut Enum<'a>,
+        from_value: &mut Method<'b>,
+        to_value: &mut Method<'c>,
+    ) -> Result<()> {
+        for i in self {
+            i.enum_added(body, spec, from_value, to_value)?;
         }
 
         Ok(())
     }
 
-    fn interface_added(&self, event: &mut InterfaceAdded) -> Result<()> {
-        for l in self {
-            l.interface_added(event)?;
+    fn interface_added<'a>(
+        &self,
+        interface: &'a RpInterfaceBody,
+        spec: &mut Interface<'a>,
+    ) -> Result<()> {
+        for i in self {
+            i.interface_added(interface, spec)?;
         }
 
         Ok(())
     }
 
-    fn sub_type_added(&self, event: &mut SubTypeAdded) -> Result<()> {
-        for l in self {
-            l.sub_type_added(event)?;
+    fn sub_type_added<'a>(
+        &self,
+        interface: &'a RpInterfaceBody,
+        sub_type: &'a RpSubType,
+        spec: &mut Class<'a>,
+    ) -> Result<()> {
+        for i in self {
+            i.sub_type_added(interface, sub_type, spec)?;
         }
 
         Ok(())

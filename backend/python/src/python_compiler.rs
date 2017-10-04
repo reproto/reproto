@@ -2,28 +2,27 @@ use super::*;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
-pub struct PythonCompiler<'a> {
+pub struct PythonCompiler<'el> {
     pub out_path: PathBuf,
-    pub backend: &'a PythonBackend,
+    pub backend: &'el PythonBackend,
 }
 
-impl<'a> PythonCompiler<'a> {
+impl<'el> PythonCompiler<'el> {
     pub fn compile(&self) -> Result<()> {
         let files = self.populate_files()?;
         self.write_files(files)
     }
 }
 
-impl<'a> PackageProcessor<'a> for PythonCompiler<'a> {
-    type Out = PythonFileSpec;
+impl<'el> PackageProcessor<'el> for PythonCompiler<'el> {
+    type Out = PythonFileSpec<'el>;
 
     fn ext(&self) -> &str {
         EXT
     }
 
-    fn env(&self) -> &Environment {
+    fn env(&self) -> &'el Environment {
         &self.backend.env
     }
 
@@ -35,58 +34,42 @@ impl<'a> PackageProcessor<'a> for PythonCompiler<'a> {
         self.backend.package(package)
     }
 
-    fn process_tuple(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpTupleBody>>,
-    ) -> Result<()> {
-        self.backend.process_tuple(out, name, body)
+    fn process_tuple(&self, out: &mut Self::Out, body: &'el Loc<RpTupleBody>) -> Result<()> {
+        self.backend.process_tuple(out, body)
     }
 
-    fn process_enum(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpEnumBody>>,
-    ) -> Result<()> {
-        self.backend.process_enum(out, name, body)
+    fn process_enum(&self, out: &mut Self::Out, body: &'el Loc<RpEnumBody>) -> Result<()> {
+        self.backend.process_enum(out, body)
     }
 
-    fn process_type(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpTypeBody>>,
-    ) -> Result<()> {
-        self.backend.process_type(out, name, body)
+    fn process_type(&self, out: &mut Self::Out, body: &'el Loc<RpTypeBody>) -> Result<()> {
+        self.backend.process_type(out, body)
     }
 
     fn process_interface(
         &self,
         out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpInterfaceBody>>,
+        body: &'el Loc<RpInterfaceBody>,
     ) -> Result<()> {
-        self.backend.process_interface(out, name, body)
+        self.backend.process_interface(out, body)
     }
 
-    fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, PythonFileSpec>> {
+    fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, PythonFileSpec<'el>>> {
         let mut enums = Vec::new();
 
-        let mut files = self.do_populate_files(|name, decl| {
+        let mut files = self.do_populate_files(|decl| {
             if let RpDecl::Enum(ref body) = **decl {
-                enums.push((name.clone(), body.clone()));
+                enums.push(body);
             }
 
             Ok(())
         })?;
 
-        for (name, body) in enums {
-            if let Some(ref mut file_spec) = files.get_mut(&name.package) {
+        for body in enums {
+            if let Some(ref mut file_spec) = files.get_mut(&body.name.package) {
                 file_spec.0.push(self.backend.enum_variants(&body)?);
             } else {
-                return Err(format!("no such package: {}", &name.package).into());
+                return Err(format!("no such package: {}", &body.name.package).into());
             }
         }
 

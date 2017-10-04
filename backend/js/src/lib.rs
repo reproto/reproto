@@ -1,7 +1,6 @@
 extern crate reproto_backend as backend;
 #[macro_use]
-extern crate codeviz_macros;
-extern crate codeviz_js;
+extern crate genco;
 
 #[macro_use]
 mod utils;
@@ -21,7 +20,6 @@ pub(crate) use self::models::*;
 pub(crate) use self::utils::*;
 pub(crate) use backend::errors::*;
 pub(crate) use backend::imports::*;
-pub(crate) use codeviz_js::*;
 
 pub(crate) const TYPE: &str = "type";
 pub(crate) const EXT: &str = "js";

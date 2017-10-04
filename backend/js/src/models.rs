@@ -1,11 +1,12 @@
 use super::*;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct JsField<'a> {
     pub modifier: &'a RpModifier,
     pub ty: &'a RpType,
     pub name: &'a str,
-    pub ident: String,
+    pub ident: Rc<String>,
 }
 
 impl<'a> JsField<'a> {
@@ -14,7 +15,7 @@ impl<'a> JsField<'a> {
             modifier: self.modifier,
             ty: self.ty,
             name: self.name,
-            ident: ident,
+            ident: Rc::new(ident),
         }
     }
 }

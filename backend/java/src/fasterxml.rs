@@ -1,202 +1,218 @@
-/// Module that adds fasterxml annotations to generated classes.
+//! Module that adds fasterxml annotations to generated classes.
+
 use super::*;
+use genco::{Cons, Java, Quoted, Tokens};
+use genco::java::{Argument, Class, DOUBLE, Enum, FLOAT, Field, INTEGER, Interface, LONG, Method,
+                  Modifier, SHORT, imported, local};
+use std::rc::Rc;
 
 pub struct Module {
-    override_: ClassType,
-    creator: ClassType,
-    value: ClassType,
-    property: ClassType,
-    sub_types: ClassType,
-    type_info: ClassType,
-    serialize: ClassType,
-    deserialize: ClassType,
-    deserializer: ClassType,
-    serializer: ClassType,
-    generator: ClassType,
-    serializer_provider: ClassType,
-    parser: ClassType,
-    deserialization_context: ClassType,
-    type_reference: ClassType,
-    token: ClassType,
-    string: ClassType,
-    io_exception: ClassType,
+    override_: Java<'static>,
+    creator: Java<'static>,
+    value: Java<'static>,
+    property: Java<'static>,
+    sub_types: Java<'static>,
+    type_info: Java<'static>,
+    serialize: Java<'static>,
+    deserialize: Java<'static>,
+    deserializer: Java<'static>,
+    serializer: Java<'static>,
+    generator: Java<'static>,
+    serializer_provider: Java<'static>,
+    parser: Java<'static>,
+    deserialization_context: Java<'static>,
+    type_reference: Java<'static>,
+    token: Java<'static>,
+    string: Java<'static>,
+    io_exception: Java<'static>,
 }
 
 impl Module {
     pub fn new() -> Module {
         Module {
-            override_: Type::class("java.lang", "Override"),
-            creator: Type::class("com.fasterxml.jackson.annotation", "JsonCreator"),
-            value: Type::class("com.fasterxml.jackson.annotation", "JsonValue"),
-            property: Type::class("com.fasterxml.jackson.annotation", "JsonProperty"),
-            sub_types: Type::class("com.fasterxml.jackson.annotation", "JsonSubTypes"),
-            type_info: Type::class("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
-            serialize: Type::class("com.fasterxml.jackson.databind.annotation", "JsonSerialize"),
-            deserialize: Type::class(
+            override_: imported("java.lang", "Override"),
+            creator: imported("com.fasterxml.jackson.annotation", "JsonCreator"),
+            value: imported("com.fasterxml.jackson.annotation", "JsonValue"),
+            property: imported("com.fasterxml.jackson.annotation", "JsonProperty"),
+            sub_types: imported("com.fasterxml.jackson.annotation", "JsonSubTypes"),
+            type_info: imported("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
+            serialize: imported("com.fasterxml.jackson.databind.annotation", "JsonSerialize"),
+            deserialize: imported(
                 "com.fasterxml.jackson.databind.annotation",
                 "JsonDeserialize",
             ),
-            serializer: Type::class("com.fasterxml.jackson.databind", "JsonSerializer"),
-            deserializer: Type::class("com.fasterxml.jackson.databind", "JsonDeserializer"),
-            generator: Type::class("com.fasterxml.jackson.core", "JsonGenerator"),
-            serializer_provider: Type::class(
-                "com.fasterxml.jackson.databind",
-                "SerializerProvider",
-            ),
-            parser: Type::class("com.fasterxml.jackson.core", "JsonParser"),
-            deserialization_context: Type::class(
+            serializer: imported("com.fasterxml.jackson.databind", "JsonSerializer"),
+            deserializer: imported("com.fasterxml.jackson.databind", "JsonDeserializer"),
+            generator: imported("com.fasterxml.jackson.core", "JsonGenerator"),
+            serializer_provider: imported("com.fasterxml.jackson.databind", "SerializerProvider"),
+            parser: imported("com.fasterxml.jackson.core", "JsonParser"),
+            deserialization_context: imported(
                 "com.fasterxml.jackson.databind",
                 "DeserializationContext",
             ),
-            type_reference: Type::class("com.fasterxml.jackson.core.type", "TypeReference"),
-            token: Type::class("com.fasterxml.jackson.core", "JsonToken"),
-            string: Type::class("java.lang", "String"),
-            io_exception: Type::class("java.io", "IOException"),
+            type_reference: imported("com.fasterxml.jackson.core.type", "TypeReference"),
+            token: imported("com.fasterxml.jackson.core", "JsonToken"),
+            string: imported("java.lang", "String"),
+            io_exception: imported("java.io", "IOException"),
         }
     }
 
     /// RpName serialize implementation for tuples.
-    fn tuple_serializer(&self, fields: &[JavaField], class_type: &ClassType) -> Result<ClassSpec> {
-        let mut serializer =
-            ClassSpec::new(mods![Modifier::Public, Modifier::Static], "Serializer");
+    fn tuple_serializer<'el>(
+        &self,
+        name: Cons<'el>,
+        fields: &mut [Field<'el>],
+    ) -> Result<Class<'el>> {
+        let mut class = Class::new("Serializer");
+        let ty = local(name.clone());
 
-        serializer.extends(self.serializer.with_arguments(vec![&class_type]));
+        class.extends = Some(self.serializer.with_arguments(vec![ty.clone()]));
 
-        let value = ArgumentSpec::new(mods![Modifier::Final], &class_type, "value");
-        let jgen = ArgumentSpec::new(mods![Modifier::Final], &self.generator, "jgen");
-        let provider = ArgumentSpec::new(
-            mods![Modifier::Final],
-            &self.serializer_provider,
-            "provider",
-        );
+        let value = Argument::new(ty.clone(), "value");
+        let jgen = Argument::new(self.generator.clone(), "jgen");
+        let provider = Argument::new(self.serializer_provider.clone(), "provider");
 
-        let mut serialize = MethodSpec::new(mods![Modifier::Public], "serialize");
-        serialize.throws(&self.io_exception);
-        serialize.push_argument(value.clone());
-        serialize.push_argument(jgen.clone());
-        serialize.push_argument(provider.clone());
-        serialize.push_annotation(&self.override_);
+        let mut serialize = Tokens::new();
 
-        let mut body = Elements::new();
-        body.push(stmt![&jgen, ".writeStartArray();"]);
+        serialize.push(toks!("@", self.override_.clone()));
+        serialize.push(toks![
+            "public serialize(",
+            toks![value.var(), jgen.var(), provider.var()].join_spacing(),
+            ") throws ",
+            self.io_exception.clone(),
+            " {",
+        ]);
 
-        for field in fields {
-            let field_stmt = stmt![&value, ".", &field.java_spec];
+        serialize.nested({
+            let mut t = Tokens::new();
+            t.push(toks!["jgen.writeStartArray();"]);
 
-            let write = match field.java_type {
-                Type::Primitive(ref primitive) => {
-                    match *primitive {
-                        SHORT | LONG | INTEGER | FLOAT | DOUBLE => {
-                            stmt!["writeNumber(", field_stmt, ")"]
+            for field in fields {
+                let access = toks!["value.", field.var()];
+
+                let write = match field.ty() {
+                    SHORT | LONG | INTEGER | FLOAT | DOUBLE => {
+                        toks!["writeNumber(", access.clone(), ")"]
+                    }
+                    Java::Primitive { .. } => {
+                        return Err("cannot serialize type".into());
+                    }
+                    class @ Java::Class { .. } => {
+                        if class == self.string {
+                            toks!["writeString(", access.clone(), ")"]
+                        } else {
+                            toks!["writeObject(", access.clone(), ")"]
                         }
-                        _ => return Err("cannot serialize type".into()),
                     }
-                }
-                Type::Class(ref class) => {
-                    if *class == self.string {
-                        stmt!["writeString(", field_stmt, ")"]
-                    } else {
-                        stmt!["writeObject(", field_stmt, ")"]
-                    }
-                }
-                _ => stmt!["writeObject(", field_stmt, ")"],
-            };
+                    _ => toks!["writeObject(", access.clone(), ")"],
+                };
 
-            body.push(stmt![&jgen, ".", write, ";"]);
-        }
+                t.push(toks!["jgen.", write, ";"]);
+            }
 
-        body.push(stmt![&jgen, ".writeEndArray();"]);
+            t.push(toks!["jgen.writeEndArray();"]);
 
-        serialize.push(body);
+            t
+        });
 
-        serializer.push(serialize);
+        serialize.push("}");
 
-        Ok(serializer)
+        class.body.push(serialize);
+        Ok(class)
     }
 
-    fn deserialize_method_for_type<A>(
+    fn deserialize_method_for_type<'el, A>(
         &self,
-        ty: &Type,
-        parser: &A,
-    ) -> Result<(Option<(Statement, &str)>, Statement)>
+        ty: Java<'el>,
+        parser: A,
+    ) -> Result<(Option<(Tokens<'el, Java<'el>>, &'el str)>, Tokens<'el, Java<'el>>)>
     where
-        A: Into<Variable> + Clone,
+        A: Into<Tokens<'el, Java<'el>>>,
     {
-        let (token, reader) = match *ty {
-            Type::Primitive(ref primitive) => {
-                let test = stmt!["!", parser, ".nextToken().isNumeric()"];
+        let p = parser.into();
 
-                match *primitive {
+        let (token, reader) = match ty {
+            java @ Java::Primitive { .. } => {
+                let test = toks!["!", p.clone(), ".nextToken().isNumeric()"];
+
+                match java {
                     SHORT => (
                         Some((test, "VALUE_NUMBER_INT")),
-                        stmt![parser, ".getShortValue()"],
+                        toks![p, ".getShortValue()"],
                     ),
                     LONG => (
                         Some((test, "VALUE_NUMBER_INT")),
-                        stmt![parser, ".getLongValue()"],
+                        toks![p, ".getLongValue()"],
                     ),
                     INTEGER => {
                         (
                             Some((test, "VALUE_NUMBER_INT")),
-                            stmt![parser, ".getIntegerValue()"],
+                            toks![p, ".getIntegerValue()"],
                         )
                     }
                     FLOAT => {
                         (
                             Some((test, "VALUE_NUMBER_FLOAT")),
-                            stmt![parser, ".getFloatValue()"],
+                            toks![p, ".getFloatValue()"],
                         )
                     }
                     DOUBLE => {
                         (
                             Some((test, "VALUE_NUMBER_FLOAT")),
-                            stmt![parser, ".getDoubleValue()"],
+                            toks![p, ".getDoubleValue()"],
                         )
                     }
-                    _ => return Err("cannot deserialize type".into()),
+                    _ => {
+                        return Err("unsupported type".into());
+                    }
                 }
             }
-            Type::Class(ref class) => {
-                if *class == self.string {
-                    let test = stmt![parser, ".nextToken() != ", &self.token, ".VALUE_STRING"];
+            class @ Java::Class { .. } => {
+                if class == self.string {
+                    let test =
+                        toks![p.clone(), ".nextToken() != ", self.token.clone(), ".VALUE_STRING",
+                    ];
                     let token = Some((test, "VALUE_STRING"));
-                    (token, stmt![parser, ".getText()"])
+                    (token, toks![p, ".getText()"])
                 } else {
-                    let argument = if class.arguments.is_empty() {
-                        stmt![class, ".class"]
+                    let is_empty = class.arguments().map(|a| a.is_empty()).unwrap_or(true);
+
+                    let argument = if is_empty {
+                        toks![class, ".class"]
                     } else {
-                        stmt![
+                        toks![
                             "new ",
                             self.type_reference.with_arguments(vec![class]),
                             "(){}",
                         ]
                     };
 
-                    (None, stmt![parser, ".readValueAs(", argument, ")"])
+                    (None, toks![p, ".readValueAs(", argument, ")"])
                 }
             }
-            Type::Local(ref local) => {
-                (None, stmt![parser, ".readValueAs(", &local.name, ".class)"])
+            _ => {
+                return Err("unsupported type".into());
             }
         };
 
         Ok((token, reader))
     }
 
-    fn wrong_token_exception(
-        &self,
-        ctxt: &ArgumentSpec,
-        parser: &ArgumentSpec,
-        token: &str,
-    ) -> Statement {
-        let mut arguments = Statement::new();
-        arguments.push(parser);
-        arguments.push(stmt![&self.token, ".", token]);
+    fn wrong_token<'el, C, P, T>(&self, ctxt: C, parser: P, token: T) -> Tokens<'el, Java<'el>>
+    where
+        C: Into<Tokens<'el, Java<'el>>>,
+        P: Into<Tokens<'el, Java<'el>>>,
+        T: Into<Tokens<'el, Java<'el>>>,
+    {
+        let mut arguments = Tokens::new();
+
+        arguments.push(parser.into());
+        arguments.push(toks![self.token.clone(), ".", token.into()]);
         arguments.push("null");
 
-        stmt![
+        toks![
             "throw ",
-            ctxt,
+            ctxt.into(),
             ".wrongTokenException(",
             arguments.join(", "),
             ");",
@@ -204,133 +220,116 @@ impl Module {
     }
 
     /// RpName deserialize implementation for tuples.
-    fn tuple_deserializer(
+    fn tuple_deserializer<'el>(
         &self,
-        fields: &[JavaField],
-        class_type: &ClassType,
-    ) -> Result<ClassSpec> {
-        let mut deserializer =
-            ClassSpec::new(mods![Modifier::Public, Modifier::Static], "Deserializer");
+        name: Cons<'el>,
+        fields: &mut [Field<'el>],
+    ) -> Result<Class<'el>> {
+        use self::Modifier::*;
 
-        deserializer.extends(self.deserializer.with_arguments(vec![&class_type]));
+        let ty = local(name.clone());
 
-        let parser = ArgumentSpec::new(mods![Modifier::Final], &self.parser, "parser");
-        let ctxt = ArgumentSpec::new(
-            mods![Modifier::Final],
-            &self.deserialization_context,
-            "ctxt",
-        );
+        let parser = toks!("final ", self.parser.clone(), " parser");
+        let ctxt = toks!("final ", self.deserialization_context.clone(), " ctxt");
 
-        let mut deserialize = MethodSpec::new(mods![Modifier::Public], "deserialize");
-        deserialize.throws(&self.io_exception);
-        deserialize.push_argument(parser.clone());
-        deserialize.push_argument(ctxt.clone());
-        deserialize.push_annotation(&self.override_);
-        deserialize.returns(&class_type);
+        let mut deserialize = Tokens::new();
 
-        let current_token = stmt![&parser, ".getCurrentToken()"];
-
-        let mut start_array = Elements::new();
-        start_array.push(stmt![
-            "if (",
-            &current_token,
-            " != ",
-            &self.token,
-            ".START_ARRAY) {",
+        deserialize.push(toks!("@", self.override_.clone()));
+        deserialize.push(toks![
+            "public ", ty.clone(), " deserialize(",
+            toks![parser, ctxt].join_spacing(),
+            ") throws ",
+            self.io_exception.clone(),
+            " {",
         ]);
-        start_array.push_nested(self.wrong_token_exception(&ctxt, &parser, "START_ARRAY"));
-        start_array.push("}");
-        deserialize.push(start_array);
 
-        let mut arguments = Statement::new();
+        deserialize.nested({
+            let mut body = Tokens::new();
+            let current_token = toks!["parser.getCurrentToken()"];
 
-        for field in fields {
-            let (token, reader) = self.deserialize_method_for_type(&field.java_type, &parser)?;
+            let mut start_array = Tokens::new();
+            start_array.push(toks![
+                "if (",
+                current_token,
+                " != ",
+                self.token.clone(),
+                ".START_ARRAY) {",
+            ]);
+            start_array.nested(self.wrong_token("ctxt", "parser", "START_ARRAY"));
+            start_array.push("}");
+            body.push(start_array);
 
-            if let Some((test, expected)) = token {
-                let mut field_check = Elements::new();
-                field_check.push(stmt!["if (", &test, ") {"]);
-                field_check.push_nested(self.wrong_token_exception(&ctxt, &parser, expected));
-                field_check.push("}");
-                deserialize.push(field_check);
+            let mut arguments = Tokens::new();
+
+            for field in fields {
+                let (token, reader) = self.deserialize_method_for_type(field.ty(), "parser")?;
+
+                if let Some((test, expected)) = token {
+                    let mut field_check = Tokens::new();
+                    field_check.push(toks!["if (", test, ") {"]);
+                    field_check.nested(self.wrong_token("ctxt", "parser", expected));
+                    field_check.push("}");
+                    body.push(field_check);
+                }
+
+                let variable = toks!["v_", field.var()];
+                let assign =
+                    toks![
+                        "final ",
+                        field.ty(),
+                        " ",
+                        variable.clone(),
+                        " = ",
+                        reader,
+                        ";",
+                    ];
+                body.push(assign);
+                arguments.push(variable);
             }
 
-            let variable = stmt!["v_", &field.java_spec.name];
-            let assign =
-                stmt![
-                "final ",
-                &field.java_type,
-                " ",
-                &variable,
-                " = ",
-                reader,
-                ";",
-            ];
-            deserialize.push(assign);
-            arguments.push(variable);
-        }
+            let mut end_array = Tokens::new();
+            end_array.push(toks![
+                "if (parser.nextToken() != ", self.token.clone(), ".END_ARRAY) {",
+            ]);
+            end_array.nested(self.wrong_token("ctxt", "parser", "END_ARRAY"));
+            end_array.push("}");
+            body.push(end_array);
 
-        let next_token = stmt![&parser, ".nextToken()"];
+            body.push(toks![
+                "return new ",
+                ty.clone(),
+                "(",
+                arguments.join(", "),
+                ");",
+            ]);
 
-        let mut end_array = Elements::new();
-        end_array.push(stmt![
-            "if (",
-            &next_token,
-            " != ",
-            &self.token,
-            ".END_ARRAY) {",
-        ]);
-        end_array.push_nested(self.wrong_token_exception(&ctxt, &parser, "END_ARRAY"));
-        end_array.push("}");
-        deserialize.push(end_array);
+            body.join_line_spacing()
+        });
 
-        deserialize.push(stmt![
-            "return new ",
-            &class_type,
-            "(",
-            arguments.join(", "),
-            ");",
-        ]);
+        deserialize.push("}");
 
-        deserializer.push(deserialize);
-        Ok(deserializer)
+        Ok({
+            let mut deserializer = Class::new("Deserializer");
+            deserializer.modifiers.push(Static);
+            deserializer.extends = Some(self.deserializer.with_arguments(vec![ty.clone()]));
+            deserializer.body.push(deserialize);
+            deserializer
+        })
     }
 
-    fn add_class_annotations(&self, spec: &mut ClassSpec, fields: &[JavaField]) -> Result<()> {
-        if spec.constructors.len() != 1 {
-            return Err("Expected exactly one constructor".into());
+    fn add_class_annotations<'a>(&self, names: &[Cons<'a>], spec: &mut Class<'a>) -> Result<()> {
+        for (field, name) in spec.fields.iter_mut().zip(names.iter()) {
+            let ann = toks!["@", self.property.clone(), "(", name.clone().quoted(), ")"];
+            field.annotation(ann.clone());
         }
 
-        let constructor = &mut spec.constructors[0];
+        for c in &mut spec.constructors {
+            c.annotation(toks!["@", self.creator.clone()]);
 
-        if constructor.arguments.len() != fields.len() {
-            return Err(
-                format!(
-                    "the number of constructor arguments ({}) did not match the number of fields \
-                     ({})",
-                    constructor.arguments.len(),
-                    fields.len()
-                ).into(),
-            );
-        }
-
-        let zipped = spec.fields.iter_mut().zip(fields.iter());
-
-        for (java_field, field) in zipped {
-            let mut property = AnnotationSpec::new(&self.property);
-            property.push_argument(stmt![Variable::String(field.name.to_owned())]);
-            java_field.push_annotation(&property);
-        }
-
-        let creator_annotation = AnnotationSpec::new(&self.creator);
-        constructor.push_annotation(&creator_annotation);
-
-        let zipped = constructor.arguments.iter_mut().zip(fields.iter());
-
-        for (argument, field) in zipped {
-            let mut property = AnnotationSpec::new(&self.property);
-            property.push_argument(stmt![Variable::String(field.name.to_owned())]);
-            argument.push_annotation(&property);
+            for (argument, name) in c.arguments.iter_mut().zip(names.iter()) {
+                let ann = toks!["@", self.property.clone(), "(", name.clone().quoted(), ")"];
+                argument.annotation(ann.clone());
+            }
         }
 
         Ok(())
@@ -338,83 +337,112 @@ impl Module {
 }
 
 impl Listeners for Module {
-    fn class_added(&self, event: &mut ClassAdded) -> Result<()> {
-        self.add_class_annotations(&mut event.spec, &event.fields)?;
+    fn class_added<'a>(&self, names: &[Cons<'a>], spec: &mut Class<'a>) -> Result<()> {
+        self.add_class_annotations(names, spec)?;
         Ok(())
     }
 
-    fn tuple_added(&self, event: &mut TupleAdded) -> Result<()> {
-        let serializer = self.tuple_serializer(&event.fields, &event.class_type)?;
+    fn tuple_added<'a>(&self, spec: &mut Class<'a>) -> Result<()> {
+        let serializer = self.tuple_serializer(spec.name(), &mut spec.fields)?;
 
-        let serializer_type = Type::class(
-            &event.class_type.package,
-            &format!("{}.{}", event.class_type.name, serializer.name),
-        );
+        let serializer_type = Rc::new(format!(
+            "{}.{}",
+            spec.name().as_ref(),
+            serializer.name().as_ref()
+        ));
 
-        let mut serialize_annotation: AnnotationSpec = self.serialize.clone().into();
-        serialize_annotation.push_argument(stmt!["using = ", serializer_type, ".class"]);
+        spec.annotation(toks![
+            self.serialize.clone(),
+            "(using = ",
+            serializer_type,
+            ".class)",
+        ]);
 
-        event.spec.push_annotation(serialize_annotation);
-        event.spec.push(serializer);
+        spec.body.push(serializer);
 
-        let deserializer = self.tuple_deserializer(&event.fields, &event.class_type)?;
+        let deserializer = self.tuple_deserializer(spec.name(), &mut spec.fields)?;
 
-        let deserializer_type = Type::class(
-            &event.class_type.package,
-            &format!("{}.{}", &event.class_type.name, deserializer.name),
-        );
+        let deserializer_type = Rc::new(format!(
+            "{}.{}",
+            spec.name().as_ref(),
+            deserializer.name().as_ref()
+        ));
 
-        let mut deserialize_annotation: AnnotationSpec = self.deserialize.clone().into();
-        deserialize_annotation.push_argument(stmt!["using = ", deserializer_type, ".class"]);
+        let deserialize =
+            toks![
+            "@",
+            self.deserialize.clone(),
+            "(using = ",
+            deserializer_type,
+            ".class)",
+        ];
 
-        event.spec.push_annotation(deserialize_annotation);
-        event.spec.push(deserializer);
-
+        spec.annotation(deserialize);
+        spec.body.push(deserializer);
         Ok(())
     }
 
-    fn enum_added(&self, event: &mut EnumAdded) -> Result<()> {
-        event.from_value.push_annotation(&self.creator);
-        event.to_value.push_annotation(&self.value);
+    fn enum_added<'el, 'a, 'b, 'c>(
+        &self,
+        _body: &'el RpEnumBody,
+        _spec: &mut Enum<'a>,
+        from_value: &mut Method<'b>,
+        to_value: &mut Method<'c>,
+    ) -> Result<()> {
+        from_value.annotation(toks!["@", self.creator.clone()]);
+        to_value.annotation(toks!["@", self.value.clone()]);
         Ok(())
     }
 
-    fn interface_added(&self, event: &mut InterfaceAdded) -> Result<()> {
+    fn interface_added<'a>(
+        &self,
+        interface: &'a RpInterfaceBody,
+        spec: &mut Interface<'a>,
+    ) -> Result<()> {
         {
-            let mut arguments = Statement::new();
+            let mut args = Tokens::new();
 
-            arguments.push(stmt!["use=", &self.type_info, ".Id.NAME"]);
-            arguments.push(stmt!["include=", &self.type_info, ".As.PROPERTY"]);
-            arguments.push(stmt!["property=", Variable::String("type".to_owned())]);
+            args.push(toks!["use=", self.type_info.clone(), ".Id.NAME"]);
+            args.push(toks!["include=", self.type_info.clone(), ".As.PROPERTY"]);
+            args.push(toks!["property=", "type".quoted()]);
 
-            let mut type_info = AnnotationSpec::new(&self.type_info);
-            type_info.push_argument(arguments.join(", "));
-
-            event.spec.push_annotation(&type_info);
+            let type_info = toks!["@", self.type_info.clone(), "(", args.join_spacing(), ")"];
+            spec.annotation(type_info);
         }
 
         {
-            let mut arguments = Statement::new();
+            let mut arguments = Tokens::new();
 
-            for (key, sub_type) in &event.interface.sub_types {
+            for (key, sub_type) in &interface.sub_types {
                 for name in &sub_type.names {
                     let name = name.value().to_owned();
 
-                    let mut type_args = Statement::new();
+                    let mut args = Tokens::new();
 
-                    type_args.push(stmt!["name=", Variable::String(name)]);
-                    type_args.push(stmt!["value=", &event.spec.name, ".", key, ".class"]);
+                    args.push(toks!["name=", name.quoted()]);
+                    args.push(toks![
+                        "value=",
+                        spec.name(),
+                        ".",
+                        key.as_str(),
+                        ".class",
+                    ]);
 
-                    let a = stmt!["@", &self.sub_types, ".Type(", type_args.join(", "), ")"];
+                    let a = toks!["@", self.sub_types.clone(), ".Type(", args.join(", "), ")"];
 
                     arguments.push(a);
                 }
             }
 
-            let mut sub_types = AnnotationSpec::new(&self.sub_types);
-            sub_types.push_argument(stmt!["{", arguments.join(", "), "}"]);
-
-            event.spec.push_annotation(&sub_types);
+            let sub_types =
+                toks![
+                "@",
+                self.sub_types.clone(),
+                "({",
+                arguments.join(", "),
+                "})",
+            ];
+            spec.annotation(sub_types);
         }
 
         Ok(())

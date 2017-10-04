@@ -206,19 +206,19 @@ impl Environment {
     }
 
     /// Walks the entire tree of declarations recursively of all registered objects.
-    pub fn for_each_decl<O>(&self, mut op: O) -> Result<()>
+    pub fn for_each_decl<'a, O>(&'a self, mut op: O) -> Result<()>
     where
-        O: FnMut(Rc<Loc<RpDecl>>) -> Result<()>,
+        O: FnMut(&'a Rc<Loc<RpDecl>>) -> Result<()>,
     {
         let mut queue = LinkedList::new();
 
-        queue.extend(self.decls.values().map(|v| v.clone()));
+        queue.extend(self.decls.values());
 
         while let Some(decl) = queue.pop_front() {
-            op(decl.clone()).with_pos(decl.pos())?;
+            op(decl).with_pos(decl.pos())?;
 
             for d in decl.decls() {
-                queue.push_back(d.clone());
+                queue.push_back(d);
             }
         }
 

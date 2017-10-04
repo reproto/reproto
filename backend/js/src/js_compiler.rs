@@ -1,27 +1,26 @@
 use super::*;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
-pub struct JsCompiler<'a> {
+pub struct JsCompiler<'el> {
     pub out_path: PathBuf,
-    pub backend: &'a JsBackend,
+    pub backend: &'el JsBackend,
 }
 
-impl<'a> JsCompiler<'a> {
+impl<'el> JsCompiler<'el> {
     pub fn compile(&self) -> Result<()> {
         let files = self.populate_files()?;
         self.write_files(files)
     }
 }
 
-impl<'a> PackageProcessor<'a> for JsCompiler<'a> {
-    type Out = JsFileSpec;
+impl<'el> PackageProcessor<'el> for JsCompiler<'el> {
+    type Out = JsFileSpec<'el>;
 
     fn ext(&self) -> &str {
         EXT
     }
 
-    fn env(&self) -> &Environment {
+    fn env(&self) -> &'el Environment {
         &self.backend.env
     }
 
@@ -33,40 +32,23 @@ impl<'a> PackageProcessor<'a> for JsCompiler<'a> {
         self.backend.package(package)
     }
 
-    fn process_tuple(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpTupleBody>>,
-    ) -> Result<()> {
-        self.backend.process_tuple(out, name, body)
+    fn process_tuple(&self, out: &mut Self::Out, body: &'el Loc<RpTupleBody>) -> Result<()> {
+        self.backend.process_tuple(out, body)
     }
 
-    fn process_enum(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpEnumBody>>,
-    ) -> Result<()> {
-        self.backend.process_enum(out, name, body)
+    fn process_enum(&self, out: &mut Self::Out, body: &'el Loc<RpEnumBody>) -> Result<()> {
+        self.backend.process_enum(out, body)
     }
 
-
-    fn process_type(
-        &self,
-        out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpTypeBody>>,
-    ) -> Result<()> {
-        self.backend.process_type(out, name, body)
+    fn process_type(&self, out: &mut Self::Out, body: &'el Loc<RpTypeBody>) -> Result<()> {
+        self.backend.process_type(out, body)
     }
 
     fn process_interface(
         &self,
         out: &mut Self::Out,
-        name: &RpName,
-        body: Rc<Loc<RpInterfaceBody>>,
+        body: &'el Loc<RpInterfaceBody>,
     ) -> Result<()> {
-        self.backend.process_interface(out, name, body)
+        self.backend.process_interface(out, body)
     }
 }

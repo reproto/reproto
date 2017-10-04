@@ -1,8 +1,7 @@
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate codeviz_macros;
-extern crate codeviz_python;
+extern crate genco;
 extern crate reproto_backend as backend;
 
 mod listeners;
@@ -20,7 +19,6 @@ pub(crate) use self::python_file_spec::*;
 pub(crate) use self::python_options::*;
 pub(crate) use backend::errors::*;
 pub(crate) use backend::imports::*;
-pub(crate) use codeviz_python::*;
 
 pub(crate) const TYPE: &str = "type";
 pub(crate) const INIT_PY: &str = "__init__.py";
