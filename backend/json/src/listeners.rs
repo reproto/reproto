@@ -1,4 +1,5 @@
-use super::*;
+use backend::errors::*;
+use json_options::JsonOptions;
 
 pub trait Listeners {
     fn configure(&self, _processor: &mut JsonOptions) -> Result<()> {

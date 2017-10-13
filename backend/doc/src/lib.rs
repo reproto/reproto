@@ -3,6 +3,7 @@
 extern crate log;
 extern crate genco;
 extern crate reproto_backend as backend;
+extern crate reproto_core as core;
 extern crate pulldown_cmark;
 
 #[macro_use]
@@ -15,9 +16,19 @@ mod doc_listeners;
 mod doc_options;
 mod doc_writer;
 mod escape;
-mod imports;
 
-use self::imports::*;
+pub const NORMALIZE_CSS_NAME: &str = "normalize.css";
+pub const DOC_CSS_NAME: &str = "doc.css";
+pub const EXT: &str = "html";
+pub const INDEX: &str = "index";
+pub const DEFAULT_THEME: &str = "light";
+
+use self::backend::{App, Arg, ArgMatches, CompilerOptions, Environment, Options};
+use self::backend::errors::*;
+use self::doc_backend::DocBackend;
+use self::doc_compiler::DocCompiler;
+use self::doc_listeners::DocListeners;
+use self::doc_options::DocOptions;
 
 fn setup_module(module: &str) -> Result<Box<DocListeners>> {
     let _module: Box<DocListeners> = match module {

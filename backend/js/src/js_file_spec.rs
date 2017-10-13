@@ -1,5 +1,9 @@
-use super::*;
+//! File spec collecting results from backends
+
+use backend::IntoBytes;
+use backend::errors::*;
 use genco::{JavaScript, Tokens};
+use js_compiler::JsCompiler;
 
 pub struct JsFileSpec<'el>(pub Tokens<'el, JavaScript<'el>>);
 

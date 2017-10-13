@@ -1,4 +1,12 @@
-use super::*;
+//! Compiler for JavaScript Backend
+
+use super::EXT;
+use backend::{Environment, PackageProcessor, PackageUtils};
+use backend::errors::*;
+use core::{Loc, RpEnumBody, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
+           RpVersionedPackage};
+use js_backend::JsBackend;
+use js_file_spec::JsFileSpec;
 use std::path::{Path, PathBuf};
 
 pub struct JsCompiler<'el> {

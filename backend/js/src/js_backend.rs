@@ -1,10 +1,19 @@
-use super::*;
+use super::{JS_CONTEXT, TYPE, TYPE_SEP};
+use backend::{CompilerOptions, Converter, DynamicConverter, DynamicDecode, DynamicEncode,
+              Environment, ForContext, FromNaming, Naming, PackageUtils, SnakeCase, ValueBuilder};
+use backend::errors::*;
+use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName, RpTupleBody,
+           RpType, RpTypeBody};
 use genco::{Element, JavaScript, Quoted, Tokens};
 use genco::js::imported_alias;
+use js_compiler::JsCompiler;
+use js_field::JsField;
+use js_file_spec::JsFileSpec;
+use js_options::JsOptions;
+use listeners::Listeners;
 use std::borrow::Cow;
 use std::rc::Rc;
-
-const TYPE_SEP: &'static str = "_";
+use utils::{is_defined, is_not_defined};
 
 pub struct JsBackend {
     pub env: Environment,

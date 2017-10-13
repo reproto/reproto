@@ -1,6 +1,11 @@
 //! # Collector of results from the doc backend
 
-use super::imports::*;
+use backend::IntoBytes;
+use backend::errors::*;
+use core::{RpEnumBody, RpInterfaceBody, RpServiceBody, RpTupleBody, RpTypeBody};
+use doc_builder::DefaultDocBuilder;
+use doc_compiler::DocCompiler;
+use doc_writer::DocWriter;
 use macros::FormatAttribute;
 
 #[derive(Debug, Clone)]

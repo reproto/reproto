@@ -1,5 +1,7 @@
-use super::*;
+use backend::IntoBytes;
+use backend::errors::*;
 use genco::{Python, Tokens};
+use python_compiler::PythonCompiler;
 
 pub struct PythonFileSpec<'element>(pub Tokens<'element, Python<'element>>);
 

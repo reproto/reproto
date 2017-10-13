@@ -1,6 +1,10 @@
-use super::*;
+//! Plugin infrastructure for Java Backend.
+
+use backend::errors::*;
+use core::{RpEnumBody, RpInterfaceBody, RpSubType};
 use genco::Cons;
 use genco::java::{Class, Enum, Interface, Method};
+use java_options::JavaOptions;
 
 pub trait Listeners {
     fn configure(&self, _: &mut JavaOptions) -> Result<()> {

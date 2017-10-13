@@ -3,6 +3,7 @@ extern crate log;
 #[macro_use]
 extern crate genco;
 extern crate reproto_backend as backend;
+extern crate reproto_core as core;
 
 mod listeners;
 mod python_backend;
@@ -11,19 +12,17 @@ mod python_field;
 mod python_file_spec;
 mod python_options;
 
-pub(crate) use self::listeners::*;
-pub(crate) use self::python_backend::*;
-pub(crate) use self::python_compiler::*;
-pub(crate) use self::python_field::*;
-pub(crate) use self::python_file_spec::*;
-pub(crate) use self::python_options::*;
-pub(crate) use backend::errors::*;
-pub(crate) use backend::imports::*;
+use self::backend::{App, ArgMatches, CompilerOptions, Environment, Options};
+use self::backend::errors::*;
+use self::listeners::Listeners;
+use self::python_backend::PythonBackend;
+use self::python_options::PythonOptions;
 
-pub(crate) const TYPE: &str = "type";
-pub(crate) const INIT_PY: &str = "__init__.py";
-pub(crate) const EXT: &str = "py";
-pub(crate) const PYTHON_CONTEXT: &str = "python";
+const TYPE: &str = "type";
+const TYPE_SEP: &str = "_";
+const INIT_PY: &str = "__init__.py";
+const EXT: &str = "py";
+const PYTHON_CONTEXT: &str = "python";
 
 fn setup_module(module: &str) -> Result<Box<Listeners>> {
     let _module: Box<Listeners> = match module {

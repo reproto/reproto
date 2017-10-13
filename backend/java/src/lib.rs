@@ -3,6 +3,7 @@ extern crate log;
 #[macro_use]
 extern crate genco;
 extern crate reproto_backend as backend;
+extern crate reproto_core as core;
 
 mod builder;
 mod constructor_properties;
@@ -12,17 +13,15 @@ mod java_compiler;
 mod java_options;
 mod listeners;
 mod lombok;
-mod models;
+mod java_field;
 mod mutable;
 mod nullable;
 
-pub(crate) use self::java_backend::*;
-pub(crate) use self::java_compiler::*;
-pub(crate) use self::java_options::*;
-pub(crate) use self::listeners::*;
-pub(crate) use self::models::*;
-pub(crate) use backend::errors::*;
-pub(crate) use backend::imports::*;
+use self::backend::{App, ArgMatches, CompilerOptions, Environment, Options};
+use self::backend::errors::*;
+use self::java_backend::JavaBackend;
+use self::java_options::JavaOptions;
+use self::listeners::Listeners;
 
 pub const JAVA_CONTEXT: &str = "java";
 

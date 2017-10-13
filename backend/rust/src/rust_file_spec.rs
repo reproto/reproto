@@ -1,10 +1,11 @@
 //! The file spec collecting changes.
 
-use super::{IntoBytes, RustCompiler, RustTokens};
+use backend::IntoBytes;
 use backend::errors::*;
-use genco::Tokens;
+use genco::{Rust, Tokens};
+use rust_compiler::RustCompiler;
 
-pub struct RustFileSpec<'a>(pub RustTokens<'a>);
+pub struct RustFileSpec<'a>(pub Tokens<'a, Rust<'a>>);
 
 impl<'processor> Default for RustFileSpec<'processor> {
     fn default() -> Self {

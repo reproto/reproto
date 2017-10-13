@@ -1,4 +1,6 @@
-use super::*;
+use backend::IntoBytes;
+use backend::errors::*;
+use json_compiler::JsonCompiler;
 use std::fmt::Write;
 
 pub struct Collector {

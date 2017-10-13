@@ -1,6 +1,17 @@
-use super::*;
-use genco::{Quoted, Rust, Tokens};
+//! Backend for Rust
+
+use super::RUST_CONTEXT;
+use backend::{CompilerOptions, Environment, ForContext, FromNaming, Naming, PackageUtils,
+              SnakeCase};
+use backend::errors::*;
+use core::{ForEachLoc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName, RpTupleBody,
+           RpType, RpTypeBody};
+use genco::{Element, Quoted, Rust, Tokens};
 use genco::rust::{imported_alias, imported_alias_ref, imported_ref};
+use listeners::Listeners;
+use rust_compiler::RustCompiler;
+use rust_file_spec::RustFileSpec;
+use rust_options::RustOptions;
 use std::borrow::Cow;
 
 const TYPE_SEP: &'static str = "_";
@@ -55,7 +66,7 @@ impl RustBackend {
         name.join(TYPE_SEP)
     }
 
-    fn convert_type_id<'a>(&self, name: &'a RpName) -> Result<RustElement<'a>> {
+    fn convert_type_id<'a>(&self, name: &'a RpName) -> Result<Element<'a, Rust<'a>>> {
         let registered = self.env.lookup(name)?;
 
         let local_name = registered.local_name(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
@@ -74,7 +85,7 @@ impl RustBackend {
         Ok(local_name.into())
     }
 
-    fn into_type<'a>(&self, field: &'a RpField) -> Result<RustTokens<'a>> {
+    fn into_type<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
         let stmt = self.into_rust_type(&field.ty)?;
 
         if field.is_optional() {
@@ -84,7 +95,11 @@ impl RustBackend {
         Ok(stmt)
     }
 
-    fn enum_value_fn<'a>(&self, name: String, match_body: RustTokens<'a>) -> RustTokens<'a> {
+    fn enum_value_fn<'a>(
+        &self,
+        name: String,
+        match_body: Tokens<'a, Rust<'a>>,
+    ) -> Tokens<'a, Rust<'a>> {
         let mut value_fn = Tokens::new();
         let mut match_decl = Tokens::new();
 
@@ -100,7 +115,7 @@ impl RustBackend {
         value_fn
     }
 
-    pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<RustTokens<'a>> {
+    pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Rust<'a>>> {
         use self::RpType::*;
 
         let ty = match *ty {
@@ -140,7 +155,7 @@ impl RustBackend {
     }
 
     // Build the corresponding element out of a field declaration.
-    fn field_element<'a>(&self, field: &'a RpField) -> Result<RustTokens<'a>> {
+    fn field_element<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
         let mut elements = Tokens::new();
 
         let ident = self.ident(field.ident());

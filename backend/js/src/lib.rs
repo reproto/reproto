@@ -1,29 +1,27 @@
 extern crate reproto_backend as backend;
+extern crate reproto_core as core;
 #[macro_use]
 extern crate genco;
 
 #[macro_use]
 mod utils;
-mod models;
+mod js_field;
 mod listeners;
 mod js_backend;
 mod js_compiler;
 mod js_file_spec;
 mod js_options;
 
-pub(crate) use self::js_backend::*;
-pub(crate) use self::js_compiler::*;
-pub(crate) use self::js_file_spec::*;
-pub(crate) use self::js_options::*;
-pub(crate) use self::listeners::*;
-pub(crate) use self::models::*;
-pub(crate) use self::utils::*;
-pub(crate) use backend::errors::*;
-pub(crate) use backend::imports::*;
+use self::backend::{App, ArgMatches, CompilerOptions, Environment, Options};
+use self::backend::errors::*;
+use self::js_backend::JsBackend;
+use self::js_options::JsOptions;
+use self::listeners::Listeners;
 
-pub(crate) const TYPE: &str = "type";
-pub(crate) const EXT: &str = "js";
-pub(crate) const JS_CONTEXT: &str = "js";
+const TYPE: &str = "type";
+const TYPE_SEP: &str = "_";
+const EXT: &str = "js";
+const JS_CONTEXT: &str = "js";
 
 fn setup_module(module: &str) -> Result<Box<Listeners>> {
     let _module: Box<Listeners> = match module {

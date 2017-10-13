@@ -1,4 +1,4 @@
-use super::*;
+use core::{RpModifier, RpType};
 use std::rc::Rc;
 
 #[derive(Clone)]

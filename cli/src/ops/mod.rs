@@ -8,7 +8,7 @@ mod config_env;
 
 use self::config_env::ConfigEnv;
 use self::imports::*;
-use backend::naming;
+use backend::{CamelCase, FromNaming, Naming, SnakeCase};
 use repository::*;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -17,14 +17,14 @@ use url;
 
 const DEFAULT_INDEX: &'static str = "git+https://github.com/reproto/reproto-index";
 
-fn parse_id_converter(input: &str) -> Result<Box<naming::Naming>> {
+fn parse_id_converter(input: &str) -> Result<Box<Naming>> {
     let mut parts = input.split(":");
 
     if let Some(first) = parts.next() {
         if let Some(second) = parts.next() {
-            let naming: Box<naming::FromNaming> = match first {
-                "camel" => Box::new(naming::CamelCase::new()),
-                "snake" => Box::new(naming::SnakeCase::new()),
+            let naming: Box<FromNaming> = match first {
+                "camel" => Box::new(CamelCase::new()),
+                "snake" => Box::new(SnakeCase::new()),
                 _ => return Err(format!("Not a valid source: {}", first).into()),
             };
 

@@ -1,11 +1,21 @@
-use super::*;
+//! Python Backend
+
+use super::{PYTHON_CONTEXT, TYPE, TYPE_SEP};
+use backend::{CompilerOptions, Converter, DynamicConverter, DynamicDecode, DynamicEncode,
+              Environment, ForContext, FromNaming, Naming, PackageUtils, SnakeCase, ValueBuilder};
+use backend::errors::*;
+use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName, RpTupleBody,
+           RpType, RpTypeBody, WithPos};
 use genco::{Element, Quoted, Tokens};
 use genco::python::{Python, imported_alias, imported_ref};
+use listeners::Listeners;
+use python_compiler::PythonCompiler;
+use python_field::PythonField;
+use python_file_spec::PythonFileSpec;
+use python_options::PythonOptions;
 use std::borrow::Cow;
 use std::iter;
 use std::rc::Rc;
-
-const TYPE_SEP: &'static str = "_";
 
 pub struct PythonBackend {
     pub env: Environment,

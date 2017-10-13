@@ -1,3 +1,5 @@
+//! Options for JSON
+
 pub struct JsonOptions {}
 
 impl JsonOptions {

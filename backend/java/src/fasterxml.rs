@@ -1,9 +1,11 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use super::*;
+use backend::errors::*;
+use core::{RpEnumBody, RpInterfaceBody};
 use genco::{Cons, Java, Quoted, Tokens};
 use genco::java::{Argument, Class, DOUBLE, Enum, FLOAT, Field, INTEGER, Interface, LONG, Method,
                   Modifier, SHORT, imported, local};
+use listeners::Listeners;
 use std::rc::Rc;
 
 pub struct Module {

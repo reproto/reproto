@@ -1,4 +1,5 @@
 extern crate reproto_backend as backend;
+extern crate reproto_core as core;
 extern crate serde_json;
 
 mod collector;
@@ -7,15 +8,13 @@ mod json_compiler;
 mod json_options;
 mod listeners;
 
-pub(crate) use self::collector::*;
-pub(crate) use self::json_backend::*;
-pub(crate) use self::json_compiler::*;
-pub(crate) use self::json_options::*;
-pub(crate) use self::listeners::*;
-pub(crate) use backend::errors::*;
-pub(crate) use backend::imports::*;
+use self::backend::{App, ArgMatches, CompilerOptions, Environment, Options};
+use self::backend::errors::*;
+use self::json_backend::JsonBackend;
+use self::json_options::JsonOptions;
+use self::listeners::Listeners;
 
-pub(crate) const EXT: &str = "json";
+const EXT: &str = "json";
 
 fn setup_module(module: &str) -> Result<Box<Listeners>> {
     let _module: Box<Listeners> = match module {

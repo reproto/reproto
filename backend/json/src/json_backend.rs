@@ -1,4 +1,11 @@
-use super::*;
+//! Backend for JSON
+
+use backend::{CompilerOptions, Environment, PackageUtils};
+use backend::errors::*;
+use core::RpPackage;
+use json_compiler::JsonCompiler;
+use json_options::JsonOptions;
+use listeners::Listeners;
 
 pub struct JsonBackend {
     pub env: Environment,

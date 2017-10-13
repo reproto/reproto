@@ -1,4 +1,12 @@
-use super::*;
+//! Compiler for Rust Backend
+
+use super::{EXT, MOD};
+use backend::{Environment, PackageProcessor, PackageUtils};
+use backend::errors::*;
+use core::{Loc, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpTupleBody, RpTypeBody,
+           RpVersionedPackage};
+use rust_backend::RustBackend;
+use rust_file_spec::RustFileSpec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
 use std::io::Write;

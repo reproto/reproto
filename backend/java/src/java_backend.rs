@@ -1,7 +1,18 @@
-use super::*;
+//! Java backend
+
+use super::JAVA_CONTEXT;
+use backend::{CompilerOptions, Converter, Environment, ForContext, FromNaming, Naming, SnakeCase,
+              ValueBuilder};
+use backend::errors::*;
+use core::{ForEachLoc, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody, RpName,
+           RpPackage, RpServiceBody, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
 use genco::{Cons, Element, Java, Quoted, Tokens};
 use genco::java::{Argument, BOOLEAN, Class, Constructor, DOUBLE, Enum, FLOAT, Field, INTEGER,
                   Interface, LONG, Method, Modifier, imported, local, optional};
+use java_compiler::JavaCompiler;
+use java_field::JavaField;
+use java_options::JavaOptions;
+use listeners::Listeners;
 use std::rc::Rc;
 
 pub struct JavaBackend {
@@ -789,14 +800,14 @@ impl JavaBackend {
             java_value_type
         };
 
-        let camel_name = self.snake_to_upper_camel.convert(field.ident());
+        let camel_name = Rc::new(self.snake_to_upper_camel.convert(field.ident()));
         let ident = Rc::new(self.snake_to_lower_camel.convert(field.ident()));
 
         let spec = Field::new(java_type, ident);
 
         Ok(JavaField {
             name: Rc::new(field.name().to_string()).into(),
-            camel_name: Rc::new(camel_name),
+            camel_name: camel_name,
             spec: spec,
         })
     }

@@ -1,8 +1,15 @@
-use super::*;
+//! Compiler for JSON
+
+use super::EXT;
+use backend::{Environment, PackageProcessor, PackageUtils};
+use backend::errors::*;
+use collector::Collector;
+use core::{Loc, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
+           RpTypeBody, RpVersionedPackage};
+use json_backend::JsonBackend;
 use serde_json;
-use std::fmt::Write as FmtWrite;
-use std::path::Path;
-use std::path::PathBuf;
+use std::fmt::Write;
+use std::path::{Path, PathBuf};
 
 pub struct JsonCompiler<'el> {
     pub out_path: PathBuf,

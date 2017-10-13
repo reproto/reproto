@@ -1,4 +1,7 @@
-use super::imports::*;
+//! Plugin infrastructure for Documentation Backend.
+
+use backend::errors::*;
+use doc_options::DocOptions;
 
 pub trait DocListeners {
     fn configure(&self, _: &mut DocOptions) -> Result<()> {

@@ -1,4 +1,13 @@
-use super::imports::*;
+//! Compiler for generating documentation.
+
+use super::{DOC_CSS_NAME, EXT, INDEX, NORMALIZE_CSS_NAME};
+use backend::{Environment, PackageProcessor, PackageUtils};
+use backend::errors::*;
+use core::{Loc, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
+           RpTypeBody, RpVersionedPackage};
+use doc_backend::DocBackend;
+use doc_builder::DefaultDocBuilder;
+use doc_collector::DocCollector;
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;

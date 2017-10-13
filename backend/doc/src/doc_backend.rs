@@ -1,4 +1,16 @@
-use super::imports::*;
+//! Backend module for Documentation.
+
+use super::{DOC_CSS_NAME, EXT, NORMALIZE_CSS_NAME};
+use backend::{Environment, PackageUtils};
+use backend::errors::*;
+use core::{ForEachLoc, Loc, RpEnumBody, RpEnumVariant, RpField, RpInterfaceBody, RpName,
+           RpPackage, RpServiceBody, RpServiceEndpoint, RpTupleBody, RpType, RpTypeBody,
+           RpVersionedPackage, Version, WithPos};
+use doc_builder::{DefaultDocBuilder, DocBuilder};
+use doc_collector::{DocCollector, DocDecl};
+use doc_listeners::DocListeners;
+use doc_options::DocOptions;
+use escape::Escape;
 use macros::FormatAttribute;
 use pulldown_cmark as markdown;
 use std::collections::HashMap;
@@ -132,16 +144,18 @@ impl DocBackend {
     }
 
     fn write_type(&self, out: &mut DocBuilder, ty: &RpType) -> Result<()> {
+        use self::RpType::*;
+
         write!(out, "<span class=\"ty\">")?;
 
         match *ty {
-            RpType::Double => self.write_simple_type(out, "double")?,
-            RpType::Float => self.write_simple_type(out, "float")?,
-            RpType::Boolean => self.write_simple_type(out, "boolean")?,
-            RpType::String => self.write_simple_type(out, "string")?,
-            RpType::Bytes => self.write_simple_type(out, "bytes")?,
-            RpType::Any => self.write_simple_type(out, "any")?,
-            RpType::Signed { ref size } => {
+            Double => self.write_simple_type(out, "double")?,
+            Float => self.write_simple_type(out, "float")?,
+            Boolean => self.write_simple_type(out, "boolean")?,
+            String => self.write_simple_type(out, "string")?,
+            Bytes => self.write_simple_type(out, "bytes")?,
+            Any => self.write_simple_type(out, "any")?,
+            Signed { ref size } => {
                 html!(out, span {class => "type-signed"} => {
                     html!(out, code {class => "type-name"} ~ "signed");
 
@@ -151,7 +165,7 @@ impl DocBackend {
                     }
                 });
             }
-            RpType::Unsigned { ref size } => {
+            Unsigned { ref size } => {
                 html!(out, span {class => "type-unsigned"} => {
                     html!(out, code {class => "type-name"} ~ "unsigned");
 
@@ -161,7 +175,7 @@ impl DocBackend {
                     }
                 });
             }
-            RpType::Name { ref name } => {
+            Name { ref name } => {
                 let url = self.type_url(name)?;
                 let name = name.join("::");
 
@@ -169,14 +183,14 @@ impl DocBackend {
                     html!(out, a {href => url} ~ name);
                 });
             }
-            RpType::Array { ref inner } => {
+            Array { ref inner } => {
                 html!(out, span {class => "type-array"} => {
                     html!(out, span {class => "type-array-left"} ~ "[");
                     self.write_type(out, inner)?;
                     html!(out, span {class => "type-array-right"} ~ "]");
                 });
             }
-            RpType::Map { ref key, ref value } => {
+            Map { ref key, ref value } => {
                 html!(out, span {class => "type-map"} => {
                     html!(out, span {class => "type-map-left"} ~ "{");
                     self.write_type(out, key)?;
