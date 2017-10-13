@@ -1,8 +1,9 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use super::*;
-use genco::{Cons, Java, Quoted, Tokens};
+use backend::errors::*;
+use genco::{Java, Quoted, Tokens};
 use genco::java::{Argument, Class, Field, Method, Modifier, imported, local};
+use listeners::{ClassAdded, Listeners};
 use std::rc::Rc;
 
 pub struct Module {
@@ -55,7 +56,7 @@ impl Module {
 }
 
 impl Listeners for Module {
-    fn class_added(&self, _names: &[Cons], spec: &mut Class) -> Result<()> {
+    fn class_added(&self, e: &mut ClassAdded) -> Result<()> {
         use self::Modifier::*;
 
         let mut builder = Class::new("Builder");
@@ -64,7 +65,7 @@ impl Listeners for Module {
         let mut build_variable_assign = Tokens::new();
         let mut build_constructor_arguments = Tokens::new();
 
-        for field in &spec.fields {
+        for field in &e.spec.fields {
             builder.fields.push(self.builder_field(field));
             builder.methods.push(self.setter_method(field));
 
@@ -86,13 +87,13 @@ impl Listeners for Module {
 
         builder.methods.push({
             let mut build = Method::new("build");
-            build.returns = local(spec.name());
+            build.returns = local(e.spec.name());
 
             build.body.push(build_variable_assign);
 
             build.body.push(toks![
                 "return new ",
-                spec.name(),
+                e.spec.name(),
                 "(",
                 build_constructor_arguments.join(", "),
                 ");",
@@ -102,7 +103,7 @@ impl Listeners for Module {
             build
         });
 
-        spec.body.push(builder);
+        e.spec.body.push(builder);
         Ok(())
     }
 }

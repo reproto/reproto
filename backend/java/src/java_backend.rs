@@ -12,7 +12,7 @@ use genco::java::{Argument, BOOLEAN, Class, Constructor, DOUBLE, Enum, FLOAT, Fi
 use java_compiler::JavaCompiler;
 use java_field::JavaField;
 use java_options::JavaOptions;
-use listeners::Listeners;
+use listeners::{ClassAdded, EnumAdded, InterfaceAdded, Listeners, TupleAdded};
 use std::rc::Rc;
 
 pub struct JavaBackend {
@@ -565,12 +565,12 @@ impl JavaBackend {
         let mut from_value = self.enum_from_value_method(spec.name(), &variant_java_field.spec);
         let mut to_value = self.enum_to_value_method(&variant_java_field.spec);
 
-        self.listeners.enum_added(
-            body,
-            &mut spec,
-            &mut from_value,
-            &mut to_value,
-        )?;
+        self.listeners.enum_added(&mut EnumAdded {
+            body: body,
+            spec: &mut spec,
+            from_value: &mut from_value,
+            to_value: &mut to_value,
+        })?;
 
         spec.methods.push(from_value);
         spec.methods.push(to_value);
@@ -616,7 +616,10 @@ impl JavaBackend {
             }
         }
 
-        self.listeners.tuple_added(&mut spec)?;
+        self.listeners.tuple_added(
+            &mut TupleAdded { spec: &mut spec },
+        )?;
+
         Ok(spec)
     }
 
@@ -652,7 +655,11 @@ impl JavaBackend {
             &mut spec.constructors,
         )?;
 
-        self.listeners.class_added(&names, &mut spec)?;
+        self.listeners.class_added(&mut ClassAdded {
+            names: &names,
+            spec: &mut spec,
+        })?;
+
         Ok(spec)
     }
 
@@ -716,14 +723,19 @@ impl JavaBackend {
                 &mut class.constructors,
             )?;
 
-            self.listeners.class_added(&names, &mut class)?;
-            self.listeners.sub_type_added(body, sub_type, &mut class)?;
+            self.listeners.class_added(&mut ClassAdded {
+                names: &names,
+                spec: &mut class,
+            })?;
 
             spec.body.push(class);
             Ok(()) as Result<()>
         })?;
 
-        self.listeners.interface_added(body, &mut spec)?;
+        self.listeners.interface_added(&mut InterfaceAdded {
+            body: body,
+            spec: &mut spec,
+        })?;
 
         if self.options.build_getters {
             for field in &interface_fields {

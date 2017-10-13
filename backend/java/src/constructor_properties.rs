@@ -1,8 +1,9 @@
-//! Module that adds fasterxml annotations to generated classes.
+//! Module that adds the @ConstructorProperties annotation to every constructor.
 
-use super::*;
-use genco::{Cons, Java, Quoted, Tokens};
-use genco::java::{Class, imported};
+use backend::errors::*;
+use genco::{Java, Quoted, Tokens};
+use genco::java::imported;
+use listeners::{ClassAdded, Listeners};
 
 pub struct Module {
     annotation: Java<'static>,
@@ -15,11 +16,11 @@ impl Module {
 }
 
 impl Listeners for Module {
-    fn class_added<'a>(&self, names: &[Cons<'a>], spec: &mut Class<'a>) -> Result<()> {
-        let args: Tokens<Java> = names.iter().cloned().map(Quoted::quoted).collect();
+    fn class_added<'a>(&self, e: &mut ClassAdded) -> Result<()> {
+        let args: Tokens<Java> = e.names.iter().cloned().map(Quoted::quoted).collect();
         let a = toks![self.annotation.clone(), "({", args.join(", "), "})"];
 
-        for c in &mut spec.constructors {
+        for c in &mut e.spec.constructors {
             c.annotation(a.clone());
         }
 

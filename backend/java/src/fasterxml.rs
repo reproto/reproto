@@ -1,11 +1,10 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use backend::errors::*;
-use core::{RpEnumBody, RpInterfaceBody};
 use genco::{Cons, Java, Quoted, Tokens};
-use genco::java::{Argument, Class, DOUBLE, Enum, FLOAT, Field, INTEGER, Interface, LONG, Method,
-                  Modifier, SHORT, imported, local};
-use listeners::Listeners;
+use genco::java::{Argument, Class, DOUBLE, FLOAT, Field, INTEGER, LONG, Modifier, SHORT, imported,
+                  local};
+use listeners::{ClassAdded, EnumAdded, InterfaceAdded, Listeners, TupleAdded};
 use std::rc::Rc;
 
 pub struct Module {
@@ -336,15 +335,8 @@ impl Module {
 
         Ok(())
     }
-}
 
-impl Listeners for Module {
-    fn class_added<'a>(&self, names: &[Cons<'a>], spec: &mut Class<'a>) -> Result<()> {
-        self.add_class_annotations(names, spec)?;
-        Ok(())
-    }
-
-    fn tuple_added<'a>(&self, spec: &mut Class<'a>) -> Result<()> {
+    fn add_tuple_serialization(&self, spec: &mut Class) -> Result<()> {
         let serializer = self.tuple_serializer(spec.name(), &mut spec.fields)?;
 
         let serializer_type = Rc::new(format!(
@@ -383,24 +375,25 @@ impl Listeners for Module {
         spec.body.push(deserializer);
         Ok(())
     }
+}
 
-    fn enum_added<'el, 'a, 'b, 'c>(
-        &self,
-        _body: &'el RpEnumBody,
-        _spec: &mut Enum<'a>,
-        from_value: &mut Method<'b>,
-        to_value: &mut Method<'c>,
-    ) -> Result<()> {
-        from_value.annotation(toks!["@", self.creator.clone()]);
-        to_value.annotation(toks!["@", self.value.clone()]);
+impl Listeners for Module {
+    fn class_added<'a>(&self, e: &mut ClassAdded) -> Result<()> {
+        self.add_class_annotations(&e.names, &mut e.spec)?;
         Ok(())
     }
 
-    fn interface_added<'a>(
-        &self,
-        interface: &'a RpInterfaceBody,
-        spec: &mut Interface<'a>,
-    ) -> Result<()> {
+    fn tuple_added(&self, e: &mut TupleAdded) -> Result<()> {
+        self.add_tuple_serialization(&mut e.spec)
+    }
+
+    fn enum_added(&self, e: &mut EnumAdded) -> Result<()> {
+        e.from_value.annotation(toks!["@", self.creator.clone()]);
+        e.to_value.annotation(toks!["@", self.value.clone()]);
+        Ok(())
+    }
+
+    fn interface_added(&self, e: &mut InterfaceAdded) -> Result<()> {
         {
             let mut args = Tokens::new();
 
@@ -409,13 +402,13 @@ impl Listeners for Module {
             args.push(toks!["property=", "type".quoted()]);
 
             let type_info = toks!["@", self.type_info.clone(), "(", args.join_spacing(), ")"];
-            spec.annotation(type_info);
+            e.spec.annotation(type_info);
         }
 
         {
             let mut arguments = Tokens::new();
 
-            for (key, sub_type) in &interface.sub_types {
+            for (key, sub_type) in &e.body.sub_types {
                 for name in &sub_type.names {
                     let name = name.value().to_owned();
 
@@ -424,7 +417,7 @@ impl Listeners for Module {
                     args.push(toks!["name=", name.quoted()]);
                     args.push(toks![
                         "value=",
-                        spec.name(),
+                        e.spec.name(),
                         ".",
                         key.as_str(),
                         ".class",
@@ -444,7 +437,7 @@ impl Listeners for Module {
                 arguments.join(", "),
                 "})",
             ];
-            spec.annotation(sub_types);
+            e.spec.annotation(sub_types);
         }
 
         Ok(())
