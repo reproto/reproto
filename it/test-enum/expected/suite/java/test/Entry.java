@@ -8,7 +8,8 @@ public class Entry {
   private final Optional<EnumImplicit> implicit;
 
   public Entry(
-    final Optional<EnumExplicit> explicit, final Optional<EnumImplicit> implicit
+    final Optional<EnumExplicit> explicit,
+    final Optional<EnumImplicit> implicit
   ) {
     Objects.requireNonNull(explicit, "explicit");
     this.explicit = explicit;

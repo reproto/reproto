@@ -1,3 +1,4 @@
+
 export class Entry {
   constructor(boolean_type, string_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, bytes_type, any_type, array_type, map_type) {
     this.boolean_type = boolean_type;

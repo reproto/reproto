@@ -16,8 +16,8 @@ public class Thing {
 
   @JsonCreator
   public Thing(
-    @JsonProperty("name") final String name, 
-    @JsonProperty("other") final Other other, 
+    @JsonProperty("name") final String name,
+    @JsonProperty("other") final Other other,
     @JsonProperty("other2") final bar._2_0_0.Other other2
   ) {
     Objects.requireNonNull(name, "name");

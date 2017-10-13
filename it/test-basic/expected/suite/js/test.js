@@ -1,3 +1,4 @@
+
 export class Entry {
   constructor(foo) {
     this.foo = foo;

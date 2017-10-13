@@ -8,7 +8,8 @@ public class Entry {
   private final Entry.A.B b;
 
   public Entry(
-    final Entry.A a, final Entry.A.B b
+    final Entry.A a,
+    final Entry.A.B b
   ) {
     Objects.requireNonNull(a, "a");
     this.a = a;

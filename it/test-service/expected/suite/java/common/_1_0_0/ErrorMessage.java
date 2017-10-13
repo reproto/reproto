@@ -8,7 +8,8 @@ public class ErrorMessage {
   private final int statusCode;
 
   public ErrorMessage(
-    final String message, final int statusCode
+    final String message,
+    final int statusCode
   ) {
     Objects.requireNonNull(message, "message");
     this.message = message;

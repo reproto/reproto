@@ -1,3 +1,4 @@
+
 export class Entry {
   constructor(explicit, implicit) {
     this.explicit = explicit;

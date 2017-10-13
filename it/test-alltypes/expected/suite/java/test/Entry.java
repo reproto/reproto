@@ -36,17 +36,17 @@ public class Entry {
 
   @JsonCreator
   public Entry(
-    @JsonProperty("boolean_type") final Optional<Boolean> booleanType, 
-    @JsonProperty("string_type") final Optional<String> stringType, 
-    @JsonProperty("unsigned_type") final Optional<Integer> unsignedType, 
-    @JsonProperty("unsigned_sized_type") final Optional<Integer> unsignedSizedType, 
-    @JsonProperty("signed_type") final Optional<Integer> signedType, 
-    @JsonProperty("signed_sized_type") final Optional<Integer> signedSizedType, 
-    @JsonProperty("float_type") final Optional<Float> floatType, 
-    @JsonProperty("double_type") final Optional<Double> doubleType, 
-    @JsonProperty("bytes_type") final Optional<ByteBuffer> bytesType, 
-    @JsonProperty("any_type") final Optional<Object> anyType, 
-    @JsonProperty("array_type") final Optional<List<Entry>> arrayType, 
+    @JsonProperty("boolean_type") final Optional<Boolean> booleanType,
+    @JsonProperty("string_type") final Optional<String> stringType,
+    @JsonProperty("unsigned_type") final Optional<Integer> unsignedType,
+    @JsonProperty("unsigned_sized_type") final Optional<Integer> unsignedSizedType,
+    @JsonProperty("signed_type") final Optional<Integer> signedType,
+    @JsonProperty("signed_sized_type") final Optional<Integer> signedSizedType,
+    @JsonProperty("float_type") final Optional<Float> floatType,
+    @JsonProperty("double_type") final Optional<Double> doubleType,
+    @JsonProperty("bytes_type") final Optional<ByteBuffer> bytesType,
+    @JsonProperty("any_type") final Optional<Object> anyType,
+    @JsonProperty("array_type") final Optional<List<Entry>> arrayType,
     @JsonProperty("map_type") final Optional<Map<String, Entry>> mapType
   ) {
     Objects.requireNonNull(booleanType, "booleanType");
