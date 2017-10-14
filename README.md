@@ -5,8 +5,9 @@
 The ReProto project is a language-neutral protocol specification, aimed towards describing and
 generating code for handling messages exchanged through JSON-based APIs.
 
-ReProto specifies a [DSL][dsl] that described JSON types and services.
-Using this, models can be generated using multiple different target languages.
+ReProto specifiec an [interface description language][idl] (IDL) for specifying schemas.
+These schemas describe the structure of JSON, and can be used to generate data structures in
+several different languages.
 
 * See [Specification][spec] for details on what the syntax of `.reproto` files is.
 * See [TODO][todo] for details on things that still needs to be done.
@@ -16,7 +17,7 @@ Using this, models can be generated using multiple different target languages.
 
 **Note:** This project is in an Alpha-stage. Things will change a lot.
 
-[dsl]: #the-dsl
+[idl]: #the-idl
 [spec]: /doc/spec.md
 [todo]: /doc/todo.md
 [config]: /doc/config.md
@@ -102,10 +103,13 @@ To run all tests, do:
 $> make clean all
 ```
 
-# The DSL
+# The IDL
 
-ReProto uses a DSL for specifying schemas that is not based on an existing general purpose markup
-like JSON.
+ReProto specifiec an interface description language (IDL) for specifying schemas.
+These schemas describe the structure of JSON, and can be used to generate data structures in
+several different languages.
+
+The ReProto IDL is not based on an existing general purpose markup like JSON.
 
 The goal is to have a compact, intuitive, and productive language for writing specifications.
 
