@@ -6,13 +6,40 @@ use backend::{CompilerOptions, Environment, ForContext, FromNaming, Naming, Pack
 use backend::errors::*;
 use core::{ForEachLoc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName, RpTupleBody,
            RpType, RpTypeBody};
-use genco::{Element, Quoted, Rust, Tokens};
+use genco::{Element, IntoTokens, Quoted, Rust, Tokens};
 use genco::rust::{imported_alias, imported_alias_ref, imported_ref};
 use listeners::Listeners;
 use rust_compiler::RustCompiler;
 use rust_file_spec::RustFileSpec;
 use rust_options::RustOptions;
 use std::borrow::Cow;
+
+/// Serializer derives.
+pub struct Derives;
+
+impl<'a> IntoTokens<'a, Rust<'a>> for Derives {
+    fn into_tokens(self) -> Tokens<'a, Rust<'a>> {
+        "#[derive(Serialize, Deserialize, Debug)]".into()
+    }
+}
+
+/// A serde rename annotation.
+pub struct Rename<'a>(&'a str);
+
+impl<'a> IntoTokens<'a, Rust<'a>> for Rename<'a> {
+    fn into_tokens(self) -> Tokens<'a, Rust<'a>> {
+        toks!["#[serde(rename = ", self.0.quoted(), ")]"]
+    }
+}
+
+/// Tag attribute.
+pub struct Tag<'a>(&'a str);
+
+impl<'a> IntoTokens<'a, Rust<'a>> for Tag<'a> {
+    fn into_tokens(self) -> Tokens<'a, Rust<'a>> {
+        toks!["#[serde(tag = ", self.0.quoted(), ")]"]
+    }
+}
 
 const TYPE_SEP: &'static str = "_";
 const SCOPE_SEP: &'static str = "::";
@@ -166,7 +193,7 @@ impl RustBackend {
         }
 
         if field.name() != ident {
-            elements.push(toks!["#[serde(rename = ", field.name().quoted(), ")]"]);
+            elements.push(Rename(field.name()));
         }
 
         elements.push(toks![ident, ": ", type_spec, ","]);
@@ -188,7 +215,7 @@ impl RustBackend {
         let name = self.convert_type_name(&body.name);
 
         let mut elements = Tokens::new();
-        elements.push("#[derive(Serialize, Deserialize, Debug)]");
+        elements.push(Derives);
         elements.push(toks![
             "struct ",
             name,
@@ -211,21 +238,19 @@ impl RustBackend {
 
         body.variants.iter().for_each_loc(|variant| {
             let value = if let RpEnumOrdinal::String(ref s) = variant.ordinal {
-                if s != variant.local_name.value() {
-                    let rename = toks!["#[serde(rename = ", s.as_str().quoted(), ")]"];
-                    variants.push(rename);
+                if s != variant.local_name.as_str() {
+                    variants.push(Rename(s.as_str()));
                 }
 
                 s
             } else {
-                &variant.local_name
+                variant.local_name.as_str()
             };
 
-            // TODO: should not be necessary to clone since it derives from the body.
             match_body.push(toks![
                 variant.local_name.value().as_str(),
                 " => ",
-                value.clone().quoted(),
+                value.quoted(),
                 ",",
             ]);
 
@@ -235,7 +260,7 @@ impl RustBackend {
 
         let mut out_enum = Tokens::new();
 
-        out_enum.push("#[derive(Serialize, Deserialize, Debug)]");
+        out_enum.push(Derives);
         out_enum.push(toks!["pub enum ", name.clone(), " {"]);
         out_enum.nested(variants);
         out_enum.push("}");
@@ -269,7 +294,7 @@ impl RustBackend {
         let name = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
-        t.push("#[derive(Serialize, Deserialize, Debug)]");
+        t.push(Derives);
         t.push(toks!["pub struct ", name, " {"]);
         t.nested(fields);
 
@@ -294,8 +319,8 @@ impl RustBackend {
         let type_name = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
-        t.push("#[derive(Serialize, Deserialize, Debug)]");
-        t.push("#[serde(tag = \"type\")]");
+        t.push(Derives);
+        t.push(Tag("type"));
         t.push(toks!["pub enum ", type_name, " {"]);
 
         for code in body.codes.for_context(RUST_CONTEXT) {
@@ -314,7 +339,7 @@ impl RustBackend {
                 let name = sub_type_name.as_str();
 
                 if name != s.local_name.as_str() {
-                    spec.push(toks!["#[serde(rename = ", name.quoted(), ")]"]);
+                    spec.push(Rename(name));
                 }
             }
 
