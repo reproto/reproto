@@ -16,8 +16,7 @@ pub struct PythonCompiler<'el> {
 
 impl<'el> PythonCompiler<'el> {
     pub fn compile(&self) -> Result<()> {
-        let files = self.populate_files()?;
-        self.write_files(files)
+        self.write_files(self.populate_files()?)
     }
 }
 
@@ -71,11 +70,16 @@ impl<'el> PackageProcessor<'el> for PythonCompiler<'el> {
             Ok(())
         })?;
 
+        // Process picked up enums.
+        // These are added to the end of the file to declare enums:
+        // https://docs.python.org/3/library/enum.html
         for body in enums {
             if let Some(ref mut file_spec) = files.get_mut(&body.name.package) {
                 file_spec.0.push(self.backend.enum_variants(&body)?);
             } else {
-                return Err(format!("no such package: {}", &body.name.package).into());
+                return Err(
+                    format!("missing file for package: {}", &body.name.package).into(),
+                );
             }
         }
 
@@ -106,7 +110,6 @@ impl<'el> PackageProcessor<'el> for PythonCompiler<'el> {
             }
         }
 
-        // path to final file
         full_path.set_extension(self.ext());
         Ok(full_path)
     }
