@@ -1,2 +1,4 @@
-Entry(a=A(b=B(field=value)), b=B(field=value))
-{"a":{"b":{"field":"value"}},"b":{"field":"value"}}
+Entry(a=Optional[A(b=B(field=value))], b=Optional.empty)
+{"a":{"b":{"field":"value"}}}
+Entry(a=Optional.empty, b=Optional[B(field=value)])
+{"b":{"field":"value"}}

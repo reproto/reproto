@@ -1,2 +1,4 @@
-<Entry a: <Entry_A b: <Entry_A_B field: u'value'>>, b: <Entry_A_B field: u'value'>>
-{"a": {"b": {"field": "value"}}, "b": {"field": "value"}}
+<Entry a: <A b: <A_B field: u'value'>>, b: None>
+{"a": {"b": {"field": "value"}}}
+<Entry a: None, b: <A_B field: u'value'>>
+{"b": {"field": "value"}}

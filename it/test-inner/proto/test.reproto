@@ -1,12 +1,12 @@
 type Entry {
-    a: ::A;
-    b: ::A::B;
+    a?: A;
+    b?: A::B;
+}
 
-    type A {
-        b: ::B;
+type A {
+    b: ::B;
 
-        type B {
-            field: string;
-        }
+    type B {
+        field: string;
     }
 }

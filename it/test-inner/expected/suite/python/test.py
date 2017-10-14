@@ -5,39 +5,47 @@ class Entry:
 
   @staticmethod
   def decode(data):
-    f_a = Entry_A.decode(data["a"])
+    if "a" in data:
+      f_a = data["a"]
 
-    f_b = Entry_A_B.decode(data["b"])
+      if f_a is not None:
+        f_a = A.decode(f_a)
+    else:
+      f_a = None
+
+    if "b" in data:
+      f_b = data["b"]
+
+      if f_b is not None:
+        f_b = A_B.decode(f_b)
+    else:
+      f_b = None
 
     return Entry(f_a, f_b)
 
   def encode(self):
     data = dict()
 
-    if self.a is None:
-      raise Exception("a: is a required field")
+    if self.a is not None:
+      data["a"] = self.a.encode()
 
-    data["a"] = self.a.encode()
-
-    if self.b is None:
-      raise Exception("b: is a required field")
-
-    data["b"] = self.b.encode()
+    if self.b is not None:
+      data["b"] = self.b.encode()
 
     return data
 
   def __repr__(self):
     return "<Entry a: {!r}, b: {!r}>".format(self.a, self.b)
 
-class Entry_A:
+class A:
   def __init__(self, b):
     self.b = b
 
   @staticmethod
   def decode(data):
-    f_b = Entry_A_B.decode(data["b"])
+    f_b = A_B.decode(data["b"])
 
-    return Entry_A(f_b)
+    return A(f_b)
 
   def encode(self):
     data = dict()
@@ -50,9 +58,9 @@ class Entry_A:
     return data
 
   def __repr__(self):
-    return "<Entry_A b: {!r}>".format(self.b)
+    return "<A b: {!r}>".format(self.b)
 
-class Entry_A_B:
+class A_B:
   def __init__(self, field):
     self.field = field
 
@@ -60,7 +68,7 @@ class Entry_A_B:
   def decode(data):
     f_field = data["field"]
 
-    return Entry_A_B(f_field)
+    return A_B(f_field)
 
   def encode(self):
     data = dict()
@@ -73,4 +81,4 @@ class Entry_A_B:
     return data
 
   def __repr__(self):
-    return "<Entry_A_B field: {!r}>".format(self.field)
+    return "<A_B field: {!r}>".format(self.field)

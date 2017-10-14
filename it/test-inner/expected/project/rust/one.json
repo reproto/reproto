@@ -1,2 +1,4 @@
-Entry { a: Entry_A { b: Entry_A_B { field: "value" } }, b: Entry_A_B { field: "value" } }
-{"a":{"b":{"field":"value"}},"b":{"field":"value"}}
+Entry { a: Some(A { b: A_B { field: "value" } }), b: None }
+{"a":{"b":{"field":"value"}}}
+Entry { a: None, b: Some(A_B { field: "value" }) }
+{"b":{"field":"value"}}

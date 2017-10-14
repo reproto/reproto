@@ -6,16 +6,20 @@ export class Entry {
   }
 
   static decode(data) {
-    const v_a = Entry_A.decode(data["a"]);
+    let v_a = data["a"];
 
-    if (v_a === null || v_a === undefined) {
-      throw new Error("a" + ": required field");
+    if (v_a !== null && v_a !== undefined) {
+      v_a = A.decode(v_a);
+    } else {
+      v_a = null;
     }
 
-    const v_b = Entry_A_B.decode(data["b"]);
+    let v_b = data["b"];
 
-    if (v_b === null || v_b === undefined) {
-      throw new Error("b" + ": required field");
+    if (v_b !== null && v_b !== undefined) {
+      v_b = A_B.decode(v_b);
+    } else {
+      v_b = null;
     }
 
     return new Entry(v_a, v_b);
@@ -24,35 +28,31 @@ export class Entry {
   encode() {
     const data = {};
 
-    if (this.a === null || this.a === undefined) {
-      throw new Error("a: is a required field");
+    if (this.a !== null && this.a !== undefined) {
+      data["a"] = this.a.encode();
     }
 
-    data["a"] = this.a.encode();
-
-    if (this.b === null || this.b === undefined) {
-      throw new Error("b: is a required field");
+    if (this.b !== null && this.b !== undefined) {
+      data["b"] = this.b.encode();
     }
-
-    data["b"] = this.b.encode();
 
     return data;
   }
 }
 
-export class Entry_A {
+export class A {
   constructor(b) {
     this.b = b;
   }
 
   static decode(data) {
-    const v_b = Entry_A_B.decode(data["b"]);
+    const v_b = A_B.decode(data["b"]);
 
     if (v_b === null || v_b === undefined) {
       throw new Error("b" + ": required field");
     }
 
-    return new Entry_A(v_b);
+    return new A(v_b);
   }
 
   encode() {
@@ -68,7 +68,7 @@ export class Entry_A {
   }
 }
 
-export class Entry_A_B {
+export class A_B {
   constructor(field) {
     this.field = field;
   }
@@ -80,7 +80,7 @@ export class Entry_A_B {
       throw new Error("field" + ": required field");
     }
 
-    return new Entry_A_B(v_field);
+    return new A_B(v_field);
   }
 
   encode() {
