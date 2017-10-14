@@ -1,4 +1,4 @@
-use core::{ErrorPos, Pos, RpName, WithPos, errors as core};
+use core::{ErrorPos, Pos, RpName, RpType, WithPos, errors as core};
 use parser::errors as parser;
 use repository::errors as repository;
 use serde_json as json;
@@ -57,6 +57,11 @@ error_chain! {
         MissingPrefix(prefix: String) {
             description("missing prefix")
             display("missing prefix: {}", prefix)
+        }
+
+        MissingTypeImpl(ty: RpType, suggestion: &'static str) {
+            description("missing type implementation")
+            display("missing implementation for type `{}`, {}", ty, suggestion)
         }
     }
 }

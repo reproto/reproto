@@ -144,13 +144,13 @@ impl RustBackend {
         value_fn
     }
 
-    fn datetime<'a>(&self) -> Result<Tokens<'a, Rust<'a>>> {
+    fn datetime<'a>(&self, ty: &RpType) -> Result<Tokens<'a, Rust<'a>>> {
         if let Some(ref datetime) = self.datetime {
             return Ok(datetime.clone().into());
         }
 
         Err(
-            "no module configured that provides `datetime` implementation, try: -m chrono".into(),
+            ErrorKind::MissingTypeImpl(ty.clone(), "try: -m chrono").into(),
         )
     }
 
@@ -159,7 +159,7 @@ impl RustBackend {
 
         let ty = match *ty {
             String => toks!["String"],
-            DateTime => self.datetime()?,
+            DateTime => self.datetime(ty)?,
             Bytes => toks!["String"],
             Signed { ref size } => {
                 if size.map(|s| s <= 32usize).unwrap_or(true) {
