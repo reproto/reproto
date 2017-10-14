@@ -1,12 +1,13 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use backend::errors::*;
-use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
+use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{Argument, Class, DOUBLE, FLOAT, Field, INTEGER, LONG, Modifier, SHORT, imported,
                   local};
 use listeners::{ClassAdded, EnumAdded, InterfaceAdded, Listeners, TupleAdded};
 use std::rc::Rc;
 
+/// @JsonSubTypes.Type annotation
 struct SubTypesType<'a, 'el>(&'a Module, Tokens<'el, Java<'el>>);
 
 impl<'a, 'el> IntoTokens<'el, Java<'el>> for SubTypesType<'a, 'el> {
@@ -15,11 +16,22 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for SubTypesType<'a, 'el> {
     }
 }
 
+/// @JsonSubTypes annotation
 struct SubTypes<'a, 'el>(&'a Module, Tokens<'el, Java<'el>>);
 
 impl<'a, 'el> IntoTokens<'el, Java<'el>> for SubTypes<'a, 'el> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
-        toks!["@", self.0.sub_types.clone(), "({", self.1.join(", "), "})"]
+        let mut out: Tokens<Java> = Tokens::new();
+        out.append("@");
+        out.append(self.0.sub_types.clone());
+        out.append("({");
+
+        if !self.1.is_empty() {
+            out.nested(self.1.join(toks![",", Element::PushSpacing]))
+        }
+
+        out.append("})");
+        out
     }
 }
 
@@ -448,7 +460,8 @@ impl Listeners for Module {
                         ".class",
                     ]);
 
-                    args.push(SubTypesType(self, a));
+                    let arg = SubTypesType(self, a).into_tokens();
+                    args.append(arg);
                 }
             }
 
