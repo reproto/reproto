@@ -412,13 +412,9 @@ fn convert_return(
     let produces = produces.or(options.find_one_string("produces")?);
 
     let produces = if let Some(produces) = produces {
-        let (produces, pos) = produces.take_pair();
-
-        let produces = produces.parse().chain_err(|| {
-            ErrorKind::Pos("not a valid mime type".to_owned(), pos.into())
-        })?;
-
-        Some(produces)
+        Some(produces.and_then(|p| {
+            p.parse().map_err::<Error, _>(|_| "invalid mime".into())
+        })?)
     } else {
         None
     };
@@ -426,13 +422,11 @@ fn convert_return(
     let status = status.or(options.find_one_u32("status")?);
 
     let status = if let Some(status) = status {
-        let (status, pos) = status.take_pair();
-
-        let status = status.to_u32().ok_or_else(|| {
-            ErrorKind::Pos("not a valid status".to_owned(), pos.into())
-        })?;
-
-        Some(status)
+        Some(status.and_then(|s| {
+            s.to_u32().ok_or_else::<Error, _>(
+                || "invalid status".into(),
+            )
+        })?)
     } else {
         None
     };
