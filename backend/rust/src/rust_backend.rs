@@ -51,12 +51,13 @@ pub struct RustBackend {
     to_lower_snake: Box<Naming>,
     hash_map: Rust<'static>,
     json_value: Rust<'static>,
+    datetime: Option<Tokens<'static, Rust<'static>>>,
 }
 
 impl RustBackend {
     pub fn new(
         env: Environment,
-        _: RustOptions,
+        options: RustOptions,
         listeners: Box<Listeners>,
         id_converter: Option<Box<Naming>>,
     ) -> RustBackend {
@@ -67,6 +68,7 @@ impl RustBackend {
             to_lower_snake: SnakeCase::new().to_lower_snake(),
             hash_map: imported_ref("std::collections", "HashMap"),
             json_value: imported_alias_ref("serde_json", "Value", "json"),
+            datetime: options.datetime.clone(),
         }
     }
 
@@ -142,11 +144,22 @@ impl RustBackend {
         value_fn
     }
 
+    fn datetime<'a>(&self) -> Result<Tokens<'a, Rust<'a>>> {
+        if let Some(ref datetime) = self.datetime {
+            return Ok(datetime.clone().into());
+        }
+
+        Err(
+            "no module configured that provides `datetime` implementation, try: -m chrono".into(),
+        )
+    }
+
     pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Rust<'a>>> {
         use self::RpType::*;
 
         let ty = match *ty {
             String => toks!["String"],
+            DateTime => self.datetime()?,
             Bytes => toks!["String"],
             Signed { ref size } => {
                 if size.map(|s| s <= 32usize).unwrap_or(true) {
@@ -288,7 +301,7 @@ impl RustBackend {
         let mut fields = Tokens::new();
 
         for field in &body.fields {
-            fields.push(self.field_element(field)?);
+            fields.push(field.as_ref().and_then(|f| self.field_element(f))?);
         }
 
         let name = self.convert_type_name(&body.name);

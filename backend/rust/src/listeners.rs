@@ -1,18 +1,13 @@
-use super::*;
+/// Plugin infrastructure for Rust Backend.
+
+use super::rust_options::RustOptions;
+use backend::errors::*;
 
 pub trait Listeners {
-    fn configure(&self, _: &mut RustOptions) -> Result<()> {
-        Ok(())
-    }
+    listeners_vec_default!(configure, RustOptions);
 }
 
 /// A vector of listeners is a valid listener.
 impl Listeners for Vec<Box<Listeners>> {
-    fn configure(&self, options: &mut RustOptions) -> Result<()> {
-        for listeners in self {
-            listeners.configure(options)?;
-        }
-
-        Ok(())
-    }
+    listeners_vec!(configure, RustOptions);
 }

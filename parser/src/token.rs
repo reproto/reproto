@@ -55,6 +55,7 @@ pub enum Token<'input> {
     UnsignedKeyword,
     BooleanKeyword,
     StringKeyword,
+    DateTimeKeyword,
     BytesKeyword,
     TrueKeyword,
     FalseKeyword,

@@ -11,6 +11,8 @@ pub enum Type {
     String,
     Bytes,
     Any,
+    /// ISO-8601 for date and time.
+    DateTime,
     Name { name: Name },
     Array { inner: Box<Type> },
     Map { key: Box<Type>, value: Box<Type> },

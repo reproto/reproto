@@ -28,6 +28,7 @@ impl IntoModel for Type {
             Unsigned { size } => RpType::Unsigned { size: size },
             Boolean => RpType::Boolean,
             String => RpType::String,
+            DateTime => RpType::DateTime,
             Name { name } => RpType::Name { name: name.into_model(scope)? },
             Array { inner } => RpType::Array { inner: inner.into_model(scope)? },
             Map { key, value } => RpType::Map {

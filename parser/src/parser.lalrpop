@@ -285,6 +285,7 @@ pub TypeSpec: Type = {
     },
     "boolean" => Type::Boolean,
     "string" => Type::String,
+    "datetime" => Type::DateTime,
     "bytes" => Type::Bytes,
     <name:Name> => Type::Name{
         name: name
@@ -373,6 +374,7 @@ extern {
         "unsigned" => Token::UnsignedKeyword,
         "boolean" => Token::BooleanKeyword,
         "string" => Token::StringKeyword,
+        "datetime" => Token::DateTimeKeyword,
         "bytes" => Token::BytesKeyword,
         true => Token::TrueKeyword,
         false => Token::FalseKeyword,

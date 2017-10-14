@@ -686,6 +686,8 @@ pub enum RpType {
     Unsigned { size: Option<usize> },
     Boolean,
     String,
+    /// ISO-8601 datetime
+    DateTime,
     Bytes,
     Any,
     Name { name: RpName },
@@ -719,6 +721,7 @@ impl fmt::Display for RpType {
             }
             Boolean => write!(f, "boolean"),
             String => write!(f, "string"),
+            DateTime => write!(f, "datetime"),
             Name { ref name } => write!(f, "{}", name),
             Array { ref inner } => write!(f, "[{}]", inner),
             Map { ref key, ref value } => write!(f, "{{{}: {}}}", key, value),

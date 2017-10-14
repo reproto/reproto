@@ -1,15 +1,17 @@
 #[macro_use]
 extern crate log;
-extern crate reproto_backend as backend;
-extern crate reproto_core as core;
 #[macro_use]
 extern crate genco;
+#[macro_use]
+extern crate reproto_backend as backend;
+extern crate reproto_core as core;
 
 mod listeners;
 mod rust_backend;
 mod rust_compiler;
 mod rust_file_spec;
 mod rust_options;
+mod module;
 
 use self::backend::{App, ArgMatches, CompilerOptions, Environment, Options};
 use self::backend::errors::*;
@@ -22,15 +24,19 @@ const EXT: &str = "rs";
 const RUST_CONTEXT: &str = "rust";
 
 fn setup_module(module: &str) -> Result<Box<Listeners>> {
-    let _module: Box<Listeners> = match module {
+    let module: Box<Listeners> = match module {
+        "chrono" => Box::new(module::Chrono::new()),
         _ => return Err(format!("No such module: {}", module).into()),
     };
+
+    Ok(module)
 }
 
 pub fn setup_listeners(modules: Vec<String>) -> Result<(RustOptions, Box<Listeners>)> {
     let mut listeners: Vec<Box<Listeners>> = Vec::new();
 
     for module in modules {
+        debug!("+module: {}", module);
         listeners.push(setup_module(module.as_str())?);
     }
 

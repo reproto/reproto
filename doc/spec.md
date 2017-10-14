@@ -186,6 +186,7 @@ There are a number of built-in types available:
 | `signed{/size}`    | Signed integer values which can store a given number of bits |
 | `double`, `float`  | Floating point precision numbers |
 | `string`           | UTF-8 encoded strings |
+| `datetime`         | ISO-8601 dates encoded as strings. Combined date and time with timezone. |
 | `bytes`            | Arbitrary byte-arrays, are encoded as base64-strings in JSON |
 | `boolean`          | Boolean values, `true` or `false` |
 | `[<type>]`         | Arrays which store the given type  |

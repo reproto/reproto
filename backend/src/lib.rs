@@ -28,6 +28,7 @@ pub mod errors;
 mod naming;
 mod options;
 mod compiler_options;
+mod macros;
 
 pub use self::base_decode::BaseDecode;
 pub use self::base_encode::BaseEncode;

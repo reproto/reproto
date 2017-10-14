@@ -153,6 +153,7 @@ impl DocBackend {
             Float => self.write_simple_type(out, "float")?,
             Boolean => self.write_simple_type(out, "boolean")?,
             String => self.write_simple_type(out, "string")?,
+            DateTime => self.write_simple_type(out, "datetime")?,
             Bytes => self.write_simple_type(out, "bytes")?,
             Any => self.write_simple_type(out, "any")?,
             Signed { ref size } => {

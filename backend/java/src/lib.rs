@@ -2,6 +2,7 @@
 extern crate log;
 #[macro_use]
 extern crate genco;
+#[macro_use]
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 

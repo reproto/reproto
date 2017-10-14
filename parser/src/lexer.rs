@@ -150,6 +150,7 @@ impl<'input> Lexer<'input> {
             "unsigned" => Token::UnsignedKeyword,
             "boolean" => Token::BooleanKeyword,
             "string" => Token::StringKeyword,
+            "datetime" => Token::DateTimeKeyword,
             "bytes" => Token::BytesKeyword,
             "true" => Token::TrueKeyword,
             "false" => Token::FalseKeyword,

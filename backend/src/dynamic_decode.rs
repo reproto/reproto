@@ -54,28 +54,31 @@ where
         ty: &'el RpType,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
+        use self::RpType::*;
+
         if self.is_native(ty) {
             return Ok(input);
         }
 
         let input = match *ty {
-            RpType::Signed { size: _ } |
-            RpType::Unsigned { size: _ } => input,
-            RpType::Float | RpType::Double => input,
-            RpType::String => input,
-            RpType::Boolean => input,
-            RpType::Bytes => input,
-            RpType::Any => input,
-            RpType::Name { ref name } => {
+            Signed { size: _ } |
+            Unsigned { size: _ } => input,
+            Float | Double => input,
+            String => input,
+            DateTime => input,
+            Boolean => input,
+            Bytes => input,
+            Any => input,
+            Name { ref name } => {
                 let name = self.convert_type(name)?;
                 self.name_decode(input, name)
             }
-            RpType::Array { ref inner } => {
+            Array { ref inner } => {
                 let inner_var = self.array_inner_var();
                 let inner = self.dynamic_decode(inner, inner_var)?;
                 self.array_decode(input, inner)
             }
-            RpType::Map { ref key, ref value } => {
+            Map { ref key, ref value } => {
                 let map_key = self.map_key_var();
                 let key = self.dynamic_decode(key, map_key)?;
                 let map_value = self.map_value_var();

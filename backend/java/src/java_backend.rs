@@ -32,6 +32,7 @@ pub struct JavaBackend {
     list: Java<'static>,
     map: Java<'static>,
     string: Java<'static>,
+    instant: Java<'static>,
     optional: Java<'static>,
     illegal_argument: Java<'static>,
     async_container: Java<'static>,
@@ -63,6 +64,7 @@ impl JavaBackend {
             list: imported("java.util", "List"),
             map: imported("java.util", "Map"),
             string: imported("java.lang", "String"),
+            instant: imported("java.time", "Instant"),
             optional: imported("java.util", "Optional"),
             illegal_argument: imported("java.lang", "IllegalArgumentException"),
             async_container: async_container,
@@ -157,6 +159,7 @@ impl JavaBackend {
 
         let out = match *ty {
             String => self.string.clone().into(),
+            DateTime => self.instant.clone().into(),
             Signed { ref size } |
             Unsigned { ref size } => {
                 // default to integer if unspecified.
