@@ -1,6 +1,6 @@
 use super::{JS_CONTEXT, TYPE, TYPE_SEP};
 use backend::{CompilerOptions, Converter, DynamicConverter, DynamicDecode, DynamicEncode,
-              Environment, ForContext, FromNaming, Naming, PackageUtils, SnakeCase, ValueBuilder};
+              Environment, ForContext, FromNaming, Naming, PackageUtils, SnakeCase};
 use backend::errors::*;
 use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName, RpTupleBody,
            RpType, RpTypeBody};
@@ -668,9 +668,6 @@ impl<'el> Converter<'el> for JsBackend {
         Ok(local_name.into())
     }
 }
-
-/// Build values in js.
-impl<'el> ValueBuilder<'el> for JsBackend {}
 
 impl<'el> DynamicConverter<'el> for JsBackend {
     fn is_native(&self, ty: &RpType) -> bool {

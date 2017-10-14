@@ -2,7 +2,7 @@
 
 use super::{PYTHON_CONTEXT, TYPE, TYPE_SEP};
 use backend::{CompilerOptions, Converter, DynamicConverter, DynamicDecode, DynamicEncode,
-              Environment, ForContext, FromNaming, Naming, PackageUtils, SnakeCase, ValueBuilder};
+              Environment, ForContext, FromNaming, Naming, PackageUtils, SnakeCase};
 use backend::errors::*;
 use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName, RpTupleBody,
            RpType, RpTypeBody, WithPos};
@@ -672,9 +672,6 @@ impl<'el> Converter<'el> for PythonBackend {
         })
     }
 }
-
-/// Build values in python.
-impl<'el> ValueBuilder<'el> for PythonBackend {}
 
 impl<'el> DynamicConverter<'el> for PythonBackend {
     fn is_native(&self, ty: &RpType) -> bool {

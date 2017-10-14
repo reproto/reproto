@@ -9,7 +9,6 @@ mod builder;
 mod constructor_properties;
 mod fasterxml;
 mod java_backend;
-mod java_compiler;
 mod java_options;
 mod listeners;
 mod lombok;
@@ -71,8 +70,7 @@ pub fn compile(
 ) -> Result<()> {
     let (options, listeners) = setup_listeners(options)?;
     let backend = JavaBackend::new(env, options, listeners);
-    let compiler = backend.compiler(compiler_options)?;
-    compiler.compile()
+    backend.compile(&compiler_options.out_path)
 }
 
 pub fn verify(env: Environment, options: Options, _matches: &ArgMatches) -> Result<()> {
