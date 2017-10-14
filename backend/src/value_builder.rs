@@ -3,7 +3,7 @@
 use converter::Converter;
 use core::{RpEnumOrdinal, RpEnumVariant};
 use errors::*;
-use genco::{Quoted, Tokens};
+use genco::{IntoTokens, Quoted, Tokens};
 use std::rc::Rc;
 
 pub trait ValueBuilder<'el>
@@ -14,8 +14,12 @@ where
         use self::RpEnumOrdinal::*;
 
         let out = match variant.ordinal {
-            String(ref string) => Rc::new(string.as_str().to_string()).quoted().into(),
-            Generated => Rc::new(variant.local_name.to_string()).quoted().into(),
+            String(ref string) => Rc::new(string.as_str().to_string()).quoted().into_tokens(),
+            Generated => {
+                Rc::new(variant.local_name.to_string())
+                    .quoted()
+                    .into_tokens()
+            }
         };
 
         Ok(out)

@@ -16,4 +16,4 @@ reproto-backend = {path = "..", version = "0.1"}
 reproto-core = {path = "../../core", version = "0.1"}
 
 log = "0.3"
-genco = {version = "0.1", path = "../../../genco"}
+genco = {version = "0.1"}

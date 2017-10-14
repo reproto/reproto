@@ -41,7 +41,7 @@ impl PythonBackend {
             to_lower_snake: SnakeCase::new().to_lower_snake(),
             dict: "dict".into(),
             enum_enum: imported_ref("enum", "Enum"),
-            type_var: TYPE.into(),
+            type_var: TYPE.quoted().into(),
         }
     }
 
@@ -613,7 +613,7 @@ impl PythonBackend {
                 }
             }
 
-            let decode = self.decode_method(&body.name, &fields, |_, field| {
+            let decode = self.decode_method(&sub_type.name, &fields, |_, field| {
                 toks!(field.ident.clone().quoted())
             })?;
 

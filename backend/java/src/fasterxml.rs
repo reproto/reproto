@@ -1,11 +1,35 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use backend::errors::*;
-use genco::{Cons, Java, Quoted, Tokens};
+use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{Argument, Class, DOUBLE, FLOAT, Field, INTEGER, LONG, Modifier, SHORT, imported,
                   local};
 use listeners::{ClassAdded, EnumAdded, InterfaceAdded, Listeners, TupleAdded};
 use std::rc::Rc;
+
+struct SubTypesType<'a, 'el>(&'a Module, Tokens<'el, Java<'el>>);
+
+impl<'a, 'el> IntoTokens<'el, Java<'el>> for SubTypesType<'a, 'el> {
+    fn into_tokens(self) -> Tokens<'el, Java<'el>> {
+        toks!["@", self.0.sub_type.clone(), "(", self.1.join(", "), ")"]
+    }
+}
+
+struct SubTypes<'a, 'el>(&'a Module, Tokens<'el, Java<'el>>);
+
+impl<'a, 'el> IntoTokens<'el, Java<'el>> for SubTypes<'a, 'el> {
+    fn into_tokens(self) -> Tokens<'el, Java<'el>> {
+        toks!["@", self.0.sub_types.clone(), "({", self.1.join(", "), "})"]
+    }
+}
+
+struct TypeInfo<'a, 'el>(&'a Module, Tokens<'el, Java<'el>>);
+
+impl<'a, 'el> IntoTokens<'el, Java<'el>> for TypeInfo<'a, 'el> {
+    fn into_tokens(self) -> Tokens<'el, Java<'el>> {
+        toks!["@", self.0.type_info.clone(), "(", self.1.join(", "), ")"]
+    }
+}
 
 pub struct Module {
     override_: Java<'static>,
@@ -13,6 +37,7 @@ pub struct Module {
     value: Java<'static>,
     property: Java<'static>,
     sub_types: Java<'static>,
+    sub_type: Java<'static>,
     type_info: Java<'static>,
     serialize: Java<'static>,
     deserialize: Java<'static>,
@@ -36,6 +61,7 @@ impl Module {
             value: imported("com.fasterxml.jackson.annotation", "JsonValue"),
             property: imported("com.fasterxml.jackson.annotation", "JsonProperty"),
             sub_types: imported("com.fasterxml.jackson.annotation", "JsonSubTypes"),
+            sub_type: imported("com.fasterxml.jackson.annotation", "JsonSubTypes").path("Type"),
             type_info: imported("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
             serialize: imported("com.fasterxml.jackson.databind.annotation", "JsonSerialize"),
             deserialize: imported(
@@ -397,25 +423,24 @@ impl Listeners for Module {
         {
             let mut args = Tokens::new();
 
-            args.push(toks!["use=", self.type_info.clone(), ".Id.NAME"]);
-            args.push(toks!["include=", self.type_info.clone(), ".As.PROPERTY"]);
-            args.push(toks!["property=", "type".quoted()]);
+            args.append(toks!["use=", self.type_info.clone(), ".Id.NAME"]);
+            args.append(toks!["include=", self.type_info.clone(), ".As.PROPERTY"]);
+            args.append(toks!["property=", "type".quoted()]);
 
-            let type_info = toks!["@", self.type_info.clone(), "(", args.join_spacing(), ")"];
-            e.spec.annotation(type_info);
+            e.spec.annotation(TypeInfo(self, args));
         }
 
         {
-            let mut arguments = Tokens::new();
+            let mut args = Tokens::new();
 
             for (key, sub_type) in &e.body.sub_types {
                 for name in &sub_type.names {
                     let name = name.value().to_owned();
 
-                    let mut args = Tokens::new();
+                    let mut a = Tokens::new();
 
-                    args.push(toks!["name=", name.quoted()]);
-                    args.push(toks![
+                    a.append(toks!["name=", name.quoted()]);
+                    a.append(toks![
                         "value=",
                         e.spec.name(),
                         ".",
@@ -423,21 +448,11 @@ impl Listeners for Module {
                         ".class",
                     ]);
 
-                    let a = toks!["@", self.sub_types.clone(), ".Type(", args.join(", "), ")"];
-
-                    arguments.push(a);
+                    args.push(SubTypesType(self, a));
                 }
             }
 
-            let sub_types =
-                toks![
-                "@",
-                self.sub_types.clone(),
-                "({",
-                arguments.join(", "),
-                "})",
-            ];
-            e.spec.annotation(sub_types);
+            e.spec.annotation(SubTypes(self, args));
         }
 
         Ok(())

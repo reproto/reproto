@@ -326,7 +326,7 @@ impl RustBackend {
 
             elements.push("},");
 
-            t.push(elements);
+            t.nested(elements);
 
             Ok(()) as Result<()>
         })?;
