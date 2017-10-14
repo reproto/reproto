@@ -49,6 +49,11 @@ where
         value: Tokens<'el, Self::Custom>,
     ) -> Tokens<'el, Self::Custom>;
 
+    /// Handle the decoding of a datetime object.
+    fn datetime_decode(&self, input: Tokens<'el, Self::Custom>) -> Tokens<'el, Self::Custom> {
+        input
+    }
+
     fn dynamic_decode(
         &self,
         ty: &'el RpType,
@@ -65,7 +70,7 @@ where
             Unsigned { size: _ } => input,
             Float | Double => input,
             String => input,
-            DateTime => input,
+            DateTime => self.datetime_decode(input),
             Boolean => input,
             Bytes => input,
             Any => input,

@@ -29,32 +29,40 @@ where
         value: Tokens<'el, Self::Custom>,
     ) -> Tokens<'el, Self::Custom>;
 
+    /// Handle the encoding of a datetime.
+    fn datetime_encode(&self, input: Tokens<'el, Self::Custom>) -> Tokens<'el, Self::Custom> {
+        input
+    }
+
     fn dynamic_encode(
         &self,
         ty: &'el RpType,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
+        use self::RpType::*;
+
         if self.is_native(ty) {
             return Ok(input);
         }
 
         let stmt = match *ty {
-            RpType::Signed { size: _ } |
-            RpType::Unsigned { size: _ } => input,
-            RpType::Float | RpType::Double => input,
-            RpType::String => input,
-            RpType::Any => input,
-            RpType::Boolean => input,
-            RpType::Name { ref name } => {
+            Signed { size: _ } |
+            Unsigned { size: _ } => input,
+            Float | Double => input,
+            String => input,
+            DateTime => self.datetime_encode(input),
+            Any => input,
+            Boolean => input,
+            Name { ref name } => {
                 let name = self.convert_type(name)?;
                 self.name_encode(input, name)
             }
-            RpType::Array { ref inner } => {
+            Array { ref inner } => {
                 let v = self.array_inner_var();
                 let inner = self.dynamic_encode(inner, v)?;
                 self.array_encode(input, inner)
             }
-            RpType::Map { ref key, ref value } => {
+            Map { ref key, ref value } => {
                 let map_key = self.map_key_var();
                 let key = self.dynamic_encode(key, map_key)?;
                 let map_value = self.map_value_var();

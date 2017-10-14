@@ -675,15 +675,17 @@ impl<'el> Converter<'el> for PythonBackend {
 
 impl<'el> DynamicConverter<'el> for PythonBackend {
     fn is_native(&self, ty: &RpType) -> bool {
+        use self::RpType::*;
+
         match *ty {
-            RpType::Signed { size: _ } |
-            RpType::Unsigned { size: _ } => true,
-            RpType::Float | RpType::Double => true,
-            RpType::String => true,
-            RpType::Any => true,
-            RpType::Boolean => true,
-            RpType::Array { ref inner } => self.is_native(inner),
-            RpType::Map { ref key, ref value } => self.is_native(key) && self.is_native(value),
+            Signed { size: _ } |
+            Unsigned { size: _ } => true,
+            Float | Double => true,
+            String => true,
+            Any => true,
+            Boolean => true,
+            Array { ref inner } => self.is_native(inner),
+            Map { ref key, ref value } => self.is_native(key) && self.is_native(value),
             _ => false,
         }
     }
@@ -828,7 +830,18 @@ impl<'el> DynamicEncode<'el> for PythonBackend {
         v: Tokens<'el, Self::Custom>,
     ) -> Tokens<'el, Self::Custom> {
         toks![
-            self.dict.clone(), "((", k.clone(), ", ", v, ") for (", k, ", ", self.map_value_var(), ") in ", input, ".items())",
+            self.dict.clone(),
+            "((",
+            k.clone(),
+            ", ",
+            v,
+            ") for (",
+            k,
+            ", ",
+            self.map_value_var(),
+            ") in ",
+            input,
+            ".items())",
         ]
     }
 }
