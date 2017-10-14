@@ -1,0 +1,4 @@
+<Entry_Foo shared: u'shared', foo: u'foo'>
+{"shared": "shared", "foo": "foo", "type": "foo"}
+<Entry_Bar shared: u'shared', bar: u'bar'>
+{"shared": "shared", "type": "bar", "bar": "bar"}

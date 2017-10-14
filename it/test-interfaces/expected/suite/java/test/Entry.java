@@ -1,0 +1,196 @@
+package test;
+
+import java.util.Objects;
+import java.util.Optional;
+
+public interface Entry {
+  public String getShared();
+
+  public static class Bar implements Entry {
+    private final String shared;
+    private final String bar;
+
+    public Bar(
+      final String shared,
+      final String bar
+    ) {
+      Objects.requireNonNull(shared, "shared");
+      this.shared = shared;
+      Objects.requireNonNull(bar, "bar");
+      this.bar = bar;
+    }
+
+    @Override
+    public String getShared() {
+      return this.shared;
+    }
+
+    public String getBar() {
+      return this.bar;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = 1;
+      result = result * 31 + this.shared.hashCode();
+      result = result * 31 + this.bar.hashCode();
+      return result;
+    }
+
+    @Override
+    public boolean equals(final Object other) {
+      if (other == null) {
+        return false;
+      }
+
+      if (!(other instanceof Bar)) {
+        return false;
+      }
+
+      @SuppressWarnings("unchecked")
+      final Bar o = (Bar) other;
+
+      if (!this.shared.equals(o.shared)) {
+        return false;
+      }
+
+      if (!this.bar.equals(o.bar)) {
+        return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public String toString() {
+      final StringBuilder b = new StringBuilder();
+
+      b.append("Bar");
+      b.append("(");
+      b.append("shared=");
+      b.append(this.shared.toString());
+      b.append(", ");
+      b.append("bar=");
+      b.append(this.bar.toString());
+      b.append(")");
+
+      return b.toString();
+    }
+
+    public static class Builder {
+      private Optional<String> shared = Optional.empty();
+      private Optional<String> bar = Optional.empty();
+
+      public Builder shared(final String shared) {
+        this.shared = Optional.of(shared);
+        return this;
+      }
+
+      public Builder bar(final String bar) {
+        this.bar = Optional.of(bar);
+        return this;
+      }
+
+      public Bar build() {
+        final String shared = this.shared.orElseThrow(() -> new RuntimeException("shared: is required"));
+        final String bar = this.bar.orElseThrow(() -> new RuntimeException("bar: is required"));
+
+        return new Bar(shared, bar);
+      }
+    }
+  }
+
+  public static class Foo implements Entry {
+    private final String shared;
+    private final String foo;
+
+    public Foo(
+      final String shared,
+      final String foo
+    ) {
+      Objects.requireNonNull(shared, "shared");
+      this.shared = shared;
+      Objects.requireNonNull(foo, "foo");
+      this.foo = foo;
+    }
+
+    @Override
+    public String getShared() {
+      return this.shared;
+    }
+
+    public String getFoo() {
+      return this.foo;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = 1;
+      result = result * 31 + this.shared.hashCode();
+      result = result * 31 + this.foo.hashCode();
+      return result;
+    }
+
+    @Override
+    public boolean equals(final Object other) {
+      if (other == null) {
+        return false;
+      }
+
+      if (!(other instanceof Foo)) {
+        return false;
+      }
+
+      @SuppressWarnings("unchecked")
+      final Foo o = (Foo) other;
+
+      if (!this.shared.equals(o.shared)) {
+        return false;
+      }
+
+      if (!this.foo.equals(o.foo)) {
+        return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public String toString() {
+      final StringBuilder b = new StringBuilder();
+
+      b.append("Foo");
+      b.append("(");
+      b.append("shared=");
+      b.append(this.shared.toString());
+      b.append(", ");
+      b.append("foo=");
+      b.append(this.foo.toString());
+      b.append(")");
+
+      return b.toString();
+    }
+
+    public static class Builder {
+      private Optional<String> shared = Optional.empty();
+      private Optional<String> foo = Optional.empty();
+
+      public Builder shared(final String shared) {
+        this.shared = Optional.of(shared);
+        return this;
+      }
+
+      public Builder foo(final String foo) {
+        this.foo = Optional.of(foo);
+        return this;
+      }
+
+      public Foo build() {
+        final String shared = this.shared.orElseThrow(() -> new RuntimeException("shared: is required"));
+        final String foo = this.foo.orElseThrow(() -> new RuntimeException("foo: is required"));
+
+        return new Foo(shared, foo);
+      }
+    }
+  }
+}
