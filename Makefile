@@ -10,8 +10,11 @@ ifneq ($(filter all reproto,$(DEBUG)),)
 override REPROTO_FLAGS := --debug
 endif
 
-# set IT="<dir>" to limit which modules to build
-IT ?= $(wildcard it/test-*)
+ifeq ($(IT),)
+it-dirs := $(wildcard it/test-*)
+else
+it-dirs := $(foreach i,$(IT),it/test-$(i))
+endif
 
 define \n
 
@@ -31,7 +34,7 @@ endef
 
 define it-target
 $(eval \
-	$(foreach i,$(IT),\
+	$(foreach i,$(it-dirs),\
 		$(call it-target-body,$(1),$(i),$(3)) $(\n)) \
 	$(call it-target-default,$(1),$(2)) $(\n))
 endef
@@ -69,6 +72,9 @@ clean: it-clean
 
 sync: clean-projects update-projects clean-suites update-suites
 
+list:
+	@echo "Tests:" $(subst it/test-,,$(it-dirs))
+
 $(call it-target,clean,it-clean)
 $(call it-target,suites)
 $(call it-target,update-suites,,clean-suites)
@@ -90,7 +96,7 @@ help:
 	@echo "  DEBUG=all        - (very) verbose output"
 	@echo "  DEBUG=reproto    - debug ReProto"
 	@echo "  DEBUG=mvn        - debug Maven"
-	@echo "  IT=it/test-basic - only build the specifiec integration tests"
+	@echo "  IT=basic - only build the specifiec integration tests"
 	@echo ""
 	@echo "Targets:"
 	@echo "  all    - default target (suites projects)"
@@ -112,7 +118,7 @@ help:
 	@echo "  Run all tests (very fast):"
 	@echo "    make suites"
 	@echo "  A single set of suites:"
-	@echo "    make IT=it/test-basic clean-suites suites"
+	@echo "    make IT=basic clean-suites suites"
 	@echo "  A single set of projects:"
-	@echo "    make IT=it/test-basic clean-projects projects"
+	@echo "    make IT=basic clean-projects projects"
 	@echo ""
