@@ -300,41 +300,38 @@ impl RustBackend {
 
         for code in body.codes.for_context(RUST_CONTEXT) {
             for line in &code.lines {
-                t.nested(toks!(line.to_string()));
+                t.nested(line.as_str());
             }
         }
 
         let sub_types = body.sub_types.values().map(AsRef::as_ref);
 
-        sub_types.for_each_loc(|sub_type| {
-            let mut elements = Tokens::new();
+        sub_types.for_each_loc(|s| {
+            let mut spec = Tokens::new();
 
             // TODO: clone should not be needed
-            if let Some(sub_type_name) = sub_type.names.first() {
-                elements.push(toks![
-                    "#[serde(rename = ",
-                    sub_type_name.to_string().quoted(),
-                    ")]",
-                ]);
+            if let Some(ref sub_type_name) = s.names.first() {
+                let name = sub_type_name.as_str();
+
+                if name != s.local_name.as_str() {
+                    spec.push(toks!["#[serde(rename = ", name.quoted(), ")]"]);
+                }
             }
 
-            elements.push(toks![sub_type.local_name.as_str(), " {"]);
+            spec.push(toks![s.local_name.as_str(), " {"]);
 
-            for field in body.fields.iter().chain(sub_type.fields.iter()) {
-                elements.nested(self.field_element(field)?);
+            for field in body.fields.iter().chain(s.fields.iter()) {
+                spec.nested(self.field_element(field)?);
             }
 
-            elements.push("},");
-
-            t.nested(elements);
-
+            spec.push("},");
+            t.nested(spec);
             Ok(()) as Result<()>
         })?;
 
         t.push("}");
 
         out.0.push(t);
-
         Ok(())
     }
 }
