@@ -443,7 +443,7 @@ impl JsBackend {
 
         let mut values = Tokens::new();
 
-        body.variants.for_each_loc(|variant| {
+        body.variants.iter().for_each_loc(|variant| {
             let mut arguments = Tokens::new();
 
             arguments.append(variant.local_name.as_str().quoted());

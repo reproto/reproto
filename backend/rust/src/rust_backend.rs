@@ -209,10 +209,10 @@ impl RustBackend {
         // body of value function
         let mut match_body = Tokens::new();
 
-        body.variants.for_each_loc(|variant| {
+        body.variants.iter().for_each_loc(|variant| {
             let value = if let RpEnumOrdinal::String(ref s) = variant.ordinal {
                 if s != variant.local_name.value() {
-                    let rename = toks!["#[serde(rename = ", s.to_owned().quoted(), ")]"];
+                    let rename = toks!["#[serde(rename = ", s.as_str().quoted(), ")]"];
                     variants.push(rename);
                 }
 
