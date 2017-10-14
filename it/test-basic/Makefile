@@ -1,2 +1,1 @@
 java-args += -m fasterxml
-rust-args += -m chrono

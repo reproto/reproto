@@ -1,18 +1,30 @@
 package test;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.Objects;
 import java.util.Optional;
 
+@JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="type")
+@JsonSubTypes({
+  @JsonSubTypes.Type(name="bar", value=Entry.Bar.class),
+  @JsonSubTypes.Type(name="foo", value=Entry.Foo.class)
+})
 public interface Entry {
   public String getShared();
 
   public static class Bar implements Entry {
+    @JsonProperty("shared")
     private final String shared;
+    @JsonProperty("bar")
     private final String bar;
 
+    @JsonCreator
     public Bar(
-      final String shared,
-      final String bar
+      @JsonProperty("shared") final String shared,
+      @JsonProperty("bar") final String bar
     ) {
       Objects.requireNonNull(shared, "shared");
       this.shared = shared;
@@ -101,12 +113,15 @@ public interface Entry {
   }
 
   public static class Foo implements Entry {
+    @JsonProperty("shared")
     private final String shared;
+    @JsonProperty("foo")
     private final String foo;
 
+    @JsonCreator
     public Foo(
-      final String shared,
-      final String foo
+      @JsonProperty("shared") final String shared,
+      @JsonProperty("foo") final String foo
     ) {
       Objects.requireNonNull(shared, "shared");
       this.shared = shared;

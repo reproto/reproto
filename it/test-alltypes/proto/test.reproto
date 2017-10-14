@@ -1,6 +1,7 @@
 type Entry {
     boolean_type?: boolean;
     string_type?: string;
+    datetime_type?: datetime;
     unsigned_type?: unsigned;
     unsigned_sized_type?: unsigned/32;
     signed_type?: signed;

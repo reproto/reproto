@@ -1,15 +1,20 @@
 package test;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
+  @JsonProperty("explicit")
   private final Optional<EnumExplicit> explicit;
+  @JsonProperty("implicit")
   private final Optional<EnumImplicit> implicit;
 
+  @JsonCreator
   public Entry(
-    final Optional<EnumExplicit> explicit,
-    final Optional<EnumImplicit> implicit
+    @JsonProperty("explicit") final Optional<EnumExplicit> explicit,
+    @JsonProperty("implicit") final Optional<EnumImplicit> implicit
   ) {
     Objects.requireNonNull(explicit, "explicit");
     this.explicit = explicit;

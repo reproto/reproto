@@ -1,13 +1,17 @@
 package test;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import java.util.Optional;
 
 public class Bar {
+  @JsonProperty("field")
   private final Bar.Inner field;
 
+  @JsonCreator
   public Bar(
-    final Bar.Inner field
+    @JsonProperty("field") final Bar.Inner field
   ) {
     Objects.requireNonNull(field, "field");
     this.field = field;
@@ -73,10 +77,12 @@ public class Bar {
   }
 
   public static class Inner {
+    @JsonProperty("field")
     private final String field;
 
+    @JsonCreator
     public Inner(
-      final String field
+      @JsonProperty("field") final String field
     ) {
       Objects.requireNonNull(field, "field");
       this.field = field;

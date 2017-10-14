@@ -1,3 +1,5 @@
+use chrono;
+use chrono::offset;
 use serde_json as json;
 use std::collections;
 
@@ -7,6 +9,8 @@ pub struct Entry {
   boolean_type: Option<bool>,
   #[serde(skip_serializing_if="Option::is_none")]
   string_type: Option<String>,
+  #[serde(skip_serializing_if="Option::is_none")]
+  datetime_type: Option<chrono::DateTime<offset::Utc>>,
   #[serde(skip_serializing_if="Option::is_none")]
   unsigned_type: Option<u32>,
   #[serde(skip_serializing_if="Option::is_none")]

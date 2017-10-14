@@ -20,7 +20,7 @@ endef
 
 define it-target-body
 $(1) += $(1)/$(2)
-$(1)/$(2): $$(REPROTO)
+$(1)/$(2): $$(REPROTO) | $(3)
 	$$(MAKE) $$(make-args) -f $$(CURDIR)/tools/Makefile.it -C $(2) $(1)
 endef
 
@@ -32,7 +32,7 @@ endef
 define it-target
 $(eval \
 	$(foreach i,$(IT),\
-		$(call it-target-body,$(1),$(i)) $(\n)) \
+		$(call it-target-body,$(1),$(i),$(3)) $(\n)) \
 	$(call it-target-default,$(1),$(2)) $(\n))
 endef
 
@@ -67,12 +67,14 @@ tests:
 clean: it-clean
 	cargo clean
 
+sync: clean-projects update-projects clean-suites update-suites
+
 $(call it-target,clean,it-clean)
 $(call it-target,suites)
-$(call it-target,update-suites)
+$(call it-target,update-suites,,clean-suites)
 $(call it-target,clean-suites)
 $(call it-target,projects)
-$(call it-target,update-projects)
+$(call it-target,update-projects,,clean-projects)
 $(call it-target,clean-projects)
 
 $(default-reproto): $(CURDIR)/cli/Cargo.toml

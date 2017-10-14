@@ -1,8 +1,9 @@
 
 export class Entry {
-  constructor(boolean_type, string_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, bytes_type, any_type, array_type, map_type) {
+  constructor(boolean_type, string_type, datetime_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, bytes_type, any_type, array_type, map_type) {
     this.boolean_type = boolean_type;
     this.string_type = string_type;
+    this.datetime_type = datetime_type;
     this.unsigned_type = unsigned_type;
     this.unsigned_sized_type = unsigned_sized_type;
     this.signed_type = signed_type;
@@ -30,6 +31,14 @@ export class Entry {
       v_string_type = v_string_type;
     } else {
       v_string_type = null;
+    }
+
+    let v_datetime_type = data["datetime_type"];
+
+    if (v_datetime_type !== null && v_datetime_type !== undefined) {
+      v_datetime_type = v_datetime_type;
+    } else {
+      v_datetime_type = null;
     }
 
     let v_unsigned_type = data["unsigned_type"];
@@ -112,7 +121,7 @@ export class Entry {
       v_map_type = null;
     }
 
-    return new Entry(v_boolean_type, v_string_type, v_unsigned_type, v_unsigned_sized_type, v_signed_type, v_signed_sized_type, v_float_type, v_double_type, v_bytes_type, v_any_type, v_array_type, v_map_type);
+    return new Entry(v_boolean_type, v_string_type, v_datetime_type, v_unsigned_type, v_unsigned_sized_type, v_signed_type, v_signed_sized_type, v_float_type, v_double_type, v_bytes_type, v_any_type, v_array_type, v_map_type);
   }
 
   encode() {
@@ -124,6 +133,10 @@ export class Entry {
 
     if (this.string_type !== null && this.string_type !== undefined) {
       data["string_type"] = this.string_type;
+    }
+
+    if (this.datetime_type !== null && this.datetime_type !== undefined) {
+      data["datetime_type"] = this.datetime_type;
     }
 
     if (this.unsigned_type !== null && this.unsigned_type !== undefined) {

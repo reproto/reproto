@@ -1,7 +1,8 @@
 class Entry:
-  def __init__(self, boolean_type, string_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, bytes_type, any_type, array_type, map_type):
+  def __init__(self, boolean_type, string_type, datetime_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, bytes_type, any_type, array_type, map_type):
     self.boolean_type = boolean_type
     self.string_type = string_type
+    self.datetime_type = datetime_type
     self.unsigned_type = unsigned_type
     self.unsigned_sized_type = unsigned_sized_type
     self.signed_type = signed_type
@@ -30,6 +31,14 @@ class Entry:
         f_string_type = f_string_type
     else:
       f_string_type = None
+
+    if "datetime_type" in data:
+      f_datetime_type = data["datetime_type"]
+
+      if f_datetime_type is not None:
+        f_datetime_type = f_datetime_type
+    else:
+      f_datetime_type = None
 
     if "unsigned_type" in data:
       f_unsigned_type = data["unsigned_type"]
@@ -111,7 +120,7 @@ class Entry:
     else:
       f_map_type = None
 
-    return Entry(f_boolean_type, f_string_type, f_unsigned_type, f_unsigned_sized_type, f_signed_type, f_signed_sized_type, f_float_type, f_double_type, f_bytes_type, f_any_type, f_array_type, f_map_type)
+    return Entry(f_boolean_type, f_string_type, f_datetime_type, f_unsigned_type, f_unsigned_sized_type, f_signed_type, f_signed_sized_type, f_float_type, f_double_type, f_bytes_type, f_any_type, f_array_type, f_map_type)
 
   def encode(self):
     data = dict()
@@ -121,6 +130,9 @@ class Entry:
 
     if self.string_type is not None:
       data["string_type"] = self.string_type
+
+    if self.datetime_type is not None:
+      data["datetime_type"] = self.datetime_type
 
     if self.unsigned_type is not None:
       data["unsigned_type"] = self.unsigned_type
@@ -155,4 +167,4 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry boolean_type: {!r}, string_type: {!r}, unsigned_type: {!r}, unsigned_sized_type: {!r}, signed_type: {!r}, signed_sized_type: {!r}, float_type: {!r}, double_type: {!r}, bytes_type: {!r}, any_type: {!r}, array_type: {!r}, map_type: {!r}>".format(self.boolean_type, self.string_type, self.unsigned_type, self.unsigned_sized_type, self.signed_type, self.signed_sized_type, self.float_type, self.double_type, self.bytes_type, self.any_type, self.array_type, self.map_type)
+    return "<Entry boolean_type: {!r}, string_type: {!r}, datetime_type: {!r}, unsigned_type: {!r}, unsigned_sized_type: {!r}, signed_type: {!r}, signed_sized_type: {!r}, float_type: {!r}, double_type: {!r}, bytes_type: {!r}, any_type: {!r}, array_type: {!r}, map_type: {!r}>".format(self.boolean_type, self.string_type, self.datetime_type, self.unsigned_type, self.unsigned_sized_type, self.signed_type, self.signed_sized_type, self.float_type, self.double_type, self.bytes_type, self.any_type, self.array_type, self.map_type)

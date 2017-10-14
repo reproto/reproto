@@ -1,13 +1,17 @@
 package test;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import java.util.Optional;
 
 public class A {
+  @JsonProperty("b")
   private final A.B b;
 
+  @JsonCreator
   public A(
-    final A.B b
+    @JsonProperty("b") final A.B b
   ) {
     Objects.requireNonNull(b, "b");
     this.b = b;
@@ -73,10 +77,12 @@ public class A {
   }
 
   public static class B {
+    @JsonProperty("field")
     private final String field;
 
+    @JsonCreator
     public B(
-      final String field
+      @JsonProperty("field") final String field
     ) {
       Objects.requireNonNull(field, "field");
       this.field = field;

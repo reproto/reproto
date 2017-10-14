@@ -1,6 +1,7 @@
 Entry {
   boolean_type: true,
   string_type: null,
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: null,
   signed_type: null,
@@ -15,6 +16,7 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: 'foo',
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: null,
   signed_type: null,
@@ -29,6 +31,22 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: null,
+  datetime_type: '2017-10-14T11:42:06Z',
+  unsigned_type: null,
+  unsigned_sized_type: null,
+  signed_type: null,
+  signed_sized_type: null,
+  float_type: null,
+  double_type: null,
+  bytes_type: null,
+  any_type: null,
+  array_type: null,
+  map_type: null }
+{"datetime_type":"2017-10-14T11:42:06Z"}
+Entry {
+  boolean_type: null,
+  string_type: null,
+  datetime_type: null,
   unsigned_type: 42,
   unsigned_sized_type: null,
   signed_type: null,
@@ -43,6 +61,7 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: null,
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: 42,
   signed_type: null,
@@ -57,6 +76,7 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: null,
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: null,
   signed_type: -42,
@@ -71,6 +91,7 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: null,
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: null,
   signed_type: null,
@@ -85,6 +106,7 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: null,
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: null,
   signed_type: null,
@@ -99,6 +121,7 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: null,
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: null,
   signed_type: null,
@@ -113,6 +136,7 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: null,
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: null,
   signed_type: null,
@@ -127,6 +151,7 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: null,
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: null,
   signed_type: null,
@@ -141,6 +166,7 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: null,
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: null,
   signed_type: null,
@@ -153,6 +179,7 @@ Entry {
    [ Entry {
        boolean_type: null,
        string_type: 'foo',
+       datetime_type: null,
        unsigned_type: null,
        unsigned_sized_type: null,
        signed_type: null,
@@ -168,6 +195,7 @@ Entry {
 Entry {
   boolean_type: null,
   string_type: null,
+  datetime_type: null,
   unsigned_type: null,
   unsigned_sized_type: null,
   signed_type: null,
@@ -182,6 +210,7 @@ Entry {
       Entry {
         boolean_type: null,
         string_type: 'foo',
+        datetime_type: null,
         unsigned_type: null,
         unsigned_sized_type: null,
         signed_type: null,

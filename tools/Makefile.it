@@ -8,6 +8,7 @@ RM ?= rm
 CP ?= cp
 DIFF ?= diff
 EXCLUDE ?=
+INCLUDE ?= %
 
 ifeq ($(ROOT),)
 $(error "ROOT: missing variable")
@@ -54,8 +55,8 @@ exclude-suites :=
 
 -include $(or $(target-file),Makefile)
 
-suites := $(filter-out $(EXCLUDE) $(exclude-suites), $(suites))
-projects := $(filter-out $(EXCLUDE) $(exclude-projects), $(PROJECTS))
+suites := $(filter $(INCLUDE), $(filter-out $(EXCLUDE) $(exclude-suites), $(suites)))
+projects := $(filter $(INCLUDE), $(filter-out $(EXCLUDE) $(exclude-projects), $(PROJECTS)))
 
 compile-args := --no-repository $(paths:%=--path %) $(targets:%=--package %)
 
@@ -63,16 +64,16 @@ compile-args := --no-repository $(paths:%=--path %) $(targets:%=--package %)
 java-suite := java $(compile-args) $(java-args)
 js-suite := js $(compile-args) $(js-args)
 python-suite := python $(compile-args) $(python-args)
-python3-suite := python $(compile-args) $(python-args)
+python3-suite := python $(compile-args) $(python3-args)
 rust-suite := rust $(compile-args) $(rust-args)
 doc-suite := doc $(compile-args) --skip-static $(doc-args)
 
 # how to build projects
-java-project := java -m fasterxml $(compile-args) -o $(workdir)/java/target/generated-sources/reproto
-js-project := js $(compile-args) -o $(workdir)/js/generated
-python-project := python $(compile-args) -o $(workdir)/python/generated
-python3-project := python $(compile-args) -o $(workdir)/python3/generated
-rust-project := rust $(compile-args) -o $(workdir)/rust/src --package-prefix generated
+java-project := java $(compile-args) $(java-args) -o $(workdir)/java/target/generated-sources/reproto
+js-project := js $(compile-args) $(js-args) -o $(workdir)/js/generated
+python-project := python $(compile-args) $(python-args) -o $(workdir)/python/generated
+python3-project := python $(compile-args) $(python3-args) -o $(workdir)/python3/generated
+rust-project := rust $(compile-args) $(rust-args) -o $(workdir)/rust/src --package-prefix generated
 
 # base command invocations
 reproto-cmd := $(REPROTO) $(REPROTO_FLAGS)
@@ -120,7 +121,7 @@ project-run-$(1) += $$(output)/project/$(1)/$(2)
 
 $$(output)/project/$(1)/$(2): $$(workdir)/$(1)/script.sh $$(output)/project/$(1)
 	@echo "$$(M): Running Project: $(1) (against $$(input)/$(2))"
-	$$< < $$(input)/$(2) > $$@
+	grep -v '^#' $$(input)/$(2) | $$< > $$@
 endef
 
 define project-targets

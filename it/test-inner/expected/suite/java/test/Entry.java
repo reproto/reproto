@@ -1,15 +1,20 @@
 package test;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
+  @JsonProperty("a")
   private final Optional<A> a;
+  @JsonProperty("b")
   private final Optional<A.B> b;
 
+  @JsonCreator
   public Entry(
-    final Optional<A> a,
-    final Optional<A.B> b
+    @JsonProperty("a") final Optional<A> a,
+    @JsonProperty("b") final Optional<A.B> b
   ) {
     Objects.requireNonNull(a, "a");
     this.a = a;

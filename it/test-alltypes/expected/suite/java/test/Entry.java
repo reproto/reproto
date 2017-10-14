@@ -3,6 +3,7 @@ package test;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -13,6 +14,8 @@ public class Entry {
   private final Optional<Boolean> booleanType;
   @JsonProperty("string_type")
   private final Optional<String> stringType;
+  @JsonProperty("datetime_type")
+  private final Optional<Instant> datetimeType;
   @JsonProperty("unsigned_type")
   private final Optional<Integer> unsignedType;
   @JsonProperty("unsigned_sized_type")
@@ -38,6 +41,7 @@ public class Entry {
   public Entry(
     @JsonProperty("boolean_type") final Optional<Boolean> booleanType,
     @JsonProperty("string_type") final Optional<String> stringType,
+    @JsonProperty("datetime_type") final Optional<Instant> datetimeType,
     @JsonProperty("unsigned_type") final Optional<Integer> unsignedType,
     @JsonProperty("unsigned_sized_type") final Optional<Integer> unsignedSizedType,
     @JsonProperty("signed_type") final Optional<Integer> signedType,
@@ -53,6 +57,8 @@ public class Entry {
     this.booleanType = booleanType;
     Objects.requireNonNull(stringType, "stringType");
     this.stringType = stringType;
+    Objects.requireNonNull(datetimeType, "datetimeType");
+    this.datetimeType = datetimeType;
     Objects.requireNonNull(unsignedType, "unsignedType");
     this.unsignedType = unsignedType;
     Objects.requireNonNull(unsignedSizedType, "unsignedSizedType");
@@ -81,6 +87,10 @@ public class Entry {
 
   public Optional<String> getStringType() {
     return this.stringType;
+  }
+
+  public Optional<Instant> getDatetimeType() {
+    return this.datetimeType;
   }
 
   public Optional<Integer> getUnsignedType() {
@@ -128,6 +138,7 @@ public class Entry {
     int result = 1;
     result = result * 31 + this.booleanType.hashCode();
     result = result * 31 + this.stringType.hashCode();
+    result = result * 31 + this.datetimeType.hashCode();
     result = result * 31 + this.unsignedType.hashCode();
     result = result * 31 + this.unsignedSizedType.hashCode();
     result = result * 31 + this.signedType.hashCode();
@@ -159,6 +170,10 @@ public class Entry {
     }
 
     if (!this.stringType.equals(o.stringType)) {
+      return false;
+    }
+
+    if (!this.datetimeType.equals(o.datetimeType)) {
       return false;
     }
 
@@ -217,6 +232,9 @@ public class Entry {
     b.append("stringType=");
     b.append(this.stringType.toString());
     b.append(", ");
+    b.append("datetimeType=");
+    b.append(this.datetimeType.toString());
+    b.append(", ");
     b.append("unsignedType=");
     b.append(this.unsignedType.toString());
     b.append(", ");
@@ -254,6 +272,7 @@ public class Entry {
   public static class Builder {
     private Optional<Boolean> booleanType = Optional.empty();
     private Optional<String> stringType = Optional.empty();
+    private Optional<Instant> datetimeType = Optional.empty();
     private Optional<Integer> unsignedType = Optional.empty();
     private Optional<Integer> unsignedSizedType = Optional.empty();
     private Optional<Integer> signedType = Optional.empty();
@@ -272,6 +291,11 @@ public class Entry {
 
     public Builder stringType(final String stringType) {
       this.stringType = Optional.of(stringType);
+      return this;
+    }
+
+    public Builder datetimeType(final Instant datetimeType) {
+      this.datetimeType = Optional.of(datetimeType);
       return this;
     }
 
@@ -328,6 +352,7 @@ public class Entry {
     public Entry build() {
       final Optional<Boolean> booleanType = this.booleanType;
       final Optional<String> stringType = this.stringType;
+      final Optional<Instant> datetimeType = this.datetimeType;
       final Optional<Integer> unsignedType = this.unsignedType;
       final Optional<Integer> unsignedSizedType = this.unsignedSizedType;
       final Optional<Integer> signedType = this.signedType;
@@ -339,7 +364,7 @@ public class Entry {
       final Optional<List<Entry>> arrayType = this.arrayType;
       final Optional<Map<String, Entry>> mapType = this.mapType;
 
-      return new Entry(booleanType, stringType, unsignedType, unsignedSizedType, signedType, signedSizedType, floatType, doubleType, bytesType, anyType, arrayType, mapType);
+      return new Entry(booleanType, stringType, datetimeType, unsignedType, unsignedSizedType, signedType, signedSizedType, floatType, doubleType, bytesType, anyType, arrayType, mapType);
     }
   }
 }
