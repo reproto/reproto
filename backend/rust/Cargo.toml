@@ -1,6 +1,6 @@
 [package]
 name = "reproto-backend-rust"
-version = "0.1.6"
+version = "0.2.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
@@ -12,8 +12,8 @@ Rethinking Protocol Generators
 """
 
 [dependencies]
-reproto-backend = {path = "..", version = "0.1"}
-reproto-core = {path = "../../core", version = "0.1"}
+reproto-backend = {path = "..", version = "0.2"}
+reproto-core = {path = "../../core", version = "0.2"}
 
 log = "0.3"
 genco = {version = "0.1"}
