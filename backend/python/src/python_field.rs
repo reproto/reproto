@@ -1,7 +1,7 @@
 use core::{RpModifier, RpType};
 use std::rc::Rc;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct PythonField<'a> {
     pub modifier: &'a RpModifier,
     pub ty: &'a RpType,
