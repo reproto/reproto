@@ -1,2 +1,6 @@
-<Entry thing: <Thing name: u'The Thing', other: <Other name: u'The Other Thing'>, other2: <Other name2: u'The Other-Other Thing'>>>
-{"thing": {"other": {"name": "The Other Thing"}, "name": "The Thing", "other2": {"name2": "The Other-Other Thing"}}}
+<Entry thing: <Thing name: u'The Thing', other: None, other2: None>>
+{"thing": {"name": "The Thing"}}
+<Entry thing: <Thing name: None, other: <Other name: u'The Other Thing'>, other2: None>>
+{"thing": {"other": {"name": "The Other Thing"}}}
+<Entry thing: <Thing name: None, other: None, other2: <Other name2: u'The Other-Other Thing'>>>
+{"thing": {"other2": {"name2": "The Other-Other Thing"}}}

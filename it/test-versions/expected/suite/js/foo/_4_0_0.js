@@ -9,22 +9,28 @@ export class Thing {
   }
 
   static decode(data) {
-    const v_name = data["name"];
+    let v_name = data["name"];
 
-    if (v_name === null || v_name === undefined) {
-      throw new Error("name" + ": required field");
+    if (v_name !== null && v_name !== undefined) {
+      v_name = v_name;
+    } else {
+      v_name = null;
     }
 
-    const v_other = bar.Other.decode(data["other"]);
+    let v_other = data["other"];
 
-    if (v_other === null || v_other === undefined) {
-      throw new Error("other" + ": required field");
+    if (v_other !== null && v_other !== undefined) {
+      v_other = bar.Other.decode(v_other);
+    } else {
+      v_other = null;
     }
 
-    const v_other2 = bar2.Other.decode(data["other2"]);
+    let v_other2 = data["other2"];
 
-    if (v_other2 === null || v_other2 === undefined) {
-      throw new Error("other2" + ": required field");
+    if (v_other2 !== null && v_other2 !== undefined) {
+      v_other2 = bar2.Other.decode(v_other2);
+    } else {
+      v_other2 = null;
     }
 
     return new Thing(v_name, v_other, v_other2);
@@ -33,23 +39,17 @@ export class Thing {
   encode() {
     const data = {};
 
-    if (this.name === null || this.name === undefined) {
-      throw new Error("name: is a required field");
+    if (this.name !== null && this.name !== undefined) {
+      data["name"] = this.name;
     }
 
-    data["name"] = this.name;
-
-    if (this.other === null || this.other === undefined) {
-      throw new Error("other: is a required field");
+    if (this.other !== null && this.other !== undefined) {
+      data["other"] = this.other.encode();
     }
 
-    data["other"] = this.other.encode();
-
-    if (this.other2 === null || this.other2 === undefined) {
-      throw new Error("other2: is a required field");
+    if (this.other2 !== null && this.other2 !== undefined) {
+      data["other2"] = this.other2.encode();
     }
-
-    data["other2"] = this.other2.encode();
 
     return data;
   }

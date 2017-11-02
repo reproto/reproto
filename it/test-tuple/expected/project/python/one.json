@@ -1,0 +1,4 @@
+<Entry tuple1: <Tuple1 a: u'foo', b: 42>, tuple2: None>
+{"tuple1": ["foo", 42]}
+<Entry tuple1: None, tuple2: <Tuple2 a: u'bar', b: <Other a: u'foo'>>>
+{"tuple2": ["bar", {"a": "foo"}]}

@@ -18,8 +18,12 @@
 {"double_type": 42.42}
 <Entry boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: 'YW55IGNhcm5hbCBwbGVhcw==', any_type: None, array_type: None, map_type: None>
 {"bytes_type": "YW55IGNhcm5hbCBwbGVhcw=="}
-<Entry boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: {'foo': 'bar', 'baz': 42}, array_type: None, map_type: None>
-{"any_type": {"foo": "bar", "baz": 42}}
+<Entry boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: {'baz': 42}, array_type: None, map_type: None>
+{"any_type": {"baz": 42}}
+<Entry boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: {'foo': 'bar'}, array_type: None, map_type: None>
+{"any_type": {"foo": "bar"}}
+<Entry boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: 42, array_type: None, map_type: None>
+{"any_type": 42}
 <Entry boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: [<Entry boolean_type: None, string_type: 'foo', datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>], map_type: None>
 {"array_type": [{"string_type": "foo"}]}
 <Entry boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: {'foo': <Entry boolean_type: None, string_type: 'foo', datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None>}>

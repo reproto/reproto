@@ -9,31 +9,43 @@ class Thing:
 
   @staticmethod
   def decode(data):
-    f_name = data["name"]
+    if "name" in data:
+      f_name = data["name"]
 
-    f_other = bar.Other.decode(data["other"])
+      if f_name is not None:
+        f_name = f_name
+    else:
+      f_name = None
 
-    f_other2 = bar2.Other.decode(data["other2"])
+    if "other" in data:
+      f_other = data["other"]
+
+      if f_other is not None:
+        f_other = bar.Other.decode(f_other)
+    else:
+      f_other = None
+
+    if "other2" in data:
+      f_other2 = data["other2"]
+
+      if f_other2 is not None:
+        f_other2 = bar2.Other.decode(f_other2)
+    else:
+      f_other2 = None
 
     return Thing(f_name, f_other, f_other2)
 
   def encode(self):
     data = dict()
 
-    if self.name is None:
-      raise Exception("name: is a required field")
+    if self.name is not None:
+      data["name"] = self.name
 
-    data["name"] = self.name
+    if self.other is not None:
+      data["other"] = self.other.encode()
 
-    if self.other is None:
-      raise Exception("other: is a required field")
-
-    data["other"] = self.other.encode()
-
-    if self.other2 is None:
-      raise Exception("other2: is a required field")
-
-    data["other2"] = self.other2.encode()
+    if self.other2 is not None:
+      data["other2"] = self.other2.encode()
 
     return data
 

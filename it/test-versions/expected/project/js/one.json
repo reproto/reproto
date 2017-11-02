@@ -1,7 +1,17 @@
 Entry {
+  thing: Thing { name: 'The Thing', other: null, other2: null } }
+{"thing":{"name":"The Thing"}}
+Entry {
   thing: 
    Thing {
-     name: 'The Thing',
+     name: null,
      other: Other { name: 'The Other Thing' },
+     other2: null } }
+{"thing":{"other":{"name":"The Other Thing"}}}
+Entry {
+  thing: 
+   Thing {
+     name: null,
+     other: null,
      other2: Other { name2: 'The Other-Other Thing' } } }
-{"thing":{"name":"The Thing","other":{"name":"The Other Thing"},"other2":{"name2":"The Other-Other Thing"}}}
+{"thing":{"other2":{"name2":"The Other-Other Thing"}}}

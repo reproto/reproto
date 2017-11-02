@@ -1,0 +1,2 @@
+{"tuple1": ["foo", 42]}
+{"tuple2": ["bar", {"a": "foo"}]}

@@ -1,0 +1,21 @@
+type Entry {
+    tuple1?: Tuple1;
+    tuple2?: Tuple2;
+}
+
+/// Tuple containing primitive.
+tuple Tuple1 {
+    a: string;
+    b: unsigned/64;
+}
+
+/// Tuple containing object.
+tuple Tuple2 {
+    a: string;
+    b: Other;
+}
+
+/// Complex object.
+type Other {
+    a: string;
+}

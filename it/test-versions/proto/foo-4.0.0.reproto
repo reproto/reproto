@@ -2,7 +2,7 @@ use bar@^1;
 use bar@^2 as bar2;
 
 type Thing {
-  name: string;
-  other: bar::Other;
-  other2: bar2::Other;
+  name?: string;
+  other?: bar::Other;
+  other2?: bar2::Other;
 }

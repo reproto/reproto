@@ -159,10 +159,40 @@ Entry {
   float_type: null,
   double_type: null,
   bytes_type: null,
-  any_type: { foo: 'bar', baz: 42 },
+  any_type: { baz: 42 },
   array_type: null,
   map_type: null }
-{"any_type":{"foo":"bar","baz":42}}
+{"any_type":{"baz":42}}
+Entry {
+  boolean_type: null,
+  string_type: null,
+  datetime_type: null,
+  unsigned_type: null,
+  unsigned_sized_type: null,
+  signed_type: null,
+  signed_sized_type: null,
+  float_type: null,
+  double_type: null,
+  bytes_type: null,
+  any_type: { foo: 'bar' },
+  array_type: null,
+  map_type: null }
+{"any_type":{"foo":"bar"}}
+Entry {
+  boolean_type: null,
+  string_type: null,
+  datetime_type: null,
+  unsigned_type: null,
+  unsigned_sized_type: null,
+  signed_type: null,
+  signed_sized_type: null,
+  float_type: null,
+  double_type: null,
+  bytes_type: null,
+  any_type: 42,
+  array_type: null,
+  map_type: null }
+{"any_type":42}
 Entry {
   boolean_type: null,
   string_type: null,

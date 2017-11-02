@@ -1,0 +1,6 @@
+Entry { tuple1: Tuple1 { a: 'foo', b: 42 }, tuple2: null }
+{"tuple1":["foo",42]}
+Entry {
+  tuple1: null,
+  tuple2: Tuple2 { a: 'bar', b: Other { a: 'foo' } } }
+{"tuple2":["bar",{"a":"foo"}]}

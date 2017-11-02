@@ -8,17 +8,17 @@ import java.util.Optional;
 
 public class Thing {
   @JsonProperty("name")
-  private final String name;
+  private final Optional<String> name;
   @JsonProperty("other")
-  private final Other other;
+  private final Optional<Other> other;
   @JsonProperty("other2")
-  private final bar._2_0_0.Other other2;
+  private final Optional<bar._2_0_0.Other> other2;
 
   @JsonCreator
   public Thing(
-    @JsonProperty("name") final String name,
-    @JsonProperty("other") final Other other,
-    @JsonProperty("other2") final bar._2_0_0.Other other2
+    @JsonProperty("name") final Optional<String> name,
+    @JsonProperty("other") final Optional<Other> other,
+    @JsonProperty("other2") final Optional<bar._2_0_0.Other> other2
   ) {
     Objects.requireNonNull(name, "name");
     this.name = name;
@@ -28,15 +28,15 @@ public class Thing {
     this.other2 = other2;
   }
 
-  public String getName() {
+  public Optional<String> getName() {
     return this.name;
   }
 
-  public Other getOther() {
+  public Optional<Other> getOther() {
     return this.other;
   }
 
-  public bar._2_0_0.Other getOther2() {
+  public Optional<bar._2_0_0.Other> getOther2() {
     return this.other2;
   }
 
@@ -117,9 +117,9 @@ public class Thing {
     }
 
     public Thing build() {
-      final String name = this.name.orElseThrow(() -> new RuntimeException("name: is required"));
-      final Other other = this.other.orElseThrow(() -> new RuntimeException("other: is required"));
-      final bar._2_0_0.Other other2 = this.other2.orElseThrow(() -> new RuntimeException("other2: is required"));
+      final Optional<String> name = this.name;
+      final Optional<Other> other = this.other;
+      final Optional<bar._2_0_0.Other> other2 = this.other2;
 
       return new Thing(name, other, other2);
     }

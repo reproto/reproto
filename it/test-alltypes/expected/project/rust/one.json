@@ -18,8 +18,12 @@ Entry { boolean_type: None, string_type: None, datetime_type: None, unsigned_typ
 {"double_type":42.42}
 Entry { boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: Some("YW55IGNhcm5hbCBwbGVhcw=="), any_type: None, array_type: None, map_type: None }
 {"bytes_type":"YW55IGNhcm5hbCBwbGVhcw=="}
-Entry { boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: Some(Object({"baz": Number(PosInt(42)), "foo": String("bar")})), array_type: None, map_type: None }
-{"any_type":{"baz":42,"foo":"bar"}}
+Entry { boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: Some(Object({"baz": Number(PosInt(42))})), array_type: None, map_type: None }
+{"any_type":{"baz":42}}
+Entry { boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: Some(Object({"foo": String("bar")})), array_type: None, map_type: None }
+{"any_type":{"foo":"bar"}}
+Entry { boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: Some(Number(PosInt(42))), array_type: None, map_type: None }
+{"any_type":42}
 Entry { boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: Some([Entry { boolean_type: None, string_type: Some("foo"), datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None }]), map_type: None }
 {"array_type":[{"string_type":"foo"}]}
 Entry { boolean_type: None, string_type: None, datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: Some({"foo": Entry { boolean_type: None, string_type: Some("foo"), datetime_type: None, unsigned_type: None, unsigned_sized_type: None, signed_type: None, signed_sized_type: None, float_type: None, double_type: None, bytes_type: None, any_type: None, array_type: None, map_type: None }}) }
