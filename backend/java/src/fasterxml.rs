@@ -102,10 +102,9 @@ impl Module {
         name: Cons<'el>,
         fields: &mut [Field<'el>],
     ) -> Result<Class<'el>> {
-        let mut class = Class::new("Serializer");
-        let ty = local(name.clone());
+        use self::Modifier::*;
 
-        class.extends = Some(self.serializer.with_arguments(vec![ty.clone()]));
+        let ty = local(name.clone());
 
         let value = Argument::new(ty.clone(), "value");
         let jgen = Argument::new(self.generator.clone(), "jgen");
@@ -115,8 +114,8 @@ impl Module {
 
         serialize.push(toks!("@", self.override_.clone()));
         serialize.push(toks![
-            "public serialize(",
-            toks![value.var(), jgen.var(), provider.var()].join_spacing(),
+            "public void serialize(",
+            toks![value.into_tokens(), jgen.into_tokens(), provider.into_tokens()].join(", "),
             ") throws ",
             self.io_exception.clone(),
             " {",
@@ -156,6 +155,9 @@ impl Module {
 
         serialize.push("}");
 
+        let mut class = Class::new("Serializer");
+        class.modifiers.push(Static);
+        class.extends = Some(self.serializer.with_arguments(vec![ty.clone()]));
         class.body.push(serialize);
         Ok(class)
     }
@@ -245,9 +247,9 @@ impl Module {
     {
         let mut arguments = Tokens::new();
 
-        arguments.push(parser.into());
-        arguments.push(toks![self.token.clone(), ".", token.into()]);
-        arguments.push("null");
+        arguments.append(parser.into());
+        arguments.append(toks![self.token.clone(), ".", token.into()]);
+        arguments.append("null");
 
         toks![
             "throw ",
@@ -276,7 +278,7 @@ impl Module {
         deserialize.push(toks!("@", self.override_.clone()));
         deserialize.push(toks![
             "public ", ty.clone(), " deserialize(",
-            toks![parser, ctxt].join_spacing(),
+            toks![parser, ctxt].join(", "),
             ") throws ",
             self.io_exception.clone(),
             " {",
@@ -309,6 +311,8 @@ impl Module {
                     field_check.nested(self.wrong_token("ctxt", "parser", expected));
                     field_check.push("}");
                     body.push(field_check);
+                } else {
+                    body.push("parser.nextToken();");
                 }
 
                 let variable = toks!["v_", field.var()];
@@ -323,7 +327,7 @@ impl Module {
                         ";",
                     ];
                 body.push(assign);
-                arguments.push(variable);
+                arguments.append(variable);
             }
 
             let mut end_array = Tokens::new();
@@ -384,6 +388,7 @@ impl Module {
         ));
 
         spec.annotation(toks![
+            "@",
             self.serialize.clone(),
             "(using = ",
             serializer_type,
