@@ -138,9 +138,10 @@ A versioned specification is one that has a version in its filename.
 The version string follows [Semantic Versioning][semver], but the following is a brief
 description of what is permitted.
 
-The version number must follow semantic versioning (`1.2.0`).
-Pre-releases are also supported by appending a hyphen and a series of dot-separated identifiers
-(e.g. `1.2.1-beta1`).
+The version number must follow semantic versioning. For example, `1.2.0`.
+
+Pre-releases are also supported by appending a hyphen and a series of dot-separated identifiers.
+For example, `1.2.1-beta1`.
 
 [semver-2]: https://semver.org
 
@@ -169,10 +170,22 @@ use foo.bar@^1 as b1;
 use foo.bar@>=2.0.0 as b2;
 ```
 
+If a version requirement is absent, the most recent version will be picked.
+
 A full list of supported specification is documented in the [`semver` package
 documentation][semver-package-requirements].
 
 Note that multiple versions of the same package may be imported.
+
+This would typically cause naming conflicts in most target languages, reproto addresses this by
+building packages that are named according to which major version of the specification is used.
+
+The following are a few examples for Java:
+
+* `petstore-1.0.0`, would have the package `petstore.v1`.
+* `petstore-0.1.0`, would have the package `petstore._0_1_0`.
+* `petstore-0.0.1`, would have the package `petstore._0_0_1`.
+* `petstore-0.0.1-alpha1`, would have the package `petstore._0_0_1`.
 
 [semver-package-requirements]: https://docs.rs/semver/0.7.0/semver/#requirements
 
