@@ -1,3 +1,5 @@
+//! Utilities for loading configuration files.
+
 use errors::*;
 use std::fs::File;
 use std::io::Read;

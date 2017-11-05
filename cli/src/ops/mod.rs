@@ -1,15 +1,18 @@
-mod verify;
 mod compile;
-mod publish;
-mod update;
-mod repo;
-mod imports;
 mod config_env;
+mod imports;
+mod manifest;
+mod publish;
+mod repo;
+mod update;
+mod verify;
 
 use self::config_env::ConfigEnv;
 use self::imports::*;
 use backend::{CamelCase, FromNaming, Naming, SnakeCase};
+use core::Manifest;
 use repository::*;
+use std::env;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -77,6 +80,13 @@ pub fn path_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
             .multiple(true)
             .number_of_values(1)
             .help("Paths to look for definitions."),
+    );
+
+    let out = out.arg(
+        Arg::with_name("manifest-path")
+            .long("manifest-path")
+            .takes_value(true)
+            .help("Path to manifest to build"),
     );
 
     out
@@ -207,14 +217,19 @@ pub fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
     Ok(Repository::new(index, objects))
 }
 
-pub fn setup_path_resolver(matches: &ArgMatches) -> Result<Option<Box<Resolver>>> {
-    let paths: Vec<::std::path::PathBuf> = matches
+pub fn setup_path_resolver(
+    manifest: &Manifest,
+    matches: &ArgMatches,
+) -> Result<Option<Box<Resolver>>> {
+    let mut paths: Vec<PathBuf> = matches
         .values_of("path")
         .into_iter()
         .flat_map(|it| it)
         .map(Path::new)
         .map(ToOwned::to_owned)
         .collect();
+
+    paths.extend(manifest.paths.iter().cloned());
 
     if paths.is_empty() {
         return Ok(None);
@@ -223,10 +238,10 @@ pub fn setup_path_resolver(matches: &ArgMatches) -> Result<Option<Box<Resolver>>
     Ok(Some(Box::new(Paths::new(paths))))
 }
 
-pub fn setup_resolvers(matches: &ArgMatches) -> Result<Box<Resolver>> {
+pub fn setup_resolvers(manifest: &Manifest, matches: &ArgMatches) -> Result<Box<Resolver>> {
     let mut resolvers: Vec<Box<Resolver>> = Vec::new();
 
-    if let Some(resolver) = setup_path_resolver(matches)? {
+    if let Some(resolver) = setup_path_resolver(manifest, matches)? {
         resolvers.push(resolver);
     }
 
@@ -254,22 +269,34 @@ pub fn setup_options(matches: &ArgMatches) -> Result<Options> {
     })
 }
 
-pub fn setup_packages(matches: &ArgMatches) -> Result<Vec<RpRequiredPackage>> {
+pub fn setup_packages(manifest: &Manifest, matches: &ArgMatches) -> Result<Vec<RpRequiredPackage>> {
     let mut packages = Vec::new();
+
+    for package in &manifest.packages {
+        let parsed = parse_package(package);
+
+        let parsed = parsed.chain_err(
+            || format!("failed to parse package: {}", package),
+        )?;
+
+        packages.push(parsed);
+    }
 
     for package in matches.values_of("package").into_iter().flat_map(|it| it) {
         let parsed = parse_package(package);
+
         let parsed = parsed.chain_err(|| {
             format!("failed to parse --package argument: {}", package)
         })?;
+
         packages.push(parsed);
     }
 
     Ok(packages)
 }
 
-pub fn setup_environment(matches: &ArgMatches) -> Result<Environment> {
-    let resolvers = setup_resolvers(matches)?;
+pub fn setup_environment(manifest: &Manifest, matches: &ArgMatches) -> Result<Environment> {
+    let resolvers = setup_resolvers(manifest, matches)?;
 
     let package_prefix = matches.value_of("package-prefix").map(ToOwned::to_owned);
 
@@ -278,6 +305,24 @@ pub fn setup_environment(matches: &ArgMatches) -> Result<Environment> {
     });
 
     Ok(Environment::new(package_prefix, resolvers))
+}
+
+/// Read the manifest based on the current environment.
+pub fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
+    let mut manifest = Manifest::new();
+
+    let manifest_path: PathBuf =
+        matches
+            .value_of("manifest-path")
+            .map::<Result<PathBuf>, _>(|p| Ok(Path::new(p).to_owned()))
+            .unwrap_or_else(|| Ok(env::current_dir()?.join("reproto.toml")))?;
+
+    if manifest_path.is_file() {
+        debug!("reading manifest: {}", manifest_path.display());
+        read_manifest(&mut manifest, manifest_path)?;
+    }
+
+    Ok(manifest)
 }
 
 pub fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<PathBuf> {
@@ -290,10 +335,11 @@ pub fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<PathBuf> {
         .collect()
 }
 
-pub fn setup_env(matches: &ArgMatches) -> Result<Environment> {
+pub fn setup_env(matches: &ArgMatches) -> Result<(Manifest, Environment)> {
+    let manifest = setup_manifest(matches)?;
     let files = setup_files(matches);
-    let packages = setup_packages(matches)?;
-    let mut env = setup_environment(matches)?;
+    let packages = setup_packages(&manifest, matches)?;
+    let mut env = setup_environment(&manifest, matches)?;
 
     let mut errors = Vec::new();
 
@@ -319,7 +365,7 @@ pub fn setup_env(matches: &ArgMatches) -> Result<Environment> {
         return Err(ErrorKind::Errors(errors).into());
     }
 
-    Ok(env)
+    Ok((manifest, env))
 }
 
 pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
@@ -328,6 +374,7 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.subcommand(publish::options());
     let out = out.subcommand(update::options());
     let out = out.subcommand(repo::options());
+    let out = out.subcommand(manifest::options());
     out
 }
 
@@ -341,6 +388,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         "publish" => self::publish::entry(matches),
         "update" => self::update::entry(matches),
         "repo" => self::repo::entry(matches),
+        "manifest" => self::manifest::entry(matches),
         _ => Err(format!("No such command: {}", name).into()),
     }
 }

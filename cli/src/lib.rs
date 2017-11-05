@@ -24,5 +24,6 @@ extern crate url;
 
 pub mod ops;
 pub mod config;
+pub mod manifest;
 pub mod errors;
 pub mod output;

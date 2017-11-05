@@ -3,6 +3,7 @@
 See [TODO](todo.md) for things that are work in progress.
 
 * [Introduction](#introduction)
+* [Manifests](#manifests)
 * [File Structure](#file-structure)
 * [Distribution](#distribution)
 * [Specifications](#specifications)
@@ -81,6 +82,42 @@ final GraphsResponse response =
 ```
 
 [fasterxml]: https://github.com/FasterXML/jackson-databind
+
+## Manifests
+
+ReProto supports loading project manifests describing what should be built.
+
+These can be stored with the project, and describes how and what should be built.
+
+```toml
+packages = [
+    "petstore"
+]
+
+# Path to put generated sources
+output = "target/generated"
+
+# Presets
+[[presets]]]
+type = "maven"
+```
+
+### Presets
+
+Presets are bundles of configuration that can be activated through the `presets` key.
+
+Activated presets are determined by their `type`.
+
+The available types and their corresponding options are documented in this section.
+
+#### Maven `type = "maven"`
+
+This preset is equivalent to the following manifest:
+
+```toml
+paths = ["src/main/reproto"]
+output = "target/generated/reproto/java"
+```
 
 ## File Structure
 

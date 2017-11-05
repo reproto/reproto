@@ -29,13 +29,15 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 }
 
 pub fn entry(matches: &ArgMatches) -> Result<()> {
+    let manifest = setup_manifest(matches)?;
+
     let mut repository = setup_repository(matches)?;
 
-    let mut resolver = setup_path_resolver(matches)?.ok_or_else(|| {
+    let mut resolver = setup_path_resolver(&manifest, matches)?.ok_or_else(|| {
         "could not setup path resolver"
     })?;
 
-    let packages = setup_packages(matches)?;
+    let packages = setup_packages(&manifest, matches)?;
 
     for package in packages {
         let results = resolver.resolve(&package)?;
