@@ -47,6 +47,8 @@ pub struct FileManifest {
     #[serde(default)]
     packages: Vec<String>,
     #[serde(default)]
+    modules: Vec<String>,
+    #[serde(default)]
     presets: Vec<Preset>,
     #[serde(default)]
     paths: Vec<RelativePathBuf>,
@@ -59,6 +61,8 @@ pub struct FileManifest {
 pub struct Manifest {
     /// Packages to build.
     pub packages: Vec<String>,
+    /// Modules to enable.
+    pub modules: Vec<String>,
     /// Additional paths specified.
     pub paths: Vec<PathBuf>,
     /// Output directory.
@@ -69,6 +73,7 @@ impl Manifest {
     pub fn new() -> Manifest {
         Manifest {
             packages: vec![],
+            modules: vec![],
             paths: vec![],
             output: None,
         }
@@ -86,6 +91,7 @@ pub fn load_manifest(
 ) -> Result<()> {
 
     manifest.packages.extend(file_manifest.packages);
+    manifest.modules.extend(file_manifest.modules);
 
     let base = base.canonicalize()?;
 

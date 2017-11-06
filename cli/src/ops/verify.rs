@@ -21,8 +21,8 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     let (name, matches) = matches.subcommand();
     let matches = matches.ok_or_else(|| "no subcommand")?;
 
-    let (_, env) = setup_env(matches)?;
-    let options = setup_options(matches)?;
+    let (manifest, env) = setup_env(matches)?;
+    let options = setup_options(&manifest, matches)?;
 
     let result = match name {
         "doc" => doc::verify(env, options, matches),

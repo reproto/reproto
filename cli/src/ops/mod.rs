@@ -249,7 +249,7 @@ pub fn setup_resolvers(manifest: &Manifest, matches: &ArgMatches) -> Result<Box<
     Ok(Box::new(Resolvers::new(resolvers)))
 }
 
-pub fn setup_options(matches: &ArgMatches) -> Result<Options> {
+pub fn setup_options(manifest: &Manifest, matches: &ArgMatches) -> Result<Options> {
     let id_converter = if let Some(id_converter) = matches.value_of("id-converter") {
         Some(parse_id_converter(&id_converter)?)
     } else {
@@ -261,6 +261,7 @@ pub fn setup_options(matches: &ArgMatches) -> Result<Options> {
         .into_iter()
         .flat_map(|it| it)
         .map(ToOwned::to_owned)
+        .chain(manifest.modules.iter().cloned())
         .collect();
 
     Ok(Options {

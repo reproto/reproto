@@ -48,7 +48,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     let matches = matches.ok_or_else(|| "no subcommand")?;
 
     let (manifest, env) = setup_env(matches)?;
-    let options = setup_options(matches)?;
+    let options = setup_options(&manifest, matches)?;
     let compiler_options = setup_compiler_options(&manifest, matches)?;
 
     let result = match name {
