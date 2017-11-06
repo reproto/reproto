@@ -1,6 +1,6 @@
 [package]
 name = "reproto"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
@@ -16,17 +16,17 @@ ReProto Compiler
 tracing = []
 
 [dependencies]
-reproto-core = {path = "../core", version = "0.2"}
-reproto-manifest = {path = "../manifest", version = "0.2"}
-reproto-parser = {path = "../parser", version = "0.2"}
-reproto-repository = {path = "../repository", version = "0.2"}
-reproto-backend = {path = "../backend", version = "0.2"}
-reproto-backend-doc = {path = "../backend/doc", version = "0.2"}
-reproto-backend-java = {path = "../backend/java", version = "0.2"}
-reproto-backend-js = {path = "../backend/js", version = "0.2"}
-reproto-backend-json = {path = "../backend/json", version = "0.2"}
-reproto-backend-python = {path = "../backend/python", version = "0.2"}
-reproto-backend-rust = {path = "../backend/rust", version = "0.2"}
+reproto-core = {path = "../core", version = "0.3"}
+reproto-manifest = {path = "../manifest", version = "0.3"}
+reproto-parser = {path = "../parser", version = "0.3"}
+reproto-repository = {path = "../repository", version = "0.3"}
+reproto-backend = {path = "../backend", version = "0.3"}
+reproto-backend-doc = {path = "../backend/doc", version = "0.3"}
+reproto-backend-java = {path = "../backend/java", version = "0.3"}
+reproto-backend-js = {path = "../backend/js", version = "0.3"}
+reproto-backend-json = {path = "../backend/json", version = "0.3"}
+reproto-backend-python = {path = "../backend/python", version = "0.3"}
+reproto-backend-rust = {path = "../backend/rust", version = "0.3"}
 
 ansi_term = "0.9"
 atty = "0.2"

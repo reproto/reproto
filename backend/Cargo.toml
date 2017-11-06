@@ -1,6 +1,6 @@
 [package]
 name = "reproto-backend"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
@@ -12,9 +12,9 @@ Rethinking Protocol Generators
 """
 
 [dependencies]
-reproto-core = {path = "../core", version = "0.2"}
-reproto-parser = {path = "../parser", version = "0.2"}
-reproto-repository = {path = "../repository", version = "0.2"}
+reproto-core = {path = "../core", version = "0.3"}
+reproto-parser = {path = "../parser", version = "0.3"}
+reproto-repository = {path = "../repository", version = "0.3"}
 
 error-chain = "0.11"
 log = "0.3"
