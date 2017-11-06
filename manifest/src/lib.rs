@@ -66,7 +66,7 @@ pub fn parse_package(name: &str, value: toml::Value) -> Result<RpRequiredPackage
                 format!("bad version: {}: {}", e, version)
             })?;
 
-            let version_req = if version_req == VersionReq::any() {
+            let version_req = if version_req.is_wildcard() {
                 None
             } else {
                 Some(version_req)

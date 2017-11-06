@@ -80,15 +80,13 @@ impl Paths {
                         continue;
                     }
 
-                    if *version_req == VersionReq::any() {
-                        let object = PathObject::new(&p);
-                        files.insert(None, Box::new(object));
+                    if !version_req.is_wildcard() {
                         continue;
                     }
-                } else {
-                    let object = PathObject::new(&p);
-                    files.insert(version, Box::new(object));
                 }
+
+                let object = PathObject::new(&p);
+                files.insert(None, Box::new(object));
             }
         }
 
