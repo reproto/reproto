@@ -17,6 +17,7 @@ extern crate reproto_backend_json;
 extern crate reproto_backend_python;
 extern crate reproto_backend_rust;
 extern crate reproto_core as core;
+extern crate reproto_manifest as manifest;
 extern crate reproto_parser as parser;
 extern crate reproto_repository as repository;
 extern crate toml;
@@ -24,6 +25,5 @@ extern crate url;
 
 pub mod ops;
 pub mod config;
-pub mod manifest;
 pub mod errors;
 pub mod output;

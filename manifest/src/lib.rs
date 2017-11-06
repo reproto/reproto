@@ -3,8 +3,21 @@
 //! Project manifests can be loaded as a convenient method for setting up language or
 //! project-specific configuration for reproto.
 
-use super::errors::*;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate error_chain;
+extern crate serde;
+extern crate semver;
+extern crate relative_path;
+extern crate toml;
+
+pub mod errors;
+
+use errors::*;
 use relative_path::RelativePathBuf;
+use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 /// A quick bundle of configuration that can be applied, depending on what the project looks like.
@@ -89,7 +102,6 @@ pub fn load_manifest(
     base: &Path,
     file_manifest: FileManifest,
 ) -> Result<()> {
-
     manifest.packages.extend(file_manifest.packages);
     manifest.modules.extend(file_manifest.modules);
 
@@ -104,6 +116,42 @@ pub fn load_manifest(
     }
 
     Ok(())
+}
+
+/// Read the given manifest.
+///
+/// Takes a path since it's used to convert declarations.
+/// Returns `true` if the manifest is present, `false` otherwise.
+pub fn read_manifest<P: AsRef<Path>>(manifest: &mut Manifest, path: P) -> Result<bool> {
+    use std::io::ErrorKind::*;
+
+    let path = path.as_ref();
+
+    let mut f = match File::open(path) {
+        Err(e) => {
+            match e.kind() {
+                // ignore if it doesn't exist.
+                NotFound => return Ok(false),
+                // return other errors.
+                _ => return Err(e.into()),
+            }
+        }
+        Ok(f) => f,
+    };
+
+    let mut content = String::new();
+    f.read_to_string(&mut content)?;
+
+    let file_manifest: FileManifest = toml::from_str(content.as_str()).map_err(|e| {
+        format!("{}: bad manifest: {}", path.display(), e)
+    })?;
+
+    let parent = path.parent().ok_or_else(
+        || format!("missing parent directory"),
+    )?;
+
+    load_manifest(manifest, parent, file_manifest)?;
+    Ok(true)
 }
 
 #[cfg(test)]

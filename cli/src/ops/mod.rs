@@ -10,7 +10,7 @@ mod verify;
 use self::config_env::ConfigEnv;
 use self::imports::*;
 use backend::{CamelCase, FromNaming, Naming, SnakeCase};
-use core::Manifest;
+use manifest::{Manifest, read_manifest};
 use repository::*;
 use std::env;
 use std::error::Error;

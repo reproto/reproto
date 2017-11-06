@@ -1,0 +1,20 @@
+[package]
+name = "reproto-manifest"
+version = "0.2.0"
+authors = ["John-John Tedro <udoprog@tedro.se>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/reproto/reproto"
+homepage = "https://github.com/reproto/reproto"
+documentation = "https://docs.rs/reproto-manifest"
+description = """
+Rethinking Protocol Generators
+"""
+
+[dependencies]
+error-chain = "0.11"
+relative-path = {version = "0.1", features = ["serde"]}
+semver = {version = "0.9", features = ["serde"]}
+serde = "1.0"
+serde_derive = "1.0"
+toml = "0.4"

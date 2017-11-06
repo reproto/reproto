@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "core",
+  "manifest",
   "semck",
   "parser",
   "repository",

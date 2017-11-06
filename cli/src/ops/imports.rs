@@ -4,7 +4,6 @@ pub(crate) use backend::{CompilerOptions, Environment, Options};
 pub(crate) use clap::{App, Arg, ArgMatches, SubCommand};
 pub(crate) use core::{RpPackage, RpRequiredPackage, VersionReq};
 pub(crate) use errors::*;
-pub(crate) use manifest::read_manifest;
 pub(crate) use reproto_backend_doc as doc;
 pub(crate) use reproto_backend_java as java;
 pub(crate) use reproto_backend_js as js;

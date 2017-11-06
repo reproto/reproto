@@ -27,13 +27,11 @@ mod rp_package;
 mod rp_required_package;
 mod rp_versioned_package;
 mod with_pos;
-mod manifest;
 pub mod errors;
 
 pub use self::error_pos::ErrorPos;
 pub use self::for_each_loc::ForEachLoc;
 pub use self::loc::Loc;
-pub use self::manifest::{FileManifest, Manifest, load_manifest};
 pub use self::merge::Merge;
 pub use self::mime::Mime;
 pub use self::models::*;

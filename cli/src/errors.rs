@@ -1,6 +1,7 @@
 use backend::errors as backend;
 use core::{ErrorPos, RpName};
 use core::errors as core;
+use manifest::errors as manifest;
 use parser::errors as parser;
 use repository::errors as repository;
 use std::path::PathBuf;
@@ -11,6 +12,7 @@ error_chain! {
         Core(core::Error, core::ErrorKind);
         Repository(repository::Error, repository::ErrorKind);
         Backend(backend::Error, backend::ErrorKind);
+        Manifest(manifest::Error, manifest::ErrorKind);
     }
 
     foreign_links {

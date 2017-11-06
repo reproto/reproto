@@ -1,6 +1,6 @@
 //! Command to print the local manifest.
 
-use core::Manifest;
+use manifest::{Manifest, read_manifest};
 use ops::imports::*;
 use std::env;
 

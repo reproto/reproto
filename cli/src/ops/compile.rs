@@ -1,5 +1,5 @@
 use super::imports::*;
-use core::Manifest;
+use manifest::Manifest;
 use std::path::{Path, PathBuf};
 
 fn base<'a, 'b>(name: &str) -> App<'a, 'b> {

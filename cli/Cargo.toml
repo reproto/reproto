@@ -17,6 +17,7 @@ tracing = []
 
 [dependencies]
 reproto-core = {path = "../core", version = "0.2"}
+reproto-manifest = {path = "../manifest", version = "0.2"}
 reproto-parser = {path = "../parser", version = "0.2"}
 reproto-repository = {path = "../repository", version = "0.2"}
 reproto-backend = {path = "../backend", version = "0.2"}
