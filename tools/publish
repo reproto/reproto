@@ -5,7 +5,7 @@
 target=$PWD/target
 root=$PWD
 
-candidates="core parser repository backend"
+candidates="core manifest parser repository backend"
 
 for manifest in $root/backend/*/Cargo.toml; do
     b=$(basename $(dirname $manifest))
@@ -24,7 +24,7 @@ done
 
 echo "TARGETS: $targets"
 
-export CARGO_TARGET_DIR=$target 
+export CARGO_TARGET_DIR=$target
 
 for target in $targets; do
     cargo publish --manifest-path=$root/$target/Cargo.toml
