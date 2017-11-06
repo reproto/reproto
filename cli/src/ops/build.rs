@@ -2,11 +2,11 @@ use super::imports::*;
 use manifest::Language;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
-    let out = SubCommand::with_name("compile").about("Compile .reproto specifications");
+    let out = SubCommand::with_name("build").about("Build specifications");
 
     let out = out.arg(Arg::with_name("lang").long("lang").takes_value(true).help(
         "Language \
-         to compile \
+         to build \
          for",
     ));
 

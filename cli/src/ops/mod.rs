@@ -1,4 +1,4 @@
-mod compile;
+mod build;
 mod doc;
 mod config_env;
 mod imports;
@@ -371,7 +371,7 @@ pub fn setup_env(matches: &ArgMatches) -> Result<(Manifest, Environment)> {
 }
 
 pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    let out = out.subcommand(compiler_base(compile::options()));
+    let out = out.subcommand(compiler_base(build::options()));
     let out = out.subcommand(compiler_base(doc::options()));
     let out = out.subcommand(verify::options());
     let out = out.subcommand(publish::options());
@@ -386,7 +386,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     let matches = matches.ok_or_else(|| "no subcommand")?;
 
     match name {
-        "compile" => self::compile::entry(matches),
+        "build" => self::build::entry(matches),
         "doc" => self::doc::entry(matches),
         "verify" => self::verify::entry(matches),
         "publish" => self::publish::entry(matches),

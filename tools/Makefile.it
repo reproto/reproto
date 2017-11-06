@@ -61,19 +61,19 @@ projects := $(filter $(INCLUDE), $(filter-out $(EXCLUDE) $(exclude-projects), $(
 compile-args := --no-repository $(paths:%=--path %) $(targets:%=--package %)
 
 # how to build suites
-java-suite := compile --lang java $(compile-args) $(java-args)
-js-suite := compile --lang js $(compile-args) $(js-args)
-python-suite := compile --lang python $(compile-args) $(python-args)
-python3-suite := compile --lang python $(compile-args) $(python3-args)
-rust-suite := compile --lang rust $(compile-args) $(rust-args)
+java-suite := build --lang java $(compile-args) $(java-args)
+js-suite := build --lang js $(compile-args) $(js-args)
+python-suite := build --lang python $(compile-args) $(python-args)
+python3-suite := build --lang python $(compile-args) $(python3-args)
+rust-suite := build --lang rust $(compile-args) $(rust-args)
 doc-suite := doc $(compile-args) --skip-static $(doc-args)
 
 # how to build projects
-java-project := compile --lang java $(compile-args) $(java-args) -o $(workdir)/java/target/generated-sources/reproto
-js-project := compile --lang js $(compile-args) $(js-args) -o $(workdir)/js/generated
-python-project := compile --lang python $(compile-args) $(python-args) -o $(workdir)/python/generated
-python3-project := compile --lang python $(compile-args) $(python3-args) -o $(workdir)/python3/generated
-rust-project := compile --lang rust $(compile-args) $(rust-args) -o $(workdir)/rust/src --package-prefix generated
+java-project := build --lang java $(compile-args) $(java-args) -o $(workdir)/java/target/generated-sources/reproto
+js-project := build --lang js $(compile-args) $(js-args) -o $(workdir)/js/generated
+python-project := build --lang python $(compile-args) $(python-args) -o $(workdir)/python/generated
+python3-project := build --lang python $(compile-args) $(python3-args) -o $(workdir)/python3/generated
+rust-project := build --lang rust $(compile-args) $(rust-args) -o $(workdir)/rust/src --package-prefix generated
 
 # base command invocations
 reproto-cmd := $(REPROTO) $(REPROTO_FLAGS)
