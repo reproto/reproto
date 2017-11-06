@@ -90,15 +90,22 @@ ReProto supports loading project manifests describing what should be built.
 These can be stored with the project, and describes how and what should be built.
 
 ```toml
-packages = [
-    "petstore"
+language = "java"
+
+# Additional build paths, relative to this manifest.
+paths = [
+    "src/extra"
 ]
 
 # Path to put generated sources
 output = "target/generated"
 
-# Presets
-[[presets]]]
+# Packages to build.
+[packages]
+petstore = "*"
+
+# Add a preset
+[[presets]]
 type = "maven"
 ```
 
