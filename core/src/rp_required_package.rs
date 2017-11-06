@@ -1,5 +1,6 @@
 use super::VersionReq;
 use super::rp_package::RpPackage;
+use errors::*;
 use std::fmt;
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -14,6 +15,25 @@ impl RpRequiredPackage {
             package: package,
             version_req: version_req,
         }
+    }
+
+    /// Parse the package requirement from a string.
+    pub fn parse(input: &str) -> Result<RpRequiredPackage> {
+        let mut it = input.splitn(2, "@").into_iter();
+
+        let package = it.next().map(RpPackage::parse).unwrap_or_else(
+            RpPackage::empty,
+        );
+
+        let version_req = if let Some(version) = it.next() {
+            Some(VersionReq::parse(version).map_err(|e| {
+                format!("bad version: {}: {}", e, version)
+            })?)
+        } else {
+            None
+        };
+
+        Ok(RpRequiredPackage::new(package, version_req))
     }
 }
 

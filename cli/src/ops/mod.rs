@@ -1,4 +1,5 @@
 mod compile;
+mod doc;
 mod config_env;
 mod imports;
 mod manifest;
@@ -13,12 +14,13 @@ use backend::{CamelCase, FromNaming, Naming, SnakeCase};
 use manifest::{Manifest, read_manifest};
 use repository::*;
 use std::env;
-use std::error::Error;
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use url;
 
-const DEFAULT_INDEX: &'static str = "git+https://github.com/reproto/reproto-index";
+pub const DEFAULT_INDEX: &'static str = "git+https://github.com/reproto/reproto-index";
+pub const MANIFEST_NAME: &'static str = "reproto.toml";
 
 fn parse_id_converter(input: &str) -> Result<Box<Naming>> {
     let mut parts = input.split(":");
@@ -138,27 +140,32 @@ pub fn compiler_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
             .number_of_values(1),
     );
 
+    let out = out.arg(
+        Arg::with_name("out")
+            .long("out")
+            .short("o")
+            .takes_value(true)
+            .help("Output directory"),
+    );
+
     out
 }
 
-pub fn parse_package(input: &str) -> Result<RpRequiredPackage> {
-    let mut it = input.split("@").into_iter();
+pub fn setup_compiler_options(
+    manifest: &Manifest,
+    matches: &ArgMatches,
+) -> Result<CompilerOptions> {
+    // output path as specified in manifest.
+    let manifest_out = manifest.output.as_ref().map(PathBuf::as_path);
 
-    let package = if let Some(first) = it.next() {
-        RpPackage::new(first.split(".").map(ToOwned::to_owned).collect())
-    } else {
-        RpPackage::new(vec![])
-    };
+    // final output path
+    let out_path = matches
+        .value_of("out")
+        .map(Path::new)
+        .or(manifest_out)
+        .ok_or("--out <dir>, or `output` key in manifest is required")?;
 
-    let version_req = if let Some(version) = it.next() {
-        Some(VersionReq::parse(version).map_err(
-            |e| e.description().to_owned(),
-        )?)
-    } else {
-        None
-    };
-
-    Ok(RpRequiredPackage::new(package, version_req))
+    Ok(CompilerOptions { out_path: out_path.to_owned() })
 }
 
 pub fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
@@ -274,17 +281,11 @@ pub fn setup_packages(manifest: &Manifest, matches: &ArgMatches) -> Result<Vec<R
     let mut packages = Vec::new();
 
     for package in &manifest.packages {
-        let parsed = parse_package(package);
-
-        let parsed = parsed.chain_err(
-            || format!("failed to parse package: {}", package),
-        )?;
-
-        packages.push(parsed);
+        packages.push(package.clone());
     }
 
     for package in matches.values_of("package").into_iter().flat_map(|it| it) {
-        let parsed = parse_package(package);
+        let parsed = RpRequiredPackage::parse(package);
 
         let parsed = parsed.chain_err(|| {
             format!("failed to parse --package argument: {}", package)
@@ -312,15 +313,15 @@ pub fn setup_environment(manifest: &Manifest, matches: &ArgMatches) -> Result<En
 pub fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
     let mut manifest = Manifest::new();
 
-    let manifest_path: PathBuf =
-        matches
-            .value_of("manifest-path")
-            .map::<Result<PathBuf>, _>(|p| Ok(Path::new(p).to_owned()))
-            .unwrap_or_else(|| Ok(env::current_dir()?.join("reproto.toml")))?;
+    let manifest_path = matches
+        .value_of("manifest-path")
+        .map::<Result<PathBuf>, _>(|p| Ok(Path::new(p).to_owned()))
+        .unwrap_or_else(|| Ok(env::current_dir()?.join(MANIFEST_NAME)))?;
 
     if manifest_path.is_file() {
         debug!("reading manifest: {}", manifest_path.display());
-        read_manifest(&mut manifest, manifest_path)?;
+        let reader = File::open(manifest_path.clone())?;
+        read_manifest(&mut manifest, manifest_path, reader)?;
     }
 
     Ok(manifest)
@@ -370,7 +371,8 @@ pub fn setup_env(matches: &ArgMatches) -> Result<(Manifest, Environment)> {
 }
 
 pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    let out = out.subcommand(compile::options());
+    let out = out.subcommand(compiler_base(compile::options()));
+    let out = out.subcommand(compiler_base(doc::options()));
     let out = out.subcommand(verify::options());
     let out = out.subcommand(publish::options());
     let out = out.subcommand(update::options());
@@ -385,6 +387,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
 
     match name {
         "compile" => self::compile::entry(matches),
+        "doc" => self::doc::entry(matches),
         "verify" => self::verify::entry(matches),
         "publish" => self::publish::entry(matches),
         "update" => self::update::entry(matches),

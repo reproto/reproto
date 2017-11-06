@@ -1,7 +1,8 @@
 use super::rp_versioned_package::RpVersionedPackage;
+use serde;
 use std::fmt;
 
-#[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpPackage {
     pub parts: Vec<String>,
 }
@@ -9,6 +10,11 @@ pub struct RpPackage {
 impl RpPackage {
     pub fn new(parts: Vec<String>) -> RpPackage {
         RpPackage { parts: parts }
+    }
+
+    /// Parse a package from a string.
+    pub fn parse(input: &str) -> RpPackage {
+        RpPackage::new(input.split(".").map(ToOwned::to_owned).collect())
     }
 
     pub fn empty() -> RpPackage {
@@ -31,5 +37,40 @@ impl RpPackage {
 impl fmt::Display for RpPackage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.parts.join("."))
+    }
+}
+
+impl serde::Serialize for RpPackage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for RpPackage {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct RpPackageVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for RpPackageVisitor {
+            type Value = RpPackage;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a SemVer version as a string")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(RpPackage::parse(v))
+            }
+        }
+
+        deserializer.deserialize_str(RpPackageVisitor)
     }
 }

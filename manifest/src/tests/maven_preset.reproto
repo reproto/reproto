@@ -1,0 +1,4 @@
+language = "java"
+
+[[presets]]
+type = "maven"

@@ -61,23 +61,22 @@ projects := $(filter $(INCLUDE), $(filter-out $(EXCLUDE) $(exclude-projects), $(
 compile-args := --no-repository $(paths:%=--path %) $(targets:%=--package %)
 
 # how to build suites
-java-suite := java $(compile-args) $(java-args)
-js-suite := js $(compile-args) $(js-args)
-python-suite := python $(compile-args) $(python-args)
-python3-suite := python $(compile-args) $(python3-args)
-rust-suite := rust $(compile-args) $(rust-args)
+java-suite := compile --lang java $(compile-args) $(java-args)
+js-suite := compile --lang js $(compile-args) $(js-args)
+python-suite := compile --lang python $(compile-args) $(python-args)
+python3-suite := compile --lang python $(compile-args) $(python3-args)
+rust-suite := compile --lang rust $(compile-args) $(rust-args)
 doc-suite := doc $(compile-args) --skip-static $(doc-args)
 
 # how to build projects
-java-project := java $(compile-args) $(java-args) -o $(workdir)/java/target/generated-sources/reproto
-js-project := js $(compile-args) $(js-args) -o $(workdir)/js/generated
-python-project := python $(compile-args) $(python-args) -o $(workdir)/python/generated
-python3-project := python $(compile-args) $(python3-args) -o $(workdir)/python3/generated
-rust-project := rust $(compile-args) $(rust-args) -o $(workdir)/rust/src --package-prefix generated
+java-project := compile --lang java $(compile-args) $(java-args) -o $(workdir)/java/target/generated-sources/reproto
+js-project := compile --lang js $(compile-args) $(js-args) -o $(workdir)/js/generated
+python-project := compile --lang python $(compile-args) $(python-args) -o $(workdir)/python/generated
+python3-project := compile --lang python $(compile-args) $(python3-args) -o $(workdir)/python3/generated
+rust-project := compile --lang rust $(compile-args) $(rust-args) -o $(workdir)/rust/src --package-prefix generated
 
 # base command invocations
 reproto-cmd := $(REPROTO) $(REPROTO_FLAGS)
-reproto-compile := $(reproto-cmd) compile
 
 input-files = $(notdir $(wildcard $(input)/*.json))
 diff-dirs = $(DIFF) -ur $(1) $(2)
@@ -101,7 +100,7 @@ suite-diff += suite-diff/$(1)
 suite-build/$(1): $$(REPROTO)
 	@echo "$$(M): Suite: $(1)"
 	$$(RM) -rf $$(output)/suite/$(1)
-	$$(reproto-compile) $$($(1)-suite) -o $$(output)/suite/$(1)
+	$$(reproto-cmd) $$($(1)-suite) -o $$(output)/suite/$(1)
 
 suite-update/$(1): suite-build/$(1) $$(expected)/suite/$(1)
 	@echo "$$(M): Updating Suite: $(1)"
@@ -137,7 +136,7 @@ $$(workdir)/$(1)/script.sh: $$(deps-$(1))
 	@echo "$$(M): Building Project: $(1)"
 	$$(MKDIR) -p $$(workdir)/$(1)
 	$(call sync-dirs,$$(workdir-source)/$(1),$$(workdir)/$(1))
-	$$(reproto-compile) $$($(1)-project)
+	$$(reproto-cmd) $$($(1)-project)
 	$$(MAKE) -C $$(workdir)/$(1)
 
 $(foreach i,$(input-files),\
