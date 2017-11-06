@@ -13,7 +13,7 @@ mod rust_file_spec;
 mod rust_options;
 mod module;
 
-use self::backend::{App, ArgMatches, CompilerOptions, Environment, Options};
+use self::backend::{ArgMatches, CompilerOptions, Environment, Options};
 use self::backend::errors::*;
 use self::listeners::Listeners;
 use self::rust_backend::RustBackend;
@@ -47,14 +47,6 @@ pub fn setup_listeners(modules: Vec<String>) -> Result<(RustOptions, Box<Listene
     }
 
     Ok((options, Box::new(listeners)))
-}
-
-pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    out.about("Compile for Rust")
-}
-
-pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    out.about("Verify for Rust")
 }
 
 pub fn compile(

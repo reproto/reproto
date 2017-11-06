@@ -24,7 +24,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         .language
         .or_else(|| matches.value_of("lang").and_then(Language::parse))
         .ok_or_else(|| {
-            "no language specified either through manifest or cli (--language)"
+            "no language specified either through manifest or cli (--lang)"
         })?;
 
     let result = match language {

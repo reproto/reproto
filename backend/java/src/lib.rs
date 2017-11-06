@@ -17,7 +17,7 @@ mod java_field;
 mod mutable;
 mod nullable;
 
-use self::backend::{App, ArgMatches, CompilerOptions, Environment, Options};
+use self::backend::{ArgMatches, CompilerOptions, Environment, Options};
 use self::backend::errors::*;
 use self::java_backend::JavaBackend;
 use self::java_options::JavaOptions;
@@ -53,14 +53,6 @@ pub fn setup_listeners(options: Options) -> Result<(JavaOptions, Box<Listeners>)
     }
 
     Ok((options, Box::new(listeners)))
-}
-
-pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    out.about("Compile for Java")
-}
-
-pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    out.about("Verify for Java")
 }
 
 pub fn compile(

@@ -12,7 +12,7 @@ mod python_field;
 mod python_file_spec;
 mod python_options;
 
-use self::backend::{App, ArgMatches, CompilerOptions, Environment, Options};
+use self::backend::{ArgMatches, CompilerOptions, Environment, Options};
 use self::backend::errors::*;
 use self::listeners::Listeners;
 use self::python_backend::PythonBackend;
@@ -44,14 +44,6 @@ pub fn setup_listeners(modules: Vec<String>) -> Result<(PythonOptions, Box<Liste
     }
 
     Ok((options, Box::new(listeners)))
-}
-
-pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    out.about("Compile for Python")
-}
-
-pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    out.about("Verify for Python")
 }
 
 pub fn compile(

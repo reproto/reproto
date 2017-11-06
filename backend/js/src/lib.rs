@@ -12,7 +12,7 @@ mod js_compiler;
 mod js_file_spec;
 mod js_options;
 
-use self::backend::{App, ArgMatches, CompilerOptions, Environment, Options};
+use self::backend::{ArgMatches, CompilerOptions, Environment, Options};
 use self::backend::errors::*;
 use self::js_backend::JsBackend;
 use self::js_options::JsOptions;
@@ -43,14 +43,6 @@ pub fn setup_listeners(modules: Vec<String>) -> Result<(JsOptions, Box<Listeners
     }
 
     Ok((options, Box::new(listeners)))
-}
-
-pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    out.about("Compile for JavaScript")
-}
-
-pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    out.about("Verify for JavaScript")
 }
 
 pub fn compile(

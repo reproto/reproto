@@ -8,7 +8,7 @@ mod json_compiler;
 mod json_options;
 mod listeners;
 
-use self::backend::{App, ArgMatches, CompilerOptions, Environment, Options};
+use self::backend::{ArgMatches, CompilerOptions, Environment, Options};
 use self::backend::errors::*;
 use self::json_backend::JsonBackend;
 use self::json_options::JsonOptions;
@@ -36,14 +36,6 @@ pub fn setup_listeners(modules: Vec<String>) -> Result<(JsonOptions, Box<Listene
     }
 
     Ok((options, Box::new(listeners)))
-}
-
-pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    out.about("Compile to JSON")
-}
-
-pub fn verify_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    out.about("Verify for JSON")
 }
 
 pub fn compile(

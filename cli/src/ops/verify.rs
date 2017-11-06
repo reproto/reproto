@@ -1,37 +1,37 @@
+use manifest::Language;
 use ops::imports::*;
 
-fn base<'a, 'b>(name: &str) -> App<'a, 'b> {
-    let out = SubCommand::with_name(name);
-    let out = compiler_base(out).about("Verify .reproto specifications");
-    out
-}
-
 pub fn options<'a, 'b>() -> App<'a, 'b> {
-    let out = SubCommand::with_name("verify").about("Verify .reproto specifications");
-    let out = out.subcommand(doc::verify_options(base("doc")));
-    let out = out.subcommand(java::verify_options(base("java")));
-    let out = out.subcommand(js::verify_options(base("js")));
-    let out = out.subcommand(json::verify_options(base("json")));
-    let out = out.subcommand(python::verify_options(base("python")));
-    let out = out.subcommand(rust::verify_options(base("rust")));
+    let out = SubCommand::with_name("verify").about("Verify specifications");
+
+    let out = out.arg(Arg::with_name("lang").long("lang").takes_value(true).help(
+        "Language \
+         to verify \
+         for",
+    ));
+
     out
 }
 
 pub fn entry(matches: &ArgMatches) -> Result<()> {
-    let (name, matches) = matches.subcommand();
-    let matches = matches.ok_or_else(|| "no subcommand")?;
+    use self::Language::*;
 
     let (manifest, env) = setup_env(matches)?;
     let options = setup_options(&manifest, matches)?;
 
-    let result = match name {
-        "doc" => doc::verify(env, options, matches),
-        "java" => java::verify(env, options, matches),
-        "js" => js::verify(env, options, matches),
-        "json" => json::verify(env, options, matches),
-        "python" => python::verify(env, options, matches),
-        "rust" => rust::verify(env, options, matches),
-        _ => unreachable!("bad subcommand"),
+    let language = manifest
+        .language
+        .or_else(|| matches.value_of("lang").and_then(Language::parse))
+        .ok_or_else(|| {
+            "no language specified either through manifest or cli (--lang)"
+        })?;
+
+    let result = match language {
+        Java => java::verify(env, options, matches),
+        Js => js::verify(env, options, matches),
+        Json => json::verify(env, options, matches),
+        Python => python::verify(env, options, matches),
+        Rust => rust::verify(env, options, matches),
     };
 
     Ok(result?)
