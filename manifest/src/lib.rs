@@ -194,6 +194,9 @@ pub struct ImRepository {
 /// Common fields in the file manifest.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImCommonFields {
+    /// Version to use for unversioned specs.
+    #[serde(default)]
+    version: Option<Version>,
     /// Packages to build.
     #[serde(default)]
     packages: Option<toml::Value>,
@@ -253,6 +256,9 @@ pub struct Repository {
 /// * All paths are absolute.
 #[derive(Debug, Clone, Default)]
 pub struct Manifest {
+    /// Version to use for unversioned specs.
+    /// Required when publishing.
+    pub version: Option<Version>,
     /// Language to build for.
     pub language: Option<Language>,
     /// Packages to build.
@@ -309,6 +315,8 @@ pub fn load_common_manifest(
     manifest.packages.extend(packages);
     manifest.files.extend(files);
     manifest.modules.extend(common.modules);
+
+    manifest.version = common.version;
 
     manifest.paths.extend(
         common.paths.iter().map(|r| r.to_path(&base)),

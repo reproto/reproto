@@ -18,12 +18,15 @@ impl<'a> fmt::Display for DisplayMatch<'a> {
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("publish").about("Publish specifications");
+
     let out = out.arg(Arg::with_name("force").long("force").help(
         "Force a publish, \
          even if it already \
          exists",
     ));
+
     let out = out.arg(Arg::with_name("package").multiple(true));
+
     out
 }
 
@@ -35,7 +38,18 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         "could not setup path resolver"
     })?;
 
-    for package in manifest.packages {
+    let packages: Vec<RpRequiredPackage> = matches
+        .values_of("package")
+        .into_iter()
+        .flat_map(|it| it)
+        .map(|p| RpRequiredPackage::parse(p).map_err(Into::into))
+        .collect::<Result<_>>()?;
+
+    if packages.is_empty() {
+        return Err("No packages specified to publish".into());
+    }
+
+    for package in packages {
         let results = resolver.resolve(&package)?;
 
         let mut it = results.into_iter();
@@ -55,6 +69,9 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         }
 
         let (version, object) = first;
+
+        let version = version.as_ref().or(manifest.version.as_ref());
+
         let version = version.ok_or_else(
             || format!("{}: package without a version", object),
         )?;
@@ -70,7 +87,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         repository.publish(
             &object,
             &package.package,
-            &version,
+            version,
             force,
         )?;
     }
