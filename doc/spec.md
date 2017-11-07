@@ -109,6 +109,23 @@ petstore = "*"
 type = "maven"
 ```
 
+### Publishing
+
+For publishing packages, the `version` key in the manifest is useful.
+This permits storing local manifest in your path, but overriding the version for publishing and
+other operations that require versions.
+
+```toml
+version = "1.0.1"
+paths = ["src"]
+```
+
+Assuming you have a manifest called `src/petstore.reproto`, you can now publish it using:
+
+```bash
+$> reproto publish petstore
+```
+
 ### Presets
 
 Presets are bundles of configuration that can be activated through the `presets` key.

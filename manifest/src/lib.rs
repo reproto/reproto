@@ -358,21 +358,21 @@ pub fn read_manifest<P: AsRef<Path>, R: Read>(
         format!("{}: bad manifest: {}", path.display(), e)
     })?;
 
-    let language: Language = value
-        .get("language")
-        .ok_or_else(|| format!("{}: missing `language` key", path.display()))?
-        .clone()
-        .try_into()?;
+    if let Some(language) = value.get("language") {
+        let language: Language = language.clone().try_into::<Language>().map_err(|e| {
+            format!("bad `language` key: {}", e)
+        })?;
 
-    match language {
-        Java => read_manifest_java(manifest, path, &value)?,
-        Python => read_manifest_python(manifest, path, &value)?,
-        Js => read_manifest_js(manifest, path, &value)?,
-        Rust => read_manifest_rust(manifest, path, &value)?,
-        Json => {}
+        match language {
+            Java => read_manifest_java(manifest, path, &value)?,
+            Python => read_manifest_python(manifest, path, &value)?,
+            Js => read_manifest_js(manifest, path, &value)?,
+            Rust => read_manifest_rust(manifest, path, &value)?,
+            Json => {}
+        }
+
+        manifest.language = Some(language);
     }
-
-    manifest.language = Some(language);
 
     let parent = path.parent().ok_or_else(
         || format!("missing parent directory"),
