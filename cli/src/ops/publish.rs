@@ -1,6 +1,6 @@
 use super::imports::*;
 use core::{Object, RpVersionedPackage, Version};
-use semck::{self, Violation};
+use semck;
 use std::fmt;
 
 /// Candidate to publish.
@@ -107,6 +107,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
 
     let force = matches.is_present("force");
 
+    // perform semck verification
     if let Some(d) = repository
         .all(&package)?
         .into_iter()
@@ -135,40 +136,13 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
             let mut errors: Vec<Error> = Vec::new();
 
             for (i, v) in violations.into_iter().enumerate() {
-                use self::Violation::*;
-
-                match v {
-                    MinorDeclRemoved(reg) => {
-                        errors.push(
-                            ErrorKind::Pos(
-                                format!("minor violation #{}: declaration removed", i),
-                                reg.pos().into(),
-                            ).into(),
-                        )
-                    }
-                    MinorFieldRemoved(field) => {
-                        errors.push(
-                            ErrorKind::Pos(
-                                format!("minor violation #{}: field removed", i),
-                                field.pos().into(),
-                            ).into(),
-                        )
-                    }
-                    MinorFieldTypeChange(_, to) => {
-                        errors.push(
-                            ErrorKind::Pos(
-                                format!("minor violation #{}: field type changed", i),
-                                to.pos().into(),
-                            ).into(),
-                        )
-                    }
-                }
+                errors.push(ErrorKind::SemckViolation(i, v).into());
             }
 
             return Err(ErrorKind::Errors(errors).into());
         }
     }
 
-    // repository.publish(&object, &package, &version, force)?;
+    repository.publish(&object, &package, &version, force)?;
     Ok(())
 }

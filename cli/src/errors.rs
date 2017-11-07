@@ -4,6 +4,7 @@ use core::errors as core;
 use manifest::errors as manifest;
 use parser::errors as parser;
 use repository::errors as repository;
+use semck::Violation;
 use std::path::PathBuf;
 
 error_chain! {
@@ -29,6 +30,10 @@ error_chain! {
         Pos(message: String, pos: ErrorPos) {
             description("position error")
             display("{}", message)
+        }
+
+        SemckViolation(index: usize, violation: Violation) {
+            description("semck violation")
         }
 
         File(message: String, file: PathBuf) {

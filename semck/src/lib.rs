@@ -1,28 +1,47 @@
 extern crate reproto_core;
 
+use self::Component::*;
 use self::Violation::*;
-use reproto_core::{Loc, RpDecl, RpField, RpFile, RpName, RpRegistered, RpType, Version};
+use reproto_core::{ErrorPos, Loc, RpDecl, RpField, RpFile, RpName, RpRegistered, RpType, Version};
 use reproto_core::errors::*;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
+pub enum Component {
+    Minor,
+    Patch,
+}
+
+impl Component {
+    /// Describe the component that was violated.
+    pub fn describe(&self) -> &str {
+        match *self {
+            Minor => "minor change violation",
+            Patch => "patch change violation",
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum Violation {
     /// An entire declaration has been removed.
-    MinorDeclRemoved(RpRegistered),
+    DeclRemoved(Component, ErrorPos),
     /// Field was removed.
-    MinorRemoveField(Loc<RpField>),
-    /// Field type was changed from one to another.
-    MinorFieldTypeChange(Loc<RpType>, Loc<RpType>),
-    /// Required field added.
-    MinorAddRequiredField(Loc<RpField>),
-    /// An entire declaration has been removed.
-    PatchDeclRemoved(RpRegistered),
-    /// Field was removed.
-    PatchRemoveField(Loc<RpField>),
-    /// Field type was changed from one to another.
-    PatchFieldTypeChange(Loc<RpType>, Loc<RpType>),
+    RemoveField(Component, ErrorPos),
     /// Field added.
-    PatchAddField(Loc<RpField>),
+    AddField(Component, ErrorPos),
+    /// Field type was changed from one to another.
+    FieldTypeChange(Component, RpType, ErrorPos, RpType, ErrorPos),
+    /// Field name was changed from one to another.
+    FieldNameChange(Component, String, ErrorPos, String, ErrorPos),
+    /// Field identifier was changed from one to another.
+    FieldIdentifierChange(Component, String, ErrorPos, String, ErrorPos),
+    /// Field made required.
+    FieldRequiredChange(Component, ErrorPos, ErrorPos),
+    /// Required field added.
+    AddRequiredField(Component, ErrorPos),
+    /// Field modifier changed.
+    FieldModifierChange(Component, ErrorPos, ErrorPos),
 }
 
 fn fields(reg: &RpRegistered) -> Vec<&Loc<RpField>> {
@@ -59,7 +78,7 @@ where
     let mut storage = HashMap::new();
 
     for field in fields {
-        storage.insert(field.name.clone(), field);
+        storage.insert(field.ident().to_string(), field);
     }
 
     storage
@@ -69,8 +88,8 @@ where
 fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
     let mut violations = Vec::new();
 
-    let to_storage = decls_to_map(&from.decls);
-    let from_storage = decls_to_map(&to.decls);
+    let from_storage = decls_to_map(&from.decls);
+    let to_storage = decls_to_map(&to.decls);
 
     // Minot chenot permitted to remove declarations
 
@@ -81,37 +100,79 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
             for (name, from_field) in from_fields.into_iter() {
                 if let Some(to_field) = to_fields.remove(&name) {
-                    if to_field.ty.clone().without_version() !=
-                        from_field.ty.clone().without_version()
-                    {
-                        let from_ty = from_field.clone().map(|f| f.ty);
-                        let to_ty = to_field.clone().map(|f| f.ty);
-                        violations.push(MinorFieldTypeChange(from_ty, to_ty));
-                    }
+                    check_field(&mut violations, from_field, to_field)?;
                 } else {
-                    violations.push(MinorRemoveField(from_field.clone()));
+                    violations.push(RemoveField(Minor, from_field.pos().into()));
                 }
             }
 
             // check that added fields are optional
             for (_, to_field) in to_fields.into_iter() {
                 if to_field.is_required() {
-                    violations.push(MinorAddRequiredField(to_field.clone()));
+                    violations.push(AddRequiredField(Minor, to_field.pos().into()));
                 }
             }
         } else {
-            violations.push(MinorDeclRemoved(to_reg));
+            violations.push(DeclRemoved(Minor, to_reg.pos().into()));
         }
     }
 
-    Ok(violations)
+    return Ok(violations);
+
+    fn check_field(
+        violations: &mut Vec<Violation>,
+        from_field: &Loc<RpField>,
+        to_field: &Loc<RpField>,
+    ) -> Result<()> {
+        if to_field.ty.clone().without_version() != from_field.ty.clone().without_version() {
+            violations.push(FieldTypeChange(
+                Minor,
+                from_field.ty.clone(),
+                from_field.pos().into(),
+                to_field.ty.clone(),
+                to_field.pos().into(),
+            ));
+        }
+
+        // not permitted to rename fields.
+        if to_field.name() != from_field.name() {
+            violations.push(FieldNameChange(
+                Minor,
+                from_field.name().to_string(),
+                from_field.pos().into(),
+                to_field.name().to_string(),
+                to_field.pos().into(),
+            ));
+        }
+
+        if to_field.ident() != from_field.ident() {
+            violations.push(FieldIdentifierChange(
+                Minor,
+                from_field.ident().to_string(),
+                from_field.pos().into(),
+                to_field.ident().to_string(),
+                to_field.pos().into(),
+            ));
+        }
+
+        // not permitted to make fields required.
+        if from_field.is_optional() && to_field.is_required() {
+            violations.push(FieldRequiredChange(
+                Minor,
+                from_field.pos().into(),
+                to_field.pos().into(),
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
     let mut violations = Vec::new();
 
-    let to_storage = decls_to_map(&from.decls);
-    let from_storage = decls_to_map(&to.decls);
+    let from_storage = decls_to_map(&from.decls);
+    let to_storage = decls_to_map(&to.decls);
 
     // Minot chenot permitted to remove declarations
 
@@ -122,28 +183,68 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
             for (name, from_field) in from_fields.into_iter() {
                 if let Some(to_field) = to_fields.remove(&name) {
-                    if to_field.ty.clone().without_version() !=
-                        from_field.ty.clone().without_version()
-                    {
-                        let from_ty = from_field.clone().map(|f| f.ty);
-                        let to_ty = to_field.clone().map(|f| f.ty);
-                        violations.push(PatchFieldTypeChange(from_ty, to_ty));
-                    }
+                    check_field(&mut violations, from_field, to_field)?;
                 } else {
-                    violations.push(PatchRemoveField(from_field.clone()));
+                    violations.push(RemoveField(Patch, from_field.pos().into()));
                 }
             }
 
-            // check that added fields are optional
+            // added fields are not permitted
             for (_, to_field) in to_fields.into_iter() {
-                violations.push(PatchAddField(to_field.clone()));
+                violations.push(AddField(Patch, to_field.pos().into()));
             }
         } else {
-            violations.push(PatchDeclRemoved(to_reg));
+            violations.push(DeclRemoved(Patch, to_reg.pos().into()));
         }
     }
 
-    Ok(violations)
+    return Ok(violations);
+
+    fn check_field(
+        violations: &mut Vec<Violation>,
+        from_field: &Loc<RpField>,
+        to_field: &Loc<RpField>,
+    ) -> Result<()> {
+        if to_field.ty.clone().without_version() != from_field.ty.clone().without_version() {
+            violations.push(FieldTypeChange(
+                Patch,
+                from_field.ty.clone(),
+                from_field.pos().into(),
+                to_field.ty.clone(),
+                to_field.pos().into(),
+            ));
+        }
+
+        if to_field.name() != from_field.name() {
+            violations.push(FieldNameChange(
+                Patch,
+                from_field.name().to_string(),
+                from_field.pos().into(),
+                to_field.name().to_string(),
+                to_field.pos().into(),
+            ));
+        }
+
+        if to_field.ident() != from_field.ident() {
+            violations.push(FieldIdentifierChange(
+                Minor,
+                from_field.ident().to_string(),
+                from_field.pos().into(),
+                to_field.ident().to_string(),
+                to_field.pos().into(),
+            ));
+        }
+
+        if to_field.modifier != from_field.modifier {
+            violations.push(FieldModifierChange(
+                Patch,
+                from_field.pos().into(),
+                to_field.pos().into(),
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 pub fn check(from: (&Version, &RpFile), to: (&Version, &RpFile)) -> Result<Vec<Violation>> {

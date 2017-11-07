@@ -9,6 +9,7 @@ use errors::*;
 use log;
 use parser;
 use repository;
+use semck::Violation;
 use std::io::{self, Read, Write};
 
 pub trait LockableWrite
@@ -247,10 +248,118 @@ pub trait Output {
             Repository(ref e) => {
                 return self.handle_repository_error(e);
             }
+            SemckViolation(index, ref violation) => {
+                self.semck_violation(index, violation)?;
+                true
+            }
             _ => false,
         };
 
         Ok(out)
+    }
+
+    fn semck_violation(&self, _index: usize, violation: &Violation) -> Result<()> {
+        use self::Violation::*;
+
+        match *violation {
+            DeclRemoved(ref c, ref reg) => {
+                self.print_error(
+                    format!("{}: declaration removed", c.describe())
+                        .as_str(),
+                    reg,
+                )?;
+            }
+            RemoveField(ref c, ref field) => {
+                self.print_error(
+                    format!("{}: field removed", c.describe()).as_str(),
+                    field,
+                )?;
+            }
+            AddField(ref c, ref field) => {
+                self.print_error(
+                    format!("{}: field added", c.describe()).as_str(),
+                    field,
+                )?;
+            }
+            FieldTypeChange(ref c, ref from_type, ref from, ref to_type, ref to) => {
+                self.print_error(
+                    format!(
+                        "{}: type changed to `{}`",
+                        c.describe(),
+                        to_type
+                    ).as_str(),
+                    to,
+                )?;
+
+                self.print_error(
+                    format!("from `{}`", from_type).as_str(),
+                    from,
+                )?;
+            }
+            FieldNameChange(ref c, ref from_name, ref from, ref to_name, ref to) => {
+                self.print_error(
+                    format!(
+                        "{}: name changed to `{}`",
+                        c.describe(),
+                        to_name
+                    ).as_str(),
+                    to,
+                )?;
+
+                self.print_error(
+                    format!("from `{}`", from_name).as_str(),
+                    from,
+                )?;
+            }
+            FieldIdentifierChange(ref c, ref from_id, ref from, ref to_id, ref to) => {
+                self.print_error(
+                    format!(
+                        "{}: identifier changed to `{}`",
+                        c.describe(),
+                        to_id
+                    ).as_str(),
+                    to,
+                )?;
+
+                self.print_error(
+                    format!("from `{}`", from_id).as_str(),
+                    from,
+                )?;
+            }
+            FieldRequiredChange(ref c, ref from, ref to) => {
+                self.print_error(
+                    format!(
+                        "{}: field changed to be required`",
+                        c.describe(),
+                    ).as_str(),
+                    to,
+                )?;
+
+                self.print_error("from here", from)?;
+            }
+            AddRequiredField(ref c, ref field) => {
+                self.print_error(
+                    format!(
+                        "{}: required field added",
+                        c.describe(),
+                    ).as_str(),
+                    field,
+                )?;
+            }
+            FieldModifierChange(ref c, ref from, ref to) => {
+                self.print_error(
+                    format!(
+                        "{}: field modifier changed",
+                        c.describe(),
+                    ).as_str(),
+                    to,
+                )?;
+
+                self.print_error("from here", from)?;
+            }
+        }
+
+        Ok(())
     }
 
     fn logger(&self) -> Box<log::Log + 'static>;
