@@ -1,4 +1,4 @@
-Foo(shared=shared, foo=foo)
-{"type":"foo","shared":"shared","foo":"foo"}
-Bar(shared=shared, bar=bar)
-{"type":"bar","shared":"shared","bar":"bar"}
+Foo()
+{"type":"foo"}
+Bar()
+{"type":"bar"}

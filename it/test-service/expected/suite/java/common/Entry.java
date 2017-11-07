@@ -1,4 +1,4 @@
-package common._1_0_0;
+package common;
 
 import java.util.Objects;
 import java.util.Optional;

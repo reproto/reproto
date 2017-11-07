@@ -1,15 +1,9 @@
 interface Entry {
-    shared: string;
-
     Foo {
         name "foo";
-
-        foo: string;
     }
 
     Bar {
         name "bar";
-
-        bar: string;
     }
 }
