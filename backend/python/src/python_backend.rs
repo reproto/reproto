@@ -311,7 +311,13 @@ impl PythonBackend {
 
         let mut constructor = Tokens::new();
         constructor.push(toks!["def __init__(", args.join(", "), "):"]);
-        constructor.nested(assign);
+
+        if assign.is_empty() {
+            constructor.nested("pass");
+        } else {
+            constructor.nested(assign);
+        }
+
         constructor
     }
 
