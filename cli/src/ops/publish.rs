@@ -1,5 +1,6 @@
 use super::imports::*;
 use core::{Object, RpVersionedPackage, Version};
+use semck::{self, Violation};
 use std::fmt;
 
 /// Candidate to publish.
@@ -128,9 +129,44 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         let package_to = RpVersionedPackage::new(package.clone(), Some(version.clone()));
         let file_to = env.load_object(object.clone(), &package_to)?;
 
-        info!("Last version available: {:?}", d);
-        // info!("From: {:?}", file_from);
-        // info!("To: {:?}", file_to);
+        let violations = semck::check((&d.version, &file_from), (&version, &file_to))?;
+
+        if !violations.is_empty() {
+            let mut errors: Vec<Error> = Vec::new();
+
+            for (i, v) in violations.into_iter().enumerate() {
+                use self::Violation::*;
+
+                match v {
+                    MinorDeclRemoved(reg) => {
+                        errors.push(
+                            ErrorKind::Pos(
+                                format!("minor violation #{}: declaration removed", i),
+                                reg.pos().into(),
+                            ).into(),
+                        )
+                    }
+                    MinorFieldRemoved(field) => {
+                        errors.push(
+                            ErrorKind::Pos(
+                                format!("minor violation #{}: field removed", i),
+                                field.pos().into(),
+                            ).into(),
+                        )
+                    }
+                    MinorFieldTypeChange(_, to) => {
+                        errors.push(
+                            ErrorKind::Pos(
+                                format!("minor violation #{}: field type changed", i),
+                                to.pos().into(),
+                            ).into(),
+                        )
+                    }
+                }
+            }
+
+            return Err(ErrorKind::Errors(errors).into());
+        }
     }
 
     // repository.publish(&object, &package, &version, force)?;

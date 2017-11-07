@@ -7,6 +7,7 @@ use super::rp_modifier::RpModifier;
 use super::rp_number::RpNumber;
 use super::rp_versioned_package::RpVersionedPackage;
 use errors::*;
+use pos::Pos;
 use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::rc::Rc;
@@ -256,6 +257,10 @@ impl RpField {
         }
     }
 
+    pub fn is_required(&self) -> bool {
+        !self.is_optional()
+    }
+
     pub fn ident(&self) -> &str {
         &self.name
     }
@@ -341,10 +346,20 @@ impl RpName {
         self.parts.join(joiner.as_ref())
     }
 
+    /// Convert to a name without a prefix component.
     pub fn without_prefix(self) -> RpName {
         RpName {
             prefix: None,
             package: self.package,
+            parts: self.parts,
+        }
+    }
+
+    /// Convert to a name without a version component.
+    pub fn without_version(self) -> RpName {
+        RpName {
+            prefix: self.prefix,
+            package: self.package.without_version(),
             parts: self.parts,
         }
     }
@@ -456,6 +471,21 @@ impl RpRegistered {
             Enum(ref target) => &target.name,
             SubType(_, ref target) => &target.name,
             EnumVariant(_, ref target) => &target.name,
+        }
+    }
+
+    /// Get the location of the registered declaration.
+    pub fn pos(&self) -> &Pos {
+        use self::RpRegistered::*;
+
+        match *self {
+            Type(ref target) => target.pos(),
+            Tuple(ref target) => target.pos(),
+            Service(ref target) => target.pos(),
+            Interface(ref target) => target.pos(),
+            Enum(ref target) => target.pos(),
+            SubType(_, ref target) => target.pos(),
+            EnumVariant(_, ref target) => target.pos(),
         }
     }
 
@@ -677,7 +707,7 @@ impl RpTypeBody {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpType {
     Double,
@@ -755,6 +785,21 @@ impl RpType {
         match *self {
             String => Some(RpEnumType::String),
             _ => None,
+        }
+    }
+
+    /// Strip version component for any type.
+    pub fn without_version(self) -> RpType {
+        use self::RpType::*;
+
+        match self {
+            Name { name } => Name { name: name.without_version() },
+            Array { inner } => Array { inner: Box::new(inner.without_version()) },
+            Map { key, value } => Map {
+                key: Box::new(key.without_version()),
+                value: Box::new(value.without_version()),
+            },
+            ty => ty,
         }
     }
 }

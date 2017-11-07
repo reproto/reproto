@@ -30,6 +30,10 @@ impl RpVersionedPackage {
 
         RpPackage::new(parts)
     }
+
+    pub fn without_version(self) -> RpVersionedPackage {
+        RpVersionedPackage::new(self.package, None)
+    }
 }
 
 impl fmt::Display for RpVersionedPackage {
