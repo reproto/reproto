@@ -18,7 +18,7 @@ pub struct IndexConfig {
     pub repo_dir: PathBuf,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Deployment {
     pub version: Version,
     pub object: Checksum,
@@ -36,11 +36,17 @@ impl Deployment {
 use errors::*;
 
 pub trait Index {
+    /// Resolve the given version of a package.
     fn resolve(
         &self,
         package: &RpPackage,
         version_req: Option<&VersionReq>,
     ) -> Result<Vec<Deployment>>;
+
+    /// Get all versions available of a given package.
+    ///
+    /// The returned versions are sorted.
+    fn all(&self, package: &RpPackage) -> Result<Vec<Deployment>>;
 
     fn put_version(
         &self,
@@ -70,6 +76,10 @@ pub struct NoIndex;
 
 impl Index for NoIndex {
     fn resolve(&self, _: &RpPackage, _: Option<&VersionReq>) -> Result<Vec<Deployment>> {
+        Ok(vec![])
+    }
+
+    fn all(&self, _: &RpPackage) -> Result<Vec<Deployment>> {
         Ok(vec![])
     }
 

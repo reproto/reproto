@@ -134,6 +134,15 @@ impl Index for FileIndex {
         }).map(|r| r.0)
     }
 
+    fn all(&self, package: &RpPackage) -> Result<Vec<Deployment>> {
+        self.read_package(package, |_| true).map(|r| r.0).map(
+            |all| {
+                // get the last deployment available
+                all.into_iter().collect::<Vec<_>>()
+            },
+        )
+    }
+
     fn put_version(
         &self,
         checksum: &Checksum,

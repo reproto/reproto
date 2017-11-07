@@ -34,6 +34,10 @@ impl Index for GitIndex {
         self.file_index.resolve(package, version_req)
     }
 
+    fn all(&self, package: &RpPackage) -> Result<Vec<Deployment>> {
+        self.file_index.all(package)
+    }
+
     fn put_version(&self, _: &Checksum, _: &RpPackage, _: &Version, _: bool) -> Result<()> {
         Err(ErrorKind::NoPublishIndex(self.url.to_string()).into())
     }

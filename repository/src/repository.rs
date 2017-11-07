@@ -1,7 +1,7 @@
 use super::Objects;
 use core::{Object, RpPackage, RpRequiredPackage, Version};
 use errors::*;
-use index::Index;
+use index::{Deployment, Index};
 use resolver::Resolver;
 use sha256::to_sha256;
 use update::Update;
@@ -55,6 +55,16 @@ impl Repository {
         self.index.put_version(&checksum, package, version, force)?;
 
         Ok(())
+    }
+
+    /// Get all deployments in this repository.
+    pub fn all(&self, package: &RpPackage) -> Result<Vec<Deployment>> {
+        self.index.all(package)
+    }
+
+    /// Get the object for the specific deployment.
+    pub fn get_object(&mut self, deployment: &Deployment) -> Result<Option<Box<Object>>> {
+        self.objects.get_object(&deployment.object)
     }
 }
 

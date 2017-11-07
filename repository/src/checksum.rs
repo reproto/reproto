@@ -8,7 +8,7 @@ use std::fmt;
 use std::ops::{Index, Range};
 use std::result;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Checksum {
     bytes: Vec<u8>,
 }
@@ -26,6 +26,14 @@ impl Checksum {
         }
 
         Ok(Checksum { bytes: bytes })
+    }
+}
+
+impl fmt::Debug for Checksum {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("Checksum")
+            .field("bytes", &HexSlice::new(&self.bytes[..]))
+            .finish()
     }
 }
 

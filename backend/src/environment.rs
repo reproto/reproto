@@ -2,7 +2,7 @@ use super::into_model::IntoModel;
 use super::naming::{FromNaming, SnakeCase};
 use super::scope::Scope;
 use core::{Loc, Merge, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage,
-           RpRegistered, RpRequiredPackage, RpVersionedPackage, Version, WithPos};
+           RpRegistered, RpRequiredPackage, RpVersionedPackage, WithPos};
 use errors::*;
 use linked_hash_map::LinkedHashMap;
 use parser;
@@ -52,21 +52,19 @@ impl Environment {
     }
 
     /// Import a file into the environment.
-    pub fn import_file<P: AsRef<Path>>(&mut self, path: P) -> Result<Option<RpVersionedPackage>> {
+    pub fn import_file<P: AsRef<Path>>(&mut self, path: P) -> Result<RpVersionedPackage> {
         let object = PathObject::new(path);
 
-        if let Some((package, file)) = self.load_object(object, None, RpPackage::empty())? {
-            let required = RpRequiredPackage::new(package.package.clone(), None);
+        let package = RpVersionedPackage::new(RpPackage::empty(), None);
+        let required = RpRequiredPackage::new(package.package.clone(), None);
 
-            if !self.visited.contains_key(&required) {
-                self.process_file(file)?;
-                self.visited.insert(required, Some(package.clone()));
-            }
-
-            return Ok(Some(package));
+        if !self.visited.contains_key(&required) {
+            let file = self.load_object(object, &package)?;
+            self.process_file(file)?;
+            self.visited.insert(required, Some(package.clone()));
         }
 
-        Ok(None)
+        Ok(package)
     }
 
     /// Import a package based on a package and version criteria.
@@ -86,13 +84,12 @@ impl Environment {
         if let Some((version, object)) = files.into_iter().last() {
             debug!("loading: {}", object);
 
-            let loaded = self.load_object(object, version, required.package.clone())?;
+            let package = RpVersionedPackage::new(required.package.clone(), version);
+            let file = self.load_object(object, &package)?;
 
-            if let Some((package, file)) = loaded {
-                candidates.entry(package).or_insert_with(Vec::new).push(
-                    file,
-                );
-            }
+            candidates.entry(package).or_insert_with(Vec::new).push(
+                file,
+            );
         }
 
         let result = if let Some((versioned, files)) = candidates.into_iter().last() {
@@ -157,15 +154,12 @@ impl Environment {
         Ok(())
     }
 
-    /// Load the provided Object into a `RpFile` and identify which package and version it belongs
-    /// to.
-    fn load_object<O: Into<Box<Object>>>(
+    /// Load the provided Object into an `RpFile`.
+    pub fn load_object<O: Into<Box<Object>>>(
         &mut self,
         object: O,
-        version: Option<Version>,
-        package: RpPackage,
-    ) -> Result<Option<(RpVersionedPackage, RpFile)>> {
-        let package = RpVersionedPackage::new(package, version);
+        package: &RpVersionedPackage,
+    ) -> Result<RpFile> {
         let object = object.into();
         let content = parser::read_reader(object.read()?)?;
         let object = Rc::new(object);
@@ -196,9 +190,7 @@ impl Environment {
             naming,
         );
 
-        let file = file.into_model(&scope)?;
-
-        Ok(Some((package, file)))
+        Ok(file.into_model(&scope)?)
     }
 
     /// Apply global package prefix.

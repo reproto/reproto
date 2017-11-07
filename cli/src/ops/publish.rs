@@ -1,5 +1,5 @@
 use super::imports::*;
-use core::{Object, Version};
+use core::{Object, RpVersionedPackage, Version};
 use std::fmt;
 
 /// Candidate to publish.
@@ -31,6 +31,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 
 pub fn entry(matches: &ArgMatches) -> Result<()> {
     let manifest = setup_manifest(matches)?;
+    let mut env = setup_env(&manifest)?;
     let mut repository = setup_repository(&manifest.repository)?;
 
     let mut resolver = setup_path_resolver(&manifest)?.ok_or_else(|| {
@@ -104,6 +105,34 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     info!("publishing: {}@{} (from {})", package, version, object);
 
     let force = matches.is_present("force");
-    repository.publish(&object, &package, &version, force)?;
+
+    if let Some(d) = repository
+        .all(&package)?
+        .into_iter()
+        .filter(|d| d.version.major == version.major)
+        .last()
+    {
+        if d.version == version {
+            return Err(format!("Version {} already published", version).into());
+        }
+
+        info!("Analyzing {} -> {}", d.version, version);
+
+        let previous = repository.get_object(&d)?.ok_or_else(|| {
+            format!("No object found for deployment: {:?}", d)
+        })?;
+
+        let package_from = RpVersionedPackage::new(package.clone(), Some(d.version.clone()));
+        let file_from = env.load_object(previous.clone(), &package_from)?;
+
+        let package_to = RpVersionedPackage::new(package.clone(), Some(version.clone()));
+        let file_to = env.load_object(object.clone(), &package_to)?;
+
+        info!("Last version available: {:?}", d);
+        // info!("From: {:?}", file_from);
+        // info!("To: {:?}", file_to);
+    }
+
+    // repository.publish(&object, &package, &version, force)?;
     Ok(())
 }
