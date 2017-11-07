@@ -18,7 +18,6 @@ impl<'a> fmt::Display for DisplayMatch<'a> {
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("publish").about("Publish specifications");
-    let out = path_base(out);
     let out = out.arg(Arg::with_name("force").long("force").help(
         "Force a publish, \
          even if it already \
@@ -28,18 +27,14 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(matches: &ArgMatches) -> Result<()> {
-    let manifest = setup_manifest(matches)?;
+pub fn entry(manifest: Manifest, matches: &ArgMatches) -> Result<()> {
+    let mut repository = setup_repository(&manifest.repository)?;
 
-    let mut repository = setup_repository(matches)?;
-
-    let mut resolver = setup_path_resolver(&manifest, matches)?.ok_or_else(|| {
+    let mut resolver = setup_path_resolver(&manifest)?.ok_or_else(|| {
         "could not setup path resolver"
     })?;
 
-    let packages = setup_packages(&manifest, matches)?;
-
-    for package in packages {
+    for package in manifest.packages {
         let results = resolver.resolve(&package)?;
 
         let mut it = results.into_iter();

@@ -13,11 +13,11 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(matches: &ArgMatches) -> Result<()> {
+pub fn entry(manifest: Manifest, matches: &ArgMatches) -> Result<()> {
     use manifest::Language::*;
 
-    let (manifest, env) = setup_env(matches)?;
-    let options = setup_options(&manifest, matches)?;
+    let env = setup_env(&manifest)?;
+    let options = setup_options(&manifest)?;
     let compiler_options = setup_compiler_options(&manifest, matches)?;
 
     let language = manifest

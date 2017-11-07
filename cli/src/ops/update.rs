@@ -5,8 +5,8 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(matches: &ArgMatches) -> Result<()> {
-    let repository = setup_repository(matches)?;
+pub fn entry(manifest: Manifest, _: &ArgMatches) -> Result<()> {
+    let repository = setup_repository(&manifest.repository)?;
     repository.update()?;
     Ok(())
 }

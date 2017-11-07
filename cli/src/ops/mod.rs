@@ -11,7 +11,7 @@ mod verify;
 use self::config_env::ConfigEnv;
 use self::imports::*;
 use backend::{CamelCase, FromNaming, Naming, SnakeCase};
-use manifest::{Manifest, read_manifest};
+use manifest::{Manifest, ManifestFile, read_manifest, self as m};
 use repository::*;
 use std::env;
 use std::fs::File;
@@ -30,7 +30,14 @@ fn parse_id_converter(input: &str) -> Result<Box<Naming>> {
             let naming: Box<FromNaming> = match first {
                 "camel" => Box::new(CamelCase::new()),
                 "snake" => Box::new(SnakeCase::new()),
-                _ => return Err(format!("Not a valid source: {}", first).into()),
+                _ => {
+                    return Err(
+                        format!(
+                            "Not a valid source: {}, must be one of: camel, snake",
+                            first
+                        ).into(),
+                    )
+                }
             };
 
             let naming = match second {
@@ -38,7 +45,15 @@ fn parse_id_converter(input: &str) -> Result<Box<Naming>> {
                 "upper_camel" => naming.to_upper_camel(),
                 "lower_snake" => naming.to_lower_snake(),
                 "upper_snake" => naming.to_upper_snake(),
-                _ => return Err(format!("Not a valid target: {}", second).into()),
+                _ => {
+                    return Err(
+                        format!(
+                            "Not a valid target: {}, must be one of: lower_camel, upper_camel, \
+                             lower_snake, upper_snake",
+                            second
+                        ).into(),
+                    )
+                }
             };
 
             return Ok(naming);
@@ -46,11 +61,11 @@ fn parse_id_converter(input: &str) -> Result<Box<Naming>> {
     }
 
     return Err(
-        format!("Invalid --id-conversion argument: {}", input).into(),
+        format!("Invalid ID conversion `{}`, expected <from>:<to>", input).into(),
     );
 }
 
-pub fn path_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+pub fn base_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.arg(
         Arg::with_name("index")
             .long("index")
@@ -95,8 +110,8 @@ pub fn path_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 }
 
 /// Setup base compiler options.
-pub fn compiler_base<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    let out = path_base(out);
+pub fn build_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+    let out = base_args(out);
 
     let out = out.arg(
         Arg::with_name("package")
@@ -168,15 +183,15 @@ pub fn setup_compiler_options(
     Ok(CompilerOptions { out_path: out_path.to_owned() })
 }
 
-pub fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
-    if matches.is_present("no-repository") {
+pub fn setup_repository(repository: &m::Repository) -> Result<Repository> {
+    if repository.no_repository {
         return Ok(Repository::new(Box::new(NoIndex), Box::new(NoObjects)));
     }
 
     let mut repo_dir = None;
     let mut cache_dir = None;
-    let mut index = matches.value_of("index").map(ToOwned::to_owned);
-    let mut objects = matches.value_of("objects").map(ToOwned::to_owned);
+    let mut index = repository.index.clone();
+    let mut objects = repository.objects.clone();
 
     if let Some(config_env) = ConfigEnv::new()? {
         repo_dir = Some(config_env.repo_dir);
@@ -224,94 +239,47 @@ pub fn setup_repository(matches: &ArgMatches) -> Result<Repository> {
     Ok(Repository::new(index, objects))
 }
 
-pub fn setup_path_resolver(
-    manifest: &Manifest,
-    matches: &ArgMatches,
-) -> Result<Option<Box<Resolver>>> {
-    let mut paths: Vec<PathBuf> = matches
-        .values_of("path")
-        .into_iter()
-        .flat_map(|it| it)
-        .map(Path::new)
-        .map(ToOwned::to_owned)
-        .collect();
-
-    paths.extend(manifest.paths.iter().cloned());
-
-    if paths.is_empty() {
+pub fn setup_path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>> {
+    if manifest.paths.is_empty() {
         return Ok(None);
     }
 
-    Ok(Some(Box::new(Paths::new(paths))))
+    Ok(Some(Box::new(Paths::new(manifest.paths.clone()))))
 }
 
-pub fn setup_resolvers(manifest: &Manifest, matches: &ArgMatches) -> Result<Box<Resolver>> {
+pub fn setup_resolvers(manifest: &Manifest) -> Result<Box<Resolver>> {
     let mut resolvers: Vec<Box<Resolver>> = Vec::new();
 
-    if let Some(resolver) = setup_path_resolver(manifest, matches)? {
+    if let Some(resolver) = setup_path_resolver(manifest)? {
         resolvers.push(resolver);
     }
 
-    resolvers.push(Box::new(setup_repository(matches)?));
+    resolvers.push(Box::new(setup_repository(&manifest.repository)?));
     Ok(Box::new(Resolvers::new(resolvers)))
 }
 
-pub fn setup_options(manifest: &Manifest, matches: &ArgMatches) -> Result<Options> {
-    let id_converter = if let Some(id_converter) = matches.value_of("id-converter") {
-        Some(parse_id_converter(&id_converter)?)
+pub fn setup_options(manifest: &Manifest) -> Result<Options> {
+    let id_converter = if let Some(id_converter) = manifest.id_converter.as_ref() {
+        Some(parse_id_converter(id_converter)?)
     } else {
         None
     };
 
-    let modules = matches
-        .values_of("module")
-        .into_iter()
-        .flat_map(|it| it)
-        .map(ToOwned::to_owned)
-        .chain(manifest.modules.iter().cloned())
-        .collect();
-
     Ok(Options {
         id_converter: id_converter,
-        modules: modules,
+        modules: manifest.modules.clone(),
     })
 }
 
-pub fn setup_packages(manifest: &Manifest, matches: &ArgMatches) -> Result<Vec<RpRequiredPackage>> {
-    let mut packages = Vec::new();
-
-    for package in &manifest.packages {
-        packages.push(package.clone());
-    }
-
-    for package in matches.values_of("package").into_iter().flat_map(|it| it) {
-        let parsed = RpRequiredPackage::parse(package);
-
-        let parsed = parsed.chain_err(|| {
-            format!("failed to parse --package argument: {}", package)
-        })?;
-
-        packages.push(parsed);
-    }
-
-    Ok(packages)
-}
-
-pub fn setup_environment(manifest: &Manifest, matches: &ArgMatches) -> Result<Environment> {
-    let resolvers = setup_resolvers(manifest, matches)?;
-
-    let package_prefix = matches.value_of("package-prefix").map(ToOwned::to_owned);
-
-    let package_prefix = package_prefix.clone().map(|prefix| {
-        RpPackage::new(prefix.split(".").map(ToOwned::to_owned).collect())
-    });
-
+pub fn setup_environment(manifest: &Manifest) -> Result<Environment> {
+    let resolvers = setup_resolvers(manifest)?;
+    let package_prefix = manifest.package_prefix.clone();
     Ok(Environment::new(package_prefix, resolvers))
 }
 
 /// Read the manifest based on the current environment.
-pub fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
-    let mut manifest = Manifest::new();
+fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
+    let mut manifest = Manifest::default();
 
     let manifest_path = matches
         .value_of("manifest-path")
@@ -327,31 +295,18 @@ pub fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
     Ok(manifest)
 }
 
-pub fn setup_files<'a>(matches: &'a ArgMatches) -> Vec<PathBuf> {
-    matches
-        .values_of("file")
-        .into_iter()
-        .flat_map(|it| it)
-        .map(Path::new)
-        .map(ToOwned::to_owned)
-        .collect()
-}
-
-pub fn setup_env(matches: &ArgMatches) -> Result<(Manifest, Environment)> {
-    let manifest = setup_manifest(matches)?;
-    let files = setup_files(matches);
-    let packages = setup_packages(&manifest, matches)?;
-    let mut env = setup_environment(&manifest, matches)?;
+pub fn setup_env(manifest: &Manifest) -> Result<Environment> {
+    let mut env = setup_environment(manifest)?;
 
     let mut errors = Vec::new();
 
-    for file in files {
-        if let Err(e) = env.import_file(file) {
+    for file in &manifest.files {
+        if let Err(e) = env.import_file(&file.path) {
             errors.push(e.into());
         }
     }
 
-    for package in packages {
+    for package in manifest.packages.iter().cloned() {
         match env.import(&package) {
             Err(e) => errors.push(e.into()),
             Ok(None) => errors.push(format!("no matching package: {}", package).into()),
@@ -367,18 +322,81 @@ pub fn setup_env(matches: &ArgMatches) -> Result<(Manifest, Environment)> {
         return Err(ErrorKind::Errors(errors).into());
     }
 
-    Ok((manifest, env))
+    Ok(env)
 }
 
 pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
-    let out = out.subcommand(compiler_base(build::options()));
-    let out = out.subcommand(compiler_base(doc::options()));
-    let out = out.subcommand(verify::options());
-    let out = out.subcommand(publish::options());
-    let out = out.subcommand(update::options());
-    let out = out.subcommand(repo::options());
-    let out = out.subcommand(manifest::options());
+    let out = out.subcommand(build_args(build::options()));
+    let out = out.subcommand(build_args(verify::options()));
+    let out = out.subcommand(build_args(doc::options()));
+    let out = out.subcommand(base_args(publish::options()));
+    let out = out.subcommand(base_args(update::options()));
+    let out = out.subcommand(base_args(repo::options()));
+    let out = out.subcommand(base_args(manifest::options()));
     out
+}
+
+fn repository_from_matches(repository: &mut m::Repository, matches: &ArgMatches) -> Result<()> {
+    repository.no_repository = repository.no_repository || matches.is_present("no-repository");
+
+    if let Some(objects) = matches.value_of("objects").map(ToOwned::to_owned) {
+        repository.objects = Some(objects);
+    }
+
+    if let Some(index) = matches.value_of("index").map(ToOwned::to_owned) {
+        repository.index = Some(index);
+    }
+
+    Ok(())
+}
+
+fn manifest_from_matches(manifest: &mut Manifest, matches: &ArgMatches) -> Result<()> {
+    manifest.paths.extend(
+        matches
+            .values_of("path")
+            .into_iter()
+            .flat_map(|it| it)
+            .map(Path::new)
+            .map(ToOwned::to_owned),
+    );
+
+    manifest.files.extend(
+        matches
+            .values_of("file")
+            .into_iter()
+            .flat_map(|it| it)
+            .map(Path::new)
+            .map(ManifestFile::from_path),
+    );
+
+    manifest.modules.extend(
+        matches
+            .values_of("module")
+            .into_iter()
+            .flat_map(|it| it)
+            .map(ToOwned::to_owned),
+    );
+
+    for package in matches.values_of("package").into_iter().flat_map(|it| it) {
+        let parsed = RpRequiredPackage::parse(package);
+
+        let parsed = parsed.chain_err(|| {
+            format!("failed to parse --package argument: {}", package)
+        })?;
+
+        manifest.packages.push(parsed);
+    }
+
+    if let Some(package_prefix) = matches.value_of("package-prefix").map(RpPackage::parse) {
+        manifest.package_prefix = Some(package_prefix);
+    }
+
+    if let Some(id_converter) = matches.value_of("id-converter") {
+        manifest.id_converter = Some(id_converter.to_string());
+    }
+
+    repository_from_matches(&mut manifest.repository, matches)?;
+    Ok(())
 }
 
 pub fn entry(matches: &ArgMatches) -> Result<()> {
@@ -386,13 +404,23 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     let matches = matches.ok_or_else(|| "no subcommand")?;
 
     match name {
-        "build" => self::build::entry(matches),
-        "doc" => self::doc::entry(matches),
-        "verify" => self::verify::entry(matches),
-        "publish" => self::publish::entry(matches),
-        "update" => self::update::entry(matches),
-        "repo" => self::repo::entry(matches),
-        "manifest" => self::manifest::entry(matches),
-        _ => Err(format!("No such command: {}", name).into()),
+        "build" | "verify" | "doc" => {
+            let mut manifest = setup_manifest(matches)?;
+            manifest_from_matches(&mut manifest, matches)?;
+
+            match name {
+                "build" => return self::build::entry(manifest, matches),
+                "verify" => return self::verify::entry(manifest, matches),
+                "doc" => return self::doc::entry(manifest, matches),
+                "update" => return self::update::entry(manifest, matches),
+                "publish" => return self::publish::entry(manifest, matches),
+                _ => {}
+            }
+        }
+        "repo" => return self::repo::entry(matches),
+        "manifest" => return self::manifest::entry(matches),
+        _ => {}
     }
+
+    Err(format!("No such command: {}", name).into())
 }

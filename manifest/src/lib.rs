@@ -16,8 +16,8 @@ extern crate toml;
 pub mod errors;
 
 use errors::*;
-use relative_path::RelativePathBuf;
-use reproto_core::{RpPackage, RpRequiredPackage, VersionReq};
+use relative_path::{RelativePath, RelativePathBuf};
+use reproto_core::{RpPackage, RpRequiredPackage, Version, VersionReq};
 use std::collections::HashMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -81,6 +81,33 @@ pub fn parse_package(name: &str, value: toml::Value) -> Result<RpRequiredPackage
     }
 }
 
+/// Parse a single file declaration.
+pub fn parse_file(base: &Path, package: &str, value: toml::Value) -> Result<ManifestFile> {
+    use self::toml::Value::*;
+    let package = RpPackage::parse(package);
+
+    match value {
+        String(path) => {
+            let path = RelativePath::new(path.as_str()).to_path(base);
+
+            Ok(ManifestFile {
+                path: path,
+                package: Some(package),
+                version: None,
+            })
+        }
+        value => {
+            let body: ImManifestFile = value.try_into()?;
+
+            Ok(ManifestFile {
+                path: body.path.to_path(base),
+                package: body.package,
+                version: body.version,
+            })
+        }
+    }
+}
+
 /// Parse a declaration of packages.
 pub fn parse_packages(value: toml::Value) -> Result<Vec<RpRequiredPackage>> {
     let mut packages = Vec::new();
@@ -88,6 +115,17 @@ pub fn parse_packages(value: toml::Value) -> Result<Vec<RpRequiredPackage>> {
 
     for (name, value) in values.into_iter() {
         packages.push(parse_package(name.as_str(), value)?);
+    }
+
+    Ok(packages)
+}
+
+pub fn parse_files(base: &Path, value: toml::Value) -> Result<Vec<ManifestFile>> {
+    let mut packages = Vec::new();
+    let values = value.try_into::<HashMap<String, toml::Value>>()?;
+
+    for (name, value) in values.into_iter() {
+        packages.push(parse_file(base, name.as_str(), value)?);
     }
 
     Ok(packages)
@@ -140,49 +178,111 @@ fn apply_preset_to(value: toml::Value, manifest: &mut Manifest, base: &Path) -> 
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct JavaFields {}
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct ImRepository {
+    /// Skip using local repository.
+    #[serde(default)]
+    no_repository: bool,
+    /// URL to use for index.
+    #[serde(default)]
+    index: Option<String>,
+    /// URL to use to objects storage.
+    #[serde(default)]
+    objects: Option<String>,
+}
 
-#[derive(Debug, Clone, Deserialize)]
 /// Common fields in the file manifest.
-pub struct CommonFields {
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImCommonFields {
+    /// Packages to build.
     #[serde(default)]
     packages: Option<toml::Value>,
+    /// Files to build.
+    #[serde(default)]
+    files: Option<toml::Value>,
     #[serde(default)]
     modules: Vec<String>,
     #[serde(default)]
     presets: Vec<toml::Value>,
     #[serde(default)]
     paths: Vec<RelativePathBuf>,
+    #[serde(default)]
+    package_prefix: Option<RpPackage>,
+    #[serde(default)]
+    id_converter: Option<String>,
+    #[serde(default)]
+    repository: ImRepository,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImManifestFile {
+    pub path: RelativePathBuf,
+    pub package: Option<RpPackage>,
+    pub version: Option<Version>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ManifestFile {
+    pub path: PathBuf,
+    pub package: Option<RpPackage>,
+    pub version: Option<Version>,
+}
+
+impl ManifestFile {
+    pub fn from_path(path: &Path) -> ManifestFile {
+        ManifestFile {
+            path: path.to_owned(),
+            package: None,
+            version: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Repository {
+    /// Skip using local repository.
+    pub no_repository: bool,
+    /// URL to use for index.
+    pub index: Option<String>,
+    /// URL to use to objects storage.
+    pub objects: Option<String>,
 }
 
 /// The realized project manifest.
 ///
 /// * All paths are absolute.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Manifest {
     /// Language to build for.
     pub language: Option<Language>,
     /// Packages to build.
     pub packages: Vec<RpRequiredPackage>,
+    /// Files to build.
+    pub files: Vec<ManifestFile>,
     /// Modules to enable.
     pub modules: Vec<String>,
     /// Additional paths specified.
     pub paths: Vec<PathBuf>,
     /// Output directory.
     pub output: Option<PathBuf>,
+    /// Package prefix to apply.
+    pub package_prefix: Option<RpPackage>,
+    /// Conversion strategy to use for IDs.
+    pub id_converter: Option<String>,
+    /// Repository configuration.
+    pub repository: Repository,
 }
 
-impl Manifest {
-    pub fn new() -> Manifest {
-        Manifest {
-            language: None,
-            packages: vec![],
-            modules: vec![],
-            paths: vec![],
-            output: None,
-        }
-    }
+/// Load and apply all repository-specific information.
+pub fn load_repository(
+    repository: &mut Repository,
+    _base: &Path,
+    input: ImRepository,
+) -> Result<()> {
+    repository.no_repository = input.no_repository;
+    repository.index = input.index;
+    repository.objects = input.objects;
+    Ok(())
 }
 
 /// Load and apply all options to the given file manifest to build a realized manifest.
@@ -192,7 +292,7 @@ impl Manifest {
 pub fn load_common_manifest(
     manifest: &mut Manifest,
     base: &Path,
-    common: CommonFields,
+    common: ImCommonFields,
 ) -> Result<()> {
     let packages = if let Some(packages) = common.packages {
         parse_packages(packages)?
@@ -200,7 +300,14 @@ pub fn load_common_manifest(
         vec![]
     };
 
+    let files = if let Some(files) = common.files {
+        parse_files(base, files)?
+    } else {
+        vec![]
+    };
+
     manifest.packages.extend(packages);
+    manifest.files.extend(files);
     manifest.modules.extend(common.modules);
 
     manifest.paths.extend(
@@ -211,6 +318,15 @@ pub fn load_common_manifest(
         apply_preset_to(preset, manifest, &base)?;
     }
 
+    if let Some(package_prefix) = common.package_prefix {
+        manifest.package_prefix = Some(package_prefix);
+    }
+
+    if let Some(id_converter) = common.id_converter {
+        manifest.id_converter = Some(id_converter);
+    }
+
+    load_repository(&mut manifest.repository, base, common.repository)?;
     Ok(())
 }
 
@@ -254,7 +370,7 @@ pub fn read_manifest<P: AsRef<Path>, R: Read>(
         || format!("missing parent directory"),
     )?;
 
-    let common: CommonFields = value.try_into()?;
+    let common: ImCommonFields = value.try_into()?;
 
     load_common_manifest(manifest, parent, common)?;
     return Ok(true);
@@ -300,7 +416,7 @@ mod tests {
 
     macro_rules! include_manifest {
         ($name:expr) => {{
-            let mut manifest = Manifest::new();
+            let mut manifest = Manifest::default();
 
             read_manifest(
                 &mut manifest,
