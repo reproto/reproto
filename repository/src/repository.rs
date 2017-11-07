@@ -4,6 +4,7 @@ use errors::*;
 use index::Index;
 use resolver::Resolver;
 use sha256::to_sha256;
+use update::Update;
 
 pub struct Repository {
     index: Box<Index>,
@@ -18,10 +19,11 @@ impl Repository {
         }
     }
 
-    pub fn update(&self) -> Result<()> {
-        self.index.update()?;
-        self.objects.update()?;
-        Ok(())
+    pub fn update(&self) -> Result<Vec<Update>> {
+        let mut updates = Vec::new();
+        updates.extend(self.index.update()?);
+        updates.extend(self.objects.update()?);
+        Ok(updates)
     }
 
     pub fn publish<O>(

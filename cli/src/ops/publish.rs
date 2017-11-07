@@ -27,7 +27,8 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(manifest: Manifest, matches: &ArgMatches) -> Result<()> {
+pub fn entry(matches: &ArgMatches) -> Result<()> {
+    let manifest = setup_manifest(matches)?;
     let mut repository = setup_repository(&manifest.repository)?;
 
     let mut resolver = setup_path_resolver(&manifest)?.ok_or_else(|| {

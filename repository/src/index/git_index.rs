@@ -6,6 +6,7 @@ use index::{Deployment, Index, file_index};
 use objects::{FileObjects, GitObjects, Objects};
 use std::path::Path;
 use std::rc::Rc;
+use update::Update;
 use url::Url;
 
 pub struct GitIndex {
@@ -60,7 +61,7 @@ impl Index for GitIndex {
         ))
     }
 
-    fn update(&self) -> Result<()> {
-        self.git_repo.update()
+    fn update(&self) -> Result<Vec<Update>> {
+        Ok(vec![Update::GitRepo(&self.git_repo)])
     }
 }

@@ -9,6 +9,7 @@ use git;
 use objects::Objects;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use update::Update;
 use url::Url;
 
 /// Configuration file for objects backends.
@@ -60,8 +61,8 @@ pub trait Index {
     fn objects_from_index(&self, relative_path: &Path) -> Result<Box<Objects>>;
 
     /// Update local caches related to the index.
-    fn update(&self) -> Result<()> {
-        Ok(())
+    fn update(&self) -> Result<Vec<Update>> {
+        Ok(vec![])
     }
 }
 

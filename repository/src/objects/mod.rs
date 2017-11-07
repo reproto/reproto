@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
 use tokio_core::reactor::Core;
+use update::Update;
 use url::Url;
 
 /// Configuration file for objects backends.
@@ -38,8 +39,8 @@ pub trait Objects {
     fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>>;
 
     /// Update local caches related to the object store.
-    fn update(&self) -> Result<()> {
-        Ok(())
+    fn update(&self) -> Result<Vec<Update>> {
+        Ok(vec![])
     }
 }
 

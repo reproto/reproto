@@ -278,7 +278,7 @@ pub fn setup_environment(manifest: &Manifest) -> Result<Environment> {
 }
 
 /// Read the manifest based on the current environment.
-fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
+pub fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
     let mut manifest = Manifest::default();
 
     let manifest_path = matches
@@ -292,6 +292,7 @@ fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
         read_manifest(&mut manifest, manifest_path, reader)?;
     }
 
+    manifest_from_matches(&mut manifest, matches)?;
     Ok(manifest)
 }
 
@@ -404,21 +405,13 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     let matches = matches.ok_or_else(|| "no subcommand")?;
 
     match name {
-        "build" | "verify" | "doc" => {
-            let mut manifest = setup_manifest(matches)?;
-            manifest_from_matches(&mut manifest, matches)?;
-
-            match name {
-                "build" => return self::build::entry(manifest, matches),
-                "verify" => return self::verify::entry(manifest, matches),
-                "doc" => return self::doc::entry(manifest, matches),
-                "update" => return self::update::entry(manifest, matches),
-                "publish" => return self::publish::entry(manifest, matches),
-                _ => {}
-            }
-        }
-        "repo" => return self::repo::entry(matches),
-        "manifest" => return self::manifest::entry(matches),
+        "build" => return build::entry(matches),
+        "verify" => return verify::entry(matches),
+        "doc" => return doc::entry(matches),
+        "update" => return update::entry(matches),
+        "publish" => return publish::entry(matches),
+        "repo" => return repo::entry(matches),
+        "manifest" => return manifest::entry(matches),
         _ => {}
     }
 

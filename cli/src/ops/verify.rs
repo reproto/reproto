@@ -13,9 +13,10 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(manifest: Manifest, matches: &ArgMatches) -> Result<()> {
+pub fn entry(matches: &ArgMatches) -> Result<()> {
     use self::Language::*;
 
+    let manifest = setup_manifest(matches)?;
     let env = setup_env(&manifest)?;
     let options = setup_options(&manifest)?;
 

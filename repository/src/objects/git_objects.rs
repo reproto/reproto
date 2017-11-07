@@ -7,6 +7,7 @@ use errors::*;
 use git::GitRepo;
 use std::io::Read;
 use std::rc::Rc;
+use update::Update;
 use url::Url;
 
 pub struct GitObjects {
@@ -34,7 +35,7 @@ impl Objects for GitObjects {
         self.file_objects.get_object(checksum)
     }
 
-    fn update(&self) -> Result<()> {
-        self.git_repo.update()
+    fn update(&self) -> Result<Vec<Update>> {
+        Ok(vec![Update::GitRepo(&self.git_repo)])
     }
 }

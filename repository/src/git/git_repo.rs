@@ -1,5 +1,5 @@
-/// Some code copied from the Cargo Project at Commit:
-/// https://github.com/rust-lang/cargo/commit/def249f9c18280d84f29fd96978389689fb61051
+//! Abstraction over git repositories.
+//! Uses git command available on the system to keep a repo in-sync.
 
 use errors::*;
 use std::env;
@@ -9,9 +9,21 @@ use std::process::Command;
 use url::Url;
 
 const GIT_BIN_ENV: &'static str = "REPROTO_GIT_BIN";
-const DEFAULT_GIT_COMMAND: &'static str = "git";
 const FETCH_HEAD: &'static str = "FETCH_HEAD";
 
+#[cfg(unix)]
+mod sys {
+    pub const DEFAULT_GIT_COMMAND: &'static str = "git";
+}
+
+#[cfg(windows)]
+mod sys {
+    pub const DEFAULT_GIT_COMMAND: &'static str = "git.exe";
+}
+
+use self::sys::*;
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct GitRepo {
     git_command: String,
     work_tree: PathBuf,
@@ -56,6 +68,8 @@ impl GitRepo {
             &self.work_tree,
         );
 
+        debug!("git: {:?}", command);
+
         let status = command.status()?;
 
         if !status.success() {
@@ -71,15 +85,10 @@ impl GitRepo {
         Ok(())
     }
 
+    /// Update the repository.
     pub fn update(&self) -> Result<()> {
         info!("Updating {}", self.remote);
-        self.git(
-            &[
-                "fetch",
-                self.remote.to_string().as_str(),
-                self.revspec.as_str(),
-            ],
-        )?;
+        self.git(&["fetch", self.remote.as_ref(), &self.revspec])?;
         self.reset(FETCH_HEAD)
     }
 }

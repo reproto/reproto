@@ -27,11 +27,14 @@ mod repository;
 mod resolver;
 mod sha256;
 pub mod errors;
+mod update;
 
 pub use self::checksum::Checksum;
+pub use self::git::GitRepo;
 pub use self::index::{Index, IndexConfig, NoIndex, index_from_url, init_file_index};
 pub use self::objects::{FileObjects, NoObjects, Objects, ObjectsConfig, objects_from_file,
                         objects_from_url};
 pub use self::repository::Repository;
 pub use self::resolver::{Paths, Resolver, Resolvers};
 pub use self::sha256::{Sha256 as Digest, to_sha256 as to_checksum};
+pub use self::update::Update;
