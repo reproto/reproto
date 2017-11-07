@@ -2,17 +2,16 @@ use super::imports::*;
 use core::{Object, Version};
 use std::fmt;
 
-struct DisplayMatch<'a>(&'a (Option<Version>, Box<Object>));
+/// Candidate to publish.
+struct Match(Version, Box<Object>, RpPackage);
+
+/// Formatting of candidate.
+struct DisplayMatch<'a>(&'a Match);
 
 impl<'a> fmt::Display for DisplayMatch<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let inner = &self.0;
-
-        if let Some(ref version) = inner.0 {
-            write!(f, "{}@{}", inner.1, version)
-        } else {
-            write!(f, "{} (no version)", inner.1)
-        }
+        write!(f, "{}@{}", inner.1, inner.0)
     }
 }
 
@@ -45,52 +44,66 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         .map(|p| RpRequiredPackage::parse(p).map_err(Into::into))
         .collect::<Result<_>>()?;
 
-    if packages.is_empty() {
-        return Err("No packages specified to publish".into());
-    }
+    let mut results = Vec::new();
 
-    for package in packages {
-        let results = resolver.resolve(&package)?;
+    for publish in manifest.publish {
+        let package = RpRequiredPackage::new(publish.package.clone(), None);
+        let resolved = resolver.resolve(&package)?;
 
-        let mut it = results.into_iter();
-        let first = it.next().ok_or_else(|| {
-            format!("no matching packages found for: {}", &package)
-        })?;
-
-        if let Some(next) = it.next() {
-            warn!("matched: {}", DisplayMatch(&first));
-            warn!("    and: {}", DisplayMatch(&next));
-
-            while let Some(next) = it.next() {
-                warn!("    and: {}", DisplayMatch(&next));
-            }
-
-            return Err("more than one matching package found".into());
+        if resolved.is_empty() {
+            return Err(
+                format!("no matching packages found for: {}", package).into(),
+            );
         }
 
-        let (version, object) = first;
-
-        let version = version.as_ref().or(manifest.version.as_ref());
-
-        let version = version.ok_or_else(
-            || format!("{}: package without a version", object),
-        )?;
-
-        info!(
-            "publishing: {}@{} (from {})",
-            package.package,
-            version,
-            object
-        );
-
-        let force = matches.is_present("force");
-        repository.publish(
-            &object,
-            &package.package,
-            version,
-            force,
-        )?;
+        // packages.push(RpRequiredPackage());
+        for (_, object) in resolved {
+            results.push(Match(
+                publish.version.clone(),
+                object,
+                publish.package.clone(),
+            ));
+        }
     }
 
+    for package in packages.iter() {
+        let resolved = resolver.resolve(package)?;
+
+        if resolved.is_empty() {
+            return Err(
+                format!("no matching packages found for: {}", package).into(),
+            );
+        }
+
+        for (version, object) in resolved {
+            let version = version.ok_or_else(
+                || format!("{}: package without a version", object),
+            )?;
+
+            results.push(Match(version, object, package.package.clone()));
+        }
+    }
+
+    let mut it = results.into_iter();
+
+    let first = it.next().ok_or_else(|| format!("no packages to publish"))?;
+
+    if let Some(next) = it.next() {
+        warn!("matched: {}", DisplayMatch(&first));
+        warn!("    and: {}", DisplayMatch(&next));
+
+        while let Some(next) = it.next() {
+            warn!("    and: {}", DisplayMatch(&next));
+        }
+
+        return Err("more than one matching package found".into());
+    }
+
+    let Match(version, object, package) = first;
+
+    info!("publishing: {}@{} (from {})", package, version, object);
+
+    let force = matches.is_present("force");
+    repository.publish(&object, &package, &version, force)?;
     Ok(())
 }

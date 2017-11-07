@@ -109,15 +109,80 @@ petstore = "*"
 type = "maven"
 ```
 
-### Publishing
+### Packages
 
-For publishing packages, the `version` key in the manifest is useful.
-This permits storing local manifest in your path, but overriding the version for publishing and
-other operations that require versions.
+The `[packages]` section designate which packages should be built on `reproto build`.
 
 ```toml
+[packages]
+petstore = "*"
+```
+
+This can be specified in a more elaborate format to support more options:
+
+```toml
+[packages]
+petstore = {version = "*"}
+```
+
+Or:
+
+```toml
+[packages.petstore]
+version = "*"
+```
+
+### Files
+
+The `[files]` section permits building a single, local file as some specific package and version.
+This would typically be used to patch external manifests:
+
+```toml
+[files]
+petstore = "patches/petstore.reproto"
+```
+
+This can be specified in a more elaborate format to support more options:
+
+```toml
+[files]
+petstore = {path = "patches/petstore.reproto", version = "1.0.1"}
+```
+
+Or:
+
+```toml
+[files.petstore]
+path = "patches/petstore.reproto"
 version = "1.0.1"
+```
+
+### Publishing
+
+In order to publish packages, the version of the package needs to be known.
+
+Since specifications would typically be unversioned during development, ReProto supports
+a `[publish]` section where you can map what version a local package belongs to.
+
+```toml
 paths = ["src"]
+
+[publish]
+petstore = "1.0.1"
+```
+
+These can be specified in a more elaborate format:
+
+```toml
+[publish]
+petstore = {version = "1.0.1"}
+```
+
+Or:
+
+```toml
+[publish.petstore]
+version = "1.0.1"
 ```
 
 Assuming you have a manifest called `src/petstore.reproto`, you can now publish it using:

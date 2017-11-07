@@ -22,6 +22,101 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+/// Trait to convert different types.
+pub trait TryFromToml
+where
+    Self: Sized,
+{
+    /// Convert from a string value.
+    fn try_from_string(base: &Path, id: &str, value: String) -> Result<Self>;
+
+    /// Convert from a TOML.
+    fn try_from_value(base: &Path, id: &str, value: toml::Value) -> Result<Self>;
+}
+
+impl TryFromToml for ManifestFile {
+    fn try_from_string(base: &Path, id: &str, value: String) -> Result<Self> {
+        let package = RpPackage::parse(id);
+        let path = RelativePath::new(value.as_str()).to_path(base);
+
+        Ok(ManifestFile {
+            path: path,
+            package: Some(package),
+            version: None,
+        })
+    }
+
+    fn try_from_value(base: &Path, id: &str, value: toml::Value) -> Result<Self> {
+        let package = RpPackage::parse(id);
+        let body: ImManifestFile = value.try_into()?;
+
+        return Ok(ManifestFile {
+            path: body.path.to_path(base),
+            package: Some(package),
+            version: body.version,
+        });
+
+        #[derive(Debug, Clone, Deserialize)]
+        pub struct ImManifestFile {
+            pub path: RelativePathBuf,
+            pub version: Option<Version>,
+        }
+    }
+}
+
+impl TryFromToml for Publish {
+    fn try_from_string(_: &Path, id: &str, value: String) -> Result<Self> {
+        let package = RpPackage::parse(id);
+        let version = Version::parse(value.as_str()).map_err(|e| {
+            format!("bad version: {}: {}", e, value)
+        })?;
+
+        Ok(Publish {
+            package: package,
+            version: version,
+        })
+    }
+
+    fn try_from_value(_: &Path, id: &str, value: toml::Value) -> Result<Self> {
+        let package = RpPackage::parse(id);
+        let body: ImPublish = value.try_into()?;
+
+        return Ok(Publish {
+            package: package,
+            version: body.version,
+        });
+
+        #[derive(Debug, Clone, Deserialize)]
+        pub struct ImPublish {
+            pub version: Version,
+        }
+    }
+}
+
+impl TryFromToml for RpRequiredPackage {
+    fn try_from_string(_: &Path, id: &str, value: String) -> Result<Self> {
+        let package = RpPackage::parse(id);
+
+        let version_req = VersionReq::parse(value.as_str()).map_err(|e| {
+            format!("bad version: {}: {}", e, value)
+        })?;
+
+        let version_req = if version_req.is_wildcard() {
+            None
+        } else {
+            Some(version_req)
+        };
+
+        Ok(RpRequiredPackage::new(package, version_req))
+    }
+
+    fn try_from_value(_: &Path, id: &str, value: toml::Value) -> Result<Self> {
+        let package = RpPackage::parse(id);
+        let body: Package = value.try_into()?;
+        Ok(RpRequiredPackage::new(package, body.version))
+    }
+}
+
 /// Enum designating which language is being compiled.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -56,79 +151,42 @@ pub struct Package {
     version: Option<VersionReq>,
 }
 
-pub fn parse_package(name: &str, value: toml::Value) -> Result<RpRequiredPackage> {
+/// Parse a single specification where the string key is a package.
+///
+/// The behavior for the value is determined by `TryFromToml`.
+pub fn parse_spec<T: 'static>(base: &Path, id: &str, value: toml::Value) -> Result<T>
+where
+    T: TryFromToml,
+{
     use self::toml::Value::*;
-    let package = RpPackage::parse(name);
 
     match value {
-        String(version) => {
-            let version_req = VersionReq::parse(version.as_str()).map_err(|e| {
-                format!("bad version: {}: {}", e, version)
-            })?;
-
-            let version_req = if version_req.is_wildcard() {
-                None
-            } else {
-                Some(version_req)
-            };
-
-            Ok(RpRequiredPackage::new(package, version_req))
-        }
-        value => {
-            let body: Package = value.try_into()?;
-            Ok(RpRequiredPackage::new(package, body.version))
-        }
+        String(value) => T::try_from_string(base, id, value),
+        value => T::try_from_value(base, id, value),
     }
 }
 
-/// Parse a single file declaration.
-pub fn parse_file(base: &Path, package: &str, value: toml::Value) -> Result<ManifestFile> {
-    use self::toml::Value::*;
-    let package = RpPackage::parse(package);
-
-    match value {
-        String(path) => {
-            let path = RelativePath::new(path.as_str()).to_path(base);
-
-            Ok(ManifestFile {
-                path: path,
-                package: Some(package),
-                version: None,
-            })
-        }
-        value => {
-            let body: ImManifestFile = value.try_into()?;
-
-            Ok(ManifestFile {
-                path: body.path.to_path(base),
-                package: body.package,
-                version: body.version,
-            })
-        }
-    }
-}
-
-/// Parse a declaration of packages.
-pub fn parse_packages(value: toml::Value) -> Result<Vec<RpRequiredPackage>> {
+/// Parse multiple speicifcations where the keys are packages.
+pub fn parse_specs<T: 'static>(base: &Path, value: toml::Value) -> Result<Vec<T>>
+where
+    T: TryFromToml,
+{
     let mut packages = Vec::new();
     let values = value.try_into::<HashMap<String, toml::Value>>()?;
 
     for (name, value) in values.into_iter() {
-        packages.push(parse_package(name.as_str(), value)?);
+        packages.push(parse_spec(base, name.as_str(), value)?);
     }
 
     Ok(packages)
 }
 
-pub fn parse_files(base: &Path, value: toml::Value) -> Result<Vec<ManifestFile>> {
-    let mut packages = Vec::new();
-    let values = value.try_into::<HashMap<String, toml::Value>>()?;
-
-    for (name, value) in values.into_iter() {
-        packages.push(parse_file(base, name.as_str(), value)?);
-    }
-
-    Ok(packages)
+/// Parse optional specs.
+pub fn opt_specs<T: 'static>(base: &Path, value: Option<toml::Value>) -> Result<Vec<T>>
+where
+    T: TryFromToml,
+{
+    value.map(|v| parse_specs(base, v)).unwrap_or(Ok(vec![]))
 }
 
 /// A quick bundle of configuration that can be applied, depending on what the project looks like.
@@ -194,15 +252,14 @@ pub struct ImRepository {
 /// Common fields in the file manifest.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImCommonFields {
-    /// Version to use for unversioned specs.
-    #[serde(default)]
-    version: Option<Version>,
     /// Packages to build.
     #[serde(default)]
     packages: Option<toml::Value>,
     /// Files to build.
     #[serde(default)]
     files: Option<toml::Value>,
+    #[serde(default)]
+    publish: Option<toml::Value>,
     #[serde(default)]
     modules: Vec<String>,
     #[serde(default)]
@@ -218,10 +275,9 @@ pub struct ImCommonFields {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ImManifestFile {
-    pub path: RelativePathBuf,
-    pub package: Option<RpPackage>,
-    pub version: Option<Version>,
+pub struct Publish {
+    pub package: RpPackage,
+    pub version: Version,
 }
 
 #[derive(Debug, Clone)]
@@ -256,15 +312,14 @@ pub struct Repository {
 /// * All paths are absolute.
 #[derive(Debug, Clone, Default)]
 pub struct Manifest {
-    /// Version to use for unversioned specs.
-    /// Required when publishing.
-    pub version: Option<Version>,
     /// Language to build for.
     pub language: Option<Language>,
     /// Packages to build.
     pub packages: Vec<RpRequiredPackage>,
     /// Files to build.
     pub files: Vec<ManifestFile>,
+    /// Packages to publish.
+    pub publish: Vec<Publish>,
     /// Modules to enable.
     pub modules: Vec<String>,
     /// Additional paths specified.
@@ -300,23 +355,10 @@ pub fn load_common_manifest(
     base: &Path,
     common: ImCommonFields,
 ) -> Result<()> {
-    let packages = if let Some(packages) = common.packages {
-        parse_packages(packages)?
-    } else {
-        vec![]
-    };
-
-    let files = if let Some(files) = common.files {
-        parse_files(base, files)?
-    } else {
-        vec![]
-    };
-
-    manifest.packages.extend(packages);
-    manifest.files.extend(files);
+    manifest.packages.extend(opt_specs(base, common.packages)?);
+    manifest.files.extend(opt_specs(base, common.files)?);
+    manifest.publish.extend(opt_specs(base, common.publish)?);
     manifest.modules.extend(common.modules);
-
-    manifest.version = common.version;
 
     manifest.paths.extend(
         common.paths.iter().map(|r| r.to_path(&base)),
