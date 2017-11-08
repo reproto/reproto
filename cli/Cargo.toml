@@ -42,3 +42,7 @@ serde_derive = "1.0"
 toml = "0.4"
 url = "1.5"
 url_serde = "0.2"
+
+[patch.crates-io]
+semver = {git = "https://github.com/udoprog/semver", branch = "wildcard"}
+semver-parser = {git = "https://github.com/udoprog/semver-parser", branch = "wildcard"}
