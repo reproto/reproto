@@ -306,7 +306,8 @@ pub fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
     if manifest_path.is_file() {
         debug!("reading manifest: {}", manifest_path.display());
         let reader = File::open(manifest_path.clone())?;
-        read_manifest(&mut manifest, manifest_path, reader)?;
+        read_manifest(&mut manifest, &manifest_path, reader)
+            .map_err(|e| format!("{}: {}", manifest_path.display(), e))?;
     }
 
     manifest_from_matches(&mut manifest, matches)?;

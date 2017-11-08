@@ -236,46 +236,6 @@ fn apply_preset_to(value: toml::Value, manifest: &mut Manifest, base: &Path) -> 
     }
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
-pub struct ImRepository {
-    /// Skip using local repository.
-    #[serde(default)]
-    no_repository: bool,
-    /// URL to use for index.
-    #[serde(default)]
-    index: Option<String>,
-    /// URL to use to objects storage.
-    #[serde(default)]
-    objects: Option<String>,
-}
-
-/// Common fields in the file manifest.
-#[derive(Debug, Clone, Deserialize)]
-pub struct ImCommonFields {
-    /// Packages to build.
-    #[serde(default)]
-    packages: Option<toml::Value>,
-    /// Files to build.
-    #[serde(default)]
-    files: Option<toml::Value>,
-    #[serde(default)]
-    publish: Option<toml::Value>,
-    #[serde(default)]
-    modules: Vec<String>,
-    #[serde(default)]
-    paths: Vec<RelativePathBuf>,
-    #[serde(default)]
-    output: Option<RelativePathBuf>,
-    #[serde(default)]
-    presets: Vec<toml::Value>,
-    #[serde(default)]
-    package_prefix: Option<RpPackage>,
-    #[serde(default)]
-    id_converter: Option<String>,
-    #[serde(default)]
-    repository: ImRepository,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct Publish {
     pub package: RpPackage,
@@ -351,11 +311,46 @@ impl Manifest {
 pub fn load_repository(
     repository: &mut Repository,
     _base: &Path,
-    input: ImRepository,
+    value: &mut toml::value::Table,
 ) -> Result<()> {
-    repository.no_repository = input.no_repository;
-    repository.index = input.index;
-    repository.objects = input.objects;
+    repository.no_repository = take_field(value, "no_repository")?;
+    repository.index = take_field(value, "index")?;
+    repository.objects = take_field(value, "objects")?;
+    Ok(())
+}
+
+fn take_field<'de, T>(value: &mut toml::value::Table, name: &str) -> Result<T>
+where
+    T: Default + serde::Deserialize<'de>,
+{
+    if let Some(field) = value.remove(name) {
+        field.try_into().map_err(
+            |e| format!("{}: {}", name, e).into(),
+        )
+    } else {
+        Ok(T::default())
+    }
+}
+
+fn check_empty(value: &toml::value::Table) -> Result<()> {
+    let unexpected: Vec<String> = value.keys().map(Clone::clone).collect();
+
+    if unexpected.len() > 0 {
+        return Err(
+            format!("unexpected entries: {}", unexpected.join(", ")).into(),
+        );
+    }
+
+    Ok(())
+}
+
+fn take_section<F>(value: &mut toml::value::Table, name: &str, mut func: F) -> Result<()>
+where
+    F: FnMut(&mut toml::value::Table) -> Result<()>,
+{
+    let mut inner = take_field::<toml::value::Table>(value, "repository")?;
+    func(&mut inner)?;
+    check_empty(&inner).map_err(|e| format!("{}: {}", name, e))?;
     Ok(())
 }
 
@@ -366,34 +361,49 @@ pub fn load_repository(
 pub fn load_common_manifest(
     manifest: &mut Manifest,
     base: &Path,
-    common: ImCommonFields,
+    value: &mut toml::value::Table,
 ) -> Result<()> {
-    manifest.packages.extend(opt_specs(base, common.packages)?);
-    manifest.files.extend(opt_specs(base, common.files)?);
-    manifest.publish.extend(opt_specs(base, common.publish)?);
-    manifest.modules.extend(common.modules);
-
-    manifest.paths.extend(
-        common.paths.iter().map(|r| r.to_path(&base)),
+    manifest.packages.extend(opt_specs(
+        base,
+        take_field(value, "packages")?,
+    )?);
+    manifest.files.extend(
+        opt_specs(base, take_field(value, "files")?)?,
+    );
+    manifest.publish.extend(opt_specs(
+        base,
+        take_field(value, "publish")?,
+    )?);
+    manifest.modules.extend(
+        take_field::<Vec<String>>(value, "modules")?,
     );
 
-    if let Some(output) = common.output {
+    manifest.paths.extend(
+        take_field::<Vec<RelativePathBuf>>(value, "paths")?
+            .iter()
+            .map(|r| r.to_path(&base)),
+    );
+
+    if let Some(output) = take_field::<Option<RelativePathBuf>>(value, "output")? {
         manifest.output = Some(output.to_path(base));
     }
 
-    for preset in common.presets {
+    for preset in take_field::<Vec<toml::Value>>(value, "presets")? {
         apply_preset_to(preset, manifest, &base)?;
     }
 
-    if let Some(package_prefix) = common.package_prefix {
+    if let Some(package_prefix) = take_field::<Option<RpPackage>>(value, "package_prefix")? {
         manifest.package_prefix = Some(package_prefix);
     }
 
-    if let Some(id_converter) = common.id_converter {
+    if let Some(id_converter) = take_field::<Option<String>>(value, "id_converter")? {
         manifest.id_converter = Some(id_converter);
     }
 
-    load_repository(&mut manifest.repository, base, common.repository)?;
+    take_section(value, "repository", |repository| {
+        load_repository(&mut manifest.repository, base, repository)
+    })?;
+
     Ok(())
 }
 
@@ -413,20 +423,20 @@ pub fn read_manifest<P: AsRef<Path>, R: Read>(
     let mut content = String::new();
     reader.read_to_string(&mut content)?;
 
-    let value: toml::Value = toml::from_str(content.as_str()).map_err(|e| {
+    let mut value: toml::value::Table = toml::from_str(content.as_str()).map_err(|e| {
         format!("{}: bad manifest: {}", path.display(), e)
     })?;
 
-    if let Some(language) = value.get("language") {
+    if let Some(language) = value.get("language").map(Clone::clone) {
         let language: Language = language.clone().try_into::<Language>().map_err(|e| {
             format!("bad `language` key: {}", e)
         })?;
 
         match language {
-            Java => read_manifest_java(manifest, path, &value)?,
-            Python => read_manifest_python(manifest, path, &value)?,
-            Js => read_manifest_js(manifest, path, &value)?,
-            Rust => read_manifest_rust(manifest, path, &value)?,
+            Java => read_manifest_java(manifest, path, &mut value)?,
+            Python => read_manifest_python(manifest, path, &mut value)?,
+            Js => read_manifest_js(manifest, path, &mut value)?,
+            Rust => read_manifest_rust(manifest, path, &mut value)?,
             Json => {}
         }
 
@@ -437,13 +447,17 @@ pub fn read_manifest<P: AsRef<Path>, R: Read>(
         || format!("missing parent directory"),
     )?;
 
-    let common: ImCommonFields = value.try_into()?;
+    load_common_manifest(manifest, parent, &mut value)?;
 
-    load_common_manifest(manifest, parent, common)?;
+    check_empty(&value)?;
     return Ok(true);
 
     #[allow(unused)]
-    fn read_manifest_java(manifest: &mut Manifest, path: &Path, value: &toml::Value) -> Result<()> {
+    fn read_manifest_java(
+        manifest: &mut Manifest,
+        path: &Path,
+        value: &mut toml::value::Table,
+    ) -> Result<()> {
         return Ok(());
     }
 
@@ -451,18 +465,26 @@ pub fn read_manifest<P: AsRef<Path>, R: Read>(
     fn read_manifest_python(
         manifest: &mut Manifest,
         path: &Path,
-        value: &toml::Value,
+        value: &mut toml::value::Table,
     ) -> Result<()> {
         return Ok(());
     }
 
     #[allow(unused)]
-    fn read_manifest_js(manifest: &mut Manifest, path: &Path, value: &toml::Value) -> Result<()> {
+    fn read_manifest_js(
+        manifest: &mut Manifest,
+        path: &Path,
+        value: &mut toml::value::Table,
+    ) -> Result<()> {
         return Ok(());
     }
 
     #[allow(unused)]
-    fn read_manifest_rust(manifest: &mut Manifest, path: &Path, value: &toml::Value) -> Result<()> {
+    fn read_manifest_rust(
+        manifest: &mut Manifest,
+        path: &Path,
+        value: &mut toml::value::Table,
+    ) -> Result<()> {
         return Ok(());
     }
 }
