@@ -14,6 +14,7 @@ use self::imports::*;
 use backend::{CamelCase, FromNaming, Naming, SnakeCase};
 use core::{Object, RpPackage, RpVersionedPackage, Version};
 use manifest::{Manifest, ManifestFile, Publish, read_manifest, self as m};
+use relative_path::RelativePath;
 use repository::*;
 use semck;
 use std::env;
@@ -187,10 +188,16 @@ pub fn setup_compiler_options(
     Ok(CompilerOptions { out_path: out_path.to_owned() })
 }
 
-pub fn setup_repository(repository: &m::Repository) -> Result<Repository> {
+pub fn setup_repository(manifest: &Manifest) -> Result<Repository> {
+    let repository = &manifest.repository;
+
     if repository.no_repository {
         return Ok(Repository::new(Box::new(NoIndex), Box::new(NoObjects)));
     }
+
+    let base = manifest.path.parent().ok_or_else(
+        || "no parent path to manifest",
+    )?;
 
     let mut repo_dir = None;
     let mut cache_dir = None;
@@ -216,8 +223,14 @@ pub fn setup_repository(repository: &m::Repository) -> Result<Repository> {
 
     let index_url = index.unwrap_or_else(|| DEFAULT_INDEX.to_owned());
 
-    let index_url = url::Url::parse(index_url.as_ref())?;
-    let index = index_from_url(index_config, &index_url)?;
+    let index = match url::Url::parse(index_url.as_ref()) {
+        Err(url::ParseError::RelativeUrlWithoutBase) => {
+            let path = RelativePath::new(index_url.as_str()).to_path(base);
+            index_from_path(&path)?
+        }
+        Err(e) => return Err(e.into()),
+        Ok(url) => index_from_url(index_config, &url)?,
+    };
 
     let objects = {
         let objects_url = if let Some(ref objects) = objects {
@@ -232,8 +245,7 @@ pub fn setup_repository(repository: &m::Repository) -> Result<Repository> {
         match url::Url::parse(objects_url) {
             // Relative to index index repository!
             Err(url::ParseError::RelativeUrlWithoutBase) => {
-                let relative_path = Path::new(objects_url);
-                index.objects_from_index(&relative_path)?
+                index.objects_from_index(RelativePath::new(objects_url))?
             }
             Err(e) => return Err(e.into()),
             Ok(url) => objects_from_url(objects_config, &url)?,
@@ -258,7 +270,8 @@ pub fn setup_resolvers(manifest: &Manifest) -> Result<Box<Resolver>> {
         resolvers.push(resolver);
     }
 
-    resolvers.push(Box::new(setup_repository(&manifest.repository)?));
+    resolvers.push(Box::new(setup_repository(manifest)?));
+
     Ok(Box::new(Resolvers::new(resolvers)))
 }
 
@@ -283,12 +296,12 @@ pub fn setup_environment(manifest: &Manifest) -> Result<Environment> {
 
 /// Read the manifest based on the current environment.
 pub fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
-    let mut manifest = Manifest::default();
-
     let manifest_path = matches
         .value_of("manifest-path")
         .map::<Result<PathBuf>, _>(|p| Ok(Path::new(p).to_owned()))
         .unwrap_or_else(|| Ok(env::current_dir()?.join(MANIFEST_NAME)))?;
+
+    let mut manifest = Manifest::new(&manifest_path);
 
     if manifest_path.is_file() {
         debug!("reading manifest: {}", manifest_path.display());
@@ -423,9 +436,9 @@ impl<'a> fmt::Display for DisplayMatch<'a> {
     }
 }
 
-pub fn setup_publish_matches<I>(resolver: &mut Resolver, publish: I) -> Result<Vec<Match>>
+pub fn setup_publish_matches<'a, I>(resolver: &mut Resolver, publish: I) -> Result<Vec<Match>>
 where
-    I: IntoIterator<Item = Publish>,
+    I: IntoIterator<Item = &'a Publish>,
 {
     let mut results = Vec::new();
 

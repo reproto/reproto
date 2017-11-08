@@ -23,6 +23,7 @@ extern crate reproto_parser as parser;
 extern crate reproto_repository as repository;
 extern crate toml;
 extern crate url;
+extern crate relative_path;
 
 pub mod ops;
 pub mod config;

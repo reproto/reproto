@@ -3,6 +3,7 @@ use core::{RpPackage, Version, VersionReq};
 use errors::*;
 use index::{Deployment, Index};
 use objects::{FileObjects, Objects};
+use relative_path::RelativePath;
 use serde_json;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read, Write};
@@ -170,8 +171,8 @@ impl Index for FileIndex {
         )
     }
 
-    fn objects_from_index(&self, relative_path: &Path) -> Result<Box<Objects>> {
-        let path = self.path.join(relative_path);
+    fn objects_from_index(&self, relative_path: &RelativePath) -> Result<Box<Objects>> {
+        let path = relative_path.to_path(&self.path);
         Ok(Box::new(FileObjects::new(&path)))
     }
 

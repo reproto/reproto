@@ -1,0 +1,4 @@
+[repository]
+no_repository = true
+index = "file:///index"
+objects = "file:///objects"

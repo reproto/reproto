@@ -7,6 +7,7 @@ use checksum::Checksum;
 use core::{RpPackage, Version, VersionReq};
 use git;
 use objects::Objects;
+use relative_path::RelativePath;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use update::Update;
@@ -64,7 +65,7 @@ pub trait Index {
     fn objects_url(&self) -> Result<&str>;
 
     /// Load objects relative to the index repository.
-    fn objects_from_index(&self, relative_path: &Path) -> Result<Box<Objects>>;
+    fn objects_from_index(&self, relative_path: &RelativePath) -> Result<Box<Objects>>;
 
     /// Update local caches related to the index.
     fn update(&self) -> Result<Vec<Update>> {
@@ -99,16 +100,16 @@ impl Index for NoIndex {
     }
 
     /// Load objects relative to the index repository.
-    fn objects_from_index(&self, _: &Path) -> Result<Box<Objects>> {
+    fn objects_from_index(&self, _: &RelativePath) -> Result<Box<Objects>> {
         Err(ErrorKind::EmptyIndex.into())
     }
 }
 
-pub fn index_from_file(url: &Url) -> Result<Box<Index>> {
-    let path = Path::new(url.path());
-
+pub fn index_from_path(path: &Path) -> Result<Box<Index>> {
     if !path.is_dir() {
-        return Err(format!("no such directory: {}", path.display()).into());
+        return Err(
+            format!("index: no such directory: {}", path.display()).into(),
+        );
     }
 
     Ok(Box::new(file_index::FileIndex::new(&path)?))
@@ -135,12 +136,15 @@ where
 
 pub fn index_from_url(config: IndexConfig, url: &Url) -> Result<Box<Index>> {
     let mut scheme = url.scheme().split("+");
+
     let first = scheme.next().ok_or_else(
         || format!("invalid scheme: {}", url),
     )?;
 
     match first {
-        "file" => index_from_file(url),
+        "file" => index_from_path(&url.to_file_path().map_err(|_| {
+            format!("bad file path for url: {}", url)
+        })?),
         "git" => index_from_git(config, scheme, url),
         scheme => Err(format!("unsupported scheme ({}): {}", scheme, url).into()),
     }

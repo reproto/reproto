@@ -312,6 +312,8 @@ pub struct Repository {
 /// * All paths are absolute.
 #[derive(Debug, Clone, Default)]
 pub struct Manifest {
+    /// Path where manifest was loaded from.
+    pub path: PathBuf,
     /// Language to build for.
     pub language: Option<Language>,
     /// Packages to build.
@@ -332,6 +334,15 @@ pub struct Manifest {
     pub id_converter: Option<String>,
     /// Repository configuration.
     pub repository: Repository,
+}
+
+impl Manifest {
+    pub fn new(path: &Path) -> Manifest {
+        Manifest {
+            path: path.to_owned(),
+            ..Manifest::default()
+        }
+    }
 }
 
 /// Load and apply all repository-specific information.
@@ -557,5 +568,20 @@ mod tests {
         assert_eq!(0, manifest.publish.len());
         assert_eq!(0, manifest.packages.len());
         assert_eq!(0, manifest.files.len());
+    }
+
+    #[test]
+    pub fn test_repository() {
+        let manifest = include_manifest!("tests/repository.reproto");
+
+        assert_eq!(true, manifest.repository.no_repository);
+        assert_eq!(
+            Some("file:///index"),
+            manifest.repository.index.as_ref().map(String::as_str)
+        );
+        assert_eq!(
+            Some("file:///objects"),
+            manifest.repository.objects.as_ref().map(String::as_str)
+        );
     }
 }

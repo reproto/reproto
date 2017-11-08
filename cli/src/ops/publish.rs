@@ -43,7 +43,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
 
     results.extend(setup_publish_matches(
         manifest_resolver.as_mut(),
-        manifest.publish,
+        &manifest.publish,
     )?);
 
     results.extend(setup_matches(manifest_resolver.as_mut(), &packages)?);
@@ -52,7 +52,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     let pretend = matches.is_present("pretend");
     let no_semck = matches.is_present("no-semck");
 
-    let mut repository = setup_repository(&manifest.repository)?;
+    let mut repository = setup_repository(&manifest)?;
 
     let mut errors = Vec::new();
 

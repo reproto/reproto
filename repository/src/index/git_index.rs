@@ -4,7 +4,7 @@ use errors::*;
 use git::GitRepo;
 use index::{Deployment, Index, file_index};
 use objects::{FileObjects, GitObjects, Objects};
-use std::path::Path;
+use relative_path::RelativePath;
 use std::rc::Rc;
 use update::Update;
 use url::Url;
@@ -50,15 +50,15 @@ impl Index for GitIndex {
         self.file_index.objects_url()
     }
 
-    fn objects_from_index(&self, relative_path: &Path) -> Result<Box<Objects>> {
-        let path = self.file_index.path().join(relative_path);
+    fn objects_from_index(&self, relative_path: &RelativePath) -> Result<Box<Objects>> {
+        let path = relative_path.to_path(&self.file_index.path());
         let file_objects = FileObjects::new(&path);
 
-        let url = if let Some(path) = relative_path.to_str() {
-            self.url.join(path)?
-        } else {
-            self.url.clone()
-        };
+        let mut url = self.url.clone();
+
+        for c in relative_path.components() {
+            url = url.join(c)?;
+        }
 
         Ok(Box::new(
             GitObjects::new(url, self.git_repo.clone(), file_objects),
