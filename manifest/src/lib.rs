@@ -101,7 +101,7 @@ impl TryFromToml for RpRequiredPackage {
             format!("bad version: {}: {}", e, value)
         })?;
 
-        let version_req = if version_req.is_wildcard() {
+        let version_req = if version_req.matches_any() {
             None
         } else {
             Some(version_req)

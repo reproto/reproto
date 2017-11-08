@@ -17,5 +17,5 @@ num = "0.1"
 mime = "0.3"
 serde = {version = "1.0", features = ["rc"]}
 serde_derive = "1.0"
-semver = {version = "0.9", features = ["serde"], git = "https://github.com/udoprog/semver", branch = "wildcard"}
+semver = {version = "0.10", features = ["serde"]}
 relative-path = {version = "0.1", features = ["serde"]}

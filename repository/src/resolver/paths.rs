@@ -80,7 +80,7 @@ impl Paths {
                         continue;
                     }
 
-                    if !version_req.is_wildcard() {
+                    if !version_req.matches_any() {
                         continue;
                     }
                 }
