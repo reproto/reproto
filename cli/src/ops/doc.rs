@@ -9,6 +9,11 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     let env = setup_env(&manifest)?;
     let options = setup_options(&manifest)?;
     let compiler_options = setup_compiler_options(&manifest, matches)?;
+
+    let out = compiler_options.out_path.clone();
+
     doc::compile(env, options, compiler_options, matches)?;
+
+    info!("Wrote documentation in: {}", out.display());
     Ok(())
 }

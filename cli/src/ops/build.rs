@@ -28,13 +28,16 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
             "no language specified either through manifest or cli (--lang)"
         })?;
 
-    let result = match language {
+    let out = compiler_options.out_path.clone();
+
+    match language {
         Java => java::compile(env, options, compiler_options, matches),
         Js => js::compile(env, options, compiler_options, matches),
         Json => json::compile(env, options, compiler_options, matches),
         Python => python::compile(env, options, compiler_options, matches),
         Rust => rust::compile(env, options, compiler_options, matches),
-    };
+    }?;
 
-    Ok(result?)
+    info!("Built project in: {}", out.display());
+    Ok(())
 }
