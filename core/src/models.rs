@@ -183,6 +183,17 @@ pub struct RpEnumVariant {
     pub ordinal: RpEnumOrdinal,
 }
 
+impl RpEnumVariant {
+    pub fn ordinal(&self) -> &str {
+        use self::RpEnumOrdinal::*;
+
+        match self.ordinal {
+            String(ref string) => string.as_str(),
+            Generated => self.local_name.as_str(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub enum RpEnumType {
     String,

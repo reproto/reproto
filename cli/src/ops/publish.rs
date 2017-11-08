@@ -25,6 +25,16 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
          exists",
     ));
 
+    let out = out.arg(Arg::with_name("pretend").long("pretend").help(
+        "Pretend to \
+         publish",
+    ));
+
+    let out = out.arg(Arg::with_name("no-semck").long("no-semck").help(
+        "Disable Semantic \
+         Checks",
+    ));
+
     let out = out.arg(Arg::with_name("package").multiple(true));
 
     out
@@ -103,46 +113,60 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
 
     let Match(version, object, package) = first;
 
-    info!("publishing: {}@{} (from {})", package, version, object);
-
     let force = matches.is_present("force");
+    let pretend = matches.is_present("pretend");
+    let no_semck = matches.is_present("no-semck");
 
-    // perform semck verification
-    if let Some(d) = repository
-        .all(&package)?
-        .into_iter()
-        .filter(|d| d.version.major == version.major)
-        .last()
-    {
-        if d.version == version {
-            return Err(format!("Version {} already published", version).into());
-        }
-
-        info!("Analyzing {} -> {}", d.version, version);
-
-        let previous = repository.get_object(&d)?.ok_or_else(|| {
-            format!("No object found for deployment: {:?}", d)
-        })?;
-
-        let package_from = RpVersionedPackage::new(package.clone(), Some(d.version.clone()));
-        let file_from = env.load_object(previous.clone(), &package_from)?;
-
-        let package_to = RpVersionedPackage::new(package.clone(), Some(version.clone()));
-        let file_to = env.load_object(object.clone(), &package_to)?;
-
-        let violations = semck::check((&d.version, &file_from), (&version, &file_to))?;
-
-        if !violations.is_empty() {
-            let mut errors: Vec<Error> = Vec::new();
-
-            for (i, v) in violations.into_iter().enumerate() {
-                errors.push(ErrorKind::SemckViolation(i, v).into());
+    if !no_semck {
+        // perform semck verification
+        if let Some(d) = repository
+            .all(&package)?
+            .into_iter()
+            .filter(|d| d.version.major == version.major)
+            .last()
+        {
+            if d.version == version && !force {
+                return Err(format!("Version {} already published", version).into());
             }
 
-            return Err(ErrorKind::Errors(errors).into());
+            info!("Checking semantics of {} -> {}", d.version, version);
+
+            let previous = repository.get_object(&d)?.ok_or_else(|| {
+                format!("No object found for deployment: {:?}", d)
+            })?;
+
+            let package_from = RpVersionedPackage::new(package.clone(), Some(d.version.clone()));
+            let file_from = env.load_object(previous.clone(), &package_from)?;
+
+            let package_to = RpVersionedPackage::new(package.clone(), Some(version.clone()));
+            let file_to = env.load_object(object.clone(), &package_to)?;
+
+            let violations = semck::check((&d.version, &file_from), (&version, &file_to))?;
+
+            if !violations.is_empty() {
+                let mut errors: Vec<Error> = Vec::new();
+
+                for (i, v) in violations.into_iter().enumerate() {
+                    errors.push(ErrorKind::SemckViolation(i, v).into());
+                }
+
+                errors.push("Hint: Use `--no-semck` to disable semantic checking".into());
+                return Err(ErrorKind::Errors(errors).into());
+            }
         }
     }
 
-    repository.publish(&object, &package, &version, force)?;
+    if pretend {
+        info!(
+            "(pretend) publishing: {}@{} (from {})",
+            package,
+            version,
+            object
+        );
+    } else {
+        info!("publishing: {}@{} (from {})", package, version, object);
+        repository.publish(&object, &package, &version, force)?;
+    }
+
     Ok(())
 }

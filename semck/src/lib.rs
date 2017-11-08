@@ -2,7 +2,8 @@ extern crate reproto_core;
 
 use self::Component::*;
 use self::Violation::*;
-use reproto_core::{ErrorPos, Loc, RpDecl, RpField, RpFile, RpName, RpRegistered, RpType, Version};
+use reproto_core::{ErrorPos, Loc, RpDecl, RpEnumVariant, RpField, RpFile, RpName, RpRegistered,
+                   RpType, Version};
 use reproto_core::errors::*;
 use std::collections::HashMap;
 
@@ -26,16 +27,22 @@ impl Component {
 pub enum Violation {
     /// An entire declaration has been removed.
     DeclRemoved(Component, ErrorPos),
+    /// An entire declaration has been added.
+    DeclAdded(Component, ErrorPos),
     /// Field was removed.
     RemoveField(Component, ErrorPos),
+    /// Variant was removed.
+    RemoveVariant(Component, ErrorPos),
     /// Field added.
     AddField(Component, ErrorPos),
+    /// Variant added.
+    AddVariant(Component, ErrorPos),
     /// Field type was changed from one to another.
     FieldTypeChange(Component, RpType, ErrorPos, RpType, ErrorPos),
     /// Field name was changed from one to another.
     FieldNameChange(Component, String, ErrorPos, String, ErrorPos),
-    /// Field identifier was changed from one to another.
-    FieldIdentifierChange(Component, String, ErrorPos, String, ErrorPos),
+    /// Variant identifier was changed from one to another.
+    VariantOrdinalChange(Component, String, ErrorPos, String, ErrorPos),
     /// Field made required.
     FieldRequiredChange(Component, ErrorPos, ErrorPos),
     /// Required field added.
@@ -56,6 +63,15 @@ fn fields(reg: &RpRegistered) -> Vec<&Loc<RpField>> {
     }
 }
 
+fn enum_variants(reg: &RpRegistered) -> Vec<&Loc<RpEnumVariant>> {
+    use self::RpRegistered::*;
+
+    match *reg {
+        Enum(ref target) => target.variants.iter().map(|v| &**v).collect(),
+        _ => vec![],
+    }
+}
+
 fn decls_to_map<'a, I: 'a>(decls: I) -> HashMap<RpName, RpRegistered>
 where
     I: IntoIterator<Item = &'a Loc<RpDecl>>,
@@ -64,8 +80,26 @@ where
 
     for decl in decls {
         for reg in decl.into_registered_type() {
+            // Checked separately for each Enum.
+            if let RpRegistered::EnumVariant(_, _) = reg {
+                continue;
+            }
+
             storage.insert(reg.name().clone().without_version(), reg);
         }
+    }
+
+    storage
+}
+
+fn variants_to_map<'a, I: 'a>(variants: I) -> HashMap<RpName, &'a Loc<RpEnumVariant>>
+where
+    I: IntoIterator<Item = &'a Loc<RpEnumVariant>>,
+{
+    let mut storage = HashMap::new();
+
+    for variant in variants {
+        storage.insert(variant.name.clone().without_version(), variant);
     }
 
     storage
@@ -89,12 +123,10 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
     let mut violations = Vec::new();
 
     let from_storage = decls_to_map(&from.decls);
-    let to_storage = decls_to_map(&to.decls);
+    let mut to_storage = decls_to_map(&to.decls);
 
-    // Minot chenot permitted to remove declarations
-
-    for (name, to_reg) in to_storage {
-        if let Some(from_reg) = from_storage.get(&name) {
+    for (name, from_reg) in from_storage {
+        if let Some(to_reg) = to_storage.remove(&name) {
             let from_fields = fields_to_map(fields(&from_reg));
             let mut to_fields = fields_to_map(fields(&to_reg));
 
@@ -106,14 +138,25 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 }
             }
 
-            // check that added fields are optional
+            // check that added fields are not required.
             for (_, to_field) in to_fields.into_iter() {
                 if to_field.is_required() {
                     violations.push(AddRequiredField(Minor, to_field.pos().into()));
                 }
             }
+
+            let from_variants = variants_to_map(enum_variants(&from_reg));
+            let mut to_variants = variants_to_map(enum_variants(&to_reg));
+
+            for (name, from_variant) in from_variants.into_iter() {
+                if let Some(to_variant) = to_variants.remove(&name) {
+                    check_variant(&mut violations, from_variant, to_variant)?;
+                } else {
+                    violations.push(RemoveVariant(Minor, from_variant.pos().into()));
+                }
+            }
         } else {
-            violations.push(DeclRemoved(Minor, to_reg.pos().into()));
+            violations.push(DeclRemoved(Minor, from_reg.pos().into()));
         }
     }
 
@@ -145,16 +188,6 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
             ));
         }
 
-        if to_field.ident() != from_field.ident() {
-            violations.push(FieldIdentifierChange(
-                Minor,
-                from_field.ident().to_string(),
-                from_field.pos().into(),
-                to_field.ident().to_string(),
-                to_field.pos().into(),
-            ));
-        }
-
         // not permitted to make fields required.
         if from_field.is_optional() && to_field.is_required() {
             violations.push(FieldRequiredChange(
@@ -166,18 +199,34 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
         Ok(())
     }
+
+    fn check_variant(
+        violations: &mut Vec<Violation>,
+        from_variant: &Loc<RpEnumVariant>,
+        to_variant: &Loc<RpEnumVariant>,
+    ) -> Result<()> {
+        if from_variant.ordinal() != to_variant.ordinal() {
+            violations.push(VariantOrdinalChange(
+                Patch,
+                from_variant.ordinal().to_string(),
+                from_variant.pos().into(),
+                to_variant.ordinal().to_string(),
+                to_variant.pos().into(),
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
     let mut violations = Vec::new();
 
     let from_storage = decls_to_map(&from.decls);
-    let to_storage = decls_to_map(&to.decls);
+    let mut to_storage = decls_to_map(&to.decls);
 
-    // Minot chenot permitted to remove declarations
-
-    for (name, to_reg) in to_storage {
-        if let Some(from_reg) = from_storage.get(&name) {
+    for (name, from_reg) in from_storage {
+        if let Some(to_reg) = to_storage.remove(&name) {
             let from_fields = fields_to_map(fields(&from_reg));
             let mut to_fields = fields_to_map(fields(&to_reg));
 
@@ -193,9 +242,29 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
             for (_, to_field) in to_fields.into_iter() {
                 violations.push(AddField(Patch, to_field.pos().into()));
             }
+
+            let from_variants = variants_to_map(enum_variants(&from_reg));
+            let mut to_variants = variants_to_map(enum_variants(&to_reg));
+
+            for (name, from_variant) in from_variants.into_iter() {
+                if let Some(to_variant) = to_variants.remove(&name) {
+                    check_variant(&mut violations, from_variant, to_variant)?;
+                } else {
+                    violations.push(RemoveVariant(Patch, from_variant.pos().into()));
+                }
+            }
+
+            // added variants are not permitted
+            for (_, to_variant) in to_variants.into_iter() {
+                violations.push(AddVariant(Patch, to_variant.pos().into()));
+            }
         } else {
-            violations.push(DeclRemoved(Patch, to_reg.pos().into()));
+            violations.push(DeclRemoved(Patch, from_reg.pos().into()));
         }
+    }
+
+    for (_, to_reg) in to_storage.into_iter() {
+        violations.push(DeclAdded(Patch, to_reg.pos().into()));
     }
 
     return Ok(violations);
@@ -225,21 +294,29 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
             ));
         }
 
-        if to_field.ident() != from_field.ident() {
-            violations.push(FieldIdentifierChange(
-                Minor,
-                from_field.ident().to_string(),
-                from_field.pos().into(),
-                to_field.ident().to_string(),
-                to_field.pos().into(),
-            ));
-        }
-
         if to_field.modifier != from_field.modifier {
             violations.push(FieldModifierChange(
                 Patch,
                 from_field.pos().into(),
                 to_field.pos().into(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn check_variant(
+        violations: &mut Vec<Violation>,
+        from_variant: &Loc<RpEnumVariant>,
+        to_variant: &Loc<RpEnumVariant>,
+    ) -> Result<()> {
+        if from_variant.ordinal() != to_variant.ordinal() {
+            violations.push(VariantOrdinalChange(
+                Patch,
+                from_variant.ordinal().to_string(),
+                from_variant.pos().into(),
+                to_variant.ordinal().to_string(),
+                to_variant.pos().into(),
             ));
         }
 

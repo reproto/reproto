@@ -269,15 +269,33 @@ pub trait Output {
                     reg,
                 )?;
             }
+            DeclAdded(ref c, ref reg) => {
+                self.print_error(
+                    format!("{}: declaration added", c.describe()).as_str(),
+                    reg,
+                )?;
+            }
             RemoveField(ref c, ref field) => {
                 self.print_error(
                     format!("{}: field removed", c.describe()).as_str(),
                     field,
                 )?;
             }
+            RemoveVariant(ref c, ref field) => {
+                self.print_error(
+                    format!("{}: variant removed", c.describe()).as_str(),
+                    field,
+                )?;
+            }
             AddField(ref c, ref field) => {
                 self.print_error(
                     format!("{}: field added", c.describe()).as_str(),
+                    field,
+                )?;
+            }
+            AddVariant(ref c, ref field) => {
+                self.print_error(
+                    format!("{}: variant added", c.describe()).as_str(),
                     field,
                 )?;
             }
@@ -311,18 +329,18 @@ pub trait Output {
                     from,
                 )?;
             }
-            FieldIdentifierChange(ref c, ref from_id, ref from, ref to_id, ref to) => {
+            VariantOrdinalChange(ref c, ref from_ordinal, ref from, ref to_ordinal, ref to) => {
                 self.print_error(
                     format!(
-                        "{}: identifier changed to `{}`",
+                        "{}: ordinal changed to `{}`",
                         c.describe(),
-                        to_id
+                        to_ordinal
                     ).as_str(),
                     to,
                 )?;
 
                 self.print_error(
-                    format!("from `{}`", from_id).as_str(),
+                    format!("from `{}`", from_ordinal).as_str(),
                     from,
                 )?;
             }
