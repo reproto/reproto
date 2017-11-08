@@ -1,0 +1,58 @@
+/// A blog post with comments.
+type Post {
+  /// Identifier of the post.
+  id: string;
+  /// Title of the post.
+  title: string;
+  /// Content of the post.
+  content: string;
+  /// Author of the post.
+  author: User;
+}
+
+/// A simplified post entry.
+type PostEntry {
+  /// Identifier of the post.
+  id: string;
+  /// Title of the post.
+  title: string;
+  /// Author of the post.
+  author: User;
+}
+
+/// A comment by a user.
+type Comment {
+  /// Author of the comment.
+  author: User;
+  /// The content of the comment.
+  content: string;
+}
+
+/// Information about a user.
+interface User {
+  /// Identifier of the user.
+  id: string;
+  /// Display name of the user.
+  display_name: string;
+
+  Regular {
+    name "regular";
+  }
+
+  Admin {
+    name "admin";
+  }
+}
+
+/// The blog service.
+service Blob {
+  /// Get all posts.
+  GET "posts" {
+    returns 200 "application/json" [PostEntry];
+
+    /// Get the post with the given `id`.
+    GET `{id:string}` {
+      returns 200 "application/json" Post;
+    }
+  }
+}

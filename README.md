@@ -57,7 +57,7 @@ This will install `reproto` into `~/.cargo/bin`, make sure it is in your PATH.
 The following is an example of how to build documentation for a package.
 
 ```bash
-$> reproto compile doc -o target/doc \
+$> reproto doc -o target/doc \
   --path it/test-service/proto \
   --package test \
   --package service@1.0.0 \
@@ -140,7 +140,7 @@ type Pet {
 You can compile the above into documentation using the following command:
 
 ```bash
-$> reproto compile doc --out petstore-doc --path examples/petstore --package petstore@1.0.0
+$> reproto doc --out petstore-doc --path examples/src --package petstore@1.0.0
 ```
 
 As a comparison the following is a specification using [OpenAPI 2.0][openapi-2].
@@ -219,7 +219,7 @@ As a comparison the following is a specification using [OpenAPI 2.0][openapi-2].
 If you miss JSON, you can compile the specification to JSON as well.
 
 ```bash
-$> reproto compile json --out petstore-json --path examples/petstore --package petstore@1.0.0
+$> reproto build --lang json --out petstore-json --path examples/petstore --package petstore@1.0.0
 ```
 
 [openapi-2]: https://github.com/OAI/OpenAPI-Specification

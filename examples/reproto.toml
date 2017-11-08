@@ -1,0 +1,8 @@
+paths = ["src"]
+output = "output"
+
+[packages.blog]
+version = "*"
+
+[packages.petstore]
+version = "1.0.0"
