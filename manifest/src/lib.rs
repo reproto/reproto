@@ -479,44 +479,83 @@ mod tests {
     }
 
     #[test]
-    pub fn test_string_preset() {
-        let manifest = include_manifest!("tests/string_preset.reproto");
-        assert_eq!(1, manifest.paths.len());
-        assert!(manifest.output.is_some());
-    }
-
-    #[test]
-    pub fn test_maven_preset() {
-        let manifest = include_manifest!("tests/maven_preset.reproto");
-        assert_eq!(1, manifest.paths.len());
-        assert!(manifest.output.is_some());
-    }
-
-    #[test]
     pub fn test_paths() {
         let manifest = include_manifest!("tests/paths.reproto");
         assert_eq!(1, manifest.paths.len());
-        assert!(manifest.output.is_none());
     }
 
     #[test]
-    pub fn test_packages() {
-        let manifest = include_manifest!("tests/packages.reproto");
-        assert_eq!(1, manifest.packages.len());
-        assert!(manifest.output.is_none());
+    pub fn test_presets_string() {
+        let manifest = include_manifest!("tests/presets_string.reproto");
+        assert_eq!(1, manifest.paths.len());
     }
 
     #[test]
-    pub fn test_packages_array() {
-        let manifest = include_manifest!("tests/packages_array.reproto");
+    pub fn test_presets_section() {
+        let manifest = include_manifest!("tests/presets_section.reproto");
+        assert_eq!(1, manifest.paths.len());
+    }
+
+    #[test]
+    pub fn test_packages_string() {
+        let manifest = include_manifest!("tests/packages_string.reproto");
         assert_eq!(1, manifest.packages.len());
-        assert!(manifest.output.is_none());
     }
 
     #[test]
     pub fn test_packages_table() {
         let manifest = include_manifest!("tests/packages_table.reproto");
         assert_eq!(1, manifest.packages.len());
-        assert!(manifest.output.is_none());
+    }
+
+    #[test]
+    pub fn test_packages_table2() {
+        let manifest = include_manifest!("tests/packages_table2.reproto");
+        assert_eq!(1, manifest.packages.len());
+    }
+
+    #[test]
+    pub fn test_publish_string() {
+        let manifest = include_manifest!("tests/publish_string.reproto");
+        assert_eq!(1, manifest.publish.len());
+    }
+
+    #[test]
+    pub fn test_publish_table() {
+        let manifest = include_manifest!("tests/publish_table.reproto");
+        assert_eq!(1, manifest.publish.len());
+    }
+
+    #[test]
+    pub fn test_publish_table2() {
+        let manifest = include_manifest!("tests/publish_table2.reproto");
+        assert_eq!(1, manifest.publish.len());
+    }
+
+    #[test]
+    pub fn test_files_string() {
+        let manifest = include_manifest!("tests/files_string.reproto");
+        assert_eq!(1, manifest.files.len());
+    }
+
+    #[test]
+    pub fn test_files_table() {
+        let manifest = include_manifest!("tests/files_table.reproto");
+        assert_eq!(1, manifest.files.len());
+    }
+
+    #[test]
+    pub fn test_files_table2() {
+        let manifest = include_manifest!("tests/files_table2.reproto");
+        assert_eq!(1, manifest.files.len());
+    }
+
+    #[test]
+    pub fn test_empty() {
+        let manifest = include_manifest!("tests/empty.reproto");
+
+        assert_eq!(0, manifest.publish.len());
+        assert_eq!(0, manifest.packages.len());
+        assert_eq!(0, manifest.files.len());
     }
 }

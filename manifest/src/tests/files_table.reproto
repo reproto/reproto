@@ -1,0 +1,2 @@
+[files]
+petstore = {path = "src/petstore.reproto"}

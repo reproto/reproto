@@ -1,3 +1,1 @@
-language = "java"
-
 paths = ["foo/bar/baz"]

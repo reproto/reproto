@@ -1,4 +1,2 @@
-language = "java"
-
 [packages]
 petstore = "*"
