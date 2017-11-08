@@ -15,7 +15,7 @@ impl<T: Borrow<Pos>> From<T> for ErrorPos {
         let value = value.borrow();
 
         ErrorPos {
-            object: (**value.object).clone(),
+            object: (**value.object).clone_object(),
             start: value.start,
             end: value.end,
         }
@@ -25,7 +25,7 @@ impl<T: Borrow<Pos>> From<T> for ErrorPos {
 impl From<(Rc<Box<Object>>, usize, usize)> for ErrorPos {
     fn from(value: (Rc<Box<Object>>, usize, usize)) -> Self {
         ErrorPos {
-            object: (**value.0).clone(),
+            object: (**value.0).clone_object(),
             start: value.1,
             end: value.2,
         }

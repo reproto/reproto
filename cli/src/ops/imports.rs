@@ -1,8 +1,9 @@
-pub(crate) use super::{setup_compiler_options, setup_env, setup_manifest, setup_options,
-                       setup_path_resolver, setup_repository};
+pub(crate) use super::{Match, semck_check, setup_compiler_options, setup_env, setup_manifest,
+                       setup_matches, setup_options, setup_path_resolver, setup_publish_matches,
+                       setup_repository};
 pub(crate) use backend::{CompilerOptions, Environment, Options};
 pub(crate) use clap::{App, Arg, ArgMatches, SubCommand};
-pub(crate) use core::{RpPackage, RpRequiredPackage};
+pub(crate) use core::RpRequiredPackage;
 pub(crate) use errors::*;
 pub(crate) use reproto_backend_doc as doc;
 pub(crate) use reproto_backend_java as java;

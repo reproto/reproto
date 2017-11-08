@@ -7,13 +7,17 @@ mod publish;
 mod repo;
 mod update;
 mod verify;
+mod check;
 
 use self::config_env::ConfigEnv;
 use self::imports::*;
 use backend::{CamelCase, FromNaming, Naming, SnakeCase};
-use manifest::{Manifest, ManifestFile, read_manifest, self as m};
+use core::{Object, RpPackage, RpVersionedPackage, Version};
+use manifest::{Manifest, ManifestFile, Publish, read_manifest, self as m};
 use repository::*;
+use semck;
 use std::env;
+use std::fmt;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -330,6 +334,7 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.subcommand(build_args(build::options()));
     let out = out.subcommand(build_args(verify::options()));
     let out = out.subcommand(build_args(doc::options()));
+    let out = out.subcommand(base_args(check::options()));
     let out = out.subcommand(base_args(publish::options()));
     let out = out.subcommand(base_args(update::options()));
     let out = out.subcommand(base_args(repo::options()));
@@ -400,6 +405,139 @@ fn manifest_from_matches(manifest: &mut Manifest, matches: &ArgMatches) -> Resul
     Ok(())
 }
 
+/// Argument match.
+pub struct Match(Version, Box<Object>, RpPackage);
+
+/// Formatting of candidate.
+struct DisplayMatch<'a>(&'a (Option<Version>, Box<Object>));
+
+impl<'a> fmt::Display for DisplayMatch<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let inner = &self.0;
+
+        if let Some(ref version) = inner.0 {
+            write!(f, "{}@{}", inner.1, version)
+        } else {
+            write!(f, "{}@*", inner.1)
+        }
+    }
+}
+
+pub fn setup_publish_matches<I>(resolver: &mut Resolver, publish: I) -> Result<Vec<Match>>
+where
+    I: IntoIterator<Item = Publish>,
+{
+    let mut results = Vec::new();
+
+    for publish in publish.into_iter() {
+        let package = RpRequiredPackage::new(publish.package.clone(), None);
+        let resolved = resolver.resolve(&package)?;
+
+        if resolved.is_empty() {
+            return Err(
+                format!("no matching packages found for: {}", package).into(),
+            );
+        }
+
+        // packages.push(RpRequiredPackage());
+        for (_, object) in resolved {
+            results.push(Match(
+                publish.version.clone(),
+                object,
+                publish.package.clone(),
+            ));
+        }
+    }
+
+    Ok(results)
+}
+
+pub fn setup_matches<'a, I>(resolver: &mut Resolver, packages: I) -> Result<Vec<Match>>
+where
+    I: IntoIterator<Item = &'a RpRequiredPackage>,
+{
+    let mut results = Vec::new();
+
+    for package in packages.into_iter() {
+        let resolved = resolver.resolve(package)?;
+
+        if resolved.is_empty() {
+            return Err(
+                format!("no matching packages found for: {}", package).into(),
+            );
+        }
+
+        let mut it = resolved.into_iter();
+
+        let first = it.next().ok_or_else(|| format!("no packages to publish"))?;
+
+        if let Some(next) = it.next() {
+            warn!("matched: {}", DisplayMatch(&first));
+            warn!("    and: {}", DisplayMatch(&next));
+
+            while let Some(next) = it.next() {
+                warn!("    and: {}", DisplayMatch(&next));
+            }
+
+            return Err("more than one matching package found".into());
+        }
+
+        let (version, object) = first;
+
+        let version = version.ok_or_else(
+            || format!("{}: package without a version", object),
+        )?;
+
+        results.push(Match(version, object, package.package.clone()));
+    }
+
+    Ok(results)
+}
+
+pub fn semck_check(
+    errors: &mut Vec<Error>,
+    repository: &mut Repository,
+    env: &mut Environment,
+    m: &Match,
+    force: bool,
+) -> Result<()> {
+    let Match(ref version, ref object, ref package) = *m;
+
+    // perform semck verification
+    if let Some(d) = repository
+        .all(package)?
+        .into_iter()
+        .filter(|d| d.version.major == version.major)
+        .last()
+    {
+        if d.version == *version && !force {
+            return Err(format!("Version {} already published", version).into());
+        }
+
+        debug!("Checking semantics of {} -> {}", d.version, version);
+
+        let previous = repository.get_object(&d)?.ok_or_else(|| {
+            format!("No object found for deployment: {:?}", d)
+        })?;
+
+        let package_from = RpVersionedPackage::new(package.clone(), Some(d.version.clone()));
+        let file_from = env.load_object(previous.clone_object(), &package_from)?;
+
+        let package_to = RpVersionedPackage::new(package.clone(), Some(version.clone()));
+        let file_to = env.load_object(object.clone_object(), &package_to)?;
+
+        let violations = semck::check((&d.version, &file_from), (&version, &file_to))?;
+
+        if !violations.is_empty() {
+            for (i, v) in violations.into_iter().enumerate() {
+                errors.push(ErrorKind::SemckViolation(i, v).into());
+            }
+        }
+    }
+
+    Ok(())
+}
+
 pub fn entry(matches: &ArgMatches) -> Result<()> {
     let (name, matches) = matches.subcommand();
     let matches = matches.ok_or_else(|| "no subcommand")?;
@@ -407,6 +545,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     match name {
         "build" => return build::entry(matches),
         "verify" => return verify::entry(matches),
+        "check" => return check::entry(matches),
         "doc" => return doc::entry(matches),
         "update" => return update::entry(matches),
         "publish" => return publish::entry(matches),

@@ -9,7 +9,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Default to objects relative to index repo.
-const DEFAULT_OBJECTS: &'static str = ".objects";
+const DEFAULT_OBJECTS: &'static str = "./objects";
 /// Index configuration file.
 const CONFIG_JSON: &'static str = "config.json";
 /// Name of metadata file for each package.
