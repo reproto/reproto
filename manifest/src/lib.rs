@@ -263,9 +263,11 @@ pub struct ImCommonFields {
     #[serde(default)]
     modules: Vec<String>,
     #[serde(default)]
-    presets: Vec<toml::Value>,
-    #[serde(default)]
     paths: Vec<RelativePathBuf>,
+    #[serde(default)]
+    output: Option<RelativePathBuf>,
+    #[serde(default)]
+    presets: Vec<toml::Value>,
     #[serde(default)]
     package_prefix: Option<RpPackage>,
     #[serde(default)]
@@ -374,6 +376,10 @@ pub fn load_common_manifest(
     manifest.paths.extend(
         common.paths.iter().map(|r| r.to_path(&base)),
     );
+
+    if let Some(output) = common.output {
+        manifest.output = Some(output.to_path(base));
+    }
 
     for preset in common.presets {
         apply_preset_to(preset, manifest, &base)?;
