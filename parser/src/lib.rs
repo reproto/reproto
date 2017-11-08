@@ -130,7 +130,7 @@ mod tests {
         parser::parse_File(&new_context(), parse(input)).unwrap()
     }
 
-    fn parse_member(input: &'static str) -> Member {
+    fn parse_member(input: &'static str) -> Loc<Member> {
         parser::parse_Member(&new_context(), parse(input)).unwrap()
     }
 
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_option_decl() {
-        let member = parse_member("foo_bar_baz true;");
+        let member = parse_member("foo_bar_baz true;").take();
 
         if let Member::Option(option) = member {
             assert_eq!("foo_bar_baz", option.name);
