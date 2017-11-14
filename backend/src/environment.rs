@@ -1,5 +1,5 @@
 use super::into_model::IntoModel;
-use super::naming::{FromNaming, SnakeCase};
+use super::naming::{FromNaming, Naming, SnakeCase};
 use super::scope::Scope;
 use core::{Loc, Merge, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage,
            RpRegistered, RpRequiredPackage, RpVersionedPackage, WithPos};
@@ -154,6 +154,23 @@ impl Environment {
         Ok(())
     }
 
+    /// Parse a naming option.
+    ///
+    /// Since lower_camel is default, do nothing on that case.
+    fn parse_naming(&self, naming: Loc<String>) -> Result<Option<Box<Naming>>> {
+        let (naming, pos) = naming.take_pair();
+
+        let result = match naming.as_str() {
+            "upper_camel" => Some(SnakeCase::new().to_upper_camel()),
+            "lower_camel" => Some(SnakeCase::new().to_lower_camel()),
+            "upper_snake" => Some(SnakeCase::new().to_upper_snake()),
+            "lower_snake" => None,
+            _ => return Err("illegal value".into()).with_pos(pos),
+        };
+
+        Ok(result)
+    }
+
     /// Load the provided Object into an `RpFile`.
     pub fn load_object<O: Into<Box<Object>>>(
         &mut self,
@@ -168,18 +185,13 @@ impl Environment {
 
         let prefixes = self.process_uses(&file.uses)?;
 
-        let naming = match file.options.find_one_identifier("field_naming")? {
-            Some(naming) => {
-                let (naming, pos) = naming.take_pair();
+        let endpoint_naming = match file.options.find_one_identifier("endpoint_naming")? {
+            Some(naming) => self.parse_naming(naming)?,
+            _ => None,
+        };
 
-                match naming.as_str() {
-                    "upper_camel" => Some(SnakeCase::new().to_upper_camel()),
-                    "lower_camel" => Some(SnakeCase::new().to_lower_camel()),
-                    "upper_snake" => Some(SnakeCase::new().to_upper_snake()),
-                    "lower_snake" => None,
-                    _ => return Err("illegal value".into()).with_pos(pos),
-                }
-            }
+        let field_naming = match file.options.find_one_identifier("field_naming")? {
+            Some(naming) => self.parse_naming(naming)?,
             _ => None,
         };
 
@@ -187,7 +199,8 @@ impl Environment {
             self.package_prefix.clone(),
             package.clone(),
             prefixes,
-            naming,
+            endpoint_naming,
+            field_naming,
         );
 
         Ok(file.into_model(&scope)?)

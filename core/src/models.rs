@@ -1,12 +1,12 @@
 //! Data Models for the final model stage stage.
 
 use super::loc::Loc;
-use super::mime::Mime;
 use super::option_entry::OptionEntry;
 use super::rp_modifier::RpModifier;
 use super::rp_number::RpNumber;
 use super::rp_versioned_package::RpVersionedPackage;
 use errors::*;
+use linked_hash_map::LinkedHashMap;
 use pos::Pos;
 use std::collections::{BTreeMap, HashSet};
 use std::fmt;
@@ -593,61 +593,70 @@ impl RpRegistered {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct RpServiceAccepts {
-    pub comment: Vec<String>,
-    pub ty: Option<Loc<RpType>>,
-    pub accepts: Option<Mime>,
-    pub alias: Option<Loc<String>>,
-}
-
-#[derive(Debug, Clone, Serialize)]
 pub struct RpServiceBody {
     pub name: RpName,
     pub local_name: String,
     pub comment: Vec<String>,
-    pub endpoints: Vec<RpServiceEndpoint>,
+    pub endpoints: LinkedHashMap<String, Loc<RpEndpoint>>,
     pub decls: Vec<Rc<Loc<RpDecl>>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct RpServiceEndpoint {
-    pub method: Option<Loc<String>>,
-    pub path: RpPathSpec,
+pub struct RpEndpoint {
+    /// Name of the endpoint. Guaranteed to be unique.
+    pub id: Loc<String>,
+    /// Name of the endpoint. This is the name which is being sent over the wire.
+    pub name: String,
+    /// Comments for documentation.
     pub comment: Vec<String>,
-    pub accepts: Vec<RpServiceAccepts>,
-    pub returns: Vec<RpServiceReturns>,
+    /// Request type that this endpoint expects.
+    pub request: Option<RpChannel>,
+    /// Response type that this endpoint responds with.
+    pub response: Option<RpChannel>,
 }
 
-impl RpServiceEndpoint {
-    pub fn url(&self) -> String {
-        self.path.url()
-    }
-
+impl RpEndpoint {
     pub fn id_parts<F>(&self, filter: F) -> Vec<String>
     where
         F: Fn(&str) -> String,
     {
-        let mut parts = Vec::new();
-
-        if let Some(ref method) = self.method {
-            parts.push(filter(method.value().as_str()));
-        }
-
-        parts.extend(self.path.id_fragments().into_iter().map(filter));
-        parts
+        vec![filter(self.id.as_str())]
     }
 
-    pub fn method(&self) -> Option<&str> {
-        self.method.as_ref().map(|v| v.value().as_str())
+    /// Get the name of the endpoint.
+    pub fn name(&self) -> &str {
+        self.name.as_str()
     }
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct RpServiceReturns {
-    pub comment: Vec<String>,
-    pub ty: Option<Loc<RpType>>,
-    pub produces: Option<Mime>,
-    pub status: Option<u32>,
+pub enum RpChannel {
+    /// Single send.
+    Unary { ty: Loc<RpType> },
+    /// Multiple sends.
+    Streaming { ty: Loc<RpType> },
+}
+
+impl RpChannel {
+    /// Get the type of the channel.
+    pub fn ty(&self) -> &Loc<RpType> {
+        use self::RpChannel::*;
+
+        match *self {
+            Unary { ref ty, .. } => ty,
+            Streaming { ref ty, .. } => ty,
+        }
+    }
+
+    /// Check if channel is streaming.
+    pub fn is_streaming(&self) -> bool {
+        use self::RpChannel::*;
+
+        match *self {
+            Unary { .. } => false,
+            Streaming { .. } => true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -158,42 +158,27 @@ pub struct PathSpec<'input> {
 pub struct ServiceBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub children: Vec<ServiceNested<'input>>,
+    pub endpoints: Vec<Loc<Endpoint<'input>>>,
 }
 
+/// Describes an endpoint.
 #[derive(Debug, PartialEq, Eq)]
-pub enum ServiceNested<'input> {
-    Endpoint {
-        method: Option<Loc<&'input str>>,
-        path: Option<Loc<PathSpec<'input>>>,
-        comment: Vec<&'input str>,
-        options: Vec<Loc<OptionDecl<'input>>>,
-        children: Vec<ServiceNested<'input>>,
-    },
-    Returns {
-        comment: Vec<&'input str>,
-        status: Option<Loc<RpNumber>>,
-        produces: Option<Loc<String>>,
-        ty: Option<Loc<Type>>,
-        options: Vec<Loc<OptionDecl<'input>>>,
-    },
-    Accepts {
-        comment: Vec<&'input str>,
-        accepts: Option<Loc<String>>,
-        alias: Option<Loc<&'input str>>,
-        ty: Option<Loc<Type>>,
-        options: Vec<Loc<OptionDecl<'input>>>,
-    },
+pub struct Endpoint<'input> {
+    pub id: Loc<&'input str>,
+    pub comment: Vec<&'input str>,
+    pub alias: Option<String>,
+    pub options: Vec<Loc<OptionDecl<'input>>>,
+    pub request: Option<Channel>,
+    pub response: Option<Channel>,
 }
 
-impl<'input> ServiceNested<'input> {
-    pub fn is_terminus(&self) -> bool {
-        match *self {
-            ServiceNested::Returns { .. } => true,
-            ServiceNested::Accepts { .. } => true,
-            _ => false,
-        }
-    }
+/// Describes how data is transferred over a channel.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Channel {
+    /// Single send.
+    Unary { ty: Loc<Type> },
+    /// Multiple sends.
+    Streaming { ty: Loc<Type> },
 }
 
 /// Sub-types in interface declarations.

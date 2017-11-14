@@ -3,8 +3,8 @@
 use super::{EXT, MOD};
 use backend::{Environment, PackageProcessor, PackageUtils};
 use backend::errors::*;
-use core::{Loc, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpTupleBody, RpTypeBody,
-           RpVersionedPackage};
+use core::{Loc, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
+           RpTypeBody, RpVersionedPackage};
 use rust_backend::RustBackend;
 use rust_file_spec::RustFileSpec;
 use std::collections::{BTreeMap, BTreeSet};
@@ -116,5 +116,9 @@ impl<'p> PackageProcessor<'p> for RustCompiler<'p> {
 
     fn process_interface(&self, out: &mut Self::Out, body: &'p Loc<RpInterfaceBody>) -> Result<()> {
         self.backend.process_interface(out, body)
+    }
+
+    fn process_service(&self, out: &mut Self::Out, body: &'p Loc<RpServiceBody>) -> Result<()> {
+        self.backend.process_service(out, body)
     }
 }

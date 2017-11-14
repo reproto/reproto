@@ -10,6 +10,17 @@ pub struct ErrorPos {
     pub end: usize,
 }
 
+impl ErrorPos {
+    /// Needs explicit method because object is boxed.
+    pub fn clone_error_pos(&self) -> ErrorPos {
+        ErrorPos {
+            object: self.object.clone_object(),
+            start: self.start,
+            end: self.end,
+        }
+    }
+}
+
 impl<T: Borrow<Pos>> From<T> for ErrorPos {
     fn from(value: T) -> ErrorPos {
         let value = value.borrow();

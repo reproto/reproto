@@ -9,7 +9,8 @@ struct Root {
     pub package_prefix: Option<RpPackage>,
     pub package: RpVersionedPackage,
     pub prefixes: HashMap<String, RpVersionedPackage>,
-    pub naming: Option<Box<Naming>>,
+    pub endpoint_naming: Option<Box<Naming>>,
+    pub field_naming: Option<Box<Naming>>,
 }
 
 /// Model of a scope.
@@ -31,13 +32,15 @@ impl Scope {
         package_prefix: Option<RpPackage>,
         package: RpVersionedPackage,
         prefixes: HashMap<String, RpVersionedPackage>,
-        naming: Option<Box<Naming>>,
+        endpoint_naming: Option<Box<Naming>>,
+        field_naming: Option<Box<Naming>>,
     ) -> Scope {
         let root = Rc::new(Root {
             package_prefix: package_prefix,
             package: package,
             prefixes: prefixes,
-            naming: naming,
+            endpoint_naming: endpoint_naming,
+            field_naming: field_naming,
         });
 
         let inner_root = Inner::Root { root: root.clone() };
@@ -103,10 +106,17 @@ impl Scope {
         }
     }
 
-    pub fn naming(&self) -> Option<&Naming> {
+    pub fn endpoint_naming(&self) -> Option<&Naming> {
         match *self.inner {
             Inner::Root { ref root, .. } |
-            Inner::Child { ref root, .. } => root.naming.as_ref().map(AsRef::as_ref),
+            Inner::Child { ref root, .. } => root.endpoint_naming.as_ref().map(AsRef::as_ref),
+        }
+    }
+
+    pub fn field_naming(&self) -> Option<&Naming> {
+        match *self.inner {
+            Inner::Root { ref root, .. } |
+            Inner::Child { ref root, .. } => root.field_naming.as_ref().map(AsRef::as_ref),
         }
     }
 }

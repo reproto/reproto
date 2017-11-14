@@ -19,6 +19,8 @@ pub struct JavaOptions {
     pub build_to_string: bool,
     /// Container to use for asynchronous operations.
     pub async_container: Option<Java<'static>>,
+    /// Do not generate methods in service interface.
+    pub suppress_service_methods: bool,
 }
 
 impl JavaOptions {
@@ -33,6 +35,7 @@ impl JavaOptions {
             build_equals: true,
             build_to_string: true,
             async_container: None,
+            suppress_service_methods: false,
         }
     }
 }

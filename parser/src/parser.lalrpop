@@ -9,8 +9,8 @@ use super::utils::*;
 grammar<'input, 'object>(input_object: &'object Rc<Box<Object>>);
 
 pub File: File<'input> = {
-    <options:Loc<OptionDecl>*>
     <uses:Loc<Use>*>
+    <options:Loc<OptionDecl>*>
     <decls:Loc<Decl>*> => File {
         options: options,
         uses: uses,
@@ -21,7 +21,7 @@ pub File: File<'input> = {
 Use: UseDecl<'input> =
     "use" <package:Loc<Package>>
         <version_req:("@" Loc<VersionReq>)?>
-        <alias:Loc<Alias>?>
+        <alias:Loc<UseAlias>?>
     ";" =>
 {
     UseDecl {
@@ -30,6 +30,8 @@ Use: UseDecl<'input> =
         alias: alias,
     }
 };
+
+UseAlias: &'input str = "as" <value:Identifier> => value;
 
 Package: RpPackage =
     <parts:OneOrMore<".", Identifier>> =>
@@ -114,87 +116,73 @@ Service: Loc<ServiceBody<'input>> =
     <comment:"///"?>
     <s:@L>
     "service" <name:TypeIdentifier> "{"
-        <children:ServiceNested*>
+        <endpoints:Endpoint*>
     "}"
     <e:@R> =>
 {
     Loc::new(ServiceBody {
         name: name,
         comment: comment.unwrap_or_else(Vec::new),
-        children: children,
+        endpoints: endpoints,
     }, (input_object.clone(), s, e))
 };
 
-ServiceNested: ServiceNested<'input> = {
+Endpoint: Loc<Endpoint<'input>> = {
     <comment:"///"?>
-    <method:Loc<TypeIdentifier>?> <path:Loc<PathSpec>?> "{"
-        <options:Loc<OptionDecl>*>
-        <children:ServiceNested*>
-    "}" =>
-    {
-        ServiceNested::Endpoint {
-            method: method,
-            path: path,
-            comment: comment.unwrap_or_else(Vec::new),
-            options: options,
-            children: children,
-        }
-    },
+    <s:@L>
+    <head:ServiceEndpointHead> ";"
+    <e:@R> => {
+        let (id, alias, request, response) = head;
 
-    <comment:"///"?>
-    "returns" <status:Loc<Number>?> <produces:Loc<string>?> <ty:Loc<TypeSpec>?> ";" =>
-    {
-        ServiceNested::Returns {
+        Loc::new(Endpoint {
+            id: id,
             comment: comment.unwrap_or_else(Vec::new),
-            status: status,
-            produces: produces,
-            ty: ty,
-            options: vec![],
-        }
-    },
-
-    <comment:"///"?>
-    "returns" <status:Loc<Number>?> <produces:Loc<string>?> <ty:Loc<TypeSpec>?> "{"
-        <options:Loc<OptionDecl>*>
-    "}" =>
-    {
-        ServiceNested::Returns {
-            comment: comment.unwrap_or_else(Vec::new),
-            status: status,
-            produces: produces,
-            ty: ty,
-            options: options,
-        }
-    },
-
-    <comment:"///"?>
-    "accepts" <accepts:Loc<string>?> <ty:Loc<TypeSpec>?> <alias:Loc<Alias>?> ";" =>
-    {
-        ServiceNested::Accepts {
-            comment: comment.unwrap_or_else(Vec::new),
-            accepts: accepts,
             alias: alias,
-            ty: ty,
             options: vec![],
-        }
+            request: request,
+            response: response,
+        }, (input_object.clone(), s, e))
     },
 
     <comment:"///"?>
-    "accepts" <accepts:Loc<string>?>  <ty:Loc<TypeSpec>?> <alias:Loc<Alias>?> "{"
+    <s:@L>
+    <head:ServiceEndpointHead> "{"
         <options:Loc<OptionDecl>*>
-    "}" =>
-    {
-        ServiceNested::Accepts {
+    "}"
+    <e:@R> => {
+        let (id, alias, request, response) = head;
+
+        Loc::new(Endpoint {
+            id: id,
             comment: comment.unwrap_or_else(Vec::new),
-            accepts: accepts,
             alias: alias,
-            ty: ty,
             options: options,
-        }
+            request: request,
+            response: response,
+        }, (input_object.clone(), s, e))
     },
 };
 
-Alias: &'input str = "as" <value:Identifier> => value;
+ServiceEndpointHead: (Loc<&'input str>, Option<String>, Option<Channel>, Option<Channel>) = {
+    <id:Loc<Identifier>> "(" <request:Channel?> ")"
+    <response:("->" Channel)?>
+    <alias:FieldAlias?>
+    => (id, alias, request, response.map(|r| r.1)),
+};
+
+Channel: Channel = {
+    <stream:"stream"?> <ty:Loc<TypeSpec>> => {
+        if stream.is_some() {
+            Channel::Streaming {
+                ty: ty
+            }
+        } else {
+            Channel::Unary {
+                ty: ty
+            }
+        }
+    }
+};
 
 FieldAlias: String = {
     "as" <value:Identifier> => value.to_owned(),
@@ -416,7 +404,7 @@ extern {
         "?" => Token::QuestionMark,
         "/" => Token::Slash,
         "=" => Token::Equals,
-        "=>" => Token::HashRocket,
+        "->" => Token::RightArrow,
         "," => Token::Comma,
         "." => Token::Dot,
         "::" => Token::Scope,
@@ -431,8 +419,7 @@ extern {
         "bytes" => Token::BytesKeyword,
         true => Token::TrueKeyword,
         false => Token::FalseKeyword,
-        "returns" => Token::ReturnsKeyword,
-        "accepts" => Token::AcceptsKeyword,
+        "stream" => Token::StreamKeyword,
         "*" => Token::Star,
         "@" => Token::At,
         "`" => Token::Tick,

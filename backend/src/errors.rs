@@ -32,6 +32,14 @@ error_chain! {
         Overflow(pos: ErrorPos) {
         }
 
+        EndpointConflict(new: ErrorPos, old: ErrorPos) {
+            description("endpoint conflict")
+        }
+
+        EndpointNameConflict(new: ErrorPos, old: ErrorPos) {
+            description("endpoint name conflict")
+        }
+
         EnumVariantConflict(pos: ErrorPos, other: ErrorPos) {
             description("enum value conflict")
         }
@@ -83,6 +91,8 @@ impl WithPos for Error {
             &EnumVariantConflict(..) => self,
             &FieldConflict(..) => self,
             &Errors(..) => self,
+            &EndpointConflict(..) => self,
+            &EndpointNameConflict(..) => self,
             _ => {
                 let message = format!("{}", self);
                 self.chain_err(|| ErrorKind::Pos(message, pos.into()))

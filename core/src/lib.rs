@@ -8,6 +8,7 @@ extern crate mime as extern_mime;
 extern crate num;
 extern crate serde;
 extern crate relative_path;
+extern crate linked_hash_map;
 pub extern crate semver;
 
 mod as_loc;

@@ -10,7 +10,7 @@ use genco::java::{Argument, BOOLEAN, Class, Constructor, DOUBLE, Enum, Extra, FL
                   INTEGER, Interface, LONG, Method, Modifier, imported, local, optional};
 use java_field::JavaField;
 use java_options::JavaOptions;
-use listeners::{ClassAdded, EnumAdded, InterfaceAdded, Listeners, TupleAdded};
+use listeners::{ClassAdded, EnumAdded, InterfaceAdded, Listeners, ServiceAdded, TupleAdded};
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
@@ -25,7 +25,7 @@ pub struct JavaBackend {
     null_string: Element<'static, Java<'static>>,
     suppress_warnings: Java<'static>,
     string_builder: Java<'static>,
-    void: Java<'static>,
+    pub void: Java<'static>,
     override_: Java<'static>,
     objects: Java<'static>,
     object: Java<'static>,
@@ -786,47 +786,42 @@ impl JavaBackend {
     fn process_service<'el>(&self, body: &'el RpServiceBody) -> Result<Interface<'el>> {
         let mut spec = Interface::new(body.local_name.as_str());
 
-        for endpoint in &body.endpoints {
-            let mut ret: Option<Java> = None;
+        let mut endpoint_names: Vec<Cons<'el>> = Vec::new();
 
-            for r in &endpoint.returns {
-                let check = match r.status {
-                    Some(200) => true,
-                    Some(_) => false,
-                    None => true,
-                };
+        for endpoint in body.endpoints.values() {
+            let name = self.snake_to_lower_camel.convert(endpoint.id.as_str());
+            endpoint_names.push(Rc::new(name).into());
+        }
 
-                if check {
-                    ret = match r.ty {
-                        Some(ref ret) => Some(self.into_java_type(ret)?),
-                        None => None,
-                    };
+        let endpoint_names = endpoint_names;
+
+        if !self.options.suppress_service_methods {
+            for (endpoint, name) in body.endpoints.values().zip(endpoint_names.iter().cloned()) {
+                let mut method = Method::new(name);
+                method.modifiers = vec![];
+
+                if let Some(req) = endpoint.request.as_ref() {
+                    let ty = self.into_java_type(req.ty())?;
+                    method.arguments.push(Argument::new(ty, "request"));
                 }
-            }
 
-            for accept in &endpoint.accepts {
-                if let Some(ref alias) = accept.alias {
-                    let alias = Rc::new(self.snake_to_lower_camel.convert(alias));
-                    let mut method = Method::new(alias);
-                    method.modifiers = vec![];
-
-                    if let Some(ref ret) = ret {
-                        method.returns = self.async_container.with_arguments(vec![ret.clone()]);
-                    } else {
-                        method.returns =
-                            self.async_container.with_arguments(vec![self.void.clone()]);
-                    }
-
-                    if let Some(ref ty) = accept.ty {
-                        let arg = self.into_java_type(ty)?;
-                        let arg = Argument::new(arg, "request");
-                        method.arguments.push(arg);
-                    }
-
-                    spec.methods.push(method);
+                if let Some(res) = endpoint.response.as_ref() {
+                    let ty = self.into_java_type(res.ty())?;
+                    method.returns = self.async_container.with_arguments(vec![ty]);
+                } else {
+                    method.returns = self.async_container.with_arguments(vec![self.void.clone()]);
                 }
+
+                spec.methods.push(method);
             }
         }
+
+        self.listeners.service_added(&mut ServiceAdded {
+            backend: self,
+            body: body,
+            endpoint_names: &endpoint_names,
+            spec: &mut spec,
+        })?;
 
         Ok(spec)
     }

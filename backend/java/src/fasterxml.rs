@@ -185,12 +185,7 @@ impl Module {
                         Some((test, "VALUE_NUMBER_INT")),
                         toks![p, ".getLongValue()"],
                     ),
-                    INTEGER => {
-                        (
-                            Some((test, "VALUE_NUMBER_INT")),
-                            toks![p, ".getIntValue()"],
-                        )
-                    }
+                    INTEGER => (Some((test, "VALUE_NUMBER_INT")), toks![p, ".getIntValue()"]),
                     FLOAT => {
                         (
                             Some((test, "VALUE_NUMBER_FLOAT")),

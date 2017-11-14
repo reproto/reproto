@@ -164,6 +164,16 @@ pub trait Output {
                 self.print_error("previous name here", other)?;
                 true
             }
+            EndpointConflict(ref new, ref old) => {
+                self.print_error("conflicting id of endpoint", new)?;
+                self.print_error("previous id here", old)?;
+                true
+            }
+            EndpointNameConflict(ref new, ref old) => {
+                self.print_error("conflicting name of endpoint", new)?;
+                self.print_error("previous name here", old)?;
+                true
+            }
             _ => false,
         };
 

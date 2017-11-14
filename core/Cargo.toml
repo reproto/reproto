@@ -19,3 +19,4 @@ serde = {version = "1.0", features = ["rc"]}
 serde_derive = "1.0"
 semver = {version = "0.10", features = ["serde"]}
 relative-path = {version = "0.1", features = ["serde"]}
+linked-hash-map = {version = "0.5", features = ["serde_impl"]}

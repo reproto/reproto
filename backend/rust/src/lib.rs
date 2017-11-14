@@ -26,6 +26,7 @@ const RUST_CONTEXT: &str = "rust";
 fn setup_module(module: &str) -> Result<Box<Listeners>> {
     let module: Box<Listeners> = match module {
         "chrono" => Box::new(module::Chrono::new()),
+        "grpc" => Box::new(module::Grpc::new()),
         _ => return Err(format!("No such module: {}", module).into()),
     };
 

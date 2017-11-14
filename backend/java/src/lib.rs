@@ -16,6 +16,7 @@ mod lombok;
 mod java_field;
 mod mutable;
 mod nullable;
+mod grpc;
 
 use self::backend::{ArgMatches, CompilerOptions, Environment, Options};
 use self::backend::errors::*;
@@ -33,6 +34,7 @@ fn setup_module(module: &str) -> Result<Box<Listeners>> {
         "lombok" => Box::new(lombok::Module::new()),
         "mutable" => Box::new(mutable::Module::new()),
         "nullable" => Box::new(nullable::Module::new()),
+        "grpc" => Box::new(grpc::Module::new()),
         _ => return Err(format!("No such module: {}", module).into()),
     };
 

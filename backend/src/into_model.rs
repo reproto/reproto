@@ -1,9 +1,9 @@
 use super::errors::*;
 use super::scope::Scope;
 pub use core::*;
+use linked_hash_map::LinkedHashMap;
 pub use parser::ast::*;
-use std::cell::RefCell;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -154,7 +154,7 @@ impl<'input> IntoModel for Field<'input> {
         let name = &self.name;
 
         let field_as = self.field_as.into_model(scope)?.or_else(|| {
-            scope.naming().map(|n| n.convert(name))
+            scope.field_naming().map(|n| n.convert(name))
         });
 
         Ok(RpField {
@@ -380,172 +380,46 @@ impl<'input> IntoModel for PathSpec<'input> {
     }
 }
 
-struct Node {
-    parent: Option<Rc<RefCell<Node>>>,
-    method: Option<Loc<String>>,
-    path: Option<Loc<RpPathSpec>>,
-    options: Vec<Loc<RpOptionDecl>>,
-    comment: Vec<String>,
-    returns: Vec<RpServiceReturns>,
-    accepts: Vec<RpServiceAccepts>,
-}
-
-impl Node {
-    fn push_returns(&mut self, input: RpServiceReturns) {
-        self.returns.push(input);
-    }
-
-    fn push_accepts(&mut self, input: RpServiceAccepts) {
-        self.accepts.push(input);
-    }
-}
-
-fn convert_return(
-    scope: &Scope,
-    comment: Vec<String>,
-    status: Option<Loc<RpNumber>>,
-    produces: Option<Loc<String>>,
-    ty: Option<Loc<Type>>,
-    options: Vec<Loc<OptionDecl>>,
-) -> Result<RpServiceReturns> {
-    let options = options.into_model(scope)?;
-
-    let produces = produces.or(options.find_one_string("produces")?);
-
-    let produces = if let Some(produces) = produces {
-        Some(produces.and_then(|p| {
-            p.parse().map_err::<Error, _>(|_| "invalid mime".into())
-        })?)
-    } else {
-        None
-    };
-
-    let status = status.or(options.find_one_u32("status")?);
-
-    let status = if let Some(status) = status {
-        Some(status.and_then(|s| {
-            s.to_u32().ok_or_else::<Error, _>(
-                || "invalid status".into(),
-            )
-        })?)
-    } else {
-        None
-    };
-
-    Ok(RpServiceReturns {
-        comment: comment,
-        ty: ty.into_model(scope)?,
-        produces: produces,
-        status: status,
-    })
-}
-
-fn convert_accepts(
-    scope: &Scope,
-    comment: Vec<String>,
-    accepts: Option<Loc<String>>,
-    alias: Option<Loc<String>>,
-    ty: Option<Loc<Type>>,
-    options: Vec<Loc<OptionDecl>>,
-) -> Result<RpServiceAccepts> {
-    let accepts = accepts.or(options.find_one_string("accept")?);
-
-    let accepts = if let Some(accepts) = accepts {
-        let (accepts, pos) = accepts.take_pair();
-
-        let accepts = accepts.parse().chain_err(|| {
-            ErrorKind::Pos("not a valid mime type".to_owned(), pos.into())
-        })?;
-
-        Some(accepts)
-    } else {
-        None
-    };
-
-    Ok(RpServiceAccepts {
-        comment: comment,
-        ty: ty.into_model(scope)?,
-        accepts: accepts,
-        alias: alias,
-    })
-}
-
-/// Recursively unwind all inherited information about the given node, and convert to a service
-/// endpoint.
-fn unwind(node: Rc<RefCell<Node>>) -> Result<RpServiceEndpoint> {
-    let mut method: Option<Loc<String>> = None;
-    let mut path = Vec::new();
-    let mut options: Vec<Loc<RpOptionDecl>> = Vec::new();
-    let mut returns = Vec::new();
-    let mut accepts = Vec::new();
-
-    let comment = node.try_borrow()?.comment.clone();
-
-    let mut current = Some(node);
-
-    while let Some(step) = current {
-        let next = step.try_borrow()?;
-
-        // set method if not set
-        method = method.or_else(|| next.method.clone());
-
-        if let Some(ref next_url) = next.path {
-            // correct order by extending in reverse
-            path.extend(next_url.as_ref().segments.iter().rev().map(Clone::clone));
-        }
-
-        options.extend(next.options.iter().map(Clone::clone).rev());
-        returns.extend(next.returns.iter().map(Clone::clone));
-        accepts.extend(next.accepts.iter().map(Clone::clone));
-
-        current = next.parent.clone();
-    }
-
-    let path = RpPathSpec { segments: path.into_iter().rev().collect() };
-
-    Ok(RpServiceEndpoint {
-        method: method,
-        path: path,
-        comment: comment,
-        returns: returns,
-        accepts: accepts,
-    })
-}
-
 impl<'input> IntoModel for ServiceBody<'input> {
     type Output = RpServiceBody;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let mut endpoints: Vec<RpServiceEndpoint> = Vec::new();
+        use linked_hash_map::Entry::*;
 
-        // collecting root declarations
-        let root = Rc::new(RefCell::new(Node {
-            parent: None,
-            method: None,
-            path: None,
-            options: Vec::new(),
-            comment: Vec::new(),
-            returns: Vec::new(),
-            accepts: Vec::new(),
-        }));
+        let mut endpoint_names: HashMap<String, ErrorPos> = HashMap::new();
+        let mut endpoints = LinkedHashMap::new();
 
-        let mut queue = Vec::new();
-        queue.push((root, self.children));
+        for endpoint in self.endpoints {
+            let endpoint = endpoint.into_model(scope)?;
 
-        while let Some((parent, children)) = queue.pop() {
-            for child in children {
-                process_child(scope, &mut queue, &parent, child)?;
-            }
+            // Check that there are no conflicting endpoint names.
+            match endpoint_names.entry(endpoint.name().to_string()) {
+                hash_map::Entry::Vacant(entry) => entry.insert(endpoint.pos().into()),
+                hash_map::Entry::Occupied(entry) => {
+                    return Err(
+                        ErrorKind::EndpointNameConflict(
+                            endpoint.pos().into(),
+                            entry.get().clone_error_pos(),
+                        ).into(),
+                    );
+                }
+            };
 
-            let p = parent.as_ref().try_borrow()?;
-
-            if p.method.is_some() {
-                endpoints.push(unwind(parent.clone())?);
-            }
+            // Check that there are no conflicting endpoint IDs.
+            match endpoints.entry(endpoint.id.value().to_string()) {
+                Vacant(entry) => entry.insert(endpoint),
+                Occupied(entry) => {
+                    return Err(
+                        ErrorKind::EndpointConflict(
+                            endpoint.pos().into(),
+                            entry.get().pos().into(),
+                        ).into(),
+                    );
+                }
+            };
         }
 
-        let endpoints = endpoints.into_iter().rev().collect();
-
+        // TODO: check for duplicate endpoints.
         return Ok(RpServiceBody {
             name: scope.as_name(),
             local_name: self.name.to_string(),
@@ -553,61 +427,44 @@ impl<'input> IntoModel for ServiceBody<'input> {
             endpoints: endpoints,
             decls: vec![],
         });
+    }
+}
 
-        fn process_child<'input>(
-            scope: &Scope,
-            queue: &mut Vec<(Rc<RefCell<Node>>, Vec<ServiceNested<'input>>)>,
-            parent: &Rc<RefCell<Node>>,
-            child: ServiceNested<'input>,
-        ) -> Result<()> {
-            match child {
-                ServiceNested::Endpoint {
-                    method,
-                    path,
-                    comment,
-                    options,
-                    children,
-                } => {
-                    let node = Rc::new(RefCell::new(Node {
-                        parent: Some(parent.clone()),
-                        method: method.into_model(scope)?,
-                        path: path.into_model(scope)?,
-                        options: options.into_model(scope)?,
-                        comment: comment.into_iter().map(ToOwned::to_owned).collect(),
-                        returns: Vec::new(),
-                        accepts: Vec::new(),
-                    }));
+impl<'input> IntoModel for Endpoint<'input> {
+    type Output = RpEndpoint;
 
-                    queue.push((node, children));
-                }
-                // end node, manifest an endpoint.
-                ServiceNested::Returns {
-                    comment,
-                    status,
-                    produces,
-                    ty,
-                    options,
-                } => {
-                    let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-                    let returns = convert_return(scope, comment, status, produces, ty, options)?;
-                    parent.try_borrow_mut()?.push_returns(returns);
-                }
-                ServiceNested::Accepts {
-                    comment,
-                    accepts,
-                    alias,
-                    ty,
-                    options,
-                } => {
-                    let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-                    let alias = alias.into_model(scope)?;
-                    let accepts = convert_accepts(scope, comment, accepts, alias, ty, options)?;
-                    parent.try_borrow_mut()?.push_accepts(accepts);
-                }
-            }
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        let id = self.id.into_model(scope)?;
 
-            Ok(())
-        }
+        let name = self.alias.into_model(scope)?.unwrap_or_else(|| {
+            scope
+                .endpoint_naming()
+                .map(|n| n.convert(id.as_str()))
+                .unwrap_or_else(|| id.to_string())
+        });
+
+        return Ok(RpEndpoint {
+            id: id,
+            name: name,
+            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
+            request: self.request.into_model(scope)?,
+            response: self.response.into_model(scope)?,
+        });
+    }
+}
+
+impl<'input> IntoModel for Channel {
+    type Output = RpChannel;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        use self::Channel::*;
+
+        let result = match self {
+            Unary { ty, .. } => RpChannel::Unary { ty: ty.into_model(scope)? },
+            Streaming { ty, .. } => RpChannel::Streaming { ty: ty.into_model(scope)? },
+        };
+
+        Ok(result)
     }
 }
 

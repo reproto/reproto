@@ -4,8 +4,8 @@ use super::RUST_CONTEXT;
 use backend::{CompilerOptions, Environment, ForContext, FromNaming, Naming, PackageUtils,
               SnakeCase};
 use backend::errors::*;
-use core::{ForEachLoc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName, RpTupleBody,
-           RpType, RpTypeBody};
+use core::{ForEachLoc, Loc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName,
+           RpServiceBody, RpTupleBody, RpType, RpTypeBody};
 use genco::{Element, IntoTokens, Quoted, Rust, Tokens};
 use genco::rust::{imported_alias, imported_alias_ref, imported_ref};
 use listeners::Listeners;
@@ -364,6 +364,33 @@ impl RustBackend {
 
             spec.push("},");
             t.nested(spec);
+            Ok(()) as Result<()>
+        })?;
+
+        t.push("}");
+
+        out.0.push(t);
+        Ok(())
+    }
+
+    pub fn process_service<'a>(
+        &self,
+        out: &mut RustFileSpec<'a>,
+        body: &'a RpServiceBody,
+    ) -> Result<()> {
+        let type_name = self.convert_type_name(&body.name);
+        let mut t = Tokens::new();
+
+        t.push(Derives);
+        t.push(toks!["pub trait ", type_name, " {"]);
+
+        let endpoints = body.endpoints.values().map(Loc::as_ref);
+
+        endpoints.for_each_loc(|e| {
+            t.nested({
+                toks!["pub fn ", e.name(), "();"]
+            });
+
             Ok(()) as Result<()>
         })?;
 

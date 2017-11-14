@@ -477,114 +477,51 @@ Using this, `SI.NANO` would be serialized as:
 
 ## Services
 
-Service declarations describe endpoints that HTTP-requests can be sent against.
+Service declarations describe a set of endpoints being exposed by a service.
 
 Services are declared using the `service` keyword.
 
 ```reproto
-/// My Service
+/// My Service>
 service MyService {
-   // ...
 }
 ```
 
-Inside of a service, endpoints are declared by describing it with one of the HTTP-method keywords
-(`GET`, `POST`, `DELETE`, `PUT`, or `UPDATE`).
-Optionally they can also be declared with a path.
+Inside of a service, endpoints can be declared.
+
+Every endpoints must have a unique name.
 
 ```reproto
-service MyService {
-  /// Default endpoint
-  GET {
-    // ...
-  }
+type Foo {
+}
 
-  GET "posts" {
-    // ...
-  }
+/// My Service.
+service MyService {
+  /// Get foo.
+  get_foo() -> Foo;
+
+  /// Set foo.
+  set_foo(Foo);
 }
 ```
 
-Paths are composed in hierarchies. Any declaration that is nested inside of another inherits the
-path from the parent.
+Endpoints can have a set of options associated with them, by expanding their body.
 
-They can also capture variable if the are declared using back-ticks, like `` `posts/{id:string}` ``.
+These options might affect how code generation works for certain backends.
 
 ```reproto
-service MyService {
-  "posts" {
-    /// Get all posts.
-    GET {
-      // the complete path for this resource is "posts"
-    }
-
-    /// Get the post with the id `id`
-    GET `{id:string}` {
-      // the complete path for this resource is `posts/{id:string}`
-    }
-  }
-}
-```
-
-Return values are declared using the `returns` keyword.
-
-```reproto
-service MyService {
-  GET "posts" {
-    returns [Post] {
-      status 200;
-
-      // multiple mime types are supported
-      mime "text/yaml";
-      mime "application/json";
-    }
-  }
+type Foo {
 }
 
-type Post {
-  title: string;
-  author: string;
-}
-```
-
-Return statements can be inherited. As an example, any error type returned by any endpoint in the
-service can be declared in the root.
-
-```
+/// My Service.
 service MyService {
-  returns Error {
-    status 500;
-    mime "application/json";
+  /// Get foo.
+  get_foo() -> Foo {
+    http_status 200;
   }
 
-  // ...
-}
-
-type Error {
-  message: string;
-}
-```
-
-If your endpoint accepts a body, this is declared using the `accepts` keyword.
-
-```reproto
-service MyService {
-  POST "posts" {
-    accepts Post {
-      // multiple mime types are supported.
-      accept "application/json";
-      accept "text/yaml";
-    }
-
-    returns any {
-      status 200;
-    }
-  }
-}
-
-type Post {
-  title: string;
-  author: string;
+  /// Set foo.
+  set_foo(Foo);
 }
 ```
 

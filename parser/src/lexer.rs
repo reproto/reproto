@@ -154,8 +154,7 @@ impl<'input> Lexer<'input> {
             "bytes" => Token::BytesKeyword,
             "true" => Token::TrueKeyword,
             "false" => Token::FalseKeyword,
-            "returns" => Token::ReturnsKeyword,
-            "accepts" => Token::AcceptsKeyword,
+            "stream" => Token::StreamKeyword,
             identifier => {
                 return Ok((start, Token::Identifier(identifier), end));
             }
@@ -575,7 +574,7 @@ impl<'input> Lexer<'input> {
                         return Some(Ok((start, Token::CodeOpen, end)));
                     }
                     (':', ':') => Some(Token::Scope),
-                    ('=', '>') => Some(Token::HashRocket),
+                    ('-', '>') => Some(Token::RightArrow),
                     _ => None,
                 };
 

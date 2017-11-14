@@ -47,12 +47,8 @@ interface User {
 /// The blog service.
 service Blob {
   /// Get all posts.
-  GET "posts" {
-    returns 200 "application/json" [PostEntry];
+  get_posts() -> [PostEntry];
 
-    /// Get the post with the given `id`.
-    GET `{id:string}` {
-      returns 200 "application/json" Post;
-    }
-  }
+  /// Get the post with the given `id`.
+  get_post(id: string) -> Post;
 }
