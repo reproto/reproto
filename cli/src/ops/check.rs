@@ -1,4 +1,5 @@
 use super::imports::*;
+use core::Version;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("check").about("Check specifications");
@@ -8,6 +9,13 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
          even if it already \
          exists",
     ));
+
+    let out = out.arg(
+        Arg::with_name("version")
+            .long("version")
+            .takes_value(true)
+            .help("Override published version with argument"),
+    );
 
     let out = out.arg(Arg::with_name("package").multiple(true));
 
@@ -22,6 +30,14 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         "could not setup manifest resolver"
     })?;
 
+    let version_override = if let Some(version) = matches.value_of("version") {
+        Some(Version::parse(version).map_err(|e| {
+            format!("not a valid version: {}: {}", version, e)
+        })?)
+    } else {
+        None
+    };
+
     let packages: Vec<RpRequiredPackage> = matches
         .values_of("package")
         .into_iter()
@@ -33,10 +49,15 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
 
     results.extend(setup_publish_matches(
         manifest_resolver.as_mut(),
+        version_override.as_ref(),
         &manifest.publish,
     )?);
 
-    results.extend(setup_matches(manifest_resolver.as_mut(), &packages)?);
+    results.extend(setup_matches(
+        manifest_resolver.as_mut(),
+        version_override.as_ref(),
+        &packages,
+    )?);
 
     let force = matches.is_present("force");
 

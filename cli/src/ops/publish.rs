@@ -1,4 +1,5 @@
 use super::imports::*;
+use core::Version;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("publish").about("Publish specifications");
@@ -19,6 +20,13 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
          Checks",
     ));
 
+    let out = out.arg(
+        Arg::with_name("version")
+            .long("version")
+            .takes_value(true)
+            .help("Override published version with argument"),
+    );
+
     let out = out.arg(Arg::with_name("package").multiple(true));
 
     out
@@ -32,6 +40,23 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         "could not setup manifest resolver"
     })?;
 
+    let version_override = if let Some(version) = matches.value_of("version") {
+        Some(Version::parse(version).map_err(|e| {
+            format!("not a valid version: {}: {}", version, e)
+        })?)
+    } else {
+        None
+    };
+
+    let mut results = Vec::new();
+
+    results.extend(setup_publish_matches(
+        manifest_resolver.as_mut(),
+        version_override.as_ref(),
+        &manifest.publish,
+    )?);
+
+    // packages to publish from the commandline
     let packages: Vec<RpRequiredPackage> = matches
         .values_of("package")
         .into_iter()
@@ -39,14 +64,11 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         .map(|p| RpRequiredPackage::parse(p).map_err(Into::into))
         .collect::<Result<_>>()?;
 
-    let mut results = Vec::new();
-
-    results.extend(setup_publish_matches(
+    results.extend(setup_matches(
         manifest_resolver.as_mut(),
-        &manifest.publish,
+        version_override.as_ref(),
+        &packages,
     )?);
-
-    results.extend(setup_matches(manifest_resolver.as_mut(), &packages)?);
 
     let force = matches.is_present("force");
     let pretend = matches.is_present("pretend");

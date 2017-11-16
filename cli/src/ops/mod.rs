@@ -437,7 +437,12 @@ impl<'a> fmt::Display for DisplayMatch<'a> {
     }
 }
 
-pub fn setup_publish_matches<'a, I>(resolver: &mut Resolver, publish: I) -> Result<Vec<Match>>
+/// Setup matches from a publish manifest.
+pub fn setup_publish_matches<'a, I>(
+    resolver: &mut Resolver,
+    version_override: Option<&Version>,
+    publish: I,
+) -> Result<Vec<Match>>
 where
     I: IntoIterator<Item = &'a Publish>,
 {
@@ -455,18 +460,19 @@ where
 
         // packages.push(RpRequiredPackage());
         for (_, object) in resolved {
-            results.push(Match(
-                publish.version.clone(),
-                object,
-                publish.package.clone(),
-            ));
+            let version = version_override.unwrap_or(&publish.version).clone();
+            results.push(Match(version, object, publish.package.clone()));
         }
     }
 
     Ok(results)
 }
 
-pub fn setup_matches<'a, I>(resolver: &mut Resolver, packages: I) -> Result<Vec<Match>>
+pub fn setup_matches<'a, I>(
+    resolver: &mut Resolver,
+    version_override: Option<&Version>,
+    packages: I,
+) -> Result<Vec<Match>>
 where
     I: IntoIterator<Item = &'a RpRequiredPackage>,
 {
@@ -502,6 +508,7 @@ where
             || format!("{}: package without a version", object),
         )?;
 
+        let version = version_override.map(Clone::clone).unwrap_or(version);
         results.push(Match(version, object, package.package.clone()));
     }
 
@@ -521,13 +528,9 @@ pub fn semck_check(
     if let Some(d) = repository
         .all(package)?
         .into_iter()
-        .filter(|d| d.version.major == version.major)
+        .filter(|d| d.version <= *version && !d.version.is_prerelease())
         .last()
     {
-        if d.version == *version && !force {
-            return Err(format!("Version {} already published", version).into());
-        }
-
         debug!("Checking semantics of {} -> {}", d.version, version);
 
         let previous = repository.get_object(&d)?.ok_or_else(|| {
