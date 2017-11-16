@@ -50,7 +50,7 @@ Decl: Decl<'input> = {
 Enum: Loc<EnumBody<'input>> =
     <comment:"///"?>
     <s:@L>
-    "enum" <name:TypeIdentifier> <ty:(":" Loc<TypeSpec>)?> "{"
+    "enum" <name:TypeIdentifier> <ty:("as" Loc<TypeSpec>)?> "{"
         <variants:EnumVariant*>
         <members:Member*>
     "}"
@@ -222,7 +222,7 @@ PathSegment: PathSegment<'input> = {
 EnumVariant: Loc<EnumVariant<'input>> =
     <comment:"///"?>
     <s:@L>
-    <name:Loc<TypeIdentifier>> <argument:("=" Loc<Value>)?> ";"
+    <name:Loc<TypeIdentifier>> <argument:("as" Loc<Value>)?> ";"
     <e:@R> =>
 {
     Loc::new(EnumVariant {
@@ -403,7 +403,6 @@ extern {
         ":" => Token::Colon,
         "?" => Token::QuestionMark,
         "/" => Token::Slash,
-        "=" => Token::Equals,
         "->" => Token::RightArrow,
         "," => Token::Comma,
         "." => Token::Dot,
@@ -420,7 +419,6 @@ extern {
         true => Token::TrueKeyword,
         false => Token::FalseKeyword,
         "stream" => Token::StreamKeyword,
-        "*" => Token::Star,
         "@" => Token::At,
         "`" => Token::Tick,
         "///" => Token::DocComment(<Vec<&'input str>>),

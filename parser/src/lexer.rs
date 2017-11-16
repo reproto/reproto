@@ -522,9 +522,6 @@ impl<'input> Lexer<'input> {
 
                     Token::Slash
                 }
-                '?' => Token::QuestionMark,
-                '&' => Token::And,
-                '=' => Token::Equals,
                 c => {
                     self.path_buffer.push(c);
                     self.step();
@@ -603,10 +600,7 @@ impl<'input> Lexer<'input> {
                     ',' => Token::Comma,
                     '.' => Token::Dot,
                     '?' => Token::QuestionMark,
-                    '&' => Token::And,
                     '/' => Token::Slash,
-                    '=' => Token::Equals,
-                    '*' => Token::Star,
                     '@' => {
                         self.version_req_mode = true;
                         Token::At

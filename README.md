@@ -115,111 +115,37 @@ The goal is to have a compact, intuitive, and productive language for writing sp
 
 The following is a simple petstore example using ReProto.
 
-```
+```reproto
 /// # ReProto Petstore
 ///
 /// A sample API that uses a petstore as an example to demonstrate features in the ReProto
 /// specification
 service Petstore {
-  "api" {
-    /// Returns all pets from the system that the user has access to.
-    GET "pets" {
-      /// A list of pets.
-      returns 200 "application/json" [Pet];
-    }
-  }
+  /// Returns all pets from the system that the user has access to.
+  all_pets() -> stream Pet;
+}
+
+enum Size as string {
+    LARGE;
+    MEDIUM;
+    SMALL;
 }
 
 type Pet {
   id: unsigned/64;
   name: string;
-  tag?: string;
+  size: Size;
 }
 ```
 
 You can compile the above into documentation using the following command:
 
 ```bash
-$> reproto doc --out petstore-doc --path examples/src --package petstore@1.0.0
-```
-
-As a comparison the following is a specification using [OpenAPI 2.0][openapi-2].
-
-```json
-{
-  "swagger": "2.0",
-  "info": {
-    "version": "1.0.0",
-    "title": "Swagger Petstore",
-    "description": "A sample API that uses a petstore as an example to demonstrate features in the swagger-2.0 specification",
-    "termsOfService": "http://swagger.io/terms/",
-    "contact": {
-      "name": "Swagger API Team"
-    },
-    "license": {
-      "name": "MIT"
-    }
-  },
-  "host": "petstore.swagger.io",
-  "basePath": "/api",
-  "schemes": [
-    "http"
-  ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
-  "paths": {
-    "/pets": {
-      "get": {
-        "description": "Returns all pets from the system that the user has access to",
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "200": {
-            "description": "A list of pets.",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Pet"
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "definitions": {
-    "Pet": {
-      "type": "object",
-      "required": [
-        "id",
-        "name"
-      ],
-      "properties": {
-        "id": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "name": {
-          "type": "string"
-        },
-        "tag": {
-          "type": "string"
-        }
-      }
-    }
-  }
-}
+$> reproto doc --out petstore-doc --path examples/src --package petstore
 ```
 
 If you miss JSON, you can compile the specification to JSON as well.
 
 ```bash
-$> reproto build --lang json --out petstore-json --path examples/petstore --package petstore@1.0.0
+$> reproto build --lang json --out petstore-json --path examples/petstore --package petstore
 ```
-
-[openapi-2]: https://github.com/OAI/OpenAPI-Specification

@@ -525,6 +525,21 @@ service MyService {
 }
 ```
 
+Requests, responses, or both can be streamed. This permits sending multiple requests or multiple
+responses.
+
+You mark this relationship with the `stream` keyword.
+
+```reproto
+service MyService
+  /// Get many foos.
+  get_foos() -> stream Foo;
+
+  /// Write many foos.
+  write_foos(stream Foo);
+}
+```
+
 ## Reserved fields
 
 Fields can be reserved using a special option called `reserved`.
