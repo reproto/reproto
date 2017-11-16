@@ -520,7 +520,6 @@ pub fn semck_check(
     repository: &mut Repository,
     env: &mut Environment,
     m: &Match,
-    force: bool,
 ) -> Result<()> {
     let Match(ref version, ref object, ref package) = *m;
 

@@ -4,12 +4,6 @@ use core::Version;
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("check").about("Check specifications");
 
-    let out = out.arg(Arg::with_name("force").long("force").help(
-        "Force a check, \
-         even if it already \
-         exists",
-    ));
-
     let out = out.arg(
         Arg::with_name("version")
             .long("version")
@@ -59,14 +53,12 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         &packages,
     )?);
 
-    let force = matches.is_present("force");
-
     let mut repository = setup_repository(&manifest)?;
 
     let mut errors = Vec::new();
 
     for m in results {
-        semck_check(&mut errors, &mut repository, &mut env, &m, force)?;
+        semck_check(&mut errors, &mut repository, &mut env, &m)?;
     }
 
     if errors.len() > 0 {

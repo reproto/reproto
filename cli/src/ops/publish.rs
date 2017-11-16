@@ -80,7 +80,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     let mut semck_errors = Vec::new();
 
     for m in &results {
-        semck_check(&mut semck_errors, &mut repository, &mut env, &m, force)?;
+        semck_check(&mut semck_errors, &mut repository, &mut env, &m)?;
     }
 
     if semck_errors.len() > 0 {

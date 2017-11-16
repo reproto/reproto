@@ -381,14 +381,13 @@ impl RustBackend {
         let type_name = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
-        t.push(Derives);
         t.push(toks!["pub trait ", type_name, " {"]);
 
         let endpoints = body.endpoints.values().map(Loc::as_ref);
 
         endpoints.for_each_loc(|e| {
             t.nested({
-                toks!["pub fn ", e.name(), "();"]
+                toks!["fn ", e.id.as_str(), "();"]
             });
 
             Ok(()) as Result<()>
