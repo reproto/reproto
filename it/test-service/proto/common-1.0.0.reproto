@@ -5,5 +5,5 @@ type Entry {
 /// # Error me
 type ErrorMessage {
   message: string;
-  status_code: unsigned;
+  status_code: u32;
 }

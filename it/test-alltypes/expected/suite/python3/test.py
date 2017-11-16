@@ -1,12 +1,12 @@
 class Entry:
-  def __init__(self, boolean_type, string_type, datetime_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, bytes_type, any_type, array_type, map_type):
+  def __init__(self, boolean_type, string_type, datetime_type, unsigned_32, unsigned_64, signed_32, signed_64, float_type, double_type, bytes_type, any_type, array_type, map_type):
     self.boolean_type = boolean_type
     self.string_type = string_type
     self.datetime_type = datetime_type
-    self.unsigned_type = unsigned_type
-    self.unsigned_sized_type = unsigned_sized_type
-    self.signed_type = signed_type
-    self.signed_sized_type = signed_sized_type
+    self.unsigned_32 = unsigned_32
+    self.unsigned_64 = unsigned_64
+    self.signed_32 = signed_32
+    self.signed_64 = signed_64
     self.float_type = float_type
     self.double_type = double_type
     self.bytes_type = bytes_type
@@ -40,37 +40,37 @@ class Entry:
     else:
       f_datetime_type = None
 
-    if "unsigned_type" in data:
-      f_unsigned_type = data["unsigned_type"]
+    if "unsigned_32" in data:
+      f_unsigned_32 = data["unsigned_32"]
 
-      if f_unsigned_type is not None:
-        f_unsigned_type = f_unsigned_type
+      if f_unsigned_32 is not None:
+        f_unsigned_32 = f_unsigned_32
     else:
-      f_unsigned_type = None
+      f_unsigned_32 = None
 
-    if "unsigned_sized_type" in data:
-      f_unsigned_sized_type = data["unsigned_sized_type"]
+    if "unsigned_64" in data:
+      f_unsigned_64 = data["unsigned_64"]
 
-      if f_unsigned_sized_type is not None:
-        f_unsigned_sized_type = f_unsigned_sized_type
+      if f_unsigned_64 is not None:
+        f_unsigned_64 = f_unsigned_64
     else:
-      f_unsigned_sized_type = None
+      f_unsigned_64 = None
 
-    if "signed_type" in data:
-      f_signed_type = data["signed_type"]
+    if "signed_32" in data:
+      f_signed_32 = data["signed_32"]
 
-      if f_signed_type is not None:
-        f_signed_type = f_signed_type
+      if f_signed_32 is not None:
+        f_signed_32 = f_signed_32
     else:
-      f_signed_type = None
+      f_signed_32 = None
 
-    if "signed_sized_type" in data:
-      f_signed_sized_type = data["signed_sized_type"]
+    if "signed_64" in data:
+      f_signed_64 = data["signed_64"]
 
-      if f_signed_sized_type is not None:
-        f_signed_sized_type = f_signed_sized_type
+      if f_signed_64 is not None:
+        f_signed_64 = f_signed_64
     else:
-      f_signed_sized_type = None
+      f_signed_64 = None
 
     if "float_type" in data:
       f_float_type = data["float_type"]
@@ -120,7 +120,7 @@ class Entry:
     else:
       f_map_type = None
 
-    return Entry(f_boolean_type, f_string_type, f_datetime_type, f_unsigned_type, f_unsigned_sized_type, f_signed_type, f_signed_sized_type, f_float_type, f_double_type, f_bytes_type, f_any_type, f_array_type, f_map_type)
+    return Entry(f_boolean_type, f_string_type, f_datetime_type, f_unsigned_32, f_unsigned_64, f_signed_32, f_signed_64, f_float_type, f_double_type, f_bytes_type, f_any_type, f_array_type, f_map_type)
 
   def encode(self):
     data = dict()
@@ -134,17 +134,17 @@ class Entry:
     if self.datetime_type is not None:
       data["datetime_type"] = self.datetime_type
 
-    if self.unsigned_type is not None:
-      data["unsigned_type"] = self.unsigned_type
+    if self.unsigned_32 is not None:
+      data["unsigned_32"] = self.unsigned_32
 
-    if self.unsigned_sized_type is not None:
-      data["unsigned_sized_type"] = self.unsigned_sized_type
+    if self.unsigned_64 is not None:
+      data["unsigned_64"] = self.unsigned_64
 
-    if self.signed_type is not None:
-      data["signed_type"] = self.signed_type
+    if self.signed_32 is not None:
+      data["signed_32"] = self.signed_32
 
-    if self.signed_sized_type is not None:
-      data["signed_sized_type"] = self.signed_sized_type
+    if self.signed_64 is not None:
+      data["signed_64"] = self.signed_64
 
     if self.float_type is not None:
       data["float_type"] = self.float_type
@@ -167,4 +167,4 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry boolean_type: {!r}, string_type: {!r}, datetime_type: {!r}, unsigned_type: {!r}, unsigned_sized_type: {!r}, signed_type: {!r}, signed_sized_type: {!r}, float_type: {!r}, double_type: {!r}, bytes_type: {!r}, any_type: {!r}, array_type: {!r}, map_type: {!r}>".format(self.boolean_type, self.string_type, self.datetime_type, self.unsigned_type, self.unsigned_sized_type, self.signed_type, self.signed_sized_type, self.float_type, self.double_type, self.bytes_type, self.any_type, self.array_type, self.map_type)
+    return "<Entry boolean_type: {!r}, string_type: {!r}, datetime_type: {!r}, unsigned_32: {!r}, unsigned_64: {!r}, signed_32: {!r}, signed_64: {!r}, float_type: {!r}, double_type: {!r}, bytes_type: {!r}, any_type: {!r}, array_type: {!r}, map_type: {!r}>".format(self.boolean_type, self.string_type, self.datetime_type, self.unsigned_32, self.unsigned_64, self.signed_32, self.signed_64, self.float_type, self.double_type, self.bytes_type, self.any_type, self.array_type, self.map_type)

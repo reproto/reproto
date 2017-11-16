@@ -2,10 +2,10 @@ type Entry {
     boolean_type?: boolean;
     string_type?: string;
     datetime_type?: datetime;
-    unsigned_type?: unsigned;
-    unsigned_sized_type?: unsigned/32;
-    signed_type?: signed;
-    signed_sized_type?: signed/32;
+    unsigned_32?: u32;
+    unsigned_64?: u32;
+    signed_32?: i32;
+    signed_64?: i64;
     float_type?: float;
     double_type?: double;
     bytes_type?: bytes;

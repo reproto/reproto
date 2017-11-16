@@ -12,13 +12,13 @@ pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
   datetime_type: Option<chrono::DateTime<offset::Utc>>,
   #[serde(skip_serializing_if="Option::is_none")]
-  unsigned_type: Option<u32>,
+  unsigned_32: Option<i32>,
   #[serde(skip_serializing_if="Option::is_none")]
-  unsigned_sized_type: Option<u32>,
+  unsigned_64: Option<i32>,
   #[serde(skip_serializing_if="Option::is_none")]
-  signed_type: Option<i32>,
+  signed_32: Option<i32>,
   #[serde(skip_serializing_if="Option::is_none")]
-  signed_sized_type: Option<i32>,
+  signed_64: Option<i64>,
   #[serde(skip_serializing_if="Option::is_none")]
   float_type: Option<f32>,
   #[serde(skip_serializing_if="Option::is_none")]

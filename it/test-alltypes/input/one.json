@@ -5,10 +5,10 @@
 # {"datetime_type": "2017-10-14T11:42:06+01:00"}
 # {"datetime_type": "2017-10-14T11:42:06+0100"}
 {"datetime_type": "2017-10-14T11:42:06Z"}
-{"unsigned_type": 42}
-{"unsigned_sized_type": 42}
-{"signed_type": -42}
-{"signed_sized_type": -42}
+{"unsigned_32": 42}
+{"unsigned_64": 42}
+{"signed_32": -42}
+{"signed_64": -42}
 {"float_type": 42.42}
 {"double_type": 42.42}
 {"bytes_type": "YW55IGNhcm5hbCBwbGVhcw=="}

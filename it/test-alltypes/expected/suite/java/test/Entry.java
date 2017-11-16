@@ -16,14 +16,14 @@ public class Entry {
   private final Optional<String> stringType;
   @JsonProperty("datetime_type")
   private final Optional<Instant> datetimeType;
-  @JsonProperty("unsigned_type")
-  private final Optional<Integer> unsignedType;
-  @JsonProperty("unsigned_sized_type")
-  private final Optional<Integer> unsignedSizedType;
-  @JsonProperty("signed_type")
-  private final Optional<Integer> signedType;
-  @JsonProperty("signed_sized_type")
-  private final Optional<Integer> signedSizedType;
+  @JsonProperty("unsigned_32")
+  private final Optional<Integer> unsigned32;
+  @JsonProperty("unsigned_64")
+  private final Optional<Integer> unsigned64;
+  @JsonProperty("signed_32")
+  private final Optional<Integer> signed32;
+  @JsonProperty("signed_64")
+  private final Optional<Long> signed64;
   @JsonProperty("float_type")
   private final Optional<Float> floatType;
   @JsonProperty("double_type")
@@ -42,10 +42,10 @@ public class Entry {
     @JsonProperty("boolean_type") final Optional<Boolean> booleanType,
     @JsonProperty("string_type") final Optional<String> stringType,
     @JsonProperty("datetime_type") final Optional<Instant> datetimeType,
-    @JsonProperty("unsigned_type") final Optional<Integer> unsignedType,
-    @JsonProperty("unsigned_sized_type") final Optional<Integer> unsignedSizedType,
-    @JsonProperty("signed_type") final Optional<Integer> signedType,
-    @JsonProperty("signed_sized_type") final Optional<Integer> signedSizedType,
+    @JsonProperty("unsigned_32") final Optional<Integer> unsigned32,
+    @JsonProperty("unsigned_64") final Optional<Integer> unsigned64,
+    @JsonProperty("signed_32") final Optional<Integer> signed32,
+    @JsonProperty("signed_64") final Optional<Long> signed64,
     @JsonProperty("float_type") final Optional<Float> floatType,
     @JsonProperty("double_type") final Optional<Double> doubleType,
     @JsonProperty("bytes_type") final Optional<ByteBuffer> bytesType,
@@ -59,14 +59,14 @@ public class Entry {
     this.stringType = stringType;
     Objects.requireNonNull(datetimeType, "datetimeType");
     this.datetimeType = datetimeType;
-    Objects.requireNonNull(unsignedType, "unsignedType");
-    this.unsignedType = unsignedType;
-    Objects.requireNonNull(unsignedSizedType, "unsignedSizedType");
-    this.unsignedSizedType = unsignedSizedType;
-    Objects.requireNonNull(signedType, "signedType");
-    this.signedType = signedType;
-    Objects.requireNonNull(signedSizedType, "signedSizedType");
-    this.signedSizedType = signedSizedType;
+    Objects.requireNonNull(unsigned32, "unsigned32");
+    this.unsigned32 = unsigned32;
+    Objects.requireNonNull(unsigned64, "unsigned64");
+    this.unsigned64 = unsigned64;
+    Objects.requireNonNull(signed32, "signed32");
+    this.signed32 = signed32;
+    Objects.requireNonNull(signed64, "signed64");
+    this.signed64 = signed64;
     Objects.requireNonNull(floatType, "floatType");
     this.floatType = floatType;
     Objects.requireNonNull(doubleType, "doubleType");
@@ -93,20 +93,20 @@ public class Entry {
     return this.datetimeType;
   }
 
-  public Optional<Integer> getUnsignedType() {
-    return this.unsignedType;
+  public Optional<Integer> getUnsigned32() {
+    return this.unsigned32;
   }
 
-  public Optional<Integer> getUnsignedSizedType() {
-    return this.unsignedSizedType;
+  public Optional<Integer> getUnsigned64() {
+    return this.unsigned64;
   }
 
-  public Optional<Integer> getSignedType() {
-    return this.signedType;
+  public Optional<Integer> getSigned32() {
+    return this.signed32;
   }
 
-  public Optional<Integer> getSignedSizedType() {
-    return this.signedSizedType;
+  public Optional<Long> getSigned64() {
+    return this.signed64;
   }
 
   public Optional<Float> getFloatType() {
@@ -139,10 +139,10 @@ public class Entry {
     result = result * 31 + this.booleanType.hashCode();
     result = result * 31 + this.stringType.hashCode();
     result = result * 31 + this.datetimeType.hashCode();
-    result = result * 31 + this.unsignedType.hashCode();
-    result = result * 31 + this.unsignedSizedType.hashCode();
-    result = result * 31 + this.signedType.hashCode();
-    result = result * 31 + this.signedSizedType.hashCode();
+    result = result * 31 + this.unsigned32.hashCode();
+    result = result * 31 + this.unsigned64.hashCode();
+    result = result * 31 + this.signed32.hashCode();
+    result = result * 31 + this.signed64.hashCode();
     result = result * 31 + this.floatType.hashCode();
     result = result * 31 + this.doubleType.hashCode();
     result = result * 31 + this.bytesType.hashCode();
@@ -177,19 +177,19 @@ public class Entry {
       return false;
     }
 
-    if (!this.unsignedType.equals(o.unsignedType)) {
+    if (!this.unsigned32.equals(o.unsigned32)) {
       return false;
     }
 
-    if (!this.unsignedSizedType.equals(o.unsignedSizedType)) {
+    if (!this.unsigned64.equals(o.unsigned64)) {
       return false;
     }
 
-    if (!this.signedType.equals(o.signedType)) {
+    if (!this.signed32.equals(o.signed32)) {
       return false;
     }
 
-    if (!this.signedSizedType.equals(o.signedSizedType)) {
+    if (!this.signed64.equals(o.signed64)) {
       return false;
     }
 
@@ -235,17 +235,17 @@ public class Entry {
     b.append("datetimeType=");
     b.append(this.datetimeType.toString());
     b.append(", ");
-    b.append("unsignedType=");
-    b.append(this.unsignedType.toString());
+    b.append("unsigned32=");
+    b.append(this.unsigned32.toString());
     b.append(", ");
-    b.append("unsignedSizedType=");
-    b.append(this.unsignedSizedType.toString());
+    b.append("unsigned64=");
+    b.append(this.unsigned64.toString());
     b.append(", ");
-    b.append("signedType=");
-    b.append(this.signedType.toString());
+    b.append("signed32=");
+    b.append(this.signed32.toString());
     b.append(", ");
-    b.append("signedSizedType=");
-    b.append(this.signedSizedType.toString());
+    b.append("signed64=");
+    b.append(this.signed64.toString());
     b.append(", ");
     b.append("floatType=");
     b.append(this.floatType.toString());
@@ -273,10 +273,10 @@ public class Entry {
     private Optional<Boolean> booleanType = Optional.empty();
     private Optional<String> stringType = Optional.empty();
     private Optional<Instant> datetimeType = Optional.empty();
-    private Optional<Integer> unsignedType = Optional.empty();
-    private Optional<Integer> unsignedSizedType = Optional.empty();
-    private Optional<Integer> signedType = Optional.empty();
-    private Optional<Integer> signedSizedType = Optional.empty();
+    private Optional<Integer> unsigned32 = Optional.empty();
+    private Optional<Integer> unsigned64 = Optional.empty();
+    private Optional<Integer> signed32 = Optional.empty();
+    private Optional<Long> signed64 = Optional.empty();
     private Optional<Float> floatType = Optional.empty();
     private Optional<Double> doubleType = Optional.empty();
     private Optional<ByteBuffer> bytesType = Optional.empty();
@@ -299,23 +299,23 @@ public class Entry {
       return this;
     }
 
-    public Builder unsignedType(final int unsignedType) {
-      this.unsignedType = Optional.of(unsignedType);
+    public Builder unsigned32(final int unsigned32) {
+      this.unsigned32 = Optional.of(unsigned32);
       return this;
     }
 
-    public Builder unsignedSizedType(final int unsignedSizedType) {
-      this.unsignedSizedType = Optional.of(unsignedSizedType);
+    public Builder unsigned64(final int unsigned64) {
+      this.unsigned64 = Optional.of(unsigned64);
       return this;
     }
 
-    public Builder signedType(final int signedType) {
-      this.signedType = Optional.of(signedType);
+    public Builder signed32(final int signed32) {
+      this.signed32 = Optional.of(signed32);
       return this;
     }
 
-    public Builder signedSizedType(final int signedSizedType) {
-      this.signedSizedType = Optional.of(signedSizedType);
+    public Builder signed64(final long signed64) {
+      this.signed64 = Optional.of(signed64);
       return this;
     }
 
@@ -353,10 +353,10 @@ public class Entry {
       final Optional<Boolean> booleanType = this.booleanType;
       final Optional<String> stringType = this.stringType;
       final Optional<Instant> datetimeType = this.datetimeType;
-      final Optional<Integer> unsignedType = this.unsignedType;
-      final Optional<Integer> unsignedSizedType = this.unsignedSizedType;
-      final Optional<Integer> signedType = this.signedType;
-      final Optional<Integer> signedSizedType = this.signedSizedType;
+      final Optional<Integer> unsigned32 = this.unsigned32;
+      final Optional<Integer> unsigned64 = this.unsigned64;
+      final Optional<Integer> signed32 = this.signed32;
+      final Optional<Long> signed64 = this.signed64;
       final Optional<Float> floatType = this.floatType;
       final Optional<Double> doubleType = this.doubleType;
       final Optional<ByteBuffer> bytesType = this.bytesType;
@@ -364,7 +364,7 @@ public class Entry {
       final Optional<List<Entry>> arrayType = this.arrayType;
       final Optional<Map<String, Entry>> mapType = this.mapType;
 
-      return new Entry(booleanType, stringType, datetimeType, unsignedType, unsignedSizedType, signedType, signedSizedType, floatType, doubleType, bytesType, anyType, arrayType, mapType);
+      return new Entry(booleanType, stringType, datetimeType, unsigned32, unsigned64, signed32, signed64, floatType, doubleType, bytesType, anyType, arrayType, mapType);
     }
   }
 }

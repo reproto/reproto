@@ -6,7 +6,7 @@ type Entry {
 /// Tuple containing primitive.
 tuple Tuple1 {
     a: string;
-    b: unsigned/64;
+    b: u64;
 }
 
 /// Tuple containing object.

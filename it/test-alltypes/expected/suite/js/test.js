@@ -1,13 +1,13 @@
 
 export class Entry {
-  constructor(boolean_type, string_type, datetime_type, unsigned_type, unsigned_sized_type, signed_type, signed_sized_type, float_type, double_type, bytes_type, any_type, array_type, map_type) {
+  constructor(boolean_type, string_type, datetime_type, unsigned_32, unsigned_64, signed_32, signed_64, float_type, double_type, bytes_type, any_type, array_type, map_type) {
     this.boolean_type = boolean_type;
     this.string_type = string_type;
     this.datetime_type = datetime_type;
-    this.unsigned_type = unsigned_type;
-    this.unsigned_sized_type = unsigned_sized_type;
-    this.signed_type = signed_type;
-    this.signed_sized_type = signed_sized_type;
+    this.unsigned_32 = unsigned_32;
+    this.unsigned_64 = unsigned_64;
+    this.signed_32 = signed_32;
+    this.signed_64 = signed_64;
     this.float_type = float_type;
     this.double_type = double_type;
     this.bytes_type = bytes_type;
@@ -41,36 +41,36 @@ export class Entry {
       v_datetime_type = null;
     }
 
-    let v_unsigned_type = data["unsigned_type"];
+    let v_unsigned_32 = data["unsigned_32"];
 
-    if (v_unsigned_type !== null && v_unsigned_type !== undefined) {
-      v_unsigned_type = v_unsigned_type;
+    if (v_unsigned_32 !== null && v_unsigned_32 !== undefined) {
+      v_unsigned_32 = v_unsigned_32;
     } else {
-      v_unsigned_type = null;
+      v_unsigned_32 = null;
     }
 
-    let v_unsigned_sized_type = data["unsigned_sized_type"];
+    let v_unsigned_64 = data["unsigned_64"];
 
-    if (v_unsigned_sized_type !== null && v_unsigned_sized_type !== undefined) {
-      v_unsigned_sized_type = v_unsigned_sized_type;
+    if (v_unsigned_64 !== null && v_unsigned_64 !== undefined) {
+      v_unsigned_64 = v_unsigned_64;
     } else {
-      v_unsigned_sized_type = null;
+      v_unsigned_64 = null;
     }
 
-    let v_signed_type = data["signed_type"];
+    let v_signed_32 = data["signed_32"];
 
-    if (v_signed_type !== null && v_signed_type !== undefined) {
-      v_signed_type = v_signed_type;
+    if (v_signed_32 !== null && v_signed_32 !== undefined) {
+      v_signed_32 = v_signed_32;
     } else {
-      v_signed_type = null;
+      v_signed_32 = null;
     }
 
-    let v_signed_sized_type = data["signed_sized_type"];
+    let v_signed_64 = data["signed_64"];
 
-    if (v_signed_sized_type !== null && v_signed_sized_type !== undefined) {
-      v_signed_sized_type = v_signed_sized_type;
+    if (v_signed_64 !== null && v_signed_64 !== undefined) {
+      v_signed_64 = v_signed_64;
     } else {
-      v_signed_sized_type = null;
+      v_signed_64 = null;
     }
 
     let v_float_type = data["float_type"];
@@ -121,7 +121,7 @@ export class Entry {
       v_map_type = null;
     }
 
-    return new Entry(v_boolean_type, v_string_type, v_datetime_type, v_unsigned_type, v_unsigned_sized_type, v_signed_type, v_signed_sized_type, v_float_type, v_double_type, v_bytes_type, v_any_type, v_array_type, v_map_type);
+    return new Entry(v_boolean_type, v_string_type, v_datetime_type, v_unsigned_32, v_unsigned_64, v_signed_32, v_signed_64, v_float_type, v_double_type, v_bytes_type, v_any_type, v_array_type, v_map_type);
   }
 
   encode() {
@@ -139,20 +139,20 @@ export class Entry {
       data["datetime_type"] = this.datetime_type;
     }
 
-    if (this.unsigned_type !== null && this.unsigned_type !== undefined) {
-      data["unsigned_type"] = this.unsigned_type;
+    if (this.unsigned_32 !== null && this.unsigned_32 !== undefined) {
+      data["unsigned_32"] = this.unsigned_32;
     }
 
-    if (this.unsigned_sized_type !== null && this.unsigned_sized_type !== undefined) {
-      data["unsigned_sized_type"] = this.unsigned_sized_type;
+    if (this.unsigned_64 !== null && this.unsigned_64 !== undefined) {
+      data["unsigned_64"] = this.unsigned_64;
     }
 
-    if (this.signed_type !== null && this.signed_type !== undefined) {
-      data["signed_type"] = this.signed_type;
+    if (this.signed_32 !== null && this.signed_32 !== undefined) {
+      data["signed_32"] = this.signed_32;
     }
 
-    if (this.signed_sized_type !== null && this.signed_sized_type !== undefined) {
-      data["signed_sized_type"] = this.signed_sized_type;
+    if (this.signed_64 !== null && this.signed_64 !== undefined) {
+      data["signed_64"] = this.signed_64;
     }
 
     if (this.float_type !== null && this.float_type !== undefined) {
