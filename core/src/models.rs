@@ -742,8 +742,8 @@ impl RpTypeBody {
 pub enum RpType {
     Double,
     Float,
-    Signed { size: Option<usize> },
-    Unsigned { size: Option<usize> },
+    Signed { size: usize },
+    Unsigned { size: usize },
     Boolean,
     String,
     /// ISO-8601 datetime
@@ -765,20 +765,8 @@ impl fmt::Display for RpType {
         match *self {
             Double => write!(f, "double"),
             Float => write!(f, "float"),
-            Signed { ref size } => {
-                if let Some(size) = *size {
-                    write!(f, "signed/{}", size)
-                } else {
-                    write!(f, "signed")
-                }
-            }
-            Unsigned { ref size } => {
-                if let Some(size) = *size {
-                    write!(f, "unsigned/{}", size)
-                } else {
-                    write!(f, "unsigned")
-                }
-            }
+            Signed { ref size } => write!(f, "i{}", size),
+            Unsigned { ref size } => write!(f, "u{}", size),
             Boolean => write!(f, "boolean"),
             String => write!(f, "string"),
             DateTime => write!(f, "datetime"),

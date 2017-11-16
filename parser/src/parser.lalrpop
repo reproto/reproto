@@ -317,12 +317,10 @@ pub TypeSpec: Type = {
     "any" => Type::Any,
     "float" => Type::Float,
     "double" => Type::Double,
-    "signed" <size:TypeBits?> => Type::Signed {
-        size: size
-    },
-    "unsigned" <size:TypeBits?> => Type::Unsigned {
-        size: size
-    },
+    "i32" => Type::Signed { size: 32 },
+    "i64" => Type::Signed { size: 64 },
+    "u32" => Type::Unsigned { size: 32 },
+    "u64" => Type::Unsigned { size: 64 },
     "boolean" => Type::Boolean,
     "string" => Type::String,
     "datetime" => Type::DateTime,
@@ -349,8 +347,6 @@ Name: Name = {
         parts: parts.into_iter().map(ToOwned::to_owned).collect(),
     },
 };
-
-TypeBits: usize = "/" <number:Number> => number.to_usize().unwrap_or(0usize);
 
 /// Zero or more matching, separated by a token.
 ZeroOrMore<Sep, T>: Vec<T> = {
@@ -410,8 +406,10 @@ extern {
         "any" => Token::AnyKeyword,
         "float" => Token::FloatKeyword,
         "double" => Token::DoubleKeyword,
-        "signed" => Token::SignedKeyword,
-        "unsigned" => Token::UnsignedKeyword,
+        "u32" => Token::Unsigned32,
+        "u64" => Token::Unsigned64,
+        "i32" => Token::Signed32,
+        "i64" => Token::Signed64,
         "boolean" => Token::BooleanKeyword,
         "string" => Token::StringKeyword,
         "datetime" => Token::DateTimeKeyword,

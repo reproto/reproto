@@ -10,7 +10,7 @@ type Foo {
   reserved "foo";
 
   name: string;
-  map: {string: unsigned/32};
+  map: {string: u32};
 
   java {{
     public int hello() {

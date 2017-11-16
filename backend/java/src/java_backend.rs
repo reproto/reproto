@@ -154,23 +154,16 @@ impl JavaBackend {
     }
 
     /// Convert the given type to a java type.
-    pub fn into_java_type<'a, 'el>(&self, ty: &'a RpType) -> Result<Java<'el>> {
+    pub fn into_java_type<'el>(&self, ty: &RpType) -> Result<Java<'el>> {
         use self::RpType::*;
 
         let out = match *ty {
             String => self.string.clone().into(),
             DateTime => self.instant.clone().into(),
-            Signed { ref size } |
-            Unsigned { ref size } => {
-                // default to integer if unspecified.
-                // TODO: should we care about signedness?
-                // TODO: > 64 bits, use BitInteger?
-                if size.map(|s| s <= 32usize).unwrap_or(true) {
-                    INTEGER.into()
-                } else {
-                    LONG.into()
-                }
-            }
+            Signed { size: 32 } => INTEGER.into(),
+            Signed { size: 64 } => LONG.into(),
+            Unsigned { size: 32 } => INTEGER.into(),
+            Unsigned { size: 64 } => LONG.into(),
             Float => FLOAT.into(),
             Double => DOUBLE.into(),
             Boolean => BOOLEAN.into(),
@@ -186,6 +179,7 @@ impl JavaBackend {
             }
             Any => self.object.clone().into(),
             Bytes => self.byte_buffer.clone().into(),
+            _ => return Err(format!("unsupported type: {}", ty).into()),
         };
 
         Ok(out)

@@ -161,20 +161,10 @@ impl RustBackend {
             String => toks!["String"],
             DateTime => self.datetime(ty)?,
             Bytes => toks!["String"],
-            Signed { ref size } => {
-                if size.map(|s| s <= 32usize).unwrap_or(true) {
-                    toks!["i32"]
-                } else {
-                    toks!["i64"]
-                }
-            }
-            Unsigned { ref size } => {
-                if size.map(|s| s <= 32usize).unwrap_or(true) {
-                    toks!["u32"]
-                } else {
-                    toks!["u64"]
-                }
-            }
+            Signed { size: 32 } => toks!["i32"],
+            Signed { size: 64 } => toks!["i64"],
+            Unsigned { size: 32 } => toks!["i32"],
+            Unsigned { size: 64 } => toks!["u64"],
             Float => toks!["f32"],
             Double => toks!["f64"],
             Boolean => toks!["bool"],
@@ -189,6 +179,7 @@ impl RustBackend {
                 toks![self.hash_map.clone(), "<", key, ", ", value, ">"]
             }
             Any => toks![self.json_value.clone()],
+            _ => return Err(format!("unsupported type: {}", ty).into()),
         };
 
         Ok(ty)

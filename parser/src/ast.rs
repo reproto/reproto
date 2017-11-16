@@ -5,8 +5,8 @@ use std::result;
 pub enum Type {
     Double,
     Float,
-    Signed { size: Option<usize> },
-    Unsigned { size: Option<usize> },
+    Signed { size: usize },
+    Unsigned { size: usize },
     Boolean,
     String,
     Bytes,

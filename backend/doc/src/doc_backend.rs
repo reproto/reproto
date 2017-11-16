@@ -157,24 +157,10 @@ impl DocBackend {
             Bytes => self.write_simple_type(out, "bytes")?,
             Any => self.write_simple_type(out, "any")?,
             Signed { ref size } => {
-                html!(out, span {class => "type-signed"} => {
-                    html!(out, code {class => "type-name"} ~ "signed");
-
-                    if let Some(ref size) = *size {
-                        html!(out, span {class => "type-size-sep"} ~ "/");
-                        html!(out, span {class => "type-size"} ~ format!("{}", size));
-                    }
-                });
+                html!(out, span {class => "type-signed"} ~ format!("i{}", size));
             }
             Unsigned { ref size } => {
-                html!(out, span {class => "type-unsigned"} => {
-                    html!(out, code {class => "type-name"} ~ "unsigned");
-
-                    if let Some(ref size) = *size {
-                        html!(out, span {class => "type-size-sep"} ~ "/");
-                        html!(out, span {class => "type-size"} ~ format!("{}", size));
-                    }
-                });
+                html!(out, span {class => "type-unsigned"} ~ format!("u{}", size));
             }
             Name { ref name } => {
                 let url = self.type_url(name)?;

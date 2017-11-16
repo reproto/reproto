@@ -146,8 +146,10 @@ impl<'input> Lexer<'input> {
             "as" => Token::AsKeyword,
             "float" => Token::FloatKeyword,
             "double" => Token::DoubleKeyword,
-            "signed" => Token::SignedKeyword,
-            "unsigned" => Token::UnsignedKeyword,
+            "i32" => Token::Signed32,
+            "i64" => Token::Signed64,
+            "u32" => Token::Unsigned32,
+            "u64" => Token::Unsigned64,
             "boolean" => Token::BooleanKeyword,
             "string" => Token::StringKeyword,
             "datetime" => Token::DateTimeKeyword,
@@ -803,7 +805,7 @@ pub mod tests {
 
     #[test]
     pub fn test_path() {
-        let tokens = tokenize("`/foo/first_\\/{id:{string: unsigned}}`").unwrap();
+        let tokens = tokenize("`/foo/first_\\/{id:{string: u32}}`").unwrap();
 
         let reference = [
             (0, Tick, 1),
@@ -817,10 +819,10 @@ pub mod tests {
             (18, LeftCurly, 19),
             (19, StringKeyword, 25),
             (25, Colon, 26),
-            (27, UnsignedKeyword, 35),
-            (35, RightCurly, 36),
-            (36, RightCurly, 37),
-            (37, Tick, 38),
+            (27, Unsigned32, 30),
+            (30, RightCurly, 31),
+            (31, RightCurly, 32),
+            (32, Tick, 33),
         ];
 
         assert_eq!(reference, &tokens[..]);

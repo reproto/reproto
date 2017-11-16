@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_map() {
-        let ty = parse_type_spec("{string: unsigned/123}");
+        let ty = parse_type_spec("{string: u32}");
 
         // TODO: use #![feature(box_patterns)]:
         // if let Type::Map(box Type::String, box Type::Unsigned(size)) = ty {
@@ -167,7 +167,7 @@ mod tests {
         if let Type::Map { key, value } = ty {
             if let Type::String = *key {
                 if let Type::Unsigned { size } = *value {
-                    assert_eq!(Some(123usize), size);
+                    assert_eq!(32, size);
                     return;
                 }
             }
