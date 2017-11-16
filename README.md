@@ -132,7 +132,7 @@ enum Size as string {
 }
 
 type Pet {
-  id: unsigned/64;
+  id: u64;
   name: string;
   size: Size;
 }
