@@ -4,9 +4,9 @@ type Entry {
 }
 
 /// Explicitly assigned strings
-enum EnumExplicit: string {
-    A = "foo";
-    B = "bar";
+enum EnumExplicit as string {
+    A as "foo";
+    B as "bar";
 }
 
 /// Implicit naming depending on the variant
