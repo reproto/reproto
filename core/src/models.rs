@@ -610,9 +610,9 @@ pub struct RpEndpoint {
     /// Comments for documentation.
     pub comment: Vec<String>,
     /// Request type that this endpoint expects.
-    pub request: Option<RpChannel>,
+    pub request: Option<Loc<RpChannel>>,
     /// Response type that this endpoint responds with.
-    pub response: Option<RpChannel>,
+    pub response: Option<Loc<RpChannel>>,
 }
 
 impl RpEndpoint {
@@ -632,14 +632,14 @@ impl RpEndpoint {
 #[derive(Debug, Clone, Serialize)]
 pub enum RpChannel {
     /// Single send.
-    Unary { ty: Loc<RpType> },
+    Unary { ty: RpType },
     /// Multiple sends.
-    Streaming { ty: Loc<RpType> },
+    Streaming { ty: RpType },
 }
 
 impl RpChannel {
     /// Get the type of the channel.
-    pub fn ty(&self) -> &Loc<RpType> {
+    pub fn ty(&self) -> &RpType {
         use self::RpChannel::*;
 
         match *self {
@@ -655,6 +655,16 @@ impl RpChannel {
         match *self {
             Unary { .. } => false,
             Streaming { .. } => true,
+        }
+    }
+}
+
+impl fmt::Display for RpChannel {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        if self.is_streaming() {
+            write!(fmt, "stream {}", self.ty())
+        } else {
+            write!(fmt, "{}", self.ty())
         }
     }
 }

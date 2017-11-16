@@ -384,8 +384,8 @@ impl DocBackend {
                     html!(out, h2 {} ~ "Request");
 
                     html!(out, div {class => "type"} => {
-                        let (ty, pos) = request.ty().as_ref_pair();
-                        self.write_type(out, ty).with_pos(pos)?;
+                        let (req, pos) = request.as_ref_pair();
+                        self.write_type(out, req.ty()).with_pos(pos)?;
                     });
                 }
 
@@ -393,8 +393,8 @@ impl DocBackend {
                     html!(out, h2 {} ~ "Response");
 
                     html!(out, div {class => "type"} => {
-                        let (ty, pos) = response.ty().as_ref_pair();
-                        self.write_type(out, ty).with_pos(pos)?;
+                        let (res, pos) = response.as_ref_pair();
+                        self.write_type(out, res.ty()).with_pos(pos)?;
                     });
                 }
             });

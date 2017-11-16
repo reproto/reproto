@@ -168,17 +168,17 @@ pub struct Endpoint<'input> {
     pub comment: Vec<&'input str>,
     pub alias: Option<String>,
     pub options: Vec<Loc<OptionDecl<'input>>>,
-    pub request: Option<Channel>,
-    pub response: Option<Channel>,
+    pub request: Option<Loc<Channel>>,
+    pub response: Option<Loc<Channel>>,
 }
 
 /// Describes how data is transferred over a channel.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Channel {
     /// Single send.
-    Unary { ty: Loc<Type> },
+    Unary { ty: Type },
     /// Multiple sends.
-    Streaming { ty: Loc<Type> },
+    Streaming { ty: Type },
 }
 
 /// Sub-types in interface declarations.

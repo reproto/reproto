@@ -2,7 +2,7 @@
 
 use backend::{FromNaming, Naming, SnakeCase};
 use backend::errors::*;
-use core::{RpChannel, RpEndpoint};
+use core::{Loc, RpChannel, RpEndpoint};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{Argument, Class, Constructor, Field, Method, Modifier, imported, local};
 use java_backend::JavaBackend;
@@ -239,7 +239,10 @@ impl Module {
     fn method_type(&self, endpoint: &RpEndpoint) -> MethodType {
         use self::RpChannel::*;
 
-        match (endpoint.request.as_ref(), endpoint.response.as_ref()) {
+        match (
+            endpoint.request.as_ref().map(Loc::value),
+            endpoint.response.as_ref().map(Loc::value),
+        ) {
             (Some(&Unary { .. }), Some(&Unary { .. })) => MethodType::Unary,
             (Some(&Streaming { .. }), Some(&Unary { .. })) => MethodType::ClientStreaming,
             (Some(&Unary { .. }), Some(&Streaming { .. })) => MethodType::ServerStreaming,

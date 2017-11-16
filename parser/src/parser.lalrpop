@@ -163,15 +163,15 @@ Endpoint: Loc<Endpoint<'input>> = {
     },
 };
 
-ServiceEndpointHead: (Loc<&'input str>, Option<String>, Option<Channel>, Option<Channel>) = {
-    <id:Loc<Identifier>> "(" <request:Channel?> ")"
-    <response:("->" Channel)?>
+ServiceEndpointHead: (Loc<&'input str>, Option<String>, Option<Loc<Channel>>, Option<Loc<Channel>>) = {
+    <id:Loc<Identifier>> "(" <request:Loc<Channel>?> ")"
+    <response:("->" Loc<Channel>)?>
     <alias:FieldAlias?>
     => (id, alias, request, response.map(|r| r.1)),
 };
 
 Channel: Channel = {
-    <stream:"stream"?> <ty:Loc<TypeSpec>> => {
+    <stream:"stream"?> <ty:TypeSpec> => {
         if stream.is_some() {
             Channel::Streaming {
                 ty: ty

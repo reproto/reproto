@@ -10,6 +10,7 @@ use log;
 use parser;
 use repository;
 use semck::Violation;
+use std::fmt;
 use std::io::{self, Read, Write};
 
 pub trait LockableWrite
@@ -385,6 +386,50 @@ pub trait Output {
 
                 self.print_error("from here", from)?;
             }
+            AddEndpoint(ref c, ref pos) => {
+                self.print_error(
+                    format!("{}: endpoint added", c.describe()).as_str(),
+                    pos,
+                )?;
+            }
+            RemoveEndpoint(ref c, ref pos) => {
+                self.print_error(
+                    format!("{}: endpoint removed", c.describe()).as_str(),
+                    pos,
+                )?;
+            }
+            EndpointRequestChange(ref c, ref from_channel, ref from, ref to_channel, ref to) => {
+                self.print_error(
+                    format!(
+                        "{}: request type changed to `{}`",
+                        c.describe(),
+                        PrintChannelInfo(to_channel)
+                    ).as_str(),
+                    to,
+                )?;
+
+                self.print_error(
+                    format!("from `{}`", PrintChannelInfo(from_channel))
+                        .as_str(),
+                    from,
+                )?;
+            }
+            EndpointResponseChange(ref c, ref from_channel, ref from, ref to_channel, ref to) => {
+                self.print_error(
+                    format!(
+                        "{}: response type changed to `{}`",
+                        c.describe(),
+                        PrintChannelInfo(to_channel)
+                    ).as_str(),
+                    to,
+                )?;
+
+                self.print_error(
+                    format!("from `{}`", PrintChannelInfo(from_channel))
+                        .as_str(),
+                    from,
+                )?;
+            }
         }
 
         Ok(())
@@ -397,4 +442,16 @@ pub trait Output {
     fn print_error(&self, m: &str, p: &core::ErrorPos) -> Result<()>;
 
     fn print_root_error(&self, e: &Error) -> Result<()>;
+}
+
+/// Helper struct to display information on channels.
+struct PrintChannelInfo<'a>(&'a Option<core::RpChannel>);
+
+impl<'a> fmt::Display for PrintChannelInfo<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match *self.0 {
+            None => write!(fmt, "*empty*"),
+            Some(ref channel) => write!(fmt, "{}", channel),
+        }
+    }
 }

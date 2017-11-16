@@ -54,13 +54,23 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
 
     let mut repository = setup_repository(&manifest)?;
 
-    let mut errors = Vec::new();
+    // errors that would prevent publishing
+    let mut semck_errors = Vec::new();
+
+    for m in &results {
+        semck_check(&mut semck_errors, &mut repository, &mut env, &m, force)?;
+    }
+
+    if semck_errors.len() > 0 {
+        if !no_semck {
+            semck_errors.push("Hint: Use `--no-semck` to disable semantic checking".into());
+            return Err(ErrorKind::Errors(semck_errors).into());
+        } else {
+            warn!("{} errors skipped (--no-semck)", semck_errors.len());
+        }
+    }
 
     for m in results {
-        if !no_semck {
-            semck_check(&mut errors, &mut repository, &mut env, &m, force)?;
-        }
-
         let Match(version, object, package) = m;
 
         if pretend {
@@ -74,11 +84,6 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
             info!("publishing: {}@{} (from {})", package, version, object);
             repository.publish(&object, &package, &version, force)?;
         }
-    }
-
-    if errors.len() > 0 {
-        errors.push("Hint: Use `--no-semck` to disable semantic checking".into());
-        return Err(ErrorKind::Errors(errors).into());
     }
 
     Ok(())

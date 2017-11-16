@@ -2,8 +2,8 @@ extern crate reproto_core;
 
 use self::Component::*;
 use self::Violation::*;
-use reproto_core::{ErrorPos, Loc, RpDecl, RpEnumVariant, RpField, RpFile, RpName, RpRegistered,
-                   RpType, Version};
+use reproto_core::{ErrorPos, Loc, RpChannel, RpDecl, RpEndpoint, RpEnumVariant, RpField, RpFile,
+                   RpName, RpRegistered, RpType, Version};
 use reproto_core::errors::*;
 use std::collections::HashMap;
 
@@ -49,6 +49,14 @@ pub enum Violation {
     AddRequiredField(Component, ErrorPos),
     /// Field modifier changed.
     FieldModifierChange(Component, ErrorPos, ErrorPos),
+    /// Endpoint added.
+    AddEndpoint(Component, ErrorPos),
+    /// Endpoint removed.
+    RemoveEndpoint(Component, ErrorPos),
+    /// Endpoint request type changed.
+    EndpointRequestChange(Component, Option<RpChannel>, ErrorPos, Option<RpChannel>, ErrorPos),
+    /// Endpoint response type changed.
+    EndpointResponseChange(Component, Option<RpChannel>, ErrorPos, Option<RpChannel>, ErrorPos),
 }
 
 fn fields(reg: &RpRegistered) -> Vec<&Loc<RpField>> {
@@ -69,6 +77,21 @@ fn enum_variants(reg: &RpRegistered) -> Vec<&Loc<RpEnumVariant>> {
     match *reg {
         Enum(ref target) => target.variants.iter().map(|v| &**v).collect(),
         _ => vec![],
+    }
+}
+
+fn endpoints_to_map(reg: &RpRegistered) -> HashMap<&str, &Loc<RpEndpoint>> {
+    use self::RpRegistered::*;
+
+    match *reg {
+        Service(ref target) => {
+            target
+                .endpoints
+                .iter()
+                .map(|(key, value)| (key.as_str(), value))
+                .collect()
+        }
+        _ => HashMap::new(),
     }
 }
 
@@ -118,6 +141,86 @@ where
     storage
 }
 
+/// Perform checks on an endpoint channel.
+fn check_endpoint_channel<F, E>(
+    component: Component,
+    violations: &mut Vec<Violation>,
+    from_endpoint: &Loc<RpEndpoint>,
+    to_endpoint: &Loc<RpEndpoint>,
+    accessor: F,
+    error: E,
+) -> Result<()>
+where
+    F: Fn(&RpEndpoint) -> &Option<Loc<RpChannel>>,
+    E: Fn(Component,
+       Option<RpChannel>,
+       ErrorPos,
+       Option<RpChannel>,
+       ErrorPos)
+       -> Violation,
+{
+    let from_ty = accessor(from_endpoint).as_ref().map(|r| {
+        (r.is_streaming(), r.ty().clone().without_version())
+    });
+
+    let to_ty = accessor(to_endpoint).as_ref().map(|r| {
+        (r.is_streaming(), r.ty().clone().without_version())
+    });
+
+    if from_ty != to_ty {
+        let from_pos = accessor(from_endpoint)
+            .as_ref()
+            .map(|r| r.pos())
+            .unwrap_or(from_endpoint.pos());
+
+        let to_pos = accessor(to_endpoint).as_ref().map(|r| r.pos()).unwrap_or(
+            to_endpoint
+                .pos(),
+        );
+
+        violations.push(error(
+            component,
+            accessor(from_endpoint).as_ref().map(Loc::value).map(
+                Clone::clone,
+            ),
+            from_pos.into(),
+            accessor(to_endpoint).as_ref().map(Loc::value).map(
+                Clone::clone,
+            ),
+            to_pos.into(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn check_endpoint_type(
+    component: Component,
+    violations: &mut Vec<Violation>,
+    from_endpoint: &Loc<RpEndpoint>,
+    to_endpoint: &Loc<RpEndpoint>,
+) -> Result<()> {
+    check_endpoint_channel(
+        component.clone(),
+        violations,
+        from_endpoint,
+        to_endpoint,
+        |e| &e.request,
+        EndpointRequestChange,
+    )?;
+
+    check_endpoint_channel(
+        component.clone(),
+        violations,
+        from_endpoint,
+        to_endpoint,
+        |e| &e.response,
+        EndpointResponseChange,
+    )?;
+
+    Ok(())
+}
+
 /// Performs checks for minor version violations.
 fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
     let mut violations = Vec::new();
@@ -153,6 +256,17 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                     check_variant(&mut violations, from_variant, to_variant)?;
                 } else {
                     violations.push(RemoveVariant(Minor, from_variant.pos().into()));
+                }
+            }
+
+            let from_endpoints = endpoints_to_map(&from_reg);
+            let mut to_endpoints = endpoints_to_map(&to_reg);
+
+            for (name, from_endpoint) in from_endpoints.into_iter() {
+                if let Some(to_endpoint) = to_endpoints.remove(&name) {
+                    check_endpoint(&mut violations, from_endpoint, to_endpoint)?;
+                } else {
+                    violations.push(RemoveEndpoint(Minor, from_endpoint.pos().into()));
                 }
             }
         } else {
@@ -217,6 +331,15 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
         Ok(())
     }
+
+    fn check_endpoint(
+        violations: &mut Vec<Violation>,
+        from_endpoint: &Loc<RpEndpoint>,
+        to_endpoint: &Loc<RpEndpoint>,
+    ) -> Result<()> {
+        check_endpoint_type(Minor, violations, from_endpoint, to_endpoint)?;
+        Ok(())
+    }
 }
 
 fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
@@ -257,6 +380,22 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
             // added variants are not permitted
             for (_, to_variant) in to_variants.into_iter() {
                 violations.push(AddVariant(Patch, to_variant.pos().into()));
+            }
+
+            let from_endpoints = endpoints_to_map(&from_reg);
+            let mut to_endpoints = endpoints_to_map(&to_reg);
+
+            for (name, from_endpoint) in from_endpoints.into_iter() {
+                if let Some(to_endpoint) = to_endpoints.remove(&name) {
+                    check_endpoint(&mut violations, from_endpoint, to_endpoint)?;
+                } else {
+                    violations.push(RemoveEndpoint(Patch, from_endpoint.pos().into()));
+                }
+            }
+
+            // added endpoints are not permitted
+            for (_, to_endpoint) in to_endpoints.into_iter() {
+                violations.push(AddEndpoint(Patch, to_endpoint.pos().into()));
             }
         } else {
             violations.push(DeclRemoved(Patch, from_reg.pos().into()));
@@ -320,6 +459,15 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
             ));
         }
 
+        Ok(())
+    }
+
+    fn check_endpoint(
+        violations: &mut Vec<Violation>,
+        from_endpoint: &Loc<RpEndpoint>,
+        to_endpoint: &Loc<RpEndpoint>,
+    ) -> Result<()> {
+        check_endpoint_type(Patch, violations, from_endpoint, to_endpoint)?;
         Ok(())
     }
 }
