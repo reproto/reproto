@@ -56,7 +56,7 @@ endef
 
 export PROJECTS := $(shell $(call check-deps))
 
-.PHONY: all update tests clean
+.PHONY: all update tests all-tests clean
 .PHONY: suites update-suites clean-suites
 .PHONY: projects update-projects clean-projects
 
@@ -67,6 +67,8 @@ update: update-suites update-projects
 tests:
 	cargo test --all
 
+all-tests: tests clean-projects projects clean-suites suites
+
 clean: it-clean
 	cargo clean
 
@@ -76,10 +78,10 @@ list:
 	@echo "Tests:" $(subst it/test-,,$(it-dirs))
 
 $(call it-target,clean,it-clean)
-$(call it-target,suites)
+$(call it-target,suites,,clean-suites)
 $(call it-target,update-suites,,clean-suites)
 $(call it-target,clean-suites)
-$(call it-target,projects)
+$(call it-target,projects,,clean-projects)
 $(call it-target,update-projects,,clean-projects)
 $(call it-target,clean-projects)
 
