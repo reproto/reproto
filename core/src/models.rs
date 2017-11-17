@@ -31,7 +31,7 @@ pub enum RpRegistered {
     Interface(Rc<Loc<RpInterfaceBody>>),
     SubType(Rc<Loc<RpInterfaceBody>>, Rc<Loc<RpSubType>>),
     Enum(Rc<Loc<RpEnumBody>>),
-    EnumVariant(Rc<Loc<RpEnumBody>>, Rc<Loc<RpEnumVariant>>),
+    EnumVariant(Rc<Loc<RpEnumBody>>, Rc<Loc<RpVariant>>),
     Service(Rc<Loc<RpServiceBody>>),
 }
 
@@ -171,19 +171,19 @@ pub struct RpEnumBody {
     pub decls: Vec<Rc<Loc<RpDecl>>>,
     /// The type of the variant.
     pub variant_type: RpEnumType,
-    pub variants: Vec<Rc<Loc<RpEnumVariant>>>,
+    pub variants: Vec<Rc<Loc<RpVariant>>>,
     pub codes: Vec<Loc<RpCode>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct RpEnumVariant {
+pub struct RpVariant {
     pub name: RpName,
     pub local_name: Loc<String>,
     pub comment: Vec<String>,
     pub ordinal: RpEnumOrdinal,
 }
 
-impl RpEnumVariant {
+impl RpVariant {
     pub fn ordinal(&self) -> &str {
         use self::RpEnumOrdinal::*;
 

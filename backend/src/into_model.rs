@@ -67,7 +67,7 @@ impl<'input> IntoModel for EnumBody<'input> {
     type Output = RpEnumBody;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let mut variants: Vec<Rc<Loc<RpEnumVariant>>> = Vec::new();
+        let mut variants: Vec<Rc<Loc<RpVariant>>> = Vec::new();
 
         let (fields, codes, _options, decls) = members_into_model(scope, self.members)?;
 
@@ -121,7 +121,7 @@ impl<'input> IntoModel for EnumBody<'input> {
 
 /// enum value with assigned ordinal
 impl<'input, 'a> IntoModel for (EnumVariant<'input>, &'a RpEnumType) {
-    type Output = RpEnumVariant;
+    type Output = RpVariant;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         let (variant, ty) = self;
@@ -138,7 +138,7 @@ impl<'input, 'a> IntoModel for (EnumVariant<'input>, &'a RpEnumType) {
             RpEnumOrdinal::Generated
         };
 
-        Ok(RpEnumVariant {
+        Ok(RpVariant {
             name: scope.as_name().push(variant.name.to_string()),
             local_name: variant.name.clone().map(str::to_string),
             comment: variant.comment.into_iter().map(ToOwned::to_owned).collect(),

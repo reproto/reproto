@@ -2,8 +2,8 @@ extern crate reproto_core;
 
 use self::Component::*;
 use self::Violation::*;
-use reproto_core::{ErrorPos, Loc, RpChannel, RpDecl, RpEndpoint, RpEnumVariant, RpField, RpFile,
-                   RpName, RpRegistered, RpType, Version};
+use reproto_core::{ErrorPos, Loc, RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName,
+                   RpRegistered, RpType, RpVariant, Version};
 use reproto_core::errors::*;
 use std::collections::HashMap;
 
@@ -71,7 +71,7 @@ fn fields(reg: &RpRegistered) -> Vec<&Loc<RpField>> {
     }
 }
 
-fn enum_variants(reg: &RpRegistered) -> Vec<&Loc<RpEnumVariant>> {
+fn enum_variants(reg: &RpRegistered) -> Vec<&Loc<RpVariant>> {
     use self::RpRegistered::*;
 
     match *reg {
@@ -115,9 +115,9 @@ where
     storage
 }
 
-fn variants_to_map<'a, I: 'a>(variants: I) -> HashMap<RpName, &'a Loc<RpEnumVariant>>
+fn variants_to_map<'a, I: 'a>(variants: I) -> HashMap<RpName, &'a Loc<RpVariant>>
 where
-    I: IntoIterator<Item = &'a Loc<RpEnumVariant>>,
+    I: IntoIterator<Item = &'a Loc<RpVariant>>,
 {
     let mut storage = HashMap::new();
 
@@ -224,8 +224,8 @@ fn check_endpoint_type(
 fn common_check_variant(
     component: Component,
     violations: &mut Vec<Violation>,
-    from_variant: &Loc<RpEnumVariant>,
-    to_variant: &Loc<RpEnumVariant>,
+    from_variant: &Loc<RpVariant>,
+    to_variant: &Loc<RpVariant>,
 ) -> Result<()> {
     if from_variant.ordinal() != to_variant.ordinal() {
         violations.push(VariantOrdinalChange(
@@ -346,8 +346,8 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
     fn check_variant(
         violations: &mut Vec<Violation>,
-        from_variant: &Loc<RpEnumVariant>,
-        to_variant: &Loc<RpEnumVariant>,
+        from_variant: &Loc<RpVariant>,
+        to_variant: &Loc<RpVariant>,
     ) -> Result<()> {
         common_check_variant(Minor, violations, from_variant, to_variant)?;
         Ok(())
@@ -449,8 +449,8 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
     fn check_variant(
         violations: &mut Vec<Violation>,
-        from_variant: &Loc<RpEnumVariant>,
-        to_variant: &Loc<RpEnumVariant>,
+        from_variant: &Loc<RpVariant>,
+        to_variant: &Loc<RpVariant>,
     ) -> Result<()> {
         common_check_variant(Patch, violations, from_variant, to_variant)?;
         Ok(())

@@ -3,9 +3,9 @@
 use super::{DOC_CSS_NAME, EXT, NORMALIZE_CSS_NAME};
 use backend::{Environment, PackageUtils};
 use backend::errors::*;
-use core::{ForEachLoc, Loc, RpEndpoint, RpEnumBody, RpEnumVariant, RpField, RpInterfaceBody,
-           RpName, RpPackage, RpServiceBody, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage,
-           Version, WithPos};
+use core::{ForEachLoc, Loc, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage,
+           RpServiceBody, RpTupleBody, RpType, RpTypeBody, RpVariant, RpVersionedPackage, Version,
+           WithPos};
 use doc_builder::{DefaultDocBuilder, DocBuilder};
 use doc_collector::{DocCollector, DocDecl};
 use doc_listeners::DocListeners;
@@ -108,7 +108,7 @@ impl DocBackend {
 
     fn write_variants<'b, I>(&self, out: &mut DocBuilder, variants: I) -> Result<()>
     where
-        I: IntoIterator<Item = &'b Rc<Loc<RpEnumVariant>>>,
+        I: IntoIterator<Item = &'b Rc<Loc<RpVariant>>>,
     {
         let mut it = variants.into_iter().peekable();
 

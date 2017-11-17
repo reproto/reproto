@@ -1,6 +1,6 @@
 //! # Converter for core data structures into processor-specific ones.
 
-use core::{RpEnumVariant, RpName};
+use core::{RpName, RpVariant};
 use errors::*;
 use genco::{Custom, Quoted, Tokens};
 use std::rc::Rc;
@@ -15,7 +15,7 @@ pub trait Converter<'el> {
     }
 
     /// Build an ordinal value.
-    fn ordinal<'a>(&self, variant: &'a RpEnumVariant) -> Result<Tokens<'el, Self::Custom>> {
+    fn ordinal<'a>(&self, variant: &'a RpVariant) -> Result<Tokens<'el, Self::Custom>> {
         Ok(Rc::new(variant.ordinal().to_string()).quoted().into())
     }
 }
