@@ -28,10 +28,12 @@ mod options;
 mod package_processor;
 mod package_utils;
 mod scope;
+mod code;
 pub mod errors;
 
 pub use self::base_decode::BaseDecode;
 pub use self::base_encode::BaseEncode;
+pub use self::code::Code;
 pub use self::compiler_options::CompilerOptions;
 pub use self::converter::Converter;
 pub use self::dynamic_converter::DynamicConverter;

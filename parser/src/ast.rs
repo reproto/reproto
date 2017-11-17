@@ -102,7 +102,7 @@ pub struct InterfaceBody<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Member<'input> {
     Field(Field<'input>),
-    Code(&'input str, Vec<String>),
+    Code(&'input str, Vec<&'input str>),
     Option(OptionDecl<'input>),
     InnerDecl(Decl<'input>),
 }

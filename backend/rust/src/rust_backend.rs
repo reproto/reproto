@@ -1,8 +1,7 @@
 //! Backend for Rust
 
 use super::RUST_CONTEXT;
-use backend::{CompilerOptions, Environment, ForContext, FromNaming, Naming, PackageUtils,
-              SnakeCase};
+use backend::{Code, CompilerOptions, Environment, FromNaming, Naming, PackageUtils, SnakeCase};
 use backend::errors::*;
 use core::{ForEachLoc, Loc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName,
            RpServiceBody, RpTupleBody, RpType, RpTypeBody};
@@ -13,6 +12,7 @@ use rust_compiler::RustCompiler;
 use rust_file_spec::RustFileSpec;
 use rust_options::RustOptions;
 use std::borrow::Cow;
+use std::rc::Rc;
 
 /// Serializer derives.
 pub struct Derives;
@@ -83,6 +83,21 @@ impl RustBackend {
         Ok(())
     }
 
+    /// Build an implementation of the given name and body.
+    fn build_impl<'el>(
+        &self,
+        name: Rc<String>,
+        body: Tokens<'el, Rust<'el>>,
+    ) -> Tokens<'el, Rust<'el>> {
+        let mut out_impl = Tokens::new();
+
+        out_impl.push(toks!["impl ", name.clone(), " {"]);
+        out_impl.nested(body);
+        out_impl.push("}");
+
+        out_impl
+    }
+
     fn ident(&self, name: &str) -> String {
         if let Some(ref id_converter) = self.id_converter {
             id_converter.convert(name)
@@ -91,8 +106,8 @@ impl RustBackend {
         }
     }
 
-    fn convert_type_name(&self, name: &RpName) -> String {
-        name.join(TYPE_SEP)
+    fn convert_type_name(&self, name: &RpName) -> Rc<String> {
+        Rc::new(name.join(TYPE_SEP))
     }
 
     fn convert_type_id<'a>(&self, name: &'a RpName) -> Result<Element<'a, Rust<'a>>> {
@@ -126,7 +141,7 @@ impl RustBackend {
 
     fn enum_value_fn<'a>(
         &self,
-        name: String,
+        name: Rc<String>,
         match_body: Tokens<'a, Rust<'a>>,
     ) -> Tokens<'a, Rust<'a>> {
         let mut value_fn = Tokens::new();
@@ -272,14 +287,13 @@ impl RustBackend {
         let mut out_impl = Tokens::new();
 
         out_impl.push(toks!["impl ", name.clone(), " {"]);
-        out_impl.nested(self.enum_value_fn(name, match_body));
 
-        // code goes into impl
-        for code in body.codes.for_context(RUST_CONTEXT) {
-            for line in &code.lines {
-                out_impl.nested(line.as_str());
-            }
-        }
+        out_impl.nested({
+            let mut t = Tokens::new();
+            t.push(self.enum_value_fn(name.clone(), match_body));
+            t.push_unless_empty(Code(&body.codes, RUST_CONTEXT));
+            t
+        });
 
         out_impl.push("}");
 
@@ -299,19 +313,18 @@ impl RustBackend {
         let mut t = Tokens::new();
 
         t.push(Derives);
-        t.push(toks!["pub struct ", name, " {"]);
+        t.push(toks!["pub struct ", name.clone(), " {"]);
         t.nested(fields);
-
-        // TODO: clone should not be needed
-        for code in body.codes.for_context(RUST_CONTEXT) {
-            for line in &code.lines {
-                t.nested(toks!(line.as_str()));
-            }
-        }
-
         t.push("}");
 
         out.0.push(t);
+
+        let impl_body = Code(&body.codes, RUST_CONTEXT).into_tokens();
+
+        if !impl_body.is_empty() {
+            out.0.push(self.build_impl(name.clone(), impl_body));
+        }
+
         Ok(())
     }
 
@@ -320,18 +333,12 @@ impl RustBackend {
         out: &mut RustFileSpec<'a>,
         body: &'a RpInterfaceBody,
     ) -> Result<()> {
-        let type_name = self.convert_type_name(&body.name);
+        let name = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
         t.push(Derives);
         t.push(Tag("type"));
-        t.push(toks!["pub enum ", type_name, " {"]);
-
-        for code in body.codes.for_context(RUST_CONTEXT) {
-            for line in &code.lines {
-                t.nested(line.as_str());
-            }
-        }
+        t.push(toks!["pub enum ", name.clone(), " {"]);
 
         let sub_types = body.sub_types.values().map(AsRef::as_ref);
 
@@ -361,6 +368,13 @@ impl RustBackend {
         t.push("}");
 
         out.0.push(t);
+
+        let impl_body = Code(&body.codes, RUST_CONTEXT).into_tokens();
+
+        if !impl_body.is_empty() {
+            out.0.push(self.build_impl(name.clone(), impl_body));
+        }
+
         Ok(())
     }
 
@@ -369,10 +383,10 @@ impl RustBackend {
         out: &mut RustFileSpec<'a>,
         body: &'a RpServiceBody,
     ) -> Result<()> {
-        let type_name = self.convert_type_name(&body.name);
+        let name = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
-        t.push(toks!["pub trait ", type_name, " {"]);
+        t.push(toks!["pub trait ", name.clone(), " {"]);
 
         let endpoints = body.endpoints.values().map(Loc::as_ref);
 
@@ -387,6 +401,7 @@ impl RustBackend {
         t.push("}");
 
         out.0.push(t);
+
         Ok(())
     }
 }

@@ -1,11 +1,11 @@
 //! Python Backend
 
 use super::{PYTHON_CONTEXT, TYPE, TYPE_SEP};
-use backend::{CompilerOptions, Converter, DynamicConverter, DynamicDecode, DynamicEncode,
-              Environment, ForContext, FromNaming, Naming, PackageUtils, SnakeCase};
+use backend::{Code, CompilerOptions, Converter, DynamicConverter, DynamicDecode, DynamicEncode,
+              Environment, FromNaming, Naming, PackageUtils, SnakeCase};
 use backend::errors::*;
-use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName, RpTupleBody,
-           RpType, RpTypeBody, WithPos};
+use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
+           RpServiceBody, RpTupleBody, RpType, RpTypeBody, WithPos};
 use genco::{Element, Quoted, Tokens};
 use genco::python::{Python, imported_alias, imported_ref};
 use listeners::Listeners;
@@ -436,7 +436,13 @@ impl PythonBackend {
     ) -> Tokens<'el, Python<'el>> {
         let mut class = Tokens::new();
         class.push(toks!("class ", name, ":"));
-        class.nested(body.join_line_spacing());
+
+        if body.is_empty() {
+            class.nested("pass");
+        } else {
+            class.nested(body.join_line_spacing());
+        }
+
         class
     }
 
@@ -462,11 +468,7 @@ impl PythonBackend {
             }
         }
 
-        for code in body.codes.for_context(PYTHON_CONTEXT) {
-            for line in &code.lines {
-                tuple_body.push(line.as_str());
-            }
-        }
+        tuple_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
         let decode = self.decode_method(
             &body.name,
@@ -511,11 +513,7 @@ impl PythonBackend {
             }
         }
 
-        for code in body.codes.for_context(PYTHON_CONTEXT) {
-            for line in &code.lines {
-                class_body.push(line.as_str());
-            }
-        }
+        class_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
         class_body.push(self.encode_enum_method(&field)?);
         class_body.push(self.decode_enum_method(&field)?);
@@ -565,12 +563,7 @@ impl PythonBackend {
 
         let repr_method = self.repr_method(type_name.clone(), &fields);
         class_body.push(repr_method);
-
-        for code in body.codes.for_context(PYTHON_CONTEXT) {
-            for line in &code.lines {
-                class_body.push(line.as_str());
-            }
-        }
+        class_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
         out.0.push(self.as_class(type_name, class_body));
         Ok(())
@@ -585,12 +578,7 @@ impl PythonBackend {
         let mut type_body = Tokens::new();
 
         type_body.push(self.interface_decode_method(&body)?);
-
-        for code in body.codes.for_context(PYTHON_CONTEXT) {
-            for line in &code.lines {
-                type_body.push(line.as_str());
-            }
-        }
+        type_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
         out.0.push(self.as_class(type_name, type_body));
 
@@ -642,17 +630,24 @@ impl PythonBackend {
 
             let repr_method = self.repr_method(sub_type_name.clone(), &fields);
             sub_type_body.push(repr_method);
-
-            for code in sub_type.codes.for_context(PYTHON_CONTEXT) {
-                for line in &code.lines {
-                    sub_type_body.push(line.as_str());
-                }
-            }
+            sub_type_body.push_unless_empty(Code(&sub_type.codes, PYTHON_CONTEXT));
 
             out.0.push(self.as_class(sub_type_name, sub_type_body));
             Ok(()) as Result<()>
         })?;
 
+        Ok(())
+    }
+
+    pub fn process_service<'el>(
+        &self,
+        out: &mut PythonFileSpec<'el>,
+        body: &'el RpServiceBody,
+    ) -> Result<()> {
+        let type_name = Rc::new(body.name.join(TYPE_SEP));
+        let type_body = Tokens::new();
+
+        out.0.push(self.as_class(type_name, type_body));
         Ok(())
     }
 }

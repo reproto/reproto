@@ -1,6 +1,6 @@
 use super::{JS_CONTEXT, TYPE, TYPE_SEP};
-use backend::{CompilerOptions, Converter, DynamicConverter, DynamicDecode, DynamicEncode,
-              Environment, ForContext, FromNaming, Naming, PackageUtils, SnakeCase};
+use backend::{Code, CompilerOptions, Converter, DynamicConverter, DynamicDecode, DynamicEncode,
+              Environment, FromNaming, Naming, PackageUtils, SnakeCase};
 use backend::errors::*;
 use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName, RpTupleBody,
            RpType, RpTypeBody};
@@ -402,12 +402,7 @@ impl JsBackend {
         )?);
 
         class_body.push(self.encode_tuple_method(&fields)?);
-
-        for code in body.codes.for_context(JS_CONTEXT) {
-            for line in &code.lines {
-                class_body.push(line.as_str());
-            }
-        }
+        class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
 
         let mut class = Tokens::new();
 
@@ -458,11 +453,7 @@ impl JsBackend {
             Ok(()) as Result<()>
         })?;
 
-        for code in body.codes.for_context(JS_CONTEXT) {
-            for line in &code.lines {
-                class_body.push(line.as_str());
-            }
-        }
+        class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
 
         let mut elements = Tokens::new();
 
@@ -517,12 +508,7 @@ impl JsBackend {
         )?);
 
         class_body.push(self.encode_method(&fields, "{}", None)?);
-
-        for code in body.codes.for_context(JS_CONTEXT) {
-            for line in &code.lines {
-                class_body.push(line.as_str());
-            }
-        }
+        class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
 
         let mut class = Tokens::new();
 
@@ -545,17 +531,12 @@ impl JsBackend {
         let mut interface_body = Tokens::new();
 
         interface_body.push(self.interface_decode_method(&body)?);
+        interface_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
 
         let interface_fields: Vec<Loc<JsField>> = body.fields
             .iter()
             .map(|f| f.as_ref().map(|f| self.into_js_field(f)))
             .collect();
-
-        for code in body.codes.for_context(JS_CONTEXT) {
-            for line in &code.lines {
-                interface_body.push(line.as_str());
-            }
-        }
 
         classes.push({
             let mut tokens = Tokens::new();
@@ -591,13 +572,11 @@ impl JsBackend {
                 }
             }
 
-            let decode = self.decode_method(
+            class_body.push(self.decode_method(
                 &fields,
                 type_name.clone(),
                 Self::field_by_name,
-            )?;
-
-            class_body.push(decode);
+            )?);
 
             let type_toks =
                 toks![
@@ -608,15 +587,8 @@ impl JsBackend {
                 ".TYPE;",
             ];
 
-            let encode = self.encode_method(&fields, "{}", Some(type_toks))?;
-
-            class_body.push(encode);
-
-            for code in sub_type.codes.for_context(JS_CONTEXT) {
-                for line in &code.lines {
-                    class_body.push(line.as_str());
-                }
-            }
+            class_body.push(self.encode_method(&fields, "{}", Some(type_toks))?);
+            class_body.push_unless_empty(Code(&sub_type.codes, JS_CONTEXT));
 
             classes.push({
                 let mut tokens = Tokens::new();

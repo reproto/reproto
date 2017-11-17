@@ -1,8 +1,8 @@
 use super::{EXT, INIT_PY};
 use backend::{Environment, PackageProcessor, PackageUtils};
 use backend::errors::*;
-use core::{Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
-           RpVersionedPackage};
+use core::{Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpPackage, RpServiceBody, RpTupleBody,
+           RpTypeBody, RpVersionedPackage};
 use python_backend::PythonBackend;
 use python_file_spec::PythonFileSpec;
 use std::collections::BTreeMap;
@@ -57,6 +57,10 @@ impl<'el> PackageProcessor<'el> for PythonCompiler<'el> {
         body: &'el Loc<RpInterfaceBody>,
     ) -> Result<()> {
         self.backend.process_interface(out, body)
+    }
+
+    fn process_service(&self, out: &mut Self::Out, body: &'el Loc<RpServiceBody>) -> Result<()> {
+        self.backend.process_service(out, body)
     }
 
     fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, PythonFileSpec<'el>>> {

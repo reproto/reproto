@@ -573,10 +573,10 @@ type Fields = Vec<Loc<RpField>>;
 type Codes = Vec<Loc<RpCode>>;
 type OptionVec = Vec<Loc<RpOptionDecl>>;
 
-pub fn code(pos: Pos, context: String, lines: Vec<String>) -> Loc<RpCode> {
+pub fn code<'input>(pos: Pos, context: String, lines: Vec<&'input str>) -> Loc<RpCode> {
     let code = RpCode {
         context: context,
-        lines: lines,
+        lines: lines.into_iter().map(ToString::to_string).collect(),
     };
 
     Loc::new(code, pos)

@@ -1,7 +1,7 @@
 //! Java Backend for ReProto
 
 use super::JAVA_CONTEXT;
-use backend::{Converter, Environment, ForContext, FromNaming, Naming, SnakeCase};
+use backend::{Code, Converter, Environment, FromNaming, Naming, SnakeCase};
 use backend::errors::*;
 use core::{ForEachLoc, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody, RpName,
            RpPackage, RpServiceBody, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
@@ -599,12 +599,7 @@ impl JavaBackend {
 
         spec.methods.push(from_value);
         spec.methods.push(to_value);
-
-        for code in body.codes.for_context(JAVA_CONTEXT) {
-            for line in &code.lines {
-                spec.body.push(line.as_str());
-            }
-        }
+        spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
 
         Ok(spec)
     }
@@ -635,11 +630,7 @@ impl JavaBackend {
             spec.fields.push(field.spec);
         }
 
-        for code in body.codes.for_context(JAVA_CONTEXT) {
-            for line in &code.lines {
-                spec.body.push(line.as_str());
-            }
-        }
+        spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
 
         self.listeners.tuple_added(
             &mut TupleAdded { spec: &mut spec },
@@ -667,11 +658,7 @@ impl JavaBackend {
             }
         }
 
-        for code in body.codes.for_context(JAVA_CONTEXT) {
-            for line in &code.lines {
-                spec.body.push(line.as_str());
-            }
-        }
+        spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
 
         self.add_class(
             spec.name(),
@@ -699,11 +686,9 @@ impl JavaBackend {
 
             let sub_type_fields = self.convert_fields(&sub_type.fields)?;
 
-            for code in sub_type.codes.for_context(JAVA_CONTEXT) {
-                for line in &code.lines {
-                    class.body.push(line.as_str());
-                }
-            }
+            class.body.push_unless_empty(
+                Code(&sub_type.codes, JAVA_CONTEXT),
+            );
 
             class.implements = vec![local(spec.name())];
 
@@ -768,11 +753,7 @@ impl JavaBackend {
             }
         }
 
-        for code in body.codes.for_context(JAVA_CONTEXT) {
-            for line in &code.lines {
-                spec.body.push(line.as_str());
-            }
-        }
+        spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
 
         Ok(spec)
     }
