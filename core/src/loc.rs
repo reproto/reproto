@@ -1,5 +1,3 @@
-use super::errors::*;
-use super::merge::Merge;
 use super::with_pos::WithPos;
 use pos::Pos;
 use serde;
@@ -116,16 +114,6 @@ where
         H: hash::Hasher,
     {
         self.inner.hash(state)
-    }
-}
-
-impl<T> Merge for Loc<T>
-where
-    T: Merge,
-{
-    fn merge(&mut self, source: Loc<T>) -> Result<()> {
-        self.as_mut().merge(source.take())?;
-        Ok(())
     }
 }
 

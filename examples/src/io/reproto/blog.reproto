@@ -1,3 +1,5 @@
+//! Blog-related abstractions.
+
 /// A blog post with comments.
 type Post {
   /// Identifier of the post.
@@ -8,6 +10,13 @@ type Post {
   content: string;
   /// Author of the post.
   author: User;
+  /// Length of the post.
+  length: ::Length;
+
+  enum Length as string {
+    SHORT as "short";
+    LONG as "long";
+  }
 }
 
 /// A simplified post entry.
@@ -46,9 +55,11 @@ interface User {
 
 /// The blog service.
 service Blob {
-  /// Get all posts.
-  get_posts() -> [PostEntry];
+  /// Get information about all posts
+  ///
+  /// Streams all posts until the client disconnects.
+  get_posts() -> stream PostEntry as "GetPosts";
 
   /// Get the post with the given `id`.
-  get_post(id: string) -> Post;
+  get_post(string) -> Post;
 }

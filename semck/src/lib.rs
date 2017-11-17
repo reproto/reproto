@@ -6,6 +6,7 @@ use reproto_core::{ErrorPos, Loc, RpChannel, RpDecl, RpEndpoint, RpField, RpFile
                    RpRegistered, RpType, RpVariant, Version};
 use reproto_core::errors::*;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub enum Component {
@@ -97,7 +98,7 @@ fn endpoints_to_map(reg: &RpRegistered) -> HashMap<&str, &Loc<RpEndpoint>> {
 
 fn decls_to_map<'a, I: 'a>(decls: I) -> HashMap<RpName, RpRegistered>
 where
-    I: IntoIterator<Item = &'a Loc<RpDecl>>,
+    I: IntoIterator<Item = &'a Rc<Loc<RpDecl>>>,
 {
     let mut storage = HashMap::new();
 

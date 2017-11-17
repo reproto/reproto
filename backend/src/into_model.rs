@@ -173,9 +173,16 @@ impl<'input> IntoModel for File<'input> {
     fn into_model(self, scope: &Scope) -> Result<RpFile> {
         let options = self.options.into_model(scope)?;
 
+        let mut decls = Vec::new();
+
+        for decl in self.decls {
+            decls.push(Rc::new(decl.into_model(scope)?));
+        }
+
         Ok(RpFile {
+            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             options: options,
-            decls: self.decls.into_model(scope)?,
+            decls: decls,
         })
     }
 }
@@ -198,13 +205,16 @@ impl<'input> IntoModel for InterfaceBody<'input> {
             let key = sub_type.local_name.clone();
 
             match sub_types.entry(key) {
+                Vacant(entry) => entry.insert(sub_type),
                 Occupied(entry) => {
-                    entry.into_mut().merge(sub_type)?;
+                    return Err(
+                        ErrorKind::Pos(
+                            format!("sub-type `{}` already defined", sub_type.local_name),
+                            entry.get().pos().into(),
+                        ).into(),
+                    );
                 }
-                Vacant(entry) => {
-                    entry.insert(sub_type);
-                }
-            }
+            };
         }
 
         Ok(RpInterfaceBody {

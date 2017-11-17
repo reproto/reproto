@@ -1,8 +1,8 @@
 paths = ["src"]
 output = "output"
 
-[packages.blog]
+[packages."io.reproto.blog"]
 version = "*"
 
-[packages.petstore]
+[packages."io.reproto.petstore"]
 version = "1.0.0"

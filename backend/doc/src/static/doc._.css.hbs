@@ -6,395 +6,108 @@
 }
 
 body {
-  background-color: {{body_bg}};
+  background-color: {{background_color}};
   font-family: {{font_family}};
   font-size: {{font_size}};
 }
 
-pre {
-  margin: {{margin}} 0;
+table {
+    border-spacing: 0 5px;
+    border-collapse: separate
 }
 
-p {
-  margin: {{margin}} 0;
+a {
+    text-decoration: none;
+    color: none;
 }
 
-ul {
-  margin: {{margin}} 0;
-  padding: 0;
+section {
+    margin: 10px;
 }
 
-.link {
-  color: black;
-  text-decoration: none;
-}
-
-.link:hover {
-  text-decoration: underline;
-}
-
-.document-title {
-  background-color: {{bg}};
-  max-width: 1200px;
-  margin: 0 auto;
-
-  font-size: 2.4em;
-  text-align: center;
-  padding: {{margin}};
-  margin-top: 0;
-}
-
-@media only screen and (min-width: 800px) {
-  .grid-container {
-    max-width: 1200px;
-    margin: 0 auto;
-
-    display: grid;
-    grid-template-columns: 300px 1fr;
-    grid-gap: {{margin}};
-  }
-}
-
-.grid-container {
-  margin-top: -{{margin}};
-  padding: 0 {{margin}};
-  min-width: 400px;
-  background-color: {{bg}};
-}
-
-.grid-overview {
-}
-
-.grid-decls {
-}
-
-.section-content {
-  margin: {{margin}} 0;
-  padding: {{margin}};
-}
-
-.grid-container .section-content {
-  padding: 0;
-}
-
-.grid-container .section-body {
-  padding: 0 {{margin}};
-}
-
-/* title at the top of each section */
 .section-title {
-  padding: {{half_margin}} {{margin}};
-  margin: 0;
-  background: {{title_bg}};
-  border: 1px solid {{title_border_color}};
+    padding-bottom: 5px;
+    border-bottom: 1px dashed {{doc_border_color}};
 }
 
-/* type indicator at top-right of each section */
-.section-title .type {
-  float: right;
-  font-size: 50%;
-
-  color: #000000;
-  font-weight: bold;
-}
-
-.section-body {
-  margin: {{margin}} 0;
-  padding: 0 {{margin}};
-}
-
-.section-body:last-child {
-  margin-bottom: 0;
-}
-
-.section-body > .description {
-  margin: {{double_margin}} 0;
-}
-
-.section-body *:last-child {
-  margin-bottom: 0;
-}
-
-/* different type of sections */
-.section-packages {
-  background-color: {{packages_bg}};
-}
-
-.section-type {
-  background-color: {{type_bg}};
-}
-
-.section-enum {
-  background-color: {{enum_bg}};
-}
-
-.section-tuple {
-  background-color: {{tuple_bg}};
-}
-
-.section-interface {
-  background-color: {{interface_bg}};
-}
-
-.section-service {
-  background-color: {{service_bg}};
-}
-
-ul.packages-list li {
-  list-style: none;
-  margin: {{margin}} 0;
-}
-
-.fields > .field {
-  margin: {{double_margin}} 0px;
-}
-
-.fields > .field > .name {
-  font-weight: bold;
-}
-
-.fields > .field > .name > .ty {
-  margin-left: {{half_margin}};
-}
-
-.fields > .field > .name.required {
-}
-
-.field-ident {
-}
-
-.field-modifier {
-    margin-left: {{half_margin}};
-}
-
-.field-type {
-    margin-left: {{half_margin}};
-}
-
-.field-alias {
-    margin-left: {{half_margin}};
-}
-
-.field-alias-as {
-    font-weight: bold;
-}
-
-.field-alias-name {
-    margin-left: {{half_margin}};
-}
-
-.type-signed {
-}
-
-.type-unsigned {
-}
-
-.type-size-sep {
-  margin: 0 0.1em;
+nav.top {
+    font-size: 18px;
+    margin: 10px;
 }
 
-.type-size {
-    font-weight: bold;
+.field {
 }
 
-.type-name {
-  font-weight: bold;
+.name-package {
+    color: {{name_package_color}};
 }
 
-.type-array {
+.name-part {
+    color: {{name_part_color}};
 }
 
-.type-array-left {
-  margin: 0 0.1em;
-  font-weight: bold;
-  color: #CECECE;
+/* separator in a name */
+.name-sep {
+    color: {{name_part_color}};
 }
 
-.type-array-right {
-  margin: 0 0.1em;
-  font-weight: bold;
-  color: #CECECE;
+/* the last, most significant part of a name */
+.name-local {
+    color: {{name_local_color}};
 }
 
-.type-map {
+/* a primitive type */
+.type-primitive {
+    color: {{primitive_color}};
 }
-
-.type-map-left {
-  margin: 0 0.1em;
-  font-weight: bold;
-  color: #CECECE;
-}
-
-.type-map-right {
-  margin: 0 0.1em;
-  font-weight: bold;
-  color: #CECECE;
-}
-
-.type-map-sep {
-  margin: 0 0.1em;
-}
-
-table.spaced {
-  width: 100%;
-}
-
-table.spaced > tbody > tr > td:first-child {
-  padding-left: 0px;
-}
-
-table.spaced > tbody > tr > td:last-child {
-  padding-right: 0px;
-}
-
-table.spaced td {
-  vertical-align: top;
-  padding: {{margin}} {{half_margin}};
-}
-
-table.spaced td.type {
-  width: 20%;
-}
-
-table.spaced td.description {
-  width: 50%;
-  padding: {{half_margin}} {{half_margin}};
-  margin: {{half_margin}} 0;
-}
-
-table.spaced td.description p {
-  margin: {{half_margin}} 0;
-}
-
-.endpoint {
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
-  margin: {{margin}} -{{margin}};
-}
-
-.endpoint.short {
-  border-width: 0 !important;
-  margin: 0 -{{margin}} !important;
-}
-
-.endpoint.short .endpoint-title {
-  border-radius: 0px;
-  padding: {{half_margin}};
-}
-
-.endpoint.short .endpoint-body {
-  padding: {{margin}} 0;
-}
-
-.endpoint.short .endpoint-body * {
-  margin: 0;
-  padding: 0;
-  font-size: 1em;
-  font-weight: normal;
-}
-
-.section-service-overview .description {
-  margin: {{margin}} 0;
-  padding: 0;
-}
-
-.section-types-overview h2 {
-  margin: {{margin}} 0;
-  font-size: 100%;
-}
-
-.section-types-overview .description {
-  margin: {{margin}} 0;
-  padding: 0;
-}
-
-.section-types-overview .description * {
-  margin: 0;
-  padding: 0;
-  font-size: 1em;
-  font-weight: normal;
-}
-
-.endpoint.get {
-  border: 1px solid {{get_method_bg}};
-}
-
-.endpoint.post {
-  border: 1px solid {{post_method_bg}};
-}
-
-.endpoint.delete {
-  border: 1px solid {{delete_method_bg}};
-}
-
-.endpoint.put {
-  border: 1px solid {{put_method_bg}};
-}
-
-.endpoint-title {
-  display: block;
-
-  margin: 0;
-
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
 
-  color: black;
-  font-family: {{endpoint_title_font}};
-  font-size: {{endpoint_font_size}};
-  font-weight: bold;
-  padding: 12px;
-  text-decoration: none;
+.kind {
+    color: {{keyword_color}};
 }
 
-.endpoint-title .method {
-  color: white;
-  border-radius: 3px;
-  padding: 0px 6px;
+.keyword {
+    color: {{keyword_color}};
 }
 
-.endpoint-title .url {
-  margin-left: {{margin}};
-  color: black;
-  text-decoration: none;
+.doc {
 }
 
-.endpoint-title .url:hover {
-  text-decoration: underline;
+.missing-doc {
+    font-style: italic;
 }
 
-.endpoint-body {
-  padding: {{margin}} {{double_margin}};
+.doc h1, .doc h2, .doc h3, .doc h4, .doc h5, .doc h6 {
+    color: {{doc_header_color}};
+    border-bottom: 1px solid {{doc_border_color}};
 }
 
-.endpoint.get .endpoint-title {
-  background-color: {{get_method_bg}};
+.doc h1 {
+    font-size: {{doc_h1_size}};
 }
 
-.endpoint.get .endpoint-title .method {
-  background-color: {{get_method_fg}};
+.doc h2 {
+    font-size: {{doc_h2_size}};
 }
 
-.endpoint.post .endpoint-title {
-  background-color: {{post_method_bg}};
+.doc h3 {
+    font-size: {{doc_h3_size}};
 }
 
-.endpoint.post .endpoint-title .method {
-  background-color: {{post_method_fg}};
+.doc h4 {
+    font-size: {{doc_h4_size}};
 }
 
-.endpoint.put .endpoint-title {
-  background-color: {{put_method_bg}};
+.doc h5 {
+    font-size: {{doc_h4_size}};
 }
 
-.endpoint.put .endpoint-title .method {
-  background-color: {{put_method_fg}};
+.doc h6 {
+    font-size: {{doc_h4_size}};
 }
 
-.endpoint.delete .endpoint-title {
-  background-color: {{delete_method_bg}};
+.package-item {
 }
 
-.endpoint.delete .endpoint-title .method {
-  background-color: {{delete_method_fg}};
+.package-item-doc {
+    padding-left: 20px;
 }

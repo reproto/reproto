@@ -390,6 +390,24 @@ impl<'input> Lexer<'input> {
         Err(Error::UnterminatedCodeBlock { start: start }.into())
     }
 
+    /// Parse package documentation
+    fn package_doc_comments(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
+        let mut comment: Vec<&'input str> = Vec::new();
+
+        loop {
+            // take leading whitespace
+            let (end, _) = take!(self, start, ' ' | '\n' | '\r' | '\t');
+
+            if let Some((_, '/', '/', '!')) = self.three() {
+                let start = self.step_n(3);
+                let (_, content) = take_until!(self, start, '\n' | '\r');
+                comment.push(content);
+            } else {
+                return Ok((start, Token::PackageDocComment(comment), end));
+            }
+        }
+    }
+
     fn doc_comments(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
         let mut comment: Vec<&'input str> = Vec::new();
 
@@ -551,6 +569,11 @@ impl<'input> Lexer<'input> {
         }
 
         loop {
+            // package docs
+            if let Some((start, '/', '/', '!')) = self.three() {
+                return Some(self.package_doc_comments(start));
+            }
+
             // doc comments
             if let Some((start, '/', '/', '/')) = self.three() {
                 return Some(self.doc_comments(start));

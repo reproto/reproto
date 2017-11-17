@@ -1,34 +1,35 @@
-# ReProto Compiler 
+# ReProto
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
 [![crates.io](https://img.shields.io/crates/v/reproto.svg)](https://crates.io/crates/reproto)
 
-The ReProto project is a language-neutral protocol specification, aimed towards describing and
-generating code for handling messages exchanged through JSON-based APIs.
+ReProto is a system for describing and handling dependencies for JSON schemas.
 
-ReProto specifiec an [interface description language][idl] (IDL) for specifying schemas.
-These schemas describe the structure of JSON, and can be used to generate data structures in
-several different languages.
+It has the following components:
 
-* See [Specification][spec] for details on what the syntax of `.reproto` files is.
-* See [TODO][todo] for details on things that still needs to be done.
+* An interface description language (IDL) called reproto.
+* A compiler for the reproto language.
+* A [semantic version checker][semck] which verifies that modifications to schemas do not violate
+  [semantic versioning].
+* A build system and package manager similar to [Cargo].
+  This handles downloading, building, and publishing of dependencies.
+
+For more information:
+
+* See [Specification][spec] for details on how the reproto language works.
+* See [TODO][todo] for a list of things that still need to be done.
 * See [Examples][examples] for some example protocol specifications.
 * See [Config][config] for how to configure ReProto.
 * See [Integration Tests][it] for some examples of how protocol specifications can be used.
 
-**Note:** This project is in an Alpha-stage. Things will change a lot.
+**Note:** This project is in an early stage. Things will change a lot. Please take it for a spin,
+but avoid building large repositories of specifications right now.
 
-[idl]: #the-idl
-[spec]: /doc/spec.md
-[todo]: /doc/todo.md
-[config]: /doc/config.md
-[examples]: /examples
-[it]: /it
-
-# Supported Backends
+# Backends
 
 * Java (`java`)
   * Data models using [fasterxml jackson][jackson] (`-m fasterxml`), and/or
     [lombok][lombok] (`-m lombok`).
+  * [gRPC][grpc] support through the `grpc` module.
 * JavaScript (`js`)
   * ES2015 classes, that can be transpiled using babel (see [Integration Test][js-it]).
 * Python (`python`)
@@ -37,10 +38,6 @@ several different languages.
   * Serde-based serialization.
 * Doc (`doc`)
   * HTML-based documentation, based from contextual markdown comments.
-
-[lombok]: https://projectlombok.org/
-[jackson]: https://github.com/FasterXML/jackson-databind
-[js-it]: /it/js
 
 # Examples
 
@@ -54,20 +51,17 @@ $> cargo install --path $PWD/cli reproto
 
 This will install `reproto` into `~/.cargo/bin`, make sure it is in your PATH.
 
-The following is an example of how to build documentation for a package.
+The following is an example of how to build documentation for a the [examples manifest][examples].
 
 ```bash
-$> reproto doc -o target/doc \
-  --path it/test-service/proto \
-  --package test \
-  --package service@1.0.0 \
-  --package service@2.0.0
-
+$> cd examples
+$> reproto doc -o target/doc
 $> open target/doc/index.html
 ```
 
-For more example, please have a look at our [integration tests][it].
+For more examples, please have a look at our [integration tests][it].
 
+[examples]: /examples/reproto.toml
 [rust-get-started]: https://doc.rust-lang.org/book/getting-started.html
 [it]: /it
 
@@ -105,47 +99,25 @@ $> make clean all
 
 # The IDL
 
-ReProto specifiec an interface description language (IDL) for specifying schemas.
-These schemas describe the structure of JSON, and can be used to generate data structures in
-several different languages.
+ReProto is an interface description language (IDL) for schemas.
 
-The ReProto IDL is not based on an existing general purpose markup like JSON.
+The schema describe the structure of JSON documents, which is necessary to generate data structures
+in variour programming languages for safely and convenient interaction.
 
 The goal is to have a compact, intuitive, and productive language for writing specifications.
 
-The following is a simple petstore example using ReProto.
+You can find example specifications under the [examples] directory.
 
-```reproto
-/// # ReProto Petstore
-///
-/// A sample API that uses a petstore as an example to demonstrate features in the ReProto
-/// specification
-service Petstore {
-  /// Returns all pets from the system that the user has access to.
-  all_pets() -> stream Pet;
-}
-
-enum Size as string {
-    LARGE;
-    MEDIUM;
-    SMALL;
-}
-
-type Pet {
-  id: u64;
-  name: string;
-  size: Size;
-}
-```
-
-You can compile the above into documentation using the following command:
-
-```bash
-$> reproto doc --out petstore-doc --path examples/src --package petstore
-```
-
-If you miss JSON, you can compile the specification to JSON as well.
-
-```bash
-$> reproto build --lang json --out petstore-json --path examples/petstore --package petstore
-```
+[Cargo]: https://github.com/rust-lang/cargo
+[config]: /doc/config.md
+[examples]: /examples
+[grpc]: https://grpc.io
+[idl]: #the-idl
+[it]: /it
+[jackson]: https://github.com/FasterXML/jackson-databind
+[js-it]: /it/js
+[lombok]: https://projectlombok.org/
+[semantic versioning]: https://semver.org
+[semck]: /semck
+[spec]: /doc/spec.md
+[todo]: /doc/todo.md

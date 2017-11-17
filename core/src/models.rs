@@ -8,11 +8,25 @@ use super::rp_versioned_package::RpVersionedPackage;
 use errors::*;
 use linked_hash_map::LinkedHashMap;
 use pos::Pos;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet, LinkedList};
 use std::fmt;
 use std::rc::Rc;
 use std::result;
 use std::slice;
+
+/// Build a declaration body including common fields.
+macro_rules! decl_body {
+    (pub struct $name:ident { $($rest:tt)* }) => {
+        #[derive(Debug, Clone, Serialize)]
+        pub struct $name {
+            pub name: RpName,
+            pub local_name: String,
+            pub comment: Vec<String>,
+            pub decls: Vec<Rc<Loc<RpDecl>>>,
+            $($rest)*
+        }
+    };
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -22,35 +36,6 @@ pub enum RpDecl {
     Interface(Rc<Loc<RpInterfaceBody>>),
     Enum(Rc<Loc<RpEnumBody>>),
     Service(Rc<Loc<RpServiceBody>>),
-}
-
-#[derive(Debug, Clone)]
-pub enum RpRegistered {
-    Type(Rc<Loc<RpTypeBody>>),
-    Tuple(Rc<Loc<RpTupleBody>>),
-    Interface(Rc<Loc<RpInterfaceBody>>),
-    SubType(Rc<Loc<RpInterfaceBody>>, Rc<Loc<RpSubType>>),
-    Enum(Rc<Loc<RpEnumBody>>),
-    EnumVariant(Rc<Loc<RpEnumBody>>, Rc<Loc<RpVariant>>),
-    Service(Rc<Loc<RpServiceBody>>),
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct RpCode {
-    pub context: String,
-    pub lines: Vec<String>,
-}
-
-pub struct DeclIter<'a> {
-    iter: slice::Iter<'a, Rc<Loc<RpDecl>>>,
-}
-
-impl<'a> Iterator for DeclIter<'a> {
-    type Item = &'a Rc<Loc<RpDecl>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
 }
 
 impl RpDecl {
@@ -146,6 +131,48 @@ impl RpDecl {
 
         out
     }
+
+    /// Get stringy kind of the declaration.
+    pub fn kind(&self) -> &str {
+        use self::RpDecl::*;
+
+        match *self {
+            Type(_) => "type",
+            Interface(_) => "interface",
+            Enum(_) => "enum",
+            Tuple(_) => "tuple",
+            Service(_) => "service",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum RpRegistered {
+    Type(Rc<Loc<RpTypeBody>>),
+    Tuple(Rc<Loc<RpTupleBody>>),
+    Interface(Rc<Loc<RpInterfaceBody>>),
+    SubType(Rc<Loc<RpInterfaceBody>>, Rc<Loc<RpSubType>>),
+    Enum(Rc<Loc<RpEnumBody>>),
+    EnumVariant(Rc<Loc<RpEnumBody>>, Rc<Loc<RpVariant>>),
+    Service(Rc<Loc<RpServiceBody>>),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RpCode {
+    pub context: String,
+    pub lines: Vec<String>,
+}
+
+pub struct DeclIter<'a> {
+    iter: slice::Iter<'a, Rc<Loc<RpDecl>>>,
+}
+
+impl<'a> Iterator for DeclIter<'a> {
+    type Item = &'a Rc<Loc<RpDecl>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
 }
 
 impl fmt::Display for RpDecl {
@@ -162,18 +189,12 @@ impl fmt::Display for RpDecl {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct RpEnumBody {
-    pub name: RpName,
-    pub local_name: String,
-    pub comment: Vec<String>,
-    /// Inner declarations.
-    pub decls: Vec<Rc<Loc<RpDecl>>>,
+decl_body!(pub struct RpEnumBody {
     /// The type of the variant.
     pub variant_type: RpEnumType,
     pub variants: Vec<Rc<Loc<RpVariant>>>,
     pub codes: Vec<Loc<RpCode>>,
-}
+});
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpVariant {
@@ -285,23 +306,45 @@ impl RpField {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RpFile {
+    pub comment: Vec<String>,
     pub options: Vec<Loc<RpOptionDecl>>,
-    pub decls: Vec<Loc<RpDecl>>,
+    pub decls: Vec<Rc<Loc<RpDecl>>>,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct RpInterfaceBody {
-    pub name: RpName,
-    pub local_name: String,
-    pub comment: Vec<String>,
-    /// Inner declarations.
-    pub decls: Vec<Rc<Loc<RpDecl>>>,
+/// Iterator over all declarations in a file.
+pub struct ForEachDecl<'a> {
+    queue: LinkedList<&'a Rc<Loc<RpDecl>>>,
+}
+
+impl<'a> Iterator for ForEachDecl<'a> {
+    type Item = &'a Rc<Loc<RpDecl>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(decl) = self.queue.pop_front() {
+            self.queue.extend(decl.decls());
+            return Some(decl);
+        }
+
+        None
+    }
+}
+
+impl RpFile {
+    /// Iterate over all declarations in file.
+    pub fn for_each_decl(&self) -> ForEachDecl {
+        let mut queue = LinkedList::new();
+        queue.extend(self.decls.iter());
+        ForEachDecl { queue: queue }
+    }
+}
+
+decl_body!(pub struct RpInterfaceBody {
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
     pub sub_types: BTreeMap<String, Rc<Loc<RpSubType>>>,
-}
+});
 
 impl RpInterfaceBody {
     pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Loc<RpField>> + 'a> {
@@ -391,6 +434,15 @@ impl RpName {
             prefix: self.prefix,
             package: package,
             parts: self.parts,
+        }
+    }
+
+    /// Build a new name out if the given paths.
+    pub fn with_parts(self, parts: Vec<String>) -> RpName {
+        RpName {
+            prefix: self.prefix,
+            package: self.package,
+            parts: parts,
         }
     }
 
@@ -601,16 +653,32 @@ impl RpRegistered {
             }
         }
     }
+
+    /// Get stringy kind of the registered type, if applicable.
+    ///
+    /// This returns the base kind as the first member of the tuple.
+    /// Then the registered type as the second (if applicable).
+    pub fn kind(&self) -> (&str, Option<&RpRegistered>) {
+        use self::RpRegistered::*;
+
+        let result = match *self {
+            Type(_) => "type",
+            Interface(_) => "interface",
+            Enum(_) => "enum",
+            Tuple(_) => "tuple",
+            Service(_) => "service",
+            SubType(_, _) => return ("interface", Some(self)),
+            EnumVariant(_, _) => return ("enum", Some(self)),
+        };
+
+        // simple case
+        (result, None)
+    }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct RpServiceBody {
-    pub name: RpName,
-    pub local_name: String,
-    pub comment: Vec<String>,
+decl_body!(pub struct RpServiceBody {
     pub endpoints: LinkedHashMap<String, Loc<RpEndpoint>>,
-    pub decls: Vec<Rc<Loc<RpDecl>>>,
-}
+});
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpEndpoint {
@@ -702,15 +770,10 @@ impl RpSubType {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct RpTupleBody {
-    pub name: RpName,
-    pub local_name: String,
-    pub comment: Vec<String>,
-    pub decls: Vec<Rc<Loc<RpDecl>>>,
+decl_body!(pub struct RpTupleBody {
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
-}
+});
 
 impl RpTupleBody {
     pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Loc<RpField>> + 'a> {
@@ -718,31 +781,14 @@ impl RpTupleBody {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct RpTypeBody {
-    pub name: RpName,
-    pub local_name: String,
-    pub comment: Vec<String>,
-    pub decls: Vec<Rc<Loc<RpDecl>>>,
+decl_body!(pub struct RpTypeBody {
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
     // Set of fields which are reserved for this type.
     pub reserved: HashSet<Loc<String>>,
-}
+});
 
 impl RpTypeBody {
-    pub fn verify(&self) -> Result<()> {
-        for reserved in &self.reserved {
-            if let Some(field) = self.fields.iter().find(|f| f.name() == reserved.value()) {
-                return Err(
-                    ErrorKind::ReservedField(field.pos().into(), reserved.pos().into()).into(),
-                );
-            }
-        }
-
-        Ok(())
-    }
-
     pub fn fields<'a>(&'a self) -> Box<Iterator<Item = &Loc<RpField>> + 'a> {
         Box::new(self.fields.iter())
     }

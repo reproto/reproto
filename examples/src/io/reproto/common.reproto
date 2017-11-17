@@ -1,0 +1,5 @@
+/// A greeting structure.
+type Greeting {
+    /// The message of the greeting.
+    message: string;
+}

@@ -156,5 +156,7 @@ fn process_colors() -> Result<()> {
 
 fn main() {
     println!("cargo:rerun-if-changed=themes.toml");
+    println!("cargo:rerun-if-changed=src/static/doc._.css.hbs");
+    println!("cargo:rerun-if-changed=src/static/normalize.css");
     process_colors().unwrap();
 }

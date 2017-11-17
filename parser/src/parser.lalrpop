@@ -9,9 +9,11 @@ use super::utils::*;
 grammar<'input, 'object>(input_object: &'object Rc<Box<Object>>);
 
 pub File: File<'input> = {
+    <comment:"//!"?>
     <uses:Loc<Use>*>
     <options:Loc<OptionDecl>*>
     <decls:Loc<Decl>*> => File {
+        comment: comment.unwrap_or_else(Vec::new),
         options: options,
         uses: uses,
         decls: decls,
@@ -419,6 +421,7 @@ extern {
         "stream" => Token::StreamKeyword,
         "@" => Token::At,
         "`" => Token::Tick,
+        "//!" => Token::PackageDocComment(<Vec<&'input str>>),
         "///" => Token::DocComment(<Vec<&'input str>>),
     }
 }

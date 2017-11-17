@@ -1,8 +1,8 @@
 use super::into_model::IntoModel;
 use super::naming::{FromNaming, Naming, SnakeCase};
 use super::scope::Scope;
-use core::{Loc, Merge, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage,
-           RpRegistered, RpRequiredPackage, RpVersionedPackage, WithPos};
+use core::{Loc, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage, RpRegistered,
+           RpRequiredPackage, RpVersionedPackage, WithPos};
 use errors::*;
 use linked_hash_map::LinkedHashMap;
 use parser;
@@ -22,8 +22,8 @@ pub struct Environment {
     visited: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
     /// Registered types.
     types: LinkedHashMap<RpName, RpRegistered>,
-    /// All declarations.
-    decls: LinkedHashMap<RpName, Rc<Loc<RpDecl>>>,
+    /// Files and associated declarations.
+    files: LinkedHashMap<RpVersionedPackage, RpFile>,
 }
 
 /// Environment containing all loaded declarations.
@@ -34,7 +34,7 @@ impl Environment {
             resolver: resolver,
             visited: HashMap::new(),
             types: LinkedHashMap::new(),
-            decls: LinkedHashMap::new(),
+            files: LinkedHashMap::new(),
         }
     }
 
@@ -60,7 +60,7 @@ impl Environment {
 
         if !self.visited.contains_key(&required) {
             let file = self.load_object(object, &package)?;
-            self.process_file(file)?;
+            self.process_file(package.clone(), file)?;
             self.visited.insert(required, Some(package.clone()));
         }
 
@@ -96,7 +96,7 @@ impl Environment {
             debug!("found: {} ({})", versioned, required);
 
             for file in files.into_iter() {
-                self.process_file(file)?;
+                self.process_file(versioned.clone(), file)?;
             }
 
             Some(versioned)
@@ -110,25 +110,28 @@ impl Environment {
 
     /// Verify all declarations.
     pub fn verify(&mut self) -> Result<()> {
-        use self::RpDecl::*;
+        Ok(())
+    }
 
-        for d in self.decls.values() {
-            match ***d {
-                Type(ref ty) => ty.verify()?,
-                _ => {}
-            }
+    /// Iterate over all files.
+    pub fn for_each_file<'a, O>(&'a self, mut op: O) -> Result<()>
+    where
+        O: FnMut(&'a RpVersionedPackage, &'a RpFile) -> Result<()>,
+    {
+        for (package, file) in self.files.iter() {
+            op(package, file)?;
         }
 
         Ok(())
     }
 
     /// Iterate over top level declarations of all registered objects.
-    pub fn for_each_toplevel_decl<O>(&self, mut op: O) -> Result<()>
+    pub fn for_each_toplevel_decl<'a, O>(&'a self, mut op: O) -> Result<()>
     where
-        O: FnMut(Rc<Loc<RpDecl>>) -> Result<()>,
+        O: FnMut(&'a Rc<Loc<RpDecl>>) -> Result<()>,
     {
-        for decl in self.decls.values() {
-            op(decl.clone()).with_pos(decl.pos())?;
+        for decl in self.files.values().flat_map(|f| f.decls.iter()) {
+            op(decl).with_pos(decl.pos())?;
         }
 
         Ok(())
@@ -141,7 +144,7 @@ impl Environment {
     {
         let mut queue = LinkedList::new();
 
-        queue.extend(self.decls.values());
+        queue.extend(self.files.values().flat_map(|f| f.decls.iter()));
 
         while let Some(decl) = queue.pop_front() {
             op(decl).with_pos(decl.pos())?;
@@ -255,63 +258,29 @@ impl Environment {
         Ok(prefixes)
     }
 
-    /// Process, register, and merge declarations.
-    ///
-    /// Declarations are considered the same if they have the same qualified name.
-    /// The same declarations are merged using `Merge`.
-    fn process_decls<I>(&self, input: I) -> Result<LinkedHashMap<RpName, Rc<Loc<RpDecl>>>>
-    where
-        I: IntoIterator<Item = Loc<RpDecl>>,
-    {
-        use linked_hash_map::Entry::*;
-
-        let mut decls = LinkedHashMap::new();
-
-        for decl in input {
-            match decls.entry(decl.name().clone()) {
-                Vacant(entry) => {
-                    entry.insert(Rc::new(decl));
-                }
-                Occupied(entry) => {
-                    entry.into_mut().merge(Rc::new(decl))?;
-                }
-            }
-        }
-
-        Ok(decls)
-    }
-
-    /// Process all declarations and convert into a global collection of registered types.
-    fn process_types<'a, I: 'a>(&mut self, decls: I) -> Result<LinkedHashMap<RpName, RpRegistered>>
-    where
-        I: IntoIterator<Item = &'a Rc<Loc<RpDecl>>>,
-    {
+    /// Process a single file, populating the environment.
+    fn process_file(&mut self, package: RpVersionedPackage, file: RpFile) -> Result<()> {
         use linked_hash_map::Entry::*;
         use self::ErrorKind::*;
 
-        let mut types = LinkedHashMap::new();
+        let file = match self.files.entry(package.clone()) {
+            Vacant(entry) => entry.insert(file),
+            Occupied(_) => {
+                return Err(format!("package already registered: {}", package).into());
+            }
+        };
 
-        for t in decls.into_iter().flat_map(|d| d.into_registered_type()) {
+        for t in file.decls.iter().flat_map(|d| d.into_registered_type()) {
             let key = t.name().clone().without_prefix();
 
-            match types.entry(key) {
-                Vacant(entry) => {
-                    entry.insert(t);
-                }
+            match self.types.entry(key) {
+                Vacant(entry) => entry.insert(t),
                 Occupied(entry) => {
                     return Err(RegisteredTypeConflict(entry.key().clone()).into());
                 }
-            }
+            };
         }
 
-        Ok(types)
-    }
-
-    fn process_file(&mut self, file: RpFile) -> Result<()> {
-        let decls = self.process_decls(file.decls)?;
-        let types = self.process_types(decls.values())?;
-        self.decls.extend(decls);
-        self.types.extend(types);
         Ok(())
     }
 }

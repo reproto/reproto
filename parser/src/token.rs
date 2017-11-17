@@ -17,6 +17,7 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 pub enum Token<'input> {
     Identifier(&'input str),
     TypeIdentifier(&'input str),
+    PackageDocComment(Vec<&'input str>),
     DocComment(Vec<&'input str>),
     Number(RpNumber),
     VersionReq(VersionReq),

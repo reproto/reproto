@@ -1,14 +1,21 @@
-/// # ReProto Petstore
+//! Package documentation
+
+use io.reproto.common as c;
+
+/// Sample Petstore Service
 ///
 /// A sample API that uses a petstore as an example to demonstrate features in the ReProto
 /// specification
 service Petstore {
   /// Returns all pets from the system that the user has access to.
   get_pets() -> [Pet];
+
+  /// Gets a greeting for the given `name`.
+  get_greeting(string) -> c::Greeting;
 }
 
 type Pet {
-  id: unsigned/64;
+  id: u64;
   name: string;
   tag?: string;
 }

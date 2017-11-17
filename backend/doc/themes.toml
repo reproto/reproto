@@ -1,44 +1,23 @@
 # default variable set for all themes
 [default]
-half_margin="5px"
-margin="10px"
-double_margin="20px"
+background_color = "#ffffff"
+font_family = "Calibri, Candara, Segoe, Segoe UI, Optima, Arial, sans-serif"
+font_size = "16px"
+primitive_color = "#e6af69"
+keyword_color = "#4b8c4b"
+doc_h1_size = "120%"
+doc_h2_size = "100%"
+doc_h3_size = "100%"
+doc_h4_size = "100%"
+doc_h5_size = "100%"
+doc_h6_size = "100%"
+doc_header_color = "#4d76ae"
+doc_border_color = "#dddddd"
 
-font_size="14px"
-font_family="Roboto, Helvetica, sans-serif"
-body_bg="#DDDDDD"
-bg="#FFFFFF"
-
-title_bg="#F2F2F2"
-title_border_color="#D9D9D9"
-
-packages_bg="#FFFFFF"
-type_bg="#FFFFFF"
-interface_bg="#FFFFFF"
-enum_bg="#FFFFFF"
-tuple_bg="#FFFFFF"
-service_bg="#FFFFFF"
-
-endpoint_font_size="14px"
-endpoint_title_font="Roboto, Helvetica, sans-serif"
-
-get_method_fg="#337AB7"
-get_method_bg="#D9EDF7"
-
-post_method_fg="#5CB85C"
-post_method_bg="#DFF0D8"
-
-put_method_fg="#ED9C28"
-put_method_bg="#FCF8E3"
-
-delete_method_fg="#D9534F"
-delete_method_bg="#F2DEDE"
+name_part_color = "#9c9c9c"
+name_package_color = "#4d76ae"
+name_local_color = "#df3600"
 
 [light]
-bg="#FFFFFF"
-title_bg="#F2F2F2"
 
 [dark]
-bg="#999999"
-title_bg="#F2F2F2"
-body_bg="#000000"

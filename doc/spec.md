@@ -33,7 +33,7 @@ The following is an example specification for a simple time-series database:
 
 ```reproto
 tuple Sample {
-  timestamp: unsigned/64;
+  timestamp: u64;
   value: double;
 }
 
@@ -227,6 +227,47 @@ Otherwise, it is known as an [ephemeral specification](#ephemeral-specifications
 
 ### File Options
 
+#### `endpoint_naming <naming>`
+
+The default endpoint naming strategy to use.
+
+Given a specification like the following, reproto needs to determine what to name the endpoints:
+
+```reproto
+service MyService {
+  /// Put a Foo.
+  put_foo(Foo);
+
+  /// Get a Baz.
+  get_baz() -> Baz;
+}
+```
+
+With the default naming strategy, this would result in endpoints named `put_foo` and `get_baz`.
+
+This option changes what endpoints are named by default.
+
+Valid options are:
+
+* `lower_camel`, fields would be named as `lowerCamel`.
+* `upper_camel`, fields would be named as `UpperCamel`.
+* `upper_snake`, fields would be named as `UPPER_SNAKE`.
+* `lower_snake`, fields would be named as `lower_snake` (default).
+
+This does _not_ affect explicitly named endpoinds using `as`.
+
+```reproto
+field_naming upper_camel;
+
+service MyService {
+  /// Would be named `put_foo`.
+  put_foo(Foo) as "put_foo";
+
+  /// Would be named `GET_BAZ`.
+  get_baz() -> Baz;
+}
+```
+
 #### `field_naming <naming>`
 
 The default field naming strategy to use.
@@ -269,7 +310,7 @@ The version number must follow semantic versioning. For example, `1.2.0`.
 Pre-releases are also supported by appending a hyphen and a series of dot-separated identifiers.
 For example, `1.2.1-beta1`.
 
-[semver-2]: https://semver.org
+[semver]: https://semver.org
 
 ### Ephemeral specifications
 
@@ -321,8 +362,8 @@ There are a number of built-in types available:
 
 | Type               | Description |
 |--------------------|-------------|
-| `unsigned{/size}`  | Unsigned integer values which can store a given number of bits |
-| `signed{/size}`    | Signed integer values which can store a given number of bits |
+| `u32`, `u64`       | Unsigned integer values which can store a given number of bits |
+| `i32`, `i64`       | Signed integer values which can store a given number of bits |
 | `double`, `float`  | Floating point precision numbers |
 | `string`           | UTF-8 encoded strings |
 | `datetime`         | ISO-8601 dates encoded as strings. Combined date and time with timezone. |
@@ -343,7 +384,7 @@ The following is an example type declaration:
 ```reproto
 type Foo {
     foo: string;
-    bar: signed/32;
+    bar: i32;
 }
 ```
 
@@ -369,7 +410,7 @@ The following is an example interface with two sub-types.
 /// Sampling is when a time series which is very dense is samples to reduce its size.
 interface Sampling {
     /// size of the sample.
-    sample_size: unsigned/32;
+    sample_size: u32;
     /// unit of the sample.
     sample_unit: Unit;
 
@@ -442,7 +483,7 @@ Tuples are sequences of data, where each element has a known type.
 
 ```reproto
 tuple Sample {
-  time: unsigned/64;
+  time: u64;
   value: double;
 }
 ```
@@ -460,12 +501,12 @@ A single sample (e.g. `new Sample(1, 2.0)`) would be encoded like this in JSON:
 Enums can take on of a given set of constant values.
 
 ```reproto
-enum SI: string {
-    NANO = "nano";
-    MICRO = "micro";
-    MILLI = "milli";
-    KILO = "kilo";
-    MEGA = "mega";
+enum SI as string {
+    NANO as "nano";
+    MICRO as "micro";
+    MILLI as "milli";
+    KILO as "kilo";
+    MEGA as "mega";
 }
 ```
 
@@ -531,12 +572,21 @@ responses.
 You mark this relationship with the `stream` keyword.
 
 ```reproto
-service MyService
+service MyService {
   /// Get many foos.
   get_foos() -> stream Foo;
 
   /// Write many foos.
   write_foos(stream Foo);
+}
+```
+
+Endpoints can be explicitly named with the `as` keyword.
+
+```reproto
+service MyService {
+  /// Get many foos.
+  get_foos() -> stream Foo as "get_bars";
 }
 ```
 
@@ -548,10 +598,10 @@ Fields which are reserved _cannot_ be added to the schema.
 Attempting to do so will yield an error like the following:
 
 ```bash
-examples/heroic/v1.reproto:55:3-21:
+examples/petstore.reproto:55:3-21:
  55:   no_can_do: string;
        ^^^^^^^^^^^^^^^^^^ - field reserved
-examples/heroic/v1.reproto:49:12-21:
+examples/petstore.reproto:49:12-21:
  49:   reserved no_can_do;
        ^^^^^^^^^^^^^^^^^^^ - field reserved here
 ```
@@ -564,19 +614,18 @@ Clients decoding a reserved field should raise an error.
 
 ReProto permits all types and interfaces to be extended.
 
-Extensions allow for additions, and is typically used to adapt a protocol specification to
-your local environment.
-They allow you to add additional information, as long as it doesn't conflict with any
-existing declarations.
+Extensions allow for additions, and is typically used to adapt a protocol specification to your
+local environment.
+They allow you to add additional information, as long as it doesn't conflict with any existing
+declarations.
 
 In a perfect world, extensions should not be necessary and the specification should be in sync with
 the API, and there should be no additional configuration necessary to start using the generated
 code.
 
-An extension is loaded when a when an identical package and type declaration is present in the
-path.
+Extensions may only be loaded through the `[files]` section in the manifest.
 
-Assume you have a type called `Foo` in the `foo` package.
+Assume you have a type called `Foo` in the `foo` package:
 
 ```reproto
 // file: protos/foo.reproto
@@ -585,7 +634,7 @@ type Foo {
 }
 ```
 
-You can now add extend existing types by specifying the same type somewhere else in your path.
+You can now add extend existing types by specifying the following as an extension:
 
 ```reproto
 // file: ext/foo.reproto

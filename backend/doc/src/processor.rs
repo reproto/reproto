@@ -1,0 +1,358 @@
+//! Processor trait.
+
+use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
+use backend::Environment;
+use backend::errors::*;
+use core::{ForEachLoc, Loc, RpField, RpName, RpType, RpVersionedPackage};
+use doc_builder::DocBuilder;
+use escape::Escape;
+use macros::FormatAttribute;
+use pulldown_cmark as markdown;
+
+pub trait Processor<'env> {
+    /// Access the current builder.
+    fn out(&self) -> ::std::cell::RefMut<DocBuilder<'env>>;
+
+    /// Access the current environment.
+    fn env(&self) -> &'env Environment;
+
+    /// Path to root.
+    fn root(&self) -> &'env str;
+
+    /// Process the given request.
+    fn process(self) -> Result<()>;
+
+    fn current_package(&self) -> Option<&'env RpVersionedPackage> {
+        None
+    }
+
+    /// Generate a type URL.
+    fn type_url(&self, name: &RpName) -> Result<String> {
+        let registered = self.env().lookup(name)?;
+
+        let (kind, member) = registered.kind();
+
+        let (fragment, parts) = match member {
+            Some(member) => {
+                let fragment = format!("#{}", member.name().parts.join("_"));
+
+                let parts: Vec<_> = name.parts
+                    .iter()
+                    .cloned()
+                    .take(name.parts.len() - 1)
+                    .collect();
+
+                (fragment, parts)
+            }
+            None => {
+                let fragment = "".to_string();
+                (fragment, name.parts.clone())
+            }
+        };
+
+        if let Some(_) = name.prefix {
+            let path = name.package.into_package(|v| v.to_string()).parts.join("/");
+
+            return Ok(format!(
+                "{}/{}/{}.{}.html{}",
+                self.root(),
+                path,
+                kind,
+                parts.join("."),
+                fragment,
+            ));
+        }
+
+        Ok(format!("{}.{}.html{}", kind, parts.join("."), fragment))
+    }
+
+    fn markdown(input: &str) -> String {
+        let p = markdown::Parser::new(input);
+        let mut s = String::new();
+        markdown::html::push_html(&mut s, p);
+        s
+    }
+
+    fn write_markdown(&self, comment: &[String]) -> Result<()> {
+        if !comment.is_empty() {
+            let comment = comment.join("\n");
+            write!(self.out(), "{}", Self::markdown(&comment))?;
+        }
+
+        Ok(())
+    }
+
+    fn doc<'a, I>(&self, comment: I) -> Result<()>
+    where
+        I: IntoIterator<Item = &'a String>,
+    {
+        let mut it = comment.into_iter().peekable();
+
+        if it.peek().is_some() {
+            let comment = it.map(ToOwned::to_owned).collect::<Vec<_>>();
+            let comment = comment.join("\n");
+            html!(self, div { class => "doc" } ~ Self::markdown(&comment));
+        } else {
+            html!(self, div { class => "missing-doc" } ~ Escape("no documentation :("));
+        }
+
+        Ok(())
+    }
+
+    fn primitive(&self, name: &str) -> Result<()> {
+        html!(self, span {class => format!("type-{} type-primitive", name)} ~ name);
+        Ok(())
+    }
+
+    fn write_type(&self, ty: &RpType) -> Result<()> {
+        use self::RpType::*;
+
+        write!(self.out(), "<span class=\"ty\">")?;
+
+        match *ty {
+            Double => self.primitive("double")?,
+            Float => self.primitive("float")?,
+            Boolean => self.primitive("boolean")?,
+            String => self.primitive("string")?,
+            DateTime => self.primitive("datetime")?,
+            Bytes => self.primitive("bytes")?,
+            Any => self.primitive("any")?,
+            Signed { ref size } => self.primitive(format!("i{}", size).as_str())?,
+            Unsigned { ref size } => self.primitive(format!("u{}", size).as_str())?,
+            Name { ref name } => {
+                html!(self, span {class => "type-rp-name"} => {
+                    self.full_name_without_package(name)?;
+                });
+            }
+            Array { ref inner } => {
+                html!(self, span {class => "type-array"} => {
+                    html!(self, span {class => "type-array-left"} ~ "[");
+                    self.write_type(inner)?;
+                    html!(self, span {class => "type-array-right"} ~ "]");
+                });
+            }
+            Map { ref key, ref value } => {
+                html!(self, span {class => "type-map"} => {
+                    html!(self, span {class => "type-map-left"} ~ "{");
+                    self.write_type(key)?;
+                    html!(self, span {class => "type-map-sep"} ~ ":");
+                    self.write_type(value)?;
+                    html!(self, span {class => "type-map-right"} ~ "}");
+                });
+            }
+        }
+
+        write!(self.out(), "</span>")?;
+        Ok(())
+    }
+
+    fn field(&self, field: &RpField) -> Result<()> {
+        let mut classes = vec!["field"];
+
+        if field.is_optional() {
+            classes.push("optional");
+        } else {
+            classes.push("required");
+        }
+
+        html!(self, div {class => "field"} => {
+            html!(self, h3 {class => "field-title"} => {
+                html!(self, span {class => "kind"} ~ "field");
+                html!(self, span {class => "field-id"} ~ Escape(field.ident()));
+
+                if field.is_optional() {
+                    html!(self, span {class => "field-modifier"} ~ "?");
+                }
+
+                html!(self, span {} ~ ":");
+
+                self.write_type(&field.ty)?;
+
+                if field.ident() != field.name() {
+                    html!(self, span {class => "keyword"} ~ "as");
+                    html!(self, span {class => "field-name"} ~ Escape(field.name()));
+                }
+            });
+
+            self.doc(&field.comment)?;
+        });
+
+        Ok(())
+    }
+
+    fn fields<'b, I>(&self, fields: I) -> Result<()>
+    where
+        I: Iterator<Item = &'b Loc<RpField>>,
+    {
+        fields.for_each_loc(|field| self.field(field))?;
+        Ok(())
+    }
+
+    /// Write a section title.
+    fn section_title(&self, kind: &str, name: &RpName) -> Result<()> {
+        html!(self, h1 {class => "section-title"} => {
+            html!(self, span {class => "kind"} ~ kind);
+            self.full_name(name, Some(name))?;
+        });
+
+        Ok(())
+    }
+
+    /// Write a complete HTML document.
+    fn write_doc<Body>(&self, body: Body) -> Result<()>
+    where
+        Body: FnOnce() -> Result<()>,
+    {
+        html!(self, html {} => {
+            html!(self, head {} => {
+                html!(@open self, meta {charset => "utf-8"});
+                self.out().new_line()?;
+
+                html!(@open self, meta {
+                    name => "viewport",
+                    content => "width=device-width, initial-scale=1.0"
+                });
+                self.out().new_line()?;
+
+                html!(@open self, link {
+                    rel => "stylesheet", type => "text/css",
+                    href => format!("{}/{}", self.root(), NORMALIZE_CSS_NAME)
+                });
+                self.out().new_line()?;
+
+                html!(@open self, link {
+                    rel => "stylesheet", type => "text/css",
+                    href => format!("{}/{}", self.root(), DOC_CSS_NAME)
+                });
+            });
+
+            html!(self, body {} => {
+                html!(self, nav {class => "top"} => {
+                    html!(self, a {href => format!("{}/index.html", self.root())} ~ "To Index");
+
+                    if let Some(package) = self.current_package() {
+                        let package_url = self.package_url(package);
+                        html!(self, span {} ~ "-");
+                        html!(self, a {href => package_url} ~ format!("To Package: {}", package));
+                    }
+                });
+
+                body()?;
+            });
+        });
+
+        Ok(())
+    }
+
+    fn package_url(&self, package: &RpVersionedPackage) -> String {
+        let url = package
+            .clone()
+            .into_package(ToString::to_string)
+            .parts
+            .join("/");
+
+        format!("{}/{}/index.html", self.root(), url)
+    }
+
+    fn fragment_filter(url: &str) -> String {
+        let mut bytes = [0u8; 4];
+        let mut buffer = String::with_capacity(url.len());
+
+        for c in url.chars() {
+            let encode = match c {
+                'a'...'z' | 'A'...'Z' | '0'...'9' => false,
+                '!' | '$' | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | ';' => false,
+                '-' | '.' | '_' | '~' | ':' | '@' | '/' | '?' => false,
+                _ => true,
+            };
+
+            if encode {
+                let result = c.encode_utf8(&mut bytes);
+
+                for b in result.bytes() {
+                    buffer.extend(format!("%{:X}", b).chars());
+                }
+
+                continue;
+            }
+
+            buffer.push(c);
+        }
+
+        buffer
+    }
+
+    /// Write the full path to a name.
+    ///
+    /// # Examples
+    ///
+    /// ```html
+    /// <span class="name-part">Foo</span>
+    /// <span class="name-sep">::</span>
+    /// <span class="name-local">Bar</span>
+    /// ```
+    fn full_name(&self, name: &RpName, current: Option<&RpName>) -> Result<()> {
+        let mut it = name.parts.iter();
+        let local = it.next_back().ok_or_else(|| "local part of name required")?;
+
+        let mut parts = Vec::new();
+
+        let package_url = self.package_url(&name.package);
+        html!(self, a {class => "name-package", href => package_url} ~ name.package.to_string());
+        html!(self, span {class => "name-sep"} ~ "::");
+
+        for part in it {
+            parts.push(part.clone());
+            let name = name.clone().with_parts(parts.clone());
+
+            if Some(&name) == current {
+                html!(self, span {class => "name-part"} ~ part);
+            } else {
+                let url = self.type_url(&name)?;
+                html!(self, a {class => "name-part", href => url} ~ part);
+            }
+
+            html!(self, span {class => "name-sep"} ~ "::");
+        }
+
+        let url = self.type_url(name)?;
+        html!(self, a {class => "name-local", href => url} ~ local);
+        Ok(())
+    }
+
+    /// Local name fully linked.
+    fn full_name_without_package(&self, name: &RpName) -> Result<()> {
+        let mut it = name.parts.iter();
+        let local = it.next_back().ok_or_else(|| "local part of name required")?;
+
+        let mut parts = Vec::new();
+
+        if let Some(ref prefix) = name.prefix {
+            let package_url = self.package_url(&name.package);
+            html!(self, a {class => "name-package", href => package_url} ~ prefix);
+            html!(self, span {class => "name-sep"} ~ "::");
+        }
+
+        for part in it {
+            parts.push(part.clone());
+            let name = name.clone().with_parts(parts.clone());
+            let url = self.type_url(&name)?;
+            html!(self, a {class => "name-part", href => url} ~ part);
+            html!(self, span {class => "name-sep"} ~ "::");
+        }
+
+        let url = self.type_url(name)?;
+        html!(self, a {class => "name-local", href => url} ~ local);
+        Ok(())
+    }
+
+    /// Write the name, but without a local part.
+    fn name_until(&self, name: &RpName) -> Result<()> {
+        for part in &name.parts {
+            html!(self, span {class => "name-part"} ~ part);
+            html!(self, span {class => "name-sep"} ~ "::");
+        }
+
+        Ok(())
+    }
+}

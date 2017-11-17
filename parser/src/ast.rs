@@ -68,6 +68,7 @@ pub struct Field<'input> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct File<'input> {
+    pub comment: Vec<&'input str>,
     pub options: Vec<Loc<OptionDecl<'input>>>,
     pub uses: Vec<Loc<UseDecl<'input>>>,
     pub decls: Vec<Loc<Decl<'input>>>,
