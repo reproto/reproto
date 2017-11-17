@@ -95,7 +95,7 @@ impl<T: Objects> Objects for CachedObjects<T> {
         let cache_path = self.cache_path(checksum)?;
 
         if cache_path.is_file() {
-            return Ok(Some(Box::new(PathObject::new(cache_path))));
+            return Ok(Some(Box::new(PathObject::new(None, cache_path))));
         }
 
         let (missing, missing_path) = self.check_missing(checksum)?;

@@ -14,18 +14,21 @@ pub trait Object: Send + fmt::Display + fmt::Debug {
 
     /// Lightweight cloning of this object.
     fn clone_object(&self) -> Box<Object>;
+
+    /// Convert the current object with the given name.
+    fn with_name(&self, name: String) -> Box<Object>;
 }
 
 #[derive(Debug)]
 pub struct BytesObject {
-    name: String,
+    name: Arc<String>,
     bytes: Arc<Vec<u8>>,
 }
 
 impl BytesObject {
     pub fn new(name: String, bytes: Arc<Vec<u8>>) -> BytesObject {
         BytesObject {
-            name: name,
+            name: Arc::new(name),
             bytes: bytes,
         }
     }
@@ -46,6 +49,13 @@ impl Object for BytesObject {
             bytes: self.bytes.clone(),
         })
     }
+
+    fn with_name(&self, name: String) -> Box<Object> {
+        Box::new(BytesObject {
+            name: Arc::new(name),
+            bytes: self.bytes.clone(),
+        })
+    }
 }
 
 impl fmt::Display for BytesObject {
@@ -56,12 +66,16 @@ impl fmt::Display for BytesObject {
 
 #[derive(Debug)]
 pub struct PathObject {
-    path: PathBuf,
+    name: Option<Arc<String>>,
+    path: Arc<PathBuf>,
 }
 
 impl PathObject {
-    pub fn new<P: AsRef<Path>>(path: P) -> PathObject {
-        PathObject { path: path.as_ref().to_owned() }
+    pub fn new<P: AsRef<Path>>(name: Option<String>, path: P) -> PathObject {
+        PathObject {
+            name: name.map(Arc::new),
+            path: Arc::new(path.as_ref().to_owned()),
+        }
     }
 }
 
@@ -71,17 +85,31 @@ impl Object for PathObject {
     }
 
     fn read(&self) -> Result<Box<Read>> {
-        Ok(Box::new(File::open(&self.path)?))
+        Ok(Box::new(File::open(self.path.as_path())?))
     }
 
     fn clone_object(&self) -> Box<Object> {
-        Box::new(PathObject { path: self.path.clone() })
+        Box::new(PathObject {
+            name: self.name.clone(),
+            path: self.path.clone(),
+        })
+    }
+
+    fn with_name(&self, name: String) -> Box<Object> {
+        Box::new(PathObject {
+            name: Some(Arc::new(name)),
+            path: self.path.clone(),
+        })
     }
 }
 
 impl fmt::Display for PathObject {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}", self.path.display())
+        if let Some(ref name) = self.name {
+            write!(formatter, "{}", name)
+        } else {
+            write!(formatter, "{}", self.path.display())
+        }
     }
 }
 

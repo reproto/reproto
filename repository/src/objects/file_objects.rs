@@ -55,7 +55,7 @@ impl Objects for FileObjects {
         let target = self.checksum_path(checksum)?;
 
         if target.is_file() {
-            return Ok(Some(Box::new(PathObject::new(target))));
+            return Ok(Some(Box::new(PathObject::new(None, target))));
         }
 
         Ok(None)

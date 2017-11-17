@@ -1,5 +1,6 @@
 use super::Version;
-use super::rp_package::RpPackage;
+use rp_package::RpPackage;
+use rp_package_format::RpPackageFormat;
 use std::fmt;
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -38,12 +39,6 @@ impl RpVersionedPackage {
 
 impl fmt::Display for RpVersionedPackage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.package)?;
-
-        if let Some(ref version) = self.version {
-            write!(f, "@{}", version)?;
-        }
-
-        Ok(())
+        RpPackageFormat(&self.package, self.version.as_ref()).fmt(f)
     }
 }

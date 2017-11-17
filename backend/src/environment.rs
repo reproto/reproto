@@ -53,7 +53,7 @@ impl Environment {
 
     /// Import a file into the environment.
     pub fn import_file<P: AsRef<Path>>(&mut self, path: P) -> Result<RpVersionedPackage> {
-        let object = PathObject::new(path);
+        let object = PathObject::new(None, path);
 
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let required = RpRequiredPackage::new(package.package.clone(), None);

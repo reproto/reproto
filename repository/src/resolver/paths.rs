@@ -41,6 +41,9 @@ impl Paths {
         Ok((stem, None))
     }
 
+    /// Find any matching versions.
+    ///
+    /// TODO: Make `version_req` not use `Option`.
     pub fn find_versions(
         &self,
         path: &Path,
@@ -73,7 +76,7 @@ impl Paths {
                 if let Some(version_req) = version_req {
                     if let Some(version) = version {
                         if version_req.matches(&version) {
-                            let object = PathObject::new(&p);
+                            let object = PathObject::new(None, &p);
                             files.insert(Some(version), Box::new(object));
                         }
 
@@ -85,7 +88,7 @@ impl Paths {
                     }
                 }
 
-                let object = PathObject::new(&p);
+                let object = PathObject::new(None, &p);
                 files.insert(None, Box::new(object));
             }
         }

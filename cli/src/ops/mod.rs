@@ -12,12 +12,11 @@ mod check;
 use self::config_env::ConfigEnv;
 use self::imports::*;
 use backend::{CamelCase, FromNaming, Naming, SnakeCase};
-use core::{Object, RpPackage, RpVersionedPackage, Version};
+use core::{Object, RpPackage, RpPackageFormat, RpVersionedPackage, Version};
 use manifest::{Manifest, ManifestFile, Publish, read_manifest, self as m};
 use relative_path::RelativePath;
 use repository::*;
 use semck;
-use std::env;
 use std::fmt;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -298,10 +297,10 @@ pub fn setup_environment(manifest: &Manifest) -> Result<Environment> {
 pub fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
     let manifest_path = matches
         .value_of("manifest-path")
-        .map::<Result<PathBuf>, _>(|p| Ok(Path::new(p).to_owned()))
-        .unwrap_or_else(|| Ok(env::current_dir()?.join(MANIFEST_NAME)))?;
+        .map::<Result<&Path>, _>(|p| Ok(Path::new(p)))
+        .unwrap_or_else(|| Ok(Path::new(MANIFEST_NAME)))?;
 
-    let mut manifest = Manifest::new(&manifest_path);
+    let mut manifest = Manifest::new(manifest_path);
 
     if manifest_path.is_file() {
         debug!("reading manifest: {}", manifest_path.display());
@@ -536,8 +535,11 @@ pub fn semck_check(
             format!("No object found for deployment: {:?}", d)
         })?;
 
+        let name = RpPackageFormat(package, Some(&d.version)).to_string();
+        let previous = previous.with_name(name);
+
         let package_from = RpVersionedPackage::new(package.clone(), Some(d.version.clone()));
-        let file_from = env.load_object(previous.clone_object(), &package_from)?;
+        let file_from = env.load_object(previous, &package_from)?;
 
         let package_to = RpVersionedPackage::new(package.clone(), Some(version.clone()));
         let file_to = env.load_object(object.clone_object(), &package_to)?;
