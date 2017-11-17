@@ -108,7 +108,7 @@ where
                 continue;
             }
 
-            storage.insert(reg.name().clone().without_version(), reg);
+            storage.insert(reg.name().clone().localize(), reg);
         }
     }
 
@@ -122,7 +122,7 @@ where
     let mut storage = HashMap::new();
 
     for variant in variants {
-        storage.insert(variant.name.clone().without_version(), variant);
+        storage.insert(variant.name.clone().localize(), variant);
     }
 
     storage
@@ -160,11 +160,11 @@ where
        -> Violation,
 {
     let from_ty = accessor(from_endpoint).as_ref().map(|r| {
-        (r.is_streaming(), r.ty().clone().without_version())
+        (r.is_streaming(), r.ty().clone().localize())
     });
 
     let to_ty = accessor(to_endpoint).as_ref().map(|r| {
-        (r.is_streaming(), r.ty().clone().without_version())
+        (r.is_streaming(), r.ty().clone().localize())
     });
 
     if from_ty != to_ty {
@@ -217,6 +217,55 @@ fn check_endpoint_type(
         |e| &e.response,
         EndpointResponseChange,
     )?;
+
+    Ok(())
+}
+
+fn common_check_variant(
+    component: Component,
+    violations: &mut Vec<Violation>,
+    from_variant: &Loc<RpEnumVariant>,
+    to_variant: &Loc<RpEnumVariant>,
+) -> Result<()> {
+    if from_variant.ordinal() != to_variant.ordinal() {
+        violations.push(VariantOrdinalChange(
+            component.clone(),
+            from_variant.ordinal().to_string(),
+            from_variant.pos().into(),
+            to_variant.ordinal().to_string(),
+            to_variant.pos().into(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn common_check_field(
+    component: Component,
+    violations: &mut Vec<Violation>,
+    from_field: &Loc<RpField>,
+    to_field: &Loc<RpField>,
+) -> Result<()> {
+    if to_field.ty.clone().localize() != from_field.ty.clone().localize() {
+        violations.push(FieldTypeChange(
+            component.clone(),
+            from_field.ty.clone(),
+            from_field.pos().into(),
+            to_field.ty.clone(),
+            to_field.pos().into(),
+        ));
+    }
+
+    // not permitted to rename fields.
+    if to_field.name() != from_field.name() {
+        violations.push(FieldNameChange(
+            component.clone(),
+            from_field.name().to_string(),
+            from_field.pos().into(),
+            to_field.name().to_string(),
+            to_field.pos().into(),
+        ));
+    }
 
     Ok(())
 }
@@ -281,28 +330,9 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
         from_field: &Loc<RpField>,
         to_field: &Loc<RpField>,
     ) -> Result<()> {
-        if to_field.ty.clone().without_version() != from_field.ty.clone().without_version() {
-            violations.push(FieldTypeChange(
-                Minor,
-                from_field.ty.clone(),
-                from_field.pos().into(),
-                to_field.ty.clone(),
-                to_field.pos().into(),
-            ));
-        }
+        common_check_field(Minor, violations, from_field, to_field)?;
 
-        // not permitted to rename fields.
-        if to_field.name() != from_field.name() {
-            violations.push(FieldNameChange(
-                Minor,
-                from_field.name().to_string(),
-                from_field.pos().into(),
-                to_field.name().to_string(),
-                to_field.pos().into(),
-            ));
-        }
-
-        // not permitted to make fields required.
+        // Minor patch may make fields optional, but not required.
         if from_field.is_optional() && to_field.is_required() {
             violations.push(FieldRequiredChange(
                 Minor,
@@ -319,16 +349,7 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
         from_variant: &Loc<RpEnumVariant>,
         to_variant: &Loc<RpEnumVariant>,
     ) -> Result<()> {
-        if from_variant.ordinal() != to_variant.ordinal() {
-            violations.push(VariantOrdinalChange(
-                Patch,
-                from_variant.ordinal().to_string(),
-                from_variant.pos().into(),
-                to_variant.ordinal().to_string(),
-                to_variant.pos().into(),
-            ));
-        }
-
+        common_check_variant(Minor, violations, from_variant, to_variant)?;
         Ok(())
     }
 
@@ -413,25 +434,7 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
         from_field: &Loc<RpField>,
         to_field: &Loc<RpField>,
     ) -> Result<()> {
-        if to_field.ty.clone().without_version() != from_field.ty.clone().without_version() {
-            violations.push(FieldTypeChange(
-                Patch,
-                from_field.ty.clone(),
-                from_field.pos().into(),
-                to_field.ty.clone(),
-                to_field.pos().into(),
-            ));
-        }
-
-        if to_field.name() != from_field.name() {
-            violations.push(FieldNameChange(
-                Patch,
-                from_field.name().to_string(),
-                from_field.pos().into(),
-                to_field.name().to_string(),
-                to_field.pos().into(),
-            ));
-        }
+        common_check_field(Patch, violations, from_field, to_field)?;
 
         if to_field.modifier != from_field.modifier {
             violations.push(FieldModifierChange(
@@ -449,16 +452,7 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
         from_variant: &Loc<RpEnumVariant>,
         to_variant: &Loc<RpEnumVariant>,
     ) -> Result<()> {
-        if from_variant.ordinal() != to_variant.ordinal() {
-            violations.push(VariantOrdinalChange(
-                Patch,
-                from_variant.ordinal().to_string(),
-                from_variant.pos().into(),
-                to_variant.ordinal().to_string(),
-                to_variant.pos().into(),
-            ));
-        }
-
+        common_check_variant(Patch, violations, from_variant, to_variant)?;
         Ok(())
     }
 

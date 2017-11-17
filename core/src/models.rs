@@ -366,6 +366,17 @@ impl RpName {
         }
     }
 
+    /// Localize name.
+    ///
+    /// Strips version of any type which is _not_ imported.
+    pub fn localize(self) -> RpName {
+        if self.prefix.is_some() {
+            return self;
+        }
+
+        self.without_version()
+    }
+
     /// Convert to a name without a version component.
     pub fn without_version(self) -> RpName {
         RpName {
@@ -806,16 +817,31 @@ impl RpType {
         }
     }
 
+    /// Localize type.
+    ///
+    /// Strips version of any type which is _not_ imported.
+    pub fn localize(self) -> RpType {
+        self.with_name(RpName::localize)
+    }
+
     /// Strip version component for any type.
     pub fn without_version(self) -> RpType {
+        self.with_name(RpName::without_version)
+    }
+
+    /// Modify any name components with the given operation.
+    fn with_name<F>(self, f: F) -> RpType
+    where
+        F: Clone + Fn(RpName) -> RpName,
+    {
         use self::RpType::*;
 
         match self {
-            Name { name } => Name { name: name.without_version() },
-            Array { inner } => Array { inner: Box::new(inner.without_version()) },
+            Name { name } => Name { name: f(name) },
+            Array { inner } => Array { inner: Box::new(inner.with_name(f)) },
             Map { key, value } => Map {
-                key: Box::new(key.without_version()),
-                value: Box::new(value.without_version()),
+                key: Box::new(key.with_name(f.clone())),
+                value: Box::new(value.with_name(f.clone())),
             },
             ty => ty,
         }
