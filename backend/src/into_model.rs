@@ -634,12 +634,14 @@ impl<'input> IntoModel for Value<'input> {
     type Output = RpValue;
 
     fn into_model(self, scope: &Scope) -> Result<RpValue> {
+        use self::Value::*;
+
         let out = match self {
-            Value::String(string) => RpValue::String(string),
-            Value::Number(number) => RpValue::Number(number),
-            Value::Boolean(boolean) => RpValue::Boolean(boolean),
-            Value::Identifier(identifier) => RpValue::Identifier(identifier.to_owned()),
-            Value::Array(inner) => RpValue::Array(inner.into_model(scope)?),
+            String(string) => RpValue::String(string),
+            Number(number) => RpValue::Number(number),
+            Boolean(boolean) => RpValue::Boolean(boolean),
+            Identifier(identifier) => RpValue::Identifier(identifier.to_owned()),
+            Array(inner) => RpValue::Array(inner.into_model(scope)?),
         };
 
         Ok(out)
