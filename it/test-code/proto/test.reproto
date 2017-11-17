@@ -1,0 +1,21 @@
+type Type {
+  rust {{
+  fn foo() {
+  }
+  }}
+
+  java {{
+  public void foo() {
+  }
+  }}
+
+  js {{
+  foo() {
+  }
+  }}
+
+  python {{
+  def foo():
+    pass
+  }}
+}
