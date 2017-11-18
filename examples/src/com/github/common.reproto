@@ -1,0 +1,59 @@
+//! Common datastructures for Github's APIs
+
+/// A github user.
+type User {
+  /// Login handle for the user.
+  login: string;
+
+  /// Identifier of the user.
+  id: u64;
+
+  /// URL to avatar of the user.
+  avatar_url: string;
+
+  /// Gravatar ID of the user.
+  gravatar_id: string;
+
+  /// URL to the user page.
+  url: string;
+
+  /// HTML URL to the user page.
+  html_url: string;
+
+  /// API URL to get followers.
+  followers_url: string;
+
+  /// API URL to get following.
+  following_url: string;
+
+  /// API URL to get gists for user.
+  gists_url: string;
+
+  /// API URL to get starred by user.
+  starred_url: string;
+
+  /// URL to get subscriptions for user.
+  subscriptions_url: string;
+
+  /// URL to get organizations for user.
+  organizations_url: string;
+
+  /// URL to get repositories for user.
+  repos_url: string;
+
+  /// URL to get events for user.
+  events_url: string;
+
+  /// URL to get received events by user.
+  received_events_url: string;
+
+  /// Type of the user.
+  _type: ::Type;
+
+  /// Is this user a site admin?
+  site_admin: boolean;
+
+  enum Type as string {
+    USER as "User";
+  }
+}

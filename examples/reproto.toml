@@ -1,8 +1,8 @@
 paths = ["src"]
 output = "output"
 
-[packages."io.reproto.blog"]
-version = "*"
-
-[packages."io.reproto.petstore"]
-version = "1.0.0"
+[packages]
+"io.reproto.blog" = {}
+"io.reproto.petstore" = {version = "^1"}
+"com.github.gists" = {}
+"com.github.pulls" = {}

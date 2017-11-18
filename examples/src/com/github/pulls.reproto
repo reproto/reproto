@@ -1,0 +1,128 @@
+//! Data structures for pull requests.
+//!
+//! See: <https://developer.github.com/v3/pulls/>
+
+use com.github.common as c;
+
+/// Milestone related to a project.
+type Milestone {
+  /// URL to milestone.
+  url: string;
+
+  /// HTML URL for milestone.
+  html_url: string;
+
+  /// URL to labels for milestone.
+  labels_url: string;
+
+  /// Identifier of milestone.
+  id: u64;
+
+  /// Number of the milestone.
+  number: u64;
+
+  /// State of the milestone.
+  state: State;
+
+  /// Title of the milestone.
+  title: string;
+
+  /// Description of the milestone.
+  description: string;
+
+  /// Creator of milestone.
+  creator: c::User;
+
+  /// Number of open issues associated with the milestone.
+  open_issues: u64;
+
+  /// Number of closed issues associated with the milestone.
+  closed_issues: u64;
+
+  /// When the milestone was created.
+  created_at: datetime;
+
+  /// When the milestone was last updated.
+  updated_at: datetime;
+
+  /// When the milestone was closed.
+  closed_at?: datetime;
+
+  /// When the milestone is due.
+  due_on?: datetime;
+}
+
+/// Model for the state of a pull request.
+enum State as string {
+  /// The pull request state is open.
+  OPEN as "open";
+}
+
+/// Data of a pull request.
+type PullRequest {
+  /// ID of the pull request.
+  id: u64;
+
+  /// URL to the pull request.
+  url: string;
+
+  /// HTML URL to the pull request.
+  html_url: string;
+
+  /// Diff URL to the pull request.
+  diff_url: string;
+
+  /// Patch URL to the pull request.
+  patch_url: string;
+
+  /// Issue URL to the pull request.
+  issue_url: string;
+
+  /// Commits URL to the pull request.
+  commits_url: string;
+
+  /// Review comments URL to the pull request.
+  review_comments_url: string;
+
+  /// Review comment URL to the pull request.
+  review_comment_url: string;
+
+  /// URL to comments on the pull request.
+  comments_url: string;
+
+  /// URL to statuses for the pull request.
+  statuses_url: string;
+
+  /// Number of the pull request.
+  number: u32;
+
+  /// State of the pull request.
+  state: State;
+
+  /// Title of the pull request.
+  title: string;
+
+  /// Body of the pull request.
+  body: string;
+
+  /// Assigned user of the pull request.
+  assignee?: c::User;
+
+  /// Milestone pull request is associated with.
+  milestone?: Milestone;
+
+  /// If the pull request is locked or not.
+  locked: boolean;
+
+  /// When the pull request was created.
+  created_at: datetime;
+
+  /// When the pull request was last updated.
+  updated_at: datetime;
+
+  /// When the pull request was last closed.
+  closed_at?: datetime;
+
+  /// When the pull request was merged.
+  merged_at?: datetime;
+}
