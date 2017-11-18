@@ -1,5 +1,5 @@
 use super::into_bytes::IntoBytes;
-use core::{Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
+use core::{ForEachLoc, Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
            RpTupleBody, RpTypeBody, RpVersionedPackage};
 use environment::Environment;
 use errors::*;
@@ -61,21 +61,21 @@ where
         mut callback: F,
     ) -> Result<BTreeMap<RpVersionedPackage, Self::Out>>
     where
-        F: FnMut(&'el Loc<RpDecl>) -> Result<()>,
+        F: FnMut(&'el RpDecl) -> Result<()>,
     {
         use self::RpDecl::*;
 
         let mut files = BTreeMap::new();
 
         // Process all types discovered so far.
-        self.env().for_each_decl(|decl| {
+        self.env().decl_iter().for_each_loc(|decl| {
             callback(decl)?;
 
             let mut out = files.entry(decl.name().package.clone()).or_insert_with(
                 Self::Out::default,
             );
 
-            match *decl.value() {
+            match *decl {
                 Interface(ref b) => self.process_interface(&mut out, b),
                 Type(ref b) => self.process_type(&mut out, b),
                 Tuple(ref b) => self.process_tuple(&mut out, b),

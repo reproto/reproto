@@ -73,7 +73,7 @@ impl JavaBackend {
     }
 
     pub fn compile(&self, out_path: &Path) -> Result<()> {
-        self.env.for_each_toplevel_decl(|decl| {
+        self.env.toplevel_decl_iter().for_each_loc(|decl| {
             let package = self.java_package(&decl.name().package);
             let package_name = package.parts.join(".");
 
@@ -96,7 +96,7 @@ impl JavaBackend {
             let mut file: Tokens<Java> = Tokens::new();
             let mut extra = Extra::default();
             extra.package(package_name);
-            self.process_decl(decl.as_ref(), 0usize, &mut file)?;
+            self.process_decl(decl, 0usize, &mut file)?;
 
             let mut f = File::create(full_path)?;
             IoFmt(&mut f).write_file(file, &mut extra)?;

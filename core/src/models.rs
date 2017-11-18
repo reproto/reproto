@@ -324,10 +324,10 @@ impl<'a> Iterator for ForEachDecl<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(decl) = self.queue.pop_front() {
             self.queue.extend(decl.decls());
-            return Some(decl);
+            Some(decl)
+        } else {
+            None
         }
-
-        None
     }
 }
 

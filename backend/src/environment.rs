@@ -11,6 +11,38 @@ use repository::Resolver;
 use std::collections::{BTreeMap, HashMap, LinkedList};
 use std::path::Path;
 use std::rc::Rc;
+use std::vec;
+
+/// Iterator over all toplevel declarations.
+pub struct ToplevelDeclIter<'a> {
+    it: vec::IntoIter<&'a Rc<Loc<RpDecl>>>,
+}
+
+impl<'a> Iterator for ToplevelDeclIter<'a> {
+    type Item = &'a Rc<Loc<RpDecl>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.it.next()
+    }
+}
+
+/// Iterator over all declarations in a file.
+pub struct DeclIter<'a> {
+    queue: LinkedList<&'a Rc<Loc<RpDecl>>>,
+}
+
+impl<'a> Iterator for DeclIter<'a> {
+    type Item = &'a Rc<Loc<RpDecl>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(decl) = self.queue.pop_front() {
+            self.queue.extend(decl.decls());
+            Some(decl)
+        } else {
+            None
+        }
+    }
+}
 
 /// Scoped environment for evaluating ReProto IDLs.
 pub struct Environment {
@@ -126,35 +158,20 @@ impl Environment {
     }
 
     /// Iterate over top level declarations of all registered objects.
-    pub fn for_each_toplevel_decl<'a, O>(&'a self, mut op: O) -> Result<()>
-    where
-        O: FnMut(&'a Rc<Loc<RpDecl>>) -> Result<()>,
-    {
-        for decl in self.files.values().flat_map(|f| f.decls.iter()) {
-            op(decl).with_pos(decl.pos())?;
-        }
+    pub fn toplevel_decl_iter(&self) -> ToplevelDeclIter {
+        let values = self.files
+            .values()
+            .flat_map(|f| f.decls.iter())
+            .collect::<Vec<_>>();
 
-        Ok(())
+        ToplevelDeclIter { it: values.into_iter() }
     }
 
     /// Walks the entire tree of declarations recursively of all registered objects.
-    pub fn for_each_decl<'a, O>(&'a self, mut op: O) -> Result<()>
-    where
-        O: FnMut(&'a Rc<Loc<RpDecl>>) -> Result<()>,
-    {
+    pub fn decl_iter(&self) -> DeclIter {
         let mut queue = LinkedList::new();
-
         queue.extend(self.files.values().flat_map(|f| f.decls.iter()));
-
-        while let Some(decl) = queue.pop_front() {
-            op(decl).with_pos(decl.pos())?;
-
-            for d in decl.decls() {
-                queue.push_back(d);
-            }
-        }
-
-        Ok(())
+        DeclIter { queue: queue }
     }
 
     /// Parse a naming option.

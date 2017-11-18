@@ -67,7 +67,7 @@ impl<'el> PackageProcessor<'el> for PythonCompiler<'el> {
         let mut enums = Vec::new();
 
         let mut files = self.do_populate_files(|decl| {
-            if let RpDecl::Enum(ref body) = **decl {
+            if let RpDecl::Enum(ref body) = *decl {
                 enums.push(body);
             }
 
