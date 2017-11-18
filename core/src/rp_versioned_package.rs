@@ -1,6 +1,6 @@
-use super::Version;
-use rp_package::RpPackage;
-use rp_package_format::RpPackageFormat;
+//! A versioned package declaration
+
+use super::{RpPackage, RpPackageFormat, Version};
 use std::fmt;
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

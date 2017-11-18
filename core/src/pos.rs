@@ -1,4 +1,4 @@
-use object::Object;
+use super::Object;
 use std::rc::Rc;
 
 #[derive(Clone, Debug)]

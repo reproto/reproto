@@ -1,4 +1,4 @@
-use super::errors::*;
+use errors::*;
 use extern_mime;
 use serde;
 use std::fmt;

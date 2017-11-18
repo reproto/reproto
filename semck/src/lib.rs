@@ -2,8 +2,8 @@ extern crate reproto_core;
 
 use self::Component::*;
 use self::Violation::*;
-use reproto_core::{ErrorPos, Loc, RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName,
-                   RpRegistered, RpType, RpVariant, Version};
+use reproto_core::{ErrorPos, Loc, RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpReg,
+                   RpType, RpVariant, Version};
 use reproto_core::errors::*;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -60,8 +60,8 @@ pub enum Violation {
     EndpointResponseChange(Component, Option<RpChannel>, ErrorPos, Option<RpChannel>, ErrorPos),
 }
 
-fn fields(reg: &RpRegistered) -> Vec<&Loc<RpField>> {
-    use self::RpRegistered::*;
+fn fields(reg: &RpReg) -> Vec<&Loc<RpField>> {
+    use self::RpReg::*;
 
     match *reg {
         Type(ref target) => target.fields.iter().collect(),
@@ -72,8 +72,8 @@ fn fields(reg: &RpRegistered) -> Vec<&Loc<RpField>> {
     }
 }
 
-fn enum_variants(reg: &RpRegistered) -> Vec<&Loc<RpVariant>> {
-    use self::RpRegistered::*;
+fn enum_variants(reg: &RpReg) -> Vec<&Loc<RpVariant>> {
+    use self::RpReg::*;
 
     match *reg {
         Enum(ref target) => target.variants.iter().map(|v| &**v).collect(),
@@ -81,8 +81,8 @@ fn enum_variants(reg: &RpRegistered) -> Vec<&Loc<RpVariant>> {
     }
 }
 
-fn endpoints_to_map(reg: &RpRegistered) -> HashMap<&str, &Loc<RpEndpoint>> {
-    use self::RpRegistered::*;
+fn endpoints_to_map(reg: &RpReg) -> HashMap<&str, &Loc<RpEndpoint>> {
+    use self::RpReg::*;
 
     match *reg {
         Service(ref target) => {
@@ -96,16 +96,16 @@ fn endpoints_to_map(reg: &RpRegistered) -> HashMap<&str, &Loc<RpEndpoint>> {
     }
 }
 
-fn decls_to_map<'a, I: 'a>(decls: I) -> HashMap<RpName, RpRegistered>
+fn decls_to_map<'a, I: 'a>(decls: I) -> HashMap<RpName, RpReg>
 where
     I: IntoIterator<Item = &'a Rc<Loc<RpDecl>>>,
 {
     let mut storage = HashMap::new();
 
     for decl in decls {
-        for reg in decl.into_registered_type() {
+        for reg in decl.into_reg() {
             // Checked separately for each Enum.
-            if let RpRegistered::EnumVariant(_, _) = reg {
+            if let RpReg::EnumVariant(_, _) = reg {
                 continue;
             }
 

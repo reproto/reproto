@@ -1,4 +1,4 @@
-use super::rp_versioned_package::RpVersionedPackage;
+use super::RpVersionedPackage;
 use serde;
 use std::fmt;
 

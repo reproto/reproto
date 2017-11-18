@@ -1,6 +1,6 @@
 //! Utility trait to convert various wrapper types into locations.
 
-use super::loc::Loc;
+use super::Loc;
 use std::rc::Rc;
 
 pub trait AsLoc {

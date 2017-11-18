@@ -1,5 +1,4 @@
-use super::with_pos::WithPos;
-use pos::Pos;
+use super::{Pos, WithPos};
 use serde;
 use std::cmp;
 use std::hash;

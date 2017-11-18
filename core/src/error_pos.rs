@@ -1,5 +1,4 @@
-use super::Pos;
-use object::Object;
+use super::{Object, Pos};
 use std::borrow::Borrow;
 use std::rc::Rc;
 

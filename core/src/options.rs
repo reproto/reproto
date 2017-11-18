@@ -1,9 +1,6 @@
 //! # Helper data structure do handle option lookups
 
-use super::RpNumber;
-use super::loc::Loc;
-use super::option_entry::OptionEntry;
-use super::pos::Pos;
+use super::{Loc, OptionEntry, Pos, RpNumber};
 use std::result;
 
 type Result<T> = result::Result<T, (&'static str, Pos)>;

@@ -2,8 +2,8 @@
 //!
 //! This asserts that any errors raised contains location information.
 
+use super::WithPos;
 use super::as_loc::AsLoc;
-use super::with_pos::WithPos;
 use std::result;
 
 /// Helper trait to iterate over a collection of loc items.

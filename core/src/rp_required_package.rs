@@ -1,5 +1,6 @@
-use super::VersionReq;
-use super::rp_package::RpPackage;
+//! A package requirement
+
+use super::{RpPackage, VersionReq};
 use errors::*;
 use std::fmt;
 

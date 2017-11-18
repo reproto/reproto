@@ -1,7 +1,7 @@
 use super::into_model::IntoModel;
 use super::naming::{FromNaming, Naming, SnakeCase};
 use super::scope::Scope;
-use core::{Loc, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage, RpRegistered,
+use core::{Loc, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage, RpReg,
            RpRequiredPackage, RpVersionedPackage, WithPos};
 use errors::*;
 use linked_hash_map::LinkedHashMap;
@@ -53,7 +53,7 @@ pub struct Environment {
     /// Memoized required packages, to avoid unecessary lookups.
     visited: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
     /// Registered types.
-    types: LinkedHashMap<RpName, RpRegistered>,
+    types: LinkedHashMap<RpName, RpReg>,
     /// Files and associated declarations.
     files: LinkedHashMap<RpVersionedPackage, RpFile>,
 }
@@ -73,7 +73,7 @@ impl Environment {
     /// Lookup the declaration matching the given name.
     ///
     /// Returns the registered reference, if present.
-    pub fn lookup<'a>(&'a self, name: &RpName) -> Result<&'a RpRegistered> {
+    pub fn lookup<'a>(&'a self, name: &RpName) -> Result<&'a RpReg> {
         let key = name.clone().without_prefix();
 
         if let Some(registered) = self.types.get(&key) {
@@ -287,7 +287,7 @@ impl Environment {
             }
         };
 
-        for t in file.decls.iter().flat_map(|d| d.into_registered_type()) {
+        for t in file.decls.iter().flat_map(|d| d.into_reg()) {
             let key = t.name().clone().without_prefix();
 
             match self.types.entry(key) {

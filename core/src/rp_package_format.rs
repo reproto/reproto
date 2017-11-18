@@ -1,7 +1,6 @@
 //! Helper structure to format package information.
 
-use super::Version;
-use super::rp_package::RpPackage;
+use super::{RpPackage, Version};
 use std::fmt;
 
 /// Helper structure to format package information.
