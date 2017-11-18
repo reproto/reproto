@@ -318,8 +318,13 @@ pub fn setup_env(manifest: &Manifest) -> Result<Environment> {
 
     let mut errors = Vec::new();
 
+    // TODO: use version and package from the provided file.
     for file in &manifest.files {
-        if let Err(e) = env.import_file(&file.path) {
+        let package = file.package.as_ref().map(|p| {
+            RpVersionedPackage::new(p.clone(), file.version.clone())
+        });
+
+        if let Err(e) = env.import_file(&file.path, package) {
             errors.push(e.into());
         }
     }

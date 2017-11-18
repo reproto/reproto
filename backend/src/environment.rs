@@ -8,7 +8,7 @@ use linked_hash_map::LinkedHashMap;
 use parser;
 use parser::ast::UseDecl;
 use repository::Resolver;
-use std::collections::{BTreeMap, HashMap, LinkedList};
+use std::collections::{BTreeMap, HashMap, LinkedList, btree_map};
 use std::path::Path;
 use std::rc::Rc;
 use std::vec;
@@ -55,7 +55,7 @@ pub struct Environment {
     /// Registered types.
     types: LinkedHashMap<RpName, RpReg>,
     /// Files and associated declarations.
-    files: LinkedHashMap<RpVersionedPackage, RpFile>,
+    files: BTreeMap<RpVersionedPackage, RpFile>,
 }
 
 /// Environment containing all loaded declarations.
@@ -66,7 +66,7 @@ impl Environment {
             resolver: resolver,
             visited: HashMap::new(),
             types: LinkedHashMap::new(),
-            files: LinkedHashMap::new(),
+            files: BTreeMap::new(),
         }
     }
 
@@ -84,10 +84,14 @@ impl Environment {
     }
 
     /// Import a file into the environment.
-    pub fn import_file<P: AsRef<Path>>(&mut self, path: P) -> Result<RpVersionedPackage> {
+    pub fn import_file<P: AsRef<Path>>(
+        &mut self,
+        path: P,
+        package: Option<RpVersionedPackage>,
+    ) -> Result<RpVersionedPackage> {
         let object = PathObject::new(None, path);
 
-        let package = RpVersionedPackage::new(RpPackage::empty(), None);
+        let package = package.unwrap_or_else(|| RpVersionedPackage::new(RpPackage::empty(), None));
         let required = RpRequiredPackage::new(package.package.clone(), None);
 
         if !self.visited.contains_key(&required) {
@@ -281,8 +285,8 @@ impl Environment {
         use self::ErrorKind::*;
 
         let file = match self.files.entry(package.clone()) {
-            Vacant(entry) => entry.insert(file),
-            Occupied(_) => {
+            btree_map::Entry::Vacant(entry) => entry.insert(file),
+            btree_map::Entry::Occupied(_) => {
                 return Err(format!("package already registered: {}", package).into());
             }
         };
