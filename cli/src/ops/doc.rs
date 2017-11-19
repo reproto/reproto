@@ -12,7 +12,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
 
     let out = compiler_options.out_path.clone();
 
-    doc::compile(env, options, compiler_options, matches)?;
+    doc::compile(env, options, compiler_options, matches, &manifest)?;
 
     info!("Wrote documentation in: {}", out.display());
     Ok(())

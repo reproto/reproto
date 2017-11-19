@@ -205,6 +205,16 @@ Activated presets are determined by their `type`.
 
 The available types and their corresponding options are documented in this section.
 
+### Doc
+
+The `doc` keys control how documentation is generated:
+
+```
+[doc]
+# See available themes with `reproto doc --list-syntax-themes`
+syntax_theme = "ayu-mirage"
+```
+
 #### Maven `type = "maven"`
 
 This preset is equivalent to the following manifest:

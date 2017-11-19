@@ -41,6 +41,7 @@ macro_rules! define_processor {
         pub struct $name<'env> {
             pub out: ::std::cell::RefCell<DocBuilder<'env>>,
             pub env: &'env Environment,
+            pub syntax_theme: &'env ::syntect::highlighting::Theme,
             pub root: &'env str,
             pub body: &'env $body,
         }
@@ -56,6 +57,10 @@ macro_rules! define_processor {
 
             fn root(&self) -> &'env str {
                 self.root
+            }
+
+            fn syntax_theme(&self) -> &'env ::syntect::highlighting::Theme {
+                self.syntax_theme
             }
 
             define_processor!(@tail $slf $($tail)*);

@@ -10,6 +10,7 @@ use macros::FormatAttribute;
 use rendering::markdown_to_html;
 use std::ops::DerefMut;
 use std::rc::Rc;
+use syntect::highlighting::Theme;
 
 pub trait Processor<'env> {
     /// Access the current builder.
@@ -23,6 +24,9 @@ pub trait Processor<'env> {
 
     /// Process the given request.
     fn process(self) -> Result<()>;
+
+    /// Syntax theme.
+    fn syntax_theme(&self) -> &'env Theme;
 
     fn current_package(&self) -> Option<&'env RpVersionedPackage> {
         None
@@ -70,7 +74,7 @@ pub trait Processor<'env> {
 
     fn markdown(&self, comment: &str) -> Result<()> {
         if !comment.is_empty() {
-            markdown_to_html(self.out().deref_mut(), comment)?;
+            markdown_to_html(self.out().deref_mut(), comment, self.syntax_theme())?;
         }
 
         Ok(())

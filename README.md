@@ -52,7 +52,7 @@ $ git submodule update --init
 Pack syntax highlighting and themes:
 
 ```bash
-$ cargo run --bin reproto-pack --manifest-path=pack/Cargo.toml
+$ make dumps
 ```
 
 Build and install the CLI.

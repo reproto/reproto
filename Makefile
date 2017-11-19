@@ -56,7 +56,7 @@ endef
 
 export PROJECTS := $(shell $(call check-deps))
 
-.PHONY: all update tests all-tests clean
+.PHONY: all update tests dumps all-tests clean
 .PHONY: suites update-suites clean-suites
 .PHONY: projects update-projects clean-projects
 
@@ -64,8 +64,18 @@ all: suites projects
 
 update: update-suites update-projects
 
-tests:
+tests: dumps
 	cargo test --all
+
+dumps: dumps/syntaxdump dumps/themedump
+
+dumps-cmd := cargo run --bin reproto-pack --manifest-path=pack/Cargo.toml
+
+dumps/syntaxdump:
+	$(dumps-cmd) -- --skip-defaults --build-syntax
+
+dumps/themedump:
+	$(dumps-cmd) -- --skip-defaults --build-themes
 
 all-tests: tests clean-projects projects clean-suites suites
 
@@ -85,7 +95,7 @@ $(call it-target,projects,,clean-projects)
 $(call it-target,update-projects,,clean-projects)
 $(call it-target,clean-projects)
 
-$(default-reproto): $(CURDIR)/cli/Cargo.toml
+$(default-reproto): dumps $(CURDIR)/cli/Cargo.toml
 	@echo "Building: $@"
 	cargo build --manifest-path cli/Cargo.toml
 

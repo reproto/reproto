@@ -232,6 +232,12 @@ fn apply_preset_to(value: toml::Value, manifest: &mut Manifest, base: &Path) -> 
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct Doc {
+    /// Syntax theme to use.
+    pub syntax_theme: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Publish {
     pub package: RpPackage,
@@ -292,6 +298,8 @@ pub struct Manifest {
     pub id_converter: Option<String>,
     /// Repository configuration.
     pub repository: Repository,
+    /// Documentation settings.
+    pub doc: Doc,
 }
 
 impl Manifest {
@@ -399,6 +407,10 @@ pub fn load_common_manifest(
     take_section(value, "repository", |repository| {
         load_repository(&mut manifest.repository, base, repository)
     })?;
+
+    if let Some(doc) = take_field::<Option<Doc>>(value, "doc")? {
+        manifest.doc = doc;
+    }
 
     Ok(())
 }

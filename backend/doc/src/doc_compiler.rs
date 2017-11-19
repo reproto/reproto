@@ -23,13 +23,13 @@ use type_processor::TypeProcessor;
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
 pub struct DocCompiler<'a> {
-    pub backend: &'a DocBackend,
+    pub backend: DocBackend<'a>,
     pub out_path: PathBuf,
     pub skip_static: bool,
 }
 
 impl<'a> DocCompiler<'a> {
-    pub fn new(backend: &'a DocBackend, out_path: PathBuf, skip_static: bool) -> DocCompiler {
+    pub fn new(backend: DocBackend<'a>, out_path: PathBuf, skip_static: bool) -> DocCompiler<'a> {
         DocCompiler {
             backend: backend,
             out_path: out_path,
@@ -94,6 +94,7 @@ impl<'a> DocCompiler<'a> {
                 InterfaceProcessor {
                     out: out,
                     env: &self.backend.env,
+                    syntax_theme: self.backend.syntax_theme,
                     root: &root,
                     body: body,
                 }.process()
@@ -102,6 +103,7 @@ impl<'a> DocCompiler<'a> {
                 TypeProcessor {
                     out: out,
                     env: &self.backend.env,
+                    syntax_theme: self.backend.syntax_theme,
                     root: &root,
                     body: body,
                 }.process()
@@ -110,6 +112,7 @@ impl<'a> DocCompiler<'a> {
                 TupleProcessor {
                     out: out,
                     env: &self.backend.env,
+                    syntax_theme: self.backend.syntax_theme,
                     root: &root,
                     body: body,
                 }.process()
@@ -118,6 +121,7 @@ impl<'a> DocCompiler<'a> {
                 EnumProcessor {
                     out: out,
                     env: &self.backend.env,
+                    syntax_theme: self.backend.syntax_theme,
                     root: &root,
                     body: body,
                 }.process()
@@ -126,6 +130,7 @@ impl<'a> DocCompiler<'a> {
                 ServiceProcessor {
                     out: out,
                     env: &self.backend.env,
+                    syntax_theme: self.backend.syntax_theme,
                     root: &root,
                     body: body,
                 }.process()
@@ -178,6 +183,7 @@ impl<'a> DocCompiler<'a> {
         PackageProcessor {
             out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
             env: &self.backend.env,
+            syntax_theme: self.backend.syntax_theme,
             root: &root.join("/"),
             body: &PackageData {
                 package: package,
@@ -202,6 +208,7 @@ impl<'a> DocCompiler<'a> {
         IndexProcessor {
             out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
             env: &self.backend.env,
+            syntax_theme: self.backend.syntax_theme,
             root: &".",
             body: &IndexData { entries: entries },
         }.process()?;

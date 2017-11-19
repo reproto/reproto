@@ -13,3 +13,4 @@ ReProto Pack
 
 [dependencies]
 syntect = "1"
+clap = "*"

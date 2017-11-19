@@ -2,14 +2,15 @@ use self::cmark::{Event, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES, Options,
 
 use backend::errors::*;
 use doc_builder::DocBuilder;
-use highlighting::{SYNTAX_SET, THEME_SET};
+use highlighting::SYNTAX_SET;
 
 use pulldown_cmark as cmark;
 use std::borrow::Cow::{Borrowed, Owned};
 use syntect::easy::HighlightLines;
+use syntect::highlighting::Theme;
 use syntect::html::{IncludeBackground, start_coloured_html_snippet, styles_to_coloured_html};
 
-pub fn markdown_to_html(out: &mut DocBuilder, content: &str) -> Result<()> {
+pub fn markdown_to_html(out: &mut DocBuilder, content: &str, theme: &Theme) -> Result<()> {
     let mut highlighter: Option<HighlightLines> = None;
 
     let mut opts = Options::empty();
@@ -27,8 +28,6 @@ pub fn markdown_to_html(out: &mut DocBuilder, content: &str) -> Result<()> {
             Event::Text(text)
         }
         Event::Start(Tag::CodeBlock(ref info)) => {
-            let theme = &THEME_SET.themes["ayu-dark"];
-
             highlighter = SYNTAX_SET.with(|ss| {
                 let syntax = info.split(' ')
                     .next()

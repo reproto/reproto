@@ -2,5 +2,5 @@
 	path = themes/ayu
 	url = https://github.com/dempfi/ayu.git
 [submodule "sublime/sublimehq-packages"]
-	path = sublime/sublimehq-packages
+	path = syntaxes/sublimehq-packages
 	url = https://github.com/sublimehq/Packages.git
