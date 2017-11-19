@@ -18,6 +18,7 @@ define_processor!(TupleProcessor, RpTupleBody, self,
                 html!(self, div {class => "section-body"} => {
                     self.doc(&self.body.comment)?;
                     self.fields(self.body.fields.iter())?;
+                    self.nested_decls(self.body.decls.iter())?;
                 });
             });
 

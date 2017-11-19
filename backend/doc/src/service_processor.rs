@@ -19,8 +19,10 @@ define_processor!(ServiceProcessor, RpServiceBody, self,
                 self.doc(&self.body.comment)?;
 
                 for endpoint in self.body.endpoints.values() {
-                    self.write_endpoint(endpoint)?;
+                    self.endpoint(endpoint)?;
                 }
+
+                self.nested_decls(self.body.decls.iter())?;
             });
 
             Ok(())
@@ -31,7 +33,7 @@ define_processor!(ServiceProcessor, RpServiceBody, self,
 );
 
 impl<'p> ServiceProcessor<'p> {
-    fn write_endpoint(&self, endpoint: &RpEndpoint) -> Result<()> {
+    fn endpoint(&self, endpoint: &RpEndpoint) -> Result<()> {
         let id = format!(
             "{}_{}",
             self.body.name,

@@ -25,6 +25,32 @@ section {
     margin: 10px;
 }
 
+/*
+h1 {
+    margin: 10px 0;
+}
+
+h2 {
+    margin: 10px 0;
+}
+
+h3 {
+    margin: 5px 0;
+}
+
+h4 {
+    margin: 5px 0;
+}
+
+h5 {
+    margin: 5px 0;
+}
+
+h6 {
+    margin: 5px 0;
+}
+*/
+
 .section-title {
     padding-bottom: 5px;
     border-bottom: 1px dashed {{doc_border_color}};
@@ -36,6 +62,12 @@ nav.top {
 }
 
 .field {
+}
+
+/* All entries in the key should have no margin between them.
+ * Accomplish this using a flexbox */
+.field-key {
+    display: inline-flex;
 }
 
 .name-package {
@@ -105,9 +137,18 @@ nav.top {
     font-size: {{doc_h4_size}};
 }
 
+.doc p {
+    margin: 10px 0;
+}
+
 .package-item {
 }
 
 .package-item-doc {
     padding-left: 20px;
+}
+
+/* smaller margin for package items since it looks better in a list. */
+.package-item-doc > .doc p {
+    margin: 5px 0;
 }

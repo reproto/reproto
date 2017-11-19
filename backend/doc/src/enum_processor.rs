@@ -18,6 +18,7 @@ define_processor!(EnumProcessor, RpEnumBody, self,
                 self.section_title("enum", &self.body.name)?;
                 self.doc(&self.body.comment)?;
                 self.variants(self.body.variants.iter())?;
+                self.nested_decls(self.body.decls.iter())?;
             });
 
             Ok(())

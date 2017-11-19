@@ -3,11 +3,12 @@
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
 use backend::Environment;
 use backend::errors::*;
-use core::{ForEachLoc, Loc, RpField, RpName, RpType, RpVersionedPackage};
+use core::{ForEachLoc, Loc, RpDecl, RpField, RpName, RpType, RpVersionedPackage};
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
 use pulldown_cmark as markdown;
+use std::rc::Rc;
 
 pub trait Processor<'env> {
     /// Access the current builder.
@@ -155,9 +156,10 @@ pub trait Processor<'env> {
             classes.push("required");
         }
 
-        html!(self, div {class => "field"} => {
-            html!(self, h3 {class => "field-title"} => {
-                html!(self, span {class => "kind"} ~ "field");
+        html!(self, h2 {class => "field-title"} => {
+            html!(self, span {class => "kind"} ~ "field");
+
+            html!(self, span {class => "field-key"} => {
                 html!(self, span {class => "field-id"} ~ Escape(field.ident()));
 
                 if field.is_optional() {
@@ -165,17 +167,17 @@ pub trait Processor<'env> {
                 }
 
                 html!(self, span {} ~ ":");
-
-                self.write_type(&field.ty)?;
-
-                if field.ident() != field.name() {
-                    html!(self, span {class => "keyword"} ~ "as");
-                    html!(self, span {class => "field-name"} ~ Escape(field.name()));
-                }
             });
 
-            self.doc(&field.comment)?;
+            self.write_type(&field.ty)?;
+
+            if field.ident() != field.name() {
+                html!(self, span {class => "keyword"} ~ "as");
+                html!(self, span {class => "field-name"} ~ Escape(field.name()));
+            }
         });
+
+        self.doc(&field.comment)?;
 
         Ok(())
     }
@@ -185,6 +187,26 @@ pub trait Processor<'env> {
         I: Iterator<Item = &'b Loc<RpField>>,
     {
         fields.for_each_loc(|field| self.field(field))?;
+        Ok(())
+    }
+
+    /// Render a nested declaration
+    fn nested_decl(&self, decl: &RpDecl) -> Result<()> {
+        html!(self, h2 {class => "decl-title"} => {
+            html!(self, span {class => "kind"} ~ format!("nested {}", decl.kind()));
+            self.full_name_without_package(&decl.name())?;
+        });
+
+        self.doc(decl.comment().iter().take(1))?;
+        Ok(())
+    }
+
+    /// Render a set of nested declarations
+    fn nested_decls<'b, I>(&self, decls: I) -> Result<()>
+    where
+        I: Iterator<Item = &'b Rc<Loc<RpDecl>>>,
+    {
+        decls.for_each_loc(|decl| self.nested_decl(decl))?;
         Ok(())
     }
 
