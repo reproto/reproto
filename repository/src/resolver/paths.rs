@@ -166,31 +166,32 @@ impl Paths {
 
         files.extend(self.load_file(path, prefix));
 
-        if path.is_dir() {
-            let mut queue = LinkedList::new();
+        if !path.is_dir() {
+            return Ok(files);
+        }
 
-            queue.push_back((prefix.clone(), path.to_owned()));
+        let mut queue = LinkedList::new();
+        queue.push_back((prefix.clone(), path.to_owned()));
 
-            while let Some((prefix, path)) = queue.pop_front() {
-                for entry in fs::read_dir(path)? {
-                    let entry = entry?;
-                    let path = entry.path();
+        while let Some((prefix, path)) = queue.pop_front() {
+            for entry in fs::read_dir(path)? {
+                let entry = entry?;
+                let path = entry.path();
 
-                    if path.is_file() {
-                        files.extend(self.load_from_path(&path, prefix.clone())?);
-                        continue;
-                    }
+                if path.is_file() {
+                    files.extend(self.load_from_path(&path, prefix.clone())?);
+                    continue;
+                }
 
-                    if path.is_dir() {
-                        let file_name = entry.file_name();
+                if path.is_dir() {
+                    let file_name = entry.file_name();
 
-                        let name = file_name.to_str().ok_or_else(|| {
-                            format!("illegal path: {}", path.display())
-                        })?;
+                    let name = file_name.to_str().ok_or_else(|| {
+                        format!("illegal path: {}", path.display())
+                    })?;
 
-                        queue.push_back((prefix.clone().join_part(name), path));
-                        continue;
-                    }
+                    queue.push_back((prefix.clone().join_part(name), path));
+                    continue;
                 }
             }
         }
