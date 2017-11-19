@@ -7,7 +7,7 @@ use errors::*;
 use linked_hash_map::LinkedHashMap;
 use parser;
 use parser::ast::UseDecl;
-use repository::Resolver;
+use repository::{Resolved, Resolver};
 use std::collections::{BTreeMap, HashMap, LinkedList, btree_map};
 use std::path::Path;
 use std::rc::Rc;
@@ -117,7 +117,7 @@ impl Environment {
         // find all matching objects from the resolver.
         let files = self.resolver.resolve(required)?;
 
-        if let Some((version, object)) = files.into_iter().last() {
+        if let Some(Resolved { version, object }) = files.into_iter().last() {
             debug!("loading: {}", object);
 
             let package = RpVersionedPackage::new(required.package.clone(), version);

@@ -11,7 +11,7 @@
 
 use core::{Object, PathObject, RpPackage, RpRequiredPackage, Version, VersionReq};
 use errors::*;
-use resolver::Resolver;
+use resolver::{Resolved, Resolver};
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -75,7 +75,7 @@ impl Paths {
         base: &str,
         package: &RpPackage,
         version_req: &VersionReq,
-    ) -> Result<Vec<(Option<Version>, Box<Object>)>> {
+    ) -> Result<Vec<Resolved>> {
         let mut files: BTreeMap<Option<Version>, Box<Object>> = BTreeMap::new();
 
         for e in fs::read_dir(path)? {
@@ -117,15 +117,12 @@ impl Paths {
             }
         }
 
-        Ok(files.into_iter().collect())
+        Ok(files.into_iter().map(Resolved::from_pair).collect())
     }
 }
 
 impl Resolver for Paths {
-    fn resolve(
-        &mut self,
-        package: &RpRequiredPackage,
-    ) -> Result<Vec<(Option<Version>, Box<Object>)>> {
+    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
         let mut files = Vec::new();
 
         for path in &self.paths {

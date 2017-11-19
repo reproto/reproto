@@ -18,7 +18,6 @@ use relative_path::RelativePath;
 use repository::*;
 use semck;
 use std::collections::HashMap;
-use std::fmt;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -435,21 +434,6 @@ fn manifest_from_matches(manifest: &mut Manifest, matches: &ArgMatches) -> Resul
 /// Argument match.
 pub struct Match(Version, Box<Object>, RpPackage);
 
-/// Formatting of candidate.
-struct DisplayMatch<'a>(&'a (Option<Version>, Box<Object>));
-
-impl<'a> fmt::Display for DisplayMatch<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let inner = &self.0;
-
-        if let Some(ref version) = inner.0 {
-            write!(f, "{}-{}", inner.1, version)
-        } else {
-            write!(f, "{}", inner.1)
-        }
-    }
-}
-
 /// Setup matches from a publish manifest.
 pub fn setup_publish_matches<'a, I>(
     resolver: &mut Resolver,
@@ -471,7 +455,7 @@ where
         }
 
         // packages.push(RpRequiredPackage());
-        for (version, object) in resolved {
+        for Resolved { version, object } in resolved {
             let version = version_override.cloned().or(version);
 
             let version = version.ok_or_else(|| {
@@ -509,17 +493,17 @@ where
         let first = it.next().ok_or_else(|| format!("no packages to publish"))?;
 
         if let Some(next) = it.next() {
-            warn!("matched: {}", DisplayMatch(&first));
-            warn!("    and: {}", DisplayMatch(&next));
+            warn!("matched: {}", first);
+            warn!("    and: {}", next);
 
             while let Some(next) = it.next() {
-                warn!("    and: {}", DisplayMatch(&next));
+                warn!("    and: {}", next);
             }
 
             return Err("more than one matching package found".into());
         }
 
-        let (version, object) = first;
+        let Resolved { version, object } = first;
         let version = version_override.cloned().or(version);
 
         let version = version.ok_or_else(|| {

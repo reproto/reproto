@@ -2,7 +2,7 @@ use super::Objects;
 use core::{Object, RpPackage, RpRequiredPackage, Version};
 use errors::*;
 use index::{Deployment, Index};
-use resolver::Resolver;
+use resolver::{Resolved, Resolver};
 use sha256::to_sha256;
 use update::Update;
 
@@ -69,17 +69,17 @@ impl Repository {
 }
 
 impl Resolver for Repository {
-    fn resolve(
-        &mut self,
-        package: &RpRequiredPackage,
-    ) -> Result<Vec<(Option<Version>, Box<Object>)>> {
+    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
         let mut out = Vec::new();
 
         let deployments = self.index.resolve(&package.package, &package.version_req)?;
 
         for deployment in deployments {
             if let Some(path) = self.objects.get_object(&deployment.object)? {
-                out.push((Some(deployment.version), path));
+                out.push(Resolved {
+                    version: Some(deployment.version),
+                    object: path,
+                });
             } else {
                 return Err(format!("missing object: {}", deployment.object).into());
             }
