@@ -43,7 +43,7 @@ impl<'a> DocCompiler<'a> {
         // index by package
         let mut packages: Vec<(&RpVersionedPackage, &RpFile)> = Vec::new();
 
-        self.backend.env.for_each_file(|package, file| {
+        for (package, file) in self.backend.env.for_each_file() {
             packages.push((package, file));
 
             file.for_each_decl().for_each_loc(|decl| {
@@ -120,9 +120,7 @@ impl<'a> DocCompiler<'a> {
 
                 Ok(()) as Result<()>
             })?;
-
-            Ok(())
-        })?;
+        }
 
         self.write_index(packages.clone())?;
 

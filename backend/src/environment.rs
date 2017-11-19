@@ -13,6 +13,19 @@ use std::path::Path;
 use std::rc::Rc;
 use std::vec;
 
+/// Iterate over all files in the environment.
+pub struct ForEachFile<'a> {
+    iter: btree_map::Iter<'a, RpVersionedPackage, RpFile>,
+}
+
+impl<'a> Iterator for ForEachFile<'a> {
+    type Item = (&'a RpVersionedPackage, &'a RpFile);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
 /// Iterator over all toplevel declarations.
 pub struct ToplevelDeclIter<'a> {
     it: vec::IntoIter<&'a Rc<Loc<RpDecl>>>,
@@ -150,15 +163,8 @@ impl Environment {
     }
 
     /// Iterate over all files.
-    pub fn for_each_file<'a, O>(&'a self, mut op: O) -> Result<()>
-    where
-        O: FnMut(&'a RpVersionedPackage, &'a RpFile) -> Result<()>,
-    {
-        for (package, file) in self.files.iter() {
-            op(package, file)?;
-        }
-
-        Ok(())
+    pub fn for_each_file(&self) -> ForEachFile {
+        ForEachFile { iter: self.files.iter() }
     }
 
     /// Iterate over top level declarations of all registered objects.
