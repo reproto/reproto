@@ -162,34 +162,40 @@ version = "1.0.1"
 In order to publish packages, the version of the package needs to be known.
 
 Since specifications would typically be unversioned during development, ReProto supports
-a `[publish]` section where you can map what version a local package belongs to.
+a `[publish]` section where you can map what version local specifications belong to.
+
+The package specified is a prefix. The version will apply to any contained packages.
 
 ```toml
 paths = ["src"]
 
 [publish]
-petstore = "1.0.1"
+"io.reproto" = "1.0.1"
 ```
 
 These can be specified in a more elaborate format:
 
 ```toml
 [publish]
-petstore = {version = "1.0.1"}
+"io.reproto" = {version = "1.0.1"}
 ```
 
 Or:
 
 ```toml
-[publish.petstore]
+[publish."io.reproto"]
 version = "1.0.1"
 ```
 
-Assuming you have a manifest called `src/petstore.reproto`, you can now publish it using:
+Assuming you have a specification in `src/io/reproto/petstore.reproto`, you can now publish it
+using:
 
 ```bash
-$> reproto publish petstore
+$> reproto publish
 ```
+
+Additional specifications can be added to `src/io/reproto`, and they will also be published with
+the same version.
 
 ### Presets
 
