@@ -37,94 +37,17 @@ impl<'a> DocCompiler<'a> {
         }
     }
 
+    /// Do the compilation.
     pub fn compile(&self) -> Result<()> {
-        use self::RpDecl::*;
-
-        // index by package
-        let mut packages: Vec<(&RpVersionedPackage, &RpFile)> = Vec::new();
-
-        for (package, file) in self.backend.env.for_each_file() {
-            packages.push((package, file));
-
-            file.for_each_decl().for_each_loc(|decl| {
-                let package = decl.name().package.clone().as_package(|v| v.to_string());
-
-                // maintain to know where to import static resources from.
-                let mut root = Vec::new();
-                let mut path = self.out_path.to_owned();
-
-                for part in package.parts {
-                    root.push("..");
-                    path = path.join(part.as_str());
-
-                    if !path.is_dir() {
-                        debug!("+dir: {}", path.display());
-                        fs::create_dir_all(&path)?;
-                    }
-                }
-
-                let name = decl.name().parts.join(".");
-
-                // complete path to root and static resources
-                let root = root.join("/");
-
-                let mut buffer = String::new();
-
-                match *decl {
-                    Interface(ref body) => {
-                        InterfaceProcessor {
-                            out: RefCell::new(DocBuilder::new(&mut buffer)),
-                            env: &self.backend.env,
-                            root: &root,
-                            body: body,
-                        }.process()?;
-                    }
-                    Type(ref body) => {
-                        TypeProcessor {
-                            out: RefCell::new(DocBuilder::new(&mut buffer)),
-                            env: &self.backend.env,
-                            root: &root,
-                            body: body,
-                        }.process()?;
-                    }
-                    Tuple(ref body) => {
-                        TupleProcessor {
-                            out: RefCell::new(DocBuilder::new(&mut buffer)),
-                            env: &self.backend.env,
-                            root: &root,
-                            body: body,
-                        }.process()?;
-                    }
-                    Enum(ref body) => {
-                        EnumProcessor {
-                            out: RefCell::new(DocBuilder::new(&mut buffer)),
-                            env: &self.backend.env,
-                            root: &root,
-                            body: body,
-                        }.process()?;
-                    }
-                    Service(ref body) => {
-                        ServiceProcessor {
-                            out: RefCell::new(DocBuilder::new(&mut buffer)),
-                            env: &self.backend.env,
-                            root: &root,
-                            body: body,
-                        }.process()?;
-                    }
-                }
-
-                let out = path.join(format!("{}.{}.html", decl.kind(), name));
-                let mut f = File::create(&out)?;
-                f.write_all(buffer.as_bytes())?;
-                debug!("+file: {}", out.display());
-
-                Ok(()) as Result<()>
-            })?;
+        for (_, file) in self.backend.env.for_each_file() {
+            file.for_each_decl().for_each_loc(
+                |decl| self.process_decl(decl),
+            )?;
         }
 
-        self.write_index(packages.clone())?;
+        self.write_index(self.backend.env.for_each_file())?;
 
-        for (package, file) in packages {
+        for (package, file) in self.backend.env.for_each_file() {
             self.write_package(package, file)?;
         }
 
@@ -135,6 +58,82 @@ impl<'a> DocCompiler<'a> {
         Ok(())
     }
 
+    /// Process a single declaration.
+    fn process_decl(&self, decl: &RpDecl) -> Result<()> {
+        use self::RpDecl::*;
+
+        let package = decl.name().package.clone().as_package(|v| v.to_string());
+
+        // maintain to know where to import static resources from.
+        let mut root = Vec::new();
+        let mut path = self.out_path.to_owned();
+
+        for part in package.parts {
+            root.push("..");
+            path = path.join(part.as_str());
+
+            if !path.is_dir() {
+                debug!("+dir: {}", path.display());
+                fs::create_dir_all(&path)?;
+            }
+        }
+
+        let name = decl.name().parts.join(".");
+
+        // complete path to root and static resources
+        let root = root.join("/");
+
+        let out = path.join(format!("{}.{}.html", decl.kind(), name));
+        debug!("+file: {}", out.display());
+        let mut f = File::create(&out)?;
+        let mut fmt = IoFmt(&mut f);
+        let out = RefCell::new(DocBuilder::new(&mut fmt));
+
+        match *decl {
+            Interface(ref body) => {
+                InterfaceProcessor {
+                    out: out,
+                    env: &self.backend.env,
+                    root: &root,
+                    body: body,
+                }.process()
+            }
+            Type(ref body) => {
+                TypeProcessor {
+                    out: out,
+                    env: &self.backend.env,
+                    root: &root,
+                    body: body,
+                }.process()
+            }
+            Tuple(ref body) => {
+                TupleProcessor {
+                    out: out,
+                    env: &self.backend.env,
+                    root: &root,
+                    body: body,
+                }.process()
+            }
+            Enum(ref body) => {
+                EnumProcessor {
+                    out: out,
+                    env: &self.backend.env,
+                    root: &root,
+                    body: body,
+                }.process()
+            }
+            Service(ref body) => {
+                ServiceProcessor {
+                    out: out,
+                    env: &self.backend.env,
+                    root: &root,
+                    body: body,
+                }.process()
+            }
+        }
+    }
+
+    /// Write stylesheets.
     fn write_stylesheets(&self) -> Result<()> {
         if !self.out_path.is_dir() {
             debug!("+dir: {}", self.out_path.display());
@@ -191,9 +190,14 @@ impl<'a> DocCompiler<'a> {
     }
 
     /// Write the root index file.
-    fn write_index(&self, entries: Vec<(&RpVersionedPackage, &RpFile)>) -> Result<()> {
+    fn write_index<'it, I>(&self, entries: I) -> Result<()>
+    where
+        I: IntoIterator<Item = (&'it RpVersionedPackage, &'it RpFile)>,
+    {
         let index_html = self.out_path.join("index.html");
         let mut f = File::create(&index_html)?;
+
+        let entries = entries.into_iter().collect();
 
         IndexProcessor {
             out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
