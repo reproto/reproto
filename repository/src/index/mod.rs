@@ -38,11 +38,7 @@ use errors::*;
 
 pub trait Index {
     /// Resolve the given version of a package.
-    fn resolve(
-        &self,
-        package: &RpPackage,
-        version_req: Option<&VersionReq>,
-    ) -> Result<Vec<Deployment>>;
+    fn resolve(&self, package: &RpPackage, version_req: &VersionReq) -> Result<Vec<Deployment>>;
 
     /// Get all versions available of a given package.
     ///
@@ -76,7 +72,7 @@ pub trait Index {
 pub struct NoIndex;
 
 impl Index for NoIndex {
-    fn resolve(&self, _: &RpPackage, _: Option<&VersionReq>) -> Result<Vec<Deployment>> {
+    fn resolve(&self, _: &RpPackage, _: &VersionReq) -> Result<Vec<Deployment>> {
         Ok(vec![])
     }
 

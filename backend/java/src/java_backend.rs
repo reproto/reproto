@@ -130,7 +130,7 @@ impl JavaBackend {
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
     pub fn java_package(&self, pkg: &RpVersionedPackage) -> RpPackage {
-        pkg.into_package(|version| {
+        pkg.as_package(|version| {
             format!("_{}", version).replace(".", "_").replace("-", "_")
         })
     }

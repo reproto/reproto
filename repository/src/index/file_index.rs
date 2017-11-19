@@ -125,14 +125,9 @@ impl FileIndex {
 }
 
 impl Index for FileIndex {
-    fn resolve(
-        &self,
-        package: &RpPackage,
-        version_req: Option<&VersionReq>,
-    ) -> Result<Vec<Deployment>> {
-        self.read_package(package, |d| {
-            version_req.map(|v| v.matches(&d.version)).unwrap_or(true)
-        }).map(|r| r.0)
+    fn resolve(&self, package: &RpPackage, version_req: &VersionReq) -> Result<Vec<Deployment>> {
+        self.read_package(package, |d| version_req.matches(&d.version))
+            .map(|r| r.0)
     }
 
     fn all(&self, package: &RpPackage) -> Result<Vec<Deployment>> {

@@ -7,11 +7,11 @@ use std::fmt;
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpRequiredPackage {
     pub package: RpPackage,
-    pub version_req: Option<VersionReq>,
+    pub version_req: VersionReq,
 }
 
 impl RpRequiredPackage {
-    pub fn new(package: RpPackage, version_req: Option<VersionReq>) -> RpRequiredPackage {
+    pub fn new(package: RpPackage, version_req: VersionReq) -> RpRequiredPackage {
         RpRequiredPackage {
             package: package,
             version_req: version_req,
@@ -27,11 +27,11 @@ impl RpRequiredPackage {
         );
 
         let version_req = if let Some(version) = it.next() {
-            Some(VersionReq::parse(version).map_err(|e| {
+            VersionReq::parse(version).map_err(|e| {
                 format!("bad version: {}: {}", e, version)
-            })?)
+            })?
         } else {
-            None
+            VersionReq::any()
         };
 
         Ok(RpRequiredPackage::new(package, version_req))
@@ -40,12 +40,6 @@ impl RpRequiredPackage {
 
 impl fmt::Display for RpRequiredPackage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.package)?;
-
-        if let Some(ref version_req) = self.version_req {
-            write!(f, "@{}", version_req)?;
-        }
-
-        Ok(())
+        write!(f, "{}@{}", self.package, self.version_req)
     }
 }

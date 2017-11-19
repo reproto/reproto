@@ -13,10 +13,11 @@ use self::config_env::ConfigEnv;
 use self::imports::*;
 use backend::{CamelCase, FromNaming, Naming, SnakeCase};
 use core::{Object, RpPackage, RpPackageFormat, RpVersionedPackage, Version};
-use manifest::{Manifest, ManifestFile, Publish, read_manifest, self as m};
+use manifest::{Manifest, ManifestFile, read_manifest, self as m};
 use relative_path::RelativePath;
 use repository::*;
 use semck;
+use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -259,7 +260,15 @@ pub fn setup_path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>>
         return Ok(None);
     }
 
-    Ok(Some(Box::new(Paths::new(manifest.paths.clone()))))
+    let mut published = HashMap::new();
+
+    for publish in &manifest.publish {
+        published.insert(publish.package.clone(), publish.version.clone());
+    }
+
+    Ok(Some(
+        Box::new(Paths::new(manifest.paths.clone(), published)),
+    ))
 }
 
 pub fn setup_resolvers(manifest: &Manifest) -> Result<Box<Resolver>> {
@@ -434,9 +443,9 @@ impl<'a> fmt::Display for DisplayMatch<'a> {
         let inner = &self.0;
 
         if let Some(ref version) = inner.0 {
-            write!(f, "{}@{}", inner.1, version)
+            write!(f, "{}-{}", inner.1, version)
         } else {
-            write!(f, "{}@*", inner.1)
+            write!(f, "{}", inner.1)
         }
     }
 }
@@ -448,12 +457,11 @@ pub fn setup_publish_matches<'a, I>(
     publish: I,
 ) -> Result<Vec<Match>>
 where
-    I: IntoIterator<Item = &'a Publish>,
+    I: IntoIterator<Item = &'a RpRequiredPackage>,
 {
     let mut results = Vec::new();
 
-    for publish in publish.into_iter() {
-        let package = RpRequiredPackage::new(publish.package.clone(), None);
+    for package in publish.into_iter() {
         let resolved = resolver.resolve(&package)?;
 
         if resolved.is_empty() {
@@ -463,9 +471,14 @@ where
         }
 
         // packages.push(RpRequiredPackage());
-        for (_, object) in resolved {
-            let version = version_override.unwrap_or(&publish.version).clone();
-            results.push(Match(version, object, publish.package.clone()));
+        for (version, object) in resolved {
+            let version = version_override.cloned().or(version);
+
+            let version = version.ok_or_else(|| {
+                ErrorKind::NoVersionToPublish(package.package.clone())
+            })?;
+
+            results.push(Match(version, object, package.package.clone()));
         }
     }
 
@@ -507,12 +520,12 @@ where
         }
 
         let (version, object) = first;
+        let version = version_override.cloned().or(version);
 
-        let version = version.ok_or_else(
-            || format!("{}: package without a version", object),
-        )?;
+        let version = version.ok_or_else(|| {
+            ErrorKind::NoVersionToPublish(package.package.clone())
+        })?;
 
-        let version = version_override.map(Clone::clone).unwrap_or(version);
         results.push(Match(version, object, package.package.clone()));
     }
 

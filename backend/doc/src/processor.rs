@@ -51,7 +51,7 @@ pub trait Processor<'env> {
         };
 
         if let Some(_) = name.prefix {
-            let path = name.package.into_package(|v| v.to_string()).parts.join("/");
+            let path = name.package.as_package(|v| v.to_string()).parts.join("/");
 
             return Ok(format!(
                 "{}/{}/{}.{}.html{}",
@@ -245,11 +245,9 @@ pub trait Processor<'env> {
     }
 
     fn package_url(&self, package: &RpVersionedPackage) -> String {
-        let url = package
-            .clone()
-            .into_package(ToString::to_string)
-            .parts
-            .join("/");
+        let url = package.clone().as_package(ToString::to_string).parts.join(
+            "/",
+        );
 
         format!("{}/{}/index.html", self.root(), url)
     }

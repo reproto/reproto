@@ -1,5 +1,5 @@
 use backend::errors as backend;
-use core::{ErrorPos, RpName};
+use core::{ErrorPos, RpName, RpPackage};
 use core::errors as core;
 use manifest::errors as manifest;
 use parser::errors as parser;
@@ -57,6 +57,11 @@ error_chain! {
         RegisteredTypeConflict(name: RpName) {
             description("registered type conflict")
             display("registered type conflict with: {}", name)
+        }
+
+        NoVersionToPublish(package: RpPackage) {
+            description("no version to publish")
+            display("no version to publish: {}", package)
         }
 
         PoisonError {

@@ -47,7 +47,7 @@ impl<'a> DocCompiler<'a> {
             packages.push((package, file));
 
             file.for_each_decl().for_each_loc(|decl| {
-                let package = decl.name().package.clone().into_package(|v| v.to_string());
+                let package = decl.name().package.clone().as_package(|v| v.to_string());
 
                 // maintain to know where to import static resources from.
                 let mut root = Vec::new();
@@ -170,7 +170,7 @@ impl<'a> DocCompiler<'a> {
 
         let mut root = Vec::new();
 
-        for part in package.into_package(|v| v.to_string()).parts {
+        for part in package.as_package(|v| v.to_string()).parts {
             root.push("..");
             path = path.join(part);
         }

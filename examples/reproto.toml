@@ -1,8 +1,12 @@
 paths = ["src"]
 output = "output"
 
+[publish]
+"com.github" = {version = "3.0.0"}
+"io.reproto" = {version = "1.0.0"}
+
 [packages]
-"io.reproto.blog" = {}
+"io.reproto.blog" = {version = "^1"}
 "io.reproto.petstore" = {version = "^1"}
-"com.github.gists" = {}
-"com.github.pulls" = {}
+"com.github.gists" = {version = "^3"}
+"com.github.pulls" = {version = "^3"}

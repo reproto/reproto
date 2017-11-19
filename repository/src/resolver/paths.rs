@@ -9,22 +9,28 @@
 //!
 //! The second form is only used when a version requirement is present.
 
-use core::{Object, PathObject, RpRequiredPackage, Version, VersionReq};
+use core::{Object, PathObject, RpPackage, RpRequiredPackage, Version, VersionReq};
 use errors::*;
 use resolver::Resolver;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 const EXT: &str = "reproto";
 
 pub struct Paths {
+    /// Paths to perform lookups in.
     paths: Vec<PathBuf>,
+    /// Entries which are locally published.
+    published: HashMap<RpPackage, Version>,
 }
 
 impl Paths {
-    pub fn new(paths: Vec<PathBuf>) -> Paths {
-        Paths { paths: paths }
+    pub fn new(paths: Vec<PathBuf>, published: HashMap<RpPackage, Version>) -> Paths {
+        Paths {
+            paths: paths,
+            published: published,
+        }
     }
 
     fn parse_stem<'a>(&self, stem: &'a str) -> Result<(&'a str, Option<Version>)> {
@@ -41,6 +47,25 @@ impl Paths {
         Ok((stem, None))
     }
 
+    /// Finds the published version from most to least specific package.
+    pub fn find_published_version(&self, package: &RpPackage) -> Option<&Version> {
+        if let Some(version) = self.published.get(package) {
+            return Some(version);
+        }
+
+        let mut it = package.parts.iter();
+
+        while let Some(_) = it.next_back() {
+            let package = RpPackage::new(it.as_slice().to_vec());
+
+            if let Some(version) = self.published.get(&package) {
+                return Some(version);
+            }
+        }
+
+        None
+    }
+
     /// Find any matching versions.
     ///
     /// TODO: Make `version_req` not use `Option`.
@@ -48,9 +73,10 @@ impl Paths {
         &self,
         path: &Path,
         base: &str,
-        version_req: Option<&VersionReq>,
+        package: &RpPackage,
+        version_req: &VersionReq,
     ) -> Result<Vec<(Option<Version>, Box<Object>)>> {
-        let mut files: BTreeMap<_, Box<Object>> = BTreeMap::new();
+        let mut files: BTreeMap<Option<Version>, Box<Object>> = BTreeMap::new();
 
         for e in fs::read_dir(path)? {
             let p = e?.path();
@@ -73,23 +99,21 @@ impl Paths {
                     continue;
                 }
 
-                if let Some(version_req) = version_req {
-                    if let Some(version) = version {
-                        if version_req.matches(&version) {
-                            let object = PathObject::new(None, &p);
-                            files.insert(Some(version), Box::new(object));
-                        }
+                let version = version.or_else(|| self.find_published_version(package).cloned());
 
-                        continue;
+                if let Some(version) = version {
+                    if version_req.matches(&version) {
+                        let object = PathObject::new(None, &p);
+                        files.insert(Some(version), Box::new(object));
                     }
 
-                    if !version_req.matches_any() {
-                        continue;
-                    }
+                    continue;
                 }
 
-                let object = PathObject::new(None, &p);
-                files.insert(None, Box::new(object));
+                if version_req.matches_any() {
+                    let object = PathObject::new(None, &p);
+                    files.insert(None, Box::new(object));
+                }
             }
         }
 
@@ -103,7 +127,6 @@ impl Resolver for Paths {
         package: &RpRequiredPackage,
     ) -> Result<Vec<(Option<Version>, Box<Object>)>> {
         let mut files = Vec::new();
-        let version_req = package.version_req.as_ref();
 
         for path in &self.paths {
             let mut path: PathBuf = path.to_owned();
@@ -112,7 +135,12 @@ impl Resolver for Paths {
             while let Some(step) = it.next() {
                 if it.peek().is_none() {
                     if path.is_dir() {
-                        files.extend(self.find_versions(&path, step, version_req)?);
+                        files.extend(self.find_versions(
+                            &path,
+                            step,
+                            &package.package,
+                            &package.version_req,
+                        )?);
                     }
 
                     break;

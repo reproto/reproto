@@ -2,7 +2,7 @@
 //!
 //! See: <https://developer.github.com/v3/pulls/>
 
-use com.github.common as c;
+use com.github.common@^3 as c;
 
 /// Milestone related to a project.
 type Milestone {

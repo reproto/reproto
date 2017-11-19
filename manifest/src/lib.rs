@@ -101,19 +101,15 @@ impl TryFromToml for RpRequiredPackage {
             format!("bad version: {}: {}", e, value)
         })?;
 
-        let version_req = if version_req.matches_any() {
-            None
-        } else {
-            Some(version_req)
-        };
-
         Ok(RpRequiredPackage::new(package, version_req))
     }
 
     fn try_from_value(_: &Path, id: &str, value: toml::Value) -> Result<Self> {
         let package = RpPackage::parse(id);
         let body: Package = value.try_into()?;
-        Ok(RpRequiredPackage::new(package, body.version))
+        let version_req = body.version.unwrap_or_else(VersionReq::any);
+
+        Ok(RpRequiredPackage::new(package, version_req))
     }
 }
 

@@ -75,10 +75,7 @@ impl Resolver for Repository {
     ) -> Result<Vec<(Option<Version>, Box<Object>)>> {
         let mut out = Vec::new();
 
-        let deployments = self.index.resolve(
-            &package.package,
-            package.version_req.as_ref(),
-        )?;
+        let deployments = self.index.resolve(&package.package, &package.version_req)?;
 
         for deployment in deployments {
             if let Some(path) = self.objects.get_object(&deployment.object)? {

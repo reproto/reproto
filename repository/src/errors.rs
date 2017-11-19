@@ -1,3 +1,6 @@
+//! Errors for repository
+
+use core::RpPackage;
 use core::errors as core;
 use hyper;
 use serde_json;
@@ -36,6 +39,11 @@ error_chain! {
         NoPublishObjects(url: String) {
             description("object storage does not support publishing")
             display("object storage does not support publishing: {}", url)
+        }
+
+        NoPublishedPackage(package: RpPackage) {
+            description("no version published for package")
+            display("no version published for package: {}", package)
         }
 
         PoisonError {

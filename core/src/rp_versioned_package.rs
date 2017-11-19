@@ -17,7 +17,8 @@ impl RpVersionedPackage {
         }
     }
 
-    pub fn into_package<F>(&self, version_fn: F) -> RpPackage
+    /// Convert into a package by piping the version through the provided function.
+    pub fn as_package<F>(&self, version_fn: F) -> RpPackage
     where
         F: FnOnce(&Version) -> String,
     {

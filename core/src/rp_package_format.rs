@@ -11,7 +11,7 @@ impl<'a> fmt::Display for RpPackageFormat<'a> {
         write!(f, "{}", self.0)?;
 
         if let Some(ref version) = self.1 {
-            write!(f, "@{}", version)?;
+            write!(f, "-{}", version)?;
         }
 
         Ok(())

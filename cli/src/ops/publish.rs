@@ -53,7 +53,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     results.extend(setup_publish_matches(
         manifest_resolver.as_mut(),
         version_override.as_ref(),
-        &manifest.publish,
+        &manifest.packages,
     )?);
 
     // packages to publish from the commandline

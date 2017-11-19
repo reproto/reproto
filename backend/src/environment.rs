@@ -2,7 +2,7 @@ use super::into_model::IntoModel;
 use super::naming::{FromNaming, Naming, SnakeCase};
 use super::scope::Scope;
 use core::{Loc, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage, RpReg,
-           RpRequiredPackage, RpVersionedPackage, WithPos};
+           RpRequiredPackage, RpVersionedPackage, VersionReq, WithPos};
 use errors::*;
 use linked_hash_map::LinkedHashMap;
 use parser;
@@ -92,7 +92,7 @@ impl Environment {
         let object = PathObject::new(None, path);
 
         let package = package.unwrap_or_else(|| RpVersionedPackage::new(RpPackage::empty(), None));
-        let required = RpRequiredPackage::new(package.package.clone(), None);
+        let required = RpRequiredPackage::new(package.package.clone(), VersionReq::any());
 
         if !self.visited.contains_key(&required) {
             let file = self.load_object(object, &package)?;
@@ -250,7 +250,13 @@ impl Environment {
 
         for use_decl in uses {
             let package = use_decl.package.value().clone();
-            let version_req = use_decl.version_req.as_ref().map(Loc::value).cloned();
+            let version_req = use_decl
+                .version_req
+                .as_ref()
+                .map(Loc::value)
+                .cloned()
+                .unwrap_or_else(VersionReq::any);
+
             let required = RpRequiredPackage::new(package, version_req);
 
             let use_package = self.import(&required)?;

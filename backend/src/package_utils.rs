@@ -19,6 +19,6 @@ pub trait PackageUtils {
     /// This uses a relatively safe strategy for encoding the version number. This can be adjusted
     /// by overriding `version_package`.
     fn package(&self, package: &RpVersionedPackage) -> RpPackage {
-        package.into_package(Self::version_package)
+        package.as_package(Self::version_package)
     }
 }
