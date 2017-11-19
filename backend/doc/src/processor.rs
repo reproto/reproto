@@ -249,17 +249,19 @@ pub trait Processor<'env> {
             });
 
             html!(self, body {} => {
-                html!(self, nav {class => "top"} => {
-                    html!(self, a {href => format!("{}/index.html", self.root())} ~ "To Index");
+                html!(self, div {class => "container"} => {
+                    html!(self, nav {class => "top"} => {
+                        html!(self, a {href => format!("{}/index.html", self.root())} ~ "Index");
 
-                    if let Some(package) = self.current_package() {
-                        let package_url = self.package_url(package);
-                        html!(self, span {} ~ "-");
-                        html!(self, a {href => package_url} ~ format!("To Package: {}", package));
-                    }
+                        if let Some(package) = self.current_package() {
+                            let package_url = self.package_url(package);
+                            html!(self, span {} ~ "&mdash;");
+                            html!(self, a {href => package_url} ~ format!("Package: {}", package));
+                        }
+                    });
+
+                    body()?;
                 });
-
-                body()?;
             });
         });
 
@@ -312,14 +314,14 @@ pub trait Processor<'env> {
     /// <span class="name-local">Bar</span>
     /// ```
     fn full_name(&self, name: &RpName, current: Option<&RpName>) -> Result<()> {
+        /*let package_url = self.package_url(&name.package);
+        html!(self, a {class => "name-package", href => package_url} ~ name.package.to_string());
+        html!(self, span {class => "name-sep"} ~ "::");*/
+
         let mut it = name.parts.iter();
         let local = it.next_back().ok_or_else(|| "local part of name required")?;
 
         let mut parts = Vec::new();
-
-        let package_url = self.package_url(&name.package);
-        html!(self, a {class => "name-package", href => package_url} ~ name.package.to_string());
-        html!(self, span {class => "name-sep"} ~ "::");
 
         for part in it {
             parts.push(part.clone());

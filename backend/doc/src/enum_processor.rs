@@ -24,6 +24,8 @@ define_processor!(EnumProcessor, RpEnumBody, self,
             Ok(())
         })
     };
+
+    current_package => &self.body.name.package;
 );
 
 impl<'p> EnumProcessor<'p> {

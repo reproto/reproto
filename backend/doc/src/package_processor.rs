@@ -77,6 +77,8 @@ define_processor!(PackageProcessor, Data<'env>, self,
             Ok(())
         })
     };
+
+    current_package => &self.body.package;
 );
 
 impl<'env> PackageProcessor<'env> {}
