@@ -2,7 +2,7 @@ use super::Objects;
 use core::{Object, RpPackage, RpRequiredPackage, Version};
 use errors::*;
 use index::{Deployment, Index};
-use resolver::{Resolved, Resolver};
+use resolver::{Resolved, ResolvedByPrefix, Resolver};
 use sha256::to_sha256;
 use update::Update;
 
@@ -86,5 +86,9 @@ impl Resolver for Repository {
         }
 
         Ok(out)
+    }
+
+    fn resolve_by_prefix(&mut self, _: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
+        Err("repository does not support resolve by prefix".into())
     }
 }

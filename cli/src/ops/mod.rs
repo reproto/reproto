@@ -13,7 +13,7 @@ use self::config_env::ConfigEnv;
 use self::imports::*;
 use backend::{CamelCase, FromNaming, Naming, SnakeCase};
 use core::{Object, RpPackage, RpPackageFormat, RpVersionedPackage, Version};
-use manifest::{Manifest, ManifestFile, read_manifest, self as m};
+use manifest::{Manifest, ManifestFile, Publish, read_manifest, self as m};
 use relative_path::RelativePath;
 use repository::*;
 use semck;
@@ -439,28 +439,22 @@ pub fn setup_publish_matches<'a, I>(
     publish: I,
 ) -> Result<Vec<Match>>
 where
-    I: IntoIterator<Item = &'a RpRequiredPackage>,
+    I: IntoIterator<Item = &'a Publish>,
 {
     let mut results = Vec::new();
 
-    for package in publish.into_iter() {
-        let resolved = resolver.resolve(&package)?;
+    for publish in publish.into_iter() {
+        let resolved = resolver.resolve_by_prefix(&publish.package)?;
 
         if resolved.is_empty() {
             return Err(
-                format!("no matching packages found for: {}", package).into(),
+                format!("no matching packages found for: {}", publish.package).into(),
             );
         }
 
-        // packages.push(RpRequiredPackage());
-        for Resolved { version, object } in resolved {
-            let version = version_override.cloned().or(version);
-
-            let version = version.ok_or_else(|| {
-                ErrorKind::NoVersionToPublish(package.package.clone())
-            })?;
-
-            results.push(Match(version, object, package.package.clone()));
+        for ResolvedByPrefix { package, object } in resolved {
+            let version = version_override.unwrap_or(&publish.version).clone();
+            results.push(Match(version, object, package.clone()));
         }
     }
 

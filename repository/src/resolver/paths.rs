@@ -11,8 +11,9 @@
 
 use core::{Object, PathObject, RpPackage, RpRequiredPackage, Version, VersionReq};
 use errors::*;
-use resolver::{Resolved, Resolver};
-use std::collections::{BTreeMap, HashMap};
+use resolver::{Resolved, ResolvedByPrefix, Resolver};
+use std::collections::{BTreeMap, HashMap, LinkedList};
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -67,9 +68,7 @@ impl Paths {
     }
 
     /// Find any matching versions.
-    ///
-    /// TODO: Make `version_req` not use `Option`.
-    pub fn find_versions(
+    pub fn find_by_version_req(
         &self,
         path: &Path,
         base: &str,
@@ -90,7 +89,7 @@ impl Paths {
                 continue;
             }
 
-            if let Some(stem) = p.file_stem().and_then(::std::ffi::OsStr::to_str) {
+            if let Some(stem) = p.file_stem().and_then(OsStr::to_str) {
                 let (name_base, version) = self.parse_stem(stem).map_err(|m| {
                     format!("{}: {}", p.display(), m)
                 })?;
@@ -101,23 +100,102 @@ impl Paths {
 
                 let version = version.or_else(|| self.find_published_version(package).cloned());
 
+                // versioned matches by requirement.
                 if let Some(version) = version {
                     if version_req.matches(&version) {
-                        let object = PathObject::new(None, &p);
-                        files.insert(Some(version), Box::new(object));
+                        files.insert(Some(version), Box::new(PathObject::new(None, &p)));
                     }
 
                     continue;
                 }
 
+                // unversioned only matches by wildcard.
                 if version_req.matches_any() {
-                    let object = PathObject::new(None, &p);
-                    files.insert(None, Box::new(object));
+                    files.insert(None, Box::new(PathObject::new(None, &p)));
                 }
             }
         }
 
         Ok(files.into_iter().map(Resolved::from_pair).collect())
+    }
+
+    /// Load .reproto file from the given package path if present.
+    fn load_file(&self, path: &Path, prefix: &RpPackage) -> Option<ResolvedByPrefix> {
+        let mut file = path.to_owned();
+        file.set_extension(EXT);
+
+        if file.is_file() {
+            Some(ResolvedByPrefix {
+                package: prefix.clone(),
+                object: Box::new(PathObject::new(None, &file)),
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Load .reproto file from path if valid reproto file and present.
+    fn load_from_path(&self, path: &Path, prefix: RpPackage) -> Result<Option<ResolvedByPrefix>> {
+        if path.extension().map(|ext| ext != EXT).unwrap_or(true) {
+            debug!("skipping wrong file extension: {}", path.display());
+            return Ok(None);
+        }
+
+        let stem = path.file_stem().and_then(OsStr::to_str).ok_or_else(|| {
+            format!("illegal path: {}", path.display())
+        })?;
+
+        let (stem, version) = self.parse_stem(stem)?;
+
+        if version.is_some() {
+            debug!("skipping versioned: {}", path.display());
+            return Ok(None);
+        }
+
+        let package = prefix.join_part(stem);
+
+        Ok(Some(ResolvedByPrefix {
+            package: package,
+            object: Box::new(PathObject::new(None, &path)),
+        }))
+    }
+
+    /// Find all packages by prefix.
+    pub fn find_by_prefix(&self, path: &Path, prefix: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
+        let mut files = Vec::new();
+
+        files.extend(self.load_file(path, prefix));
+
+        if path.is_dir() {
+            let mut queue = LinkedList::new();
+
+            queue.push_back((prefix.clone(), path.to_owned()));
+
+            while let Some((prefix, path)) = queue.pop_front() {
+                for entry in fs::read_dir(path)? {
+                    let entry = entry?;
+                    let path = entry.path();
+
+                    if path.is_file() {
+                        files.extend(self.load_from_path(&path, prefix.clone())?);
+                        continue;
+                    }
+
+                    if path.is_dir() {
+                        let file_name = entry.file_name();
+
+                        let name = file_name.to_str().ok_or_else(|| {
+                            format!("illegal path: {}", path.display())
+                        })?;
+
+                        queue.push_back((prefix.clone().join_part(name), path));
+                        continue;
+                    }
+                }
+            }
+        }
+
+        Ok(files)
     }
 }
 
@@ -132,7 +210,7 @@ impl Resolver for Paths {
             while let Some(step) = it.next() {
                 if it.peek().is_none() {
                     if path.is_dir() {
-                        files.extend(self.find_versions(
+                        files.extend(self.find_by_version_req(
                             &path,
                             step,
                             &package.package,
@@ -145,6 +223,18 @@ impl Resolver for Paths {
 
                 path = path.join(step);
             }
+        }
+
+        Ok(files)
+    }
+
+    fn resolve_by_prefix(&mut self, prefix: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
+        let mut files = Vec::new();
+
+        for path in &self.paths {
+            let mut it = prefix.parts.iter();
+            let path = it.fold(path.to_owned(), |p, part| p.join(part));
+            files.extend(self.find_by_prefix(&path, prefix)?);
         }
 
         Ok(files)

@@ -1,6 +1,6 @@
-use core::RpRequiredPackage;
+use core::{RpPackage, RpRequiredPackage};
 use errors::*;
-use resolver::{Resolved, Resolver};
+use resolver::{Resolved, ResolvedByPrefix, Resolver};
 
 pub struct Resolvers {
     resolvers: Vec<Box<Resolver>>,
@@ -18,6 +18,16 @@ impl Resolver for Resolvers {
 
         for resolver in &mut self.resolvers.iter_mut() {
             out.extend(resolver.resolve(package)?);
+        }
+
+        Ok(out)
+    }
+
+    fn resolve_by_prefix(&mut self, package: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
+        let mut out = Vec::new();
+
+        for resolver in &mut self.resolvers.iter_mut() {
+            out.extend(resolver.resolve_by_prefix(package)?);
         }
 
         Ok(out)

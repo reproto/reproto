@@ -3,14 +3,25 @@ mod resolvers;
 
 pub use self::paths::Paths;
 pub use self::resolvers::Resolvers;
-use core::{Object, RpRequiredPackage, Version};
+use core::{Object, RpPackage, RpRequiredPackage, Version};
 use errors::*;
 use std::fmt;
 
 /// A resolved package.
 #[derive(Debug)]
 pub struct Resolved {
+    /// Version of object found.
     pub version: Option<Version>,
+    /// Object found.
+    pub object: Box<Object>,
+}
+
+/// A resolved package.
+#[derive(Debug)]
+pub struct ResolvedByPrefix {
+    /// Package object belongs to.
+    pub package: RpPackage,
+    /// Object found.
     pub object: Box<Object>,
 }
 
@@ -40,4 +51,7 @@ impl fmt::Display for Resolved {
 pub trait Resolver {
     /// Resolve the specified request.
     fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>>;
+
+    /// Resolve by prefix.
+    fn resolve_by_prefix(&mut self, package: &RpPackage) -> Result<Vec<ResolvedByPrefix>>;
 }

@@ -32,6 +32,12 @@ impl RpPackage {
         parts.extend(other.parts.clone());
         RpPackage::new(parts)
     }
+
+    /// Join with the given part.
+    pub fn join_part<S: AsRef<str>>(mut self, other: S) -> RpPackage {
+        self.parts.push(other.as_ref().to_string());
+        self
+    }
 }
 
 impl fmt::Display for RpPackage {
