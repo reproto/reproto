@@ -17,7 +17,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
     use self::Language::*;
 
     let manifest = setup_manifest(matches)?;
-    let env = setup_env(&manifest)?;
+    let env = setup_environment(&manifest)?;
     let options = setup_options(&manifest)?;
 
     let language = manifest

@@ -6,7 +6,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 
 pub fn entry(matches: &ArgMatches) -> Result<()> {
     let manifest = setup_manifest(matches)?;
-    let env = setup_env(&manifest)?;
+    let env = setup_environment(&manifest)?;
     let options = setup_options(&manifest)?;
     let compiler_options = setup_compiler_options(&manifest, matches)?;
 

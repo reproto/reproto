@@ -18,7 +18,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 
 pub fn entry(matches: &ArgMatches) -> Result<()> {
     let manifest = setup_manifest(matches)?;
-    let mut env = setup_env(&manifest)?;
+    let mut env = setup_environment(&manifest)?;
 
     let mut manifest_resolver = setup_path_resolver(&manifest)?.ok_or_else(|| {
         "could not setup manifest resolver"

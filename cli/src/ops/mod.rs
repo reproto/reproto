@@ -273,11 +273,11 @@ pub fn setup_path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>>
 pub fn setup_resolvers(manifest: &Manifest) -> Result<Box<Resolver>> {
     let mut resolvers: Vec<Box<Resolver>> = Vec::new();
 
+    resolvers.push(Box::new(setup_repository(manifest)?));
+
     if let Some(resolver) = setup_path_resolver(manifest)? {
         resolvers.push(resolver);
     }
-
-    resolvers.push(Box::new(setup_repository(manifest)?));
 
     Ok(Box::new(Resolvers::new(resolvers)))
 }
@@ -293,12 +293,6 @@ pub fn setup_options(manifest: &Manifest) -> Result<Options> {
         id_converter: id_converter,
         modules: manifest.modules.clone(),
     })
-}
-
-pub fn setup_environment(manifest: &Manifest) -> Result<Environment> {
-    let resolvers = setup_resolvers(manifest)?;
-    let package_prefix = manifest.package_prefix.clone();
-    Ok(Environment::new(package_prefix, resolvers))
 }
 
 /// Read the manifest based on the current environment.
@@ -321,8 +315,12 @@ pub fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
     Ok(manifest)
 }
 
-pub fn setup_env(manifest: &Manifest) -> Result<Environment> {
-    let mut env = setup_environment(manifest)?;
+/// Setup environment.
+pub fn setup_environment(manifest: &Manifest) -> Result<Environment> {
+    let resolvers = setup_resolvers(manifest)?;
+    let package_prefix = manifest.package_prefix.clone();
+
+    let mut env = Environment::new(package_prefix, resolvers);
 
     let mut errors = Vec::new();
 

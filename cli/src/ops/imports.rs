@@ -1,6 +1,6 @@
-pub(crate) use super::{Match, semck_check, setup_compiler_options, setup_env, setup_manifest,
-                       setup_matches, setup_options, setup_path_resolver, setup_publish_matches,
-                       setup_repository};
+pub(crate) use super::{Match, semck_check, setup_compiler_options, setup_environment,
+                       setup_manifest, setup_matches, setup_options, setup_path_resolver,
+                       setup_publish_matches, setup_repository};
 pub(crate) use backend::{CompilerOptions, Environment, Options};
 pub(crate) use clap::{App, Arg, ArgMatches, SubCommand};
 pub(crate) use core::RpRequiredPackage;
