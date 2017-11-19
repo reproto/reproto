@@ -1,10 +1,13 @@
 #![recursion_limit = "1000"]
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
 extern crate genco;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate pulldown_cmark;
+extern crate syntect;
 
 #[macro_use]
 mod macros;
@@ -22,6 +25,8 @@ mod enum_processor;
 mod interface_processor;
 mod index_processor;
 mod package_processor;
+mod rendering;
+mod highlighting;
 
 pub const NORMALIZE_CSS_NAME: &str = "normalize.css";
 pub const DOC_CSS_NAME: &str = "doc.css";

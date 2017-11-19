@@ -11,3 +11,4 @@ __pycache__
 /src/backend/doc/themes.rs
 /server/objects
 /examples/output/
+/dumps/

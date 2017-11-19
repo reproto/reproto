@@ -1,4 +1,24 @@
 //! Blog-related abstractions.
+//!
+//! # Examples
+//!
+//! Rust Example:
+//!
+//! ```rust
+//! fn main() {
+//!     let hello = "world";
+//! }
+//! ```
+//!
+//! Java Example:
+//!
+//! ```java
+//! public static class Foo {
+//!     public void hello() {
+//!         System.out.println("Hello World");
+//!     }
+//! }
+//! ```
 
 /// A blog post with comments.
 type Post {

@@ -3,6 +3,9 @@
 background_color = "#ffffff"
 font_family = "Calibri, Candara, Segoe, Segoe UI, Optima, Arial, sans-serif"
 font_size = "16px"
+monospace_font_family = "monospace, monospace"
+monospace_font_size = "14px"
+
 primitive_color = "#e6af69"
 keyword_color = "#4b8c4b"
 doc_h1_size = "120%"

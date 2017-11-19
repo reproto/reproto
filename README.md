@@ -39,17 +39,30 @@ but avoid building large repositories of specifications right now.
 * Doc (`doc`)
   * HTML-based documentation, based from contextual markdown comments.
 
-# Examples
+# Building
 
-Make you have [gotten started with Rust][rust-get-started].
+Make sure you have [gotten started with Rust][rust-get-started].
 
-Build ReProto using cargo:
+Initialize submodules:
 
 ```bash
-$> cargo install --path $PWD/cli reproto
+$ git submodule update --init
 ```
 
-This will install `reproto` into `~/.cargo/bin`, make sure it is in your PATH.
+Pack syntax highlighting and themes:
+
+```bash
+$ cargo run --bin reproto-pack --manifest-path=pack/Cargo.toml
+```
+
+Build and install the CLI.
+This will install `reproto` into `~/.cargo/bin`, make sure it is in your PATH:
+
+```bash
+$ cargo install --path $PWD/cli reproto
+```
+
+# Examples
 
 The following is an example of how to build documentation for a the [examples manifest][examples].
 

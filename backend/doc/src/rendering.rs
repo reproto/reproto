@@ -1,0 +1,55 @@
+use self::cmark::{Event, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES, Options, Parser, Tag};
+
+use backend::errors::*;
+use doc_builder::DocBuilder;
+use highlighting::{SYNTAX_SET, THEME_SET};
+
+use pulldown_cmark as cmark;
+use std::borrow::Cow::{Borrowed, Owned};
+use syntect::easy::HighlightLines;
+use syntect::html::{IncludeBackground, start_coloured_html_snippet, styles_to_coloured_html};
+
+pub fn markdown_to_html(out: &mut DocBuilder, content: &str) -> Result<()> {
+    let mut highlighter: Option<HighlightLines> = None;
+
+    let mut opts = Options::empty();
+    opts.insert(OPTION_ENABLE_TABLES);
+    opts.insert(OPTION_ENABLE_FOOTNOTES);
+
+    let parser = Parser::new_ext(content, opts).map(|event| match event {
+        Event::Text(text) => {
+            if let Some(ref mut highlighter) = highlighter {
+                let highlighted = &highlighter.highlight(&text);
+                let html = styles_to_coloured_html(highlighted, IncludeBackground::Yes);
+                return Event::Html(Owned(html));
+            }
+
+            Event::Text(text)
+        }
+        Event::Start(Tag::CodeBlock(ref info)) => {
+            let theme = &THEME_SET.themes["ayu-dark"];
+
+            highlighter = SYNTAX_SET.with(|ss| {
+                let syntax = info.split(' ')
+                    .next()
+                    .and_then(|lang| ss.find_syntax_by_token(lang))
+                    .unwrap_or_else(|| ss.find_syntax_plain_text());
+
+                Some(HighlightLines::new(syntax, theme))
+            });
+
+            let snippet = start_coloured_html_snippet(theme);
+            Event::Html(Owned(format!("<div class=\"code\">{}", snippet)))
+        }
+        Event::End(Tag::CodeBlock(_)) => {
+            highlighter = None;
+            Event::Html(Borrowed("</pre></div>"))
+        }
+        _ => event,
+    });
+
+    let mut buffer = String::new();
+    cmark::html::push_html(&mut buffer, parser);
+    out.write_str(buffer.as_str())?;
+    Ok(())
+}

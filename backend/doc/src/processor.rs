@@ -7,7 +7,8 @@ use core::{ForEachLoc, Loc, RpDecl, RpField, RpName, RpType, RpVersionedPackage}
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
-use pulldown_cmark as markdown;
+use rendering::markdown_to_html;
+use std::ops::DerefMut;
 use std::rc::Rc;
 
 pub trait Processor<'env> {
@@ -67,17 +68,9 @@ pub trait Processor<'env> {
         Ok(format!("{}.{}.html{}", kind, parts.join("."), fragment))
     }
 
-    fn markdown(input: &str) -> String {
-        let p = markdown::Parser::new(input);
-        let mut s = String::new();
-        markdown::html::push_html(&mut s, p);
-        s
-    }
-
-    fn write_markdown(&self, comment: &[String]) -> Result<()> {
+    fn markdown(&self, comment: &str) -> Result<()> {
         if !comment.is_empty() {
-            let comment = comment.join("\n");
-            write!(self.out(), "{}", Self::markdown(&comment))?;
+            markdown_to_html(self.out().deref_mut(), comment)?;
         }
 
         Ok(())
@@ -92,7 +85,9 @@ pub trait Processor<'env> {
         if it.peek().is_some() {
             let comment = it.map(ToOwned::to_owned).collect::<Vec<_>>();
             let comment = comment.join("\n");
-            html!(self, div { class => "doc" } ~ Self::markdown(&comment));
+            html!(self, div { class => "doc" } => {
+                self.markdown(comment.as_str())?;
+            });
         } else {
             html!(self, div { class => "missing-doc" } ~ Escape("no documentation :("));
         }
