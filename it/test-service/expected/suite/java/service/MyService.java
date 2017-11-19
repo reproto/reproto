@@ -2,7 +2,7 @@ package service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import common.Entry;
+import common._1_0_0.Entry;
 import io.grpc.BindableService;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
