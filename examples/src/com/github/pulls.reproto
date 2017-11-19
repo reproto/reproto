@@ -1,4 +1,4 @@
-//! Data structures for pull requests.
+//! Github pull requests
 //!
 //! See: <https://developer.github.com/v3/pulls/>
 

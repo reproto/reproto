@@ -1,3 +1,5 @@
+//! Github Gists
+
 type Gist {
   /// ID of the gist.
   id: u64;
