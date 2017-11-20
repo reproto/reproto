@@ -1,9 +1,9 @@
 //! Compiler for generating documentation.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
+use backend::Environment;
 use backend::errors::*;
 use core::{ForEachLoc, RpDecl, RpFile, RpVersionedPackage};
-use doc_backend::DocBackend;
 use doc_builder::DocBuilder;
 use enum_processor::EnumProcessor;
 use genco::IoFmt;
@@ -17,37 +17,32 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use syntect::highlighting::Theme;
 use tuple_processor::TupleProcessor;
 use type_processor::TypeProcessor;
 
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
 pub struct DocCompiler<'a> {
-    pub backend: DocBackend<'a>,
+    pub env: Environment,
     pub out_path: PathBuf,
     pub skip_static: bool,
+    pub theme_css: &'a [u8],
+    pub syntax_theme: &'a Theme,
 }
 
 impl<'a> DocCompiler<'a> {
-    pub fn new(backend: DocBackend<'a>, out_path: PathBuf, skip_static: bool) -> DocCompiler<'a> {
-        DocCompiler {
-            backend: backend,
-            out_path: out_path,
-            skip_static: skip_static,
-        }
-    }
-
     /// Do the compilation.
     pub fn compile(&self) -> Result<()> {
-        for (_, file) in self.backend.env.for_each_file() {
+        for (_, file) in self.env.for_each_file() {
             file.for_each_decl().for_each_loc(
                 |decl| self.process_decl(decl),
             )?;
         }
 
-        self.write_index(self.backend.env.for_each_file())?;
+        self.write_index(self.env.for_each_file())?;
 
-        for (package, file) in self.backend.env.for_each_file() {
+        for (package, file) in self.env.for_each_file() {
             self.write_package(package, file)?;
         }
 
@@ -93,8 +88,8 @@ impl<'a> DocCompiler<'a> {
             Interface(ref body) => {
                 InterfaceProcessor {
                     out: out,
-                    env: &self.backend.env,
-                    syntax_theme: self.backend.syntax_theme,
+                    env: &self.env,
+                    syntax_theme: self.syntax_theme,
                     root: &root,
                     body: body,
                 }.process()
@@ -102,8 +97,8 @@ impl<'a> DocCompiler<'a> {
             Type(ref body) => {
                 TypeProcessor {
                     out: out,
-                    env: &self.backend.env,
-                    syntax_theme: self.backend.syntax_theme,
+                    env: &self.env,
+                    syntax_theme: self.syntax_theme,
                     root: &root,
                     body: body,
                 }.process()
@@ -111,8 +106,8 @@ impl<'a> DocCompiler<'a> {
             Tuple(ref body) => {
                 TupleProcessor {
                     out: out,
-                    env: &self.backend.env,
-                    syntax_theme: self.backend.syntax_theme,
+                    env: &self.env,
+                    syntax_theme: self.syntax_theme,
                     root: &root,
                     body: body,
                 }.process()
@@ -120,8 +115,8 @@ impl<'a> DocCompiler<'a> {
             Enum(ref body) => {
                 EnumProcessor {
                     out: out,
-                    env: &self.backend.env,
-                    syntax_theme: self.backend.syntax_theme,
+                    env: &self.env,
+                    syntax_theme: self.syntax_theme,
                     root: &root,
                     body: body,
                 }.process()
@@ -129,8 +124,8 @@ impl<'a> DocCompiler<'a> {
             Service(ref body) => {
                 ServiceProcessor {
                     out: out,
-                    env: &self.backend.env,
-                    syntax_theme: self.backend.syntax_theme,
+                    env: &self.env,
+                    syntax_theme: self.syntax_theme,
                     root: &root,
                     body: body,
                 }.process()
@@ -153,15 +148,9 @@ impl<'a> DocCompiler<'a> {
 
         let doc_css = self.out_path.join(DOC_CSS_NAME);
 
-        let content = self.backend.themes.get(self.backend.theme.as_str());
-
-        if let Some(content) = content {
-            debug!("+css: {}", doc_css.display());
-            let mut f = fs::File::create(doc_css)?;
-            f.write_all(content)?;
-        } else {
-            return Err(format!("no such theme: {}", &self.backend.theme).into());
-        }
+        debug!("+css: {}", doc_css.display());
+        let mut f = fs::File::create(doc_css)?;
+        f.write_all(self.theme_css)?;
 
         Ok(())
     }
@@ -182,8 +171,8 @@ impl<'a> DocCompiler<'a> {
 
         PackageProcessor {
             out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
-            env: &self.backend.env,
-            syntax_theme: self.backend.syntax_theme,
+            env: &self.env,
+            syntax_theme: self.syntax_theme,
             root: &root.join("/"),
             body: &PackageData {
                 package: package,
@@ -207,8 +196,8 @@ impl<'a> DocCompiler<'a> {
 
         IndexProcessor {
             out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
-            env: &self.backend.env,
-            syntax_theme: self.backend.syntax_theme,
+            env: &self.env,
+            syntax_theme: self.syntax_theme,
             root: &".",
             body: &IndexData { entries: entries },
         }.process()?;

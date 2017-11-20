@@ -12,11 +12,8 @@ extern crate syntect;
 
 #[macro_use]
 mod macros;
-mod doc_backend;
 mod doc_builder;
 mod doc_compiler;
-mod doc_listeners;
-mod doc_options;
 mod escape;
 mod processor;
 mod service_processor;
@@ -38,34 +35,22 @@ pub const DEFAULT_SYNTAX_THEME: &str = "ayu-mirage";
 
 use self::backend::{App, Arg, ArgMatches, CompilerOptions, Environment, Options};
 use self::backend::errors::*;
-use self::doc_backend::DocBackend;
 use self::doc_compiler::DocCompiler;
-use self::doc_listeners::DocListeners;
-use self::doc_options::DocOptions;
 use highlighting::THEME_SET;
 use manifest::Manifest;
+use std::collections::HashMap;
 use syntect::highlighting::Theme;
 
-fn setup_module(module: &str) -> Result<Box<DocListeners>> {
-    let _module: Box<DocListeners> = match module {
-        _ => return Err(format!("No such module: {}", module).into()),
-    };
-}
+include!(concat!(env!("OUT_DIR"), "/themes.rs"));
 
-pub fn setup_listeners(options: Options) -> Result<(DocOptions, Box<DocListeners>)> {
-    let mut listeners: Vec<Box<DocListeners>> = Vec::new();
+fn build_themes() -> HashMap<&'static str, &'static [u8]> {
+    let mut m = HashMap::new();
 
-    for module in &options.modules {
-        listeners.push(setup_module(module)?);
+    for (key, value) in build_themes_vec() {
+        m.insert(key, value);
     }
 
-    let mut options = DocOptions::new();
-
-    for listener in &listeners {
-        listener.configure(&mut options)?;
-    }
-
-    Ok((options, Box::new(listeners)))
+    m
 }
 
 pub fn shared_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
@@ -105,60 +90,86 @@ pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 }
 
 /// Load and execute the provided clojure with a syntax theme.
-fn with_syntax_theme<F>(matches: &ArgMatches, manifest: &Manifest, f: F) -> Result<()>
+fn with_initialized<F>(matches: &ArgMatches, manifest: &Manifest, f: F) -> Result<()>
 where
-    F: FnOnce(&Theme) -> Result<()>,
+    F: FnOnce(&Theme, &[u8]) -> Result<()>,
 {
+    let themes = build_themes();
+
     let syntax_theme = matches
         .value_of("syntax-theme")
         .or_else(|| manifest.doc.syntax_theme.as_ref().map(String::as_str))
         .unwrap_or(DEFAULT_SYNTAX_THEME);
 
-    if let Some(syntax_theme) = THEME_SET.themes.get(syntax_theme) {
-        f(syntax_theme)
+    let default_theme: Theme = Default::default();
+
+    let syntax_theme = if let Some(syntax_theme) = THEME_SET.themes.get(syntax_theme) {
+        syntax_theme
     } else {
         warn!(
             "No syntax theme named `{}`, falling back to default",
             syntax_theme
         );
-        let default_theme: Theme = Default::default();
-        f(&default_theme)
-    }
+
+        &default_theme
+    };
+
+    let theme = matches.value_of("theme").unwrap_or(DEFAULT_THEME);
+
+    let theme_css = if let Some(theme_css) = themes.get(theme) {
+        theme_css
+    } else {
+        warn!("No syntax theme named `{}`, falling back to default", theme);
+
+        themes.get(DEFAULT_THEME).ok_or_else(|| {
+            format!("no such default theme: {}", DEFAULT_THEME)
+        })?
+    };
+
+    f(syntax_theme, theme_css)
 }
 
 pub fn compile(
     env: Environment,
-    options: Options,
+    _options: Options,
     compiler_options: CompilerOptions,
     matches: &ArgMatches,
     manifest: &Manifest,
 ) -> Result<()> {
     if matches.is_present("list-syntax-themes") {
-        let mut names: Vec<(&str, &Theme)> = THEME_SET.themes.iter().map(|e| (e.0.as_str(), e.1)).collect::<Vec<_>>();
+        let mut names: Vec<(&str, &Theme)> = THEME_SET
+            .themes
+            .iter()
+            .map(|e| (e.0.as_str(), e.1))
+            .collect::<Vec<_>>();
         names.sort_by(|a, b| a.0.cmp(b.0));
 
         println!("Available Syntax Themes:");
 
         for (id, theme) in names {
-            let name = theme.name.as_ref().map(String::as_str).unwrap_or("*no name*");
-            let author = theme.author.as_ref().map(String::as_str).unwrap_or("*unknown*");
+            let name = theme.name.as_ref().map(String::as_str).unwrap_or(
+                "*no name*",
+            );
+            let author = theme.author.as_ref().map(String::as_str).unwrap_or(
+                "*unknown*",
+            );
             println!("{} - {} by {}", id, name, author);
         }
 
         return Ok(());
     }
 
-    let theme = matches
-        .value_of("theme")
-        .unwrap_or(DEFAULT_THEME)
-        .to_owned();
-
     let skip_static = matches.is_present("skip-static");
 
-    with_syntax_theme(matches, manifest, |syntax_theme| {
-        let (options, listeners) = setup_listeners(options)?;
-        let backend = DocBackend::new(env, options, listeners, theme, syntax_theme);
-        let compiler = DocCompiler::new(backend, compiler_options.out_path, skip_static);
+    with_initialized(matches, manifest, move |syntax_theme, theme_css| {
+        let compiler = DocCompiler {
+            env: env,
+            out_path: compiler_options.out_path,
+            skip_static: skip_static,
+            theme_css: theme_css,
+            syntax_theme: syntax_theme,
+        };
+
         compiler.compile()
     })
 }
