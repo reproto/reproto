@@ -1,3 +1,3 @@
-# ReProto Java Backend
+# reproto java backend
 
 Backend implementation for Java.

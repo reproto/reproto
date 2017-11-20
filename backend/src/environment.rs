@@ -57,7 +57,7 @@ impl<'a> Iterator for DeclIter<'a> {
     }
 }
 
-/// Scoped environment for evaluating ReProto IDLs.
+/// Scoped environment for evaluating reproto IDLs.
 pub struct Environment {
     /// Global package prefix.
     package_prefix: Option<RpPackage>,

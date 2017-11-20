@@ -1,4 +1,4 @@
-# Integration Tests for ReProto
+# reproto integration tests
 
 Each test directory (`test-*`) does the following.
 
@@ -30,12 +30,12 @@ $> make help
 
 # Projects
 
-Projects are complete projects written in the target language for ReProto.
+Projects are complete projects written in the target language for reproto.
 
-They are intended to test the complete integration of ReProto, to verify that it actually works as
+They are intended to test the complete integration of reproto, to verify that it actually works as
 intended.
 
-Each project is expected to fullfill the following protocol:
+Each project is expected to fulfill the following protocol:
 
 * Running `make` in the directory should generate an executable `script.sh` file.
 * Running the generated `script.sh` should read JSON from stdin, line-by-line. And feed them into

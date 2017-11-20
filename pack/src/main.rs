@@ -11,7 +11,7 @@ fn main() {
     let app = App::new("reproto-pack")
         .version("0.0.1")
         .author("John-John Tedro <udoprog@tedro.se>")
-        .about("Creates binary packs for syntaxes and themes for ReProto")
+        .about("Creates binary packs for syntaxes and themes for reproto")
         .arg(Arg::with_name("skip-defaults").long("skip-defaults").help(
             "skip building defaults",
         ))

@@ -1,4 +1,4 @@
-//! Java Backend for ReProto
+//! Java backend for reproto
 
 use super::JAVA_CONTEXT;
 use backend::{Code, Converter, Environment, FromNaming, Naming, SnakeCase};

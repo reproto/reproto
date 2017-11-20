@@ -1,4 +1,4 @@
-# ReProto Repository
+# reproto repository
 
 Repository component containing various repository implementations.
 

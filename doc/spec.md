@@ -1,4 +1,4 @@
-# ReProto File Specification
+# reproto specification
 
 See [TODO](todo.md) for things that are work in progress.
 
@@ -22,7 +22,7 @@ See [TODO](todo.md) for things that are work in progress.
 
 ## Introduction
 
-ReProto is geared towards being an expressive and productive protocol specification.
+reproto is geared towards being an expressive and productive protocol specification.
 
 The choice of using a DSL over something existing like JSON or YAML is an attempt to improve
 signal-to-noise ratio.
@@ -85,7 +85,7 @@ final GraphsResponse response =
 
 ## Manifests
 
-ReProto supports loading project manifests describing what should be built.
+reproto supports loading project manifests describing what should be built.
 
 These can be stored with the project, and describes how and what should be built.
 
@@ -161,7 +161,7 @@ version = "1.0.1"
 
 In order to publish packages, the version of the package needs to be known.
 
-Since specifications would typically be unversioned during development, ReProto supports
+Since specifications would typically be unversioned during development, reproto supports
 a `[publish]` section where you can map what version local specifications belong to.
 
 The package specified is a prefix. The version will apply to any contained packages.
@@ -312,7 +312,7 @@ Specifications without a version are called _ephemeral_ specifications.
 Specifications are intended to be distributed.
 
 This can be done by uploading a specification to a repository, after which it can be pulled in for
-use by other projects through ReProto's repository system.
+use by other projects through reproto's repository system.
 
 ### Versioned specifications
 
@@ -628,7 +628,7 @@ Clients decoding a reserved field should raise an error.
 
 ## Extensions
 
-ReProto permits all types and interfaces to be extended.
+reproto permits all types and interfaces to be extended.
 
 Extensions allow for additions, and is typically used to adapt a protocol specification to your
 local environment.

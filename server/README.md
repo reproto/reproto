@@ -1,6 +1,6 @@
-# ReProto Repository Server
+# reproto repository server
 
-This is the server part of the HTTP repository of ReProto.
+This is the server part of the HTTP repository of reproto.
 
 ## Configuration
 

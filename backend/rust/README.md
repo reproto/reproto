@@ -1,3 +1,3 @@
-# ReProto Rust Backend
+# reproto Rust backend
 
 Backend implementation for Rust.

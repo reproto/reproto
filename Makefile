@@ -106,7 +106,7 @@ help:
 	@echo "Variables (specified like 'make VARIABLE=VALUE <target>'):"
 	@echo "  PROJECTS=foo     - only build the listed kinds of projects"
 	@echo "  DEBUG=all        - (very) verbose output"
-	@echo "  DEBUG=reproto    - debug ReProto"
+	@echo "  DEBUG=reproto    - debug reproto"
 	@echo "  DEBUG=mvn        - debug Maven"
 	@echo "  IT=basic - only build the specifiec integration tests"
 	@echo ""

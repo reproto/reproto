@@ -1,25 +1,27 @@
-# ReProto
+# reproto
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
 [![crates.io](https://img.shields.io/crates/v/reproto.svg)](https://crates.io/crates/reproto)
 
-ReProto is a system for describing and handling dependencies for JSON schemas.
+reproto is a system for describing the structure of JSON.
 
-It has the following components:
+We have the following components:
 
-* An interface description language (IDL) called reproto.
-* A compiler for the reproto language.
-* A [semantic version checker][semck] which verifies that modifications to schemas do not violate
+* An [interface description language] named `reproto`, that permits describing the structure of
+  JSON documents statically.
+* A compiler for the `reproto` language.
+* A [semantic version checker] which verifies that modifications to schemas do not violate
   [semantic versioning].
-* A build system and package manager similar to [Cargo].
-  This handles downloading, building, and publishing of dependencies.
+* A build system and package manager, which handles downloading, building, and publishing of
+  dependencies.
+* A rich [documentation][#documentation] generator.
 
 For more information:
 
 * See [Specification][spec] for details on how the reproto language works.
-* See [TODO][todo] for a list of things that still need to be done.
 * See [Examples][examples] for some example protocol specifications.
-* See [Config][config] for how to configure ReProto.
+* See [Config][config] for how to configure the system.
 * See [Integration Tests][it] for some examples of how protocol specifications can be used.
+* See [TODO][todo] for a list of things that still need to be done.
 
 **Note:** This project is in an early stage. Things will change a lot. Please take it for a spin,
 but avoid building large repositories of specifications right now.
@@ -27,17 +29,21 @@ but avoid building large repositories of specifications right now.
 # Backends
 
 * Java (`java`)
-  * Data models using [fasterxml jackson][jackson] (`-m fasterxml`), and/or
-    [lombok][lombok] (`-m lombok`).
+  * Data models using [fasterxml jackson] (`fasterxml`), and/or [lombok] (`lombok`).
   * [gRPC][grpc] support through the `grpc` module.
 * JavaScript (`js`)
   * ES2015 classes, that can be transpiled using babel (see [Integration Test][js-it]).
 * Python (`python`)
-  * Plain-python classes, compatible with 2 and 3 for databinding.
+  * Plain-python classes, compatible with 2 and 3 for binding data efficiently.
 * Rust (`rust`)
-  * Serde-based serialization.
-* Doc (`doc`)
-  * HTML-based documentation, based from contextual markdown comments.
+  * [Serde]-based serialization.
+
+# Documentation
+
+`reproto` can generate rich markdown-based documentation from your specifications.
+
+For examples, see <https://reproto.github.io/reproto/doc-examples/>.
+These have been generated from the [examples] manifest.
 
 # Building
 
@@ -74,10 +80,6 @@ $> open target/doc/index.html
 
 For more examples, please have a look at our [integration tests][it].
 
-[examples]: /examples/reproto.toml
-[rust-get-started]: https://doc.rust-lang.org/book/getting-started.html
-[it]: /it
-
 ## [Maven Plugin][maven-plugin]
 
 A Maven plugin that integrates reproto into the build lifecycle of a maven project.
@@ -112,7 +114,7 @@ $> make clean all
 
 # The IDL
 
-ReProto is an interface description language (IDL) for schemas.
+reproto is an interface description language (IDL) for schemas.
 
 The schema describe the structure of JSON documents, which is necessary to generate data structures
 in variour programming languages for safely and convenient interaction.
@@ -121,16 +123,21 @@ The goal is to have a compact, intuitive, and productive language for writing sp
 
 You can find example specifications under the [examples] directory.
 
+[examples]: /examples/reproto.toml
+[rust-get-started]: https://doc.rust-lang.org/book/getting-started.html
+[it]: /it
 [Cargo]: https://github.com/rust-lang/cargo
 [config]: /doc/config.md
 [examples]: /examples
 [grpc]: https://grpc.io
 [idl]: #the-idl
 [it]: /it
-[jackson]: https://github.com/FasterXML/jackson-databind
+[fasterxml jackson]: https://github.com/FasterXML/jackson-databind
 [js-it]: /it/js
 [lombok]: https://projectlombok.org/
 [semantic versioning]: https://semver.org
-[semck]: /semck
+[semantic version checker]: /semck
 [spec]: /doc/spec.md
+[interface description language]: /doc/spec.md
 [todo]: /doc/todo.md
+[Serde]: https://serde.rs

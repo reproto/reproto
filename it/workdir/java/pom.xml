@@ -9,7 +9,7 @@
   <artifactId>reproto-it</artifactId>
   <version>0.0.1-SNAPSHOT</version>
 
-  <name>ReProto Integration Test</name>
+  <name>reproto integration test</name>
   <description>${project.name}</description>
 
   <properties>

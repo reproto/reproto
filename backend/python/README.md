@@ -1,3 +1,3 @@
-# ReProto Python Backend
+# reproto Python backend
 
 Backend implementation for Python.

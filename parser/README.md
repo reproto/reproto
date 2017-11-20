@@ -1,3 +1,3 @@
-# ReProto Parser
+# reproto parser
 
-Parser implementation of ReProto.
+Parser implementation for the reproto interface description language.

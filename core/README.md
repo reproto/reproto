@@ -1,3 +1,3 @@
-# ReProto Core
+# reproto core
 
-Core component containing central data-types to ReProto.
+Core component containing central data-types to reproto.

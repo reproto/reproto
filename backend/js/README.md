@@ -1,3 +1,3 @@
-# ReProto Javascript Backend
+# reproto Javascript backend
 
 Backend implementation for Javascript.
