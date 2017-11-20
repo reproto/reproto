@@ -1,0 +1,166 @@
+/* vim: ft=css
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #ffffff;
+  font-family: Calibri, Candara, Segoe, Segoe UI, Optima, Arial, sans-serif;
+  font-size: 16px;
+}
+
+table {
+    border-spacing: 0 5px;
+    border-collapse: separate
+}
+
+a {
+    text-decoration: none;
+    color: none;
+}
+
+section {
+    margin: 10px;
+}
+
+.container {
+    max-width: 1020px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/*
+h1 {
+    margin: 10px 0;
+}
+
+h2 {
+    margin: 10px 0;
+}
+
+h3 {
+    margin: 5px 0;
+}
+
+h4 {
+    margin: 5px 0;
+}
+
+h5 {
+    margin: 5px 0;
+}
+
+h6 {
+    margin: 5px 0;
+}
+*/
+
+.section-title {
+    padding-bottom: 5px;
+    border-bottom: 1px dashed #dddddd;
+}
+
+nav.top {
+    font-size: 18px;
+    margin: 10px;
+}
+
+.field {
+}
+
+/* All entries in the key should have no margin between them.
+ * Accomplish this using a flexbox */
+.field-key {
+    display: inline-flex;
+}
+
+.name-package {
+    color: #4d76ae;
+}
+
+.name-part {
+    color: #9c9c9c;
+}
+
+/* separator in a name */
+.name-sep {
+    color: #9c9c9c;
+}
+
+/* the last, most significant part of a name */
+.name-local {
+    color: #df3600;
+}
+
+/* a primitive type */
+.type-primitive {
+    color: #e6af69;
+}
+
+.kind {
+    color: #4b8c4b;
+}
+
+.keyword {
+    color: #4b8c4b;
+}
+
+.doc {
+}
+
+.missing-doc {
+    font-style: italic;
+}
+
+.doc h1, .doc h2, .doc h3, .doc h4, .doc h5, .doc h6 {
+    color: #4d76ae;
+    border-bottom: 1px solid #dddddd;
+}
+
+.doc h1 {
+    font-size: 120%;
+}
+
+.doc h2 {
+    font-size: 100%;
+}
+
+.doc h3 {
+    font-size: 100%;
+}
+
+.doc h4 {
+    font-size: 100%;
+}
+
+.doc h5 {
+    font-size: 100%;
+}
+
+.doc h6 {
+    font-size: 100%;
+}
+
+.doc p {
+    margin: 10px 0;
+}
+
+.package-item {
+}
+
+.package-item-doc {
+    padding-left: 20px;
+}
+
+/* smaller margin for package items since it looks better in a list. */
+.package-item-doc > .doc p {
+    margin: 5px 0;
+}
+
+.code pre {
+    padding: 16px;
+    font-size: monospace, monospace;
+    font-size: 14px;
+}
