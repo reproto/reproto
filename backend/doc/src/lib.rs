@@ -58,16 +58,27 @@ pub fn shared_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
         Arg::with_name("theme")
             .long("theme")
             .takes_value(true)
-            .help("Theme to use"),
+            .help("Theme to use (use `--list-themes` for available)"),
     );
+
+    let out = out.arg(Arg::with_name("list-themes").long("list-themes").help(
+        "List available \
+         themes",
+    ));
 
     let out = out.arg(
         Arg::with_name("syntax-theme")
             .long("syntax-theme")
             .takes_value(true)
             .help(
-                "Syntax theme to use (use --list-syntax-themes for available)",
+                "Syntax theme to use (use `--list-syntax-themes` for available)",
             ),
+    );
+
+    let out = out.arg(
+        Arg::with_name("list-syntax-themes")
+            .long("list-syntax-themes")
+            .help("List available syntax themes"),
     );
 
     let out = out.arg(Arg::with_name("skip-static").long("skip-static").help(
@@ -75,12 +86,6 @@ pub fn shared_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
          with static \
          files",
     ));
-
-    let out = out.arg(
-        Arg::with_name("list-syntax-themes")
-            .long("list-syntax-themes")
-            .help("List available syntax themes"),
-    );
 
     out
 }
@@ -90,12 +95,15 @@ pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 }
 
 /// Load and execute the provided clojure with a syntax theme.
-fn with_initialized<F>(matches: &ArgMatches, manifest: &Manifest, f: F) -> Result<()>
+fn with_initialized<F>(
+    matches: &ArgMatches,
+    manifest: &Manifest,
+    themes: &HashMap<&'static str, &'static [u8]>,
+    f: F,
+) -> Result<()>
 where
     F: FnOnce(&Theme, &[u8]) -> Result<()>,
 {
-    let themes = build_themes();
-
     let syntax_theme = matches
         .value_of("syntax-theme")
         .or_else(|| manifest.doc.syntax_theme.as_ref().map(String::as_str))
@@ -129,6 +137,45 @@ where
     f(syntax_theme, theme_css)
 }
 
+fn list_themes(themes: &HashMap<&'static str, &'static [u8]>) -> Result<()> {
+    let mut names = themes.keys().collect::<Vec<_>>();
+    names.sort();
+
+    println!("Available Themes:");
+
+    for id in names {
+        println!("{}", id);
+    }
+
+    Ok(())
+}
+
+fn list_syntax_themes() -> Result<()> {
+    let mut names: Vec<(&str, &Theme)> = THEME_SET
+        .themes
+        .iter()
+        .map(|e| (e.0.as_str(), e.1))
+        .collect::<Vec<_>>();
+
+    names.sort_by(|a, b| a.0.cmp(b.0));
+
+    println!("Available Syntax Themes:");
+
+    for (id, theme) in names {
+        let name = theme.name.as_ref().map(String::as_str).unwrap_or(
+            "*no name*",
+        );
+
+        let author = theme.author.as_ref().map(String::as_str).unwrap_or(
+            "*unknown*",
+        );
+
+        println!("{} - {} by {}", id, name, author);
+    }
+
+    Ok(())
+}
+
 pub fn compile(
     env: Environment,
     _options: Options,
@@ -136,32 +183,30 @@ pub fn compile(
     matches: &ArgMatches,
     manifest: &Manifest,
 ) -> Result<()> {
+    let themes = build_themes();
+
+    let mut done = false;
+
+    if matches.is_present("list-themes") {
+        list_themes(&themes)?;
+        done = true;
+    }
+
     if matches.is_present("list-syntax-themes") {
-        let mut names: Vec<(&str, &Theme)> = THEME_SET
-            .themes
-            .iter()
-            .map(|e| (e.0.as_str(), e.1))
-            .collect::<Vec<_>>();
-        names.sort_by(|a, b| a.0.cmp(b.0));
+        list_syntax_themes()?;
+        done = true;
+    }
 
-        println!("Available Syntax Themes:");
-
-        for (id, theme) in names {
-            let name = theme.name.as_ref().map(String::as_str).unwrap_or(
-                "*no name*",
-            );
-            let author = theme.author.as_ref().map(String::as_str).unwrap_or(
-                "*unknown*",
-            );
-            println!("{} - {} by {}", id, name, author);
-        }
-
+    // other task performed (e.g. listing themes).
+    if done {
         return Ok(());
     }
 
     let skip_static = matches.is_present("skip-static");
 
-    with_initialized(matches, manifest, move |syntax_theme, theme_css| {
+    let out = compiler_options.out_path.clone();
+
+    with_initialized(matches, manifest, &themes, move |syntax_theme, theme_css| {
         let compiler = DocCompiler {
             env: env,
             out_path: compiler_options.out_path,
@@ -171,5 +216,9 @@ pub fn compile(
         };
 
         compiler.compile()
-    })
+    })?;
+
+    println!("Wrote documentation in: {}", out.display());
+
+    Ok(())
 }
