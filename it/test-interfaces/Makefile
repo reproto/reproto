@@ -1,1 +1,1 @@
-java-args += -m fasterxml
+java-args += -m jackson

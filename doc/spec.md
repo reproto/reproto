@@ -5,6 +5,7 @@ See [TODO](todo.md) for things that are work in progress.
 * [Introduction](#introduction)
 * [Manifests](#manifests)
 * [File Structure](#file-structure)
+* [Documentation](#documentation)
 * [Distribution](#distribution)
 * [Specifications](#specifications)
   * [Versioned Specifications](#versioned-specifications)
@@ -308,13 +309,31 @@ Valid options are:
 * `upper_snake`, fields would be serialized as `UPPER_SNAKE`.
 * `lower_snake`, fields would be serialized as `lower_snake` (default).
 
-## Specifications
+## Documentation
 
-A specification is a UTF-8 encoded file containing declarations.
+Documentation is specified using special documentation comments.
 
-Conceptually specifications belong to a package, and can have a version.
+Documentation is written in [markdown], and supports syntax snippets using triple backticks.
 
-Specifications without a version are called _ephemeral_ specifications.
+For package-level documentation `//!` is used.
+
+For declaration-level documentation `///` is used.
+
+```reproto
+//! A package containing blog-related things
+
+/// A type-level documentation.
+///
+/// # Examples
+///
+/// ```json
+/// {"title": "My Awesome Title"}
+/// ```
+type Post {
+  /// A field-level documentation.
+  title: string;
+}
+```
 
 ## Distribution
 
@@ -322,6 +341,14 @@ Specifications are intended to be distributed through the package management sys
 
 This can be done by uploading a specification to a repository, after which it can be pulled in for
 use by other projects through the repository system.
+
+## Specifications
+
+A specification is a UTF-8 encoded file containing declarations.
+
+Conceptually specifications belong to a package, and can have a version.
+
+Specifications without a version are called _ephemeral_ specifications.
 
 ### Versioned specifications
 

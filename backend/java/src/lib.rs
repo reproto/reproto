@@ -8,7 +8,7 @@ extern crate reproto_core as core;
 
 mod builder;
 mod constructor_properties;
-mod fasterxml;
+mod jackson;
 mod java_backend;
 mod java_options;
 mod listeners;
@@ -30,7 +30,7 @@ fn setup_module(module: &str) -> Result<Box<Listeners>> {
     let module: Box<Listeners> = match module {
         "builder" => Box::new(builder::Module::new()),
         "constructor_properties" => Box::new(constructor_properties::Module::new()),
-        "fasterxml" => Box::new(fasterxml::Module::new()),
+        "jackson" => Box::new(jackson::Module::new()),
         "lombok" => Box::new(lombok::Module::new()),
         "mutable" => Box::new(mutable::Module::new()),
         "nullable" => Box::new(nullable::Module::new()),

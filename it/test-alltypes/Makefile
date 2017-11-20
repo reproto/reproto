@@ -1,2 +1,2 @@
-java-args += -m fasterxml
+java-args += -m jackson
 rust-args += -m chrono
