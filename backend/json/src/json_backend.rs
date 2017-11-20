@@ -27,10 +27,6 @@ impl JsonBackend {
         })
     }
 
-    pub fn verify(&self) -> Result<()> {
-        Ok(())
-    }
-
     pub fn package_file(&self, package: &RpPackage) -> String {
         package.parts.join("_")
     }

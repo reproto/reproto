@@ -14,6 +14,9 @@ Rethinking Protocol Generators
 [dependencies]
 reproto-backend = {path = "..", version = "0.3"}
 reproto-core = {path = "../../core", version = "0.3"}
+reproto-manifest = {path = "../../manifest", version = "0.3"}
 
-log = "0.3"
 genco = {version = "0.1"}
+log = "0.3"
+serde = "1.0"
+toml = "0.4"

@@ -106,10 +106,6 @@ impl JavaBackend {
         })
     }
 
-    pub fn verify(&self) -> Result<()> {
-        Ok(())
-    }
-
     fn field_mods(&self) -> Vec<Modifier> {
         use self::Modifier::*;
 

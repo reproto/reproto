@@ -1,19 +1,21 @@
+#[macro_use]
+mod macros;
 mod build;
 mod doc;
 mod config_env;
 mod imports;
-mod manifest;
 mod publish;
 mod repo;
 mod update;
-mod verify;
 mod check;
 
 use self::config_env::ConfigEnv;
 use self::imports::*;
+use backend;
 use backend::{CamelCase, FromNaming, Naming, SnakeCase};
 use core::{Object, RpPackage, RpPackageFormat, RpVersionedPackage, Version};
-use manifest::{Manifest, ManifestFile, Publish, read_manifest, self as m};
+use manifest::{Lang, Manifest, ManifestFile, ManifestPreamble, Publish, TryFromToml,
+               read_manifest, read_manifest_preamble, self as m};
 use relative_path::RelativePath;
 use repository::*;
 use semck;
@@ -21,6 +23,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use toml;
 use url;
 
 pub const DEFAULT_INDEX: &'static str = "git+https://github.com/reproto/reproto-index";
@@ -170,10 +173,13 @@ pub fn build_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out
 }
 
-pub fn setup_compiler_options(
-    manifest: &Manifest,
+pub fn setup_compiler_options<L>(
+    manifest: &Manifest<L>,
     matches: &ArgMatches,
-) -> Result<CompilerOptions> {
+) -> Result<CompilerOptions>
+where
+    L: Lang,
+{
     // output path as specified in manifest.
     let manifest_out = manifest.output.as_ref().map(PathBuf::as_path);
 
@@ -187,7 +193,10 @@ pub fn setup_compiler_options(
     Ok(CompilerOptions { out_path: out_path.to_owned() })
 }
 
-pub fn setup_repository(manifest: &Manifest) -> Result<Repository> {
+pub fn setup_repository<L>(manifest: &Manifest<L>) -> Result<Repository>
+where
+    L: Lang,
+{
     let repository = &manifest.repository;
 
     if repository.no_repository {
@@ -254,7 +263,10 @@ pub fn setup_repository(manifest: &Manifest) -> Result<Repository> {
     Ok(Repository::new(index, objects))
 }
 
-pub fn setup_path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>> {
+pub fn setup_path_resolver<L>(manifest: &Manifest<L>) -> Result<Option<Box<Resolver>>>
+where
+    L: Lang,
+{
     if manifest.paths.is_empty() {
         return Ok(None);
     }
@@ -270,7 +282,10 @@ pub fn setup_path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>>
     ))
 }
 
-pub fn setup_resolvers(manifest: &Manifest) -> Result<Box<Resolver>> {
+pub fn setup_resolvers<L>(manifest: &Manifest<L>) -> Result<Box<Resolver>>
+where
+    L: Lang,
+{
     let mut resolvers: Vec<Box<Resolver>> = Vec::new();
 
     resolvers.push(Box::new(setup_repository(manifest)?));
@@ -282,41 +297,60 @@ pub fn setup_resolvers(manifest: &Manifest) -> Result<Box<Resolver>> {
     Ok(Box::new(Resolvers::new(resolvers)))
 }
 
-pub fn setup_options(manifest: &Manifest) -> Result<Options> {
+pub fn setup_options<L>(manifest: &Manifest<L>) -> Result<Options>
+where
+    L: Lang,
+{
     let id_converter = if let Some(id_converter) = manifest.id_converter.as_ref() {
         Some(parse_id_converter(id_converter)?)
     } else {
         None
     };
 
-    Ok(Options {
-        id_converter: id_converter,
-        modules: manifest.modules.clone(),
-    })
+    Ok(Options { id_converter: id_converter })
 }
 
-/// Read the manifest based on the current environment.
-pub fn setup_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
+/// Read the first part of the manifest, to determine the language used.
+pub fn manifest_preamble<'a>(matches: &ArgMatches<'a>) -> Result<ManifestPreamble> {
     let manifest_path = matches
         .value_of("manifest-path")
         .map::<Result<&Path>, _>(|p| Ok(Path::new(p)))
         .unwrap_or_else(|| Ok(Path::new(MANIFEST_NAME)))?;
 
-    let mut manifest = Manifest::new(manifest_path);
-
-    if manifest_path.is_file() {
-        debug!("reading manifest: {}", manifest_path.display());
-        let reader = File::open(manifest_path.clone())?;
-        read_manifest(&mut manifest, &manifest_path, reader)
-            .map_err(|e| format!("{}: {}", manifest_path.display(), e))?;
+    if !manifest_path.is_file() {
+        return Ok(ManifestPreamble::new(manifest_path));
     }
+
+    debug!("reading manifest: {}", manifest_path.display());
+    let reader = File::open(manifest_path.clone())?;
+
+    read_manifest_preamble(&manifest_path, reader).map_err(
+        |e| {
+            format!("{}: {}", manifest_path.display(), e).into()
+        },
+    )
+}
+
+/// Read the manifest based on the current environment.
+pub fn manifest<'a, L>(matches: &ArgMatches<'a>, preamble: ManifestPreamble) -> Result<Manifest<L>>
+where
+    L: Lang,
+{
+    let path = preamble.path.clone();
+
+    let mut manifest = read_manifest(preamble).map_err(|e| {
+        format!("{}: {}", path.display(), e)
+    })?;
 
     manifest_from_matches(&mut manifest, matches)?;
     Ok(manifest)
 }
 
 /// Setup environment.
-pub fn setup_environment(manifest: &Manifest) -> Result<Environment> {
+pub fn setup_environment<L>(manifest: &Manifest<L>) -> Result<Environment>
+where
+    L: Lang,
+{
     let resolvers = setup_resolvers(manifest)?;
     let package_prefix = manifest.package_prefix.clone();
 
@@ -356,13 +390,11 @@ pub fn setup_environment(manifest: &Manifest) -> Result<Environment> {
 
 pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.subcommand(build_args(build::options()));
-    let out = out.subcommand(build_args(verify::options()));
     let out = out.subcommand(build_args(doc::options()));
     let out = out.subcommand(base_args(check::options()));
     let out = out.subcommand(base_args(publish::options()));
     let out = out.subcommand(base_args(update::options()));
     let out = out.subcommand(base_args(repo::options()));
-    let out = out.subcommand(base_args(manifest::options()));
     out
 }
 
@@ -380,7 +412,10 @@ fn repository_from_matches(repository: &mut m::Repository, matches: &ArgMatches)
     Ok(())
 }
 
-fn manifest_from_matches(manifest: &mut Manifest, matches: &ArgMatches) -> Result<()> {
+fn manifest_from_matches<L>(manifest: &mut Manifest<L>, matches: &ArgMatches) -> Result<()>
+where
+    L: Lang,
+{
     manifest.paths.extend(
         matches
             .values_of("path")
@@ -399,13 +434,15 @@ fn manifest_from_matches(manifest: &mut Manifest, matches: &ArgMatches) -> Resul
             .map(ManifestFile::from_path),
     );
 
-    manifest.modules.extend(
-        matches
-            .values_of("module")
-            .into_iter()
-            .flat_map(|it| it)
-            .map(ToOwned::to_owned),
-    );
+    for module in matches.values_of("module").into_iter().flat_map(|it| it) {
+        let module = L::Module::try_from_value(
+            &manifest.path,
+            module,
+            toml::Value::Table(toml::value::Table::default()),
+        )?;
+
+        manifest.modules.push(module);
+    }
 
     for package in matches.values_of("package").into_iter().flat_map(|it| it) {
         let parsed = RpRequiredPackage::parse(package);
@@ -550,19 +587,60 @@ pub fn semck_check(
     Ok(())
 }
 
+/// High-level helper function to call the given clojure with all the necessary compile options.
+pub fn manifest_compile<'a, L, F>(
+    matches: &'a ArgMatches,
+    preamble: ManifestPreamble,
+    compile: F,
+) -> Result<()>
+where
+    L: Lang,
+    F: FnOnce(Environment,
+           Options,
+           CompilerOptions,
+           &'a ArgMatches,
+           Manifest<L>)
+           -> backend::errors::Result<()>,
+{
+    let manifest = manifest::<L>(matches, preamble)?;
+    let env = setup_environment(&manifest)?;
+    let options = setup_options(&manifest)?;
+    let compiler_options = setup_compiler_options(&manifest, matches)?;
+
+    let out = compiler_options.out_path.clone();
+
+    compile(env, options, compiler_options, matches, manifest)?;
+
+    info!("Built project in: {}", out.display());
+    Ok(())
+}
+
+/// High-level helper function to call the given clojure with all the necessary compile options.
+pub fn manifest_use<'a, L, F>(
+    matches: &'a ArgMatches,
+    preamble: ManifestPreamble,
+    use_f: F,
+) -> Result<()>
+where
+    L: Lang,
+    F: FnOnce(&'a ArgMatches, Manifest<L>) -> Result<()>,
+{
+    let manifest = manifest::<L>(matches, preamble)?;
+    use_f(matches, manifest)?;
+    Ok(())
+}
+
 pub fn entry(matches: &ArgMatches) -> Result<()> {
     let (name, matches) = matches.subcommand();
     let matches = matches.ok_or_else(|| "no subcommand")?;
 
     match name {
         "build" => return build::entry(matches),
-        "verify" => return verify::entry(matches),
         "check" => return check::entry(matches),
         "doc" => return doc::entry(matches),
         "update" => return update::entry(matches),
         "publish" => return publish::entry(matches),
         "repo" => return repo::entry(matches),
-        "manifest" => return manifest::entry(matches),
         _ => {}
     }
 

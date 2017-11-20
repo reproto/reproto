@@ -50,10 +50,6 @@ impl JsBackend {
         })
     }
 
-    pub fn verify(&self) -> Result<()> {
-        Ok(())
-    }
-
     /// Build a function that throws an exception if the given value `toks` is None.
     fn throw_if_null<'el, S>(&self, toks: S, field: &JsField) -> Tokens<'el, JavaScript<'el>>
     where

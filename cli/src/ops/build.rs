@@ -16,28 +16,24 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 pub fn entry(matches: &ArgMatches) -> Result<()> {
     use manifest::Language::*;
 
-    let manifest = setup_manifest(matches)?;
-    let env = setup_environment(&manifest)?;
-    let options = setup_options(&manifest)?;
-    let compiler_options = setup_compiler_options(&manifest, matches)?;
+    let preamble = manifest_preamble(matches)?;
 
-    let language = manifest
+    let language = preamble
         .language
+        .as_ref()
+        .cloned()
         .or_else(|| matches.value_of("lang").and_then(Language::parse))
         .ok_or_else(|| {
             "no language specified either through manifest or cli (--lang)"
         })?;
 
-    let out = compiler_options.out_path.clone();
-
     match language {
-        Java => java::compile(env, options, compiler_options, matches),
-        Js => js::compile(env, options, compiler_options, matches),
-        Json => json::compile(env, options, compiler_options, matches),
-        Python => python::compile(env, options, compiler_options, matches),
-        Rust => rust::compile(env, options, compiler_options, matches),
+        Java => manifest_compile::<::java::JavaLang, _>(matches, preamble, ::java::compile),
+        Js => manifest_compile::<::js::JsLang, _>(matches, preamble, ::js::compile),
+        Json => manifest_compile::<::json::JsonLang, _>(matches, preamble, ::json::compile),
+        Python => manifest_compile::<::python::PythonLang, _>(matches, preamble, ::python::compile),
+        Rust => manifest_compile::<::rust::RustLang, _>(matches, preamble, ::rust::compile),
     }?;
 
-    info!("Built project in: {}", out.display());
     Ok(())
 }

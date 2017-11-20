@@ -52,10 +52,6 @@ impl PythonBackend {
         })
     }
 
-    pub fn verify(&self) -> Result<()> {
-        Ok(())
-    }
-
     /// Build a function that raises an exception if the given value `toks` is None.
     fn raise_if_none<'el>(
         &self,

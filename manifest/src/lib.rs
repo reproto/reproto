@@ -19,8 +19,43 @@ use errors::*;
 use relative_path::{RelativePath, RelativePathBuf};
 use reproto_core::{RpPackage, RpRequiredPackage, Version, VersionReq};
 use std::collections::HashMap;
+use std::fmt;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+
+/// The trait that describes the specific implementation of a given language.
+pub trait Lang: Default {
+    /// Module type used.
+    type Module: 'static + TryFromToml;
+}
+
+/// Fallback language support in case no language is specified.
+#[derive(Default)]
+pub struct NoLang;
+
+pub enum NoModule {
+}
+
+impl NoModule {
+    /// Indicate that the provided values are not legal through an error.
+    pub fn illegal<T, V: fmt::Display>(_: &Path, id: &str, value: V) -> Result<T> {
+        Err(format!("illegal module: {} => {}", id, value).into())
+    }
+}
+
+impl TryFromToml for NoModule {
+    fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
+        NoModule::illegal(path, id, value)
+    }
+
+    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
+        NoModule::illegal(path, id, value)
+    }
+}
+
+impl Lang for NoLang {
+    type Module = NoModule;
+}
 
 /// Trait to convert different types.
 pub trait TryFromToml
@@ -195,7 +230,10 @@ pub enum Preset {
 impl Preset {}
 
 /// Apply the given preset to a manifest.
-fn apply_preset_to(value: toml::Value, manifest: &mut Manifest, base: &Path) -> Result<()> {
+fn apply_preset_to<L>(value: toml::Value, manifest: &mut Manifest<L>, base: &Path) -> Result<()>
+where
+    L: Lang,
+{
     use self::Preset::*;
     use self::toml::Value::*;
 
@@ -217,7 +255,10 @@ fn apply_preset_to(value: toml::Value, manifest: &mut Manifest, base: &Path) -> 
 
     return Ok(());
 
-    fn maven_apply_to(manifest: &mut Manifest, base: &Path) -> Result<()> {
+    fn maven_apply_to<L>(manifest: &mut Manifest<L>, base: &Path) -> Result<()>
+    where
+        L: Lang,
+    {
         // default path
         manifest.paths.push(
             base.join("src").join("main").join("reproto"),
@@ -271,15 +312,34 @@ pub struct Repository {
     pub objects: Option<String>,
 }
 
+/// The first part when the manifest was read.
+#[derive(Debug, Clone)]
+pub struct ManifestPreamble {
+    pub language: Option<Language>,
+    pub path: PathBuf,
+    value: toml::value::Table,
+}
+
+impl ManifestPreamble {
+    pub fn new(path: &Path) -> ManifestPreamble {
+        ManifestPreamble {
+            language: None,
+            path: path.to_owned(),
+            value: toml::value::Table::default(),
+        }
+    }
+}
+
 /// The realized project manifest.
 ///
 /// * All paths are absolute.
-#[derive(Debug, Clone, Default)]
-pub struct Manifest {
+#[derive(Debug, Clone)]
+pub struct Manifest<L = NoLang>
+where
+    L: Lang,
+{
     /// Path where manifest was loaded from.
     pub path: PathBuf,
-    /// Language to build for.
-    pub language: Option<Language>,
     /// Packages to build.
     pub packages: Vec<RpRequiredPackage>,
     /// Files to build.
@@ -287,7 +347,7 @@ pub struct Manifest {
     /// Packages to publish.
     pub publish: Vec<Publish>,
     /// Modules to enable.
-    pub modules: Vec<String>,
+    pub modules: Vec<L::Module>,
     /// Additional paths specified.
     pub paths: Vec<PathBuf>,
     /// Output directory.
@@ -302,11 +362,23 @@ pub struct Manifest {
     pub doc: Doc,
 }
 
-impl Manifest {
-    pub fn new(path: &Path) -> Manifest {
+impl<L> Manifest<L>
+where
+    L: Lang,
+{
+    pub fn new(path: &Path) -> Manifest<L> {
         Manifest {
             path: path.to_owned(),
-            ..Manifest::default()
+            packages: Vec::default(),
+            files: Vec::default(),
+            publish: Vec::default(),
+            modules: Vec::default(),
+            paths: Vec::default(),
+            output: Option::default(),
+            package_prefix: Option::default(),
+            id_converter: Option::default(),
+            repository: Repository::default(),
+            doc: Doc::default(),
         }
     }
 }
@@ -362,11 +434,14 @@ where
 ///
 /// `manifest` is the manifest that will be populated.
 /// `base` is the base directory for which all paths specified in the manifest will be resolved.
-pub fn load_common_manifest(
-    manifest: &mut Manifest,
+pub fn load_common_manifest<L>(
+    manifest: &mut Manifest<L>,
     base: &Path,
     value: &mut toml::value::Table,
-) -> Result<()> {
+) -> Result<()>
+where
+    L: Lang,
+{
     manifest.packages.extend(opt_specs(
         base,
         take_field(value, "packages")?,
@@ -378,9 +453,6 @@ pub fn load_common_manifest(
         base,
         take_field(value, "publish")?,
     )?);
-    manifest.modules.extend(
-        take_field::<Vec<String>>(value, "modules")?,
-    );
 
     manifest.paths.extend(
         take_field::<Vec<RelativePathBuf>>(value, "paths")?
@@ -415,17 +487,11 @@ pub fn load_common_manifest(
     Ok(())
 }
 
-/// Read the given manifest.
-///
-/// Takes a path since it's used to convert declarations.
-/// Returns `true` if the manifest is present, `false` otherwise.
-pub fn read_manifest<P: AsRef<Path>, R: Read>(
-    manifest: &mut Manifest,
+/// Read and parse the manifest as TOML, extracting the language (if present) in the process.
+pub fn read_manifest_preamble<'a, P: AsRef<Path>, R: Read>(
     path: P,
     mut reader: R,
-) -> Result<bool> {
-    use self::Language::*;
-
+) -> Result<ManifestPreamble> {
     let path = path.as_ref();
 
     let mut content = String::new();
@@ -435,66 +501,38 @@ pub fn read_manifest<P: AsRef<Path>, R: Read>(
         format!("{}: bad manifest: {}", path.display(), e)
     })?;
 
-    if let Some(language) = value.get("language").map(Clone::clone) {
-        let language: Language = language.clone().try_into::<Language>().map_err(|e| {
-            format!("bad `language` key: {}", e)
-        })?;
+    let language = take_field::<Option<Language>>(&mut value, "language")?;
 
-        match language {
-            Java => read_manifest_java(manifest, path, &mut value)?,
-            Python => read_manifest_python(manifest, path, &mut value)?,
-            Js => read_manifest_js(manifest, path, &mut value)?,
-            Rust => read_manifest_rust(manifest, path, &mut value)?,
-            Json => {}
-        }
+    Ok(ManifestPreamble {
+        language: language,
+        path: path.to_owned(),
+        value: value,
+    })
+}
 
-        manifest.language = Some(language);
-    }
+/// Read the given manifest.
+///
+/// Takes a path since it's used to convert declarations.
+/// Returns `true` if the manifest is present, `false` otherwise.
+pub fn read_manifest<L>(mut preamble: ManifestPreamble) -> Result<Manifest<L>>
+where
+    L: Lang,
+{
+    let mut manifest = Manifest::new(&preamble.path);
 
-    let parent = path.parent().ok_or_else(
+    let parent = preamble.path.parent().ok_or_else(
         || format!("missing parent directory"),
     )?;
 
-    load_common_manifest(manifest, parent, &mut value)?;
+    manifest.modules.extend(opt_specs(
+        parent,
+        take_field(&mut preamble.value, "modules")?,
+    )?);
 
-    check_empty(&value)?;
-    return Ok(true);
+    load_common_manifest(&mut manifest, parent, &mut preamble.value)?;
 
-    #[allow(unused)]
-    fn read_manifest_java(
-        manifest: &mut Manifest,
-        path: &Path,
-        value: &mut toml::value::Table,
-    ) -> Result<()> {
-        return Ok(());
-    }
-
-    #[allow(unused)]
-    fn read_manifest_python(
-        manifest: &mut Manifest,
-        path: &Path,
-        value: &mut toml::value::Table,
-    ) -> Result<()> {
-        return Ok(());
-    }
-
-    #[allow(unused)]
-    fn read_manifest_js(
-        manifest: &mut Manifest,
-        path: &Path,
-        value: &mut toml::value::Table,
-    ) -> Result<()> {
-        return Ok(());
-    }
-
-    #[allow(unused)]
-    fn read_manifest_rust(
-        manifest: &mut Manifest,
-        path: &Path,
-        value: &mut toml::value::Table,
-    ) -> Result<()> {
-        return Ok(());
-    }
+    check_empty(&preamble.value)?;
+    Ok(manifest)
 }
 
 #[cfg(test)]
@@ -513,15 +551,13 @@ mod tests {
 
     macro_rules! include_manifest {
         ($name:expr) => {{
-            let mut manifest = Manifest::default();
+            let path = Path::new(".").join($name);
 
-            read_manifest(
-                &mut manifest,
-                &Path::new(".").join($name),
-                Cursor::new(include_vec!($name)),
-            ).unwrap();
+            let preamble = read_manifest_preamble(
+                &path, Cursor::new(include_vec!($name)))
+                .expect("to read preamble of manifest");
 
-            manifest
+            read_manifest::<NoLang>(preamble).expect("to read manifest")
         }}
     }
 

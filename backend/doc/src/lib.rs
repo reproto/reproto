@@ -37,7 +37,7 @@ use self::backend::{App, Arg, ArgMatches, CompilerOptions, Environment, Options}
 use self::backend::errors::*;
 use self::doc_compiler::DocCompiler;
 use highlighting::THEME_SET;
-use manifest::Manifest;
+use manifest::{Lang, Manifest};
 use std::collections::HashMap;
 use syntect::highlighting::Theme;
 
@@ -95,14 +95,15 @@ pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 }
 
 /// Load and execute the provided clojure with a syntax theme.
-fn with_initialized<F>(
+fn with_initialized<F, L>(
     matches: &ArgMatches,
-    manifest: &Manifest,
+    manifest: Manifest<L>,
     themes: &HashMap<&'static str, &'static [u8]>,
     f: F,
 ) -> Result<()>
 where
     F: FnOnce(&Theme, &[u8]) -> Result<()>,
+    L: Lang,
 {
     let syntax_theme = matches
         .value_of("syntax-theme")
@@ -176,13 +177,16 @@ fn list_syntax_themes() -> Result<()> {
     Ok(())
 }
 
-pub fn compile(
+pub fn compile<L>(
     env: Environment,
     _options: Options,
     compiler_options: CompilerOptions,
     matches: &ArgMatches,
-    manifest: &Manifest,
-) -> Result<()> {
+    manifest: Manifest<L>,
+) -> Result<()>
+where
+    L: Lang,
+{
     let themes = build_themes();
 
     let mut done = false;

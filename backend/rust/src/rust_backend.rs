@@ -79,10 +79,6 @@ impl RustBackend {
         })
     }
 
-    pub fn verify(&self) -> Result<()> {
-        Ok(())
-    }
-
     /// Build an implementation of the given name and body.
     fn build_impl<'el>(
         &self,
