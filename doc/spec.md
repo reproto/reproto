@@ -19,15 +19,21 @@ See [TODO](todo.md) for things that are work in progress.
 * [Reserved fields](#reserved-fields)
 * [Extensions](#extensions)
 * [Custom Code](#custom-code)
+* [Language Support](#language-support)
+  * [Java](#java)
+  * [Rust](#rust)
+  * [Python](#python)
+  * [Javascript](#javascript)
 
 ## Introduction
 
-reproto is geared towards being an expressive and productive protocol specification.
+reproto is designed to be an expressive and productive interface description language.
 
-The choice of using a DSL over something existing like JSON or YAML is an attempt to improve
-signal-to-noise ratio.
-Concise markup, and relatively intuitive syntax should hopefully mean that more effort can be spent
-on designing good data models.
+The choice of using a domain-specific language  over something existing like JSON or YAML is an
+attempt to improve signal-to-noise ratio.
+
+Concise markup and relatively intuitive syntax should hopefully lead to more effort that can be
+spent on designing good data models.
 
 The following is an example specification for a simple time-series database:
 
@@ -67,6 +73,7 @@ type GraphsResponse {
 ```
 
 When compiled, the generated objects can be used to serialize, and de-serialize models.
+
 Like with the following example using [`fasterxml`][fasterxml].
 
 ```java
@@ -85,9 +92,9 @@ final GraphsResponse response =
 
 ## Manifests
 
-reproto supports loading project manifests describing what should be built.
+You tell `reproto` what to do by writing manifests.
 
-These can be stored with the project, and describes how and what should be built.
+These can be stored with the project, and describe among other things _what_ should be built:
 
 ```toml
 language = "java"
@@ -115,20 +122,20 @@ The `[packages]` section designate which packages should be built on `reproto bu
 
 ```toml
 [packages]
-petstore = "*"
+"io.reproto.petstore" = "*"
 ```
 
 This can be specified in a more elaborate format to support more options:
 
 ```toml
 [packages]
-petstore = {version = "*"}
+"io.reproto.petstore" = {version = "*"}
 ```
 
 Or:
 
 ```toml
-[packages.petstore]
+[packages."io.reproto.petstore"]
 version = "*"
 ```
 
@@ -139,20 +146,20 @@ This would typically be used to patch external manifests:
 
 ```toml
 [files]
-petstore = "patches/petstore.reproto"
+"io.reproto.petstore" = "patches/petstore.reproto"
 ```
 
 This can be specified in a more elaborate format to support more options:
 
 ```toml
 [files]
-petstore = {path = "patches/petstore.reproto", version = "1.0.1"}
+"io.reproto.petstore" = {path = "patches/petstore.reproto", version = "1.0.1"}
 ```
 
 Or:
 
 ```toml
-[files.petstore]
+[files."io.reproto.petstore"]
 path = "patches/petstore.reproto"
 version = "1.0.1"
 ```
@@ -211,7 +218,10 @@ The `doc` keys control how documentation is generated:
 
 ```
 [doc]
-# See available themes with `reproto doc --list-syntax-themes`
+# See available themes with `reproto doc --list-themes`.
+theme = "light"
+
+# See available themes with `reproto doc --list-syntax-themes`.
 syntax_theme = "ayu-mirage"
 ```
 
@@ -237,6 +247,7 @@ foo/bar/baz-1.0.1-beta1.reproto
 ```
 
 Note that the file may be suffixed with a version number.
+
 If this is present it is called a [versioned specification](#versioned-specifications).
 
 Otherwise, it is known as an [ephemeral specification](#ephemeral-specifications).
@@ -307,12 +318,10 @@ Specifications without a version are called _ephemeral_ specifications.
 
 ## Distribution
 
-**WIP: this feature is not finished**
-
-Specifications are intended to be distributed.
+Specifications are intended to be distributed through the package management system of `reproto`.
 
 This can be done by uploading a specification to a repository, after which it can be pulled in for
-use by other projects through reproto's repository system.
+use by other projects through the repository system.
 
 ### Versioned specifications
 
@@ -333,7 +342,16 @@ For example, `1.2.1-beta1`.
 An ephemeral specification is one that does _not_ have a version in its filename.
 
 They can be used as a compiler target (e.g. `--package foo`), but can not be deployed to
-a repository.
+a repository unless their version has been specified in a [`[publish]`][publishing] section of the
+manifest.
+
+Storing ephemeral specifications are strongly preferred for the source repository of a given
+schema from where it is being published.
+
+In this case bumping the version number would not require renaming a file, only modifying the
+`[publish]` section of the manifest.
+
+[publishing]: #publishing
 
 ## Imports
 
@@ -685,5 +703,285 @@ type Foo {
     def is_field_ok(self):
       return self.field == "ok"
   }}
+}
+```
+
+## Language Support
+
+This section is dedicated towards describing language-specific behaviors provided by `reproto`.
+
+### Java
+
+```toml
+# File: reproto.toml
+
+language = "java"
+paths = ["src"]
+output = "target"
+```
+
+Java classes are generated using _nested_ classes that matches the hierarchy specified in the
+specification.
+
+The following specification:
+
+```reproto
+// file: src/io/reproto/example.reproto
+
+type Foo {
+  // skipped
+
+  type Bar {
+    // skipped
+  }
+}
+```
+
+Would result in the following Java classes:
+
+```java
+// File: target/io/reproto/example/Foo.java
+
+package io.reproto.example;
+
+public class Foo {
+  // skipped
+
+  public static class Bar {
+    // skipped
+  }
+}
+```
+
+#### Module: `jackson`
+
+```toml
+# reproto.toml
+
+language = "java"
+paths = ['src']
+
+[modules.jackson]
+```
+
+Adds [jackson] annotations to generated classes and generates support classes for handling tuples.
+
+[jackson]: https://github.com/FasterXML/jackson
+
+#### Module: `lombok`
+
+```toml
+# reproto.toml
+
+language = "java"
+paths = ['src']
+
+[modules.lombok]
+```
+
+Adds [lombok] annotations to generated classes.
+
+[lombok]: https://projectlombok.org
+
+#### Module: `builder`
+
+```toml
+# reproto.toml
+
+language = "java"
+paths = ['src']
+
+[modules.builder]
+```
+
+Generates builders for all data classes.
+
+The following:
+
+```reproto
+// File: src/io/reproto/examples.reproto
+
+type Foo {
+  field: string;
+}
+```
+
+Would generate:
+
+```java
+package io.reproto.examples;
+
+public class Foo {
+  // skipped
+
+  public static class Builder {
+    // skipped
+
+    public Builder field(final String field) {
+      // skipped
+    }
+
+    public Foo build() {
+      // skipped
+    }
+  }
+}
+```
+
+### Rust
+
+```toml
+# reproto.toml
+
+language = "rust"
+paths = ["src"]
+output = "target"
+```
+
+Code generation for rust relies entirely on [Serde].
+
+You'll need to add the following dependencies to your project:
+
+```toml
+[dependencies]
+serde_json = "1"
+serde = "1"
+serde_derive = "1"
+```
+
+And the following extern declarations:
+
+```rust
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
+extern crate serde;
+```
+
+Rust does not support nested structs, so generated types follow a naming strategy like the
+following:
+
+```reproto
+// File: src/io/reproto/example.reproto
+
+type Foo {
+  // skipped
+
+  type Bar {
+    // skipped
+  }
+}
+```
+
+Would generate:
+
+```rust
+// File: target/io/reproto/example.rs
+
+struct Foo {
+  // skipped
+}
+
+struct Foo_Bar {
+  // skipped
+}
+```
+
+[Serde]: https://serde.rs
+
+#### Module: `chrono`
+
+```toml
+# reproto.toml
+
+language = "rust"
+paths = ["src"]
+
+[modules.chrono]
+```
+
+Rust doesn't have a native type to represent `datetime`, so the `chrono` module is used to
+support that through the [`chrono` crate].
+
+You'll need to add the following dependency to your `Cargo.toml`:
+
+```toml
+[dependencies]
+chrono = {version = "0.4", features = ["serde"]}
+```
+
+[`chrono` crate]: https://crates.io/crates/chrono
+
+### Python
+
+```toml
+# File: reproto.toml
+
+language = "python"
+paths = ["src"]
+output = "target"
+```
+
+In python, generated types follow a naming strategy like the following:
+
+```reproto
+// File: src/io/reproto/example.reproto
+
+type Foo {
+  // skipped
+
+  type Bar {
+    // skipped
+  }
+}
+```
+
+Would generate:
+
+```python
+# File: target/io/reproto/example.py
+
+class Foo:
+  pass
+
+class Foo_Bar:
+  pass
+```
+
+### Javascript
+
+```toml
+# File: reproto.toml
+
+language = "js"
+paths = ["src"]
+output = "target"
+```
+
+In Javascript, generated types follow a naming strategy like the following:
+
+```reproto
+// File: src/io/reproto/example.reproto
+
+type Foo {
+  // skipped
+
+  type Bar {
+    // skipped
+  }
+}
+```
+
+Would generate:
+
+```javascript
+// File: target/io/reproto/example.js
+
+class Foo {
+  // skipped
+}
+
+class Foo_Bar {
+  // skipped
 }
 ```
