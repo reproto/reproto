@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+set -e
+
+root=$(dirname $(dirname $(realpath $0)))
+
+examples=$root/examples
+gh_pages=$root/target/gh-pages
+target=$gh_pages/doc-examples
+reproto="cargo run --manifest-path=$root/cli/Cargo.toml --"
+
+if [[ ! -d $examples ]]; then
+    echo "Missing: $examples"
+    exit 1
+fi
+
+function git_root_do() {
+    git --git-dir="$root/.git" --work-tree=$root "$@"
+    return 0
+}
+
+function git_do() {
+    git --git-dir="$gh_pages/.git" --work-tree=$gh_pages "$@"
+    return 0
+}
+
+if [[ ! -d $gh_pages/.git ]]; then
+    remote_url=$(git_root_do remote get-url origin)
+    git clone --branch gh-pages $remote_url $gh_pages
+
+    if email=$(git_root_do config --get user.email); then
+        git_do config user.email "$email"
+    fi
+
+    if name=$(git_root_do config --get user.name); then
+        git_do config user.name "$name"
+    fi
+fi
+
+if [[ ! -d $target ]]; then
+    mkdir -p $target
+fi
+
+git_do fetch origin gh-pages
+git_do reset --hard FETCH_HEAD
+
+$reproto doc --manifest-path=$examples/reproto.toml --out $target
+
+if ! git_do diff --no-ext-diff --quiet HEAD; then
+    git_do add $target
+    git_do commit -m "updated doc-examples"
+    git_do push origin HEAD
+else
+    echo "no differences, not committing"
+fi

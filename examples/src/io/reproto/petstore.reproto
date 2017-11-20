@@ -4,7 +4,7 @@ use io.reproto.common@1 as c;
 
 /// Sample Petstore Service
 ///
-/// A sample API that uses a petstore as an example to demonstrate features in the ReProto
+/// A sample API that uses a petstore as an example to demonstrate features in the reproto
 /// specification
 service Petstore {
   /// Returns all pets from the system that the user has access to.

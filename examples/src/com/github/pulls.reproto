@@ -59,6 +59,14 @@ enum State as string {
 }
 
 /// Data of a pull request.
+///
+/// # Examples
+///
+/// For example: `hello`.
+///
+/// ```json
+/// {"hello": "world"}
+/// ```
 type PullRequest {
   /// ID of the pull request.
   id: u64;
