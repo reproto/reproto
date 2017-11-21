@@ -16,8 +16,8 @@ reproto repository server
 tracing = []
 
 [dependencies]
-reproto-repository = {path = "../repository", version = "0.3"}
-reproto-core = {path = "../core", version = "0.3"}
+reproto-repository = {path = "../lib/repository", version = "0.3"}
+reproto-core = {path = "../lib/core", version = "0.3"}
 
 futures = "0.1"
 futures-cpupool = "0.1"

@@ -13,9 +13,9 @@ Rethinking Protocol Generators
 build = "build.rs"
 
 [dependencies]
-reproto-backend = {path = "..", version = "0.3"}
-reproto-core = {path = "../../core", version = "0.3"}
-reproto-manifest = {path = "../../manifest", version = "0.3"}
+reproto-backend = {path = "../backend", version = "0.3"}
+reproto-core = {path = "../core", version = "0.3"}
+reproto-manifest = {path = "../manifest", version = "0.3"}
 
 log = "0.3"
 pulldown-cmark = "0.0.14"
