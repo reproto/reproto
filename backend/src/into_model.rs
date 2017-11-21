@@ -371,8 +371,38 @@ impl<'input> IntoModel for ServiceBody<'input> {
 
         let mut endpoint_names: HashMap<String, ErrorPos> = HashMap::new();
         let mut endpoints = LinkedHashMap::new();
+        let mut options = Vec::new();
+        let mut decls = Vec::new();
 
-        for endpoint in self.endpoints {
+        for member in self.members {
+            match member {
+                ServiceMember::Endpoint(endpoint) => {
+                    handle_endpoint(endpoint, scope, &mut endpoint_names, &mut endpoints)?;
+                }
+                ServiceMember::Option(option) => {
+                    options.push(option.into_model(scope)?);
+                }
+                ServiceMember::InnerDecl(decl) => {
+                    decls.push(Rc::new(decl.into_model(scope)?));
+                }
+            };
+        }
+
+        return Ok(RpServiceBody {
+            name: scope.as_name(),
+            local_name: self.name.to_string(),
+            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
+            endpoints: endpoints,
+            decls: decls,
+        });
+
+        /// Handle a single endpoint.
+        fn handle_endpoint<'input>(
+            endpoint: Loc<Endpoint<'input>>,
+            scope: &Scope,
+            endpoint_names: &mut HashMap<String, ErrorPos>,
+            endpoints: &mut LinkedHashMap<String, Loc<RpEndpoint>>,
+        ) -> Result<()> {
             let endpoint = endpoint.into_model(scope)?;
 
             // Check that there are no conflicting endpoint names.
@@ -400,16 +430,9 @@ impl<'input> IntoModel for ServiceBody<'input> {
                     );
                 }
             };
-        }
 
-        // TODO: check for duplicate endpoints.
-        return Ok(RpServiceBody {
-            name: scope.as_name(),
-            local_name: self.name.to_string(),
-            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
-            endpoints: endpoints,
-            decls: vec![],
-        });
+            Ok(())
+        }
     }
 }
 

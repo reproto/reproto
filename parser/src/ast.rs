@@ -145,7 +145,14 @@ impl<'input> OptionEntry for OptionDecl<'input> {
 pub struct ServiceBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,
-    pub endpoints: Vec<Loc<Endpoint<'input>>>,
+    pub members: Vec<ServiceMember<'input>>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ServiceMember<'input> {
+    Endpoint(Loc<Endpoint<'input>>),
+    Option(Loc<OptionDecl<'input>>),
+    InnerDecl(Loc<Decl<'input>>),
 }
 
 /// Describes an endpoint.
