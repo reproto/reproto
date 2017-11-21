@@ -48,7 +48,7 @@ impl<'input> Decl<'input> {
 
 /// The body of an enum declaration.
 ///
-/// ```
+/// ```ignore
 /// /// <comment>
 /// enum <name> as <ty> {
 ///   <variants>
@@ -76,7 +76,7 @@ pub struct EnumVariant<'input> {
 
 /// A field.
 ///
-/// ```
+/// ```ignore
 /// /// <comment>
 /// <name><modifier>: <ty> as <field_as>
 /// ```
@@ -91,7 +91,7 @@ pub struct Field<'input> {
 
 /// A file.
 ///
-/// ```
+/// ```ignore
 /// //! <comment>
 ///
 /// <uses>
@@ -121,13 +121,13 @@ impl<'input> Field<'input> {
 ///
 /// Either:
 ///
-/// ```
+/// ```ignore
 /// ::Relative::Name
 /// ```
 ///
 /// Or:
 ///
-/// ```
+/// ```ignore
 /// <prefix::>Absolute::Name
 /// ```
 ///
@@ -143,7 +143,7 @@ pub enum Name {
 
 /// The body of an interface declaration
 ///
-/// ```
+/// ```ignore
 /// /// <comment>
 /// interface <name> {
 ///   <members>
@@ -169,7 +169,7 @@ pub enum Member<'input> {
 
 /// An option declaration.
 ///
-/// ```
+/// ```ignore
 /// option <name> = <value>;
 /// ```
 #[derive(Debug, PartialEq, Eq)]
@@ -207,7 +207,7 @@ impl<'input> OptionEntry for OptionDecl<'input> {
 
 /// The body of a service declaration.
 ///
-/// ```
+/// ```ignore
 /// /// <comment>
 /// service <name> {
 ///   <members>
@@ -230,7 +230,7 @@ pub enum ServiceMember<'input> {
 
 /// An endpoint
 ///
-/// ```
+/// ```ignore
 /// /// <comment>
 /// <id>(<request>) -> <response> as <alias> {
 ///   <options>
@@ -248,7 +248,7 @@ pub struct Endpoint<'input> {
 
 /// Describes how data is transferred over a channel.
 ///
-/// ```
+/// ```ignore
 /// Unary(stream <ty>)
 /// Streaming(<ty>)
 /// ```
@@ -262,7 +262,7 @@ pub enum Channel {
 
 /// The body of a sub-type
 ///
-/// ```
+/// ```ignore
 /// /// <comment>
 /// <name> as <alias> {
 ///     <members>
@@ -279,7 +279,7 @@ pub struct SubType<'input> {
 
 /// The body of a tuple
 ///
-/// ```
+/// ```ignore
 /// /// <comment>
 /// tuple <name> {
 ///     <members>
@@ -294,7 +294,7 @@ pub struct TupleBody<'input> {
 
 /// The body of a type
 ///
-/// ```
+/// ```ignore
 /// /// <comment>
 /// type <name> {
 ///     <members>
@@ -309,7 +309,7 @@ pub struct TypeBody<'input> {
 
 /// A use declaration
 ///
-/// ```
+/// ```ignore
 /// use <package> "<version req> as <alias>
 /// ```
 #[derive(Debug, PartialEq, Eq)]

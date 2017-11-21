@@ -117,7 +117,7 @@ mod tests {
 
     fn parse(
         input: &'static str,
-    ) -> Box<Iterator<Item = self::token::Result<(usize, token::Token<'static>, usize)>>> {
+    ) -> Box<Iterator<Item = lexer::errors::Result<(usize, lexer::Token<'static>, usize)>>> {
         Box::new(lexer::lex(input))
     }
 
