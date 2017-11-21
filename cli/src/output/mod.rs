@@ -175,6 +175,17 @@ pub trait Output {
                 self.print_error("previous name here", old)?;
                 true
             }
+            RegisteredTypeConflict(ref name, ref last, ref current) => {
+                self.print_error(
+                    &format!(
+                        "conflicts with existing declaration `{}`",
+                        name
+                    ),
+                    current,
+                )?;
+                self.print_error("previous declaration here", last)?;
+                true
+            }
             _ => false,
         };
 

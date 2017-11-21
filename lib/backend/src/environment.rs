@@ -316,7 +316,12 @@ impl Environment {
             match self.types.entry(key) {
                 Vacant(entry) => entry.insert(t),
                 Occupied(entry) => {
-                    return Err(RegisteredTypeConflict(entry.key().clone()).into());
+                    let last = entry.get().pos().into();
+                    let current = t.pos().into();
+
+                    return Err(
+                        RegisteredTypeConflict(entry.key().clone(), last, current).into(),
+                    );
                 }
             };
         }

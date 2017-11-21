@@ -406,16 +406,13 @@ interface Sampling {
     sample_unit: Unit;
 
     /// Take the average value for each sample.
-    Average as "average" {
-    }
+    Average as "average";
 
     /// Take the first value encountered for each sample.
-    First as "first" {
-    }
+    First as "first";
 
     /// Take the last value encountered for each sample.
-    Last as "last" {
-    }
+    Last as "last";
 
     /// Take the value which is in the given percentile for each sample.
     Percentile as "percentile" {

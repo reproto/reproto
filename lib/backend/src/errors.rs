@@ -57,7 +57,7 @@ error_chain! {
         MissingBackend {
         }
 
-        RegisteredTypeConflict(name: RpName) {
+        RegisteredTypeConflict(name: RpName, last: ErrorPos, current: ErrorPos) {
             description("registered type conflict")
             display("registered type conflict with: {}", name)
         }

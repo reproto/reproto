@@ -1,5 +1,5 @@
 use backend::errors as backend;
-use core::{ErrorPos, RpName, RpPackage};
+use core::{ErrorPos, RpPackage};
 use core::errors as core;
 use manifest::errors as manifest;
 use parser::errors as parser;
@@ -52,11 +52,6 @@ error_chain! {
         /// An instance creation is missing a set of required fields.
         MissingRequired(names: Vec<String>, pos: ErrorPos, fields: Vec<ErrorPos>) {
             description("missing required")
-        }
-
-        RegisteredTypeConflict(name: RpName) {
-            description("registered type conflict")
-            display("registered type conflict with: {}", name)
         }
 
         NoVersionToPublish(package: RpPackage) {
