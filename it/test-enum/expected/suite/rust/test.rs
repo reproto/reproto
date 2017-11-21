@@ -39,3 +39,19 @@ impl EnumImplicit {
     }
   }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum EnumLongNames {
+  FooBar,
+  Baz,
+}
+
+impl EnumLongNames {
+  pub fn value(&self) -> &'static str {
+    use self::EnumLongNames::*;
+    match *self {
+      FooBar => "FooBar",
+      Baz => "Baz",
+    }
+  }
+}

@@ -97,3 +97,32 @@ EnumImplicit.A = new EnumImplicit("A", "A");
 EnumImplicit.B = new EnumImplicit("B", "B");
 
 EnumImplicit.values = [EnumImplicit.A, EnumImplicit.B];
+
+export class EnumLongNames {
+  constructor(name, value) {
+    this.name = name;
+    this.value = value;
+  }
+
+  encode() {
+    return this.value;
+  }
+  static decode(data) {
+    for (let i = 0, l = EnumLongNames.values.length; i < l; i++) {
+      const member = EnumLongNames.values[i]
+
+
+
+      if (member.value === data) {
+        return member;
+      }
+    }
+
+    throw new Error("no matching value: " + data);
+  }
+}
+
+EnumLongNames.FooBar = new EnumLongNames("FooBar", "FooBar");
+EnumLongNames.Baz = new EnumLongNames("Baz", "Baz");
+
+EnumLongNames.values = [EnumLongNames.FooBar, EnumLongNames.Baz];

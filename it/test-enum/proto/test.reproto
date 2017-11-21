@@ -14,3 +14,9 @@ enum EnumImplicit {
     A;
     B;
 }
+
+/// Variants with long names.
+enum EnumLongNames {
+    FooBar;
+    Baz;
+}

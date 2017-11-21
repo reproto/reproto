@@ -62,9 +62,9 @@ foo/bar/baz-1.0.1-beta1.reproto
 
 Note that the file may be suffixed with a version number.
 
-If this is present it is called a [versioned specification](#versioned-specifications).
+If this is present it's called a [versioned specification](#versioned-specifications).
 
-Otherwise, it is known as an [ephemeral specification](#ephemeral-specifications).
+Otherwise, it's known as an [ephemeral specification](#ephemeral-specifications).
 
 ## File Options
 
@@ -269,7 +269,7 @@ final String json = m.writeValueAsString(toy);
 
 A specification is a UTF-8 encoded file containing declarations.
 
-Every file implicitly belong to a package, which depends on where it is located relative to the
+Every file implicitly belong to a package, which depends on where it's located relative to the
 [build path].
 
 Conceptually specifications belong to a package, and can have a version.
@@ -366,7 +366,7 @@ See the [hosted documentation examples] to get an idea of what this could look l
 Types are named types that are used to designate a data structure that is intended to be
 serialized.
 
-Types have a name which must be unique for the package in which it is defined.
+Types have a name which must be unique for the package in which it's defined.
 
 The following is an example type declaration:
 
@@ -503,7 +503,7 @@ Valid options are:
 
 #### `option type_field_name = <string>`
 
-Name of the type field indicating which sub-type it is.
+Name of the type field indicating which sub-type it's.
 This Option is only valid when `type_info type_field` is set. |
 
 ## Tuples
@@ -547,9 +547,18 @@ Using this, `SI.NANO` would be serialized as:
 
 ### Services
 
-Service declarations describe a set of endpoints being exposed by a service.
+Services in reproto are currently modeled after [gRPC][grpc]
+This means that they primarily operate on streams of requests and responses, see the
+[next section](#bi-directional-services) for more details on what this means.
 
+> **Note:** HTTP support has been punted, because the problem is much less _constrained_ than gRPC.
+> Attempting to model all possible interactions you can have with HTTP services correctly is hard.
+> Consistently generating code for them is even harder.
+
+Service declarations describe a set of endpoints being exposed by a service.
 Services are declared using the `service` keyword.
+
+[grpc]: https://grpc.io
 
 ```reproto
 /// My Service>
@@ -619,7 +628,7 @@ service MyService {
 }
 ```
 
-## Bi-directional services
+#### Bi-directional services
 
 You might have noticed the `stream` keyword in the above examples.
 This means that services are _bi-directional_.
@@ -627,7 +636,25 @@ Zero or more requests or responses of the given types may be sent, _in any order
 
 This paradigm is more general than your typical unary request-response.
 
-Calls against endpoints may also be long-lived, which would be useful for use-cases like streaming.
+Calls against endpoints may also be long-lived, which would be useful for use-cases like streaming:
+
+```reproto
+type VideoId {
+  id: u64;
+}
+
+type VideoFrame {
+  blob: bytes;
+}
+
+service MyStreamingService {
+  /// Stream frames for the given `VideoId`.
+  stream_video(VideoId) -> stream VideoFrame;
+}
+```
+
+**Note:** This is an example, JSON might not be suitable for streaming data like this.
+This might be more viable if reproto supported other formats in the future.
 
 ## Reserved fields
 

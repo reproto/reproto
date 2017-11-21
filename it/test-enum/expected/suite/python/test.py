@@ -75,6 +75,26 @@ class EnumImplicit:
   def __repr__(self):
     return "<EnumImplicit _value: {!r}>".format(self._value)
 
+class EnumLongNames:
+  def __init__(self, _value):
+    self._value = _value
+
+  def encode(self):
+    return self._value
+
+  @classmethod
+  def decode(cls, data):
+    for value in cls.__members__.values():
+      if value._value == data:
+        return value
+
+    raise Exception("data does not match enum")
+
+  def __repr__(self):
+    return "<EnumLongNames _value: {!r}>".format(self._value)
+
 EnumExplicit = enum.Enum("EnumExplicit", [("A", "foo"), ("B", "bar")], type=EnumExplicit)
 
 EnumImplicit = enum.Enum("EnumImplicit", [("A", "A"), ("B", "B")], type=EnumImplicit)
+
+EnumLongNames = enum.Enum("EnumLongNames", [("FooBar", "FooBar"), ("Baz", "Baz")], type=EnumLongNames)
