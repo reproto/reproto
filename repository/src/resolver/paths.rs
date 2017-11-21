@@ -233,7 +233,10 @@ impl Resolver for Paths {
         let mut files = Vec::new();
 
         for path in &self.paths {
-            let path = prefix.parts.iter().fold(path.to_owned(), |p, part| p.join(part));
+            let path = prefix.parts.iter().fold(
+                path.to_owned(),
+                |p, part| p.join(part),
+            );
             files.extend(self.find_by_prefix(&path, prefix)?);
         }
 

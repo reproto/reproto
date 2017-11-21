@@ -101,14 +101,15 @@ impl Index for NoIndex {
     }
 }
 
-pub fn index_from_path(path: &Path) -> Result<Box<Index>> {
+/// Setup an index for the given path.
+pub fn index_from_path(path: &Path) -> Result<file_index::FileIndex> {
     if !path.is_dir() {
         return Err(
             format!("index: no such directory: {}", path.display()).into(),
         );
     }
 
-    Ok(Box::new(file_index::FileIndex::new(&path)?))
+    file_index::FileIndex::new(&path)
 }
 
 pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Result<Box<Index>>
@@ -118,7 +119,7 @@ where
     let mut scheme = scheme.into_iter();
 
     let sub_scheme = scheme.next().ok_or_else(|| {
-        format!("invalid scheme ({}), expected git+scheme", url.scheme())
+        format!("bad scheme ({}), expected git+scheme", url.scheme())
     })?;
 
     let git_repo = git::setup_git_repo(&config.repo_dir, sub_scheme, url)?;
@@ -133,15 +134,16 @@ where
 pub fn index_from_url(config: IndexConfig, url: &Url) -> Result<Box<Index>> {
     let mut scheme = url.scheme().split("+");
 
-    let first = scheme.next().ok_or_else(
-        || format!("invalid scheme: {}", url),
-    )?;
+    let first = scheme.next().ok_or_else(|| format!("bad scheme: {}", url))?;
 
     match first {
-        "file" => index_from_path(&url.to_file_path().map_err(|_| {
-            format!("bad file path for url: {}", url)
-        })?),
+        "file" => {
+            url.to_file_path()
+                .map_err(|_| format!("bad file path for url: {}", url).into())
+                .and_then(|path| index_from_path(&path))
+                .map(|i| Box::new(i) as Box<Index>)
+        }
         "git" => index_from_git(config, scheme, url),
-        scheme => Err(format!("unsupported scheme ({}): {}", scheme, url).into()),
-    }
+        scheme => Err(format!("bad scheme: {}", scheme).into()),
+    }.chain_err(|| format!("loading index from url: {}", url))
 }

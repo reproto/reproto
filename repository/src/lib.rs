@@ -34,7 +34,7 @@ pub use self::checksum::Checksum;
 pub use self::git::GitRepo;
 pub use self::index::{Index, IndexConfig, NoIndex, index_from_path, index_from_url,
                       init_file_index};
-pub use self::objects::{FileObjects, NoObjects, Objects, ObjectsConfig, objects_from_file,
+pub use self::objects::{FileObjects, NoObjects, Objects, ObjectsConfig, objects_from_path,
                         objects_from_url};
 pub use self::repository::Repository;
 pub use self::resolver::{Paths, Resolved, ResolvedByPrefix, Resolver, Resolvers};

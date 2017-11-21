@@ -56,7 +56,8 @@ impl Objects for NoObjects {
     }
 }
 
-pub fn objects_from_file<P: AsRef<Path>>(path: P) -> Result<FileObjects> {
+/// Load objects from a path.
+pub fn objects_from_path<P: AsRef<Path>>(path: P) -> Result<FileObjects> {
     let path = path.as_ref();
 
     if !path.is_dir() {
@@ -66,6 +67,9 @@ pub fn objects_from_file<P: AsRef<Path>>(path: P) -> Result<FileObjects> {
     Ok(FileObjects::new(path))
 }
 
+/// Load objects from a git+<scheme> URL.
+///
+/// The supplied `scheme` is an iterator over the current schemes (separated by `+`).
 pub fn objects_from_git<'a, I>(
     config: ObjectsConfig,
     scheme: I,
@@ -77,7 +81,7 @@ where
     let mut scheme = scheme.into_iter();
 
     let sub_scheme = scheme.next().ok_or_else(|| {
-        format!("invalid scheme ({}), expected git+scheme", url.scheme())
+        format!("bad scheme ({}), expected git+scheme", url.scheme())
     })?;
 
     let git_repo = git::setup_git_repo(&config.repo_dir, sub_scheme, url)?;
@@ -90,6 +94,7 @@ where
     Ok(Box::new(objects))
 }
 
+/// Load objects from an HTTP url.
 pub fn objects_from_http(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
     let core = Core::new()?;
 
@@ -110,20 +115,16 @@ pub fn objects_from_http(config: ObjectsConfig, url: &Url) -> Result<Box<Objects
     Ok(Box::new(http_objects))
 }
 
+/// Load objects from an URL.
 pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
     let mut scheme = url.scheme().split("+");
-    let first = scheme.next().ok_or_else(
-        || format!("invalid scheme: {}", url),
-    )?;
+
+    let first = scheme.next().ok_or_else(|| format!("bad scheme: {}", url))?;
 
     match first {
-        "file" => {
-            objects_from_file(Path::new(url.path())).map(|objects| {
-                Box::new(objects) as Box<Objects>
-            })
-        }
+        "file" => objects_from_path(Path::new(url.path())).map(|o| Box::new(o) as Box<Objects>),
         "git" => objects_from_git(config, scheme, url),
         "http" => objects_from_http(config, url),
-        scheme => Err(format!("unsupported scheme ({}): {}", scheme, url).into()),
-    }
+        scheme => Err(format!("bad scheme: {}", scheme).into()),
+    }.chain_err(|| format!("load objects from url: {}", url))
 }

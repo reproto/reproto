@@ -17,7 +17,9 @@ use core::{Object, RpPackage, RpPackageFormat, RpVersionedPackage, Version};
 use manifest::{Lang, Manifest, ManifestFile, ManifestPreamble, Publish, TryFromToml,
                read_manifest, read_manifest_preamble, self as m};
 use relative_path::RelativePath;
-use repository::*;
+use repository::{Index, IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths,
+                 Repository, Resolved, ResolvedByPrefix, Resolver, Resolvers, index_from_path,
+                 index_from_url, objects_from_path, objects_from_url};
 use semck;
 use std::collections::HashMap;
 use std::fs::File;
@@ -193,6 +195,71 @@ where
     Ok(CompilerOptions { out_path: out_path.to_owned() })
 }
 
+fn load_index(base: &Path, index_url: &str, config: IndexConfig) -> Result<Box<Index>> {
+    let index_path = Path::new(index_url);
+
+    if index_path.is_dir() {
+        let index_path = index_path.canonicalize().map_err(|e| {
+            format!("index: bad path: {}: {}", e, index_path.display())
+        })?;
+
+        return index_from_path(&index_path)
+            .map(|i| Box::new(i) as Box<Index>)
+            .map_err(Into::into);
+    }
+
+    match url::Url::parse(index_url) {
+        Err(url::ParseError::RelativeUrlWithoutBase) => {
+            let path = RelativePath::new(index_url).to_path(base);
+
+            index_from_path(&path)
+                .map(|i| Box::new(i) as Box<Index>)
+                .map_err(Into::into)
+        }
+        Err(e) => return Err(e.into()),
+        Ok(url) => index_from_url(config, &url).map_err(Into::into),
+    }
+}
+
+fn load_objects(
+    index: &Index,
+    index_url: &str,
+    objects: Option<String>,
+    config: ObjectsConfig,
+) -> Result<Box<Objects>> {
+    let objects_url = if let Some(ref objects) = objects {
+        objects.as_ref()
+    } else {
+        index.objects_url()?
+    };
+
+    debug!("index: {}", index_url);
+    debug!("objects: {}", objects_url);
+
+    let objects_path = Path::new(objects_url);
+
+    if objects_path.is_dir() {
+        let objects_path = objects_path.canonicalize().map_err(|e| {
+            format!("objects: bad path: {}: {}", e, objects_path.display())
+        })?;
+
+        return objects_from_path(objects_path)
+            .map(|o| Box::new(o) as Box<Objects>)
+            .map_err(Into::into);
+    }
+
+    match url::Url::parse(objects_url) {
+        // Relative to index index repository!
+        Err(url::ParseError::RelativeUrlWithoutBase) => {
+            index
+                .objects_from_index(RelativePath::new(objects_url))
+                .map_err(Into::into)
+        }
+        Err(e) => return Err(e.into()),
+        Ok(url) => objects_from_url(config, &url).map_err(Into::into),
+    }
+}
+
 pub fn setup_repository<L>(manifest: &Manifest<L>) -> Result<Repository>
 where
     L: Lang,
@@ -221,7 +288,10 @@ where
 
     let repo_dir = repo_dir.ok_or_else(|| "repo_dir: must be specified")?;
 
+    let index_url = index.unwrap_or_else(|| DEFAULT_INDEX.to_owned());
     let index_config = IndexConfig { repo_dir: repo_dir.clone() };
+
+    let index = load_index(base, index_url.as_str(), index_config)?;
 
     let objects_config = ObjectsConfig {
         repo_dir: repo_dir,
@@ -229,37 +299,7 @@ where
         missing_cache_time: Some(Duration::new(60, 0)),
     };
 
-    let index_url = index.unwrap_or_else(|| DEFAULT_INDEX.to_owned());
-
-    let index = match url::Url::parse(index_url.as_ref()) {
-        Err(url::ParseError::RelativeUrlWithoutBase) => {
-            let path = RelativePath::new(index_url.as_str()).to_path(base);
-            index_from_path(&path)?
-        }
-        Err(e) => return Err(e.into()),
-        Ok(url) => index_from_url(index_config, &url)?,
-    };
-
-    let objects = {
-        let objects_url = if let Some(ref objects) = objects {
-            objects.as_ref()
-        } else {
-            index.objects_url()?
-        };
-
-        debug!("index: {}", index_url);
-        debug!("objects: {}", objects_url);
-
-        match url::Url::parse(objects_url) {
-            // Relative to index index repository!
-            Err(url::ParseError::RelativeUrlWithoutBase) => {
-                index.objects_from_index(RelativePath::new(objects_url))?
-            }
-            Err(e) => return Err(e.into()),
-            Ok(url) => objects_from_url(objects_config, &url)?,
-        }
-    };
-
+    let objects = load_objects(index.as_ref(), index_url.as_str(), objects, objects_config)?;
     Ok(Repository::new(index, objects))
 }
 
@@ -398,6 +438,9 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out
 }
 
+/// Populate the repository structure from CLI arguments.
+///
+/// CLI arguments take precedence.
 fn repository_from_matches(repository: &mut m::Repository, matches: &ArgMatches) -> Result<()> {
     repository.no_repository = repository.no_repository || matches.is_present("no-repository");
 
