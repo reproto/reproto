@@ -22,21 +22,21 @@ pub File: File<'input> = {
 
 Use: UseDecl<'input> =
     "use" <package:Loc<Package>>
-        <version_req:("@" Loc<VersionReq>)?>
+        <version_req:Loc<"string">?>
         <alias:Loc<UseAlias>?>
     ";" =>
 {
     UseDecl {
         package: package,
-        version_req: version_req.map(|v| v.1),
+        version_req: version_req,
         alias: alias,
     }
 };
 
-UseAlias: &'input str = "as" <value:Identifier> => value;
+UseAlias: &'input str = "as" <value:ident> => value;
 
 Package: RpPackage =
-    <parts:OneOrMore<".", Identifier>> =>
+    <parts:OneOrMore<".", ident>> =>
 {
     RpPackage::new(parts.into_iter().map(ToOwned::to_owned).collect())
 };
@@ -52,7 +52,7 @@ Decl: Decl<'input> = {
 Enum: Loc<EnumBody<'input>> =
     <comment:"///"?>
     <s:@L>
-    "enum" <name:TypeIdentifier> <ty:("as" Loc<TypeSpec>)?> "{"
+    "enum" <name:TypeIdent> <ty:("as" Loc<TypeSpec>)?> "{"
         <variants:EnumVariant*>
         <members:Member*>
     "}"
@@ -70,7 +70,7 @@ Enum: Loc<EnumBody<'input>> =
 Interface: Loc<InterfaceBody<'input>> =
     <comment:"///"?>
     <s:@L>
-    "interface" <name:TypeIdentifier> "{"
+    "interface" <name:TypeIdent> "{"
       <members:Member*>
       <sub_types:Loc<SubType>*>
     "}"
@@ -87,7 +87,7 @@ Interface: Loc<InterfaceBody<'input>> =
 Type: Loc<TypeBody<'input>> =
     <comment:"///"?>
     <s:@L>
-    "type" <name:TypeIdentifier> "{"
+    "type" <name:TypeIdent> "{"
         <members:Member*>
     "}"
     <e:@R> =>
@@ -102,7 +102,7 @@ Type: Loc<TypeBody<'input>> =
 Tuple: Loc<TupleBody<'input>> =
     <comment:"///"?>
     <s:@L>
-    "tuple" <name:TypeIdentifier> "{"
+    "tuple" <name:TypeIdent> "{"
         <members:Member*>
     "}"
     <e:@R> =>
@@ -117,7 +117,7 @@ Tuple: Loc<TupleBody<'input>> =
 Service: Loc<ServiceBody<'input>> =
     <comment:"///"?>
     <s:@L>
-    "service" <name:TypeIdentifier> "{"
+    "service" <name:TypeIdent> "{"
         <endpoints:Endpoint*>
     "}"
     <e:@R> =>
@@ -166,14 +166,14 @@ Endpoint: Loc<Endpoint<'input>> = {
 };
 
 ServiceEndpointHead: (Loc<&'input str>, Option<String>, Option<Loc<Channel>>, Option<Loc<Channel>>) = {
-    <id:Loc<Identifier>> "(" <request:Loc<Channel>?> ")"
+    <id:Loc<ident>> "(" <request:Loc<Channel>?> ")"
     <response:("->" Loc<Channel>)?>
     <alias:FieldAlias?>
     => (id, alias, request, response.map(|r| r.1)),
 };
 
 Channel: Channel = {
-    <stream:"stream"?> <ty:TypeSpec> => {
+    <stream:stream?> <ty:TypeSpec> => {
         if stream.is_some() {
             Channel::Streaming {
                 ty: ty
@@ -187,8 +187,8 @@ Channel: Channel = {
 };
 
 FieldAlias: String = {
-    "as" <value:Identifier> => value.to_owned(),
-    "as" <value:string> => value,
+    "as" <value:ident> => value.to_owned(),
+    "as" <value:"string"> => value,
 };
 
 PathSpec: PathSpec<'input> = {
@@ -201,7 +201,7 @@ PathSpec: PathSpec<'input> = {
     },
 
     // if spec is string, use as a single, literal segment
-    <value:Loc<string>> =>
+    <value:Loc<"string">> =>
     {
         PathSpec {
             segments: vec![PathSegment::Literal { value: value }],
@@ -210,7 +210,7 @@ PathSpec: PathSpec<'input> = {
 };
 
 PathSegment: PathSegment<'input> = {
-    "{" <name:Loc<Identifier>> ":" <ty:Loc<TypeSpec>> "}" =>
+    "{" <name:Loc<ident>> ":" <ty:Loc<TypeSpec>> "}" =>
     {
         PathSegment::Variable { name: name, ty: ty }
     },
@@ -224,7 +224,7 @@ PathSegment: PathSegment<'input> = {
 EnumVariant: Loc<EnumVariant<'input>> =
     <comment:"///"?>
     <s:@L>
-    <name:Loc<TypeIdentifier>> <argument:("as" Loc<Value>)?> ";"
+    <name:Loc<TypeIdent>> <argument:("as" Loc<Value>)?> ";"
     <e:@R> =>
 {
     Loc::new(EnumVariant {
@@ -243,7 +243,7 @@ Modifier: RpModifier =
 pub Member: Loc<Member<'input>> = {
     <comment:"///"?>
     <s:@L>
-    <name:Identifier> <modifier:Modifier> ":" <ty:TypeSpec> <alias:FieldAlias?> ";"
+    <name:ident> <modifier:Modifier> ":" <ty:TypeSpec> <alias:FieldAlias?> ";"
     <e:@R> =>
     {
         let field = Field {
@@ -267,7 +267,7 @@ pub Member: Loc<Member<'input>> = {
     },
 
     <s:@L>
-    <context:Identifier> "{{" <content:code> "}}"
+    <context:ident> "{{" <content:code> "}}"
     <e:@R> =>
     {
         let content = strip_code_block(content);
@@ -285,7 +285,7 @@ pub Member: Loc<Member<'input>> = {
 };
 
 OptionDecl: OptionDecl<'input> =
-    <name:Identifier> <value:Loc<Value>> ";" =>
+    option <name:ident> "=" <value:Loc<Value>> ";" =>
 {
     OptionDecl {
         name: name,
@@ -295,7 +295,7 @@ OptionDecl: OptionDecl<'input> =
 
 SubType: SubType<'input> =
     <comment:"///"?>
-    <name:TypeIdentifier> "{"
+    <name:Loc<TypeIdent>> <alias:("as" Loc<Value>)?> "{"
         <members:Member*>
     "}" =>
 {
@@ -303,30 +303,31 @@ SubType: SubType<'input> =
         name: name,
         comment: comment.unwrap_or_else(Vec::new),
         members: members,
+        alias: alias.map(|alias| alias.1),
     }
 };
 
 pub Value: Value<'input> = {
     "[" <values:ZeroOrMore<",", Loc<Value>>> "]" => Value::Array(values),
-    <string:string> => Value::String(string),
-    <number:Number> => Value::Number(number),
+    <string:"string"> => Value::String(string),
+    <number:number> => Value::Number(number),
     <true> => Value::Boolean(true),
     <false> => Value::Boolean(false),
-    <identifier:Identifier> => Value::Identifier(identifier),
+    <ident:ident> => Value::Identifier(ident),
 };
 
 pub TypeSpec: Type = {
-    "any" => Type::Any,
-    "float" => Type::Float,
-    "double" => Type::Double,
-    "i32" => Type::Signed { size: 32 },
-    "i64" => Type::Signed { size: 64 },
-    "u32" => Type::Unsigned { size: 32 },
-    "u64" => Type::Unsigned { size: 64 },
-    "boolean" => Type::Boolean,
-    "string" => Type::String,
-    "datetime" => Type::DateTime,
-    "bytes" => Type::Bytes,
+    any => Type::Any,
+    float => Type::Float,
+    double => Type::Double,
+    i32 => Type::Signed { size: 32 },
+    i64 => Type::Signed { size: 64 },
+    u32 => Type::Unsigned { size: 32 },
+    u64 => Type::Unsigned { size: 64 },
+    boolean => Type::Boolean,
+    string => Type::String,
+    datetime => Type::DateTime,
+    bytes => Type::Bytes,
     <name:Name> => Type::Name{
         name: name
     },
@@ -340,12 +341,12 @@ pub TypeSpec: Type = {
 };
 
 Name: Name = {
-    <prefix:(Identifier "::")?> <parts:OneOrMore<"::", TypeIdentifier>> => Name::Absolute {
+    <prefix:(ident "::")?> <parts:OneOrMore<"::", TypeIdent>> => Name::Absolute {
         prefix: prefix.map(|p| p.0.to_owned()),
         parts: parts.into_iter().map(ToOwned::to_owned).collect(),
     },
 
-    "::" <parts:OneOrMore<"::", TypeIdentifier>> => Name::Relative {
+    "::" <parts:OneOrMore<"::", TypeIdent>> => Name::Relative {
         parts: parts.into_iter().map(ToOwned::to_owned).collect(),
     },
 };
@@ -375,10 +376,9 @@ extern {
     type Error = token::Error;
 
     enum Token<'input> {
-        TypeIdentifier => Token::TypeIdentifier(<&'input str>),
-        Identifier => Token::Identifier(<&'input str>),
-        Number => Token::Number(<RpNumber>),
-        VersionReq => Token::VersionReq(<VersionReq>),
+        TypeIdent => Token::TypeIdentifier(<&'input str>),
+        ident => Token::Identifier(<&'input str>),
+        number => Token::Number(<RpNumber>),
         "use" => Token::UseKeyword,
         "as" => Token::AsKeyword,
         "enum" => Token::EnumKeyword,
@@ -393,7 +393,7 @@ extern {
         "{{" => Token::CodeOpen,
         "}}" => Token::CodeClose,
         code => Token::CodeContent(<&'input str>),
-        string => Token::String(<String>),
+        "string" => Token::String(<String>),
         path_segment => Token::PathSegment(<String>),
         "[" => Token::LeftBracket,
         "]" => Token::RightBracket,
@@ -405,21 +405,22 @@ extern {
         "," => Token::Comma,
         "." => Token::Dot,
         "::" => Token::Scope,
-        "any" => Token::AnyKeyword,
-        "float" => Token::FloatKeyword,
-        "double" => Token::DoubleKeyword,
-        "u32" => Token::Unsigned32,
-        "u64" => Token::Unsigned64,
-        "i32" => Token::Signed32,
-        "i64" => Token::Signed64,
-        "boolean" => Token::BooleanKeyword,
-        "string" => Token::StringKeyword,
-        "datetime" => Token::DateTimeKeyword,
-        "bytes" => Token::BytesKeyword,
+        any => Token::AnyKeyword,
+        float => Token::FloatKeyword,
+        double => Token::DoubleKeyword,
+        u32 => Token::Unsigned32,
+        u64 => Token::Unsigned64,
+        i32 => Token::Signed32,
+        i64 => Token::Signed64,
+        boolean => Token::BooleanKeyword,
+        string => Token::StringKeyword,
+        datetime => Token::DateTimeKeyword,
+        bytes => Token::BytesKeyword,
         true => Token::TrueKeyword,
         false => Token::FalseKeyword,
-        "stream" => Token::StreamKeyword,
-        "@" => Token::At,
+        stream => Token::StreamKeyword,
+        option => Token::OptionKeyword,
+        "=" => Token::Equal,
         "`" => Token::Tick,
         "//!" => Token::PackageDocComment(<Vec<&'input str>>),
         "///" => Token::DocComment(<Vec<&'input str>>),

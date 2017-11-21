@@ -1,5 +1,5 @@
 use super::token::*;
-use core::{RpNumber, VersionReq};
+use core::RpNumber;
 use num::Zero;
 use num::bigint::BigInt;
 use std::result;
@@ -75,7 +75,6 @@ pub struct Lexer<'input> {
     path_mode: bool,
     path_variable_nesting: usize,
     path_buffer: String,
-    version_req_mode: bool,
 }
 
 impl<'input> Lexer<'input> {
@@ -127,7 +126,7 @@ impl<'input> Lexer<'input> {
     }
 
     fn identifier(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
-        // strip leading _
+        // strip leading _, since keywords are lowercase this is how we can escape identifiers.
         let (stripped, _) = take!(self, start, '_');
         let (end, content) = take!(self, stripped, 'a'...'z' | '_' | '0'...'9');
 
@@ -157,6 +156,7 @@ impl<'input> Lexer<'input> {
             "true" => Token::TrueKeyword,
             "false" => Token::FalseKeyword,
             "stream" => Token::StreamKeyword,
+            "option" => Token::OptionKeyword,
             identifier => {
                 return Ok((start, Token::Identifier(identifier), end));
             }
@@ -445,32 +445,11 @@ impl<'input> Lexer<'input> {
         }
     }
 
-    fn version_req(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
-        let (end, content) =
-            take!(self, start, '^' | '<' | '>' | '=' | '.' | '-' | '0'...'9' | 'a'...'z');
-
-        let version_req = VersionReq::parse(content).map_err(|_| {
-            Error::InvalidVersionReq {
-                start: start,
-                end: end,
-            }
-        })?;
-
-        Ok((start, Token::VersionReq(version_req), end))
-    }
-
-    fn version_req_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
-        let (start, _) = take!(self, self.pos(), ' ' | '\n' | '\r' | '\t');
-        let version_req = self.version_req(start);
-        self.version_req_mode = false;
-        return Some(version_req);
-    }
-
     fn path_variable_mode_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
         loop {
             if let Some((start, c)) = self.one() {
                 let token = match c {
-                    ':' => Token::Colon,
+                    '=' => Token::Equal,
                     '{' => {
                         self.path_variable_nesting += 1;
                         Token::LeftCurly
@@ -626,10 +605,7 @@ impl<'input> Lexer<'input> {
                     '.' => Token::Dot,
                     '?' => Token::QuestionMark,
                     '/' => Token::Slash,
-                    '@' => {
-                        self.version_req_mode = true;
-                        Token::At
-                    }
+                    '=' => Token::Equal,
                     '_' | 'a'...'z' => return Some(self.identifier(start)),
                     'A'...'Z' => return Some(self.type_identifier(start)),
                     '"' => return Some(self.string(start)),
@@ -657,10 +633,6 @@ impl<'input> Iterator for Lexer<'input> {
     type Item = Result<(usize, Token<'input>, usize)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.version_req_mode {
-            return self.version_req_next();
-        }
-
         if self.path_variable_nesting > 0 {
             return self.path_variable_mode_next();
         }
@@ -693,7 +665,6 @@ pub fn lex(input: &str) -> Lexer {
         path_mode: false,
         path_variable_nesting: 0usize,
         path_buffer: String::new(),
-        version_req_mode: false,
     }
 }
 
@@ -701,7 +672,6 @@ pub fn lex(input: &str) -> Lexer {
 pub mod tests {
     use super::*;
     use super::Token::*;
-    use core::VersionReq;
 
     fn tokenize(input: &str) -> Result<Vec<(usize, Token, usize)>> {
         lex(input).collect()
@@ -848,14 +818,6 @@ pub mod tests {
             (32, Tick, 33),
         ];
 
-        assert_eq!(reference, &tokens[..]);
-    }
-
-    #[test]
-    pub fn test_version_req() {
-        let tokens = tokenize("@>=1.0").unwrap();
-        let version_req = VersionReq::parse(">=1.0").unwrap();
-        let reference = [(0, At, 1), (1, VersionReq(version_req), 6)];
         assert_eq!(reference, &tokens[..]);
     }
 }

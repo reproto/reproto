@@ -4,6 +4,7 @@ pub use core::*;
 use linked_hash_map::LinkedHashMap;
 pub use parser::ast::*;
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
+use std::option;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -523,11 +524,10 @@ impl<'input> IntoModel for SubType<'input> {
             }
         }
 
-        let names = options.find_all_strings("name")?;
-
+        let names = all_names(self.alias, &self.name, scope)?;
         let comment = self.comment.into_iter().map(ToOwned::to_owned).collect();
 
-        Ok(RpSubType {
+        return Ok(RpSubType {
             name: scope.as_name().push(self.name.to_string()),
             local_name: self.name.to_string(),
             comment: comment,
@@ -535,7 +535,53 @@ impl<'input> IntoModel for SubType<'input> {
             fields: fields,
             codes: codes,
             names: names,
-        })
+        });
+
+        /// Extract all names provided.
+        fn aliased_names<'input>(
+            alias: Loc<Value<'input>>,
+            scope: &Scope,
+        ) -> Result<Vec<Loc<String>>> {
+            let (alias, pos) = alias.into_model(scope)?.take_pair();
+
+            let output = match alias {
+                RpValue::String(string) => vec![Loc::new(string, pos)],
+                RpValue::Array(values) => {
+                    if values.is_empty() {
+                        return Err("expected non-empty array".into()).with_pos(pos);
+                    }
+
+                    let mut out = Vec::new();
+
+                    for v in values {
+                        if let (RpValue::String(string), pos) = v.take_pair() {
+                            out.push(Loc::new(string, pos));
+                        } else {
+                            return Err("expected string".into()).with_pos(pos);
+                        }
+                    }
+
+                    out
+                }
+                _ => {
+                    return Err("expected string or array of strings".into()).with_pos(pos);
+                }
+            };
+
+            Ok(output)
+        }
+
+        fn all_names<'input>(
+            alias: option::Option<Loc<Value<'input>>>,
+            name: &Loc<&'input str>,
+            scope: &Scope,
+        ) -> Result<Vec<Loc<String>>> {
+            if let Some(alias) = alias {
+                aliased_names(alias, scope)
+            } else {
+                Ok(vec![name.clone().into_model(scope)?])
+            }
+        }
     }
 }
 

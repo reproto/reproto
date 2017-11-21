@@ -76,10 +76,6 @@ pub fn parse_string<'input>(
                             let pos = (object.clone(), pos, pos);
                             return Err(Parse("unexpected input", pos.into()).into());
                         }
-                        InvalidVersionReq { start, end } => {
-                            let pos = (object.clone(), start, end);
-                            return Err(Parse("invalid version requirement", pos.into()).into());
-                        }
                     }
                 }
                 _ => Err("parse error".into()),

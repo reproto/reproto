@@ -244,6 +244,13 @@ impl Environment {
             .unwrap_or_else(|| package.clone())
     }
 
+    /// Parse the given version requirement.
+    fn parse_version_req(v: &Loc<String>) -> Result<VersionReq> {
+        VersionReq::parse(v.value())
+            .map_err(|e| format!("bad version requirement: {}", e).into())
+            .with_pos(v.pos())
+    }
+
     /// Process use declarations found at the top of each object.
     fn process_uses(
         &mut self,
@@ -256,12 +263,12 @@ impl Environment {
 
         for use_decl in uses {
             let package = use_decl.package.value().clone();
+
             let version_req = use_decl
                 .version_req
                 .as_ref()
-                .map(Loc::value)
-                .cloned()
-                .unwrap_or_else(VersionReq::any);
+                .map(Self::parse_version_req)
+                .unwrap_or_else(|| Ok(VersionReq::any()))?;
 
             let required = RpRequiredPackage::new(package, version_req);
 
@@ -284,7 +291,7 @@ impl Environment {
                 continue;
             }
 
-            let error = "no matching package found".to_owned();
+            let error = format!("no package found: {}", required);
             return Err(Pos(error, use_decl.pos().into()).into());
         }
 

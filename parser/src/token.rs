@@ -1,4 +1,4 @@
-use core::{RpNumber, VersionReq};
+use core::RpNumber;
 
 #[derive(Debug)]
 pub enum Error {
@@ -8,7 +8,6 @@ pub enum Error {
     UnterminatedCodeBlock { start: usize },
     InvalidNumber { message: &'static str, pos: usize },
     Unexpected { pos: usize },
-    InvalidVersionReq { start: usize, end: usize },
 }
 
 pub type Result<T> = ::std::result::Result<T, Error>;
@@ -20,7 +19,6 @@ pub enum Token<'input> {
     PackageDocComment(Vec<&'input str>),
     DocComment(Vec<&'input str>),
     Number(RpNumber),
-    VersionReq(VersionReq),
     LeftCurly,
     RightCurly,
     LeftBracket,
@@ -29,6 +27,7 @@ pub enum Token<'input> {
     RightParen,
     SemiColon,
     Colon,
+    Equal,
     Comma,
     Dot,
     Scope,
@@ -61,7 +60,7 @@ pub enum Token<'input> {
     TrueKeyword,
     FalseKeyword,
     StreamKeyword,
+    OptionKeyword,
     Tick,
-    At,
     PathSegment(String),
 }

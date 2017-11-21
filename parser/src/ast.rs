@@ -1,4 +1,4 @@
-use core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage, VersionReq};
+use core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage};
 use std::result;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -185,9 +185,10 @@ pub enum Channel {
 /// Sub-types in interface declarations.
 #[derive(Debug, PartialEq, Eq)]
 pub struct SubType<'input> {
-    pub name: &'input str,
+    pub name: Loc<&'input str>,
     pub comment: Vec<&'input str>,
     pub members: Vec<Loc<Member<'input>>>,
+    pub alias: Option<Loc<Value<'input>>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -207,7 +208,7 @@ pub struct TypeBody<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct UseDecl<'input> {
     pub package: Loc<RpPackage>,
-    pub version_req: Option<Loc<VersionReq>>,
+    pub version_req: Option<Loc<String>>,
     pub alias: Option<Loc<&'input str>>,
 }
 
