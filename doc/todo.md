@@ -18,10 +18,10 @@ Some of these are just ideas, but are written down for posterity.
 - [x] Enums.
 - [x] Documentation syntax (preferably not comments).
 - [x] finish arbitrary precision number representation.
+- [x] ~~replace match value with instance.~~
 - [ ] Validators
   * Tricky, too many extensions to DSL to be useful.
     Might just skip for now but push towards `2.0`.
-- [ ] replace match value with instance.
 
 # Repository
 - [x] Simple filsystem prototype.
@@ -55,8 +55,10 @@ Some of these are just ideas, but are written down for posterity.
 
 # DOC Backend
 - [x] Generating documentation.
-- [ ] Figure out how to do permanent links (similar to rustdoc?).
-- [ ] Make better looking.
+- [x] Figure out how to do permanent links (similar to rustdoc?).
+- [x] Make better looking.
+- [ ] Generate JSON examples.
+- [ ] Embed source code and link to (can be disabled through config).
 
 # JavaScript Backend
 Necessary for browser compatibility.
