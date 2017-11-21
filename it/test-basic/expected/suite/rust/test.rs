@@ -14,6 +14,7 @@ pub struct Bar {
   field: Bar_Inner,
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Bar_Inner {
   field: String,
