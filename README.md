@@ -1,6 +1,6 @@
 # reproto
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
-[![crates.io](https://img.shields.io/crates/v/reproto.svg)](https://crates.io/crates/reproto)
+[![Chat on Gitter](https://badges.gitter.im/reproto/reproto.svg)](https://gitter.im/reproto/reproto)
 
 This is the home of `reproto`, a system for managing JSON schemas.
 
