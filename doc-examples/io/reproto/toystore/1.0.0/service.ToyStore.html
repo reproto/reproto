@@ -28,6 +28,14 @@ specification</p>
           <span class="name-sep">::</span>
           <span class="endpoint-id">get_toys</span>
           <span>(</span>
+          <span class="endpoint-request-type">
+            <span class="ty"><span class="type-rp-name">
+              <a class="name-part" href="service.ToyStore.html">ToyStore</a>
+              <span class="name-sep">::</span>
+              <a class="name-local" href="type.ToyStore.GetToys.html">GetToys</a>
+            </span>
+            </span>
+          </span>
           <span>)</span>
           <span class="keyword">&rarr;</span>
           <span class="endpoint-response-type">
@@ -40,6 +48,8 @@ specification</p>
         </h2>
         <div class="doc">
           <p>Get a stream of all available toys.</p>
+<p>The stream will contain all the toys in the store, it is up to the client to terminate when
+done.</p>
 
         </div>
         <h2 class="endpoint-title" id="ToyStore_get_toy">
@@ -86,6 +96,16 @@ specification</p>
         </h2>
         <div class="doc">
           <p>Gets a greeting for the given <code>name</code>.</p>
+
+        </div>
+        <h2 class="decl-title">
+          <span class="kind">nested type</span>
+          <a class="name-part" href="service.ToyStore.html">ToyStore</a>
+          <span class="name-sep">::</span>
+          <a class="name-local" href="type.ToyStore.GetToys.html">GetToys</a>
+        </h2>
+        <div class="doc">
+          <p>The get_toys request body.</p>
 
         </div>
       </section>
