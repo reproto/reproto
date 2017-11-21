@@ -11,7 +11,7 @@ This is the home of `reproto`, a system for managing JSON schemas.
 * A compiler which generates code for [various languages].
 * A [semantic version checker] which verifies that modifications to schemas do not violate
   [semantic versioning].
-* A build system and package manager.
+* A build system with a package manager and a `reproto.toml` [build manifest].
 * A rich, markdown-based [documentation generator].
 * (eventually) A [central repository] of usable schemas.
 
@@ -23,20 +23,21 @@ but avoid building large repositories of specifications right now.
 
 [interface description language]: /doc/spec.md
 [various languages]: #language-support
-[semantic version checker]: /semck
+[semantic version checker]: /doc/semck.md
 [semantic versioning]: https://semver.org
 [documentation generator]: #generating-documentation
 [central repository]: https://github.com/reproto/reproto-index
+[build manifest]: /doc/manifest.md
 
 ## Getting Started
 
-* See the [specification] for details on how the reproto language and its build manifest works.
-* See [examples] for some example protocol specifications.
+* See the [documentation] for an overview of how the reproto language and its build manifest works.
+* See [examples] for some example specifications.
 * See [config] for information on how to configure the system.
 * See the [integration tests] for even more examples on how protocol specifications can be used.
 * See the [TODO][todo] for a list of things that still needs to be done.
 
-[specification]: /doc/spec.md
+[documentation]: /doc/
 [integration tests]: /it
 [examples]: /examples
 [config]: /doc/config.md
@@ -61,7 +62,7 @@ but avoid building large repositories of specifications right now.
 [Serde]: https://serde.rs
 [jackson]: https://github.com/FasterXML/jackson-databind
 [`chrono`]: https://crates.io/crates/chrono
-[js integration test]: /it/js
+[js integration test]: /it/workdir/js
 
 ## Generating Documentation
 
@@ -74,7 +75,7 @@ These have been generated from the [examples project] using [tools/update-doc-ex
 [examples project]: /examples/
 [tools/update-doc-examples]: /tools/update-doc-examples
 
-## Building
+## Building and Installing
 
 Make sure you have [gotten started with Rust][rust-get-started].
 

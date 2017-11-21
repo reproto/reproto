@@ -1,241 +1,53 @@
 # reproto specification
 
-See [TODO](todo.md) for things that are work in progress.
-
-* [Introduction](#introduction)
-* [Manifests](#manifests)
-* [File Structure](#file-structure)
-* [Documentation](#documentation)
-* [Distribution](#distribution)
 * [Specifications](#specifications)
+* [Directory Structure](#directory-structure)
+* [File Options](#file-options)
+* [Distribution](#distribution)
+* [Versioning](#versioning)
   * [Versioned Specifications](#versioned-specifications)
   * [Ephemeral Specifications](#ephemeral-specifications)
-* [Imports](#imports)
-* [Built-In Types](#built-in-types)
-* [Types](#types)
-* [Interfaces](#interfaces)
-* [Tuples](#tuples)
-* [Enums](#enums)
-* [Services](#services)
-* [Reserved fields](#reserved-fields)
-* [Extensions](#extensions)
-* [Custom Code](#custom-code)
+* [The reproto language](#the-reproto-language)
+  * [Imports](#imports)
+  * [Built-In Types](#built-in-types)
+  * [Documentation](#documentation)
+  * [Types](#types)
+  * [Enums](#enums)
+  * [Interfaces](#interfaces)
+  * [Tuples](#tuples)
+  * [Services](#services)
+  * [Reserved fields](#reserved-fields)
+  * [Custom Code](#custom-code)
 * [Language Support](#language-support)
   * [Java](#java)
   * [Rust](#rust)
   * [Python](#python)
   * [Javascript](#javascript)
 
-## Introduction
+# Specifications
 
-reproto is designed to be an expressive and productive interface description language.
+Specifications are written in UTF-8, the file ending of reproto specifications must be `.reproto`.
 
-The choice of using a domain-specific language  over something existing like JSON or YAML is an
-attempt to improve signal-to-noise ratio.
+Each specification contains declarations.
 
-Concise markup and relatively intuitive syntax should hopefully lead to more effort that can be
-spent on designing good data models.
+The following declarations are currently supported:
 
-The following is an example specification for a simple time-series database:
+ * [`type`], which specifies the structure of a JSON object.
+ * [`enum`], which specifies a discrete set of valid string values.
+ * [`interface`], which specifies a polymorhic JSON object, whose type is determined from the
+   structure.
+ * [`tuple`], which specifies a JSON array, where each index has a specific type.
+ * [`service`], which specifies [bi-directional] services with endpoints, suitable for use with
+   rpc systems like `gRPC`.
 
-```reproto
-tuple Sample {
-  timestamp: u64;
-  value: double;
-}
+[`type`]: #types
+[`enum`]: #enums
+[`interface`]: #interfaces
+[`tuples`]: #tuples
+[bi-directional]: #bi-directional-services
+[`service`]: #services
 
-type Graph {
-  samples: [Sample];
-}
-
-interface System {
-  requests_per_second: Graph;
-
-  WebServer {
-    name "web-server";
-
-    last_logged_in: c.User;
-  }
-
-  Database {
-    name "database";
-
-    transactions: Graph;
-  }
-}
-
-type GraphsRequest {
-  systems: [string];
-}
-
-type GraphsResponse {
-  systems: [System];
-}
-```
-
-When compiled, the generated objects can be used to serialize, and de-serialize models.
-
-Like with the following example using [`fasterxml`][fasterxml].
-
-```java
-final ObjectMapper m = new ObjectMapper();
-
-final GraphsRequest request =
-  GraphsRequest.builder().systems(ImmutableList.of("database")).build();
-
-final byte[] response = request(m.writeValueAsBytes(request));
-
-final GraphsResponse response =
-  m.readValue(message, GraphsResponse.class);
-```
-
-[fasterxml]: https://github.com/FasterXML/jackson-databind
-
-## Manifests
-
-You tell `reproto` what to do by writing manifests.
-
-These can be stored with the project, and describe among other things _what_ should be built:
-
-```toml
-language = "java"
-
-# Additional build paths, relative to this manifest.
-paths = [
-    "src/extra"
-]
-
-# Path to put generated sources
-output = "target/generated"
-
-# Packages to build.
-[packages]
-petstore = "*"
-
-# Add a preset
-[[presets]]
-type = "maven"
-```
-
-### Packages
-
-The `[packages]` section designate which packages should be built on `reproto build`.
-
-```toml
-[packages]
-"io.reproto.petstore" = "*"
-```
-
-This can be specified in a more elaborate format to support more options:
-
-```toml
-[packages]
-"io.reproto.petstore" = {version = "*"}
-```
-
-Or:
-
-```toml
-[packages."io.reproto.petstore"]
-version = "*"
-```
-
-### Files
-
-The `[files]` section permits building a single, local file as some specific package and version.
-This would typically be used to patch external manifests:
-
-```toml
-[files]
-"io.reproto.petstore" = "patches/petstore.reproto"
-```
-
-This can be specified in a more elaborate format to support more options:
-
-```toml
-[files]
-"io.reproto.petstore" = {path = "patches/petstore.reproto", version = "1.0.1"}
-```
-
-Or:
-
-```toml
-[files."io.reproto.petstore"]
-path = "patches/petstore.reproto"
-version = "1.0.1"
-```
-
-### Publishing
-
-In order to publish packages, the version of the package needs to be known.
-
-Since specifications would typically be unversioned during development, reproto supports
-a `[publish]` section where you can map what version local specifications belong to.
-
-The package specified is a prefix. The version will apply to any contained packages.
-
-```toml
-paths = ["src"]
-
-[publish]
-"io.reproto" = "1.0.1"
-```
-
-These can be specified in a more elaborate format:
-
-```toml
-[publish]
-"io.reproto" = {version = "1.0.1"}
-```
-
-Or:
-
-```toml
-[publish."io.reproto"]
-version = "1.0.1"
-```
-
-Assuming you have a specification in `src/io/reproto/petstore.reproto`, you can now publish it
-using:
-
-```bash
-$> reproto publish
-```
-
-Additional specifications can be added to `src/io/reproto`, and they will also be published with
-the same version.
-
-### Presets
-
-Presets are bundles of configuration that can be activated through the `presets` key.
-
-Activated presets are determined by their `type`.
-
-The available types and their corresponding options are documented in this section.
-
-### Doc
-
-The `doc` keys control how documentation is generated:
-
-```
-[doc]
-# See available themes with `reproto doc --list-themes`.
-theme = "light"
-
-# See available themes with `reproto doc --list-syntax-themes`.
-syntax_theme = "ayu-mirage"
-```
-
-#### Maven `type = "maven"`
-
-This preset is equivalent to the following manifest:
-
-```toml
-paths = ["src/main/reproto"]
-output = "target/generated/reproto/java"
-```
-
-## File Structure
+## Directory Structure
 
 The compiler expects that multiple _paths_ are provided to it.
 
@@ -253,9 +65,23 @@ If this is present it is called a [versioned specification](#versioned-specifica
 
 Otherwise, it is known as an [ephemeral specification](#ephemeral-specifications).
 
-### File Options
+## File Options
 
-#### `endpoint_naming <naming>`
+File options are specification-global options that affect the default behavior of the compiler.
+
+They are specified in the root of the specification like this:
+
+```reproto
+use foo as bar;
+
+option field_naming = upper_camel;
+
+// snip
+```
+
+The following are legal file options.
+
+#### `option endpoint_naming = <ident>`
 
 The default endpoint naming strategy to use.
 
@@ -285,7 +111,7 @@ Valid options are:
 This does _not_ affect explicitly named endpoinds using `as`.
 
 ```reproto
-field_naming upper_camel;
+option endpoint_naming upper_camel;
 
 service MyService {
   /// Would be named `put_foo`.
@@ -296,7 +122,7 @@ service MyService {
 }
 ```
 
-#### `field_naming <naming>`
+#### `option field_naming <naming>`
 
 The default field naming strategy to use.
 
@@ -309,32 +135,6 @@ Valid options are:
 * `upper_snake`, fields would be serialized as `UPPER_SNAKE`.
 * `lower_snake`, fields would be serialized as `lower_snake` (default).
 
-## Documentation
-
-Documentation is specified using special documentation comments.
-
-Documentation is written in [markdown], and supports syntax snippets using triple backticks.
-
-For package-level documentation `//!` is used.
-
-For declaration-level documentation `///` is used.
-
-```reproto
-//! A package containing blog-related things
-
-/// A type-level documentation.
-///
-/// # Examples
-///
-/// ```json
-/// {"title": "My Awesome Title"}
-/// ```
-type Post {
-  /// A field-level documentation.
-  title: string;
-}
-```
-
 ## Distribution
 
 Specifications are intended to be distributed through the package management system of `reproto`.
@@ -342,60 +142,157 @@ Specifications are intended to be distributed through the package management sys
 This can be done by uploading a specification to a repository, after which it can be pulled in for
 use by other projects through the repository system.
 
-## Specifications
+## Versioning
+
+### Ephemeral specifications
+
+An ephemeral specification is one that does _not_ have a version.
+For example, `src/io/reproto/petstore.reproto` is an ephemeral specification because it does not
+have a version suffix in its filename.
+
+The specification can be used as compiler target.
+Like, `--package io.reproto.petstore`.
+
+The specification can only be deployed to a repository if their version has been specified in a
+[`[publish]`][publish] section in [`reproto.toml`].
+
+Ephemeral specifications are the default way to store specifications.
+They are preferred over versioned specifications because bumping the version number for ephemeral
+specifications is a change in [`reproto.toml`] and not renaming a file.
+
+[publish]: manifest.md#publish
+
+### Versioned specifications
+
+A versioned specification is one that has a version in its filename.
+For example, `src/io/reproto/petstore-1.0.0.reproto` is a versioned specification because it has a
+version number in its filename.
+
+The version string must follow [Semantic Versioning][semver].
+
+Storing versioned specifications permit depending on the directly in [`reproto.toml`], you can
+think of them as 'lightweight' repositories.
+
+```toml
+[packages]
+"io.reproto.petstore" = "1.0.0"
+```
+
+Versioned specifications would primarily be used to store out-of-tree specifications which hasn't
+made it to central (yet), but that you need to depend on for some reason.
+
+[semver]: https://semver.org
+
+## The reproto language
+
+reproto is designed to be an expressive and productive interface description language.
+
+Specifications describe the _structure_ of JSON values.
+This is exactly what is required to build an API that interfaces using JSON.
+Having this structure permits performing code generation for various languages.
+
+The choice of using a domain-specific language over something existing like JSON or YAML is an
+attempt to improve signal-to-noise ratio.
+Concise syntax and intuitive syntax should hopefully lead to more effort that can be spent on
+designing good data models instead of worrying about markup.
+
+The following is a simple data model describing a toy:
+
+```reproto
+/// A toy in a toy store.
+type Toy {
+  /// Identifier of the toy.
+  id: u64;
+  /// Name of the toy.
+  name: string;
+  /// Category of the toy.
+  category?: Category;
+  /// Tags of the toy.
+  tags: [Tag];
+  /// Toy status in the store
+  status: Status;
+}
+
+/// The status of the toy in the store.
+enum Status as string {
+  Available as "available";
+  Pending as "pending";
+  Sold as "sold";
+}
+
+/// The category of the toy.
+type Category {
+  id: u64;
+  name?: string;
+}
+
+/// The tag of the toy.
+type Tag {
+  id: u64;
+  name: string;
+}
+
+/// Simple toystore.
+service ToyStore {
+  /// Get a stream of all available toys.
+  get_toys() -> stream Toy;
+
+  /// Get a single toy by its identifier.
+  get_toy(u64) -> Toy;
+}
+```
+
+Note: More examples can be found in the [`examples`] project.
+
+When compiled, the generated objects can be used to serialize, and deserialize objects.
+
+Like with the following example using [`fasterxml`][fasterxml].
+
+```java
+final Toy toy = Toy.builder()
+  .id(42)
+  .name("Adventure Island")
+  .category(new Category(1, "Lego"))
+  .tags(ImmutableList.of(new Tag(0, "Plastic")))
+  .status(Status.AVAILABLE)
+  .build();
+
+final ObjectMapper m = /*  */;
+final String json = m.writeValueAsString(toy);
+```
+
+[`examples`]: /examples
+[fasterxml]: https://github.com/FasterXML/jackson-databind
+
+### Specification Files
 
 A specification is a UTF-8 encoded file containing declarations.
+
+Every file implicitly belong to a package, which depends on where it is located relative to the
+[build path].
 
 Conceptually specifications belong to a package, and can have a version.
 
 Specifications without a version are called _ephemeral_ specifications.
 
-### Versioned specifications
+[build path]: #build-path
 
-A versioned specification is one that has a version in its filename.
-
-The version string follows [Semantic Versioning][semver], but the following is a brief
-description of what is permitted.
-
-The version number must follow semantic versioning. For example, `1.2.0`.
-
-Pre-releases are also supported by appending a hyphen and a series of dot-separated identifiers.
-For example, `1.2.1-beta1`.
-
-[semver]: https://semver.org
-
-### Ephemeral specifications
-
-An ephemeral specification is one that does _not_ have a version in its filename.
-
-They can be used as a compiler target (e.g. `--package foo`), but can not be deployed to
-a repository unless their version has been specified in a [`[publish]`][publishing] section of the
-manifest.
-
-Storing ephemeral specifications are strongly preferred for the source repository of a given
-schema from where it is being published.
-
-In this case bumping the version number would not require renaming a file, only modifying the
-`[publish]` section of the manifest.
-
-[publishing]: #publishing
-
-## Imports
+### Imports
 
 Declarations can be imported from other specifications using the `use` keyword at the top of your
 specification.
 
 This may also include a local alias for the imported specification.
 
-```
+```reproto
 use foo.bar as b;
 ```
 
 A version requirement may also be present during the import.
 
-```
-use foo.bar@^1 as b1;
-use foo.bar@>=2.0.0 as b2;
+```reproto
+use foo.bar "^1" as b1;
+use foo.bar ">=2.0.0" as b2;
 ```
 
 If a version requirement is absent, the most recent version will be picked.
@@ -417,7 +314,7 @@ The following are a few examples for Java:
 
 [semver-package-requirements]: https://docs.rs/semver/0.7.0/semver/#requirements
 
-## Built-In Types
+### Built-In Types
 
 There are a number of built-in types available:
 
@@ -433,7 +330,37 @@ There are a number of built-in types available:
 | `[<type>]`         | Arrays which store the given type  |
 | `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` due to limitations in JSON, but might be subject to change if other formats are supported in the future) |
 
-## Types
+## Documentation
+
+Documentation can be written for most items in the specification.
+This is primarily used when generating documentation.
+
+Documentation is specified using special documentation comments written in [markdown].
+For package-level documentation `//!` is used.
+For declaration-level documentation `///` is used.
+Syntax highlighting is supported with a wide variety of languages using triple backticks.
+
+```reproto
+//! A package containing blog-related things
+
+/// Type-level documentation.
+///
+/// # Examples
+///
+/// /* code sample here */
+type Post {
+  /// Field-level documentation.
+  title: string;
+}
+```
+
+[markdown]: https://daringfireball.net/projects/markdown/syntax
+
+See the [hosted documentation examples] to get an idea of what this could look like.
+
+[hosted documentation examples]: https://reproto.github.io/reproto/doc-examples/
+
+### Types
 
 Types are named types that are used to designate a data structure that is intended to be
 serialized.
@@ -457,7 +384,7 @@ For example (using `Foo`):
 {"bar": 42}
 ```
 
-## Interfaces
+### Interfaces
 
 Interfaces are special types providing field-based polymorphism.
 
@@ -470,41 +397,38 @@ The following is an example interface with two sub-types.
 ///
 /// Sampling is when a time series which is very dense is samples to reduce its size.
 interface Sampling {
+    option type_info = type_field;
+
     /// size of the sample.
     sample_size: u32;
     /// unit of the sample.
     sample_unit: Unit;
 
     /// Take the average value for each sample.
-    Average {
-        name "average";
+    Average as "average" {
     }
 
     /// Take the first value encountered for each sample.
-    First {
-        name "first";
+    First as "first" {
     }
 
     /// Take the last value encountered for each sample.
-    Last {
-        name "last";
+    Last as "last" {
     }
 
     /// Take the value which is in the given percentile for each sample.
-    Percentile {
-        name "percentile";
-
+    Percentile as "percentile" {
         /// Which percentile to sample, as a value between 0-1.0
         percentile: float;
     }
 }
 
-enum Unit: string {
-     MILLISECONDS = "ms";
-     SECONDS = "s";
-     HOURS = "H";
-     DAYS = "d";
-     WEEKS = "w";
+enum Unit as string {
+     Milliseconds as "ms";
+     Seconds as "s";
+     Hours as "H";
+     Days as "d";
+     Weeks as "w";
 }
 ```
 
@@ -522,18 +446,18 @@ For example (using `new Sampling.Average(10, Unit.SECONDS)`):
 
 The following options are supported by interfaces:
 
-#### `type_info <identifier>`
+#### `option type_info = <ident>`
 
 Indicates the method of transferring type information.
 Valid options are:
 
 * `type_field` sub-types are serialized as objects, with a special field (given by
-  `type_field_name`) containing its `name`.
+  `type_field_name`) containing its `name` (default).
 * `array` sub-types will be serialized as arrays, where the first value is the `name`.
 * `object_keys` sub-types will be serialized as objects with a single
-    key, where the key is the `name` |
+   key, where the key is the `name`.
 
-#### `type_field_name <string>`
+#### `option type_field_name = <string>`
 
 Name of the type field indicating which sub-type it is.
 This Option is only valid when `type_info type_field` is set. |
@@ -557,7 +481,7 @@ A single sample (e.g. `new Sample(1, 2.0)`) would be encoded like this in JSON:
 [1, 2.0]
 ```
 
-## Enums
+### Enums
 
 Enums can take on of a given set of constant values.
 
@@ -577,7 +501,7 @@ Using this, `SI.NANO` would be serialized as:
 "nano"
 ```
 
-## Services
+### Services
 
 Service declarations describe a set of endpoints being exposed by a service.
 
@@ -651,6 +575,16 @@ service MyService {
 }
 ```
 
+## Bi-directional services
+
+You might have noticed the `stream` keyword in the above examples.
+This means that services are _bi-directional_.
+Zero or more requests or responses of the given types may be sent, _in any order_.
+
+This paradigm is more general than your typical unary request-response.
+
+Calls against endpoints may also be long-lived, which would be useful for use-cases like streaming.
+
 ## Reserved fields
 
 Fields can be reserved using a special option called `reserved`.
@@ -670,45 +604,6 @@ examples/petstore.reproto:49:12-21:
 As long as the reserved statement is preserved, it prevents future introductions of a given field.
 
 Clients decoding a reserved field should raise an error.
-
-## Extensions
-
-reproto permits all types and interfaces to be extended.
-
-Extensions allow for additions, and is typically used to adapt a protocol specification to your
-local environment.
-They allow you to add additional information, as long as it doesn't conflict with any existing
-declarations.
-
-In a perfect world, extensions should not be necessary and the specification should be in sync with
-the API, and there should be no additional configuration necessary to start using the generated
-code.
-
-Extensions may only be loaded through the `[files]` section in the manifest.
-
-Assume you have a type called `Foo` in the `foo` package:
-
-```reproto
-// file: protos/foo.reproto
-type Foo {
-  field: string;
-}
-```
-
-You can now add extend existing types by specifying the following as an extension:
-
-```reproto
-// file: ext/foo.reproto
-type Foo {
-  other?: string;
-
-  java {{
-    public boolean hasOther() {
-      return this.other.isPresent();
-    }
-  }}
-}
-```
 
 ## Custom Code
 
@@ -1012,3 +907,5 @@ class Foo_Bar {
   // skipped
 }
 ```
+
+[`reproto.toml`]: manifest.md
