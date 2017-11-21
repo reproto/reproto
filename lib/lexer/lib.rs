@@ -174,7 +174,7 @@ impl<'input> Lexer<'input> {
     }
 
     fn type_identifier(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
-        let (end, content) = take!(self, start, 'A'...'Z' | 'a'...'z' | '_' | '0'...'9');
+        let (end, content) = take!(self, start, 'A'...'Z' | 'a'...'z' | '0'...'9');
         Ok((start, Token::TypeIdentifier(content), end))
     }
 
