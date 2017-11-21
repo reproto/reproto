@@ -11,6 +11,7 @@ pub struct A {
   b: A_B,
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct A_B {
   field: String,
