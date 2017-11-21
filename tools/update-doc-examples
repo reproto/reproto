@@ -44,12 +44,9 @@ fi
 git_do fetch origin gh-pages
 git_do reset --hard FETCH_HEAD
 
+rm -rf $target
 $reproto doc --manifest-path=$examples/reproto.toml --out $target
 
-if ! git_do diff --no-ext-diff --quiet HEAD; then
-    git_do add $target
-    git_do commit -m "updated doc-examples"
-    git_do push origin HEAD
-else
-    echo "no differences, not committing"
-fi
+git_do add $target
+git_do commit -m "updated doc-examples"
+git_do push origin HEAD
