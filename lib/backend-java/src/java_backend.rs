@@ -1,7 +1,7 @@
 //! Java backend for reproto
 
 use super::JAVA_CONTEXT;
-use backend::{Code, Converter, Environment, FromNaming, Naming, SnakeCase};
+use backend::{CamelCase, Code, Converter, Environment, FromNaming, Naming, SnakeCase};
 use backend::errors::*;
 use core::{ForEachLoc, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody, RpName,
            RpPackage, RpServiceBody, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
@@ -22,6 +22,7 @@ pub struct JavaBackend {
     listeners: Box<Listeners>,
     snake_to_upper_camel: Box<Naming>,
     snake_to_lower_camel: Box<Naming>,
+    variant_naming: Box<Naming>,
     null_string: Element<'static, Java<'static>>,
     suppress_warnings: Java<'static>,
     string_builder: Java<'static>,
@@ -53,6 +54,7 @@ impl JavaBackend {
             options: options,
             snake_to_upper_camel: SnakeCase::new().to_upper_camel(),
             snake_to_lower_camel: SnakeCase::new().to_lower_camel(),
+            variant_naming: CamelCase::new().to_upper_snake(),
             null_string: "null".quoted(),
             listeners: listeners,
             void: imported("java.lang", "Void"),
@@ -567,7 +569,11 @@ impl JavaBackend {
 
         for variant in &body.variants {
             let mut enum_value = Tokens::new();
-            let mut enum_toks = toks![variant.local_name.as_str()];
+
+            // convert .reproto (upper-camel) convertion to Java
+            let name = Rc::new(self.variant_naming.convert(variant.local_name.as_str()));
+
+            let mut enum_toks = toks![name];
 
             let value = self.ordinal(variant)?;
             enum_toks.append(toks!["(", value, ")"]);
