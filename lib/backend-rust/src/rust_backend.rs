@@ -14,6 +14,15 @@ use rust_options::RustOptions;
 use std::borrow::Cow;
 use std::rc::Rc;
 
+/// #[allow(non_camel_case_types)] attribute.
+pub struct AllowNonCamelCaseTypes;
+
+impl<'a> IntoTokens<'a, Rust<'a>> for AllowNonCamelCaseTypes {
+    fn into_tokens(self) -> Tokens<'a, Rust<'a>> {
+        "#[allow(non_camel_case_types)]".into()
+    }
+}
+
 /// Serializer derives.
 pub struct Derives;
 
@@ -102,8 +111,18 @@ impl RustBackend {
         }
     }
 
-    fn convert_type_name(&self, name: &RpName) -> Rc<String> {
-        Rc::new(name.join(TYPE_SEP))
+    /// Convert the type name
+    ///
+    /// Optionally also emit the necessary attributes to suppress warnings for bad naming
+    /// conventions.
+    fn convert_type_name(&self, name: &RpName) -> (Rc<String>, Tokens<'static, Rust<'static>>) {
+        let attributes = if name.parts.len() > 1 {
+            AllowNonCamelCaseTypes.into_tokens()
+        } else {
+            Tokens::new()
+        };
+
+        (Rc::new(name.join(TYPE_SEP)), attributes)
     }
 
     fn convert_type_id<'a>(&self, name: &'a RpName) -> Result<Element<'a, Rust<'a>>> {
@@ -227,9 +246,10 @@ impl RustBackend {
             fields.push(self.into_type(field)?);
         }
 
-        let name = self.convert_type_name(&body.name);
+        let (name, attributes) = self.convert_type_name(&body.name);
 
         let mut elements = Tokens::new();
+        elements.push_unless_empty(attributes);
         elements.push(Derives);
         elements.push(toks![
             "struct ",
@@ -244,7 +264,7 @@ impl RustBackend {
     }
 
     pub fn process_enum<'a>(&self, out: &mut RustFileSpec<'a>, body: &'a RpEnumBody) -> Result<()> {
-        let name = self.convert_type_name(&body.name);
+        let (name, attributes) = self.convert_type_name(&body.name);
 
         // variant declarations
         let mut variants = Tokens::new();
@@ -275,6 +295,7 @@ impl RustBackend {
 
         let mut out_enum = Tokens::new();
 
+        out_enum.push_unless_empty(attributes);
         out_enum.push(Derives);
         out_enum.push(toks!["pub enum ", name.clone(), " {"]);
         out_enum.nested(variants);
@@ -305,9 +326,10 @@ impl RustBackend {
             fields.push(field.as_ref().and_then(|f| self.field_element(f))?);
         }
 
-        let name = self.convert_type_name(&body.name);
+        let (name, attributes) = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
+        t.push_unless_empty(attributes);
         t.push(Derives);
         t.push(toks!["pub struct ", name.clone(), " {"]);
         t.nested(fields);
@@ -329,9 +351,10 @@ impl RustBackend {
         out: &mut RustFileSpec<'a>,
         body: &'a RpInterfaceBody,
     ) -> Result<()> {
-        let name = self.convert_type_name(&body.name);
+        let (name, attributes) = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
+        t.push_unless_empty(attributes);
         t.push(Derives);
         t.push(Tag("type"));
         t.push(toks!["pub enum ", name.clone(), " {"]);
@@ -379,9 +402,10 @@ impl RustBackend {
         out: &mut RustFileSpec<'a>,
         body: &'a RpServiceBody,
     ) -> Result<()> {
-        let name = self.convert_type_name(&body.name);
+        let (name, attributes) = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
+        t.push_unless_empty(attributes);
         t.push(toks!["pub trait ", name.clone(), " {"]);
 
         let endpoints = body.endpoints.values().map(Loc::as_ref);
