@@ -89,7 +89,7 @@ endef
 define sync-dirs
 	@echo "$$(M): sync: $(1) -> $(2)"
 	$(RM) -rf $(2)
-	$(CP) -ra $(1) $(2)
+	[ -d $(1) ] && $(CP) -ra $(1) $(2) || true
 endef
 
 define suite-targets
