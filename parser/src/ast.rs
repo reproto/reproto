@@ -142,20 +142,6 @@ impl<'input> OptionEntry for OptionDecl<'input> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum PathSegment<'input> {
-    Literal { value: Loc<String> },
-    Variable {
-        name: Loc<&'input str>,
-        ty: Loc<Type>,
-    },
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct PathSpec<'input> {
-    pub segments: Vec<PathSegment<'input>>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
 pub struct ServiceBody<'input> {
     pub name: &'input str,
     pub comment: Vec<&'input str>,

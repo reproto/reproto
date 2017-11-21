@@ -1,4 +1,4 @@
-use foo.bar@^2;
+use foo.bar "^2";
 use foo as bar2;
 
 tuple Tuple {
@@ -7,7 +7,7 @@ tuple Tuple {
 }
 
 type Foo {
-  reserved "foo";
+  option reserved = "foo";
 
   name: string;
   map: {string: u32};
@@ -20,7 +20,7 @@ type Foo {
 }
 
 interface Bar {
-  reserved "a";
+  option reserved = "a";
 
   java {{
     default int hello() {
@@ -28,8 +28,7 @@ interface Bar {
     }
   }}
 
-  A {
-      name "foo";
+  A as "foo" {
       name: string;
   }
 }
@@ -39,6 +38,3 @@ enum Baz {
   SECOND as "second";
   FIRST as "third";
 }
-
-// Support type aliases?
-// type ArrayOfTuples = [Tuple];

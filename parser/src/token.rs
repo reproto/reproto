@@ -32,7 +32,6 @@ pub enum Token<'input> {
     Dot,
     Scope,
     QuestionMark,
-    Slash,
     RightArrow,
     CodeOpen,
     CodeClose,
@@ -61,6 +60,4 @@ pub enum Token<'input> {
     FalseKeyword,
     StreamKeyword,
     OptionKeyword,
-    Tick,
-    PathSegment(String),
 }

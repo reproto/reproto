@@ -1,0 +1,51 @@
+//! A fun and exciting toystore service
+
+use io.reproto.common "1" as c;
+
+/// A toy in a toy store.
+type Toy {
+  /// Identifier of the toy.
+  id: u64;
+  /// Name of the toy.
+  name: string;
+  /// Category of the toy.
+  category?: Category;
+  /// Tags of the toy.
+  tags: [Tag];
+  /// Toy status in the store
+  status: Status;
+}
+
+/// The status of the toy in the store.
+enum Status as string {
+  Available as "available";
+  Pending as "pending";
+  Sold as "sold";
+}
+
+/// The category of the toy.
+type Category {
+  id: u64;
+  name?: string;
+}
+
+/// The tag of the toy.
+type Tag {
+  id: u64;
+  name: string;
+}
+
+/// Sample Toystore Service
+///
+/// A sample API that uses a toystore as an example to demonstrate features in the reproto
+/// specification
+service ToyStore {
+  /// Get a stream of all available toys.
+  get_toys() -> stream Toy;
+
+  /// Get a single toy by its identifier.
+  get_toy(u64) -> Toy;
+
+  /// Gets a greeting for the given `name`.
+  get_greeting(string) -> c::Greeting;
+}

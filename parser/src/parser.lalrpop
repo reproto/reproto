@@ -1,6 +1,5 @@
 // vim: ft=rust
 use core::{RpNumber, Loc, RpModifier, RpPackage, Object, VersionReq};
-use std::path::PathBuf;
 use std::rc::Rc;
 use super::ast::*;
 use super::token::{self, Token};
@@ -191,36 +190,6 @@ FieldAlias: String = {
     "as" <value:"string"> => value,
 };
 
-PathSpec: PathSpec<'input> = {
-    // escape needed to capture variables
-    "`" <segments:OneOrMore<"/", PathSegment>> "`" =>
-    {
-        PathSpec {
-            segments: segments,
-        }
-    },
-
-    // if spec is string, use as a single, literal segment
-    <value:Loc<"string">> =>
-    {
-        PathSpec {
-            segments: vec![PathSegment::Literal { value: value }],
-        }
-    },
-};
-
-PathSegment: PathSegment<'input> = {
-    "{" <name:Loc<ident>> ":" <ty:Loc<TypeSpec>> "}" =>
-    {
-        PathSegment::Variable { name: name, ty: ty }
-    },
-
-    <value:Loc<path_segment>> =>
-    {
-        PathSegment::Literal { value: value }
-    },
-};
-
 EnumVariant: Loc<EnumVariant<'input>> =
     <comment:"///"?>
     <s:@L>
@@ -394,17 +363,18 @@ extern {
         "}}" => Token::CodeClose,
         code => Token::CodeContent(<&'input str>),
         "string" => Token::String(<String>),
-        path_segment => Token::PathSegment(<String>),
         "[" => Token::LeftBracket,
         "]" => Token::RightBracket,
         ";" => Token::SemiColon,
         ":" => Token::Colon,
         "?" => Token::QuestionMark,
-        "/" => Token::Slash,
         "->" => Token::RightArrow,
         "," => Token::Comma,
         "." => Token::Dot,
         "::" => Token::Scope,
+        "=" => Token::Equal,
+        "//!" => Token::PackageDocComment(<Vec<&'input str>>),
+        "///" => Token::DocComment(<Vec<&'input str>>),
         any => Token::AnyKeyword,
         float => Token::FloatKeyword,
         double => Token::DoubleKeyword,
@@ -420,9 +390,5 @@ extern {
         false => Token::FalseKeyword,
         stream => Token::StreamKeyword,
         option => Token::OptionKeyword,
-        "=" => Token::Equal,
-        "`" => Token::Tick,
-        "//!" => Token::PackageDocComment(<Vec<&'input str>>),
-        "///" => Token::DocComment(<Vec<&'input str>>),
     }
 }

@@ -72,9 +72,6 @@ pub struct Lexer<'input> {
     buffer: String,
     code_block: Option<(usize, usize)>,
     code_close: Option<(usize, usize)>,
-    path_mode: bool,
-    path_variable_nesting: usize,
-    path_buffer: String,
 }
 
 impl<'input> Lexer<'input> {
@@ -445,96 +442,6 @@ impl<'input> Lexer<'input> {
         }
     }
 
-    fn path_variable_mode_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
-        loop {
-            if let Some((start, c)) = self.one() {
-                let token = match c {
-                    '=' => Token::Equal,
-                    '{' => {
-                        self.path_variable_nesting += 1;
-                        Token::LeftCurly
-                    }
-                    '}' => {
-                        self.path_variable_nesting -= 1;
-                        Token::RightCurly
-                    }
-                    ' ' | '\n' | '\r' | '\t' => {
-                        self.step();
-                        continue;
-                    }
-                    '_' | 'a'...'z' => return Some(self.identifier(start)),
-                    _ => break,
-                };
-
-                let end = self.step_n(1);
-                return Some(Ok((start, token, end)));
-            } else {
-                return None;
-            }
-        }
-
-        Some(Err(Error::Unexpected { pos: self.pos() }))
-    }
-
-    fn take_path_buffer(&mut self) -> Option<String> {
-        if self.path_buffer.is_empty() {
-            return None;
-        }
-
-        let buffer = self.path_buffer.clone();
-        self.path_buffer.clear();
-        return Some(buffer);
-    }
-
-    fn path_mode_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
-        while let Some((pos, c)) = self.one() {
-            let token = match c {
-                '\\' => {
-                    let c = match self.escape(pos) {
-                        Ok(c) => c,
-                        Err(e) => return Some(Err(e)),
-                    };
-
-                    self.path_buffer.push(c);
-                    continue;
-                }
-                '{' => {
-                    if let Some(buffer) = self.take_path_buffer() {
-                        return Some(Ok((pos - buffer.len(), Token::PathSegment(buffer), pos)));
-                    }
-
-                    self.path_variable_nesting = 1;
-                    Token::LeftCurly
-                }
-                '`' => {
-                    if let Some(buffer) = self.take_path_buffer() {
-                        return Some(Ok((pos - buffer.len(), Token::PathSegment(buffer), pos)));
-                    }
-
-                    self.path_mode = false;
-                    Token::Tick
-                }
-                '/' => {
-                    if let Some(buffer) = self.take_path_buffer() {
-                        return Some(Ok((pos - buffer.len(), Token::PathSegment(buffer), pos)));
-                    }
-
-                    Token::Slash
-                }
-                c => {
-                    self.path_buffer.push(c);
-                    self.step();
-                    continue;
-                }
-            };
-
-            let end = self.step_n(1);
-            return Some(Ok((pos, token, end)));
-        }
-
-        Some(Err(Error::Unexpected { pos: self.pos() }))
-    }
-
     fn normal_mode_next(&mut self) -> Option<Result<(usize, Token<'input>, usize)>> {
         // dispatch a CodeClose.
         if let Some((start, end)) = self.code_close {
@@ -588,11 +495,6 @@ impl<'input> Lexer<'input> {
             // one character keywords
             if let Some((start, c)) = self.one() {
                 let token = match c {
-                    '`' => {
-                        self.path_mode = true;
-                        self.path_buffer.clear();
-                        Token::Tick
-                    }
                     '{' => Token::LeftCurly,
                     '}' => Token::RightCurly,
                     '[' => Token::LeftBracket,
@@ -604,7 +506,6 @@ impl<'input> Lexer<'input> {
                     ',' => Token::Comma,
                     '.' => Token::Dot,
                     '?' => Token::QuestionMark,
-                    '/' => Token::Slash,
                     '=' => Token::Equal,
                     '_' | 'a'...'z' => return Some(self.identifier(start)),
                     'A'...'Z' => return Some(self.type_identifier(start)),
@@ -633,14 +534,6 @@ impl<'input> Iterator for Lexer<'input> {
     type Item = Result<(usize, Token<'input>, usize)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.path_variable_nesting > 0 {
-            return self.path_variable_mode_next();
-        }
-
-        if self.path_mode {
-            return self.path_mode_next();
-        }
-
         self.normal_mode_next()
     }
 }
@@ -662,9 +555,6 @@ pub fn lex(input: &str) -> Lexer {
         buffer: String::new(),
         code_block: None,
         code_close: None,
-        path_mode: false,
-        path_variable_nesting: 0usize,
-        path_buffer: String::new(),
     }
 }
 
@@ -793,31 +683,6 @@ pub mod tests {
     pub fn test_doc_comment() {
         let tokens = tokenize("/// foo\n\r      /// bar \r\n     /// baz ").unwrap();
         let reference = [(0, DocComment(vec![" foo", " bar ", " baz "]), 38)];
-        assert_eq!(reference, &tokens[..]);
-    }
-
-    #[test]
-    pub fn test_path() {
-        let tokens = tokenize("`/foo/first_\\/{id:{string: u32}}`").unwrap();
-
-        let reference = [
-            (0, Tick, 1),
-            (1, Slash, 2),
-            (2, PathSegment("foo".into()), 5),
-            (5, Slash, 6),
-            (7, PathSegment("first_/".into()), 14),
-            (14, LeftCurly, 15),
-            (15, Identifier("id"), 17),
-            (17, Colon, 18),
-            (18, LeftCurly, 19),
-            (19, StringKeyword, 25),
-            (25, Colon, 26),
-            (27, Unsigned32, 30),
-            (30, RightCurly, 31),
-            (31, RightCurly, 32),
-            (32, Tick, 33),
-        ];
-
         assert_eq!(reference, &tokens[..]);
     }
 }

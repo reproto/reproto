@@ -8,7 +8,7 @@ extern crate reproto_repository;
 
 use futures_cpupool::CpuPool;
 use hyper::server::Http;
-use reproto_repository::objects_from_file;
+use reproto_repository::objects_from_path;
 use reproto_server::errors::*;
 use reproto_server::reproto_service;
 use std::env;
@@ -42,7 +42,7 @@ fn entry() -> Result<()> {
 
     let pool = Arc::new(CpuPool::new_num_cpus());
     let setup_pool = pool.clone();
-    let objects = Arc::new(Mutex::new(objects_from_file(objects)?));
+    let objects = Arc::new(Mutex::new(objects_from_path(objects)?));
 
     let setup = move || {
         Ok(reproto_service::ReprotoService {

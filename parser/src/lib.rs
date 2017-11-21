@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_option_decl() {
-        let member = parse_member("foo_bar_baz true;").take();
+        let member = parse_member("option foo_bar_baz = true;").take();
 
         if let Member::Option(option) = member {
             assert_eq!("foo_bar_baz", option.name);

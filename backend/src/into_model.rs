@@ -363,34 +363,6 @@ impl<'input> IntoModel for OptionDecl<'input> {
     }
 }
 
-impl<'input> IntoModel for PathSegment<'input> {
-    type Output = RpPathSegment;
-
-    fn into_model(self, scope: &Scope) -> Result<RpPathSegment> {
-        let out = match self {
-            PathSegment::Literal { value } => RpPathSegment::Literal {
-                value: value.into_model(scope)?,
-            },
-            PathSegment::Variable { name, ty } => {
-                RpPathSegment::Variable {
-                    name: name.into_model(scope)?,
-                    ty: ty.into_model(scope)?,
-                }
-            }
-        };
-
-        Ok(out)
-    }
-}
-
-impl<'input> IntoModel for PathSpec<'input> {
-    type Output = RpPathSpec;
-
-    fn into_model(self, scope: &Scope) -> Result<RpPathSpec> {
-        Ok(RpPathSpec { segments: self.segments.into_model(scope)? })
-    }
-}
-
 impl<'input> IntoModel for ServiceBody<'input> {
     type Output = RpServiceBody;
 

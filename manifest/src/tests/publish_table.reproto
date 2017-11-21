@@ -1,2 +1,2 @@
 [publish]
-petstore = {version = "1.0.1"}
+toystore = {version = "1.0.1"}

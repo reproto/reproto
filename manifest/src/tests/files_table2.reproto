@@ -1,2 +1,2 @@
-[files.petstore]
-path = "src/petstore.reproto"
+[files.toystore]
+path = "src/toystore.reproto"

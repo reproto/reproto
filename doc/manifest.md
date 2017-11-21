@@ -29,7 +29,7 @@ output = "target/generated"
 
 # Packages to build.
 [packages]
-petstore = "*"
+toystore = "*"
 
 # Add a preset
 [[presets]]
@@ -53,20 +53,20 @@ The `[packages]` section designate which packages should be built on `reproto bu
 
 ```toml
 [packages]
-"io.reproto.petstore" = "*"
+"io.reproto.toystore" = "*"
 ```
 
 This can be specified in a more elaborate format to support more options:
 
 ```toml
 [packages]
-"io.reproto.petstore" = {version = "*"}
+"io.reproto.toystore" = {version = "*"}
 ```
 
 Or:
 
 ```toml
-[packages."io.reproto.petstore"]
+[packages."io.reproto.toystore"]
 version = "*"
 ```
 
@@ -77,21 +77,21 @@ This would typically be used to patch external manifests:
 
 ```toml
 [files]
-"io.reproto.petstore" = "patches/petstore.reproto"
+"io.reproto.toystore" = "patches/toystore.reproto"
 ```
 
 This can be specified in a more elaborate format to support more options:
 
 ```toml
 [files]
-"io.reproto.petstore" = {path = "patches/petstore.reproto", version = "1.0.1"}
+"io.reproto.toystore" = {path = "patches/toystore.reproto", version = "1.0.1"}
 ```
 
 Or:
 
 ```toml
-[files."io.reproto.petstore"]
-path = "patches/petstore.reproto"
+[files."io.reproto.toystore"]
+path = "patches/toystore.reproto"
 version = "1.0.1"
 ```
 
@@ -125,7 +125,7 @@ Or:
 version = "1.0.1"
 ```
 
-Assuming you have a specification in `src/io/reproto/petstore.reproto`, you can now publish it
+Assuming you have a specification in `src/io/reproto/toystore.reproto`, you can now publish it
 using:
 
 ```bash

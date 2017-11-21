@@ -147,11 +147,11 @@ use by other projects through the repository system.
 ### Ephemeral specifications
 
 An ephemeral specification is one that does _not_ have a version.
-For example, `src/io/reproto/petstore.reproto` is an ephemeral specification because it does not
+For example, `src/io/reproto/toystore.reproto` is an ephemeral specification because it does not
 have a version suffix in its filename.
 
 The specification can be used as compiler target.
-Like, `--package io.reproto.petstore`.
+Like, `--package io.reproto.toystore`.
 
 The specification can only be deployed to a repository if their version has been specified in a
 [`[publish]`][publish] section in [`reproto.toml`].
@@ -165,7 +165,7 @@ specifications is a change in [`reproto.toml`] and not renaming a file.
 ### Versioned specifications
 
 A versioned specification is one that has a version in its filename.
-For example, `src/io/reproto/petstore-1.0.0.reproto` is a versioned specification because it has a
+For example, `src/io/reproto/toystore-1.0.0.reproto` is a versioned specification because it has a
 version number in its filename.
 
 The version string must follow [Semantic Versioning][semver].
@@ -175,7 +175,7 @@ think of them as 'lightweight' repositories.
 
 ```toml
 [packages]
-"io.reproto.petstore" = "1.0.0"
+"io.reproto.toystore" = "1.0.0"
 ```
 
 Versioned specifications would primarily be used to store out-of-tree specifications which hasn't
@@ -307,10 +307,10 @@ building packages that are named according to which major version of the specifi
 
 The following are a few examples for Java:
 
-* `petstore-1.0.0`, would have the package `petstore.v1`.
-* `petstore-0.1.0`, would have the package `petstore._0_1_0`.
-* `petstore-0.0.1`, would have the package `petstore._0_0_1`.
-* `petstore-0.0.1-alpha1`, would have the package `petstore._0_0_1`.
+* `toystore-1.0.0`, would have the package `toystore.v1`.
+* `toystore-0.1.0`, would have the package `toystore._0_1_0`.
+* `toystore-0.0.1`, would have the package `toystore._0_0_1`.
+* `toystore-0.0.1-alpha1`, would have the package `toystore._0_0_1`.
 
 [semver-package-requirements]: https://docs.rs/semver/0.7.0/semver/#requirements
 
@@ -593,10 +593,10 @@ Fields which are reserved _cannot_ be added to the schema.
 Attempting to do so will yield an error like the following:
 
 ```bash
-examples/petstore.reproto:55:3-21:
+examples/toystore.reproto:55:3-21:
  55:   no_can_do: string;
        ^^^^^^^^^^^^^^^^^^ - field reserved
-examples/petstore.reproto:49:12-21:
+examples/toystore.reproto:49:12-21:
  49:   reserved no_can_do;
        ^^^^^^^^^^^^^^^^^^^ - field reserved here
 ```

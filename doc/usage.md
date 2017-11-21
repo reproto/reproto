@@ -39,7 +39,7 @@ You can now try to build the following manifest using the new repo that you just
 
 output = "output"
 
-[packages."io.reproto.petstore"]
+[packages."io.reproto.toystore"]
 version = "1"
 ```
 
