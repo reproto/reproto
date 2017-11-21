@@ -6,7 +6,7 @@ license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
-documentation = "https://docs.rs/reproto-parser"
+documentation = "https://docs.rs/reproto-lexer"
 description = """
 lexer used with the reproto parser
 """
