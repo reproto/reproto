@@ -1,7 +1,7 @@
 // vim: ft=rust
 use core::{RpNumber, Loc, RpModifier, RpPackage, Object, VersionReq};
 use std::rc::Rc;
-use super::ast::*;
+use ast::*;
 use super::token::{self, Token};
 use super::utils::*;
 

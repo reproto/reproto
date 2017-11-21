@@ -1,6 +1,11 @@
-use core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage};
+extern crate reproto_core;
+
+use reproto_core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage};
 use std::result;
 
+/// A type.
+///
+/// For example: `u32`, `::Relative::Name`, or `bytes`.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Type {
     Double,
@@ -18,6 +23,7 @@ pub enum Type {
     Map { key: Box<Type>, value: Box<Type> },
 }
 
+/// Any kind of declaration.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Decl<'input> {
     Type(Loc<TypeBody<'input>>),
@@ -41,6 +47,18 @@ impl<'input> Decl<'input> {
     }
 }
 
+/// The body of an enum declaration.
+///
+/// ```
+/// /// <comment>
+/// enum <name> as <ty> {
+///   <variants>
+///
+///   <members>
+/// }
+/// ```
+///
+/// Note: members must only be options.
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumBody<'input> {
     pub name: &'input str,
@@ -57,6 +75,12 @@ pub struct EnumVariant<'input> {
     pub argument: Option<Loc<Value<'input>>>,
 }
 
+/// A field.
+///
+/// ```
+/// /// <comment>
+/// <name><modifier>: <ty> as <field_as>
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct Field<'input> {
     pub modifier: RpModifier,
@@ -66,6 +90,17 @@ pub struct Field<'input> {
     pub field_as: Option<String>,
 }
 
+/// A file.
+///
+/// ```
+/// //! <comment>
+///
+/// <uses>
+///
+/// <options>
+///
+/// <decls>
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct File<'input> {
     pub comment: Vec<&'input str>,
@@ -83,6 +118,21 @@ impl<'input> Field<'input> {
     }
 }
 
+/// A name.
+///
+/// Either:
+///
+/// ```
+/// ::Relative::Name
+/// ```
+///
+/// Or:
+///
+/// ```
+/// <prefix::>Absolute::Name
+/// ```
+///
+/// Note: prefixes names are _always_ imported with `UseDecl`.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Name {
     Relative { parts: Vec<String> },
@@ -92,6 +142,15 @@ pub enum Name {
     },
 }
 
+/// The body of an interface declaration
+///
+/// ```
+/// /// <comment>
+/// interface <name> {
+///   <members>
+///   <sub_types>
+/// }
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterfaceBody<'input> {
     pub name: &'input str,
@@ -100,6 +159,7 @@ pub struct InterfaceBody<'input> {
     pub sub_types: Vec<Loc<SubType<'input>>>,
 }
 
+/// A member in a tuple, type, or interface.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Member<'input> {
     Field(Field<'input>),
@@ -108,6 +168,11 @@ pub enum Member<'input> {
     InnerDecl(Decl<'input>),
 }
 
+/// An option declaration.
+///
+/// ```
+/// option <name> = <value>;
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct OptionDecl<'input> {
     pub name: &'input str,
@@ -141,6 +206,14 @@ impl<'input> OptionEntry for OptionDecl<'input> {
     }
 }
 
+/// The body of a service declaration.
+///
+/// ```
+/// /// <comment>
+/// service <name> {
+///   <members>
+/// }
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct ServiceBody<'input> {
     pub name: &'input str,
@@ -148,6 +221,7 @@ pub struct ServiceBody<'input> {
     pub members: Vec<ServiceMember<'input>>,
 }
 
+/// A member of a service declaration.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ServiceMember<'input> {
     Endpoint(Loc<Endpoint<'input>>),
@@ -155,7 +229,14 @@ pub enum ServiceMember<'input> {
     InnerDecl(Loc<Decl<'input>>),
 }
 
-/// Describes an endpoint.
+/// An endpoint
+///
+/// ```
+/// /// <comment>
+/// <id>(<request>) -> <response> as <alias> {
+///   <options>
+/// }
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct Endpoint<'input> {
     pub id: Loc<&'input str>,
@@ -167,6 +248,11 @@ pub struct Endpoint<'input> {
 }
 
 /// Describes how data is transferred over a channel.
+///
+/// ```
+/// Unary(stream <ty>)
+/// Streaming(<ty>)
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub enum Channel {
     /// Single send.
@@ -175,6 +261,14 @@ pub enum Channel {
     Streaming { ty: Type },
 }
 
+/// The body of a sub-type
+///
+/// ```
+/// /// <comment>
+/// <name> as <alias> {
+///     <members>
+/// }
+/// ```
 /// Sub-types in interface declarations.
 #[derive(Debug, PartialEq, Eq)]
 pub struct SubType<'input> {
@@ -184,6 +278,14 @@ pub struct SubType<'input> {
     pub alias: Option<Loc<Value<'input>>>,
 }
 
+/// The body of a tuple
+///
+/// ```
+/// /// <comment>
+/// tuple <name> {
+///     <members>
+/// }
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct TupleBody<'input> {
     pub name: &'input str,
@@ -191,6 +293,14 @@ pub struct TupleBody<'input> {
     pub members: Vec<Loc<Member<'input>>>,
 }
 
+/// The body of a type
+///
+/// ```
+/// /// <comment>
+/// type <name> {
+///     <members>
+/// }
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct TypeBody<'input> {
     pub name: &'input str,
@@ -198,6 +308,11 @@ pub struct TypeBody<'input> {
     pub members: Vec<Loc<Member<'input>>>,
 }
 
+/// A use declaration
+///
+/// ```
+/// use <package> "<version req> as <alias>
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct UseDecl<'input> {
     pub package: Loc<RpPackage>,
@@ -205,6 +320,9 @@ pub struct UseDecl<'input> {
     pub alias: Option<Loc<&'input str>>,
 }
 
+/// A literal value
+///
+/// For example, `"string"`, `42.0`, and `foo`.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Value<'input> {
     String(String),

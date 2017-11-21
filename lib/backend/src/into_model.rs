@@ -1,8 +1,8 @@
 use super::errors::*;
 use super::scope::Scope;
-pub use core::*;
+use ast::*;
+use core::*;
 use linked_hash_map::LinkedHashMap;
-pub use parser::ast::*;
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
 use std::option;
 use std::path::{Path, PathBuf};

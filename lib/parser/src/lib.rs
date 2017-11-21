@@ -4,11 +4,11 @@
 extern crate error_chain;
 extern crate lalrpop_util;
 extern crate reproto_core as core;
+extern crate reproto_ast as ast;
 extern crate num;
 
 mod lexer;
 mod utils;
-pub mod ast;
 pub mod errors;
 #[allow(unused)]
 mod parser;

@@ -1,12 +1,12 @@
 use super::into_model::IntoModel;
 use super::naming::{FromNaming, Naming, SnakeCase};
 use super::scope::Scope;
+use ast::UseDecl;
 use core::{Loc, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage, RpReg,
            RpRequiredPackage, RpVersionedPackage, VersionReq, WithPos};
 use errors::*;
 use linked_hash_map::LinkedHashMap;
 use parser;
-use parser::ast::UseDecl;
 use repository::{Resolved, Resolver};
 use std::collections::{BTreeMap, HashMap, LinkedList, btree_map};
 use std::path::Path;
