@@ -66,21 +66,22 @@ Enum: Loc<EnumBody<'input>> =
     }, (input_object.clone(), s, e))
 };
 
-Interface: Loc<InterfaceBody<'input>> =
+Interface: Loc<InterfaceBody<'input>> = {
     <comment:"///"?>
     <s:@L>
     "interface" <name:TypeIdent> "{"
       <members:Member*>
-      <sub_types:Loc<SubType>*>
+      <sub_types:SubType*>
     "}"
     <e:@R> =>
-{
-    Loc::new(InterfaceBody {
-        name: name,
-        comment: comment.unwrap_or_else(Vec::new),
-        members: members,
-        sub_types: sub_types,
-    }, (input_object.clone(), s, e))
+    {
+        Loc::new(InterfaceBody {
+            name: name,
+            comment: comment.unwrap_or_else(Vec::new),
+            members: members,
+            sub_types: sub_types,
+        }, (input_object.clone(), s, e))
+    },
 };
 
 Type: Loc<TypeBody<'input>> =
@@ -225,9 +226,7 @@ Modifier: RpModifier =
 
 pub Member: Loc<Member<'input>> = {
     <comment:"///"?>
-    <s:@L>
-    <name:ident> <modifier:Modifier> ":" <ty:TypeSpec> <alias:FieldAlias?> ";"
-    <e:@R> =>
+    <s:@L> <name:ident> <modifier:Modifier> ":" <ty:TypeSpec> <alias:FieldAlias?> ";" <e:@R> =>
     {
         let field = Field {
             modifier: modifier,
@@ -241,26 +240,20 @@ pub Member: Loc<Member<'input>> = {
         Loc::new(member, (input_object.clone(), s, e))
     },
 
-    <s:@L>
-    <option:OptionDecl>
-    <e:@R> =>
+    <s:@L> <option:OptionDecl> <e:@R> =>
     {
         let member = Member::Option(option);
         Loc::new(member, (input_object.clone(), s, e))
     },
 
-    <s:@L>
-    <context:ident> "{{" <content:code> "}}"
-    <e:@R> =>
+    <s:@L> <context:ident> "{{" <content:code> "}}" <e:@R> =>
     {
         let content = strip_code_block(content);
         let member = Member::Code(context, content);
         Loc::new(member, (input_object.clone(), s, e))
     },
 
-    <s:@L>
-    <decl:Decl>
-    <e:@R> =>
+    <s:@L> <decl:Decl> <e:@R> =>
     {
         let member = Member::InnerDecl(decl);
         Loc::new(member, (input_object.clone(), s, e))
@@ -276,18 +269,38 @@ OptionDecl: OptionDecl<'input> =
     }
 };
 
-SubType: SubType<'input> =
+SubType: Loc<SubType<'input>> = {
     <comment:"///"?>
+    <s:@L> 
     <name:Loc<TypeIdent>> <alias:("as" Loc<Value>)?> "{"
         <members:Member*>
-    "}" =>
-{
-    SubType {
-        name: name,
-        comment: comment.unwrap_or_else(Vec::new),
-        members: members,
-        alias: alias.map(|alias| alias.1),
-    }
+    "}"
+    <e:@R> =>
+    {
+        let sub_type = SubType {
+            name: name,
+            comment: comment.unwrap_or_else(Vec::new),
+            members: members,
+            alias: alias.map(|alias| alias.1),
+        };
+
+        Loc::new(sub_type, (input_object.clone(), s, e))
+    },
+
+    <comment:"///"?>
+    <s:@L>
+    <name:Loc<TypeIdent>> <alias:("as" Loc<Value>)?> ";"
+    <e:@R> =>
+    {
+        let sub_type = SubType {
+            name: name,
+            comment: comment.unwrap_or_else(Vec::new),
+            members: Vec::new(),
+            alias: alias.map(|alias| alias.1),
+        };
+
+        Loc::new(sub_type, (input_object.clone(), s, e))
+    },
 };
 
 pub Value: Value<'input> = {

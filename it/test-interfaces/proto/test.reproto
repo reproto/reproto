@@ -1,7 +1,10 @@
 interface Entry {
-    Foo as "foo" {
-    }
+  A as "foo";
 
-    Bar as "bar" {
-    }
+  B as ["b", "B"];
+
+  Bar {
+  }
+
+  Baz;
 }

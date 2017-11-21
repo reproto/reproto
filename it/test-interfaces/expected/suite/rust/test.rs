@@ -1,10 +1,14 @@
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum Entry {
-  #[serde(rename = "bar")]
+  #[serde(rename = "foo")]
+  A {
+  },
+  #[serde(rename = "b")]
+  B {
+  },
   Bar {
   },
-  #[serde(rename = "foo")]
-  Foo {
+  Baz {
   },
 }

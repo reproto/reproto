@@ -14,6 +14,7 @@
   * [Types](#types)
   * [Enums](#enums)
   * [Interfaces](#interfaces)
+    * [Interface sub-types](#interface-sub-types)
   * [Tuples](#tuples)
   * [Services](#services)
   * [Reserved fields](#reserved-fields)
@@ -445,6 +446,52 @@ For example (using `new Sampling.Average(10, Unit.SECONDS)`):
 ```
 
 The following options are supported by interfaces:
+
+#### Interface sub-types
+
+Sub-types can be specified in two different ways:
+
+```reproto
+interface Foo {
+  /// No body, empty sub-type.
+  Bar;
+
+  /// With body.
+  Baz {
+  }
+}
+```
+
+The body of the sub-type can contain fields, and options:
+
+```reproto
+interface Foo {
+  Bar {
+    option my_option = "hello";
+
+    name: string;
+  }
+}
+```
+
+The name of the sub-type is determined using the `as` keyword, it can take a string or an array of
+strings, like this:
+
+```reproto
+interface Foo {
+  Bar as "bar";
+
+  Baz as ["Baz", "baz"];
+}
+```
+
+All of these are legal JSON-objects for this declaration:
+
+```json
+{"type": "bar"}
+{"type": "baz"}
+{"type": "Baz"}
+```
 
 #### `option type_info = <ident>`
 
