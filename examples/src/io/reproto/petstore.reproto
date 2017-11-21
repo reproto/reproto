@@ -1,6 +1,6 @@
 //! Package documentation
 
-use io.reproto.common@1 as c;
+use io.reproto.common "1" as c;
 
 /// Sample Petstore Service
 ///

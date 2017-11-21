@@ -2,7 +2,9 @@
 //!
 //! See: <https://developer.github.com/v3/pulls/>
 
-use com.github.common@^3 as c;
+use com.github.common "^3" as c;
+
+option field_naming = lower_camel;
 
 /// Milestone related to a project.
 type Milestone {
@@ -55,7 +57,7 @@ type Milestone {
 /// Model for the state of a pull request.
 enum State as string {
   /// The pull request state is open.
-  OPEN as "open";
+  Open as "open";
 }
 
 /// Data of a pull request.

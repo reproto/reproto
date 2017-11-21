@@ -1,9 +1,7 @@
 interface Entry {
-    Foo {
-        name "foo";
+    Foo as "foo" {
     }
 
-    Bar {
-        name "bar";
+    Bar as "bar" {
     }
 }

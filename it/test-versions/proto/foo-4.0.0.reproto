@@ -1,5 +1,5 @@
-use bar@^1;
-use bar@^2 as bar2;
+use bar "1";
+use bar "^2" as bar2;
 
 type Thing {
   name?: string;

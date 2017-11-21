@@ -64,12 +64,10 @@ interface User {
   /// Display name of the user.
   display_name: string;
 
-  Regular {
-    name "regular";
+  Regular as "regular" {
   }
 
-  Admin {
-    name "admin";
+  Admin as "admin" {
   }
 }
 
