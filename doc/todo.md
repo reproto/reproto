@@ -8,6 +8,7 @@ Some of these are just ideas, but are written down for posterity.
 - [ ] Flesh out service support and add implementation for each backend.
   * Service declaration have been simplified and are biased toward gRPC.
 - [ ] Flesh out how breaking language changes are introduced.
+- [ ] Programmatic listing of available modules grouped by language (e.g. `reproto list-modules`?).
 
 # Compiler
 - [x] ~~Markup for comments to use in documentation. Currently problematic since it would require two
