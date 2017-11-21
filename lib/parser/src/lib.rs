@@ -5,14 +5,13 @@ extern crate error_chain;
 extern crate lalrpop_util;
 extern crate reproto_core as core;
 extern crate reproto_ast as ast;
+extern crate reproto_lexer as lexer;
 extern crate num;
 
-mod lexer;
 mod utils;
 pub mod errors;
 #[allow(unused)]
 mod parser;
-mod token;
 
 use core::Object;
 use self::errors::*;
@@ -34,7 +33,7 @@ pub fn parse_string<'input>(
 ) -> Result<ast::File<'input>> {
     use self::ErrorKind::*;
     use lalrpop_util::ParseError::*;
-    use self::token::Error::*;
+    use self::lexer::errors::Error::*;
 
     let lexer = lexer::lex(input);
 

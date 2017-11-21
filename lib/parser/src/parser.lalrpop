@@ -2,7 +2,7 @@
 use core::{RpNumber, Loc, RpModifier, RpPackage, Object, VersionReq};
 use std::rc::Rc;
 use ast::*;
-use super::token::{self, Token};
+use lexer::{self, Token};
 use super::utils::*;
 
 grammar<'input, 'object>(input_object: &'object Rc<Box<Object>>);
@@ -356,7 +356,7 @@ Loc<Inner>: Loc<Inner> = <s:@L> <inner:Inner> <e:@R> => {
 
 extern {
     type Location = usize;
-    type Error = token::Error;
+    type Error = lexer::Error;
 
     enum Token<'input> {
         TypeIdent => Token::TypeIdentifier(<&'input str>),

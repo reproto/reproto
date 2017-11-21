@@ -3,6 +3,7 @@ members = [
   "cli",
   "server",
   "lib/ast",
+  "lib/lexer",
   "lib/backend",
   "lib/backend-doc",
   "lib/backend-java",

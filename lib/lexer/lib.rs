@@ -1,5 +1,16 @@
-use super::token::*;
+//! Lexer used for parsing reproto manifests.
+
+extern crate num;
+extern crate reproto_core as core;
+
+mod token;
+pub mod errors;
+
+pub use self::errors::Error;
+use self::errors::Error::*;
+pub use self::token::Token;
 use core::RpNumber;
+use errors::Result;
 use num::Zero;
 use num::bigint::BigInt;
 use std::result;
@@ -214,7 +225,7 @@ impl<'input> Lexer<'input> {
 
     fn number(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
         let (end, number) = self.parse_number(start).map_err(|(message, offset)| {
-            Error::InvalidNumber {
+            InvalidNumber {
                 message: message,
                 pos: start + offset,
             }
@@ -298,7 +309,7 @@ impl<'input> Lexer<'input> {
         self.step();
 
         let (_, escape) = self.one().ok_or_else(
-            || Error::UnterminatedEscape { start: self.pos() },
+            || UnterminatedEscape { start: self.pos() },
         )?;
 
         let escaped = match escape {
@@ -315,7 +326,7 @@ impl<'input> Lexer<'input> {
                 let seq_start = self.step_n(1);
 
                 let c = self.decode_unicode4().map_err(|(message, offset)| {
-                    Error::InvalidEscape {
+                    InvalidEscape {
                         message: message,
                         pos: seq_start + offset,
                     }
@@ -325,7 +336,7 @@ impl<'input> Lexer<'input> {
             }
             _ => {
                 return Err(
-                    Error::InvalidEscape {
+                    InvalidEscape {
                         message: "unrecognized escape, should be one of: \\n, \\r, \\t, or \\uXXXX",
                         pos: pos,
                     }.into(),
@@ -359,7 +370,7 @@ impl<'input> Lexer<'input> {
             self.step();
         }
 
-        Err(Error::UnterminatedString { start: start }.into())
+        Err(UnterminatedString { start: start }.into())
     }
 
     /// Tokenize code block.
@@ -384,7 +395,7 @@ impl<'input> Lexer<'input> {
             self.step();
         }
 
-        Err(Error::UnterminatedCodeBlock { start: start }.into())
+        Err(UnterminatedCodeBlock { start: start }.into())
     }
 
     /// Parse package documentation
@@ -526,7 +537,7 @@ impl<'input> Lexer<'input> {
             }
         }
 
-        Some(Err(Error::Unexpected { pos: self.pos() }))
+        Some(Err(Unexpected { pos: self.pos() }))
     }
 }
 
