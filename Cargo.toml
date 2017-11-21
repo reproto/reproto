@@ -1,13 +1,7 @@
 [workspace]
 members = [
-  "lib/core",
-  "lib/manifest",
-  "lib/semck",
-  "lib/parser",
-  "lib/repository",
-  "server",
   "cli",
-  "pack",
+  "server",
   "lib/backend",
   "lib/backend-doc",
   "lib/backend-java",
@@ -15,6 +9,12 @@ members = [
   "lib/backend-json",
   "lib/backend-python",
   "lib/backend-rust",
+  "lib/core",
+  "lib/manifest",
+  "lib/parser",
+  "lib/repository",
+  "lib/semck",
+  "tools/pack",
 ]
 
 exclude = [

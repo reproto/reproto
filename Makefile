@@ -69,13 +69,13 @@ tests: dumps
 
 dumps: dumps/syntaxdump dumps/themedump
 
-dumps-cmd := cargo run --bin reproto-pack --manifest-path=pack/Cargo.toml
+dumps-cmd := cargo run --bin reproto-pack --manifest-path=tools/pack/Cargo.toml --
 
 dumps/syntaxdump:
-	$(dumps-cmd) -- --skip-defaults --build-syntax
+	$(dumps-cmd) --skip-defaults --build-syntax
 
 dumps/themedump:
-	$(dumps-cmd) -- --skip-defaults --build-themes
+	$(dumps-cmd) --skip-defaults --build-themes
 
 all-tests: tests clean-projects projects clean-suites suites
 

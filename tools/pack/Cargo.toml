@@ -8,9 +8,13 @@ repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
 documentation = "https://docs.rs/reproto"
 description = """
-reproto pack
+Utility application to pack subleme themes and syntaxes for reproto.
 """
 
 [dependencies]
 syntect = "1"
 clap = "*"
+
+[[bin]]
+name = "reproto-pack"
+path = "main.rs"
