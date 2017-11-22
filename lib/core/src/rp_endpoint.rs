@@ -1,6 +1,6 @@
 //! Model for endpoints
 
-use super::{Loc, RpChannel};
+use super::{Attributes, Loc, RpChannel};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpEndpoint {
@@ -10,6 +10,8 @@ pub struct RpEndpoint {
     pub name: String,
     /// Comments for documentation.
     pub comment: Vec<String>,
+    /// Attributes associated with the endpoint.
+    pub attributes: Attributes,
     /// Request type that this endpoint expects.
     pub request: Option<Loc<RpChannel>>,
     /// Response type that this endpoint responds with.

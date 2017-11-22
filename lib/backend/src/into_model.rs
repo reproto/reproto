@@ -196,6 +196,8 @@ impl<'input> IntoModel for InterfaceBody<'input> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use std::collections::btree_map::Entry::*;
 
+        let ctx = scope.ctx();
+
         let (fields, codes, _options, decls) = members_into_model(scope, self.members)?;
 
         let mut sub_types: BTreeMap<String, Rc<Loc<RpSubType>>> = BTreeMap::new();
@@ -211,10 +213,10 @@ impl<'input> IntoModel for InterfaceBody<'input> {
                 Vacant(entry) => entry.insert(sub_type),
                 Occupied(entry) => {
                     return Err(
-                        ErrorKind::Pos(
-                            format!("sub-type `{}` already defined", sub_type.local_name),
-                            entry.get().pos().into(),
-                        ).into(),
+                        ctx.report()
+                            .err(sub_type.pos(), "sub-type already defined")
+                            .info(entry.get().pos(), "already defined here")
+                            .into(),
                     );
                 }
             };
@@ -457,6 +459,7 @@ impl<'input> IntoModel for Endpoint<'input> {
             id: id,
             name: name,
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
+            attributes: self.attributes.into_model(scope)?,
             request: self.request.into_model(scope)?,
             response: self.response.into_model(scope)?,
         });
@@ -702,5 +705,82 @@ impl<'input> IntoModel for Value<'input> {
         };
 
         Ok(out)
+    }
+}
+
+impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
+    type Output = Attributes;
+
+    fn into_model(self, scope: &Scope) -> Result<Attributes> {
+        use self::Attribute::*;
+
+        let ctx = scope.ctx();
+
+        let mut words = HashMap::new();
+        let mut selections = HashMap::new();
+
+        for attribute in self {
+            let (attr, attr_pos) = attribute.take_pair();
+
+            match attr {
+                Word(word) => {
+                    let (word, pos) = word.into_model(scope)?.take_pair();
+
+                    if let Some(old) = words.insert(word, pos.clone()) {
+                        return Err(
+                            ctx.report()
+                                .err(pos, "word already present")
+                                .info(old, "old attribute here")
+                                .into(),
+                        );
+                    }
+                }
+                List(key, name_values) => {
+                    let key = key.into_model(scope)?.take();
+
+                    match selections.entry(key) {
+                        hash_map::Entry::Vacant(entry) => {
+                            let mut words = HashMap::new();
+                            let mut values = HashMap::new();
+
+                            for name_value in name_values {
+                                match name_value {
+                                    AttributeItem::Word(word) => {
+                                        let (word, pos) = word.into_model(scope)?.take_pair();
+
+                                        if let Some(old) = words.insert(word, pos.clone()) {
+                                            return Err(
+                                                ctx.report()
+                                                    .err(pos, "word already present")
+                                                    .info(old, "old attribute here")
+                                                    .into(),
+                                            );
+                                        }
+                                    }
+                                    AttributeItem::NameValue { name, value } => {
+                                        let name = name.into_model(scope)?.take();
+                                        let value = value.into_model(scope)?;
+                                        values.insert(name, value);
+                                    }
+                                }
+                            }
+
+                            let selection = Selection::new(words, values);
+                            entry.insert(Loc::new(selection, attr_pos));
+                        }
+                        hash_map::Entry::Occupied(entry) => {
+                            return Err(
+                                ctx.report()
+                                    .err(attr_pos, "attribute already present")
+                                    .info(entry.get().pos(), "attribute here")
+                                    .into(),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(Attributes::new(words, selections))
     }
 }

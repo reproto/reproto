@@ -1,16 +1,28 @@
 use foo.bar "^2";
-use foo as bar2;
+use foo.bar "^2" as bar;
+use foo.bar as bar;
 
 tuple Tuple {
-  arg: double;
-  second: double;
+  a: double;
+  b: double;
 }
 
 type Foo {
   option reserved = "foo";
 
-  name: string;
-  map: {string: u32};
+  boolean_type?: boolean;
+  string_type?: string;
+  datetime_type?: datetime;
+  unsigned_32?: u32;
+  unsigned_64?: u32;
+  signed_32?: i32;
+  signed_64?: i64;
+  float_type?: float;
+  double_type?: double;
+  bytes_type?: bytes;
+  any_type?: any;
+  array_type?: [Foo];
+  map_type?: {string: Foo};
 
   java {{
     public int hello() {
@@ -34,7 +46,35 @@ interface Bar {
 }
 
 enum Baz {
-  FIRST as "first";
-  SECOND as "second";
-  FIRST as "third";
+  First as "first";
+  Second as "second";
+  Third as "third";
+}
+
+service Foo {
+  /// UNKNOWN
+  unknown();
+
+  /// UNKNOWN
+  unknown_return() -> Foo;
+
+  /// UNKNOWN
+  unknown_argument(Foo);
+
+  /// UNARY
+  unary(Foo) -> Foo;
+
+  /// SERVER_STREMAING
+  server_streaming(Foo) -> stream Foo;
+
+  /// CLIENT_STREAMING
+  client_streaming(stream Foo) -> Foo;
+
+  /// BIDI_STREAMING
+  #[http(method = "GET")]
+  #[http(query_params = [foo, bar, baz], path = "/hello/{world}")]
+  #[http]
+  #[allow(nothing)]
+  #[deny(everything)]
+  bidi_streaming(stream Foo) -> stream Foo;
 }

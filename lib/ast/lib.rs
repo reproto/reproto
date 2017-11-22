@@ -2,6 +2,41 @@ extern crate reproto_core;
 
 use reproto_core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage};
 
+/// Name value pair.
+///
+/// Is associated with attributes:
+///
+/// ```ignore
+/// #[attribute(name = <value>)]
+/// ```
+#[derive(Debug, PartialEq, Eq)]
+pub enum AttributeItem<'input> {
+    Word(Loc<&'input str>),
+    NameValue {
+        name: Loc<&'input str>,
+        value: Loc<Value<'input>>,
+    },
+}
+
+/// An attribute.
+///
+/// Attributes are metadata associated with elements.
+///
+/// ```ignore
+/// #[word]
+/// ```
+///
+/// or:
+///
+/// ```ignore
+/// #[name_value(foo = <value>, bar = <value>)]
+/// ```
+#[derive(Debug, PartialEq, Eq)]
+pub enum Attribute<'input> {
+    Word(Loc<&'input str>),
+    List(Loc<&'input str>, Vec<AttributeItem<'input>>),
+}
+
 /// A type.
 ///
 /// For example: `u32`, `::Relative::Name`, or `bytes`.
@@ -232,6 +267,7 @@ pub enum ServiceMember<'input> {
 ///
 /// ```ignore
 /// /// <comment>
+/// #[attribute]
 /// <id>(<request>) -> <response> as <alias> {
 ///   <options>
 /// }
@@ -240,6 +276,8 @@ pub enum ServiceMember<'input> {
 pub struct Endpoint<'input> {
     pub id: Loc<&'input str>,
     pub comment: Vec<&'input str>,
+    /// Attributes associated with the endpoint.
+    pub attributes: Vec<Loc<Attribute<'input>>>,
     pub alias: Option<String>,
     pub options: Vec<Loc<OptionDecl<'input>>>,
     pub request: Option<Loc<Channel>>,

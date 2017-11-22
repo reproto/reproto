@@ -20,6 +20,7 @@ pub enum Token<'input> {
     Dot,
     Scope,
     QuestionMark,
+    Hash,
     RightArrow,
     CodeOpen,
     CodeClose,
