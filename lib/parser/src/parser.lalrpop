@@ -145,45 +145,41 @@ pub ServiceMember: ServiceMember<'input> = {
 
 Endpoint: Loc<Endpoint<'input>> = {
     <comment:"///"?>
+    <attributes:Loc<Attribute>*>
     <s:@L>
-    <head:ServiceEndpointHead> ";"
-    <e:@R> => {
-        let (id, alias, request, response) = head;
-
+    <id:Loc<ident>> "(" <request:Loc<Channel>?> ")" <response:("->" Loc<Channel>)?>
+    <alias:FieldAlias?>
+    <e:@R>
+    ";" => {
         Loc::new(Endpoint {
             id: id,
             comment: comment.unwrap_or_else(Vec::new),
+            attributes: attributes,
             alias: alias,
             options: vec![],
             request: request,
-            response: response,
+            response: response.map(|r| r.1),
         }, (input_object.clone(), s, e))
     },
 
     <comment:"///"?>
+    <attributes:Loc<Attribute>*>
     <s:@L>
-    <head:ServiceEndpointHead> "{"
+    <id:Loc<ident>> "(" <request:Loc<Channel>?> ")" <response:("->" Loc<Channel>)?>
+    <alias:FieldAlias?> "{"
         <options:Loc<OptionDecl>*>
     "}"
     <e:@R> => {
-        let (id, alias, request, response) = head;
-
         Loc::new(Endpoint {
             id: id,
             comment: comment.unwrap_or_else(Vec::new),
+            attributes: attributes,
             alias: alias,
             options: options,
             request: request,
-            response: response,
+            response: response.map(|r| r.1),
         }, (input_object.clone(), s, e))
     },
-};
-
-ServiceEndpointHead: (Loc<&'input str>, Option<String>, Option<Loc<Channel>>, Option<Loc<Channel>>) = {
-    <id:Loc<ident>> "(" <request:Loc<Channel>?> ")"
-    <response:("->" Loc<Channel>)?>
-    <alias:FieldAlias?>
-    => (id, alias, request, response.map(|r| r.1)),
 };
 
 Channel: Channel = {
@@ -347,6 +343,26 @@ Name: Name = {
     },
 };
 
+Attribute: Attribute<'input> = {
+    "#" "[" <ident:Loc<ident>>  "]" => {
+        Attribute::Word(ident)
+    },
+    "#" "[" <ident:Loc<ident>> "(" <name_value:OneOrMore<",", AttributeItem>> ")" "]" => {
+        Attribute::List(ident, name_value)
+    },
+};
+
+AttributeItem: AttributeItem<'input> = {
+    <ident:Loc<ident>> "=" <value:Loc<Value>> => AttributeItem::NameValue {
+        name: ident,
+        value: value,
+    },
+
+    <ident:Loc<ident>> => {
+        AttributeItem::Word(ident)
+    },
+};
+
 /// Zero or more matching, separated by a token.
 ZeroOrMore<Sep, T>: Vec<T> = {
     <value:OneOrMore<Sep, T>?> => {
@@ -395,6 +411,7 @@ extern {
         ";" => Token::SemiColon,
         ":" => Token::Colon,
         "?" => Token::QuestionMark,
+        "#" => Token::Hash,
         "->" => Token::RightArrow,
         "," => Token::Comma,
         "." => Token::Dot,

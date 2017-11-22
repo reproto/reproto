@@ -53,8 +53,10 @@ mod rp_versioned_package;
 mod with_pos;
 mod rp_enum_ordinal;
 mod context;
+mod attributes;
 pub mod errors;
 
+pub use self::attributes::{Attributes, Selection};
 pub use self::context::{Context, ContextItem, Reporter};
 pub use self::error_pos::ErrorPos;
 pub use self::for_each_loc::ForEachLoc;

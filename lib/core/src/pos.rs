@@ -1,8 +1,9 @@
 use super::Object;
 use std::rc::Rc;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Pos {
+    #[serde(skip)]
     pub object: Rc<Box<Object>>,
     pub start: usize,
     pub end: usize,

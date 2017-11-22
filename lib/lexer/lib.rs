@@ -517,6 +517,7 @@ impl<'input> Lexer<'input> {
                     ',' => Token::Comma,
                     '.' => Token::Dot,
                     '?' => Token::QuestionMark,
+                    '#' => Token::Hash,
                     '=' => Token::Equal,
                     '_' | 'a'...'z' => return Some(self.identifier(start)),
                     'A'...'Z' => return Some(self.type_identifier(start)),
