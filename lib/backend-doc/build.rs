@@ -128,9 +128,8 @@ fn process_colors() -> Result<()> {
 
         writeln!(
             themes,
-            "const DOC_CSS_{}: &[u8] = include_bytes!(\"{}/{}\");",
+            "const DOC_CSS_{}: &[u8] = include_bytes!(concat!(env!(\"OUT_DIR\"), \"/{}\"));",
             key_upper,
-            out_path.display(),
             name
         )?;
 
