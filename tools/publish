@@ -5,14 +5,14 @@
 target=$PWD/target
 root=$PWD
 
-candidates="core manifest parser repository backend"
+candidates="lib/core lib/lexer lib/ast lib/manifest lib/parser lib/repository lib/backend lib/semck"
 
-for manifest in $root/backend/*/Cargo.toml; do
+for manifest in $root/lib/backend-*/Cargo.toml; do
     b=$(basename $(dirname $manifest))
-    candidates="$candidates backend/$b"
+    candidates="$candidates lib/$b"
 done
 
-candidates="$candidates server"
+candidates="$candidates server cli"
 
 targets=""
 

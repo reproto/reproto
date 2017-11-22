@@ -18,6 +18,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use syntect::highlighting::Theme;
+use syntect::parsing::SyntaxSet;
 use tuple_processor::TupleProcessor;
 use type_processor::TypeProcessor;
 
@@ -29,6 +30,7 @@ pub struct DocCompiler<'a> {
     pub skip_static: bool,
     pub theme_css: &'a [u8],
     pub syntax_theme: &'a Theme,
+    pub syntax_set: &'a SyntaxSet,
 }
 
 impl<'a> DocCompiler<'a> {
@@ -89,7 +91,7 @@ impl<'a> DocCompiler<'a> {
                 InterfaceProcessor {
                     out: out,
                     env: &self.env,
-                    syntax_theme: self.syntax_theme,
+                    syntax: (self.syntax_theme, self.syntax_set),
                     root: &root,
                     body: body,
                 }.process()
@@ -98,7 +100,7 @@ impl<'a> DocCompiler<'a> {
                 TypeProcessor {
                     out: out,
                     env: &self.env,
-                    syntax_theme: self.syntax_theme,
+                    syntax: (self.syntax_theme, self.syntax_set),
                     root: &root,
                     body: body,
                 }.process()
@@ -107,7 +109,7 @@ impl<'a> DocCompiler<'a> {
                 TupleProcessor {
                     out: out,
                     env: &self.env,
-                    syntax_theme: self.syntax_theme,
+                    syntax: (self.syntax_theme, self.syntax_set),
                     root: &root,
                     body: body,
                 }.process()
@@ -116,7 +118,7 @@ impl<'a> DocCompiler<'a> {
                 EnumProcessor {
                     out: out,
                     env: &self.env,
-                    syntax_theme: self.syntax_theme,
+                    syntax: (self.syntax_theme, self.syntax_set),
                     root: &root,
                     body: body,
                 }.process()
@@ -125,7 +127,7 @@ impl<'a> DocCompiler<'a> {
                 ServiceProcessor {
                     out: out,
                     env: &self.env,
-                    syntax_theme: self.syntax_theme,
+                    syntax: (self.syntax_theme, self.syntax_set),
                     root: &root,
                     body: body,
                 }.process()
@@ -172,7 +174,7 @@ impl<'a> DocCompiler<'a> {
         PackageProcessor {
             out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
             env: &self.env,
-            syntax_theme: self.syntax_theme,
+            syntax: (self.syntax_theme, self.syntax_set),
             root: &root.join("/"),
             body: &PackageData {
                 package: package,
@@ -197,7 +199,7 @@ impl<'a> DocCompiler<'a> {
         IndexProcessor {
             out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
             env: &self.env,
-            syntax_theme: self.syntax_theme,
+            syntax: (self.syntax_theme, self.syntax_set),
             root: &".",
             body: &IndexData { entries: entries },
         }.process()?;

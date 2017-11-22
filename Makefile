@@ -67,15 +67,15 @@ update: update-suites update-projects
 tests: dumps
 	cargo test --all
 
-dumps: dumps/syntaxdump dumps/themedump
+dumps: lib/backend-doc/dumps/syntaxdump lib/backend-doc/dumps/themedump
 
 dumps-cmd := cargo run --bin reproto-pack --manifest-path=tools/pack/Cargo.toml --
 
-dumps/syntaxdump:
-	$(dumps-cmd) --skip-defaults --build-syntax
+lib/backend-doc/dumps/syntaxdump:
+	$(dumps-cmd) --build-syntax=$(@)
 
-dumps/themedump:
-	$(dumps-cmd) --skip-defaults --build-themes
+lib/backend-doc/dumps/themedump:
+	$(dumps-cmd) --build-themes=$(@)
 
 all-tests: tests clean-projects projects clean-suites suites
 

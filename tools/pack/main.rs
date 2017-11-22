@@ -2,6 +2,7 @@ extern crate syntect;
 extern crate clap;
 
 use clap::{App, Arg};
+use std::env;
 use std::path::Path;
 use syntect::dumps::dump_to_file;
 use syntect::highlighting::ThemeSet;
@@ -12,39 +13,55 @@ fn main() {
         .version("0.0.1")
         .author("John-John Tedro <udoprog@tedro.se>")
         .about("Creates binary packs for syntaxes and themes for reproto")
-        .arg(Arg::with_name("skip-defaults").long("skip-defaults").help(
-            "skip building defaults",
-        ))
-        .arg(Arg::with_name("build-syntax").long("build-syntax").help(
-            "build syntax",
-        ))
-        .arg(Arg::with_name("build-themes").long("build-themes").help(
-            "build themes",
-        ));
+        .arg(
+            Arg::with_name("build-syntax")
+                .long("build-syntax")
+                .help("build syntax")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("build-themes")
+                .long("build-themes")
+                .help("build themes")
+                .takes_value(true),
+        );
+
+    let mut args = env::args();
+
+    let root = args.next()
+        .and_then(|arg| Path::new(arg.as_str()).canonicalize().ok())
+        .and_then(|p| {
+            p.parent()
+                .and_then(Path::parent)
+                .and_then(Path::parent)
+                .map(Path::to_owned)
+        })
+        .expect("locating root directory");
 
     let matches = app.get_matches();
 
-    let skip_defaults = matches.is_present("skip-defaults");
-    let build_syntax = matches.is_present("build-syntax") || !skip_defaults;
-    let build_themes = matches.is_present("build-themes") || !skip_defaults;
+    let themes = root.join("themes");
+    let syntaxes = root.join("syntaxes");
 
-    let syntaxes = Path::new("syntaxes");
-    let themes = Path::new("themes");
-    let dumps = Path::new("dumps");
+    if !themes.is_dir() {
+        panic!("no such directory: {}", themes.display());
+    }
 
-    if build_syntax {
+    if !syntaxes.is_dir() {
+        panic!("no such directory: {}", syntaxes.display());
+    }
+
+    if let Some(path) = matches.value_of("build-syntax").map(Path::new) {
         let mut ss = SyntaxSet::new();
         ss.load_plain_text_syntax();
         ss.load_syntaxes(syntaxes, true).expect("syntaxes to load");
-        let dump = dumps.join("syntaxdump");
-        println!("building: {}", dump.display());
-        dump_to_file(&ss, dump).expect("syntaxes to pack");
+        println!("building: {}", path.display());
+        dump_to_file(&ss, path).expect("syntaxes to pack");
     }
 
-    if build_themes {
+    if let Some(path) = matches.value_of("build-themes").map(Path::new) {
         let ts = ThemeSet::load_from_folder(themes).expect("themes to load");
-        let dump = dumps.join("themedump");
-        println!("building: {}", dump.display());
-        dump_to_file(&ts, dump).expect("themes to pack");
+        println!("building: {}", path.display());
+        dump_to_file(&ts, path).expect("themes to pack");
     }
 }

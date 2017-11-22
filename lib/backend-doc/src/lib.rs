@@ -1,8 +1,6 @@
 #![recursion_limit = "1000"]
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate lazy_static;
 extern crate genco;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
@@ -24,7 +22,6 @@ mod interface_processor;
 mod index_processor;
 mod package_processor;
 mod rendering;
-mod highlighting;
 
 pub const NORMALIZE_CSS_NAME: &str = "normalize.css";
 pub const DOC_CSS_NAME: &str = "doc.css";
@@ -36,10 +33,11 @@ pub const DEFAULT_SYNTAX_THEME: &str = "ayu-mirage";
 use self::backend::{App, Arg, ArgMatches, CompilerOptions, Environment, Options};
 use self::backend::errors::*;
 use self::doc_compiler::DocCompiler;
-use highlighting::THEME_SET;
 use manifest::{Lang, Manifest};
 use std::collections::HashMap;
-use syntect::highlighting::Theme;
+use syntect::dumps::from_binary;
+use syntect::highlighting::{Theme, ThemeSet};
+use syntect::parsing::SyntaxSet;
 
 include!(concat!(env!("OUT_DIR"), "/themes.rs"));
 
@@ -51,6 +49,21 @@ fn build_themes() -> HashMap<&'static str, &'static [u8]> {
     }
 
     m
+}
+
+static SYNTAX_DUMP: &'static [u8] =
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/dumps/syntaxdump"));
+static THEME_DUMP: &'static [u8] =
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/dumps/themedump"));
+
+fn load_syntax_set() -> SyntaxSet {
+    let mut ss: SyntaxSet = from_binary(SYNTAX_DUMP);
+    ss.link_syntaxes();
+    ss
+}
+
+fn load_theme_set() -> ThemeSet {
+    from_binary(THEME_DUMP)
 }
 
 pub fn shared_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
@@ -102,7 +115,7 @@ fn with_initialized<F, L>(
     f: F,
 ) -> Result<()>
 where
-    F: FnOnce(&Theme, &[u8]) -> Result<()>,
+    F: FnOnce(&Theme, &SyntaxSet, &[u8]) -> Result<()>,
     L: Lang,
 {
     let syntax_theme = matches
@@ -111,8 +124,10 @@ where
         .unwrap_or(DEFAULT_SYNTAX_THEME);
 
     let default_theme: Theme = Default::default();
+    let theme_set = load_theme_set();
+    let syntax_set = load_syntax_set();
 
-    let syntax_theme = if let Some(syntax_theme) = THEME_SET.themes.get(syntax_theme) {
+    let syntax_theme = if let Some(syntax_theme) = theme_set.themes.get(syntax_theme) {
         syntax_theme
     } else {
         warn!(
@@ -135,7 +150,7 @@ where
         })?
     };
 
-    f(syntax_theme, theme_css)
+    f(syntax_theme, &syntax_set, theme_css)
 }
 
 fn list_themes(themes: &HashMap<&'static str, &'static [u8]>) -> Result<()> {
@@ -152,7 +167,9 @@ fn list_themes(themes: &HashMap<&'static str, &'static [u8]>) -> Result<()> {
 }
 
 fn list_syntax_themes() -> Result<()> {
-    let mut names: Vec<(&str, &Theme)> = THEME_SET
+    let theme_set = load_theme_set();
+
+    let mut names: Vec<(&str, &Theme)> = theme_set
         .themes
         .iter()
         .map(|e| (e.0.as_str(), e.1))
@@ -210,13 +227,16 @@ where
 
     let out = compiler_options.out_path.clone();
 
-    with_initialized(matches, manifest, &themes, move |syntax_theme, theme_css| {
+    with_initialized(matches, manifest, &themes, move |syntax_theme,
+          syntax_set,
+          theme_css| {
         let compiler = DocCompiler {
             env: env,
             out_path: compiler_options.out_path,
             skip_static: skip_static,
             theme_css: theme_css,
             syntax_theme: syntax_theme,
+            syntax_set: syntax_set,
         };
 
         compiler.compile()

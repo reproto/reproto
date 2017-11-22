@@ -11,6 +11,7 @@ use rendering::markdown_to_html;
 use std::ops::DerefMut;
 use std::rc::Rc;
 use syntect::highlighting::Theme;
+use syntect::parsing::SyntaxSet;
 
 pub trait Processor<'env> {
     /// Access the current builder.
@@ -26,7 +27,7 @@ pub trait Processor<'env> {
     fn process(self) -> Result<()>;
 
     /// Syntax theme.
-    fn syntax_theme(&self) -> &'env Theme;
+    fn syntax(&self) -> (&'env Theme, &'env SyntaxSet);
 
     fn current_package(&self) -> Option<&'env RpVersionedPackage> {
         None
@@ -74,7 +75,8 @@ pub trait Processor<'env> {
 
     fn markdown(&self, comment: &str) -> Result<()> {
         if !comment.is_empty() {
-            markdown_to_html(self.out().deref_mut(), comment, self.syntax_theme())?;
+            let (theme, syntax_set) = self.syntax();
+            markdown_to_html(self.out().deref_mut(), comment, theme, syntax_set)?;
         }
 
         Ok(())

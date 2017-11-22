@@ -2,15 +2,20 @@ use self::cmark::{Event, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES, Options,
 
 use backend::errors::*;
 use doc_builder::DocBuilder;
-use highlighting::SYNTAX_SET;
 
 use pulldown_cmark as cmark;
 use std::borrow::Cow::{Borrowed, Owned};
 use syntect::easy::HighlightLines;
 use syntect::highlighting::Theme;
 use syntect::html::{IncludeBackground, start_coloured_html_snippet, styles_to_coloured_html};
+use syntect::parsing::SyntaxSet;
 
-pub fn markdown_to_html(out: &mut DocBuilder, content: &str, theme: &Theme) -> Result<()> {
+pub fn markdown_to_html(
+    out: &mut DocBuilder,
+    content: &str,
+    theme: &Theme,
+    syntax_set: &SyntaxSet,
+) -> Result<()> {
     let mut highlighter: Option<HighlightLines> = None;
 
     let mut opts = Options::empty();
@@ -28,14 +33,12 @@ pub fn markdown_to_html(out: &mut DocBuilder, content: &str, theme: &Theme) -> R
             Event::Text(text)
         }
         Event::Start(Tag::CodeBlock(ref info)) => {
-            highlighter = SYNTAX_SET.with(|ss| {
-                let syntax = info.split(' ')
-                    .next()
-                    .and_then(|lang| ss.find_syntax_by_token(lang))
-                    .unwrap_or_else(|| ss.find_syntax_plain_text());
+            let syntax = info.split(' ')
+                .next()
+                .and_then(|lang| syntax_set.find_syntax_by_token(lang))
+                .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
 
-                Some(HighlightLines::new(syntax, theme))
-            });
+            highlighter = Some(HighlightLines::new(syntax, theme));
 
             let snippet = start_coloured_html_snippet(theme);
             Event::Html(Owned(format!("<div class=\"code\">{}", snippet)))
