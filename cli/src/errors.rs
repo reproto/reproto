@@ -47,9 +47,6 @@ error_chain! {
             display("encountered {} error(s)", errors.len())
         }
 
-        MissingBackend {
-        }
-
         NoVersionToPublish(package: RpPackage) {
             description("no version to publish")
             display("no version to publish: {}", package)

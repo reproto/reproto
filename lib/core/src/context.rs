@@ -10,13 +10,15 @@ use errors::{Error, ErrorKind};
 use std::cell::{BorrowError, Ref, RefCell};
 use std::fmt;
 
-pub enum ContextError {
+pub enum ContextItem {
     /// A positional error.
-    Pos(ErrorPos, String),
+    ErrorPos(ErrorPos, String),
+    /// A positional information string.
+    InfoPos(ErrorPos, String),
 }
 
 pub struct Context {
-    errors: RefCell<Vec<ContextError>>,
+    errors: RefCell<Vec<ContextItem>>,
 }
 
 /// A reporter that processes the given error for the context.
@@ -24,14 +26,25 @@ pub struct Context {
 /// Converting the reporter into an ErrorKind causes it to accumulate the errors to the `Context`.
 pub struct Reporter<'a> {
     ctx: &'a Context,
-    errors: Vec<ContextError>,
+    errors: Vec<ContextItem>,
 }
 
 impl<'a> Reporter<'a> {
     pub fn err<P: Into<ErrorPos>, E: fmt::Display>(mut self, pos: P, error: E) -> Self {
-        self.errors.push(
-            ContextError::Pos(pos.into(), error.to_string()),
-        );
+        self.errors.push(ContextItem::ErrorPos(
+            pos.into(),
+            error.to_string(),
+        ));
+
+        self
+    }
+
+    pub fn info<P: Into<ErrorPos>, I: fmt::Display>(mut self, pos: P, info: I) -> Self {
+        self.errors.push(ContextItem::InfoPos(
+            pos.into(),
+            info.to_string(),
+        ));
+
         self
     }
 }
@@ -61,7 +74,7 @@ impl Context {
     }
 
     /// Iterate over all reporter errors.
-    pub fn errors(&self) -> Result<Ref<Vec<ContextError>>, BorrowError> {
+    pub fn errors(&self) -> Result<Ref<Vec<ContextItem>>, BorrowError> {
         self.errors.try_borrow()
     }
 }

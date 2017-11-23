@@ -4,7 +4,7 @@ mod non_colored;
 pub use self::colored::Colored;
 pub use self::non_colored::NonColored;
 use backend;
-use core::{self, Context, ContextError};
+use core::{self, Context, ContextItem};
 use errors::*;
 use log;
 use parser;
@@ -89,34 +89,8 @@ pub trait Output {
                 self.print_error(m, p)?;
                 true
             }
-            DeclMerge(ref m, ref source, ref target) => {
-                self.print_error(m, source)?;
-                self.print_error("previous declaration here", target)?;
-                true
-            }
-            FieldConflict(ref name, ref source, ref target) => {
-                self.print_error(
-                    &format!("conflict in field `{}`", name),
-                    source,
-                )?;
-                self.print_error("previous declaration here", target)?;
-                true
-            }
-            ExtendEnum(ref m, ref source, ref enum_target) => {
-                self.print_error(m, source)?;
-                self.print_error("previous declaration here", enum_target)?;
-                true
-            }
-            ReservedField(ref field_pos, ref reserved_pos) => {
-                self.print_error("field reserved", field_pos)?;
-                self.print_error("field reserved here", reserved_pos)?;
-                true
-            }
-            MatchConflict(ref source, ref target) => {
-                self.print_error("conflicts with existing clause", source)?;
-                self.print_error("existing clause here", target)?;
-                true
-            }
+            // already being reported through the context.
+            Context => true,
             _ => false,
         };
 
@@ -136,32 +110,6 @@ pub trait Output {
             }
             Parser(ref e) => {
                 return self.handle_parser_error(e);
-            }
-            EnumVariantConflict(ref pos, ref other) => {
-                self.print_error("conflicting name", pos)?;
-                self.print_error("previous name here", other)?;
-                true
-            }
-            EndpointConflict(ref new, ref old) => {
-                self.print_error("conflicting id of endpoint", new)?;
-                self.print_error("previous id here", old)?;
-                true
-            }
-            EndpointNameConflict(ref new, ref old) => {
-                self.print_error("conflicting name of endpoint", new)?;
-                self.print_error("previous name here", old)?;
-                true
-            }
-            RegisteredTypeConflict(ref name, ref last, ref current) => {
-                self.print_error(
-                    &format!(
-                        "conflicts with existing declaration `{}`",
-                        name
-                    ),
-                    current,
-                )?;
-                self.print_error("previous declaration here", last)?;
-                true
             }
             _ => false,
         };
@@ -223,8 +171,11 @@ pub trait Output {
 
         for e in errors.iter() {
             match *e {
-                ContextError::Pos(ref pos, ref message) => {
+                ContextItem::ErrorPos(ref pos, ref message) => {
                     self.print_error(message.as_str(), pos)?;
+                }
+                ContextItem::InfoPos(ref pos, ref message) => {
+                    self.print_info(message.as_str(), pos)?;
                 }
             }
         }
@@ -441,6 +392,8 @@ pub trait Output {
     fn logger(&self) -> Box<log::Log + 'static>;
 
     fn print(&self, m: &str) -> Result<()>;
+
+    fn print_info(&self, m: &str, p: &core::ErrorPos) -> Result<()>;
 
     fn print_error(&self, m: &str, p: &core::ErrorPos) -> Result<()>;
 

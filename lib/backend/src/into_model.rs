@@ -68,6 +68,8 @@ impl<'input> IntoModel for EnumBody<'input> {
     type Output = RpEnumBody;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        let ctx = scope.ctx();
+
         let mut variants: Vec<Rc<Loc<RpVariant>>> = Vec::new();
 
         let (fields, codes, _options, decls) = members_into_model(scope, self.members)?;
@@ -98,10 +100,10 @@ impl<'input> IntoModel for EnumBody<'input> {
             )
             {
                 return Err(
-                    ErrorKind::EnumVariantConflict(
-                        other.local_name.pos().into(),
-                        variant.local_name.pos().into(),
-                    ).into(),
+                    ctx.report()
+                        .err(variant.local_name.pos(), "conflicting enum name")
+                        .info(other.local_name.pos(), "previous variant here")
+                        .into(),
                 );
             }
 
@@ -403,6 +405,8 @@ impl<'input> IntoModel for ServiceBody<'input> {
             endpoint_names: &mut HashMap<String, ErrorPos>,
             endpoints: &mut LinkedHashMap<String, Loc<RpEndpoint>>,
         ) -> Result<()> {
+            let ctx = scope.ctx();
+
             let endpoint = endpoint.into_model(scope)?;
 
             // Check that there are no conflicting endpoint names.
@@ -410,10 +414,10 @@ impl<'input> IntoModel for ServiceBody<'input> {
                 hash_map::Entry::Vacant(entry) => entry.insert(endpoint.pos().into()),
                 hash_map::Entry::Occupied(entry) => {
                     return Err(
-                        ErrorKind::EndpointNameConflict(
-                            endpoint.pos().into(),
-                            entry.get().clone_error_pos(),
-                        ).into(),
+                        ctx.report()
+                            .err(endpoint.pos(), "conflicting name of endpoint")
+                            .info(entry.get().clone_error_pos(), "previous name here")
+                            .into(),
                     );
                 }
             };
@@ -423,10 +427,10 @@ impl<'input> IntoModel for ServiceBody<'input> {
                 Vacant(entry) => entry.insert(endpoint),
                 Occupied(entry) => {
                     return Err(
-                        ErrorKind::EndpointConflict(
-                            endpoint.pos().into(),
-                            entry.get().pos().into(),
-                        ).into(),
+                        ctx.report()
+                            .err(endpoint.pos(), "conflicting id of endpoint")
+                            .info(entry.get().pos(), "previous id here")
+                            .into(),
                     );
                 }
             };
@@ -501,7 +505,7 @@ impl<'input> IntoModel for SubType<'input> {
                         return Err(
                             ctx.report()
                                 .err(pos, "conflict in field")
-                                .err(other.pos(), "previous declaration here")
+                                .info(other.pos(), "previous declaration here")
                                 .into(),
                         );
                     }
@@ -661,7 +665,7 @@ pub fn members_into_model(
                     return Err(
                         ctx.report()
                             .err(pos, "conflict in field")
-                            .err(other.pos(), "previous declaration here")
+                            .info(other.pos(), "previous declaration here")
                             .into(),
                     );
                 }
