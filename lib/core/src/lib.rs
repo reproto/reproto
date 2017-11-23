@@ -51,8 +51,10 @@ mod rp_variant;
 mod rp_versioned_package;
 mod with_pos;
 mod rp_enum_ordinal;
+mod context;
 pub mod errors;
 
+pub use self::context::Context;
 pub use self::error_pos::ErrorPos;
 pub use self::for_each_loc::ForEachLoc;
 pub use self::loc::Loc;
