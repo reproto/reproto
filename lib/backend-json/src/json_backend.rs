@@ -1,11 +1,12 @@
 //! Backend for JSON
 
-use backend::{CompilerOptions, Environment, PackageUtils};
+use backend::{Environment, PackageUtils};
 use backend::errors::*;
 use core::RpPackage;
 use json_compiler::JsonCompiler;
 use json_options::JsonOptions;
 use listeners::Listeners;
+use std::path::PathBuf;
 
 pub struct JsonBackend {
     pub env: Environment,
@@ -20,9 +21,9 @@ impl JsonBackend {
         }
     }
 
-    pub fn compiler(&self, options: CompilerOptions) -> Result<JsonCompiler> {
+    pub fn compiler(&self, out_path: PathBuf) -> Result<JsonCompiler> {
         Ok(JsonCompiler {
-            out_path: options.out_path,
+            out_path: out_path,
             processor: self,
         })
     }

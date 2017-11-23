@@ -16,12 +16,13 @@ mod json_compiler;
 mod json_options;
 mod listeners;
 
-use self::backend::{ArgMatches, CompilerOptions, Environment, Options};
-use self::backend::errors::*;
-use self::json_backend::JsonBackend;
-use self::json_options::JsonOptions;
-use self::listeners::Listeners;
+use self::ErrorKind::*;
+use backend::{ArgMatches, Environment};
+use backend::errors::*;
 use core::Context;
+use json_backend::JsonBackend;
+use json_options::JsonOptions;
+use listeners::Listeners;
 use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
 use std::path::Path;
 use std::rc::Rc;
@@ -69,13 +70,12 @@ fn setup_listeners(modules: &[JsonModule]) -> Result<(JsonOptions, Box<Listeners
 pub fn compile(
     _ctx: Rc<Context>,
     env: Environment,
-    _opts: Options,
-    compiler_options: CompilerOptions,
     _matches: &ArgMatches,
     manifest: Manifest<JsonLang>,
 ) -> Result<()> {
+    let out = manifest.output.ok_or(MissingOutput)?;
     let (options, listeners) = setup_listeners(&manifest.modules)?;
     let backend = JsonBackend::new(env, options, listeners);
-    let compiler = backend.compiler(compiler_options)?;
+    let compiler = backend.compiler(out)?;
     compiler.compile()
 }

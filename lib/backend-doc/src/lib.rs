@@ -30,9 +30,10 @@ pub const INDEX: &str = "index";
 pub const DEFAULT_THEME: &str = "light";
 pub const DEFAULT_SYNTAX_THEME: &str = "ayu-mirage";
 
-use self::backend::{App, Arg, ArgMatches, CompilerOptions, Environment, Options};
-use self::backend::errors::*;
-use self::doc_compiler::DocCompiler;
+use self::ErrorKind::*;
+use backend::{App, Arg, ArgMatches, Environment};
+use backend::errors::*;
+use doc_compiler::DocCompiler;
 use manifest::{Lang, Manifest};
 use std::collections::HashMap;
 use syntect::dumps::from_binary;
@@ -194,13 +195,7 @@ fn list_syntax_themes() -> Result<()> {
     Ok(())
 }
 
-pub fn compile<L>(
-    env: Environment,
-    _options: Options,
-    compiler_options: CompilerOptions,
-    matches: &ArgMatches,
-    manifest: Manifest<L>,
-) -> Result<()>
+pub fn compile<L>(env: Environment, matches: &ArgMatches, manifest: Manifest<L>) -> Result<()>
 where
     L: Lang,
 {
@@ -224,15 +219,14 @@ where
     }
 
     let skip_static = matches.is_present("skip-static");
+    let out = manifest.output.as_ref().ok_or(MissingOutput)?.clone();
 
-    let out = compiler_options.out_path.clone();
-
-    with_initialized(matches, manifest, &themes, move |syntax_theme,
-          syntax_set,
-          theme_css| {
+    with_initialized(matches, manifest, &themes, |syntax_theme,
+     syntax_set,
+     theme_css| {
         let compiler = DocCompiler {
             env: env,
-            out_path: compiler_options.out_path,
+            out_path: out.clone(),
             skip_static: skip_static,
             theme_css: theme_css,
             syntax_theme: syntax_theme,

@@ -24,12 +24,13 @@ mod mutable;
 mod nullable;
 mod grpc;
 
-use self::backend::{ArgMatches, CompilerOptions, Environment, Options};
-use self::backend::errors::*;
-use self::java_backend::JavaBackend;
-use self::java_options::JavaOptions;
-use self::listeners::Listeners;
+use self::ErrorKind::*;
+use backend::{ArgMatches, Environment};
+use backend::errors::*;
 use core::Context;
+use java_backend::JavaBackend;
+use java_options::JavaOptions;
+use listeners::Listeners;
 use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
 use std::path::Path;
 use std::rc::Rc;
@@ -123,12 +124,11 @@ fn setup_listeners(modules: &[JavaModule]) -> Result<(JavaOptions, Box<Listeners
 pub fn compile(
     _ctx: Rc<Context>,
     env: Environment,
-    _options: Options,
-    compiler_options: CompilerOptions,
     _matches: &ArgMatches,
     manifest: Manifest<JavaLang>,
 ) -> Result<()> {
+    let out = manifest.output.ok_or(MissingOutput)?;
     let (options, listeners) = setup_listeners(&manifest.modules)?;
     let backend = JavaBackend::new(env, options, listeners);
-    backend.compile(&compiler_options.out_path)
+    backend.compile(&out)
 }

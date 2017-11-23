@@ -29,6 +29,10 @@ error_chain! {
             display("encountered {} error(s)", errors.len())
         }
 
+        MissingOutput {
+            description("missing output directory, use --out or the `output` key in the manifest")
+        }
+
         MissingPrefix(prefix: String) {
             description("missing prefix")
             display("missing prefix: {}", prefix)

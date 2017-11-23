@@ -1,8 +1,8 @@
 //! Python Backend
 
 use super::{PYTHON_CONTEXT, TYPE, TYPE_SEP};
-use backend::{Code, CompilerOptions, Converter, DynamicConverter, DynamicDecode, DynamicEncode,
-              Environment, FromNaming, Naming, PackageUtils, SnakeCase};
+use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, Environment,
+              FromNaming, Naming, PackageUtils, SnakeCase};
 use backend::errors::*;
 use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
            RpServiceBody, RpTupleBody, RpType, RpTypeBody, WithPos};
@@ -15,12 +15,12 @@ use python_file_spec::PythonFileSpec;
 use python_options::PythonOptions;
 use std::borrow::Cow;
 use std::iter;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 pub struct PythonBackend {
     pub env: Environment,
     listeners: Box<Listeners>,
-    id_converter: Option<Box<Naming>>,
     to_lower_snake: Box<Naming>,
     dict: Element<'static, Python<'static>>,
     enum_enum: Python<'static>,
@@ -28,16 +28,10 @@ pub struct PythonBackend {
 }
 
 impl PythonBackend {
-    pub fn new(
-        env: Environment,
-        _: PythonOptions,
-        listeners: Box<Listeners>,
-        id_converter: Option<Box<Naming>>,
-    ) -> PythonBackend {
+    pub fn new(env: Environment, _: PythonOptions, listeners: Box<Listeners>) -> PythonBackend {
         PythonBackend {
             env: env,
             listeners: listeners,
-            id_converter: id_converter,
             to_lower_snake: SnakeCase::new().to_lower_snake(),
             dict: "dict".into(),
             enum_enum: imported_ref("enum", "Enum"),
@@ -45,9 +39,9 @@ impl PythonBackend {
         }
     }
 
-    pub fn compiler(&self, options: CompilerOptions) -> Result<PythonCompiler> {
+    pub fn compiler(&self, out_path: PathBuf) -> Result<PythonCompiler> {
         Ok(PythonCompiler {
-            out_path: options.out_path,
+            out_path: out_path,
             backend: self,
         })
     }
@@ -273,15 +267,12 @@ impl PythonBackend {
         Ok(decode)
     }
 
-    fn ident(&self, name: &str) -> String {
-        if let Some(ref id_converter) = self.id_converter {
-            id_converter.convert(name)
-        } else {
-            name.to_owned()
-        }
+    /// Python naming convention is identical with reproto: lower_camel.
+    fn ident<'a>(&self, name: &'a str) -> &'a str {
+        name
     }
 
-    fn field_ident(&self, field: &RpField) -> String {
+    fn field_ident<'a>(&self, field: &'a RpField) -> &'a str {
         self.ident(field.ident())
     }
 
@@ -417,7 +408,7 @@ impl PythonBackend {
             modifier: &field.modifier,
             ty: &field.ty,
             name: field.name(),
-            ident: Rc::new(ident),
+            ident: Rc::new(ident.to_owned()),
         })
     }
 

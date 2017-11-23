@@ -1,5 +1,4 @@
-use backend::{self, CamelCase, CompilerOptions, Environment, FromNaming, Naming, Options,
-              SnakeCase};
+use backend::{self, Environment};
 use clap::ArgMatches;
 use config_env::ConfigEnv;
 use core::{Context, Object, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage,
@@ -14,7 +13,7 @@ use repository::{Index, IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig,
 use semck;
 use std::collections::HashMap;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::rc::Rc;
 use std::time::Duration;
 use toml;
@@ -22,69 +21,6 @@ use url;
 
 pub const DEFAULT_INDEX: &'static str = "git+https://github.com/reproto/reproto-index";
 pub const MANIFEST_NAME: &'static str = "reproto.toml";
-
-fn parse_id_converter(input: &str) -> Result<Box<Naming>> {
-    let mut parts = input.split(":");
-
-    if let Some(first) = parts.next() {
-        if let Some(second) = parts.next() {
-            let naming: Box<FromNaming> = match first {
-                "camel" => Box::new(CamelCase::new()),
-                "snake" => Box::new(SnakeCase::new()),
-                _ => {
-                    return Err(
-                        format!(
-                            "Not a valid source: {}, must be one of: camel, snake",
-                            first
-                        ).into(),
-                    )
-                }
-            };
-
-            let naming = match second {
-                "lower_camel" => naming.to_lower_camel(),
-                "upper_camel" => naming.to_upper_camel(),
-                "lower_snake" => naming.to_lower_snake(),
-                "upper_snake" => naming.to_upper_snake(),
-                _ => {
-                    return Err(
-                        format!(
-                            "Not a valid target: {}, must be one of: lower_camel, upper_camel, \
-                             lower_snake, upper_snake",
-                            second
-                        ).into(),
-                    )
-                }
-            };
-
-            return Ok(naming);
-        }
-    }
-
-    return Err(
-        format!("Invalid ID conversion `{}`, expected <from>:<to>", input).into(),
-    );
-}
-
-pub fn setup_compiler_options<L>(
-    manifest: &Manifest<L>,
-    matches: &ArgMatches,
-) -> Result<CompilerOptions>
-where
-    L: Lang,
-{
-    // output path as specified in manifest.
-    let manifest_out = manifest.output.as_ref().map(PathBuf::as_path);
-
-    // final output path
-    let out_path = matches
-        .value_of("out")
-        .map(Path::new)
-        .or(manifest_out)
-        .ok_or("--out <dir>, or `output` key in manifest is required")?;
-
-    Ok(CompilerOptions { out_path: out_path.to_owned() })
-}
 
 fn load_index(base: &Path, index_url: &str, config: IndexConfig) -> Result<Box<Index>> {
     let index_path = Path::new(index_url);
@@ -226,19 +162,6 @@ where
     }
 
     Ok(Box::new(Resolvers::new(resolvers)))
-}
-
-pub fn setup_options<L>(manifest: &Manifest<L>) -> Result<Options>
-where
-    L: Lang,
-{
-    let id_converter = if let Some(id_converter) = manifest.id_converter.as_ref() {
-        Some(parse_id_converter(id_converter)?)
-    } else {
-        None
-    };
-
-    Ok(Options { id_converter: id_converter })
 }
 
 /// Read the first part of the manifest, to determine the language used.
@@ -386,6 +309,11 @@ where
         manifest.id_converter = Some(id_converter.to_string());
     }
 
+    // override output path
+    if let Some(out) = matches.value_of("out").map(Path::new) {
+        manifest.output = Some(out.to_owned());
+    }
+
     repository_from_matches(&mut manifest.repository, matches)?;
     Ok(())
 }
@@ -520,31 +448,12 @@ pub fn manifest_compile<'a, L, F>(
 ) -> Result<()>
 where
     L: Lang,
-    F: FnOnce(Rc<Context>,
-           Environment,
-           Options,
-           CompilerOptions,
-           &'a ArgMatches,
-           Manifest<L>)
-           -> backend::errors::Result<()>,
+    F: FnOnce(Rc<Context>, Environment, &'a ArgMatches, Manifest<L>) -> backend::errors::Result<()>,
 {
     let manifest = manifest::<L>(matches, preamble)?;
     let env = setup_environment(ctx.clone(), &manifest)?;
-    let options = setup_options(&manifest)?;
-    let compiler_options = setup_compiler_options(&manifest, matches)?;
 
-    let out = compiler_options.out_path.clone();
-
-    compile(
-        ctx.clone(),
-        env,
-        options,
-        compiler_options,
-        matches,
-        manifest,
-    )?;
-
-    info!("Built project in: {}", out.display());
+    compile(ctx.clone(), env, matches, manifest)?;
     Ok(())
 }
 
