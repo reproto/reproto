@@ -480,6 +480,8 @@ impl<'input> IntoModel for SubType<'input> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use self::Member::*;
 
+        let ctx = scope.ctx();
+
         let mut fields: Vec<Loc<RpField>> = Vec::new();
         let mut codes = Vec::new();
         let mut options = Vec::new();
@@ -497,11 +499,10 @@ impl<'input> IntoModel for SubType<'input> {
                     })
                     {
                         return Err(
-                            ErrorKind::FieldConflict(
-                                field.ident().to_owned(),
-                                pos.into(),
-                                other.pos().into(),
-                            ).into(),
+                            ctx.report()
+                                .err(pos, "conflict in field")
+                                .err(other.pos(), "previous declaration here")
+                                .into(),
                         );
                     }
 
@@ -639,6 +640,8 @@ pub fn members_into_model(
 ) -> Result<(Fields, Codes, OptionVec, Vec<Rc<Loc<RpDecl>>>)> {
     use self::Member::*;
 
+    let ctx = scope.ctx();
+
     let mut fields: Vec<Loc<RpField>> = Vec::new();
     let mut codes = Vec::new();
     let mut options: Vec<Loc<RpOptionDecl>> = Vec::new();
@@ -656,11 +659,10 @@ pub fn members_into_model(
                 })
                 {
                     return Err(
-                        ErrorKind::FieldConflict(
-                            field.ident().to_owned(),
-                            pos.into(),
-                            other.pos().into(),
-                        ).into(),
+                        ctx.report()
+                            .err(pos, "conflict in field")
+                            .err(other.pos(), "previous declaration here")
+                            .into(),
                     );
                 }
 

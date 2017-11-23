@@ -1,7 +1,10 @@
-use super::imports::*;
-use super::setup_environment;
-use core::Version;
+use build_spec::{manifest_preamble, semck_check, setup_environment, setup_matches,
+                 setup_path_resolver, setup_publish_matches, setup_repository};
+use clap::{App, Arg, ArgMatches, SubCommand};
+use core::{Context, RpRequiredPackage, Version};
+use errors::*;
 use manifest::{Lang, Manifest};
+use std::rc::Rc;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("check").about("Check specifications");
@@ -18,15 +21,15 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(matches: &ArgMatches) -> Result<()> {
+pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
     let preamble = manifest_preamble(matches)?;
-    return do_manifest_use!(matches, preamble, inner);
+    return do_manifest_use!(ctx, matches, preamble, inner);
 
-    fn inner<L>(matches: &ArgMatches, manifest: Manifest<L>) -> Result<()>
+    fn inner<L>(ctx: Rc<Context>, matches: &ArgMatches, manifest: Manifest<L>) -> Result<()>
     where
         L: Lang,
     {
-        let mut env = setup_environment(&manifest)?;
+        let mut env = setup_environment(ctx.clone(), &manifest)?;
 
         let mut manifest_resolver = setup_path_resolver(&manifest)?.ok_or_else(|| {
             "could not setup manifest resolver"

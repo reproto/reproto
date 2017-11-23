@@ -24,6 +24,7 @@ error_chain! {
         Toml(::toml::de::Error);
         UrlParseError(::url::ParseError);
         FromUtf8Error(::std::string::FromUtf8Error);
+        BorrowError(::std::cell::BorrowError);
     }
 
     errors {
@@ -47,11 +48,6 @@ error_chain! {
         }
 
         MissingBackend {
-        }
-
-        /// An instance creation is missing a set of required fields.
-        MissingRequired(names: Vec<String>, pos: ErrorPos, fields: Vec<ErrorPos>) {
-            description("missing required")
         }
 
         NoVersionToPublish(package: RpPackage) {

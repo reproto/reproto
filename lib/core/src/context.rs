@@ -6,9 +6,9 @@
 //! corresponding locations.
 
 use error_pos::ErrorPos;
-use errors::ErrorKind;
+use errors::{Error, ErrorKind};
+use std::cell::{BorrowError, Ref, RefCell};
 use std::fmt;
-use std::slice;
 
 pub enum ContextError {
     /// A positional error.
@@ -16,14 +16,14 @@ pub enum ContextError {
 }
 
 pub struct Context {
-    errors: Vec<ContextError>,
+    errors: RefCell<Vec<ContextError>>,
 }
 
 /// A reporter that processes the given error for the context.
 ///
 /// Converting the reporter into an ErrorKind causes it to accumulate the errors to the `Context`.
 pub struct Reporter<'a> {
-    ctx: &'a mut Context,
+    ctx: &'a Context,
     errors: Vec<ContextError>,
 }
 
@@ -36,34 +36,24 @@ impl<'a> Reporter<'a> {
     }
 }
 
-impl<'a> From<Reporter<'a>> for ErrorKind {
-    fn from(reporter: Reporter<'a>) -> ErrorKind {
+impl<'a> From<Reporter<'a>> for Error {
+    fn from(reporter: Reporter<'a>) -> Error {
         let ctx = reporter.ctx;
-        ctx.errors.extend(reporter.errors);
-        ErrorKind::Context
-    }
-}
-
-/// Iterator over errors
-pub struct Errors<'a> {
-    iter: slice::Iter<'a, ContextError>,
-}
-
-impl<'a> Iterator for Errors<'a> {
-    type Item = &'a ContextError;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+        let mut errors = ctx.errors.try_borrow_mut().expect(
+            "exclusive mutable access",
+        );
+        errors.extend(reporter.errors);
+        ErrorKind::Context.into()
     }
 }
 
 impl Context {
     pub fn new() -> Context {
-        Context { errors: Vec::new() }
+        Context { errors: RefCell::new(Vec::new()) }
     }
 
     /// Build a handle that can be used in conjunction with Result#map_err.
-    pub fn report(&mut self) -> Reporter {
+    pub fn report(&self) -> Reporter {
         Reporter {
             ctx: self,
             errors: Vec::new(),
@@ -71,8 +61,8 @@ impl Context {
     }
 
     /// Iterate over all reporter errors.
-    pub fn errors(&self) -> Errors {
-        Errors { iter: self.errors.iter() }
+    pub fn errors(&self) -> Result<Ref<Vec<ContextError>>, BorrowError> {
+        self.errors.try_borrow()
     }
 }
 

@@ -21,8 +21,10 @@ use self::backend::errors::*;
 use self::json_backend::JsonBackend;
 use self::json_options::JsonOptions;
 use self::listeners::Listeners;
+use core::Context;
 use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
 use std::path::Path;
+use std::rc::Rc;
 
 const EXT: &str = "json";
 
@@ -65,6 +67,7 @@ fn setup_listeners(modules: &[JsonModule]) -> Result<(JsonOptions, Box<Listeners
 }
 
 pub fn compile(
+    _ctx: Rc<Context>,
     env: Environment,
     _opts: Options,
     compiler_options: CompilerOptions,

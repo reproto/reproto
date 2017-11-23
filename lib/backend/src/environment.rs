@@ -2,7 +2,7 @@ use super::into_model::IntoModel;
 use super::naming::{FromNaming, Naming, SnakeCase};
 use super::scope::Scope;
 use ast::UseDecl;
-use core::{Loc, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage, RpReg,
+use core::{Context, Loc, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage, RpReg,
            RpRequiredPackage, RpVersionedPackage, VersionReq, WithPos};
 use errors::*;
 use linked_hash_map::LinkedHashMap;
@@ -59,6 +59,8 @@ impl<'a> Iterator for DeclIter<'a> {
 
 /// Scoped environment for evaluating reproto IDLs.
 pub struct Environment {
+    /// Global context for collecting errors.
+    ctx: Rc<Context>,
     /// Global package prefix.
     package_prefix: Option<RpPackage>,
     /// Index resolver to use.
@@ -73,8 +75,13 @@ pub struct Environment {
 
 /// Environment containing all loaded declarations.
 impl Environment {
-    pub fn new(package_prefix: Option<RpPackage>, resolver: Box<Resolver>) -> Environment {
+    pub fn new(
+        ctx: Rc<Context>,
+        package_prefix: Option<RpPackage>,
+        resolver: Box<Resolver>,
+    ) -> Environment {
         Environment {
+            ctx: ctx,
             package_prefix: package_prefix,
             resolver: resolver,
             visited: HashMap::new(),
@@ -226,6 +233,7 @@ impl Environment {
         };
 
         let scope = Scope::new(
+            self.ctx.clone(),
             self.package_prefix.clone(),
             package.clone(),
             prefixes,

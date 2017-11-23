@@ -20,8 +20,10 @@ use self::backend::errors::*;
 use self::listeners::Listeners;
 use self::python_backend::PythonBackend;
 use self::python_options::PythonOptions;
+use core::Context;
 use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
 use std::path::Path;
+use std::rc::Rc;
 
 const TYPE: &str = "type";
 const TYPE_SEP: &str = "_";
@@ -68,6 +70,7 @@ pub fn setup_listeners(modules: &[PythonModule]) -> Result<(PythonOptions, Box<L
 }
 
 pub fn compile(
+    _ctx: Rc<Context>,
     env: Environment,
     opts: Options,
     compiler_options: CompilerOptions,

@@ -4,7 +4,7 @@ mod non_colored;
 pub use self::colored::Colored;
 pub use self::non_colored::NonColored;
 use backend;
-use core;
+use core::{self, Context, ContextError};
 use errors::*;
 use log;
 use parser;
@@ -137,29 +137,6 @@ pub trait Output {
             Parser(ref e) => {
                 return self.handle_parser_error(e);
             }
-            MissingRequired(ref names, ref location, ref fields) => {
-                self.print_error(
-                    &format!(
-                        "missing required fields: {}",
-                        names.join(", ")
-                    ),
-                    location,
-                )?;
-
-                for f in fields {
-                    self.print_error("required field", f)?;
-                }
-
-                true
-            }
-            FieldConflict(ref name, ref source, ref target) => {
-                self.print_error(
-                    &format!("conflict in field `{}`", name),
-                    source,
-                )?;
-                self.print_error("previous declaration here", target)?;
-                true
-            }
             EnumVariantConflict(ref pos, ref other) => {
                 self.print_error("conflicting name", pos)?;
                 self.print_error("previous name here", other)?;
@@ -241,6 +218,21 @@ pub trait Output {
         Ok(out)
     }
 
+    fn handle_context(&self, ctx: &Context) -> Result<()> {
+        let errors = ctx.errors()?;
+
+        for e in errors.iter() {
+            match *e {
+                ContextError::Pos(ref pos, ref message) => {
+                    self.print_error(message.as_str(), pos)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handle any errors.
     fn handle_error(&self, e: &Error) -> Result<bool> {
         use errors::ErrorKind::*;
 

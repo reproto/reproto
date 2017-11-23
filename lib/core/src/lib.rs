@@ -54,7 +54,7 @@ mod rp_enum_ordinal;
 mod context;
 pub mod errors;
 
-pub use self::context::Context;
+pub use self::context::{Context, ContextError, Reporter};
 pub use self::error_pos::ErrorPos;
 pub use self::for_each_loc::ForEachLoc;
 pub use self::loc::Loc;

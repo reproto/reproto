@@ -24,8 +24,10 @@ use self::backend::errors::*;
 use self::listeners::Listeners;
 use self::rust_backend::RustBackend;
 use self::rust_options::RustOptions;
+use core::Context;
 use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
 use std::path::Path;
+use std::rc::Rc;
 
 const MOD: &str = "mod";
 const EXT: &str = "rs";
@@ -96,6 +98,7 @@ pub fn setup_listeners(modules: &[RustModule]) -> Result<(RustOptions, Box<Liste
 }
 
 pub fn compile(
+    _ctx: Rc<Context>,
     env: Environment,
     opts: Options,
     compiler_options: CompilerOptions,

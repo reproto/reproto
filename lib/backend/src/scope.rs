@@ -1,11 +1,12 @@
 //! Propagates scope-specific information to `into_model` transformations.
 
 use super::naming::Naming;
-use core::{RpName, RpPackage, RpVersionedPackage};
+use core::{Context, RpName, RpPackage, RpVersionedPackage};
 use std::collections::HashMap;
 use std::rc::Rc;
 
 struct Root {
+    pub ctx: Rc<Context>,
     pub package_prefix: Option<RpPackage>,
     pub package: RpVersionedPackage,
     pub prefixes: HashMap<String, RpVersionedPackage>,
@@ -29,6 +30,7 @@ pub struct Scope {
 
 impl Scope {
     pub fn new(
+        ctx: Rc<Context>,
         package_prefix: Option<RpPackage>,
         package: RpVersionedPackage,
         prefixes: HashMap<String, RpVersionedPackage>,
@@ -36,6 +38,7 @@ impl Scope {
         field_naming: Option<Box<Naming>>,
     ) -> Scope {
         let root = Rc::new(Root {
+            ctx: ctx,
             package_prefix: package_prefix,
             package: package,
             prefixes: prefixes,
@@ -72,6 +75,14 @@ impl Scope {
                 name: name.as_ref().to_owned(),
                 parent: self.inner.clone(),
             }),
+        }
+    }
+
+    /// Access the error context.
+    pub fn ctx(&self) -> &Context {
+        match *self.inner {
+            Inner::Root { ref root, .. } |
+            Inner::Child { ref root, .. } => root.ctx.as_ref(),
         }
     }
 
