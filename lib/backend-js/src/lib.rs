@@ -18,12 +18,13 @@ mod js_compiler;
 mod js_file_spec;
 mod js_options;
 
-use self::backend::{ArgMatches, CompilerOptions, Environment, Options};
-use self::backend::errors::*;
-use self::js_backend::JsBackend;
-use self::js_options::JsOptions;
-use self::listeners::Listeners;
+use self::ErrorKind::*;
+use backend::{ArgMatches, Environment};
+use backend::errors::*;
 use core::Context;
+use js_backend::JsBackend;
+use js_options::JsOptions;
+use listeners::Listeners;
 use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
 use std::path::Path;
 use std::rc::Rc;
@@ -74,14 +75,12 @@ fn setup_listeners(modules: &[JsModule]) -> Result<(JsOptions, Box<Listeners>)> 
 pub fn compile(
     _ctx: Rc<Context>,
     env: Environment,
-    opts: Options,
-    compiler_options: CompilerOptions,
     _matches: &ArgMatches,
     manifest: Manifest<JsLang>,
 ) -> Result<()> {
-    let id_converter = opts.id_converter;
+    let out = manifest.output.ok_or(MissingOutput)?;
     let (options, listeners) = setup_listeners(&manifest.modules)?;
-    let backend = JsBackend::new(env, options, listeners, id_converter);
-    let compiler = backend.compiler(compiler_options)?;
+    let backend = JsBackend::new(env, options, listeners);
+    let compiler = backend.compiler(out)?;
     compiler.compile()
 }

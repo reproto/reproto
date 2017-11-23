@@ -15,13 +15,15 @@ mod python_field;
 mod python_file_spec;
 mod python_options;
 
-use self::backend::{ArgMatches, CompilerOptions, Environment, Options};
-use self::backend::errors::*;
-use self::listeners::Listeners;
-use self::python_backend::PythonBackend;
-use self::python_options::PythonOptions;
+
+use self::ErrorKind::*;
+use backend::{ArgMatches, Environment};
+use backend::errors::*;
 use core::Context;
+use listeners::Listeners;
 use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
+use python_backend::PythonBackend;
+use python_options::PythonOptions;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -72,14 +74,12 @@ pub fn setup_listeners(modules: &[PythonModule]) -> Result<(PythonOptions, Box<L
 pub fn compile(
     _ctx: Rc<Context>,
     env: Environment,
-    opts: Options,
-    compiler_options: CompilerOptions,
     _matches: &ArgMatches,
     manifest: Manifest<PythonLang>,
 ) -> Result<()> {
-    let id_converter = opts.id_converter;
+    let out = manifest.output.ok_or(MissingOutput)?;
     let (options, listeners) = setup_listeners(&manifest.modules)?;
-    let backend = PythonBackend::new(env, options, listeners, id_converter);
-    let compiler = backend.compiler(compiler_options)?;
+    let backend = PythonBackend::new(env, options, listeners);
+    let compiler = backend.compiler(out)?;
     compiler.compile()
 }

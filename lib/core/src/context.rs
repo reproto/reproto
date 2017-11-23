@@ -82,10 +82,11 @@ impl Context {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use errors::ErrorKind;
+    use errors::*;
     use object::{BytesObject, Object};
     use pos::Pos;
     use std::rc::Rc;
+    use std::result;
     use std::sync::Arc;
 
     #[test]
@@ -95,22 +96,24 @@ mod tests {
         let pos: Pos = (Rc::new(object.clone_object()), 0usize, 0usize).into();
         let other_pos: Pos = (Rc::new(object.clone_object()), 0usize, 0usize).into();
 
-        let mut ctx = Context::new();
+        let ctx = Context::new();
 
-        let result: Result<(), &str> = Err("nope");
+        let result: result::Result<(), &str> = Err("nope");
 
-        let a = result.map_err(|e| {
+        let a: Result<()> = result.map_err(|e| {
             ctx.report()
                 .err(pos, e)
                 .err(other_pos, "previously reported here")
                 .into()
         });
 
-        match a {
-            Err(ErrorKind::Context) => {}
+        let e = a.unwrap_err();
+
+        match e.kind() {
+            &ErrorKind::Context => {}
             other => panic!("unexpected: {:?}", other),
         }
 
-        assert_eq!(2, ctx.errors().count());
+        assert_eq!(2, ctx.errors().unwrap().len());
     }
 }

@@ -1,7 +1,7 @@
 //! Backend for Rust
 
 use super::RUST_CONTEXT;
-use backend::{Code, CompilerOptions, Environment, FromNaming, Naming, PackageUtils, SnakeCase};
+use backend::{Code, Environment, FromNaming, Naming, PackageUtils, SnakeCase};
 use backend::errors::*;
 use core::{ForEachLoc, Loc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName,
            RpServiceBody, RpTupleBody, RpType, RpTypeBody};
@@ -12,6 +12,7 @@ use rust_compiler::RustCompiler;
 use rust_file_spec::RustFileSpec;
 use rust_options::RustOptions;
 use std::borrow::Cow;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 /// #[allow(non_camel_case_types)] attribute.
@@ -56,7 +57,6 @@ const SCOPE_SEP: &'static str = "::";
 pub struct RustBackend {
     pub env: Environment,
     listeners: Box<Listeners>,
-    id_converter: Option<Box<Naming>>,
     to_lower_snake: Box<Naming>,
     hash_map: Rust<'static>,
     json_value: Rust<'static>,
@@ -64,16 +64,10 @@ pub struct RustBackend {
 }
 
 impl RustBackend {
-    pub fn new(
-        env: Environment,
-        options: RustOptions,
-        listeners: Box<Listeners>,
-        id_converter: Option<Box<Naming>>,
-    ) -> RustBackend {
+    pub fn new(env: Environment, options: RustOptions, listeners: Box<Listeners>) -> RustBackend {
         RustBackend {
             env: env,
             listeners: listeners,
-            id_converter: id_converter,
             to_lower_snake: SnakeCase::new().to_lower_snake(),
             hash_map: imported_ref("std::collections", "HashMap"),
             json_value: imported_alias_ref("serde_json", "Value", "json"),
@@ -81,9 +75,9 @@ impl RustBackend {
         }
     }
 
-    pub fn compiler(&self, options: CompilerOptions) -> Result<RustCompiler> {
+    pub fn compiler(&self, out_path: PathBuf) -> Result<RustCompiler> {
         Ok(RustCompiler {
-            out_path: options.out_path,
+            out_path: out_path,
             backend: self,
         })
     }
@@ -104,11 +98,7 @@ impl RustBackend {
     }
 
     fn ident(&self, name: &str) -> String {
-        if let Some(ref id_converter) = self.id_converter {
-            id_converter.convert(name)
-        } else {
-            name.to_owned()
-        }
+        name.to_owned()
     }
 
     /// Convert the type name
