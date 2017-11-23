@@ -1,5 +1,11 @@
-use super::imports::*;
+//! build command
+
+use build_spec::{manifest_compile, manifest_preamble};
+use clap::{App, Arg, ArgMatches, SubCommand};
+use core::Context;
+use errors::*;
 use manifest::Language;
+use std::rc::Rc;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("build").about("Build specifications");
@@ -13,7 +19,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(matches: &ArgMatches) -> Result<()> {
+pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
     use manifest::Language::*;
 
     let preamble = manifest_preamble(matches)?;
@@ -28,11 +34,13 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         })?;
 
     match language {
-        Java => manifest_compile::<::java::JavaLang, _>(matches, preamble, ::java::compile),
-        Js => manifest_compile::<::js::JsLang, _>(matches, preamble, ::js::compile),
-        Json => manifest_compile::<::json::JsonLang, _>(matches, preamble, ::json::compile),
-        Python => manifest_compile::<::python::PythonLang, _>(matches, preamble, ::python::compile),
-        Rust => manifest_compile::<::rust::RustLang, _>(matches, preamble, ::rust::compile),
+        Java => manifest_compile::<::java::JavaLang, _>(ctx, matches, preamble, ::java::compile),
+        Js => manifest_compile::<::js::JsLang, _>(ctx, matches, preamble, ::js::compile),
+        Json => manifest_compile::<::json::JsonLang, _>(ctx, matches, preamble, ::json::compile),
+        Python => {
+            manifest_compile::<::python::PythonLang, _>(ctx, matches, preamble, ::python::compile)
+        }
+        Rust => manifest_compile::<::rust::RustLang, _>(ctx, matches, preamble, ::rust::compile),
     }?;
 
     Ok(())

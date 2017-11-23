@@ -2,12 +2,15 @@ extern crate log;
 extern crate clap;
 extern crate reproto;
 extern crate atty;
+extern crate reproto_core as core;
 
 use clap::{App, Arg, ArgMatches};
+use core::Context;
 use reproto::errors::*;
 use reproto::ops;
 use reproto::output;
 use std::io;
+use std::rc::Rc;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -44,14 +47,18 @@ fn setup_logger(matches: &clap::ArgMatches, output: &output::Output) -> Result<(
     Ok(())
 }
 
-fn entry(matches: ArgMatches, output: &output::Output) -> Result<()> {
+fn guarded_entry(ctx: Rc<Context>, matches: ArgMatches, output: &output::Output) -> Result<()> {
     setup_logger(&matches, output)?;
-    ops::entry(&matches)?;
+    ops::entry(ctx, &matches)?;
     Ok(())
 }
 
-fn compiler_entry(matches: ArgMatches, output: &output::Output) -> Result<()> {
-    if let Err(e) = entry(matches, output) {
+fn entry(matches: ArgMatches, output: &output::Output) -> Result<()> {
+    let ctx = Rc::new(Context::new());
+
+    if let Err(e) = guarded_entry(ctx.clone(), matches, output) {
+        output.handle_context(ctx.as_ref())?;
+
         if !output.handle_error(&e)? {
             return Err(e);
         }
@@ -76,7 +83,7 @@ fn main() {
         Box::new(output::NonColored::new(io::stdout()))
     };
 
-    if let Err(e) = compiler_entry(matches, output.as_mut()) {
+    if let Err(e) = entry(matches, output.as_mut()) {
         output.print_root_error(&e).unwrap();
         ::std::process::exit(1);
     }

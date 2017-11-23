@@ -29,8 +29,10 @@ use self::backend::errors::*;
 use self::java_backend::JavaBackend;
 use self::java_options::JavaOptions;
 use self::listeners::Listeners;
+use core::Context;
 use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
 use std::path::Path;
+use std::rc::Rc;
 
 pub const JAVA_CONTEXT: &str = "java";
 
@@ -119,6 +121,7 @@ fn setup_listeners(modules: &[JavaModule]) -> Result<(JavaOptions, Box<Listeners
 }
 
 pub fn compile(
+    _ctx: Rc<Context>,
     env: Environment,
     _options: Options,
     compiler_options: CompilerOptions,

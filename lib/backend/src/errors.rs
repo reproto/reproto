@@ -1,4 +1,4 @@
-use core::{ErrorPos, Pos, RpName, RpType, WithPos, errors as core};
+use core::{ErrorPos, Pos, Reporter, RpName, RpType, WithPos, errors as core};
 use parser::errors as parser;
 use repository::errors as repository;
 use serde_json as json;
@@ -22,11 +22,6 @@ error_chain! {
         Pos(message: String, pos: ErrorPos) {
             description("position error")
             display("{}", message)
-        }
-
-        /// An instance creation is missing a set of required fields.
-        MissingRequired(names: Vec<String>, pos: ErrorPos, fields: Vec<ErrorPos>) {
-            description("missing required")
         }
 
         Overflow(pos: ErrorPos) {
@@ -86,7 +81,6 @@ impl WithPos for Error {
 
         match self.kind() {
             &Pos(..) => self,
-            &MissingRequired(..) => self,
             &Overflow(..) => self,
             &EnumVariantConflict(..) => self,
             &FieldConflict(..) => self,
@@ -104,5 +98,12 @@ impl WithPos for Error {
 impl<'a> From<(&'a str, Pos)> for Error {
     fn from(value: (&'a str, Pos)) -> Self {
         ErrorKind::Pos(value.0.to_string(), value.1.into()).into()
+    }
+}
+
+impl<'a> From<Reporter<'a>> for Error {
+    fn from(value: Reporter<'a>) -> Self {
+        let e: core::Error = value.into();
+        e.into()
     }
 }

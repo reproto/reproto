@@ -23,8 +23,10 @@ use self::backend::errors::*;
 use self::js_backend::JsBackend;
 use self::js_options::JsOptions;
 use self::listeners::Listeners;
+use core::Context;
 use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
 use std::path::Path;
+use std::rc::Rc;
 
 const TYPE: &str = "type";
 const TYPE_SEP: &str = "_";
@@ -70,6 +72,7 @@ fn setup_listeners(modules: &[JsModule]) -> Result<(JsOptions, Box<Listeners>)> 
 }
 
 pub fn compile(
+    _ctx: Rc<Context>,
     env: Environment,
     opts: Options,
     compiler_options: CompilerOptions,
