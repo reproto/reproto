@@ -11,9 +11,34 @@ pub struct NonColoredLogger<T> {
     out: T,
 }
 
-impl<T> NonColored<T> {
+impl<T> NonColored<T>
+where
+    T: LockableWrite,
+{
     pub fn new(out: T) -> NonColored<T> {
         NonColored { out: out }
+    }
+
+    fn print_positional(&self, m: &str, p: &ErrorPos) -> Result<()> {
+        use std::iter::repeat;
+        use std::cmp::max;
+
+        let mut o = self.out.lock();
+
+        let (line_str, line, (s, e)) = find_line(p.object.read()?, (p.start, p.end))?;
+
+        let line_no = format!("{:>3}:", line + 1);
+
+        let mut indicator = String::new();
+
+        indicator.extend(repeat(' ').take(line_no.len() + s + 1));
+        indicator.extend(repeat('^').take(max(1, e - s)));
+
+        writeln!(o, "{}:{}:{}-{}:", p.object, line + 1, s + 1, e + 1)?;
+        writeln!(o, "{} {}", line_no, line_str)?;
+        writeln!(o, "{}{}{}", indicator, " - ", m)?;
+
+        Ok(())
     }
 }
 
@@ -48,26 +73,12 @@ where
         Ok(())
     }
 
+    fn print_info(&self, m: &str, p: &ErrorPos) -> Result<()> {
+        self.print_positional(m, p)
+    }
+
     fn print_error(&self, m: &str, p: &ErrorPos) -> Result<()> {
-        use std::iter::repeat;
-        use std::cmp::max;
-
-        let mut o = self.out.lock();
-
-        let (line_str, line, (s, e)) = find_line(p.object.read()?, (p.start, p.end))?;
-
-        let line_no = format!("{:>3}:", line + 1);
-
-        let mut indicator = String::new();
-
-        indicator.extend(repeat(' ').take(line_no.len() + s + 1));
-        indicator.extend(repeat('^').take(max(1, e - s)));
-
-        writeln!(o, "{}:{}:{}-{}:", p.object, line + 1, s + 1, e + 1)?;
-        writeln!(o, "{} {}", line_no, line_str)?;
-        writeln!(o, "{}{}{}", indicator, " - ", m)?;
-
-        Ok(())
+        self.print_positional(m, p)
     }
 
     fn print_root_error(&self, e: &Error) -> Result<()> {

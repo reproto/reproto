@@ -1,5 +1,5 @@
 use super::{LockableWrite, Output, find_line};
-use ansi_term::Colour::{Blue, Red};
+use ansi_term::Colour::{self, Blue, Red};
 use core::ErrorPos;
 use errors::*;
 use log;
@@ -8,27 +8,15 @@ pub struct Colored<T> {
     out: T,
 }
 
-impl<T> Colored<T> {
+impl<T> Colored<T>
+where
+    T: LockableWrite,
+{
     pub fn new(out: T) -> Colored<T> {
         Colored { out: out }
     }
-}
 
-impl<T> Output for Colored<T>
-where
-    T: 'static + LockableWrite,
-{
-    fn logger(&self) -> Box<log::Log + 'static> {
-        Box::new(ColoredLogger { out: self.out.open_new() })
-    }
-
-    fn print(&self, m: &str) -> Result<()> {
-        let mut o = self.out.lock();
-        writeln!(o, "ERROR: {}", Red.paint(m.as_ref()))?;
-        Ok(())
-    }
-
-    fn print_error(&self, m: &str, p: &ErrorPos) -> Result<()> {
+    fn print_positional(&self, m: &str, p: &ErrorPos, color: Colour) -> Result<()> {
         use std::iter::repeat;
         use std::cmp::max;
 
@@ -48,12 +36,35 @@ where
         writeln!(
             o,
             "{}{}{}",
-            Red.paint(indicator),
-            Red.paint(" - "),
-            Red.paint(m.as_ref())
+            color.paint(indicator),
+            color.paint(" - "),
+            color.paint(m.as_ref())
         )?;
 
         Ok(())
+    }
+}
+
+impl<T> Output for Colored<T>
+where
+    T: 'static + LockableWrite,
+{
+    fn logger(&self) -> Box<log::Log + 'static> {
+        Box::new(ColoredLogger { out: self.out.open_new() })
+    }
+
+    fn print(&self, m: &str) -> Result<()> {
+        let mut o = self.out.lock();
+        writeln!(o, "ERROR: {}", Red.paint(m.as_ref()))?;
+        Ok(())
+    }
+
+    fn print_info(&self, m: &str, p: &ErrorPos) -> Result<()> {
+        self.print_positional(m, p, Colour::Yellow)
+    }
+
+    fn print_error(&self, m: &str, p: &ErrorPos) -> Result<()> {
+        self.print_positional(m, p, Colour::Red)
     }
 
     fn print_root_error(&self, e: &Error) -> Result<()> {

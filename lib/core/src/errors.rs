@@ -19,30 +19,6 @@ error_chain! {
             display("{}", message)
         }
 
-        DeclMerge(message: String, source: ErrorPos, target: ErrorPos) {
-            description("declaration merge")
-            display("{}", message)
-        }
-
-        FieldConflict(message: String, source: ErrorPos, target: ErrorPos) {
-            description("field conflict")
-            display("{}", message)
-        }
-
-        ExtendEnum(message: String, source: ErrorPos, enum_pos: ErrorPos) {
-            description("extend enum")
-            display("{}", message)
-        }
-
-        ReservedField(field_pos: ErrorPos, reserved_pos: ErrorPos) {
-            description("field reserved")
-            display("field reserved")
-        }
-
-        MatchConflict(source: ErrorPos, target: ErrorPos) {
-            description("match conflict")
-        }
-
         MimeFromStrError(error: extern_mime::FromStrError) {
             description("couldn't parse mime type")
             display("{:?}", error)
@@ -57,9 +33,6 @@ error_chain! {
 
         RcTryUnwrap {
         }
-
-        Overflow {
-        }
     }
 }
 
@@ -69,11 +42,6 @@ impl WithPos for Error {
 
         match self.kind() {
             &Pos(..) => self,
-            &DeclMerge(..) => self,
-            &FieldConflict(..) => self,
-            &ExtendEnum(..) => self,
-            &ReservedField(..) => self,
-            &MatchConflict(..) => self,
             _ => {
                 let message = format!("{}", &self);
                 self.chain_err(|| ErrorKind::Pos(message, pos.into()))

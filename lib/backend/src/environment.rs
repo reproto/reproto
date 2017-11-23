@@ -309,7 +309,6 @@ impl Environment {
     /// Process a single file, populating the environment.
     fn process_file(&mut self, package: RpVersionedPackage, file: RpFile) -> Result<()> {
         use linked_hash_map::Entry::*;
-        use self::ErrorKind::*;
 
         let file = match self.files.entry(package.clone()) {
             btree_map::Entry::Vacant(entry) => entry.insert(file),
@@ -324,11 +323,12 @@ impl Environment {
             match self.types.entry(key) {
                 Vacant(entry) => entry.insert(t),
                 Occupied(entry) => {
-                    let last = entry.get().pos().into();
-                    let current = t.pos().into();
-
                     return Err(
-                        RegisteredTypeConflict(entry.key().clone(), last, current).into(),
+                        self.ctx
+                            .report()
+                            .err(t.pos(), "conflicting declaration")
+                            .info(entry.get().pos(), "last declaration here")
+                            .into(),
                     );
                 }
             };
