@@ -17,13 +17,14 @@ pub enum ContextItem {
     InfoPos(ErrorPos, String),
 }
 
+#[derive(Default)]
 pub struct Context {
     errors: RefCell<Vec<ContextItem>>,
 }
 
 /// A reporter that processes the given error for the context.
 ///
-/// Converting the reporter into an ErrorKind causes it to accumulate the errors to the `Context`.
+/// Converting the reporter into an `ErrorKind` causes it to accumulate the errors to the `Context`.
 pub struct Reporter<'a> {
     ctx: &'a Context,
     errors: Vec<ContextItem>,
@@ -61,10 +62,6 @@ impl<'a> From<Reporter<'a>> for Error {
 }
 
 impl Context {
-    pub fn new() -> Context {
-        Context { errors: RefCell::new(Vec::new()) }
-    }
-
     /// Build a handle that can be used in conjunction with Result#map_err.
     pub fn report(&self) -> Reporter {
         Reporter {

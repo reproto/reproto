@@ -12,6 +12,7 @@ pub struct RpFile {
 }
 
 /// Iterator over all declarations in a file.
+#[allow(linkedlist)]
 pub struct ForEachDecl<'a> {
     queue: LinkedList<&'a Rc<Loc<RpDecl>>>,
 }

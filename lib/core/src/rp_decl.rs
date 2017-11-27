@@ -81,39 +81,39 @@ impl RpDecl {
     }
 
     /// Convert a declaration into its registered types.
-    pub fn into_reg(&self) -> Vec<RpReg> {
+    pub fn to_reg(&self) -> Vec<RpReg> {
         use self::RpDecl::*;
 
         let mut out = Vec::new();
 
         match *self {
             Type(ref ty) => {
-                out.push(RpReg::Type(ty.clone()));
+                out.push(RpReg::Type(Rc::clone(ty)));
             }
             Interface(ref interface) => {
                 for sub_type in interface.sub_types.values() {
-                    out.push(RpReg::SubType(interface.clone(), sub_type.clone()));
-                    out.extend(sub_type.decls.iter().flat_map(|d| d.into_reg()));
+                    out.push(RpReg::SubType(Rc::clone(interface), Rc::clone(sub_type)));
+                    out.extend(sub_type.decls.iter().flat_map(|d| d.to_reg()));
                 }
 
-                out.push(RpReg::Interface(interface.clone()));
+                out.push(RpReg::Interface(Rc::clone(interface)));
             }
             Enum(ref en) => {
                 for variant in &en.variants {
-                    out.push(RpReg::EnumVariant(en.clone(), variant.clone()));
+                    out.push(RpReg::EnumVariant(Rc::clone(en), Rc::clone(variant)));
                 }
 
-                out.push(RpReg::Enum(en.clone()));
+                out.push(RpReg::Enum(Rc::clone(en)));
             }
             Tuple(ref tuple) => {
-                out.push(RpReg::Tuple(tuple.clone()));
+                out.push(RpReg::Tuple(Rc::clone(tuple)));
             }
             Service(ref service) => {
-                out.push(RpReg::Service(service.clone()));
+                out.push(RpReg::Service(Rc::clone(service)));
             }
         }
 
-        out.extend(self.decls().flat_map(|d| d.into_reg()));
+        out.extend(self.decls().flat_map(|d| d.to_reg()));
         out
     }
 

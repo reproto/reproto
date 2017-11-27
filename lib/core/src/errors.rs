@@ -40,8 +40,8 @@ impl WithPos for Error {
     fn with_pos<E: Into<ErrorPos>>(self, pos: E) -> Self {
         use self::ErrorKind::*;
 
-        match self.kind() {
-            &Pos(..) => self,
+        match *self.kind() {
+            Pos(..) => self,
             _ => {
                 let message = format!("{}", &self);
                 self.chain_err(|| ErrorKind::Pos(message, pos.into()))

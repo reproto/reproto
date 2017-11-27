@@ -22,7 +22,7 @@ impl<'a> Iterator for Fields<'a> {
 }
 
 impl RpTupleBody {
-    pub fn fields<'a>(&'a self) -> Fields {
+    pub fn fields(&self) -> Fields {
         Fields { iter: self.fields.iter() }
     }
 }
