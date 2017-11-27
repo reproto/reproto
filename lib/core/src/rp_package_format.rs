@@ -10,7 +10,7 @@ impl<'a> fmt::Display for RpPackageFormat<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)?;
 
-        if let Some(ref version) = self.1 {
+        if let Some(version) = self.1 {
             write!(f, "-{}", version)?;
         }
 

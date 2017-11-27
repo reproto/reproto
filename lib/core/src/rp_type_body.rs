@@ -25,7 +25,7 @@ impl<'a> Iterator for Fields<'a> {
 }
 
 impl RpTypeBody {
-    pub fn fields<'a>(&'a self) -> Fields {
+    pub fn fields(&self) -> Fields {
         Fields { iter: self.fields.iter() }
     }
 }

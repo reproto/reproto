@@ -34,7 +34,7 @@ impl RpValue {
         }
     }
 
-    pub fn to_ordinal(self) -> Result<RpEnumOrdinal> {
+    pub fn into_ordinal(self) -> Result<RpEnumOrdinal> {
         let ordinal = match self {
             RpValue::String(value) => RpEnumOrdinal::String(value),
             _ => return Err(ErrorKind::InvalidOrdinal.into()),

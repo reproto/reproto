@@ -1,4 +1,5 @@
 #![recursion_limit = "1000"]
+#![allow(unknown_lints)]
 
 #[macro_use]
 extern crate serde_derive;

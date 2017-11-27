@@ -45,15 +45,15 @@ impl Object for BytesObject {
 
     fn clone_object(&self) -> Box<Object> {
         Box::new(BytesObject {
-            name: self.name.clone(),
-            bytes: self.bytes.clone(),
+            name: Arc::clone(&self.name),
+            bytes: Arc::clone(&self.bytes),
         })
     }
 
     fn with_name(&self, name: String) -> Box<Object> {
         Box::new(BytesObject {
             name: Arc::new(name),
-            bytes: self.bytes.clone(),
+            bytes: Arc::clone(&self.bytes),
         })
     }
 }
@@ -91,14 +91,14 @@ impl Object for PathObject {
     fn clone_object(&self) -> Box<Object> {
         Box::new(PathObject {
             name: self.name.clone(),
-            path: self.path.clone(),
+            path: Arc::clone(&self.path),
         })
     }
 
     fn with_name(&self, name: String) -> Box<Object> {
         Box::new(PathObject {
             name: Some(Arc::new(name)),
-            path: self.path.clone(),
+            path: Arc::clone(&self.path),
         })
     }
 }

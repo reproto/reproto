@@ -14,7 +14,7 @@ impl RpPackage {
 
     /// Parse a package from a string.
     pub fn parse(input: &str) -> RpPackage {
-        RpPackage::new(input.split(".").map(ToOwned::to_owned).collect())
+        RpPackage::new(input.split('.').map(ToOwned::to_owned).collect())
     }
 
     pub fn empty() -> RpPackage {

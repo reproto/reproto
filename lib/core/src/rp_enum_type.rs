@@ -23,8 +23,7 @@ impl RpEnumType {
         use self::RpEnumType::*;
 
         match *self {
-            String => RpType::String,
-            Generated => RpType::String,
+            String | Generated => RpType::String,
         }
     }
 
