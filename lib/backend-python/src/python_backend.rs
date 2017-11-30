@@ -746,7 +746,7 @@ impl<'el> DynamicDecode<'el> for PythonBackend {
         &self,
         _data: &'el str,
         type_var: &'el str,
-        name: &'el Loc<String>,
+        name: &'el str,
         type_name: Tokens<'el, Self::Custom>,
     ) -> Tokens<'el, Self::Custom> {
         let mut check = Tokens::new();
@@ -755,7 +755,7 @@ impl<'el> DynamicDecode<'el> for PythonBackend {
             "if ",
             type_var,
             " == ",
-            name.value().as_str().quoted(),
+            name.quoted(),
             ":",
         ]);
 

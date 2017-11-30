@@ -1,4 +1,8 @@
-Foo
+A
 {"type":"foo"}
+B
+{"type":"b"}
 Bar
-{"type":"bar"}
+{"type":"Bar"}
+Baz
+{"type":"Baz"}

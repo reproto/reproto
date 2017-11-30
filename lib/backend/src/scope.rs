@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     pub fn test_scope() {
-        let ctx = Rc::new(Context::new());
+        let ctx = Rc::new(Context::default());
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let prefixes = HashMap::new();
         let s = Scope::new(ctx, None, package, prefixes, None, None);

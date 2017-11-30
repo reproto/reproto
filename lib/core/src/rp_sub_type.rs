@@ -12,15 +12,13 @@ pub struct RpSubType {
     pub decls: Vec<Rc<Loc<RpDecl>>>,
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
-    pub names: Vec<Loc<String>>,
+    pub sub_type_name: Option<Loc<String>>,
 }
 
 impl RpSubType {
     pub fn name(&self) -> &str {
-        self.names
-            .iter()
-            .map(|t| t.value().as_str())
-            .nth(0)
-            .unwrap_or(&self.local_name)
+        self.sub_type_name.as_ref().map(|t| t.as_str()).unwrap_or(
+            &self.local_name,
+        )
     }
 }

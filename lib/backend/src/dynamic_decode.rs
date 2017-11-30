@@ -2,7 +2,7 @@
 
 use base_decode::BaseDecode;
 use converter::Converter;
-use core::{Loc, RpInterfaceBody, RpType};
+use core::{RpInterfaceBody, RpType};
 use dynamic_converter::DynamicConverter;
 use errors::*;
 use genco::Tokens;
@@ -18,7 +18,7 @@ where
         &self,
         data: &'el str,
         type_var: &'el str,
-        name: &'el Loc<String>,
+        name: &'el str,
         type_name: Tokens<'el, Self::Custom>,
     ) -> Tokens<'el, Self::Custom>;
 
@@ -106,18 +106,16 @@ where
         decode_body.push(self.assign_type_var(data, type_var));
 
         for sub_type in body.sub_types.values() {
-            for sub_type_name in &sub_type.names {
-                let type_name = self.convert_type(&sub_type.name).map_err(|e| {
-                    ErrorKind::Pos(format!("{}", e), sub_type.pos().into())
-                })?;
+            let type_name = self.convert_type(&sub_type.name).map_err(|e| {
+                ErrorKind::Pos(format!("{}", e), sub_type.pos().into())
+            })?;
 
-                decode_body.push(self.check_type_var(
-                    data,
-                    type_var,
-                    sub_type_name,
-                    type_name,
-                ));
-            }
+            decode_body.push(self.check_type_var(
+                data,
+                type_var,
+                sub_type.name(),
+                type_name,
+            ));
         }
 
         decode_body.push(self.raise_bad_type(type_var));

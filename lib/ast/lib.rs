@@ -16,6 +16,10 @@ pub enum AttributeItem<'input> {
         name: Loc<&'input str>,
         value: Loc<Value<'input>>,
     },
+    NameType {
+        name: Loc<&'input str>,
+        ty: Loc<Type>,
+    },
 }
 
 /// An attribute.
@@ -268,7 +272,7 @@ pub enum ServiceMember<'input> {
 /// ```ignore
 /// /// <comment>
 /// #[attribute]
-/// <id>(<request>) -> <response> as <alias> {
+/// <id>(<arguments>) -> <response> as <alias> {
 ///   <options>
 /// }
 /// ```
@@ -280,7 +284,7 @@ pub struct Endpoint<'input> {
     pub attributes: Vec<Loc<Attribute<'input>>>,
     pub alias: Option<String>,
     pub options: Vec<Loc<OptionDecl<'input>>>,
-    pub request: Option<Loc<Channel>>,
+    pub arguments: Vec<(Loc<&'input str>, Loc<Channel>)>,
     pub response: Option<Loc<Channel>>,
 }
 

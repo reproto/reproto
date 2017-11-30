@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonSubTypes({
   @JsonSubTypes.Type(name="foo", value=Entry.A.class),
   @JsonSubTypes.Type(name="b", value=Entry.B.class),
-  @JsonSubTypes.Type(name="B", value=Entry.B.class),
   @JsonSubTypes.Type(name="Bar", value=Entry.Bar.class),
   @JsonSubTypes.Type(name="Baz", value=Entry.Baz.class)
 })

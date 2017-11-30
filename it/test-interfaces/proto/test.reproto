@@ -1,7 +1,7 @@
 interface Entry {
   A as "foo";
 
-  B as ["b", "B"];
+  B as "b";
 
   Bar {
   }

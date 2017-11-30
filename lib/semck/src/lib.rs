@@ -103,7 +103,7 @@ where
     let mut storage = HashMap::new();
 
     for decl in decls {
-        for reg in decl.into_reg() {
+        for reg in decl.to_reg() {
             // Checked separately for each Enum.
             if let RpReg::EnumVariant(_, _) = reg {
                 continue;
@@ -201,14 +201,15 @@ fn check_endpoint_type(
     from_endpoint: &Loc<RpEndpoint>,
     to_endpoint: &Loc<RpEndpoint>,
 ) -> Result<()> {
-    check_endpoint_channel(
+    // TODO: check arguments.
+    /*check_endpoint_channel(
         component.clone(),
         violations,
         from_endpoint,
         to_endpoint,
         |e| &e.request,
         EndpointRequestChange,
-    )?;
+    )?;*/
 
     check_endpoint_channel(
         component.clone(),

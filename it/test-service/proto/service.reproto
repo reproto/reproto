@@ -8,17 +8,17 @@ service MyService {
     unknown_return() -> c::Entry;
 
     /// UNKNOWN
-    unknown_argument(c::Entry);
+    unknown_argument(request: c::Entry);
 
     /// UNARY
-    unary(c::Entry) -> c::Entry;
+    unary(request: c::Entry) -> c::Entry;
 
     /// SERVER_STREMAING
-    server_streaming(c::Entry) -> stream c::Entry;
+    server_streaming(request: c::Entry) -> stream c::Entry;
 
     /// CLIENT_STREAMING
-    client_streaming(stream c::Entry) -> c::Entry;
+    client_streaming(request: stream c::Entry) -> c::Entry;
 
     /// BIDI_STREAMING
-    bidi_streaming(stream c::Entry) -> stream c::Entry;
+    bidi_streaming(request: stream c::Entry) -> stream c::Entry;
 }

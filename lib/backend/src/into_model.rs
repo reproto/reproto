@@ -2,7 +2,7 @@ use super::errors::*;
 use super::scope::Scope;
 use ast::*;
 use core::*;
-use linked_hash_map::LinkedHashMap;
+use linked_hash_map::{self, LinkedHashMap};
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
 use std::option;
 use std::path::{Path, PathBuf};
@@ -136,7 +136,7 @@ impl<'input, 'a> IntoModel for (EnumVariant<'input>, &'a RpEnumType) {
                 );
             }
 
-            argument.and_then(|value| value.to_ordinal())?
+            argument.and_then(|value| value.into_ordinal())?
         } else {
             RpEnumOrdinal::Generated
         };
@@ -447,6 +447,7 @@ impl<'input> IntoModel for Endpoint<'input> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         let id = self.id.into_model(scope)?;
+        let ctx = scope.ctx();
 
         let name = self.alias.into_model(scope)?.unwrap_or_else(|| {
             scope
@@ -455,12 +456,33 @@ impl<'input> IntoModel for Endpoint<'input> {
                 .unwrap_or_else(|| id.to_string())
         });
 
+        let mut arguments = LinkedHashMap::new();
+
+        for (name, channel) in self.arguments {
+            let name = name.into_model(scope)?;
+            let channel = channel.into_model(scope)?;
+
+            match arguments.entry(name) {
+                linked_hash_map::Entry::Vacant(entry) => {
+                    entry.insert(channel);
+                }
+                linked_hash_map::Entry::Occupied(entry) => {
+                    return Err(
+                        ctx.report()
+                            .err(entry.key().pos(), "argument already present")
+                            .info(entry.get().pos(), "argument present here")
+                            .into(),
+                    );
+                }
+            }
+        }
+
         return Ok(RpEndpoint {
             id: id,
             name: name,
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
             attributes: self.attributes.into_model(scope)?,
-            request: self.request.into_model(scope)?,
+            arguments: arguments,
             response: self.response.into_model(scope)?,
         });
     }
@@ -527,7 +549,7 @@ impl<'input> IntoModel for SubType<'input> {
             }
         }
 
-        let names = all_names(self.alias, &self.name, scope)?;
+        let sub_type_name = sub_type_name(self.alias, scope)?;
         let comment = self.comment.into_iter().map(ToOwned::to_owned).collect();
 
         return Ok(RpSubType {
@@ -537,52 +559,27 @@ impl<'input> IntoModel for SubType<'input> {
             decls: decls,
             fields: fields,
             codes: codes,
-            names: names,
+            sub_type_name: sub_type_name,
         });
 
         /// Extract all names provided.
-        fn aliased_names<'input>(
-            alias: Loc<Value<'input>>,
-            scope: &Scope,
-        ) -> Result<Vec<Loc<String>>> {
+        fn alias_name<'input>(alias: Loc<Value<'input>>, scope: &Scope) -> Result<Loc<String>> {
             let (alias, pos) = alias.into_model(scope)?.take_pair();
 
-            let output = match alias {
-                RpValue::String(string) => vec![Loc::new(string, pos)],
-                RpValue::Array(values) => {
-                    if values.is_empty() {
-                        return Err("expected non-empty array".into()).with_pos(pos);
-                    }
-
-                    let mut out = Vec::new();
-
-                    for v in values {
-                        if let (RpValue::String(string), pos) = v.take_pair() {
-                            out.push(Loc::new(string, pos));
-                        } else {
-                            return Err("expected string".into()).with_pos(pos);
-                        }
-                    }
-
-                    out
-                }
-                _ => {
-                    return Err("expected string or array of strings".into()).with_pos(pos);
-                }
-            };
-
-            Ok(output)
+            match alias {
+                RpValue::String(string) => Ok(Loc::new(string, pos)),
+                _ => Err("expected string".into()).with_pos(pos),
+            }
         }
 
-        fn all_names<'input>(
+        fn sub_type_name<'input>(
             alias: option::Option<Loc<Value<'input>>>,
-            name: &Loc<&'input str>,
             scope: &Scope,
-        ) -> Result<Vec<Loc<String>>> {
+        ) -> Result<::std::option::Option<Loc<String>>> {
             if let Some(alias) = alias {
-                aliased_names(alias, scope)
+                alias_name(alias, scope).map(Some)
             } else {
-                Ok(vec![name.clone().into_model(scope)?])
+                Ok(None)
             }
         }
     }
@@ -761,6 +758,13 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                                         let name = name.into_model(scope)?.take();
                                         let value = value.into_model(scope)?;
                                         values.insert(name, value);
+                                    }
+                                    AttributeItem::NameType { name, .. } => {
+                                        return Err(
+                                            ctx.report()
+                                                .err(name.pos(), "attribute not supported")
+                                                .into(),
+                                        );
                                     }
                                 }
                             }
