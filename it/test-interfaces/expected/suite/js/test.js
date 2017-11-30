@@ -11,10 +11,6 @@ export class Entry {
       return Entry_B.decode(data);
     }
 
-    if (f_type === "B") {
-      return Entry_B.decode(data);
-    }
-
     if (f_type === "Bar") {
       return Entry_Bar.decode(data);
     }

@@ -59,16 +59,16 @@ service Foo {
   unknown_return() -> Foo;
 
   /// UNKNOWN
-  unknown_argument(Foo);
+  unknown_argument(request: Foo);
 
   /// UNARY
-  unary(Foo) -> Foo;
+  unary(request: Foo) -> Foo;
 
   /// SERVER_STREMAING
-  server_streaming(Foo) -> stream Foo;
+  server_streaming(request: Foo) -> stream Foo;
 
   /// CLIENT_STREAMING
-  client_streaming(stream Foo) -> Foo;
+  client_streaming(request: stream Foo) -> Foo;
 
   /// BIDI_STREAMING
   #[http(method = "GET")]
@@ -76,5 +76,6 @@ service Foo {
   #[http]
   #[allow(nothing)]
   #[deny(everything)]
-  bidi_streaming(stream Foo) -> stream Foo;
+  #[foo(ty1=[string], ty2=Foo, ty3=u32)]
+  bidi_streaming(request: stream Foo) -> stream Foo;
 }

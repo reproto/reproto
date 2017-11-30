@@ -46,13 +46,18 @@ impl<'p> ServiceProcessor<'p> {
             html!(self, span {class => "endpoint-id"} ~ Escape(endpoint.id.as_str()));
             html!(self, span {} ~ Escape("("));
 
-            if let Some(request) = endpoint.request.as_ref().take().as_ref() {
+            let mut it = endpoint.arguments.iter().peekable();
+
+            while let Some((name, channel)) = it.next() {
                 html!(self, span {class => "endpoint-request-type"} => {
-                    if request.is_streaming() {
+                    html!(self, span {class => "name"} ~ Escape(name.as_str()));
+                    html!(self, span {class => "sep"} ~ Escape(":"));
+
+                    if channel.is_streaming() {
                         html!(self, span {class => "keyword"} ~ Escape("stream"));
                     }
 
-                    let (req, pos) = request.as_ref_pair();
+                    let (req, pos) = channel.as_ref_pair();
                     self.write_type(req.ty()).with_pos(pos)?;
                 });
             }

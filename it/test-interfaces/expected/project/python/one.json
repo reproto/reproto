@@ -1,4 +1,8 @@
-<Entry_Foo >
+<Entry_A >
 {"type": "foo"}
+<Entry_B >
+{"type": "b"}
 <Entry_Bar >
-{"type": "bar"}
+{"type": "Bar"}
+<Entry_Baz >
+{"type": "Baz"}

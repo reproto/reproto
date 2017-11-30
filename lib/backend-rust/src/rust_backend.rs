@@ -355,10 +355,8 @@ impl RustBackend {
             let mut spec = Tokens::new();
 
             // TODO: clone should not be needed
-            if let Some(ref sub_type_name) = s.names.first() {
-                let name = sub_type_name.as_str();
-
-                if name != s.local_name.as_str() {
+            if let Some(ref name) = s.sub_type_name {
+                if name.as_str() != s.local_name.as_str() {
                     spec.push(Rename(name));
                 }
             }

@@ -317,7 +317,7 @@ impl Environment {
             }
         };
 
-        for t in file.decls.iter().flat_map(|d| d.into_reg()) {
+        for t in file.decls.iter().flat_map(|d| d.to_reg()) {
             let key = t.name().clone().without_prefix();
 
             match self.types.entry(key) {

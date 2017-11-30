@@ -236,19 +236,20 @@ impl Module {
     }
 
     /// Get the MethodType variant for the given endpoint.
-    fn method_type(&self, endpoint: &RpEndpoint) -> MethodType {
+    fn method_type(&self, backend: &JavaBackend, endpoint: &RpEndpoint) -> Result<MethodType> {
         use self::RpChannel::*;
 
-        match (
-            endpoint.request.as_ref().map(Loc::value),
-            endpoint.response.as_ref().map(Loc::value),
-        ) {
+        let request = backend.endpoint_request(endpoint)?.map(|v| v.1);
+
+        let out = match (request, endpoint.response.as_ref().map(Loc::value)) {
             (Some(&Unary { .. }), Some(&Unary { .. })) => MethodType::Unary,
             (Some(&Streaming { .. }), Some(&Unary { .. })) => MethodType::ClientStreaming,
             (Some(&Unary { .. }), Some(&Streaming { .. })) => MethodType::ServerStreaming,
             (Some(&Streaming { .. }), Some(&Streaming { .. })) => MethodType::BidiStreaming,
             _ => MethodType::Unknown,
-        }
+        };
+
+        Ok(out)
     }
 
     /// Build the method descriptor field.
@@ -670,7 +671,9 @@ impl Listeners for Module {
             e.endpoint_names.iter().cloned(),
         )
         {
-            let request_ty = if let Some(ref req) = endpoint.request.as_ref() {
+            let request = e.backend.endpoint_request(endpoint)?.map(|v| v.1);
+
+            let request_ty = if let Some(req) = request {
                 e.backend.into_java_type(req.ty())?
             } else {
                 e.backend.void.clone()
@@ -682,7 +685,7 @@ impl Listeners for Module {
                 e.backend.void.clone()
             };
 
-            let method_type = self.method_type(endpoint);
+            let method_type = self.method_type(e.backend, endpoint)?;
 
             let field = self.method_field(
                 service_name.clone(),

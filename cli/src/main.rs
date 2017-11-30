@@ -55,7 +55,7 @@ fn guarded_entry(ctx: Rc<Context>, matches: &ArgMatches, output: &output::Output
 }
 
 fn entry(matches: &ArgMatches, output: &output::Output) -> Result<()> {
-    let ctx = Rc::new(Context::new());
+    let ctx = Rc::new(Context::default());
 
     if let Err(e) = guarded_entry(Rc::clone(&ctx), matches, output) {
         output.handle_context(ctx.as_ref())?;

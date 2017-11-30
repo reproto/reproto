@@ -446,23 +446,19 @@ impl Listeners for Module {
             let mut args = Tokens::new();
 
             for (key, sub_type) in &e.body.sub_types {
-                for name in &sub_type.names {
-                    let name = name.value().to_owned();
+                let mut a = Tokens::new();
 
-                    let mut a = Tokens::new();
+                a.append(toks!["name=", sub_type.name().quoted()]);
+                a.append(toks![
+                    "value=",
+                    e.spec.name(),
+                    ".",
+                    key.as_str(),
+                    ".class",
+                ]);
 
-                    a.append(toks!["name=", name.quoted()]);
-                    a.append(toks![
-                        "value=",
-                        e.spec.name(),
-                        ".",
-                        key.as_str(),
-                        ".class",
-                    ]);
-
-                    let arg = SubTypesType(self, a).into_tokens();
-                    args.append(arg);
-                }
+                let arg = SubTypesType(self, a).into_tokens();
+                args.append(arg);
             }
 
             e.spec.annotation(SubTypes(self, args));

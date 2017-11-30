@@ -713,11 +713,11 @@ impl<'el> DynamicDecode<'el> for JsBackend {
         &self,
         data: &'el str,
         type_var: &'el str,
-        name: &'el Loc<String>,
+        name: &'el str,
         type_name: Tokens<'el, Self::Custom>,
     ) -> Tokens<'el, JavaScript<'el>> {
         let mut body = Tokens::new();
-        let cond = toks![type_var, " === ", name.as_str().quoted()];
+        let cond = toks![type_var, " === ", name.quoted()];
         body.push(js![if cond, js![return type_name, ".decode(", data, ")"]]);
         body
     }

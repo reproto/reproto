@@ -3,8 +3,9 @@
 use super::JAVA_CONTEXT;
 use backend::{CamelCase, Code, Converter, Environment, FromNaming, Naming, SnakeCase};
 use backend::errors::*;
-use core::{ForEachLoc, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody, RpName,
-           RpPackage, RpServiceBody, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
+use core::{ForEachLoc, Loc, RpChannel, RpDecl, RpEndpoint, RpEnumBody, RpEnumType, RpField,
+           RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody, RpType, RpTypeBody,
+           RpVersionedPackage};
 use genco::{Cons, Element, IoFmt, Java, Quoted, Tokens, WriteTokens};
 use genco::java::{Argument, BOOLEAN, Class, Constructor, DOUBLE, Enum, Extra, FLOAT, Field,
                   INTEGER, Interface, LONG, Method, Modifier, imported, local, optional};
@@ -181,6 +182,30 @@ impl JavaBackend {
         };
 
         Ok(out)
+    }
+
+    /// Extract endpoint request.
+    ///
+    /// Errors if more than one argument is present.
+    pub fn endpoint_request<'a>(
+        &self,
+        endpoint: &'a RpEndpoint,
+    ) -> Result<Option<(&'a str, &'a RpChannel)>> {
+        let mut it = endpoint.arguments.iter();
+
+        if let Some((name, first)) = it.next() {
+            if let Some((other, _)) = it.next() {
+                return Err(
+                    ErrorKind::Pos("more than one argument".to_string(), other.pos().into())
+                        .into(),
+                );
+            }
+
+            let channel = first.as_ref().take();
+            return Ok(Some((name.as_str(), channel)));
+        }
+
+        Ok(None)
     }
 
     fn build_constructor<'el>(&self, fields: &[JavaField<'el>]) -> Constructor<'el> {
@@ -777,9 +802,9 @@ impl JavaBackend {
                 let mut method = Method::new(name);
                 method.modifiers = vec![];
 
-                if let Some(req) = endpoint.request.as_ref() {
+                if let Some((name, req)) = self.endpoint_request(endpoint)? {
                     let ty = self.into_java_type(req.ty())?;
-                    method.arguments.push(Argument::new(ty, "request"));
+                    method.arguments.push(Argument::new(ty, name));
                 }
 
                 if let Some(res) = endpoint.response.as_ref() {

@@ -93,7 +93,7 @@ mod tests {
         let pos: Pos = (Rc::new(object.clone_object()), 0usize, 0usize).into();
         let other_pos: Pos = (Rc::new(object.clone_object()), 0usize, 0usize).into();
 
-        let ctx = Context::new();
+        let ctx = Context::default();
 
         let result: result::Result<(), &str> = Err("nope");
 

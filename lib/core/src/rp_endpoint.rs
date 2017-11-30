@@ -1,6 +1,7 @@
 //! Model for endpoints
 
 use super::{Attributes, Loc, RpChannel};
+use linked_hash_map::LinkedHashMap;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpEndpoint {
@@ -13,7 +14,7 @@ pub struct RpEndpoint {
     /// Attributes associated with the endpoint.
     pub attributes: Attributes,
     /// Request type that this endpoint expects.
-    pub request: Option<Loc<RpChannel>>,
+    pub arguments: LinkedHashMap<Loc<String>, Loc<RpChannel>>,
     /// Response type that this endpoint responds with.
     pub response: Option<Loc<RpChannel>>,
 }

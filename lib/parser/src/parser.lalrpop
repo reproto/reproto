@@ -147,7 +147,9 @@ Endpoint: Loc<Endpoint<'input>> = {
     <comment:"///"?>
     <attributes:Loc<Attribute>*>
     <s:@L>
-    <id:Loc<ident>> "(" <request:Loc<Channel>?> ")" <response:("->" Loc<Channel>)?>
+    <id:Loc<ident>> "("
+        <arguments:ZeroOrMore<",", EndpointArgument>>
+    ")" <response:("->" Loc<Channel>)?>
     <alias:FieldAlias?>
     <e:@R>
     ";" => {
@@ -157,7 +159,7 @@ Endpoint: Loc<Endpoint<'input>> = {
             attributes: attributes,
             alias: alias,
             options: vec![],
-            request: request,
+            arguments: arguments,
             response: response.map(|r| r.1),
         }, (input_object.clone(), s, e))
     },
@@ -165,7 +167,9 @@ Endpoint: Loc<Endpoint<'input>> = {
     <comment:"///"?>
     <attributes:Loc<Attribute>*>
     <s:@L>
-    <id:Loc<ident>> "(" <request:Loc<Channel>?> ")" <response:("->" Loc<Channel>)?>
+    <id:Loc<ident>> "("
+        <arguments:ZeroOrMore<",", EndpointArgument>>
+    ")" <response:("->" Loc<Channel>)?>
     <alias:FieldAlias?> "{"
         <options:Loc<OptionDecl>*>
     "}"
@@ -176,9 +180,15 @@ Endpoint: Loc<Endpoint<'input>> = {
             attributes: attributes,
             alias: alias,
             options: options,
-            request: request,
+            arguments: arguments,
             response: response.map(|r| r.1),
         }, (input_object.clone(), s, e))
+    },
+};
+
+EndpointArgument: (Loc<&'input str>, Loc<Channel>) = {
+    <name:Loc<ident>> ":" <channel:Loc<Channel>> => {
+        (name, channel)
     },
 };
 
@@ -193,7 +203,7 @@ Channel: Channel = {
                 ty: ty
             }
         }
-    }
+    },
 };
 
 FieldAlias: String = {
@@ -353,6 +363,11 @@ Attribute: Attribute<'input> = {
 };
 
 AttributeItem: AttributeItem<'input> = {
+    <ident:Loc<ident>> "=" <ty:Loc<TypeSpec>> => AttributeItem::NameType {
+        name: ident,
+        ty: ty,
+    },
+
     <ident:Loc<ident>> "=" <value:Loc<Value>> => AttributeItem::NameValue {
         name: ident,
         value: value,
