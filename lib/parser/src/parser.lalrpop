@@ -310,12 +310,13 @@ SubType: Loc<SubType<'input>> = {
 };
 
 pub Value: Value<'input> = {
-    "[" <values:ZeroOrMore<",", Loc<Value>>> "]" => Value::Array(values),
+    "(" <values:ZeroOrMore<",", Loc<Value>>> ")" => Value::Array(values),
     <string:"string"> => Value::String(string),
     <number:number> => Value::Number(number),
     <true> => Value::Boolean(true),
     <false> => Value::Boolean(false),
     <ident:ident> => Value::Identifier(ident),
+    <ty:TypeSpec> => Value::Type(ty),
 };
 
 pub TypeSpec: Type = {
@@ -363,11 +364,6 @@ Attribute: Attribute<'input> = {
 };
 
 AttributeItem: AttributeItem<'input> = {
-    <ident:Loc<ident>> "=" <ty:Loc<TypeSpec>> => AttributeItem::NameType {
-        name: ident,
-        ty: ty,
-    },
-
     <ident:Loc<ident>> "=" <value:Loc<Value>> => AttributeItem::NameValue {
         name: ident,
         value: value,

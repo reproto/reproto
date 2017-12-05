@@ -16,10 +16,6 @@ pub enum AttributeItem<'input> {
         name: Loc<&'input str>,
         value: Loc<Value<'input>>,
     },
-    NameType {
-        name: Loc<&'input str>,
-        ty: Loc<Type>,
-    },
 }
 
 /// An attribute.
@@ -371,4 +367,5 @@ pub enum Value<'input> {
     Boolean(bool),
     Identifier(&'input str),
     Array(Vec<Loc<Value<'input>>>),
+    Type(Type),
 }
