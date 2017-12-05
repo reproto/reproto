@@ -28,11 +28,11 @@ impl<'a> Iterator for ForEachFile<'a> {
 
 /// Iterator over all toplevel declarations.
 pub struct ToplevelDeclIter<'a> {
-    it: vec::IntoIter<&'a Rc<Loc<RpDecl>>>,
+    it: vec::IntoIter<&'a RpDecl>,
 }
 
 impl<'a> Iterator for ToplevelDeclIter<'a> {
-    type Item = &'a Rc<Loc<RpDecl>>;
+    type Item = &'a RpDecl;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.it.next()
@@ -41,11 +41,11 @@ impl<'a> Iterator for ToplevelDeclIter<'a> {
 
 /// Iterator over all declarations in a file.
 pub struct DeclIter<'a> {
-    queue: LinkedList<&'a Rc<Loc<RpDecl>>>,
+    queue: LinkedList<&'a RpDecl>,
 }
 
 impl<'a> Iterator for DeclIter<'a> {
-    type Item = &'a Rc<Loc<RpDecl>>;
+    type Item = &'a RpDecl;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(decl) = self.queue.pop_front() {

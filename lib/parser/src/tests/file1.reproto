@@ -1,15 +1,21 @@
+//! Package-level documentation.
+
 use foo.bar "^2";
 use foo.bar "^2" as bar;
 use foo.bar as bar;
 
+#[attribute]
 tuple Tuple {
+  #[attribute]
   a: double;
   b: double;
 }
 
+#[attribute]
 type Foo {
   option reserved = "foo";
 
+  #[attribute]
   boolean_type?: boolean;
   string_type?: string;
   datetime_type?: datetime;
@@ -31,6 +37,7 @@ type Foo {
   }}
 }
 
+#[attribute]
 interface Bar {
   option reserved = "a";
 
@@ -40,12 +47,15 @@ interface Bar {
     }
   }}
 
+  #[attribute]
   A as "foo" {
       name: string;
   }
 }
 
+#[attribute]
 enum Baz {
+  #[attribute]
   First as "first";
   Second as "second";
   Third as "third";

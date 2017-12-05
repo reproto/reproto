@@ -1,6 +1,47 @@
 extern crate reproto_core;
 
-use reproto_core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage};
+use reproto_core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage, WithPos};
+use std::ops;
+
+/// Items can be commented and have attributes.
+///
+/// This is an intermediate structure used to return these properties.
+///
+/// ```ignore
+/// /// This is a comment.
+/// #[foo]
+/// #[foo(value = "hello")]
+/// <item>
+/// ```
+#[derive(Debug, PartialEq, Eq)]
+pub struct Item<'input, T> {
+    pub comment: Vec<&'input str>,
+    pub attributes: Vec<Loc<Attribute<'input>>>,
+    pub item: Loc<T>,
+}
+
+/// Item derefs into target.
+impl<'input, T> ops::Deref for Item<'input, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.item.value()
+    }
+}
+
+impl<'input, T> Item<'input, T> {
+    pub fn map<F, E: WithPos, U>(self, f: F) -> Result<Loc<U>, E>
+    where
+        F: FnOnce(Vec<&'input str>, Vec<Loc<Attribute<'input>>>, T) -> Result<U, E>,
+    {
+        let (value, pos) = self.item.take_pair();
+
+        match f(self.comment, self.attributes, value) {
+            Ok(o) => Ok(Loc::new(o, pos)),
+            Err(e) => Err(e.with_pos(pos)),
+        }
+    }
+}
 
 /// Name value pair.
 ///
@@ -60,11 +101,11 @@ pub enum Type {
 /// Any kind of declaration.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Decl<'input> {
-    Type(Loc<TypeBody<'input>>),
-    Tuple(Loc<TupleBody<'input>>),
-    Interface(Loc<InterfaceBody<'input>>),
-    Enum(Loc<EnumBody<'input>>),
-    Service(Loc<ServiceBody<'input>>),
+    Type(Item<'input, TypeBody<'input>>),
+    Tuple(Item<'input, TupleBody<'input>>),
+    Interface(Item<'input, InterfaceBody<'input>>),
+    Enum(Item<'input, EnumBody<'input>>),
+    Service(Item<'input, ServiceBody<'input>>),
 }
 
 impl<'input> Decl<'input> {
@@ -84,7 +125,6 @@ impl<'input> Decl<'input> {
 /// The body of an enum declaration.
 ///
 /// ```ignore
-/// /// <comment>
 /// enum <name> as <ty> {
 ///   <variants>
 ///
@@ -96,30 +136,26 @@ impl<'input> Decl<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumBody<'input> {
     pub name: &'input str,
-    pub comment: Vec<&'input str>,
     pub ty: Option<Loc<Type>>,
-    pub variants: Vec<Loc<EnumVariant<'input>>>,
-    pub members: Vec<Loc<Member<'input>>>,
+    pub variants: Vec<Item<'input, EnumVariant<'input>>>,
+    pub members: Vec<Member<'input>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumVariant<'input> {
     pub name: Loc<&'input str>,
-    pub comment: Vec<&'input str>,
     pub argument: Option<Loc<Value<'input>>>,
 }
 
 /// A field.
 ///
 /// ```ignore
-/// /// <comment>
 /// <name><modifier>: <ty> as <field_as>
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct Field<'input> {
     pub modifier: RpModifier,
     pub name: &'input str,
-    pub comment: Vec<&'input str>,
     pub ty: Type,
     pub field_as: Option<String>,
 }
@@ -127,8 +163,6 @@ pub struct Field<'input> {
 /// A file.
 ///
 /// ```ignore
-/// //! <comment>
-///
 /// <uses>
 ///
 /// <options>
@@ -140,7 +174,7 @@ pub struct File<'input> {
     pub comment: Vec<&'input str>,
     pub options: Vec<Loc<OptionDecl<'input>>>,
     pub uses: Vec<Loc<UseDecl<'input>>>,
-    pub decls: Vec<Loc<Decl<'input>>>,
+    pub decls: Vec<Decl<'input>>,
 }
 
 impl<'input> Field<'input> {
@@ -179,7 +213,6 @@ pub enum Name {
 /// The body of an interface declaration
 ///
 /// ```ignore
-/// /// <comment>
 /// interface <name> {
 ///   <members>
 ///   <sub_types>
@@ -188,17 +221,23 @@ pub enum Name {
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterfaceBody<'input> {
     pub name: &'input str,
-    pub comment: Vec<&'input str>,
-    pub members: Vec<Loc<Member<'input>>>,
-    pub sub_types: Vec<Loc<SubType<'input>>>,
+    pub members: Vec<Member<'input>>,
+    pub sub_types: Vec<Item<'input, SubType<'input>>>,
+}
+
+/// A contextual code-block.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Code<'input> {
+    pub context: &'input str,
+    pub content: Vec<&'input str>,
 }
 
 /// A member in a tuple, type, or interface.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Member<'input> {
-    Field(Field<'input>),
-    Code(&'input str, Vec<&'input str>),
-    Option(OptionDecl<'input>),
+    Field(Item<'input, Field<'input>>),
+    Code(Loc<Code<'input>>),
+    Option(Loc<OptionDecl<'input>>),
     InnerDecl(Decl<'input>),
 }
 
@@ -243,7 +282,6 @@ impl<'input> OptionEntry for OptionDecl<'input> {
 /// The body of a service declaration.
 ///
 /// ```ignore
-/// /// <comment>
 /// service <name> {
 ///   <members>
 /// }
@@ -251,23 +289,20 @@ impl<'input> OptionEntry for OptionDecl<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ServiceBody<'input> {
     pub name: &'input str,
-    pub comment: Vec<&'input str>,
     pub members: Vec<ServiceMember<'input>>,
 }
 
 /// A member of a service declaration.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ServiceMember<'input> {
-    Endpoint(Loc<Endpoint<'input>>),
+    Endpoint(Item<'input, Endpoint<'input>>),
     Option(Loc<OptionDecl<'input>>),
-    InnerDecl(Loc<Decl<'input>>),
+    InnerDecl(Decl<'input>),
 }
 
 /// An endpoint
 ///
 /// ```ignore
-/// /// <comment>
-/// #[attribute]
 /// <id>(<arguments>) -> <response> as <alias> {
 ///   <options>
 /// }
@@ -275,9 +310,6 @@ pub enum ServiceMember<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Endpoint<'input> {
     pub id: Loc<&'input str>,
-    pub comment: Vec<&'input str>,
-    /// Attributes associated with the endpoint.
-    pub attributes: Vec<Loc<Attribute<'input>>>,
     pub alias: Option<String>,
     pub options: Vec<Loc<OptionDecl<'input>>>,
     pub arguments: Vec<(Loc<&'input str>, Loc<Channel>)>,
@@ -301,7 +333,6 @@ pub enum Channel {
 /// The body of a sub-type
 ///
 /// ```ignore
-/// /// <comment>
 /// <name> as <alias> {
 ///     <members>
 /// }
@@ -310,15 +341,13 @@ pub enum Channel {
 #[derive(Debug, PartialEq, Eq)]
 pub struct SubType<'input> {
     pub name: Loc<&'input str>,
-    pub comment: Vec<&'input str>,
-    pub members: Vec<Loc<Member<'input>>>,
+    pub members: Vec<Member<'input>>,
     pub alias: Option<Loc<Value<'input>>>,
 }
 
 /// The body of a tuple
 ///
 /// ```ignore
-/// /// <comment>
 /// tuple <name> {
 ///     <members>
 /// }
@@ -326,14 +355,12 @@ pub struct SubType<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TupleBody<'input> {
     pub name: &'input str,
-    pub comment: Vec<&'input str>,
-    pub members: Vec<Loc<Member<'input>>>,
+    pub members: Vec<Member<'input>>,
 }
 
 /// The body of a type
 ///
 /// ```ignore
-/// /// <comment>
 /// type <name> {
 ///     <members>
 /// }
@@ -341,8 +368,7 @@ pub struct TupleBody<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TypeBody<'input> {
     pub name: &'input str,
-    pub comment: Vec<&'input str>,
-    pub members: Vec<Loc<Member<'input>>>,
+    pub members: Vec<Member<'input>>,
 }
 
 /// A use declaration

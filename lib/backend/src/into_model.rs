@@ -64,108 +64,114 @@ impl<'input> IntoModel for Decl<'input> {
     }
 }
 
-impl<'input> IntoModel for EnumBody<'input> {
-    type Output = RpEnumBody;
+impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
+    type Output = Loc<RpEnumBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let ctx = scope.ctx();
+        self.map(|comment, _attributes, item| {
+            let ctx = scope.ctx();
 
-        let mut variants: Vec<Rc<Loc<RpVariant>>> = Vec::new();
+            let mut variants: Vec<Rc<Loc<RpVariant>>> = Vec::new();
 
-        let (fields, codes, _options, decls) = members_into_model(scope, self.members)?;
+            let (fields, codes, _options, decls) = members_into_model(scope, item.members)?;
 
-        if fields.len() > 0 {
-            return Err("enums can't have fields".into());
-        }
-
-        let ty = self.ty.into_model(scope)?;
-
-        let variant_type = if let Some(ty) = ty {
-            ty.and_then(|ty| {
-                ty.as_enum_type().ok_or_else(
-                    || "expected string or absent".into(),
-                ) as Result<RpEnumType>
-            })?
-        } else {
-            RpEnumType::Generated
-        };
-
-        for variant in self.variants {
-            let (variant, pos) = variant.take_pair();
-
-            let variant = (variant, &variant_type).into_model(scope).with_pos(&pos)?;
-
-            if let Some(other) = variants.iter().find(
-                |v| *v.local_name == *variant.local_name,
-            )
-            {
-                return Err(
-                    ctx.report()
-                        .err(variant.local_name.pos(), "conflicting enum name")
-                        .info(other.local_name.pos(), "previous variant here")
-                        .into(),
-                );
+            if fields.len() > 0 {
+                return Err("enums can't have fields".into());
             }
 
-            variants.push(Rc::new(Loc::new(variant, pos)));
-        }
+            let ty = item.ty.into_model(scope)?;
 
-        Ok(RpEnumBody {
-            name: scope.as_name(),
-            local_name: self.name.to_string(),
-            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
-            decls: decls,
-            variant_type: variant_type,
-            variants: variants,
-            codes: codes,
+            let variant_type = if let Some(ty) = ty {
+                ty.and_then(|ty| {
+                    ty.as_enum_type().ok_or_else(
+                        || "expected string or absent".into(),
+                    ) as Result<RpEnumType>
+                })?
+            } else {
+                RpEnumType::Generated
+            };
+
+            for variant in item.variants {
+                let variant = (variant, &variant_type).into_model(scope)?;
+
+                if let Some(other) = variants.iter().find(
+                    |v| *v.local_name == *variant.local_name,
+                )
+                {
+                    return Err(
+                        ctx.report()
+                            .err(variant.local_name.pos(), "conflicting enum name")
+                            .info(other.local_name.pos(), "previous variant here")
+                            .into(),
+                    );
+                }
+
+                variants.push(Rc::new(variant));
+            }
+
+            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
+
+            Ok(RpEnumBody {
+                name: scope.as_name(),
+                local_name: item.name.to_string(),
+                comment: comment,
+                decls: decls,
+                variant_type: variant_type,
+                variants: variants,
+                codes: codes,
+            })
         })
     }
 }
 
 /// enum value with assigned ordinal
-impl<'input, 'a> IntoModel for (EnumVariant<'input>, &'a RpEnumType) {
-    type Output = RpVariant;
+impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumType) {
+    type Output = Loc<RpVariant>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         let (variant, ty) = self;
 
-        let ordinal = if let Some(argument) = variant.argument.into_model(scope)? {
-            if !ty.is_assignable_from(&argument) {
-                return Err(
-                    format!("unexpected value {}, expected type {}", argument, ty).into(),
-                );
-            }
+        variant.map(|comment, _attributes, item| {
+            let ordinal = if let Some(argument) = item.argument.into_model(scope)? {
+                if !ty.is_assignable_from(&argument) {
+                    return Err(
+                        format!("unexpected value {}, expected type {}", argument, ty).into(),
+                    );
+                }
 
-            argument.and_then(|value| value.into_ordinal())?
-        } else {
-            RpEnumOrdinal::Generated
-        };
+                argument.and_then(|value| value.into_ordinal())?
+            } else {
+                RpEnumOrdinal::Generated
+            };
 
-        Ok(RpVariant {
-            name: scope.as_name().push(variant.name.to_string()),
-            local_name: variant.name.clone().map(str::to_string),
-            comment: variant.comment.into_iter().map(ToOwned::to_owned).collect(),
-            ordinal: ordinal,
+            Ok(RpVariant {
+                name: scope.as_name().push(item.name.to_string()),
+                local_name: item.name.clone().map(str::to_string),
+                comment: comment.into_iter().map(ToOwned::to_owned).collect(),
+                ordinal: ordinal,
+            })
         })
     }
 }
 
-impl<'input> IntoModel for Field<'input> {
-    type Output = RpField;
+impl<'input> IntoModel for Item<'input, Field<'input>> {
+    type Output = Loc<RpField>;
 
-    fn into_model(self, scope: &Scope) -> Result<RpField> {
-        let name = &self.name;
+    fn into_model(self, scope: &Scope) -> Result<Loc<RpField>> {
+        self.map(|comment, _attributes, item| {
+            let name = &item.name;
 
-        let field_as = self.field_as.into_model(scope)?.or_else(|| {
-            scope.field_naming().map(|n| n.convert(name))
-        });
+            let field_as = item.field_as.into_model(scope)?.or_else(|| {
+                scope.field_naming().map(|n| n.convert(name))
+            });
 
-        Ok(RpField {
-            modifier: self.modifier,
-            name: self.name.to_string(),
-            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
-            ty: self.ty.into_model(scope)?,
-            field_as: field_as,
+            Ok(RpField {
+                modifier: item.modifier,
+                name: item.name.to_string(),
+                comment: comment.into_iter().map(ToOwned::to_owned).collect(),
+                ty: item.ty.into_model(scope)?,
+                field_as: field_as,
+            })
         })
     }
 }
@@ -175,12 +181,7 @@ impl<'input> IntoModel for File<'input> {
 
     fn into_model(self, scope: &Scope) -> Result<RpFile> {
         let options = self.options.into_model(scope)?;
-
-        let mut decls = Vec::new();
-
-        for decl in self.decls {
-            decls.push(Rc::new(decl.into_model(scope)?));
-        }
+        let decls = self.decls.into_model(scope)?;
 
         Ok(RpFile {
             comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
@@ -190,46 +191,49 @@ impl<'input> IntoModel for File<'input> {
     }
 }
 
-impl<'input> IntoModel for InterfaceBody<'input> {
-    type Output = RpInterfaceBody;
+impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
+    type Output = Loc<RpInterfaceBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use std::collections::btree_map::Entry::*;
 
-        let ctx = scope.ctx();
+        self.map(|comment, _attributes, item| {
+            let ctx = scope.ctx();
 
-        let (fields, codes, _options, decls) = members_into_model(scope, self.members)?;
+            let (fields, codes, _options, decls) = members_into_model(scope, item.members)?;
 
-        let mut sub_types: BTreeMap<String, Rc<Loc<RpSubType>>> = BTreeMap::new();
+            let mut sub_types: BTreeMap<String, Rc<Loc<RpSubType>>> = BTreeMap::new();
 
-        for sub_type in self.sub_types {
-            let (sub_type, pos) = sub_type.take_pair();
-            let sub_type = Rc::new(Loc::new(sub_type.into_model(scope)?, pos));
+            for sub_type in item.sub_types {
+                let sub_type = sub_type.into_model(scope)?;
 
-            // key has to be owned by entry
-            let key = sub_type.local_name.clone();
+                // key has to be owned by entry
+                let key = sub_type.local_name.clone();
 
-            match sub_types.entry(key) {
-                Vacant(entry) => entry.insert(sub_type),
-                Occupied(entry) => {
-                    return Err(
-                        ctx.report()
-                            .err(sub_type.pos(), "sub-type already defined")
-                            .info(entry.get().pos(), "already defined here")
-                            .into(),
-                    );
-                }
-            };
-        }
+                match sub_types.entry(key) {
+                    Vacant(entry) => entry.insert(Rc::new(sub_type)),
+                    Occupied(entry) => {
+                        return Err(
+                            ctx.report()
+                                .err(sub_type.pos(), "sub-type already defined")
+                                .info(entry.get().pos(), "already defined here")
+                                .into(),
+                        );
+                    }
+                };
+            }
 
-        Ok(RpInterfaceBody {
-            name: scope.as_name(),
-            local_name: self.name.to_string(),
-            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
-            decls: decls,
-            fields: fields,
-            codes: codes,
-            sub_types: sub_types,
+            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
+
+            Ok(RpInterfaceBody {
+                name: scope.as_name(),
+                local_name: item.name.to_string(),
+                comment: comment,
+                decls: decls,
+                fields: fields,
+                codes: codes,
+                sub_types: sub_types,
+            })
         })
     }
 }
@@ -367,42 +371,46 @@ impl<'input> IntoModel for OptionDecl<'input> {
     }
 }
 
-impl<'input> IntoModel for ServiceBody<'input> {
-    type Output = RpServiceBody;
+impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
+    type Output = Loc<RpServiceBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use linked_hash_map::Entry::*;
 
-        let mut endpoint_names: HashMap<String, ErrorPos> = HashMap::new();
-        let mut endpoints = LinkedHashMap::new();
-        let mut options = Vec::new();
-        let mut decls = Vec::new();
+        return self.map(|comment, _attributes, item| {
+            let mut endpoint_names: HashMap<String, ErrorPos> = HashMap::new();
+            let mut endpoints = LinkedHashMap::new();
+            let mut options = Vec::new();
+            let mut decls = Vec::new();
 
-        for member in self.members {
-            match member {
-                ServiceMember::Endpoint(endpoint) => {
-                    handle_endpoint(endpoint, scope, &mut endpoint_names, &mut endpoints)?;
-                }
-                ServiceMember::Option(option) => {
-                    options.push(option.into_model(scope)?);
-                }
-                ServiceMember::InnerDecl(decl) => {
-                    decls.push(Rc::new(decl.into_model(scope)?));
-                }
-            };
-        }
+            for member in item.members {
+                match member {
+                    ServiceMember::Endpoint(endpoint) => {
+                        handle_endpoint(endpoint, scope, &mut endpoint_names, &mut endpoints)?;
+                    }
+                    ServiceMember::Option(option) => {
+                        options.push(option.into_model(scope)?);
+                    }
+                    ServiceMember::InnerDecl(decl) => {
+                        decls.push(decl.into_model(scope)?);
+                    }
+                };
+            }
 
-        return Ok(RpServiceBody {
-            name: scope.as_name(),
-            local_name: self.name.to_string(),
-            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
-            endpoints: endpoints,
-            decls: decls,
+            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
+
+            Ok(RpServiceBody {
+                name: scope.as_name(),
+                local_name: item.name.to_string(),
+                comment: comment,
+                endpoints: endpoints,
+                decls: decls,
+            })
         });
 
         /// Handle a single endpoint.
         fn handle_endpoint<'input>(
-            endpoint: Loc<Endpoint<'input>>,
+            endpoint: Item<'input, Endpoint<'input>>,
             scope: &Scope,
             endpoint_names: &mut HashMap<String, ErrorPos>,
             endpoints: &mut LinkedHashMap<String, Loc<RpEndpoint>>,
@@ -442,49 +450,55 @@ impl<'input> IntoModel for ServiceBody<'input> {
     }
 }
 
-impl<'input> IntoModel for Endpoint<'input> {
-    type Output = RpEndpoint;
+impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
+    type Output = Loc<RpEndpoint>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let id = self.id.into_model(scope)?;
-        let ctx = scope.ctx();
+        self.map(|comment, attributes, item| {
+            let id = item.id.into_model(scope)?;
+            let ctx = scope.ctx();
 
-        let name = self.alias.into_model(scope)?.unwrap_or_else(|| {
-            scope
-                .endpoint_naming()
-                .map(|n| n.convert(id.as_str()))
-                .unwrap_or_else(|| id.to_string())
-        });
+            let name = item.alias.into_model(scope)?.unwrap_or_else(|| {
+                scope
+                    .endpoint_naming()
+                    .map(|n| n.convert(id.as_str()))
+                    .unwrap_or_else(|| id.to_string())
+            });
 
-        let mut arguments = LinkedHashMap::new();
+            let mut arguments = LinkedHashMap::new();
 
-        for (name, channel) in self.arguments {
-            let name = name.into_model(scope)?;
-            let channel = channel.into_model(scope)?;
+            for (name, channel) in item.arguments {
+                let name = name.into_model(scope)?;
+                let channel = channel.into_model(scope)?;
 
-            match arguments.entry(name) {
-                linked_hash_map::Entry::Vacant(entry) => {
-                    entry.insert(channel);
-                }
-                linked_hash_map::Entry::Occupied(entry) => {
-                    return Err(
-                        ctx.report()
-                            .err(entry.key().pos(), "argument already present")
-                            .info(entry.get().pos(), "argument present here")
-                            .into(),
-                    );
+                match arguments.entry(name) {
+                    linked_hash_map::Entry::Vacant(entry) => {
+                        entry.insert(channel);
+                    }
+                    linked_hash_map::Entry::Occupied(entry) => {
+                        return Err(
+                            ctx.report()
+                                .err(entry.key().pos(), "argument already present")
+                                .info(entry.get().pos(), "argument present here")
+                                .into(),
+                        );
+                    }
                 }
             }
-        }
 
-        return Ok(RpEndpoint {
-            id: id,
-            name: name,
-            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
-            attributes: self.attributes.into_model(scope)?,
-            arguments: arguments,
-            response: self.response.into_model(scope)?,
-        });
+            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
+            let attributes = attributes.into_model(scope)?;
+            let response = item.response.into_model(scope)?;
+
+            Ok(RpEndpoint {
+                id: id,
+                name: name,
+                comment: comment,
+                attributes: attributes,
+                arguments: arguments,
+                response: response,
+            })
+        })
     }
 }
 
@@ -503,63 +517,63 @@ impl<'input> IntoModel for Channel {
     }
 }
 
-impl<'input> IntoModel for SubType<'input> {
-    type Output = RpSubType;
+impl<'input> IntoModel for Item<'input, SubType<'input>> {
+    type Output = Loc<RpSubType>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use self::Member::*;
 
-        let ctx = scope.ctx();
+        return self.map(|comment, _attributes, item| {
+            let ctx = scope.ctx();
 
-        let mut fields: Vec<Loc<RpField>> = Vec::new();
-        let mut codes = Vec::new();
-        let mut options = Vec::new();
-        let mut decls = Vec::new();
+            let mut fields: Vec<Loc<RpField>> = Vec::new();
+            let mut codes = Vec::new();
+            let mut options = Vec::new();
+            let mut decls = Vec::new();
 
-        for member in self.members {
-            let (member, pos) = member.take_pair();
+            for member in item.members {
+                match member {
+                    Field(field) => {
+                        let field = field.into_model(scope)?;
 
-            match member {
-                Field(field) => {
-                    let field = field.into_model(scope)?;
+                        if let Some(other) = fields.iter().find(|f| {
+                            f.name() == field.name() || f.ident() == field.ident()
+                        })
+                        {
+                            return Err(
+                                ctx.report()
+                                    .err(field.pos(), "conflict in field")
+                                    .info(other.pos(), "previous declaration here")
+                                    .into(),
+                            );
+                        }
 
-                    if let Some(other) = fields.iter().find(|f| {
-                        f.name() == field.name() || f.ident() == field.ident()
-                    })
-                    {
-                        return Err(
-                            ctx.report()
-                                .err(pos, "conflict in field")
-                                .info(other.pos(), "previous declaration here")
-                                .into(),
-                        );
+                        fields.push(field);
                     }
-
-                    fields.push(Loc::new(field, pos));
-                }
-                Code(context, lines) => {
-                    codes.push(code(pos, context.to_owned(), lines));
-                }
-                Option(option) => {
-                    options.push(Loc::new(option.into_model(scope)?, pos));
-                }
-                InnerDecl(decl) => {
-                    decls.push(Rc::new(Loc::new(decl.into_model(scope)?, pos)));
+                    Code(code) => {
+                        codes.push(code.into_model(scope)?);
+                    }
+                    Option(option) => {
+                        options.push(option.into_model(scope)?);
+                    }
+                    InnerDecl(decl) => {
+                        decls.push(decl.into_model(scope)?);
+                    }
                 }
             }
-        }
 
-        let sub_type_name = sub_type_name(self.alias, scope)?;
-        let comment = self.comment.into_iter().map(ToOwned::to_owned).collect();
+            let sub_type_name = sub_type_name(item.alias, scope)?;
+            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
 
-        return Ok(RpSubType {
-            name: scope.as_name().push(self.name.to_string()),
-            local_name: self.name.to_string(),
-            comment: comment,
-            decls: decls,
-            fields: fields,
-            codes: codes,
-            sub_type_name: sub_type_name,
+            Ok(RpSubType {
+                name: scope.as_name().push(item.name.to_string()),
+                local_name: item.name.to_string(),
+                comment: comment,
+                decls: decls,
+                fields: fields,
+                codes: codes,
+                sub_type_name: sub_type_name,
+            })
         });
 
         /// Extract all names provided.
@@ -585,76 +599,73 @@ impl<'input> IntoModel for SubType<'input> {
     }
 }
 
-impl<'input> IntoModel for TupleBody<'input> {
-    type Output = RpTupleBody;
+impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
+    type Output = Loc<RpTupleBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (fields, codes, _options, decls) = members_into_model(scope, self.members)?;
+        self.map(|comment, _attributes, item| {
+            let (fields, codes, _options, decls) = members_into_model(scope, item.members)?;
 
-        Ok(RpTupleBody {
-            name: scope.as_name(),
-            local_name: self.name.to_string(),
-            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
-            decls: decls,
-            fields: fields,
-            codes: codes,
+            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
+
+            Ok(RpTupleBody {
+                name: scope.as_name(),
+                local_name: item.name.to_string(),
+                comment: comment,
+                decls: decls,
+                fields: fields,
+                codes: codes,
+            })
         })
     }
 }
 
-impl<'input> IntoModel for TypeBody<'input> {
-    type Output = RpTypeBody;
+impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
+    type Output = Loc<RpTypeBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (fields, codes, options, decls) = members_into_model(scope, self.members)?;
+        self.map(|comment, _attributes, item| {
+            let (fields, codes, options, decls) = members_into_model(scope, item.members)?;
 
-        let reserved: HashSet<Loc<String>> = options
-            .find_all_identifiers("reserved")?
-            .into_iter()
-            .collect();
+            let reserved: HashSet<Loc<String>> = options
+                .find_all_identifiers("reserved")?
+                .into_iter()
+                .collect();
 
-        Ok(RpTypeBody {
-            name: scope.as_name(),
-            local_name: self.name.to_string(),
-            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
-            decls: decls,
-            fields: fields,
-            codes: codes,
-            reserved: reserved,
+            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
+
+            Ok(RpTypeBody {
+                name: scope.as_name(),
+                local_name: item.name.to_string(),
+                comment: comment,
+                decls: decls,
+                fields: fields,
+                codes: codes,
+                reserved: reserved,
+            })
         })
     }
 }
 
 type Fields = Vec<Loc<RpField>>;
 type Codes = Vec<Loc<RpCode>>;
-type OptionVec = Vec<Loc<RpOptionDecl>>;
-
-pub fn code<'input>(pos: Pos, context: String, lines: Vec<&'input str>) -> Loc<RpCode> {
-    let code = RpCode {
-        context: context,
-        lines: lines.into_iter().map(ToString::to_string).collect(),
-    };
-
-    Loc::new(code, pos)
-}
+type OptionsVec = Vec<Loc<RpOptionDecl>>;
 
 pub fn members_into_model(
     scope: &Scope,
-    members: Vec<Loc<Member>>,
-) -> Result<(Fields, Codes, OptionVec, Vec<Rc<Loc<RpDecl>>>)> {
+    members: Vec<Member>,
+) -> Result<(Fields, Codes, OptionsVec, Vec<RpDecl>)> {
     use self::Member::*;
 
     let ctx = scope.ctx();
 
     let mut fields: Vec<Loc<RpField>> = Vec::new();
     let mut codes = Vec::new();
-    let mut options: Vec<Loc<RpOptionDecl>> = Vec::new();
+    let mut options = Vec::new();
     let mut decls = Vec::new();
 
     for member in members {
-        let (value, pos) = member.take_pair();
-
-        match value {
+        match member {
             Field(field) => {
                 let field = field.into_model(scope)?;
 
@@ -664,27 +675,38 @@ pub fn members_into_model(
                 {
                     return Err(
                         ctx.report()
-                            .err(pos, "conflict in field")
+                            .err(field.pos(), "conflict in field")
                             .info(other.pos(), "previous declaration here")
                             .into(),
                     );
                 }
 
-                fields.push(Loc::new(field, pos));
+                fields.push(field);
             }
-            Code(context, lines) => {
-                codes.push(code(pos.into(), context.to_owned(), lines));
+            Code(code) => {
+                codes.push(code.into_model(scope)?);
             }
             Option(option) => {
-                options.push(Loc::new(option.into_model(scope)?, pos));
+                options.push(option.into_model(scope)?);
             }
             InnerDecl(decl) => {
-                decls.push(Rc::new(Loc::new(decl.into_model(scope)?, pos)));
+                decls.push(decl.into_model(scope)?);
             }
         }
     }
 
     Ok((fields, codes, options, decls))
+}
+
+impl<'input> IntoModel for Code<'input> {
+    type Output = RpCode;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        Ok(RpCode {
+            context: self.context.into_model(scope)?,
+            lines: self.content.into_iter().map(ToString::to_string).collect(),
+        })
+    }
 }
 
 impl<'input> IntoModel for Value<'input> {

@@ -49,7 +49,7 @@ define_processor!(PackageProcessor, Data<'env>, self,
             let mut services = Vec::new();
 
             for decl in self.body.file.for_each_decl() {
-                match *decl.value() {
+                match *decl {
                     Type(ref ty) => types.push(ty),
                     Interface(ref interface) => interfaces.push(interface),
                     Enum(ref en) => enums.push(en),

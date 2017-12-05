@@ -1,6 +1,6 @@
 use super::into_bytes::IntoBytes;
-use core::{ForEachLoc, Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
-           RpTupleBody, RpTypeBody, RpVersionedPackage};
+use core::{Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
+           RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
 use environment::Environment;
 use errors::*;
 use std::collections::BTreeMap;
@@ -68,21 +68,23 @@ where
         let mut files = BTreeMap::new();
 
         // Process all types discovered so far.
-        self.env().decl_iter().for_each_loc(|decl| {
-            callback(decl)?;
+        for decl in self.env().decl_iter() {
+            callback(decl)
+                .and_then(|_| {
+                    let mut out = files.entry(decl.name().package.clone()).or_insert_with(
+                        Self::Out::default,
+                    );
 
-            let mut out = files.entry(decl.name().package.clone()).or_insert_with(
-                Self::Out::default,
-            );
-
-            match *decl {
-                Interface(ref b) => self.process_interface(&mut out, b),
-                Type(ref b) => self.process_type(&mut out, b),
-                Tuple(ref b) => self.process_tuple(&mut out, b),
-                Enum(ref b) => self.process_enum(&mut out, b),
-                Service(ref b) => self.process_service(&mut out, b),
-            }
-        })?;
+                    match *decl {
+                        Interface(ref b) => self.process_interface(&mut out, b),
+                        Type(ref b) => self.process_type(&mut out, b),
+                        Tuple(ref b) => self.process_tuple(&mut out, b),
+                        Enum(ref b) => self.process_enum(&mut out, b),
+                        Service(ref b) => self.process_service(&mut out, b),
+                    }
+                })
+                .with_pos(decl.pos())?;
+        }
 
         Ok(files)
     }
