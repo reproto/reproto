@@ -48,15 +48,27 @@ impl<'a> Reporter<'a> {
 
         self
     }
+
+    /// Close the reporter, saving any reported errors to the context.
+    pub fn close(self) -> Option<Error> {
+        if self.errors.is_empty() {
+            return None;
+        }
+
+        let ctx = self.ctx;
+
+        let mut errors = ctx.errors.try_borrow_mut().expect(
+            "exclusive mutable access",
+        );
+
+        errors.extend(self.errors);
+        Some(ErrorKind::Context.into())
+    }
 }
 
 impl<'a> From<Reporter<'a>> for Error {
     fn from(reporter: Reporter<'a>) -> Error {
-        let ctx = reporter.ctx;
-        let mut errors = ctx.errors.try_borrow_mut().expect(
-            "exclusive mutable access",
-        );
-        errors.extend(reporter.errors);
+        reporter.close();
         ErrorKind::Context.into()
     }
 }

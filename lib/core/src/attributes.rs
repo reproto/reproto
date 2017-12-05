@@ -51,6 +51,7 @@ impl Selection {
     /// Get an iterator over unused positions.
     pub fn unused(&self) -> Unused {
         let mut positions = Vec::new();
+        positions.extend(self.words.values());
         positions.extend(self.values.values().map(Loc::pos));
         Unused { iter: positions.into_iter() }
     }

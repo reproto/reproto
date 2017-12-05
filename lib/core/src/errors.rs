@@ -10,8 +10,8 @@ error_chain! {
 
     errors {
         Context {
-            description("context error")
-            display("context error")
+            description("error")
+            display("error")
         }
 
         Pos(message: String, pos: ErrorPos) {
