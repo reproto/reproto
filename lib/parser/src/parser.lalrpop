@@ -49,7 +49,7 @@ Decl: Decl<'input> = {
 Enum: EnumBody<'input> =
     "enum" <name:TypeIdent> <ty:("as" Loc<TypeSpec>)?> "{"
         <variants:Item<EnumVariant>*>
-        <members:Member*>
+        <members:EnumMember*>
     "}" =>
     EnumBody {
         name: name,
@@ -58,9 +58,15 @@ Enum: EnumBody<'input> =
         members: members,
     };
 
+EnumMember: EnumMember<'input> = {
+    <option:Loc<OptionDecl>> => EnumMember::Option(option),
+    <code:Loc<Code>> => EnumMember::Code(code),
+    <decl:Decl> => EnumMember::InnerDecl(decl),
+};
+
 Interface: InterfaceBody<'input> =
     "interface" <name:TypeIdent> "{"
-      <members:Member*>
+      <members:TypeMember*>
       <sub_types:Item<SubType>*>
     "}" =>
     InterfaceBody {
@@ -71,7 +77,7 @@ Interface: InterfaceBody<'input> =
 
 Type: TypeBody<'input> =
     "type" <name:TypeIdent> "{"
-        <members:Member*>
+        <members:TypeMember*>
     "}" =>
     TypeBody {
         name: name,
@@ -80,7 +86,7 @@ Type: TypeBody<'input> =
 
 Tuple: TupleBody<'input> =
     "tuple" <name:TypeIdent> "{"
-        <members:Member*>
+        <members:TypeMember*>
     "}" =>
     TupleBody {
         name: name,
@@ -175,11 +181,11 @@ Modifier: RpModifier =
     <modifier:"?"?> =>
     modifier.map(|_| RpModifier::Optional).unwrap_or(RpModifier::Required);
 
-pub Member: Member<'input> = {
-    <field:Item<Field>> => Member::Field(field),
-    <option:Loc<OptionDecl>> => Member::Option(option),
-    <code:Loc<Code>> => Member::Code(code),
-    <decl:Decl> => Member::InnerDecl(decl),
+pub TypeMember: TypeMember<'input> = {
+    <field:Item<Field>> => TypeMember::Field(field),
+    <option:Loc<OptionDecl>> => TypeMember::Option(option),
+    <code:Loc<Code>> => TypeMember::Code(code),
+    <decl:Decl> => TypeMember::InnerDecl(decl),
 };
 
 Code: Code<'input> =
@@ -207,7 +213,7 @@ OptionDecl: OptionDecl<'input> =
 
 SubType: SubType<'input> = {
     <name:Loc<TypeIdent>> <alias:("as" Loc<Value>)?> "{"
-        <members:Member*>
+        <members:TypeMember*>
     "}" =>
     SubType {
         name: name,

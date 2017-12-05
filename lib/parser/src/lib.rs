@@ -125,8 +125,8 @@ mod tests {
         parser::parse_File(&new_context(), parse(input)).unwrap()
     }
 
-    fn parse_member(input: &'static str) -> Member {
-        parser::parse_Member(&new_context(), parse(input)).unwrap()
+    fn parse_member(input: &'static str) -> TypeMember {
+        parser::parse_TypeMember(&new_context(), parse(input)).unwrap()
     }
 
     fn parse_type_spec(input: &'static str) -> Type {
@@ -250,7 +250,7 @@ mod tests {
     fn test_option_decl() {
         let member = parse_member("option foo_bar_baz = true;");
 
-        if let Member::Option(option) = member {
+        if let TypeMember::Option(option) = member {
             assert_eq!("foo_bar_baz", option.name);
             assert_eq!(Value::Boolean(true), *option.value.value());
             return;
