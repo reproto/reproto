@@ -68,15 +68,25 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
     type Output = Loc<RpEnumBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        self.map(|comment, _attributes, item| {
-            let ctx = scope.ctx();
-
+        self.map(|comment, attributes, item| {
             let mut variants: Vec<Rc<Loc<RpVariant>>> = Vec::new();
 
-            let (fields, codes, _options, decls) = members_into_model(scope, item.members)?;
+            let mut codes = Vec::new();
+            let mut options = Vec::new();
+            let mut decls = Vec::new();
 
-            if fields.len() > 0 {
-                return Err("enums can't have fields".into());
+            for member in item.members {
+                match member {
+                    EnumMember::Code(code) => {
+                        codes.push(code.into_model(scope)?);
+                    }
+                    EnumMember::Option(option) => {
+                        options.push(option.into_model(scope)?);
+                    }
+                    EnumMember::InnerDecl(decl) => {
+                        decls.push(decl.into_model(scope)?);
+                    }
+                };
             }
 
             let ty = item.ty.into_model(scope)?;
@@ -92,35 +102,49 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             };
 
             for variant in item.variants {
-                let variant = (variant, &variant_type).into_model(scope)?;
-
-                if let Some(other) = variants.iter().find(
-                    |v| *v.local_name == *variant.local_name,
-                )
-                {
-                    return Err(
-                        ctx.report()
-                            .err(variant.local_name.pos(), "conflicting enum name")
-                            .info(other.local_name.pos(), "previous variant here")
-                            .into(),
-                    );
-                }
-
-                variants.push(Rc::new(variant));
+                let variant = (variants.as_slice(), variant, &variant_type).into_model(
+                    scope,
+                )?;
+                variants.push(variant);
             }
-
-            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
 
             Ok(RpEnumBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
-                comment: comment,
+                comment: comment.into_model(scope)?,
+                attributes: attributes.into_model(scope)?,
                 decls: decls,
                 variant_type: variant_type,
                 variants: variants,
                 codes: codes,
             })
         })
+    }
+}
+
+impl<'input, 'a> IntoModel
+    for (&'input [Rc<Loc<RpVariant>>], Item<'input, EnumVariant<'input>>, &'a RpEnumType) {
+    type Output = Rc<Loc<RpVariant>>;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        let (variants, variant, ty) = self;
+
+        let ctx = scope.ctx();
+        let variant = (variant, ty).into_model(scope)?;
+
+        if let Some(other) = variants.iter().find(
+            |v| *v.local_name == *variant.local_name,
+        )
+        {
+            return Err(
+                ctx.report()
+                    .err(variant.local_name.pos(), "conflicting enum name")
+                    .info(other.local_name.pos(), "previous variant here")
+                    .into(),
+            );
+        }
+
+        Ok(Rc::new(variant))
     }
 }
 
@@ -197,10 +221,10 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use std::collections::btree_map::Entry::*;
 
-        self.map(|comment, _attributes, item| {
+        self.map(|comment, attributes, item| {
             let ctx = scope.ctx();
 
-            let (fields, codes, _options, decls) = members_into_model(scope, item.members)?;
+            let (fields, codes, _options, decls) = item.members.into_model(scope)?;
 
             let mut sub_types: BTreeMap<String, Rc<Loc<RpSubType>>> = BTreeMap::new();
 
@@ -223,12 +247,11 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 };
             }
 
-            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-
             Ok(RpInterfaceBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
-                comment: comment,
+                comment: comment.into_model(scope)?,
+                attributes: attributes.into_model(scope)?,
                 decls: decls,
                 fields: fields,
                 codes: codes,
@@ -377,7 +400,7 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use linked_hash_map::Entry::*;
 
-        return self.map(|comment, _attributes, item| {
+        return self.map(|comment, attributes, item| {
             let mut endpoint_names: HashMap<String, ErrorPos> = HashMap::new();
             let mut endpoints = LinkedHashMap::new();
             let mut options = Vec::new();
@@ -397,12 +420,11 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
                 };
             }
 
-            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-
             Ok(RpServiceBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
-                comment: comment,
+                comment: comment.into_model(scope)?,
+                attributes: attributes.into_model(scope)?,
                 endpoints: endpoints,
                 decls: decls,
             })
@@ -521,7 +543,7 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
     type Output = Loc<RpSubType>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        use self::Member::*;
+        use self::TypeMember::*;
 
         return self.map(|comment, _attributes, item| {
             let ctx = scope.ctx();
@@ -603,15 +625,14 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
     type Output = Loc<RpTupleBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        self.map(|comment, _attributes, item| {
-            let (fields, codes, _options, decls) = members_into_model(scope, item.members)?;
-
-            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
+        self.map(|comment, attributes, item| {
+            let (fields, codes, _options, decls) = item.members.into_model(scope)?;
 
             Ok(RpTupleBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
-                comment: comment,
+                comment: comment.into_iter().map(ToOwned::to_owned).collect(),
+                attributes: attributes.into_model(scope)?,
                 decls: decls,
                 fields: fields,
                 codes: codes,
@@ -624,20 +645,19 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
     type Output = Loc<RpTypeBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        self.map(|comment, _attributes, item| {
-            let (fields, codes, options, decls) = members_into_model(scope, item.members)?;
+        self.map(|comment, attributes, item| {
+            let (fields, codes, options, decls) = item.members.into_model(scope)?;
 
             let reserved: HashSet<Loc<String>> = options
                 .find_all_identifiers("reserved")?
                 .into_iter()
                 .collect();
 
-            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-
             Ok(RpTypeBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
-                comment: comment,
+                comment: comment.into_model(scope)?,
+                attributes: attributes.into_model(scope)?,
                 decls: decls,
                 fields: fields,
                 codes: codes,
@@ -647,55 +667,46 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
     }
 }
 
-type Fields = Vec<Loc<RpField>>;
-type Codes = Vec<Loc<RpCode>>;
-type OptionsVec = Vec<Loc<RpOptionDecl>>;
+impl<'input> IntoModel for Vec<TypeMember<'input>> {
+    type Output = (Vec<Loc<RpField>>, Vec<Loc<RpCode>>, Vec<Loc<RpOptionDecl>>, Vec<RpDecl>);
 
-pub fn members_into_model(
-    scope: &Scope,
-    members: Vec<Member>,
-) -> Result<(Fields, Codes, OptionsVec, Vec<RpDecl>)> {
-    use self::Member::*;
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        use self::TypeMember::*;
 
-    let ctx = scope.ctx();
+        let ctx = scope.ctx();
 
-    let mut fields: Vec<Loc<RpField>> = Vec::new();
-    let mut codes = Vec::new();
-    let mut options = Vec::new();
-    let mut decls = Vec::new();
+        let mut fields: Vec<Loc<RpField>> = Vec::new();
+        let mut codes = Vec::new();
+        let mut options = Vec::new();
+        let mut decls = Vec::new();
 
-    for member in members {
-        match member {
-            Field(field) => {
-                let field = field.into_model(scope)?;
+        for member in self {
+            match member {
+                Field(field) => {
+                    let field = field.into_model(scope)?;
 
-                if let Some(other) = fields.iter().find(|f| {
-                    f.name() == field.name() || f.ident() == field.ident()
-                })
-                {
-                    return Err(
-                        ctx.report()
-                            .err(field.pos(), "conflict in field")
-                            .info(other.pos(), "previous declaration here")
-                            .into(),
-                    );
+                    if let Some(other) = fields.iter().find(|f| {
+                        f.name() == field.name() || f.ident() == field.ident()
+                    })
+                    {
+                        return Err(
+                            ctx.report()
+                                .err(field.pos(), "conflict in field")
+                                .info(other.pos(), "previous declaration here")
+                                .into(),
+                        );
+                    }
+
+                    fields.push(field);
                 }
-
-                fields.push(field);
-            }
-            Code(code) => {
-                codes.push(code.into_model(scope)?);
-            }
-            Option(option) => {
-                options.push(option.into_model(scope)?);
-            }
-            InnerDecl(decl) => {
-                decls.push(decl.into_model(scope)?);
+                Code(code) => codes.push(code.into_model(scope)?),
+                Option(option) => options.push(option.into_model(scope)?),
+                InnerDecl(decl) => decls.push(decl.into_model(scope)?),
             }
         }
-    }
 
-    Ok((fields, codes, options, decls))
+        Ok((fields, codes, options, decls))
+    }
 }
 
 impl<'input> IntoModel for Code<'input> {

@@ -138,13 +138,21 @@ pub struct EnumBody<'input> {
     pub name: &'input str,
     pub ty: Option<Loc<Type>>,
     pub variants: Vec<Item<'input, EnumVariant<'input>>>,
-    pub members: Vec<Member<'input>>,
+    pub members: Vec<EnumMember<'input>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumVariant<'input> {
     pub name: Loc<&'input str>,
     pub argument: Option<Loc<Value<'input>>>,
+}
+
+/// A member in a tuple, type, or interface.
+#[derive(Debug, PartialEq, Eq)]
+pub enum EnumMember<'input> {
+    Code(Loc<Code<'input>>),
+    Option(Loc<OptionDecl<'input>>),
+    InnerDecl(Decl<'input>),
 }
 
 /// A field.
@@ -221,7 +229,7 @@ pub enum Name {
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterfaceBody<'input> {
     pub name: &'input str,
-    pub members: Vec<Member<'input>>,
+    pub members: Vec<TypeMember<'input>>,
     pub sub_types: Vec<Item<'input, SubType<'input>>>,
 }
 
@@ -234,7 +242,7 @@ pub struct Code<'input> {
 
 /// A member in a tuple, type, or interface.
 #[derive(Debug, PartialEq, Eq)]
-pub enum Member<'input> {
+pub enum TypeMember<'input> {
     Field(Item<'input, Field<'input>>),
     Code(Loc<Code<'input>>),
     Option(Loc<OptionDecl<'input>>),
@@ -341,7 +349,7 @@ pub enum Channel {
 #[derive(Debug, PartialEq, Eq)]
 pub struct SubType<'input> {
     pub name: Loc<&'input str>,
-    pub members: Vec<Member<'input>>,
+    pub members: Vec<TypeMember<'input>>,
     pub alias: Option<Loc<Value<'input>>>,
 }
 
@@ -355,7 +363,7 @@ pub struct SubType<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TupleBody<'input> {
     pub name: &'input str,
-    pub members: Vec<Member<'input>>,
+    pub members: Vec<TypeMember<'input>>,
 }
 
 /// The body of a type
@@ -368,7 +376,7 @@ pub struct TupleBody<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TypeBody<'input> {
     pub name: &'input str,
-    pub members: Vec<Member<'input>>,
+    pub members: Vec<TypeMember<'input>>,
 }
 
 /// A use declaration
