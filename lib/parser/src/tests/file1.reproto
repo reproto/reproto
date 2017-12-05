@@ -72,7 +72,7 @@ service Foo {
 
   /// BIDI_STREAMING
   #[http(method = "GET")]
-  #[http(query_params = [foo, bar, baz], path = "/hello/{world}")]
+  #[http(query_params = (foo, bar, baz), path = "/hello/{world}")]
   #[http]
   #[allow(nothing)]
   #[deny(everything)]

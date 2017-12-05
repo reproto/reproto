@@ -699,6 +699,7 @@ impl<'input> IntoModel for Value<'input> {
             Boolean(boolean) => RpValue::Boolean(boolean),
             Identifier(identifier) => RpValue::Identifier(identifier.to_owned()),
             Array(inner) => RpValue::Array(inner.into_model(scope)?),
+            Type(ty) => RpValue::Type(ty.into_model(scope)?),
         };
 
         Ok(out)
@@ -758,13 +759,6 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                                         let name = name.into_model(scope)?.take();
                                         let value = value.into_model(scope)?;
                                         values.insert(name, value);
-                                    }
-                                    AttributeItem::NameType { name, .. } => {
-                                        return Err(
-                                            ctx.report()
-                                                .err(name.pos(), "attribute not supported")
-                                                .into(),
-                                        );
                                     }
                                 }
                             }
