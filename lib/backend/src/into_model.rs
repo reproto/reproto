@@ -8,6 +8,20 @@ use std::option;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
+macro_rules! check_attributes {
+    ($scope:expr, $attr:expr) => {{
+        let mut __a_r = $scope.ctx().report();
+
+        for unused in $attr.unused() {
+            __a_r = __a_r.err(unused, "unknown attribute");
+        }
+
+        if let Some(e) = __a_r.close() {
+            return Err(e.into());
+        }
+    }}
+}
+
 /// Adds a method for all types that supports conversion into core types.
 pub trait IntoModel {
     type Output;
@@ -108,11 +122,13 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 variants.push(variant);
             }
 
+            let attributes = attributes.into_model(scope)?;
+            check_attributes!(scope, attributes);
+
             Ok(RpEnumBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
                 comment: comment.into_model(scope)?,
-                attributes: attributes.into_model(scope)?,
                 decls: decls,
                 variant_type: variant_type,
                 variants: variants,
@@ -155,7 +171,7 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         let (variant, ty) = self;
 
-        variant.map(|comment, _attributes, item| {
+        variant.map(|comment, attributes, item| {
             let ordinal = if let Some(argument) = item.argument.into_model(scope)? {
                 if !ty.is_assignable_from(&argument) {
                     return Err(
@@ -167,6 +183,9 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
             } else {
                 RpEnumOrdinal::Generated
             };
+
+            let attributes = attributes.into_model(scope)?;
+            check_attributes!(scope, attributes);
 
             Ok(RpVariant {
                 name: scope.as_name().push(item.name.to_string()),
@@ -182,12 +201,15 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
     type Output = Loc<RpField>;
 
     fn into_model(self, scope: &Scope) -> Result<Loc<RpField>> {
-        self.map(|comment, _attributes, item| {
+        self.map(|comment, attributes, item| {
             let name = &item.name;
 
             let field_as = item.field_as.into_model(scope)?.or_else(|| {
                 scope.field_naming().map(|n| n.convert(name))
             });
+
+            let attributes = attributes.into_model(scope)?;
+            check_attributes!(scope, attributes);
 
             Ok(RpField {
                 modifier: item.modifier,
@@ -247,11 +269,13 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 };
             }
 
+            let attributes = attributes.into_model(scope)?;
+            check_attributes!(scope, attributes);
+
             Ok(RpInterfaceBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
                 comment: comment.into_model(scope)?,
-                attributes: attributes.into_model(scope)?,
                 decls: decls,
                 fields: fields,
                 codes: codes,
@@ -420,11 +444,13 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
                 };
             }
 
+            let attributes = attributes.into_model(scope)?;
+            check_attributes!(scope, attributes);
+
             Ok(RpServiceBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
                 comment: comment.into_model(scope)?,
-                attributes: attributes.into_model(scope)?,
                 endpoints: endpoints,
                 decls: decls,
             })
@@ -509,8 +535,10 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             }
 
             let comment = comment.into_iter().map(ToOwned::to_owned).collect();
-            let attributes = attributes.into_model(scope)?;
             let response = item.response.into_model(scope)?;
+
+            let attributes = attributes.into_model(scope)?;
+            check_attributes!(scope, attributes);
 
             Ok(RpEndpoint {
                 id: id,
@@ -545,7 +573,7 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use self::TypeMember::*;
 
-        return self.map(|comment, _attributes, item| {
+        return self.map(|comment, attributes, item| {
             let ctx = scope.ctx();
 
             let mut fields: Vec<Loc<RpField>> = Vec::new();
@@ -586,6 +614,9 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
 
             let sub_type_name = sub_type_name(item.alias, scope)?;
             let comment = comment.into_iter().map(ToOwned::to_owned).collect();
+
+            let attributes = attributes.into_model(scope)?;
+            check_attributes!(scope, attributes);
 
             Ok(RpSubType {
                 name: scope.as_name().push(item.name.to_string()),
@@ -628,11 +659,13 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
         self.map(|comment, attributes, item| {
             let (fields, codes, _options, decls) = item.members.into_model(scope)?;
 
+            let attributes = attributes.into_model(scope)?;
+            check_attributes!(scope, attributes);
+
             Ok(RpTupleBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
                 comment: comment.into_iter().map(ToOwned::to_owned).collect(),
-                attributes: attributes.into_model(scope)?,
                 decls: decls,
                 fields: fields,
                 codes: codes,
@@ -653,11 +686,13 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
                 .into_iter()
                 .collect();
 
+            let attributes = attributes.into_model(scope)?;
+            check_attributes!(scope, attributes);
+
             Ok(RpTypeBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
                 comment: comment.into_model(scope)?,
-                attributes: attributes.into_model(scope)?,
                 decls: decls,
                 fields: fields,
                 codes: codes,

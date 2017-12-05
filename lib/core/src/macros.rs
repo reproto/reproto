@@ -6,7 +6,6 @@ macro_rules! decl_body {
             pub name: $crate::rp_name::RpName,
             pub local_name: String,
             pub comment: Vec<String>,
-            pub attributes: $crate::attributes::Attributes,
             pub decls: Vec<$crate::rp_decl::RpDecl>,
             $($rest)*
         }

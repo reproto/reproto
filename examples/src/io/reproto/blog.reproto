@@ -79,5 +79,5 @@ service Blob {
   get_posts() -> stream PostEntry as "GetPosts";
 
   /// Get the post with the given `id`.
-  get_post(string) -> Post;
+  get_post(request: string) -> Post;
 }
