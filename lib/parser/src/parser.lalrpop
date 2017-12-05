@@ -3,28 +3,28 @@ use core::{RpNumber, Loc, RpModifier, RpPackage, Object, VersionReq};
 use std::rc::Rc;
 use ast::*;
 use lexer::{self, Token};
-use super::utils::*;
+use super::utils::strip_code_block;
 
 grammar<'input, 'object>(input_object: &'object Rc<Box<Object>>);
 
-pub File: File<'input> = {
+pub File: File<'input> =
     <comment:"//!"?>
     <uses:Loc<Use>*>
     <options:Loc<OptionDecl>*>
-    <decls:Loc<Decl>*> => File {
-        comment: comment.unwrap_or_else(Vec::new),
-        options: options,
-        uses: uses,
-        decls: decls,
-    },
+    <decls:Decl*> => {
+        File {
+            comment: comment.unwrap_or_else(Vec::new),
+            uses: uses,
+            options: options,
+            decls: decls,
+        }
 };
 
 Use: UseDecl<'input> =
     "use" <package:Loc<Package>>
         <version_req:Loc<"string">?>
         <alias:Loc<UseAlias>?>
-    ";" =>
-{
+    ";" => {
     UseDecl {
         package: package,
         version_req: version_req,
@@ -34,103 +34,70 @@ Use: UseDecl<'input> =
 
 UseAlias: &'input str = "as" <value:ident> => value;
 
-Package: RpPackage =
-    <parts:OneOrMore<".", ident>> =>
-{
+Package: RpPackage = <parts:OneOrMore<".", ident>> => {
     RpPackage::new(parts.into_iter().map(ToOwned::to_owned).collect())
 };
 
 Decl: Decl<'input> = {
-    <en:Enum> => Decl::Enum(en),
-    <interface:Interface> => Decl::Interface(interface),
-    <ty:Type> => Decl::Type(ty),
-    <tuple:Tuple> => Decl::Tuple(tuple),
-    <service:Service> => Decl::Service(service),
+    <en:Item<Enum>> => Decl::Enum(en),
+    <interface:Item<Interface>> => Decl::Interface(interface),
+    <ty:Item<Type>> => Decl::Type(ty),
+    <tuple:Item<Tuple>> => Decl::Tuple(tuple),
+    <service:Item<Service>> => Decl::Service(service),
 };
 
-Enum: Loc<EnumBody<'input>> =
-    <comment:"///"?>
-    <s:@L>
+Enum: EnumBody<'input> =
     "enum" <name:TypeIdent> <ty:("as" Loc<TypeSpec>)?> "{"
-        <variants:EnumVariant*>
+        <variants:Item<EnumVariant>*>
         <members:Member*>
-    "}"
-    <e:@R> =>
-{
-    Loc::new(EnumBody {
+    "}" =>
+    EnumBody {
         name: name,
-        comment: comment.unwrap_or_else(Vec::new),
         ty: ty.map(|ty| ty.1),
         variants: variants,
         members: members,
-    }, (input_object.clone(), s, e))
-};
+    };
 
-Interface: Loc<InterfaceBody<'input>> = {
-    <comment:"///"?>
-    <s:@L>
+Interface: InterfaceBody<'input> =
     "interface" <name:TypeIdent> "{"
       <members:Member*>
-      <sub_types:SubType*>
-    "}"
-    <e:@R> =>
-    {
-        Loc::new(InterfaceBody {
-            name: name,
-            comment: comment.unwrap_or_else(Vec::new),
-            members: members,
-            sub_types: sub_types,
-        }, (input_object.clone(), s, e))
-    },
-};
+      <sub_types:Item<SubType>*>
+    "}" =>
+    InterfaceBody {
+        name: name,
+        members: members,
+        sub_types: sub_types,
+    };
 
-Type: Loc<TypeBody<'input>> =
-    <comment:"///"?>
-    <s:@L>
+Type: TypeBody<'input> =
     "type" <name:TypeIdent> "{"
         <members:Member*>
-    "}"
-    <e:@R> =>
-{
-    Loc::new(TypeBody {
+    "}" =>
+    TypeBody {
         name: name,
-        comment: comment.unwrap_or_else(Vec::new),
         members: members,
-    }, (input_object.clone(), s, e))
-};
+    };
 
-Tuple: Loc<TupleBody<'input>> =
-    <comment:"///"?>
-    <s:@L>
+Tuple: TupleBody<'input> =
     "tuple" <name:TypeIdent> "{"
         <members:Member*>
-    "}"
-    <e:@R> =>
-{
-    Loc::new(TupleBody {
+    "}" =>
+    TupleBody {
         name: name,
-        comment: comment.unwrap_or_else(Vec::new),
         members: members,
-    }, (input_object.clone(), s, e))
-};
+    };
 
-Service: Loc<ServiceBody<'input>> =
-    <comment:"///"?>
-    <s:@L>
+Service: ServiceBody<'input> =
     "service" <name:TypeIdent> "{"
         <members:ServiceMember*>
-    "}"
-    <e:@R> =>
-{
-    Loc::new(ServiceBody {
+    "}" =>
+    ServiceBody {
         name: name,
-        comment: comment.unwrap_or_else(Vec::new),
         members: members,
-    }, (input_object.clone(), s, e))
-};
+    };
 
 pub ServiceMember: ServiceMember<'input> = {
-    <endpoint:Endpoint> => {
+    <endpoint:Item<Endpoint>> => {
         ServiceMember::Endpoint(endpoint)
     },
 
@@ -138,59 +105,45 @@ pub ServiceMember: ServiceMember<'input> = {
         ServiceMember::Option(option)
     },
 
-    <decl:Loc<Decl>> => {
+    <decl:Decl> => {
         ServiceMember::InnerDecl(decl)
     },
 };
 
-Endpoint: Loc<Endpoint<'input>> = {
-    <comment:"///"?>
-    <attributes:Loc<Attribute>*>
-    <s:@L>
+Endpoint: Endpoint<'input> = {
     <id:Loc<ident>> "("
         <arguments:ZeroOrMore<",", EndpointArgument>>
     ")" <response:("->" Loc<Channel>)?>
     <alias:FieldAlias?>
-    <e:@R>
     ";" => {
-        Loc::new(Endpoint {
+        Endpoint {
             id: id,
-            comment: comment.unwrap_or_else(Vec::new),
-            attributes: attributes,
             alias: alias,
             options: vec![],
             arguments: arguments,
             response: response.map(|r| r.1),
-        }, (input_object.clone(), s, e))
+        }
     },
 
-    <comment:"///"?>
-    <attributes:Loc<Attribute>*>
-    <s:@L>
     <id:Loc<ident>> "("
         <arguments:ZeroOrMore<",", EndpointArgument>>
     ")" <response:("->" Loc<Channel>)?>
     <alias:FieldAlias?> "{"
         <options:Loc<OptionDecl>*>
-    "}"
-    <e:@R> => {
-        Loc::new(Endpoint {
+    "}" => {
+        Endpoint {
             id: id,
-            comment: comment.unwrap_or_else(Vec::new),
-            attributes: attributes,
             alias: alias,
             options: options,
             arguments: arguments,
             response: response.map(|r| r.1),
-        }, (input_object.clone(), s, e))
+        }
     },
 };
 
-EndpointArgument: (Loc<&'input str>, Loc<Channel>) = {
-    <name:Loc<ident>> ":" <channel:Loc<Channel>> => {
-        (name, channel)
-    },
-};
+EndpointArgument: (Loc<&'input str>, Loc<Channel>) =
+    <name:Loc<ident>> ":" <channel:Loc<Channel>> =>
+    (name, channel);
 
 Channel: Channel = {
     <stream:stream?> <ty:TypeSpec> => {
@@ -211,101 +164,62 @@ FieldAlias: String = {
     "as" <value:"string"> => value,
 };
 
-EnumVariant: Loc<EnumVariant<'input>> =
-    <comment:"///"?>
-    <s:@L>
-    <name:Loc<TypeIdent>> <argument:("as" Loc<Value>)?> ";"
-    <e:@R> =>
-{
-    Loc::new(EnumVariant {
+EnumVariant: EnumVariant<'input> =
+    <name:Loc<TypeIdent>> <argument:("as" Loc<Value>)?> ";" =>
+    EnumVariant {
         name: name,
-        comment: comment.unwrap_or_else(Vec::new),
         argument: argument.map(|a| a.1),
-    }, (input_object.clone(), s, e))
-};
+    };
 
 Modifier: RpModifier =
     <modifier:"?"?> =>
-{
-    modifier.map(|_| RpModifier::Optional).unwrap_or(RpModifier::Required)
+    modifier.map(|_| RpModifier::Optional).unwrap_or(RpModifier::Required);
+
+pub Member: Member<'input> = {
+    <field:Item<Field>> => Member::Field(field),
+    <option:Loc<OptionDecl>> => Member::Option(option),
+    <code:Loc<Code>> => Member::Code(code),
+    <decl:Decl> => Member::InnerDecl(decl),
 };
 
-pub Member: Loc<Member<'input>> = {
-    <comment:"///"?>
-    <s:@L> <name:ident> <modifier:Modifier> ":" <ty:TypeSpec> <alias:FieldAlias?> ";" <e:@R> =>
-    {
-        let field = Field {
-            modifier: modifier,
-            name: name,
-            comment: comment.unwrap_or_else(Vec::new),
-            ty: ty,
-            field_as: alias,
-        };
+Code: Code<'input> =
+    <context:ident> "{{" <content:code> "}}" =>
+    Code {
+        context: context,
+        content: strip_code_block(content)
+    };
 
-        let member = Member::Field(field);
-        Loc::new(member, (input_object.clone(), s, e))
-    },
-
-    <s:@L> <option:OptionDecl> <e:@R> =>
-    {
-        let member = Member::Option(option);
-        Loc::new(member, (input_object.clone(), s, e))
-    },
-
-    <s:@L> <context:ident> "{{" <content:code> "}}" <e:@R> =>
-    {
-        let content = strip_code_block(content);
-        let member = Member::Code(context, content);
-        Loc::new(member, (input_object.clone(), s, e))
-    },
-
-    <s:@L> <decl:Decl> <e:@R> =>
-    {
-        let member = Member::InnerDecl(decl);
-        Loc::new(member, (input_object.clone(), s, e))
-    },
-};
+Field: Field<'input> =
+    <name:ident> <modifier:Modifier> ":" <ty:TypeSpec> <alias:FieldAlias?> ";" =>
+    Field {
+        modifier: modifier,
+        name: name,
+        ty: ty,
+        field_as: alias,
+    };
 
 OptionDecl: OptionDecl<'input> =
     option <name:ident> "=" <value:Loc<Value>> ";" =>
-{
     OptionDecl {
         name: name,
         value: value,
-    }
-};
+    };
 
-SubType: Loc<SubType<'input>> = {
-    <comment:"///"?>
-    <s:@L> 
+SubType: SubType<'input> = {
     <name:Loc<TypeIdent>> <alias:("as" Loc<Value>)?> "{"
         <members:Member*>
-    "}"
-    <e:@R> =>
-    {
-        let sub_type = SubType {
-            name: name,
-            comment: comment.unwrap_or_else(Vec::new),
-            members: members,
-            alias: alias.map(|alias| alias.1),
-        };
-
-        Loc::new(sub_type, (input_object.clone(), s, e))
+    "}" =>
+    SubType {
+        name: name,
+        members: members,
+        alias: alias.map(|alias| alias.1),
     },
 
-    <comment:"///"?>
-    <s:@L>
-    <name:Loc<TypeIdent>> <alias:("as" Loc<Value>)?> ";"
-    <e:@R> =>
-    {
-        let sub_type = SubType {
-            name: name,
-            comment: comment.unwrap_or_else(Vec::new),
-            members: Vec::new(),
-            alias: alias.map(|alias| alias.1),
-        };
-
-        Loc::new(sub_type, (input_object.clone(), s, e))
+    <name:Loc<TypeIdent>> <alias:("as" Loc<Value>)?> ";" =>
+    SubType {
+        name: name,
+        members: Vec::new(),
+        alias: alias.map(|alias| alias.1),
     },
 };
 
@@ -358,6 +272,7 @@ Attribute: Attribute<'input> = {
     "#" "[" <ident:Loc<ident>>  "]" => {
         Attribute::Word(ident)
     },
+
     "#" "[" <ident:Loc<ident>> "(" <name_value:OneOrMore<",", AttributeItem>> ")" "]" => {
         Attribute::List(ident, name_value)
     },
@@ -375,11 +290,9 @@ AttributeItem: AttributeItem<'input> = {
 };
 
 /// Zero or more matching, separated by a token.
-ZeroOrMore<Sep, T>: Vec<T> = {
-    <value:OneOrMore<Sep, T>?> => {
-        value.unwrap_or_else(|| vec![])
-    }
-};
+ZeroOrMore<Sep, T>: Vec<T> =
+    <value:OneOrMore<Sep, T>?> =>
+    value.unwrap_or_else(|| vec![]);
 
 /// One or more matching, separated by a token.
 OneOrMore<Sep, T>: Vec<T> = {
@@ -390,9 +303,18 @@ OneOrMore<Sep, T>: Vec<T> = {
     }
 };
 
-Loc<Inner>: Loc<Inner> = <s:@L> <inner:Inner> <e:@R> => {
-    Loc::new(inner, (input_object.clone(), s, e))
-};
+Loc<Inner>: Loc<Inner> = <s:@L> <inner:Inner> <e:@R> =>
+    Loc::new(inner, (input_object.clone(), s, e));
+
+Item<T>: Item<'input, T> =
+    <comment:"///"?>
+    <attributes:Loc<Attribute>*>
+    <s:@L> <item:T> <e:@R> =>
+    Item {
+        comment: comment.unwrap_or_else(Vec::new),
+        attributes: attributes,
+        item: Loc::new(item, (input_object.clone(), s, e))
+    };
 
 extern {
     type Location = usize;

@@ -2,23 +2,22 @@
 
 use super::{Loc, RpDecl, RpOptionDecl};
 use std::collections::LinkedList;
-use std::rc::Rc;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpFile {
     pub comment: Vec<String>,
     pub options: Vec<Loc<RpOptionDecl>>,
-    pub decls: Vec<Rc<Loc<RpDecl>>>,
+    pub decls: Vec<RpDecl>,
 }
 
 /// Iterator over all declarations in a file.
 #[allow(linkedlist)]
 pub struct ForEachDecl<'a> {
-    queue: LinkedList<&'a Rc<Loc<RpDecl>>>,
+    queue: LinkedList<&'a RpDecl>,
 }
 
 impl<'a> Iterator for ForEachDecl<'a> {
-    type Item = &'a Rc<Loc<RpDecl>>;
+    type Item = &'a RpDecl;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(decl) = self.queue.pop_front() {

@@ -3,7 +3,7 @@
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
 use backend::Environment;
 use backend::errors::*;
-use core::{ForEachLoc, RpDecl, RpFile, RpVersionedPackage};
+use core::{WithPos, RpDecl, RpFile, RpVersionedPackage};
 use doc_builder::DocBuilder;
 use enum_processor::EnumProcessor;
 use genco::IoFmt;
@@ -37,9 +37,9 @@ impl<'a> DocCompiler<'a> {
     /// Do the compilation.
     pub fn compile(&self) -> Result<()> {
         for (_, file) in self.env.for_each_file() {
-            file.for_each_decl().for_each_loc(
-                |decl| self.process_decl(decl),
-            )?;
+            for decl in file.for_each_decl() {
+                self.process_decl(decl).with_pos(decl.pos())?;
+            }
         }
 
         self.write_index(self.env.for_each_file())?;

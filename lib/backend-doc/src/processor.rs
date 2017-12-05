@@ -3,13 +3,12 @@
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
 use backend::Environment;
 use backend::errors::*;
-use core::{ForEachLoc, Loc, RpDecl, RpField, RpName, RpType, RpVersionedPackage};
+use core::{WithPos, ForEachLoc, Loc, RpDecl, RpField, RpName, RpType, RpVersionedPackage};
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
 use rendering::markdown_to_html;
 use std::ops::DerefMut;
-use std::rc::Rc;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
 
@@ -205,9 +204,12 @@ pub trait Processor<'env> {
     /// Render a set of nested declarations
     fn nested_decls<'b, I>(&self, decls: I) -> Result<()>
     where
-        I: Iterator<Item = &'b Rc<Loc<RpDecl>>>,
+        I: Iterator<Item = &'b RpDecl>,
     {
-        decls.for_each_loc(|decl| self.nested_decl(decl))?;
+        for decl in decls {
+            self.nested_decl(decl).with_pos(decl.pos())?;
+        }
+
         Ok(())
     }
 

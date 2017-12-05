@@ -1,7 +1,6 @@
 //! Model for sub-types
 
 use super::{Loc, RpCode, RpDecl, RpField, RpName};
-use std::rc::Rc;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpSubType {
@@ -9,7 +8,7 @@ pub struct RpSubType {
     pub local_name: String,
     pub comment: Vec<String>,
     /// Inner declarations.
-    pub decls: Vec<Rc<Loc<RpDecl>>>,
+    pub decls: Vec<RpDecl>,
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
     pub sub_type_name: Option<Loc<String>>,

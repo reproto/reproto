@@ -1,6 +1,6 @@
 //! Model for declarations
 
-use super::{Loc, RpEnumBody, RpInterfaceBody, RpName, RpReg, RpServiceBody, RpTupleBody,
+use super::{Loc, Pos, RpEnumBody, RpInterfaceBody, RpName, RpReg, RpServiceBody, RpTupleBody,
             RpTypeBody};
 use std::fmt;
 use std::rc::Rc;
@@ -8,11 +8,11 @@ use std::slice;
 
 /// Iterator over declarations.
 pub struct Decls<'a> {
-    iter: slice::Iter<'a, Rc<Loc<RpDecl>>>,
+    iter: slice::Iter<'a, RpDecl>,
 }
 
 impl<'a> Iterator for Decls<'a> {
-    type Item = &'a Rc<Loc<RpDecl>>;
+    type Item = &'a RpDecl;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
@@ -127,6 +127,19 @@ impl RpDecl {
             Enum(_) => "enum",
             Tuple(_) => "tuple",
             Service(_) => "service",
+        }
+    }
+
+    /// Get the position of the declaration.
+    pub fn pos(&self) -> &Pos {
+        use self::RpDecl::*;
+
+        match *self {
+            Type(ref body) => body.pos(),
+            Interface(ref body) => body.pos(),
+            Enum(ref body) => body.pos(),
+            Tuple(ref body) => body.pos(),
+            Service(ref body) => body.pos(),
         }
     }
 }
