@@ -1,4 +1,7 @@
+/// Options for java code generation.
+
 use genco::Java;
+use codegen::Codegen;
 
 pub struct JavaOptions {
     /// Should fields be nullable?
@@ -21,6 +24,8 @@ pub struct JavaOptions {
     pub async_container: Option<Java<'static>>,
     /// Do not generate methods in service interface.
     pub suppress_service_methods: bool,
+    /// Hook to generate code called in the root of the declarations.
+    pub root_generators: Vec<Box<Codegen>>,
 }
 
 impl JavaOptions {
@@ -36,6 +41,7 @@ impl JavaOptions {
             build_to_string: true,
             async_container: None,
             suppress_service_methods: false,
+            root_generators: Vec::new(),
         }
     }
 }
