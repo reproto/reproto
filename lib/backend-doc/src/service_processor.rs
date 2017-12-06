@@ -46,9 +46,9 @@ impl<'p> ServiceProcessor<'p> {
             html!(self, span {class => "endpoint-id"} ~ Escape(endpoint.id.as_str()));
             html!(self, span {} ~ Escape("("));
 
-            let mut it = endpoint.arguments.iter().peekable();
+            let mut it = endpoint.arguments.values().peekable();
 
-            while let Some((name, channel)) = it.next() {
+            while let Some(&(ref name, ref channel)) = it.next() {
                 html!(self, span {class => "endpoint-request-type"} => {
                     html!(self, span {class => "name"} ~ Escape(name.as_str()));
                     html!(self, span {class => "sep"} ~ Escape(":"));

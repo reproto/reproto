@@ -1,7 +1,28 @@
 //! Model for endpoints
 
-use super::{Attributes, Loc, RpChannel};
+use super::{Attributes, Loc, RpChannel, RpPathSpec};
 use linked_hash_map::LinkedHashMap;
+
+#[derive(Debug, Clone, Serialize)]
+pub enum RpHttpMethod {
+    GET,
+    POST,
+    PUT,
+    UPDATE,
+    DELETE,
+    PATCH,
+    HEAD,
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct RpEndpointHttp {
+    /// Path specification.
+    pub path: Option<RpPathSpec>,
+    /// Argument that is the body of the request.
+    pub body: Option<String>,
+    /// HTTP method.
+    pub method: Option<RpHttpMethod>,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpEndpoint {
@@ -14,9 +35,11 @@ pub struct RpEndpoint {
     /// Attributes associated with the endpoint.
     pub attributes: Attributes,
     /// Request type that this endpoint expects.
-    pub arguments: LinkedHashMap<Loc<String>, Loc<RpChannel>>,
+    pub arguments: LinkedHashMap<String, (Loc<String>, Loc<RpChannel>)>,
     /// Response type that this endpoint responds with.
     pub response: Option<Loc<RpChannel>>,
+    /// HTTP configuration.
+    pub http: RpEndpointHttp,
 }
 
 impl RpEndpoint {

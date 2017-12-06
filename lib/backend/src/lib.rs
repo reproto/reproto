@@ -4,9 +4,10 @@ extern crate error_chain;
 #[macro_use]
 extern crate log;
 extern crate genco;
-extern crate reproto_core as core;
 extern crate reproto_ast as ast;
+extern crate reproto_core as core;
 extern crate reproto_parser as parser;
+extern crate reproto_path_parser as path_parser;
 extern crate reproto_repository as repository;
 extern crate linked_hash_map;
 extern crate clap;

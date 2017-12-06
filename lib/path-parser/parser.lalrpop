@@ -5,9 +5,9 @@ use path_lexer::{self, PathToken};
 grammar<'input>();
 
 pub path: PathSpec<'input> =
-    <segments:Step*> =>
+    <steps:Step*> =>
     PathSpec {
-        segments: segments,
+        steps: steps,
     };
 
 Step: PathStep<'input> =

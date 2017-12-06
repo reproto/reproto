@@ -1,11 +1,13 @@
 use core::{ErrorPos, Pos, Reporter, RpType, WithPos, errors as core};
 use parser::errors as parser;
 use repository::errors as repository;
+use path_parser::errors as path_parser;
 use serde_json as json;
 
 error_chain! {
     links {
         Parser(parser::Error, parser::ErrorKind);
+        PathParser(path_parser::Error, path_parser::ErrorKind);
         Core(core::Error, core::ErrorKind);
         Repository(repository::Error, repository::ErrorKind);
     }

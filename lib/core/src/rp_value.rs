@@ -29,9 +29,17 @@ impl RpValue {
         use self::RpValue::*;
 
         match *self {
-            String(ref string) => Ok(string),
             Identifier(ref identifier) => Ok(identifier),
-            _ => Err("unsupported identifier kind".into()),
+            _ => Err("expected identifier".into()),
+        }
+    }
+
+    pub fn as_string(&self) -> Result<&str> {
+        use self::RpValue::*;
+
+        match *self {
+            String(ref string) => Ok(string),
+            _ => Err("expected string".into()),
         }
     }
 

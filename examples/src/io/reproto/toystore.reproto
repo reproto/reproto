@@ -72,12 +72,15 @@ service ToyStore {
   ///
   /// The stream will contain all the toys in the store, it is up to the client to terminate when
   /// done.
+  #[http(path = "/toys", body = request, method = "POST")]
   get_toys(request: ::GetToys) -> stream Toy;
 
   /// Get a single toy by its identifier.
+  #[http(path = "/toy/{request}")]
   get_toy(request: u64) -> Toy;
 
   /// Gets a greeting for the given `name`.
+  #[http(path = "/greeting/{request}")]
   get_greeting(request: string) -> c::Greeting;
 
   /// The get_toys request body.

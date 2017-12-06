@@ -420,5 +420,5 @@ pub struct PathStep<'input> {
 /// A path specification.
 #[derive(Debug, PartialEq, Eq)]
 pub struct PathSpec<'input> {
-    pub segments: Vec<PathStep<'input>>,
+    pub steps: Vec<PathStep<'input>>,
 }

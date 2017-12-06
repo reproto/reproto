@@ -3,6 +3,7 @@ use super::scope::Scope;
 use ast::*;
 use core::*;
 use linked_hash_map::{self, LinkedHashMap};
+use path_parser::parse as path_parse;
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
 use std::option;
 use std::path::{Path, PathBuf};
@@ -13,6 +14,20 @@ macro_rules! check_attributes {
         let mut __a_r = $scope.ctx().report();
 
         for unused in $attr.unused() {
+            __a_r = __a_r.err(unused, "unknown attribute");
+        }
+
+        if let Some(e) = __a_r.close() {
+            return Err(e.into());
+        }
+    }}
+}
+
+macro_rules! check_selection {
+    ($scope:expr, $sel:expr) => {{
+        let mut __a_r = $scope.ctx().report();
+
+        for unused in $sel.unused() {
             __a_r = __a_r.err(unused, "unknown attribute");
         }
 
@@ -502,7 +517,7 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
     type Output = Loc<RpEndpoint>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        self.map(|comment, attributes, item| {
+        return self.map(|comment, attributes, item| {
             let id = item.id.into_model(scope)?;
             let ctx = scope.ctx();
 
@@ -519,15 +534,15 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                 let name = name.into_model(scope)?;
                 let channel = channel.into_model(scope)?;
 
-                match arguments.entry(name) {
+                match arguments.entry(name.value().clone()) {
                     linked_hash_map::Entry::Vacant(entry) => {
-                        entry.insert(channel);
+                        entry.insert((name, channel));
                     }
                     linked_hash_map::Entry::Occupied(entry) => {
                         return Err(
                             ctx.report()
-                                .err(entry.key().pos(), "argument already present")
-                                .info(entry.get().pos(), "argument present here")
+                                .err(name.pos(), "argument already present")
+                                .info(entry.get().0.pos(), "argument present here")
                                 .into(),
                         );
                     }
@@ -537,7 +552,17 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             let comment = comment.into_iter().map(ToOwned::to_owned).collect();
             let response = item.response.into_model(scope)?;
 
-            let attributes = attributes.into_model(scope)?;
+            let mut attributes = attributes.into_model(scope)?;
+
+            let mut http = RpEndpointHttp::default();
+
+            if let Some(selection) = attributes.take_selection("http") {
+                let (mut selection, pos) = selection.take_pair();
+                push_http(scope, &arguments, &mut selection, &mut http)
+                    .with_pos(pos)?;
+                check_selection!(scope, selection);
+            }
+
             check_attributes!(scope, attributes);
 
             Ok(RpEndpoint {
@@ -547,8 +572,77 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                 attributes: attributes,
                 arguments: arguments,
                 response: response,
+                http: http,
             })
-        })
+        });
+
+        /// Add HTTP options associated with an endpoint.
+        fn push_http(
+            scope: &Scope,
+            arguments: &LinkedHashMap<String, (Loc<String>, Loc<RpChannel>)>,
+            selection: &mut Selection,
+            http: &mut RpEndpointHttp,
+        ) -> Result<()> {
+            if let Some(path) = selection.take("path") {
+                let (path, pos) = path.take_pair();
+                http.path = Some(parse_path(scope, arguments, path).with_pos(pos)?);
+            }
+
+            if let Some(body) = selection.take("body") {
+                let (body, pos) = body.take_pair();
+                let body = body.as_identifier().with_pos(&pos)?;
+
+                if arguments.get(body).is_none() {
+                    return Err(format!("no such argument: {}", body).into()).with_pos(&pos);
+                }
+
+                http.body = Some(body.to_string());
+            }
+
+            if let Some(method) = selection.take("method") {
+                let (method, pos) = method.take_pair();
+                http.method = Some(parse_method(method).with_pos(pos)?);
+            }
+
+            Ok(())
+        }
+
+        /// Parse a path specification.
+        fn parse_path(
+            scope: &Scope,
+            arguments: &LinkedHashMap<String, (Loc<String>, Loc<RpChannel>)>,
+            path: RpValue,
+        ) -> Result<RpPathSpec> {
+            let path = path.as_string()?;
+            let path = path_parse(path).map_err(|e| format!("illegal path: {}", e))?;
+            let path = path.into_model(scope)?;
+
+            for var in path.vars() {
+                if arguments.get(var).is_none() {
+                    return Err(format!("no such argument: {}", var).into());
+                }
+            }
+
+            Ok(path)
+        }
+
+        /// Parse a method.
+        fn parse_method(method: RpValue) -> Result<RpHttpMethod> {
+            use self::RpHttpMethod::*;
+
+            let m = match method.as_string()? {
+                "GET" => GET,
+                "POST" => POST,
+                "PUT" => PUT,
+                "UPDATE" => UPDATE,
+                "DELETE" => DELETE,
+                "PATCH" => PATCH,
+                "HEAD" => HEAD,
+                method => return Err(format!("no such method: {}", method).into()),
+            };
+
+            Ok(m)
+        }
     }
 }
 
@@ -824,9 +918,9 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                                         }
                                     }
                                     AttributeItem::NameValue { name, value } => {
-                                        let name = name.into_model(scope)?.take();
+                                        let name = name.into_model(scope)?;
                                         let value = value.into_model(scope)?;
-                                        values.insert(name, value);
+                                        values.insert(name.value().clone(), (name, value));
                                     }
                                 }
                             }
@@ -848,5 +942,36 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
         }
 
         Ok(Attributes::new(words, selections))
+    }
+}
+
+impl<'input> IntoModel for PathSpec<'input> {
+    type Output = RpPathSpec;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        Ok(RpPathSpec { steps: self.steps.into_model(scope)? })
+    }
+}
+
+impl<'input> IntoModel for PathStep<'input> {
+    type Output = RpPathStep;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        Ok(RpPathStep { parts: self.parts.into_model(scope)? })
+    }
+}
+
+impl<'input> IntoModel for PathPart<'input> {
+    type Output = RpPathPart;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        use self::PathPart::*;
+
+        let out = match self {
+            Variable(variable) => RpPathPart::Variable(variable.into_model(scope)?),
+            Segment(segment) => RpPathPart::Segment(segment),
+        };
+
+        Ok(out)
     }
 }

@@ -1,16 +1,18 @@
+#[macro_use]
+extern crate error_chain;
 extern crate lalrpop_util;
 extern crate reproto_ast as ast;
 extern crate reproto_path_lexer as path_lexer;
 
-mod errors;
+pub mod errors;
 mod parser;
 
 use ast::PathSpec;
-pub use self::errors::Error;
+use self::errors::{ErrorKind, Result};
 
-pub fn parse(input: &str) -> Result<PathSpec, Error> {
+pub fn parse(input: &str) -> Result<PathSpec> {
     use lalrpop_util::ParseError::*;
-    use self::Error::*;
+    use self::ErrorKind::*;
     use self::path_lexer::Error::*;
 
     let lexer = path_lexer::path_lex(input);
@@ -29,11 +31,11 @@ pub fn parse(input: &str) -> Result<PathSpec, Error> {
                 User { error } => {
                     match error {
                         Unexpected { pos } => {
-                            return Err(Parse(Some((pos, pos)), "unexpected input"));
+                            return Err(Parse(Some((pos, pos)), "unexpected input").into());
                         }
                     }
                 }
-                _ => Err(Parse(None, "parse error")),
+                _ => Err(Parse(None, "parse error").into()),
             }
         }
     }

@@ -1,8 +1,12 @@
-use path_lexer;
+error_chain! {
+    errors {
+        Syntax(pos: Option<(usize, usize)>, expected: Vec<String>) {
+            description("syntax error")
+        }
 
-#[derive(Debug)]
-pub enum Error {
-    Lexer(path_lexer::Error),
-    Syntax(Option<(usize, usize)>, Vec<String>),
-    Parse(Option<(usize, usize)>, &'static str),
+        Parse(pos: Option<(usize, usize)>, message: &'static str) {
+            description("parse error")
+            display("parse error: {}", message)
+        }
+    }
 }

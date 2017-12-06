@@ -176,10 +176,10 @@ impl JavaBackend {
         &self,
         endpoint: &'a RpEndpoint,
     ) -> Result<Option<(&'a str, &'a RpChannel)>> {
-        let mut it = endpoint.arguments.iter();
+        let mut it = endpoint.arguments.values();
 
-        if let Some((name, first)) = it.next() {
-            if let Some((other, _)) = it.next() {
+        if let Some(&(ref name, ref first)) = it.next() {
+            if let Some(&(ref other, _)) = it.next() {
                 return Err(
                     ErrorKind::Pos("more than one argument".to_string(), other.pos().into())
                         .into(),

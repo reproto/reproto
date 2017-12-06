@@ -28,11 +28,14 @@ pub struct Selection {
     /// Storing words and their locations.
     words: HashMap<String, Pos>,
     /// Storing values and their locations.
-    values: HashMap<String, Loc<RpValue>>,
+    values: HashMap<String, (Loc<String>, Loc<RpValue>)>,
 }
 
 impl Selection {
-    pub fn new(words: HashMap<String, Pos>, values: HashMap<String, Loc<RpValue>>) -> Selection {
+    pub fn new(
+        words: HashMap<String, Pos>,
+        values: HashMap<String, (Loc<String>, Loc<RpValue>)>,
+    ) -> Selection {
         Selection {
             words: words,
             values: values,
@@ -45,14 +48,14 @@ impl Selection {
         String: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.values.remove(key)
+        self.values.remove(key).map(|v| v.1)
     }
 
     /// Get an iterator over unused positions.
     pub fn unused(&self) -> Unused {
         let mut positions = Vec::new();
         positions.extend(self.words.values());
-        positions.extend(self.values.values().map(Loc::pos));
+        positions.extend(self.values.values().map(|v| v.0.pos()));
         Unused { iter: positions.into_iter() }
     }
 }
@@ -84,12 +87,12 @@ impl Attributes {
     }
 
     /// Take the given selection, removing it in the process.
-    pub fn take_selection<Q: ?Sized>(&mut self, key: &Q) -> Option<Selection>
+    pub fn take_selection<Q: ?Sized>(&mut self, key: &Q) -> Option<Loc<Selection>>
     where
         String: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.selections.remove(key).map(Loc::take)
+        self.selections.remove(key)
     }
 
     /// Get an iterator over unused positions.
