@@ -6,14 +6,13 @@ use backend::errors::*;
 use core::{ForEachLoc, Loc, RpChannel, RpDecl, RpEndpoint, RpEnumBody, RpEnumType, RpField,
            RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody, RpType, RpTypeBody,
            RpVersionedPackage, WithPos};
-use genco::{Cons, Element, IoFmt, Java, Quoted, Tokens, WriteTokens};
-use genco::java::{Argument, BOOLEAN, Class, Constructor, DOUBLE, Enum, Extra, FLOAT, Field,
-                  INTEGER, Interface, LONG, Method, Modifier, imported, local, optional};
+use genco::{Cons, Element, Java, Quoted, Tokens};
+use genco::java::{Argument, BOOLEAN, Class, Constructor, DOUBLE, Enum, FLOAT, Field, INTEGER,
+                  Interface, LONG, Method, Modifier, imported, local, optional};
 use java_field::JavaField;
+use java_file::JavaFile;
 use java_options::JavaOptions;
 use listeners::{ClassAdded, EnumAdded, InterfaceAdded, Listeners, ServiceAdded, TupleAdded};
-use std::fs::{self, File};
-use std::io::Write;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -76,6 +75,10 @@ impl JavaBackend {
     }
 
     pub fn compile(&self, out_path: &Path) -> Result<()> {
+        for generator in &self.options.root_generators {
+            generator.generate(out_path)?;
+        }
+
         for decl in self.env.toplevel_decl_iter() {
             self.compile_decl(out_path, decl).with_pos(decl.pos())?;
         }
@@ -84,35 +87,11 @@ impl JavaBackend {
     }
 
     fn compile_decl(&self, out_path: &Path, decl: &RpDecl) -> Result<()> {
-        let package = self.java_package(&decl.name().package);
-        let package_name = package.parts.join(".");
+        let package_name = self.java_package(&decl.name().package).parts.join(".");
 
-        let out_dir = package.parts.iter().fold(
-            out_path.to_owned(),
-            |current, next| current.join(next),
-        );
-
-        let full_path = out_dir.join(format!("{}.java", decl.local_name()));
-
-        debug!("+class: {}", full_path.display());
-
-        if let Some(out_dir) = full_path.parent() {
-            if !out_dir.is_dir() {
-                debug!("+dir: {}", out_dir.display());
-                fs::create_dir_all(&out_dir)?;
-            }
-        }
-
-        let mut file: Tokens<Java> = Tokens::new();
-        let mut extra = Extra::default();
-        extra.package(package_name);
-        self.process_decl(decl, 0usize, &mut file)?;
-
-        let mut f = File::create(full_path)?;
-        IoFmt(&mut f).write_file(file, &mut extra)?;
-        f.flush()?;
-
-        Ok(())
+        JavaFile::new(package_name.as_str(), decl.local_name(), |out| {
+            self.process_decl(decl, 0usize, out)
+        }).process(out_path)
     }
 
     fn field_mods(&self) -> Vec<Modifier> {
