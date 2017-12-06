@@ -16,4 +16,9 @@ path = "lib.rs"
 
 [dependencies]
 reproto-ast = {path = "../ast", version = "0.3"}
-reproto-lexer = {path = "../lexer", version = "0.3"}
+reproto-path-lexer = {path = "../path-lexer", version = "0.3"}
+
+lalrpop-util = "0.13.1"
+
+[build-dependencies]
+lalrpop = "0.13.1"

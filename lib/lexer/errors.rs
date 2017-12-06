@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     UnterminatedString { start: usize },
     UnterminatedEscape { start: usize },

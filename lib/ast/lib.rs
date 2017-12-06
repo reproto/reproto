@@ -403,3 +403,22 @@ pub enum Value<'input> {
     Array(Vec<Loc<Value<'input>>>),
     Type(Type),
 }
+
+/// A part of a step.
+#[derive(Debug, PartialEq, Eq)]
+pub enum PathPart<'input> {
+    Variable(&'input str),
+    Segment(String),
+}
+
+/// A step in a path specification.
+#[derive(Debug, PartialEq, Eq)]
+pub struct PathStep<'input> {
+    pub parts: Vec<PathPart<'input>>,
+}
+
+/// A path specification.
+#[derive(Debug, PartialEq, Eq)]
+pub struct PathSpec<'input> {
+    pub segments: Vec<PathStep<'input>>,
+}

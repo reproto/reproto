@@ -1,8 +1,10 @@
 #[derive(Clone, Debug, PartialEq)]
 pub enum PathToken<'input> {
-    /// Variable capture.
-    Variable(&'input str),
+    /// Variable identifier.
+    Identifier(&'input str),
     /// Potentially escaped segment.
     Segment(String),
     Slash,
+    LeftCurly,
+    RightCurly,
 }

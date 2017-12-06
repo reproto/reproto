@@ -1,19 +1,20 @@
 //! Path specifications
 
-use super::RpPathSegment;
-
-#[derive(Debug, Clone, Serialize)]
-pub struct RpPathSpec {
-    pub segments: Vec<RpPathSegment>,
+/// A part of a step.
+#[derive(Debug, PartialEq, Eq)]
+pub enum RpPathPart {
+    Variable(String),
+    Segment(String),
 }
 
-impl RpPathSpec {
-    pub fn url(&self) -> String {
-        let segments: Vec<String> = self.segments.iter().map(RpPathSegment::path).collect();
-        format!("/{}", segments.join("/"))
-    }
+/// A step in a path specification.
+#[derive(Debug, PartialEq, Eq)]
+pub struct RpPathStep {
+    pub parts: Vec<RpPathPart>,
+}
 
-    pub fn id_fragments(&self) -> Vec<&str> {
-        self.segments.iter().map(RpPathSegment::id).collect()
-    }
+/// A path specification.
+#[derive(Debug, PartialEq, Eq)]
+pub struct RpPathSpec {
+    pub segments: Vec<RpPathStep>,
 }

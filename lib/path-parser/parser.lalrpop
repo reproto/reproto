@@ -1,0 +1,35 @@
+// vim: ft=rust
+use ast::*;
+use path_lexer::{self, PathToken};
+
+grammar<'input>();
+
+pub path: PathSpec<'input> =
+    <segments:Step*> =>
+    PathSpec {
+        segments: segments,
+    };
+
+Step: PathStep<'input> =
+    "/" <parts:Part+> =>
+    PathStep {
+        parts: parts,
+    };
+
+Part: PathPart<'input> = {
+    "{" <variable:ident> "}" => PathPart::Variable(variable),
+    <segment:segment> => PathPart::Segment(segment),
+};
+
+extern {
+    type Location = usize;
+    type Error = path_lexer::Error;
+
+    enum PathToken<'input> {
+        "/" => PathToken::Slash,
+        "{" => PathToken::LeftCurly,
+        "}" => PathToken::RightCurly,
+        ident => PathToken::Identifier(<&'input str>),
+        segment => PathToken::Segment(<String>),
+    }
+}
