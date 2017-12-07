@@ -1,26 +1,27 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use backend::errors::*;
+use codegen::ClassCodegen;
 use genco::{Java, Quoted, Tokens};
 use genco::java::{Argument, Class, Field, Method, Modifier, imported, local};
-use listeners::{ClassAdded, Listeners};
+use listeners::{ClassAdded, Configure, Listeners};
 use std::rc::Rc;
 
-pub struct Module {
+pub struct Builder {
     optional: Java<'static>,
     runtime_exception: Java<'static>,
 }
 
-impl Module {
-    pub fn new() -> Module {
-        Module {
+impl Builder {
+    pub fn new() -> Builder {
+        Builder {
             optional: imported("java.util", "Optional"),
             runtime_exception: imported("java.lang", "RuntimeException"),
         }
     }
 }
 
-impl Module {
+impl Builder {
     fn builder_field<'el>(&self, field: &Field<'el>) -> Field<'el> {
         use self::Modifier::*;
 
@@ -55,8 +56,8 @@ impl Module {
     }
 }
 
-impl Listeners for Module {
-    fn class_added(&self, e: &mut ClassAdded) -> Result<()> {
+impl ClassCodegen for Builder {
+    fn generate(&self, e: ClassAdded) -> Result<()> {
         use self::Modifier::*;
 
         let mut builder = Class::new("Builder");
@@ -105,5 +106,13 @@ impl Listeners for Module {
 
         e.spec.body.push(builder);
         Ok(())
+    }
+}
+
+pub struct Module;
+
+impl Listeners for Module {
+    fn configure<'a>(&self, e: Configure<'a>) {
+        e.options.class_generators.push(Box::new(Builder::new()));
     }
 }

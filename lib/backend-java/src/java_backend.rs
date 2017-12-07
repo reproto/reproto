@@ -3,23 +3,24 @@
 use super::JAVA_CONTEXT;
 use backend::{CamelCase, Code, Converter, Environment, FromNaming, Naming, SnakeCase};
 use backend::errors::*;
-use core::{ForEachLoc, Loc, RpChannel, RpDecl, RpEndpoint, RpEnumBody, RpEnumType, RpField,
-           RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody, RpType, RpTypeBody,
-           RpVersionedPackage, WithPos};
+use core::{ForEachLoc, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody, RpName,
+           RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use genco::{Cons, Element, Java, Quoted, Tokens};
-use genco::java::{Argument, BOOLEAN, Class, Constructor, DOUBLE, Enum, FLOAT, Field, INTEGER,
-                  Interface, LONG, Method, Modifier, imported, local, optional};
+use genco::java::{Argument, BOOLEAN, Class, Constructor, Enum, Field, INTEGER, Interface, Method,
+                  Modifier, imported, local, optional};
 use java_field::JavaField;
 use java_file::JavaFile;
 use java_options::JavaOptions;
-use listeners::{ClassAdded, EnumAdded, InterfaceAdded, Listeners, ServiceAdded, TupleAdded};
+use listeners::{ClassAdded, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
+use processor::Processor;
 use std::path::Path;
 use std::rc::Rc;
+use utils::Utils;
 
 pub struct JavaBackend {
-    env: Environment,
+    env: Rc<Environment>,
+    utils: Rc<Utils>,
     options: JavaOptions,
-    listeners: Box<Listeners>,
     snake_to_upper_camel: Box<Naming>,
     snake_to_lower_camel: Box<Naming>,
     variant_naming: Box<Naming>,
@@ -30,18 +31,16 @@ pub struct JavaBackend {
     override_: Java<'static>,
     objects: Java<'static>,
     object: Java<'static>,
-    list: Java<'static>,
-    map: Java<'static>,
     string: Java<'static>,
-    instant: Java<'static>,
     optional: Java<'static>,
     illegal_argument: Java<'static>,
     async_container: Java<'static>,
-    byte_buffer: Java<'static>,
 }
 
+impl Processor for JavaBackend {}
+
 impl JavaBackend {
-    pub fn new(env: Environment, options: JavaOptions, listeners: Box<Listeners>) -> JavaBackend {
+    pub fn new(env: &Rc<Environment>, utils: &Rc<Utils>, options: JavaOptions) -> JavaBackend {
         let async_container =
             options
                 .async_container
@@ -50,27 +49,23 @@ impl JavaBackend {
                 .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
 
         JavaBackend {
-            env: env,
+            env: Rc::clone(env),
+            utils: Rc::clone(utils),
             options: options,
             snake_to_upper_camel: SnakeCase::new().to_upper_camel(),
             snake_to_lower_camel: SnakeCase::new().to_lower_camel(),
             variant_naming: CamelCase::new().to_upper_snake(),
             null_string: "null".quoted(),
-            listeners: listeners,
             void: imported("java.lang", "Void"),
             override_: imported("java.lang", "Override"),
             objects: imported("java.util", "Objects"),
             suppress_warnings: imported("java.lang", "SuppressWarnings"),
             string_builder: imported("java.lang", "StringBuilder"),
             object: imported("java.lang", "Object"),
-            list: imported("java.util", "List"),
-            map: imported("java.util", "Map"),
             string: imported("java.lang", "String"),
-            instant: imported("java.time", "Instant"),
             optional: imported("java.util", "Optional"),
             illegal_argument: imported("java.lang", "IllegalArgumentException"),
             async_container: async_container,
-            byte_buffer: imported("java.nio", "ByteBuffer"),
         }
     }
 
@@ -108,89 +103,6 @@ impl JavaBackend {
         let mut field = Field::new(ty.clone(), name);
         field.modifiers = self.field_mods();
         field
-    }
-
-    /// Build the java package of a given package.
-    ///
-    /// This includes the prefixed configured in `self.options`, if specified.
-    pub fn java_package(&self, pkg: &RpVersionedPackage) -> RpPackage {
-        pkg.as_package(|version| {
-            format!("_{}", version).replace(".", "_").replace("-", "_")
-        })
-    }
-
-    pub fn java_package_name(&self, pkg: &RpVersionedPackage) -> Rc<String> {
-        Rc::new(self.java_package(pkg).parts.join("."))
-    }
-
-    fn convert_type_id<'a, 'el>(&self, name: &'a RpName) -> Result<Java<'el>> {
-        let registered = self.env.lookup(name)?;
-
-        let package_name = self.java_package_name(&name.package);
-
-        let name = Rc::new(registered.local_name(
-            name,
-            |p| p.join("."),
-            |c| c.join("."),
-        ));
-
-        Ok(imported(package_name, name))
-    }
-
-    /// Convert the given type to a java type.
-    pub fn into_java_type<'el>(&self, ty: &RpType) -> Result<Java<'el>> {
-        use self::RpType::*;
-
-        let out = match *ty {
-            String => self.string.clone().into(),
-            DateTime => self.instant.clone().into(),
-            Signed { size: 32 } => INTEGER.into(),
-            Signed { size: 64 } => LONG.into(),
-            Unsigned { size: 32 } => INTEGER.into(),
-            Unsigned { size: 64 } => LONG.into(),
-            Float => FLOAT.into(),
-            Double => DOUBLE.into(),
-            Boolean => BOOLEAN.into(),
-            Array { ref inner } => {
-                let argument = self.into_java_type(inner)?;
-                self.list.with_arguments(vec![argument]).into()
-            }
-            Name { ref name } => self.convert_type_id(name)?,
-            Map { ref key, ref value } => {
-                let key = self.into_java_type(key)?;
-                let value = self.into_java_type(value)?;
-                self.map.with_arguments(vec![key, value]).into()
-            }
-            Any => self.object.clone().into(),
-            Bytes => self.byte_buffer.clone().into(),
-            _ => return Err(format!("unsupported type: {}", ty).into()),
-        };
-
-        Ok(out)
-    }
-
-    /// Extract endpoint request.
-    ///
-    /// Errors if more than one argument is present.
-    pub fn endpoint_request<'a>(
-        &self,
-        endpoint: &'a RpEndpoint,
-    ) -> Result<Option<(&'a str, &'a RpChannel)>> {
-        let mut it = endpoint.arguments.values();
-
-        if let Some(&(ref name, ref first)) = it.next() {
-            if let Some(&(ref other, _)) = it.next() {
-                return Err(
-                    ErrorKind::Pos("more than one argument".to_string(), other.pos().into())
-                        .into(),
-                );
-            }
-
-            let channel = first.as_ref().take();
-            return Ok(Some((name.as_str(), channel)));
-        }
-
-        Ok(None)
     }
 
     fn build_constructor<'el>(&self, fields: &[JavaField<'el>]) -> Constructor<'el> {
@@ -562,7 +474,7 @@ impl JavaBackend {
         to_value
     }
 
-    fn enum_type_to_java<'a, 'el>(&self, ty: &'a RpEnumType) -> Result<Java<'el>> {
+    fn enum_type_to_java<'b, 'el>(&self, ty: &'b RpEnumType) -> Result<Java<'el>> {
         use self::RpEnumType::*;
 
         match *ty {
@@ -602,12 +514,14 @@ impl JavaBackend {
         let mut from_value = self.enum_from_value_method(spec.name(), &variant_java_field.spec);
         let mut to_value = self.enum_to_value_method(&variant_java_field.spec);
 
-        self.listeners.enum_added(&mut EnumAdded {
-            body: body,
-            spec: &mut spec,
-            from_value: &mut from_value,
-            to_value: &mut to_value,
-        })?;
+        for generator in &self.options.enum_generators {
+            generator.generate(EnumAdded {
+                body: body,
+                spec: &mut spec,
+                from_value: &mut from_value,
+                to_value: &mut to_value,
+            })?;
+        }
 
         spec.methods.push(from_value);
         spec.methods.push(to_value);
@@ -644,9 +558,9 @@ impl JavaBackend {
 
         spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
 
-        self.listeners.tuple_added(
-            &mut TupleAdded { spec: &mut spec },
-        )?;
+        for generator in &self.options.tuple_generators {
+            generator.generate(TupleAdded { spec: &mut spec })?;
+        }
 
         Ok(spec)
     }
@@ -679,10 +593,12 @@ impl JavaBackend {
             &mut spec.constructors,
         )?;
 
-        self.listeners.class_added(&mut ClassAdded {
-            names: &names,
-            spec: &mut spec,
-        })?;
+        for generator in &self.options.class_generators {
+            generator.generate(ClassAdded {
+                names: &names,
+                spec: &mut spec,
+            })?;
+        }
 
         Ok(spec)
     }
@@ -745,19 +661,23 @@ impl JavaBackend {
                 &mut class.constructors,
             )?;
 
-            self.listeners.class_added(&mut ClassAdded {
-                names: &names,
-                spec: &mut class,
-            })?;
+            for generator in &self.options.class_generators {
+                generator.generate(ClassAdded {
+                    names: &names,
+                    spec: &mut class,
+                })?;
+            }
 
             spec.body.push(class);
             Ok(()) as Result<()>
         })?;
 
-        self.listeners.interface_added(&mut InterfaceAdded {
-            body: body,
-            spec: &mut spec,
-        })?;
+        for generator in &self.options.interface_generators {
+            generator.generate(InterfaceAdded {
+                body: body,
+                spec: &mut spec,
+            })?;
+        }
 
         if self.options.build_getters {
             for field in &interface_fields {
@@ -788,12 +708,12 @@ impl JavaBackend {
                 method.modifiers = vec![];
 
                 if let Some((name, req)) = self.endpoint_request(endpoint)? {
-                    let ty = self.into_java_type(req.ty())?;
+                    let ty = self.utils.into_java_type(req.ty())?;
                     method.arguments.push(Argument::new(ty, name));
                 }
 
                 if let Some(res) = endpoint.response.as_ref() {
-                    let ty = self.into_java_type(res.ty())?;
+                    let ty = self.utils.into_java_type(res.ty())?;
                     method.returns = self.async_container.with_arguments(vec![ty]);
                 } else {
                     method.returns = self.async_container.with_arguments(vec![self.void.clone()]);
@@ -803,18 +723,20 @@ impl JavaBackend {
             }
         }
 
-        self.listeners.service_added(&mut ServiceAdded {
-            backend: self,
-            body: body,
-            endpoint_names: &endpoint_names,
-            spec: &mut spec,
-        })?;
+        for generator in &self.options.service_generators {
+            generator.generate(ServiceAdded {
+                backend: self,
+                body: body,
+                endpoint_names: &endpoint_names,
+                spec: &mut spec,
+            })?;
+        }
 
         Ok(spec)
     }
 
     fn convert_field<'el>(&self, field: &RpField) -> Result<JavaField<'el>> {
-        let java_value_type = self.into_java_type(&field.ty)?;
+        let java_value_type = self.utils.into_java_type(&field.ty)?;
 
         let java_type = if field.is_optional() {
             optional(
@@ -915,6 +837,6 @@ impl<'el> Converter<'el> for JavaBackend {
     type Custom = Java<'el>;
 
     fn convert_type(&self, name: &'el RpName) -> Result<Tokens<'el, Self::Custom>> {
-        Ok(toks![self.convert_type_id(name)?])
+        Ok(toks![self.utils.convert_type_id(name)?])
     }
 }

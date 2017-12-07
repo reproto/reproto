@@ -2,14 +2,16 @@
 
 use backend::{FromNaming, Naming, SnakeCase};
 use backend::errors::*;
+use codegen::ServiceCodegen;
 use core::{Loc, RpChannel, RpEndpoint};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{Argument, Class, Constructor, Field, Method, Modifier, imported, local};
 use java_backend::JavaBackend;
-use java_options::JavaOptions;
-use listeners::{Listeners, ServiceAdded};
+use listeners::{Configure, Listeners, ServiceAdded};
+use processor::Processor;
 use std::borrow::Borrow;
 use std::rc::Rc;
+use utils::Utils;
 
 const CLIENT_STUB_NAME: &'static str = "ClientStub";
 const SERVER_STUB_NAME: &'static str = "ServerStub";
@@ -37,7 +39,7 @@ impl MethodType {
 }
 
 /// @Generated("message") annotation
-struct Generated<'a, 'el>(&'a Module, Cons<'el>);
+struct Generated<'a, 'el>(&'a GrpcClient, Cons<'el>);
 
 impl<'a, 'el> IntoTokens<'el, Java<'el>> for Generated<'a, 'el> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
@@ -46,7 +48,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for Generated<'a, 'el> {
 }
 
 /// @Override annotation
-struct Override<'a>(&'a Module);
+struct Override<'a>(&'a GrpcClient);
 
 impl<'a, 'el> IntoTokens<'el, Java<'el>> for Override<'a> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
@@ -55,13 +57,13 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for Override<'a> {
 }
 
 /// Embedded marshaller for Void.
-struct VoidMarshaller<'a>(&'a Module, &'a JavaBackend);
+struct VoidMarshaller<'a>(&'a GrpcClient);
 
 impl<'a, 'el> IntoTokens<'el, Java<'el>> for VoidMarshaller<'a> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
         use self::Modifier::*;
 
-        let void = &self.1.void;
+        let void = &self.0.utils.void;
 
         let mut class = Class::new("VoidMarshaller");
         class.implements = vec![self.0.marshaller.with_arguments(vec![void.clone()])];
@@ -101,7 +103,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for VoidMarshaller<'a> {
 }
 
 /// Embedded marshaller for Json.
-struct JsonMarshaller<'a>(&'a Module);
+struct JsonMarshaller<'a>(&'a GrpcClient);
 
 impl<'a, 'el> IntoTokens<'el, Java<'el>> for JsonMarshaller<'a> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
@@ -190,7 +192,8 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for JsonMarshaller<'a> {
     }
 }
 
-pub struct Module {
+pub struct GrpcClient {
+    utils: Rc<Utils>,
     snake_to_upper: Box<Naming>,
     mapper_provider: Java<'static>,
     override_: Java<'static>,
@@ -211,9 +214,10 @@ pub struct Module {
     type_reference: Java<'static>,
 }
 
-impl Module {
-    pub fn new() -> Module {
-        Module {
+impl GrpcClient {
+    pub fn new(utils: &Rc<Utils>) -> GrpcClient {
+        GrpcClient {
+            utils: Rc::clone(utils),
             snake_to_upper: SnakeCase::new().to_upper_snake(),
             mapper_provider: imported("io.reproto", "MapperProvider"),
             override_: imported("java.lang", "Override"),
@@ -236,10 +240,10 @@ impl Module {
     }
 
     /// Get the MethodType variant for the given endpoint.
-    fn method_type(&self, backend: &JavaBackend, endpoint: &RpEndpoint) -> Result<MethodType> {
+    fn method_type(&self, endpoint: &RpEndpoint) -> Result<MethodType> {
         use self::RpChannel::*;
 
-        let request = backend.endpoint_request(endpoint)?.map(|v| v.1);
+        let request = self.endpoint_request(endpoint)?.map(|v| v.1);
 
         let out = match (request, endpoint.response.as_ref().map(Loc::value)) {
             (Some(&Unary { .. }), Some(&Unary { .. })) => MethodType::Unary,
@@ -637,13 +641,18 @@ impl Module {
     }
 }
 
-impl Listeners for Module {
-    fn configure(&self, options: &mut JavaOptions) -> Result<()> {
-        options.suppress_service_methods = true;
-        Ok(())
-    }
+impl Processor for GrpcClient {}
 
-    fn service_added(&self, e: &mut ServiceAdded) -> Result<()> {
+impl ServiceCodegen for GrpcClient {
+    fn generate(&self, e: ServiceAdded) -> Result<()> {
+        let ServiceAdded {
+            backend,
+            body,
+            spec,
+            endpoint_names,
+            ..
+        } = e;
+
         let mut client_stub = self.client_stub();
         let mut server_stub = self.server_stub();
 
@@ -657,8 +666,8 @@ impl Listeners for Module {
 
         let service_name = Rc::new(format!(
             "{}.{}",
-            e.backend.java_package(&e.body.name.package).parts.join("."),
-            e.body.name.join(".")
+            self.java_package(&body.name.package).parts.join("."),
+            body.name.join(".")
         ));
 
         bind_service.body.nested(toks![
@@ -667,29 +676,26 @@ impl Listeners for Module {
             ")",
         ]);
 
-        for (endpoint, name) in e.body.endpoints.values().zip(
-            e.endpoint_names.iter().cloned(),
-        )
-        {
-            let request = e.backend.endpoint_request(endpoint)?.map(|v| v.1);
+        for (endpoint, name) in body.endpoints.values().zip(endpoint_names.iter().cloned()) {
+            let request = self.endpoint_request(endpoint)?.map(|v| v.1);
 
             let request_ty = if let Some(req) = request {
-                e.backend.into_java_type(req.ty())?
+                self.utils.into_java_type(req.ty())?
             } else {
-                e.backend.void.clone()
+                backend.void.clone()
             };
 
             let response_ty = if let Some(ref res) = endpoint.response.as_ref() {
-                e.backend.into_java_type(res.ty())?
+                self.utils.into_java_type(res.ty())?
             } else {
-                e.backend.void.clone()
+                backend.void.clone()
             };
 
-            let method_type = self.method_type(e.backend, endpoint)?;
+            let method_type = self.method_type(endpoint)?;
 
             let field = self.method_field(
                 service_name.clone(),
-                &e.backend,
+                &backend,
                 &request_ty,
                 &response_ty,
                 &method_type,
@@ -720,7 +726,7 @@ impl Listeners for Module {
                 &method_type,
             ));
 
-            e.spec.body.push(field);
+            spec.body.push(field);
             server_stub.methods.push(server_method);
             client_stub.methods.push(client_method);
         }
@@ -729,10 +735,21 @@ impl Listeners for Module {
 
         server_stub.body.push(bind_service);
 
-        e.spec.body.push(client_stub);
-        e.spec.body.push(server_stub);
-        e.spec.body.push(JsonMarshaller(self));
-        e.spec.body.push(VoidMarshaller(self, &e.backend));
+        spec.body.push(client_stub);
+        spec.body.push(server_stub);
+        spec.body.push(JsonMarshaller(self));
+        spec.body.push(VoidMarshaller(self));
         Ok(())
+    }
+}
+
+pub struct Module;
+
+impl Listeners for Module {
+    fn configure(&self, e: Configure) {
+        e.options.suppress_service_methods = true;
+        e.options.service_generators.push(Box::new(
+            GrpcClient::new(e.utils),
+        ));
     }
 }

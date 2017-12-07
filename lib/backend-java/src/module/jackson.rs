@@ -1,14 +1,15 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use backend::errors::*;
+use codegen::{ClassCodegen, EnumCodegen, InterfaceCodegen, TupleCodegen};
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{Argument, Class, DOUBLE, FLOAT, Field, INTEGER, LONG, Modifier, SHORT, imported,
                   local};
-use listeners::{ClassAdded, EnumAdded, InterfaceAdded, Listeners, TupleAdded};
+use listeners::{ClassAdded, Configure, EnumAdded, InterfaceAdded, Listeners, TupleAdded};
 use std::rc::Rc;
 
 /// @JsonSubTypes.Type annotation
-struct SubTypesType<'a, 'el>(&'a Module, Tokens<'el, Java<'el>>);
+struct SubTypesType<'a, 'el>(&'a Jackson, Tokens<'el, Java<'el>>);
 
 impl<'a, 'el> IntoTokens<'el, Java<'el>> for SubTypesType<'a, 'el> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
@@ -17,7 +18,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for SubTypesType<'a, 'el> {
 }
 
 /// @JsonSubTypes annotation
-struct SubTypes<'a, 'el>(&'a Module, Tokens<'el, Java<'el>>);
+struct SubTypes<'a, 'el>(&'a Jackson, Tokens<'el, Java<'el>>);
 
 impl<'a, 'el> IntoTokens<'el, Java<'el>> for SubTypes<'a, 'el> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
@@ -35,7 +36,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for SubTypes<'a, 'el> {
     }
 }
 
-struct TypeInfo<'a, 'el>(&'a Module, Tokens<'el, Java<'el>>);
+struct TypeInfo<'a, 'el>(&'a Jackson, Tokens<'el, Java<'el>>);
 
 impl<'a, 'el> IntoTokens<'el, Java<'el>> for TypeInfo<'a, 'el> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
@@ -43,7 +44,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for TypeInfo<'a, 'el> {
     }
 }
 
-pub struct Module {
+pub struct Jackson {
     override_: Java<'static>,
     creator: Java<'static>,
     value: Java<'static>,
@@ -65,9 +66,9 @@ pub struct Module {
     io_exception: Java<'static>,
 }
 
-impl Module {
-    pub fn new() -> Module {
-        Module {
+impl Jackson {
+    pub fn new() -> Jackson {
+        Jackson {
             override_: imported("java.lang", "Override"),
             creator: imported("com.fasterxml.jackson.annotation", "JsonCreator"),
             value: imported("com.fasterxml.jackson.annotation", "JsonValue"),
@@ -415,23 +416,28 @@ impl Module {
     }
 }
 
-impl Listeners for Module {
-    fn class_added<'a>(&self, e: &mut ClassAdded) -> Result<()> {
-        self.add_class_annotations(&e.names, &mut e.spec)?;
-        Ok(())
+impl ClassCodegen for Jackson {
+    fn generate(&self, e: ClassAdded) -> Result<()> {
+        self.add_class_annotations(&e.names, e.spec)
     }
+}
 
-    fn tuple_added(&self, e: &mut TupleAdded) -> Result<()> {
-        self.add_tuple_serialization(&mut e.spec)
+impl TupleCodegen for Jackson {
+    fn generate(&self, e: TupleAdded) -> Result<()> {
+        self.add_tuple_serialization(e.spec)
     }
+}
 
-    fn enum_added(&self, e: &mut EnumAdded) -> Result<()> {
+impl EnumCodegen for Jackson {
+    fn generate(&self, e: EnumAdded) -> Result<()> {
         e.from_value.annotation(toks!["@", self.creator.clone()]);
         e.to_value.annotation(toks!["@", self.value.clone()]);
         Ok(())
     }
+}
 
-    fn interface_added(&self, e: &mut InterfaceAdded) -> Result<()> {
+impl InterfaceCodegen for Jackson {
+    fn generate(&self, e: InterfaceAdded) -> Result<()> {
         {
             let mut args = Tokens::new();
 
@@ -465,5 +471,19 @@ impl Listeners for Module {
         }
 
         Ok(())
+    }
+}
+
+pub struct Module;
+
+impl Listeners for Module {
+    fn configure(&self, e: Configure) {
+        let jackson = Rc::new(Jackson::new());
+        e.options.class_generators.push(Box::new(jackson.clone()));
+        e.options.tuple_generators.push(Box::new(jackson.clone()));
+        e.options.interface_generators.push(
+            Box::new(jackson.clone()),
+        );
+        e.options.enum_generators.push(Box::new(jackson.clone()));
     }
 }

@@ -4,8 +4,7 @@ use backend::errors::*;
 use codegen::Codegen;
 use genco::{Java, Tokens};
 use java_file::JavaFile;
-use java_options::JavaOptions;
-use listeners::Listeners;
+use listeners::{Configure, Listeners};
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
@@ -62,8 +61,7 @@ impl ApiClient {
 }
 
 impl Listeners for Module {
-    fn configure(&self, options: &mut JavaOptions) -> Result<()> {
-        options.root_generators.push(Box::new(ApiClient::new()));
-        Ok(())
+    fn configure(&self, e: Configure) {
+        e.options.root_generators.push(Box::new(ApiClient::new()));
     }
 }

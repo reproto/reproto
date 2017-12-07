@@ -2,7 +2,6 @@
 extern crate log;
 #[macro_use]
 extern crate genco;
-#[macro_use]
 extern crate reproto_backend as backend;
 #[macro_use]
 extern crate serde_derive;
@@ -11,19 +10,15 @@ extern crate reproto_manifest as manifest;
 extern crate toml;
 extern crate serde;
 
-mod builder;
-mod constructor_properties;
-mod jackson;
+mod processor;
 mod java_backend;
 mod java_options;
 mod java_file;
 mod listeners;
-mod lombok;
 mod java_field;
-mod mutable;
-mod nullable;
 mod module;
 mod codegen;
+mod utils;
 
 use self::ErrorKind::*;
 use backend::{ArgMatches, Environment};
@@ -31,10 +26,11 @@ use backend::errors::*;
 use core::Context;
 use java_backend::JavaBackend;
 use java_options::JavaOptions;
-use listeners::Listeners;
+use listeners::{Configure, Listeners};
 use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
 use std::path::Path;
 use std::rc::Rc;
+use utils::Utils;
 
 pub const JAVA_CONTEXT: &str = "java";
 
@@ -95,35 +91,30 @@ impl TryFromToml for JavaModule {
     }
 }
 
-fn setup_listeners(modules: Vec<JavaModule>) -> Result<(JavaOptions, Box<Listeners>)> {
+fn setup_listeners(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> JavaOptions {
     use self::JavaModule::*;
-
-    let mut listeners: Vec<Box<Listeners>> = Vec::new();
-
-    for module in modules {
-        let listener = match module {
-            Jackson => Box::new(jackson::Module::new()) as Box<Listeners>,
-            Lombok => Box::new(lombok::Module::new()) as Box<Listeners>,
-            Grpc => Box::new(module::Grpc::new()) as Box<Listeners>,
-            Builder => Box::new(builder::Module::new()) as Box<Listeners>,
-            ConstructorProperties => {
-                Box::new(constructor_properties::Module::new()) as Box<Listeners>
-            }
-            Mutable => Box::new(mutable::Module::new()) as Box<Listeners>,
-            Nullable => Box::new(nullable::Module::new()) as Box<Listeners>,
-            OkHttp(config) => Box::new(module::OkHttp::new(config)) as Box<Listeners>,
-        };
-
-        listeners.push(listener);
-    }
 
     let mut options = JavaOptions::new();
 
-    for listener in &listeners {
-        listener.configure(&mut options)?;
+    for module in modules {
+        let listener: Box<Listeners> = match module {
+            Jackson => Box::new(module::Jackson),
+            Lombok => Box::new(module::Lombok),
+            Grpc => Box::new(module::Grpc),
+            Builder => Box::new(module::Builder),
+            ConstructorProperties => Box::new(module::ConstructorProperties),
+            Mutable => Box::new(module::Mutable),
+            Nullable => Box::new(module::Nullable),
+            OkHttp(config) => Box::new(module::OkHttp::new(config)),
+        };
+
+        listener.configure(Configure {
+            options: &mut options,
+            utils: utils,
+        })
     }
 
-    Ok((options, Box::new(listeners)))
+    options
 }
 
 pub fn compile(
@@ -133,7 +124,9 @@ pub fn compile(
     manifest: Manifest<JavaLang>,
 ) -> Result<()> {
     let out = manifest.output.ok_or(MissingOutput)?;
-    let (options, listeners) = setup_listeners(manifest.modules)?;
-    let backend = JavaBackend::new(env, options, listeners);
+    let env = Rc::new(env);
+    let utils = Rc::new(Utils::new(&env));
+    let options = setup_listeners(manifest.modules, &utils);
+    let backend = JavaBackend::new(&env, &utils, options);
     backend.compile(&out)
 }
