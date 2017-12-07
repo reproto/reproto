@@ -7,8 +7,8 @@ extern crate reproto_path_lexer as path_lexer;
 pub mod errors;
 mod parser;
 
-use ast::PathSpec;
 use self::errors::{ErrorKind, Result};
+use ast::PathSpec;
 
 pub fn parse(input: &str) -> Result<PathSpec> {
     use lalrpop_util::ParseError::*;
@@ -21,9 +21,7 @@ pub fn parse(input: &str) -> Result<PathSpec> {
         Ok(file) => Ok(file),
         Err(e) => {
             match e {
-                InvalidToken { location } => {
-                    Err(Syntax(Some((location, location)), vec![]).into())
-                }
+                InvalidToken { location } => Err(Syntax(Some((location, location)), vec![]).into()),
                 UnrecognizedToken { token, expected } => {
                     let pos = token.map(|(start, _, end)| (start, end));
                     Err(Syntax(pos, expected).into())

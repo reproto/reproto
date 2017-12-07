@@ -1,7 +1,7 @@
 use core::{ErrorPos, Pos, Reporter, RpType, WithPos, errors as core};
 use parser::errors as parser;
-use repository::errors as repository;
 use path_parser::errors as path_parser;
+use repository::errors as repository;
 use serde_json as json;
 
 error_chain! {

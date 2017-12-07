@@ -13,8 +13,8 @@ pub mod errors;
 #[allow(unused)]
 mod parser;
 
-use core::Object;
 use self::errors::*;
+use core::Object;
 use std::io::Read;
 use std::rc::Rc;
 
@@ -85,11 +85,11 @@ pub fn parse_string<'input>(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use super::ast::*;
     use core::*;
     use std::rc::Rc;
     use std::sync::Arc;
-    use super::*;
-    use super::ast::*;
 
     fn new_context() -> Rc<Box<Object>> {
         Rc::new(Box::new(

@@ -3,7 +3,7 @@
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
 use backend::Environment;
 use backend::errors::*;
-use core::{WithPos, ForEachLoc, Loc, RpDecl, RpField, RpName, RpType, RpVersionedPackage};
+use core::{ForEachLoc, Loc, RpDecl, RpField, RpName, RpType, RpVersionedPackage, WithPos};
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;

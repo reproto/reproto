@@ -3,7 +3,7 @@
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
 use backend::Environment;
 use backend::errors::*;
-use core::{WithPos, RpDecl, RpFile, RpVersionedPackage};
+use core::{RpDecl, RpFile, RpVersionedPackage, WithPos};
 use doc_builder::DocBuilder;
 use enum_processor::EnumProcessor;
 use genco::IoFmt;
