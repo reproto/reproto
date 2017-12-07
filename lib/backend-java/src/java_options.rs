@@ -1,7 +1,7 @@
-/// Options for java code generation.
+//! Options for java code generation.
 
-use genco::Java;
 use codegen::Codegen;
+use genco::Java;
 
 pub struct JavaOptions {
     /// Should fields be nullable?

@@ -22,7 +22,6 @@ mod lombok;
 mod java_field;
 mod mutable;
 mod nullable;
-mod grpc;
 mod module;
 mod codegen;
 
@@ -105,7 +104,7 @@ fn setup_listeners(modules: Vec<JavaModule>) -> Result<(JavaOptions, Box<Listene
         let listener = match module {
             Jackson => Box::new(jackson::Module::new()) as Box<Listeners>,
             Lombok => Box::new(lombok::Module::new()) as Box<Listeners>,
-            Grpc => Box::new(grpc::Module::new()) as Box<Listeners>,
+            Grpc => Box::new(module::Grpc::new()) as Box<Listeners>,
             Builder => Box::new(builder::Module::new()) as Box<Listeners>,
             ConstructorProperties => {
                 Box::new(constructor_properties::Module::new()) as Box<Listeners>

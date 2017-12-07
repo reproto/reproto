@@ -1,3 +1,5 @@
+mod grpc;
 mod okhttp;
 
-pub use self::okhttp::{Module as OkHttp, Config as OkHttpConfig};
+pub use self::grpc::Module as Grpc;
+pub use self::okhttp::{Config as OkHttpConfig, Module as OkHttp};
