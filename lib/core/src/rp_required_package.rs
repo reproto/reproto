@@ -1,20 +1,20 @@
 //! A package requirement
 
-use super::{RpPackage, VersionReq};
+use super::{RpPackage, Range};
 use errors::*;
 use std::fmt;
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpRequiredPackage {
     pub package: RpPackage,
-    pub version_req: VersionReq,
+    pub range: Range,
 }
 
 impl RpRequiredPackage {
-    pub fn new(package: RpPackage, version_req: VersionReq) -> RpRequiredPackage {
+    pub fn new(package: RpPackage, range: Range) -> RpRequiredPackage {
         RpRequiredPackage {
             package: package,
-            version_req: version_req,
+            range: range,
         }
     }
 
@@ -26,20 +26,20 @@ impl RpRequiredPackage {
             RpPackage::empty,
         );
 
-        let version_req = if let Some(version) = it.next() {
-            VersionReq::parse(version).map_err(|e| {
+        let range = if let Some(version) = it.next() {
+            Range::parse(version).map_err(|e| {
                 format!("bad version: {}: {}", e, version)
             })?
         } else {
-            VersionReq::any()
+            Range::any()
         };
 
-        Ok(RpRequiredPackage::new(package, version_req))
+        Ok(RpRequiredPackage::new(package, range))
     }
 }
 
 impl fmt::Display for RpRequiredPackage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}@{}", self.package, self.version_req)
+        write!(f, "{}@{}", self.package, self.range)
     }
 }

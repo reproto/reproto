@@ -1,5 +1,5 @@
 // vim: ft=rust
-use core::{RpNumber, Loc, RpModifier, RpPackage, Object, VersionReq};
+use core::{RpNumber, Loc, RpModifier, RpPackage, Object};
 use std::rc::Rc;
 use ast::*;
 use lexer::{self, Token};
@@ -22,12 +22,12 @@ pub File: File<'input> =
 
 Use: UseDecl<'input> =
     "use" <package:Loc<Package>>
-        <version_req:Loc<"string">?>
+        <range:Loc<"string">?>
         <alias:Loc<UseAlias>?>
     ";" => {
     UseDecl {
         package: package,
-        version_req: version_req,
+        range: range,
         alias: alias,
     }
 };

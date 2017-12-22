@@ -1,5 +1,5 @@
 use checksum::Checksum;
-use core::{RpPackage, Version, VersionReq};
+use core::{RpPackage, Version, Range};
 use errors::*;
 use git::GitRepo;
 use index::{Deployment, Index, file_index};
@@ -26,8 +26,8 @@ impl GitIndex {
 }
 
 impl Index for GitIndex {
-    fn resolve(&self, package: &RpPackage, version_req: &VersionReq) -> Result<Vec<Deployment>> {
-        self.file_index.resolve(package, version_req)
+    fn resolve(&self, package: &RpPackage, range: &Range) -> Result<Vec<Deployment>> {
+        self.file_index.resolve(package, range)
     }
 
     fn all(&self, package: &RpPackage) -> Result<Vec<Deployment>> {

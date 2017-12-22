@@ -387,7 +387,7 @@ pub struct TypeBody<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct UseDecl<'input> {
     pub package: Loc<RpPackage>,
-    pub version_req: Option<Loc<String>>,
+    pub range: Option<Loc<String>>,
     pub alias: Option<Loc<&'input str>>,
 }
 

@@ -2,8 +2,8 @@ use super::into_model::IntoModel;
 use super::naming::{FromNaming, Naming, SnakeCase};
 use super::scope::Scope;
 use ast::UseDecl;
-use core::{Context, Loc, Object, Options, PathObject, RpDecl, RpFile, RpName, RpPackage, RpReg,
-           RpRequiredPackage, RpVersionedPackage, VersionReq, WithPos};
+use core::{Context, Loc, Object, Options, PathObject, Range, RpDecl, RpFile, RpName, RpPackage,
+           RpReg, RpRequiredPackage, RpVersionedPackage, WithPos};
 use errors::*;
 use linked_hash_map::LinkedHashMap;
 use parser;
@@ -112,7 +112,7 @@ impl Environment {
         let object = PathObject::new(None, path);
 
         let package = package.unwrap_or_else(|| RpVersionedPackage::new(RpPackage::empty(), None));
-        let required = RpRequiredPackage::new(package.package.clone(), VersionReq::any());
+        let required = RpRequiredPackage::new(package.package.clone(), Range::any());
 
         if !self.visited.contains_key(&required) {
             let file = self.load_object(object, &package)?;
@@ -253,8 +253,8 @@ impl Environment {
     }
 
     /// Parse the given version requirement.
-    fn parse_version_req(v: &Loc<String>) -> Result<VersionReq> {
-        VersionReq::parse(v.value())
+    fn parse_range(v: &Loc<String>) -> Result<Range> {
+        Range::parse(v.value())
             .map_err(|e| format!("bad version requirement: {}", e).into())
             .with_pos(v.pos())
     }
@@ -272,13 +272,13 @@ impl Environment {
         for use_decl in uses {
             let package = use_decl.package.value().clone();
 
-            let version_req = use_decl
-                .version_req
+            let range = use_decl
+                .range
                 .as_ref()
-                .map(Self::parse_version_req)
-                .unwrap_or_else(|| Ok(VersionReq::any()))?;
+                .map(Self::parse_range)
+                .unwrap_or_else(|| Ok(Range::any()))?;
 
-            let required = RpRequiredPackage::new(package, version_req);
+            let required = RpRequiredPackage::new(package, range);
 
             let use_package = self.import(&required)?;
 

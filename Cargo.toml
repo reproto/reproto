@@ -18,13 +18,10 @@ members = [
   "lib/path-parser",
   "lib/repository",
   "lib/semck",
+  "lib/semver",
   "tools/pack",
 ]
 
 exclude = [
   "it",
 ]
-
-[patch.crates-io]
-semver = {git = "https://github.com/udoprog/semver", branch = "wildcard"}
-semver-parser = {git = "https://github.com/udoprog/semver-parser", branch = "wildcard"}

@@ -1,5 +1,5 @@
 use checksum::Checksum;
-use core::{RpPackage, Version, VersionReq};
+use core::{RpPackage, Version, Range};
 use errors::*;
 use index::{Deployment, Index};
 use objects::{FileObjects, Objects};
@@ -125,8 +125,8 @@ impl FileIndex {
 }
 
 impl Index for FileIndex {
-    fn resolve(&self, package: &RpPackage, version_req: &VersionReq) -> Result<Vec<Deployment>> {
-        self.read_package(package, |d| version_req.matches(&d.version))
+    fn resolve(&self, package: &RpPackage, range: &Range) -> Result<Vec<Deployment>> {
+        self.read_package(package, |d| range.matches(&d.version))
             .map(|r| r.0)
     }
 

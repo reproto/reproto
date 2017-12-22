@@ -9,7 +9,7 @@
 //!
 //! The second form is only used when a version requirement is present.
 
-use core::{Object, PathObject, RpPackage, RpRequiredPackage, Version, VersionReq};
+use core::{Object, PathObject, Range, RpPackage, RpRequiredPackage, Version};
 use errors::*;
 use resolver::{Resolved, ResolvedByPrefix, Resolver};
 use std::collections::{BTreeMap, HashMap, LinkedList};
@@ -68,12 +68,12 @@ impl Paths {
     }
 
     /// Find any matching versions.
-    pub fn find_by_version_req(
+    pub fn find_by_range(
         &self,
         path: &Path,
         base: &str,
         package: &RpPackage,
-        version_req: &VersionReq,
+        range: &Range,
     ) -> Result<Vec<Resolved>> {
         let mut files: BTreeMap<Option<Version>, Box<Object>> = BTreeMap::new();
 
@@ -102,7 +102,7 @@ impl Paths {
 
                 // versioned matches by requirement.
                 if let Some(version) = version {
-                    if version_req.matches(&version) {
+                    if range.matches(&version) {
                         files.insert(Some(version), Box::new(PathObject::new(None, &p)));
                     }
 
@@ -110,7 +110,7 @@ impl Paths {
                 }
 
                 // unversioned only matches by wildcard.
-                if version_req.matches_any() {
+                if range.matches_any() {
                     files.insert(None, Box::new(PathObject::new(None, &p)));
                 }
             }
@@ -211,11 +211,11 @@ impl Resolver for Paths {
             while let Some(step) = it.next() {
                 if it.peek().is_none() {
                     if path.is_dir() {
-                        files.extend(self.find_by_version_req(
+                        files.extend(self.find_by_range(
                             &path,
                             step,
                             &package.package,
-                            &package.version_req,
+                            &package.range,
                         )?);
                     }
 

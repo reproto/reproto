@@ -9,7 +9,6 @@ extern crate serde_derive;
 extern crate error_chain;
 extern crate reproto_core;
 extern crate serde;
-extern crate semver;
 extern crate relative_path;
 extern crate toml;
 
@@ -17,7 +16,7 @@ pub mod errors;
 
 use errors::*;
 use relative_path::{RelativePath, RelativePathBuf};
-use reproto_core::{RpPackage, RpRequiredPackage, Version, VersionReq};
+use reproto_core::{Range, RpPackage, RpRequiredPackage, Version};
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
@@ -132,19 +131,19 @@ impl TryFromToml for RpRequiredPackage {
     fn try_from_string(_: &Path, id: &str, value: String) -> Result<Self> {
         let package = RpPackage::parse(id);
 
-        let version_req = VersionReq::parse(value.as_str()).map_err(|e| {
+        let range = Range::parse(value.as_str()).map_err(|e| {
             format!("bad version: {}: {}", e, value)
         })?;
 
-        Ok(RpRequiredPackage::new(package, version_req))
+        Ok(RpRequiredPackage::new(package, range))
     }
 
     fn try_from_value(_: &Path, id: &str, value: toml::Value) -> Result<Self> {
         let package = RpPackage::parse(id);
         let body: Package = value.try_into()?;
-        let version_req = body.version.unwrap_or_else(VersionReq::any);
+        let range = body.version.unwrap_or_else(Range::any);
 
-        Ok(RpRequiredPackage::new(package, version_req))
+        Ok(RpRequiredPackage::new(package, range))
     }
 }
 
@@ -179,7 +178,7 @@ impl Language {
 #[derive(Debug, Deserialize)]
 pub struct Package {
     #[serde(default)]
-    version: Option<VersionReq>,
+    version: Option<Range>,
 }
 
 /// Parse a single specification where the string key is a package.

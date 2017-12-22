@@ -10,7 +10,7 @@ extern crate num;
 extern crate serde;
 extern crate relative_path;
 extern crate linked_hash_map;
-pub extern crate semver;
+pub extern crate reproto_semver as semver;
 
 #[macro_use]
 mod macros;
@@ -93,4 +93,4 @@ pub use self::rp_value::RpValue;
 pub use self::rp_variant::RpVariant;
 pub use self::rp_versioned_package::RpVersionedPackage;
 pub use self::with_pos::WithPos;
-pub use semver::{Version, VersionReq};
+pub use semver::{Range, Version};

@@ -72,7 +72,7 @@ impl Resolver for Repository {
     fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
         let mut out = Vec::new();
 
-        let deployments = self.index.resolve(&package.package, &package.version_req)?;
+        let deployments = self.index.resolve(&package.package, &package.range)?;
 
         for deployment in deployments {
             if let Some(path) = self.objects.get_object(&deployment.object)? {

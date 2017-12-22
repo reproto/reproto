@@ -5,7 +5,7 @@
 target=$PWD/target
 root=$PWD
 
-candidates="lib/core lib/lexer lib/ast lib/manifest lib/parser lib/repository lib/backend lib/semck"
+candidates="lib/semver lib/core lib/lexer lib/ast lib/manifest lib/parser lib/repository lib/backend lib/semck"
 
 for manifest in $root/lib/backend-*/Cargo.toml; do
     b=$(basename $(dirname $manifest))

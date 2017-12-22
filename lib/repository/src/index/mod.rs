@@ -4,7 +4,7 @@ mod git_index;
 pub use self::file_index::init_file_index;
 use self::git_index::GitIndex;
 use checksum::Checksum;
-use core::{RpPackage, Version, VersionReq};
+use core::{RpPackage, Version, Range};
 use git;
 use objects::Objects;
 use relative_path::RelativePath;
@@ -38,7 +38,7 @@ use errors::*;
 
 pub trait Index {
     /// Resolve the given version of a package.
-    fn resolve(&self, package: &RpPackage, version_req: &VersionReq) -> Result<Vec<Deployment>>;
+    fn resolve(&self, package: &RpPackage, range: &Range) -> Result<Vec<Deployment>>;
 
     /// Get all versions available of a given package.
     ///
@@ -72,7 +72,7 @@ pub trait Index {
 pub struct NoIndex;
 
 impl Index for NoIndex {
-    fn resolve(&self, _: &RpPackage, _: &VersionReq) -> Result<Vec<Deployment>> {
+    fn resolve(&self, _: &RpPackage, _: &Range) -> Result<Vec<Deployment>> {
         Ok(vec![])
     }
 
