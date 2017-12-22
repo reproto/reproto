@@ -5,29 +5,32 @@
 target=$PWD/target
 root=$PWD
 
-candidates="lib/semver lib/core lib/lexer lib/ast lib/manifest lib/parser lib/repository lib/backend lib/semck"
+candidates=()
+candidates+=(lib/semver)
+candidates+=(lib/core)
+candidates+=(lib/path-lexer lib/path-parser)
+candidates+=(lib/lexer lib/ast lib/parser)
+candidates+=(lib/manifest lib/repository lib/backend lib/semck)
 
 for manifest in $root/lib/backend-*/Cargo.toml; do
     b=$(basename $(dirname $manifest))
-    candidates="$candidates lib/$b"
+    candidates+=(lib/$b)
 done
 
-candidates="$candidates server cli"
+candidates+=(server cli)
 
-targets=""
+targets=()
 
-for candidate in $candidates; do
+for candidate in ${candidates[*]}; do
     if [[ $SKIP != *"$candidate"* ]]; then
-        targets="$targets $candidate"
+        targets+=($candidate)
     fi
 done
 
-echo "TARGETS: $targets"
+echo "TARGETS: ${targets[*]}"
 
 export CARGO_TARGET_DIR=$target
 
-for target in $targets; do
+for target in ${targets[*]}; do
     cargo publish --manifest-path=$root/$target/Cargo.toml
 done
-
-cargo publish --manifest-path=$root/Cargo.toml
