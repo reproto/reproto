@@ -15,13 +15,14 @@ pub struct FileObjects {
 
 impl FileObjects {
     pub fn new<P: AsRef<Path> + ?Sized>(path: &P) -> FileObjects {
-        FileObjects { path: path.as_ref().to_owned() }
+        FileObjects {
+            path: path.as_ref().to_owned(),
+        }
     }
 
     fn checksum_path(&self, checksum: &Checksum) -> Result<PathBuf> {
-        let path = self.path.join(
-            format!("{}", HexSlice::new(&checksum[0..1])),
-        );
+        let path = self.path
+            .join(format!("{}", HexSlice::new(&checksum[0..1])));
         let path = path.join(format!("{}", HexSlice::new(&checksum[1..2])));
         Ok(path.join(format!("{}", HexSlice::new(&checksum))))
     }

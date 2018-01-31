@@ -1,4 +1,4 @@
-use core::{ErrorPos, Pos, Reporter, RpType, WithPos, errors as core};
+use core::{errors as core, ErrorPos, Pos, Reporter, RpType, WithPos};
 use parser::errors as parser;
 use path_parser::errors as path_parser;
 use repository::errors as repository;

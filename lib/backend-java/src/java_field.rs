@@ -22,13 +22,8 @@ impl<'el> JavaField<'el> {
 
         m.arguments.push(argument.clone());
 
-        m.body.push(toks![
-            "this.",
-            self.spec.var(),
-            " = ",
-            argument.var(),
-            ";",
-        ]);
+        m.body
+            .push(toks!["this.", self.spec.var(), " = ", argument.var(), ";",]);
 
         Some(m)
     }

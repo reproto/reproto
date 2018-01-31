@@ -8,7 +8,9 @@ pub struct Resolvers {
 
 impl Resolvers {
     pub fn new(resolvers: Vec<Box<Resolver>>) -> Resolvers {
-        Resolvers { resolvers: resolvers }
+        Resolvers {
+            resolvers: resolvers,
+        }
     }
 }
 

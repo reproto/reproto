@@ -56,7 +56,9 @@ impl Selection {
         let mut positions = Vec::new();
         positions.extend(self.words.values());
         positions.extend(self.values.values().map(|v| v.0.pos()));
-        Unused { iter: positions.into_iter() }
+        Unused {
+            iter: positions.into_iter(),
+        }
     }
 }
 
@@ -100,6 +102,8 @@ impl Attributes {
         let mut positions = Vec::new();
         positions.extend(self.words.values());
         positions.extend(self.selections.values().map(Loc::pos));
-        Unused { iter: positions.into_iter() }
+        Unused {
+            iter: positions.into_iter(),
+        }
     }
 }

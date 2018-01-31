@@ -9,10 +9,8 @@ use std::path::Path;
 
 #[derive(Debug, Deserialize)]
 pub enum Version {
-    #[serde(rename = "1")]
-    Version1,
-    #[serde(rename = "2")]
-    Version2,
+    #[serde(rename = "1")] Version1,
+    #[serde(rename = "2")] Version2,
 }
 
 impl Default for Version {
@@ -49,7 +47,9 @@ impl ApiClient {
 
 impl Codegen for ApiClient {
     fn generate(&self, out_path: &Path) -> Result<()> {
-        JavaFile::new("io.reproto.client", "ApiClient", |out| self.process(out)).process(out_path)
+        JavaFile::new("io.reproto.client", "ApiClient", |out| {
+            self.process(out)
+        }).process(out_path)
     }
 }
 

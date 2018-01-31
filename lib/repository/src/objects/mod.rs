@@ -80,9 +80,9 @@ where
 {
     let mut scheme = scheme.into_iter();
 
-    let sub_scheme = scheme.next().ok_or_else(|| {
-        format!("bad scheme ({}), expected git+scheme", url.scheme())
-    })?;
+    let sub_scheme = scheme
+        .next()
+        .ok_or_else(|| format!("bad scheme ({}), expected git+scheme", url.scheme()))?;
 
     let git_repo = git::setup_git_repo(&config.repo_dir, sub_scheme, url)?;
 
@@ -101,9 +101,9 @@ pub fn objects_from_http(config: ObjectsConfig, url: &Url) -> Result<Box<Objects
     let http_objects = HttpObjects::new(url.clone(), core);
 
     if let Some(cache_dir) = config.cache_dir {
-        let missing_cache_time = config.missing_cache_time.unwrap_or_else(
-            || Duration::new(60, 0),
-        );
+        let missing_cache_time = config
+            .missing_cache_time
+            .unwrap_or_else(|| Duration::new(60, 0));
 
         return Ok(Box::new(CachedObjects::new(
             cache_dir,

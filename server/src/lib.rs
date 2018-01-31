@@ -9,8 +9,8 @@ extern crate flate2;
 extern crate futures;
 extern crate futures_cpupool;
 extern crate hyper;
-extern crate reproto_repository;
 extern crate reproto_core;
+extern crate reproto_repository;
 extern crate tempfile;
 extern crate toml;
 

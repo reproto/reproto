@@ -54,9 +54,21 @@ pub enum Violation {
     /// Endpoint removed.
     RemoveEndpoint(Component, ErrorPos),
     /// Endpoint request type changed.
-    EndpointRequestChange(Component, Option<RpChannel>, ErrorPos, Option<RpChannel>, ErrorPos),
+    EndpointRequestChange(
+        Component,
+        Option<RpChannel>,
+        ErrorPos,
+        Option<RpChannel>,
+        ErrorPos,
+    ),
     /// Endpoint response type changed.
-    EndpointResponseChange(Component, Option<RpChannel>, ErrorPos, Option<RpChannel>, ErrorPos),
+    EndpointResponseChange(
+        Component,
+        Option<RpChannel>,
+        ErrorPos,
+        Option<RpChannel>,
+        ErrorPos,
+    ),
 }
 
 fn fields(reg: &RpReg) -> Vec<&Loc<RpField>> {
@@ -84,13 +96,11 @@ fn endpoints_to_map(reg: &RpReg) -> HashMap<&str, &Loc<RpEndpoint>> {
     use self::RpReg::*;
 
     match *reg {
-        Service(ref target) => {
-            target
-                .endpoints
-                .iter()
-                .map(|(key, value)| (key.as_str(), value))
-                .collect()
-        }
+        Service(ref target) => target
+            .endpoints
+            .iter()
+            .map(|(key, value)| (key.as_str(), value))
+            .collect(),
         _ => HashMap::new(),
     }
 }
@@ -152,20 +162,15 @@ fn check_endpoint_channel<F, E>(
 ) -> Result<()>
 where
     F: Fn(&RpEndpoint) -> &Option<Loc<RpChannel>>,
-    E: Fn(Component,
-       Option<RpChannel>,
-       ErrorPos,
-       Option<RpChannel>,
-       ErrorPos)
-       -> Violation,
+    E: Fn(Component, Option<RpChannel>, ErrorPos, Option<RpChannel>, ErrorPos) -> Violation,
 {
-    let from_ty = accessor(from_endpoint).as_ref().map(|r| {
-        (r.is_streaming(), r.ty().clone().localize())
-    });
+    let from_ty = accessor(from_endpoint)
+        .as_ref()
+        .map(|r| (r.is_streaming(), r.ty().clone().localize()));
 
-    let to_ty = accessor(to_endpoint).as_ref().map(|r| {
-        (r.is_streaming(), r.ty().clone().localize())
-    });
+    let to_ty = accessor(to_endpoint)
+        .as_ref()
+        .map(|r| (r.is_streaming(), r.ty().clone().localize()));
 
     if from_ty != to_ty {
         let from_pos = accessor(from_endpoint)
@@ -173,20 +178,22 @@ where
             .map(|r| r.pos())
             .unwrap_or(from_endpoint.pos());
 
-        let to_pos = accessor(to_endpoint).as_ref().map(|r| r.pos()).unwrap_or(
-            to_endpoint
-                .pos(),
-        );
+        let to_pos = accessor(to_endpoint)
+            .as_ref()
+            .map(|r| r.pos())
+            .unwrap_or(to_endpoint.pos());
 
         violations.push(error(
             component,
-            accessor(from_endpoint).as_ref().map(Loc::value).map(
-                Clone::clone,
-            ),
+            accessor(from_endpoint)
+                .as_ref()
+                .map(Loc::value)
+                .map(Clone::clone),
             from_pos.into(),
-            accessor(to_endpoint).as_ref().map(Loc::value).map(
-                Clone::clone,
-            ),
+            accessor(to_endpoint)
+                .as_ref()
+                .map(Loc::value)
+                .map(Clone::clone),
             to_pos.into(),
         ));
     }

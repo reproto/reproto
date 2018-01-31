@@ -1,6 +1,6 @@
-extern crate toml;
 extern crate handlebars;
 extern crate serde_json;
+extern crate toml;
 
 use serde_json::value::Map;
 use std::env;
@@ -83,9 +83,9 @@ fn process_colors() -> Result<()> {
     let template_content = read_file("src/static/doc._.css.hbs");
 
     let value: toml::Value = colors_content.parse()?;
-    let schemes = value.as_table().ok_or_else(
-        || Error::Message("not a table"),
-    )?;
+    let schemes = value
+        .as_table()
+        .ok_or_else(|| Error::Message("not a table"))?;
 
     let mut handlebar = handlebars::Handlebars::new();
 
@@ -94,9 +94,11 @@ fn process_colors() -> Result<()> {
     let mut entries = Vec::new();
     let mut themes = String::new();
 
-    let default = schemes.get("default").unwrap().as_table().ok_or_else(|| {
-        Error::Message("not a table")
-    })?;
+    let default = schemes
+        .get("default")
+        .unwrap()
+        .as_table()
+        .ok_or_else(|| Error::Message("not a table"))?;
 
     for (key, value) in schemes {
         if key == "default" {
@@ -114,9 +116,9 @@ fn process_colors() -> Result<()> {
         let mut colors = Map::new();
 
         for (k, color) in colors_in {
-            let value = color.as_str().ok_or_else(
-                || Error::Message("expected string"),
-            )?;
+            let value = color
+                .as_str()
+                .ok_or_else(|| Error::Message("expected string"))?;
             colors.insert(k.to_owned(), handlebars::to_json(&value));
         }
 
@@ -129,8 +131,7 @@ fn process_colors() -> Result<()> {
         writeln!(
             themes,
             "const DOC_CSS_{}: &[u8] = include_bytes!(concat!(env!(\"OUT_DIR\"), \"/{}\"));",
-            key_upper,
-            name
+            key_upper, name
         )?;
 
         entries.push(format!("(\"{}\", DOC_CSS_{})", key, key_upper));

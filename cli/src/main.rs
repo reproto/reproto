@@ -1,7 +1,7 @@
-extern crate log;
-extern crate clap;
-extern crate reproto;
 extern crate atty;
+extern crate clap;
+extern crate log;
+extern crate reproto;
 extern crate reproto_core as core;
 
 use clap::{App, Arg, ArgMatches};
@@ -17,17 +17,22 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 fn setup_opts<'a, 'b>() -> App<'a, 'b> {
     App::new("reproto")
         .version(VERSION)
-        .arg(Arg::with_name("debug").long("debug").short("D").help(
-            "Enable debug \
-             output",
-        ))
-        .arg(Arg::with_name("color").long("color").help(
-            "Force colored output",
-        ))
-        .arg(Arg::with_name("no-color").long("no-color").help(
-            "Disable colored \
-             output",
-        ))
+        .arg(
+            Arg::with_name("debug")
+                .long("debug")
+                .short("D")
+                .help("Enable debug output"),
+        )
+        .arg(
+            Arg::with_name("color")
+                .long("color")
+                .help("Force colored output"),
+        )
+        .arg(
+            Arg::with_name("no-color")
+                .long("no-color")
+                .help("Disable colored output"),
+        )
 }
 
 /// Configure logging
@@ -75,8 +80,8 @@ fn main() {
     let opts = ops::options(opts);
     let matches = opts.get_matches();
 
-    let colored = matches.is_present("color") ||
-        !matches.is_present("no-color") && atty::is(atty::Stream::Stdout);
+    let colored = matches.is_present("color")
+        || !matches.is_present("no-color") && atty::is(atty::Stream::Stdout);
 
     let mut output: Box<output::Output> = if colored {
         Box::new(output::Colored::new(io::stdout()))

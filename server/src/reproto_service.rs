@@ -1,14 +1,14 @@
 use errors::*;
 use errors::ErrorKind::*;
 use flate2::FlateReadExt;
-use futures::future::{Future, ok};
+use futures::future::{ok, Future};
 use futures_cpupool::CpuPool;
 use hyper::{self, Method, StatusCode};
 use hyper::header::{ContentEncoding, ContentLength, ContentType, Encoding, Headers};
 use hyper::mime;
 use hyper::server::{Request, Response, Service};
 use io;
-use reproto_repository::{Checksum, FileObjects, Objects, to_checksum};
+use reproto_repository::{to_checksum, Checksum, FileObjects, Objects};
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 use std::io::Read;
@@ -39,9 +39,10 @@ impl ReprotoService {
     }
 
     fn gzip_encoding(input: &File) -> Result<Box<Read>> {
-        Ok(Box::new(input.try_clone()?.gz_decode().chain_err(
-            || "failed to open gz file",
-        )?))
+        Ok(Box::new(input
+            .try_clone()?
+            .gz_decode()
+            .chain_err(|| "failed to open gz file")?))
     }
 
     fn pick_encoding(headers: &Headers) -> fn(&File) -> Result<Box<Read>> {
@@ -75,15 +76,14 @@ impl ReprotoService {
 
         let objects = self.objects.clone();
 
-        let checksum = Checksum::from_str(id).map_err(
-            |_| BadRequest(BAD_OBJECT_ID),
-        )?;
+        let checksum = Checksum::from_str(id).map_err(|_| BadRequest(BAD_OBJECT_ID))?;
 
         // No async I/O, use pool
         Ok(Box::new(self.pool.spawn_fn(move || {
-            let result = objects.lock().map_err(|_| PoisonError)?.get_object(
-                &checksum,
-            )?;
+            let result = objects
+                .lock()
+                .map_err(|_| PoisonError)?
+                .get_object(&checksum)?;
 
             let object = match result {
                 Some(object) => object,
@@ -92,12 +92,10 @@ impl ReprotoService {
 
             let bytes = read_contents(object.read()?)?;
 
-            Ok(
-                Response::new()
-                    .with_status(StatusCode::Ok)
-                    .with_header(ContentLength(bytes.len() as u64))
-                    .with_body(bytes),
-            )
+            Ok(Response::new()
+                .with_status(StatusCode::Ok)
+                .with_header(ContentLength(bytes.len() as u64))
+                .with_body(bytes))
         })))
     }
 
@@ -119,16 +117,15 @@ impl ReprotoService {
                 tmp.seek(SeekFrom::Start(0))?;
                 let mut checksum_read = encoding(&tmp)?;
 
-                let actual = to_checksum(&mut checksum_read).chain_err(|| {
-                    "failed to calculate checksum"
-                })?;
+                let actual =
+                    to_checksum(&mut checksum_read).chain_err(|| "failed to calculate checksum")?;
 
                 if actual != checksum {
                     info!("{} != {}", actual, checksum);
 
-                    return Ok(Response::new().with_body(CHECKSUM_MISMATCH).with_status(
-                        StatusCode::BadRequest,
-                    ));
+                    return Ok(Response::new()
+                        .with_body(CHECKSUM_MISMATCH)
+                        .with_status(StatusCode::BadRequest));
                 }
 
                 info!("Uploading object: {}", checksum);
@@ -163,9 +160,7 @@ impl ReprotoService {
             return Ok(Box::new(ok(Self::not_found())));
         };
 
-        let checksum = Checksum::from_str(id).map_err(
-            |_| BadRequest(BAD_OBJECT_ID),
-        )?;
+        let checksum = Checksum::from_str(id).map_err(|_| BadRequest(BAD_OBJECT_ID))?;
 
         if let Some(len) = req.headers().get::<ContentLength>() {
             if len.0 > self.max_file_size {

@@ -8,9 +8,7 @@ pub trait Processor {
     ///
     /// This includes the prefixed configured in `self.options`, if specified.
     fn java_package(&self, pkg: &RpVersionedPackage) -> RpPackage {
-        pkg.as_package(|version| {
-            format!("_{}", version).replace(".", "_").replace("-", "_")
-        })
+        pkg.as_package(|version| format!("_{}", version).replace(".", "_").replace("-", "_"))
     }
 
     /// Extract endpoint request.
@@ -24,10 +22,10 @@ pub trait Processor {
 
         if let Some(&(ref name, ref first)) = it.next() {
             if let Some(&(ref other, _)) = it.next() {
-                return Err(
-                    ErrorKind::Pos("more than one argument".to_string(), other.pos().into())
-                        .into(),
-                );
+                return Err(ErrorKind::Pos(
+                    "more than one argument".to_string(),
+                    other.pos().into(),
+                ).into());
             }
 
             let channel = first.as_ref().take();

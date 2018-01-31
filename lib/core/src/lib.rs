@@ -2,15 +2,15 @@
 #![allow(unknown_lints)]
 
 #[macro_use]
-extern crate serde_derive;
-#[macro_use]
 extern crate error_chain;
+extern crate linked_hash_map;
 extern crate mime as extern_mime;
 extern crate num;
-extern crate serde;
 extern crate relative_path;
-extern crate linked_hash_map;
 pub extern crate reproto_semver as semver;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 
 #[macro_use]
 mod macros;

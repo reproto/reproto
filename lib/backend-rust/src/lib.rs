@@ -1,15 +1,15 @@
-#[allow(unused)]
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate log;
 #[macro_use]
 extern crate genco;
+#[macro_use]
+extern crate log;
 #[macro_use]
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 extern crate serde;
+#[allow(unused)]
+#[macro_use]
+extern crate serde_derive;
 extern crate toml;
 
 mod listeners;
@@ -24,7 +24,7 @@ use backend::{ArgMatches, Environment};
 use backend::errors::*;
 use core::Context;
 use listeners::Listeners;
-use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
+use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
 use rust_backend::RustBackend;
 use rust_options::RustOptions;
 use std::path::Path;

@@ -3,8 +3,8 @@
 use backend::errors::*;
 use codegen::{ClassCodegen, EnumCodegen, InterfaceCodegen, TupleCodegen};
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
-use genco::java::{Argument, Class, DOUBLE, FLOAT, Field, INTEGER, LONG, Modifier, SHORT, imported,
-                  local};
+use genco::java::{imported, local, Argument, Class, Field, Modifier, DOUBLE, FLOAT, INTEGER, LONG,
+                  SHORT};
 use listeners::{ClassAdded, Configure, EnumAdded, InterfaceAdded, Listeners, TupleAdded};
 use std::rc::Rc;
 
@@ -116,7 +116,11 @@ impl Jackson {
         serialize.push(toks!("@", self.override_.clone()));
         serialize.push(toks![
             "public void serialize(",
-            toks![value.into_tokens(), jgen.into_tokens(), provider.into_tokens()].join(", "),
+            toks![
+                value.into_tokens(),
+                jgen.into_tokens(),
+                provider.into_tokens()
+            ].join(", "),
             ") throws ",
             self.io_exception.clone(),
             " {",
@@ -167,7 +171,12 @@ impl Jackson {
         &self,
         ty: Java<'el>,
         parser: A,
-    ) -> Result<(Option<(Tokens<'el, Java<'el>>, &'el str)>, Tokens<'el, Java<'el>>)>
+    ) -> Result<
+        (
+            Option<(Tokens<'el, Java<'el>>, &'el str)>,
+            Tokens<'el, Java<'el>>,
+        ),
+    >
     where
         A: Into<Tokens<'el, Java<'el>>>,
     {
@@ -187,18 +196,14 @@ impl Jackson {
                         toks![p, ".getLongValue()"],
                     ),
                     INTEGER => (Some((test, "VALUE_NUMBER_INT")), toks![p, ".getIntValue()"]),
-                    FLOAT => {
-                        (
-                            Some((test, "VALUE_NUMBER_FLOAT")),
-                            toks![p, ".getFloatValue()"],
-                        )
-                    }
-                    DOUBLE => {
-                        (
-                            Some((test, "VALUE_NUMBER_FLOAT")),
-                            toks![p, ".getDoubleValue()"],
-                        )
-                    }
+                    FLOAT => (
+                        Some((test, "VALUE_NUMBER_FLOAT")),
+                        toks![p, ".getFloatValue()"],
+                    ),
+                    DOUBLE => (
+                        Some((test, "VALUE_NUMBER_FLOAT")),
+                        toks![p, ".getDoubleValue()"],
+                    ),
                     _ => {
                         return Err("unsupported type".into());
                     }
@@ -206,8 +211,11 @@ impl Jackson {
             }
             class @ Java::Class { .. } => {
                 if class == self.string {
-                    let test =
-                        toks![p.clone(), ".nextToken() != ", self.token.clone(), ".VALUE_STRING",
+                    let test = toks![
+                        p.clone(),
+                        ".nextToken() != ",
+                        self.token.clone(),
+                        ".VALUE_STRING",
                     ];
                     let token = Some((test, "VALUE_STRING"));
                     (token, toks![p, ".getText()"])
@@ -273,7 +281,9 @@ impl Jackson {
 
         deserialize.push(toks!("@", self.override_.clone()));
         deserialize.push(toks![
-            "public ", ty.clone(), " deserialize(",
+            "public ",
+            ty.clone(),
+            " deserialize(",
             toks![parser, ctxt].join(", "),
             ") throws ",
             self.io_exception.clone(),
@@ -312,23 +322,24 @@ impl Jackson {
                 }
 
                 let variable = toks!["v_", field.var()];
-                let assign =
-                    toks![
-                        "final ",
-                        field.ty(),
-                        " ",
-                        variable.clone(),
-                        " = ",
-                        reader,
-                        ";",
-                    ];
+                let assign = toks![
+                    "final ",
+                    field.ty(),
+                    " ",
+                    variable.clone(),
+                    " = ",
+                    reader,
+                    ";",
+                ];
                 body.push(assign);
                 arguments.append(variable);
             }
 
             let mut end_array = Tokens::new();
             end_array.push(toks![
-                "if (parser.nextToken() != ", self.token.clone(), ".END_ARRAY) {",
+                "if (parser.nextToken() != ",
+                self.token.clone(),
+                ".END_ARRAY) {",
             ]);
             end_array.nested(self.wrong_token("ctxt", "parser", "END_ARRAY"));
             end_array.push("}");
@@ -401,8 +412,7 @@ impl Jackson {
             deserializer.name().as_ref()
         ));
 
-        let deserialize =
-            toks![
+        let deserialize = toks![
             "@",
             self.deserialize.clone(),
             "(using = ",
@@ -455,13 +465,7 @@ impl InterfaceCodegen for Jackson {
                 let mut a = Tokens::new();
 
                 a.append(toks!["name=", sub_type.name().quoted()]);
-                a.append(toks![
-                    "value=",
-                    e.spec.name(),
-                    ".",
-                    key.as_str(),
-                    ".class",
-                ]);
+                a.append(toks!["value=", e.spec.name(), ".", key.as_str(), ".class",]);
 
                 let arg = SubTypesType(self, a).into_tokens();
                 args.append(arg);
@@ -481,9 +485,9 @@ impl Listeners for Module {
         let jackson = Rc::new(Jackson::new());
         e.options.class_generators.push(Box::new(jackson.clone()));
         e.options.tuple_generators.push(Box::new(jackson.clone()));
-        e.options.interface_generators.push(
-            Box::new(jackson.clone()),
-        );
+        e.options
+            .interface_generators
+            .push(Box::new(jackson.clone()));
         e.options.enum_generators.push(Box::new(jackson.clone()));
     }
 }

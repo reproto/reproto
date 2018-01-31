@@ -146,9 +146,7 @@ impl JsBackend {
         loop_body.push(js![if match_member, toks!["return member;"]]);
 
         let mut member_loop = Tokens::new();
-        member_loop.push(
-            js![for loop_init; "i < l"; "i++", loop_body.join_line_spacing()],
-        );
+        member_loop.push(js![for loop_init; "i < l"; "i++", loop_body.join_line_spacing()]);
 
         let mut body = Tokens::new();
         body.push(member_loop);
@@ -381,11 +379,7 @@ impl JsBackend {
             }
         }
 
-        class_body.push(self.decode_method(
-            &fields,
-            tuple_name.clone(),
-            Self::field_by_index,
-        )?);
+        class_body.push(self.decode_method(&fields, tuple_name.clone(), Self::field_by_index)?);
 
         class_body.push(self.encode_tuple_method(&fields)?);
         class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
@@ -463,7 +457,6 @@ impl JsBackend {
         Ok(())
     }
 
-
     pub fn process_type<'el>(
         &self,
         out: &mut JsFileSpec<'el>,
@@ -487,11 +480,7 @@ impl JsBackend {
             }
         }
 
-        class_body.push(self.decode_method(
-            &fields,
-            type_name.clone(),
-            Self::field_by_name,
-        )?);
+        class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
 
         class_body.push(self.encode_method(&fields, "{}", None)?);
         class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
@@ -544,9 +533,12 @@ impl JsBackend {
             let fields: Vec<Loc<JsField>> = interface_fields
                 .iter()
                 .cloned()
-                .chain(sub_type.fields.iter().map(|f| {
-                    f.as_ref().map(|f| self.into_js_field(f))
-                }))
+                .chain(
+                    sub_type
+                        .fields
+                        .iter()
+                        .map(|f| f.as_ref().map(|f| self.into_js_field(f))),
+                )
                 .collect();
 
             class_body.push(self.build_constructor(&fields));
@@ -558,14 +550,9 @@ impl JsBackend {
                 }
             }
 
-            class_body.push(self.decode_method(
-                &fields,
-                type_name.clone(),
-                Self::field_by_name,
-            )?);
+            class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
 
-            let type_toks =
-                toks![
+            let type_toks = toks![
                 "data[",
                 self.type_var.clone(),
                 "] = ",
@@ -614,13 +601,11 @@ impl<'el> Converter<'el> for JsBackend {
 
         if let Some(ref used) = name.prefix {
             let package = self.package(&name.package).parts.join(".");
-            return Ok(
-                imported_alias(
-                    Cow::Owned(package),
-                    Cow::Owned(local_name),
-                    Cow::Borrowed(used),
-                ).into(),
-            );
+            return Ok(imported_alias(
+                Cow::Owned(package),
+                Cow::Owned(local_name),
+                Cow::Borrowed(used),
+            ).into());
         }
 
         Ok(local_name.into())
@@ -632,8 +617,7 @@ impl<'el> DynamicConverter<'el> for JsBackend {
         use self::RpType::*;
 
         match *ty {
-            Signed { size: _ } |
-            Unsigned { size: _ } => true,
+            Signed { size: _ } | Unsigned { size: _ } => true,
             Float | RpType::Double => true,
             String => true,
             Any => true,

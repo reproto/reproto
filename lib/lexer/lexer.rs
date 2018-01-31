@@ -1,5 +1,4 @@
 /// Lexer for reproto idl.
-
 use core::RpNumber;
 use errors::Error::*;
 use errors::Result;
@@ -36,9 +35,9 @@ impl<'input> Lexer<'input> {
             self.step();
         }
 
-        self.n0.map(|n| n.0).unwrap_or_else(
-            || self.source_str.len(),
-        )
+        self.n0
+            .map(|n| n.0)
+            .unwrap_or_else(|| self.source_str.len())
     }
 
     #[inline]
@@ -160,12 +159,11 @@ impl<'input> Lexer<'input> {
     }
 
     fn number(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
-        let (end, number) = self.parse_number(start).map_err(|(message, offset)| {
-            InvalidNumber {
+        let (end, number) = self.parse_number(start)
+            .map_err(|(message, offset)| InvalidNumber {
                 message: message,
                 pos: start + offset,
-            }
-        })?;
+            })?;
 
         Ok((start, Token::Number(number), end))
     }
@@ -184,7 +182,9 @@ impl<'input> Lexer<'input> {
             let (end, whole) = take!(self, offset, '0'...'9');
             (
                 end,
-                whole.parse::<BigInt>().map_err(|_| ("illegal number", end))?,
+                whole
+                    .parse::<BigInt>()
+                    .map_err(|_| ("illegal number", end))?,
             )
         };
 
@@ -229,24 +229,19 @@ impl<'input> Lexer<'input> {
                 .ok_or_else(|| ("expected digit", x as usize))?
                 .1
                 .to_string();
-            let c = u32::from_str_radix(&c, 16).map_err(|_| {
-                ("expected hex digit", x as usize)
-            })?;
+            let c = u32::from_str_radix(&c, 16).map_err(|_| ("expected hex digit", x as usize))?;
             res += c << (4 * (3 - x));
             self.step();
         }
 
-        Ok(::std::char::from_u32(res).ok_or_else(
-            || ("invalid character", 0usize),
-        )?)
+        Ok(::std::char::from_u32(res).ok_or_else(|| ("invalid character", 0usize))?)
     }
 
     fn escape(&mut self, pos: usize) -> Result<char> {
         self.step();
 
-        let (_, escape) = self.one().ok_or_else(
-            || UnterminatedEscape { start: self.pos() },
-        )?;
+        let (_, escape) = self.one()
+            .ok_or_else(|| UnterminatedEscape { start: self.pos() })?;
 
         let escaped = match escape {
             'n' => '\n',
@@ -255,22 +250,19 @@ impl<'input> Lexer<'input> {
             'u' => {
                 let seq_start = self.step_n(1);
 
-                let c = self.decode_unicode4().map_err(|(message, offset)| {
-                    InvalidEscape {
+                let c = self.decode_unicode4()
+                    .map_err(|(message, offset)| InvalidEscape {
                         message: message,
                         pos: seq_start + offset,
-                    }
-                })?;
+                    })?;
 
                 return Ok(c);
             }
             _ => {
-                return Err(
-                    InvalidEscape {
-                        message: "unrecognized escape, should be one of: \\n, \\r, \\t, or \\uXXXX",
-                        pos: pos,
-                    }.into(),
-                );
+                return Err(InvalidEscape {
+                    message: "unrecognized escape, should be one of: \\n, \\r, \\t, or \\uXXXX",
+                    pos: pos,
+                }.into());
             }
         };
 
@@ -547,7 +539,7 @@ pub mod tests {
                     digits: (-1242).into(),
                     decimal: 6,
                 }),
-                9
+                9,
             ),
         ];
 

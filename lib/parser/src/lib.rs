@@ -3,10 +3,10 @@
 #[macro_use]
 extern crate error_chain;
 extern crate lalrpop_util;
-extern crate reproto_core as core;
-extern crate reproto_ast as ast;
-extern crate reproto_lexer as lexer;
 extern crate num;
+extern crate reproto_ast as ast;
+extern crate reproto_core as core;
+extern crate reproto_lexer as lexer;
 
 mod utils;
 pub mod errors;
@@ -32,54 +32,50 @@ pub fn parse_string<'input>(
     input: &'input str,
 ) -> Result<ast::File<'input>> {
     use self::ErrorKind::*;
-    use lalrpop_util::ParseError::*;
     use self::lexer::errors::Error::*;
+    use lalrpop_util::ParseError::*;
 
     let lexer = lexer::lex(input);
 
     match parser::parse_File(&object, lexer) {
         Ok(file) => Ok(file),
-        Err(e) => {
-            match e {
-                InvalidToken { location } => {
-                    let pos = (object.clone(), location, location);
-                    Err(Syntax(Some(pos.into()), vec![]).into())
-                }
-                UnrecognizedToken { token, expected } => {
-                    let pos = token.map(|(start, _, end)| (object.clone(), start, end));
-                    Err(Syntax(pos.map(Into::into), expected).into())
-                }
-                User { error } => {
-                    match error {
-                        UnterminatedString { start } => {
-                            let pos = (object.clone(), start, start);
-                            return Err(Parse("unterminated string", pos.into()).into());
-                        }
-                        UnterminatedEscape { start } => {
-                            let pos = (object.clone(), start, start);
-                            return Err(Parse("unterminated escape sequence", pos.into()).into());
-                        }
-                        InvalidEscape { pos, message } => {
-                            let pos = (object.clone(), pos, pos);
-                            return Err(Parse(message, pos.into()).into());
-                        }
-                        UnterminatedCodeBlock { start } => {
-                            let pos = (object.clone(), start, start);
-                            return Err(Parse("unterminated code block", pos.into()).into());
-                        }
-                        InvalidNumber { pos, message } => {
-                            let pos = (object.clone(), pos, pos);
-                            return Err(Parse(message, pos.into()).into());
-                        }
-                        Unexpected { pos } => {
-                            let pos = (object.clone(), pos, pos);
-                            return Err(Parse("unexpected input", pos.into()).into());
-                        }
-                    }
-                }
-                _ => Err("parse error".into()),
+        Err(e) => match e {
+            InvalidToken { location } => {
+                let pos = (object.clone(), location, location);
+                Err(Syntax(Some(pos.into()), vec![]).into())
             }
-        }
+            UnrecognizedToken { token, expected } => {
+                let pos = token.map(|(start, _, end)| (object.clone(), start, end));
+                Err(Syntax(pos.map(Into::into), expected).into())
+            }
+            User { error } => match error {
+                UnterminatedString { start } => {
+                    let pos = (object.clone(), start, start);
+                    return Err(Parse("unterminated string", pos.into()).into());
+                }
+                UnterminatedEscape { start } => {
+                    let pos = (object.clone(), start, start);
+                    return Err(Parse("unterminated escape sequence", pos.into()).into());
+                }
+                InvalidEscape { pos, message } => {
+                    let pos = (object.clone(), pos, pos);
+                    return Err(Parse(message, pos.into()).into());
+                }
+                UnterminatedCodeBlock { start } => {
+                    let pos = (object.clone(), start, start);
+                    return Err(Parse("unterminated code block", pos.into()).into());
+                }
+                InvalidNumber { pos, message } => {
+                    let pos = (object.clone(), pos, pos);
+                    return Err(Parse(message, pos.into()).into());
+                }
+                Unexpected { pos } => {
+                    let pos = (object.clone(), pos, pos);
+                    return Err(Parse("unexpected input", pos.into()).into());
+                }
+            },
+            _ => Err("parse error".into()),
+        },
     }
 }
 
@@ -92,9 +88,10 @@ mod tests {
     use std::sync::Arc;
 
     fn new_context() -> Rc<Box<Object>> {
-        Rc::new(Box::new(
-            BytesObject::new(String::from(""), Arc::new(vec![])),
-        ))
+        Rc::new(Box::new(BytesObject::new(
+            String::from(""),
+            Arc::new(vec![]),
+        )))
     }
 
     /// Check that a parsed value equals expected.

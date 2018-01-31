@@ -59,7 +59,10 @@ macro_rules! define_processor {
                 self.root
             }
 
-            fn syntax(&self) -> (&'env ::syntect::highlighting::Theme, &'env ::syntect::parsing::SyntaxSet) {
+            fn syntax(&self) -> (
+                &'env ::syntect::highlighting::Theme,
+                &'env ::syntect::parsing::SyntaxSet,
+            ) {
                 self.syntax
             }
 

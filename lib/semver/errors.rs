@@ -1,8 +1,8 @@
 //! Errors for this crate.
 
+use parser;
 use std::error;
 use std::fmt;
-use parser;
 
 /// An error type for this crate.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

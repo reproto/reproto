@@ -122,13 +122,11 @@ impl RustBackend {
 
         if let Some(ref prefix) = name.prefix {
             let package_name = self.package(&name.package).parts.join("::");
-            return Ok(
-                imported_alias(
-                    Cow::Owned(package_name),
-                    Cow::Owned(local_name),
-                    Cow::Borrowed(prefix),
-                ).into(),
-            );
+            return Ok(imported_alias(
+                Cow::Owned(package_name),
+                Cow::Owned(local_name),
+                Cow::Borrowed(prefix),
+            ).into());
         }
 
         Ok(local_name.into())
@@ -169,9 +167,7 @@ impl RustBackend {
             return Ok(datetime.clone().into());
         }
 
-        Err(
-            ErrorKind::MissingTypeImpl(ty.clone(), "try: -m chrono").into(),
-        )
+        Err(ErrorKind::MissingTypeImpl(ty.clone(), "try: -m chrono").into())
     }
 
     pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Rust<'a>>> {
@@ -241,13 +237,7 @@ impl RustBackend {
         let mut elements = Tokens::new();
         elements.push_unless_empty(attributes);
         elements.push(Derives);
-        elements.push(toks![
-            "struct ",
-            name,
-            "(",
-            fields.join(", "),
-            ");",
-        ]);
+        elements.push(toks!["struct ", name, "(", fields.join(", "), ");",]);
 
         out.0.push(elements);
         Ok(())
@@ -399,9 +389,7 @@ impl RustBackend {
         let endpoints = body.endpoints.values().map(Loc::as_ref);
 
         endpoints.for_each_loc(|e| {
-            t.nested({
-                toks!["fn ", e.id.as_str(), "();"]
-            });
+            t.nested({ toks!["fn ", e.id.as_str(), "();"] });
 
             Ok(()) as Result<()>
         })?;

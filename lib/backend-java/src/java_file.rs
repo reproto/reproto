@@ -27,9 +27,10 @@ where
     pub fn process(self, out_path: &Path) -> Result<()> {
         let parts = self.package.split('.').collect::<Vec<_>>();
 
-        let client_path = parts.iter().cloned().fold(out_path.to_owned(), |p, part| {
-            p.join(part)
-        });
+        let client_path = parts
+            .iter()
+            .cloned()
+            .fold(out_path.to_owned(), |p, part| p.join(part));
 
         if !client_path.is_dir() {
             debug!("+dir: {}", client_path.display());
@@ -45,10 +46,7 @@ where
         extra.package(self.package);
 
         debug!("+class: {}", client_path.display());
-        IoFmt(&mut File::create(client_path)?).write_file(
-            file,
-            &mut extra,
-        )?;
+        IoFmt(&mut File::create(client_path)?).write_file(file, &mut extra)?;
 
         Ok(())
     }

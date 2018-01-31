@@ -9,7 +9,9 @@ pub struct Collector {
 
 impl<'a> Default for Collector {
     fn default() -> Self {
-        Collector { buffer: String::new() }
+        Collector {
+            buffer: String::new(),
+        }
     }
 }
 

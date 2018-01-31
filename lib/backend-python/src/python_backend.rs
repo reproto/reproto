@@ -7,7 +7,7 @@ use backend::errors::*;
 use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
            RpServiceBody, RpTupleBody, RpType, RpTypeBody, WithPos};
 use genco::{Element, Quoted, Tokens};
-use genco::python::{Python, imported_alias, imported_ref};
+use genco::python::{imported_alias, imported_ref, Python};
 use listeners::Listeners;
 use python_compiler::PythonCompiler;
 use python_field::PythonField;
@@ -155,7 +155,9 @@ impl PythonBackend {
 
         decode_body.push(member_loop);
         decode_body.push(toks![
-            "raise Exception(", "data does not match enum".quoted(), ")",
+            "raise Exception(",
+            "data does not match enum".quoted(),
+            ")",
         ]);
 
         let mut decode = Tokens::new();
@@ -239,9 +241,8 @@ impl PythonBackend {
             let toks = match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = toks!(var_name.clone());
-                    let var_toks = self.dynamic_decode(field.ty, var_name.clone()).with_pos(
-                        field.pos(),
-                    )?;
+                    let var_toks = self.dynamic_decode(field.ty, var_name.clone())
+                        .with_pos(field.pos())?;
                     self.optional_check(var_name.clone(), var, var_toks)
                 }
                 _ => {
@@ -339,13 +340,11 @@ impl PythonBackend {
 
         if let Some(ref used) = name.prefix {
             let package = self.package(&name.package).parts.join(".");
-            return Ok(
-                imported_alias(
-                    Cow::Owned(package),
-                    Cow::Owned(local_name),
-                    Cow::Borrowed(used),
-                ).into(),
-            );
+            return Ok(imported_alias(
+                Cow::Owned(package),
+                Cow::Owned(local_name),
+                Cow::Borrowed(used),
+            ).into());
         }
 
         Ok(local_name.into())
@@ -457,11 +456,7 @@ impl PythonBackend {
 
         tuple_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
-        let decode = self.decode_method(
-            &body.name,
-            &fields,
-            |i, _| i.to_string().into(),
-        )?;
+        let decode = self.decode_method(&body.name, &fields, |i, _| i.to_string().into())?;
         tuple_body.push(decode);
 
         let encode = self.encode_tuple_method(&fields)?;
@@ -536,11 +531,8 @@ impl PythonBackend {
             }
         }
 
-        let decode = self.decode_method(
-            &body.name,
-            &fields,
-            |_, field| toks!(field.name.quoted()),
-        )?;
+        let decode =
+            self.decode_method(&body.name, &fields, |_, field| toks!(field.name.quoted()))?;
 
         class_body.push(decode);
 
@@ -605,12 +597,7 @@ impl PythonBackend {
             let encode = self.encode_method(
                 &fields,
                 self.dict.clone().into(),
-                Some(toks![
-                    "data[",
-                    type_var,
-                    "] = ",
-                    sub_type.name().quoted(),
-                ]),
+                Some(toks!["data[", type_var, "] = ", sub_type.name().quoted(),]),
             )?;
 
             sub_type_body.push(encode);
@@ -666,8 +653,7 @@ impl<'el> DynamicConverter<'el> for PythonBackend {
         use self::RpType::*;
 
         match *ty {
-            Signed { size: _ } |
-            Unsigned { size: _ } => true,
+            Signed { size: _ } | Unsigned { size: _ } => true,
             Float | Double => true,
             String => true,
             Any => true,
@@ -751,13 +737,7 @@ impl<'el> DynamicDecode<'el> for PythonBackend {
     ) -> Tokens<'el, Self::Custom> {
         let mut check = Tokens::new();
 
-        check.push(toks![
-            "if ",
-            type_var,
-            " == ",
-            name.quoted(),
-            ":",
-        ]);
+        check.push(toks!["if ", type_var, " == ", name.quoted(), ":",]);
 
         check.nested(toks!["return ", type_name, ".decode(data)"]);
         check

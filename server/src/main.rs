@@ -1,10 +1,10 @@
-#[macro_use]
-extern crate log;
 extern crate futures_cpupool;
 extern crate hyper;
+#[macro_use]
+extern crate log;
 extern crate pretty_env_logger;
-extern crate reproto_server;
 extern crate reproto_repository;
+extern crate reproto_server;
 
 use futures_cpupool::CpuPool;
 use hyper::server::Http;

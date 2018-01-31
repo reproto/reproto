@@ -8,7 +8,7 @@ use errors::*;
 use linked_hash_map::LinkedHashMap;
 use parser;
 use repository::{Resolved, Resolver};
-use std::collections::{BTreeMap, HashMap, LinkedList, btree_map};
+use std::collections::{btree_map, BTreeMap, HashMap, LinkedList};
 use std::path::Path;
 use std::rc::Rc;
 use std::vec;
@@ -143,9 +143,10 @@ impl Environment {
             let package = RpVersionedPackage::new(required.package.clone(), version);
             let file = self.load_object(object, &package)?;
 
-            candidates.entry(package).or_insert_with(Vec::new).push(
-                file,
-            );
+            candidates
+                .entry(package)
+                .or_insert_with(Vec::new)
+                .push(file);
         }
 
         let result = if let Some((versioned, files)) = candidates.into_iter().last() {
@@ -171,7 +172,9 @@ impl Environment {
 
     /// Iterate over all files.
     pub fn for_each_file(&self) -> ForEachFile {
-        ForEachFile { iter: self.files.iter() }
+        ForEachFile {
+            iter: self.files.iter(),
+        }
     }
 
     /// Iterate over top level declarations of all registered objects.
@@ -181,7 +184,9 @@ impl Environment {
             .flat_map(|f| f.decls.iter())
             .collect::<Vec<_>>();
 
-        ToplevelDeclIter { it: values.into_iter() }
+        ToplevelDeclIter {
+            it: values.into_iter(),
+        }
     }
 
     /// Walks the entire tree of declarations recursively of all registered objects.
@@ -264,8 +269,8 @@ impl Environment {
         &mut self,
         uses: &[Loc<UseDecl>],
     ) -> Result<HashMap<String, RpVersionedPackage>> {
-        use std::collections::hash_map::Entry;
         use self::ErrorKind::*;
+        use std::collections::hash_map::Entry;
 
         let mut prefixes = HashMap::new();
 
@@ -323,13 +328,11 @@ impl Environment {
             match self.types.entry(key) {
                 Vacant(entry) => entry.insert(t),
                 Occupied(entry) => {
-                    return Err(
-                        self.ctx
-                            .report()
-                            .err(t.pos(), "conflicting declaration")
-                            .info(entry.get().pos(), "last declaration here")
-                            .into(),
-                    );
+                    return Err(self.ctx
+                        .report()
+                        .err(t.pos(), "conflicting declaration")
+                        .info(entry.get().pos(), "last declaration here")
+                        .into());
                 }
             };
         }

@@ -47,11 +47,8 @@ impl Repository {
         let object = object.as_ref();
         let checksum = to_sha256(object.read()?)?;
 
-        self.objects.put_object(
-            &checksum,
-            &mut object.read()?,
-            force,
-        )?;
+        self.objects
+            .put_object(&checksum, &mut object.read()?, force)?;
         self.index.put_version(&checksum, package, version, force)?;
 
         Ok(())

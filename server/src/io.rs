@@ -25,9 +25,8 @@ where
         .fold((pool, file), |(pool, mut file), chunk| {
             // Write chunks on cpu-pool
             let write = pool.spawn_fn(move || {
-                file.write_all(chunk.as_ref()).chain_err(
-                    || "failed to write chunk",
-                )?;
+                file.write_all(chunk.as_ref())
+                    .chain_err(|| "failed to write chunk")?;
                 Ok(file) as Result<File>
             });
 

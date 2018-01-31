@@ -3,7 +3,7 @@
 use backend::errors::*;
 use codegen::ClassCodegen;
 use genco::{Java, Quoted, Tokens};
-use genco::java::{Argument, Class, Field, Method, Modifier, imported, local};
+use genco::java::{imported, local, Argument, Class, Field, Method, Modifier};
 use listeners::{ClassAdded, Configure, Listeners};
 use std::rc::Rc;
 
@@ -47,7 +47,10 @@ impl Builder {
             "this.",
             field.var(),
             " = ",
-            self.optional.clone(), ".of(", argument.var(), ")",
+            self.optional.clone(),
+            ".of(",
+            argument.var(),
+            ")",
             ";",
         ]);
         setter.body.push("return this;");

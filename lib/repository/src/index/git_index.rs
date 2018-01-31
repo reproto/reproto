@@ -1,8 +1,8 @@
 use checksum::Checksum;
-use core::{RpPackage, Version, Range};
+use core::{Range, RpPackage, Version};
 use errors::*;
 use git::GitRepo;
-use index::{Deployment, Index, file_index};
+use index::{file_index, Deployment, Index};
 use objects::{FileObjects, GitObjects, Objects};
 use relative_path::RelativePath;
 use std::rc::Rc;
@@ -56,9 +56,11 @@ impl Index for GitIndex {
             url = url.join(c)?;
         }
 
-        Ok(Box::new(
-            GitObjects::new(url, self.git_repo.clone(), file_objects),
-        ))
+        Ok(Box::new(GitObjects::new(
+            url,
+            self.git_repo.clone(),
+            file_objects,
+        )))
     }
 
     fn update(&self) -> Result<Vec<Update>> {

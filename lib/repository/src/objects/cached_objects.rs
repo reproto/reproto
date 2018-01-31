@@ -26,20 +26,17 @@ impl<T: Objects> CachedObjects<T> {
     }
 
     fn cache_path(&self, checksum: &Checksum) -> Result<PathBuf> {
-        let path = self.objects_cache.join(format!(
-            "{}",
-            HexSlice::new(&checksum[0..1])
-        ));
+        let path = self.objects_cache
+            .join(format!("{}", HexSlice::new(&checksum[0..1])));
         let path = path.join(format!("{}", HexSlice::new(&checksum[1..2])));
         Ok(path.join(format!("{}", HexSlice::new(&checksum))))
     }
 
     /// Get the path to the missing file cache.
     fn missing_path(&self, checksum: &Checksum) -> Result<PathBuf> {
-        Ok(self.objects_cache.join("missing").join(format!(
-            "{}",
-            HexSlice::new(checksum)
-        )))
+        Ok(self.objects_cache
+            .join("missing")
+            .join(format!("{}", HexSlice::new(checksum))))
     }
 
     /// Check if there is a local missing cached file, and assume that the remote file is missing
@@ -59,11 +56,9 @@ impl<T: Objects> CachedObjects<T> {
                 let now = time::SystemTime::now();
                 let age = now.duration_since(m.modified()?)?;
 
-                let expires = self.missing_cache_time.checked_sub(age).unwrap_or_else(
-                    || {
-                        Duration::new(0, 0)
-                    },
-                );
+                let expires = self.missing_cache_time
+                    .checked_sub(age)
+                    .unwrap_or_else(|| Duration::new(0, 0));
 
                 debug!(
                     "cache: missing file exists: {} (age: {}s, expires: {}s)",

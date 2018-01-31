@@ -1,13 +1,11 @@
-use self::cmark::{Event, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES, Options, Parser, Tag};
-
+use self::cmark::{Event, Options, Parser, Tag, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
 use backend::errors::*;
 use doc_builder::DocBuilder;
-
 use pulldown_cmark as cmark;
 use std::borrow::Cow::{Borrowed, Owned};
 use syntect::easy::HighlightLines;
 use syntect::highlighting::Theme;
-use syntect::html::{IncludeBackground, start_coloured_html_snippet, styles_to_coloured_html};
+use syntect::html::{start_coloured_html_snippet, styles_to_coloured_html, IncludeBackground};
 use syntect::parsing::SyntaxSet;
 
 pub fn markdown_to_html(

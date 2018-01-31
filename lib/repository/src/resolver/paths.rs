@@ -38,9 +38,7 @@ impl Paths {
         let mut it = stem.splitn(2, '-');
 
         if let (Some(name_base), Some(name_version)) = (it.next(), it.next()) {
-            let version = Version::parse(name_version).map_err(
-                |_| format!("bad version"),
-            )?;
+            let version = Version::parse(name_version).map_err(|_| format!("bad version"))?;
 
             return Ok((name_base, Some(version)));
         }
@@ -90,9 +88,8 @@ impl Paths {
             }
 
             if let Some(stem) = p.file_stem().and_then(OsStr::to_str) {
-                let (name_base, version) = self.parse_stem(stem).map_err(|m| {
-                    format!("{}: {}", p.display(), m)
-                })?;
+                let (name_base, version) = self.parse_stem(stem)
+                    .map_err(|m| format!("{}: {}", p.display(), m))?;
 
                 if name_base != base {
                     continue;
@@ -141,9 +138,9 @@ impl Paths {
             return Ok(None);
         }
 
-        let stem = path.file_stem().and_then(OsStr::to_str).ok_or_else(|| {
-            format!("illegal path: {}", path.display())
-        })?;
+        let stem = path.file_stem()
+            .and_then(OsStr::to_str)
+            .ok_or_else(|| format!("illegal path: {}", path.display()))?;
 
         let (stem, version) = self.parse_stem(stem)?;
 
@@ -186,9 +183,9 @@ impl Paths {
                 if path.is_dir() {
                     let file_name = entry.file_name();
 
-                    let name = file_name.to_str().ok_or_else(|| {
-                        format!("illegal path: {}", path.display())
-                    })?;
+                    let name = file_name
+                        .to_str()
+                        .ok_or_else(|| format!("illegal path: {}", path.display()))?;
 
                     queue.push_back((prefix.clone().join_part(name), path));
                     continue;
@@ -233,10 +230,10 @@ impl Resolver for Paths {
         let mut files = Vec::new();
 
         for path in &self.paths {
-            let path = prefix.parts.iter().fold(
-                path.to_owned(),
-                |p, part| p.join(part),
-            );
+            let path = prefix
+                .parts
+                .iter()
+                .fold(path.to_owned(), |p, part| p.join(part));
             files.extend(self.find_by_prefix(&path, prefix)?);
         }
 

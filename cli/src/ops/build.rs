@@ -10,11 +10,12 @@ use std::rc::Rc;
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("build").about("Build specifications");
 
-    let out = out.arg(Arg::with_name("lang").long("lang").takes_value(true).help(
-        "Language \
-         to build \
-         for",
-    ));
+    let out = out.arg(
+        Arg::with_name("lang")
+            .long("lang")
+            .takes_value(true)
+            .help("Language to build for"),
+    );
 
     out
 }
@@ -29,9 +30,7 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
         .as_ref()
         .cloned()
         .or_else(|| matches.value_of("lang").and_then(Language::parse))
-        .ok_or_else(|| {
-            "no language specified either through manifest or cli (--lang)"
-        })?;
+        .ok_or_else(|| "no language specified either through manifest or cli (--lang)")?;
 
     match language {
         Java => manifest_compile::<::java::JavaLang, _>(ctx, matches, preamble, ::java::compile),

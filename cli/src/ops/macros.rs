@@ -12,21 +12,33 @@ macro_rules! do_manifest_use {
 
         match language {
             Some(::manifest::Language::Java) => {
-                ::build_spec::manifest_use::<::java::JavaLang, _>($ctx, $matches, $preamble, $fn)
+                ::build_spec::manifest_use::<::java::JavaLang, _>(
+                    $ctx, $matches, $preamble, $fn
+                )
             }
             Some(::manifest::Language::Js) => {
-                ::build_spec::manifest_use::<::js::JsLang, _>($ctx, $matches, $preamble, $fn)
+                ::build_spec::manifest_use::<::js::JsLang, _>(
+                    $ctx, $matches, $preamble, $fn
+                )
             }
             Some(::manifest::Language::Json) => {
-                ::build_spec::manifest_use::<::json::JsonLang, _>($ctx, $matches, $preamble, $fn)
+                ::build_spec::manifest_use::<::json::JsonLang, _>(
+                    $ctx, $matches, $preamble, $fn
+                )
             }
             Some(::manifest::Language::Python) => {
-                ::build_spec::manifest_use::<::python::PythonLang, _>($ctx, $matches, $preamble, $fn)
+                ::build_spec::manifest_use::<::python::PythonLang, _>(
+                    $ctx, $matches, $preamble, $fn
+                )
             }
             Some(::manifest::Language::Rust) => {
-                ::build_spec::manifest_use::<::rust::RustLang, _>($ctx, $matches, $preamble, $fn)
+                ::build_spec::manifest_use::<::rust::RustLang, _>(
+                    $ctx, $matches, $preamble, $fn
+                )
             }
-            None => ::build_spec::manifest_use::<::manifest::NoLang, _>($ctx, $matches, $preamble, $fn),
+            None => ::build_spec::manifest_use::<::manifest::NoLang, _>(
+                $ctx, $matches, $preamble, $fn
+            ),
         }
     }};
 }

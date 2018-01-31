@@ -40,8 +40,7 @@ pub fn read_config<P: AsRef<Path>>(path: P) -> Result<Config> {
     let mut f = File::open(path)?;
     let mut content = String::new();
     f.read_to_string(&mut content)?;
-    let config: Config = toml::from_str(content.as_str()).map_err(|e| {
-        format!("{}: bad config: {}", path.display(), e)
-    })?;
+    let config: Config = toml::from_str(content.as_str())
+        .map_err(|e| format!("{}: bad config: {}", path.display(), e))?;
     Ok(config)
 }

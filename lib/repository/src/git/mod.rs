@@ -15,9 +15,9 @@ pub fn setup_git_repo<'a, P: AsRef<Path>>(
 ) -> Result<GitRepo> {
     let mut remote = url.clone();
 
-    remote.set_scheme(scheme).map_err(|_| {
-        format!("cannot set scheme for url: {}", url)
-    })?;
+    remote
+        .set_scheme(scheme)
+        .map_err(|_| format!("cannot set scheme for url: {}", url))?;
 
     let path = repos.as_ref().to_owned();
 
@@ -38,20 +38,23 @@ pub fn setup_git_repo<'a, P: AsRef<Path>>(
         _ => path.join(format!("unknown-{}", tail)),
     };
 
-    let refspec = remote.query_pairs().find(|e| e.0 == "ref").map(|e| {
-        e.1.into_owned()
+    let refspec = remote
+        .query_pairs()
+        .find(|e| e.0 == "ref")
+        .map(|e| e.1.into_owned());
+
+    let refspec = refspec.or_else(|| {
+        remote
+            .query_pairs()
+            .find(|e| e.0 == "branch")
+            .map(|e| format!("refs/heads/{}", e.1.into_owned()))
     });
 
     let refspec = refspec.or_else(|| {
-        remote.query_pairs().find(|e| e.0 == "branch").map(|e| {
-            format!("refs/heads/{}", e.1.into_owned())
-        })
-    });
-
-    let refspec = refspec.or_else(|| {
-        remote.query_pairs().find(|e| e.0 == "tag").map(|e| {
-            format!("refs/tags/{}", e.1.into_owned())
-        })
+        remote
+            .query_pairs()
+            .find(|e| e.0 == "tag")
+            .map(|e| format!("refs/tags/{}", e.1.into_owned()))
     });
 
     let refspec = refspec.unwrap_or_else(|| DEFAULT_REMOTE_REF.to_owned());

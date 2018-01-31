@@ -1,14 +1,14 @@
 #[macro_use]
-extern crate log;
-#[macro_use]
 extern crate genco;
-extern crate reproto_backend as backend;
 #[macro_use]
-extern crate serde_derive;
+extern crate log;
+extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
-extern crate toml;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate toml;
 
 mod processor;
 mod java_backend;
@@ -27,7 +27,7 @@ use core::Context;
 use java_backend::JavaBackend;
 use java_options::JavaOptions;
 use listeners::{Configure, Listeners};
-use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
+use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
 use std::path::Path;
 use std::rc::Rc;
 use utils::Utils;

@@ -11,12 +11,10 @@
 //! The `version` module gives you tools to create and compare SemVer-compliant
 //! versions.
 
-
 use errors::Error;
 use parser;
 #[cfg(feature = "serde")]
 use serde::de::{self, Deserialize, Deserializer, Visitor};
-
 #[cfg(feature = "serde")]
 use serde::ser::{Serialize, Serializer};
 use std::cmp::{self, Ordering};
@@ -266,8 +264,8 @@ impl cmp::PartialEq for Version {
         // We should ignore build metadata here, otherwise versions v1 and v2
         // can exist such that !(v1 < v2) && !(v1 > v2) && v1 != v2, which
         // violate strict total ordering rules.
-        self.major == other.major && self.minor == other.minor && self.patch == other.patch &&
-            self.pre == other.pre
+        self.major == other.major && self.minor == other.minor && self.patch == other.patch
+            && self.pre == other.pre
     }
 }
 
@@ -443,7 +441,6 @@ mod tests {
                 build: vec![Identifier::AlphaNumeric(String::from("0851523"))],
             })
         );
-
     }
 
     #[test]
@@ -482,7 +479,6 @@ mod tests {
 
         assert_eq!(release, Version::parse("2.0.0").unwrap());
     }
-
 
     #[test]
     fn test_increment_clear_metadata() {
@@ -752,7 +748,6 @@ mod tests {
                 build: vec![Identifier::AlphaNumeric(String::from("0851523"))],
             })
         );
-
     }
 
     struct SemverTest(&'static str, &'static str, bool);
@@ -776,8 +771,7 @@ mod tests {
     /// https://raw.githubusercontent.com/npm/node-semver/master/test/index.js
     #[test]
     fn node_semver_comparisons() {
-        let input =
-            semver_tests![
+        let input = semver_tests![
             ("0.0.0", "0.0.0-foo"),
             ("0.0.1", "0.0.0"),
             ("1.0.0", "0.9.9"),
@@ -838,8 +832,7 @@ mod tests {
     #[test]
     fn node_semver_range() {
         // NOTE: we support multiple predicates separated by comma (,) instead of spaces.
-        let input =
-            semver_tests![
+        let input = semver_tests![
             // ("1.0.0 - 2.0.0", "1.2.3", ignore),
             ("^1.2.3+build", "1.2.3"),
             ("^1.2.3+build", "1.3.0"),
@@ -895,8 +888,8 @@ mod tests {
             ("*", "1.2.3"),
             ("2", "2.1.2"),
             ("2.3", "2.3.1"),
-            ("~x", "0.0.9"), // >=2.4.0 <2.5.0
-            ("~2", "2.0.9"), // >=2.4.0 <2.5.0
+            ("~x", "0.0.9"),   // >=2.4.0 <2.5.0
+            ("~2", "2.0.9"),   // >=2.4.0 <2.5.0
             ("~2.4", "2.4.0"), // >=2.4.0 <2.5.0
             ("~2.4", "2.4.5"),
             // ("~>3.2.1", "3.2.2"), // >=3.2.1 <3.3.0,

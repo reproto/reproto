@@ -1,4 +1,4 @@
-use core::{ErrorPos, errors as core};
+use core::{errors as core, ErrorPos};
 use std::path::PathBuf;
 
 error_chain! {

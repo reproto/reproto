@@ -39,10 +39,12 @@ pub fn strip_code_block<'a>(input: &'a str) -> Vec<&'a str> {
     }
 
     if let Some(indent) = indent {
-        return it.map(|line| if line.len() >= indent {
-            &line[indent..]
-        } else {
-            line
+        return it.map(|line| {
+            if line.len() >= indent {
+                &line[indent..]
+            } else {
+                line
+            }
         }).collect();
     }
 

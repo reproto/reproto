@@ -1,13 +1,13 @@
 #[allow(unused)]
 #[macro_use]
-extern crate serde_derive;
-#[allow(unused)]
-#[macro_use]
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
-extern crate serde_json;
 extern crate serde;
+#[allow(unused)]
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 extern crate toml;
 
 mod collector;
@@ -23,7 +23,7 @@ use core::Context;
 use json_backend::JsonBackend;
 use json_options::JsonOptions;
 use listeners::Listeners;
-use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
+use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
 use std::path::Path;
 use std::rc::Rc;
 
@@ -54,8 +54,7 @@ fn setup_listeners(modules: &[JsonModule]) -> Result<(JsonOptions, Box<Listeners
     let listeners: Vec<Box<Listeners>> = Vec::new();
 
     for module in modules {
-        match *module {
-        }
+        match *module {}
     }
 
     let mut options = JsonOptions::new();

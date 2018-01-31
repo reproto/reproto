@@ -6,8 +6,8 @@ use backend::errors::*;
 use core::{ForEachLoc, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody, RpName,
            RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use genco::{Cons, Element, Java, Quoted, Tokens};
-use genco::java::{Argument, BOOLEAN, Class, Constructor, Enum, Field, INTEGER, Interface, Method,
-                  Modifier, imported, local, optional};
+use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum, Field, Interface,
+                  Method, Modifier, BOOLEAN, INTEGER};
 use java_field::JavaField;
 use java_file::JavaFile;
 use java_options::JavaOptions;
@@ -41,12 +41,11 @@ impl Processor for JavaBackend {}
 
 impl JavaBackend {
     pub fn new(env: &Rc<Environment>, utils: &Rc<Utils>, options: JavaOptions) -> JavaBackend {
-        let async_container =
-            options
-                .async_container
-                .as_ref()
-                .map(Clone::clone)
-                .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
+        let async_container = options
+            .async_container
+            .as_ref()
+            .map(Clone::clone)
+            .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
 
         JavaBackend {
             env: Rc::clone(env),
@@ -121,13 +120,8 @@ impl JavaBackend {
 
             c.arguments.push(argument.clone());
 
-            c.body.push(toks![
-                "this.",
-                field.var(),
-                " = ",
-                argument.var(),
-                ";",
-            ]);
+            c.body
+                .push(toks!["this.", field.var(), " = ", argument.var(), ";",]);
         }
 
         c
@@ -147,7 +141,12 @@ impl JavaBackend {
                 let req = toks![self.objects.clone(), ".requireNonNull"];
 
                 Some(toks![
-                    req, "(", argument.var(), ", ", field.var().quoted(), ");",
+                    req,
+                    "(",
+                    argument.var(),
+                    ", ",
+                    field.var().quoted(),
+                    ");",
                 ])
             }
         }
@@ -186,9 +185,9 @@ impl JavaBackend {
                 value
             };
 
-            hash_code.body.push(
-                toks!["result = result * 31 + ", value, ";"],
-            );
+            hash_code
+                .body
+                .push(toks!["result = result * 31 + ", value, ";"]);
         }
 
         hash_code.body.push("return result;");
@@ -220,7 +219,11 @@ impl JavaBackend {
             let mut t = Tokens::new();
 
             t.push(toks![
-                "if (!(", argument.var(), " instanceof ", name.clone(), ")) {",
+                "if (!(",
+                argument.var(),
+                " instanceof ",
+                name.clone(),
+                ")) {",
             ]);
             t.nested("return false;");
             t.push("}");
@@ -232,11 +235,21 @@ impl JavaBackend {
             let mut t = Tokens::new();
 
             t.push(toks![
-                "@", self.suppress_warnings.clone(), "(", "unchecked".quoted(), ")",
+                "@",
+                self.suppress_warnings.clone(),
+                "(",
+                "unchecked".quoted(),
+                ")",
             ]);
 
             t.push(toks![
-                "final ", name.clone(), " o = (", name.clone(), ") ", argument.var(), ";",
+                "final ",
+                name.clone(),
+                " o = (",
+                name.clone(),
+                ") ",
+                argument.var(),
+                ";",
             ]);
 
             t
@@ -341,19 +354,11 @@ impl JavaBackend {
         let mut class_appends = Tokens::new();
 
         class_appends.push(toks!["b.append(", name.quoted(), ");"]);
-        class_appends.push(toks![
-            "b.append(",
-            "(".quoted(),
-            ");",
-        ]);
+        class_appends.push(toks!["b.append(", "(".quoted(), ");",]);
 
         let sep = toks![Element::PushSpacing, "b.append(", ", ".quoted(), ");"];
         class_appends.push(body.join(sep));
-        class_appends.push(toks![
-            "b.append(",
-            ")".quoted(),
-            ");",
-        ]);
+        class_appends.push(toks!["b.append(", ")".quoted(), ");",]);
 
         to_string.body.push(class_appends);
         to_string.body.push(toks!["return b.toString();"]);
@@ -404,13 +409,8 @@ impl JavaBackend {
                 }
             }
 
-            c.body.push(toks![
-                "this.",
-                field.var(),
-                " = ",
-                argument.var(),
-                ";",
-            ]);
+            c.body
+                .push(toks!["this.", field.var(), " = ", argument.var(), ";",]);
 
             c.arguments.push(argument);
         }
@@ -437,9 +437,12 @@ impl JavaBackend {
 
         let mut value_loop = Tokens::new();
 
-        value_loop.push(
-            toks!["for (final ", name.clone(), " v_value : ", "values()) {", ],
-        );
+        value_loop.push(toks![
+            "for (final ",
+            name.clone(),
+            " v_value : ",
+            "values()) {",
+        ]);
 
         value_loop.nested(return_matched);
         value_loop.push("}");
@@ -449,8 +452,7 @@ impl JavaBackend {
         from_value.modifiers = vec![Public, Static];
         from_value.returns = local(name.clone());
 
-        let throw =
-            toks![
+        let throw = toks![
             "throw new ",
             self.illegal_argument.clone(),
             "(",
@@ -504,9 +506,8 @@ impl JavaBackend {
             spec.variants.append(enum_value);
         }
 
-        spec.constructors.push(
-            self.build_enum_constructor(&spec.fields),
-        );
+        spec.constructors
+            .push(self.build_enum_constructor(&spec.fields));
 
         let variant_field = body.variant_type.as_field();
         let variant_java_field = self.convert_field(&variant_field)?;
@@ -614,9 +615,9 @@ impl JavaBackend {
 
             let sub_type_fields = self.convert_fields(&sub_type.fields)?;
 
-            class.body.push_unless_empty(
-                Code(&sub_type.codes, JAVA_CONTEXT),
-            );
+            class
+                .body
+                .push_unless_empty(Code(&sub_type.codes, JAVA_CONTEXT));
 
             class.implements = vec![local(spec.name())];
 

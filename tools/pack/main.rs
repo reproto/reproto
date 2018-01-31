@@ -1,5 +1,5 @@
-extern crate syntect;
 extern crate clap;
+extern crate syntect;
 
 use clap::{App, Arg};
 use std::env;

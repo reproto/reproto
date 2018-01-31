@@ -264,19 +264,27 @@ impl Source for CamelCase {
 
 impl FromNaming for CamelCase {
     fn to_lower_camel(&self) -> Box<Naming> {
-        Box::new(LowerCamelNaming { source: self.clone() })
+        Box::new(LowerCamelNaming {
+            source: self.clone(),
+        })
     }
 
     fn to_upper_camel(&self) -> Box<Naming> {
-        Box::new(UpperCamelNaming { source: self.clone() })
+        Box::new(UpperCamelNaming {
+            source: self.clone(),
+        })
     }
 
     fn to_lower_snake(&self) -> Box<Naming> {
-        Box::new(LowerSnakeNaming { source: self.clone() })
+        Box::new(LowerSnakeNaming {
+            source: self.clone(),
+        })
     }
 
     fn to_upper_snake(&self) -> Box<Naming> {
-        Box::new(UpperSnakeNaming { source: self.clone() })
+        Box::new(UpperSnakeNaming {
+            source: self.clone(),
+        })
     }
 }
 
@@ -338,19 +346,27 @@ impl Source for SnakeCase {
 
 impl FromNaming for SnakeCase {
     fn to_lower_camel(&self) -> Box<Naming> {
-        Box::new(LowerCamelNaming { source: self.clone() })
+        Box::new(LowerCamelNaming {
+            source: self.clone(),
+        })
     }
 
     fn to_upper_camel(&self) -> Box<Naming> {
-        Box::new(UpperCamelNaming { source: self.clone() })
+        Box::new(UpperCamelNaming {
+            source: self.clone(),
+        })
     }
 
     fn to_lower_snake(&self) -> Box<Naming> {
-        Box::new(LowerSnakeNaming { source: self.clone() })
+        Box::new(LowerSnakeNaming {
+            source: self.clone(),
+        })
     }
 
     fn to_upper_snake(&self) -> Box<Naming> {
-        Box::new(UpperSnakeNaming { source: self.clone() })
+        Box::new(UpperSnakeNaming {
+            source: self.clone(),
+        })
     }
 }
 

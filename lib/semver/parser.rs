@@ -373,7 +373,9 @@ impl<'input> Parser<'input> {
             }
         }
 
-        Ok(Range { predicates: predicates })
+        Ok(Range {
+            predicates: predicates,
+        })
     }
 
     /// Parse a version.

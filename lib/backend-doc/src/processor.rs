@@ -272,9 +272,11 @@ pub trait Processor<'env> {
     }
 
     fn package_url(&self, package: &RpVersionedPackage) -> String {
-        let url = package.clone().as_package(ToString::to_string).parts.join(
-            "/",
-        );
+        let url = package
+            .clone()
+            .as_package(ToString::to_string)
+            .parts
+            .join("/");
 
         format!("{}/{}/index.html", self.root(), url)
     }

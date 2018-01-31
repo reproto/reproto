@@ -229,92 +229,52 @@ pub trait Output {
         match *violation {
             DeclRemoved(ref c, ref reg) => {
                 self.print_error(
-                    format!("{}: declaration removed", c.describe())
-                        .as_str(),
+                    format!("{}: declaration removed", c.describe()).as_str(),
                     reg,
                 )?;
             }
             DeclAdded(ref c, ref reg) => {
-                self.print_error(
-                    format!("{}: declaration added", c.describe()).as_str(),
-                    reg,
-                )?;
+                self.print_error(format!("{}: declaration added", c.describe()).as_str(), reg)?;
             }
             RemoveField(ref c, ref field) => {
-                self.print_error(
-                    format!("{}: field removed", c.describe()).as_str(),
-                    field,
-                )?;
+                self.print_error(format!("{}: field removed", c.describe()).as_str(), field)?;
             }
             RemoveVariant(ref c, ref field) => {
-                self.print_error(
-                    format!("{}: variant removed", c.describe()).as_str(),
-                    field,
-                )?;
+                self.print_error(format!("{}: variant removed", c.describe()).as_str(), field)?;
             }
             AddField(ref c, ref field) => {
-                self.print_error(
-                    format!("{}: field added", c.describe()).as_str(),
-                    field,
-                )?;
+                self.print_error(format!("{}: field added", c.describe()).as_str(), field)?;
             }
             AddVariant(ref c, ref field) => {
-                self.print_error(
-                    format!("{}: variant added", c.describe()).as_str(),
-                    field,
-                )?;
+                self.print_error(format!("{}: variant added", c.describe()).as_str(), field)?;
             }
             FieldTypeChange(ref c, ref from_type, ref from, ref to_type, ref to) => {
                 self.print_error(
-                    format!(
-                        "{}: type changed to `{}`",
-                        c.describe(),
-                        to_type
-                    ).as_str(),
+                    format!("{}: type changed to `{}`", c.describe(), to_type).as_str(),
                     to,
                 )?;
 
-                self.print_error(
-                    format!("from `{}`", from_type).as_str(),
-                    from,
-                )?;
+                self.print_error(format!("from `{}`", from_type).as_str(), from)?;
             }
             FieldNameChange(ref c, ref from_name, ref from, ref to_name, ref to) => {
                 self.print_error(
-                    format!(
-                        "{}: name changed to `{}`",
-                        c.describe(),
-                        to_name
-                    ).as_str(),
+                    format!("{}: name changed to `{}`", c.describe(), to_name).as_str(),
                     to,
                 )?;
 
-                self.print_error(
-                    format!("from `{}`", from_name).as_str(),
-                    from,
-                )?;
+                self.print_error(format!("from `{}`", from_name).as_str(), from)?;
             }
             VariantOrdinalChange(ref c, ref from_ordinal, ref from, ref to_ordinal, ref to) => {
                 self.print_error(
-                    format!(
-                        "{}: ordinal changed to `{}`",
-                        c.describe(),
-                        to_ordinal
-                    ).as_str(),
+                    format!("{}: ordinal changed to `{}`", c.describe(), to_ordinal).as_str(),
                     to,
                 )?;
 
-                self.print_error(
-                    format!("from `{}`", from_ordinal).as_str(),
-                    from,
-                )?;
+                self.print_error(format!("from `{}`", from_ordinal).as_str(), from)?;
             }
             FieldRequiredChange(ref c, ref from, ref to) => {
                 self.print_error(
-                    format!(
-                        "{}: field changed to be required`",
-                        c.describe(),
-                    ).as_str(),
+                    format!("{}: field changed to be required`", c.describe(),).as_str(),
                     to,
                 )?;
 
@@ -322,35 +282,23 @@ pub trait Output {
             }
             AddRequiredField(ref c, ref field) => {
                 self.print_error(
-                    format!(
-                        "{}: required field added",
-                        c.describe(),
-                    ).as_str(),
+                    format!("{}: required field added", c.describe(),).as_str(),
                     field,
                 )?;
             }
             FieldModifierChange(ref c, ref from, ref to) => {
                 self.print_error(
-                    format!(
-                        "{}: field modifier changed",
-                        c.describe(),
-                    ).as_str(),
+                    format!("{}: field modifier changed", c.describe(),).as_str(),
                     to,
                 )?;
 
                 self.print_error("from here", from)?;
             }
             AddEndpoint(ref c, ref pos) => {
-                self.print_error(
-                    format!("{}: endpoint added", c.describe()).as_str(),
-                    pos,
-                )?;
+                self.print_error(format!("{}: endpoint added", c.describe()).as_str(), pos)?;
             }
             RemoveEndpoint(ref c, ref pos) => {
-                self.print_error(
-                    format!("{}: endpoint removed", c.describe()).as_str(),
-                    pos,
-                )?;
+                self.print_error(format!("{}: endpoint removed", c.describe()).as_str(), pos)?;
             }
             EndpointRequestChange(ref c, ref from_channel, ref from, ref to_channel, ref to) => {
                 self.print_error(
@@ -363,8 +311,7 @@ pub trait Output {
                 )?;
 
                 self.print_error(
-                    format!("from `{}`", PrintChannelInfo(from_channel))
-                        .as_str(),
+                    format!("from `{}`", PrintChannelInfo(from_channel)).as_str(),
                     from,
                 )?;
             }
@@ -379,8 +326,7 @@ pub trait Output {
                 )?;
 
                 self.print_error(
-                    format!("from `{}`", PrintChannelInfo(from_channel))
-                        .as_str(),
+                    format!("from `{}`", PrintChannelInfo(from_channel)).as_str(),
                     from,
                 )?;
             }

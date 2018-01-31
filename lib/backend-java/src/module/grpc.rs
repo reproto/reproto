@@ -5,7 +5,7 @@ use backend::errors::*;
 use codegen::ServiceCodegen;
 use core::{Loc, RpChannel, RpEndpoint};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
-use genco::java::{Argument, Class, Constructor, Field, Method, Modifier, imported, local};
+use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
 use java_backend::JavaBackend;
 use listeners::{Configure, Listeners, ServiceAdded};
 use processor::Processor;
@@ -74,10 +74,8 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for VoidMarshaller<'a> {
             let mut m = Method::new("parse");
             m.annotation(Override(self.0));
             m.returns = void.clone();
-            m.arguments.push(Argument::new(
-                self.0.input_stream.clone(),
-                "stream",
-            ));
+            m.arguments
+                .push(Argument::new(self.0.input_stream.clone(), "stream"));
 
             m.body.push("return null;");
             m
@@ -90,11 +88,8 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for VoidMarshaller<'a> {
             m.returns = self.0.input_stream.clone();
             m.arguments.push(Argument::new(void.clone(), "value"));
 
-            m.body.push(toks![
-                "return new ",
-                self.0.bais.clone(),
-                "(new byte[0]);",
-            ]);
+            m.body
+                .push(toks!["return new ", self.0.bais.clone(), "(new byte[0]);",]);
             m
         });
 
@@ -144,10 +139,8 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for JsonMarshaller<'a> {
             let mut m = Method::new("parse");
             m.annotation(Override(self.0));
             m.returns = tpl.clone();
-            m.arguments.push(Argument::new(
-                self.0.input_stream.clone(),
-                "stream",
-            ));
+            m.arguments
+                .push(Argument::new(self.0.input_stream.clone(), "stream"));
 
             m.body.push({
                 let mut t = Tokens::new();
@@ -273,10 +266,8 @@ impl GrpcClient {
             self.snake_to_upper.convert(endpoint.id.as_str())
         ));
 
-        let descriptor_ty = self.method_descriptor.with_arguments(vec![
-            request_ty.clone(),
-            response_ty.clone(),
-        ]);
+        let descriptor_ty = self.method_descriptor
+            .with_arguments(vec![request_ty.clone(), response_ty.clone()]);
 
         let mut field = Field::new(descriptor_ty, method_name.clone());
         field.modifiers = vec![Public, Static, Final];
@@ -298,20 +289,27 @@ impl GrpcClient {
                 t.push(toks![
                     ".setType(",
                     self.method_descriptor.clone(),
-                    ".MethodType.", method_type.variant_name(), ")",
+                    ".MethodType.",
+                    method_type.variant_name(),
+                    ")",
                 ]);
 
                 t.push(toks![
                     ".setFullMethodName(",
-                    self.method_descriptor.clone(), ".generateFullMethodName(",
-                    service_name.quoted(), ", ", endpoint.name.as_str().quoted(),
+                    self.method_descriptor.clone(),
+                    ".generateFullMethodName(",
+                    service_name.quoted(),
+                    ", ",
+                    endpoint.name.as_str().quoted(),
                     "))",
                 ]);
 
                 if request_ty != &backend.void {
                     t.push(toks![
                         ".setRequestMarshaller(new JsonMarshaller(",
-                        "new ", self.type_reference.with_arguments(vec![request_ty.clone()]), "(){}",
+                        "new ",
+                        self.type_reference.with_arguments(vec![request_ty.clone()]),
+                        "(){}",
                         "))",
                     ]);
                 } else {
@@ -321,7 +319,10 @@ impl GrpcClient {
                 if response_ty != &backend.void {
                     t.push(toks![
                         ".setResponseMarshaller(new JsonMarshaller(",
-                        "new ", self.type_reference.with_arguments(vec![response_ty.clone()]), "(){}",
+                        "new ",
+                        self.type_reference
+                            .with_arguments(vec![response_ty.clone()]),
+                        "(){}",
                         "))",
                     ]);
                 } else {
@@ -351,9 +352,7 @@ impl GrpcClient {
 
         let offset = input
             .iter()
-            .flat_map(|line| {
-                line.borrow().find(Self::is_not_whitespace).into_iter()
-            })
+            .flat_map(|line| line.borrow().find(Self::is_not_whitespace).into_iter())
             .min();
         let offset = offset.unwrap_or(0usize);
 
@@ -387,13 +386,11 @@ impl GrpcClient {
 
         Self::javadoc_comments(&mut method.comments, &endpoint.comment);
 
-        let request_observer_ty = self.stream_observer.with_arguments(
-            vec![request_ty.clone()],
-        );
+        let request_observer_ty = self.stream_observer
+            .with_arguments(vec![request_ty.clone()]);
 
-        let observer_ty = self.stream_observer.with_arguments(
-            vec![response_ty.clone()],
-        );
+        let observer_ty = self.stream_observer
+            .with_arguments(vec![response_ty.clone()]);
 
         let request_arg = Argument::new(request_ty.clone(), "request");
         let observer_arg = Argument::new(observer_ty, "observer");
@@ -412,7 +409,10 @@ impl GrpcClient {
                 method.arguments.push(observer_arg);
 
                 method.body.push(toks![
-                    self.client_calls.clone(), ".asyncUnaryCall(", args.join(", "), ");",
+                    self.client_calls.clone(),
+                    ".asyncUnaryCall(",
+                    args.join(", "),
+                    ");",
                 ]);
             }
             ClientStreaming => {
@@ -424,7 +424,9 @@ impl GrpcClient {
                 method.body.push(toks![
                     "return ",
                     self.client_calls.clone(),
-                    ".asyncClientStreamingCall(", args.join(", "), ");",
+                    ".asyncClientStreamingCall(",
+                    args.join(", "),
+                    ");",
                 ]);
             }
             ServerStreaming => {
@@ -436,7 +438,9 @@ impl GrpcClient {
 
                 method.body.push(toks![
                     self.client_calls.clone(),
-                    ".asyncServerStreamingCall(", args.join(", "), ");",
+                    ".asyncServerStreamingCall(",
+                    args.join(", "),
+                    ");",
                 ]);
             }
             Unknown | BidiStreaming => {
@@ -448,7 +452,9 @@ impl GrpcClient {
                 method.body.push(toks![
                     "return ",
                     self.client_calls.clone(),
-                    ".asyncBidiStreamingCall(", args.join(", "), ");",
+                    ".asyncBidiStreamingCall(",
+                    args.join(", "),
+                    ");",
                 ]);
             }
         }
@@ -474,13 +480,11 @@ impl GrpcClient {
 
         Self::javadoc_comments(&mut method.comments, &endpoint.comment);
 
-        let request_observer_ty = self.stream_observer.with_arguments(
-            vec![request_ty.clone()],
-        );
+        let request_observer_ty = self.stream_observer
+            .with_arguments(vec![request_ty.clone()]);
 
-        let observer_ty = self.stream_observer.with_arguments(
-            vec![response_ty.clone()],
-        );
+        let observer_ty = self.stream_observer
+            .with_arguments(vec![response_ty.clone()]);
 
         let request_arg = Argument::new(request_ty.clone(), "request");
         let observer_arg = Argument::new(observer_ty, "observer");
@@ -497,7 +501,9 @@ impl GrpcClient {
 
                 method.body.push(toks![
                     self.server_calls.clone(),
-                    ".asyncUnimplementedUnaryCall(", args.join(", "), ");",
+                    ".asyncUnimplementedUnaryCall(",
+                    args.join(", "),
+                    ");",
                 ]);
             }
             // All streaming identical streaming implementations.
@@ -510,14 +516,15 @@ impl GrpcClient {
                 method.body.push(toks![
                     "return ",
                     self.server_calls.clone(),
-                    ".asyncUnimplementedStreamingCall(", args.join(", "), ");",
+                    ".asyncUnimplementedStreamingCall(",
+                    args.join(", "),
+                    ");",
                 ]);
             }
         }
 
         method
     }
-
 
     /// Setup the class corresponding to the client stub.
     fn client_stub<'el>(&self) -> Class<'el> {
@@ -533,9 +540,8 @@ impl GrpcClient {
         spec.constructors.push({
             let mut c = Constructor::new();
 
-            c.arguments.push(
-                Argument::new(self.channel.clone(), "channel"),
-            );
+            c.arguments
+                .push(Argument::new(self.channel.clone(), "channel"));
 
             c.body.push("super(channel);");
 
@@ -545,14 +551,11 @@ impl GrpcClient {
         spec.constructors.push({
             let mut c = Constructor::new();
 
-            c.arguments.push(
-                Argument::new(self.channel.clone(), "channel"),
-            );
+            c.arguments
+                .push(Argument::new(self.channel.clone(), "channel"));
 
-            c.arguments.push(Argument::new(
-                self.call_options.clone(),
-                "callOptions",
-            ));
+            c.arguments
+                .push(Argument::new(self.call_options.clone(), "callOptions"));
 
             c.body.push("super(channel, callOptions);");
 
@@ -565,14 +568,11 @@ impl GrpcClient {
             m.annotation(Override(self));
             m.returns = local(name.clone());
 
-            m.arguments.push(
-                Argument::new(self.channel.clone(), "channel"),
-            );
+            m.arguments
+                .push(Argument::new(self.channel.clone(), "channel"));
 
-            m.arguments.push(Argument::new(
-                self.call_options.clone(),
-                "callOptions",
-            ));
+            m.arguments
+                .push(Argument::new(self.call_options.clone(), "callOptions"));
 
             m.body.push(toks![
                 "return new ",
@@ -614,25 +614,34 @@ impl GrpcClient {
         match *method_type {
             Unary => {
                 args.append(toks![
-                    self.server_calls.clone(), ".asyncUnaryCall(this::", name, ")",
+                    self.server_calls.clone(),
+                    ".asyncUnaryCall(this::",
+                    name,
+                    ")",
                 ]);
             }
             ClientStreaming => {
                 args.append(toks![
                     self.server_calls.clone(),
-                    ".asyncClientStreamingCall(this::", name, ")",
+                    ".asyncClientStreamingCall(this::",
+                    name,
+                    ")",
                 ]);
             }
             ServerStreaming => {
                 args.append(toks![
                     self.server_calls.clone(),
-                    ".asyncServerStreamingCall(this::", name, ")",
+                    ".asyncServerStreamingCall(this::",
+                    name,
+                    ")",
                 ]);
             }
             Unknown | BidiStreaming => {
                 args.append(toks![
                     self.server_calls.clone(),
-                    ".asyncBidiStreamingCall(this::", name, ")",
+                    ".asyncBidiStreamingCall(this::",
+                    name,
+                    ")",
                 ]);
             }
         }
@@ -660,9 +669,9 @@ impl ServiceCodegen for GrpcClient {
         bind_service.returns = self.server_service_definition.clone();
         bind_service.annotation(Override(self));
 
-        bind_service.body.push(toks![
-            "return ", self.server_service_definition.clone(),
-        ]);
+        bind_service
+            .body
+            .push(toks!["return ", self.server_service_definition.clone(),]);
 
         let service_name = Rc::new(format!(
             "{}.{}",
@@ -670,11 +679,9 @@ impl ServiceCodegen for GrpcClient {
             body.name.join(".")
         ));
 
-        bind_service.body.nested(toks![
-            ".builder(",
-            service_name.clone().quoted(),
-            ")",
-        ]);
+        bind_service
+            .body
+            .nested(toks![".builder(", service_name.clone().quoted(), ")",]);
 
         for (endpoint, name) in body.endpoints.values().zip(endpoint_names.iter().cloned()) {
             let request = self.endpoint_request(endpoint)?.map(|v| v.1);
@@ -748,8 +755,8 @@ pub struct Module;
 impl Listeners for Module {
     fn configure(&self, e: Configure) {
         e.options.suppress_service_methods = true;
-        e.options.service_generators.push(Box::new(
-            GrpcClient::new(e.utils),
-        ));
+        e.options
+            .service_generators
+            .push(Box::new(GrpcClient::new(e.utils)));
     }
 }

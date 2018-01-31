@@ -71,9 +71,9 @@ where
         for decl in self.env().decl_iter() {
             callback(decl)
                 .and_then(|_| {
-                    let mut out = files.entry(decl.name().package.clone()).or_insert_with(
-                        Self::Out::default,
-                    );
+                    let mut out = files
+                        .entry(decl.name().package.clone())
+                        .or_insert_with(Self::Out::default);
 
                     match *decl {
                         Interface(ref b) => self.process_interface(&mut out, b),

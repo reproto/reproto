@@ -68,9 +68,9 @@ impl Objects for HttpObjects {
         let url = self.checksum_url(checksum)?;
 
         let mut request = Request::new(Method::Put, url);
-        request.headers_mut().set(
-            ContentLength(buffer.len() as u64),
-        );
+        request
+            .headers_mut()
+            .set(ContentLength(buffer.len() as u64));
         request.set_body(buffer);
 
         let work = self.handle_request(request).and_then(|(body, status)| {
@@ -113,8 +113,6 @@ impl Objects for HttpObjects {
 
         let out = self.core.run(work)?;
         let out = out.map(Arc::new);
-        Ok(out.map(|out| {
-            Box::new(BytesObject::new(name, out)) as Box<Object>
-        }))
+        Ok(out.map(|out| Box::new(BytesObject::new(name, out)) as Box<Object>))
     }
 }

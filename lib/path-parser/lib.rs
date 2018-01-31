@@ -11,31 +11,27 @@ use self::errors::{ErrorKind, Result};
 use ast::PathSpec;
 
 pub fn parse(input: &str) -> Result<PathSpec> {
-    use lalrpop_util::ParseError::*;
     use self::ErrorKind::*;
     use self::path_lexer::Error::*;
+    use lalrpop_util::ParseError::*;
 
     let lexer = path_lexer::path_lex(input);
 
     match parser::parse_path(lexer) {
         Ok(file) => Ok(file),
-        Err(e) => {
-            match e {
-                InvalidToken { location } => Err(Syntax(Some((location, location)), vec![]).into()),
-                UnrecognizedToken { token, expected } => {
-                    let pos = token.map(|(start, _, end)| (start, end));
-                    Err(Syntax(pos, expected).into())
-                }
-                User { error } => {
-                    match error {
-                        Unexpected { pos } => {
-                            return Err(Parse(Some((pos, pos)), "unexpected input").into());
-                        }
-                    }
-                }
-                _ => Err(Parse(None, "parse error").into()),
+        Err(e) => match e {
+            InvalidToken { location } => Err(Syntax(Some((location, location)), vec![]).into()),
+            UnrecognizedToken { token, expected } => {
+                let pos = token.map(|(start, _, end)| (start, end));
+                Err(Syntax(pos, expected).into())
             }
-        }
+            User { error } => match error {
+                Unexpected { pos } => {
+                    return Err(Parse(Some((pos, pos)), "unexpected input").into());
+                }
+            },
+            _ => Err(Parse(None, "parse error").into()),
+        },
     }
 }
 

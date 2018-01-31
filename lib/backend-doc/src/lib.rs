@@ -1,11 +1,11 @@
 #![recursion_limit = "1000"]
+extern crate genco;
 #[macro_use]
 extern crate log;
-extern crate genco;
+extern crate pulldown_cmark;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
-extern crate pulldown_cmark;
 extern crate syntect;
 
 #[macro_use]
@@ -75,18 +75,17 @@ pub fn shared_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
             .help("Theme to use (use `--list-themes` for available)"),
     );
 
-    let out = out.arg(Arg::with_name("list-themes").long("list-themes").help(
-        "List available \
-         themes",
-    ));
+    let out = out.arg(
+        Arg::with_name("list-themes")
+            .long("list-themes")
+            .help("List available themes"),
+    );
 
     let out = out.arg(
         Arg::with_name("syntax-theme")
             .long("syntax-theme")
             .takes_value(true)
-            .help(
-                "Syntax theme to use (use `--list-syntax-themes` for available)",
-            ),
+            .help("Syntax theme to use (use `--list-syntax-themes` for available)"),
     );
 
     let out = out.arg(
@@ -95,11 +94,11 @@ pub fn shared_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
             .help("List available syntax themes"),
     );
 
-    let out = out.arg(Arg::with_name("skip-static").long("skip-static").help(
-        "Skip building \
-         with static \
-         files",
-    ));
+    let out = out.arg(
+        Arg::with_name("skip-static")
+            .long("skip-static")
+            .help("Skip building with static files"),
+    );
 
     out
 }
@@ -146,9 +145,9 @@ where
     } else {
         warn!("No syntax theme named `{}`, falling back to default", theme);
 
-        themes.get(DEFAULT_THEME).ok_or_else(|| {
-            format!("no such default theme: {}", DEFAULT_THEME)
-        })?
+        themes
+            .get(DEFAULT_THEME)
+            .ok_or_else(|| format!("no such default theme: {}", DEFAULT_THEME))?
     };
 
     f(syntax_theme, &syntax_set, theme_css)
@@ -181,13 +180,17 @@ fn list_syntax_themes() -> Result<()> {
     println!("Available Syntax Themes:");
 
     for (id, theme) in names {
-        let name = theme.name.as_ref().map(String::as_str).unwrap_or(
-            "*no name*",
-        );
+        let name = theme
+            .name
+            .as_ref()
+            .map(String::as_str)
+            .unwrap_or("*no name*");
 
-        let author = theme.author.as_ref().map(String::as_str).unwrap_or(
-            "*unknown*",
-        );
+        let author = theme
+            .author
+            .as_ref()
+            .map(String::as_str)
+            .unwrap_or("*unknown*");
 
         println!("{} - {} by {}", id, name, author);
     }
@@ -221,20 +224,23 @@ where
     let skip_static = matches.is_present("skip-static");
     let out = manifest.output.as_ref().ok_or(MissingOutput)?.clone();
 
-    with_initialized(matches, manifest, &themes, |syntax_theme,
-     syntax_set,
-     theme_css| {
-        let compiler = DocCompiler {
-            env: env,
-            out_path: out.clone(),
-            skip_static: skip_static,
-            theme_css: theme_css,
-            syntax_theme: syntax_theme,
-            syntax_set: syntax_set,
-        };
+    with_initialized(
+        matches,
+        manifest,
+        &themes,
+        |syntax_theme, syntax_set, theme_css| {
+            let compiler = DocCompiler {
+                env: env,
+                out_path: out.clone(),
+                skip_static: skip_static,
+                theme_css: theme_css,
+                syntax_theme: syntax_theme,
+                syntax_set: syntax_set,
+            };
 
-        compiler.compile()
-    })?;
+            compiler.compile()
+        },
+    )?;
 
     println!("Wrote documentation in: {}", out.display());
 

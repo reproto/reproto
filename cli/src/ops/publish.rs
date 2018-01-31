@@ -1,5 +1,5 @@
-use build_spec::{Match, manifest_preamble, semck_check, setup_environment, setup_matches,
-                 setup_path_resolver, setup_publish_matches, setup_repository};
+use build_spec::{manifest_preamble, semck_check, setup_environment, setup_matches,
+                 setup_path_resolver, setup_publish_matches, setup_repository, Match};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::{Context, RpRequiredPackage, Version};
 use errors::*;
@@ -9,21 +9,23 @@ use std::rc::Rc;
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("publish").about("Publish specifications");
 
-    let out = out.arg(Arg::with_name("force").long("force").help(
-        "Force a publish, \
-         even if it already \
-         exists",
-    ));
+    let out = out.arg(
+        Arg::with_name("force")
+            .long("force")
+            .help("Force a publish, even if it already exists"),
+    );
 
-    let out = out.arg(Arg::with_name("pretend").long("pretend").help(
-        "Pretend to \
-         publish",
-    ));
+    let out = out.arg(
+        Arg::with_name("pretend")
+            .long("pretend")
+            .help("Pretend to publish"),
+    );
 
-    let out = out.arg(Arg::with_name("no-semck").long("no-semck").help(
-        "Disable Semantic \
-         Checks",
-    ));
+    let out = out.arg(
+        Arg::with_name("no-semck")
+            .long("no-semck")
+            .help("Disable Semantic Checks"),
+    );
 
     let out = out.arg(
         Arg::with_name("version")
@@ -47,14 +49,12 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
     {
         let mut env = setup_environment(ctx, &manifest)?;
 
-        let mut manifest_resolver = setup_path_resolver(&manifest)?.ok_or_else(|| {
-            "could not setup manifest resolver"
-        })?;
+        let mut manifest_resolver =
+            setup_path_resolver(&manifest)?.ok_or_else(|| "could not setup manifest resolver")?;
 
         let version_override = if let Some(version) = matches.value_of("version") {
-            Some(Version::parse(version).map_err(|e| {
-                format!("not a valid version: {}: {}", version, e)
-            })?)
+            Some(Version::parse(version)
+                .map_err(|e| format!("not a valid version: {}: {}", version, e))?)
         } else {
             None
         };
@@ -109,9 +109,7 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
             if pretend {
                 info!(
                     "(pretend) publishing: {}@{} (from {})",
-                    package,
-                    version,
-                    object
+                    package, version, object
                 );
             } else {
                 info!("publishing: {}@{} (from {})", package, version, object);

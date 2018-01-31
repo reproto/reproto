@@ -1,16 +1,16 @@
 #![recursion_limit = "1000"]
+extern crate clap;
 #[macro_use]
 extern crate error_chain;
+extern crate genco;
+extern crate linked_hash_map;
 #[macro_use]
 extern crate log;
-extern crate genco;
 extern crate reproto_ast as ast;
 extern crate reproto_core as core;
 extern crate reproto_parser as parser;
 extern crate reproto_path_parser as path_parser;
 extern crate reproto_repository as repository;
-extern crate linked_hash_map;
-extern crate clap;
 extern crate serde_json;
 
 mod base_decode;

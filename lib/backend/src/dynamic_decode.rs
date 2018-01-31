@@ -66,8 +66,7 @@ where
         }
 
         let input = match *ty {
-            Signed { size: _ } |
-            Unsigned { size: _ } => input,
+            Signed { size: _ } | Unsigned { size: _ } => input,
             Float | Double => input,
             String => input,
             DateTime => self.datetime_decode(input),
@@ -106,24 +105,15 @@ where
         decode_body.push(self.assign_type_var(data, type_var));
 
         for sub_type in body.sub_types.values() {
-            let type_name = self.convert_type(&sub_type.name).map_err(|e| {
-                ErrorKind::Pos(format!("{}", e), sub_type.pos().into())
-            })?;
+            let type_name = self.convert_type(&sub_type.name)
+                .map_err(|e| ErrorKind::Pos(format!("{}", e), sub_type.pos().into()))?;
 
-            decode_body.push(self.check_type_var(
-                data,
-                type_var,
-                sub_type.name(),
-                type_name,
-            ));
+            decode_body.push(self.check_type_var(data, type_var, sub_type.name(), type_name));
         }
 
         decode_body.push(self.raise_bad_type(type_var));
 
-        Ok(self.new_decode_method(
-            data,
-            decode_body.join_line_spacing(),
-        ))
+        Ok(self.new_decode_method(data, decode_body.join_line_spacing()))
     }
 }
 

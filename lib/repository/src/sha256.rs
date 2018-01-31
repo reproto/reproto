@@ -27,7 +27,9 @@ pub struct Sha256 {
 
 impl Sha256 {
     pub fn new() -> Sha256 {
-        Sha256 { context: digest::Context::new(&digest::SHA256) }
+        Sha256 {
+            context: digest::Context::new(&digest::SHA256),
+        }
     }
 
     pub fn update(&mut self, bytes: &[u8]) {

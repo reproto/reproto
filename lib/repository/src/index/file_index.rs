@@ -1,5 +1,5 @@
 use checksum::Checksum;
-use core::{RpPackage, Version, Range};
+use core::{Range, RpPackage, Version};
 use errors::*;
 use index::{Deployment, Index};
 use objects::{FileObjects, Objects};
@@ -118,9 +118,10 @@ impl FileIndex {
     }
 
     fn path_for(&self, package: &RpPackage) -> PathBuf {
-        package.parts.iter().fold(self.path.clone(), |path, next| {
-            path.join(next)
-        })
+        package
+            .parts
+            .iter()
+            .fold(self.path.clone(), |path, next| path.join(next))
     }
 }
 
@@ -131,12 +132,12 @@ impl Index for FileIndex {
     }
 
     fn all(&self, package: &RpPackage) -> Result<Vec<Deployment>> {
-        self.read_package(package, |_| true).map(|r| r.0).map(
-            |all| {
+        self.read_package(package, |_| true)
+            .map(|r| r.0)
+            .map(|all| {
                 // get the last deployment available
                 all.into_iter().collect::<Vec<_>>()
-            },
-        )
+            })
     }
 
     fn put_version(
@@ -161,9 +162,8 @@ impl Index for FileIndex {
     }
 
     fn get_deployments(&self, package: &RpPackage, version: &Version) -> Result<Vec<Deployment>> {
-        self.read_package(package, |d| d.version == *version).map(
-            |r| r.0,
-        )
+        self.read_package(package, |d| d.version == *version)
+            .map(|r| r.0)
     }
 
     fn objects_from_index(&self, relative_path: &RelativePath) -> Result<Box<Objects>> {
@@ -187,7 +187,9 @@ pub fn init_file_index<P: AsRef<Path> + ?Sized>(path: &P) -> Result<()> {
 
     if !config_path.is_file() {
         let mut f = File::create(config_path)?;
-        let config = Config { objects: DEFAULT_OBJECTS.to_owned() };
+        let config = Config {
+            objects: DEFAULT_OBJECTS.to_owned(),
+        };
         let config_content = serde_json::to_value(&config)?;
         writeln!(f, "{:#}", config_content)?;
     }
@@ -206,21 +208,17 @@ fn read_config<P: AsRef<Path> + ?Sized>(path: &P) -> Result<Config> {
     let config_path = path.join(CONFIG_JSON);
 
     if !config_path.is_file() {
-        return Err(
-            format!("{}: not an index, missing {}", path.display(), CONFIG_JSON).into(),
-        );
+        return Err(format!("{}: not an index, missing {}", path.display(), CONFIG_JSON).into());
     }
 
-    let mut f = File::open(&config_path).map_err(|e| {
-        format!("failed to open {}: {}", config_path.display(), e)
-    })?;
+    let mut f = File::open(&config_path)
+        .map_err(|e| format!("failed to open {}: {}", config_path.display(), e))?;
 
     let mut content = String::new();
     f.read_to_string(&mut content)?;
 
-    let config: Config = serde_json::from_str(content.as_str()).map_err(|e| {
-        format!("{}: bad config file: {}", config_path.display(), e)
-    })?;
+    let config: Config = serde_json::from_str(content.as_str())
+        .map_err(|e| format!("{}: bad config file: {}", config_path.display(), e))?;
 
     Ok(config)
 }

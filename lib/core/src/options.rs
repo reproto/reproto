@@ -48,7 +48,8 @@ pub trait Options {
 
     /// Find all identifiers matching the given name.
     ///
-    /// This enforces that all found values are identifiers, otherwise the lookup will cause an error.
+    /// This enforces that all found values are identifiers, otherwise the lookup will cause an
+    /// error.
     fn find_all_identifiers(&self, name: &str) -> Result<Vec<Loc<String>>> {
         let mut out = Vec::new();
 

@@ -87,51 +87,41 @@ impl<'a> DocCompiler<'a> {
         let out = RefCell::new(DocBuilder::new(&mut fmt));
 
         match *decl {
-            Interface(ref body) => {
-                InterfaceProcessor {
-                    out: out,
-                    env: &self.env,
-                    syntax: (self.syntax_theme, self.syntax_set),
-                    root: &root,
-                    body: body,
-                }.process()
-            }
-            Type(ref body) => {
-                TypeProcessor {
-                    out: out,
-                    env: &self.env,
-                    syntax: (self.syntax_theme, self.syntax_set),
-                    root: &root,
-                    body: body,
-                }.process()
-            }
-            Tuple(ref body) => {
-                TupleProcessor {
-                    out: out,
-                    env: &self.env,
-                    syntax: (self.syntax_theme, self.syntax_set),
-                    root: &root,
-                    body: body,
-                }.process()
-            }
-            Enum(ref body) => {
-                EnumProcessor {
-                    out: out,
-                    env: &self.env,
-                    syntax: (self.syntax_theme, self.syntax_set),
-                    root: &root,
-                    body: body,
-                }.process()
-            }
-            Service(ref body) => {
-                ServiceProcessor {
-                    out: out,
-                    env: &self.env,
-                    syntax: (self.syntax_theme, self.syntax_set),
-                    root: &root,
-                    body: body,
-                }.process()
-            }
+            Interface(ref body) => InterfaceProcessor {
+                out: out,
+                env: &self.env,
+                syntax: (self.syntax_theme, self.syntax_set),
+                root: &root,
+                body: body,
+            }.process(),
+            Type(ref body) => TypeProcessor {
+                out: out,
+                env: &self.env,
+                syntax: (self.syntax_theme, self.syntax_set),
+                root: &root,
+                body: body,
+            }.process(),
+            Tuple(ref body) => TupleProcessor {
+                out: out,
+                env: &self.env,
+                syntax: (self.syntax_theme, self.syntax_set),
+                root: &root,
+                body: body,
+            }.process(),
+            Enum(ref body) => EnumProcessor {
+                out: out,
+                env: &self.env,
+                syntax: (self.syntax_theme, self.syntax_set),
+                root: &root,
+                body: body,
+            }.process(),
+            Service(ref body) => ServiceProcessor {
+                out: out,
+                env: &self.env,
+                syntax: (self.syntax_theme, self.syntax_set),
+                root: &root,
+                body: body,
+            }.process(),
         }
     }
 

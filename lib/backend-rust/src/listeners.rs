@@ -1,5 +1,4 @@
 /// Plugin infrastructure for Rust Backend.
-
 use super::rust_options::RustOptions;
 use backend::errors::*;
 

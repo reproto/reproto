@@ -4,12 +4,12 @@ use config_env::ConfigEnv;
 use core::{Context, Object, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage,
            Version};
 use errors::*;
-use manifest::{Lang, Manifest, ManifestFile, ManifestPreamble, Publish, TryFromToml,
-               read_manifest, read_manifest_preamble, self as m};
+use manifest::{self as m, read_manifest, read_manifest_preamble, Lang, Manifest, ManifestFile,
+               ManifestPreamble, Publish, TryFromToml};
 use relative_path::RelativePath;
-use repository::{Index, IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths,
-                 Repository, Resolved, ResolvedByPrefix, Resolver, Resolvers, index_from_path,
-                 index_from_url, objects_from_path, objects_from_url};
+use repository::{index_from_path, index_from_url, objects_from_path, objects_from_url, Index,
+                 IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository,
+                 Resolved, ResolvedByPrefix, Resolver, Resolvers};
 use semck;
 use std::collections::HashMap;
 use std::fs::File;
@@ -26,9 +26,9 @@ fn load_index(base: &Path, index_url: &str, config: IndexConfig) -> Result<Box<I
     let index_path = Path::new(index_url);
 
     if index_path.is_dir() {
-        let index_path = index_path.canonicalize().map_err(|e| {
-            format!("index: bad path: {}: {}", e, index_path.display())
-        })?;
+        let index_path = index_path
+            .canonicalize()
+            .map_err(|e| format!("index: bad path: {}: {}", e, index_path.display()))?;
 
         return index_from_path(&index_path)
             .map(|i| Box::new(i) as Box<Index>)
@@ -66,9 +66,9 @@ fn load_objects(
     let objects_path = Path::new(objects_url);
 
     if objects_path.is_dir() {
-        let objects_path = objects_path.canonicalize().map_err(|e| {
-            format!("objects: bad path: {}: {}", e, objects_path.display())
-        })?;
+        let objects_path = objects_path
+            .canonicalize()
+            .map_err(|e| format!("objects: bad path: {}: {}", e, objects_path.display()))?;
 
         return objects_from_path(objects_path)
             .map(|o| Box::new(o) as Box<Objects>)
@@ -77,11 +77,9 @@ fn load_objects(
 
     match url::Url::parse(objects_url) {
         // Relative to index index repository!
-        Err(url::ParseError::RelativeUrlWithoutBase) => {
-            index
-                .objects_from_index(RelativePath::new(objects_url))
-                .map_err(Into::into)
-        }
+        Err(url::ParseError::RelativeUrlWithoutBase) => index
+            .objects_from_index(RelativePath::new(objects_url))
+            .map_err(Into::into),
         Err(e) => return Err(e.into()),
         Ok(url) => objects_from_url(config, &url).map_err(Into::into),
     }
@@ -97,9 +95,10 @@ where
         return Ok(Repository::new(Box::new(NoIndex), Box::new(NoObjects)));
     }
 
-    let base = manifest.path.parent().ok_or_else(
-        || "no parent path to manifest",
-    )?;
+    let base = manifest
+        .path
+        .parent()
+        .ok_or_else(|| "no parent path to manifest")?;
 
     let mut repo_dir = None;
     let mut cache_dir = None;
@@ -116,7 +115,9 @@ where
     let repo_dir = repo_dir.ok_or_else(|| "repo_dir: must be specified")?;
 
     let index_url = index.unwrap_or_else(|| DEFAULT_INDEX.to_owned());
-    let index_config = IndexConfig { repo_dir: repo_dir.clone() };
+    let index_config = IndexConfig {
+        repo_dir: repo_dir.clone(),
+    };
 
     let index = load_index(base, index_url.as_str(), index_config)?;
 
@@ -144,9 +145,10 @@ where
         published.insert(publish.package.clone(), publish.version.clone());
     }
 
-    Ok(Some(
-        Box::new(Paths::new(manifest.paths.clone(), published)),
-    ))
+    Ok(Some(Box::new(Paths::new(
+        manifest.paths.clone(),
+        published,
+    ))))
 }
 
 pub fn setup_resolvers<L>(manifest: &Manifest<L>) -> Result<Box<Resolver>>
@@ -178,11 +180,8 @@ pub fn manifest_preamble<'a>(matches: &ArgMatches<'a>) -> Result<ManifestPreambl
     debug!("reading manifest: {}", manifest_path.display());
     let reader = File::open(manifest_path.clone())?;
 
-    read_manifest_preamble(&manifest_path, reader).map_err(
-        |e| {
-            format!("{}: {}", manifest_path.display(), e).into()
-        },
-    )
+    read_manifest_preamble(&manifest_path, reader)
+        .map_err(|e| format!("{}: {}", manifest_path.display(), e).into())
 }
 
 /// Read the manifest based on the current environment.
@@ -192,9 +191,7 @@ where
 {
     let path = preamble.path.clone();
 
-    let mut manifest = read_manifest(preamble).map_err(|e| {
-        format!("{}: {}", path.display(), e)
-    })?;
+    let mut manifest = read_manifest(preamble).map_err(|e| format!("{}: {}", path.display(), e))?;
 
     manifest_from_matches(&mut manifest, matches)?;
     Ok(manifest)
@@ -214,9 +211,9 @@ where
 
     // TODO: use version and package from the provided file.
     for file in &manifest.files {
-        let package = file.package.as_ref().map(|p| {
-            RpVersionedPackage::new(p.clone(), file.version.clone())
-        });
+        let package = file.package
+            .as_ref()
+            .map(|p| RpVersionedPackage::new(p.clone(), file.version.clone()));
 
         if let Err(e) = env.import_file(&file.path, package) {
             errors.push(e.into());
@@ -294,9 +291,8 @@ where
     for package in matches.values_of("package").into_iter().flat_map(|it| it) {
         let parsed = RpRequiredPackage::parse(package);
 
-        let parsed = parsed.chain_err(|| {
-            format!("failed to parse --package argument: {}", package)
-        })?;
+        let parsed =
+            parsed.chain_err(|| format!("failed to parse --package argument: {}", package))?;
 
         manifest.packages.push(parsed);
     }
@@ -336,9 +332,7 @@ where
         let resolved = resolver.resolve_by_prefix(&publish.package)?;
 
         if resolved.is_empty() {
-            return Err(
-                format!("no matching packages found for: {}", publish.package).into(),
-            );
+            return Err(format!("no matching packages found for: {}", publish.package).into());
         }
 
         for ResolvedByPrefix { package, object } in resolved {
@@ -364,9 +358,7 @@ where
         let resolved = resolver.resolve(package)?;
 
         if resolved.is_empty() {
-            return Err(
-                format!("no matching packages found for: {}", package).into(),
-            );
+            return Err(format!("no matching packages found for: {}", package).into());
         }
 
         let mut it = resolved.into_iter();
@@ -387,9 +379,8 @@ where
         let Resolved { version, object } = first;
         let version = version_override.cloned().or(version);
 
-        let version = version.ok_or_else(|| {
-            ErrorKind::NoVersionToPublish(package.package.clone())
-        })?;
+        let version =
+            version.ok_or_else(|| ErrorKind::NoVersionToPublish(package.package.clone()))?;
 
         results.push(Match(version, object, package.package.clone()));
     }
@@ -414,9 +405,9 @@ pub fn semck_check(
     {
         debug!("Checking semantics of {} -> {}", d.version, version);
 
-        let previous = repository.get_object(&d)?.ok_or_else(|| {
-            format!("No object found for deployment: {:?}", d)
-        })?;
+        let previous = repository
+            .get_object(&d)?
+            .ok_or_else(|| format!("No object found for deployment: {:?}", d))?;
 
         let name = RpPackageFormat(package, Some(&d.version)).to_string();
         let previous = previous.with_name(name);

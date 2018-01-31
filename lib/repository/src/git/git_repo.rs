@@ -63,10 +63,10 @@ impl GitRepo {
     pub fn git(&self, args: &[&str]) -> Result<()> {
         let mut command = Command::new(&self.git_command);
 
-        command.args(args).env("GIT_DIR", &self.git_dir).env(
-            "GIT_WORK_TREE",
-            &self.work_tree,
-        );
+        command
+            .args(args)
+            .env("GIT_DIR", &self.git_dir)
+            .env("GIT_WORK_TREE", &self.work_tree);
 
         debug!("git: {:?}", command);
 

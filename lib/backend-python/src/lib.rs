@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate log;
-#[macro_use]
 extern crate genco;
+#[macro_use]
+extern crate log;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
@@ -15,13 +15,12 @@ mod python_field;
 mod python_file_spec;
 mod python_options;
 
-
 use self::ErrorKind::*;
 use backend::{ArgMatches, Environment};
 use backend::errors::*;
 use core::Context;
 use listeners::Listeners;
-use manifest::{Lang, Manifest, NoModule, TryFromToml, self as m};
+use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
 use python_backend::PythonBackend;
 use python_options::PythonOptions;
 use std::path::Path;
@@ -58,8 +57,7 @@ pub fn setup_listeners(modules: &[PythonModule]) -> Result<(PythonOptions, Box<L
     let listeners: Vec<Box<Listeners>> = Vec::new();
 
     for module in modules {
-        match *module {
-        }
+        match *module {}
     }
 
     let mut options = PythonOptions::new();

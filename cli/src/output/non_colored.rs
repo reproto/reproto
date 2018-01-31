@@ -1,4 +1,4 @@
-use super::{LockableWrite, Output, find_line};
+use super::{find_line, LockableWrite, Output};
 use core::ErrorPos;
 use errors::*;
 use log;
@@ -20,8 +20,8 @@ where
     }
 
     fn print_positional(&self, m: &str, p: &ErrorPos) -> Result<()> {
-        use std::iter::repeat;
         use std::cmp::max;
+        use std::iter::repeat;
 
         let mut o = self.out.lock();
 
@@ -58,13 +58,14 @@ where
     }
 }
 
-
 impl<T> Output for NonColored<T>
 where
     T: 'static + LockableWrite,
 {
     fn logger(&self) -> Box<log::Log + 'static> {
-        Box::new(NonColoredLogger { out: self.out.open_new() })
+        Box::new(NonColoredLogger {
+            out: self.out.open_new(),
+        })
     }
 
     fn print(&self, m: &str) -> Result<()> {
