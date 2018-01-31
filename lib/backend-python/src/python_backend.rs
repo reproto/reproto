@@ -1,41 +1,38 @@
 //! Python Backend
 
-use super::{PYTHON_CONTEXT, TYPE, TYPE_SEP};
+use super::{PYTHON_CONTEXT, TYPE_SEP};
 use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, Environment,
               FromNaming, Naming, PackageUtils, SnakeCase};
 use backend::errors::*;
+use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
-           RpServiceBody, RpTupleBody, RpType, RpTypeBody, WithPos};
+           RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, WithPos};
 use genco::{Element, Quoted, Tokens};
-use genco::python::{imported_alias, imported_ref, Python};
-use listeners::Listeners;
+use genco::python::{imported, Python};
+use options::Options;
 use python_compiler::PythonCompiler;
 use python_field::PythonField;
 use python_file_spec::PythonFileSpec;
-use python_options::PythonOptions;
-use std::borrow::Cow;
 use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
 
 pub struct PythonBackend {
     pub env: Environment,
-    listeners: Box<Listeners>,
     to_lower_snake: Box<Naming>,
     dict: Element<'static, Python<'static>>,
     enum_enum: Python<'static>,
-    type_var: Tokens<'static, Python<'static>>,
+    service_generators: Vec<Box<ServiceCodegen>>,
 }
 
 impl PythonBackend {
-    pub fn new(env: Environment, _: PythonOptions, listeners: Box<Listeners>) -> PythonBackend {
+    pub fn new(env: Environment, options: Options) -> PythonBackend {
         PythonBackend {
             env: env,
-            listeners: listeners,
             to_lower_snake: SnakeCase::new().to_lower_snake(),
             dict: "dict".into(),
-            enum_enum: imported_ref("enum", "Enum"),
-            type_var: TYPE.quoted().into(),
+            enum_enum: imported("enum").name("Enum"),
+            service_generators: options.service_generators,
         }
     }
 
@@ -123,7 +120,8 @@ impl PythonBackend {
         for field in fields {
             let toks = toks!["self.", field.ident.clone()];
             encode_body.push(self.raise_if_none(toks.clone(), field));
-            values.append(self.dynamic_encode(field.ty, toks).with_pos(field.pos())?);
+            values.append(self.dynamic_encode(field.ty, toks)
+                .with_pos(Loc::pos(field))?);
         }
 
         encode_body.push(toks!["return (", values.join(", "), ")"]);
@@ -242,12 +240,13 @@ impl PythonBackend {
                 RpModifier::Optional => {
                     let var_name = toks!(var_name.clone());
                     let var_toks = self.dynamic_decode(field.ty, var_name.clone())
-                        .with_pos(field.pos())?;
+                        .with_pos(Loc::pos(field))?;
                     self.optional_check(var_name.clone(), var, var_toks)
                 }
                 _ => {
                     let data = toks!["data[", var.clone(), "]"];
-                    let var_toks = self.dynamic_decode(field.ty, data).with_pos(field.pos())?;
+                    let var_toks = self.dynamic_decode(field.ty, data)
+                        .with_pos(Loc::pos(field))?;
                     toks![var_name.clone(), " = ", var_toks]
                 }
             };
@@ -340,11 +339,10 @@ impl PythonBackend {
 
         if let Some(ref used) = name.prefix {
             let package = self.package(&name.package).parts.join(".");
-            return Ok(imported_alias(
-                Cow::Owned(package),
-                Cow::Owned(local_name),
-                Cow::Borrowed(used),
-            ).into());
+            return Ok(imported(package)
+                .alias(used.as_str())
+                .name(local_name)
+                .into());
         }
 
         Ok(local_name.into())
@@ -353,7 +351,7 @@ impl PythonBackend {
     pub fn enum_variants<'el>(&self, body: &'el RpEnumBody) -> Result<Tokens<'el, Python<'el>>> {
         let mut args = Tokens::new();
 
-        let variants = body.variants.iter().map(|l| l.loc_ref());
+        let variants = body.variants.iter().map(|l| Loc::as_ref(l));
 
         variants.for_each_loc(|variant| {
             let var_name = variant.local_name.as_str().quoted();
@@ -442,7 +440,7 @@ impl PythonBackend {
 
         let fields: Vec<Loc<PythonField>> = body.fields
             .iter()
-            .map(|f| f.as_ref().map(|f| self.into_python_field(f)))
+            .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_python_field(f)))
             .collect();
 
         tuple_body.push(self.build_constructor(&fields));
@@ -483,7 +481,7 @@ impl PythonBackend {
 
         let field = Loc::new(
             self.into_python_field_with(&variant_field, Self::enum_ident),
-            body.pos().clone(),
+            Loc::pos(body).clone(),
         );
 
         class_body.push(self.build_constructor(iter::once(&field)));
@@ -518,7 +516,7 @@ impl PythonBackend {
 
         let fields: Vec<Loc<PythonField>> = body.fields
             .iter()
-            .map(|f| f.as_ref().map(|f| self.into_python_field(f)))
+            .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_python_field(f)))
             .collect();
 
         let constructor = self.build_constructor(&fields);
@@ -556,12 +554,18 @@ impl PythonBackend {
         let type_name = Rc::new(body.name.join(TYPE_SEP));
         let mut type_body = Tokens::new();
 
-        type_body.push(self.interface_decode_method(&body)?);
+        match body.sub_type_strategy {
+            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                let tk = tag.as_str().quoted().into();
+                type_body.push(self.interface_decode_method(&body, &tk)?);
+            }
+        }
+
         type_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
         out.0.push(self.as_class(type_name, type_body));
 
-        let values = body.sub_types.values().map(|l| l.loc_ref());
+        let values = body.sub_types.values().map(|l| Loc::as_ref(l));
 
         values.for_each_loc(|sub_type| {
             let sub_type_name = Rc::new(sub_type.name.join(TYPE_SEP));
@@ -573,7 +577,7 @@ impl PythonBackend {
             let fields: Vec<Loc<PythonField>> = body.fields
                 .iter()
                 .chain(sub_type.fields.iter())
-                .map(|f| f.as_ref().map(|f| self.into_python_field(f)))
+                .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_python_field(f)))
                 .collect();
 
             let constructor = self.build_constructor(&fields);
@@ -592,15 +596,19 @@ impl PythonBackend {
 
             sub_type_body.push(decode);
 
-            let type_var = self.type_var.clone();
+            match body.sub_type_strategy {
+                RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                    let tk: Tokens<'el, Python<'el>> = tag.as_str().quoted().into();
 
-            let encode = self.encode_method(
-                &fields,
-                self.dict.clone().into(),
-                Some(toks!["data[", type_var, "] = ", sub_type.name().quoted(),]),
-            )?;
+                    let encode = self.encode_method(
+                        &fields,
+                        self.dict.clone().into(),
+                        Some(toks!["data[", tk, "] = ", sub_type.name().quoted(),]),
+                    )?;
 
-            sub_type_body.push(encode);
+                    sub_type_body.push(encode);
+                }
+            }
 
             let repr_method = self.repr_method(sub_type_name.clone(), &fields);
             sub_type_body.push(repr_method);
@@ -619,9 +627,38 @@ impl PythonBackend {
         body: &'el RpServiceBody,
     ) -> Result<()> {
         let type_name = Rc::new(body.name.join(TYPE_SEP));
-        let type_body = Tokens::new();
+        let mut type_body = Tokens::new();
 
-        out.0.push(self.as_class(type_name, type_body));
+        let mut extra: Vec<EndpointExtra> = Vec::new();
+
+        for endpoint in body.endpoints.values() {
+            let response_ty = if let Some(res) = endpoint.response.as_ref() {
+                Some((
+                    "data",
+                    self.dynamic_decode(res.ty(), "data".into())
+                        .with_pos(Loc::pos(res))?,
+                ))
+            } else {
+                None
+            };
+
+            extra.push(EndpointExtra {
+                name: endpoint.id.as_str(),
+                response_ty: response_ty,
+            });
+        }
+
+        for g in &self.service_generators {
+            g.generate(ServiceAdded {
+                backend: self,
+                body: body,
+                type_name: type_name.clone(),
+                type_body: &mut type_body,
+                extra: &extra,
+            })?;
+        }
+
+        out.0.push(type_body);
         Ok(())
     }
 }
@@ -724,33 +761,32 @@ impl<'el> DynamicDecode<'el> for PythonBackend {
         ]
     }
 
-    fn assign_type_var(&self, data: &'el str, type_var: &'el str) -> Tokens<'el, Self::Custom> {
-        toks![type_var, " = ", data, "[", self.type_var.clone(), "]"]
+    fn assign_tag_var(
+        &self,
+        data: &'el str,
+        tag_var: &'el str,
+        tag: &Tokens<'el, Self::Custom>,
+    ) -> Tokens<'el, Self::Custom> {
+        toks![tag_var, " = ", data, "[", tag.clone(), "]"]
     }
 
-    fn check_type_var(
+    fn check_tag_var(
         &self,
         _data: &'el str,
-        type_var: &'el str,
+        tag_var: &'el str,
         name: &'el str,
         type_name: Tokens<'el, Self::Custom>,
     ) -> Tokens<'el, Self::Custom> {
         let mut check = Tokens::new();
 
-        check.push(toks!["if ", type_var, " == ", name.quoted(), ":",]);
+        check.push(toks!["if ", tag_var, " == ", name.quoted(), ":",]);
 
         check.nested(toks!["return ", type_name, ".decode(data)"]);
         check
     }
 
-    fn raise_bad_type(&self, type_var: &'el str) -> Tokens<'el, Self::Custom> {
-        toks![
-            "raise Exception(",
-            "bad type".quoted(),
-            " + ",
-            type_var,
-            ")",
-        ]
+    fn raise_bad_type(&self, tag_var: &'el str) -> Tokens<'el, Self::Custom> {
+        toks!["raise Exception(", "bad type".quoted(), " + ", tag_var, ")",]
     }
 
     fn new_decode_method(

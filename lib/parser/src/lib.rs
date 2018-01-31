@@ -249,7 +249,7 @@ mod tests {
 
         if let TypeMember::Option(option) = member {
             assert_eq!("foo_bar_baz", option.name);
-            assert_eq!(Value::Boolean(true), *option.value.value());
+            assert_eq!(Value::Boolean(true), *Loc::value(&option.value));
             return;
         }
 

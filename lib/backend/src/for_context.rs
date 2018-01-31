@@ -16,7 +16,7 @@ where
 
     fn for_context(self, context: &str) -> Vec<Self::Item> {
         self.into_iter()
-            .filter(|c| c.as_ref().context == context)
+            .filter(|c| Loc::as_ref(c).context == context)
             .collect()
     }
 }

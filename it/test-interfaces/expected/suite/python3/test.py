@@ -1,21 +1,21 @@
 class Entry:
   @staticmethod
   def decode(data):
-    f_type = data["type"]
+    f_tag = data["@type"]
 
-    if f_type == "foo":
+    if f_tag == "foo":
       return Entry_A.decode(data)
 
-    if f_type == "b":
+    if f_tag == "b":
       return Entry_B.decode(data)
 
-    if f_type == "Bar":
+    if f_tag == "Bar":
       return Entry_Bar.decode(data)
 
-    if f_type == "Baz":
+    if f_tag == "Baz":
       return Entry_Baz.decode(data)
 
-    raise Exception("bad type" + f_type)
+    raise Exception("bad type" + f_tag)
 
 class Entry_A:
   TYPE = "foo"
@@ -30,7 +30,7 @@ class Entry_A:
   def encode(self):
     data = dict()
 
-    data["type"] = "foo"
+    data["@type"] = "foo"
 
     return data
 
@@ -50,7 +50,7 @@ class Entry_B:
   def encode(self):
     data = dict()
 
-    data["type"] = "b"
+    data["@type"] = "b"
 
     return data
 
@@ -70,7 +70,7 @@ class Entry_Bar:
   def encode(self):
     data = dict()
 
-    data["type"] = "Bar"
+    data["@type"] = "Bar"
 
     return data
 
@@ -90,7 +90,7 @@ class Entry_Baz:
   def encode(self):
     data = dict()
 
-    data["type"] = "Baz"
+    data["@type"] = "Baz"
 
     return data
 

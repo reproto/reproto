@@ -1,9 +1,9 @@
-use super::{JS_CONTEXT, TYPE, TYPE_SEP};
+use super::{JS_CONTEXT, TYPE_SEP};
 use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, Environment,
               FromNaming, Naming, PackageUtils, SnakeCase};
 use backend::errors::*;
-use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName, RpTupleBody,
-           RpType, RpTypeBody};
+use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
+           RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody};
 use genco::{Element, JavaScript, Quoted, Tokens};
 use genco::js::imported_alias;
 use js_compiler::JsCompiler;
@@ -11,7 +11,6 @@ use js_field::JsField;
 use js_file_spec::JsFileSpec;
 use js_options::JsOptions;
 use listeners::Listeners;
-use std::borrow::Cow;
 use std::path::PathBuf;
 use std::rc::Rc;
 use utils::{is_defined, is_not_defined};
@@ -20,7 +19,6 @@ pub struct JsBackend {
     pub env: Environment,
     listeners: Box<Listeners>,
     to_lower_snake: Box<Naming>,
-    type_var: Tokens<'static, JavaScript<'static>>,
     values: Tokens<'static, JavaScript<'static>>,
     enum_name: Tokens<'static, JavaScript<'static>>,
 }
@@ -31,7 +29,6 @@ impl JsBackend {
             env: env,
             listeners: listeners,
             to_lower_snake: SnakeCase::new().to_lower_snake(),
-            type_var: TYPE.quoted().into(),
             values: "values".into(),
             enum_name: "name".into(),
         }
@@ -175,35 +172,37 @@ impl JsBackend {
             let var_name = Rc::new(format!("v_{}", field.ident.clone()));
             let var = variable_fn(i, field);
 
-            let toks = field.as_ref().and_then(|field| match *field.modifier {
-                RpModifier::Optional => {
-                    let var_name = toks![var_name.clone()];
-                    let var_toks = self.dynamic_decode(field.ty, var_name.clone())?;
+            let toks = Loc::take(Loc::and_then(Loc::as_ref(field), |field| {
+                match *field.modifier {
+                    RpModifier::Optional => {
+                        let var_name = toks![var_name.clone()];
+                        let var_toks = self.dynamic_decode(field.ty, var_name.clone())?;
 
-                    let mut check = Tokens::new();
+                        let mut check = Tokens::new();
 
-                    check.push(toks!["let ", var_name.clone(), " = data[", var, "];"]);
-                    check.push(js![if is_defined(var_name.clone()),
+                        check.push(toks!["let ", var_name.clone(), " = data[", var, "];"]);
+                        check.push(js![if is_defined(var_name.clone()),
                                       toks![var_name.clone(), " = ", var_toks, ";"],
                                       toks![var_name, " = null", ";"]]);
 
-                    Ok(check.join_line_spacing().into()) as Result<Tokens<'el, JavaScript<'el>>>
-                }
-                _ => {
-                    let var_toks = toks!["data[", var.clone(), "]"];
-                    let var_toks = self.dynamic_decode(field.ty, var_toks.into())?;
+                        Ok(check.join_line_spacing().into()) as Result<Tokens<'el, JavaScript<'el>>>
+                    }
+                    _ => {
+                        let var_toks = toks!["data[", var.clone(), "]"];
+                        let var_toks = self.dynamic_decode(field.ty, var_toks.into())?;
 
-                    let mut check = Tokens::new();
+                        let mut check = Tokens::new();
 
-                    let var_name = toks![var_name.clone()];
+                        let var_name = toks![var_name.clone()];
 
-                    check.push(toks!["const ", var_name.clone(), " = ", var_toks, ";"]);
-                    check.push(js![if is_not_defined(var_name),
+                        check.push(toks!["const ", var_name.clone(), " = ", var_toks, ";"]);
+                        check.push(js![if is_not_defined(var_name),
                                    js![throw var, " + ", ": required field".quoted()]]);
 
-                    Ok(check.join_line_spacing().into()) as Result<Tokens<'el, JavaScript<'el>>>
+                        Ok(check.join_line_spacing().into()) as Result<Tokens<'el, JavaScript<'el>>>
+                    }
                 }
-            })?;
+            })?);
 
             assign.push(toks);
             arguments.append(var_name);
@@ -367,7 +366,7 @@ impl JsBackend {
 
         let fields: Vec<Loc<JsField>> = body.fields
             .iter()
-            .map(|f| f.as_ref().map(|f| self.into_js_field(f)))
+            .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_js_field(f)))
             .collect();
 
         class_body.push(self.build_constructor(&fields));
@@ -408,7 +407,7 @@ impl JsBackend {
 
         let field = Loc::new(
             self.into_js_field_with(&variant_field, Self::enum_ident),
-            body.pos().clone(),
+            Loc::pos(body).clone(),
         );
 
         let mut members = Tokens::new();
@@ -464,7 +463,7 @@ impl JsBackend {
     ) -> Result<()> {
         let fields: Vec<Loc<JsField>> = body.fields
             .iter()
-            .map(|f| f.as_ref().map(|f| self.into_js_field(f)))
+            .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_js_field(f)))
             .collect();
 
         let type_name = Rc::new(body.name.join(TYPE_SEP));
@@ -505,12 +504,18 @@ impl JsBackend {
 
         let mut interface_body = Tokens::new();
 
-        interface_body.push(self.interface_decode_method(&body)?);
+        match body.sub_type_strategy {
+            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                let tk = tag.as_str().quoted().into();
+                interface_body.push(self.interface_decode_method(&body, &tk)?);
+            }
+        }
+
         interface_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
 
         let interface_fields: Vec<Loc<JsField>> = body.fields
             .iter()
-            .map(|f| f.as_ref().map(|f| self.into_js_field(f)))
+            .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_js_field(f)))
             .collect();
 
         classes.push({
@@ -523,7 +528,7 @@ impl JsBackend {
             tokens
         });
 
-        let sub_types = body.sub_types.values().map(|l| l.loc_ref());
+        let sub_types = body.sub_types.values().map(|t| Loc::as_ref(t));
 
         sub_types.for_each_loc(|sub_type| {
             let type_name = Rc::new(sub_type.name.join(TYPE_SEP));
@@ -537,7 +542,7 @@ impl JsBackend {
                     sub_type
                         .fields
                         .iter()
-                        .map(|f| f.as_ref().map(|f| self.into_js_field(f))),
+                        .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_js_field(f))),
                 )
                 .collect();
 
@@ -552,15 +557,17 @@ impl JsBackend {
 
             class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
 
-            let type_toks = toks![
-                "data[",
-                self.type_var.clone(),
-                "] = ",
-                interface_type_name.clone(),
-                ".TYPE;",
-            ];
+            match body.sub_type_strategy {
+                RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                    let tk: Tokens<'el, JavaScript<'el>> = tag.as_str().quoted().into();
 
-            class_body.push(self.encode_method(&fields, "{}", Some(type_toks))?);
+                    let type_toks =
+                        toks!["data[", tk, "] = ", interface_type_name.clone(), ".TYPE;",];
+
+                    class_body.push(self.encode_method(&fields, "{}", Some(type_toks))?);
+                }
+            }
+
             class_body.push_unless_empty(Code(&sub_type.codes, JS_CONTEXT));
 
             classes.push({
@@ -601,11 +608,7 @@ impl<'el> Converter<'el> for JsBackend {
 
         if let Some(ref used) = name.prefix {
             let package = self.package(&name.package).parts.join(".");
-            return Ok(imported_alias(
-                Cow::Owned(package),
-                Cow::Owned(local_name),
-                Cow::Borrowed(used),
-            ).into());
+            return Ok(imported_alias(package, local_name, used.as_str()).into());
         }
 
         Ok(local_name.into())
@@ -681,33 +684,30 @@ impl<'el> DynamicDecode<'el> for JsBackend {
         t
     }
 
-    fn assign_type_var(&self, data: &'el str, type_var: &'el str) -> Tokens<'el, JavaScript<'el>> {
-        toks![
-            "const ",
-            type_var,
-            " = ",
-            data,
-            "[",
-            self.type_var.clone(),
-            "]",
-        ]
-    }
-
-    fn check_type_var(
+    fn assign_tag_var(
         &self,
         data: &'el str,
-        type_var: &'el str,
+        tag_var: &'el str,
+        tag: &Tokens<'el, JavaScript<'el>>,
+    ) -> Tokens<'el, JavaScript<'el>> {
+        toks!["const ", tag_var, " = ", data, "[", tag.clone(), "]",]
+    }
+
+    fn check_tag_var(
+        &self,
+        data: &'el str,
+        tag_var: &'el str,
         name: &'el str,
         type_name: Tokens<'el, Self::Custom>,
     ) -> Tokens<'el, JavaScript<'el>> {
         let mut body = Tokens::new();
-        let cond = toks![type_var, " === ", name.quoted()];
+        let cond = toks![tag_var, " === ", name.quoted()];
         body.push(js![if cond, js![return type_name, ".decode(", data, ")"]]);
         body
     }
 
-    fn raise_bad_type(&self, type_var: &'el str) -> Tokens<'el, JavaScript<'el>> {
-        js![throw "bad type: ".quoted(), " + ", type_var]
+    fn raise_bad_type(&self, tag_var: &'el str) -> Tokens<'el, JavaScript<'el>> {
+        js![throw "bad type: ".quoted(), " + ", tag_var]
     }
 
     fn new_decode_method(

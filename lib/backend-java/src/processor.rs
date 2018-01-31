@@ -1,7 +1,7 @@
 //! Helper utilities for processors.
 
 use backend::errors::*;
-use core::{RpChannel, RpEndpoint, RpPackage, RpVersionedPackage};
+use core::{Loc, RpChannel, RpEndpoint, RpPackage, RpVersionedPackage};
 
 pub trait Processor {
     /// Build the java package of a given package.
@@ -21,14 +21,7 @@ pub trait Processor {
         let mut it = endpoint.arguments.values();
 
         if let Some(&(ref name, ref first)) = it.next() {
-            if let Some(&(ref other, _)) = it.next() {
-                return Err(ErrorKind::Pos(
-                    "more than one argument".to_string(),
-                    other.pos().into(),
-                ).into());
-            }
-
-            let channel = first.as_ref().take();
+            let channel = Loc::value(first);
             return Ok(Some((name.as_str(), channel)));
         }
 

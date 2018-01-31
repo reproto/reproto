@@ -200,7 +200,7 @@ impl Environment {
     ///
     /// Since lower_camel is default, do nothing on that case.
     fn parse_naming(&self, naming: Loc<String>) -> Result<Option<Box<Naming>>> {
-        let (naming, pos) = naming.take_pair();
+        let (naming, pos) = Loc::take_pair(naming);
 
         let result = match naming.as_str() {
             "upper_camel" => Some(SnakeCase::new().to_upper_camel()),
@@ -259,9 +259,11 @@ impl Environment {
 
     /// Parse the given version requirement.
     fn parse_range(v: &Loc<String>) -> Result<Range> {
-        Range::parse(v.value())
+        let (value, pos) = Loc::borrow_pair(v);
+
+        Range::parse(value)
             .map_err(|e| format!("bad version requirement: {}", e).into())
-            .with_pos(v.pos())
+            .with_pos(pos)
     }
 
     /// Process use declarations found at the top of each object.
@@ -275,7 +277,7 @@ impl Environment {
         let mut prefixes = HashMap::new();
 
         for use_decl in uses {
-            let package = use_decl.package.value().clone();
+            let package = Loc::value(&use_decl.package).clone();
 
             let range = use_decl
                 .range
@@ -305,7 +307,7 @@ impl Environment {
             }
 
             let error = format!("no package found: {}", required);
-            return Err(Pos(error, use_decl.pos().into()).into());
+            return Err(Pos(error, Loc::pos(use_decl).into()).into());
         }
 
         Ok(prefixes)

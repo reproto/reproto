@@ -279,7 +279,7 @@ Attribute: Attribute<'input> = {
         Attribute::Word(ident)
     },
 
-    "#" "[" <ident:Loc<ident>> "(" <name_value:OneOrMore<",", AttributeItem>> ")" "]" => {
+    "#" "[" <ident:Loc<ident>> "(" <name_value:ZeroOrMoreTrailing<",", AttributeItem>> ")" "]" => {
         Attribute::List(ident, name_value)
     },
 };
@@ -290,8 +290,8 @@ AttributeItem: AttributeItem<'input> = {
         value: value,
     },
 
-    <ident:Loc<ident>> => {
-        AttributeItem::Word(ident)
+    <value:Loc<Value>> => {
+        AttributeItem::Word(value)
     },
 };
 
@@ -301,12 +301,20 @@ ZeroOrMore<Sep, T>: Vec<T> =
     value.unwrap_or_else(|| vec![]);
 
 /// One or more matching, separated by a token.
-OneOrMore<Sep, T>: Vec<T> = {
+OneOrMore<Sep, T>: Vec<T> =
      <values:(<T> Sep)*> <last:T> => {
         let mut values = values;
         values.push(last);
         values
-    }
+    };
+
+ZeroOrMoreTrailing<Sep, T>: Vec<T> = {
+     <values:(<T> Sep)*> <last:T> Sep? => {
+        let mut values = values;
+        values.push(last);
+        values
+    },
+    () => vec![],
 };
 
 Loc<Inner>: Loc<Inner> = <s:@L> <inner:Inner> <e:@R> =>

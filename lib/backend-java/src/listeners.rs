@@ -1,8 +1,8 @@
 //! Plugin infrastructure for Java Backend.
 
 use core::{RpEnumBody, RpInterfaceBody, RpServiceBody};
-use genco::Cons;
-use genco::java::{Class, Enum, Interface, Method};
+use genco::{Cons, Java};
+use genco::java::{Argument, Class, Enum, Interface, Method};
 use java_backend::JavaBackend;
 use java_options::JavaOptions;
 use std::rc::Rc;
@@ -29,10 +29,16 @@ pub struct InterfaceAdded<'a, 'el: 'a> {
     pub spec: &'a mut Interface<'el>,
 }
 
+pub struct EndpointExtra<'el> {
+    pub name: Cons<'el>,
+    pub response_ty: Java<'el>,
+    pub arguments: Vec<Argument<'el>>,
+}
+
 pub struct ServiceAdded<'a, 'el: 'a> {
     pub backend: &'a JavaBackend,
     pub body: &'el RpServiceBody,
-    pub endpoint_names: &'a [Cons<'el>],
+    pub extra: &'a [EndpointExtra<'el>],
     pub spec: &'a mut Interface<'el>,
 }
 

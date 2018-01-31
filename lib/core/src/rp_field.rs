@@ -2,7 +2,7 @@
 
 use super::{RpModifier, RpType};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct RpField {
     pub modifier: RpModifier,
     pub name: String,

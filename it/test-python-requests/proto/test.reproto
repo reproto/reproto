@@ -1,0 +1,32 @@
+type Entry {
+}
+
+#[http(url = "http://example.com")]
+service MyService {
+    /// UNKNOWN
+    ///
+    /// Still unknown.
+    unknown();
+
+    /// UNKNOWN
+    unknown_return() -> Entry;
+
+    /// UNKNOWN
+    unknown_argument(request: Entry);
+
+    /// UNARY
+    #[http(path = "/foo/{id}", method = "POST", body = request)]
+    unary(request: Entry, id: u32) -> Entry;
+
+    #[http(path = "/", accept="text/plain")]
+    main() -> string;
+
+    /// SERVER_STREMAING
+    server_streaming(request: Entry) -> stream Entry;
+
+    /// CLIENT_STREAMING
+    client_streaming(request: stream Entry) -> Entry;
+
+    /// BIDI_STREAMING
+    bidi_streaming(request: stream Entry) -> stream Entry;
+}

@@ -18,21 +18,21 @@ impl OptionEntry for RpOptionDecl {
     }
 
     fn as_string(&self) -> result::Result<String, &'static str> {
-        match *self.value.value() {
+        match *Loc::value(&self.value) {
             RpValue::String(ref string) => Ok(string.to_string()),
             _ => Err("expected string"),
         }
     }
 
     fn as_number(&self) -> result::Result<RpNumber, &'static str> {
-        match *self.value.value() {
+        match *Loc::value(&self.value) {
             RpValue::Number(ref number) => Ok(number.clone()),
             _ => Err("expected number"),
         }
     }
 
     fn as_identifier(&self) -> result::Result<String, &'static str> {
-        match *self.value.value() {
+        match *Loc::value(&self.value) {
             RpValue::Identifier(ref identifier) => Ok(identifier.to_string()),
             _ => Err("expected identifier"),
         }

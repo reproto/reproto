@@ -15,7 +15,7 @@ pub trait Options {
         self.items()
             .iter()
             .filter(move |o| o.name() == name)
-            .map(|option| option.loc_ref())
+            .map(|option| Loc::as_ref(&option))
             .collect()
     }
 
@@ -26,7 +26,7 @@ pub trait Options {
         let mut out = Vec::new();
 
         for s in self.lookup(name) {
-            let (value, pos) = s.take_pair();
+            let (value, pos) = Loc::take_pair(s);
             let string = value.as_string().map_err(|e| (e, pos.clone()))?;
             out.push(Loc::new(string, pos));
         }
@@ -38,7 +38,7 @@ pub trait Options {
         let mut out = Vec::new();
 
         for s in self.lookup(name) {
-            let (value, pos) = s.take_pair();
+            let (value, pos) = Loc::take_pair(s);
             let number = value.as_number().map_err(|e| (e, pos.clone()))?;
             out.push(Loc::new(number, pos));
         }
@@ -54,7 +54,7 @@ pub trait Options {
         let mut out = Vec::new();
 
         for s in self.lookup(name) {
-            let (value, pos) = s.take_pair();
+            let (value, pos) = Loc::take_pair(s);
             let identifier = value.as_identifier().map_err(|e| (e, pos.clone()))?;
             out.push(Loc::new(identifier, pos));
         }

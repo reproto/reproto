@@ -1,3 +1,4 @@
+#[type_info(strategy = "tagged", tag = "@type")]
 interface Entry {
   A as "foo";
 

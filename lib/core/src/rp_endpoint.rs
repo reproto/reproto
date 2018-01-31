@@ -2,6 +2,7 @@
 
 use super::{Attributes, Loc, RpChannel, RpPathSpec};
 use linked_hash_map::LinkedHashMap;
+use std::default;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum RpHttpMethod {
@@ -14,6 +15,37 @@ pub enum RpHttpMethod {
     HEAD,
 }
 
+impl RpHttpMethod {
+    /// Treat this method to an all uppercase string representing the method.
+    pub fn as_str(&self) -> &str {
+        use self::RpHttpMethod::*;
+
+        match *self {
+            GET => "GET",
+            POST => "POST",
+            PUT => "PUT",
+            UPDATE => "UPDATE",
+            DELETE => "DELETE",
+            PATCH => "PATCH",
+            HEAD => "HEAD",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub enum RpAccept {
+    #[serde(rename = "json")]
+    Json,
+    #[serde(rename = "text")]
+    Text,
+}
+
+impl default::Default for RpAccept {
+    fn default() -> Self {
+        RpAccept::Json
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct RpEndpointHttp {
     /// Path specification.
@@ -22,6 +54,8 @@ pub struct RpEndpointHttp {
     pub body: Option<String>,
     /// HTTP method.
     pub method: Option<RpHttpMethod>,
+    /// Accepted media types.
+    pub accept: RpAccept,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -53,5 +87,14 @@ impl RpEndpoint {
     /// Get the name of the endpoint.
     pub fn name(&self) -> &str {
         self.name.as_str()
+    }
+
+    /// If endpoint has metadata for HTTP.
+    pub fn has_http_support(&self) -> bool {
+        if !self.http.path.is_some() {
+            return false;
+        }
+
+        true
     }
 }

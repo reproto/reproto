@@ -8,6 +8,7 @@ use rp_value::RpValue;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::mem;
 use std::vec;
 
 /// Iterator over unused positions.
@@ -26,14 +27,14 @@ impl<'a> Iterator for Unused<'a> {
 #[derive(Debug, Clone, Serialize)]
 pub struct Selection {
     /// Storing words and their locations.
-    words: HashMap<String, Pos>,
+    words: Vec<Loc<RpValue>>,
     /// Storing values and their locations.
     values: HashMap<String, (Loc<String>, Loc<RpValue>)>,
 }
 
 impl Selection {
     pub fn new(
-        words: HashMap<String, Pos>,
+        words: Vec<Loc<RpValue>>,
         values: HashMap<String, (Loc<String>, Loc<RpValue>)>,
     ) -> Selection {
         Selection {
@@ -51,11 +52,16 @@ impl Selection {
         self.values.remove(key).map(|v| v.1)
     }
 
+    /// Take the given value, removing it in the process.
+    pub fn take_words(&mut self) -> Vec<Loc<RpValue>> {
+        mem::replace(&mut self.words, vec![])
+    }
+
     /// Get an iterator over unused positions.
     pub fn unused(&self) -> Unused {
         let mut positions = Vec::new();
-        positions.extend(self.words.values());
-        positions.extend(self.values.values().map(|v| v.0.pos()));
+        positions.extend(self.words.iter().map(|v| Loc::pos(v)));
+        positions.extend(self.values.values().map(|v| Loc::pos(&v.0)));
         Unused {
             iter: positions.into_iter(),
         }

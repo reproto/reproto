@@ -1,1 +1,2 @@
 suites := java
+projects := java

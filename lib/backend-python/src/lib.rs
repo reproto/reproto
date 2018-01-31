@@ -6,27 +6,29 @@ extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate toml;
 
-mod listeners;
+mod codegen;
 mod python_backend;
 mod python_compiler;
 mod python_field;
 mod python_file_spec;
-mod python_options;
+mod options;
+mod module;
+mod utils;
 
 use self::ErrorKind::*;
-use backend::{ArgMatches, Environment};
+use backend::{ArgMatches, Environment, Initializer};
 use backend::errors::*;
 use core::Context;
-use listeners::Listeners;
 use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
+use options::Options;
 use python_backend::PythonBackend;
-use python_options::PythonOptions;
 use std::path::Path;
 use std::rc::Rc;
 
-const TYPE: &str = "type";
 const TYPE_SEP: &str = "_";
 const INIT_PY: &str = "__init__.py";
 const EXT: &str = "py";
@@ -41,32 +43,47 @@ impl Lang for PythonLang {
 
 #[derive(Debug)]
 pub enum PythonModule {
+    Requests(module::RequestsConfig),
 }
 
 impl TryFromToml for PythonModule {
     fn try_from_string(path: &Path, id: &str, value: String) -> m::errors::Result<Self> {
-        NoModule::illegal(path, id, value)
+        use self::PythonModule::*;
+
+        let result = match id {
+            "requests" => Requests(module::RequestsConfig::default()),
+            _ => return NoModule::illegal(path, id, value),
+        };
+
+        Ok(result)
     }
 
     fn try_from_value(path: &Path, id: &str, value: toml::Value) -> m::errors::Result<Self> {
-        NoModule::illegal(path, id, value)
+        use self::PythonModule::*;
+
+        let result = match id {
+            "requests" => Requests(value.try_into()?),
+            _ => return NoModule::illegal(path, id, value),
+        };
+
+        Ok(result)
     }
 }
 
-pub fn setup_listeners(modules: &[PythonModule]) -> Result<(PythonOptions, Box<Listeners>)> {
-    let listeners: Vec<Box<Listeners>> = Vec::new();
+pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
+    use self::PythonModule::*;
+
+    let mut options = Options::new();
 
     for module in modules {
-        match *module {}
+        let initializer: Box<Initializer<Options = Options>> = match module {
+            Requests(config) => Box::new(module::Requests::new(config)),
+        };
+
+        initializer.initialize(&mut options)?;
     }
 
-    let mut options = PythonOptions::new();
-
-    for listener in &listeners {
-        listener.configure(&mut options)?;
-    }
-
-    Ok((options, Box::new(listeners)))
+    Ok(options)
 }
 
 pub fn compile(
@@ -76,8 +93,8 @@ pub fn compile(
     manifest: Manifest<PythonLang>,
 ) -> Result<()> {
     let out = manifest.output.ok_or(MissingOutput)?;
-    let (options, listeners) = setup_listeners(&manifest.modules)?;
-    let backend = PythonBackend::new(env, options, listeners);
+    let options = setup_options(manifest.modules)?;
+    let backend = PythonBackend::new(env, options);
     let compiler = backend.compiler(out)?;
     compiler.compile()
 }

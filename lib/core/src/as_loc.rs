@@ -21,7 +21,7 @@ impl<'a, T: 'a> AsLoc for &'a Loc<T> {
     type Output = &'a T;
 
     fn as_loc(self) -> Loc<Self::Output> {
-        self.loc_ref()
+        Loc::as_ref(self)
     }
 }
 
@@ -29,6 +29,6 @@ impl<'a, T: 'a> AsLoc for &'a Rc<Loc<T>> {
     type Output = &'a T;
 
     fn as_loc(self) -> Loc<Self::Output> {
-        self.loc_ref()
+        Loc::as_ref(self)
     }
 }

@@ -2,7 +2,7 @@
 
 use backend::Environment;
 use backend::errors::*;
-use core::{RpEndpoint, RpServiceBody, WithPos};
+use core::{Loc, RpEndpoint, RpServiceBody, WithPos};
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
@@ -57,7 +57,7 @@ impl<'p> ServiceProcessor<'p> {
                         html!(self, span {class => "keyword"} ~ Escape("stream"));
                     }
 
-                    let (req, pos) = channel.as_ref_pair();
+                    let (req, pos) = Loc::borrow_pair(channel);
                     self.write_type(req.ty()).with_pos(pos)?;
                 });
             }
@@ -72,7 +72,7 @@ impl<'p> ServiceProcessor<'p> {
                         html!(self, span {class => "endpoint-stream"} ~ Escape("stream"));
                     }
 
-                    let (res, pos) = response.as_ref_pair();
+                    let (res, pos) = Loc::borrow_pair(response);
                     self.write_type(res.ty()).with_pos(pos)?;
                 });
             }

@@ -1,0 +1,26 @@
+[package]
+name = "reproto-derive"
+version = "0.3.10"
+authors = ["John-John Tedro <udoprog@tedro.se>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/reproto/reproto"
+homepage = "https://github.com/reproto/reproto"
+documentation = "https://docs.rs/reproto-derive"
+description = """
+Rethinking Protocol Generators
+
+Derives a reproto schema from an existing JSON.
+"""
+
+[dependencies]
+reproto-core = {path = "../core", version = "0.3"}
+
+Inflector = "0.11"
+serde_json = {version = "1.0", features = ["preserve_order"]}
+genco = "0.2"
+chrono = "0.4"
+linked-hash-map = "0.5"
+
+[lib]
+path = "lib.rs"

@@ -2,7 +2,7 @@
 
 use backend::errors::*;
 use genco::Rust;
-use genco::rust::imported_ref;
+use genco::rust::imported;
 use listeners::Listeners;
 use rust_options::RustOptions;
 
@@ -14,8 +14,8 @@ pub struct Module {
 impl Module {
     pub fn new() -> Module {
         Module {
-            datetime: imported_ref("chrono", "DateTime"),
-            offset_utc: imported_ref("chrono::offset", "Utc"),
+            datetime: imported("chrono", "DateTime"),
+            offset_utc: imported("chrono::offset", "Utc"),
         }
     }
 }

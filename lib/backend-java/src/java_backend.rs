@@ -11,7 +11,7 @@ use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum,
 use java_field::JavaField;
 use java_file::JavaFile;
 use java_options::JavaOptions;
-use listeners::{ClassAdded, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
+use listeners::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use processor::Processor;
 use std::path::Path;
 use std::rc::Rc;
@@ -32,7 +32,7 @@ pub struct JavaBackend {
     objects: Java<'static>,
     object: Java<'static>,
     string: Java<'static>,
-    optional: Java<'static>,
+    pub optional: Java<'static>,
     illegal_argument: Java<'static>,
     async_container: Java<'static>,
 }
@@ -694,32 +694,55 @@ impl JavaBackend {
     fn process_service<'el>(&self, body: &'el RpServiceBody) -> Result<Interface<'el>> {
         let mut spec = Interface::new(body.local_name.as_str());
 
-        let mut endpoint_names: Vec<Cons<'el>> = Vec::new();
+        let mut extra: Vec<EndpointExtra> = Vec::new();
 
         for endpoint in body.endpoints.values() {
             let name = self.snake_to_lower_camel.convert(endpoint.id.as_str());
-            endpoint_names.push(Rc::new(name).into());
+
+            let response_ty = if let Some(res) = endpoint.response.as_ref() {
+                let ty = self.utils.into_java_type(res.ty())?;
+                self.async_container.with_arguments(vec![ty])
+            } else {
+                self.async_container.with_arguments(vec![self.void.clone()])
+            };
+
+            let mut arguments = Vec::new();
+
+            for &(ref name, ref channel) in endpoint.arguments.values() {
+                let ty = self.utils.into_java_type(channel.ty())?;
+                arguments.push(Argument::new(ty, name.as_str()));
+            }
+
+            extra.push(EndpointExtra {
+                name: Rc::new(name).into(),
+                response_ty: response_ty,
+                arguments: arguments,
+            });
         }
 
-        let endpoint_names = endpoint_names;
-
         if !self.options.suppress_service_methods {
-            for (endpoint, name) in body.endpoints.values().zip(endpoint_names.iter().cloned()) {
-                let mut method = Method::new(name);
+            for (endpoint, extra) in body.endpoints.values().zip(extra.iter()) {
+                let EndpointExtra {
+                    ref name,
+                    ref response_ty,
+                    ref arguments,
+                    ..
+                } = *extra;
+
+                let mut method = Method::new(name.clone());
+
+                if !endpoint.comment.is_empty() {
+                    method.comments.push("<pre>".into());
+                    method
+                        .comments
+                        .extend(endpoint.comment.iter().cloned().map(Into::into));
+                    method.comments.push("</pre>".into());
+                }
+
                 method.modifiers = vec![];
+                method.arguments.extend(arguments.iter().cloned());
 
-                if let Some((name, req)) = self.endpoint_request(endpoint)? {
-                    let ty = self.utils.into_java_type(req.ty())?;
-                    method.arguments.push(Argument::new(ty, name));
-                }
-
-                if let Some(res) = endpoint.response.as_ref() {
-                    let ty = self.utils.into_java_type(res.ty())?;
-                    method.returns = self.async_container.with_arguments(vec![ty]);
-                } else {
-                    method.returns = self.async_container.with_arguments(vec![self.void.clone()]);
-                }
-
+                method.returns = response_ty.clone();
                 spec.methods.push(method);
             }
         }
@@ -728,7 +751,7 @@ impl JavaBackend {
             generator.generate(ServiceAdded {
                 backend: self,
                 body: body,
-                endpoint_names: &endpoint_names,
+                extra: &extra,
                 spec: &mut spec,
             })?;
         }

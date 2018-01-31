@@ -1,8 +1,8 @@
 <Entry_A >
-{"type": "foo"}
+{"@type": "foo"}
 <Entry_B >
-{"type": "b"}
+{"@type": "b"}
 <Entry_Bar >
-{"type": "Bar"}
+{"@type": "Bar"}
 <Entry_Baz >
-{"type": "Baz"}
+{"@type": "Baz"}

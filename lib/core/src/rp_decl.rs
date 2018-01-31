@@ -135,11 +135,11 @@ impl RpDecl {
         use self::RpDecl::*;
 
         match *self {
-            Type(ref body) => body.pos(),
-            Interface(ref body) => body.pos(),
-            Enum(ref body) => body.pos(),
-            Tuple(ref body) => body.pos(),
-            Service(ref body) => body.pos(),
+            Type(ref body) => Loc::pos(body),
+            Interface(ref body) => Loc::pos(body),
+            Enum(ref body) => Loc::pos(body),
+            Tuple(ref body) => Loc::pos(body),
+            Service(ref body) => Loc::pos(body),
         }
     }
 }

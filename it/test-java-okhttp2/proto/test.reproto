@@ -12,7 +12,8 @@ service MyService {
     unknown_argument(request: Entry);
 
     /// UNARY
-    unary(request: Entry) -> Entry;
+    #[http(path = "/foo/{id}", body=request)]
+    unary(request: Entry, id: u32) -> Entry;
 
     /// SERVER_STREMAING
     server_streaming(request: Entry) -> stream Entry;

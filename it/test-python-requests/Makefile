@@ -1,0 +1,2 @@
+suites := python
+projects := python

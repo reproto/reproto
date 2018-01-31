@@ -29,7 +29,6 @@ use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
 use std::path::Path;
 use std::rc::Rc;
 
-const TYPE: &str = "type";
 const TYPE_SEP: &str = "_";
 const EXT: &str = "js";
 const JS_CONTEXT: &str = "js";

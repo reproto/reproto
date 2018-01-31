@@ -1,5 +1,5 @@
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(tag = "type")]
+#[serde(tag = "@type")]
 pub enum Entry {
   #[serde(rename = "foo")]
   A {

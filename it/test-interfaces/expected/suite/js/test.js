@@ -1,25 +1,25 @@
 
 export class Entry {
   static decode(data) {
-    const f_type = data["type"]
+    const f_tag = data["@type"]
 
-    if (f_type === "foo") {
+    if (f_tag === "foo") {
       return Entry_A.decode(data);
     }
 
-    if (f_type === "b") {
+    if (f_tag === "b") {
       return Entry_B.decode(data);
     }
 
-    if (f_type === "Bar") {
+    if (f_tag === "Bar") {
       return Entry_Bar.decode(data);
     }
 
-    if (f_type === "Baz") {
+    if (f_tag === "Baz") {
       return Entry_Baz.decode(data);
     }
 
-    throw new Error("bad type: " + f_type);
+    throw new Error("bad type: " + f_tag);
   }
 }
 
@@ -32,7 +32,7 @@ export class Entry_A {
   encode() {
     const data = {};
 
-    data["type"] = Entry.TYPE;
+    data["@type"] = Entry.TYPE;
 
     return data;
   }
@@ -49,7 +49,7 @@ export class Entry_B {
   encode() {
     const data = {};
 
-    data["type"] = Entry.TYPE;
+    data["@type"] = Entry.TYPE;
 
     return data;
   }
@@ -66,7 +66,7 @@ export class Entry_Bar {
   encode() {
     const data = {};
 
-    data["type"] = Entry.TYPE;
+    data["@type"] = Entry.TYPE;
 
     return data;
   }
@@ -83,7 +83,7 @@ export class Entry_Baz {
   encode() {
     const data = {};
 
-    data["type"] = Entry.TYPE;
+    data["@type"] = Entry.TYPE;
 
     return data;
   }

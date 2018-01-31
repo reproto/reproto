@@ -1,8 +1,8 @@
 A
-{"type":"foo"}
+{"@type":"foo"}
 B
-{"type":"b"}
+{"@type":"b"}
 Bar
-{"type":"Bar"}
+{"@type":"Bar"}
 Baz
-{"type":"Baz"}
+{"@type":"Baz"}

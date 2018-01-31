@@ -91,7 +91,7 @@ impl TryFromToml for JavaModule {
     }
 }
 
-fn setup_listeners(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> JavaOptions {
+fn setup_options(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> JavaOptions {
     use self::JavaModule::*;
 
     let mut options = JavaOptions::new();
@@ -126,7 +126,7 @@ pub fn compile(
     let out = manifest.output.ok_or(MissingOutput)?;
     let env = Rc::new(env);
     let utils = Rc::new(Utils::new(&env));
-    let options = setup_listeners(manifest.modules, &utils);
+    let options = setup_options(manifest.modules, &utils);
     let backend = JavaBackend::new(&env, &utils, options);
     backend.compile(&out)
 }

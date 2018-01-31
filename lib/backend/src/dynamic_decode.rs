@@ -2,7 +2,7 @@
 
 use base_decode::BaseDecode;
 use converter::Converter;
-use core::{RpInterfaceBody, RpType};
+use core::{Loc, RpInterfaceBody, RpType};
 use dynamic_converter::DynamicConverter;
 use errors::*;
 use genco::Tokens;
@@ -12,17 +12,22 @@ where
     Self: Converter<'el>,
     Self: DynamicConverter<'el>,
 {
-    fn assign_type_var(&self, data: &'el str, type_var: &'el str) -> Tokens<'el, Self::Custom>;
-
-    fn check_type_var(
+    fn assign_tag_var(
         &self,
         data: &'el str,
-        type_var: &'el str,
+        tag_var: &'el str,
+        tag: &Tokens<'el, Self::Custom>,
+    ) -> Tokens<'el, Self::Custom>;
+
+    fn check_tag_var(
+        &self,
+        data: &'el str,
+        tag_var: &'el str,
         name: &'el str,
         type_name: Tokens<'el, Self::Custom>,
     ) -> Tokens<'el, Self::Custom>;
 
-    fn raise_bad_type(&self, type_var: &'el str) -> Tokens<'el, Self::Custom>;
+    fn raise_bad_type(&self, tag_var: &'el str) -> Tokens<'el, Self::Custom>;
 
     fn new_decode_method(
         &self,
@@ -97,21 +102,22 @@ where
     fn interface_decode_method(
         &self,
         body: &'el RpInterfaceBody,
+        tag: &Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         let mut decode_body: Tokens<Self::Custom> = Tokens::new();
 
         let data = "data";
-        let type_var = "f_type";
-        decode_body.push(self.assign_type_var(data, type_var));
+        let tag_var = "f_tag";
+        decode_body.push(self.assign_tag_var(data, tag_var, tag));
 
         for sub_type in body.sub_types.values() {
             let type_name = self.convert_type(&sub_type.name)
-                .map_err(|e| ErrorKind::Pos(format!("{}", e), sub_type.pos().into()))?;
+                .map_err(|e| ErrorKind::Pos(format!("{}", e), Loc::pos(sub_type).into()))?;
 
-            decode_body.push(self.check_type_var(data, type_var, sub_type.name(), type_name));
+            decode_body.push(self.check_tag_var(data, tag_var, sub_type.name(), type_name));
         }
 
-        decode_body.push(self.raise_bad_type(type_var));
+        decode_body.push(self.raise_bad_type(tag_var));
 
         Ok(self.new_decode_method(data, decode_body.join_line_spacing()))
     }

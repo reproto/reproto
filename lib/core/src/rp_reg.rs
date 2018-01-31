@@ -38,13 +38,13 @@ impl RpReg {
         use self::RpReg::*;
 
         match *self {
-            Type(ref target) => target.pos(),
-            Tuple(ref target) => target.pos(),
-            Service(ref target) => target.pos(),
-            Interface(ref target) => target.pos(),
-            Enum(ref target) => target.pos(),
-            SubType(_, ref target) => target.pos(),
-            EnumVariant(_, ref target) => target.pos(),
+            Type(ref target) => Loc::pos(target),
+            Tuple(ref target) => Loc::pos(target),
+            Service(ref target) => Loc::pos(target),
+            Interface(ref target) => Loc::pos(target),
+            Enum(ref target) => Loc::pos(target),
+            SubType(_, ref target) => Loc::pos(target),
+            EnumVariant(_, ref target) => Loc::pos(target),
         }
     }
 

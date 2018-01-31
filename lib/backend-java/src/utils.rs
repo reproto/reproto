@@ -1,7 +1,7 @@
 use backend::Environment;
 use backend::errors::*;
 use core::{RpName, RpType, RpVersionedPackage};
-use genco::Java;
+use genco::{IntoTokens, Java, Tokens};
 use genco::java::{imported, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG};
 use processor::Processor;
 use std::rc::Rc;
@@ -77,5 +77,14 @@ impl Utils {
 
     fn java_package_name(&self, pkg: &RpVersionedPackage) -> Rc<String> {
         Rc::new(self.java_package(pkg).parts.join("."))
+    }
+}
+
+/// @Override annotation
+pub struct Override;
+
+impl<'el> IntoTokens<'el, Java<'el>> for Override {
+    fn into_tokens(self) -> Tokens<'el, Java<'el>> {
+        toks!["@Override"]
     }
 }

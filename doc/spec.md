@@ -398,8 +398,6 @@ The following is an example interface with two sub-types.
 ///
 /// Sampling is when a time series which is very dense is samples to reduce its size.
 interface Sampling {
-    option type_info = type_field;
-
     /// size of the sample.
     sample_size: u32;
     /// unit of the sample.
@@ -430,7 +428,8 @@ enum Unit as string {
 }
 ```
 
-An interface is encoded as an object, with a special `type` field.
+By default, sub-types are encoded as objects with a special `type` field.
+This behavior can be controlled using the [`type_info`] attribute.
 
 For example (using `new Sampling.Average(10, Unit.SECONDS)`):
 
@@ -443,6 +442,8 @@ For example (using `new Sampling.Average(10, Unit.SECONDS)`):
 ```
 
 The following options are supported by interfaces:
+
+[`type_info`]: #type-info
 
 #### Interface sub-types
 
@@ -490,21 +491,42 @@ All of these are legal JSON-objects for this declaration:
 {"type": "Baz"}
 ```
 
-#### `option type_info = <ident>`
+#### <a id="type-info" />`#[type_info(strategy = <string>, ...)]`
 
-Indicates the method of transferring type information.
-Valid options are:
+This annotation controls which strategy is used for determining sub-types in [interfaces].
 
-* `type_field` sub-types are serialized as objects, with a special field (given by
-  `type_field_name`) containing its `name` (default).
-* `array` sub-types will be serialized as arrays, where the first value is the `name`.
-* `object_keys` sub-types will be serialized as objects with a single
-   key, where the key is the `name`.
+Valid strategies are:
 
-#### `option type_field_name = <string>`
+* [`tagged`], encode as an object with a special `tag` field indicating the sub-type.
 
-Name of the type field indicating which sub-type it's.
-This Option is only valid when `type_info type_field` is set. |
+[interfaces]: #interfaces
+[`tagged`]: #type-info-tagged
+
+#### <a id="type-info-tagged" />`#[type_info(strategy = "tagged", tag = <string>)]`
+
+The default sub-type strategy.
+
+Sub-types are encoded as objects, with a special tag field indicated by `tag`.
+
+The following is an example specification and the JSON it corresponds to:
+
+```reproto
+#[type_info(strategy = "tagged", tag = "@type")]
+interface Example {
+  Foo as "foo" {
+    foo_field: u32;
+  }
+
+  Bar as "bar" {
+    bar_field: u32;
+  }
+}
+```
+
+```json
+{"@type": "foo", "foo_field": 42}
+{"@type": "bar", "bar_field": 42}
+```
 
 ## Tuples
 

@@ -29,6 +29,7 @@ mod package_processor;
 mod package_utils;
 mod scope;
 mod code;
+mod initializer;
 pub mod errors;
 
 pub use self::base_decode::BaseDecode;
@@ -40,6 +41,7 @@ pub use self::dynamic_decode::DynamicDecode;
 pub use self::dynamic_encode::DynamicEncode;
 pub use self::environment::Environment;
 pub use self::for_context::ForContext;
+pub use self::initializer::Initializer;
 pub use self::into_bytes::IntoBytes;
 pub use self::naming::{CamelCase, FromNaming, Naming, SnakeCase};
 pub use self::package_processor::PackageProcessor;

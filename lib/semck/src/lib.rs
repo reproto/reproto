@@ -175,13 +175,13 @@ where
     if from_ty != to_ty {
         let from_pos = accessor(from_endpoint)
             .as_ref()
-            .map(|r| r.pos())
-            .unwrap_or(from_endpoint.pos());
+            .map(|r| Loc::pos(r))
+            .unwrap_or(Loc::pos(from_endpoint));
 
         let to_pos = accessor(to_endpoint)
             .as_ref()
-            .map(|r| r.pos())
-            .unwrap_or(to_endpoint.pos());
+            .map(|r| Loc::pos(r))
+            .unwrap_or(Loc::pos(to_endpoint));
 
         violations.push(error(
             component,
@@ -239,9 +239,9 @@ fn common_check_variant(
         violations.push(VariantOrdinalChange(
             component.clone(),
             from_variant.ordinal().to_string(),
-            from_variant.pos().into(),
+            Loc::pos(from_variant).into(),
             to_variant.ordinal().to_string(),
-            to_variant.pos().into(),
+            Loc::pos(to_variant).into(),
         ));
     }
 
@@ -258,9 +258,9 @@ fn common_check_field(
         violations.push(FieldTypeChange(
             component.clone(),
             from_field.ty.clone(),
-            from_field.pos().into(),
+            Loc::pos(from_field).into(),
             to_field.ty.clone(),
-            to_field.pos().into(),
+            Loc::pos(to_field).into(),
         ));
     }
 
@@ -269,9 +269,9 @@ fn common_check_field(
         violations.push(FieldNameChange(
             component.clone(),
             from_field.name().to_string(),
-            from_field.pos().into(),
+            Loc::pos(from_field).into(),
             to_field.name().to_string(),
-            to_field.pos().into(),
+            Loc::pos(to_field).into(),
         ));
     }
 
@@ -294,14 +294,14 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_field) = to_fields.remove(&name) {
                     check_field(&mut violations, from_field, to_field)?;
                 } else {
-                    violations.push(RemoveField(Minor, from_field.pos().into()));
+                    violations.push(RemoveField(Minor, Loc::pos(from_field).into()));
                 }
             }
 
             // check that added fields are not required.
             for (_, to_field) in to_fields.into_iter() {
                 if to_field.is_required() {
-                    violations.push(AddRequiredField(Minor, to_field.pos().into()));
+                    violations.push(AddRequiredField(Minor, Loc::pos(to_field).into()));
                 }
             }
 
@@ -312,7 +312,7 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_variant) = to_variants.remove(&name) {
                     check_variant(&mut violations, from_variant, to_variant)?;
                 } else {
-                    violations.push(RemoveVariant(Minor, from_variant.pos().into()));
+                    violations.push(RemoveVariant(Minor, Loc::pos(from_variant).into()));
                 }
             }
 
@@ -323,7 +323,7 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_endpoint) = to_endpoints.remove(&name) {
                     check_endpoint(&mut violations, from_endpoint, to_endpoint)?;
                 } else {
-                    violations.push(RemoveEndpoint(Minor, from_endpoint.pos().into()));
+                    violations.push(RemoveEndpoint(Minor, Loc::pos(from_endpoint).into()));
                 }
             }
         } else {
@@ -344,8 +344,8 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
         if from_field.is_optional() && to_field.is_required() {
             violations.push(FieldRequiredChange(
                 Minor,
-                from_field.pos().into(),
-                to_field.pos().into(),
+                Loc::pos(from_field).into(),
+                Loc::pos(to_field).into(),
             ));
         }
 
@@ -386,13 +386,13 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_field) = to_fields.remove(&name) {
                     check_field(&mut violations, from_field, to_field)?;
                 } else {
-                    violations.push(RemoveField(Patch, from_field.pos().into()));
+                    violations.push(RemoveField(Patch, Loc::pos(from_field).into()));
                 }
             }
 
             // added fields are not permitted
             for (_, to_field) in to_fields.into_iter() {
-                violations.push(AddField(Patch, to_field.pos().into()));
+                violations.push(AddField(Patch, Loc::pos(to_field).into()));
             }
 
             let from_variants = variants_to_map(enum_variants(&from_reg));
@@ -402,13 +402,13 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_variant) = to_variants.remove(&name) {
                     check_variant(&mut violations, from_variant, to_variant)?;
                 } else {
-                    violations.push(RemoveVariant(Patch, from_variant.pos().into()));
+                    violations.push(RemoveVariant(Patch, Loc::pos(from_variant).into()));
                 }
             }
 
             // added variants are not permitted
             for (_, to_variant) in to_variants.into_iter() {
-                violations.push(AddVariant(Patch, to_variant.pos().into()));
+                violations.push(AddVariant(Patch, Loc::pos(to_variant).into()));
             }
 
             let from_endpoints = endpoints_to_map(&from_reg);
@@ -418,13 +418,13 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_endpoint) = to_endpoints.remove(&name) {
                     check_endpoint(&mut violations, from_endpoint, to_endpoint)?;
                 } else {
-                    violations.push(RemoveEndpoint(Patch, from_endpoint.pos().into()));
+                    violations.push(RemoveEndpoint(Patch, Loc::pos(from_endpoint).into()));
                 }
             }
 
             // added endpoints are not permitted
             for (_, to_endpoint) in to_endpoints.into_iter() {
-                violations.push(AddEndpoint(Patch, to_endpoint.pos().into()));
+                violations.push(AddEndpoint(Patch, Loc::pos(to_endpoint).into()));
             }
         } else {
             violations.push(DeclRemoved(Patch, from_reg.pos().into()));
@@ -447,8 +447,8 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
         if to_field.modifier != from_field.modifier {
             violations.push(FieldModifierChange(
                 Patch,
-                from_field.pos().into(),
-                to_field.pos().into(),
+                Loc::pos(from_field).into(),
+                Loc::pos(to_field).into(),
             ));
         }
 

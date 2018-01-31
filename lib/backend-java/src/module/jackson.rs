@@ -2,6 +2,7 @@
 
 use backend::errors::*;
 use codegen::{ClassCodegen, EnumCodegen, InterfaceCodegen, TupleCodegen};
+use core::RpSubTypeStrategy;
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Field, Modifier, DOUBLE, FLOAT, INTEGER, LONG,
                   SHORT};
@@ -447,31 +448,31 @@ impl EnumCodegen for Jackson {
 }
 
 impl InterfaceCodegen for Jackson {
-    fn generate(&self, e: InterfaceAdded) -> Result<()> {
-        {
-            let mut args = Tokens::new();
-
-            args.append(toks!["use=", self.type_info.clone(), ".Id.NAME"]);
-            args.append(toks!["include=", self.type_info.clone(), ".As.PROPERTY"]);
-            args.append(toks!["property=", "type".quoted()]);
-
-            e.spec.annotation(TypeInfo(self, args));
+    fn generate(&self, InterfaceAdded { spec, body, .. }: InterfaceAdded) -> Result<()> {
+        match body.sub_type_strategy {
+            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                let mut args = Tokens::new();
+                args.append(toks!["use=", self.type_info.clone(), ".Id.NAME"]);
+                args.append(toks!["include=", self.type_info.clone(), ".As.PROPERTY"]);
+                args.append(toks!["property=", tag.as_str().quoted()]);
+                spec.annotation(TypeInfo(self, args));
+            }
         }
 
         {
             let mut args = Tokens::new();
 
-            for (key, sub_type) in &e.body.sub_types {
+            for (key, sub_type) in &body.sub_types {
                 let mut a = Tokens::new();
 
                 a.append(toks!["name=", sub_type.name().quoted()]);
-                a.append(toks!["value=", e.spec.name(), ".", key.as_str(), ".class",]);
+                a.append(toks!["value=", spec.name(), ".", key.as_str(), ".class",]);
 
                 let arg = SubTypesType(self, a).into_tokens();
                 args.append(arg);
             }
 
-            e.spec.annotation(SubTypes(self, args));
+            spec.annotation(SubTypes(self, args));
         }
 
         Ok(())

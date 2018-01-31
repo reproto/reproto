@@ -18,6 +18,7 @@ tracing = []
 [dependencies]
 reproto-core = {path = "../lib/core", version = "0.3"}
 reproto-semck = {path = "../lib/semck", version = "0.3"}
+reproto-derive = {path = "../lib/derive", version = "0.3"}
 reproto-manifest = {path = "../lib/manifest", version = "0.3"}
 reproto-parser = {path = "../lib/parser", version = "0.3"}
 reproto-repository = {path = "../lib/repository", version = "0.3"}

@@ -4,11 +4,16 @@ use path_lexer::{self, PathToken};
 
 grammar<'input>();
 
-pub path: PathSpec<'input> =
+pub path: PathSpec<'input> = {
+    "/" =>
+    PathSpec {
+        steps: vec![],
+    },
     <steps:Step*> =>
     PathSpec {
         steps: steps,
-    };
+    },
+};
 
 Step: PathStep<'input> =
     "/" <parts:Part+> =>

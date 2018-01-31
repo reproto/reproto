@@ -1,4 +1,4 @@
-/// Lexer for reproto idl.
+/// Lexer for reproto IDL.
 use core::RpNumber;
 use errors::Error::*;
 use errors::Result;

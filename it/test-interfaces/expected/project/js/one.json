@@ -1,8 +1,8 @@
 Entry_A {}
-{"type":"Entry_Baz"}
+{"@type":"Entry_Baz"}
 Entry_B {}
-{"type":"Entry_Baz"}
+{"@type":"Entry_Baz"}
 Entry_Bar {}
-{"type":"Entry_Baz"}
+{"@type":"Entry_Baz"}
 Entry_Baz {}
-{"type":"Entry_Baz"}
+{"@type":"Entry_Baz"}

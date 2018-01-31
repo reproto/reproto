@@ -1,4 +1,5 @@
-# reproto
+# [![reproto](/gfx/logo.64.png?raw=true "reproto")](https://github.com/reproto)
+
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
 [![Chat on Gitter](https://badges.gitter.im/reproto/reproto.svg)](https://gitter.im/reproto/reproto)
 
@@ -8,6 +9,7 @@ This is the home of `reproto`, a system for managing JSON schemas.
 
 * A custom [interface description language] that permits describing the schema of JSON and
   bidirectional rpc services (like [gRPC]).
+* A [derive command], capable of deriving schemas directly from JSON.
 * A compiler which generates code for [various languages].
 * A [semantic version checker] which verifies that modifications to schemas do not violate
   [semantic versioning].
@@ -22,6 +24,7 @@ projects.
 but avoid building large repositories of specifications right now.
 
 [interface description language]: /doc/spec.md
+[derive command]: /doc/derive.md
 [various languages]: #language-support
 [semantic version checker]: /doc/semck.md
 [semantic versioning]: https://semver.org

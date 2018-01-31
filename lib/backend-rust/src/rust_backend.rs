@@ -4,14 +4,13 @@ use super::RUST_CONTEXT;
 use backend::{Code, Environment, FromNaming, Naming, PackageUtils, SnakeCase};
 use backend::errors::*;
 use core::{ForEachLoc, Loc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName,
-           RpServiceBody, RpTupleBody, RpType, RpTypeBody};
+           RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody};
 use genco::{Element, IntoTokens, Quoted, Rust, Tokens};
-use genco::rust::{imported_alias, imported_alias_ref, imported_ref};
+use genco::rust::{imported, imported_alias};
 use listeners::Listeners;
 use rust_compiler::RustCompiler;
 use rust_file_spec::RustFileSpec;
 use rust_options::RustOptions;
-use std::borrow::Cow;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -69,8 +68,8 @@ impl RustBackend {
             env: env,
             listeners: listeners,
             to_lower_snake: SnakeCase::new().to_lower_snake(),
-            hash_map: imported_ref("std::collections", "HashMap"),
-            json_value: imported_alias_ref("serde_json", "Value", "json"),
+            hash_map: imported("std::collections", "HashMap"),
+            json_value: imported_alias("serde_json", "Value", "json"),
             datetime: options.datetime.clone(),
         }
     }
@@ -122,11 +121,7 @@ impl RustBackend {
 
         if let Some(ref prefix) = name.prefix {
             let package_name = self.package(&name.package).parts.join("::");
-            return Ok(imported_alias(
-                Cow::Owned(package_name),
-                Cow::Owned(local_name),
-                Cow::Borrowed(prefix),
-            ).into());
+            return Ok(imported_alias(package_name, local_name, prefix.as_str()).into());
         }
 
         Ok(local_name.into())
@@ -263,13 +258,13 @@ impl RustBackend {
             };
 
             match_body.push(toks![
-                variant.local_name.value().as_str(),
+                variant.local_name.as_str(),
                 " => ",
                 value.quoted(),
                 ",",
             ]);
 
-            variants.push(toks![variant.local_name.value().as_str(), ","]);
+            variants.push(toks![variant.local_name.as_str(), ","]);
             Ok(()) as Result<()>
         })?;
 
@@ -303,7 +298,9 @@ impl RustBackend {
         let mut fields = Tokens::new();
 
         for field in &body.fields {
-            fields.push(field.as_ref().and_then(|f| self.field_element(f))?);
+            fields.push(Loc::take(Loc::and_then(Loc::as_ref(field), |f| {
+                self.field_element(f)
+            })?));
         }
 
         let (name, attributes) = self.convert_type_name(&body.name);
@@ -336,7 +333,13 @@ impl RustBackend {
 
         t.push_unless_empty(attributes);
         t.push(Derives);
-        t.push(Tag("type"));
+
+        match body.sub_type_strategy {
+            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                t.push(Tag(tag.as_str()));
+            }
+        }
+
         t.push(toks!["pub enum ", name.clone(), " {"]);
 
         let sub_types = body.sub_types.values().map(AsRef::as_ref);

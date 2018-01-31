@@ -45,6 +45,33 @@ pub trait IntoModel {
     fn into_model(self, scope: &Scope) -> Result<Self::Output>;
 }
 
+/// Helper model to strip whitespace prefixes from comment lines.
+pub struct Comment<I>(I);
+
+impl<I: IntoIterator<Item = S>, S: AsRef<str>> IntoModel for Comment<I> {
+    type Output = Vec<String>;
+
+    fn into_model(self, _scope: &Scope) -> Result<Self::Output> {
+        let comment = self.0.into_iter().collect::<Vec<_>>();
+
+        let pfx = comment
+            .iter()
+            .flat_map(|s| s.as_ref().find(|c: char| !c.is_whitespace()))
+            .min()
+            .unwrap_or(0);
+
+        let comment: Vec<String> = comment
+            .into_iter()
+            .map(|s| {
+                let s = s.as_ref();
+                s[usize::min(s.len(), pfx)..].to_string()
+            })
+            .collect();
+
+        Ok(comment)
+    }
+}
+
 impl IntoModel for Type {
     type Output = RpType;
 
@@ -125,11 +152,11 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             let ty = item.ty.into_model(scope)?;
 
             let variant_type = if let Some(ty) = ty {
-                ty.and_then(|ty| {
+                Loc::take(Loc::and_then(ty, |ty| {
                     ty.as_enum_type()
                         .ok_or_else(|| "expected string or absent".into())
                         as Result<RpEnumType>
-                })?
+                })?)
             } else {
                 RpEnumType::Generated
             };
@@ -145,7 +172,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             Ok(RpEnumBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
-                comment: comment.into_model(scope)?,
+                comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
                 variant_type: variant_type,
                 variants: variants,
@@ -174,8 +201,8 @@ impl<'input, 'a> IntoModel
             .find(|v| *v.local_name == *variant.local_name)
         {
             return Err(ctx.report()
-                .err(variant.local_name.pos(), "conflicting enum name")
-                .info(other.local_name.pos(), "previous variant here")
+                .err(Loc::pos(&variant.local_name), "conflicting enum name")
+                .info(Loc::pos(&other.local_name), "previous variant here")
                 .into());
         }
 
@@ -198,7 +225,7 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
                     );
                 }
 
-                argument.and_then(|value| value.into_ordinal())?
+                Loc::take(Loc::and_then(argument, |value| value.into_ordinal())?)
             } else {
                 RpEnumOrdinal::Generated
             };
@@ -208,8 +235,8 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
 
             Ok(RpVariant {
                 name: scope.as_name().push(item.name.to_string()),
-                local_name: item.name.clone().map(str::to_string),
-                comment: comment.into_iter().map(ToOwned::to_owned).collect(),
+                local_name: Loc::map(item.name.clone(), str::to_string),
+                comment: Comment(&comment).into_model(scope)?,
                 ordinal: ordinal,
             })
         })
@@ -233,7 +260,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
             Ok(RpField {
                 modifier: item.modifier,
                 name: item.name.to_string(),
-                comment: comment.into_iter().map(ToOwned::to_owned).collect(),
+                comment: Comment(&comment).into_model(scope)?,
                 ty: item.ty.into_model(scope)?,
                 field_as: field_as,
             })
@@ -249,7 +276,7 @@ impl<'input> IntoModel for File<'input> {
         let decls = self.decls.into_model(scope)?;
 
         Ok(RpFile {
-            comment: self.comment.into_iter().map(ToOwned::to_owned).collect(),
+            comment: Comment(&self.comment).into_model(scope)?,
             options: options,
             decls: decls,
         })
@@ -279,25 +306,63 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                     Vacant(entry) => entry.insert(Rc::new(sub_type)),
                     Occupied(entry) => {
                         return Err(ctx.report()
-                            .err(sub_type.pos(), "sub-type already defined")
-                            .info(entry.get().pos(), "already defined here")
+                            .err(Loc::pos(&sub_type), "sub-type already defined")
+                            .info(Loc::pos(entry.get()), "already defined here")
                             .into());
                     }
                 };
             }
 
-            let attributes = attributes.into_model(scope)?;
+            let mut attributes = attributes.into_model(scope)?;
+
+            let mut sub_type_strategy = RpSubTypeStrategy::default();
+
+            if let Some(mut type_info) = attributes.take_selection("type_info") {
+                sub_type_strategy = push_type_info(ctx, &mut type_info)?;
+                check_selection!(scope, type_info);
+            }
+
             check_attributes!(scope, attributes);
 
-            Ok(RpInterfaceBody {
+            return Ok(RpInterfaceBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
-                comment: comment.into_model(scope)?,
+                comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
                 fields: fields,
                 codes: codes,
                 sub_types: sub_types,
-            })
+                sub_type_strategy: sub_type_strategy,
+            });
+
+            /// Extract type_info attribute.
+            fn push_type_info(
+                ctx: &Context,
+                selection: &mut Selection,
+            ) -> Result<RpSubTypeStrategy> {
+                if let Some(strategy) = selection.take("strategy") {
+                    let id = strategy.as_string()?;
+
+                    match id {
+                        "tagged" => {
+                            if let Some(tag) = selection.take("tag") {
+                                let tag = tag.as_string()?;
+
+                                return Ok(RpSubTypeStrategy::Tagged {
+                                    tag: tag.to_string(),
+                                });
+                            }
+                        }
+                        _ => {
+                            return Err(ctx.report()
+                                .err(Loc::pos(&strategy), "bad strategy")
+                                .into());
+                        }
+                    }
+                }
+
+                Ok(RpSubTypeStrategy::default())
+            }
         })
     }
 }
@@ -310,7 +375,7 @@ where
     type Output = Loc<T::Output>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (value, pos) = self.take_pair();
+        let (value, pos) = Loc::take_pair(self);
         Ok(Loc::new(value.into_model(scope)?, pos))
     }
 }
@@ -442,6 +507,8 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
         use linked_hash_map::Entry::*;
 
         return self.map(|comment, attributes, item| {
+            let ctx = scope.ctx();
+
             let mut endpoint_names: HashMap<String, ErrorPos> = HashMap::new();
             let mut endpoints = LinkedHashMap::new();
             let mut options = Vec::new();
@@ -461,17 +528,41 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
                 };
             }
 
-            let attributes = attributes.into_model(scope)?;
+            let mut attributes = attributes.into_model(scope)?;
+
+            let mut http = RpServiceBodyHttp::default();
+
+            if let Some(selection) = attributes.take_selection("http") {
+                let (mut selection, pos) = Loc::take_pair(selection);
+                push_http(ctx, scope, &mut selection, &mut http).with_pos(pos)?;
+                check_selection!(scope, selection);
+            }
+
             check_attributes!(scope, attributes);
 
             Ok(RpServiceBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
-                comment: comment.into_model(scope)?,
-                endpoints: endpoints,
+                comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
+                http: http,
+                endpoints: endpoints,
             })
         });
+
+        fn push_http(
+            _ctx: &Context,
+            _scope: &Scope,
+            selection: &mut Selection,
+            http: &mut RpServiceBodyHttp,
+        ) -> Result<()> {
+            if let Some(url) = selection.take("url") {
+                let url = Loc::and_then(url, |url| url.as_string().map(ToOwned::to_owned))?;
+                http.url = Some(url);
+            }
+
+            Ok(())
+        }
 
         /// Handle a single endpoint.
         fn handle_endpoint<'input>(
@@ -486,22 +577,22 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
 
             // Check that there are no conflicting endpoint names.
             match endpoint_names.entry(endpoint.name().to_string()) {
-                hash_map::Entry::Vacant(entry) => entry.insert(endpoint.pos().into()),
+                hash_map::Entry::Vacant(entry) => entry.insert(Loc::pos(&endpoint).into()),
                 hash_map::Entry::Occupied(entry) => {
                     return Err(ctx.report()
-                        .err(endpoint.pos(), "conflicting name of endpoint")
+                        .err(Loc::pos(&endpoint), "conflicting name of endpoint")
                         .info(entry.get().clone_error_pos(), "previous name here")
                         .into());
                 }
             };
 
             // Check that there are no conflicting endpoint IDs.
-            match endpoints.entry(endpoint.id.value().to_string()) {
+            match endpoints.entry(Loc::value(&endpoint.id).to_string()) {
                 Vacant(entry) => entry.insert(endpoint),
                 Occupied(entry) => {
                     return Err(ctx.report()
-                        .err(endpoint.pos(), "conflicting id of endpoint")
-                        .info(entry.get().pos(), "previous id here")
+                        .err(Loc::pos(&endpoint), "conflicting id of endpoint")
+                        .info(Loc::pos(entry.get()), "previous id here")
                         .into());
                 }
             };
@@ -532,20 +623,19 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                 let name = name.into_model(scope)?;
                 let channel = channel.into_model(scope)?;
 
-                match arguments.entry(name.value().clone()) {
+                match arguments.entry(Loc::value(&name).clone()) {
                     linked_hash_map::Entry::Vacant(entry) => {
                         entry.insert((name, channel));
                     }
                     linked_hash_map::Entry::Occupied(entry) => {
                         return Err(ctx.report()
-                            .err(name.pos(), "argument already present")
-                            .info(entry.get().0.pos(), "argument present here")
+                            .err(Loc::pos(&name), "argument already present")
+                            .info(Loc::pos(&entry.get().0), "argument present here")
                             .into());
                     }
                 }
             }
 
-            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
             let response = item.response.into_model(scope)?;
 
             let mut attributes = attributes.into_model(scope)?;
@@ -553,8 +643,17 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             let mut http = RpEndpointHttp::default();
 
             if let Some(selection) = attributes.take_selection("http") {
-                let (mut selection, pos) = selection.take_pair();
-                push_http(scope, &arguments, &mut selection, &mut http).with_pos(pos)?;
+                let (mut selection, pos) = Loc::take_pair(selection);
+
+                push_http(
+                    ctx,
+                    scope,
+                    response.as_ref(),
+                    &arguments,
+                    &mut selection,
+                    &mut http,
+                ).with_pos(&pos)?;
+
                 check_selection!(scope, selection);
             }
 
@@ -563,7 +662,7 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             Ok(RpEndpoint {
                 id: id,
                 name: name,
-                comment: comment,
+                comment: Comment(&comment).into_model(scope)?,
                 attributes: attributes,
                 arguments: arguments,
                 response: response,
@@ -573,21 +672,29 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
 
         /// Add HTTP options associated with an endpoint.
         fn push_http(
+            ctx: &Context,
             scope: &Scope,
+            response: Option<&Loc<RpChannel>>,
             arguments: &LinkedHashMap<String, (Loc<String>, Loc<RpChannel>)>,
             selection: &mut Selection,
             http: &mut RpEndpointHttp,
         ) -> Result<()> {
+            // Keep track of used variables.
+            let mut unused_args = arguments
+                .iter()
+                .map(|(key, value)| (key.as_str(), &value.0))
+                .collect::<HashMap<_, _>>();
+
             if let Some(path) = selection.take("path") {
-                let (path, pos) = path.take_pair();
-                http.path = Some(parse_path(scope, arguments, path).with_pos(pos)?);
+                let (path, pos) = Loc::take_pair(path);
+                http.path = Some(parse_path(scope, path, &mut unused_args).with_pos(pos)?);
             }
 
             if let Some(body) = selection.take("body") {
-                let (body, pos) = body.take_pair();
+                let (body, pos) = Loc::take_pair(body);
                 let body = body.as_identifier().with_pos(&pos)?;
 
-                if arguments.get(body).is_none() {
+                if unused_args.remove(body).is_none() {
                     return Err(format!("no such argument: {}", body).into()).with_pos(&pos);
                 }
 
@@ -595,8 +702,33 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             }
 
             if let Some(method) = selection.take("method") {
-                let (method, pos) = method.take_pair();
+                let (method, pos) = Loc::take_pair(method);
                 http.method = Some(parse_method(method).with_pos(pos)?);
+            }
+
+            if let Some(accept) = selection.take("accept") {
+                let accept = Loc::and_then(accept, |a| {
+                    a.as_string().and_then(|a| match a {
+                        "application/json" => Ok(RpAccept::Json),
+                        "text/plain" => Ok(RpAccept::Text),
+                        _ => Err("unsupported media type".into()),
+                    })
+                })?;
+
+                http_verify_accept(ctx, &accept, response)?;
+                http.accept = Loc::take(accept);
+            }
+
+            // Assert that all arguments are used somehow.
+            if !unused_args.is_empty() {
+                let mut report = ctx.report();
+
+                for arg in unused_args.values() {
+                    report =
+                        report.err(Loc::pos(arg), "Argument not used in #[http(...)] attribute");
+                }
+
+                return Err(report.into());
             }
 
             Ok(())
@@ -605,15 +737,15 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
         /// Parse a path specification.
         fn parse_path(
             scope: &Scope,
-            arguments: &LinkedHashMap<String, (Loc<String>, Loc<RpChannel>)>,
             path: RpValue,
+            unused_args: &mut HashMap<&str, &Loc<String>>,
         ) -> Result<RpPathSpec> {
             let path = path.as_string()?;
             let path = path_parse(path).map_err(|e| format!("illegal path: {}", e))?;
             let path = path.into_model(scope)?;
 
             for var in path.vars() {
-                if arguments.get(var).is_none() {
+                if unused_args.remove(var).is_none() {
                     return Err(format!("no such argument: {}", var).into());
                 }
             }
@@ -637,6 +769,38 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             };
 
             Ok(m)
+        }
+
+        /// Check that accept matches response.
+        fn http_verify_accept(
+            ctx: &Context,
+            accept: &Loc<RpAccept>,
+            response: Option<&Loc<RpChannel>>,
+        ) -> Result<()> {
+            let response = match response {
+                Some(response) => response,
+                None => return Ok(()),
+            };
+
+            let (accept, pos) = Loc::borrow_pair(&accept);
+
+            match *accept {
+                // Can handle complex data types.
+                ref accept if *accept == RpAccept::Json => return Ok(()),
+                _ => {
+                    if *response.ty() == RpType::String {
+                        return Ok(());
+                    }
+
+                    return Err(ctx.report()
+                        .err(
+                            Loc::pos(response),
+                            "Only `string` responses are supported for the given `accept`",
+                        )
+                        .info(pos, "Specified here")
+                        .into());
+                }
+            }
         }
     }
 }
@@ -684,8 +848,8 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
                             .find(|f| f.name() == field.name() || f.ident() == field.ident())
                         {
                             return Err(ctx.report()
-                                .err(field.pos(), "conflict in field")
-                                .info(other.pos(), "previous declaration here")
+                                .err(Loc::pos(&field), "conflict in field")
+                                .info(Loc::pos(other), "previous declaration here")
                                 .into());
                         }
 
@@ -704,7 +868,6 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
             }
 
             let sub_type_name = sub_type_name(item.alias, scope)?;
-            let comment = comment.into_iter().map(ToOwned::to_owned).collect();
 
             let attributes = attributes.into_model(scope)?;
             check_attributes!(scope, attributes);
@@ -712,7 +875,7 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
             Ok(RpSubType {
                 name: scope.as_name().push(item.name.to_string()),
                 local_name: item.name.to_string(),
-                comment: comment,
+                comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
                 fields: fields,
                 codes: codes,
@@ -722,7 +885,7 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
 
         /// Extract all names provided.
         fn alias_name<'input>(alias: Loc<Value<'input>>, scope: &Scope) -> Result<Loc<String>> {
-            let (alias, pos) = alias.into_model(scope)?.take_pair();
+            let (alias, pos) = Loc::take_pair(alias.into_model(scope)?);
 
             match alias {
                 RpValue::String(string) => Ok(Loc::new(string, pos)),
@@ -756,7 +919,7 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
             Ok(RpTupleBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
-                comment: comment.into_iter().map(ToOwned::to_owned).collect(),
+                comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
                 fields: fields,
                 codes: codes,
@@ -783,7 +946,7 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
             Ok(RpTypeBody {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
-                comment: comment.into_model(scope)?,
+                comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
                 fields: fields,
                 codes: codes,
@@ -821,8 +984,8 @@ impl<'input> IntoModel for Vec<TypeMember<'input>> {
                         .find(|f| f.name() == field.name() || f.ident() == field.ident())
                     {
                         return Err(ctx.report()
-                            .err(field.pos(), "conflict in field")
-                            .info(other.pos(), "previous declaration here")
+                            .err(Loc::pos(&field), "conflict in field")
+                            .info(Loc::pos(other), "previous declaration here")
                             .into());
                     }
 
@@ -880,11 +1043,11 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
         let mut selections = HashMap::new();
 
         for attribute in self {
-            let (attr, attr_pos) = attribute.take_pair();
+            let (attr, attr_pos) = Loc::take_pair(attribute);
 
             match attr {
                 Word(word) => {
-                    let (word, pos) = word.into_model(scope)?.take_pair();
+                    let (word, pos) = Loc::take_pair(word.into_model(scope)?);
 
                     if let Some(old) = words.insert(word, pos.clone()) {
                         return Err(ctx.report()
@@ -894,29 +1057,22 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                     }
                 }
                 List(key, name_values) => {
-                    let key = key.into_model(scope)?.take();
+                    let key = Loc::take(key.into_model(scope)?);
 
                     match selections.entry(key) {
                         hash_map::Entry::Vacant(entry) => {
-                            let mut words = HashMap::new();
+                            let mut words = Vec::new();
                             let mut values = HashMap::new();
 
                             for name_value in name_values {
                                 match name_value {
                                     AttributeItem::Word(word) => {
-                                        let (word, pos) = word.into_model(scope)?.take_pair();
-
-                                        if let Some(old) = words.insert(word, pos.clone()) {
-                                            return Err(ctx.report()
-                                                .err(pos, "word already present")
-                                                .info(old, "old attribute here")
-                                                .into());
-                                        }
+                                        words.push(word.into_model(scope)?);
                                     }
                                     AttributeItem::NameValue { name, value } => {
                                         let name = name.into_model(scope)?;
                                         let value = value.into_model(scope)?;
-                                        values.insert(name.value().clone(), (name, value));
+                                        values.insert(Loc::value(&name).clone(), (name, value));
                                     }
                                 }
                             }
@@ -927,7 +1083,7 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                         hash_map::Entry::Occupied(entry) => {
                             return Err(ctx.report()
                                 .err(attr_pos, "attribute already present")
-                                .info(entry.get().pos(), "attribute here")
+                                .info(Loc::pos(entry.get()), "attribute here")
                                 .into());
                         }
                     }

@@ -1,5 +1,6 @@
 use super::{Pos, WithPos};
 use serde;
+use std::borrow;
 use std::cmp;
 use std::hash;
 use std::result;
@@ -27,46 +28,47 @@ impl<T> Loc<T> {
         }
     }
 
-    pub fn value(&self) -> &T {
-        &self.inner
+    pub fn value(loc: &Loc<T>) -> &T {
+        &loc.inner
     }
 
-    pub fn pos(&self) -> &Pos {
-        &self.pos
+    pub fn pos(loc: &Loc<T>) -> &Pos {
+        &loc.pos
     }
 
-    pub fn take(self) -> T {
-        self.inner
+    pub fn take(loc: Loc<T>) -> T {
+        loc.inner
     }
 
-    pub fn take_pair(self) -> (T, Pos) {
-        (self.inner, self.pos)
+    pub fn take_pair(loc: Loc<T>) -> (T, Pos) {
+        (loc.inner, loc.pos)
     }
 
-    pub fn as_ref_pair(&self) -> (&T, &Pos) {
-        (&self.inner, &self.pos)
+    pub fn borrow_pair(loc: &Loc<T>) -> (&T, &Pos) {
+        (&loc.inner, &loc.pos)
     }
 
-    pub fn map<U, O>(self, op: O) -> Loc<U>
+    pub fn map<U, O>(loc: Loc<T>, op: O) -> Loc<U>
     where
         O: FnOnce(T) -> U,
     {
-        Loc::new(op(self.inner), self.pos.clone())
+        Loc::new(op(loc.inner), loc.pos.clone())
     }
 
-    pub fn and_then<U, O, E: WithPos>(self, op: O) -> result::Result<U, E>
+    pub fn and_then<U, O, E: WithPos>(
+        Loc { inner, pos }: Loc<T>,
+        op: O,
+    ) -> result::Result<Loc<U>, E>
     where
         O: FnOnce(T) -> result::Result<U, E>,
     {
-        op(self.inner).with_pos(&self.pos)
+        op(inner)
+            .map(|value| Loc::new(value, pos.clone()))
+            .with_pos(&pos)
     }
 
-    pub fn loc_ref(&self) -> Loc<&T> {
-        Loc::new(&self.inner, self.pos.clone())
-    }
-
-    pub fn as_ref(&self) -> Loc<&T> {
-        self.loc_ref()
+    pub fn as_ref(loc: &Loc<T>) -> Loc<&T> {
+        Loc::new(&loc.inner, loc.pos.clone())
     }
 }
 
@@ -124,9 +126,21 @@ impl<T> ::std::ops::Deref for Loc<T> {
     }
 }
 
+impl<T> ::std::ops::DerefMut for Loc<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
+}
+
 impl<T> ::std::convert::AsMut<T> for Loc<T> {
     fn as_mut(&mut self) -> &mut T {
         &mut self.inner
+    }
+}
+
+impl<T> borrow::Borrow<T> for Loc<T> {
+    fn borrow(&self) -> &T {
+        &**self
     }
 }
 

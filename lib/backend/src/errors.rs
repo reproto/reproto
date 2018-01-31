@@ -60,6 +60,8 @@ impl WithPos for Error {
         match self.kind() {
             &Pos(..) => self,
             &Errors(..) => self,
+            &Core(..) => self,
+            &Repository(..) => self,
             _ => {
                 let message = format!("{}", self);
                 self.chain_err(|| ErrorKind::Pos(message, pos.into()))

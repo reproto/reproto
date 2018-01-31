@@ -2,8 +2,7 @@
 //!
 //! This asserts that any errors raised contains location information.
 
-use super::WithPos;
-use super::as_loc::AsLoc;
+use {Loc, WithPos, as_loc::AsLoc};
 use std::result;
 
 /// Helper trait to iterate over a collection of loc items.
@@ -27,7 +26,7 @@ where
         F: FnMut(Self::Item) -> result::Result<(), E>,
     {
         for item in self {
-            let (value, pos) = item.as_loc().take_pair();
+            let (value, pos) = Loc::take_pair(item.as_loc());
             callback(value).map_err(|e| e.with_pos(pos))?;
         }
 

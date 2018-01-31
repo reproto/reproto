@@ -25,7 +25,7 @@ impl<'input, T> ops::Deref for Item<'input, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.item.value()
+        Loc::value(&self.item)
     }
 }
 
@@ -34,7 +34,7 @@ impl<'input, T> Item<'input, T> {
     where
         F: FnOnce(Vec<&'input str>, Vec<Loc<Attribute<'input>>>, T) -> Result<U, E>,
     {
-        let (value, pos) = self.item.take_pair();
+        let (value, pos) = Loc::take_pair(self.item);
 
         match f(self.comment, self.attributes, value) {
             Ok(o) => Ok(Loc::new(o, pos)),
@@ -52,7 +52,7 @@ impl<'input, T> Item<'input, T> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub enum AttributeItem<'input> {
-    Word(Loc<&'input str>),
+    Word(Loc<Value<'input>>),
     NameValue {
         name: Loc<&'input str>,
         value: Loc<Value<'input>>,
@@ -279,21 +279,21 @@ impl<'input> OptionEntry for OptionDecl<'input> {
     }
 
     fn as_string(&self) -> Result<String, &'static str> {
-        match *self.value.value() {
+        match *Loc::value(&self.value) {
             Value::String(ref string) => Ok(string.to_string()),
             _ => Err("expected string"),
         }
     }
 
     fn as_number(&self) -> Result<RpNumber, &'static str> {
-        match *self.value.value() {
+        match *Loc::value(&self.value) {
             Value::Number(ref number) => Ok(number.clone()),
             _ => Err("expected number"),
         }
     }
 
     fn as_identifier(&self) -> Result<String, &'static str> {
-        match *self.value.value() {
+        match *Loc::value(&self.value) {
             Value::Identifier(ref identifier) => Ok(identifier.to_string()),
             _ => Err("expected identifier"),
         }

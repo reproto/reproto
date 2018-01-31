@@ -10,7 +10,7 @@ pub trait Object: Send + fmt::Display + fmt::Debug {
     fn path(&self) -> Option<&Path>;
 
     /// Open a reader to the object.
-    fn read<'a>(&'a self) -> Result<Box<Read + 'a>>;
+    fn read(&self) -> Result<Box<Read>>;
 
     /// Lightweight cloning of this object.
     fn clone_object(&self) -> Box<Object>;
@@ -19,6 +19,50 @@ pub trait Object: Send + fmt::Display + fmt::Debug {
     fn with_name(&self, name: String) -> Box<Object>;
 }
 
+/// An empty object.
+#[derive(Debug)]
+pub struct EmptyObject {
+    name: Arc<String>,
+}
+
+impl EmptyObject {
+    /// Create a new empty object with the given name.
+    pub fn new(name: String) -> EmptyObject {
+        EmptyObject {
+            name: Arc::new(name),
+        }
+    }
+}
+
+impl Object for EmptyObject {
+    fn path(&self) -> Option<&Path> {
+        None
+    }
+
+    fn read(&self) -> Result<Box<Read>> {
+        Ok(Box::new(Cursor::new(&[])))
+    }
+
+    fn clone_object(&self) -> Box<Object> {
+        Box::new(EmptyObject {
+            name: Arc::clone(&self.name),
+        })
+    }
+
+    fn with_name(&self, name: String) -> Box<Object> {
+        Box::new(EmptyObject {
+            name: Arc::new(name),
+        })
+    }
+}
+
+impl fmt::Display for EmptyObject {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "<{} (empty)>", self.name)
+    }
+}
+
+/// An named object containing a fixed set of bytes.
 #[derive(Debug)]
 pub struct BytesObject {
     name: Arc<String>,
@@ -34,13 +78,22 @@ impl BytesObject {
     }
 }
 
+/// Adapt a vector in an Arc to be used in a Cursor.
+struct ArcCursor(Arc<Vec<u8>>);
+
+impl AsRef<[u8]> for ArcCursor {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 impl Object for BytesObject {
     fn path(&self) -> Option<&Path> {
         None
     }
 
-    fn read<'a>(&'a self) -> Result<Box<Read + 'a>> {
-        Ok(Box::new(Cursor::new(self.bytes.as_ref())))
+    fn read(&self) -> Result<Box<Read>> {
+        Ok(Box::new(Cursor::new(ArcCursor(Arc::clone(&self.bytes)))))
     }
 
     fn clone_object(&self) -> Box<Object> {
@@ -116,5 +169,63 @@ impl fmt::Display for PathObject {
 impl From<PathObject> for Box<Object> {
     fn from(value: PathObject) -> Box<Object> {
         Box::new(value)
+    }
+}
+
+pub struct ReaderObject<F> {
+    name: Arc<String>,
+    reader: Arc<F>,
+}
+
+impl<F> ReaderObject<F>
+where
+    F: 'static + Sync + Send + Fn() -> Box<Read>,
+{
+    pub fn new(name: String, reader: F) -> ReaderObject<F> {
+        ReaderObject {
+            name: Arc::new(name),
+            reader: Arc::new(reader),
+        }
+    }
+}
+
+impl<F> Object for ReaderObject<F>
+where
+    F: 'static + Sync + Send + Fn() -> Box<Read>,
+{
+    fn path(&self) -> Option<&Path> {
+        None
+    }
+
+    fn read(&self) -> Result<Box<Read>> {
+        Ok((self.reader)())
+    }
+
+    fn clone_object(&self) -> Box<Object> {
+        Box::new(ReaderObject {
+            name: Arc::clone(&self.name),
+            reader: Arc::clone(&self.reader),
+        })
+    }
+
+    fn with_name(&self, name: String) -> Box<Object> {
+        Box::new(ReaderObject {
+            name: Arc::new(name),
+            reader: Arc::clone(&self.reader),
+        })
+    }
+}
+
+impl<F> fmt::Debug for ReaderObject<F> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("ReaderObject")
+            .field("name", &self.name)
+            .finish()
+    }
+}
+
+impl<F> fmt::Display for ReaderObject<F> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.name)
     }
 }

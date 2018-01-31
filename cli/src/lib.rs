@@ -18,6 +18,7 @@ extern crate reproto_backend_json as json;
 extern crate reproto_backend_python as python;
 extern crate reproto_backend_rust as rust;
 extern crate reproto_core as core;
+extern crate reproto_derive as derive;
 extern crate reproto_manifest as manifest;
 extern crate reproto_parser as parser;
 extern crate reproto_repository as repository;

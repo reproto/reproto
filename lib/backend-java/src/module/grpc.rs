@@ -7,11 +7,11 @@ use core::{Loc, RpChannel, RpEndpoint};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
 use java_backend::JavaBackend;
-use listeners::{Configure, Listeners, ServiceAdded};
+use listeners::{Configure, EndpointExtra, Listeners, ServiceAdded};
 use processor::Processor;
 use std::borrow::Borrow;
 use std::rc::Rc;
-use utils::Utils;
+use utils::{Override, Utils};
 
 const CLIENT_STUB_NAME: &'static str = "ClientStub";
 const SERVER_STUB_NAME: &'static str = "ServerStub";
@@ -47,15 +47,6 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for Generated<'a, 'el> {
     }
 }
 
-/// @Override annotation
-struct Override<'a>(&'a GrpcClient);
-
-impl<'a, 'el> IntoTokens<'el, Java<'el>> for Override<'a> {
-    fn into_tokens(self) -> Tokens<'el, Java<'el>> {
-        toks!["@", self.0.override_.clone()]
-    }
-}
-
 /// Embedded marshaller for Void.
 struct VoidMarshaller<'a>(&'a GrpcClient);
 
@@ -72,7 +63,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for VoidMarshaller<'a> {
         // parse
         class.methods.push({
             let mut m = Method::new("parse");
-            m.annotation(Override(self.0));
+            m.annotation(Override);
             m.returns = void.clone();
             m.arguments
                 .push(Argument::new(self.0.input_stream.clone(), "stream"));
@@ -84,7 +75,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for VoidMarshaller<'a> {
         // stream
         class.methods.push({
             let mut m = Method::new("stream");
-            m.annotation(Override(self.0));
+            m.annotation(Override);
             m.returns = self.0.input_stream.clone();
             m.arguments.push(Argument::new(void.clone(), "value"));
 
@@ -137,7 +128,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for JsonMarshaller<'a> {
         // parse
         class.methods.push({
             let mut m = Method::new("parse");
-            m.annotation(Override(self.0));
+            m.annotation(Override);
             m.returns = tpl.clone();
             m.arguments
                 .push(Argument::new(self.0.input_stream.clone(), "stream"));
@@ -162,7 +153,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for JsonMarshaller<'a> {
         // stream
         class.methods.push({
             let mut m = Method::new("stream");
-            m.annotation(Override(self.0));
+            m.annotation(Override);
             m.returns = self.0.input_stream.clone();
             m.arguments.push(Argument::new(tpl.clone(), "value"));
 
@@ -189,7 +180,6 @@ pub struct GrpcClient {
     utils: Rc<Utils>,
     snake_to_upper: Box<Naming>,
     mapper_provider: Java<'static>,
-    override_: Java<'static>,
     bais: Java<'static>,
     generated: Java<'static>,
     abstract_stub: Java<'static>,
@@ -213,7 +203,6 @@ impl GrpcClient {
             utils: Rc::clone(utils),
             snake_to_upper: SnakeCase::new().to_upper_snake(),
             mapper_provider: imported("io.reproto", "MapperProvider"),
-            override_: imported("java.lang", "Override"),
             bais: imported("java.io", "ByteArrayInputStream"),
             generated: imported("javax.annotation", "Generated"),
             abstract_stub: imported("io.grpc.stub", "AbstractStub"),
@@ -565,7 +554,7 @@ impl GrpcClient {
         spec.methods.push({
             let mut m = Method::new("build");
             m.modifiers = vec![Protected];
-            m.annotation(Override(self));
+            m.annotation(Override);
             m.returns = local(name.clone());
 
             m.arguments
@@ -658,7 +647,7 @@ impl ServiceCodegen for GrpcClient {
             backend,
             body,
             spec,
-            endpoint_names,
+            extra,
             ..
         } = e;
 
@@ -667,7 +656,7 @@ impl ServiceCodegen for GrpcClient {
 
         let mut bind_service = Method::new("bindService");
         bind_service.returns = self.server_service_definition.clone();
-        bind_service.annotation(Override(self));
+        bind_service.annotation(Override);
 
         bind_service
             .body
@@ -683,7 +672,9 @@ impl ServiceCodegen for GrpcClient {
             .body
             .nested(toks![".builder(", service_name.clone().quoted(), ")",]);
 
-        for (endpoint, name) in body.endpoints.values().zip(endpoint_names.iter().cloned()) {
+        for (endpoint, extra) in body.endpoints.values().zip(extra.iter()) {
+            let EndpointExtra { ref name, .. } = *extra;
+
             let request = self.endpoint_request(endpoint)?.map(|v| v.1);
 
             let request_ty = if let Some(req) = request {

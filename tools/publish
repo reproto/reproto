@@ -7,6 +7,7 @@ root=$PWD
 
 candidates=()
 candidates+=(lib/semver)
+candidates+=(lib/derive)
 candidates+=(lib/core)
 candidates+=(lib/path-lexer lib/path-parser)
 candidates+=(lib/lexer lib/ast lib/parser)
