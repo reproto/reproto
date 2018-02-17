@@ -329,6 +329,8 @@ impl Environment {
         for t in file.decls.iter().flat_map(|d| d.to_reg()) {
             let key = t.name().clone().without_prefix();
 
+            debug!("new reg ty: {}", key);
+
             match self.types.entry(key) {
                 Vacant(entry) => entry.insert(t),
                 Occupied(entry) => {

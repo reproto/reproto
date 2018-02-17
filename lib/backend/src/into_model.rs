@@ -297,7 +297,9 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             let mut sub_types: BTreeMap<String, Rc<Loc<RpSubType>>> = BTreeMap::new();
 
             for sub_type in item.sub_types {
-                let sub_type = sub_type.into_model(scope)?;
+                let scope = scope.child(Loc::value(&sub_type.name).to_owned());
+
+                let sub_type = sub_type.into_model(&scope)?;
 
                 // key has to be owned by entry
                 let key = sub_type.local_name.clone();
@@ -873,7 +875,7 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
             check_attributes!(scope, attributes);
 
             Ok(RpSubType {
-                name: scope.as_name().push(item.name.to_string()),
+                name: scope.as_name(),
                 local_name: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,

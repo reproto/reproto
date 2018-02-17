@@ -17,7 +17,7 @@ use inflector::cases::pascalcase::to_pascal_case;
 use inflector::cases::snakecase::to_snake_case;
 use linked_hash_map::LinkedHashMap;
 use std::cmp;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::{self, Write};
 use std::hash;
 use std::io;
@@ -480,12 +480,11 @@ impl Fp {
                     return Ok(Some("@class"));
                 }
 
-                Ok(common_keys
-                    .iter()
-                    .collect::<BTreeSet<_>>()
-                    .iter()
-                    .map(|s| s.as_str())
-                    .next())
+                if common_keys.contains("kind") {
+                    return Ok(Some("kind"));
+                }
+
+                Ok(None)
             }
         }
 
