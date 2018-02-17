@@ -1,5 +1,5 @@
 [package]
-name = "reproto-derive"
+name = "reproto-backend-reproto"
 version = "0.3.12"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
@@ -10,16 +10,16 @@ documentation = "https://docs.rs/reproto-derive"
 description = """
 Rethinking Protocol Generators
 
-Derives a reproto schema from an existing JSON.
+reproto backend for reproto
+
+this crate writes a schema out as a schema again.
 """
 
 [dependencies]
 reproto-core = {path = "../core", version = "0.3"}
+reproto-lexer = {path = "../lexer", version = "0.3"}
 
-Inflector = "0.11"
-serde_json = {version = "1.0", features = ["preserve_order"]}
-chrono = "0.4"
-linked-hash-map = "0.5"
+genco = "0.2"
 
 [lib]
 path = "lib.rs"

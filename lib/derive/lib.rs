@@ -1,10 +1,7 @@
 extern crate chrono;
-#[macro_use]
-extern crate genco;
 extern crate inflector;
 extern crate linked_hash_map;
 extern crate reproto_core as core;
-extern crate reproto_lexer as lexer;
 extern crate serde_json as json;
 
 use chrono::{DateTime, Utc};
@@ -12,15 +9,13 @@ use core::{Loc, Object, Pos, RpDecl, RpField, RpInterfaceBody, RpModifier, RpNam
            RpSubType, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage,
            DEFAULT_TAG};
 use core::errors::Result;
-use genco::{Custom, Formatter, IoFmt, Quoted, Tokens, WriteTokens};
 use inflector::cases::pascalcase::to_pascal_case;
 use inflector::cases::snakecase::to_snake_case;
 use linked_hash_map::LinkedHashMap;
 use std::cmp;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::{self, Write};
+use std::fmt;
 use std::hash;
-use std::io;
 use std::mem;
 use std::ops;
 use std::rc::Rc;
@@ -512,36 +507,6 @@ pub enum HashFp {
     Tuple(Vec<FieldHashFp>),
 }
 
-#[derive(Clone)]
-pub enum Reproto {
-}
-
-impl Custom for Reproto {
-    type Extra = ();
-
-    fn quote_string(out: &mut Formatter, input: &str) -> fmt::Result {
-        out.write_char('"')?;
-
-        for c in input.chars() {
-            match c {
-                '\t' => out.write_str("\\t")?,
-                '\u{0007}' => out.write_str("\\b")?,
-                '\n' => out.write_str("\\n")?,
-                '\r' => out.write_str("\\r")?,
-                '\u{0014}' => out.write_str("\\f")?,
-                '\'' => out.write_str("\\'")?,
-                '"' => out.write_str("\\\"")?,
-                '\\' => out.write_str("\\\\")?,
-                c => out.write_char(c)?,
-            }
-        }
-
-        out.write_char('"')?;
-
-        Ok(())
-    }
-}
-
 /// The root name given to any derived item.
 pub fn root_name() -> (String, RpName) {
     let package = RpPackage::empty();
@@ -963,171 +928,8 @@ impl<'a> TupleRefiner<'a> {
     }
 }
 
-/// Format the given declaration.
-fn format_decl<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
-    let result = match *decl {
-        RpDecl::Type(ref type_) => format_type(type_),
-        RpDecl::Interface(ref interface) => format_interface(interface),
-        RpDecl::Tuple(ref tuple) => format_tuple(tuple),
-        ref decl => return Err(format!("Unsupported declaration: {:?}", decl).into()),
-    };
-
-    return result;
-
-    fn format_type<'el>(body: &'el RpTypeBody) -> Result<Tokens<'el, Reproto>> {
-        let mut tuple = Tokens::new();
-
-        tuple.push(toks!["type ", body.local_name.as_str(), " {"]);
-
-        tuple.nested({
-            let mut t = Tokens::new();
-
-            for f in &body.fields {
-                t.push(format_field(f)?);
-            }
-
-            for d in &body.decls {
-                t.push(format_decl(d)?);
-            }
-
-            t.join_line_spacing()
-        });
-
-        tuple.push("}");
-
-        Ok(tuple)
-    }
-
-    fn format_interface<'el>(body: &'el RpInterfaceBody) -> Result<Tokens<'el, Reproto>> {
-        let mut interface = Tokens::new();
-
-        match body.sub_type_strategy {
-            RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                if tag != DEFAULT_TAG {
-                    interface.push(toks![
-                        "#[type_info(strategy = ",
-                        "tagged".quoted(),
-                        ", tag = ",
-                        tag.as_str().quoted(),
-                        ")]"
-                    ]);
-                }
-            }
-        }
-
-        interface.push(toks!["interface ", body.local_name.as_str(), " {"]);
-
-        interface.nested({
-            let mut t = Tokens::new();
-
-            for sub_type in body.sub_types.values() {
-                t.push({
-                    let mut t = Tokens::new();
-
-                    if let Some(ref alias) = sub_type.sub_type_name {
-                        t.push(toks![
-                            sub_type.local_name.as_str(),
-                            " as ",
-                            alias.as_str().quoted(),
-                            " {"
-                        ]);
-                    } else {
-                        t.push(toks![sub_type.local_name.as_str(), " {"]);
-                    }
-
-                    t.nested({
-                        let mut t = Tokens::new();
-
-                        for f in &sub_type.fields {
-                            t.push(format_field(f)?);
-                        }
-
-                        for d in &sub_type.decls {
-                            t.push(format_decl(d)?);
-                        }
-
-                        t.join_line_spacing()
-                    });
-
-                    t.push("}");
-
-                    t
-                });
-            }
-
-            for d in &body.decls {
-                t.push(format_decl(d)?);
-            }
-
-            t.join_line_spacing()
-        });
-
-        interface.push("}");
-
-        Ok(interface)
-    }
-
-    fn format_tuple<'el>(body: &'el RpTupleBody) -> Result<Tokens<'el, Reproto>> {
-        let mut tuple = Tokens::new();
-
-        tuple.push(toks!["tuple ", body.local_name.as_str(), " {"]);
-
-        tuple.nested({
-            let mut t = Tokens::new();
-
-            for f in &body.fields {
-                t.push(format_field(f)?);
-            }
-
-            for d in &body.decls {
-                t.push(format_decl(d)?);
-            }
-
-            t.join_line_spacing()
-        });
-
-        tuple.push("}");
-
-        Ok(tuple)
-    }
-
-    fn format_field<'el>(field: &'el RpField) -> Result<Tokens<'el, Reproto>> {
-        let mut t = Tokens::new();
-
-        for line in &field.comment {
-            if line.is_empty() {
-                t.push("///");
-            } else {
-                t.push(toks!["/// ", line.as_str()]);
-            }
-        }
-
-        let field_name = field.name.as_str();
-
-        let field_name = match lexer::match_keyword(field_name) {
-            Some(token) => token
-                .keyword_safe()
-                .ok_or_else(|| format!("keyword does not have a safe variant: {}", field_name))?,
-            None => field_name,
-        };
-
-        if field.is_optional() {
-            t.push(toks![field_name, "?: ", field.ty.to_string()]);
-        } else {
-            t.push(toks![field_name, ": ", field.ty.to_string()]);
-        }
-
-        if let Some(ref field_as) = field.field_as {
-            t.extend(toks![" as ", field_as.as_str().quoted()]);
-        }
-
-        t.append(";");
-
-        Ok(t)
-    }
-}
-
-pub fn derive<O: 'static>(object: O) -> Result<()>
+/// Derive a declaration from the given input.
+pub fn derive<O: 'static>(object: O) -> Result<RpDecl>
 where
     O: Object,
 {
@@ -1150,10 +952,75 @@ where
         types: &mut types,
     }.derive(&fp)?;
 
-    let stdout = io::stdout();
-    let toks = format_decl(&decl)?;
+    Ok(decl)
+}
 
-    IoFmt(&mut stdout.lock()).write_file(toks, &mut ())?;
+#[cfg(test)]
+mod tests {
+    use super::derive;
+    use core::{BytesObject, Loc, RpDecl, RpSubTypeStrategy, RpType};
+    use std::sync::Arc;
 
-    Ok(())
+    fn input(input: &str) -> BytesObject {
+        BytesObject::new(
+            "test".to_string(),
+            Arc::new(input.as_bytes().iter().cloned().collect()),
+        )
+    }
+
+    #[test]
+    fn simple_declaration() {
+        let decl = derive(input(r#"{"id": 42, "name": "Oscar"}"#)).expect("bad derive");
+
+        let ty = match decl {
+            RpDecl::Type(ty) => ty,
+            other => panic!("expected type, got: {:?}", other),
+        };
+
+        assert_eq!(2, ty.fields.len());
+        assert_eq!("id", ty.fields[0].name.as_str());
+        assert_eq!(RpType::Unsigned { size: 64 }, ty.fields[0].ty);
+        assert_eq!("name", ty.fields[1].name.as_str());
+        assert_eq!(RpType::String, ty.fields[1].ty);
+    }
+
+    #[test]
+    fn test_interface() {
+        let decl = derive(input(
+            r#"[
+    {"kind": "dragon", "name": "Stephen", "age": 4812, "fire": "blue"},
+    {"kind": "knight", "name": "Olivia", "armor": "Unobtanium"}
+]"#,
+        )).expect("bad derive");
+
+        let intf = match decl {
+            RpDecl::Interface(intf) => intf,
+            other => panic!("expected interface, got: {:?}", other),
+        };
+
+        assert_eq!(
+            RpSubTypeStrategy::Tagged {
+                tag: "kind".to_string(),
+            },
+            intf.sub_type_strategy
+        );
+
+        assert_eq!(2, intf.sub_types.len());
+        assert_eq!(
+            Some("dragon"),
+            intf.sub_types["Dragon"]
+                .sub_type_name
+                .as_ref()
+                .map(Loc::value)
+                .map(String::as_str)
+        );
+        assert_eq!(
+            Some("knight"),
+            intf.sub_types["Knight"]
+                .sub_type_name
+                .as_ref()
+                .map(Loc::value)
+                .map(String::as_str)
+        );
+    }
 }
