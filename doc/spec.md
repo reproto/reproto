@@ -5,11 +5,13 @@
 * [File Options](#file-options)
 * [Distribution](#distribution)
 * [Versioning](#versioning)
-  * [Versioned Specifications](#versioned-specifications)
   * [Ephemeral Specifications](#ephemeral-specifications)
+  * [Versioned Specifications](#versioned-specifications)
 * [The reproto language](#the-reproto-language)
+  * [Specification Files](#specification-files)
   * [Imports](#imports)
   * [Built-In Types](#built-in-types)
+  * [Attributes](#attributes)
   * [Documentation](#documentation)
   * [Types](#types)
   * [Enums](#enums)
@@ -17,6 +19,10 @@
     * [Interface sub-types](#interface-sub-types)
   * [Tuples](#tuples)
   * [Services](#services)
+    * [Endpoints](#endpoints)
+    * [HTTP services](#http-services)
+    * [HTTP paths](#http-paths)
+    * [Bi-directional services](#bi-directional-services)
   * [Reserved fields](#reserved-fields)
   * [Custom Code](#custom-code)
 * [Language Support](#language-support)
@@ -44,11 +50,11 @@ The following declarations are currently supported:
 [`type`]: #types
 [`enum`]: #enums
 [`interface`]: #interfaces
-[`tuples`]: #tuples
+[`tuple`]: #tuples
 [bi-directional]: #bi-directional-services
 [`service`]: #services
 
-## Directory Structure
+# Directory Structure
 
 The compiler expects that multiple _paths_ are provided to it.
 
@@ -66,7 +72,7 @@ If this is present it's called a [versioned specification](#versioned-specificat
 
 Otherwise, it's known as an [ephemeral specification](#ephemeral-specifications).
 
-## File Options
+# File Options
 
 File options are specification-global options that affect the default behavior of the compiler.
 
@@ -82,7 +88,7 @@ option field_naming = upper_camel;
 
 The following are legal file options.
 
-#### `option endpoint_naming = <ident>`
+## `option endpoint_naming = <ident>`
 
 The default endpoint naming strategy to use.
 
@@ -123,7 +129,7 @@ service MyService {
 }
 ```
 
-#### `option field_naming <naming>`
+## `option field_naming <naming>`
 
 The default field naming strategy to use.
 
@@ -136,16 +142,16 @@ Valid options are:
 * `upper_snake`, fields would be serialized as `UPPER_SNAKE`.
 * `lower_snake`, fields would be serialized as `lower_snake` (default).
 
-## Distribution
+# Distribution
 
 Specifications are intended to be distributed through the package management system of `reproto`.
 
 This can be done by uploading a specification to a repository, after which it can be pulled in for
 use by other projects through the repository system.
 
-## Versioning
+# Versioning
 
-### Ephemeral specifications
+## Ephemeral specifications
 
 An ephemeral specification is one that does _not_ have a version.
 For example, `src/io/reproto/toystore.reproto` is an ephemeral specification because it does not
@@ -163,7 +169,7 @@ specifications is a change in [`reproto.toml`] and not renaming a file.
 
 [publish]: manifest.md#publish
 
-### Versioned specifications
+## Versioned specifications
 
 A versioned specification is one that has a version in its filename.
 For example, `src/io/reproto/toystore-1.0.0.reproto` is a versioned specification because it has a
@@ -184,7 +190,7 @@ made it to central (yet), but that you need to depend on for some reason.
 
 [semver]: https://semver.org
 
-## The reproto language
+# The reproto language
 
 reproto is designed to be an expressive and productive interface description language.
 
@@ -265,7 +271,7 @@ final String json = m.writeValueAsString(toy);
 [`examples`]: /examples
 [fasterxml]: https://github.com/FasterXML/jackson-databind
 
-### Specification Files
+## Specification Files
 
 A specification is a UTF-8 encoded file containing declarations.
 
@@ -278,7 +284,7 @@ Specifications without a version are called _ephemeral_ specifications.
 
 [build path]: #build-path
 
-### Imports
+## Imports
 
 Declarations can be imported from other specifications using the `use` keyword at the top of your
 specification.
@@ -315,7 +321,7 @@ The following are a few examples for Java:
 
 [semver-package-requirements]: https://docs.rs/semver/0.7.0/semver/#requirements
 
-### Built-In Types
+## Built-In Types
 
 There are a number of built-in types available:
 
@@ -330,6 +336,45 @@ There are a number of built-in types available:
 | `boolean`          | Boolean values, `true` or `false` |
 | `[<type>]`         | Arrays which store the given type  |
 | `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` due to limitations in JSON, but might be subject to change if other formats are supported in the future) |
+
+## Attributes
+
+Attributes are elements associated with declarations, fields, or sub-types in reproto.
+They were inspired by the same language construct in [Rust].
+
+They provide an extensible way to add additional configuration to the language, without being too
+heavy-weight.
+
+The following is an example service using attributes to configure it to [support HTTP]:
+
+```reproto
+#[http(url = "http://example.com")]
+service MyService {
+  #[http(url = "/")]
+  get() -> string;
+}
+```
+
+All attributes take the form `#[...]`, and are associated with one element in the specification.
+Selection attributes look like `#[http(...)]`, while words look like `#[foo, bar, baz]`
+Selections can also contain words, like: `#[allow(unused)]`.
+
+They were introduced to provide a lightweight mechanism to extend the language, without always
+having to introduce specialized syntax.
+
+[Rust]: https://rust-lang.org
+[support HTTP]: #http-services
+
+### Working with attributes
+
+Attributes should be converted in [into_model.rs] into the appropriate intermediate representation.
+Every attribute should be checked with `check_attributes!`, and `check_selections!` to provide
+warnings if some attributes are not used.
+
+For new attributes, it might be necessary to introduce new data structures in [core].
+
+[into_model.rs]: /lib/backend/src/into_model.rs
+[core]: /lib/core/src/
 
 ## Documentation
 
@@ -361,7 +406,7 @@ See the [hosted documentation examples] to get an idea of what this could look l
 
 [hosted documentation examples]: https://reproto.github.io/reproto/doc-examples/
 
-### Types
+## Types
 
 Types are named types that are used to designate a data structure that is intended to be
 serialized.
@@ -385,7 +430,7 @@ For example (using `Foo`):
 {"bar": 42}
 ```
 
-### Interfaces
+## Interfaces
 
 Interfaces are special types providing field-based polymorphism.
 
@@ -445,7 +490,7 @@ The following options are supported by interfaces:
 
 [`type_info`]: #type-info
 
-#### Interface sub-types
+### Interface sub-types
 
 Sub-types can be specified in two different ways:
 
@@ -491,7 +536,7 @@ All of these are legal JSON-objects for this declaration:
 {"type": "Baz"}
 ```
 
-#### <a id="type-info" />`#[type_info(strategy = <string>, ...)]`
+### <a id="type-info" />`#[type_info(strategy = <string>, ...)]`
 
 This annotation controls which strategy is used for determining sub-types in [interfaces].
 
@@ -502,7 +547,7 @@ Valid strategies are:
 [interfaces]: #interfaces
 [`tagged`]: #type-info-tagged
 
-#### <a id="type-info-tagged" />`#[type_info(strategy = "tagged", tag = <string>)]`
+### <a id="type-info-tagged" />`#[type_info(strategy = "tagged", tag = <string>)]`
 
 The default sub-type strategy.
 
@@ -547,7 +592,7 @@ A single sample (e.g. `new Sample(1, 2.0)`) would be encoded like this in JSON:
 [1, 2.0]
 ```
 
-### Enums
+## Enums
 
 Enums can take on of a given set of constant values.
 
@@ -567,7 +612,7 @@ Using this, `SI.NANO` would be serialized as:
 "nano"
 ```
 
-### Services
+## Services
 
 Services in reproto are currently modeled after [gRPC][grpc]
 This means that they primarily operate on streams of requests and responses, see the
@@ -587,6 +632,8 @@ Services are declared using the `service` keyword.
 service MyService {
 }
 ```
+
+### Endpoints
 
 Inside of a service, endpoints can be declared.
 
@@ -650,7 +697,47 @@ service MyService {
 }
 ```
 
-#### Bi-directional services
+### HTTP services
+
+HTTP is supported in reproto through [attributes].
+
+The primary attribute in use is the `#[http(...)]` selection.
+This can be applied to [services] and [endpoints].
+
+For services, the following options are available:
+
+* `#[http(url = <string>)]`, configure the default URL for this service.
+
+For endpoints, the following options are available:
+
+* `#[http(path = <string>)]`, configure which path the endpoint uses. For example, `/post/{id}`.
+  This option is _required_. See [HTTP paths] for more information.
+* `#[http(method = <string>)]`, configure which method the endpoint uses. Defaults to `GET`.
+
+[HTTP paths]: #http-paths
+[services]: #services
+[endpoints]: #endpoints
+[attributes]: #attributes
+
+### HTTP paths
+
+Paths are specified using the `#[http(path = <string>)]` option on [endpoints].
+
+Variables can be capture in paths using the `{var}` syntax.
+This requires the variable to be declared in the endpoint, like the following:
+
+```reproto
+service MyService {
+  #[http(path = "/posts/{id}", method = "DELETE")]
+  delete_post(id: string);
+}
+```
+
+Specifying a captured variable which is not present in the endpoint results in an error.
+
+[endpoints]: #endpoints
+
+### Bi-directional services
 
 You might have noticed the `stream` keyword in the above examples.
 This means that services are _bi-directional_.
@@ -683,7 +770,15 @@ This might be more viable if reproto supported other formats in the future.
 Fields can be reserved using a special option called `reserved`.
 Fields which are reserved _cannot_ be added to the schema.
 
-Attempting to do so will yield an error like the following:
+```reproto
+type Post {
+  option reserved = [author, no_can_do];
+
+  id: string;
+}
+```
+
+Attempting to use a reserved field will yield an error like the following:
 
 ```bash
 examples/toystore.reproto:55:3-21:
@@ -888,8 +983,6 @@ type Foo {
 }
 ```
 
-Would generate:
-
 ```rust
 // File: target/io/reproto/example.rs
 
@@ -951,8 +1044,6 @@ type Foo {
 }
 ```
 
-Would generate:
-
 ```python
 # File: target/io/reproto/example.py
 
@@ -986,8 +1077,6 @@ type Foo {
   }
 }
 ```
-
-Would generate:
 
 ```javascript
 // File: target/io/reproto/example.js

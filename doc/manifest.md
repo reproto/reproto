@@ -3,7 +3,7 @@
  * [Build Path](#build-path)
  * [`packages` section](#packages)
  * [`files` section](#files)
- * [`publishing` section](#publishing)
+ * [`publish` section](#publish)
  * [`presets` section](#presets)
  * [`doc` section](#doc)
 
