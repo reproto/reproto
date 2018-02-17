@@ -1,7 +1,8 @@
 use super::{find_line, LockableWrite, Output};
 use core::ErrorPos;
-use errors::*;
+use core::errors::*;
 use log;
+use std::io;
 
 pub struct NonColored<T> {
     out: T,
@@ -62,6 +63,10 @@ impl<T> Output for NonColored<T>
 where
     T: 'static + LockableWrite,
 {
+    fn lock<'a>(&'a self) -> Box<io::Write + 'a> {
+        self.out.lock()
+    }
+
     fn logger(&self) -> Box<log::Log + 'static> {
         Box::new(NonColoredLogger {
             out: self.out.open_new(),
@@ -80,21 +85,5 @@ where
 
     fn print_error(&self, m: &str, p: &ErrorPos) -> Result<()> {
         self.print_positional(m, p)
-    }
-
-    fn print_root_error(&self, e: &Error) -> Result<()> {
-        let mut o = self.out.lock();
-
-        writeln!(o, "{}", e)?;
-
-        for cause in e.iter().skip(1) {
-            writeln!(o, "  caused by: {}", cause)?;
-        }
-
-        if let Some(backtrace) = e.backtrace() {
-            writeln!(o, "backtrace: {:?}", backtrace)?;
-        }
-
-        Ok(())
     }
 }

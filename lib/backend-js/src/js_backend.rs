@@ -1,9 +1,9 @@
 use super::{JS_CONTEXT, TYPE_SEP};
 use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, Environment,
               FromNaming, Naming, PackageUtils, SnakeCase};
-use backend::errors::*;
 use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
            RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody};
+use core::errors::*;
 use genco::{Element, JavaScript, Quoted, Tokens};
 use genco::js::imported_alias;
 use js_compiler::JsCompiler;

@@ -1,17 +1,14 @@
-#[macro_use]
-extern crate error_chain;
 extern crate lalrpop_util;
+extern crate reproto_core as core;
 extern crate reproto_ast as ast;
 extern crate reproto_path_lexer as path_lexer;
 
-pub mod errors;
 mod parser;
 
-use self::errors::{ErrorKind, Result};
+use core::errors::{Error, Result};
 use ast::PathSpec;
 
 pub fn parse(input: &str) -> Result<PathSpec> {
-    use self::ErrorKind::*;
     use self::path_lexer::Error::*;
     use lalrpop_util::ParseError::*;
 
@@ -20,17 +17,16 @@ pub fn parse(input: &str) -> Result<PathSpec> {
     match parser::parse_path(lexer) {
         Ok(file) => Ok(file),
         Err(e) => match e {
-            InvalidToken { location } => Err(Syntax(Some((location, location)), vec![]).into()),
+            InvalidToken { location } => Err(Error::new(format!("Invalid token at char #{}", location))),
             UnrecognizedToken { token, expected } => {
-                let pos = token.map(|(start, _, end)| (start, end));
-                Err(Syntax(pos, expected).into())
+                Err(Error::new(format!("Syntax error, got: {:?}, expected: {:?}", token, expected)))
             }
             User { error } => match error {
                 Unexpected { pos } => {
-                    return Err(Parse(Some((pos, pos)), "unexpected input").into());
+                    return Err(Error::new(format!("Unexpected input at char #{}", pos)));
                 }
             },
-            _ => Err(Parse(None, "parse error").into()),
+            _ => Err(Error::new("Parse error")),
         },
     }
 }

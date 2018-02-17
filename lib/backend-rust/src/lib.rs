@@ -20,12 +20,11 @@ mod rust_options;
 mod module;
 mod utils;
 
-use self::ErrorKind::*;
-use backend::{ArgMatches, Environment};
-use backend::errors::*;
+use backend::Environment;
 use core::Context;
+use core::errors::*;
 use listeners::Listeners;
-use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use rust_backend::RustBackend;
 use rust_options::RustOptions;
 use std::path::Path;
@@ -49,7 +48,7 @@ pub enum RustModule {
 }
 
 impl TryFromToml for RustModule {
-    fn try_from_string(path: &Path, id: &str, value: String) -> m::errors::Result<Self> {
+    fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
         use self::RustModule::*;
 
         let result = match id {
@@ -61,7 +60,7 @@ impl TryFromToml for RustModule {
         Ok(result)
     }
 
-    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> m::errors::Result<Self> {
+    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
         use self::RustModule::*;
 
         let result = match id {
@@ -99,13 +98,8 @@ pub fn setup_listeners(modules: &[RustModule]) -> Result<(RustOptions, Box<Liste
     Ok((options, Box::new(listeners)))
 }
 
-pub fn compile(
-    _ctx: Rc<Context>,
-    env: Environment,
-    _matches: &ArgMatches,
-    manifest: Manifest<RustLang>,
-) -> Result<()> {
-    let out = manifest.output.ok_or(MissingOutput)?;
+pub fn compile(_ctx: Rc<Context>, env: Environment, manifest: Manifest<RustLang>) -> Result<()> {
+    let out = manifest.output.ok_or("Missing `--out` or `output=`")?;
     let (options, listeners) = setup_listeners(&manifest.modules)?;
     let backend = RustBackend::new(env, options, listeners);
     let compiler = backend.compiler(out)?;

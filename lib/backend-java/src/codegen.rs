@@ -1,5 +1,5 @@
 /// Code generator for the given path.
-use backend::errors::Result;
+use core::errors::Result;
 use listeners::{ClassAdded, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use std::path::Path;
 use std::rc::Rc;

@@ -1,5 +1,5 @@
 use checksum::Checksum;
-use errors::*;
+use core::errors::*;
 use ring::digest;
 use std::io::Read;
 

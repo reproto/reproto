@@ -1,20 +1,17 @@
 #![recursion_limit = "1000"]
 
-#[macro_use]
-extern crate error_chain;
 extern crate lalrpop_util;
-extern crate num;
+extern crate num_bigint;
 extern crate reproto_ast as ast;
 extern crate reproto_core as core;
 extern crate reproto_lexer as lexer;
 
 mod utils;
-pub mod errors;
 #[allow(unused)]
 mod parser;
 
-use self::errors::*;
 use core::Object;
+use core::errors::*;
 use std::io::Read;
 use std::rc::Rc;
 
@@ -31,7 +28,6 @@ pub fn parse_string<'input>(
     object: Rc<Box<Object>>,
     input: &'input str,
 ) -> Result<ast::File<'input>> {
-    use self::ErrorKind::*;
     use self::lexer::errors::Error::*;
     use lalrpop_util::ParseError::*;
 
@@ -42,39 +38,46 @@ pub fn parse_string<'input>(
         Err(e) => match e {
             InvalidToken { location } => {
                 let pos = (object.clone(), location, location);
-                Err(Syntax(Some(pos.into()), vec![]).into())
+                Err(Error::new("syntax error").with_pos(pos))
             }
             UnrecognizedToken { token, expected } => {
-                let pos = token.map(|(start, _, end)| (object.clone(), start, end));
-                Err(Syntax(pos.map(Into::into), expected).into())
+                let e = if let Some((start, token, end)) = token {
+                    let pos = (object.clone(), start, end);
+                    Error::new(format!("syntax error, got token {:?}, expected: {}",
+                                           token, expected.join(", "))).with_pos(pos)
+                } else {
+                    Error::new(format!("syntax error, expected: {}", expected.join(", ")))
+                };
+
+                Err(e)
             }
             User { error } => match error {
                 UnterminatedString { start } => {
                     let pos = (object.clone(), start, start);
-                    return Err(Parse("unterminated string", pos.into()).into());
+                    return Err(Error::new("unterminated string").with_pos(pos));
                 }
                 UnterminatedEscape { start } => {
                     let pos = (object.clone(), start, start);
-                    return Err(Parse("unterminated escape sequence", pos.into()).into());
+                    return Err(Error::new("unterminated escape sequence").with_pos(pos));
                 }
                 InvalidEscape { pos, message } => {
                     let pos = (object.clone(), pos, pos);
-                    return Err(Parse(message, pos.into()).into());
+                    return Err(Error::new(message).with_pos(pos));
                 }
                 UnterminatedCodeBlock { start } => {
                     let pos = (object.clone(), start, start);
-                    return Err(Parse("unterminated code block", pos.into()).into());
+                    return Err(Error::new("unterminated code block").with_pos(pos));
                 }
                 InvalidNumber { pos, message } => {
                     let pos = (object.clone(), pos, pos);
-                    return Err(Parse(message, pos.into()).into());
+                    return Err(Error::new(message).with_pos(pos));
                 }
                 Unexpected { pos } => {
                     let pos = (object.clone(), pos, pos);
-                    return Err(Parse("unexpected input", pos.into()).into());
+                    return Err(Error::new("unexpected input").with_pos(pos));
                 }
             },
-            _ => Err("parse error".into()),
+            _ => Err("Parse error".into()),
         },
     }
 }

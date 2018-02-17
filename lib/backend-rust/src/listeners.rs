@@ -1,6 +1,6 @@
 /// Plugin infrastructure for Rust Backend.
 use super::rust_options::RustOptions;
-use backend::errors::*;
+use core::errors::*;
 
 pub trait Listeners {
     listeners_vec_default!(configure, RustOptions);

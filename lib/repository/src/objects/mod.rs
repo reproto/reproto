@@ -1,21 +1,18 @@
 mod file_objects;
 mod git_objects;
-mod http_objects;
 mod cached_objects;
 
 pub use self::cached_objects::CachedObjects;
 pub use self::file_objects::FileObjects;
 pub use self::git_objects::GitObjects;
-pub use self::http_objects::HttpObjects;
 use checksum::Checksum;
 use core::Object;
-use errors::*;
+use core::errors::*;
 use git;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
-use tokio_core::reactor::Core;
 use update::Update;
 use url::Url;
 
@@ -48,11 +45,11 @@ pub struct NoObjects;
 
 impl Objects for NoObjects {
     fn put_object(&mut self, _: &Checksum, _: &mut Read, _: bool) -> Result<()> {
-        Err(ErrorKind::EmptyObjects.into())
+        Err("no objects".into())
     }
 
     fn get_object(&mut self, _: &Checksum) -> Result<Option<Box<Object>>> {
-        Err(ErrorKind::EmptyObjects.into())
+        Err("no objects".into())
     }
 }
 
@@ -94,37 +91,23 @@ where
     Ok(Box::new(objects))
 }
 
-/// Load objects from an HTTP url.
-pub fn objects_from_http(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
-    let core = Core::new()?;
-
-    let http_objects = HttpObjects::new(url.clone(), core);
-
-    if let Some(cache_dir) = config.cache_dir {
-        let missing_cache_time = config
-            .missing_cache_time
-            .unwrap_or_else(|| Duration::new(60, 0));
-
-        return Ok(Box::new(CachedObjects::new(
-            cache_dir,
-            missing_cache_time,
-            http_objects,
-        )));
-    }
-
-    Ok(Box::new(http_objects))
-}
-
 /// Load objects from an URL.
-pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
+pub fn objects_from_url<F>(config: ObjectsConfig, url: &Url, fallback: F) -> Result<Box<Objects>>
+where
+    F: Fn(ObjectsConfig, &str, &Url) -> Result<Option<Box<Objects>>>,
+{
     let mut scheme = url.scheme().split("+");
 
-    let first = scheme.next().ok_or_else(|| format!("bad scheme: {}", url))?;
+    let first = scheme
+        .next()
+        .ok_or_else(|| format!("Bad scheme in: {}", url))?;
 
     match first {
         "file" => objects_from_path(Path::new(url.path())).map(|o| Box::new(o) as Box<Objects>),
         "git" => objects_from_git(config, scheme, url),
-        "http" => objects_from_http(config, url),
-        scheme => Err(format!("bad scheme: {}", scheme).into()),
+        scheme => match fallback(config, scheme, url)? {
+            Some(objects) => Ok(objects),
+            None => return Err(format!("bad scheme: {}", scheme).into()),
+        },
     }.chain_err(|| format!("load objects from url: {}", url))
 }

@@ -3,8 +3,6 @@
 //! Project manifests can be loaded as a convenient method for setting up language or
 //! project-specific configuration for reproto.
 
-#[macro_use]
-extern crate error_chain;
 extern crate relative_path;
 extern crate reproto_core as core;
 extern crate serde;
@@ -12,10 +10,8 @@ extern crate serde;
 extern crate serde_derive;
 extern crate toml;
 
-pub mod errors;
-
 use core::{Range, RpPackage, RpRequiredPackage, Version};
-use errors::*;
+use core::errors::Result;
 use relative_path::{RelativePath, RelativePathBuf};
 use std::collections::HashMap;
 use std::fmt;
@@ -427,7 +423,7 @@ where
 {
     let mut inner = take_field::<toml::value::Table>(value, "repository")?;
     func(&mut inner)?;
-    check_empty(&inner).map_err(|e| format!("{}: {}", name, e))?;
+    check_empty(&inner).map_err(|e| format!("{}: {}", name, e.display()))?;
     Ok(())
 }
 

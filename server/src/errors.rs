@@ -1,28 +1,19 @@
-use reproto_core::errors as core;
-use reproto_repository::errors as repository;
+use core::errors as core;
+use std::result;
 
-error_chain!{
-    links {
-        Repository(repository::Error, repository::ErrorKind);
-        Core(core::Error, core::ErrorKind);
-    }
+pub type Result<T> = result::Result<T, Error>;
 
-    foreign_links {
-        Log(::log::SetLoggerError);
-        IoError(::std::io::Error);
-        AddParseError(::std::net::AddrParseError);
-        Hyper(::hyper::Error);
-        VarError(::std::env::VarError);
-    }
+/// Service errors.
+pub enum Error {
+    BadRequest(&'static str),
+    Other(core::Error),
+}
 
-    errors {
-        PoisonError {
-            description("posion error")
-        }
-
-        BadRequest(message: &'static str) {
-            description("bad request")
-            display("bad request: {}", message)
-        }
+impl<T> From<T> for Error
+where
+    T: Into<core::Error>,
+{
+    fn from(value: T) -> Error {
+        Error::Other(value.into())
     }
 }

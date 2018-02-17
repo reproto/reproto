@@ -20,14 +20,13 @@ mod module;
 mod codegen;
 mod utils;
 
-use self::ErrorKind::*;
-use backend::{ArgMatches, Environment};
-use backend::errors::*;
+use backend::Environment;
 use core::Context;
+use core::errors::*;
 use java_backend::JavaBackend;
 use java_options::JavaOptions;
 use listeners::{Configure, Listeners};
-use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::path::Path;
 use std::rc::Rc;
 use utils::Utils;
@@ -54,7 +53,7 @@ pub enum JavaModule {
 }
 
 impl TryFromToml for JavaModule {
-    fn try_from_string(path: &Path, id: &str, value: String) -> m::errors::Result<Self> {
+    fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
         use self::JavaModule::*;
 
         let result = match id {
@@ -72,7 +71,7 @@ impl TryFromToml for JavaModule {
         Ok(result)
     }
 
-    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> m::errors::Result<Self> {
+    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
         use self::JavaModule::*;
 
         let result = match id {
@@ -117,13 +116,8 @@ fn setup_options(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> JavaOptions {
     options
 }
 
-pub fn compile(
-    _ctx: Rc<Context>,
-    env: Environment,
-    _matches: &ArgMatches,
-    manifest: Manifest<JavaLang>,
-) -> Result<()> {
-    let out = manifest.output.ok_or(MissingOutput)?;
+pub fn compile(_ctx: Rc<Context>, env: Environment, manifest: Manifest<JavaLang>) -> Result<()> {
+    let out = manifest.output.ok_or("Missing `--out` or `output=`")?;
     let env = Rc::new(env);
     let utils = Rc::new(Utils::new(&env));
     let options = setup_options(manifest.modules, &utils);

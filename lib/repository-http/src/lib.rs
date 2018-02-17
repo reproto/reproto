@@ -1,17 +1,22 @@
 //! ## Load objects from a remote repository over HTTP
 
-use super::Objects;
-use checksum::Checksum;
+extern crate futures;
+extern crate hyper;
+extern crate reproto_core as core;
+extern crate reproto_repository as repository;
+extern crate tokio_core;
+extern crate url;
+
 use core::{BytesObject, Object};
-use errors::*;
+use core::errors::{Error, Result};
 use futures::{Future, Stream};
 use futures::future::{err, ok};
-use hex_slice::HexSlice;
-use hyper;
 use hyper::{Client, Method, Request, StatusCode};
 use hyper::header::ContentLength;
+use repository::{CachedObjects, Checksum, HexSlice, Objects, ObjectsConfig};
 use std::io::Read;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio_core::reactor::Core;
 use url::Url;
 
@@ -30,7 +35,11 @@ impl HttpObjects {
 
     fn checksum_url(&self, checksum: &Checksum) -> Result<hyper::Uri> {
         let url = self.url.join(HexSlice::new(checksum).to_string().as_ref())?;
-        let url = url.to_string().parse::<hyper::Uri>()?;
+
+        let url = url.to_string()
+            .parse::<hyper::Uri>()
+            .map_err(|e| format!("Failed to parse URL: {}: {}", e, url))?;
+
         Ok(url)
     }
 
@@ -43,12 +52,12 @@ impl HttpObjects {
 
         let body_and_status = client
             .request(request)
-            .map_err::<_, Error>(Into::into)
+            .map_err::<_, Error>(|e| format!("Request to repository failed: {}", e).into())
             .and_then(|res| {
                 let status = res.status().clone();
 
                 res.body()
-                    .map_err::<Error, _>(Into::into)
+                    .map_err::<Error, _>(|e| format!("Failed to perform request: {}", e).into())
                     .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
                         out.extend(chunk.as_ref());
                         ok::<_, Error>(out)
@@ -115,4 +124,25 @@ impl Objects for HttpObjects {
         let out = out.map(Arc::new);
         Ok(out.map(|out| Box::new(BytesObject::new(name, out)) as Box<Object>))
     }
+}
+
+/// Load objects from an HTTP url.
+pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
+    let core = Core::new()?;
+
+    let http_objects = HttpObjects::new(url.clone(), core);
+
+    if let Some(cache_dir) = config.cache_dir {
+        let missing_cache_time = config
+            .missing_cache_time
+            .unwrap_or_else(|| Duration::new(60, 0));
+
+        return Ok(Box::new(CachedObjects::new(
+            cache_dir,
+            missing_cache_time,
+            http_objects,
+        )));
+    }
+
+    Ok(Box::new(http_objects))
 }

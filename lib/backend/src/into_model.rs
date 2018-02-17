@@ -1,9 +1,9 @@
-use super::errors::*;
-use super::scope::Scope;
 use ast::*;
 use core::*;
+use core::errors::{Error, Result};
 use linked_hash_map::{self, LinkedHashMap};
-use path_parser::parse as path_parse;
+use path_parser;
+use scope::Scope;
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use std::option;
 use std::path::{Path, PathBuf};
@@ -463,7 +463,7 @@ impl IntoModel for Name {
                     if let Some(package) = scope.lookup_prefix(prefix) {
                         package.clone()
                     } else {
-                        return Err(ErrorKind::MissingPrefix(prefix.clone()).into());
+                        return Err(Error::new(format!("Missing prefix: {}", prefix.clone())));
                     }
                 } else {
                     scope.package()
@@ -743,7 +743,8 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             unused_args: &mut HashMap<&str, &Loc<String>>,
         ) -> Result<RpPathSpec> {
             let path = path.as_string()?;
-            let path = path_parse(path).map_err(|e| format!("illegal path: {}", e))?;
+            let path = path_parser::parse(path)
+                .map_err(|e| format!("Bad path: {}: {}", path, e.display()))?;
             let path = path.into_model(scope)?;
 
             for var in path.vars() {

@@ -1,9 +1,7 @@
 //! # Helper data structure do handle option lookups
 
-use super::{Loc, OptionEntry, Pos, RpNumber};
-use std::result;
-
-type Result<T> = result::Result<T, (&'static str, Pos)>;
+use {Loc, OptionEntry, RpNumber, WithPos};
+use errors::Result;
 
 /// Helper for looking up and dealing with options.
 pub trait Options {
@@ -27,7 +25,7 @@ pub trait Options {
 
         for s in self.lookup(name) {
             let (value, pos) = Loc::take_pair(s);
-            let string = value.as_string().map_err(|e| (e, pos.clone()))?;
+            let string = value.as_string().with_pos(&pos)?;
             out.push(Loc::new(string, pos));
         }
 
@@ -39,7 +37,7 @@ pub trait Options {
 
         for s in self.lookup(name) {
             let (value, pos) = Loc::take_pair(s);
-            let number = value.as_number().map_err(|e| (e, pos.clone()))?;
+            let number = value.as_number().with_pos(&pos)?;
             out.push(Loc::new(number, pos));
         }
 
@@ -55,7 +53,7 @@ pub trait Options {
 
         for s in self.lookup(name) {
             let (value, pos) = Loc::take_pair(s);
-            let identifier = value.as_identifier().map_err(|e| (e, pos.clone()))?;
+            let identifier = value.as_identifier().with_pos(&pos)?;
             out.push(Loc::new(identifier, pos));
         }
 

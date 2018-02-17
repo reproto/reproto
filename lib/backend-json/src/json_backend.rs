@@ -1,8 +1,8 @@
 //! Backend for JSON
 
 use backend::{Environment, PackageUtils};
-use backend::errors::*;
 use core::RpPackage;
+use core::errors::*;
 use json_compiler::JsonCompiler;
 use json_options::JsonOptions;
 use listeners::Listeners;

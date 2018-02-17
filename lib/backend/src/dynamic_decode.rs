@@ -2,9 +2,9 @@
 
 use base_decode::BaseDecode;
 use converter::Converter;
-use core::{Loc, RpInterfaceBody, RpType};
+use core::{Loc, RpInterfaceBody, RpType, WithPos};
+use core::errors::*;
 use dynamic_converter::DynamicConverter;
-use errors::*;
 use genco::Tokens;
 
 pub trait DynamicDecode<'el>
@@ -112,8 +112,7 @@ where
 
         for sub_type in body.sub_types.values() {
             let type_name = self.convert_type(&sub_type.name)
-                .map_err(|e| ErrorKind::Pos(format!("{}", e), Loc::pos(sub_type).into()))?;
-
+                .with_pos(Loc::pos(sub_type))?;
             decode_body.push(self.check_tag_var(data, tag_var, sub_type.name(), type_name));
         }
 

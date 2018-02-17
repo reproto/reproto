@@ -192,11 +192,9 @@ impl Sir {
                 // All tuple fields are required.
                 let children = children
                     .into_iter()
-                    .map(|f| {
-                        FieldSir {
-                            optional: false,
-                            field: f,
-                        }
+                    .map(|f| FieldSir {
+                        optional: false,
+                        field: f,
                     })
                     .collect();
 
@@ -241,9 +239,7 @@ impl Sir {
 
             while let Some(other) = it.next() {
                 // Only strings can be used as type keys.
-                common_keys.retain(|k| {
-                    other.get(k).map(|v| v.field.is_string()).unwrap_or(false)
-                });
+                common_keys.retain(|k| other.get(k).map(|v| v.field.is_string()).unwrap_or(false));
             }
         }
 
@@ -265,9 +261,7 @@ impl Sir {
                 .get(tag)
                 .ok_or_else(|| format!("Missing common key: {}", tag))
                 .map(format::Value::as_str)
-                .and_then(|s| {
-                    s.ok_or_else(|| format!("Expected string as common key: {}", tag))
-                })?
+                .and_then(|s| s.ok_or_else(|| format!("Expected string as common key: {}", tag)))?
                 .to_string();
 
             out.push(SubTypeSir {

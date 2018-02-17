@@ -1,7 +1,7 @@
 //! # Converter for core data structures into processor-specific ones.
 
 use core::{RpName, RpVariant};
-use errors::*;
+use core::errors::*;
 use genco::{Custom, Quoted, Tokens};
 use std::rc::Rc;
 

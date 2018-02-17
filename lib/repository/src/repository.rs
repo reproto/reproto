@@ -1,8 +1,8 @@
 use super::Objects;
-use core::{Object, RpPackage, RpRequiredPackage, Version};
-use errors::*;
+use core::{self, Object, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
+           Version};
+use core::errors::*;
 use index::{Deployment, Index};
-use resolver::{Resolved, ResolvedByPrefix, Resolver};
 use sha256::to_sha256;
 use update::Update;
 
@@ -66,13 +66,13 @@ impl Repository {
 }
 
 impl Resolver for Repository {
-    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
+    fn resolve(&mut self, package: &RpRequiredPackage) -> core::errors::Result<Vec<Resolved>> {
         let mut out = Vec::new();
 
         let deployments = self.index.resolve(&package.package, &package.range)?;
 
         for deployment in deployments {
-            if let Some(path) = self.objects.get_object(&deployment.object)? {
+            if let Some(path) = self.get_object(&deployment)? {
                 out.push(Resolved {
                     version: Some(deployment.version),
                     object: path,
@@ -85,7 +85,7 @@ impl Resolver for Repository {
         Ok(out)
     }
 
-    fn resolve_by_prefix(&mut self, _: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
+    fn resolve_by_prefix(&mut self, _: &RpPackage) -> core::errors::Result<Vec<ResolvedByPrefix>> {
         Err("repository does not support resolve by prefix".into())
     }
 }

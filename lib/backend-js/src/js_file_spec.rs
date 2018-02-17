@@ -1,7 +1,7 @@
 //! File spec collecting results from backends
 
 use backend::IntoBytes;
-use backend::errors::*;
+use core::errors::*;
 use genco::{JavaScript, Tokens};
 use js_compiler::JsCompiler;
 

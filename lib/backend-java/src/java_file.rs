@@ -1,6 +1,6 @@
 //! Helper component to build Java files.
 
-use backend::errors::*;
+use core::errors::*;
 use genco::{IoFmt, Java, Tokens, WriteTokens};
 use genco::java::Extra;
 use std::fs::{self, File};

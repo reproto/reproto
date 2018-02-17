@@ -1,0 +1,22 @@
+[package]
+name = "reproto-repository-http"
+version = "0.3.13"
+authors = ["John-John Tedro <udoprog@tedro.se>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/reproto/reproto"
+homepage = "https://github.com/reproto/reproto"
+documentation = "https://docs.rs/reproto-repository-http"
+description = """
+HTTP support for reproto repository client
+"""
+
+[dependencies]
+reproto-core = {path = "../core", version = "0.3"}
+reproto-repository = {path = "../repository", version = "0.3"}
+
+ring = "0.11"
+hyper = "0.11"
+tokio-core = "0.1"
+futures = "0.1"
+url = "1.5"

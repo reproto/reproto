@@ -1,5 +1,5 @@
 use self::cmark::{Event, Options, Parser, Tag, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
-use backend::errors::*;
+use core::errors::*;
 use doc_builder::DocBuilder;
 use pulldown_cmark as cmark;
 use std::borrow::Cow::{Borrowed, Owned};

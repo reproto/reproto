@@ -1,8 +1,6 @@
 #![recursion_limit = "1000"]
 
 #[macro_use]
-extern crate error_chain;
-#[macro_use]
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
@@ -24,13 +22,13 @@ extern crate reproto_derive as derive;
 extern crate reproto_manifest as manifest;
 extern crate reproto_parser as parser;
 extern crate reproto_repository as repository;
+extern crate reproto_repository_http as repository_http;
 extern crate reproto_semck as semck;
 extern crate toml;
 extern crate url;
 
 pub mod ops;
 pub mod config;
-pub mod errors;
 pub mod output;
 mod build_spec;
 mod config_env;

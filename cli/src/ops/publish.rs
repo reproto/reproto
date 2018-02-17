@@ -2,7 +2,7 @@ use build_spec::{manifest_preamble, semck_check, setup_environment, setup_matche
                  setup_path_resolver, setup_publish_matches, setup_repository, Match};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::{Context, RpRequiredPackage, Version};
-use errors::*;
+use core::errors::*;
 use manifest::{Lang, Manifest};
 use std::rc::Rc;
 
@@ -47,7 +47,7 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
     where
         L: Lang,
     {
-        let mut env = setup_environment(ctx, &manifest)?;
+        let mut env = setup_environment(ctx.clone(), &manifest)?;
 
         let mut manifest_resolver =
             setup_path_resolver(&manifest)?.ok_or_else(|| "could not setup manifest resolver")?;
@@ -91,13 +91,13 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
         let mut semck_errors = Vec::new();
 
         for m in &results {
-            semck_check(&mut semck_errors, &mut repository, &mut env, &m)?;
+            semck_check(&ctx, &mut semck_errors, &mut repository, &mut env, &m)?;
         }
 
         if semck_errors.len() > 0 {
             if !no_semck {
                 semck_errors.push("Hint: Use `--no-semck` to disable semantic checking".into());
-                return Err(ErrorKind::Errors(semck_errors).into());
+                return Err(Error::new("Validation errors").with_suppressed(semck_errors));
             } else {
                 warn!("{} errors skipped (--no-semck)", semck_errors.len());
             }

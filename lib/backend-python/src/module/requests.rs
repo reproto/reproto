@@ -2,9 +2,9 @@
 
 use Options;
 use backend::Initializer;
-use backend::errors::Result;
 use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::{RpAccept, RpHttpMethod, RpPathPart};
+use core::errors::Result;
 use genco::{Python, Quoted, Tokens};
 use genco::python::imported;
 use utils::{BlockComment, IfNoneRaise, IfNoneThen};

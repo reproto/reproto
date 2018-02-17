@@ -2,9 +2,9 @@
 
 use super::EXT;
 use backend::{Environment, PackageProcessor, PackageUtils};
-use backend::errors::*;
 use core::{Loc, RpEnumBody, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
            RpVersionedPackage};
+use core::errors::*;
 use js_backend::JsBackend;
 use js_file_spec::JsFileSpec;
 use std::path::{Path, PathBuf};

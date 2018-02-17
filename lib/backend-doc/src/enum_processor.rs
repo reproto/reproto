@@ -1,8 +1,8 @@
 //! Processor for service declarations.
 
 use backend::Environment;
-use backend::errors::*;
 use core::{Loc, RpEnumBody, RpVariant};
+use core::errors::*;
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;

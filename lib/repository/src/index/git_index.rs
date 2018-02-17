@@ -1,6 +1,6 @@
 use checksum::Checksum;
 use core::{Range, RpPackage, Version};
-use errors::*;
+use core::errors::*;
 use git::GitRepo;
 use index::{file_index, Deployment, Index};
 use objects::{FileObjects, GitObjects, Objects};
@@ -35,7 +35,10 @@ impl Index for GitIndex {
     }
 
     fn put_version(&self, _: &Checksum, _: &RpPackage, _: &Version, _: bool) -> Result<()> {
-        Err(ErrorKind::NoPublishIndex(self.url.to_string()).into())
+        Err(format!(
+            "Index does not support publishing: {}",
+            self.url.to_string()
+        ).into())
     }
 
     fn get_deployments(&self, package: &RpPackage, version: &Version) -> Result<Vec<Deployment>> {

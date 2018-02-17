@@ -1,4 +1,5 @@
 #![recursion_limit = "1000"]
+extern crate clap;
 extern crate genco;
 #[macro_use]
 extern crate log;
@@ -30,9 +31,9 @@ pub const INDEX: &str = "index";
 pub const DEFAULT_THEME: &str = "light";
 pub const DEFAULT_SYNTAX_THEME: &str = "ayu-mirage";
 
-use self::ErrorKind::*;
-use backend::{App, Arg, ArgMatches, Environment};
-use backend::errors::*;
+use backend::Environment;
+use clap::{App, Arg, ArgMatches};
+use core::errors::*;
 use doc_compiler::DocCompiler;
 use manifest::{Lang, Manifest};
 use std::collections::HashMap;
@@ -222,7 +223,11 @@ where
     }
 
     let skip_static = matches.is_present("skip-static");
-    let out = manifest.output.as_ref().ok_or(MissingOutput)?.clone();
+    let out = manifest
+        .output
+        .as_ref()
+        .ok_or("Missing `--out` or `output=`")?
+        .clone();
 
     with_initialized(
         matches,

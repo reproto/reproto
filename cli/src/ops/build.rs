@@ -3,7 +3,7 @@
 use build_spec::{manifest_compile, manifest_preamble};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::Context;
-use errors::*;
+use core::errors::*;
 use manifest::Language;
 use std::rc::Rc;
 

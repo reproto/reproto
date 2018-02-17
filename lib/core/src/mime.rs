@@ -1,4 +1,4 @@
-use errors::*;
+use errors::{Error, Result};
 use extern_mime;
 use serde;
 use std::fmt;
@@ -21,7 +21,7 @@ impl FromStr for Mime {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        Ok(Mime(s.parse().map_err(ErrorKind::MimeFromStrError)?))
+        Ok(Mime(s.parse()?))
     }
 }
 

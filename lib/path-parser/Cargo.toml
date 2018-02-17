@@ -15,6 +15,7 @@ reproto path parser
 path = "lib.rs"
 
 [dependencies]
+reproto-core = {path = "../core", version = "0.3"}
 reproto-ast = {path = "../ast", version = "0.3"}
 reproto-path-lexer = {path = "../path-lexer", version = "0.3"}
 

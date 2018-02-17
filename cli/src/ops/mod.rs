@@ -10,7 +10,7 @@ mod derive;
 
 use clap::{App, Arg, ArgMatches};
 use core::Context;
-use errors::*;
+use core::errors::*;
 use std::rc::Rc;
 
 pub fn base_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {

@@ -2,9 +2,9 @@
 
 use super::{EXT, MOD};
 use backend::{Environment, PackageProcessor, PackageUtils};
-use backend::errors::*;
 use core::{Loc, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
            RpTypeBody, RpVersionedPackage};
+use core::errors::*;
 use rust_backend::RustBackend;
 use rust_file_spec::RustFileSpec;
 use std::collections::{BTreeMap, BTreeSet};

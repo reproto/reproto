@@ -1,8 +1,8 @@
 //! Model for registered types.
 
-use super::{Loc, Pos, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpSubType,
-            RpTupleBody, RpTypeBody, RpVariant};
-use errors::*;
+use {Loc, Pos, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpSubType,
+     RpTupleBody, RpTypeBody, RpVariant};
+use errors::Result;
 use std::fmt;
 use std::rc::Rc;
 

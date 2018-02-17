@@ -1,6 +1,6 @@
 //! Represents a calculated checksum.
 
-use errors::*;
+use core::errors::*;
 use hex::FromHex;
 use hex_slice::HexSlice;
 use serde::{de, ser};
@@ -80,7 +80,9 @@ impl<'de> de::Visitor<'de> for ChecksumVisitor {
     where
         E: de::Error,
     {
-        Checksum::from_str(value).map_err(de::Error::custom)
+        Checksum::from_str(value)
+            .map_err(|e| e.display())
+            .map_err(de::Error::custom)
     }
 
     fn visit_string<E>(self, value: String) -> result::Result<Self::Value, E>

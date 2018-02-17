@@ -15,15 +15,16 @@ reproto repository
 reproto-core = {path = "../core", version = "0.3"}
 
 relative-path = {version = "0.1", features = ["serde"]}
-error-chain = "0.11"
 toml = "0.4"
 serde = {version = "1.0", features = ["rc"]}
 serde_derive = "1.0"
 serde_json = "1.0"
-url = "1.5"
-ring = "0.11"
 log = "0.3"
 hex = "0.2"
-hyper = "0.11"
-tokio-core = "0.1"
-futures = "0.1"
+bytes = "0.4"
+ring = "0.11"
+url = "1.6"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]

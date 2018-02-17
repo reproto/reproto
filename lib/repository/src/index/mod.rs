@@ -5,6 +5,7 @@ pub use self::file_index::init_file_index;
 use self::git_index::GitIndex;
 use checksum::Checksum;
 use core::{Range, RpPackage, Version};
+use core::errors::*;
 use git;
 use objects::Objects;
 use relative_path::RelativePath;
@@ -33,8 +34,6 @@ impl Deployment {
         }
     }
 }
-
-use errors::*;
 
 pub trait Index {
     /// Resolve the given version of a package.
@@ -81,7 +80,7 @@ impl Index for NoIndex {
     }
 
     fn put_version(&self, _: &Checksum, _: &RpPackage, _: &Version, _: bool) -> Result<()> {
-        Err(ErrorKind::EmptyIndex.into())
+        Err("Empty Index".into())
     }
 
     fn get_deployments(&self, _: &RpPackage, _: &Version) -> Result<Vec<Deployment>> {
@@ -92,12 +91,12 @@ impl Index for NoIndex {
     ///
     /// If relative, will cause objects to be loaded from the same repository as the index.
     fn objects_url(&self) -> Result<&str> {
-        Err(ErrorKind::EmptyIndex.into())
+        Err("Empty Index".into())
     }
 
     /// Load objects relative to the index repository.
     fn objects_from_index(&self, _: &RelativePath) -> Result<Box<Objects>> {
-        Err(ErrorKind::EmptyIndex.into())
+        Err("Empty Index".into())
     }
 }
 
@@ -136,10 +135,10 @@ pub fn index_from_url(config: IndexConfig, url: &Url) -> Result<Box<Index>> {
 
     match first {
         "file" => url.to_file_path()
-            .map_err(|_| format!("bad file path for url: {}", url).into())
+            .map_err(|_| format!("Bad file path for URL: {}", url).into())
             .and_then(|path| index_from_path(&path))
             .map(|i| Box::new(i) as Box<Index>),
         "git" => index_from_git(config, scheme, url),
         scheme => Err(format!("bad scheme: {}", scheme).into()),
-    }.chain_err(|| format!("loading index from url: {}", url))
+    }.chain_err(|| format!("loading index from URL: {}", url))
 }

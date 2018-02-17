@@ -2,8 +2,8 @@
 
 use base_encode::BaseEncode;
 use core::RpType;
+use core::errors::*;
 use dynamic_converter::DynamicConverter;
-use errors::*;
 use genco::Tokens;
 
 pub trait DynamicEncode<'el>

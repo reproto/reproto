@@ -3,14 +3,15 @@ extern crate hyper;
 #[macro_use]
 extern crate log;
 extern crate pretty_env_logger;
-extern crate reproto_repository;
-extern crate reproto_server;
+extern crate reproto_core as core;
+extern crate reproto_repository as repository;
+extern crate reproto_server as server;
 
+use core::errors::Result;
 use futures_cpupool::CpuPool;
 use hyper::server::Http;
-use reproto_repository::objects_from_path;
-use reproto_server::errors::*;
-use reproto_server::reproto_service;
+use repository::objects_from_path;
+use server::reproto_service;
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
@@ -31,9 +32,9 @@ fn entry() -> Result<()> {
     pretty_env_logger::init()?;
 
     let config = if let Some(path) = config_path()? {
-        reproto_server::config::read_config(path)?
+        server::config::read_config(path)?
     } else {
-        reproto_server::config::Config::default()
+        server::config::Config::default()
     };
 
     let listen_address = config.listen_address.parse()?;
@@ -61,10 +62,10 @@ fn entry() -> Result<()> {
 
 fn main() {
     if let Err(e) = entry() {
-        error!("{}", e);
+        error!("{}", e.message());
 
-        for e in e.iter().skip(1) {
-            error!("caused by: {}", e);
+        for e in e.causes().skip(1) {
+            error!("caused by: {}", e.message());
         }
 
         if let Some(backtrace) = e.backtrace() {

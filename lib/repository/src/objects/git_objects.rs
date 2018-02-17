@@ -3,7 +3,7 @@
 use super::{FileObjects, Objects};
 use checksum::Checksum;
 use core::Object;
-use errors::*;
+use core::errors::*;
 use git::GitRepo;
 use std::io::Read;
 use std::rc::Rc;
@@ -28,7 +28,7 @@ impl GitObjects {
 
 impl Objects for GitObjects {
     fn put_object(&mut self, _: &Checksum, _: &mut Read, _: bool) -> Result<()> {
-        Err(ErrorKind::NoPublishObjects(self.url.to_string()).into())
+        Err(format!("Does not support publishing: {}", self.url).into())
     }
 
     fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>> {

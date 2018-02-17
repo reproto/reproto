@@ -1,5 +1,5 @@
 use backend::IntoBytes;
-use backend::errors::*;
+use core::errors::*;
 use genco::{Python, Tokens};
 use python_compiler::PythonCompiler;
 

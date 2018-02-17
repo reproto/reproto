@@ -18,10 +18,12 @@ members = [
   "lib/path-lexer",
   "lib/path-parser",
   "lib/repository",
+  "lib/repository-http",
   "lib/semck",
   "lib/derive",
   "lib/semver",
   "tools/pack",
+  "wasm",
 ]
 
 exclude = [

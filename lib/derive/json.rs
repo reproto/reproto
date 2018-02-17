@@ -1,11 +1,11 @@
 use Opaque;
-use chrono::{DateTime, Utc};
 use core;
 use core::errors::Result;
 use format;
 use linked_hash_map::LinkedHashMap;
 use serde_json as json;
 use sir::{FieldSir, Sir};
+use utils::is_datetime;
 
 pub struct Json;
 
@@ -82,9 +82,7 @@ fn from_json(value: &json::Value) -> Result<Sir> {
         }
         json::Value::Bool(_) => Sir::Boolean,
         json::Value::String(ref string) => {
-            let date_time = string.parse::<DateTime<Utc>>();
-
-            if date_time.is_ok() {
+            if is_datetime(string) {
                 Sir::DateTime(Opaque::new(vec![string.to_string()]))
             } else {
                 Sir::String(Opaque::new(vec![string.to_string()]))

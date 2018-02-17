@@ -2,7 +2,7 @@
 
 use super::converter::Converter;
 use core::RpType;
-use errors::*;
+use core::errors::*;
 use genco::Tokens;
 
 pub trait BaseEncode<'el>

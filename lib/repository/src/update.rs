@@ -1,5 +1,5 @@
 use super::GitRepo;
-use errors::*;
+use core::errors::*;
 
 /// An update callback.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

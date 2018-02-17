@@ -1,8 +1,8 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use backend::errors::*;
 use codegen::ServiceCodegen;
 use core::{RpEndpoint, RpPathPart};
+use core::errors::*;
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, optional, Argument, Class, Constructor, Field, Method, Modifier};
 use listeners::{Configure, EndpointExtra, Listeners, ServiceAdded};

@@ -1,17 +1,19 @@
-use backend::{self, Environment};
+use backend::Environment;
 use clap::ArgMatches;
 use config_env::ConfigEnv;
-use core::{BytesObject, Context, Object, RpPackage, RpPackageFormat, RpRequiredPackage,
-           RpVersionedPackage, Version};
-use errors::*;
+use core::{BytesObject, Context, Object, Resolved, ResolvedByPrefix, Resolver, RpChannel,
+           RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Version};
+use core::errors::*;
 use manifest::{self as m, read_manifest, read_manifest_preamble, Lang, Manifest, ManifestFile,
                ManifestPreamble, Publish, TryFromToml};
 use relative_path::RelativePath;
 use repository::{index_from_path, index_from_url, objects_from_path, objects_from_url, Index,
                  IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository,
-                 Resolved, ResolvedByPrefix, Resolver, Resolvers};
+                 Resolvers};
+use repository_http;
 use semck;
 use std::collections::HashMap;
+use std::fmt;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
@@ -83,7 +85,10 @@ fn load_objects(
             .objects_from_index(RelativePath::new(objects_url))
             .map_err(Into::into),
         Err(e) => return Err(e.into()),
-        Ok(url) => objects_from_url(config, &url).map_err(Into::into),
+        Ok(url) => objects_from_url(config, &url, |config, scheme, url| match scheme {
+            "http" => Ok(Some(repository_http::objects_from_url(config, url)?)),
+            _ => Ok(None),
+        }).map_err(Into::into),
     }
 }
 
@@ -183,7 +188,7 @@ pub fn manifest_preamble<'a>(matches: &ArgMatches<'a>) -> Result<ManifestPreambl
     let reader = File::open(manifest_path.clone())?;
 
     read_manifest_preamble(&manifest_path, reader)
-        .map_err(|e| format!("{}: {}", manifest_path.display(), e).into())
+        .map_err(|e| format!("{}: {}", manifest_path.display(), e.display()).into())
 }
 
 /// Read the manifest based on the current environment.
@@ -193,7 +198,8 @@ where
 {
     let path = preamble.path.clone();
 
-    let mut manifest = read_manifest(preamble).map_err(|e| format!("{}: {}", path.display(), e))?;
+    let mut manifest =
+        read_manifest(preamble).map_err(|e| format!("{}: {}", path.display(), e.display()))?;
 
     manifest_from_matches(&mut manifest, matches)?;
     Ok(manifest)
@@ -258,7 +264,7 @@ where
     }
 
     if !errors.is_empty() {
-        return Err(ErrorKind::Errors(errors).into());
+        return Err(Error::new("Error when building").with_suppressed(errors));
     }
 
     Ok(env)
@@ -410,8 +416,8 @@ where
         let Resolved { version, object } = first;
         let version = version_override.cloned().or(version);
 
-        let version =
-            version.ok_or_else(|| ErrorKind::NoVersionToPublish(package.package.clone()))?;
+        let version = version
+            .ok_or_else(|| format!("No version to publish for package: {}", package.package))?;
 
         results.push(Match(version, object, package.package.clone()));
     }
@@ -420,6 +426,7 @@ where
 }
 
 pub fn semck_check(
+    ctx: &Context,
     errors: &mut Vec<Error>,
     repository: &mut Repository,
     env: &mut Environment,
@@ -452,30 +459,175 @@ pub fn semck_check(
         let violations = semck::check((&d.version, &file_from), (&version, &file_to))?;
 
         if !violations.is_empty() {
-            for (i, v) in violations.into_iter().enumerate() {
-                errors.push(ErrorKind::SemckViolation(i, v).into());
+            errors.push(Error::new(format!(
+                "Encountered {} semck violation(s)",
+                violations.len()
+            )));
+
+            for v in violations {
+                handle_violation(ctx, v)?;
             }
         }
     }
 
-    Ok(())
+    return Ok(());
+
+    fn handle_violation(ctx: &Context, violation: semck::Violation) -> Result<()> {
+        use semck::Violation::*;
+
+        match violation {
+            DeclRemoved(c, reg) => {
+                ctx.report()
+                    .err(reg, format!("{}: declaration removed", c.describe()))
+                    .close();
+            }
+            DeclAdded(c, reg) => {
+                ctx.report()
+                    .err(reg, format!("{}: declaration added", c.describe()))
+                    .close();
+            }
+            RemoveField(c, field) => {
+                ctx.report()
+                    .err(field, format!("{}: field removed", c.describe()))
+                    .close();
+            }
+            RemoveVariant(c, field) => {
+                ctx.report()
+                    .err(field, format!("{}: variant removed", c.describe()))
+                    .close();
+            }
+            AddField(c, field) => {
+                ctx.report()
+                    .err(field, format!("{}: field added", c.describe()))
+                    .close();
+            }
+            AddVariant(c, field) => {
+                ctx.report()
+                    .err(field, format!("{}: variant added", c.describe()))
+                    .close();
+            }
+            FieldTypeChange(c, from_type, from, to_type, to) => {
+                ctx.report()
+                    .err(
+                        to,
+                        format!("{}: type changed to `{}`", c.describe(), to_type),
+                    )
+                    .err(from, format!("from `{}`", from_type))
+                    .close();
+            }
+            FieldNameChange(c, from_name, from, to_name, to) => {
+                ctx.report()
+                    .err(
+                        to,
+                        format!("{}: name changed to `{}`", c.describe(), to_name),
+                    )
+                    .err(from, format!("from `{}`", from_name))
+                    .close();
+            }
+            VariantOrdinalChange(c, from_ordinal, from, to_ordinal, to) => {
+                ctx.report()
+                    .err(
+                        to,
+                        format!("{}: ordinal changed to `{}`", c.describe(), to_ordinal),
+                    )
+                    .err(from, format!("from `{}`", from_ordinal))
+                    .close();
+            }
+            FieldRequiredChange(c, from, to) => {
+                ctx.report()
+                    .err(
+                        to,
+                        format!("{}: field changed to be required`", c.describe(),),
+                    )
+                    .err(from, "from here")
+                    .close();
+            }
+            AddRequiredField(c, field) => {
+                ctx.report()
+                    .err(field, format!("{}: required field added", c.describe(),))
+                    .close();
+            }
+            FieldModifierChange(c, from, to) => {
+                ctx.report()
+                    .err(to, format!("{}: field modifier changed", c.describe(),))
+                    .err(from, "from here")
+                    .close();
+            }
+            AddEndpoint(c, pos) => {
+                ctx.report()
+                    .err(pos, format!("{}: endpoint added", c.describe()))
+                    .close();
+            }
+            RemoveEndpoint(c, pos) => {
+                ctx.report()
+                    .err(pos, format!("{}: endpoint removed", c.describe()))
+                    .close();
+            }
+            EndpointRequestChange(c, from_channel, from, to_channel, to) => {
+                ctx.report()
+                    .err(
+                        to,
+                        format!(
+                            "{}: request type changed to `{}`",
+                            c.describe(),
+                            FmtChannel(to_channel.as_ref())
+                        ),
+                    )
+                    .err(
+                        from,
+                        format!("from `{}`", FmtChannel(from_channel.as_ref())),
+                    )
+                    .close();
+            }
+            EndpointResponseChange(c, from_channel, from, to_channel, to) => {
+                ctx.report()
+                    .err(
+                        to,
+                        format!(
+                            "{}: response type changed to `{}`",
+                            c.describe(),
+                            FmtChannel(to_channel.as_ref())
+                        ),
+                    )
+                    .err(
+                        from,
+                        format!("from `{}`", FmtChannel(from_channel.as_ref())),
+                    )
+                    .close();
+            }
+        }
+
+        return Ok(());
+
+        /// Helper struct to display information on channels.
+        struct FmtChannel<'a>(Option<&'a RpChannel>);
+
+        impl<'a> fmt::Display for FmtChannel<'a> {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                match self.0 {
+                    None => write!(fmt, "*empty*"),
+                    Some(channel) => write!(fmt, "{}", channel),
+                }
+            }
+        }
+    }
 }
 
 /// High-level helper function to call the given clojure with all the necessary compile options.
-pub fn manifest_compile<'a, L, F>(
+pub fn manifest_compile<L, F>(
     ctx: Rc<Context>,
-    matches: &'a ArgMatches,
+    matches: &ArgMatches,
     preamble: ManifestPreamble,
     compile: F,
 ) -> Result<()>
 where
     L: Lang,
-    F: FnOnce(Rc<Context>, Environment, &'a ArgMatches, Manifest<L>) -> backend::errors::Result<()>,
+    F: FnOnce(Rc<Context>, Environment, Manifest<L>) -> Result<()>,
 {
     let manifest = manifest::<L>(matches, preamble)?;
     let env = setup_environment(ctx.clone(), &manifest)?;
 
-    compile(ctx.clone(), env, matches, manifest)?;
+    compile(ctx.clone(), env, manifest)?;
     Ok(())
 }
 

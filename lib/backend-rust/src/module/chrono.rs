@@ -1,6 +1,6 @@
 //! Chrono module for Rust.
 
-use backend::errors::*;
+use core::errors::*;
 use genco::Rust;
 use genco::rust::imported;
 use listeners::Listeners;

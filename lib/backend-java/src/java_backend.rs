@@ -2,9 +2,9 @@
 
 use super::JAVA_CONTEXT;
 use backend::{CamelCase, Code, Converter, Environment, FromNaming, Naming, SnakeCase};
-use backend::errors::*;
 use core::{ForEachLoc, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody, RpName,
            RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
+use core::errors::*;
 use genco::{Cons, Element, Java, Quoted, Tokens};
 use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum, Field, Interface,
                   Method, Modifier, BOOLEAN, INTEGER};

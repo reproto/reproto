@@ -1,7 +1,9 @@
-extern crate reproto_core;
+extern crate reproto_core as core;
 
-use reproto_core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage, WithPos};
+use core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage, WithPos};
+use core::errors::Result;
 use std::ops;
+use std::result;
 
 /// Items can be commented and have attributes.
 ///
@@ -30,9 +32,9 @@ impl<'input, T> ops::Deref for Item<'input, T> {
 }
 
 impl<'input, T> Item<'input, T> {
-    pub fn map<F, E: WithPos, U>(self, f: F) -> Result<Loc<U>, E>
+    pub fn map<F, E: WithPos, U>(self, f: F) -> result::Result<Loc<U>, E>
     where
-        F: FnOnce(Vec<&'input str>, Vec<Loc<Attribute<'input>>>, T) -> Result<U, E>,
+        F: FnOnce(Vec<&'input str>, Vec<Loc<Attribute<'input>>>, T) -> result::Result<U, E>,
     {
         let (value, pos) = Loc::take_pair(self.item);
 
@@ -278,24 +280,24 @@ impl<'input> OptionEntry for OptionDecl<'input> {
         &self.name
     }
 
-    fn as_string(&self) -> Result<String, &'static str> {
+    fn as_string(&self) -> Result<String> {
         match *Loc::value(&self.value) {
             Value::String(ref string) => Ok(string.to_string()),
-            _ => Err("expected string"),
+            _ => Err("expected string".into()),
         }
     }
 
-    fn as_number(&self) -> Result<RpNumber, &'static str> {
+    fn as_number(&self) -> Result<RpNumber> {
         match *Loc::value(&self.value) {
             Value::Number(ref number) => Ok(number.clone()),
-            _ => Err("expected number"),
+            _ => Err("expected number".into()),
         }
     }
 
-    fn as_identifier(&self) -> Result<String, &'static str> {
+    fn as_identifier(&self) -> Result<String> {
         match *Loc::value(&self.value) {
             Value::Identifier(ref identifier) => Ok(identifier.to_string()),
-            _ => Err("expected identifier"),
+            _ => Err("expected identifier".into()),
         }
     }
 }

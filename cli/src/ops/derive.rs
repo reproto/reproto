@@ -1,9 +1,9 @@
 //! Derive a schema from the given input.
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::{Context, PathObject, StdinObject, Object};
+use core::{Context, Object, PathObject, StdinObject};
+use core::errors::Result;
 use derive;
-use errors::Result;
 use genco::{IoFmt, WriteTokens};
 use reproto;
 use std::io;

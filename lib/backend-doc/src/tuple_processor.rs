@@ -1,8 +1,8 @@
 //! Processor for service declarations.
 
 use backend::Environment;
-use backend::errors::*;
 use core::RpTupleBody;
+use core::errors::*;
 use doc_builder::DocBuilder;
 use macros::FormatAttribute;
 use processor::Processor;

@@ -1,7 +1,7 @@
-use num::bigint::BigInt;
-use num::integer::Integer;
-use num::traits::Signed;
-use num::traits::cast::ToPrimitive;
+use num_bigint::BigInt;
+use num_integer::Integer;
+use num_traits::Signed;
+use num_traits::cast::ToPrimitive;
 use serde;
 use std::fmt;
 use std::result;

@@ -2,9 +2,9 @@
 
 use super::RUST_CONTEXT;
 use backend::{Code, Environment, FromNaming, Naming, PackageUtils, SnakeCase};
-use backend::errors::*;
 use core::{ForEachLoc, Loc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName,
            RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody};
+use core::errors::*;
 use genco::{Element, IntoTokens, Quoted, Rust, Tokens};
 use genco::rust::{imported, imported_alias};
 use listeners::Listeners;
@@ -164,12 +164,12 @@ impl RustBackend {
         value_fn
     }
 
-    fn datetime<'a>(&self, ty: &RpType) -> Result<Tokens<'a, Rust<'a>>> {
+    fn datetime<'a>(&self, _ty: &RpType) -> Result<Tokens<'a, Rust<'a>>> {
         if let Some(ref datetime) = self.datetime {
             return Ok(datetime.clone().into());
         }
 
-        Err(ErrorKind::MissingTypeImpl(ty.clone(), "try: -m chrono").into())
+        Err("Missing implementation for `datetime`, try: -m chrono".into())
     }
 
     pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Rust<'a>>> {

@@ -2,7 +2,7 @@
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::Context;
-use errors::*;
+use core::errors::*;
 use repository::init_file_index;
 use std::rc::Rc;
 

@@ -1,11 +1,11 @@
 use Opaque;
-use chrono::{DateTime, Utc};
 use core;
 use core::errors::Result;
 use format;
 use linked_hash_map::LinkedHashMap;
 use serde_yaml as yaml;
 use sir::{FieldSir, Sir};
+use utils::is_datetime;
 
 pub struct Yaml;
 
@@ -74,9 +74,7 @@ fn from_yaml(value: &yaml::Value) -> Result<Sir> {
         }
         yaml::Value::Bool(_) => Sir::Boolean,
         yaml::Value::String(ref string) => {
-            let date_time = string.parse::<DateTime<Utc>>();
-
-            if date_time.is_ok() {
+            if is_datetime(string) {
                 Sir::DateTime(Opaque::new(vec![string.to_string()]))
             } else {
                 Sir::String(Opaque::new(vec![string.to_string()]))

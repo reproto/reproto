@@ -1,8 +1,8 @@
 use super::{EXT, INIT_PY};
 use backend::{Environment, PackageProcessor, PackageUtils};
-use backend::errors::*;
 use core::{Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpPackage, RpServiceBody, RpTupleBody,
            RpTypeBody, RpVersionedPackage};
+use core::errors::*;
 use python_backend::PythonBackend;
 use python_file_spec::PythonFileSpec;
 use std::collections::BTreeMap;

@@ -1,0 +1,33 @@
+[package]
+name = "reproto-wasm"
+version = "0.3.13"
+authors = ["John-John Tedro <udoprog@tedro.se>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/reproto/reproto"
+homepage = "https://github.com/reproto/reproto"
+documentation = "https://docs.rs/reproto-wasm"
+description = """
+Rethinking Protocol Generators
+
+WebAssembly Component
+"""
+
+[dependencies]
+reproto-core = {path = "../lib/core", version = "0.3"}
+reproto-derive = {path = "../lib/derive", version = "0.3"}
+reproto-manifest = {path = "../lib/manifest", version = "0.3"}
+reproto-parser = {path = "../lib/parser", version = "0.3"}
+reproto-backend = {path = "../lib/backend", version = "0.3"}
+reproto-backend-java = {path = "../lib/backend-java", version = "0.3"}
+reproto-backend-js = {path = "../lib/backend-js", version = "0.3"}
+reproto-backend-json = {path = "../lib/backend-json", version = "0.3"}
+reproto-backend-python = {path = "../lib/backend-python", version = "0.3"}
+reproto-backend-rust = {path = "../lib/backend-rust", version = "0.3"}
+reproto-backend-reproto = {path = "../lib/backend-reproto", version = "0.3"}
+
+stdweb = "0.3"
+serde = "1"
+serde_json = "1"
+serde_derive = "1"
+genco = "0.2"

@@ -16,14 +16,13 @@ mod json_compiler;
 mod json_options;
 mod listeners;
 
-use self::ErrorKind::*;
-use backend::{ArgMatches, Environment};
-use backend::errors::*;
+use backend::Environment;
 use core::Context;
+use core::errors::*;
 use json_backend::JsonBackend;
 use json_options::JsonOptions;
 use listeners::Listeners;
-use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::path::Path;
 use std::rc::Rc;
 
@@ -41,11 +40,11 @@ pub enum JsonModule {
 }
 
 impl TryFromToml for JsonModule {
-    fn try_from_string(path: &Path, id: &str, value: String) -> m::errors::Result<Self> {
+    fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
         NoModule::illegal(path, id, value)
     }
 
-    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> m::errors::Result<Self> {
+    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
         NoModule::illegal(path, id, value)
     }
 }
@@ -66,13 +65,8 @@ fn setup_listeners(modules: &[JsonModule]) -> Result<(JsonOptions, Box<Listeners
     Ok((options, Box::new(listeners)))
 }
 
-pub fn compile(
-    _ctx: Rc<Context>,
-    env: Environment,
-    _matches: &ArgMatches,
-    manifest: Manifest<JsonLang>,
-) -> Result<()> {
-    let out = manifest.output.ok_or(MissingOutput)?;
+pub fn compile(_ctx: Rc<Context>, env: Environment, manifest: Manifest<JsonLang>) -> Result<()> {
+    let out = manifest.output.ok_or("Missing `--out` or `output=`")?;
     let (options, listeners) = setup_listeners(&manifest.modules)?;
     let backend = JsonBackend::new(env, options, listeners);
     let compiler = backend.compiler(out)?;

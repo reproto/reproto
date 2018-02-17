@@ -1,7 +1,7 @@
 //! Helper utilities for processors.
 
-use backend::errors::*;
 use core::{Loc, RpChannel, RpEndpoint, RpPackage, RpVersionedPackage};
+use core::errors::*;
 
 pub trait Processor {
     /// Build the java package of a given package.

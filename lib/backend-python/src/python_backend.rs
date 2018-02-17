@@ -3,10 +3,10 @@
 use super::{PYTHON_CONTEXT, TYPE_SEP};
 use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, Environment,
               FromNaming, Naming, PackageUtils, SnakeCase};
-use backend::errors::*;
 use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
            RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, WithPos};
+use core::errors::*;
 use genco::{Element, Quoted, Tokens};
 use genco::python::{imported, Python};
 use options::Options;

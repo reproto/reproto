@@ -2,12 +2,11 @@ use super::into_model::IntoModel;
 use super::naming::{FromNaming, Naming, SnakeCase};
 use super::scope::Scope;
 use ast::UseDecl;
-use core::{Context, Loc, Object, Options, PathObject, Range, RpDecl, RpFile, RpName, RpPackage,
-           RpReg, RpRequiredPackage, RpVersionedPackage, WithPos};
-use errors::*;
+use core::{Context, Loc, Object, Options, PathObject, Range, Resolved, Resolver, RpDecl, RpFile,
+           RpName, RpPackage, RpReg, RpRequiredPackage, RpVersionedPackage, WithPos};
+use core::errors::{Error, Result};
 use linked_hash_map::LinkedHashMap;
 use parser;
-use repository::{Resolved, Resolver};
 use std::collections::{btree_map, BTreeMap, HashMap, LinkedList};
 use std::path::Path;
 use std::rc::Rc;
@@ -273,7 +272,6 @@ impl Environment {
         &mut self,
         uses: &[Loc<UseDecl>],
     ) -> Result<HashMap<String, RpVersionedPackage>> {
-        use self::ErrorKind::*;
         use std::collections::hash_map::Entry;
 
         let mut prefixes = HashMap::new();
@@ -308,8 +306,7 @@ impl Environment {
                 continue;
             }
 
-            let error = format!("no package found: {}", required);
-            return Err(Pos(error, Loc::pos(use_decl).into()).into());
+            return Err(Error::new(format!("no package found: {}", required)).with_pos(Loc::pos(use_decl)));
         }
 
         Ok(prefixes)

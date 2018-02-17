@@ -1,8 +1,8 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use backend::errors::*;
 use codegen::{ClassCodegen, EnumCodegen, InterfaceCodegen, TupleCodegen};
 use core::RpSubTypeStrategy;
+use core::errors::*;
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Field, Modifier, DOUBLE, FLOAT, INTEGER, LONG,
                   SHORT};

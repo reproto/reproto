@@ -3,7 +3,7 @@
 use build_spec::{manifest_preamble, setup_repository};
 use clap::{App, ArgMatches, SubCommand};
 use core::Context;
-use errors::*;
+use core::errors::*;
 use manifest::{Lang, Manifest};
 use repository::Update;
 use std::collections::HashSet;

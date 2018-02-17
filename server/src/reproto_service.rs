@@ -1,5 +1,4 @@
-use errors::*;
-use errors::ErrorKind::*;
+use errors::{Error, Result};
 use flate2::FlateReadExt;
 use futures::future::{ok, Future};
 use futures_cpupool::CpuPool;
@@ -39,10 +38,7 @@ impl ReprotoService {
     }
 
     fn gzip_encoding(input: &File) -> Result<Box<Read>> {
-        Ok(Box::new(input
-            .try_clone()?
-            .gz_decode()
-            .chain_err(|| "failed to open gz file")?))
+        Ok(Box::new(input.try_clone()?.gz_decode()?))
     }
 
     fn pick_encoding(headers: &Headers) -> fn(&File) -> Result<Box<Read>> {
@@ -76,13 +72,13 @@ impl ReprotoService {
 
         let objects = self.objects.clone();
 
-        let checksum = Checksum::from_str(id).map_err(|_| BadRequest(BAD_OBJECT_ID))?;
+        let checksum = Checksum::from_str(id).map_err(|_| Error::BadRequest(BAD_OBJECT_ID))?;
 
         // No async I/O, use pool
         Ok(Box::new(self.pool.spawn_fn(move || {
             let result = objects
                 .lock()
-                .map_err(|_| PoisonError)?
+                .map_err(|_| "lock poisoned")?
                 .get_object(&checksum)?;
 
             let object = match result {
@@ -117,8 +113,7 @@ impl ReprotoService {
                 tmp.seek(SeekFrom::Start(0))?;
                 let mut checksum_read = encoding(&tmp)?;
 
-                let actual =
-                    to_checksum(&mut checksum_read).chain_err(|| "failed to calculate checksum")?;
+                let actual = to_checksum(&mut checksum_read)?;
 
                 if actual != checksum {
                     info!("{} != {}", actual, checksum);
@@ -133,11 +128,11 @@ impl ReprotoService {
                 tmp.seek(SeekFrom::Start(0))?;
                 let mut read = encoding(&tmp)?;
 
-                objects
-                    .lock()
-                    .map_err(|_| PoisonError)?
-                    .put_object(&checksum, &mut read, false)
-                    .chain_err(|| "failed to put object")?;
+                objects.lock().map_err(|_| "lock poisoned")?.put_object(
+                    &checksum,
+                    &mut read,
+                    false,
+                )?;
 
                 Ok(Response::new().with_status(StatusCode::Ok))
             })
@@ -160,20 +155,21 @@ impl ReprotoService {
             return Ok(Box::new(ok(Self::not_found())));
         };
 
-        let checksum = Checksum::from_str(id).map_err(|_| BadRequest(BAD_OBJECT_ID))?;
+        let checksum = Checksum::from_str(id).map_err(|_| Error::BadRequest(BAD_OBJECT_ID))?;
 
         if let Some(len) = req.headers().get::<ContentLength>() {
             if len.0 > self.max_file_size {
-                return Err(BadRequest("file too large").into());
+                return Err(Error::BadRequest("file too large").into());
             }
         } else {
-            return Err(BadRequest("missing content-length").into());
+            return Err(Error::BadRequest("missing content-length").into());
         }
 
         let encoding = Self::pick_encoding(req.headers());
 
         info!("Creating temporary file");
-        let body = io::stream_to_file(tempfile::tempfile()?, self.pool.clone(), req.body());
+        let body = io::stream_to_file(tempfile::tempfile()?, self.pool.clone(), req.body())
+            .map_err(|e| format!("Failed to stream file: {}", e.display()).into());
         Ok(self.put_uploaded_object(body, checksum, encoding))
     }
 
@@ -199,22 +195,22 @@ impl ReprotoService {
     }
 
     fn handle_error(e: Error) -> Response {
-        match *e.kind() {
-            BadRequest(ref message) => {
+        match e {
+            Error::BadRequest(ref message) => {
                 return Response::new()
                     .with_status(StatusCode::BadRequest)
                     .with_header(ContentLength(message.len() as u64))
                     .with_header(ContentType(mime::TEXT_PLAIN))
                     .with_body(*message)
             }
-            _ => {
-                error!("{}", e);
+            Error::Other(error) => {
+                error!("{}", error.message());
 
-                for e in e.iter().skip(1) {
-                    error!("caused by: {}", e);
+                for e in error.causes().skip(1) {
+                    error!("caused by: {}", e.message());
                 }
 
-                if let Some(backtrace) = e.backtrace() {
+                if let Some(backtrace) = error.backtrace() {
                     error!("{:?}", backtrace);
                 }
 

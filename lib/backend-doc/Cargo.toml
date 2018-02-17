@@ -20,6 +20,7 @@ reproto-manifest = {path = "../manifest", version = "0.3"}
 log = "0.3"
 pulldown-cmark = "0.0.14"
 genco = {version = "0.2"}
+clap = "2.24"
 
 syntect = { version = "1", features = ["static-onig"] }
 

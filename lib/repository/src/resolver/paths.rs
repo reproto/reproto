@@ -9,9 +9,9 @@
 //!
 //! The second form is only used when a version requirement is present.
 
-use core::{Object, PathObject, Range, RpPackage, RpRequiredPackage, Version};
-use errors::*;
-use resolver::{Resolved, ResolvedByPrefix, Resolver};
+use core::{Object, PathObject, Range, Resolved, ResolvedByPrefix, Resolver, RpPackage,
+           RpRequiredPackage, Version};
+use core::errors::{Result, ResultExt};
 use std::collections::{BTreeMap, HashMap, LinkedList};
 use std::ffi::OsStr;
 use std::fs;
@@ -89,7 +89,7 @@ impl Paths {
 
             if let Some(stem) = p.file_stem().and_then(OsStr::to_str) {
                 let (name_base, version) = self.parse_stem(stem)
-                    .map_err(|m| format!("{}: {}", p.display(), m))?;
+                    .chain_err(|| format!("Failed to parse stem from: {}", p.display()))?;
 
                 if name_base != base {
                     continue;

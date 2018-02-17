@@ -1,6 +1,6 @@
 //! Utilities for loading configuration files.
 
-use errors::*;
+use core::errors::*;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};

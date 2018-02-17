@@ -3,7 +3,7 @@
 use super::Objects;
 use checksum::Checksum;
 use core::{Object, PathObject};
-use errors::*;
+use core::errors::*;
 use hex_slice::HexSlice;
 use std::fs::{self, File};
 use std::io::{self, Read};

@@ -1,7 +1,7 @@
 //! Value of models
 
 use super::{Loc, RpEnumOrdinal, RpNumber, RpType};
-use errors::*;
+use errors::{Error, Result};
 use std::fmt;
 
 #[derive(Debug, Clone, Serialize)]
@@ -46,7 +46,7 @@ impl RpValue {
     pub fn into_ordinal(self) -> Result<RpEnumOrdinal> {
         let ordinal = match self {
             RpValue::String(value) => RpEnumOrdinal::String(value),
-            _ => return Err(ErrorKind::InvalidOrdinal.into()),
+            _ => return Err(Error::new("Not an ordinal")),
         };
 
         Ok(ordinal)

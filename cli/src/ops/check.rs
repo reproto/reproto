@@ -2,7 +2,7 @@ use build_spec::{manifest_preamble, semck_check, setup_environment, setup_matche
                  setup_path_resolver, setup_publish_matches, setup_repository};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::{Context, RpRequiredPackage, Version};
-use errors::*;
+use core::errors::*;
 use manifest::{Lang, Manifest};
 use std::rc::Rc;
 
@@ -67,11 +67,11 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
         let mut errors = Vec::new();
 
         for m in results {
-            semck_check(&mut errors, &mut repository, &mut env, &m)?;
+            semck_check(&ctx, &mut errors, &mut repository, &mut env, &m)?;
         }
 
         if errors.len() > 0 {
-            return Err(ErrorKind::Errors(errors).into());
+            return Err(Error::new("Error when checking").with_suppressed(errors));
         }
 
         Ok(())

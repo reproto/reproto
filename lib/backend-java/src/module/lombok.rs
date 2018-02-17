@@ -1,7 +1,7 @@
 //! Module that adds lombok annotations to generated classes.
 
-use backend::errors::*;
 use codegen::ClassCodegen;
+use core::errors::*;
 use genco::Java;
 use genco::java::imported;
 use listeners::{ClassAdded, Configure, Listeners};

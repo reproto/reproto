@@ -1,7 +1,7 @@
 //! Encapsulate home environment
 
 use config::read_config;
-use errors::*;
+use core::errors::*;
 use std::env;
 use std::path::PathBuf;
 

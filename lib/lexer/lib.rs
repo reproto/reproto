@@ -1,6 +1,7 @@
 //! Lexer used for parsing reproto manifests.
 
-extern crate num;
+extern crate num_bigint;
+extern crate num_traits;
 extern crate reproto_core as core;
 
 #[macro_use]

@@ -1,8 +1,6 @@
 //! Lexer for paths.
 
-use errors::Error;
-use errors::Error::*;
-use errors::Result;
+use errors::{Error, Result};
 use path_token::PathToken;
 use std::str::CharIndices;
 
@@ -68,7 +66,7 @@ impl<'input> PathLexer<'input> {
     }
 
     fn unexpected(&self) -> Error {
-        Unexpected { pos: self.pos() }
+        Error::Unexpected { pos: self.pos() }
     }
 
     fn normal_mode_next(&mut self) -> Option<Result<(usize, PathToken<'input>, usize)>> {
@@ -201,7 +199,7 @@ pub mod tests {
     #[test]
     pub fn test_path_err() {
         let input = " \\id";
-        let expected = Err(Unexpected { pos: 1 });
+        let expected = Err(Error::Unexpected { pos: 1 });
         assert_eq!(expected, tokenize(input));
     }
 }

@@ -1,4 +1,3 @@
-extern crate chrono;
 extern crate inflector;
 extern crate linked_hash_map;
 extern crate reproto_core as core;
@@ -10,6 +9,7 @@ mod sir;
 mod json;
 mod yaml;
 mod format;
+mod utils;
 
 pub use self::format::Format;
 pub use self::json::Json;
@@ -199,9 +199,8 @@ impl<'a> FieldInit<'a> {
             let mut seen = HashSet::new();
 
             for example in examples.iter() {
-                let string = serde_json::to_string_pretty(example).map_err(|e| {
-                    format!("Failed to convert to JSON: {}: {:?}", e, example)
-                })?;
+                let string = serde_json::to_string_pretty(example)
+                    .map_err(|e| format!("Failed to convert to JSON: {}: {:?}", e, example))?;
 
                 if !seen.contains(&string) {
                     seen.insert(string.clone());

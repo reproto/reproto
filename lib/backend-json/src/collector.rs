@@ -1,5 +1,5 @@
 use backend::IntoBytes;
-use backend::errors::*;
+use core::errors::*;
 use json_compiler::JsonCompiler;
 use std::fmt::Write;
 

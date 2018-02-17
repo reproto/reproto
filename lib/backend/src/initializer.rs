@@ -1,4 +1,4 @@
-use errors::Result;
+use core::errors::Result;
 
 pub trait Initializer {
     type Options;

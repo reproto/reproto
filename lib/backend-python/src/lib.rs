@@ -19,11 +19,10 @@ mod options;
 mod module;
 mod utils;
 
-use self::ErrorKind::*;
-use backend::{ArgMatches, Environment, Initializer};
-use backend::errors::*;
+use backend::{Environment, Initializer};
 use core::Context;
-use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
+use core::errors::*;
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use options::Options;
 use python_backend::PythonBackend;
 use std::path::Path;
@@ -47,7 +46,7 @@ pub enum PythonModule {
 }
 
 impl TryFromToml for PythonModule {
-    fn try_from_string(path: &Path, id: &str, value: String) -> m::errors::Result<Self> {
+    fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
         use self::PythonModule::*;
 
         let result = match id {
@@ -58,7 +57,7 @@ impl TryFromToml for PythonModule {
         Ok(result)
     }
 
-    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> m::errors::Result<Self> {
+    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
         use self::PythonModule::*;
 
         let result = match id {
@@ -86,13 +85,8 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     Ok(options)
 }
 
-pub fn compile(
-    _ctx: Rc<Context>,
-    env: Environment,
-    _matches: &ArgMatches,
-    manifest: Manifest<PythonLang>,
-) -> Result<()> {
-    let out = manifest.output.ok_or(MissingOutput)?;
+pub fn compile(_ctx: Rc<Context>, env: Environment, manifest: Manifest<PythonLang>) -> Result<()> {
+    let out = manifest.output.ok_or("Missing `--out` or `output=`")?;
     let options = setup_options(manifest.modules)?;
     let backend = PythonBackend::new(env, options);
     let compiler = backend.compiler(out)?;

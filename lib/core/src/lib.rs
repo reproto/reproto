@@ -1,11 +1,13 @@
 #![recursion_limit = "1000"]
 #![allow(unknown_lints)]
 
-#[macro_use]
-extern crate error_chain;
+#[cfg(feature = "std")]
+extern crate backtrace;
 extern crate linked_hash_map;
 extern crate mime as extern_mime;
-extern crate num;
+extern crate num_bigint;
+extern crate num_integer;
+extern crate num_traits;
 extern crate relative_path;
 pub extern crate reproto_semver as semver;
 extern crate serde;
@@ -53,6 +55,7 @@ mod with_pos;
 mod rp_enum_ordinal;
 mod context;
 mod attributes;
+mod resolver;
 pub mod errors;
 
 pub use self::attributes::{Attributes, Selection};
@@ -65,6 +68,7 @@ pub use self::object::{BytesObject, EmptyObject, Object, PathObject, StdinObject
 pub use self::option_entry::OptionEntry;
 pub use self::options::Options;
 pub use self::pos::Pos;
+pub use self::resolver::{Resolved, ResolvedByPrefix, Resolver};
 pub use self::rp_channel::RpChannel;
 pub use self::rp_code::RpCode;
 pub use self::rp_decl::RpDecl;

@@ -1,4 +1,4 @@
-use errors::*;
+use errors::Result;
 use std::fmt;
 use std::fs::File;
 use std::io::{self, Cursor, Read};

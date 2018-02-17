@@ -16,11 +16,8 @@ reproto-core = {path = "../core", version = "0.3"}
 reproto-ast = {path = "../ast", version = "0.3"}
 reproto-parser = {path = "../parser", version = "0.3"}
 reproto-path-parser = {path = "../path-parser", version = "0.3"}
-reproto-repository = {path = "../repository", version = "0.3"}
 
-error-chain = "0.11"
 log = "0.3"
 linked-hash-map = {version = "0.5", features = ["serde"]}
-clap = "2.24"
 serde_json = "1.0"
 genco = {version = "0.2"}

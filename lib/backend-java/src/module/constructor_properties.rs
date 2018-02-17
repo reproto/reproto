@@ -1,7 +1,7 @@
 //! Module that adds the @ConstructorProperties annotation to every constructor.
 
-use backend::errors::*;
 use codegen::ClassCodegen;
+use core::errors::*;
 use genco::{Java, Quoted, Tokens};
 use genco::java::imported;
 use listeners::{ClassAdded, Configure, Listeners};

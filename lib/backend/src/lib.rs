@@ -1,7 +1,4 @@
 #![recursion_limit = "1000"]
-extern crate clap;
-#[macro_use]
-extern crate error_chain;
 extern crate genco;
 extern crate linked_hash_map;
 #[macro_use]
@@ -10,6 +7,7 @@ extern crate reproto_ast as ast;
 extern crate reproto_core as core;
 extern crate reproto_parser as parser;
 extern crate reproto_path_parser as path_parser;
+#[cfg(feature = "repository")]
 extern crate reproto_repository as repository;
 extern crate serde_json;
 
@@ -30,7 +28,6 @@ mod package_utils;
 mod scope;
 mod code;
 mod initializer;
-pub mod errors;
 
 pub use self::base_decode::BaseDecode;
 pub use self::base_encode::BaseEncode;
@@ -46,4 +43,3 @@ pub use self::into_bytes::IntoBytes;
 pub use self::naming::{CamelCase, FromNaming, Naming, SnakeCase};
 pub use self::package_processor::PackageProcessor;
 pub use self::package_utils::PackageUtils;
-pub use clap::{App, Arg, ArgMatches};

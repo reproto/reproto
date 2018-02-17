@@ -6,7 +6,7 @@ extern crate reproto_core as core;
 
 use clap::{App, Arg, ArgMatches};
 use core::Context;
-use reproto::errors::*;
+use core::errors::Result;
 use reproto::ops;
 use reproto::output;
 use std::io;
@@ -63,12 +63,8 @@ fn entry(matches: &ArgMatches, output: &output::Output) -> Result<()> {
     let ctx = Rc::new(Context::default());
 
     if let Err(e) = guarded_entry(Rc::clone(&ctx), matches, output) {
+        output.handle_error(&e)?;
         output.handle_context(ctx.as_ref())?;
-
-        if !output.handle_error(&e)? {
-            return Err(e);
-        }
-
         ::std::process::exit(1);
     }
 
@@ -90,7 +86,7 @@ fn main() {
     };
 
     if let Err(e) = entry(&matches, output.as_mut()) {
-        output.print_root_error(&e).unwrap();
+        output.error(&e).unwrap();
         ::std::process::exit(1);
     }
 

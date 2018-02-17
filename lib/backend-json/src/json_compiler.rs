@@ -2,10 +2,10 @@
 
 use super::EXT;
 use backend::{Environment, PackageProcessor, PackageUtils};
-use backend::errors::*;
 use collector::Collector;
 use core::{Loc, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
            RpTypeBody, RpVersionedPackage};
+use core::errors::*;
 use json_backend::JsonBackend;
 use serde_json;
 use std::fmt::Write;

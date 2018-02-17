@@ -1,8 +1,9 @@
 use super::{find_line, LockableWrite, Output};
 use ansi_term::Colour::{self, Blue, Red};
 use core::ErrorPos;
-use errors::*;
+use core::errors::*;
 use log;
+use std::io;
 
 pub struct Colored<T> {
     out: T,
@@ -49,6 +50,15 @@ impl<T> Output for Colored<T>
 where
     T: 'static + LockableWrite,
 {
+    fn lock<'a>(&'a self) -> Box<io::Write + 'a> {
+        self.out.lock()
+    }
+
+    fn error_message(&self, m: &str) -> Result<String> {
+        use ansi_term::Colour::Red;
+        Ok(format!("{}", Red.paint(m)))
+    }
+
     fn logger(&self) -> Box<log::Log + 'static> {
         Box::new(ColoredLogger {
             out: self.out.open_new(),
@@ -67,24 +77,6 @@ where
 
     fn print_error(&self, m: &str, p: &ErrorPos) -> Result<()> {
         self.print_positional(m, p, Colour::Red)
-    }
-
-    fn print_root_error(&self, e: &Error) -> Result<()> {
-        use ansi_term::Colour::Red;
-
-        let mut o = self.out.lock();
-
-        writeln!(o, "{}", Red.paint(format!("{}", e)))?;
-
-        for cause in e.iter().skip(1) {
-            writeln!(o, "  caused by: {}", cause)?;
-        }
-
-        if let Some(backtrace) = e.backtrace() {
-            writeln!(o, "backtrace: {:?}", backtrace)?;
-        }
-
-        Ok(())
     }
 }
 

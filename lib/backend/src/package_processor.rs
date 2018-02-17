@@ -1,8 +1,8 @@
 use super::into_bytes::IntoBytes;
 use core::{Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
            RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
+use core::errors::*;
 use environment::Environment;
-use errors::*;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::Write;

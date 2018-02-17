@@ -1,6 +1,6 @@
 use checksum::Checksum;
 use core::{Range, RpPackage, Version};
-use errors::*;
+use core::errors::*;
 use index::{Deployment, Index};
 use objects::{FileObjects, Objects};
 use relative_path::RelativePath;

@@ -6,7 +6,7 @@
 //! corresponding locations.
 
 use error_pos::ErrorPos;
-use errors::{Error, ErrorKind};
+use errors::Error;
 use std::cell::{BorrowError, Ref, RefCell};
 use std::fmt;
 
@@ -58,14 +58,14 @@ impl<'a> Reporter<'a> {
             .expect("exclusive mutable access");
 
         errors.extend(self.errors);
-        Some(ErrorKind::Context.into())
+        Some(Error::new("Error in Context"))
     }
 }
 
 impl<'a> From<Reporter<'a>> for Error {
     fn from(reporter: Reporter<'a>) -> Error {
         reporter.close();
-        ErrorKind::Context.into()
+        Error::new("Error in Context")
     }
 }
 
@@ -114,9 +114,9 @@ mod tests {
 
         let e = a.unwrap_err();
 
-        match e.kind() {
-            &ErrorKind::Context => {}
-            other => panic!("unexpected: {:?}", other),
+        match e {
+            ref e if e.message() == "Error in Context" => {}
+            ref other => panic!("unexpected: {:?}", other),
         }
 
         assert_eq!(2, ctx.errors().unwrap().len());

@@ -18,14 +18,13 @@ mod js_compiler;
 mod js_file_spec;
 mod js_options;
 
-use self::ErrorKind::*;
-use backend::{ArgMatches, Environment};
-use backend::errors::*;
+use backend::Environment;
 use core::Context;
+use core::errors::*;
 use js_backend::JsBackend;
 use js_options::JsOptions;
 use listeners::Listeners;
-use manifest::{self as m, Lang, Manifest, NoModule, TryFromToml};
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::path::Path;
 use std::rc::Rc;
 
@@ -45,11 +44,11 @@ pub enum JsModule {
 }
 
 impl TryFromToml for JsModule {
-    fn try_from_string(path: &Path, id: &str, value: String) -> m::errors::Result<Self> {
+    fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
         NoModule::illegal(path, id, value)
     }
 
-    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> m::errors::Result<Self> {
+    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
         NoModule::illegal(path, id, value)
     }
 }
@@ -70,13 +69,8 @@ fn setup_listeners(modules: &[JsModule]) -> Result<(JsOptions, Box<Listeners>)> 
     Ok((options, Box::new(listeners)))
 }
 
-pub fn compile(
-    _ctx: Rc<Context>,
-    env: Environment,
-    _matches: &ArgMatches,
-    manifest: Manifest<JsLang>,
-) -> Result<()> {
-    let out = manifest.output.ok_or(MissingOutput)?;
+pub fn compile(_ctx: Rc<Context>, env: Environment, manifest: Manifest<JsLang>) -> Result<()> {
+    let out = manifest.output.ok_or("Missing `--out` or `output=`")?;
     let (options, listeners) = setup_listeners(&manifest.modules)?;
     let backend = JsBackend::new(env, options, listeners);
     let compiler = backend.compiler(out)?;

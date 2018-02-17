@@ -1,10 +1,10 @@
 //! Option declarations
 
+use errors::Result;
 use loc::Loc;
 use option_entry::OptionEntry;
 use rp_number::RpNumber;
 use rp_value::RpValue;
-use std::result;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpOptionDecl {
@@ -17,24 +17,24 @@ impl OptionEntry for RpOptionDecl {
         &self.name
     }
 
-    fn as_string(&self) -> result::Result<String, &'static str> {
+    fn as_string(&self) -> Result<String> {
         match *Loc::value(&self.value) {
             RpValue::String(ref string) => Ok(string.to_string()),
-            _ => Err("expected string"),
+            _ => Err("expected string".into()),
         }
     }
 
-    fn as_number(&self) -> result::Result<RpNumber, &'static str> {
+    fn as_number(&self) -> Result<RpNumber> {
         match *Loc::value(&self.value) {
             RpValue::Number(ref number) => Ok(number.clone()),
-            _ => Err("expected number"),
+            _ => Err("expected number".into()),
         }
     }
 
-    fn as_identifier(&self) -> result::Result<String, &'static str> {
+    fn as_identifier(&self) -> Result<String> {
         match *Loc::value(&self.value) {
             RpValue::Identifier(ref identifier) => Ok(identifier.to_string()),
-            _ => Err("expected identifier"),
+            _ => Err("expected identifier".into()),
         }
     }
 }

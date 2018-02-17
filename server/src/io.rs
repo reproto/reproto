@@ -1,4 +1,4 @@
-use errors::*;
+use core::errors::Error;
 use futures::{Future, Stream};
 use futures_cpupool::CpuPool;
 use std::fs::File;
@@ -24,15 +24,13 @@ where
         .map_err(Into::into)
         .fold((pool, file), |(pool, mut file), chunk| {
             // Write chunks on cpu-pool
-            let write = pool.spawn_fn(move || {
-                file.write_all(chunk.as_ref())
-                    .chain_err(|| "failed to write chunk")?;
-                Ok(file) as Result<File>
-            });
-
-            write.map(move |file| (pool, file))
+            pool.spawn_fn(move || match file.write_all(chunk.as_ref()) {
+                Ok(_) => Ok(file),
+                Err(e) => Err(e),
+            }).map(move |file| (pool, file))
         })
-        .map(|(_, file)| file);
+        .map(|(_, file)| file)
+        .map_err(Into::into);
 
     Box::new(out)
 }

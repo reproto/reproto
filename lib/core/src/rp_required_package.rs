@@ -1,7 +1,7 @@
 //! A package requirement
 
-use super::{Range, RpPackage};
-use errors::*;
+use {Range, RpPackage};
+use errors::Result;
 use std::fmt;
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

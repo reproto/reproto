@@ -1,7 +1,7 @@
 //! The file spec collecting changes.
 
 use backend::IntoBytes;
-use backend::errors::*;
+use core::errors::*;
 use genco::{Rust, Tokens};
 use rust_compiler::RustCompiler;
 
