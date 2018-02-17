@@ -6,6 +6,7 @@ This document will cover the different parts of this system, which includes:
 
  * A custom [interface description language] that permits describing the schema of JSON and
    bidirectional rpc services (like [gRPC]).
+ * A [derive command], capable of deriving schemas directly from JSON.
  * A compiler which generates code for [various languages].
  * A [semantic version checker] which verifies that modifications to schemas do not violate
    [semantic versioning].
@@ -14,6 +15,7 @@ This document will cover the different parts of this system, which includes:
 
 [gRPC]: https://grpc.io
 [interface description language]: spec.md
+[derive command]: derive.md
 [various languages]: spec.md#language-support
 [semantic version checker]: semck.md
 [semantic versioning]: https://semver.org
