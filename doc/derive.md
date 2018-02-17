@@ -1,18 +1,25 @@
-# Deriving schemas from JSON
+# Deriving schemas
 
-To use these features, make sure to have reproto installed:
+To use the derive feature, make sure you have reproto installed:
 
 ```
 cargo install reproto
 ```
 
-reproto can derive schemas from existing JSON through the `reproto derive` command through the
-[`lib/derive`] component.
-
-[`lib/derive`]: /lib/derive
+reproto can derive schemas from existing documents through the `reproto derive` command.
+This uses the [`lib/derive`] component.
 
 ```bash
 reproto derive <<< '{"id": 42, "name": "Oscar"}'
+```
+
+Example using YAML:
+
+```bash
+reproto derive --format yaml <<ENDL
+id: 42
+name: Oscar
+ENDL
 ```
 
 This will give you:
@@ -61,6 +68,7 @@ Fair warning though, it will be large:
 reproto derive < doc/github-issue.json
 ```
 
+[`lib/derive`]: /lib/derive
 [Github Issue]: /doc/github-issue.json
 
 ## Interfaces

@@ -1,7 +1,7 @@
 //! Derive a schema from the given input.
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::{Context, PathObject, StdinObject};
+use core::{Context, PathObject, StdinObject, Object};
 use derive;
 use errors::Result;
 use genco::{IoFmt, WriteTokens};
@@ -21,14 +21,30 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
             .help("File to read from, otherwise will read from stdin"),
     );
 
+    let out = out.arg(
+        Arg::with_name("format")
+            .long("format")
+            .short("F")
+            .takes_value(true)
+            .help("Format to decode, valid values: json, yaml"),
+    );
+
     out
 }
 
 pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
-    let decl = match matches.value_of("file") {
-        Some(file) => derive::derive(PathObject::new(None, Path::new(file)))?,
-        None => derive::derive(StdinObject::new())?,
+    let format: Box<derive::Format> = match matches.value_of("format") {
+        None | Some("json") => Box::new(derive::Json),
+        Some("yaml") => Box::new(derive::Yaml),
+        Some(value) => return Err(format!("Unsupported format: {}", value).into()),
     };
+
+    let object: Box<Object> = match matches.value_of("file") {
+        Some(file) => Box::new(PathObject::new(None, Path::new(file))),
+        None => Box::new(StdinObject::new()),
+    };
+
+    let decl = derive::derive(format, object.as_ref())?;
 
     let stdout = io::stdout();
     let toks = reproto::format(&decl)?;
