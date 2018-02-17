@@ -1,8 +1,13 @@
 # Deriving schemas from JSON
 
-reproto can derive schemas from existing JSON through the `reproto derive` command.
+To use these features, make sure to have reproto installed:
 
-This uses the [`lib/derive`] component.
+```
+cargo install reproto
+```
+
+reproto can derive schemas from existing JSON through the `reproto derive` command through the
+[`lib/derive`] component.
 
 [`lib/derive`]: /lib/derive
 
@@ -10,7 +15,7 @@ This uses the [`lib/derive`] component.
 reproto derive <<< '{"id": 42, "name": "Oscar"}'
 ```
 
-This will print:
+This will give you:
 
 ```reproto
 type Generated {
@@ -30,6 +35,24 @@ type Generated {
 }
 ```
 
+We can now try to build this schema into `rust`:
+
+```bash
+reproto derive <<< '{"id": 42, "name": "Oscar"}' > out.reproto
+reproto build --file out.reproto --lang rust --package-prefix test --out target/
+cat target/test.rs
+```
+
+This gives:
+
+```rust
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Generated {
+  id: u64,
+  name: String,
+}
+```
+
 Included in the project is a larger example of a [Github Issue].
 You can try to derive the schema from this file directly.
 Fair warning though, it will be large:
@@ -40,11 +63,69 @@ reproto derive < doc/github-issue.json
 
 [Github Issue]: /doc/github-issue.json
 
-## De-duplication
+## Interfaces
 
-reproto tries to de-duplicate generated types.
+If a given type follows field-based polymorhpism, `derive` can detect that.
+The discriminator must be a string, and common fields for this purpose (e.g. `@class` or `type`)
+are preferred.
+
+```bash
+reproto derive <<< '[
+    {"kind": "dragon", "name": "Stephen", "age": 4812, "fire": "blue"},
+    {"kind": "knight", "name": "Olivia", "armor": "Unobtanium"}
+]'
+```
+
+```reproto
+#[type_info(strategy = "tagged", tag = "kind")]
+interface Generated {
+  Dragon as "dragon" {
+    /// ## Examples
+    ///
+    /// ```json
+    /// "Stephen"
+    /// ```
+    name: string;
+
+    /// ## Examples
+    ///
+    /// ```json
+    /// 4812
+    /// ```
+    age: u64;
+
+    /// ## Examples
+    ///
+    /// ```json
+    /// "blue"
+    /// ```
+    fire: string;
+  }
+
+  Knight as "knight" {
+    /// ## Examples
+    ///
+    /// ```json
+    /// "Olivia"
+    /// ```
+    name: string;
+
+    /// ## Examples
+    ///
+    /// ```json
+    /// "Unobtanium"
+    /// ```
+    armor: string;
+  }
+}
+```
+
+## Deduplication
+
+reproto tries to deduplicate generated types.
+
 If a given type has a set of fields that is identical with another, it will only generate one
-common type for both.
+common type for both:
 
 ```bash
 reproto derive <<< '[{"id": 42, "name": "Oscar"}, {"id": 1, "name": "Sophie"}]'
@@ -53,7 +134,7 @@ reproto derive <<< '[{"id": 42, "name": "Oscar"}, {"id": 1, "name": "Sophie"}]'
 ```reproto
 type Generated {
   /// ## Examples
-  /// 
+  ///
   /// ```json
   /// 42
   /// 1
@@ -61,7 +142,7 @@ type Generated {
   id: u64;
 
   /// ## Examples
-  /// 
+  ///
   /// ```json
   /// "Oscar"
   /// "Sophie"
@@ -87,7 +168,7 @@ reproto derive <<< '[{"id": 42, "name": null}, {"id": 2, "name": "Stephen"}]'
 ```reproto
 type Generated {
   /// ## Examples
-  /// 
+  ///
   /// ```json
   /// 42
   /// 2
@@ -95,7 +176,7 @@ type Generated {
   id: u64;
 
   /// ## Examples
-  /// 
+  ///
   /// ```json
   /// "Stephen"
   /// ```
