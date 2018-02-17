@@ -39,7 +39,7 @@ We can now try to build this schema into `rust`:
 
 ```bash
 reproto derive <<< '{"id": 42, "name": "Oscar"}' > out.reproto
-reproto build --file out.reproto --lang rust --package-prefix test --out target/
+reproto build --file out.reproto --lang rust --package-prefix test -m chrono --out target/
 cat target/test.rs
 ```
 

@@ -20,6 +20,36 @@ pub struct Lexer<'input> {
     code_close: Option<(usize, usize)>,
 }
 
+pub fn match_keyword(content: &str) -> Option<Token> {
+    let token = match content {
+        "any" => Token::AnyKeyword,
+        "interface" => Token::InterfaceKeyword,
+        "type" => Token::TypeKeyword,
+        "enum" => Token::EnumKeyword,
+        "tuple" => Token::TupleKeyword,
+        "service" => Token::ServiceKeyword,
+        "use" => Token::UseKeyword,
+        "as" => Token::AsKeyword,
+        "float" => Token::FloatKeyword,
+        "double" => Token::DoubleKeyword,
+        "i32" => Token::Signed32,
+        "i64" => Token::Signed64,
+        "u32" => Token::Unsigned32,
+        "u64" => Token::Unsigned64,
+        "boolean" => Token::BooleanKeyword,
+        "string" => Token::StringKeyword,
+        "datetime" => Token::DateTimeKeyword,
+        "bytes" => Token::BytesKeyword,
+        "true" => Token::TrueKeyword,
+        "false" => Token::FalseKeyword,
+        "stream" => Token::StreamKeyword,
+        "option" => Token::OptionKeyword,
+        _ => return None,
+    };
+
+    Some(token)
+}
+
 impl<'input> Lexer<'input> {
     /// Advance the source iterator.
     #[inline]
@@ -77,31 +107,10 @@ impl<'input> Lexer<'input> {
             return Ok((start, Token::Identifier(content), end));
         }
 
-        let token = match content {
-            "any" => Token::AnyKeyword,
-            "interface" => Token::InterfaceKeyword,
-            "type" => Token::TypeKeyword,
-            "enum" => Token::EnumKeyword,
-            "tuple" => Token::TupleKeyword,
-            "service" => Token::ServiceKeyword,
-            "use" => Token::UseKeyword,
-            "as" => Token::AsKeyword,
-            "float" => Token::FloatKeyword,
-            "double" => Token::DoubleKeyword,
-            "i32" => Token::Signed32,
-            "i64" => Token::Signed64,
-            "u32" => Token::Unsigned32,
-            "u64" => Token::Unsigned64,
-            "boolean" => Token::BooleanKeyword,
-            "string" => Token::StringKeyword,
-            "datetime" => Token::DateTimeKeyword,
-            "bytes" => Token::BytesKeyword,
-            "true" => Token::TrueKeyword,
-            "false" => Token::FalseKeyword,
-            "stream" => Token::StreamKeyword,
-            "option" => Token::OptionKeyword,
-            identifier => {
-                return Ok((start, Token::Identifier(identifier), end));
+        let token = match match_keyword(content) {
+            Some(token) => token,
+            None => {
+                return Ok((start, Token::Identifier(content), end));
             }
         };
 

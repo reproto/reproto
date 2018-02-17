@@ -4,6 +4,7 @@ extern crate genco;
 extern crate inflector;
 extern crate linked_hash_map;
 extern crate reproto_core as core;
+extern crate reproto_lexer as lexer;
 extern crate serde_json as json;
 
 use chrono::{DateTime, Utc};
@@ -1102,10 +1103,19 @@ fn format_decl<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
             }
         }
 
+        let field_name = field.name.as_str();
+
+        let field_name = match lexer::match_keyword(field_name) {
+            Some(token) => token
+                .keyword_safe()
+                .ok_or_else(|| format!("keyword does not have a safe variant: {}", field_name))?,
+            None => field_name,
+        };
+
         if field.is_optional() {
-            t.push(toks![field.name.as_str(), "?: ", field.ty.to_string()]);
+            t.push(toks![field_name, "?: ", field.ty.to_string()]);
         } else {
-            t.push(toks![field.name.as_str(), ": ", field.ty.to_string()]);
+            t.push(toks![field_name, ": ", field.ty.to_string()]);
         }
 
         if let Some(ref field_as) = field.field_as {

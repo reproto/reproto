@@ -1,0 +1,43 @@
+/// Match a Rust keyword, and return alternative escaping if applicable.
+pub fn rust_keyword(content: &str) -> Option<&str> {
+    let rename = match content {
+        "as" => "_as",
+        "break" => "_break",
+        "const" => "_const",
+        "continue" => "_continue",
+        "crate" => "_crate",
+        "else" => "_else",
+        "enum" => "_enum",
+        "extern" => "_extern",
+        "false" => "_false",
+        "fn" => "_fn",
+        "for" => "_for",
+        "if" => "_if",
+        "impl" => "_impl",
+        "in" => "_in",
+        "let" => "_let",
+        "loop" => "_loop",
+        "match" => "_match",
+        "mod" => "_mod",
+        "move" => "_move",
+        "mut" => "_mut",
+        "pub" => "_pub",
+        "ref" => "_ref",
+        "return" => "_return",
+        "Self" => "_Self",
+        "self" => "_self",
+        "static" => "_static",
+        "struct" => "_struct",
+        "super" => "_super",
+        "trait" => "_trait",
+        "true" => "_true",
+        "type" => "_type",
+        "unsafe" => "_unsafe",
+        "use" => "_use",
+        "where" => "_where",
+        "while" => "_while",
+        _ => return None,
+    };
+
+    Some(rename)
+}

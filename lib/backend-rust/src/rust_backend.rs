@@ -13,6 +13,7 @@ use rust_file_spec::RustFileSpec;
 use rust_options::RustOptions;
 use std::path::PathBuf;
 use std::rc::Rc;
+use utils::rust_keyword;
 
 /// #[allow(non_camel_case_types)] attribute.
 pub struct AllowNonCamelCaseTypes;
@@ -96,8 +97,14 @@ impl RustBackend {
         out_impl
     }
 
+    /// Generate a new field identifier, escaping keywords appropriately in the process.
     fn ident(&self, name: &str) -> String {
-        name.to_owned()
+        let rename = match rust_keyword(name) {
+            Some(rename) => rename,
+            None => return name.to_owned(),
+        };
+
+        rename.to_owned()
     }
 
     /// Convert the type name

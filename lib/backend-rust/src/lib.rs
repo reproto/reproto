@@ -18,6 +18,7 @@ mod rust_compiler;
 mod rust_file_spec;
 mod rust_options;
 mod module;
+mod utils;
 
 use self::ErrorKind::*;
 use backend::{ArgMatches, Environment};

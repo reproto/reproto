@@ -15,6 +15,7 @@ Derives a reproto schema from an existing JSON.
 
 [dependencies]
 reproto-core = {path = "../core", version = "0.3"}
+reproto-lexer = {path = "../lexer", version = "0.3"}
 
 Inflector = "0.11"
 serde_json = {version = "1.0", features = ["preserve_order"]}
