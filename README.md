@@ -1,4 +1,4 @@
-# [![reproto](/gfx/logo.64.png?raw=true "reproto")](https://github.com/reproto)
+# [![reproto](/gfx/logo.128.png?raw=true "reproto")](https://github.com/reproto)
 
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
 [![Chat on Gitter](https://badges.gitter.im/reproto/reproto.svg)](https://gitter.im/reproto/reproto)
