@@ -109,8 +109,15 @@ impl Environment {
         path: P,
         package: Option<RpVersionedPackage>,
     ) -> Result<RpVersionedPackage> {
-        let object = PathObject::new(None, path);
+        self.import_object(&PathObject::new(None, path), package)
+    }
 
+    /// Import an object into the environment.
+    pub fn import_object(
+        &mut self,
+        object: &Object,
+        package: Option<RpVersionedPackage>,
+    ) -> Result<RpVersionedPackage> {
         let package = package.unwrap_or_else(|| RpVersionedPackage::new(RpPackage::empty(), None));
         let required = RpRequiredPackage::new(package.package.clone(), Range::any());
 
@@ -141,7 +148,7 @@ impl Environment {
             debug!("loading: {}", object);
 
             let package = RpVersionedPackage::new(required.package.clone(), version);
-            let file = self.load_object(object, &package)?;
+            let file = self.load_object(object.as_ref(), &package)?;
 
             candidates
                 .entry(package)
@@ -214,14 +221,9 @@ impl Environment {
     }
 
     /// Load the provided Object into an `RpFile`.
-    pub fn load_object<O: Into<Box<Object>>>(
-        &mut self,
-        object: O,
-        package: &RpVersionedPackage,
-    ) -> Result<RpFile> {
-        let object = object.into();
+    pub fn load_object(&mut self, object: &Object, package: &RpVersionedPackage) -> Result<RpFile> {
         let content = parser::read_reader(object.read()?)?;
-        let object = Rc::new(object);
+        let object = Rc::new(object.clone_object());
 
         let file = parser::parse_string(object, content.as_str())?;
 

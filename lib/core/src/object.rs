@@ -1,7 +1,7 @@
 use errors::*;
 use std::fmt;
 use std::fs::File;
-use std::io::{Cursor, Read};
+use std::io::{self, Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -172,59 +172,49 @@ impl From<PathObject> for Box<Object> {
     }
 }
 
-pub struct ReaderObject<F> {
+pub struct StdinObject {
     name: Arc<String>,
-    reader: Arc<F>,
 }
 
-impl<F> ReaderObject<F>
-where
-    F: 'static + Sync + Send + Fn() -> Box<Read>,
-{
-    pub fn new(name: String, reader: F) -> ReaderObject<F> {
-        ReaderObject {
-            name: Arc::new(name),
-            reader: Arc::new(reader),
+impl StdinObject {
+    pub fn new() -> Self {
+        Self {
+            name: Arc::new("stdin".to_string()),
         }
     }
 }
 
-impl<F> Object for ReaderObject<F>
-where
-    F: 'static + Sync + Send + Fn() -> Box<Read>,
-{
+impl Object for StdinObject {
     fn path(&self) -> Option<&Path> {
         None
     }
 
     fn read(&self) -> Result<Box<Read>> {
-        Ok((self.reader)())
+        Ok(Box::new(io::stdin()))
     }
 
     fn clone_object(&self) -> Box<Object> {
-        Box::new(ReaderObject {
+        Box::new(StdinObject {
             name: Arc::clone(&self.name),
-            reader: Arc::clone(&self.reader),
         })
     }
 
     fn with_name(&self, name: String) -> Box<Object> {
-        Box::new(ReaderObject {
+        Box::new(StdinObject {
             name: Arc::new(name),
-            reader: Arc::clone(&self.reader),
         })
     }
 }
 
-impl<F> fmt::Debug for ReaderObject<F> {
+impl fmt::Debug for StdinObject {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("ReaderObject")
+        fmt.debug_struct("StdinObject")
             .field("name", &self.name)
             .finish()
     }
 }
 
-impl<F> fmt::Display for ReaderObject<F> {
+impl fmt::Display for StdinObject {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", self.name)
     }

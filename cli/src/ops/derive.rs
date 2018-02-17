@@ -1,10 +1,9 @@
 //! Derive a schema from the given input.
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::{Context, PathObject, ReaderObject};
+use core::{Context, PathObject, StdinObject};
 use derive;
 use errors::Result;
-use std::io;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -24,15 +23,9 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 
 pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
     match matches.value_of("file") {
-        Some(file) => {
-            let object = PathObject::new(None, Path::new(file));
-            derive::derive(object)?
-        }
+        Some(file) => derive::derive(PathObject::new(None, Path::new(file)))?,
         None => {
-            let reader = || Box::new(io::stdin()) as Box<io::Read>;
-            let object = ReaderObject::new("<stdin>".to_string(), reader);
-
-            derive::derive(object)?;
+            derive::derive(StdinObject::new())?;
         }
     }
 

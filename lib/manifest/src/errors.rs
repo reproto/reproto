@@ -1,4 +1,4 @@
-use reproto_core::errors as core;
+use core::errors as core;
 
 error_chain! {
     links {

@@ -1,8 +1,8 @@
 use backend::{self, Environment};
 use clap::ArgMatches;
 use config_env::ConfigEnv;
-use core::{Context, Object, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage,
-           Version};
+use core::{BytesObject, Context, Object, RpPackage, RpPackageFormat, RpRequiredPackage,
+           RpVersionedPackage, Version};
 use errors::*;
 use manifest::{self as m, read_manifest, read_manifest_preamble, Lang, Manifest, ManifestFile,
                ManifestPreamble, Publish, TryFromToml};
@@ -13,8 +13,10 @@ use repository::{index_from_path, index_from_url, objects_from_path, objects_fro
 use semck;
 use std::collections::HashMap;
 use std::fs::File;
+use std::io::{self, Read};
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 use toml;
 use url;
@@ -209,6 +211,12 @@ where
 
     let mut errors = Vec::new();
 
+    let mut stdin = manifest.stdin;
+
+    if manifest.files.is_empty() && manifest.packages.is_empty() {
+        stdin = true;
+    }
+
     // TODO: use version and package from the provided file.
     for file in &manifest.files {
         let package = file.package
@@ -225,6 +233,23 @@ where
             Err(e) => errors.push(e.into()),
             Ok(None) => errors.push(format!("no matching package: {}", package).into()),
             _ => {}
+        }
+    }
+
+    if stdin {
+        let mut buffer = Vec::new();
+
+        let stdin = io::stdin();
+
+        stdin
+            .lock()
+            .read_to_end(&mut buffer)
+            .map_err(|e| format!("failed to read <stdin>: {}", e))?;
+
+        let object = BytesObject::new("<stdin>".to_string(), Arc::new(buffer));
+
+        if let Err(e) = env.import_object(&object, None) {
+            errors.push(e.into());
         }
     }
 
@@ -269,14 +294,20 @@ where
             .map(ToOwned::to_owned),
     );
 
-    manifest.files.extend(
-        matches
-            .values_of("file")
-            .into_iter()
-            .flat_map(|it| it)
-            .map(Path::new)
-            .map(ManifestFile::from_path),
-    );
+    if let Some(files) = matches.values_of("file") {
+        for file in files {
+            match file {
+                // read from stdin
+                "-" => manifest.stdin = true,
+                // read from file
+                file => {
+                    manifest
+                        .files
+                        .push(ManifestFile::from_path(Path::new(file)));
+                }
+            }
+        }
+    }
 
     for module in matches.values_of("module").into_iter().flat_map(|it| it) {
         let module = L::Module::try_from_value(
@@ -413,10 +444,10 @@ pub fn semck_check(
         let previous = previous.with_name(name);
 
         let package_from = RpVersionedPackage::new(package.clone(), Some(d.version.clone()));
-        let file_from = env.load_object(previous, &package_from)?;
+        let file_from = env.load_object(previous.as_ref(), &package_from)?;
 
         let package_to = RpVersionedPackage::new(package.clone(), Some(version.clone()));
-        let file_to = env.load_object(object.clone_object(), &package_to)?;
+        let file_to = env.load_object(object.as_ref(), &package_to)?;
 
         let violations = semck::check((&d.version, &file_from), (&version, &file_to))?;
 

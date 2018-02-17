@@ -6,7 +6,7 @@
 #[macro_use]
 extern crate error_chain;
 extern crate relative_path;
-extern crate reproto_core;
+extern crate reproto_core as core;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -14,9 +14,9 @@ extern crate toml;
 
 pub mod errors;
 
+use core::{Range, RpPackage, RpRequiredPackage, Version};
 use errors::*;
 use relative_path::{RelativePath, RelativePathBuf};
-use reproto_core::{Range, RpPackage, RpRequiredPackage, Version};
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
@@ -342,6 +342,10 @@ where
     pub packages: Vec<RpRequiredPackage>,
     /// Files to build.
     pub files: Vec<ManifestFile>,
+    /// Read files from stdin.
+    ///
+    /// This is not part of the manifest.
+    pub stdin: bool,
     /// Packages to publish.
     pub publish: Vec<Publish>,
     /// Modules to enable.
@@ -369,6 +373,7 @@ where
             path: path.to_owned(),
             packages: Vec::default(),
             files: Vec::default(),
+            stdin: false,
             publish: Vec::default(),
             modules: Vec::default(),
             paths: Vec::default(),

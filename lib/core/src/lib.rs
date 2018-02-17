@@ -61,7 +61,7 @@ pub use self::error_pos::ErrorPos;
 pub use self::for_each_loc::ForEachLoc;
 pub use self::loc::Loc;
 pub use self::mime::Mime;
-pub use self::object::{BytesObject, EmptyObject, Object, PathObject, ReaderObject};
+pub use self::object::{BytesObject, EmptyObject, Object, PathObject, StdinObject};
 pub use self::option_entry::OptionEntry;
 pub use self::options::Options;
 pub use self::pos::Pos;
