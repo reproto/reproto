@@ -8,9 +8,9 @@ root=$PWD
 candidates=()
 candidates+=(lib/semver)
 candidates+=(lib/core)
-candidates+=(lib/derive)
 candidates+=(lib/path-lexer lib/path-parser)
 candidates+=(lib/lexer lib/ast lib/parser)
+candidates+=(lib/derive)
 candidates+=(lib/manifest lib/repository lib/backend lib/semck)
 
 for manifest in $root/lib/backend-*/Cargo.toml; do
