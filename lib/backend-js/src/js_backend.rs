@@ -1,7 +1,7 @@
 use super::{JS_CONTEXT, TYPE_SEP};
 use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, Environment,
               FromNaming, Naming, PackageUtils, SnakeCase};
-use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
+use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
            RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody};
 use core::errors::*;
 use genco::{Element, JavaScript, Quoted, Tokens};
@@ -11,7 +11,6 @@ use js_field::JsField;
 use js_file_spec::JsFileSpec;
 use js_options::JsOptions;
 use listeners::Listeners;
-use std::path::PathBuf;
 use std::rc::Rc;
 use utils::{is_defined, is_not_defined};
 
@@ -34,9 +33,9 @@ impl JsBackend {
         }
     }
 
-    pub fn compiler(&self, out_path: PathBuf) -> Result<JsCompiler> {
+    pub fn compiler<'el>(&'el self, handle: &'el Handle) -> Result<JsCompiler<'el>> {
         Ok(JsCompiler {
-            out_path: out_path,
+            handle: handle,
             backend: self,
         })
     }

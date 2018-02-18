@@ -6,7 +6,6 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Bar {
-  @JsonProperty("field")
   private final Bar.Inner field;
 
   @JsonCreator
@@ -77,7 +76,6 @@ public class Bar {
   }
 
   public static class Inner {
-    @JsonProperty("field")
     private final String field;
 
     @JsonCreator

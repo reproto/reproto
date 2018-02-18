@@ -3,16 +3,15 @@
 use super::EXT;
 use backend::{Environment, PackageProcessor, PackageUtils};
 use collector::Collector;
-use core::{Loc, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
-           RpTypeBody, RpVersionedPackage};
+use core::{Handle, Loc, RelativePathBuf, RpEnumBody, RpInterfaceBody, RpName, RpPackage,
+           RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
 use json_backend::JsonBackend;
 use serde_json;
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
 
 pub struct JsonCompiler<'el> {
-    pub out_path: PathBuf,
+    pub handle: &'el Handle,
     pub processor: &'el JsonBackend,
 }
 
@@ -35,8 +34,8 @@ impl<'el> PackageProcessor<'el> for JsonCompiler<'el> {
         &self.processor.env
     }
 
-    fn out_path(&self) -> &Path {
-        &self.out_path
+    fn handle(&self) -> &'el Handle {
+        self.handle
     }
 
     fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
@@ -47,8 +46,8 @@ impl<'el> PackageProcessor<'el> for JsonCompiler<'el> {
         Ok(())
     }
 
-    fn resolve_full_path(&self, package: &RpPackage) -> Result<PathBuf> {
-        let mut full_path = self.out_path().join(self.processor.package_file(package));
+    fn resolve_full_path(&self, package: &RpPackage) -> Result<RelativePathBuf> {
+        let mut full_path = RelativePathBuf::from(self.processor.package_file(package));
         full_path.set_extension(self.ext());
         Ok(full_path)
     }

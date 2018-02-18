@@ -1,10 +1,9 @@
 //! Helper component to build Java files.
 
+use core::{Handle, RelativePathBuf};
 use core::errors::*;
 use genco::{IoFmt, Java, Tokens, WriteTokens};
 use genco::java::Extra;
-use std::fs::{self, File};
-use std::path::Path;
 
 pub struct JavaFile<'el, F> {
     package: &'el str,
@@ -24,20 +23,20 @@ where
         }
     }
 
-    pub fn process(self, out_path: &Path) -> Result<()> {
+    pub fn process(self, handle: &Handle) -> Result<()> {
         let parts = self.package.split('.').collect::<Vec<_>>();
 
-        let client_path = parts
+        let path = parts
             .iter()
             .cloned()
-            .fold(out_path.to_owned(), |p, part| p.join(part));
+            .fold(RelativePathBuf::new(), |p, part| p.join(part));
 
-        if !client_path.is_dir() {
-            debug!("+dir: {}", client_path.display());
-            fs::create_dir_all(&client_path)?;
+        if !handle.is_dir(&path) {
+            debug!("+dir: {}", path.display());
+            handle.create_dir_all(&path)?;
         }
 
-        let client_path = client_path.join(format!("{}.java", self.class_name));
+        let path = path.join(format!("{}.java", self.class_name));
 
         let mut file: Tokens<Java> = Tokens::new();
         (self.builder)(&mut file)?;
@@ -45,8 +44,8 @@ where
         let mut extra = Extra::default();
         extra.package(self.package);
 
-        debug!("+class: {}", client_path.display());
-        IoFmt(&mut File::create(client_path)?).write_file(file, &mut extra)?;
+        debug!("+class: {}", path.display());
+        IoFmt(&mut handle.create(&path)?.as_mut()).write_file(file, &mut extra)?;
 
         Ok(())
     }

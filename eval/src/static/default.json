@@ -1,0 +1,28 @@
+[
+  {
+    "type": "eval",
+    "description": [
+      "Eval is an application written for reproto (you might be in it right now!).",
+      "Edit this example to see the corresponding change in the schema to the right!"
+    ],
+    "url": "https://reproto.github.io/eval",
+    "released_at": "2018-02-18T00:00:00Z"
+  },
+  {
+    "type": "module",
+    "description": [
+      "There are multiple modules that can be enabled for each language!",
+      "Some module has to be enabled to provide certain functionality, ",
+      "like `-m chrono` for `datetime` in Rust!"
+    ],
+    "modules": {
+      "rust": [
+        "chrono"
+      ],
+      "java": [
+        "builder",
+        "lombok"
+      ]
+    }
+  }
+]

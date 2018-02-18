@@ -38,6 +38,10 @@ pub struct PythonLang;
 
 impl Lang for PythonLang {
     type Module = PythonModule;
+
+    fn comment(input: &str) -> Option<String> {
+        Some(format!("# {}", input))
+    }
 }
 
 #[derive(Debug)]
@@ -85,10 +89,10 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     Ok(options)
 }
 
-pub fn compile(_ctx: Rc<Context>, env: Environment, manifest: Manifest<PythonLang>) -> Result<()> {
-    let out = manifest.output.ok_or("Missing `--out` or `output=`")?;
+pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<PythonLang>) -> Result<()> {
     let options = setup_options(manifest.modules)?;
     let backend = PythonBackend::new(env, options);
-    let compiler = backend.compiler(out)?;
+    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
+    let compiler = backend.compiler(handle.as_ref())?;
     compiler.compile()
 }

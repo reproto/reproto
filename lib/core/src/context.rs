@@ -5,10 +5,12 @@
 //! This is preferred over results, since it permits reporting complex errors and their
 //! corresponding locations.
 
-use error_pos::ErrorPos;
-use errors::Error;
+use {ErrorPos, Filesystem, Handle};
+use errors::{Error, Result};
 use std::cell::{BorrowError, Ref, RefCell};
 use std::fmt;
+use std::path::Path;
+use std::result;
 
 pub enum ContextItem {
     /// A positional error.
@@ -17,8 +19,11 @@ pub enum ContextItem {
     InfoPos(ErrorPos, String),
 }
 
-#[derive(Default)]
+/// Context for a single reproto run.
 pub struct Context {
+    /// Filesystem abstraction.
+    filesystem: Box<Filesystem>,
+    /// Collected context errors.
     errors: RefCell<Vec<ContextItem>>,
 }
 
@@ -70,6 +75,19 @@ impl<'a> From<Reporter<'a>> for Error {
 }
 
 impl Context {
+    /// Create a new context with the given filesystem.
+    pub fn new(filesystem: Box<Filesystem>) -> Context {
+        Context {
+            filesystem: filesystem,
+            errors: RefCell::new(vec![]),
+        }
+    }
+
+    /// Retrieve the filesystem abstraction.
+    pub fn filesystem(&self, root: Option<&Path>) -> Result<Box<Handle>> {
+        self.filesystem.open_root(root)
+    }
+
     /// Build a handle that can be used in conjunction with Result#map_err.
     pub fn report(&self) -> Reporter {
         Reporter {
@@ -79,7 +97,7 @@ impl Context {
     }
 
     /// Iterate over all reporter errors.
-    pub fn errors(&self) -> Result<Ref<Vec<ContextItem>>, BorrowError> {
+    pub fn errors(&self) -> result::Result<Ref<Vec<ContextItem>>, BorrowError> {
         self.errors.try_borrow()
     }
 }
@@ -87,7 +105,7 @@ impl Context {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use errors::*;
+    use fs::CapturingFilesystem;
     use object::{BytesObject, Object};
     use pos::Pos;
     use std::rc::Rc;
@@ -101,7 +119,7 @@ mod tests {
         let pos: Pos = (Rc::new(object.clone_object()), 0usize, 0usize).into();
         let other_pos: Pos = (Rc::new(object.clone_object()), 0usize, 0usize).into();
 
-        let ctx = Context::default();
+        let ctx = Context::new(Box::new(CapturingFilesystem::new()));
 
         let result: result::Result<(), &str> = Err("nope");
 

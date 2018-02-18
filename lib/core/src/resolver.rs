@@ -50,3 +50,15 @@ pub trait Resolver {
     /// Resolve by prefix.
     fn resolve_by_prefix(&mut self, package: &RpPackage) -> Result<Vec<ResolvedByPrefix>>;
 }
+
+pub struct EmptyResolver;
+
+impl Resolver for EmptyResolver {
+    fn resolve(&mut self, _package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
+        Ok(vec![])
+    }
+
+    fn resolve_by_prefix(&mut self, _package: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
+        Ok(vec![])
+    }
+}

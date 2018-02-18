@@ -22,6 +22,9 @@ use std::path::{Path, PathBuf};
 pub trait Lang: Default {
     /// Module type used.
     type Module: 'static + TryFromToml;
+
+    /// Comment the given string.
+    fn comment(input: &str) -> Option<String>;
 }
 
 /// Fallback language support in case no language is specified.
@@ -50,6 +53,10 @@ impl TryFromToml for NoModule {
 
 impl Lang for NoLang {
     type Module = NoModule;
+
+    fn comment(_input: &str) -> Option<String> {
+        None
+    }
 }
 
 /// Trait to convert different types.
@@ -307,18 +314,18 @@ pub struct Repository {
 }
 
 /// The first part when the manifest was read.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ManifestPreamble {
     pub language: Option<Language>,
-    pub path: PathBuf,
+    pub path: Option<PathBuf>,
     value: toml::value::Table,
 }
 
 impl ManifestPreamble {
-    pub fn new(path: &Path) -> ManifestPreamble {
+    pub fn new(language: Option<Language>, path: Option<&Path>) -> ManifestPreamble {
         ManifestPreamble {
-            language: None,
-            path: path.to_owned(),
+            language: language,
+            path: path.map(|p| p.to_owned()),
             value: toml::value::Table::default(),
         }
     }
@@ -333,7 +340,7 @@ where
     L: Lang,
 {
     /// Path where manifest was loaded from.
-    pub path: PathBuf,
+    pub path: Option<PathBuf>,
     /// Packages to build.
     pub packages: Vec<RpRequiredPackage>,
     /// Files to build.
@@ -364,9 +371,9 @@ impl<L> Manifest<L>
 where
     L: Lang,
 {
-    pub fn new(path: &Path) -> Manifest<L> {
+    pub fn new(path: Option<&Path>) -> Manifest<L> {
         Manifest {
-            path: path.to_owned(),
+            path: path.map(|p| p.to_owned()),
             packages: Vec::default(),
             files: Vec::default(),
             stdin: false,
@@ -499,7 +506,7 @@ pub fn read_manifest_preamble<'a, P: AsRef<Path>, R: Read>(
 
     Ok(ManifestPreamble {
         language: language,
-        path: path.to_owned(),
+        path: Some(path.to_owned()),
         value: value,
     })
 }
@@ -512,19 +519,17 @@ pub fn read_manifest<L>(mut preamble: ManifestPreamble) -> Result<Manifest<L>>
 where
     L: Lang,
 {
-    let mut manifest = Manifest::new(&preamble.path);
+    let mut manifest = Manifest::new(preamble.path.as_ref().map(AsRef::as_ref));
 
-    let parent = preamble
-        .path
-        .parent()
-        .ok_or_else(|| format!("missing parent directory"))?;
+    // Only load components if we have a parent path.
+    if let Some(parent) = preamble.path.as_ref().and_then(|p| p.parent()) {
+        manifest.modules.extend(opt_specs(
+            parent,
+            take_field(&mut preamble.value, "modules")?,
+        )?);
 
-    manifest.modules.extend(opt_specs(
-        parent,
-        take_field(&mut preamble.value, "modules")?,
-    )?);
-
-    load_common_manifest(&mut manifest, parent, &mut preamble.value)?;
+        load_common_manifest(&mut manifest, parent, &mut preamble.value)?;
+    }
 
     check_empty(&preamble.value)?;
     Ok(manifest)

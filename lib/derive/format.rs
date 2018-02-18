@@ -1,10 +1,11 @@
 use core;
 use core::errors::Result;
 use sir::Sir;
+use std::fmt;
 
 ///
 /// Decoder to use.
-pub trait Format {
+pub trait Format: fmt::Debug {
     fn decode(&self, object: &core::Object) -> Result<Sir>;
 }
 

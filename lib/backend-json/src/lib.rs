@@ -33,6 +33,10 @@ pub struct JsonLang;
 
 impl Lang for JsonLang {
     type Module = JsonModule;
+
+    fn comment(input: &str) -> Option<String> {
+        Some(input.to_string())
+    }
 }
 
 #[derive(Debug)]
@@ -65,10 +69,10 @@ fn setup_listeners(modules: &[JsonModule]) -> Result<(JsonOptions, Box<Listeners
     Ok((options, Box::new(listeners)))
 }
 
-pub fn compile(_ctx: Rc<Context>, env: Environment, manifest: Manifest<JsonLang>) -> Result<()> {
-    let out = manifest.output.ok_or("Missing `--out` or `output=`")?;
+pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<JsonLang>) -> Result<()> {
     let (options, listeners) = setup_listeners(&manifest.modules)?;
     let backend = JsonBackend::new(env, options, listeners);
-    let compiler = backend.compiler(out)?;
+    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
+    let compiler = backend.compiler(handle.as_ref())?;
     compiler.compile()
 }

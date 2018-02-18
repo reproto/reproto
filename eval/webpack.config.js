@@ -1,54 +1,62 @@
-var HtmlWebpackPlugin = require('html-webpack-plugin');
-var ExtractTextPlugin = require('extract-text-webpack-plugin');
+const path = require("path");
+
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const ExtractTextPlugin = require("extract-text-webpack-plugin");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   entry: [
     "./src/index.tsx",
     "./src/main.scss",
   ],
+
   output: {
     filename: "bundle.js",
     path: __dirname + "/dist"
   },
 
-  // Enable sourcemaps for debugging webpack's output.
   devtool: "source-map",
 
   resolve: {
-    // Add '.ts' and '.tsx' as resolvable extensions.
     extensions: [".ts", ".tsx", ".js", ".json"]
   },
 
   module: {
     rules: [
-      // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
       { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
-
-      // All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
       { enforce: "pre", test: /\.js$/, loader: "source-map-loader" },
-
-      {
-        test: /\.scss$/,
-        loader: ExtractTextPlugin.extract('css-loader!sass-loader'),
-      },
+      { test: /\.scss$/, loader: ExtractTextPlugin.extract("css-loader!sass-loader") },
+      { test: /\.(jpe?g|gif|png)$/, loader: "file-loader" },
+      { test: /.(ttf|otf|eot|svg|woff(2)?)(\?[a-z0-9]+)?$/,
+        use: [{
+          loader: 'file-loader',
+          options: {
+            name: '[name].[ext]',
+            outputPath: 'fonts/',    // where the fonts will go
+            publicPath: '../'       // override the default path
+          }
+        }]
+      }
     ]
   },
 
-  // When importing a module whose path matches one of the following, just
-  // assume a corresponding global variable exists and use that instead.
-  // This is important because it allows us to avoid bundling all of our
-  // dependencies, which allows browsers to cache those libraries between builds.
+  /// External react components permitting them to be loaded through CDN.
   externals: {
-    "react": "React",
-    "react-dom": "ReactDOM"
+    // "react": "React",
+    // "react-dom": "ReactDOM",
+    "rust": "Rust",
   },
 
   plugins: [
     new HtmlWebpackPlugin({
-      template: 'index.html'
+      template: "index.html"
     }),
-    new ExtractTextPlugin('dist/style.css', {
+    new ExtractTextPlugin("dist/style.css", {
       allChunks: true
     }),
+    new CopyWebpackPlugin([
+      "local_modules/reproto-wasm.js",
+      "local_modules/reproto-wasm.wasm",
+    ])
   ],
 };

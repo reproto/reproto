@@ -4,11 +4,11 @@ use super::{Loc, Pos, RpEnumBody, RpInterfaceBody, RpName, RpReg, RpServiceBody,
             RpTypeBody};
 use std::fmt;
 use std::rc::Rc;
-use std::slice;
+use std::vec;
 
 /// Iterator over declarations.
 pub struct Decls<'a> {
-    iter: slice::Iter<'a, RpDecl>,
+    iter: vec::IntoIter<&'a RpDecl>,
 }
 
 impl<'a> Iterator for Decls<'a> {
@@ -34,11 +34,15 @@ impl RpDecl {
         use self::RpDecl::*;
 
         let iter = match *self {
-            Type(ref body) => body.decls.iter(),
-            Interface(ref body) => body.decls.iter(),
-            Enum(ref body) => body.decls.iter(),
-            Tuple(ref body) => body.decls.iter(),
-            Service(ref body) => body.decls.iter(),
+            Type(ref body) => body.decls.iter().collect::<Vec<_>>().into_iter(),
+            Interface(ref body) => {
+                let mut decls = body.decls.iter().collect::<Vec<_>>();
+                decls.extend(body.sub_types.values().flat_map(|s| s.decls.iter()));
+                decls.into_iter()
+            }
+            Enum(ref body) => body.decls.iter().collect::<Vec<_>>().into_iter(),
+            Tuple(ref body) => body.decls.iter().collect::<Vec<_>>().into_iter(),
+            Service(ref body) => body.decls.iter().collect::<Vec<_>>().into_iter(),
         };
 
         Decls { iter: iter }
@@ -93,7 +97,6 @@ impl RpDecl {
             Interface(ref interface) => {
                 for sub_type in interface.sub_types.values() {
                     out.push(RpReg::SubType(Rc::clone(interface), Rc::clone(sub_type)));
-                    out.extend(sub_type.decls.iter().flat_map(|d| d.to_reg()));
                 }
 
                 out.push(RpReg::Interface(Rc::clone(interface)));

@@ -4,7 +4,7 @@ use super::{PYTHON_CONTEXT, TYPE_SEP};
 use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, Environment,
               FromNaming, Naming, PackageUtils, SnakeCase};
 use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
-use core::{ForEachLoc, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
+use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
            RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, WithPos};
 use core::errors::*;
 use genco::{Element, Quoted, Tokens};
@@ -14,7 +14,6 @@ use python_compiler::PythonCompiler;
 use python_field::PythonField;
 use python_file_spec::PythonFileSpec;
 use std::iter;
-use std::path::PathBuf;
 use std::rc::Rc;
 
 pub struct PythonBackend {
@@ -36,9 +35,9 @@ impl PythonBackend {
         }
     }
 
-    pub fn compiler(&self, out_path: PathBuf) -> Result<PythonCompiler> {
+    pub fn compiler<'el>(&'el self, handle: &'el Handle) -> Result<PythonCompiler<'el>> {
         Ok(PythonCompiler {
-            out_path: out_path,
+            handle: handle,
             backend: self,
         })
     }

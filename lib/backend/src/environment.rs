@@ -102,8 +102,8 @@ impl Environment {
         return Err(format!("no such type: {}", name).into());
     }
 
-    /// Import a file into the environment.
-    pub fn import_file<P: AsRef<Path>>(
+    /// Import a path into the environment.
+    pub fn import_path<P: AsRef<Path>>(
         &mut self,
         path: P,
         package: Option<RpVersionedPackage>,
@@ -122,6 +122,23 @@ impl Environment {
 
         if !self.visited.contains_key(&required) {
             let file = self.load_object(object, &package)?;
+            self.process_file(package.clone(), file)?;
+            self.visited.insert(required, Some(package.clone()));
+        }
+
+        Ok(package)
+    }
+
+    /// Import a single, structured file object.
+    pub fn import_file(
+        &mut self,
+        file: RpFile,
+        package: Option<RpVersionedPackage>,
+    ) -> Result<RpVersionedPackage> {
+        let package = package.unwrap_or_else(|| RpVersionedPackage::new(RpPackage::empty(), None));
+        let required = RpRequiredPackage::new(package.package.clone(), Range::any());
+
+        if !self.visited.contains_key(&required) {
             self.process_file(package.clone(), file)?;
             self.visited.insert(required, Some(package.clone()));
         }

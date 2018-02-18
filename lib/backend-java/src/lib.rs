@@ -38,6 +38,10 @@ pub struct JavaLang;
 
 impl Lang for JavaLang {
     type Module = JavaModule;
+
+    fn comment(input: &str) -> Option<String> {
+        Some(format!("// {}", input))
+    }
 }
 
 #[derive(Debug)]
@@ -116,11 +120,13 @@ fn setup_options(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> JavaOptions {
     options
 }
 
-pub fn compile(_ctx: Rc<Context>, env: Environment, manifest: Manifest<JavaLang>) -> Result<()> {
-    let out = manifest.output.ok_or("Missing `--out` or `output=`")?;
+pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<JavaLang>) -> Result<()> {
     let env = Rc::new(env);
     let utils = Rc::new(Utils::new(&env));
     let options = setup_options(manifest.modules, &utils);
     let backend = JavaBackend::new(&env, &utils, options);
-    backend.compile(&out)
+
+    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
+
+    backend.compile(handle.as_ref())
 }

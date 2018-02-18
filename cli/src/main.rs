@@ -5,7 +5,7 @@ extern crate reproto;
 extern crate reproto_core as core;
 
 use clap::{App, Arg, ArgMatches};
-use core::Context;
+use core::{Context, RealFilesystem};
 use core::errors::Result;
 use reproto::ops;
 use reproto::output;
@@ -60,7 +60,7 @@ fn guarded_entry(ctx: Rc<Context>, matches: &ArgMatches, output: &output::Output
 }
 
 fn entry(matches: &ArgMatches, output: &output::Output) -> Result<()> {
-    let ctx = Rc::new(Context::default());
+    let ctx = Rc::new(Context::new(Box::new(RealFilesystem::new())));
 
     if let Err(e) = guarded_entry(Rc::clone(&ctx), matches, output) {
         output.handle_error(&e)?;

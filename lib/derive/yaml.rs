@@ -7,6 +7,7 @@ use serde_yaml as yaml;
 use sir::{FieldSir, Sir};
 use utils::is_datetime;
 
+#[derive(Debug)]
 pub struct Yaml;
 
 impl format::Format for Yaml {

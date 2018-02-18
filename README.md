@@ -17,6 +17,9 @@ This is the home of `reproto`, a system for managing JSON schemas.
 * A rich, markdown-based [documentation generator].
 * (eventually) A [central repository] of usable schemas.
 
+You can take the derive feature of reproto for a spin at <https://reproto.github.io>.
+This loads the library through WASM based on [stdweb].
+
 These things combined support an ecosystem where schemas can be maintained and shared across
 projects.
 
@@ -31,6 +34,7 @@ but avoid building large repositories of specifications right now.
 [documentation generator]: #generating-documentation
 [central repository]: https://github.com/reproto/reproto-index
 [build manifest]: /doc/manifest.md
+[stdweb]: https://github.com/koute/stdweb
 
 ## Getting Started
 

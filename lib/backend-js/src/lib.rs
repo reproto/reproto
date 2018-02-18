@@ -37,6 +37,10 @@ pub struct JsLang;
 
 impl Lang for JsLang {
     type Module = JsModule;
+
+    fn comment(input: &str) -> Option<String> {
+        Some(format!("# {}", input))
+    }
 }
 
 #[derive(Debug)]
@@ -69,10 +73,10 @@ fn setup_listeners(modules: &[JsModule]) -> Result<(JsOptions, Box<Listeners>)> 
     Ok((options, Box::new(listeners)))
 }
 
-pub fn compile(_ctx: Rc<Context>, env: Environment, manifest: Manifest<JsLang>) -> Result<()> {
-    let out = manifest.output.ok_or("Missing `--out` or `output=`")?;
+pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<JsLang>) -> Result<()> {
     let (options, listeners) = setup_listeners(&manifest.modules)?;
     let backend = JsBackend::new(env, options, listeners);
-    let compiler = backend.compiler(out)?;
+    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
+    let compiler = backend.compiler(handle.as_ref())?;
     compiler.compile()
 }

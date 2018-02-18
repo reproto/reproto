@@ -1,13 +1,10 @@
 use super::into_bytes::IntoBytes;
-use core::{Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
-           RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
+use core::{Handle, Loc, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
+           RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
 use core::errors::*;
 use environment::Environment;
 use std::collections::BTreeMap;
-use std::fs::{self, File};
 use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
 
 pub trait PackageProcessor<'el>
 where
@@ -19,7 +16,7 @@ where
 
     fn env(&self) -> &'el Environment;
 
-    fn out_path(&self) -> &Path;
+    fn handle(&self) -> &'el Handle;
 
     fn default_process(&self, _: &mut Self::Out, name: &'el RpName) -> Result<()> {
         warn!("not supported: {}", name);
@@ -89,20 +86,25 @@ where
         Ok(files)
     }
 
-    fn resolve_full_path(&self, package: &RpPackage) -> Result<PathBuf> {
-        let full_path = self.out_path().to_owned();
-        let mut full_path = package.parts.iter().fold(full_path, |a, b| a.join(b));
+    fn resolve_full_path(&self, package: &RpPackage) -> Result<RelativePathBuf> {
+        let mut full_path = package
+            .parts
+            .iter()
+            .fold(RelativePathBuf::new(), |a, b| a.join(b));
         full_path.set_extension(self.ext());
         Ok(full_path)
     }
 
-    fn setup_module_path(&self, package: &RpPackage) -> Result<PathBuf> {
+    fn setup_module_path(&self, package: &RpPackage) -> Result<RelativePathBuf> {
+        let handle = self.handle();
         let full_path = self.resolve_full_path(package)?;
 
-        if let Some(parent) = full_path.parent() {
-            if !parent.is_dir() {
+        {
+            let parent = full_path.parent().unwrap_or(RelativePath::new("."));
+
+            if !handle.is_dir(&parent) {
                 debug!("+dir: {}", parent.display());
-                fs::create_dir_all(parent)?;
+                handle.create_dir_all(&parent)?;
             }
         }
 
@@ -110,13 +112,15 @@ where
     }
 
     fn write_files(&'el self, files: BTreeMap<RpVersionedPackage, Self::Out>) -> Result<()> {
+        let handle = self.handle();
+
         for (package, out) in files {
             let package = self.processed_package(&package);
             let full_path = self.setup_module_path(&package)?;
 
             debug!("+module: {}", full_path.display());
 
-            let mut f = File::create(full_path)?;
+            let mut f = handle.create(&full_path)?;
             let bytes = out.into_bytes(self)?;
             f.write_all(&bytes)?;
             f.flush()?;

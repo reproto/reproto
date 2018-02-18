@@ -2,7 +2,7 @@
 
 use super::RUST_CONTEXT;
 use backend::{Code, Environment, FromNaming, Naming, PackageUtils, SnakeCase};
-use core::{ForEachLoc, Loc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName,
+use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName,
            RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody};
 use core::errors::*;
 use genco::{Element, IntoTokens, Quoted, Rust, Tokens};
@@ -11,7 +11,6 @@ use listeners::Listeners;
 use rust_compiler::RustCompiler;
 use rust_file_spec::RustFileSpec;
 use rust_options::RustOptions;
-use std::path::PathBuf;
 use std::rc::Rc;
 use utils::rust_keyword;
 
@@ -75,9 +74,9 @@ impl RustBackend {
         }
     }
 
-    pub fn compiler(&self, out_path: PathBuf) -> Result<RustCompiler> {
+    pub fn compiler<'el>(&'el self, handle: &'el Handle) -> Result<RustCompiler<'el>> {
         Ok(RustCompiler {
-            out_path: out_path,
+            handle: handle,
             backend: self,
         })
     }

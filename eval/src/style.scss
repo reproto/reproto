@@ -1,5 +1,55 @@
-.input {
+.editors {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+
+  .input {
+    height: 100%;
+  }
+
+  .output {
+    height: 100%;
+  }
 }
 
-.output {
+html,
+body {
+  height: 100%;
+  margin: 0
+}
+
+#app {
+  height: 100%;
+}
+
+.box {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+}
+
+.box .box-row {
+  position: relative;
+  border: 1px dotted grey;
+}
+
+.box .box-row.header {
+  flex: 0 1 auto;
+}
+
+.box .box-row.content {
+  flex: 1 1 auto;
+}
+
+.box .box-row.footer {
+  flex: 0 1 40px;
+}
+
+.error {
+  position: absolute;
+  z-index: 1000;
+  margin-left: auto;
+  margin-right: auto;
+  left: 0;
+  right: 0;
 }

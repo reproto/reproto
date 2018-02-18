@@ -39,6 +39,10 @@ pub struct RustLang;
 
 impl Lang for RustLang {
     type Module = RustModule;
+
+    fn comment(input: &str) -> Option<String> {
+        Some(format!("// {}", input))
+    }
 }
 
 #[derive(Debug)]
@@ -98,10 +102,10 @@ pub fn setup_listeners(modules: &[RustModule]) -> Result<(RustOptions, Box<Liste
     Ok((options, Box::new(listeners)))
 }
 
-pub fn compile(_ctx: Rc<Context>, env: Environment, manifest: Manifest<RustLang>) -> Result<()> {
-    let out = manifest.output.ok_or("Missing `--out` or `output=`")?;
+pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<RustLang>) -> Result<()> {
     let (options, listeners) = setup_listeners(&manifest.modules)?;
     let backend = RustBackend::new(env, options, listeners);
-    let compiler = backend.compiler(out)?;
+    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
+    let compiler = backend.compiler(handle.as_ref())?;
     compiler.compile()
 }

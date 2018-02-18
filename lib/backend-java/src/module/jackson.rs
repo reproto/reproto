@@ -369,11 +369,7 @@ impl Jackson {
     }
 
     fn add_class_annotations<'a>(&self, names: &[Cons<'a>], spec: &mut Class<'a>) -> Result<()> {
-        for (field, name) in spec.fields.iter_mut().zip(names.iter()) {
-            let ann = toks!["@", self.property.clone(), "(", name.clone().quoted(), ")"];
-            field.annotation(ann.clone());
-        }
-
+        // Annotate all constructors.
         for c in &mut spec.constructors {
             c.annotation(toks!["@", self.creator.clone()]);
 
@@ -381,6 +377,12 @@ impl Jackson {
                 let ann = toks!["@", self.property.clone(), "(", name.clone().quoted(), ")"];
                 argument.annotation(ann.clone());
             }
+        }
+
+        // Also add field annotations, since they are used during serialization!
+        for (field, name) in spec.fields.iter_mut().zip(names.iter()) {
+            let ann = toks!["@", self.property.clone(), "(", name.clone().quoted(), ")"];
+            field.annotation(ann.clone());
         }
 
         Ok(())

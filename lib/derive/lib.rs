@@ -29,6 +29,65 @@ use std::hash;
 use std::ops;
 use std::rc::Rc;
 
+#[derive(Debug)]
+pub struct Derive {
+    root_name: String,
+    format: Box<format::Format>,
+    package_prefix: Option<RpPackage>,
+}
+
+#[derive(Debug, Clone)]
+struct Context<'a> {
+    path: Vec<String>,
+    package_prefix: Option<&'a RpPackage>,
+}
+
+impl<'a> Context<'a> {
+    /// Extract the 'local name' (last component).
+    fn local_name(&self) -> Result<&str> {
+        if let Some(local_name) = self.path.iter().last() {
+            Ok(local_name.as_str())
+        } else {
+            Err(format!("No last component in name").into())
+        }
+    }
+
+    /// Join this context with another path component.
+    fn join(&self, name: String) -> Context<'a> {
+        let mut path = self.path.iter().cloned().collect::<Vec<_>>();
+        path.push(name);
+
+        Context {
+            path: path,
+            package_prefix: self.package_prefix.clone(),
+        }
+    }
+
+    /// Constructs an ``RpNAme`.
+    fn name(&self) -> RpName {
+        let package = self.package_prefix
+            .cloned()
+            .unwrap_or_else(RpPackage::empty);
+
+        let package = RpVersionedPackage::new(package, None);
+        RpName::new(None, package, self.path.clone())
+    }
+}
+
+impl Derive {
+    pub fn new(
+        root_name: String,
+        format: Box<format::Format>,
+        package_prefix: Option<RpPackage>,
+    ) -> Derive {
+        Derive {
+            root_name: root_name,
+            format: format,
+            package_prefix: package_prefix,
+        }
+    }
+}
+
 type TypesCache = HashMap<Sir, RpName>;
 
 /// An opaque data structure, well all instances are equal but can contain different data.
@@ -69,27 +128,17 @@ impl<T> ops::DerefMut for Opaque<T> {
     }
 }
 
-/// The root name given to any derived item.
-pub fn root_name() -> (String, RpName) {
-    let package = RpPackage::empty();
-    let package = RpVersionedPackage::new(package, None);
-    let local_name = String::from("Generated");
-    let name = RpName::new(None, package, vec![String::from("Generated")]);
-
-    (local_name, name)
-}
-
 struct FieldInit<'a> {
     pos: &'a Pos,
-    path: &'a [String],
+    ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
 
 impl<'a> FieldInit<'a> {
-    fn new(pos: &'a Pos, path: &'a [String], types: &'a mut TypesCache) -> FieldInit<'a> {
+    fn new(pos: &'a Pos, ctx: Context<'a>, types: &'a mut TypesCache) -> FieldInit<'a> {
         FieldInit {
             pos: pos,
-            path: path,
+            ctx: ctx,
             types: types,
         }
     }
@@ -131,7 +180,7 @@ impl<'a> FieldInit<'a> {
                     field: (**inner).clone(),
                 };
 
-                let f = FieldInit::new(&self.pos, &self.path, self.types).init(
+                let f = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
                     name.clone(),
                     &field,
                     decls,
@@ -142,21 +191,18 @@ impl<'a> FieldInit<'a> {
                 }
             }
             ref sir => {
-                let package = RpPackage::empty();
-                let package = RpVersionedPackage::new(package, None);
-
-                let mut path = self.path.iter().cloned().collect::<Vec<_>>();
-                path.push(to_pascal_case(&name));
+                let ctx = self.ctx.join(to_pascal_case(&name));
 
                 let name = if let Some(name) = self.types.get(sir).cloned() {
                     name
                 } else {
-                    let name = RpName::new(None, package, path.clone());
+                    let name = ctx.name();
+
                     self.types.insert(sir.clone(), name.clone());
 
                     decls.push(DeclDeriver {
                         pos: &self.pos,
-                        path: &path,
+                        ctx: ctx.clone(),
                         types: self.types,
                     }.derive(sir)?);
 
@@ -217,7 +263,7 @@ impl<'a> FieldInit<'a> {
 
 struct DeclDeriver<'a> {
     pos: &'a Pos,
-    path: &'a [String],
+    ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
 
@@ -226,11 +272,9 @@ impl<'a> DeclDeriver<'a> {
     fn derive(self, sir: &Sir) -> Result<RpDecl> {
         let decl = match *sir {
             Sir::Tuple(ref array) => {
-                let mut path = self.path.iter().cloned().collect::<Vec<_>>();
-
                 let mut refiner = TupleRefiner {
                     pos: &self.pos,
-                    path: &path,
+                    ctx: self.ctx,
                     types: self.types,
                 };
 
@@ -238,11 +282,9 @@ impl<'a> DeclDeriver<'a> {
                 RpDecl::Tuple(Rc::new(Loc::new(tuple, self.pos.clone())))
             }
             Sir::Object(ref object) => {
-                let mut path = self.path.iter().cloned().collect::<Vec<_>>();
-
                 let mut refiner = TypeRefiner {
                     pos: &self.pos,
-                    path: &path,
+                    ctx: self.ctx,
                     types: self.types,
                 };
 
@@ -250,11 +292,9 @@ impl<'a> DeclDeriver<'a> {
                 RpDecl::Type(Rc::new(Loc::new(type_, self.pos.clone())))
             }
             Sir::Interface(ref type_field, ref sub_types) => {
-                let mut path = self.path.iter().cloned().collect::<Vec<_>>();
-
                 let type_ = InterfaceRefiner {
                     pos: &self.pos,
-                    path: &path,
+                    ctx: self.ctx,
                     types: self.types,
                 }.derive(type_field, sub_types)?;
 
@@ -271,28 +311,16 @@ impl<'a> DeclDeriver<'a> {
 
 struct TypeRefiner<'a> {
     pos: &'a Pos,
-    path: &'a [String],
+    ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
 
 impl<'a> TypeRefiner<'a> {
     /// Derive an struct body from the given input array.
     fn derive(&mut self, object: &LinkedHashMap<String, FieldSir>) -> Result<RpTypeBody> {
-        let path = self.path.iter().cloned().collect::<Vec<_>>();
-
-        let local_name = if let Some(local_name) = path.iter().last().cloned() {
-            local_name
-        } else {
-            return Err(format!("No last component in name").into());
-        };
-
-        let package = RpPackage::empty();
-        let package = RpVersionedPackage::new(package, None);
-        let name = RpName::new(None, package, path);
-
         let mut body = RpTypeBody {
-            local_name: local_name,
-            name: name,
+            local_name: self.ctx.local_name()?.to_string(),
+            name: self.ctx.name(),
             comment: Vec::new(),
             decls: Vec::new(),
             fields: Vec::new(),
@@ -310,7 +338,7 @@ impl<'a> TypeRefiner<'a> {
         object: &LinkedHashMap<String, FieldSir>,
     ) -> Result<()> {
         for (name, added) in object.iter() {
-            let field = FieldInit::new(&self.pos, &self.path, self.types).init(
+            let field = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
                 name.to_string(),
                 added,
                 &mut base.decls,
@@ -325,28 +353,16 @@ impl<'a> TypeRefiner<'a> {
 
 struct SubTypeRefiner<'a> {
     pos: &'a Pos,
-    path: &'a [String],
+    ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
 
 impl<'a> SubTypeRefiner<'a> {
     /// Derive an struct body from the given input array.
     fn derive(&mut self, sub_type: &SubTypeSir) -> Result<RpSubType> {
-        let path = self.path.iter().cloned().collect::<Vec<_>>();
-
-        let local_name = if let Some(local_name) = path.iter().last().cloned() {
-            local_name
-        } else {
-            return Err(format!("No last component in name").into());
-        };
-
-        let package = RpPackage::empty();
-        let package = RpVersionedPackage::new(package, None);
-        let name = RpName::new(None, package, path.clone());
-
         let mut body = RpSubType {
-            name: name,
-            local_name: local_name.clone(),
+            local_name: self.ctx.local_name()?.to_string(),
+            name: self.ctx.name(),
             comment: vec![],
             decls: vec![],
             fields: vec![],
@@ -364,7 +380,7 @@ impl<'a> SubTypeRefiner<'a> {
         }
 
         for (field_name, field_value) in &sub_type.structure {
-            let field = FieldInit::new(&self.pos, &self.path, self.types).init(
+            let field = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
                 field_name.to_string(),
                 field_value,
                 &mut base.decls,
@@ -379,25 +395,13 @@ impl<'a> SubTypeRefiner<'a> {
 
 struct InterfaceRefiner<'a> {
     pos: &'a Pos,
-    path: &'a [String],
+    ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
 
 impl<'a> InterfaceRefiner<'a> {
     /// Derive an struct body from the given input array.
     fn derive(&mut self, tag: &str, sub_types: &[SubTypeSir]) -> Result<RpInterfaceBody> {
-        let path = self.path.iter().cloned().collect::<Vec<_>>();
-
-        let local_name = if let Some(local_name) = path.iter().last().cloned() {
-            local_name
-        } else {
-            return Err(format!("No last component in name").into());
-        };
-
-        let package = RpPackage::empty();
-        let package = RpVersionedPackage::new(package, None);
-        let name = RpName::new(None, package, path);
-
         let sub_type_strategy = if tag != DEFAULT_TAG {
             RpSubTypeStrategy::Tagged {
                 tag: tag.to_string(),
@@ -407,8 +411,8 @@ impl<'a> InterfaceRefiner<'a> {
         };
 
         let mut body = RpInterfaceBody {
-            local_name: local_name,
-            name: name,
+            local_name: self.ctx.local_name()?.to_string(),
+            name: self.ctx.name(),
             comment: Vec::new(),
             decls: Vec::new(),
             fields: Vec::new(),
@@ -424,13 +428,11 @@ impl<'a> InterfaceRefiner<'a> {
     fn init(&mut self, base: &mut RpInterfaceBody, sub_types: &[SubTypeSir]) -> Result<()> {
         for st in sub_types {
             let local_name = to_pascal_case(&st.name);
-
-            let mut path = self.path.iter().cloned().collect::<Vec<_>>();
-            path.push(local_name.clone());
+            let ctx = self.ctx.join(local_name.clone());
 
             let sub_type = SubTypeRefiner {
                 pos: self.pos,
-                path: &path,
+                ctx: ctx,
                 types: self.types,
             }.derive(st)?;
 
@@ -444,28 +446,16 @@ impl<'a> InterfaceRefiner<'a> {
 
 struct TupleRefiner<'a> {
     pos: &'a Pos,
-    path: &'a [String],
+    ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
 
 impl<'a> TupleRefiner<'a> {
     /// Derive an tuple body from the given input array.
     fn derive(&mut self, array: &[FieldSir]) -> Result<RpTupleBody> {
-        let path = self.path.iter().cloned().collect::<Vec<_>>();
-
-        let local_name = if let Some(local_name) = path.iter().last().cloned() {
-            local_name
-        } else {
-            return Err(format!("No last component in name").into());
-        };
-
-        let package = RpPackage::empty();
-        let package = RpVersionedPackage::new(package, None);
-        let name = RpName::new(None, package, path);
-
         let mut body = RpTupleBody {
-            local_name: local_name,
-            name: name,
+            local_name: self.ctx.local_name()?.to_string(),
+            name: self.ctx.name(),
             comment: Vec::new(),
             decls: Vec::new(),
             fields: Vec::new(),
@@ -478,7 +468,7 @@ impl<'a> TupleRefiner<'a> {
 
     fn init(&mut self, base: &mut RpTupleBody, array: &[FieldSir]) -> Result<()> {
         for (index, added) in array.iter().enumerate() {
-            let field = FieldInit::new(&self.pos, &self.path, self.types).init(
+            let field = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
                 format!("field_{}", index),
                 added,
                 &mut base.decls,
@@ -492,16 +482,27 @@ impl<'a> TupleRefiner<'a> {
 }
 
 /// Derive a declaration from the given input.
-pub fn derive(format: Box<format::Format>, object: &Object) -> Result<RpDecl> {
+pub fn derive(derive: Derive, object: &Object) -> Result<RpDecl> {
+    let Derive {
+        root_name,
+        format,
+        package_prefix,
+    } = derive;
+
     let sir = format.decode(object)?;
 
     let pos: Pos = (Rc::new(object.clone_object()), 0, 0).into();
 
     let mut types = HashMap::new();
 
+    let ctx = Context {
+        path: vec![root_name],
+        package_prefix: package_prefix.as_ref(),
+    };
+
     let decl = DeclDeriver {
         pos: &pos,
-        path: &vec!["Generated".to_string()],
+        ctx: ctx,
         types: &mut types,
     }.derive(&sir)?;
 
@@ -510,7 +511,7 @@ pub fn derive(format: Box<format::Format>, object: &Object) -> Result<RpDecl> {
 
 #[cfg(test)]
 mod tests {
-    use super::{derive, Json};
+    use super::{derive, Derive, Json};
     use core::{BytesObject, Loc, RpDecl, RpSubTypeStrategy, RpType};
     use std::sync::Arc;
 
@@ -520,7 +521,13 @@ mod tests {
             Arc::new(input.as_bytes().iter().cloned().collect()),
         );
 
-        derive(Box::new(Json), &object).expect("bad derive")
+        let derive_config = Derive {
+            root_name: "Generator".to_string(),
+            format: Box::new(Json),
+            package_prefix: None,
+        };
+
+        derive(derive_config, &object).expect("bad derive")
     }
 
     #[test]

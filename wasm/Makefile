@@ -1,18 +1,23 @@
 release := ../target/wasm32-unknown-unknown/release
 sources += src/main.rs
 
+out ?= target
+
 .PHONY: all web
 
-all: static/reproto-wasm.js static/reproto-wasm.wasm
+all: $(out) $(out)/reproto-wasm.js $(out)/reproto-wasm.wasm
 
 web:
-	cd static && python3 -m http.server
+	cd $(out) && python3 -m http.server
 
-static/reproto-wasm.js: $(release)/reproto-wasm.js
+$(out)/reproto-wasm.js: $(release)/reproto-wasm.js
 	cp $< $@
 
-static/reproto-wasm.wasm: $(release)/reproto-wasm.wasm
+$(out)/reproto-wasm.wasm: $(release)/reproto-wasm.wasm
 	cp $< $@
 
 $(release)/reproto-wasm.js $(release)/reproto-wasm.wasm: $(sources)
 	cargo web build
+
+$(out):
+	mkdir -p $(out)

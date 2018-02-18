@@ -2,8 +2,8 @@
 
 use super::JAVA_CONTEXT;
 use backend::{CamelCase, Code, Converter, Environment, FromNaming, Naming, SnakeCase};
-use core::{ForEachLoc, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody, RpName,
-           RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
+use core::{ForEachLoc, Handle, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody,
+           RpName, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use core::errors::*;
 use genco::{Cons, Element, Java, Quoted, Tokens};
 use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum, Field, Interface,
@@ -13,7 +13,6 @@ use java_file::JavaFile;
 use java_options::JavaOptions;
 use listeners::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use processor::Processor;
-use std::path::Path;
 use std::rc::Rc;
 use utils::Utils;
 
@@ -68,24 +67,24 @@ impl JavaBackend {
         }
     }
 
-    pub fn compile(&self, out_path: &Path) -> Result<()> {
+    pub fn compile(&self, handle: &Handle) -> Result<()> {
         for generator in &self.options.root_generators {
-            generator.generate(out_path)?;
+            generator.generate(handle)?;
         }
 
         for decl in self.env.toplevel_decl_iter() {
-            self.compile_decl(out_path, decl).with_pos(decl.pos())?;
+            self.compile_decl(handle, decl).with_pos(decl.pos())?;
         }
 
         Ok(())
     }
 
-    fn compile_decl(&self, out_path: &Path, decl: &RpDecl) -> Result<()> {
+    fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
         let package_name = self.java_package(&decl.name().package).parts.join(".");
 
         JavaFile::new(package_name.as_str(), decl.local_name(), |out| {
             self.process_decl(decl, 0usize, out)
-        }).process(out_path)
+        }).process(handle)
     }
 
     fn field_mods(&self) -> Vec<Modifier> {
@@ -604,7 +603,11 @@ impl JavaBackend {
         Ok(spec)
     }
 
-    fn process_interface<'el>(&self, body: &'el RpInterfaceBody) -> Result<Interface<'el>> {
+    fn process_interface<'el>(
+        &self,
+        depth: usize,
+        body: &'el RpInterfaceBody,
+    ) -> Result<Interface<'el>> {
         use self::Modifier::*;
         let mut spec = Interface::new(body.local_name.clone());
         let interface_fields = self.convert_fields(&body.fields)?;
@@ -667,6 +670,11 @@ impl JavaBackend {
                     names: &names,
                     spec: &mut class,
                 })?;
+            }
+
+            // Process sub-type declarations.
+            for d in &sub_type.decls {
+                self.process_decl(d, depth + 1, &mut class.body)?;
             }
 
             spec.body.push(class);
@@ -802,7 +810,7 @@ impl JavaBackend {
     ) -> Result<()> {
         match *decl {
             RpDecl::Interface(ref interface) => {
-                let mut spec = self.process_interface(interface)?;
+                let mut spec = self.process_interface(depth + 1, interface)?;
 
                 for d in &interface.decls {
                     self.process_decl(d, depth + 1, &mut spec.body)?;

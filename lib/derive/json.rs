@@ -7,6 +7,7 @@ use serde_json as json;
 use sir::{FieldSir, Sir};
 use utils::is_datetime;
 
+#[derive(Debug)]
 pub struct Json;
 
 impl format::Format for Json {

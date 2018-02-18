@@ -2,15 +2,14 @@
 
 use super::EXT;
 use backend::{Environment, PackageProcessor, PackageUtils};
-use core::{Loc, RpEnumBody, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
+use core::{Handle, Loc, RpEnumBody, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
            RpVersionedPackage};
 use core::errors::*;
 use js_backend::JsBackend;
 use js_file_spec::JsFileSpec;
-use std::path::{Path, PathBuf};
 
 pub struct JsCompiler<'el> {
-    pub out_path: PathBuf,
+    pub handle: &'el Handle,
     pub backend: &'el JsBackend,
 }
 
@@ -32,8 +31,8 @@ impl<'el> PackageProcessor<'el> for JsCompiler<'el> {
         &self.backend.env
     }
 
-    fn out_path(&self) -> &Path {
-        &self.out_path
+    fn handle(&self) -> &'el Handle {
+        self.handle
     }
 
     fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {

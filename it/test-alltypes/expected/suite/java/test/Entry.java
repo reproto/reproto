@@ -10,31 +10,18 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
-  @JsonProperty("boolean_type")
   private final Optional<Boolean> booleanType;
-  @JsonProperty("string_type")
   private final Optional<String> stringType;
-  @JsonProperty("datetime_type")
   private final Optional<Instant> datetimeType;
-  @JsonProperty("unsigned_32")
   private final Optional<Integer> unsigned32;
-  @JsonProperty("unsigned_64")
   private final Optional<Integer> unsigned64;
-  @JsonProperty("signed_32")
   private final Optional<Integer> signed32;
-  @JsonProperty("signed_64")
   private final Optional<Long> signed64;
-  @JsonProperty("float_type")
   private final Optional<Float> floatType;
-  @JsonProperty("double_type")
   private final Optional<Double> doubleType;
-  @JsonProperty("bytes_type")
   private final Optional<ByteBuffer> bytesType;
-  @JsonProperty("any_type")
   private final Optional<Object> anyType;
-  @JsonProperty("array_type")
   private final Optional<List<Entry>> arrayType;
-  @JsonProperty("map_type")
   private final Optional<Map<String, Entry>> mapType;
 
   @JsonCreator

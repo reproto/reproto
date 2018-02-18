@@ -1,16 +1,14 @@
 use super::{EXT, INIT_PY};
 use backend::{Environment, PackageProcessor, PackageUtils};
-use core::{Loc, RpDecl, RpEnumBody, RpInterfaceBody, RpPackage, RpServiceBody, RpTupleBody,
-           RpTypeBody, RpVersionedPackage};
+use core::{Handle, Loc, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody, RpPackage,
+           RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
 use python_backend::PythonBackend;
 use python_file_spec::PythonFileSpec;
 use std::collections::BTreeMap;
-use std::fs::{self, File};
-use std::path::{Path, PathBuf};
 
 pub struct PythonCompiler<'el> {
-    pub out_path: PathBuf,
+    pub handle: &'el Handle,
     pub backend: &'el PythonBackend,
 }
 
@@ -31,8 +29,8 @@ impl<'el> PackageProcessor<'el> for PythonCompiler<'el> {
         &self.backend.env
     }
 
-    fn out_path(&self) -> &Path {
-        &self.out_path
+    fn handle(&self) -> &'el Handle {
+        self.handle
     }
 
     fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
@@ -88,8 +86,10 @@ impl<'el> PackageProcessor<'el> for PythonCompiler<'el> {
         Ok(files)
     }
 
-    fn resolve_full_path(&self, package: &RpPackage) -> Result<PathBuf> {
-        let mut full_path = self.out_path().to_owned();
+    fn resolve_full_path(&self, package: &RpPackage) -> Result<RelativePathBuf> {
+        let handle = self.handle();
+
+        let mut full_path = RelativePathBuf::new();
         let mut iter = package.parts.iter().peekable();
 
         while let Some(part) = iter.next() {
@@ -99,16 +99,16 @@ impl<'el> PackageProcessor<'el> for PythonCompiler<'el> {
                 continue;
             }
 
-            if !full_path.is_dir() {
+            if !handle.is_dir(&full_path) {
                 debug!("+dir: {}", full_path.display());
-                fs::create_dir_all(&full_path)?;
+                handle.create_dir_all(&full_path)?;
             }
 
             let init_path = full_path.join(INIT_PY);
 
-            if !init_path.is_file() {
+            if !handle.is_file(&init_path) {
                 debug!("+init: {}", init_path.display());
-                File::create(init_path)?;
+                handle.create(&init_path)?;
             }
         }
 

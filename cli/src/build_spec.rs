@@ -104,7 +104,8 @@ where
 
     let base = manifest
         .path
-        .parent()
+        .as_ref()
+        .and_then(|p| p.parent())
         .ok_or_else(|| "no parent path to manifest")?;
 
     let mut repo_dir = None;
@@ -181,7 +182,7 @@ pub fn manifest_preamble<'a>(matches: &ArgMatches<'a>) -> Result<ManifestPreambl
         .unwrap_or_else(|| Ok(Path::new(MANIFEST_NAME)))?;
 
     if !manifest_path.is_file() {
-        return Ok(ManifestPreamble::new(manifest_path));
+        return Ok(ManifestPreamble::new(None, Some(manifest_path)));
     }
 
     debug!("reading manifest: {}", manifest_path.display());
@@ -198,8 +199,13 @@ where
 {
     let path = preamble.path.clone();
 
-    let mut manifest =
-        read_manifest(preamble).map_err(|e| format!("{}: {}", path.display(), e.display()))?;
+    let mut manifest = read_manifest(preamble).map_err(|e| {
+        if let Some(path) = path {
+            format!("{}: {}", path.display(), e.display()).into()
+        } else {
+            e
+        }
+    })?;
 
     manifest_from_matches(&mut manifest, matches)?;
     Ok(manifest)
@@ -229,7 +235,7 @@ where
             .as_ref()
             .map(|p| RpVersionedPackage::new(p.clone(), file.version.clone()));
 
-        if let Err(e) = env.import_file(&file.path, package) {
+        if let Err(e) = env.import_path(&file.path, package) {
             errors.push(e.into());
         }
     }
@@ -315,14 +321,17 @@ where
         }
     }
 
-    for module in matches.values_of("module").into_iter().flat_map(|it| it) {
-        let module = L::Module::try_from_value(
-            &manifest.path,
-            module,
-            toml::Value::Table(toml::value::Table::default()),
-        )?;
+    // TODO: we want to be able to load modules, when we have paths.
+    if let Some(path) = manifest.path.as_ref() {
+        for module in matches.values_of("module").into_iter().flat_map(|it| it) {
+            let module = L::Module::try_from_value(
+                path,
+                module,
+                toml::Value::Table(toml::value::Table::default()),
+            )?;
 
-        manifest.modules.push(module);
+            manifest.modules.push(module);
+        }
     }
 
     for package in matches.values_of("package").into_iter().flat_map(|it| it) {

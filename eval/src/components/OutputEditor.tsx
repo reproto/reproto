@@ -1,23 +1,23 @@
 import * as React from 'react';
 import AceEditor from 'react-ace';
 
-export interface InputProps {
+export interface OutputEditorProps {
   format: string;
   value: string;
-  onChange: (value: string) => void;
 }
 
-export class Input extends React.Component<InputProps, {}> {
+export class OutputEditor extends React.Component<OutputEditorProps, {}> {
   render() {
     return (
       <AceEditor
-        showGutter={true}
+        showGutter={false}
         mode={this.props.format}
-        theme="monokai"
+        readOnly={true}
+        theme="github"
         width="100%"
         height="100%"
         value={this.props.value}
-        onChange={this.props.onChange.bind(this)}
+        editorProps={{$blockScrolling: false}}
         />
     );
   }

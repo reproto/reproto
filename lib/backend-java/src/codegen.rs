@@ -1,20 +1,20 @@
 /// Code generator for the given path.
+use core::Handle;
 use core::errors::Result;
 use listeners::{ClassAdded, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
-use std::path::Path;
 use std::rc::Rc;
 
 pub trait Codegen {
-    /// Build the given piece of code in the given path.
-    fn generate(&self, out_path: &Path) -> Result<()>;
+    /// Build the given piece of code in the given handle.
+    fn generate(&self, handle: &Handle) -> Result<()>;
 }
 
 impl<T> Codegen for Rc<T>
 where
     T: Codegen,
 {
-    fn generate(&self, out_path: &Path) -> Result<()> {
-        self.as_ref().generate(out_path)
+    fn generate(&self, handle: &Handle) -> Result<()> {
+        self.as_ref().generate(handle)
     }
 }
 

@@ -144,10 +144,11 @@ mod tests {
     use core::Context;
     use std::collections::HashMap;
     use std::rc::Rc;
+    use core::CapturingFilesystem;
 
     #[test]
     pub fn test_scope() {
-        let ctx = Rc::new(Context::default());
+        let ctx = Rc::new(Context::new(Box::new(CapturingFilesystem::new())));
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let prefixes = HashMap::new();
         let s = Scope::new(ctx, None, package, prefixes, None, None);

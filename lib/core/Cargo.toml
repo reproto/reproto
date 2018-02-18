@@ -20,7 +20,7 @@ num-integer = {version = "0.1", default_features = false}
 mime = "0.3"
 serde = {version = "1.0", features = ["rc"]}
 serde_derive = "1.0"
-relative-path = {version = "0.1", features = ["serde"]}
+relative-path = {version = "0.3", features = ["serde"]}
 linked-hash-map = {version = "0.5", features = ["serde_impl"]}
 
 [dependencies.backtrace]

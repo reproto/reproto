@@ -2,18 +2,16 @@
 
 use super::{EXT, MOD};
 use backend::{Environment, PackageProcessor, PackageUtils};
-use core::{Loc, RpEnumBody, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
-           RpTypeBody, RpVersionedPackage};
+use core::{Handle, Loc, RelativePath, RelativePathBuf, RpEnumBody, RpInterfaceBody, RpName,
+           RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
 use rust_backend::RustBackend;
 use rust_file_spec::RustFileSpec;
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs::{self, File};
 use std::io::Write;
-use std::path::{Path, PathBuf};
 
 pub struct RustCompiler<'a> {
-    pub out_path: PathBuf,
+    pub handle: &'a Handle,
     pub backend: &'a RustBackend,
 }
 
@@ -25,11 +23,11 @@ impl<'a> RustCompiler<'a> {
     }
 
     fn write_mod_files(&self, files: &BTreeMap<RpVersionedPackage, RustFileSpec>) -> Result<()> {
-        let mut packages: BTreeMap<PathBuf, BTreeSet<String>> = BTreeMap::new();
+        let mut packages: BTreeMap<RelativePathBuf, BTreeSet<String>> = BTreeMap::new();
         let mut root_names = BTreeSet::new();
 
         for (key, _) in files {
-            let mut current = self.out_path().to_owned();
+            let mut current = RelativePathBuf::new();
 
             let mut it = self.backend.package(key).parts.into_iter().peekable();
 
@@ -52,21 +50,23 @@ impl<'a> RustCompiler<'a> {
             }
         }
 
-        let mut root_mod = self.out_path().join(MOD);
+        let mut root_mod = RelativePathBuf::new().join(MOD);
         root_mod.set_extension(self.ext());
         packages.insert(root_mod, root_names);
 
+        let handle = self.handle();
+
         for (full_path, children) in packages {
-            if let Some(parent) = full_path.parent() {
-                if !parent.is_dir() {
-                    debug!("+dir: {}", parent.display());
-                    fs::create_dir_all(parent)?;
-                }
+            let parent = full_path.parent().unwrap_or(RelativePath::new("."));
+
+            if !self.handle.is_dir(&parent) {
+                debug!("+dir: {}", parent.display());
+                handle.create_dir_all(&parent)?;
             }
 
-            if !full_path.is_file() {
+            if !handle.is_file(&full_path) {
                 debug!("+mod: {}", full_path.display());
-                let mut f = File::create(full_path)?;
+                let mut f = handle.create(&full_path)?;
 
                 for child in children {
                     writeln!(f, "pub mod {};", child)?;
@@ -89,8 +89,8 @@ impl<'p> PackageProcessor<'p> for RustCompiler<'p> {
         &self.backend.env
     }
 
-    fn out_path(&self) -> &Path {
-        &self.out_path
+    fn handle(&self) -> &'p Handle {
+        self.handle
     }
 
     fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
