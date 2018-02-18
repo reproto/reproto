@@ -11,7 +11,8 @@ candidates+=(lib/core)
 candidates+=(lib/path-lexer lib/path-parser)
 candidates+=(lib/lexer lib/ast lib/parser)
 candidates+=(lib/derive)
-candidates+=(lib/manifest lib/repository lib/backend lib/semck)
+candidates+=(lib/manifest lib/backend lib/semck)
+candidates+=(lib/repository lib/repository-http)
 
 for manifest in $root/lib/backend-*/Cargo.toml; do
     b=$(basename $(dirname $manifest))
