@@ -6,7 +6,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
+  @JsonProperty("explicit")
   private final Optional<EnumExplicit> explicit;
+  @JsonProperty("implicit")
   private final Optional<EnumImplicit> implicit;
 
   @JsonCreator

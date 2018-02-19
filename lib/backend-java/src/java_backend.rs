@@ -849,6 +849,11 @@ impl JavaBackend {
             RpDecl::Enum(ref ty) => {
                 let mut spec = self.process_enum(ty)?;
 
+                // Inner classes should be static.
+                if depth > 0 {
+                    spec.modifiers.push(Modifier::Static);
+                }
+
                 for d in &ty.decls {
                     self.process_decl(d, depth + 1, &mut spec.body)?;
                 }

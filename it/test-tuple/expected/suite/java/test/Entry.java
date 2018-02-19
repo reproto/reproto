@@ -6,7 +6,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
+  @JsonProperty("tuple1")
   private final Optional<Tuple1> tuple1;
+  @JsonProperty("tuple2")
   private final Optional<Tuple2> tuple2;
 
   @JsonCreator

@@ -417,12 +417,13 @@ impl JsBackend {
         let mut values = Tokens::new();
 
         body.variants.iter().for_each_loc(|variant| {
+            let type_id = self.convert_type(&body.name)?;
             let mut arguments = Tokens::new();
 
             arguments.append(variant.local_name.as_str().quoted());
             arguments.append(self.ordinal(variant)?);
 
-            let arguments = js![new body.local_name.as_str(), arguments];
+            let arguments = js![new type_id, arguments];
             let member = toks![type_name.clone(), ".", variant.local_name.as_str()];
 
             values.push(js![= member.clone(), arguments]);

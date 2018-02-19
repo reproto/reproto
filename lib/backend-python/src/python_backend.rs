@@ -348,6 +348,8 @@ impl PythonBackend {
     }
 
     pub fn enum_variants<'el>(&self, body: &'el RpEnumBody) -> Result<Tokens<'el, Python<'el>>> {
+        let type_name = Rc::new(body.name.join(TYPE_SEP));
+
         let mut args = Tokens::new();
 
         let variants = body.variants.iter().map(|l| Loc::as_ref(l));
@@ -365,18 +367,16 @@ impl PythonBackend {
             Ok(()) as Result<()>
         })?;
 
-        let class_name = body.local_name.as_str().quoted();
-
         Ok(toks![
-            body.local_name.as_str(),
+            type_name.clone(),
             " = ",
             self.enum_enum.clone(),
             "(",
-            class_name,
+            type_name.quoted(),
             ", [",
             args.join(", "),
             "], type=",
-            body.local_name.as_str(),
+            self.convert_type(&body.name)?,
             ")",
         ])
     }

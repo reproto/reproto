@@ -7,8 +7,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Thing {
+  @JsonProperty("name")
   private final Optional<String> name;
+  @JsonProperty("other")
   private final Optional<Other> other;
+  @JsonProperty("other2")
   private final Optional<bar._2_0_0.Other> other2;
 
   @JsonCreator

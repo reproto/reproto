@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class A {
+  @JsonProperty("b")
   private final A.B b;
 
   @JsonCreator
@@ -76,6 +77,7 @@ public class A {
   }
 
   public static class B {
+    @JsonProperty("field")
     private final String field;
 
     @JsonCreator

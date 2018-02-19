@@ -1,0 +1,154 @@
+type Entry {
+}
+
+type RootType {
+  type NestedType {
+  }
+
+  interface NestedInterface {
+    Foo {
+      type Nested {
+      }
+    }
+  }
+
+  enum NestedEnum {
+    Foo;
+
+    type Nested {
+    }
+  }
+
+  tuple NestedTuple {
+    type Nested {
+    }
+  }
+
+  service NestedService {
+    type Nested {
+    }
+  }
+}
+
+interface RootInterface {
+  Foo {
+    type NestedType {
+    }
+
+    interface NestedInterface {
+      // Note: cannot be named `Foo` due to restrictions in Java.
+      //
+      // TODO: Translation needed?
+      NestedFoo {
+        type Nested {
+        }
+      }
+    }
+
+    enum NestedEnum as string {
+      Foo;
+
+      type Nested {
+      }
+    }
+
+    tuple NestedTuple {
+      type Nested {
+      }
+    }
+
+    service NestedService {
+      type Nested {
+      }
+    }
+  }
+}
+
+enum RootEnum as string {
+  Foo;
+
+  type NestedType {
+  }
+
+  interface NestedInterface {
+    Foo {
+      type Nested {
+      }
+    }
+  }
+
+  enum NestedEnum as string {
+    Foo;
+
+    type Nested {
+    }
+  }
+
+  tuple NestedTuple {
+    type Nested {
+    }
+  }
+
+  service NestedService {
+    type Nested {
+    }
+  }
+}
+
+tuple RootTuple {
+  type NestedType {
+  }
+
+  interface NestedInterface {
+    Foo {
+      type Nested {
+      }
+    }
+  }
+
+  enum NestedEnum as string {
+    Foo;
+
+    type Nested {
+    }
+  }
+
+  tuple NestedTuple {
+    type Nested {
+    }
+  }
+
+  service NestedService {
+    type Nested {
+    }
+  }
+}
+
+service RootService {
+  type NestedType {
+  }
+
+  interface NestedInterface {
+    Foo {
+      type Nested {
+      }
+    }
+  }
+
+  enum NestedEnum as string {
+    Foo;
+
+    type Nested {
+    }
+  }
+
+  tuple NestedTuple {
+    type Nested {
+    }
+  }
+
+  service NestedService {
+    type Nested {
+    }
+  }
+}
