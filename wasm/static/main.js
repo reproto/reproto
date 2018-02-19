@@ -1,3 +1,3 @@
 Rust.reproto_wasm.then((module) => {
-  console.log(module.derive({content: "{\"foo\": \"bar\"}"}));
+  console.log(module.test());
 });
