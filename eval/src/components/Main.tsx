@@ -1,9 +1,11 @@
 import * as React from "react";
 import {Input} from "./Input";
 import {OutputEditor} from "./OutputEditor";
-import * as Rust from "rust";
 import {JavaSettings, JavaSettingsForm} from "./JavaSettings";
 import {RustSettings, RustSettingsForm} from "./RustSettings";
+import * as WebAssembly from "webassembly";
+
+const wasm = require("rust/reproto-wasm.js");
 
 const deepEqual = require("deep-equal");
 
@@ -121,7 +123,11 @@ export class Main extends React.Component<MainProps, MainState> {
   }
 
   componentDidMount() {
-    Rust.reproto_wasm.then((mod: any) => {
+    fetch("reproto-wasm.wasm")
+      .then(response => response.arrayBuffer())
+      .then(buffer => WebAssembly.compile(buffer))
+      .then(mod => wasm(mod, true))
+      .then(mod => {
       this.setState({derive: mod.derive}, () => this.recompile());
     });
   }

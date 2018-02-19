@@ -18,13 +18,25 @@ module.exports = {
   devtool: "source-map",
 
   resolve: {
-    extensions: [".ts", ".tsx", ".js", ".json"]
+    extensions: [".ts", ".tsx", ".js", ".json"],
+    alias: {
+      "rust": path.resolve("./target/wasm32-unknown-unknown/release/")
+    }
   },
 
   module: {
     rules: [
       { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
+      {
+        test: /\.js?$/,
+        loader: "babel-loader",
+        exclude: /(node_modules|bower_components)/,
+        options: {
+          presets: ['@babel/preset-env']
+        }
+      },
       { enforce: "pre", test: /\.js$/, loader: "source-map-loader" },
+      { test: /\-wasm\.js$/, loader: "exports-loader?__initialize" },
       { test: /\.scss$/, loader: ExtractTextPlugin.extract("css-loader!sass-loader") },
       { test: /\.(jpe?g|gif|png)$/, loader: "file-loader" },
       { test: /.(ttf|otf|eot|svg|woff(2)?)(\?[a-z0-9]+)?$/,
@@ -42,9 +54,7 @@ module.exports = {
 
   /// External react components permitting them to be loaded through CDN.
   externals: {
-    // "react": "React",
-    // "react-dom": "ReactDOM",
-    "rust": "Rust",
+    "webassembly": "WebAssembly",
   },
 
   plugins: [
@@ -55,8 +65,7 @@ module.exports = {
       allChunks: true
     }),
     new CopyWebpackPlugin([
-      "local_modules/reproto-wasm.js",
-      "local_modules/reproto-wasm.wasm",
+      "target/wasm32-unknown-unknown/release/reproto-wasm.wasm",
     ])
   ],
 };

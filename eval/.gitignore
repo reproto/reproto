@@ -1,5 +1,3 @@
 /dist/
 /node_modules/
-/static/
-/local_modules/reproto-wasm.js
-/local_modules/reproto-wasm.wasm
+/target/

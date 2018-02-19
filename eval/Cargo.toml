@@ -31,3 +31,7 @@ serde = "1"
 serde_json = "1"
 serde_derive = "1"
 genco = "0.2"
+
+[[bin]]
+name = "reproto-wasm"
+path = "reproto_wasm.rs"

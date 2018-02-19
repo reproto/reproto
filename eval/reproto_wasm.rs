@@ -82,14 +82,15 @@ struct Derive {
     settings: Settings,
 }
 
+js_serializable!(Derive);
+js_deserializable!(Derive);
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct DeriveResult {
     result: Option<String>,
     error: Option<String>,
 }
 
-js_serializable!(Derive);
-js_deserializable!(Derive);
 js_serializable!(DeriveResult);
 js_deserializable!(DeriveResult);
 

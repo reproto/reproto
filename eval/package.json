@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start:dev": "webpack-dev-server"
+    "start:dev": "webpack-dev-server",
+    "build": "webpack --optimize-minimize",
+    "rust": "cargo web build --runtime experimental-only-loader"
   },
   "author": "John-John Tedro",
   "license": "MIT",
@@ -17,12 +19,16 @@
     "react-dom": "^16.2.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.0.0-beta.40",
+    "@babel/preset-env": "^7.0.0-beta.40",
     "@types/deep-equal": "^1.0.1",
     "@types/react": "^16.0.38",
     "@types/react-dom": "^16.0.4",
     "awesome-typescript-loader": "^3.4.1",
+    "babel-loader": "^8.0.0-beta.0",
     "copy-webpack-plugin": "^4.4.1",
     "css-loader": "^0.28.9",
+    "exports-loader": "^0.7.0",
     "extract-text-webpack-plugin": "^3.0.2",
     "file-loader": "^1.1.6",
     "html-webpack-plugin": "^2.30.1",
