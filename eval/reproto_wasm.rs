@@ -134,6 +134,27 @@ impl Marker {
 
         Ok(marker)
     }
+
+    /// Safe building of markers with fallback.
+    fn try_from_error_fb(p: &core::ErrorPos, message: &str) -> Marker {
+        if let Ok(m) = Self::try_from_error(p, message) {
+            return m;
+        }
+
+        // no positional information
+        Self::safe_from_error(message)
+    }
+
+    /// Safely build a marker.
+    fn safe_from_error(message: &str) -> Marker {
+        Marker {
+            message: message.to_string(),
+            row_start: 0,
+            row_end: 0,
+            col_start: 0,
+            col_end: 0,
+        }
+    }
 }
 
 js_serializable!(Marker);
@@ -233,23 +254,16 @@ fn derive(derive: Derive) -> DeriveResult {
             let mut info_markers = Vec::new();
 
             if let Some(p) = e.pos() {
-                error_markers
-                    .push(Marker::try_from_error(p, e.message()).expect("Failed to build marker"));
+                error_markers.push(Marker::try_from_error_fb(p, e.message()));
             }
 
             for e in errors.borrow().iter() {
                 match *e {
                     core::ContextItem::ErrorPos(ref p, ref message) => {
-                        error_markers.push(
-                            Marker::try_from_error(p, message.as_str())
-                                .expect("Failed to build marker"),
-                        );
+                        error_markers.push(Marker::try_from_error_fb(p, message.as_str()));
                     }
                     core::ContextItem::InfoPos(ref p, ref message) => {
-                        info_markers.push(
-                            Marker::try_from_error(p, message.as_str())
-                                .expect("Failed to build marker"),
-                        );
+                        info_markers.push(Marker::try_from_error_fb(p, message.as_str()));
                     }
                 }
             }
