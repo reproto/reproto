@@ -1,32 +1,22 @@
+#[macro_use]
+extern crate log;
 #[allow(unused)]
 #[macro_use]
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 extern crate serde;
-#[allow(unused)]
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 extern crate toml;
 
-mod collector;
-mod json_backend;
-mod json_compiler;
-mod json_options;
-mod listeners;
-
 use backend::Environment;
-use core::Context;
+use core::{Context, RelativePathBuf};
 use core::errors::*;
-use json_backend::JsonBackend;
-use json_options::JsonOptions;
-use listeners::Listeners;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::path::Path;
 use std::rc::Rc;
-
-const EXT: &str = "json";
 
 #[derive(Default)]
 pub struct JsonLang;
@@ -34,7 +24,7 @@ pub struct JsonLang;
 impl Lang for JsonLang {
     type Module = JsonModule;
 
-    fn comment(input: &str) -> Option<String> {
+    fn comment(_: &str) -> Option<String> {
         // comments not supported
         None
     }
@@ -54,26 +44,44 @@ impl TryFromToml for JsonModule {
     }
 }
 
-fn setup_listeners(modules: &[JsonModule]) -> Result<(JsonOptions, Box<Listeners>)> {
-    let listeners: Vec<Box<Listeners>> = Vec::new();
-
-    for module in modules {
-        match *module {}
-    }
-
-    let mut options = JsonOptions::new();
-
-    for listener in &listeners {
-        listener.configure(&mut options)?;
-    }
-
-    Ok((options, Box::new(listeners)))
-}
-
 pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<JsonLang>) -> Result<()> {
-    let (options, listeners) = setup_listeners(&manifest.modules)?;
-    let backend = JsonBackend::new(env, options, listeners);
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    let compiler = backend.compiler(handle.as_ref())?;
-    compiler.compile()
+
+    let root = RelativePathBuf::from(".");
+
+    for (package, file) in env.for_each_file() {
+        let mut path = package
+            .package
+            .parts
+            .iter()
+            .fold(root.clone(), |path, part| path.join(part));
+
+        let parent = path.parent()
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| root.clone());
+
+        if !handle.is_dir(&parent) {
+            debug!("+dir: {}", parent.display());
+            handle.create_dir_all(&parent)?;
+        }
+
+        let path = if let Some(version) = package.version.as_ref() {
+            let stem = path.file_stem()
+                .ok_or_else(|| format!("Missing file stem: {}", path.display()))?;
+
+            let file_name = format!("{}-{}.json", stem, version);
+            path.with_file_name(file_name)
+        } else {
+            path.with_extension("json")
+        };
+
+        debug!("+file: {}", path.display());
+        writeln!(
+            handle.create(&path)?,
+            "{}",
+            serde_json::to_string_pretty(file)?,
+        )?;
+    }
+
+    Ok(())
 }

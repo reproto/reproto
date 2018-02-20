@@ -426,12 +426,12 @@ export class Main extends React.Component<MainProps, MainState> {
                         className="custom-select"
                         value={output}
                         onChange={e => this.setOutput(e.target.value)}>
-                        <option value="reproto">reproto</option>
+                        <option value="reproto">Reproto</option>
                         <option value="java">Java</option>
                         <option value="python">Python</option>
                         <option value="js">JavaScript</option>
                         <option value="rust">Rust</option>
-                        <option value="json">JSON</option>
+                        <option value="json">JSON (RpIR)</option>
                       </select>
                     </div>
                   </div>

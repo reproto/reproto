@@ -1,4 +1,3 @@
-extern crate genco;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -18,7 +17,6 @@ extern crate reproto_derive as derive;
 extern crate reproto_manifest as manifest;
 extern crate reproto_parser as parser;
 
-use genco::WriteTokens;
 use std::str;
 use std::sync::Arc;
 
@@ -125,16 +123,6 @@ fn derive(derive: Derive) -> DeriveResult {
             &object,
         )?;
 
-        match derive.output {
-            Output::Reproto => {
-                let toks = reproto::format(&decl)?;
-                let mut buffer = String::new();
-                buffer.write_file(toks, &mut ())?;
-                return Ok(buffer);
-            }
-            _ => {}
-        };
-
         let mut buf = String::new();
 
         let simple_compile = compile::SimpleCompile {
@@ -143,6 +131,16 @@ fn derive(derive: Derive) -> DeriveResult {
         };
 
         match derive.output {
+            Output::Reproto => {
+                let mut modules = Vec::new();
+
+                compile::simple_compile::<reproto::ReprotoLang, _>(
+                    &mut buf,
+                    simple_compile,
+                    modules,
+                    reproto::compile,
+                )?;
+            }
             Output::Java => {
                 let mut modules = Vec::new();
 
@@ -204,9 +202,6 @@ fn derive(derive: Derive) -> DeriveResult {
                     modules,
                     json::compile,
                 )?;
-            }
-            output => {
-                return Err(format!("Unsupported output: {:?}", output).into());
             }
         }
 

@@ -2,7 +2,6 @@
 extern crate genco;
 #[macro_use]
 extern crate log;
-extern crate relative_path;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_lexer as lexer;
@@ -10,12 +9,11 @@ extern crate reproto_manifest as manifest;
 extern crate toml;
 
 use backend::Environment;
-use core::{Context, RpDecl, RpField, RpInterfaceBody, RpSubTypeStrategy, RpTupleBody, RpTypeBody,
-           DEFAULT_TAG};
+use core::{Context, RelativePathBuf, RpDecl, RpField, RpInterfaceBody, RpSubTypeStrategy,
+           RpTupleBody, RpTypeBody, DEFAULT_TAG};
 use core::errors::Result;
 use genco::{Custom, Formatter, IoFmt, Quoted, Tokens, WriteTokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
-use relative_path::RelativePathBuf;
 use std::fmt::{self, Write};
 use std::path::Path;
 use std::rc::Rc;
