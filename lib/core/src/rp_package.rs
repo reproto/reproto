@@ -17,16 +17,19 @@ impl RpPackage {
         RpPackage::new(input.split('.').map(ToOwned::to_owned).collect())
     }
 
+    /// Build an empty package.
     pub fn empty() -> RpPackage {
         RpPackage { parts: vec![] }
     }
 
+    /// Join this package with another, versioned, package.
     pub fn join_versioned(&self, other: &RpVersionedPackage) -> RpVersionedPackage {
         let mut parts = self.parts.clone();
         parts.extend(other.package.parts.clone());
         RpVersionedPackage::new(RpPackage::new(parts), other.version.clone())
     }
 
+    /// Join this package with another.
     pub fn join(&self, other: &RpPackage) -> RpPackage {
         let mut parts = self.parts.clone();
         parts.extend(other.parts.clone());
@@ -37,6 +40,18 @@ impl RpPackage {
     pub fn join_part<S: AsRef<str>>(mut self, other: S) -> RpPackage {
         self.parts.push(other.as_ref().to_string());
         self
+    }
+
+    /// Check if this package starts with another package.
+    pub fn starts_with(&self, other: &RpPackage) -> bool {
+        if self.parts.len() < other.parts.len() {
+            return false;
+        }
+
+        self.parts
+            .iter()
+            .zip(other.parts.iter())
+            .all(|(a, b)| a == b)
     }
 }
 

@@ -15,7 +15,8 @@ use core::errors::*;
 use std::io::Read;
 use std::rc::Rc;
 
-pub fn read_reader<'a, R>(mut reader: R) -> Result<String>
+/// Read the full contents of the given reader as a string.
+pub fn read_to_string<'a, R>(mut reader: R) -> Result<String>
 where
     R: AsMut<Read + 'a>,
 {
@@ -24,10 +25,8 @@ where
     Ok(content)
 }
 
-pub fn parse_string<'input>(
-    object: Rc<Box<Object>>,
-    input: &'input str,
-) -> Result<ast::File<'input>> {
+/// Parse the given object.
+pub fn parse<'input>(object: Rc<Box<Object>>, input: &'input str) -> Result<ast::File<'input>> {
     use self::lexer::errors::Error::*;
     use lalrpop_util::ParseError::*;
 

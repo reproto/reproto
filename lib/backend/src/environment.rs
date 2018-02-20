@@ -238,10 +238,10 @@ impl Environment {
 
     /// Load the provided Object into an `RpFile`.
     pub fn load_object(&mut self, object: &Object, package: &RpVersionedPackage) -> Result<RpFile> {
-        let content = parser::read_reader(object.read()?)?;
         let object = Rc::new(object.clone_object());
 
-        let file = parser::parse_string(object, content.as_str())?;
+        let input = parser::read_to_string(object.read()?)?;
+        let file = parser::parse(object, input.as_str())?;
 
         let prefixes = self.process_uses(&file.uses)?;
 

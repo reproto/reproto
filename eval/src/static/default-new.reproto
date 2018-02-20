@@ -1,0 +1,11 @@
+/// This is some type documentation.
+///
+/// ## Examples
+///
+/// ```json
+/// {"field": "foo"}
+/// ```
+type MyType {
+  /// Thie is a field.
+  field: string;
+}

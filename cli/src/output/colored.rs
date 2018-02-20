@@ -1,6 +1,6 @@
-use super::{find_line, LockableWrite, Output};
+use super::{LockableWrite, Output};
 use ansi_term::Colour::{self, Blue, Red};
-use core::ErrorPos;
+use core::{self, ErrorPos};
 use core::errors::*;
 use log;
 use std::io;
@@ -23,7 +23,7 @@ where
 
         let mut o = self.out.lock();
 
-        let (line_str, line, (s, e)) = find_line(p.object.read()?, (p.start, p.end))?;
+        let (line_str, line, (s, e)) = core::utils::find_line(p.object.read()?, (p.start, p.end))?;
 
         let line_no = format!("{:>3}:", line + 1);
 

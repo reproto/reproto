@@ -4,6 +4,8 @@ import {OutputEditor} from "./OutputEditor";
 import {JavaSettings, JavaSettingsForm} from "./JavaSettings";
 import {RustSettings, RustSettingsForm} from "./RustSettings";
 import * as WebAssembly from "webassembly";
+import {Annotation, Marker as AceMarker} from 'react-ace';
+import AceEditor from 'react-ace';
 
 const wasm = require("rust/reproto-wasm.js");
 
@@ -23,6 +25,19 @@ const themes = [
   "github",
 ]
 
+const FORMAT_LANGUAGE_MAP: {[key: string]: string} = {
+  yaml: "yaml",
+  json: "json",
+  java: "java",
+  rust: "rust",
+  python: "python",
+  js: "javascript",
+  reproto: "reproto",
+};
+
+// modes in local_modules
+require("brace/mode/reproto.js")
+
 languages.forEach((lang) => {
   require(`brace/mode/${lang}`)
   require(`brace/snippets/${lang}`)
@@ -34,34 +49,44 @@ themes.forEach((theme) => {
 
 const DEFAULT_JSON = require("raw-loader!../static/default.json");
 const DEFAULT_YAML = require("raw-loader!../static/default.yaml");
+const DEFAULT_REPROTO: string = require("raw-loader!../static/default.reproto");
+const DEFAULT_NEW_FILE_REPROTO: string = require("raw-loader!../static/default-new.reproto");
+const COMMON_REPROTO: string = require("raw-loader!../static/common.reproto");
+const COMMON2_REPROTO: string = require("raw-loader!../static/common2.reproto");
 const logo = require("../static/logo.256.png");
 
 interface Compiled {
-  compiledContent: string;
-  compiledRootName: string;
-  compiledPackagePrefix: string;
-  compiledFormat: Format;
-  compiledOutput: Output;
-  compiledSettings: Settings;
+  request: Derive;
   result: DeriveResult;
 }
 
 interface Derive {
-  content: string;
+  content: any;
   root_name: string;
   format: string;
   output: string;
   package_prefix: string;
 }
 
+interface Marker {
+  message: string;
+  row_start: number;
+  row_end: number;
+  col_start: number;
+  col_end: number;
+}
+
 interface DeriveResult {
   result?: string;
   error?: string;
+  error_markers: Marker[];
+  info_markers: Marker[];
 }
 
 enum Format {
   Json = "json",
   Yaml = "yaml",
+  Reproto = "reproto",
 }
 
 enum Output {
@@ -80,6 +105,12 @@ interface ContentSet {
   [key: string]: string;
 }
 
+interface File {
+  package: string;
+  version?: string;
+  content: string;
+}
+
 interface Settings {
   java: JavaSettings;
   rust: RustSettings;
@@ -87,11 +118,23 @@ interface Settings {
 
 export interface MainState {
   contentSet: ContentSet;
+  // set of files
+  files: File[],
+  // current selected package.
+  file_index: number,
+  // If we are editing the file metadata right now.
+  file_editing_meta: boolean;
+  // Settings for various outputs.
   settings: Settings;
   format: Format;
   output: Output;
-  rootName: string;
-  packagePrefix: string;
+  root_name: string;
+  package_prefix: string;
+  // Error annotations (gutter markers) on input.
+  input_annotations: Annotation[];
+  // Error markers on input.
+  input_markers: AceMarker[];
+  // Result of last compilation.
   compiled?: Compiled;
   error?: string;
   derive?: (value: Derive) => DeriveResult;
@@ -106,6 +149,24 @@ export class Main extends React.Component<MainProps, MainState> {
         json: DEFAULT_JSON,
         yaml: DEFAULT_YAML,
       },
+      files: [
+        {
+          package: "types.main",
+          content: DEFAULT_REPROTO,
+        },
+        {
+          package: "types.common",
+          version: "1.0.0",
+          content: COMMON_REPROTO,
+        },
+        {
+          package: "common",
+          version: "2.0.0",
+          content: COMMON2_REPROTO,
+        }
+      ],
+      file_index: 0,
+      file_editing_meta: false,
       settings: {
         java: {
           jackson: true,
@@ -115,10 +176,12 @@ export class Main extends React.Component<MainProps, MainState> {
           chrono: true,
         }
       },
-      rootName: "Generated",
-      packagePrefix: "io.github.reproto",
-      format: Format.Json,
-      output: Output.Rust,
+      root_name: "Generated",
+      package_prefix: "reproto",
+      input_annotations: [],
+      input_markers: [],
+      format: Format.Reproto,
+      output: Output.Java,
     };
   }
 
@@ -132,84 +195,168 @@ export class Main extends React.Component<MainProps, MainState> {
     });
   }
 
+  content(): string {
+    let {format} = this.state;
+
+    if (format == "reproto") {
+      return this.state.files[this.state.file_index].content;
+    } else {
+      return this.state.contentSet[format];
+    }
+  }
+
   recompile() {
-    let {
-      derive,
-      compiled,
-      contentSet,
-      format,
-      output,
-      rootName,
-      packagePrefix,
-      settings,
-    } = this.state;
-
-    let content = contentSet[format];
-
-    if (!this.state.derive) {
-      return;
-    }
-
-    let compile = true;
-    let oldResult = null;
-
-    if (compiled) {
+    this.setState((state: MainState, props: MainProps) => {
       let {
-        compiledContent,
-        compiledRootName,
-        compiledPackagePrefix,
-        compiledFormat,
-        compiledOutput,
-        compiledSettings,
-        result,
-      } = compiled;
+        contentSet,
+        format,
+        output,
+        root_name,
+        package_prefix,
+        files,
+        file_index,
+        settings,
+        compiled,
+        derive,
+      } = state;
 
-      oldResult = result;
+      let content = this.content();
 
-      compile = compiledContent != content 
-             || compiledRootName != rootName
-             || compiledPackagePrefix != packagePrefix
-             || compiledFormat != format
-             || compiledOutput != output
-             || !deepEqual(compiledSettings, settings);
-    }
+      if (!derive) {
+        return {};
+      }
 
-    if (compile) {
+      let compile = true;
+
+      let content_request;
+
+      if (format == "reproto") {
+        content_request = {type: "file_index", index: file_index};
+      } else {
+        content_request = {type: "content", content: content};
+      }
+
       const request = {
-        content: content,
-        root_name: rootName,
-        package_prefix: packagePrefix,
+        content: content_request,
+        files: files,
+        root_name: root_name,
+        package_prefix: package_prefix,
         format: format,
         output: output,
         settings: settings,
       };
 
-      const result = derive(request);
-
-      // Don't hide old result.
-      if (!result.result && oldResult) {
-        result.result = oldResult.result;
+      // no need to dispatch new request if it's identical to the old one...
+      if (compiled && deepEqual(compiled.request, request)) {
+        return {} as MainProps;
       }
 
-      const compiled: Compiled = {
-        compiledContent: content,
-        compiledRootName: rootName,
-        compiledPackagePrefix: packagePrefix,
-        compiledFormat: format,
-        compiledOutput: output,
-        compiledSettings: settings,
-        result: result
-      };
+      const result = derive(request) as DeriveResult;
 
-      this.setState({compiled: compiled});
-    }
+      console.log("derive", request, result);
+
+      const input_annotations: Annotation[] = [];
+      const input_markers: AceMarker[] = [];
+
+      result.error_markers.forEach(m => {
+        input_annotations.push({
+          row: m.row_start,
+          column: m.col_start,
+          type: 'error',
+          text: m.message,
+        });
+
+        input_markers.push({
+          startRow: m.row_start,
+          startCol: m.col_start,
+          endRow: m.row_end,
+          endCol: m.col_end,
+          className: "error-marker",
+          type: "background",
+        });
+      });
+
+      result.info_markers.forEach(m => {
+        input_annotations.push({
+          row: m.row_start,
+          column: m.col_start,
+          type: 'info',
+          text: m.message,
+        });
+
+        input_markers.push({
+          startRow: m.row_start,
+          startCol: m.col_start,
+          endRow: m.row_end,
+          endCol: m.col_end,
+          className: "info-marker",
+          type: "background",
+        });
+      });
+
+      // Don't hide old result on errors.
+      if (!result.result && compiled && compiled.result.result) {
+        result.result = compiled.result.result;
+      }
+
+      return {
+        compiled: {
+          request: request,
+          result: result,
+        },
+        input_annotations: input_annotations,
+        input_markers: input_markers,
+      };
+    });
   }
 
   setContent(format: Format, value: string) {
+    console.log("new content", value.length);
+
     this.setState((state: MainState, props: MainProps) => {
-      let contentSet: ContentSet = {...state.contentSet};
-      contentSet[format] = value;
-      return {contentSet: contentSet};
+      let {file_index, files, contentSet} = this.state;
+
+      if (format == "reproto") {
+        let new_files = files.map((file, index) => {
+          if (index == file_index) {
+            let new_file = {...file};
+            new_file.content = value;
+            return new_file;
+          } else {
+            return file;
+          }
+        });
+
+        return {files: new_files} as MainState;
+      } else {
+        let new_content_set = {...contentSet};
+        new_content_set[format] = value;
+        return {contentSet: new_content_set} as MainState;
+      }
+    }, () => this.recompile());
+  }
+
+  setFile(file_index: number, cb: (file: File) => void) {
+    this.setState((state: MainState, props: MainProps) => {
+      let {files} = this.state;
+
+      let new_files = files.map((file, index) => {
+        if (index == file_index) {
+          let new_file = {...file};
+          cb(new_file);
+          return new_file;
+        } else {
+          return file;
+        }
+      });
+
+      return {files: new_files};
+    }, () => this.recompile());
+  }
+
+  setFileIndex(value: string) {
+    this.setState({
+      file_index: Number(value)
     }, () => this.recompile());
   }
 
@@ -219,6 +366,9 @@ export class Main extends React.Component<MainProps, MainState> {
     switch (value) {
       case "yaml":
         format = "yaml" as Format;
+        break;
+      case "reproto":
+        format = "reproto" as Format;
         break;
       case "json":
         format = "json" as Format;
@@ -263,15 +413,15 @@ export class Main extends React.Component<MainProps, MainState> {
     }, () => this.recompile());
   }
 
-  setRootName(rootName: string) {
+  setRootName(root_name: string) {
     this.setState({
-      rootName: rootName
+      root_name: root_name
     }, () => this.recompile());
   }
 
-  setPackagePrefix(packagePrefix: string) {
+  setPackagePrefix(package_prefix: string) {
     this.setState({
-      packagePrefix: packagePrefix
+      package_prefix: package_prefix
     }, () => this.recompile());
   }
 
@@ -293,25 +443,165 @@ export class Main extends React.Component<MainProps, MainState> {
     }, () => this.recompile());
   }
 
+  newFile() {
+    this.setState((state: MainState, props: MainProps) => {
+      let { files } = state;
+
+      files = [...files];
+      let file_index = files.length;
+
+      files.push({
+        content: DEFAULT_NEW_FILE_REPROTO,
+        package: "new"
+      });
+
+      return {
+        files: files,
+        file_index: file_index,
+        file_editing_meta: true,
+      };
+    }, () => this.recompile());
+  }
+
+  deleteFile() {
+    this.setState((state: MainState, props: MainProps) => {
+      let { files, file_index } = state;
+
+      return {
+        files: files.filter((_, i: number) => i != file_index),
+        file_index: 0,
+      };
+    }, () => this.recompile());
+  }
+
   render() {
     let {
       contentSet,
-      compiled,
+      files,
+      file_index,
       format,
       output,
-      rootName,
-      packagePrefix,
+      root_name,
+      package_prefix,
+      input_annotations,
+      input_markers,
       settings,
+      compiled,
       derive,
     } = this.state;
 
-    let content = contentSet[format];
+    let content = this.content();
 
-    let errorMessage = null;
-    let compiledResult = undefined;
+    let input_mode = FORMAT_LANGUAGE_MAP[format as string];
+    let output_mode = FORMAT_LANGUAGE_MAP[output as string];
 
-    var wasmLoading = null;
-    var settingsForm = null;
+    let errorMessage;
+    let compiledResult;
+
+    var wasmLoading;
+    var settingsForm;
+
+    var packages;
+
+    if (format == "reproto") {
+      let {version, package: file_package} = files[file_index];
+      let {file_editing_meta} = this.state;
+
+      let view;
+
+      if (file_editing_meta) {
+        view = (
+          <div className="form-row">
+          <div className="col-auto">
+            <input
+              id="file-package"
+              type="text"
+              className="form-control form-control-sm"
+              placeholder="package"
+              onChange={e => {
+                let value = e.target.value;
+                this.setFile(file_index, file => file.package = value);
+              }}
+              value={file_package} />
+          </div>
+
+          <div className="col-auto">
+            <input
+              id="file-version"
+              type="text"
+              className="form-control form-control-sm"
+              placeholder="version"
+              onChange={e => {
+                let value = e.target.value;
+                this.setFile(file_index, file => {
+                  if (value == "") {
+                    delete file.version;
+                  } else {
+                    file.version = value;
+                  }
+                });
+              }}
+              value={version || ""} />
+          </div>
+
+          <div className="col-auto">
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => {
+              this.setState({file_editing_meta: false});
+            }}>
+              ok
+            </button>
+          </div>
+          </div>
+        );
+      } else {
+        view = (
+          <div className="form-row">
+          <div className="col-auto">
+            <select
+              className="custom-select custom-select-sm"
+              value={file_index}
+              onChange={e => this.setFileIndex(e.target.value)}>
+              { files.map((f, index) => {
+                return <option key={index} value={index}>{f.package} {f.version || ""}</option>;
+              }) }
+            </select>
+          </div>
+
+          <div className="col-auto">
+            <button type="button" className="btn btn-default btn-sm" onClick={() => {
+              this.setState({file_editing_meta: true});
+            }}>
+              edit
+            </button>
+          </div>
+
+          <div className="col-auto">
+            <button type="button" className="btn btn-default btn-sm" onClick={() => {
+              this.newFile();
+            }}>
+              new
+            </button>
+          </div>
+
+          <div className="col-auto">
+            <button type="button" className="btn btn-danger btn-sm" onClick={() => {
+              this.deleteFile();
+            }}>
+              delete
+            </button>
+          </div>
+          </div>
+        );
+      }
+
+      packages = (
+        <div className="row">
+          <div className="col">
+            <form>{view}</form>
+          </div>
+        </div>
+      );
+    }
 
     if (!derive) {
       wasmLoading = (
@@ -352,7 +642,7 @@ export class Main extends React.Component<MainProps, MainState> {
     }
 
     if (compiled) {
-      let { error, result } = compiled.result;
+      let { error, error_markers, result } = compiled.result;
 
       if (result) {
         compiledResult = result;
@@ -362,7 +652,16 @@ export class Main extends React.Component<MainProps, MainState> {
         errorMessage = (
           <div className="error row mt-2">
             <div className="col">
-              <div className="alert alert-danger">{error}</div>
+              {error_markers.length == 0 ?
+                  <div className="alert alert-danger">{error}</div>
+              : undefined }
+              {error_markers.map((m, key) => {
+                return (
+                  <div key={key} className="alert alert-danger">
+                    {m.row_start + 1}:{m.col_start}: {m.message}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -387,43 +686,48 @@ export class Main extends React.Component<MainProps, MainState> {
                 <form>
                   <div className="form-row">
                     <div className="col-auto">
-                      <label htmlFor="format">Format:</label>
+                      <label htmlFor="format" className="lb-sm">Format:</label>
 
                       <select
                         id="format"
-                        className="custom-select"
+                        className="custom-select custom-select-sm"
+                        value={format}
                         onChange={e => this.setFormat(e.target.value)}>
-                        <option value="json">JSON</option>
-                        <option value="yaml">YAML</option>
+                        <option value="reproto">Reproto</option>
+                        <option value="json">JSON (Derive)</option>
+                        <option value="yaml">YAML (Derive)</option>
                       </select>
                     </div>
+
+                    {format != "reproto" ?
                     <div className="col-auto">
-                      <label htmlFor="rootName">Generated Name:</label>
+                      <label htmlFor="root-name" className="lb-sm">Generated Name:</label>
 
                       <input
-                        id="rootName"
+                        id="root-name"
                         type="text"
-                        className="form-control"
-                        value={rootName}
+                        className="form-control form-control-sm"
+                        value={root_name}
                         onChange={e => this.setRootName(e.target.value)} />
-                    </div>
+                    </div> : undefined}
+
                     <div className="col-auto">
-                      <label htmlFor="packagePrefix">Package Prefix:</label>
+                      <label htmlFor="package-prefix" className="lb-sm">Package Prefix:</label>
 
                       <input
-                        id="packagePrefix"
+                        id="package-prefix"
                         type="text"
-                        className="form-control"
-                        value={packagePrefix}
+                        className="form-control form-control-sm"
+                        value={package_prefix}
                         onChange={e => this.setPackagePrefix(e.target.value)} />
                     </div>
 
                     <div className="col-auto">
-                      <label htmlFor="output">Output:</label>
+                      <label htmlFor="output" className="lb-sm">Output:</label>
 
                       <select
                         id="output"
-                        className="custom-select"
+                        className="custom-select custom-select-sm"
                         value={output}
                         onChange={e => this.setOutput(e.target.value)}>
                         <option value="reproto">Reproto</option>
@@ -434,31 +738,48 @@ export class Main extends React.Component<MainProps, MainState> {
                         <option value="json">JSON (RpIR)</option>
                       </select>
                     </div>
+
+                    {settingsForm ? (
+                    <div className="col-auto">
+                      <label className="lb-sm">Settings:</label>
+                      <div>{settingsForm}</div>
+                    </div>
+                    ) : undefined}
                   </div>
                 </form>
               </div>
             </div>
 
+            {packages ? (
             <div className="row mb-2 mt-2">
-              <div className="col">{settingsForm}</div>
+              <div className="col">{packages}</div>
             </div>
+            ) : undefined}
           </div>
         </div>
 
         <div className="box-row content">
           <div className="row editors">
-            <div className="col-6 col-xl-4 input">
-              <Input
-                format={format as string}
+            <div className="col-6 col-xl-5 input">
+              <AceEditor
+                tabSize={2}
+                showGutter={true}
+                mode={input_mode}
+                theme="monokai"
+                width="100%"
+                height="100%"
                 value={content}
-                onChange={value => this.setContent(format, value)} />
+                annotations={input_annotations}
+                markers={input_markers}
+                onChange={value => this.setContent(format, value)}
+                />
             </div>
 
             <div className="col">
               {errorMessage}
 
               <OutputEditor
-                format={output as string}
+                mode={output_mode as string}
                 value={compiledResult} />
             </div>
           </div>

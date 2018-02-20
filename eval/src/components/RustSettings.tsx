@@ -15,22 +15,20 @@ export class RustSettingsForm extends React.Component<RustSettingsFormProps, {}>
     let { settings } = this.props;
 
     return (
-      <form>
-        <div className="form-row">
-          <div className="col-auto">
-            <div className="form-check">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                checked={settings.chrono}
-                onChange={e => this.props.onChrono(e.target.checked)}
-                id="java-chrono" />
+      <div className="form-row">
+        <div className="col-auto">
+          <div className="form-check">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              checked={settings.chrono}
+              onChange={e => this.props.onChrono(e.target.checked)}
+              id="java-chrono" />
 
-              <label htmlFor="java-chrono"><a href="https://docs.rs/chrono">Chrono</a> Support</label>
-            </div>
+            <label htmlFor="java-chrono"><a href="https://docs.rs/chrono">Chrono</a> Support</label>
           </div>
         </div>
-      </form>
+      </div>
     );
   }
 }

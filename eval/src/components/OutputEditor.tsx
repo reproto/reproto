@@ -2,7 +2,7 @@ import * as React from 'react';
 import AceEditor from 'react-ace';
 
 export interface OutputEditorProps {
-  format: string;
+  mode: string;
   value: string;
 }
 
@@ -11,7 +11,7 @@ export class OutputEditor extends React.Component<OutputEditorProps, {}> {
     return (
       <AceEditor
         showGutter={false}
-        mode={this.props.format}
+        mode={this.props.mode}
         readOnly={true}
         theme="github"
         width="100%"

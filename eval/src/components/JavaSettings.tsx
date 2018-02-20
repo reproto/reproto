@@ -17,35 +17,33 @@ export class JavaSettingsForm extends React.Component<JavaSettingsFormProps, {}>
     let { settings } = this.props;
 
     return (
-      <form>
-        <div className="form-row">
-          <div className="col-auto">
-            <div className="form-check">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                checked={settings.jackson}
-                onChange={e => this.props.onJackson(e.target.checked)}
-                id="java-jackson" />
+      <div className="form-row">
+        <div className="col-auto">
+          <div className="form-check">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              checked={settings.jackson}
+              onChange={e => this.props.onJackson(e.target.checked)}
+              id="java-jackson" />
 
-              <label htmlFor="java-jackson">Jackson Support</label>
-            </div>
-          </div>
-
-          <div className="col-auto">
-            <div className="form-check">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                checked={settings.lombok}
-                onChange={e => this.props.onLombok(e.target.checked)}
-                id="java-lombok" />
-
-              <label htmlFor="java-lombok">Lombok</label>
-            </div>
+            <label htmlFor="java-jackson" className="lb-sm">Jackson Support</label>
           </div>
         </div>
-      </form>
+
+        <div className="col-auto">
+          <div className="form-check">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              checked={settings.lombok}
+              onChange={e => this.props.onLombok(e.target.checked)}
+              id="java-lombok" />
+
+            <label htmlFor="java-lombok" className="lb-sm">Lombok</label>
+          </div>
+        </div>
+      </div>
     );
   }
 }

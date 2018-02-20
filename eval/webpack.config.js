@@ -19,6 +19,7 @@ module.exports = {
 
   resolve: {
     extensions: [".ts", ".tsx", ".js", ".json"],
+    modules: ["node_modules", "local_modules"],
     alias: {
       "rust": path.resolve("./target/wasm32-unknown-unknown/release/")
     }

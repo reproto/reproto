@@ -53,3 +53,27 @@ body {
   left: 0;
   right: 0;
 }
+
+.lb-sm {
+  font-size: 12px;
+}
+
+.lb-md {
+  font-size: 16px;
+}
+
+.lb-lg {
+  font-size: 20px;
+}
+
+.info-marker {
+  position: absolute;
+  background-color: orange;
+  opacity: 0.2;
+}
+
+.error-marker {
+  position: absolute;
+  background-color: red;
+  opacity: 0.2;
+}

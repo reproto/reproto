@@ -10,6 +10,7 @@ use errors::{Error, Result};
 use std::cell::{BorrowError, Ref, RefCell};
 use std::fmt;
 use std::path::Path;
+use std::rc::Rc;
 use std::result;
 
 pub enum ContextItem {
@@ -24,7 +25,7 @@ pub struct Context {
     /// Filesystem abstraction.
     filesystem: Box<Filesystem>,
     /// Collected context errors.
-    errors: RefCell<Vec<ContextItem>>,
+    errors: Rc<RefCell<Vec<ContextItem>>>,
 }
 
 /// A reporter that processes the given error for the context.
@@ -79,7 +80,15 @@ impl Context {
     pub fn new(filesystem: Box<Filesystem>) -> Context {
         Context {
             filesystem: filesystem,
-            errors: RefCell::new(vec![]),
+            errors: Rc::new(RefCell::new(vec![])),
+        }
+    }
+
+    /// Modify the existing context with a reference to the given errors.
+    pub fn with_errors(self, errors: Rc<RefCell<Vec<ContextItem>>>) -> Context {
+        Context {
+            errors: errors,
+            ..self
         }
     }
 

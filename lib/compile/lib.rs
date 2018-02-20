@@ -2,14 +2,62 @@ extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 
-use core::{RpPackage, RpVersionedPackage};
+use core::{ContextItem, Object, Resolver, RpFile, RpPackage, RpVersionedPackage};
+use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 use std::str;
 
+/// Input to the compiler.
+pub enum Input {
+    /// Already derive file.
+    RpFile(RpFile, Option<RpVersionedPackage>),
+    /// Object that should be parsed.
+    Object(Box<Object>, Option<RpVersionedPackage>),
+}
+
+/// A simple compilation stage.
 pub struct SimpleCompile {
-    pub decl: core::RpDecl,
+    pub input: Input,
     pub package_prefix: Option<RpPackage>,
+    pub resolver: Option<Box<Resolver>>,
+    pub errors: Option<Rc<RefCell<Vec<ContextItem>>>>,
+}
+
+impl SimpleCompile {
+    /// Build a new compilation stage.
+    pub fn new(input: Input) -> SimpleCompile {
+        Self {
+            input: input,
+            package_prefix: None,
+            resolver: None,
+            errors: None,
+        }
+    }
+
+    /// Set package prefix.
+    pub fn package_prefix(self, package: RpPackage) -> Self {
+        Self {
+            package_prefix: Some(package),
+            ..self
+        }
+    }
+
+    /// Set resolver.
+    pub fn resolver(self, resolver: Box<Resolver>) -> Self {
+        Self {
+            resolver: Some(resolver),
+            ..self
+        }
+    }
+
+    /// Set a reference to collect errors.
+    pub fn with_errors(self, errors: Rc<RefCell<Vec<ContextItem>>>) -> Self {
+        Self {
+            errors: Some(errors),
+            ..self
+        }
+    }
 }
 
 /// Perform a simplified compilation that outputs the result into the provided Write
@@ -24,28 +72,37 @@ where
     C: Fn(Rc<core::Context>, backend::Environment, manifest::Manifest<L>) -> core::errors::Result<()>,
 {
     let SimpleCompile {
-        decl,
+        input,
         package_prefix,
+        resolver,
+        errors,
     } = config;
 
-    // Dummy resolver.
-    let resolver = Box::new(core::EmptyResolver);
+    let resolver = resolver.unwrap_or_else(|| Box::new(core::EmptyResolver));
 
     let capturing = core::CapturingFilesystem::new();
-    let ctx = Rc::new(core::Context::new(capturing.filesystem()));
-    let mut env = backend::Environment::new(ctx.clone(), package_prefix.clone(), resolver);
 
-    let file = core::RpFile {
-        comment: vec![],
-        options: vec![],
-        decls: vec![decl],
+    let ctx = core::Context::new(capturing.filesystem());
+
+    // Set errors reference, if configured.
+    let ctx = if let Some(errors) = errors {
+        ctx.with_errors(errors)
+    } else {
+        ctx
     };
 
-    let package = package_prefix
-        .as_ref()
-        .map(|package| RpVersionedPackage::new(package.clone(), None));
+    let ctx = Rc::new(ctx);
 
-    env.import_file(file, package)?;
+    let mut env = backend::Environment::new(ctx.clone(), package_prefix.clone(), resolver);
+
+    match input {
+        Input::RpFile(file, package) => {
+            env.import_file(file, package)?;
+        }
+        Input::Object(object, package) => {
+            env.import_object(object.as_ref(), package)?;
+        }
+    }
 
     let preamble = manifest::ManifestPreamble::new(Some(manifest::Language::Java), None);
     let mut manifest = manifest::read_manifest::<L>(preamble)?;

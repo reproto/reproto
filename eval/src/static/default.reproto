@@ -1,0 +1,78 @@
+//! Example declaration showcasing a number of interesting features of reproto.
+
+// imports
+use types.common "^1" as c1;
+use common "^2" as c;
+
+/// Types!
+///
+/// Just your plain old, boring type.
+type Post {
+  /// Title of this post.
+  title: string;
+
+  /// Author _responsible_ for this post.
+  author: string;
+
+  /// Tags associated with this post.
+  ///
+  /// Notice how we reference an inner type of `Post`.
+  tags: [::Tag];
+
+  /// The tags for our post!
+  enum Tag as string {
+    Java as "java";
+    Long as "long";
+    Short as "short";
+  }
+}
+
+/// Interfaces!
+///
+/// These provide field-based polymorphism, among other things!
+interface Generated {
+  Eval as "eval" {
+    description: [string];
+
+    /// ## Examples
+    ///
+    /// ```json
+    /// "https://reproto.github.io/eval"
+    /// ```
+    url: string;
+
+    /// ## Examples
+    ///
+    /// ```json
+    /// "2018-02-18T00:00:00Z"
+    /// ```
+    released_at: datetime;
+  }
+
+  Module as "module" {
+    description: [string];
+
+    modules: ::Modules;
+
+    type Modules {
+      rust: [string];
+
+      java: [string];
+    }
+  }
+
+  /// A component showcasing version compatibility.
+  Compat as "compat" {
+    /// Old version of a message.
+    message: c1::Message;
+
+    /// Newly introduced message.
+    ///
+    /// (Must be optional)
+    new_message?: c::Message;
+  }
+}
+
+service Blog {
+  get_posts() -> [Post];
+}

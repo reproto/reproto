@@ -58,6 +58,7 @@ mod attributes;
 mod resolver;
 mod fs;
 pub mod errors;
+pub mod utils;
 
 pub use self::attributes::{Attributes, Selection};
 pub use self::context::{Context, ContextItem, Reporter};
