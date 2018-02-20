@@ -35,7 +35,8 @@ impl Lang for JsonLang {
     type Module = JsonModule;
 
     fn comment(input: &str) -> Option<String> {
-        Some(input.to_string())
+        // comments not supported
+        None
     }
 }
 

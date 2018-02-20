@@ -1,13 +1,49 @@
 #[macro_use]
 extern crate genco;
+#[macro_use]
+extern crate log;
+extern crate relative_path;
+extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_lexer as lexer;
+extern crate reproto_manifest as manifest;
+extern crate toml;
 
-use core::{RpDecl, RpField, RpInterfaceBody, RpSubTypeStrategy, RpTupleBody, RpTypeBody,
+use backend::Environment;
+use core::{Context, RpDecl, RpField, RpInterfaceBody, RpSubTypeStrategy, RpTupleBody, RpTypeBody,
            DEFAULT_TAG};
 use core::errors::Result;
-use genco::{Custom, Formatter, Quoted, Tokens};
+use genco::{Custom, Formatter, IoFmt, Quoted, Tokens, WriteTokens};
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use relative_path::RelativePathBuf;
 use std::fmt::{self, Write};
+use std::path::Path;
+use std::rc::Rc;
+
+#[derive(Default)]
+pub struct ReprotoLang;
+
+impl Lang for ReprotoLang {
+    type Module = ReprotoModule;
+
+    fn comment(input: &str) -> Option<String> {
+        Some(format!("//{}", input.to_string()))
+    }
+}
+
+#[derive(Debug)]
+pub enum ReprotoModule {
+}
+
+impl TryFromToml for ReprotoModule {
+    fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
+        NoModule::illegal(path, id, value)
+    }
+
+    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
+        NoModule::illegal(path, id, value)
+    }
+}
 
 #[derive(Clone)]
 pub enum Reproto {
@@ -37,6 +73,53 @@ impl Custom for Reproto {
 
         Ok(())
     }
+}
+
+/// Compile to a reproto manifest.
+pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<ReprotoLang>) -> Result<()> {
+    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
+
+    let root = RelativePathBuf::from(".");
+
+    for (package, file) in env.for_each_file() {
+        let mut path = package
+            .package
+            .parts
+            .iter()
+            .fold(root.clone(), |path, part| path.join(part));
+
+        let parent = path.parent()
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| root.clone());
+
+        if !handle.is_dir(&parent) {
+            debug!("+dir: {}", parent.display());
+            handle.create_dir_all(&parent)?;
+        }
+
+        let path = if let Some(version) = package.version.as_ref() {
+            let stem = path.file_stem()
+                .ok_or_else(|| format!("Missing file stem: {}", path.display()))?;
+
+            let file_name = format!("{}-{}.reproto", stem, version);
+            path.with_file_name(file_name)
+        } else {
+            path.with_extension("reproto")
+        };
+
+        let mut body = Tokens::new();
+
+        for decl in &file.decls {
+            body.push(format(decl)?);
+        }
+
+        let body = body.join_line_spacing();
+
+        debug!("+file: {}", path.display());
+        IoFmt(&mut handle.create(&path)?).write_file(body, &mut ())?;
+    }
+
+    Ok(())
 }
 
 /// Format a single declaration as a reproto specification.

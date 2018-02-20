@@ -16,10 +16,15 @@ this crate writes a schema out as a schema again.
 """
 
 [dependencies]
+reproto-backend = {path = "../backend", version = "0.3"}
 reproto-core = {path = "../core", version = "0.3"}
 reproto-lexer = {path = "../lexer", version = "0.3"}
+reproto-manifest = {path = "../manifest", version = "0.3"}
 
 genco = "0.2"
+relative-path = "0.3"
+toml = "0.4"
+log = "0.3"
 
 [lib]
 path = "lib.rs"

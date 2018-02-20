@@ -2,7 +2,7 @@ extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 
-use core::RpPackage;
+use core::{RpPackage, RpVersionedPackage};
 use std::fmt;
 use std::rc::Rc;
 use std::str;
@@ -41,7 +41,11 @@ where
         decls: vec![decl],
     };
 
-    env.import_file(file, None)?;
+    let package = package_prefix
+        .as_ref()
+        .map(|package| RpVersionedPackage::new(package.clone(), None));
+
+    env.import_file(file, package)?;
 
     let preamble = manifest::ManifestPreamble::new(Some(manifest::Language::Java), None);
     let mut manifest = manifest::read_manifest::<L>(preamble)?;

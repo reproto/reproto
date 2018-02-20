@@ -5,7 +5,7 @@ use compile;
 use core::{Context, Object, PathObject, RpPackage, StdinObject};
 use core::errors::Result;
 use derive;
-use genco::{IoFmt, WriteTokens};
+use genco::IoFmt;
 use java;
 use js;
 use json;
@@ -96,15 +96,6 @@ pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
 
     let stdout = io::stdout();
 
-    let lang = match matches.value_of("lang") {
-        None | Some("reproto") => {
-            let toks = reproto::format(&decl)?;
-            IoFmt(&mut stdout.lock()).write_file(toks, &mut ())?;
-            return Ok(());
-        }
-        lang => lang,
-    };
-
     let simple_compile = compile::SimpleCompile {
         decl: decl,
         package_prefix: Some(package_prefix),
@@ -116,7 +107,15 @@ pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
         .flat_map(|s| s.map(|s| s.to_string()))
         .collect();
 
-    match lang {
+    match matches.value_of("lang") {
+        Some("reproto") => {
+            compile::simple_compile::<reproto::ReprotoLang, _>(
+                &mut IoFmt(&mut stdout.lock()),
+                simple_compile,
+                load_modules::<reproto::ReprotoLang>(modules)?,
+                reproto::compile,
+            )?;
+        }
         Some("java") => {
             compile::simple_compile::<java::JavaLang, _>(
                 &mut IoFmt(&mut stdout.lock()),

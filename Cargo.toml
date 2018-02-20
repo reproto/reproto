@@ -24,7 +24,6 @@ members = [
   "lib/derive",
   "lib/semver",
   "tools/pack",
-  "wasm",
 ]
 
 exclude = [
