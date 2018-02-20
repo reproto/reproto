@@ -6,16 +6,19 @@ pub struct Entry {
   tuple2: Option<Tuple2>,
 }
 
+/// Tuple containing primitive.
 #[derive(Serialize, Deserialize, Debug)]
 struct Tuple1(
 String, 
 u64);
 
+/// Tuple containing object.
 #[derive(Serialize, Deserialize, Debug)]
 struct Tuple2(
 String, 
 Other);
 
+/// Complex object.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Other {
   a: String,

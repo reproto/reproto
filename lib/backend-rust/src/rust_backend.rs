@@ -50,6 +50,21 @@ impl<'a> IntoTokens<'a, Rust<'a>> for Tag<'a> {
     }
 }
 
+/// Documentation comments.
+pub struct Comments<'el, S: 'el>(&'el [S]);
+
+impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Rust<'el>> for Comments<'el, S> {
+    fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
+        let mut t = Tokens::new();
+
+        for c in self.0.iter() {
+            t.push(toks!["/// ", c.as_ref()]);
+        }
+
+        t
+    }
+}
+
 const TYPE_SEP: &'static str = "_";
 const SCOPE_SEP: &'static str = "::";
 
@@ -204,22 +219,22 @@ impl RustBackend {
 
     // Build the corresponding element out of a field declaration.
     fn field_element<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
-        let mut elements = Tokens::new();
+        let mut t = Tokens::new();
 
         let ident = self.ident(field.ident());
         let type_spec = self.into_type(field)?;
 
         if field.is_optional() {
-            elements.push(toks!["#[serde(skip_serializing_if=\"Option::is_none\")]"]);
+            t.push(toks!["#[serde(skip_serializing_if=\"Option::is_none\")]"]);
         }
 
         if field.name() != ident {
-            elements.push(Rename(field.name()));
+            t.push(Rename(field.name()));
         }
 
-        elements.push(toks![ident, ": ", type_spec, ","]);
+        t.push(toks![ident, ": ", type_spec, ","]);
 
-        Ok(elements.into())
+        Ok(t.into())
     }
 
     pub fn process_tuple<'a>(
@@ -235,12 +250,14 @@ impl RustBackend {
 
         let (name, attributes) = self.convert_type_name(&body.name);
 
-        let mut elements = Tokens::new();
-        elements.push_unless_empty(attributes);
-        elements.push(Derives);
-        elements.push(toks!["struct ", name, "(", fields.join(", "), ");",]);
+        let mut t = Tokens::new();
 
-        out.0.push(elements);
+        t.push_unless_empty(Comments(&body.comment));
+        t.push_unless_empty(attributes);
+        t.push(Derives);
+        t.push(toks!["struct ", name, "(", fields.join(", "), ");",]);
+
+        out.0.push(t);
         Ok(())
     }
 
@@ -270,56 +287,72 @@ impl RustBackend {
                 ",",
             ]);
 
+            variants.push_unless_empty(Comments(&variant.comment));
             variants.push(toks![variant.local_name.as_str(), ","]);
             Ok(()) as Result<()>
         })?;
 
-        let mut out_enum = Tokens::new();
-
-        out_enum.push_unless_empty(attributes);
-        out_enum.push(Derives);
-        out_enum.push(toks!["pub enum ", name.clone(), " {"]);
-        out_enum.nested(variants);
-        out_enum.push("}");
-
-        let mut out_impl = Tokens::new();
-
-        out_impl.push(toks!["impl ", name.clone(), " {"]);
-
-        out_impl.nested({
+        out.0.push({
             let mut t = Tokens::new();
-            t.push(self.enum_value_fn(name.clone(), match_body));
-            t.push_unless_empty(Code(&body.codes, RUST_CONTEXT));
+
+            t.push_unless_empty(Comments(&body.comment));
+            t.push_unless_empty(attributes);
+            t.push(Derives);
+            t.push(toks!["pub enum ", name.clone(), " {"]);
+            t.nested(variants);
+            t.push("}");
+
             t
         });
 
-        out_impl.push("}");
+        out.0.push({
+            let mut t = Tokens::new();
 
-        out.0.push(out_enum);
-        out.0.push(out_impl);
+            t.push(toks!["impl ", name.clone(), " {"]);
+
+            t.nested({
+                let mut t = Tokens::new();
+                t.push(self.enum_value_fn(name.clone(), match_body));
+                t.push_unless_empty(Code(&body.codes, RUST_CONTEXT));
+                t
+            });
+
+            t.push("}");
+
+            t
+        });
+
         Ok(())
     }
 
     pub fn process_type<'a>(&self, out: &mut RustFileSpec<'a>, body: &'a RpTypeBody) -> Result<()> {
-        let mut fields = Tokens::new();
-
-        for field in &body.fields {
-            fields.push(Loc::take(Loc::and_then(Loc::as_ref(field), |f| {
-                self.field_element(f)
-            })?));
-        }
-
         let (name, attributes) = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
+        t.push_unless_empty(Comments(&body.comment));
         t.push_unless_empty(attributes);
         t.push(Derives);
         t.push(toks!["pub struct ", name.clone(), " {"]);
-        t.nested(fields);
+
+        // fields
+        t.nested({
+            let mut t = Tokens::new();
+
+            for field in &body.fields {
+                t.push_unless_empty(Comments(&field.comment));
+                t.push(Loc::take(Loc::and_then(Loc::as_ref(field), |f| {
+                    self.field_element(f)
+                })?));
+            }
+
+            t
+        });
+
         t.push("}");
 
         out.0.push(t);
 
+        // if custom code is present, punt it into an impl.
         let impl_body = Code(&body.codes, RUST_CONTEXT).into_tokens();
 
         if !impl_body.is_empty() {
@@ -335,8 +368,10 @@ impl RustBackend {
         body: &'a RpInterfaceBody,
     ) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
+
         let mut t = Tokens::new();
 
+        t.push_unless_empty(Comments(&body.comment));
         t.push_unless_empty(attributes);
         t.push(Derives);
 
@@ -351,23 +386,29 @@ impl RustBackend {
         let sub_types = body.sub_types.values().map(AsRef::as_ref);
 
         sub_types.for_each_loc(|s| {
-            let mut spec = Tokens::new();
+            t.nested({
+                let mut t = Tokens::new();
 
-            // TODO: clone should not be needed
-            if let Some(ref name) = s.sub_type_name {
-                if name.as_str() != s.local_name.as_str() {
-                    spec.push(Rename(name));
+                t.push_unless_empty(Comments(&s.comment));
+
+                // TODO: clone should not be needed
+                if let Some(ref name) = s.sub_type_name {
+                    if name.as_str() != s.local_name.as_str() {
+                        t.push(Rename(name));
+                    }
                 }
-            }
 
-            spec.push(toks![s.local_name.as_str(), " {"]);
+                t.push(toks![s.local_name.as_str(), " {"]);
 
-            for field in body.fields.iter().chain(s.fields.iter()) {
-                spec.nested(self.field_element(field)?);
-            }
+                for field in body.fields.iter().chain(s.fields.iter()) {
+                    t.nested(self.field_element(field)?);
+                }
 
-            spec.push("},");
-            t.nested(spec);
+                t.push("},");
+
+                t
+            });
+
             Ok(()) as Result<()>
         })?;
 
@@ -392,13 +433,19 @@ impl RustBackend {
         let (name, attributes) = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
+        t.push_unless_empty(Comments(&body.comment));
         t.push_unless_empty(attributes);
         t.push(toks!["pub trait ", name.clone(), " {"]);
 
         let endpoints = body.endpoints.values().map(Loc::as_ref);
 
         endpoints.for_each_loc(|e| {
-            t.nested({ toks!["fn ", e.id.as_str(), "();"] });
+            t.nested({
+                let mut t = Tokens::new();
+                t.push_unless_empty(Comments(&e.comment));
+                t.push(toks!["fn ", e.id.as_str(), "();"]);
+                t
+            });
 
             Ok(()) as Result<()>
         })?;

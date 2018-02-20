@@ -6,6 +6,7 @@ pub struct Entry {
   implicit: Option<EnumImplicit>,
 }
 
+/// Explicitly assigned strings
 #[derive(Serialize, Deserialize, Debug)]
 pub enum EnumExplicit {
   #[serde(rename = "foo")]
@@ -24,6 +25,7 @@ impl EnumExplicit {
   }
 }
 
+/// Implicit naming depending on the variant
 #[derive(Serialize, Deserialize, Debug)]
 pub enum EnumImplicit {
   A,
@@ -40,6 +42,7 @@ impl EnumImplicit {
   }
 }
 
+/// Variants with long names.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum EnumLongNames {
   FooBar,
