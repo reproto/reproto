@@ -50,9 +50,9 @@ themes.forEach((theme) => {
 const DEFAULT_JSON = require("raw-loader!../static/default.json");
 const DEFAULT_YAML = require("raw-loader!../static/default.yaml");
 const COMMON_REPROTO: string = require("raw-loader!../static/common.reproto");
-const IMPORT_REPROTO: string = require("raw-loader!../static/import.reproto");
-const TYPE_REPROTO: string = require("raw-loader!../static/type.reproto");
-const INTERFACE_REPROTO: string = require("raw-loader!../static/interface.reproto");
+const IMPORT1_REPROTO: string = require("raw-loader!../static/import1.reproto");
+const TYPE1_REPROTO: string = require("raw-loader!../static/type1.reproto");
+const INTERFACE1_REPROTO: string = require("raw-loader!../static/interface1.reproto");
 const DEFAULT_NEW_FILE_REPROTO: string = require("raw-loader!../static/default-new.reproto");
 const logo = require("../static/logo.256.png");
 
@@ -152,12 +152,12 @@ export class Main extends React.Component<MainProps, MainState> {
       },
       files: [
         {
-          package: "type",
-          content: TYPE_REPROTO,
+          package: "type1",
+          content: TYPE1_REPROTO,
         },
         {
-          package: "interface",
-          content: INTERFACE_REPROTO,
+          package: "interface1",
+          content: INTERFACE1_REPROTO,
         },
         {
           package: "common",
@@ -165,8 +165,8 @@ export class Main extends React.Component<MainProps, MainState> {
           content: COMMON_REPROTO,
         },
         {
-          package: "import",
-          content: IMPORT_REPROTO,
+          package: "import1",
+          content: IMPORT1_REPROTO,
         },
       ],
       file_index: 0,
