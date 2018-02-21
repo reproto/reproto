@@ -13,7 +13,17 @@ impl RpPackage {
     }
 
     /// Parse a package from a string.
+    ///
+    /// Warning: This does not perform any validation that the given package only contains
+    /// identifier components!
+    ///
+    /// * An empty string results in a package _without_ any parts.
+    /// * All other strings are split on dots.
     pub fn parse(input: &str) -> RpPackage {
+        if input.is_empty() {
+            return Self::empty();
+        }
+
         RpPackage::new(input.split('.').map(ToOwned::to_owned).collect())
     }
 

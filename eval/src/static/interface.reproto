@@ -1,0 +1,28 @@
+//! # Example of an interface in reproto
+//!
+//! Interfaces are safe, polymorphic types, which uses some mechanism for determining which
+//! sub-type is actually being references.
+//!
+//! They expose _two_ types, the interface itself, and all its sub-types.
+//! Sub-types are references as child types of an interface. Like, `Interface::SubType`.
+
+/// A source of data.
+interface Source {
+  /// The name of the source, this is available to all sub-types.
+  name: string;
+
+  /// A file source.
+  File as "file" {
+    /// The path to the file.
+    path: string;
+  }
+
+  /// A URL source.
+  Url as "url" {
+    /// The url to get the source from.
+    url: string;
+
+    /// Timeout for which we can request the URL.
+    fetch_timeout: u64;
+  }
+}

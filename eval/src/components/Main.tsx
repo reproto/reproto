@@ -49,10 +49,11 @@ themes.forEach((theme) => {
 
 const DEFAULT_JSON = require("raw-loader!../static/default.json");
 const DEFAULT_YAML = require("raw-loader!../static/default.yaml");
-const DEFAULT_REPROTO: string = require("raw-loader!../static/default.reproto");
-const DEFAULT_NEW_FILE_REPROTO: string = require("raw-loader!../static/default-new.reproto");
 const COMMON_REPROTO: string = require("raw-loader!../static/common.reproto");
-const COMMON2_REPROTO: string = require("raw-loader!../static/common2.reproto");
+const IMPORT_REPROTO: string = require("raw-loader!../static/import.reproto");
+const TYPE_REPROTO: string = require("raw-loader!../static/type.reproto");
+const INTERFACE_REPROTO: string = require("raw-loader!../static/interface.reproto");
+const DEFAULT_NEW_FILE_REPROTO: string = require("raw-loader!../static/default-new.reproto");
 const logo = require("../static/logo.256.png");
 
 interface Compiled {
@@ -151,19 +152,22 @@ export class Main extends React.Component<MainProps, MainState> {
       },
       files: [
         {
-          package: "types.main",
-          content: DEFAULT_REPROTO,
+          package: "type",
+          content: TYPE_REPROTO,
         },
         {
-          package: "types.common",
+          package: "interface",
+          content: INTERFACE_REPROTO,
+        },
+        {
+          package: "common",
           version: "1.0.0",
           content: COMMON_REPROTO,
         },
         {
-          package: "common",
-          version: "2.0.0",
-          content: COMMON2_REPROTO,
-        }
+          package: "import",
+          content: IMPORT_REPROTO,
+        },
       ],
       file_index: 0,
       file_editing_meta: false,

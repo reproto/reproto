@@ -1,7 +1,0 @@
-type Message {
-  /// The content of the message!
-  content: string;
-
-  /// The version of the message.
-  version: string;
-}

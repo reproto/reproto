@@ -1,0 +1,15 @@
+//! # An example package importing another package.
+
+use common as c;
+
+/// An envelope containing a message.
+type Envelope {
+  /// The recipient of the message.
+  recipient: string;
+
+  /// The timestamp that the message was received.
+  timestamp: datetime;
+
+  /// The message.
+  message: c::Message;
+}

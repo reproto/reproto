@@ -1,0 +1,20 @@
+//! # An example `type` in reproto
+
+/// A blog post.
+type Post {
+  /// Title of this post.
+  title: string;
+
+  /// Author _responsible_ for this post.
+  author: string;
+
+  /// Tags associated with this post.
+  tags: [::Tag];
+
+  /// The tags for our post!
+  enum Tag as string {
+    Java as "java";
+    Long as "long";
+    Short as "short";
+  }
+}

@@ -25,6 +25,11 @@ pub trait Lang: Default {
 
     /// Comment the given string.
     fn comment(input: &str) -> Option<String>;
+
+    /// Get a list of keywords to transliterate.
+    fn keywords() -> Vec<&'static str> {
+        vec![]
+    }
 }
 
 /// Fallback language support in case no language is specified.

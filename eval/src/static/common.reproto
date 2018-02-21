@@ -1,3 +1,17 @@
+//! # An example package containing common types
+//!
+//! This can be imported into other specifications through:
+//!
+//! ```reproto
+//! use common as c;
+//!
+//! // ...
+//!
+//! type Foo {
+//!   field: c::Message;
+//! }
+//! ```
+
 type Message {
   /// The content of the message!
   content: string;
