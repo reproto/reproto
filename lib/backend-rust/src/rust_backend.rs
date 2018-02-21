@@ -195,7 +195,7 @@ impl RustBackend {
             Bytes => toks!["String"],
             Signed { size: 32 } => toks!["i32"],
             Signed { size: 64 } => toks!["i64"],
-            Unsigned { size: 32 } => toks!["i32"],
+            Unsigned { size: 32 } => toks!["u32"],
             Unsigned { size: 64 } => toks!["u64"],
             Float => toks!["f32"],
             Double => toks!["f64"],

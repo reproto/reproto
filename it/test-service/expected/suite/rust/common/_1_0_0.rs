@@ -7,5 +7,5 @@ pub struct Entry {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorMessage {
   message: String,
-  status_code: i32,
+  status_code: u32,
 }
