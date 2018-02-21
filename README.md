@@ -5,6 +5,8 @@
 
 This is the home of `reproto`, a system for managing JSON schemas.
 
+If you want to take the system for a leasurely spin, please go to <https://reproto.github.io>.
+
 `reproto` is the following things:
 
 * A custom [interface description language] that permits describing the schema of JSON and
@@ -16,9 +18,6 @@ This is the home of `reproto`, a system for managing JSON schemas.
 * A build system with a package manager and a `reproto.toml` [build manifest].
 * A rich, markdown-based [documentation generator].
 * (eventually) A [central repository] of usable schemas.
-
-You can take the derive feature of reproto for a spin at <https://reproto.github.io>.
-This loads the library through WASM based on [stdweb].
 
 These things combined support an ecosystem where schemas can be maintained and shared across
 projects.
@@ -35,6 +34,22 @@ but avoid building large repositories of specifications right now.
 [central repository]: https://github.com/reproto/reproto-index
 [build manifest]: /doc/manifest.md
 [stdweb]: https://github.com/koute/stdweb
+
+## Helping Out
+
+You want to help out? Great!
+
+You might want to start on issues marked with [good first issue].
+If you have a support for a programming language that you feel is lacking, please help out with
+[language support].
+
+For any of these, just poke the issue with a quick `I want to do this!`.
+If mentoring instructions are lacking, they will be made available as soon as possible.
+Also make sure to [join our Gitter channel].
+
+[good first issue]: https://github.com/reproto/reproto/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22
+[language support]: https://github.com/reproto/reproto/issues?q=is%3Aissue+is%3Aopen+label%3Alang-support
+[join our Gitter channel]: https://gitter.im/reproto/reproto
 
 ## Getting Started
 
