@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -e
+
+ROOT=$(dirname $(dirname $(realpath $0)))
+
+repo="git@github.com:reproto/reproto.github.io"
+target=$ROOT/target
+checkout=$target/reproto.github.io
+dist=$ROOT/dist
+
+if [[ ! -d $dist ]]; then
+    echo "Missing: $dist"
+    exit 1
+fi
+
+git_do() {
+    git --git-dir=$checkout/.git --work-tree=$checkout "$@"
+    return $?
+}
+
+if [[ ! -d $checkout ]]; then
+    echo "Initializing: $checkout"
+    mkdir -p $checkout
+    git_do init
+    git_do remote add origin $repo
+fi
+
+git_do fetch -a origin master
+git_do reset --hard origin/master
+git_do clean -fdx
+
+rsync -rav $dist/ $checkout/
+
+git_do add -A
+git_do commit -m "Release $(date)"
+git_do push origin HEAD
