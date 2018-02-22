@@ -1,6 +1,7 @@
 // vim: ft=rust
 use ast::*;
 use path_lexer::{self, PathToken};
+use std::borrow::Cow;
 
 grammar<'input>();
 
@@ -34,7 +35,7 @@ extern {
         "/" => PathToken::Slash,
         "{" => PathToken::LeftCurly,
         "}" => PathToken::RightCurly,
-        ident => PathToken::Identifier(<&'input str>),
+        ident => PathToken::Identifier(<Cow<'input, str>>),
         segment => PathToken::Segment(<String>),
     }
 }

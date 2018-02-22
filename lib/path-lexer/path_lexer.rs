@@ -62,7 +62,7 @@ impl<'input> PathLexer<'input> {
 
     fn identifier(&mut self, start: usize) -> Result<(usize, PathToken<'input>, usize)> {
         let (end, content) = take!(self, start, 'a'...'z' | '0'...'9' | '_');
-        Ok((start, PathToken::Identifier(content), end))
+        Ok((start, PathToken::Identifier(content.into()), end))
     }
 
     fn unexpected(&self) -> Error {

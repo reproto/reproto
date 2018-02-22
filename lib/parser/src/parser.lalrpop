@@ -4,6 +4,7 @@ use std::rc::Rc;
 use ast::*;
 use lexer::{self, Token};
 use super::utils::strip_code_block;
+use std::borrow::Cow;
 
 grammar<'input, 'object>(input_object: &'object Rc<Box<Object>>);
 
@@ -32,10 +33,10 @@ Use: UseDecl<'input> =
     }
 };
 
-UseAlias: &'input str = "as" <value:ident> => value;
+UseAlias: Cow<'input, str> = "as" <value:ident> => value;
 
 Package: RpPackage = <parts:OneOrMore<".", ident>> => {
-    RpPackage::new(parts.into_iter().map(ToOwned::to_owned).collect())
+    RpPackage::new(parts.into_iter().map(|s| s.to_string()).collect())
 };
 
 Decl: Decl<'input> = {
@@ -147,7 +148,7 @@ Endpoint: Endpoint<'input> = {
     },
 };
 
-EndpointArgument: (Loc<&'input str>, Loc<Channel>) =
+EndpointArgument: (Loc<Cow<'input, str>>, Loc<Channel>) =
     <name:Loc<ident>> ":" <channel:Loc<Channel>> =>
     (name, channel);
 
@@ -166,7 +167,7 @@ Channel: Channel = {
 };
 
 FieldAlias: String = {
-    "as" <value:ident> => value.to_owned(),
+    "as" <value:ident> => value.to_string(),
     "as" <value:"string"> => value,
 };
 
@@ -192,7 +193,7 @@ Code: Code<'input> =
     <context:ident> "{{" <content:code> "}}" =>
     Code {
         context: context,
-        content: strip_code_block(content)
+        content: strip_code_block(content),
     };
 
 Field: Field<'input> =
@@ -265,12 +266,12 @@ pub TypeSpec: Type = {
 
 Name: Name = {
     <prefix:(ident "::")?> <parts:OneOrMore<"::", TypeIdent>> => Name::Absolute {
-        prefix: prefix.map(|p| p.0.to_owned()),
-        parts: parts.into_iter().map(ToOwned::to_owned).collect(),
+        prefix: prefix.map(|p| p.0.to_string()),
+        parts: parts.into_iter().map(|s| s.to_string()).collect(),
     },
 
     "::" <parts:OneOrMore<"::", TypeIdent>> => Name::Relative {
-        parts: parts.into_iter().map(ToOwned::to_owned).collect(),
+        parts: parts.into_iter().map(|s| s.to_string()).collect(),
     },
 };
 
@@ -335,8 +336,8 @@ extern {
     type Error = lexer::Error;
 
     enum Token<'input> {
-        TypeIdent => Token::TypeIdentifier(<&'input str>),
-        ident => Token::Identifier(<&'input str>),
+        TypeIdent => Token::TypeIdentifier(<Cow<'input, str>>),
+        ident => Token::Identifier(<Cow<'input, str>>),
         number => Token::Number(<RpNumber>),
         "use" => Token::UseKeyword,
         "as" => Token::AsKeyword,
@@ -351,7 +352,7 @@ extern {
         "}" => Token::RightCurly,
         "{{" => Token::CodeOpen,
         "}}" => Token::CodeClose,
-        code => Token::CodeContent(<&'input str>),
+        code => Token::CodeContent(<Cow<'input, str>>),
         "string" => Token::String(<String>),
         "[" => Token::LeftBracket,
         "]" => Token::RightBracket,
@@ -364,8 +365,8 @@ extern {
         "." => Token::Dot,
         "::" => Token::Scope,
         "=" => Token::Equal,
-        "//!" => Token::PackageDocComment(<Vec<&'input str>>),
-        "///" => Token::DocComment(<Vec<&'input str>>),
+        "//!" => Token::PackageDocComment(<Vec<Cow<'input, str>>>),
+        "///" => Token::DocComment(<Vec<Cow<'input, str>>>),
         any => Token::AnyKeyword,
         float => Token::FloatKeyword,
         double => Token::DoubleKeyword,

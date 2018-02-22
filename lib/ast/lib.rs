@@ -4,6 +4,7 @@ use core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage, WithPos};
 use core::errors::Result;
 use std::ops;
 use std::result;
+use std::borrow::Cow;
 
 /// Items can be commented and have attributes.
 ///
@@ -17,7 +18,7 @@ use std::result;
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct Item<'input, T> {
-    pub comment: Vec<&'input str>,
+    pub comment: Vec<Cow<'input, str>>,
     pub attributes: Vec<Loc<Attribute<'input>>>,
     pub item: Loc<T>,
 }
@@ -34,7 +35,7 @@ impl<'input, T> ops::Deref for Item<'input, T> {
 impl<'input, T> Item<'input, T> {
     pub fn map<F, E: WithPos, U>(self, f: F) -> result::Result<Loc<U>, E>
     where
-        F: FnOnce(Vec<&'input str>, Vec<Loc<Attribute<'input>>>, T) -> result::Result<U, E>,
+        F: FnOnce(Vec<Cow<'input, str>>, Vec<Loc<Attribute<'input>>>, T) -> result::Result<U, E>,
     {
         let (value, pos) = Loc::take_pair(self.item);
 
@@ -56,7 +57,7 @@ impl<'input, T> Item<'input, T> {
 pub enum AttributeItem<'input> {
     Word(Loc<Value<'input>>),
     NameValue {
-        name: Loc<&'input str>,
+        name: Loc<Cow<'input, str>>,
         value: Loc<Value<'input>>,
     },
 }
@@ -76,8 +77,8 @@ pub enum AttributeItem<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub enum Attribute<'input> {
-    Word(Loc<&'input str>),
-    List(Loc<&'input str>, Vec<AttributeItem<'input>>),
+    Word(Loc<Cow<'input, str>>),
+    List(Loc<Cow<'input, str>>, Vec<AttributeItem<'input>>),
 }
 
 /// A type.
@@ -148,7 +149,7 @@ impl<'input> Decl<'input> {
 /// Note: members must only be options.
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumBody<'input> {
-    pub name: &'input str,
+    pub name: Cow<'input, str>,
     pub ty: Option<Loc<Type>>,
     pub variants: Vec<Item<'input, EnumVariant<'input>>>,
     pub members: Vec<EnumMember<'input>>,
@@ -156,7 +157,7 @@ pub struct EnumBody<'input> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumVariant<'input> {
-    pub name: Loc<&'input str>,
+    pub name: Loc<Cow<'input, str>>,
     pub argument: Option<Loc<Value<'input>>>,
 }
 
@@ -176,7 +177,7 @@ pub enum EnumMember<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Field<'input> {
     pub modifier: RpModifier,
-    pub name: &'input str,
+    pub name: Cow<'input, str>,
     pub ty: Type,
     pub field_as: Option<String>,
 }
@@ -192,7 +193,7 @@ pub struct Field<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct File<'input> {
-    pub comment: Vec<&'input str>,
+    pub comment: Vec<Cow<'input, str>>,
     pub options: Vec<Loc<OptionDecl<'input>>>,
     pub uses: Vec<Loc<UseDecl<'input>>>,
     pub decls: Vec<Decl<'input>>,
@@ -243,7 +244,7 @@ pub enum Name {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterfaceBody<'input> {
-    pub name: &'input str,
+    pub name: Cow<'input, str>,
     pub members: Vec<TypeMember<'input>>,
     pub sub_types: Vec<Item<'input, SubType<'input>>>,
 }
@@ -251,8 +252,8 @@ pub struct InterfaceBody<'input> {
 /// A contextual code-block.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Code<'input> {
-    pub context: &'input str,
-    pub content: Vec<&'input str>,
+    pub context: Cow<'input, str>,
+    pub content: Vec<Cow<'input, str>>,
 }
 
 /// A member in a tuple, type, or interface.
@@ -271,7 +272,7 @@ pub enum TypeMember<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct OptionDecl<'input> {
-    pub name: &'input str,
+    pub name: Cow<'input, str>,
     pub value: Loc<Value<'input>>,
 }
 
@@ -311,7 +312,7 @@ impl<'input> OptionEntry for OptionDecl<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct ServiceBody<'input> {
-    pub name: &'input str,
+    pub name: Cow<'input, str>,
     pub members: Vec<ServiceMember<'input>>,
 }
 
@@ -332,10 +333,10 @@ pub enum ServiceMember<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct Endpoint<'input> {
-    pub id: Loc<&'input str>,
+    pub id: Loc<Cow<'input, str>>,
     pub alias: Option<String>,
     pub options: Vec<Loc<OptionDecl<'input>>>,
-    pub arguments: Vec<(Loc<&'input str>, Loc<Channel>)>,
+    pub arguments: Vec<(Loc<Cow<'input, str>>, Loc<Channel>)>,
     pub response: Option<Loc<Channel>>,
 }
 
@@ -363,7 +364,7 @@ pub enum Channel {
 /// Sub-types in interface declarations.
 #[derive(Debug, PartialEq, Eq)]
 pub struct SubType<'input> {
-    pub name: Loc<&'input str>,
+    pub name: Loc<Cow<'input, str>>,
     pub members: Vec<TypeMember<'input>>,
     pub alias: Option<Loc<Value<'input>>>,
 }
@@ -377,7 +378,7 @@ pub struct SubType<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct TupleBody<'input> {
-    pub name: &'input str,
+    pub name: Cow<'input, str>,
     pub members: Vec<TypeMember<'input>>,
 }
 
@@ -390,7 +391,7 @@ pub struct TupleBody<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct TypeBody<'input> {
-    pub name: &'input str,
+    pub name: Cow<'input, str>,
     pub members: Vec<TypeMember<'input>>,
 }
 
@@ -403,7 +404,7 @@ pub struct TypeBody<'input> {
 pub struct UseDecl<'input> {
     pub package: Loc<RpPackage>,
     pub range: Option<Loc<String>>,
-    pub alias: Option<Loc<&'input str>>,
+    pub alias: Option<Loc<Cow<'input, str>>>,
 }
 
 /// A literal value
@@ -414,7 +415,7 @@ pub enum Value<'input> {
     String(String),
     Number(RpNumber),
     Boolean(bool),
-    Identifier(&'input str),
+    Identifier(Cow<'input, str>),
     Array(Vec<Loc<Value<'input>>>),
     Type(Type),
 }
@@ -422,7 +423,7 @@ pub enum Value<'input> {
 /// A part of a step.
 #[derive(Debug, PartialEq, Eq)]
 pub enum PathPart<'input> {
-    Variable(&'input str),
+    Variable(Cow<'input, str>),
     Segment(String),
 }
 

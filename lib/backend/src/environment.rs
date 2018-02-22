@@ -310,7 +310,7 @@ impl Environment {
                 let use_package = self.package_prefix(&use_package);
 
                 if let Some(used) = use_decl.package.parts.iter().last() {
-                    let alias = use_decl.alias.as_ref().map(|v| **v).unwrap_or(used);
+                    let alias = use_decl.alias.as_ref().map(|v| v.as_ref()).unwrap_or(used);
 
                     match prefixes.entry(alias.to_owned()) {
                         Entry::Vacant(entry) => entry.insert(use_package.clone()),

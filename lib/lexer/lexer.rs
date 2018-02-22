@@ -3,6 +3,7 @@ use core::RpNumber;
 use errors::{Error, Result};
 use num_bigint::BigInt;
 use num_traits::Zero;
+use std::borrow::Cow;
 use std::result;
 use std::str::CharIndices;
 use token::Token;
@@ -103,13 +104,13 @@ impl<'input> Lexer<'input> {
         let (end, content) = take!(self, stripped, 'a'...'z' | '_' | '0'...'9');
 
         if stripped != start {
-            return Ok((start, Token::Identifier(content), end));
+            return Ok((start, Token::Identifier(content.into()), end));
         }
 
         let token = match match_keyword(content) {
             Some(token) => token,
             None => {
-                return Ok((start, Token::Identifier(content), end));
+                return Ok((start, Token::Identifier(content.into()), end));
             }
         };
 
@@ -118,7 +119,7 @@ impl<'input> Lexer<'input> {
 
     fn type_identifier(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
         let (end, content) = take!(self, start, 'A'...'Z' | 'a'...'z' | '0'...'9');
-        Ok((start, Token::TypeIdentifier(content), end))
+        Ok((start, Token::TypeIdentifier(content.into()), end))
     }
 
     fn parse_fraction(input: &str) -> result::Result<(usize, BigInt), &'static str> {
@@ -167,11 +168,12 @@ impl<'input> Lexer<'input> {
     }
 
     fn number(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
-        let (end, number) = self.parse_number(start)
-            .map_err(|(message, offset)| Error::InvalidNumber {
+        let (end, number) = self.parse_number(start).map_err(|(message, offset)| {
+            Error::InvalidNumber {
                 message: message,
                 pos: start + offset,
-            })?;
+            }
+        })?;
 
         Ok((start, Token::Number(number), end))
     }
@@ -319,7 +321,7 @@ impl<'input> Lexer<'input> {
                 self.code_block = None;
                 self.code_close = Some((end, code_end));
 
-                return Ok((code_start, Token::CodeContent(out), code_end));
+                return Ok((code_start, Token::CodeContent(out.into()), code_end));
             }
 
             self.step();
@@ -330,7 +332,7 @@ impl<'input> Lexer<'input> {
 
     /// Parse package documentation
     fn package_doc_comments(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
-        let mut comment: Vec<&'input str> = Vec::new();
+        let mut comment: Vec<Cow<'input, str>> = Vec::new();
 
         loop {
             // take leading whitespace
@@ -339,7 +341,7 @@ impl<'input> Lexer<'input> {
             if let Some((_, '/', '/', '!')) = self.three() {
                 let start = self.step_n(3);
                 let (_, content) = take_until!(self, start, '\n' | '\r');
-                comment.push(content);
+                comment.push(content.into());
             } else {
                 return Ok((start, Token::PackageDocComment(comment), end));
             }
@@ -347,7 +349,7 @@ impl<'input> Lexer<'input> {
     }
 
     fn doc_comments(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
-        let mut comment: Vec<&'input str> = Vec::new();
+        let mut comment: Vec<Cow<'input, str>> = Vec::new();
 
         loop {
             // take leading whitespace
@@ -356,7 +358,7 @@ impl<'input> Lexer<'input> {
             if let Some((_, '/', '/', '/')) = self.three() {
                 let start = self.step_n(3);
                 let (_, content) = take_until!(self, start, '\n' | '\r');
-                comment.push(content);
+                comment.push(content.into());
             } else {
                 return Ok((start, Token::DocComment(comment), end));
             }
@@ -512,7 +514,7 @@ pub mod tests {
     #[test]
     pub fn test_lexer() {
         let expected = vec![
-            (0, Identifier("hello"), 5),
+            (0, Identifier("hello".into()), 5),
             (6, TypeIdentifier("World"), 11),
             (12, LeftCurly, 13),
             (14, UseKeyword, 17),

@@ -4,6 +4,7 @@ use core::errors::{Error, Result};
 use linked_hash_map::{self, LinkedHashMap};
 use path_parser;
 use scope::Scope;
+use std::borrow::Cow;
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use std::option;
 use std::path::{Path, PathBuf};
@@ -43,6 +44,79 @@ pub trait IntoModel {
 
     /// Convert the current type to a model.
     fn into_model(self, scope: &Scope) -> Result<Self::Output>;
+}
+
+/// Generic implementation for vectors.
+impl<T> IntoModel for Loc<T>
+where
+    T: IntoModel,
+{
+    type Output = Loc<T::Output>;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        let (value, pos) = Loc::take_pair(self);
+        Ok(Loc::new(value.into_model(scope)?, pos))
+    }
+}
+
+/// Generic implementation for vectors.
+impl<T> IntoModel for Vec<T>
+where
+    T: IntoModel,
+{
+    type Output = Vec<T::Output>;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        let mut out = Vec::new();
+
+        for v in self {
+            out.push(v.into_model(scope)?);
+        }
+
+        Ok(out)
+    }
+}
+
+impl<T> IntoModel for Option<T>
+where
+    T: IntoModel,
+{
+    type Output = Option<T::Output>;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        if let Some(value) = self {
+            return Ok(Some(value.into_model(scope)?));
+        }
+
+        Ok(None)
+    }
+}
+
+impl<T> IntoModel for Box<T>
+where
+    T: IntoModel,
+{
+    type Output = Box<T::Output>;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        Ok(Box::new((*self).into_model(scope)?))
+    }
+}
+
+impl<'a> IntoModel for Cow<'a, str> {
+    type Output = String;
+
+    fn into_model(self, _scope: &Scope) -> Result<Self::Output> {
+        Ok(self.to_string())
+    }
+}
+
+impl IntoModel for String {
+    type Output = String;
+
+    fn into_model(self, _scope: &Scope) -> Result<Self::Output> {
+        Ok(self)
+    }
 }
 
 /// Helper model to strip whitespace prefixes from comment lines.
@@ -235,7 +309,7 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
 
             Ok(RpVariant {
                 name: scope.as_name().push(item.name.to_string()),
-                local_name: Loc::map(item.name.clone(), str::to_string),
+                local_name: Loc::map(item.name.clone(), |s| s.to_string()),
                 comment: Comment(&comment).into_model(scope)?,
                 ordinal: ordinal,
             })
@@ -369,79 +443,6 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
     }
 }
 
-/// Generic implementation for vectors.
-impl<T> IntoModel for Loc<T>
-where
-    T: IntoModel,
-{
-    type Output = Loc<T::Output>;
-
-    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (value, pos) = Loc::take_pair(self);
-        Ok(Loc::new(value.into_model(scope)?, pos))
-    }
-}
-
-/// Generic implementation for vectors.
-impl<T> IntoModel for Vec<T>
-where
-    T: IntoModel,
-{
-    type Output = Vec<T::Output>;
-
-    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let mut out = Vec::new();
-
-        for v in self {
-            out.push(v.into_model(scope)?);
-        }
-
-        Ok(out)
-    }
-}
-
-impl<T> IntoModel for Option<T>
-where
-    T: IntoModel,
-{
-    type Output = Option<T::Output>;
-
-    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        if let Some(value) = self {
-            return Ok(Some(value.into_model(scope)?));
-        }
-
-        Ok(None)
-    }
-}
-
-impl<T> IntoModel for Box<T>
-where
-    T: IntoModel,
-{
-    type Output = Box<T::Output>;
-
-    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        Ok(Box::new((*self).into_model(scope)?))
-    }
-}
-
-impl<'a> IntoModel for &'a str {
-    type Output = String;
-
-    fn into_model(self, _scope: &Scope) -> Result<Self::Output> {
-        Ok(self.to_owned())
-    }
-}
-
-impl IntoModel for String {
-    type Output = String;
-
-    fn into_model(self, _scope: &Scope) -> Result<Self::Output> {
-        Ok(self)
-    }
-}
-
 impl IntoModel for RpPackage {
     type Output = RpPackage;
 
@@ -494,7 +495,7 @@ impl<'input> IntoModel for OptionDecl<'input> {
 
     fn into_model(self, scope: &Scope) -> Result<RpOptionDecl> {
         let decl = RpOptionDecl {
-            name: self.name.to_owned(),
+            name: self.name.to_string(),
             value: self.value.into_model(scope)?,
         };
 
@@ -1010,7 +1011,7 @@ impl<'input> IntoModel for Code<'input> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         Ok(RpCode {
             context: self.context.into_model(scope)?,
-            lines: self.content.into_iter().map(ToString::to_string).collect(),
+            lines: self.content.into_iter().map(|s| s.to_string()).collect(),
         })
     }
 }
@@ -1025,7 +1026,7 @@ impl<'input> IntoModel for Value<'input> {
             String(string) => RpValue::String(string),
             Number(number) => RpValue::Number(number),
             Boolean(boolean) => RpValue::Boolean(boolean),
-            Identifier(identifier) => RpValue::Identifier(identifier.to_owned()),
+            Identifier(identifier) => RpValue::Identifier(identifier.to_string()),
             Array(inner) => RpValue::Array(inner.into_model(scope)?),
             Type(ty) => RpValue::Type(ty.into_model(scope)?),
         };

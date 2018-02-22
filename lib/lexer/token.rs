@@ -1,11 +1,12 @@
 use core::RpNumber;
+use std::borrow::Cow;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token<'input> {
-    Identifier(&'input str),
-    TypeIdentifier(&'input str),
-    PackageDocComment(Vec<&'input str>),
-    DocComment(Vec<&'input str>),
+    Identifier(Cow<'input, str>),
+    TypeIdentifier(Cow<'input, str>),
+    PackageDocComment(Vec<Cow<'input, str>>),
+    DocComment(Vec<Cow<'input, str>>),
     Number(RpNumber),
     LeftCurly,
     RightCurly,
@@ -24,7 +25,7 @@ pub enum Token<'input> {
     RightArrow,
     CodeOpen,
     CodeClose,
-    CodeContent(&'input str),
+    CodeContent(Cow<'input, str>),
     String(String),
     // identifier-style keywords
     InterfaceKeyword,
