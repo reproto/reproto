@@ -67,6 +67,7 @@ module.exports = {
     }),
     new CopyWebpackPlugin([
       "target/wasm32-unknown-unknown/release/reproto-wasm.wasm",
+      "src/static/favicon.ico",
     ])
   ],
 };
