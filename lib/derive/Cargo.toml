@@ -15,6 +15,7 @@ Derives a reproto schema from an existing JSON.
 
 [dependencies]
 reproto-core = {path = "../core", version = "0.3"}
+reproto-ast = {path = "../ast", version = "0.3"}
 
 Inflector = "0.11"
 linked-hash-map = "0.5"

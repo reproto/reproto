@@ -187,7 +187,7 @@ pub mod tests {
             (10, Segment("/baz".to_string()), 15),
             (15, Slash, 16),
             (16, LeftCurly, 17),
-            (17, Identifier("id"), 19),
+            (17, Identifier("id".into()), 19),
             (19, RightCurly, 20),
             (20, Segment("/\\{}".to_string()), 28),
         ];

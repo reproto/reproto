@@ -1,8 +1,9 @@
 //! Derive a schema from the given input.
 
+use ast;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use compile;
-use core::{Context, Object, PathObject, RpFile, RpPackage, RpVersionedPackage, StdinObject};
+use core::{Context, Object, PathObject, RpPackage, RpVersionedPackage, StdinObject};
 use core::errors::Result;
 use derive;
 use genco::IoFmt;
@@ -94,18 +95,21 @@ pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
 
     let decl = derive::derive(derive, object.as_ref())?;
 
-    let file = RpFile {
-        comment: vec!["Generated from reproto derive CLI".to_string()],
+    let file = ast::File {
+        comment: vec!["Generated from reproto derive CLI".to_string().into()],
         options: vec![],
+        uses: vec![],
         decls: vec![decl],
     };
 
-    let stdout = io::stdout();
-
-    let simple_compile = compile::SimpleCompile::new(compile::Input::RpFile(
+    let input = compile::Input::File(
         file,
         Some(RpVersionedPackage::new(package_prefix.clone(), None)),
-    )).package_prefix(package_prefix);
+    );
+
+    let stdout = io::stdout();
+
+    let simple_compile = compile::SimpleCompile::new(input).package_prefix(package_prefix);
 
     let modules: Vec<String> = matches
         .values_of("module")

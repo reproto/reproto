@@ -1,7 +1,7 @@
 use super::into_model::IntoModel;
 use super::naming::{FromNaming, Naming, SnakeCase};
 use super::scope::Scope;
-use ast::UseDecl;
+use ast::{self, UseDecl};
 use core::{Context, Loc, Object, Options, PathObject, Range, Resolved, Resolver, RpDecl, RpFile,
            RpName, RpPackage, RpReg, RpRequiredPackage, RpVersionedPackage, WithPos};
 use core::errors::{Error, Result};
@@ -132,13 +132,14 @@ impl Environment {
     /// Import a single, structured file object.
     pub fn import_file(
         &mut self,
-        file: RpFile,
+        file: ast::File,
         package: Option<RpVersionedPackage>,
     ) -> Result<RpVersionedPackage> {
         let package = package.unwrap_or_else(|| RpVersionedPackage::new(RpPackage::empty(), None));
         let required = RpRequiredPackage::new(package.package.clone(), Range::any());
 
         if !self.visited.contains_key(&required) {
+            let file = self.load_file(file, &package)?;
             self.process_file(package.clone(), file)?;
             self.visited.insert(required, Some(package.clone()));
         }
@@ -236,13 +237,17 @@ impl Environment {
         Ok(result)
     }
 
-    /// Load the provided Object into an `RpFile`.
+    /// Load the provided Object into an `RpFile` without registering it to the set of visited
+    /// files.
     pub fn load_object(&mut self, object: &Object, package: &RpVersionedPackage) -> Result<RpFile> {
         let object = Rc::new(object.clone_object());
-
         let input = parser::read_to_string(object.read()?)?;
         let file = parser::parse(object, input.as_str())?;
+        self.load_file(file, package)
+    }
 
+    /// Loads the given file, without registering it to the set of visited packages.
+    fn load_file(&mut self, file: ast::File, package: &RpVersionedPackage) -> Result<RpFile> {
         let prefixes = self.process_uses(&file.uses)?;
 
         let endpoint_naming = match file.options.find_one_identifier("endpoint_naming")? {

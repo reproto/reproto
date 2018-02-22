@@ -9,6 +9,7 @@ extern crate ansi_term;
 extern crate clap;
 extern crate genco;
 extern crate relative_path;
+extern crate reproto_ast as ast;
 extern crate reproto_backend as backend;
 extern crate reproto_backend_doc as doc;
 extern crate reproto_backend_java as java;

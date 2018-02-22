@@ -515,7 +515,7 @@ pub mod tests {
     pub fn test_lexer() {
         let expected = vec![
             (0, Identifier("hello".into()), 5),
-            (6, TypeIdentifier("World"), 11),
+            (6, TypeIdentifier("World".into()), 11),
             (12, LeftCurly, 13),
             (14, UseKeyword, 17),
             (18, AsKeyword, 20),
@@ -564,11 +564,11 @@ pub mod tests {
     #[test]
     pub fn test_name() {
         let expected = vec![
-            (0, Identifier("foo"), 3),
+            (0, Identifier("foo".into()), 3),
             (3, Scope, 5),
-            (5, TypeIdentifier("Bar"), 8),
+            (5, TypeIdentifier("Bar".into()), 8),
             (8, Dot, 9),
-            (9, TypeIdentifier("Baz"), 12),
+            (9, TypeIdentifier("Baz".into()), 12),
         ];
 
         assert_eq!(expected, tokenize("foo::Bar.Baz").unwrap());
@@ -583,13 +583,13 @@ pub mod tests {
     #[test]
     pub fn test_instance() {
         let expected = vec![
-            (0, Identifier("foo"), 3),
+            (0, Identifier("foo".into()), 3),
             (3, Scope, 5),
-            (5, TypeIdentifier("Bar"), 8),
+            (5, TypeIdentifier("Bar".into()), 8),
             (8, Dot, 9),
-            (9, TypeIdentifier("Baz"), 12),
+            (9, TypeIdentifier("Baz".into()), 12),
             (12, LeftParen, 13),
-            (13, Identifier("hello"), 18),
+            (13, Identifier("hello".into()), 18),
             (18, Colon, 19),
             (20, Number(12.into()), 22),
             (22, RightParen, 23),
@@ -601,16 +601,16 @@ pub mod tests {
     #[test]
     pub fn test_comments() {
         let tokens = tokenize("// hello \n world");
-        assert_eq!(vec![(11, Identifier("world"), 16)], tokens.unwrap());
+        assert_eq!(vec![(11, Identifier("world".into()), 16)], tokens.unwrap());
 
         let tokens = tokenize("he/* this is a comment */llo");
         assert_eq!(
-            vec![(0, Identifier("he"), 2), (25, Identifier("llo"), 28)],
+            vec![(0, Identifier("he".into()), 2), (25, Identifier("llo".into()), 28)],
             tokens.unwrap()
         );
 
         let tokens = tokenize("// test\n// this\nhello");
-        assert_eq!(vec![(16, Identifier("hello"), 21)], tokens.unwrap());
+        assert_eq!(vec![(16, Identifier("hello".into()), 21)], tokens.unwrap());
     }
 
     #[test]
@@ -626,7 +626,7 @@ pub mod tests {
     #[test]
     pub fn test_doc_comment() {
         let tokens = tokenize("/// foo\n\r      /// bar \r\n     /// baz ").unwrap();
-        let reference = [(0, DocComment(vec![" foo", " bar ", " baz "]), 38)];
+        let reference = [(0, DocComment(vec![" foo".into(), " bar ".into(), " baz ".into()]), 38)];
         assert_eq!(reference, &tokens[..]);
     }
 }

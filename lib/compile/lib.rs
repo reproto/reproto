@@ -1,32 +1,33 @@
+extern crate reproto_ast as ast;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 
-use core::{ContextItem, Object, Resolver, RpFile, RpPackage, RpVersionedPackage};
+use core::{ContextItem, Object, Resolver, RpPackage, RpVersionedPackage};
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 use std::str;
 
 /// Input to the compiler.
-pub enum Input {
+pub enum Input<'input> {
     /// Already derive file.
-    RpFile(RpFile, Option<RpVersionedPackage>),
+    File(ast::File<'input>, Option<RpVersionedPackage>),
     /// Object that should be parsed.
     Object(Box<Object>, Option<RpVersionedPackage>),
 }
 
 /// A simple compilation stage.
-pub struct SimpleCompile {
-    pub input: Input,
+pub struct SimpleCompile<'input> {
+    pub input: Input<'input>,
     pub package_prefix: Option<RpPackage>,
     pub resolver: Option<Box<Resolver>>,
     pub errors: Option<Rc<RefCell<Vec<ContextItem>>>>,
 }
 
-impl SimpleCompile {
+impl<'input> SimpleCompile<'input> {
     /// Build a new compilation stage.
-    pub fn new(input: Input) -> SimpleCompile {
+    pub fn new(input: Input<'input>) -> SimpleCompile {
         Self {
             input: input,
             package_prefix: None,
@@ -96,7 +97,7 @@ where
     let mut env = backend::Environment::new(ctx.clone(), package_prefix.clone(), resolver);
 
     match input {
-        Input::RpFile(file, package) => {
+        Input::File(file, package) => {
             env.import_file(file, package)?;
         }
         Input::Object(object, package) => {

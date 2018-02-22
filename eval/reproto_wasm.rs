@@ -5,6 +5,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate stdweb;
 
+extern crate reproto_ast as ast;
 extern crate reproto_backend_java as java;
 extern crate reproto_backend_js as js;
 extern crate reproto_backend_json as json;
@@ -433,12 +434,12 @@ fn derive(derive: Derive) -> DeriveResult {
         Ok(core::RpVersionedPackage::new(package, version))
     }
 
-    fn derive_file(
+    fn derive_file<'input>(
         derive: &Derive,
         package_prefix: &core::RpPackage,
-        object: &core::Object,
+        object: &'input core::Object,
         format: Box<derive::Format>,
-    ) -> core::errors::Result<compile::Input> {
+    ) -> core::errors::Result<compile::Input<'input>> {
         let decl = derive::derive(
             derive::Derive::new(
                 derive.root_name.to_string(),
@@ -448,13 +449,14 @@ fn derive(derive: Derive) -> DeriveResult {
             object,
         )?;
 
-        let file = core::RpFile {
-            comment: vec!["Generated from reproto derive".to_string()],
+        let file = ast::File {
+            comment: vec!["Generated from reproto derive".to_string().into()],
+            uses: vec![],
             options: vec![],
             decls: vec![decl],
         };
 
-        let input = compile::Input::RpFile(
+        let input = compile::Input::File(
             file,
             Some(core::RpVersionedPackage::new(package_prefix.clone(), None)),
         );

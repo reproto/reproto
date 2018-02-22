@@ -2,9 +2,9 @@ extern crate reproto_core as core;
 
 use core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage, WithPos};
 use core::errors::Result;
+use std::borrow::Cow;
 use std::ops;
 use std::result;
-use std::borrow::Cow;
 
 /// Items can be commented and have attributes.
 ///
@@ -84,7 +84,7 @@ pub enum Attribute<'input> {
 /// A type.
 ///
 /// For example: `u32`, `::Relative::Name`, or `bytes`.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Double,
     Float,
@@ -223,7 +223,7 @@ impl<'input> Field<'input> {
 /// ```
 ///
 /// Note: prefixes names are _always_ imported with `UseDecl`.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Name {
     Relative {
         parts: Vec<String>,

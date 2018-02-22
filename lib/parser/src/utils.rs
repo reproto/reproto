@@ -88,7 +88,9 @@ mod tests {
 
     #[test]
     fn test_strip_code_block() {
-        let result = strip_code_block("\n   hello\n  world\n\n\n again\n\n\n");
-        assert_eq!(vec!["  hello", " world", "", "", "again"], result);
+        let result = strip_code_block("\n   hello\n  world\n\n\n again\n\n\n".into());
+        let expected: Vec<Cow<'static, str>> = vec!["  hello".into(), " world".into(), "".into(), "".into(), "again".into()];
+
+        assert_eq!(expected, result);
     }
 }

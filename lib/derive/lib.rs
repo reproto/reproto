@@ -1,5 +1,6 @@
 extern crate inflector;
 extern crate linked_hash_map;
+extern crate reproto_ast as ast;
 extern crate reproto_core as core;
 extern crate serde;
 extern crate serde_json;
@@ -14,16 +15,17 @@ mod utils;
 pub use self::format::Format;
 pub use self::json::Json;
 pub use self::yaml::Yaml;
-use core::{Loc, Object, Pos, RpDecl, RpField, RpInterfaceBody, RpModifier, RpName, RpPackage,
-           RpSubType, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage,
-           DEFAULT_TAG};
+use ast::{Attribute, AttributeItem, Decl, Field, InterfaceBody, Item, Name, SubType, TupleBody,
+          Type, TypeBody, TypeMember, Value};
+use core::{Loc, Object, Pos, RpModifier, RpPackage, DEFAULT_TAG};
 use core::errors::Result;
 use inflector::cases::pascalcase::to_pascal_case;
 use inflector::cases::snakecase::to_snake_case;
 use linked_hash_map::LinkedHashMap;
 use sir::{FieldSir, Sir, SubTypeSir};
+use std::borrow::Cow;
 use std::cmp;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::hash;
 use std::ops;
@@ -63,14 +65,12 @@ impl<'a> Context<'a> {
         }
     }
 
-    /// Constructs an ``RpNAme`.
-    fn name(&self) -> RpName {
-        let package = self.package_prefix
-            .cloned()
-            .unwrap_or_else(RpPackage::empty);
-
-        let package = RpVersionedPackage::new(package, None);
-        RpName::new(None, package, self.path.clone())
+    /// Constructs an ``NAme`.
+    fn name(&self) -> Name {
+        Name::Absolute {
+            prefix: None,
+            parts: self.path.clone(),
+        }
     }
 }
 
@@ -88,7 +88,7 @@ impl Derive {
     }
 }
 
-type TypesCache = HashMap<Sir, RpName>;
+type TypesCache = HashMap<Sir, Name>;
 
 /// An opaque data structure, well all instances are equal but can contain different data.
 #[derive(Debug, Clone)]
@@ -143,37 +143,37 @@ impl<'a> FieldInit<'a> {
         }
     }
 
-    fn init(
+    fn init<'input>(
         self,
         original_name: String,
         sir: &FieldSir,
-        decls: &mut Vec<RpDecl>,
-    ) -> Result<RpField> {
+        members: &mut Vec<TypeMember<'input>>,
+    ) -> Result<Item<'input, Field<'input>>> {
         let mut comment = Vec::new();
 
         let name = to_snake_case(&original_name);
 
         let ty = match sir.field {
-            Sir::Boolean => RpType::Boolean,
-            Sir::Float => RpType::Float,
-            Sir::Double => RpType::Double,
+            Sir::Boolean => Type::Boolean,
+            Sir::Float => Type::Float,
+            Sir::Double => Type::Double,
             Sir::I64(ref examples) => {
                 format_comment(&mut comment, examples)?;
-                RpType::Signed { size: 64 }
+                Type::Signed { size: 64 }
             }
             Sir::U64(ref examples) => {
                 format_comment(&mut comment, examples)?;
-                RpType::Unsigned { size: 64 }
+                Type::Unsigned { size: 64 }
             }
             Sir::String(ref examples) => {
                 format_comment(&mut comment, examples)?;
-                RpType::String
+                Type::String
             }
             Sir::DateTime(ref examples) => {
                 format_comment(&mut comment, examples)?;
-                RpType::DateTime
+                Type::DateTime
             }
-            Sir::Any => RpType::Any,
+            Sir::Any => Type::Any,
             Sir::Array(ref inner) => {
                 let field = FieldSir {
                     optional: false,
@@ -183,11 +183,11 @@ impl<'a> FieldInit<'a> {
                 let f = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
                     name.clone(),
                     &field,
-                    decls,
+                    members,
                 )?;
 
-                RpType::Array {
-                    inner: Box::new(f.ty),
+                Type::Array {
+                    inner: Box::new(f.item.ty.clone()),
                 }
             }
             ref sir => {
@@ -200,16 +200,18 @@ impl<'a> FieldInit<'a> {
 
                     self.types.insert(sir.clone(), name.clone());
 
-                    decls.push(DeclDeriver {
+                    let decl = DeclDeriver {
                         pos: &self.pos,
                         ctx: ctx.clone(),
                         types: self.types,
-                    }.derive(sir)?);
+                    }.derive(sir)?;
+
+                    members.push(TypeMember::InnerDecl(decl));
 
                     name
                 };
 
-                RpType::Name { name: name }
+                Type::Name { name: name }
             }
         };
 
@@ -219,28 +221,33 @@ impl<'a> FieldInit<'a> {
             None
         };
 
-        // field referencing inner declaration
-        return Ok(RpField {
+        let field = Field {
             modifier: if sir.optional {
                 RpModifier::Optional
             } else {
                 RpModifier::Required
             },
-            name: name.clone(),
-            comment: comment,
+            name: name.clone().into(),
             ty: ty,
             field_as: field_as,
+        };
+
+        // field referencing inner declaration
+        return Ok(Item {
+            comment: comment,
+            attributes: Vec::new(),
+            item: Loc::new(field, self.pos.clone()),
         });
 
         /// Format comments and attach examples.
-        fn format_comment<T>(out: &mut Vec<String>, examples: &[T]) -> Result<()>
+        fn format_comment<T>(out: &mut Vec<Cow<'static, str>>, examples: &[T]) -> Result<()>
         where
             T: serde::Serialize + fmt::Debug,
         {
-            out.push(format!("## Examples"));
-            out.push("".to_string());
+            out.push(format!("## Examples").into());
+            out.push("".to_string().into());
 
-            out.push(format!("```json"));
+            out.push(format!("```json").into());
 
             let mut seen = HashSet::new();
 
@@ -250,11 +257,11 @@ impl<'a> FieldInit<'a> {
 
                 if !seen.contains(&string) {
                     seen.insert(string.clone());
-                    out.push(string);
+                    out.push(string.into());
                 }
             }
 
-            out.push(format!("```"));
+            out.push(format!("```").into());
 
             Ok(())
         }
@@ -269,36 +276,34 @@ struct DeclDeriver<'a> {
 
 impl<'a> DeclDeriver<'a> {
     /// Derive a declaration from the given JSON.
-    fn derive(self, sir: &Sir) -> Result<RpDecl> {
+    fn derive<'s, 'input>(self, sir: &'s Sir) -> Result<Decl<'input>> {
         let decl = match *sir {
             Sir::Tuple(ref array) => {
-                let mut refiner = TupleRefiner {
+                let tuple = TupleRefiner {
                     pos: &self.pos,
                     ctx: self.ctx,
                     types: self.types,
-                };
+                }.derive(array)?;
 
-                let tuple = refiner.derive(array)?;
-                RpDecl::Tuple(Rc::new(Loc::new(tuple, self.pos.clone())))
+                Decl::Tuple(tuple)
             }
             Sir::Object(ref object) => {
-                let mut refiner = TypeRefiner {
+                let type_ = TypeRefiner {
                     pos: &self.pos,
                     ctx: self.ctx,
                     types: self.types,
-                };
+                }.derive(object)?;
 
-                let type_ = refiner.derive(object)?;
-                RpDecl::Type(Rc::new(Loc::new(type_, self.pos.clone())))
+                Decl::Type(type_)
             }
             Sir::Interface(ref type_field, ref sub_types) => {
-                let type_ = InterfaceRefiner {
+                let interface = InterfaceRefiner {
                     pos: &self.pos,
                     ctx: self.ctx,
                     types: self.types,
                 }.derive(type_field, sub_types)?;
 
-                RpDecl::Interface(Rc::new(Loc::new(type_, self.pos.clone())))
+                Decl::Interface(interface)
             }
             // For arrays, only generate the inner type.
             Sir::Array(ref inner) => self.derive(inner)?,
@@ -317,34 +322,37 @@ struct TypeRefiner<'a> {
 
 impl<'a> TypeRefiner<'a> {
     /// Derive an struct body from the given input array.
-    fn derive(&mut self, object: &LinkedHashMap<String, FieldSir>) -> Result<RpTypeBody> {
-        let mut body = RpTypeBody {
-            local_name: self.ctx.local_name()?.to_string(),
-            name: self.ctx.name(),
-            comment: Vec::new(),
-            decls: Vec::new(),
-            fields: Vec::new(),
-            codes: Vec::new(),
-            reserved: HashSet::new(),
+    fn derive<'input>(
+        &mut self,
+        object: &LinkedHashMap<String, FieldSir>,
+    ) -> Result<Item<'input, TypeBody<'input>>> {
+        let mut body = TypeBody {
+            name: self.ctx.local_name()?.to_string().into(),
+            members: Vec::new(),
         };
 
         self.init(&mut body, object)?;
-        Ok(body)
+
+        Ok(Item {
+            comment: Vec::new(),
+            attributes: Vec::new(),
+            item: Loc::new(body, self.pos.clone()),
+        })
     }
 
-    fn init(
+    fn init<'input>(
         &mut self,
-        base: &mut RpTypeBody,
+        base: &mut TypeBody<'input>,
         object: &LinkedHashMap<String, FieldSir>,
     ) -> Result<()> {
         for (name, added) in object.iter() {
             let field = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
                 name.to_string(),
                 added,
-                &mut base.decls,
+                &mut base.members,
             )?;
 
-            base.fields.push(Loc::new(field, self.pos.clone()));
+            base.members.push(TypeMember::Field(field));
         }
 
         Ok(())
@@ -359,34 +367,38 @@ struct SubTypeRefiner<'a> {
 
 impl<'a> SubTypeRefiner<'a> {
     /// Derive an struct body from the given input array.
-    fn derive(&mut self, sub_type: &SubTypeSir) -> Result<RpSubType> {
-        let mut body = RpSubType {
-            local_name: self.ctx.local_name()?.to_string(),
-            name: self.ctx.name(),
-            comment: vec![],
-            decls: vec![],
-            fields: vec![],
-            codes: vec![],
-            sub_type_name: None,
+    fn derive<'input>(&mut self, sub_type: &SubTypeSir) -> Result<Item<'input, SubType<'input>>> {
+        let mut body = SubType {
+            name: Loc::new(self.ctx.local_name()?.to_string().into(), self.pos.clone()),
+            members: vec![],
+            alias: None,
         };
 
         self.init(&mut body, sub_type)?;
-        Ok(body)
+
+        Ok(Item {
+            comment: Vec::new(),
+            attributes: Vec::new(),
+            item: Loc::new(body, self.pos.clone()),
+        })
     }
 
-    fn init(&mut self, base: &mut RpSubType, sub_type: &SubTypeSir) -> Result<()> {
-        if sub_type.name != base.local_name {
-            base.sub_type_name = Some(Loc::new(sub_type.name.to_string(), self.pos.clone()));
+    fn init<'input>(&mut self, base: &mut SubType<'input>, sub_type: &SubTypeSir) -> Result<()> {
+        if sub_type.name.as_str() != base.name.as_ref() {
+            base.alias = Some(Loc::new(
+                Value::String(sub_type.name.to_string()),
+                self.pos.clone(),
+            ));
         }
 
         for (field_name, field_value) in &sub_type.structure {
             let field = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
                 field_name.to_string(),
                 field_value,
-                &mut base.decls,
+                &mut base.members,
             )?;
 
-            base.fields.push(Loc::new(field, self.pos.clone()));
+            base.members.push(TypeMember::Field(field));
         }
 
         Ok(())
@@ -401,31 +413,47 @@ struct InterfaceRefiner<'a> {
 
 impl<'a> InterfaceRefiner<'a> {
     /// Derive an struct body from the given input array.
-    fn derive(&mut self, tag: &str, sub_types: &[SubTypeSir]) -> Result<RpInterfaceBody> {
-        let sub_type_strategy = if tag != DEFAULT_TAG {
-            RpSubTypeStrategy::Tagged {
-                tag: tag.to_string(),
-            }
-        } else {
-            RpSubTypeStrategy::default()
+    fn derive<'input>(
+        &mut self,
+        tag: &str,
+        sub_types: &[SubTypeSir],
+    ) -> Result<Item<'input, InterfaceBody<'input>>> {
+        let mut attributes = Vec::new();
+
+        if tag != DEFAULT_TAG {
+            let name = Loc::new("type_info".into(), self.pos.clone());
+            let mut values = Vec::new();
+
+            values.push(AttributeItem::NameValue {
+                name: Loc::new("type".into(), self.pos.clone()),
+                value: Loc::new(Value::String("type".to_string()), self.pos.clone()),
+            });
+
+            let a = Attribute::List(name, values);
+
+            attributes.push(Loc::new(a, self.pos.clone()));
         };
 
-        let mut body = RpInterfaceBody {
-            local_name: self.ctx.local_name()?.to_string(),
-            name: self.ctx.name(),
-            comment: Vec::new(),
-            decls: Vec::new(),
-            fields: Vec::new(),
-            codes: Vec::new(),
-            sub_types: BTreeMap::new(),
-            sub_type_strategy: sub_type_strategy,
+        let mut body = InterfaceBody {
+            name: self.ctx.local_name()?.to_string().into(),
+            members: Vec::new(),
+            sub_types: Vec::new(),
         };
 
         self.init(&mut body, sub_types)?;
-        Ok(body)
+
+        Ok(Item {
+            comment: Vec::new(),
+            attributes: attributes,
+            item: Loc::new(body, self.pos.clone()),
+        })
     }
 
-    fn init(&mut self, base: &mut RpInterfaceBody, sub_types: &[SubTypeSir]) -> Result<()> {
+    fn init<'input>(
+        &mut self,
+        base: &mut InterfaceBody<'input>,
+        sub_types: &[SubTypeSir],
+    ) -> Result<()> {
         for st in sub_types {
             let local_name = to_pascal_case(&st.name);
             let ctx = self.ctx.join(local_name.clone());
@@ -436,8 +464,7 @@ impl<'a> InterfaceRefiner<'a> {
                 types: self.types,
             }.derive(st)?;
 
-            base.sub_types
-                .insert(local_name, Rc::new(Loc::new(sub_type, self.pos.clone())));
+            base.sub_types.push(sub_type);
         }
 
         Ok(())
@@ -452,29 +479,30 @@ struct TupleRefiner<'a> {
 
 impl<'a> TupleRefiner<'a> {
     /// Derive an tuple body from the given input array.
-    fn derive(&mut self, array: &[FieldSir]) -> Result<RpTupleBody> {
-        let mut body = RpTupleBody {
-            local_name: self.ctx.local_name()?.to_string(),
-            name: self.ctx.name(),
-            comment: Vec::new(),
-            decls: Vec::new(),
-            fields: Vec::new(),
-            codes: Vec::new(),
+    fn derive<'input>(&mut self, array: &[FieldSir]) -> Result<Item<'input, TupleBody<'input>>> {
+        let mut body = TupleBody {
+            name: self.ctx.local_name()?.to_string().into(),
+            members: Vec::new(),
         };
 
         self.init(&mut body, array)?;
-        Ok(body)
+
+        Ok(Item {
+            comment: Vec::new(),
+            attributes: Vec::new(),
+            item: Loc::new(body, self.pos.clone()),
+        })
     }
 
-    fn init(&mut self, base: &mut RpTupleBody, array: &[FieldSir]) -> Result<()> {
+    fn init<'input>(&mut self, base: &mut TupleBody<'input>, array: &[FieldSir]) -> Result<()> {
         for (index, added) in array.iter().enumerate() {
             let field = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
                 format!("field_{}", index),
                 added,
-                &mut base.decls,
+                &mut base.members,
             )?;
 
-            base.fields.push(Loc::new(field, self.pos.clone()));
+            base.members.push(TypeMember::Field(field));
         }
 
         Ok(())
@@ -482,7 +510,7 @@ impl<'a> TupleRefiner<'a> {
 }
 
 /// Derive a declaration from the given input.
-pub fn derive(derive: Derive, object: &Object) -> Result<RpDecl> {
+pub fn derive<'input>(derive: Derive, object: &'input Object) -> Result<Decl<'input>> {
     let Derive {
         root_name,
         format,
@@ -512,10 +540,14 @@ pub fn derive(derive: Derive, object: &Object) -> Result<RpDecl> {
 #[cfg(test)]
 mod tests {
     use super::{derive, Derive, Json};
-    use core::{BytesObject, Loc, RpDecl, RpSubTypeStrategy, RpType};
+    use ast::{Decl, Type};
+    use core::{BytesObject, Loc};
     use std::sync::Arc;
 
-    fn input(input: &str) -> RpDecl {
+    fn input<T>(input: &str, test: T)
+    where
+        T: Fn(Decl) -> (),
+    {
         let object = BytesObject::new(
             "test".to_string(),
             Arc::new(input.as_bytes().iter().cloned().collect()),
@@ -527,62 +559,36 @@ mod tests {
             package_prefix: None,
         };
 
-        derive(derive_config, &object).expect("bad derive")
+        test(derive(derive_config, &object).expect("bad derive"))
     }
 
     #[test]
     fn simple_declaration() {
-        let decl = input(r#"{"id": 42, "name": "Oscar"}"#);
+        input(r#"{"id": 42, "name": "Oscar"}"#, |decl| {
+            let ty = match decl {
+                Decl::Type(ty) => ty,
+                other => panic!("expected type, got: {:?}", other),
+            };
 
-        let ty = match decl {
-            RpDecl::Type(ty) => ty,
-            other => panic!("expected type, got: {:?}", other),
-        };
-
-        assert_eq!(2, ty.fields.len());
-        assert_eq!("id", ty.fields[0].name.as_str());
-        assert_eq!(RpType::Unsigned { size: 64 }, ty.fields[0].ty);
-        assert_eq!("name", ty.fields[1].name.as_str());
-        assert_eq!(RpType::String, ty.fields[1].ty);
+            assert_eq!(2, ty.members.len());
+        });
     }
 
     #[test]
     fn test_interface() {
-        let decl = input(
+        input(
             r#"[
     {"kind": "dragon", "name": "Stephen", "age": 4812, "fire": "blue"},
     {"kind": "knight", "name": "Olivia", "armor": "Unobtanium"}
 ]"#,
-        );
+            |decl| {
+                let intf = match decl {
+                    Decl::Interface(intf) => intf,
+                    other => panic!("expected interface, got: {:?}", other),
+                };
 
-        let intf = match decl {
-            RpDecl::Interface(intf) => intf,
-            other => panic!("expected interface, got: {:?}", other),
-        };
-
-        assert_eq!(
-            RpSubTypeStrategy::Tagged {
-                tag: "kind".to_string(),
+                assert_eq!(2, intf.sub_types.len());
             },
-            intf.sub_type_strategy
-        );
-
-        assert_eq!(2, intf.sub_types.len());
-        assert_eq!(
-            Some("dragon"),
-            intf.sub_types["Dragon"]
-                .sub_type_name
-                .as_ref()
-                .map(Loc::value)
-                .map(String::as_str)
-        );
-        assert_eq!(
-            Some("knight"),
-            intf.sub_types["Knight"]
-                .sub_type_name
-                .as_ref()
-                .map(Loc::value)
-                .map(String::as_str)
         );
     }
 }
