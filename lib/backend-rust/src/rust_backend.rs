@@ -8,7 +8,6 @@ use core::errors::*;
 use genco::{Element, IntoTokens, Quoted, Rust, Tokens};
 use genco::rust::{imported, imported_alias};
 use listeners::Listeners;
-use naming::{FromNaming, Naming, SnakeCase};
 use rust_compiler::RustCompiler;
 use rust_file_spec::RustFileSpec;
 use rust_options::RustOptions;
@@ -73,7 +72,6 @@ const SCOPE_SEP: &'static str = "::";
 pub struct RustBackend {
     pub env: Environment,
     listeners: Box<Listeners>,
-    to_lower_snake: Box<Naming>,
     hash_map: Rust<'static>,
     json_value: Rust<'static>,
     datetime: Option<Tokens<'static, Rust<'static>>>,
@@ -84,7 +82,6 @@ impl RustBackend {
         RustBackend {
             env: env,
             listeners: listeners,
-            to_lower_snake: SnakeCase::new().to_lower_snake(),
             hash_map: imported("std::collections", "HashMap"),
             json_value: imported_alias("serde_json", "Value", "json"),
             datetime: options.datetime.clone(),

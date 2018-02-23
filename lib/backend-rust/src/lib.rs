@@ -6,7 +6,6 @@ extern crate log;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
-extern crate reproto_naming as naming;
 extern crate reproto_trans as trans;
 extern crate serde;
 #[allow(unused)]

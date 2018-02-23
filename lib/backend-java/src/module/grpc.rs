@@ -7,7 +7,7 @@ use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
 use java_backend::JavaBackend;
 use listeners::{Configure, EndpointExtra, Listeners, ServiceAdded};
-use naming::{FromNaming, Naming, SnakeCase};
+use naming::{self, Naming};
 use processor::Processor;
 use std::borrow::Borrow;
 use std::rc::Rc;
@@ -178,7 +178,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for JsonMarshaller<'a> {
 
 pub struct GrpcClient {
     utils: Rc<Utils>,
-    snake_to_upper: Box<Naming>,
+    to_upper_snake: naming::ToUpperSnake,
     mapper_provider: Java<'static>,
     bais: Java<'static>,
     generated: Java<'static>,
@@ -201,7 +201,7 @@ impl GrpcClient {
     pub fn new(utils: &Rc<Utils>) -> GrpcClient {
         GrpcClient {
             utils: Rc::clone(utils),
-            snake_to_upper: SnakeCase::new().to_upper_snake(),
+            to_upper_snake: naming::to_upper_snake(),
             mapper_provider: imported("io.reproto", "MapperProvider"),
             bais: imported("java.io", "ByteArrayInputStream"),
             generated: imported("javax.annotation", "Generated"),
@@ -252,7 +252,7 @@ impl GrpcClient {
 
         let method_name = Rc::new(format!(
             "METHOD_{}",
-            self.snake_to_upper.convert(endpoint.id.as_str())
+            self.to_upper_snake.convert(endpoint.id.as_str())
         ));
 
         let descriptor_ty = self.method_descriptor

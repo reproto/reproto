@@ -10,7 +10,7 @@ use js_field::JsField;
 use js_file_spec::JsFileSpec;
 use js_options::JsOptions;
 use listeners::Listeners;
-use naming::{FromNaming, Naming, SnakeCase};
+use naming::{self, Naming};
 use std::rc::Rc;
 use trans::Environment;
 use utils::{is_defined, is_not_defined};
@@ -18,7 +18,7 @@ use utils::{is_defined, is_not_defined};
 pub struct JsBackend {
     pub env: Environment,
     listeners: Box<Listeners>,
-    to_lower_snake: Box<Naming>,
+    to_lower_snake: naming::ToLowerSnake,
     values: Tokens<'static, JavaScript<'static>>,
     enum_name: Tokens<'static, JavaScript<'static>>,
 }
@@ -28,7 +28,7 @@ impl JsBackend {
         JsBackend {
             env: env,
             listeners: listeners,
-            to_lower_snake: SnakeCase::new().to_lower_snake(),
+            to_lower_snake: naming::to_lower_snake(),
             values: "values".into(),
             enum_name: "name".into(),
         }

@@ -12,7 +12,7 @@ use java_field::JavaField;
 use java_file::JavaFile;
 use java_options::JavaOptions;
 use listeners::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
-use naming::{CamelCase, FromNaming, Naming, SnakeCase};
+use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
 use trans::Environment;
@@ -22,9 +22,9 @@ pub struct JavaBackend {
     env: Rc<Environment>,
     utils: Rc<Utils>,
     options: JavaOptions,
-    snake_to_upper_camel: Box<Naming>,
-    snake_to_lower_camel: Box<Naming>,
-    variant_naming: Box<Naming>,
+    to_upper_camel: naming::ToUpperCamel,
+    to_lower_camel: naming::ToLowerCamel,
+    variant_naming: naming::ToUpperSnake,
     null_string: Element<'static, Java<'static>>,
     suppress_warnings: Java<'static>,
     string_builder: Java<'static>,
@@ -52,9 +52,9 @@ impl JavaBackend {
             env: Rc::clone(env),
             utils: Rc::clone(utils),
             options: options,
-            snake_to_upper_camel: SnakeCase::new().to_upper_camel(),
-            snake_to_lower_camel: SnakeCase::new().to_lower_camel(),
-            variant_naming: CamelCase::new().to_upper_snake(),
+            to_upper_camel: naming::to_upper_camel(),
+            to_lower_camel: naming::to_lower_camel(),
+            variant_naming: naming::to_upper_snake(),
             null_string: "null".quoted(),
             void: imported("java.lang", "Void"),
             override_: imported("java.lang", "Override"),
@@ -707,7 +707,7 @@ impl JavaBackend {
         let mut extra: Vec<EndpointExtra> = Vec::new();
 
         for endpoint in body.endpoints.values() {
-            let name = self.snake_to_lower_camel.convert(endpoint.id.as_str());
+            let name = self.to_lower_camel.convert(endpoint.id.as_str());
 
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
                 let ty = self.utils.into_java_type(res.ty())?;
@@ -781,8 +781,8 @@ impl JavaBackend {
             java_value_type
         };
 
-        let camel_name = Rc::new(self.snake_to_upper_camel.convert(field.ident()));
-        let ident = Rc::new(self.snake_to_lower_camel.convert(field.ident()));
+        let camel_name = Rc::new(self.to_upper_camel.convert(field.ident()));
+        let ident = Rc::new(self.to_lower_camel.convert(field.ident()));
 
         let spec = Field::new(java_type, ident);
 

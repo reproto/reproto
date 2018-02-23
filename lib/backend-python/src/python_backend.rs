@@ -8,7 +8,7 @@ use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModi
 use core::errors::*;
 use genco::{Element, Quoted, Tokens};
 use genco::python::{imported, Python};
-use naming::{FromNaming, Naming, SnakeCase};
+use naming::{self, Naming};
 use options::Options;
 use python_compiler::PythonCompiler;
 use python_field::PythonField;
@@ -19,7 +19,7 @@ use trans::Environment;
 
 pub struct PythonBackend {
     pub env: Environment,
-    to_lower_snake: Box<Naming>,
+    to_lower_snake: naming::ToLowerSnake,
     dict: Element<'static, Python<'static>>,
     enum_enum: Python<'static>,
     service_generators: Vec<Box<ServiceCodegen>>,
@@ -29,7 +29,7 @@ impl PythonBackend {
     pub fn new(env: Environment, options: Options) -> PythonBackend {
         PythonBackend {
             env: env,
-            to_lower_snake: SnakeCase::new().to_lower_snake(),
+            to_lower_snake: naming::to_lower_snake(),
             dict: "dict".into(),
             enum_enum: imported("enum").name("Enum"),
             service_generators: options.service_generators,
