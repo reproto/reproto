@@ -5,6 +5,8 @@ extern crate log;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
+extern crate reproto_naming as naming;
+extern crate reproto_trans as trans;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -20,7 +22,6 @@ mod module;
 mod codegen;
 mod utils;
 
-use backend::Environment;
 use core::Context;
 use core::errors::*;
 use java_backend::JavaBackend;
@@ -29,6 +30,7 @@ use listeners::{Configure, Listeners};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::path::Path;
 use std::rc::Rc;
+use trans::Environment;
 use utils::Utils;
 
 pub const JAVA_CONTEXT: &str = "java";

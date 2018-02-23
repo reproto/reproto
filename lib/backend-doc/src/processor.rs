@@ -1,7 +1,7 @@
 //! Processor trait.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use backend::Environment;
+use trans::Environment;
 use core::{ForEachLoc, Loc, RpDecl, RpField, RpName, RpType, RpVersionedPackage, WithPos};
 use core::errors::*;
 use doc_builder::DocBuilder;

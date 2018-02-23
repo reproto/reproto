@@ -23,6 +23,7 @@ members = [
   "lib/semck",
   "lib/derive",
   "lib/semver",
+  "lib/trans",
   "tools/pack",
 ]
 

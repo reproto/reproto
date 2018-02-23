@@ -1,6 +1,5 @@
 use super::{JS_CONTEXT, TYPE_SEP};
-use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, Environment,
-              FromNaming, Naming, PackageUtils, SnakeCase};
+use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageUtils};
 use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
            RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody};
 use core::errors::*;
@@ -11,7 +10,9 @@ use js_field::JsField;
 use js_file_spec::JsFileSpec;
 use js_options::JsOptions;
 use listeners::Listeners;
+use naming::{FromNaming, Naming, SnakeCase};
 use std::rc::Rc;
+use trans::Environment;
 use utils::{is_defined, is_not_defined};
 
 pub struct JsBackend {

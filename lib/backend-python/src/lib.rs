@@ -5,6 +5,8 @@ extern crate log;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
+extern crate reproto_naming as naming;
+extern crate reproto_trans as trans;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -19,7 +21,7 @@ mod options;
 mod module;
 mod utils;
 
-use backend::{Environment, Initializer};
+use backend::Initializer;
 use core::Context;
 use core::errors::*;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -27,6 +29,7 @@ use options::Options;
 use python_backend::PythonBackend;
 use std::path::Path;
 use std::rc::Rc;
+use trans::Environment;
 
 const TYPE_SEP: &str = "_";
 const INIT_PY: &str = "__init__.py";

@@ -540,8 +540,8 @@ pub fn derive<'input>(derive: Derive, object: &'input Object) -> Result<Decl<'in
 #[cfg(test)]
 mod tests {
     use super::{derive, Derive, Json};
-    use ast::{Decl, Type};
-    use core::{BytesObject, Loc};
+    use ast::Decl;
+    use core::BytesObject;
     use std::sync::Arc;
 
     fn input<T>(input: &str, test: T)

@@ -1,5 +1,5 @@
 [package]
-name = "reproto-backend"
+name = "reproto-trans"
 version = "0.3.13"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
@@ -9,16 +9,19 @@ homepage = "https://github.com/reproto/reproto"
 documentation = "https://docs.rs/reproto"
 description = """
 Rethinking Protocol Generators
+
+Transpiler utilities.
 """
 
 [dependencies]
-reproto-trans = {path = "../trans", version = "0.3"}
 reproto-core = {path = "../core", version = "0.3"}
+reproto-ast = {path = "../ast", version = "0.3"}
 reproto-parser = {path = "../parser", version = "0.3"}
 reproto-path-parser = {path = "../path-parser", version = "0.3"}
 reproto-naming = {path = "../naming", version = "0.3"}
 
 log = "0.3"
 linked-hash-map = {version = "0.5", features = ["serde"]}
-serde_json = "1.0"
-genco = {version = "0.2"}
+
+[lib]
+path = "lib.rs"

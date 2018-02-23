@@ -2,9 +2,9 @@ use super::into_bytes::IntoBytes;
 use core::{Handle, Loc, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
            RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
 use core::errors::*;
-use environment::Environment;
 use std::collections::BTreeMap;
 use std::io::Write;
+use trans::Environment;
 
 pub trait PackageProcessor<'el>
 where

@@ -1,10 +1,10 @@
-use backend::Environment;
 use core::{RpName, RpType, RpVersionedPackage};
 use core::errors::*;
 use genco::{IntoTokens, Java, Tokens};
 use genco::java::{imported, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG};
 use processor::Processor;
 use std::rc::Rc;
+use trans::Environment;
 
 pub struct Utils {
     env: Rc<Environment>,

@@ -2,13 +2,13 @@
 //!
 //! Build an overview of available packages.
 
-use backend::Environment;
 use core::{RpDecl, RpFile, RpVersionedPackage};
 use core::errors::*;
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
 use processor::Processor;
+use trans::Environment;
 
 pub struct Data<'a> {
     pub package: &'a RpVersionedPackage,

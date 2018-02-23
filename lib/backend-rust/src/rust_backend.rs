@@ -1,17 +1,19 @@
 //! Backend for Rust
 
 use super::RUST_CONTEXT;
-use backend::{Code, Environment, FromNaming, Naming, PackageUtils, SnakeCase};
+use backend::{Code, PackageUtils};
 use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName,
            RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody};
 use core::errors::*;
 use genco::{Element, IntoTokens, Quoted, Rust, Tokens};
 use genco::rust::{imported, imported_alias};
 use listeners::Listeners;
+use naming::{FromNaming, Naming, SnakeCase};
 use rust_compiler::RustCompiler;
 use rust_file_spec::RustFileSpec;
 use rust_options::RustOptions;
 use std::rc::Rc;
+use trans::Environment;
 use utils::rust_keyword;
 
 /// #[allow(non_camel_case_types)] attribute.

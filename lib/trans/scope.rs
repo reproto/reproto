@@ -1,7 +1,7 @@
 //! Propagates scope-specific information to `into_model` transformations.
 
-use super::naming::Naming;
 use core::{Context, RpName, RpPackage, RpVersionedPackage};
+use naming::Naming;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -139,12 +139,12 @@ impl Iterator for ScopeWalker {
 
 #[cfg(test)]
 mod tests {
-    use super::Scope;
     use core::{RpPackage, RpVersionedPackage};
+    use core::CapturingFilesystem;
     use core::Context;
+    use scope::Scope;
     use std::collections::HashMap;
     use std::rc::Rc;
-    use core::CapturingFilesystem;
 
     #[test]
     pub fn test_scope() {

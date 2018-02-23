@@ -1,7 +1,7 @@
 //! Compiler for Rust Backend
 
 use super::{EXT, MOD};
-use backend::{Environment, PackageProcessor, PackageUtils};
+use backend::{PackageProcessor, PackageUtils};
 use core::{Handle, Loc, RelativePath, RelativePathBuf, RpEnumBody, RpInterfaceBody, RpName,
            RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
@@ -9,6 +9,7 @@ use rust_backend::RustBackend;
 use rust_file_spec::RustFileSpec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
+use trans::Environment;
 
 pub struct RustCompiler<'a> {
     pub handle: &'a Handle,

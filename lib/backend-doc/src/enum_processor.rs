@@ -1,6 +1,5 @@
 //! Processor for service declarations.
 
-use backend::Environment;
 use core::{Loc, RpEnumBody, RpVariant};
 use core::errors::*;
 use doc_builder::DocBuilder;
@@ -8,6 +7,7 @@ use escape::Escape;
 use macros::FormatAttribute;
 use processor::Processor;
 use std::rc::Rc;
+use trans::Environment;
 
 define_processor!(EnumProcessor, RpEnumBody, self,
     process => {

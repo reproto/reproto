@@ -1,7 +1,7 @@
 extern crate reproto_ast as ast;
-extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
+extern crate reproto_trans as trans;
 
 use core::{ContextItem, Object, Resolver, RpPackage, RpVersionedPackage};
 use std::cell::RefCell;
@@ -70,7 +70,7 @@ pub fn simple_compile<L: manifest::Lang, C>(
     compile: C,
 ) -> core::errors::Result<()>
 where
-    C: Fn(Rc<core::Context>, backend::Environment, manifest::Manifest<L>) -> core::errors::Result<()>,
+    C: Fn(Rc<core::Context>, trans::Environment, manifest::Manifest<L>) -> core::errors::Result<()>,
 {
     let SimpleCompile {
         input,
@@ -94,7 +94,7 @@ where
 
     let ctx = Rc::new(ctx);
 
-    let mut env = backend::Environment::new(ctx.clone(), package_prefix.clone(), resolver);
+    let mut env = trans::Environment::new(ctx.clone(), package_prefix.clone(), resolver);
 
     match input {
         Input::File(file, package) => {

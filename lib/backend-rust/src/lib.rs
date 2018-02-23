@@ -6,6 +6,8 @@ extern crate log;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
+extern crate reproto_naming as naming;
+extern crate reproto_trans as trans;
 extern crate serde;
 #[allow(unused)]
 #[macro_use]
@@ -20,7 +22,6 @@ mod rust_options;
 mod module;
 mod utils;
 
-use backend::Environment;
 use core::Context;
 use core::errors::*;
 use listeners::Listeners;
@@ -29,6 +30,7 @@ use rust_backend::RustBackend;
 use rust_options::RustOptions;
 use std::path::Path;
 use std::rc::Rc;
+use trans::Environment;
 
 const MOD: &str = "mod";
 const EXT: &str = "rs";

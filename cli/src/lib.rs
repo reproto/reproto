@@ -26,6 +26,7 @@ extern crate reproto_parser as parser;
 extern crate reproto_repository as repository;
 extern crate reproto_repository_http as repository_http;
 extern crate reproto_semck as semck;
+extern crate reproto_trans as trans;
 extern crate toml;
 extern crate url;
 

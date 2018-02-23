@@ -5,16 +5,17 @@ extern crate log;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
+extern crate reproto_trans as trans;
 extern crate serde;
 extern crate serde_json;
 extern crate toml;
 
-use backend::Environment;
 use core::{Context, RelativePathBuf};
 use core::errors::*;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::path::Path;
 use std::rc::Rc;
+use trans::Environment;
 
 #[derive(Default)]
 pub struct JsonLang;

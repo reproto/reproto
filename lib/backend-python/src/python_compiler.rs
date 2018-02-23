@@ -1,11 +1,12 @@
 use super::{EXT, INIT_PY};
-use backend::{Environment, PackageProcessor, PackageUtils};
+use backend::{PackageProcessor, PackageUtils};
 use core::{Handle, Loc, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody, RpPackage,
            RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
 use python_backend::PythonBackend;
 use python_file_spec::PythonFileSpec;
 use std::collections::BTreeMap;
+use trans::Environment;
 
 pub struct PythonCompiler<'el> {
     pub handle: &'el Handle,

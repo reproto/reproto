@@ -1,12 +1,12 @@
-use super::into_model::IntoModel;
-use super::naming::{FromNaming, Naming, SnakeCase};
-use super::scope::Scope;
 use ast::{self, UseDecl};
 use core::{Context, Loc, Object, Options, PathObject, Range, Resolved, Resolver, RpDecl, RpFile,
            RpName, RpPackage, RpReg, RpRequiredPackage, RpVersionedPackage, WithPos};
 use core::errors::{Error, Result};
+use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
+use naming::{FromNaming, Naming, SnakeCase};
 use parser;
+use scope::Scope;
 use std::collections::{btree_map, BTreeMap, HashMap, LinkedList};
 use std::path::Path;
 use std::rc::Rc;
@@ -64,7 +64,7 @@ pub struct Environment {
     package_prefix: Option<RpPackage>,
     /// Index resolver to use.
     resolver: Box<Resolver>,
-    /// Memoized required packages, to avoid unecessary lookups.
+    /// Store required packages, to avoid unnecessary lookups.
     visited: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
     /// Registered types.
     types: LinkedHashMap<RpName, RpReg>,

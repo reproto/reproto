@@ -1,20 +1,21 @@
 //! Python Backend
 
 use super::{PYTHON_CONTEXT, TYPE_SEP};
-use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, Environment,
-              FromNaming, Naming, PackageUtils, SnakeCase};
+use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageUtils};
 use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
            RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, WithPos};
 use core::errors::*;
 use genco::{Element, Quoted, Tokens};
 use genco::python::{imported, Python};
+use naming::{FromNaming, Naming, SnakeCase};
 use options::Options;
 use python_compiler::PythonCompiler;
 use python_field::PythonField;
 use python_file_spec::PythonFileSpec;
 use std::iter;
 use std::rc::Rc;
+use trans::Environment;
 
 pub struct PythonBackend {
     pub env: Environment,

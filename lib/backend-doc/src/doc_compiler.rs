@@ -1,7 +1,6 @@
 //! Compiler for generating documentation.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use backend::Environment;
 use core::{RpDecl, RpFile, RpVersionedPackage, WithPos};
 use core::errors::*;
 use doc_builder::DocBuilder;
@@ -19,6 +18,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
+use trans::Environment;
 use tuple_processor::TupleProcessor;
 use type_processor::TypeProcessor;
 

@@ -1,12 +1,12 @@
 //! Processor for service declarations.
 
-use backend::Environment;
 use core::{Loc, RpEndpoint, RpServiceBody, WithPos};
 use core::errors::*;
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
 use processor::Processor;
+use trans::Environment;
 
 define_processor!(ServiceProcessor, RpServiceBody, self,
     process => {

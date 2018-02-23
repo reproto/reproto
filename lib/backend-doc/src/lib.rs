@@ -7,6 +7,7 @@ extern crate pulldown_cmark;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
+extern crate reproto_trans as trans;
 extern crate syntect;
 
 #[macro_use]
@@ -31,7 +32,6 @@ pub const INDEX: &str = "index";
 pub const DEFAULT_THEME: &str = "light";
 pub const DEFAULT_SYNTAX_THEME: &str = "ayu-mirage";
 
-use backend::Environment;
 use clap::{App, Arg, ArgMatches};
 use core::errors::*;
 use doc_compiler::DocCompiler;
@@ -40,6 +40,7 @@ use std::collections::HashMap;
 use syntect::dumps::from_binary;
 use syntect::highlighting::{Theme, ThemeSet};
 use syntect::parsing::SyntaxSet;
+use trans::Environment;
 
 include!(concat!(env!("OUT_DIR"), "/themes.rs"));
 

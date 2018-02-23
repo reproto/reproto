@@ -18,6 +18,7 @@ this crate writes a schema out as a schema again.
 [dependencies]
 reproto-backend = {path = "../backend", version = "0.3"}
 reproto-core = {path = "../core", version = "0.3"}
+reproto-trans = {path = "../trans", version = "0.3"}
 reproto-lexer = {path = "../lexer", version = "0.3"}
 reproto-manifest = {path = "../manifest", version = "0.3"}
 

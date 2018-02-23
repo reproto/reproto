@@ -1,6 +1,5 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use backend::{FromNaming, Naming, SnakeCase};
 use codegen::ServiceCodegen;
 use core::{Loc, RpChannel, RpEndpoint};
 use core::errors::*;
@@ -8,6 +7,7 @@ use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
 use java_backend::JavaBackend;
 use listeners::{Configure, EndpointExtra, Listeners, ServiceAdded};
+use naming::{FromNaming, Naming, SnakeCase};
 use processor::Processor;
 use std::borrow::Borrow;
 use std::rc::Rc;

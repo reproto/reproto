@@ -6,9 +6,9 @@ extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_lexer as lexer;
 extern crate reproto_manifest as manifest;
+extern crate reproto_trans as trans;
 extern crate toml;
 
-use backend::Environment;
 use core::{Context, RelativePathBuf, RpDecl, RpField, RpInterfaceBody, RpSubTypeStrategy,
            RpTupleBody, RpTypeBody, DEFAULT_TAG};
 use core::errors::Result;
@@ -17,6 +17,7 @@ use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::fmt::{self, Write};
 use std::path::Path;
 use std::rc::Rc;
+use trans::Environment;
 
 #[derive(Default)]
 pub struct ReprotoLang;

@@ -3,6 +3,8 @@ extern crate genco;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
+extern crate reproto_naming as naming;
+extern crate reproto_trans as trans;
 extern crate serde;
 #[allow(unused)]
 #[macro_use]
@@ -18,7 +20,6 @@ mod js_compiler;
 mod js_file_spec;
 mod js_options;
 
-use backend::Environment;
 use core::Context;
 use core::errors::*;
 use js_backend::JsBackend;
@@ -27,6 +28,7 @@ use listeners::Listeners;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::path::Path;
 use std::rc::Rc;
+use trans::Environment;
 
 const TYPE_SEP: &str = "_";
 const EXT: &str = "js";

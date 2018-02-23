@@ -1,7 +1,7 @@
 //! Java backend for reproto
 
 use super::JAVA_CONTEXT;
-use backend::{CamelCase, Code, Converter, Environment, FromNaming, Naming, SnakeCase};
+use backend::{Code, Converter};
 use core::{ForEachLoc, Handle, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody,
            RpName, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use core::errors::*;
@@ -12,8 +12,10 @@ use java_field::JavaField;
 use java_file::JavaFile;
 use java_options::JavaOptions;
 use listeners::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
+use naming::{CamelCase, FromNaming, Naming, SnakeCase};
 use processor::Processor;
 use std::rc::Rc;
+use trans::Environment;
 use utils::Utils;
 
 pub struct JavaBackend {

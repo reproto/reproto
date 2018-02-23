@@ -17,7 +17,7 @@ Programmatic compilation.
 reproto-core = {path = "../core", version = "0.3"}
 reproto-ast = {path = "../ast", version = "0.3"}
 reproto-manifest = {path = "../manifest", version = "0.3"}
-reproto-backend = {path = "../backend", version = "0.3"}
+reproto-trans = {path = "../trans", version = "0.3"}
 
 [lib]
 path = "lib.rs"

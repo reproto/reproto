@@ -1,4 +1,3 @@
-use backend::Environment;
 use clap::ArgMatches;
 use config_env::ConfigEnv;
 use core::{BytesObject, Context, Object, Resolved, ResolvedByPrefix, Resolver, RpChannel,
@@ -21,6 +20,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 use toml;
+use trans::Environment;
 use url;
 
 pub const DEFAULT_INDEX: &'static str = "git+https://github.com/reproto/reproto-index";
