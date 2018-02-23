@@ -19,7 +19,6 @@ mod rust_compiler;
 mod rust_file_spec;
 mod rust_options;
 mod module;
-mod utils;
 
 use core::Context;
 use core::errors::*;
@@ -43,6 +42,62 @@ impl Lang for RustLang {
 
     fn comment(input: &str) -> Option<String> {
         Some(format!("// {}", input))
+    }
+
+    fn keywords() -> Vec<(&'static str, &'static str)> {
+        vec![
+            ("as", "_as"),
+            ("break", "_break"),
+            ("const", "_const"),
+            ("continue", "_continue"),
+            ("crate", "_crate"),
+            ("else", "_else"),
+            ("enum", "_enum"),
+            ("extern", "_extern"),
+            ("false", "_false"),
+            ("fn", "_fn"),
+            ("for", "_for"),
+            ("if", "_if"),
+            ("impl", "_impl"),
+            ("in", "_in"),
+            ("let", "_let"),
+            ("loop", "_loop"),
+            ("match", "_match"),
+            ("mod", "_mod"),
+            ("move", "_move"),
+            ("mut", "_mut"),
+            ("pub", "_pub"),
+            ("ref", "_ref"),
+            ("return", "_return"),
+            ("self", "_self"),
+            ("static", "_static"),
+            ("struct", "_struct"),
+            ("super", "_super"),
+            ("trait", "_trait"),
+            ("true", "_true"),
+            ("type", "_type"),
+            ("unsafe", "_unsafe"),
+            ("use", "_use"),
+            ("where", "_where"),
+            ("while", "_while"),
+            ("abstract", "_abstract"),
+            ("alignof", "_alignof"),
+            ("become", "_become"),
+            ("box", "_box"),
+            ("do", "_do"),
+            ("final", "_final"),
+            ("macro", "_macro"),
+            ("offsetof", "_offsetof"),
+            ("override", "_override"),
+            ("priv", "_priv"),
+            ("proc", "_proc"),
+            ("pure", "_pure"),
+            ("sizeof", "_sizeof"),
+            ("typeof", "_typeof"),
+            ("unsized", "_unsized"),
+            ("virtual", "_virtual"),
+            ("yield", "_yield"),
+        ]
     }
 }
 

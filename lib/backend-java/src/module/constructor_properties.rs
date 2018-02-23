@@ -12,9 +12,7 @@ pub struct ConstructorProperties {
 
 impl ConstructorProperties {
     pub fn new() -> ConstructorProperties {
-        ConstructorProperties {
-            annotation: imported("java.beans", "ConstructorProperties"),
-        }
+        ConstructorProperties { annotation: imported("java.beans", "ConstructorProperties") }
     }
 }
 
@@ -35,8 +33,8 @@ pub struct Module;
 
 impl Listeners for Module {
     fn configure<'a>(&self, e: Configure<'a>) {
-        e.options
-            .class_generators
-            .push(Box::new(ConstructorProperties::new()));
+        e.options.class_generators.push(Box::new(
+            ConstructorProperties::new(),
+        ));
     }
 }

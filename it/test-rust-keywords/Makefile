@@ -1,0 +1,2 @@
+suites := rust
+projects := rust

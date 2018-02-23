@@ -9,8 +9,8 @@ extern crate reproto_manifest as manifest;
 extern crate reproto_trans as trans;
 extern crate toml;
 
-use core::{Context, RelativePathBuf, RpDecl, RpField, RpInterfaceBody, RpSubTypeStrategy,
-           RpTupleBody, RpTypeBody, DEFAULT_TAG};
+use core::{Context, DEFAULT_TAG, RelativePathBuf, RpDecl, RpField, RpInterfaceBody,
+           RpSubTypeStrategy, RpTupleBody, RpTypeBody};
 use core::errors::Result;
 use genco::{Custom, Formatter, IoFmt, Quoted, Tokens, WriteTokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -81,15 +81,14 @@ pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<ReprotoLan
     let root = RelativePathBuf::from(".");
 
     for (package, file) in env.for_each_file() {
-        let mut path = package
-            .package
-            .parts
-            .iter()
-            .fold(root.clone(), |path, part| path.join(part));
+        let mut path = package.package.parts.iter().fold(
+            root.clone(),
+            |path, part| path.join(part),
+        );
 
-        let parent = path.parent()
-            .map(ToOwned::to_owned)
-            .unwrap_or_else(|| root.clone());
+        let parent = path.parent().map(ToOwned::to_owned).unwrap_or_else(
+            || root.clone(),
+        );
 
         if !handle.is_dir(&parent) {
             debug!("+dir: {}", parent.display());
@@ -97,8 +96,9 @@ pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<ReprotoLan
         }
 
         let path = if let Some(version) = package.version.as_ref() {
-            let stem = path.file_stem()
-                .ok_or_else(|| format!("Missing file stem: {}", path.display()))?;
+            let stem = path.file_stem().ok_or_else(|| {
+                format!("Missing file stem: {}", path.display())
+            })?;
 
             let file_name = format!("{}-{}.reproto", stem, version);
             path.with_file_name(file_name)
@@ -167,7 +167,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
                         "tagged".quoted(),
                         ", tag = ",
                         tag.as_str().quoted(),
-                        ")]"
+                        ")]",
                     ]);
                 }
             }
@@ -187,7 +187,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
                             sub_type.local_name.as_str(),
                             " as ",
                             alias.as_str().quoted(),
-                            " {"
+                            " {",
                         ]);
                     } else {
                         t.push(toks![sub_type.local_name.as_str(), " {"]);
@@ -260,12 +260,14 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
             }
         }
 
-        let field_name = field.name.as_str();
+        let field_name = field.safe_ident();
 
         let field_name = match lexer::match_keyword(field_name) {
-            Some(token) => token
-                .keyword_safe()
-                .ok_or_else(|| format!("keyword does not have a safe variant: {}", field_name))?,
+            Some(token) => {
+                token.keyword_safe().ok_or_else(|| {
+                    format!("keyword does not have a safe variant: {}", field_name)
+                })?
+            }
             None => field_name,
         };
 

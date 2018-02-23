@@ -30,7 +30,8 @@ impl RpEnumType {
     pub fn as_field(&self) -> RpField {
         RpField {
             modifier: RpModifier::Required,
-            name: String::from("value"),
+            ident: String::from("value"),
+            safe_ident: None,
             comment: vec![],
             ty: self.as_type(),
             field_as: None,

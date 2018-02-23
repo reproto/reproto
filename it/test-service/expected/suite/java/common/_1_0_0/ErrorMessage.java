@@ -65,7 +65,7 @@ public class ErrorMessage {
     b.append("message=");
     b.append(this.message.toString());
     b.append(", ");
-    b.append("statusCode=");
+    b.append("status_code=");
     b.append(Integer.toString(this.statusCode));
     b.append(")");
 

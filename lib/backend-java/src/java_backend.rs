@@ -6,8 +6,8 @@ use core::{ForEachLoc, Handle, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpI
            RpName, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use core::errors::*;
 use genco::{Cons, Element, Java, Quoted, Tokens};
-use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum, Field, Interface,
-                  Method, Modifier, BOOLEAN, INTEGER};
+use genco::java::{Argument, BOOLEAN, Class, Constructor, Enum, Field, INTEGER, Interface, Method,
+                  Modifier, imported, local, optional};
 use java_field::JavaField;
 use java_file::JavaFile;
 use java_options::JavaOptions;
@@ -42,11 +42,12 @@ impl Processor for JavaBackend {}
 
 impl JavaBackend {
     pub fn new(env: &Rc<Environment>, utils: &Rc<Utils>, options: JavaOptions) -> JavaBackend {
-        let async_container = options
-            .async_container
-            .as_ref()
-            .map(Clone::clone)
-            .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
+        let async_container =
+            options
+                .async_container
+                .as_ref()
+                .map(Clone::clone)
+                .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
 
         JavaBackend {
             env: Rc::clone(env),
@@ -105,24 +106,30 @@ impl JavaBackend {
         field
     }
 
-    fn build_constructor<'el>(&self, fields: &[JavaField<'el>]) -> Constructor<'el> {
+    fn build_constructor<'a, 'el>(&self, fields: &[JavaField<'el>]) -> Constructor<'el> {
         let mut c = Constructor::new();
 
         for field in fields {
-            let field = &field.spec;
+            let spec = &field.spec;
 
-            let argument = Argument::new(field.ty(), field.var());
+            let argument = Argument::new(spec.ty(), spec.var());
 
             if !self.options.nullable {
-                if let Some(non_null) = self.require_non_null(field, &argument) {
+                if let Some(non_null) = self.require_non_null(
+                    spec,
+                    &argument,
+                    field.name().into(),
+                )
+                {
                     c.body.push(non_null);
                 }
             }
 
             c.arguments.push(argument.clone());
 
-            c.body
-                .push(toks!["this.", field.var(), " = ", argument.var(), ";",]);
+            c.body.push(
+                toks!["this.", field.spec.var(), " = ", argument.var(), ";",],
+            );
         }
 
         c
@@ -133,6 +140,7 @@ impl JavaBackend {
         &self,
         field: &Field<'el>,
         argument: &Argument<'el>,
+        name: Cons<'el>,
     ) -> Option<Tokens<'el, Java<'el>>> {
         use self::Java::*;
 
@@ -146,7 +154,7 @@ impl JavaBackend {
                     "(",
                     argument.var(),
                     ", ",
-                    field.var().quoted(),
+                    name.quoted(),
                     ");",
                 ])
             }
@@ -186,9 +194,9 @@ impl JavaBackend {
                 value
             };
 
-            hash_code
-                .body
-                .push(toks!["result = result * 31 + ", value, ";"]);
+            hash_code.body.push(
+                toks!["result = result * 31 + ", value, ";"],
+            );
         }
 
         hash_code.body.push("return result;");
@@ -316,11 +324,9 @@ impl JavaBackend {
         let mut body = Tokens::new();
 
         for field in fields {
-            let field = &field.spec;
+            let field_toks = toks!["this.", field.spec.var()];
 
-            let field_toks = toks!["this.", field.var()];
-
-            let format = match field.ty() {
+            let format = match field.spec.ty() {
                 java @ Java::Primitive { .. } => {
                     toks![java.as_boxed(), ".toString(", field_toks.clone(), ")"]
                 }
@@ -341,7 +347,7 @@ impl JavaBackend {
                 }
             };
 
-            let field_key = Rc::new(format!("{}=", field.var().as_ref())).quoted();
+            let field_key = Rc::new(format!("{}=", field.name().as_ref())).quoted();
 
             body.push({
                 let mut t = Tokens::new();
@@ -405,13 +411,14 @@ impl JavaBackend {
             argument.modifiers = vec![Final];
 
             if !self.options.nullable {
-                if let Some(non_null) = self.require_non_null(&field, &argument) {
+                if let Some(non_null) = self.require_non_null(&field, &argument, "value".into()) {
                     c.body.push(non_null);
                 }
             }
 
-            c.body
-                .push(toks!["this.", field.var(), " = ", argument.var(), ";",]);
+            c.body.push(
+                toks!["this.", field.var(), " = ", argument.var(), ";",],
+            );
 
             c.arguments.push(argument);
         }
@@ -453,7 +460,8 @@ impl JavaBackend {
         from_value.modifiers = vec![Public, Static];
         from_value.returns = local(name.clone());
 
-        let throw = toks![
+        let throw =
+            toks![
             "throw new ",
             self.illegal_argument.clone(),
             "(",
@@ -507,8 +515,9 @@ impl JavaBackend {
             spec.variants.append(enum_value);
         }
 
-        spec.constructors
-            .push(self.build_enum_constructor(&spec.fields));
+        spec.constructors.push(
+            self.build_enum_constructor(&spec.fields),
+        );
 
         let variant_field = body.variant_type.as_field();
         let variant_java_field = self.convert_field(&variant_field)?;
@@ -620,9 +629,9 @@ impl JavaBackend {
 
             let sub_type_fields = self.convert_fields(&sub_type.fields)?;
 
-            class
-                .body
-                .push_unless_empty(Code(&sub_type.codes, JAVA_CONTEXT));
+            class.body.push_unless_empty(
+                Code(&sub_type.codes, JAVA_CONTEXT),
+            );
 
             class.implements = vec![local(spec.name())];
 
@@ -743,9 +752,11 @@ impl JavaBackend {
 
                 if !endpoint.comment.is_empty() {
                     method.comments.push("<pre>".into());
-                    method
-                        .comments
-                        .extend(endpoint.comment.iter().cloned().map(Into::into));
+                    method.comments.extend(
+                        endpoint.comment.iter().cloned().map(
+                            Into::into,
+                        ),
+                    );
                     method.comments.push("</pre>".into());
                 }
 
@@ -781,14 +792,15 @@ impl JavaBackend {
             java_value_type
         };
 
-        let camel_name = Rc::new(self.to_upper_camel.convert(field.ident()));
-        let ident = Rc::new(self.to_lower_camel.convert(field.ident()));
+        let ident = Rc::new(self.to_lower_camel.convert(field.safe_ident()));
+        let field_accessor = Rc::new(self.to_upper_camel.convert(field.ident()));
 
-        let spec = Field::new(java_type, ident);
+        let spec = Field::new(java_type, ident.clone());
 
         Ok(JavaField {
             name: Rc::new(field.name().to_string()).into(),
-            camel_name: camel_name,
+            ident: ident,
+            field_accessor: field_accessor,
             spec: spec,
         })
     }

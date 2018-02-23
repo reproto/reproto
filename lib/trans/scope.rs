@@ -13,6 +13,7 @@ struct Root {
     prefixes: HashMap<String, RpVersionedPackage>,
     endpoint_naming: Option<Box<Naming>>,
     field_naming: Option<Box<Naming>>,
+    keywords: Rc<HashMap<String, String>>,
 }
 
 /// Model of a scope.
@@ -35,6 +36,7 @@ impl Scope {
         prefixes: HashMap<String, RpVersionedPackage>,
         endpoint_naming: Option<Box<Naming>>,
         field_naming: Option<Box<Naming>>,
+        keywords: Rc<HashMap<String, String>>,
     ) -> Scope {
         Scope(Rc::new(Inner::Root(Rc::new(Root {
             ctx: ctx,
@@ -43,21 +45,21 @@ impl Scope {
             prefixes: prefixes,
             endpoint_naming: endpoint_naming,
             field_naming: field_naming,
+            keywords: keywords,
         }))))
     }
 
     #[inline(always)]
     fn root(&self) -> &Rc<Root> {
         match *self.0 {
-            Inner::Root(ref root) | Inner::Child { ref root, .. } => root,
+            Inner::Root(ref root) |
+            Inner::Child { ref root, .. } => root,
         }
     }
 
     /// Walk the entire path of the scope.
     pub fn walk(&self) -> ScopeWalker {
-        ScopeWalker {
-            current: self.0.clone(),
-        }
+        ScopeWalker { current: self.0.clone() }
     }
 
     /// Create a new child scope.
@@ -110,6 +112,11 @@ impl Scope {
     pub fn field_naming(&self) -> Option<&Naming> {
         self.root().field_naming.as_ref().map(AsRef::as_ref)
     }
+
+    /// Lookup if the given identifier matches a language keyword.
+    pub fn keyword(&self, identifier: &str) -> Option<&str> {
+        self.root().keywords.get(identifier).map(|s| s.as_str())
+    }
 }
 
 /// Walker over all components of the scope.
@@ -151,7 +158,8 @@ mod tests {
         let ctx = Rc::new(Context::new(Box::new(CapturingFilesystem::new())));
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let prefixes = HashMap::new();
-        let s = Scope::new(ctx, None, package, prefixes, None, None);
+        let keywords = Rc::new(HashMap::new());
+        let s = Scope::new(ctx, None, package, prefixes, None, None, keywords);
 
         let s2 = s.child("foo");
         let s3 = s2.child("bar");

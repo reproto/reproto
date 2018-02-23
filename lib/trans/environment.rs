@@ -7,7 +7,7 @@ use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
 use parser;
 use scope::Scope;
-use std::collections::{btree_map, BTreeMap, HashMap, LinkedList};
+use std::collections::{BTreeMap, HashMap, LinkedList, btree_map};
 use std::path::Path;
 use std::rc::Rc;
 use std::vec;
@@ -70,6 +70,8 @@ pub struct Environment {
     types: LinkedHashMap<RpName, RpReg>,
     /// Files and associated declarations.
     files: BTreeMap<RpVersionedPackage, RpFile>,
+    /// Keywords that need to be translated.
+    keywords: Rc<HashMap<String, String>>,
 }
 
 /// Environment containing all loaded declarations.
@@ -86,6 +88,15 @@ impl Environment {
             visited: HashMap::new(),
             types: LinkedHashMap::new(),
             files: BTreeMap::new(),
+            keywords: Rc::new(HashMap::new()),
+        }
+    }
+
+    /// Build the environment with the given keywords.
+    pub fn with_keywords(self, keywords: HashMap<String, String>) -> Self {
+        Self {
+            keywords: Rc::new(keywords),
+            ..self
         }
     }
 
@@ -167,10 +178,9 @@ impl Environment {
             let package = RpVersionedPackage::new(required.package.clone(), version);
             let file = self.load_object(object.as_ref(), &package)?;
 
-            candidates
-                .entry(package)
-                .or_insert_with(Vec::new)
-                .push(file);
+            candidates.entry(package).or_insert_with(Vec::new).push(
+                file,
+            );
         }
 
         let result = if let Some((versioned, files)) = candidates.into_iter().last() {
@@ -196,9 +206,7 @@ impl Environment {
 
     /// Iterate over all files.
     pub fn for_each_file(&self) -> ForEachFile {
-        ForEachFile {
-            iter: self.files.iter(),
-        }
+        ForEachFile { iter: self.files.iter() }
     }
 
     /// Iterate over top level declarations of all registered objects.
@@ -208,9 +216,7 @@ impl Environment {
             .flat_map(|f| f.decls.iter())
             .collect::<Vec<_>>();
 
-        ToplevelDeclIter {
-            it: values.into_iter(),
-        }
+        ToplevelDeclIter { it: values.into_iter() }
     }
 
     /// Walks the entire tree of declarations recursively of all registered objects.
@@ -267,6 +273,7 @@ impl Environment {
             prefixes,
             endpoint_naming,
             field_naming,
+            self.keywords.clone(),
         );
 
         Ok(file.into_model(&scope)?)
@@ -328,7 +335,10 @@ impl Environment {
                 continue;
             }
 
-            return Err(Error::new(format!("no package found: {}", required)).with_pos(Loc::pos(use_decl)));
+            return Err(
+                Error::new(format!("no package found: {}", required))
+                    .with_pos(Loc::pos(use_decl)),
+            );
         }
 
         Ok(prefixes)
@@ -353,11 +363,13 @@ impl Environment {
             match self.types.entry(key) {
                 Vacant(entry) => entry.insert(t),
                 Occupied(entry) => {
-                    return Err(self.ctx
-                        .report()
-                        .err(t.pos(), "conflicting declaration")
-                        .info(entry.get().pos(), "last declaration here")
-                        .into());
+                    return Err(
+                        self.ctx
+                            .report()
+                            .err(t.pos(), "conflicting declaration")
+                            .info(entry.get().pos(), "last declaration here")
+                            .into(),
+                    );
                 }
             };
         }

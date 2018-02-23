@@ -94,7 +94,13 @@ where
 
     let ctx = Rc::new(ctx);
 
-    let mut env = trans::Environment::new(ctx.clone(), package_prefix.clone(), resolver);
+    let keywords = L::keywords()
+        .into_iter()
+        .map(|(f, t)| (f.to_string(), t.to_string()))
+        .collect();
+
+    let mut env = trans::Environment::new(ctx.clone(), package_prefix.clone(), resolver)
+        .with_keywords(keywords);
 
     match input {
         Input::File(file, package) => {

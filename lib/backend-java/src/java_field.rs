@@ -5,10 +5,11 @@ use std::rc::Rc;
 
 /// A single field.
 #[derive(Debug, Clone)]
-pub struct JavaField<'a> {
-    pub name: Cons<'a>,
-    pub camel_name: Rc<String>,
-    pub spec: Field<'a>,
+pub struct JavaField<'el> {
+    pub name: Cons<'el>,
+    pub ident: Rc<String>,
+    pub field_accessor: Rc<String>,
+    pub spec: Field<'el>,
 }
 
 impl<'el> JavaField<'el> {
@@ -18,18 +19,19 @@ impl<'el> JavaField<'el> {
         }
 
         let argument = Argument::new(self.spec.ty(), self.spec.var());
-        let mut m = Method::new(Rc::new(format!("set{}", self.camel_name)));
+        let mut m = Method::new(Rc::new(format!("set{}", self.field_accessor)));
 
         m.arguments.push(argument.clone());
 
-        m.body
-            .push(toks!["this.", self.spec.var(), " = ", argument.var(), ";",]);
+        m.body.push(
+            toks!["this.", self.spec.var(), " = ", argument.var(), ";",],
+        );
 
         Some(m)
     }
 
     pub fn getter_without_body(&self) -> Method<'el> {
-        let mut method = Method::new(Rc::new(format!("get{}", self.camel_name)));
+        let mut method = Method::new(Rc::new(format!("get{}", self.field_accessor)));
         method.returns = self.spec.ty().as_field();
         method
     }
@@ -38,5 +40,10 @@ impl<'el> JavaField<'el> {
         let mut m = self.getter_without_body();
         m.body.push(toks!["return this.", self.spec.var(), ";"]);
         m
+    }
+
+    /// The JSON name of the field.
+    pub fn name(&self) -> Cons<'el> {
+        self.name.clone()
     }
 }

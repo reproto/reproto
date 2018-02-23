@@ -27,7 +27,7 @@ pub trait Lang: Default {
     fn comment(input: &str) -> Option<String>;
 
     /// Get a list of keywords to transliterate.
-    fn keywords() -> Vec<&'static str> {
+    fn keywords() -> Vec<(&'static str, &'static str)> {
         vec![]
     }
 }
@@ -109,8 +109,9 @@ impl TryFromToml for ManifestFile {
 impl TryFromToml for Publish {
     fn try_from_string(_: &Path, id: &str, value: String) -> Result<Self> {
         let package = RpPackage::parse(id);
-        let version =
-            Version::parse(value.as_str()).map_err(|e| format!("bad version: {}: {}", e, value))?;
+        let version = Version::parse(value.as_str()).map_err(|e| {
+            format!("bad version: {}: {}", e, value)
+        })?;
 
         Ok(Publish {
             package: package,
@@ -138,8 +139,9 @@ impl TryFromToml for RpRequiredPackage {
     fn try_from_string(_: &Path, id: &str, value: String) -> Result<Self> {
         let package = RpPackage::parse(id);
 
-        let range =
-            Range::parse(value.as_str()).map_err(|e| format!("bad version: {}: {}", e, value))?;
+        let range = Range::parse(value.as_str()).map_err(|e| {
+            format!("bad version: {}: {}", e, value)
+        })?;
 
         Ok(RpRequiredPackage::new(package, range))
     }
@@ -243,10 +245,12 @@ where
     use self::toml::Value::*;
 
     match value {
-        String(name) => match name.as_str() {
-            "maven" => maven_apply_to(manifest, base)?,
-            name => return Err(format!("unsupported preset: {}", name).into()),
-        },
+        String(name) => {
+            match name.as_str() {
+                "maven" => maven_apply_to(manifest, base)?,
+                name => return Err(format!("unsupported preset: {}", name).into()),
+            }
+        }
         value => {
             let preset: Preset = value.try_into()?;
 
@@ -263,17 +267,14 @@ where
         L: Lang,
     {
         // default path
-        manifest
-            .paths
-            .push(base.join("src").join("main").join("reproto"));
+        manifest.paths.push(
+            base.join("src").join("main").join("reproto"),
+        );
 
         // output directory
-        manifest.output = Some(
-            base.join("target")
-                .join("generated")
-                .join("reproto")
-                .join("java"),
-        );
+        manifest.output = Some(base.join("target").join("generated").join("reproto").join(
+            "java",
+        ));
 
         Ok(())
     }
@@ -411,9 +412,9 @@ where
     T: Default + serde::Deserialize<'de>,
 {
     if let Some(field) = value.remove(name) {
-        field
-            .try_into()
-            .map_err(|e| format!("{}: {}", name, e).into())
+        field.try_into().map_err(
+            |e| format!("{}: {}", name, e).into(),
+        )
     } else {
         Ok(T::default())
     }
@@ -423,7 +424,9 @@ fn check_empty(value: &toml::value::Table) -> Result<()> {
     let unexpected: Vec<String> = value.keys().map(Clone::clone).collect();
 
     if unexpected.len() > 0 {
-        return Err(format!("unexpected entries: {}", unexpected.join(", ")).into());
+        return Err(
+            format!("unexpected entries: {}", unexpected.join(", ")).into(),
+        );
     }
 
     Ok(())
@@ -435,7 +438,9 @@ where
 {
     let mut inner = take_field::<toml::value::Table>(value, "repository")?;
     func(&mut inner)?;
-    check_empty(&inner).map_err(|e| format!("{}: {}", name, e.display()))?;
+    check_empty(&inner).map_err(
+        |e| format!("{}: {}", name, e.display()),
+    )?;
     Ok(())
 }
 
@@ -451,15 +456,17 @@ pub fn load_common_manifest<L>(
 where
     L: Lang,
 {
-    manifest
-        .packages
-        .extend(opt_specs(base, take_field(value, "packages")?)?);
-    manifest
-        .files
-        .extend(opt_specs(base, take_field(value, "files")?)?);
-    manifest
-        .publish
-        .extend(opt_specs(base, take_field(value, "publish")?)?);
+    manifest.packages.extend(opt_specs(
+        base,
+        take_field(value, "packages")?,
+    )?);
+    manifest.files.extend(
+        opt_specs(base, take_field(value, "files")?)?,
+    );
+    manifest.publish.extend(opt_specs(
+        base,
+        take_field(value, "publish")?,
+    )?);
 
     manifest.paths.extend(
         take_field::<Vec<RelativePathBuf>>(value, "paths")?
@@ -504,8 +511,9 @@ pub fn read_manifest_preamble<'a, P: AsRef<Path>, R: Read>(
     let mut content = String::new();
     reader.read_to_string(&mut content)?;
 
-    let mut value: toml::value::Table = toml::from_str(content.as_str())
-        .map_err(|e| format!("{}: bad manifest: {}", path.display(), e))?;
+    let mut value: toml::value::Table = toml::from_str(content.as_str()).map_err(|e| {
+        format!("{}: bad manifest: {}", path.display(), e)
+    })?;
 
     let language = take_field::<Option<Language>>(&mut value, "language")?;
 

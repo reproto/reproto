@@ -5,7 +5,7 @@ use linked_hash_map::{self, LinkedHashMap};
 use path_parser;
 use scope::Scope;
 use std::borrow::Cow;
-use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
 use std::option;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -160,12 +160,8 @@ impl IntoModel for Type {
             Boolean => RpType::Boolean,
             String => RpType::String,
             DateTime => RpType::DateTime,
-            Name { name } => RpType::Name {
-                name: name.into_model(scope)?,
-            },
-            Array { inner } => RpType::Array {
-                inner: inner.into_model(scope)?,
-            },
+            Name { name } => RpType::Name { name: name.into_model(scope)? },
+            Array { inner } => RpType::Array { inner: inner.into_model(scope)? },
             Map { key, value } => RpType::Map {
                 key: key.into_model(scope)?,
                 value: value.into_model(scope)?,
@@ -227,16 +223,18 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
 
             let variant_type = if let Some(ty) = ty {
                 Loc::take(Loc::and_then(ty, |ty| {
-                    ty.as_enum_type()
-                        .ok_or_else(|| "expected string or absent".into())
-                        as Result<RpEnumType>
+                    ty.as_enum_type().ok_or_else(
+                        || "expected string or absent".into(),
+                    ) as Result<RpEnumType>
                 })?)
             } else {
                 RpEnumType::Generated
             };
 
             for variant in item.variants {
-                let variant = (variants.as_slice(), variant, &variant_type).into_model(scope)?;
+                let variant = (variants.as_slice(), variant, &variant_type).into_model(
+                    scope,
+                )?;
                 variants.push(variant);
             }
 
@@ -257,11 +255,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
 }
 
 impl<'input, 'a> IntoModel
-    for (
-        &'input [Rc<Loc<RpVariant>>],
-        Item<'input, EnumVariant<'input>>,
-        &'a RpEnumType,
-    ) {
+    for (&'input [Rc<Loc<RpVariant>>], Item<'input, EnumVariant<'input>>, &'a RpEnumType) {
     type Output = Rc<Loc<RpVariant>>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
@@ -270,14 +264,16 @@ impl<'input, 'a> IntoModel
         let ctx = scope.ctx();
         let variant = (variant, ty).into_model(scope)?;
 
-        if let Some(other) = variants
-            .iter()
-            .find(|v| *v.local_name == *variant.local_name)
+        if let Some(other) = variants.iter().find(
+            |v| *v.local_name == *variant.local_name,
+        )
         {
-            return Err(ctx.report()
-                .err(Loc::pos(&variant.local_name), "conflicting enum name")
-                .info(Loc::pos(&other.local_name), "previous variant here")
-                .into());
+            return Err(
+                ctx.report()
+                    .err(Loc::pos(&variant.local_name), "conflicting enum name")
+                    .info(Loc::pos(&other.local_name), "previous variant here")
+                    .into(),
+            );
         }
 
         Ok(Rc::new(variant))
@@ -322,18 +318,33 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Loc<RpField>> {
         self.map(|comment, attributes, item| {
-            let name = &item.name;
+            let ident = item.name.as_ref().to_string();
 
-            let field_as = item.field_as
-                .into_model(scope)?
-                .or_else(|| scope.field_naming().map(|n| n.convert(name)));
+            // Identifier would translate to a language-specific keyword, introduce replacement
+            // here.
+            let safe_ident = scope.keyword(ident.as_str()).map(|s| s.to_string());
+
+            // Apply specification-wide naming convention unless field name explicitly specified.
+            let field_as = item.field_as.into_model(scope)?.or_else(|| {
+                scope.field_naming().map(|n| n.convert(ident.as_str()))
+            });
+
+            // Don't include field alias if same as name.
+            let field_as = match field_as {
+                // Explicit alias, but it's exactly the same as translated field.
+                Some(ref field_as) if field_as == ident.as_str() => None,
+                // Explicit alias that differs from field.
+                Some(field_as) => Some(field_as),
+                _ => None,
+            };
 
             let attributes = attributes.into_model(scope)?;
             check_attributes!(scope, attributes);
 
             Ok(RpField {
                 modifier: item.modifier,
-                name: item.name.to_string(),
+                safe_ident: safe_ident,
+                ident: ident,
                 comment: Comment(&comment).into_model(scope)?,
                 ty: item.ty.into_model(scope)?,
                 field_as: field_as,
@@ -381,10 +392,12 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 match sub_types.entry(key) {
                     Vacant(entry) => entry.insert(Rc::new(sub_type)),
                     Occupied(entry) => {
-                        return Err(ctx.report()
-                            .err(Loc::pos(&sub_type), "sub-type already defined")
-                            .info(Loc::pos(entry.get()), "already defined here")
-                            .into());
+                        return Err(
+                            ctx.report()
+                                .err(Loc::pos(&sub_type), "sub-type already defined")
+                                .info(Loc::pos(entry.get()), "already defined here")
+                                .into(),
+                        );
                     }
                 };
             }
@@ -424,15 +437,13 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                             if let Some(tag) = selection.take("tag") {
                                 let tag = tag.as_string()?;
 
-                                return Ok(RpSubTypeStrategy::Tagged {
-                                    tag: tag.to_string(),
-                                });
+                                return Ok(RpSubTypeStrategy::Tagged { tag: tag.to_string() });
                             }
                         }
                         _ => {
-                            return Err(ctx.report()
-                                .err(Loc::pos(&strategy), "bad strategy")
-                                .into());
+                            return Err(
+                                ctx.report().err(Loc::pos(&strategy), "bad strategy").into(),
+                            );
                         }
                     }
                 }
@@ -537,7 +548,9 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
 
             if let Some(selection) = attributes.take_selection("http") {
                 let (mut selection, pos) = Loc::take_pair(selection);
-                push_http(ctx, scope, &mut selection, &mut http).with_pos(pos)?;
+                push_http(ctx, scope, &mut selection, &mut http).with_pos(
+                    pos,
+                )?;
                 check_selection!(scope, selection);
             }
 
@@ -582,10 +595,12 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
             match endpoint_names.entry(endpoint.name().to_string()) {
                 hash_map::Entry::Vacant(entry) => entry.insert(Loc::pos(&endpoint).into()),
                 hash_map::Entry::Occupied(entry) => {
-                    return Err(ctx.report()
-                        .err(Loc::pos(&endpoint), "conflicting name of endpoint")
-                        .info(entry.get().clone_error_pos(), "previous name here")
-                        .into());
+                    return Err(
+                        ctx.report()
+                            .err(Loc::pos(&endpoint), "conflicting name of endpoint")
+                            .info(entry.get().clone_error_pos(), "previous name here")
+                            .into(),
+                    );
                 }
             };
 
@@ -593,10 +608,12 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
             match endpoints.entry(Loc::value(&endpoint.id).to_string()) {
                 Vacant(entry) => entry.insert(endpoint),
                 Occupied(entry) => {
-                    return Err(ctx.report()
-                        .err(Loc::pos(&endpoint), "conflicting id of endpoint")
-                        .info(Loc::pos(entry.get()), "previous id here")
-                        .into());
+                    return Err(
+                        ctx.report()
+                            .err(Loc::pos(&endpoint), "conflicting id of endpoint")
+                            .info(Loc::pos(entry.get()), "previous id here")
+                            .into(),
+                    );
                 }
             };
 
@@ -610,6 +627,7 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         return self.map(|comment, attributes, item| {
+            /// TODO: check if keyword
             let id = item.id.into_model(scope)?;
             let ctx = scope.ctx();
 
@@ -631,10 +649,12 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                         entry.insert((name, channel));
                     }
                     linked_hash_map::Entry::Occupied(entry) => {
-                        return Err(ctx.report()
-                            .err(Loc::pos(&name), "argument already present")
-                            .info(Loc::pos(&entry.get().0), "argument present here")
-                            .into());
+                        return Err(
+                            ctx.report()
+                                .err(Loc::pos(&name), "argument already present")
+                                .info(Loc::pos(&entry.get().0), "argument present here")
+                                .into(),
+                        );
                     }
                 }
             }
@@ -744,8 +764,9 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             unused_args: &mut HashMap<&str, &Loc<String>>,
         ) -> Result<RpPathSpec> {
             let path = path.as_string()?;
-            let path = path_parser::parse(path)
-                .map_err(|e| format!("Bad path: {}: {}", path, e.display()))?;
+            let path = path_parser::parse(path).map_err(|e| {
+                format!("Bad path: {}: {}", path, e.display())
+            })?;
             let path = path.into_model(scope)?;
 
             for var in path.vars() {
@@ -796,13 +817,15 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                         return Ok(());
                     }
 
-                    return Err(ctx.report()
-                        .err(
-                            Loc::pos(response),
-                            "Only `string` responses are supported for the given `accept`",
-                        )
-                        .info(pos, "Specified here")
-                        .into());
+                    return Err(
+                        ctx.report()
+                            .err(
+                                Loc::pos(response),
+                                "Only `string` responses are supported for the given `accept`",
+                            )
+                            .info(pos, "Specified here")
+                            .into(),
+                    );
                 }
             }
         }
@@ -816,12 +839,8 @@ impl<'input> IntoModel for Channel {
         use self::Channel::*;
 
         let result = match self {
-            Unary { ty, .. } => RpChannel::Unary {
-                ty: ty.into_model(scope)?,
-            },
-            Streaming { ty, .. } => RpChannel::Streaming {
-                ty: ty.into_model(scope)?,
-            },
+            Unary { ty, .. } => RpChannel::Unary { ty: ty.into_model(scope)? },
+            Streaming { ty, .. } => RpChannel::Streaming { ty: ty.into_model(scope)? },
         };
 
         Ok(result)
@@ -847,14 +866,16 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
                     Field(field) => {
                         let field = field.into_model(scope)?;
 
-                        if let Some(other) = fields
-                            .iter()
-                            .find(|f| f.name() == field.name() || f.ident() == field.ident())
+                        if let Some(other) = fields.iter().find(|f| {
+                            f.name() == field.name() || f.ident() == field.ident()
+                        })
                         {
-                            return Err(ctx.report()
-                                .err(Loc::pos(&field), "conflict in field")
-                                .info(Loc::pos(other), "previous declaration here")
-                                .into());
+                            return Err(
+                                ctx.report()
+                                    .err(Loc::pos(&field), "conflict in field")
+                                    .info(Loc::pos(other), "previous declaration here")
+                                    .into(),
+                            );
                         }
 
                         fields.push(field);
@@ -961,12 +982,7 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
 }
 
 impl<'input> IntoModel for Vec<TypeMember<'input>> {
-    type Output = (
-        Vec<Loc<RpField>>,
-        Vec<Loc<RpCode>>,
-        Vec<Loc<RpOptionDecl>>,
-        Vec<RpDecl>,
-    );
+    type Output = (Vec<Loc<RpField>>, Vec<Loc<RpCode>>, Vec<Loc<RpOptionDecl>>, Vec<RpDecl>);
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use self::TypeMember::*;
@@ -983,14 +999,16 @@ impl<'input> IntoModel for Vec<TypeMember<'input>> {
                 Field(field) => {
                     let field = field.into_model(scope)?;
 
-                    if let Some(other) = fields
-                        .iter()
-                        .find(|f| f.name() == field.name() || f.ident() == field.ident())
+                    if let Some(other) = fields.iter().find(|f| {
+                        f.name() == field.name() || f.ident() == field.ident()
+                    })
                     {
-                        return Err(ctx.report()
-                            .err(Loc::pos(&field), "conflict in field")
-                            .info(Loc::pos(other), "previous declaration here")
-                            .into());
+                        return Err(
+                            ctx.report()
+                                .err(Loc::pos(&field), "conflict in field")
+                                .info(Loc::pos(other), "previous declaration here")
+                                .into(),
+                        );
                     }
 
                     fields.push(field);
@@ -1054,10 +1072,12 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                     let (word, pos) = Loc::take_pair(word.into_model(scope)?);
 
                     if let Some(old) = words.insert(word, pos.clone()) {
-                        return Err(ctx.report()
-                            .err(pos, "word already present")
-                            .info(old, "old attribute here")
-                            .into());
+                        return Err(
+                            ctx.report()
+                                .err(pos, "word already present")
+                                .info(old, "old attribute here")
+                                .into(),
+                        );
                     }
                 }
                 List(key, name_values) => {
@@ -1085,10 +1105,12 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                             entry.insert(Loc::new(selection, attr_pos));
                         }
                         hash_map::Entry::Occupied(entry) => {
-                            return Err(ctx.report()
-                                .err(attr_pos, "attribute already present")
-                                .info(Loc::pos(entry.get()), "attribute here")
-                                .into());
+                            return Err(
+                                ctx.report()
+                                    .err(attr_pos, "attribute already present")
+                                    .info(Loc::pos(entry.get()), "attribute here")
+                                    .into(),
+                            );
                         }
                     }
                 }
@@ -1103,9 +1125,7 @@ impl<'input> IntoModel for PathSpec<'input> {
     type Output = RpPathSpec;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        Ok(RpPathSpec {
-            steps: self.steps.into_model(scope)?,
-        })
+        Ok(RpPathSpec { steps: self.steps.into_model(scope)? })
     }
 }
 
@@ -1113,9 +1133,7 @@ impl<'input> IntoModel for PathStep<'input> {
     type Output = RpPathStep;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        Ok(RpPathStep {
-            parts: self.parts.into_model(scope)?,
-        })
+        Ok(RpPathStep { parts: self.parts.into_model(scope)? })
     }
 }
 

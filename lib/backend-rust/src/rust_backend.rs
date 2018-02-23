@@ -13,7 +13,6 @@ use rust_file_spec::RustFileSpec;
 use rust_options::RustOptions;
 use std::rc::Rc;
 use trans::Environment;
-use utils::rust_keyword;
 
 /// #[allow(non_camel_case_types)] attribute.
 pub struct AllowNonCamelCaseTypes;
@@ -110,16 +109,6 @@ impl RustBackend {
         out_impl
     }
 
-    /// Generate a new field identifier, escaping keywords appropriately in the process.
-    fn ident(&self, name: &str) -> String {
-        let rename = match rust_keyword(name) {
-            Some(rename) => rename,
-            None => return name.to_owned(),
-        };
-
-        rename.to_owned()
-    }
-
     /// Convert the type name
     ///
     /// Optionally also emit the necessary attributes to suppress warnings for bad naming
@@ -141,7 +130,9 @@ impl RustBackend {
 
         if let Some(ref prefix) = name.prefix {
             let package_name = self.package(&name.package).parts.join("::");
-            return Ok(imported_alias(package_name, local_name, prefix.as_str()).into());
+            return Ok(
+                imported_alias(package_name, local_name, prefix.as_str()).into(),
+            );
         }
 
         Ok(local_name.into())
@@ -182,7 +173,9 @@ impl RustBackend {
             return Ok(datetime.clone().into());
         }
 
-        Err("Missing implementation for `datetime`, try: -m chrono".into())
+        Err(
+            "Missing implementation for `datetime`, try: -m chrono".into(),
+        )
     }
 
     pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Rust<'a>>> {
@@ -220,7 +213,7 @@ impl RustBackend {
     fn field_element<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
         let mut t = Tokens::new();
 
-        let ident = self.ident(field.ident());
+        let ident = field.safe_ident();
         let type_spec = self.into_type(field)?;
 
         if field.is_optional() {
@@ -339,9 +332,10 @@ impl RustBackend {
 
             for field in &body.fields {
                 t.push_unless_empty(Comments(&field.comment));
-                t.push(Loc::take(Loc::and_then(Loc::as_ref(field), |f| {
-                    self.field_element(f)
-                })?));
+                t.push(Loc::take(Loc::and_then(
+                    Loc::as_ref(field),
+                    |f| self.field_element(f),
+                )?));
             }
 
             t
