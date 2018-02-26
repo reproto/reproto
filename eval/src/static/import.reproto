@@ -1,6 +1,6 @@
 //! # An example package importing another package.
 
-use common as c;
+use example.common as c;
 
 /// An envelope containing a message.
 type Envelope {
