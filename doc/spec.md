@@ -436,9 +436,10 @@ For example (using `Foo`):
 
 ## Interfaces
 
-Interfaces are special types providing field-based polymorphism.
+Interfaces are special types providing property-based polymorphism.
 
-Each interface lists all the types that it contains in the declaration.
+Each interface lists all the types that it contains in the declaration and has a strategy which
+maps to JSON for resolving sub-types.
 
 The following is an example interface with two sub-types.
 
@@ -449,8 +450,6 @@ The following is an example interface with two sub-types.
 interface Sampling {
     /// size of the sample.
     sample_size: u32;
-    /// unit of the sample.
-    sample_unit: Unit;
 
     /// Take the average value for each sample.
     Average as "average";
@@ -467,27 +466,15 @@ interface Sampling {
         percentile: float;
     }
 }
-
-enum Unit as string {
-     Milliseconds as "ms";
-     Seconds as "s";
-     Hours as "H";
-     Days as "d";
-     Weeks as "w";
-}
 ```
 
 By default, sub-types are encoded as objects with a special `type` field.
 This behavior can be controlled using the [`type_info`] attribute.
 
-For example (using `new Sampling.Average(10, Unit.SECONDS)`):
+For example using `new Sampling.Percentile(10, 0.5F)`:
 
 ```json
-{
-    "type": "average",
-    "sample_size": 10,
-    "sample_unit": "s"
-}
+{"type": "average", "sample_size": 10, "percentile": 0.5}
 ```
 
 The following options are supported by interfaces:
@@ -519,25 +506,6 @@ interface Foo {
     name: string;
   }
 }
-```
-
-The name of the sub-type is determined using the `as` keyword, it can take a string or an array of
-strings, like this:
-
-```reproto
-interface Foo {
-  Bar as "bar";
-
-  Baz as ["Baz", "baz"];
-}
-```
-
-All of these are legal JSON-objects for this declaration:
-
-```json
-{"type": "bar"}
-{"type": "baz"}
-{"type": "Baz"}
 ```
 
 ### <a id="type-info" />`#[type_info(strategy = <string>, ...)]`
