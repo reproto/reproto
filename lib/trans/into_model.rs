@@ -2,6 +2,7 @@ use ast::*;
 use core::*;
 use core::errors::{Error, Result};
 use linked_hash_map::{self, LinkedHashMap};
+use naming::Naming;
 use path_parser;
 use scope::Scope;
 use std::borrow::Cow;
@@ -313,30 +314,49 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
     }
 }
 
+/// Helper function to build a safe name.
+fn build_item_name(
+    scope: &Scope,
+    ident: &str,
+    name: Option<&str>,
+    default_naming: Option<&Naming>,
+) -> (String, Option<String>, Option<String>) {
+    let ident = ident.to_string();
+
+    // Identifier would translate to a language-specific keyword, introduce replacement
+    // here.
+    let safe_ident = scope.keyword(ident.as_str()).map(|s| s.to_string());
+
+    // Apply specification-wide naming convention unless field name explicitly specified.
+    let name = name.map(|s| s.to_string()).or_else(|| {
+        default_naming.map(|n| n.convert(ident.as_str()))
+    });
+
+    // Don't include field alias if same as name.
+    let name = match name {
+        // Explicit alias, but it's exactly the same as translated field.
+        Some(ref name) if name == ident.as_str() => None,
+        // Explicit alias that differs from field.
+        Some(name) => Some(name),
+        _ => None,
+    };
+
+    (ident, safe_ident, name)
+}
+
 impl<'input> IntoModel for Item<'input, Field<'input>> {
     type Output = Loc<RpField>;
 
     fn into_model(self, scope: &Scope) -> Result<Loc<RpField>> {
         self.map(|comment, attributes, item| {
-            let ident = item.name.as_ref().to_string();
+            let field_as = item.field_as.into_model(scope)?;
 
-            // Identifier would translate to a language-specific keyword, introduce replacement
-            // here.
-            let safe_ident = scope.keyword(ident.as_str()).map(|s| s.to_string());
-
-            // Apply specification-wide naming convention unless field name explicitly specified.
-            let field_as = item.field_as.into_model(scope)?.or_else(|| {
-                scope.field_naming().map(|n| n.convert(ident.as_str()))
-            });
-
-            // Don't include field alias if same as name.
-            let field_as = match field_as {
-                // Explicit alias, but it's exactly the same as translated field.
-                Some(ref field_as) if field_as == ident.as_str() => None,
-                // Explicit alias that differs from field.
-                Some(field_as) => Some(field_as),
-                _ => None,
-            };
+            let (ident, safe_ident, field_as) = build_item_name(
+                scope,
+                item.name.as_ref(),
+                field_as.as_ref().map(|s| s.as_str()),
+                scope.field_naming(),
+            );
 
             let attributes = attributes.into_model(scope)?;
             check_attributes!(scope, attributes);
@@ -451,14 +471,6 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 Ok(RpSubTypeStrategy::default())
             }
         })
-    }
-}
-
-impl IntoModel for RpPackage {
-    type Output = RpPackage;
-
-    fn into_model(self, _scope: &Scope) -> Result<Self::Output> {
-        Ok(self)
     }
 }
 
@@ -605,7 +617,7 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
             };
 
             // Check that there are no conflicting endpoint IDs.
-            match endpoints.entry(Loc::value(&endpoint.id).to_string()) {
+            match endpoints.entry(endpoint.ident().to_string()) {
                 Vacant(entry) => entry.insert(endpoint),
                 Occupied(entry) => {
                     return Err(
@@ -627,16 +639,17 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         return self.map(|comment, attributes, item| {
-            /// TODO: check if keyword
-            let id = item.id.into_model(scope)?;
             let ctx = scope.ctx();
 
-            let name = item.alias.into_model(scope)?.unwrap_or_else(|| {
-                scope
-                    .endpoint_naming()
-                    .map(|n| n.convert(id.as_str()))
-                    .unwrap_or_else(|| id.to_string())
-            });
+            let id = item.id.into_model(scope)?;
+            let alias = item.alias.into_model(scope)?;
+
+            let (ident, safe_ident, name) = build_item_name(
+                scope,
+                id.as_str(),
+                alias.as_ref().map(|s| s.as_str()),
+                scope.endpoint_naming(),
+            );
 
             let mut arguments = LinkedHashMap::new();
 
@@ -683,7 +696,8 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             check_attributes!(scope, attributes);
 
             Ok(RpEndpoint {
-                id: id,
+                ident: ident,
+                safe_ident: safe_ident,
                 name: name,
                 comment: Comment(&comment).into_model(scope)?,
                 attributes: attributes,

@@ -30,12 +30,20 @@ impl<'el> JavaField<'el> {
         Some(m)
     }
 
+    /// Create a new getter method without a body.
     pub fn getter_without_body(&self) -> Method<'el> {
-        let mut method = Method::new(Rc::new(format!("get{}", self.field_accessor)));
+        // Avoid `getClass`, a common built-in method for any Object.
+        let field_accessor = match self.field_accessor.as_str() {
+            "Class" => "Class_",
+            accessor => accessor,
+        };
+
+        let mut method = Method::new(Rc::new(format!("get{}", field_accessor)));
         method.returns = self.spec.ty().as_field();
         method
     }
 
+    /// Build a new complete getter.
     pub fn getter(&self) -> Method<'el> {
         let mut m = self.getter_without_body();
         m.body.push(toks!["return this.", self.spec.var(), ";"]);

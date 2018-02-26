@@ -1,0 +1,2 @@
+suites := js
+projects := js

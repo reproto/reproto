@@ -61,9 +61,11 @@ pub struct RpEndpointHttp {
 #[derive(Debug, Clone, Serialize)]
 pub struct RpEndpoint {
     /// Name of the endpoint. Guaranteed to be unique.
-    pub id: Loc<String>,
+    pub ident: String,
+    /// Safe identifier of the endpoint, avoiding any language-specific keywords.
+    pub safe_ident: Option<String>,
     /// Name of the endpoint. This is the name which is being sent over the wire.
-    pub name: String,
+    pub name: Option<String>,
     /// Comments for documentation.
     pub comment: Vec<String>,
     /// Attributes associated with the endpoint.
@@ -81,12 +83,27 @@ impl RpEndpoint {
     where
         F: Fn(&str) -> String,
     {
-        vec![filter(self.id.as_str())]
+        vec![filter(self.ident.as_str())]
     }
 
     /// Get the name of the endpoint.
     pub fn name(&self) -> &str {
-        self.name.as_str()
+        self.name.as_ref().map(|s| s.as_str()).unwrap_or(
+            self.ident(),
+        )
+    }
+
+    /// Safe identifier of the endpoint.
+    pub fn safe_ident(&self) -> &str {
+        self.safe_ident.as_ref().map(|s| s.as_str()).unwrap_or(
+            self.ident
+                .as_str(),
+        )
+    }
+
+    /// Get the identifier of the endpoint.
+    pub fn ident(&self) -> &str {
+        self.ident.as_str()
     }
 
     /// If endpoint has metadata for HTTP.

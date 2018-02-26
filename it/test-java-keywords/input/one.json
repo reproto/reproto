@@ -6,8 +6,7 @@
 {"case": "string"}
 {"catch": "string"}
 {"char": "string"}
-# FIXME: ARGH, this one is not supported by current scheme because `Object#getClass()` exists.
-# {"class": "string"}
+{"class": "string"}
 {"const": "string"}
 {"continue": "string"}
 {"default": "string"}
@@ -31,6 +30,7 @@
 {"long": "string"}
 {"native": "string"}
 {"new": "string"}
+{"null": "string"}
 {"package": "string"}
 {"private": "string"}
 {"protected": "string"}

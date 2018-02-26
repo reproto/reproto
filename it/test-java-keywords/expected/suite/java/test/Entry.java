@@ -1,5 +1,6 @@
 package test;
 
+import _true.Empty;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
@@ -34,6 +35,8 @@ public class Entry {
   private final Optional<String> _catch;
   @JsonProperty("char")
   private final Optional<String> _char;
+  @JsonProperty("class")
+  private final Optional<String> _class;
   @JsonProperty("const")
   private final Optional<String> _const;
   @JsonProperty("continue")
@@ -70,6 +73,8 @@ public class Entry {
   private final Optional<String> _native;
   @JsonProperty("new")
   private final Optional<String> _new;
+  @JsonProperty("null")
+  private final Optional<String> _null;
   @JsonProperty("package")
   private final Optional<String> _package;
   @JsonProperty("private")
@@ -108,6 +113,8 @@ public class Entry {
   private final Optional<String> _volatile;
   @JsonProperty("while")
   private final Optional<String> _while;
+  @JsonProperty("imported")
+  private final Optional<Empty> imported;
 
   @JsonCreator
   public Entry(
@@ -125,6 +132,7 @@ public class Entry {
     @JsonProperty("case") final Optional<String> _case,
     @JsonProperty("catch") final Optional<String> _catch,
     @JsonProperty("char") final Optional<String> _char,
+    @JsonProperty("class") final Optional<String> _class,
     @JsonProperty("const") final Optional<String> _const,
     @JsonProperty("continue") final Optional<String> _continue,
     @JsonProperty("default") final Optional<String> _default,
@@ -143,6 +151,7 @@ public class Entry {
     @JsonProperty("long") final Optional<String> _long,
     @JsonProperty("native") final Optional<String> _native,
     @JsonProperty("new") final Optional<String> _new,
+    @JsonProperty("null") final Optional<String> _null,
     @JsonProperty("package") final Optional<String> _package,
     @JsonProperty("private") final Optional<String> _private,
     @JsonProperty("protected") final Optional<String> _protected,
@@ -161,7 +170,8 @@ public class Entry {
     @JsonProperty("try") final Optional<String> _try,
     @JsonProperty("void") final Optional<String> _void,
     @JsonProperty("volatile") final Optional<String> _volatile,
-    @JsonProperty("while") final Optional<String> _while
+    @JsonProperty("while") final Optional<String> _while,
+    @JsonProperty("imported") final Optional<Empty> imported
   ) {
     Objects.requireNonNull(_boolean, "boolean");
     this._boolean = _boolean;
@@ -191,6 +201,8 @@ public class Entry {
     this._catch = _catch;
     Objects.requireNonNull(_char, "char");
     this._char = _char;
+    Objects.requireNonNull(_class, "class");
+    this._class = _class;
     Objects.requireNonNull(_const, "const");
     this._const = _const;
     Objects.requireNonNull(_continue, "continue");
@@ -227,6 +239,8 @@ public class Entry {
     this._native = _native;
     Objects.requireNonNull(_new, "new");
     this._new = _new;
+    Objects.requireNonNull(_null, "null");
+    this._null = _null;
     Objects.requireNonNull(_package, "package");
     this._package = _package;
     Objects.requireNonNull(_private, "private");
@@ -265,6 +279,8 @@ public class Entry {
     this._volatile = _volatile;
     Objects.requireNonNull(_while, "while");
     this._while = _while;
+    Objects.requireNonNull(imported, "imported");
+    this.imported = imported;
   }
 
   public Optional<String> getBoolean() {
@@ -321,6 +337,10 @@ public class Entry {
 
   public Optional<String> getChar() {
     return this._char;
+  }
+
+  public Optional<String> getClass_() {
+    return this._class;
   }
 
   public Optional<String> getConst() {
@@ -393,6 +413,10 @@ public class Entry {
 
   public Optional<String> getNew() {
     return this._new;
+  }
+
+  public Optional<String> getNull() {
+    return this._null;
   }
 
   public Optional<String> getPackage() {
@@ -471,6 +495,10 @@ public class Entry {
     return this._while;
   }
 
+  public Optional<Empty> getImported() {
+    return this.imported;
+  }
+
   @Override
   public int hashCode() {
     int result = 1;
@@ -488,6 +516,7 @@ public class Entry {
     result = result * 31 + this._case.hashCode();
     result = result * 31 + this._catch.hashCode();
     result = result * 31 + this._char.hashCode();
+    result = result * 31 + this._class.hashCode();
     result = result * 31 + this._const.hashCode();
     result = result * 31 + this._continue.hashCode();
     result = result * 31 + this._default.hashCode();
@@ -506,6 +535,7 @@ public class Entry {
     result = result * 31 + this._long.hashCode();
     result = result * 31 + this._native.hashCode();
     result = result * 31 + this._new.hashCode();
+    result = result * 31 + this._null.hashCode();
     result = result * 31 + this._package.hashCode();
     result = result * 31 + this._private.hashCode();
     result = result * 31 + this._protected.hashCode();
@@ -525,6 +555,7 @@ public class Entry {
     result = result * 31 + this._void.hashCode();
     result = result * 31 + this._volatile.hashCode();
     result = result * 31 + this._while.hashCode();
+    result = result * 31 + this.imported.hashCode();
     return result;
   }
 
@@ -597,6 +628,10 @@ public class Entry {
       return false;
     }
 
+    if (!this._class.equals(o._class)) {
+      return false;
+    }
+
     if (!this._const.equals(o._const)) {
       return false;
     }
@@ -666,6 +701,10 @@ public class Entry {
     }
 
     if (!this._new.equals(o._new)) {
+      return false;
+    }
+
+    if (!this._null.equals(o._null)) {
       return false;
     }
 
@@ -745,6 +784,10 @@ public class Entry {
       return false;
     }
 
+    if (!this.imported.equals(o.imported)) {
+      return false;
+    }
+
     return true;
   }
 
@@ -795,6 +838,9 @@ public class Entry {
     b.append(", ");
     b.append("char=");
     b.append(this._char.toString());
+    b.append(", ");
+    b.append("class=");
+    b.append(this._class.toString());
     b.append(", ");
     b.append("const=");
     b.append(this._const.toString());
@@ -849,6 +895,9 @@ public class Entry {
     b.append(", ");
     b.append("new=");
     b.append(this._new.toString());
+    b.append(", ");
+    b.append("null=");
+    b.append(this._null.toString());
     b.append(", ");
     b.append("package=");
     b.append(this._package.toString());
@@ -906,6 +955,9 @@ public class Entry {
     b.append(", ");
     b.append("while=");
     b.append(this._while.toString());
+    b.append(", ");
+    b.append("imported=");
+    b.append(this.imported.toString());
     b.append(")");
 
     return b.toString();
@@ -926,6 +978,7 @@ public class Entry {
     private Optional<String> _case = Optional.empty();
     private Optional<String> _catch = Optional.empty();
     private Optional<String> _char = Optional.empty();
+    private Optional<String> _class = Optional.empty();
     private Optional<String> _const = Optional.empty();
     private Optional<String> _continue = Optional.empty();
     private Optional<String> _default = Optional.empty();
@@ -944,6 +997,7 @@ public class Entry {
     private Optional<String> _long = Optional.empty();
     private Optional<String> _native = Optional.empty();
     private Optional<String> _new = Optional.empty();
+    private Optional<String> _null = Optional.empty();
     private Optional<String> _package = Optional.empty();
     private Optional<String> _private = Optional.empty();
     private Optional<String> _protected = Optional.empty();
@@ -963,6 +1017,7 @@ public class Entry {
     private Optional<String> _void = Optional.empty();
     private Optional<String> _volatile = Optional.empty();
     private Optional<String> _while = Optional.empty();
+    private Optional<Empty> imported = Optional.empty();
 
     public Builder _boolean(final String _boolean) {
       this._boolean = Optional.of(_boolean);
@@ -1031,6 +1086,11 @@ public class Entry {
 
     public Builder _char(final String _char) {
       this._char = Optional.of(_char);
+      return this;
+    }
+
+    public Builder _class(final String _class) {
+      this._class = Optional.of(_class);
       return this;
     }
 
@@ -1121,6 +1181,11 @@ public class Entry {
 
     public Builder _new(final String _new) {
       this._new = Optional.of(_new);
+      return this;
+    }
+
+    public Builder _null(final String _null) {
+      this._null = Optional.of(_null);
       return this;
     }
 
@@ -1219,6 +1284,11 @@ public class Entry {
       return this;
     }
 
+    public Builder imported(final Empty imported) {
+      this.imported = Optional.of(imported);
+      return this;
+    }
+
     public Entry build() {
       final Optional<String> _boolean = this._boolean;
       final Optional<String> _double = this._double;
@@ -1234,6 +1304,7 @@ public class Entry {
       final Optional<String> _case = this._case;
       final Optional<String> _catch = this._catch;
       final Optional<String> _char = this._char;
+      final Optional<String> _class = this._class;
       final Optional<String> _const = this._const;
       final Optional<String> _continue = this._continue;
       final Optional<String> _default = this._default;
@@ -1252,6 +1323,7 @@ public class Entry {
       final Optional<String> _long = this._long;
       final Optional<String> _native = this._native;
       final Optional<String> _new = this._new;
+      final Optional<String> _null = this._null;
       final Optional<String> _package = this._package;
       final Optional<String> _private = this._private;
       final Optional<String> _protected = this._protected;
@@ -1271,8 +1343,9 @@ public class Entry {
       final Optional<String> _void = this._void;
       final Optional<String> _volatile = this._volatile;
       final Optional<String> _while = this._while;
+      final Optional<Empty> imported = this.imported;
 
-      return new Entry(_boolean, _double, _enum, _false, _float, _interface, _true, _abstract, _assert, _break, _byte, _case, _catch, _char, _const, _continue, _default, _do, _else, _extends, _final, _finally, _for, _goto, _if, _implements, _import, _instanceof, _int, _long, _native, _new, _package, _private, _protected, _public, _return, _short, _static, _strictfp, _super, _switch, _synchronized, _this, _throw, _throws, _transient, _try, _void, _volatile, _while);
+      return new Entry(_boolean, _double, _enum, _false, _float, _interface, _true, _abstract, _assert, _break, _byte, _case, _catch, _char, _class, _const, _continue, _default, _do, _else, _extends, _final, _finally, _for, _goto, _if, _implements, _import, _instanceof, _int, _long, _native, _new, _null, _package, _private, _protected, _public, _return, _short, _static, _strictfp, _super, _switch, _synchronized, _this, _throw, _throws, _transient, _try, _void, _volatile, _while, imported);
     }
   }
 }

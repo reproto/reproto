@@ -7,7 +7,7 @@ use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModi
            RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, WithPos};
 use core::errors::*;
 use genco::{Element, Quoted, Tokens};
-use genco::python::{imported, Python};
+use genco::python::{Python, imported};
 use naming::{self, Naming};
 use options::Options;
 use python_compiler::PythonCompiler;
@@ -74,7 +74,7 @@ impl PythonBackend {
 
         fields.for_each_loc(|field| {
             let var_string = field.name.quoted();
-            let field_toks = toks!["self.", field.ident.clone()];
+            let field_toks = toks!["self.", field.safe_ident.clone()];
 
             let value_toks = self.dynamic_encode(field.ty, field_toks.clone())?;
 
@@ -118,10 +118,11 @@ impl PythonBackend {
         let mut encode_body = Tokens::new();
 
         for field in fields {
-            let toks = toks!["self.", field.ident.clone()];
+            let toks = toks!["self.", field.safe_ident.clone()];
             encode_body.push(self.raise_if_none(toks.clone(), field));
-            values.append(self.dynamic_encode(field.ty, toks)
-                .with_pos(Loc::pos(field))?);
+            values.append(self.dynamic_encode(field.ty, toks).with_pos(
+                Loc::pos(field),
+            )?);
         }
 
         encode_body.push(toks!["return (", values.join(", "), ")"]);
@@ -130,39 +131,6 @@ impl PythonBackend {
         encode.push("def encode(self):");
         encode.nested(encode_body.join_line_spacing());
         Ok(encode)
-    }
-
-    fn encode_enum_method<'el>(&self, field: &PythonField) -> Result<Tokens<'el, Python<'el>>> {
-        let mut encode = Tokens::new();
-        encode.push("def encode(self):");
-        encode.nested(toks!["return self.", field.ident.clone()]);
-        Ok(encode)
-    }
-
-    fn decode_enum_method<'el>(&self, field: &PythonField) -> Result<Tokens<'el, Python<'el>>> {
-        let mut decode_body = Tokens::new();
-
-        let mut check = Tokens::new();
-        check.push(toks!["if value.", field.ident.clone(), " == data:"]);
-        check.nested(toks!["return value"]);
-
-        let mut member_loop = Tokens::new();
-
-        member_loop.push("for value in cls.__members__.values():");
-        member_loop.nested(check);
-
-        decode_body.push(member_loop);
-        decode_body.push(toks![
-            "raise Exception(",
-            "data does not match enum".quoted(),
-            ")",
-        ]);
-
-        let mut decode = Tokens::new();
-        decode.push("@classmethod");
-        decode.push("def decode(cls, data):");
-        decode.nested(decode_body.join_line_spacing());
-        Ok(decode)
     }
 
     fn repr_method<'a, 'el, I>(&self, name: Rc<String>, fields: I) -> Tokens<'el, Python<'el>>
@@ -174,7 +142,7 @@ impl PythonBackend {
 
         for field in fields {
             args.push(format!("{}: {{!r}}", field.ident.as_str()));
-            vars.append(toks!["self.", field.ident.clone()]);
+            vars.append(toks!["self.", field.safe_ident.clone()]);
         }
 
         let format = format!("<{} {}>", name, args.join(", "));
@@ -239,14 +207,18 @@ impl PythonBackend {
             let toks = match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = toks!(var_name.clone());
-                    let var_toks = self.dynamic_decode(field.ty, var_name.clone())
-                        .with_pos(Loc::pos(field))?;
+                    let var_toks = self.dynamic_decode(field.ty, var_name.clone()).with_pos(
+                        Loc::pos(
+                            field,
+                        ),
+                    )?;
                     self.optional_check(var_name.clone(), var, var_toks)
                 }
                 _ => {
                     let data = toks!["data[", var.clone(), "]"];
-                    let var_toks = self.dynamic_decode(field.ty, data)
-                        .with_pos(Loc::pos(field))?;
+                    let var_toks = self.dynamic_decode(field.ty, data).with_pos(
+                        Loc::pos(field),
+                    )?;
                     toks![var_name.clone(), " = ", var_toks]
                 }
             };
@@ -267,15 +239,6 @@ impl PythonBackend {
         Ok(decode)
     }
 
-    /// Python naming convention is identical with reproto: lower_camel.
-    fn ident<'a>(&self, name: &'a str) -> &'a str {
-        name
-    }
-
-    fn field_ident<'a>(&self, field: &'a RpField) -> &'a str {
-        self.ident(field.ident())
-    }
-
     fn build_constructor<'a, 'el, I>(&self, fields: I) -> Tokens<'el, Python<'el>>
     where
         I: IntoIterator<Item = &'a Loc<PythonField<'a>>>,
@@ -286,13 +249,13 @@ impl PythonBackend {
         args.append("self");
 
         for field in fields {
-            args.append(field.ident.clone());
+            args.append(field.safe_ident.clone());
 
             assign.push(toks![
                 "self.",
-                field.ident.clone(),
+                field.safe_ident.clone(),
                 " = ",
-                field.ident.clone(),
+                field.safe_ident.clone(),
             ]);
         }
 
@@ -318,7 +281,7 @@ impl PythonBackend {
             let name = Rc::new(self.to_lower_snake.convert(field.ident.as_str()));
             let mut body = Tokens::new();
             body.push(toks!("def get_", name, "(self):"));
-            body.nested(toks!["return self.", field.ident.clone()]);
+            body.nested(toks!["return self.", field.safe_ident.clone()]);
             result.push(body);
         }
 
@@ -339,10 +302,12 @@ impl PythonBackend {
 
         if let Some(ref used) = name.prefix {
             let package = self.package(&name.package).parts.join(".");
-            return Ok(imported(package)
-                .alias(used.as_str())
-                .name(local_name)
-                .into());
+            return Ok(
+                imported(package)
+                    .alias(used.as_str())
+                    .name(local_name)
+                    .into(),
+            );
         }
 
         Ok(local_name.into())
@@ -383,10 +348,10 @@ impl PythonBackend {
     }
 
     fn enum_ident(field: PythonField) -> PythonField {
-        match field.ident.as_str() {
-            "name" => field.with_ident("_name".to_owned()),
-            "value" => field.with_ident("_value".to_owned()),
-            "ordinal" => field.with_ident("_ordinal".to_owned()),
+        match field.safe_ident.as_str() {
+            "name" => field.with_safe_ident("_name".to_owned()),
+            "value" => field.with_safe_ident("_value".to_owned()),
+            "ordinal" => field.with_safe_ident("_ordinal".to_owned()),
             _ => field,
         }
     }
@@ -399,13 +364,12 @@ impl PythonBackend {
     where
         F: Fn(PythonField) -> PythonField,
     {
-        let ident = self.field_ident(field);
-
         python_field_f(PythonField {
             modifier: &field.modifier,
             ty: &field.ty,
             name: field.name(),
-            ident: Rc::new(ident.to_owned()),
+            ident: Rc::new(field.ident().to_string()),
+            safe_ident: Rc::new(field.safe_ident().to_string()),
         })
     }
 
@@ -454,7 +418,11 @@ impl PythonBackend {
 
         tuple_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
-        let decode = self.decode_method(&body.name, &fields, |i, _| i.to_string().into())?;
+        let decode = self.decode_method(
+            &body.name,
+            &fields,
+            |i, _| i.to_string().into(),
+        )?;
         tuple_body.push(decode);
 
         let encode = self.encode_tuple_method(&fields)?;
@@ -495,15 +463,48 @@ impl PythonBackend {
 
         class_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
-        class_body.push(self.encode_enum_method(&field)?);
-        class_body.push(self.decode_enum_method(&field)?);
+        class_body.push(encode_method(&field)?);
+        class_body.push(decode_method(&field)?);
 
         let repr_method = self.repr_method(type_name.clone(), iter::once(&field));
         class_body.push(repr_method);
 
         let class = self.as_class(type_name, class_body);
         out.0.push(class);
-        Ok(())
+        return Ok(());
+
+        fn encode_method<'el>(field: &PythonField) -> Result<Tokens<'el, Python<'el>>> {
+            let mut m = Tokens::new();
+            m.push("def encode(self):");
+            m.nested(toks!["return self.", field.safe_ident.clone()]);
+            Ok(m)
+        }
+
+        fn decode_method<'el>(field: &PythonField) -> Result<Tokens<'el, Python<'el>>> {
+            let mut decode_body = Tokens::new();
+
+            let mut check = Tokens::new();
+            check.push(toks!["if value.", field.safe_ident.clone(), " == data:"]);
+            check.nested(toks!["return value"]);
+
+            let mut member_loop = Tokens::new();
+
+            member_loop.push("for value in cls.__members__.values():");
+            member_loop.nested(check);
+
+            decode_body.push(member_loop);
+            decode_body.push(toks![
+                             "raise Exception(",
+                             "data does not match enum".quoted(),
+                             ")",
+            ]);
+
+            let mut m = Tokens::new();
+            m.push("@classmethod");
+            m.push("def decode(cls, data):");
+            m.nested(decode_body.join_line_spacing());
+            Ok(m)
+        }
     }
 
     pub fn process_type<'el>(
@@ -529,8 +530,11 @@ impl PythonBackend {
             }
         }
 
-        let decode =
-            self.decode_method(&body.name, &fields, |_, field| toks!(field.name.quoted()))?;
+        let decode = self.decode_method(
+            &body.name,
+            &fields,
+            |_, field| toks!(field.name.quoted()),
+        )?;
 
         class_body.push(decode);
 
@@ -603,7 +607,9 @@ impl PythonBackend {
                     let encode = self.encode_method(
                         &fields,
                         self.dict.clone().into(),
-                        Some(toks!["data[", tk, "] = ", sub_type.name().quoted(),]),
+                        Some(
+                            toks!["data[", tk, "] = ", sub_type.name().quoted(),],
+                        ),
                     )?;
 
                     sub_type_body.push(encode);
@@ -635,15 +641,16 @@ impl PythonBackend {
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
                 Some((
                     "data",
-                    self.dynamic_decode(res.ty(), "data".into())
-                        .with_pos(Loc::pos(res))?,
+                    self.dynamic_decode(res.ty(), "data".into()).with_pos(
+                        Loc::pos(res),
+                    )?,
                 ))
             } else {
                 None
             };
 
             extra.push(EndpointExtra {
-                name: endpoint.id.as_str(),
+                name: endpoint.ident(),
                 response_ty: response_ty,
             });
         }
@@ -690,7 +697,8 @@ impl<'el> DynamicConverter<'el> for PythonBackend {
         use self::RpType::*;
 
         match *ty {
-            Signed { size: _ } | Unsigned { size: _ } => true,
+            Signed { size: _ } |
+            Unsigned { size: _ } => true,
             Float | Double => true,
             String => true,
             Any => true,

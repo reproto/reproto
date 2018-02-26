@@ -14,6 +14,7 @@ struct Root {
     endpoint_naming: Option<Box<Naming>>,
     field_naming: Option<Box<Naming>>,
     keywords: Rc<HashMap<String, String>>,
+    safe_packages: bool,
 }
 
 /// Model of a scope.
@@ -37,15 +38,17 @@ impl Scope {
         endpoint_naming: Option<Box<Naming>>,
         field_naming: Option<Box<Naming>>,
         keywords: Rc<HashMap<String, String>>,
+        safe_packages: bool,
     ) -> Scope {
         Scope(Rc::new(Inner::Root(Rc::new(Root {
-            ctx: ctx,
-            package_prefix: package_prefix,
-            package: package,
-            prefixes: prefixes,
-            endpoint_naming: endpoint_naming,
-            field_naming: field_naming,
-            keywords: keywords,
+            ctx,
+            package_prefix,
+            package,
+            prefixes,
+            endpoint_naming,
+            field_naming,
+            keywords,
+            safe_packages,
         }))))
     }
 
@@ -77,18 +80,30 @@ impl Scope {
     }
 
     /// Lookup what package a given prefix belongs to.
-    pub fn lookup_prefix(&self, prefix: &String) -> Option<&RpVersionedPackage> {
-        self.root().prefixes.get(prefix)
+    pub fn lookup_prefix(&self, prefix: &String) -> Option<RpVersionedPackage> {
+        let root = self.root();
+
+        root.prefixes.get(prefix).map(|p| if root.safe_packages {
+            p.clone().with_replacements(&root.keywords)
+        } else {
+            p.clone()
+        })
     }
 
     /// Get the package that this scope belongs to.
     pub fn package(&self) -> RpVersionedPackage {
         let root = self.root();
 
-        root.package_prefix
+        let package = root.package_prefix
             .as_ref()
             .map(|prefix| prefix.join_versioned(&root.package))
-            .unwrap_or_else(|| root.package.clone())
+            .unwrap_or_else(|| root.package.clone());
+
+        if root.safe_packages {
+            return package.with_replacements(&root.keywords);
+        }
+
+        package
     }
 
     /// Get the current path as a name.

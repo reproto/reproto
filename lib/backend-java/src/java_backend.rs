@@ -716,7 +716,7 @@ impl JavaBackend {
         let mut extra: Vec<EndpointExtra> = Vec::new();
 
         for endpoint in body.endpoints.values() {
-            let name = self.to_lower_camel.convert(endpoint.id.as_str());
+            let name = self.to_lower_camel.convert(endpoint.safe_ident());
 
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
                 let ty = self.utils.into_java_type(res.ty())?;

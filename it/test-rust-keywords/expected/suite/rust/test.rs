@@ -1,3 +1,5 @@
+use _trait as t;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
@@ -153,4 +155,6 @@ pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "yield")]
   _yield: Option<String>,
+  #[serde(skip_serializing_if="Option::is_none")]
+  imported: Option<t::Empty>,
 }

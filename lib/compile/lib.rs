@@ -8,6 +8,7 @@ use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 use std::str;
+use trans::Environment;
 
 /// Input to the compiler.
 pub enum Input<'input> {
@@ -70,7 +71,7 @@ pub fn simple_compile<L: manifest::Lang, C>(
     compile: C,
 ) -> core::errors::Result<()>
 where
-    C: Fn(Rc<core::Context>, trans::Environment, manifest::Manifest<L>) -> core::errors::Result<()>,
+    C: Fn(Rc<core::Context>, Environment, manifest::Manifest<L>) -> core::errors::Result<()>,
 {
     let SimpleCompile {
         input,
@@ -94,13 +95,7 @@ where
 
     let ctx = Rc::new(ctx);
 
-    let keywords = L::keywords()
-        .into_iter()
-        .map(|(f, t)| (f.to_string(), t.to_string()))
-        .collect();
-
-    let mut env = trans::Environment::new(ctx.clone(), package_prefix.clone(), resolver)
-        .with_keywords(keywords);
+    let mut env = Environment::from_lang::<L>(ctx.clone(), package_prefix.clone(), resolver);
 
     match input {
         Input::File(file, package) => {

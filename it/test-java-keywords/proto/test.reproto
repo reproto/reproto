@@ -1,3 +1,5 @@
+use _true as t;
+
 type Entry {
     _boolean?: string;
     _double?: string;
@@ -13,10 +15,9 @@ type Entry {
     case?: string;
     catch?: string;
     char?: string;
+    class?: string;
     const?: string;
     continue?: string;
-    // FIXME: Not supported because conflicts with `Object#getClass()`.
-    // class?: string;
     default?: string;
     do?: string;
     else?: string;
@@ -33,6 +34,7 @@ type Entry {
     long?: string;
     native?: string;
     new?: string;
+    null?: string;
     package?: string;
     private?: string;
     protected?: string;
@@ -52,4 +54,61 @@ type Entry {
     void?: string;
     volatile?: string;
     while?: string;
+    imported?: t::Empty;
+}
+
+service Keywords {
+    _boolean() -> string;
+    _double() -> string;
+    _enum() -> string;
+    _false() -> string;
+    _float() -> string;
+    _interface() -> string;
+    _true() -> string;
+    abstract() -> string;
+    assert() -> string;
+    break() -> string;
+    byte() -> string;
+    case() -> string;
+    catch() -> string;
+    char() -> string;
+    class() -> string;
+    const() -> string;
+    continue() -> string;
+    default() -> string;
+    do() -> string;
+    else() -> string;
+    extends() -> string;
+    final() -> string;
+    finally() -> string;
+    for() -> string;
+    goto() -> string;
+    if() -> string;
+    implements() -> string;
+    import() -> string;
+    instanceof() -> string;
+    int() -> string;
+    long() -> string;
+    native() -> string;
+    new() -> string;
+    null() -> string;
+    package() -> string;
+    private() -> string;
+    protected() -> string;
+    public() -> string;
+    return() -> string;
+    short() -> string;
+    static() -> string;
+    strictfp() -> string;
+    super() -> string;
+    switch() -> string;
+    synchronized() -> string;
+    this() -> string;
+    throw() -> string;
+    throws() -> string;
+    transient() -> string;
+    try() -> string;
+    void() -> string;
+    volatile() -> string;
+    while() -> string;
 }

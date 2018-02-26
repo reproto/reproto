@@ -43,7 +43,7 @@ impl<'p> ServiceProcessor<'p> {
         html!(self, h2 {class => "endpoint-title", id => id} => {
             self.name_until(&self.body.name)?;
 
-            html!(self, span {class => "endpoint-id"} ~ Escape(endpoint.id.as_str()));
+            html!(self, span {class => "endpoint-id"} ~ Escape(endpoint.safe_ident()));
             html!(self, span {} ~ Escape("("));
 
             let mut it = endpoint.arguments.values().peekable();
@@ -77,9 +77,9 @@ impl<'p> ServiceProcessor<'p> {
                 });
             }
 
-            if endpoint.id.as_str() != endpoint.name.as_str() {
+            if endpoint.ident() != endpoint.name() {
                 html!(self, span {class => "keyword"} ~ Escape("as"));
-                html!(self, span {} ~ Escape(endpoint.name.as_str()));
+                html!(self, span {} ~ Escape(endpoint.name()));
             }
         });
 

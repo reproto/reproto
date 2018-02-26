@@ -436,7 +436,7 @@ impl RustBackend {
             t.nested({
                 let mut t = Tokens::new();
                 t.push_unless_empty(Comments(&e.comment));
-                t.push(toks!["fn ", e.id.as_str(), "();"]);
+                t.push(toks!["fn ", e.safe_ident(), "();"]);
                 t
             });
 

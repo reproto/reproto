@@ -16,9 +16,8 @@ pub struct RpSubType {
 
 impl RpSubType {
     pub fn name(&self) -> &str {
-        self.sub_type_name
-            .as_ref()
-            .map(|t| t.as_str())
-            .unwrap_or(&self.local_name)
+        self.sub_type_name.as_ref().map(|t| t.as_str()).unwrap_or(
+            &self.local_name,
+        )
     }
 }

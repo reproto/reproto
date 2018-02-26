@@ -4,6 +4,7 @@ use core::{Context, Loc, Object, Options, PathObject, Range, Resolved, Resolver,
 use core::errors::{Error, Result};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
+use manifest::Lang;
 use naming::{self, Naming};
 use parser;
 use scope::Scope;
@@ -72,10 +73,13 @@ pub struct Environment {
     files: BTreeMap<RpVersionedPackage, RpFile>,
     /// Keywords that need to be translated.
     keywords: Rc<HashMap<String, String>>,
+    /// Whether to perform package translation or not.
+    safe_packages: bool,
 }
 
 /// Environment containing all loaded declarations.
 impl Environment {
+    /// Construct a new, language-neutral environment.
     pub fn new(
         ctx: Rc<Context>,
         package_prefix: Option<RpPackage>,
@@ -89,6 +93,34 @@ impl Environment {
             types: LinkedHashMap::new(),
             files: BTreeMap::new(),
             keywords: Rc::new(HashMap::new()),
+            safe_packages: false,
+        }
+    }
+
+    /// Helper to build an environment from a language specification.
+    pub fn from_lang<L>(
+        ctx: Rc<Context>,
+        package_prefix: Option<RpPackage>,
+        resolver: Box<Resolver>,
+    ) -> Self
+    where
+        L: Lang,
+    {
+        let keywords = L::keywords()
+            .into_iter()
+            .map(|(f, t)| (f.to_string(), t.to_string()))
+            .collect();
+
+        Self::new(ctx.clone(), package_prefix.clone(), resolver)
+            .with_keywords(keywords)
+            .with_safe_packages(L::safe_packages())
+    }
+
+    /// Configure a new environment on how to use safe packages or not.
+    pub fn with_safe_packages(self, safe_packages: bool) -> Self {
+        Self {
+            safe_packages: safe_packages,
+            ..self
         }
     }
 
@@ -266,14 +298,18 @@ impl Environment {
             _ => None,
         };
 
+        let package_prefix = self.package_prefix.clone();
+        let package = package.clone();
+
         let scope = Scope::new(
             self.ctx.clone(),
-            self.package_prefix.clone(),
-            package.clone(),
+            package_prefix,
+            package,
             prefixes,
             endpoint_naming,
             field_naming,
             self.keywords.clone(),
+            self.safe_packages,
         );
 
         Ok(file.into_model(&scope)?)
@@ -348,7 +384,9 @@ impl Environment {
     fn process_file(&mut self, package: RpVersionedPackage, file: RpFile) -> Result<()> {
         use linked_hash_map::Entry::*;
 
-        let file = match self.files.entry(package.clone()) {
+        let new_package = package.clone().with_replacements(&self.keywords);
+
+        let file = match self.files.entry(new_package) {
             btree_map::Entry::Vacant(entry) => entry.insert(file),
             btree_map::Entry::Occupied(_) => {
                 return Err(format!("package already registered: {}", package).into());

@@ -7,15 +7,14 @@ pub struct JsField<'a> {
     pub ty: &'a RpType,
     pub name: &'a str,
     pub ident: Rc<String>,
+    pub safe_ident: Rc<String>,
 }
 
 impl<'a> JsField<'a> {
     pub fn with_ident(self, ident: String) -> JsField<'a> {
-        JsField {
-            modifier: self.modifier,
-            ty: self.ty,
-            name: self.name,
+        Self {
             ident: Rc::new(ident),
+            ..self
         }
     }
 }

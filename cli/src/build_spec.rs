@@ -221,12 +221,7 @@ where
     let resolvers = setup_resolvers(manifest)?;
     let package_prefix = manifest.package_prefix.clone();
 
-    let keywords = L::keywords()
-        .into_iter()
-        .map(|(f, t)| (f.to_string(), t.to_string()))
-        .collect();
-
-    let mut env = Environment::new(ctx, package_prefix, resolvers).with_keywords(keywords);
+    let mut env = Environment::from_lang::<L>(ctx, package_prefix, resolvers);
 
     let mut errors = Vec::new();
 

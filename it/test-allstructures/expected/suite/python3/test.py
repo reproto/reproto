@@ -78,7 +78,7 @@ class RootEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootEnum _value: {!r}>".format(self._value)
+    return "<RootEnum value: {!r}>".format(self._value)
 
 class RootTuple:
   def __init__(self):
@@ -157,7 +157,7 @@ class RootType_NestedEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootType_NestedEnum _value: {!r}>".format(self._value)
+    return "<RootType_NestedEnum value: {!r}>".format(self._value)
 
 class RootType_NestedTuple:
   def __init__(self):
@@ -236,7 +236,7 @@ class RootInterface_Foo_NestedEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootInterface_Foo_NestedEnum _value: {!r}>".format(self._value)
+    return "<RootInterface_Foo_NestedEnum value: {!r}>".format(self._value)
 
 class RootInterface_Foo_NestedTuple:
   def __init__(self):
@@ -315,7 +315,7 @@ class RootEnum_NestedEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootEnum_NestedEnum _value: {!r}>".format(self._value)
+    return "<RootEnum_NestedEnum value: {!r}>".format(self._value)
 
 class RootEnum_NestedTuple:
   def __init__(self):
@@ -394,7 +394,7 @@ class RootTuple_NestedEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootTuple_NestedEnum _value: {!r}>".format(self._value)
+    return "<RootTuple_NestedEnum value: {!r}>".format(self._value)
 
 class RootTuple_NestedTuple:
   def __init__(self):
@@ -473,7 +473,7 @@ class RootService_NestedEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootService_NestedEnum _value: {!r}>".format(self._value)
+    return "<RootService_NestedEnum value: {!r}>".format(self._value)
 
 class RootService_NestedTuple:
   def __init__(self):

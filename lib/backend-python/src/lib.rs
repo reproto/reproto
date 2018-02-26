@@ -45,6 +45,44 @@ impl Lang for PythonLang {
     fn comment(input: &str) -> Option<String> {
         Some(format!("# {}", input))
     }
+
+    fn keywords() -> Vec<(&'static str, &'static str)> {
+        // NB: combined set of keywords for Python 2/3 to avoid having two codegen implementations.
+        vec![
+            ("and", "_and"),
+            ("as", "_as"),
+            ("assert", "_assert"),
+            ("break", "_break"),
+            ("class", "_class"),
+            ("continue", "_continue"),
+            ("def", "_def"),
+            ("del", "_del"),
+            ("elif", "_elif"),
+            ("else", "_else"),
+            ("except", "_except"),
+            ("exec", "_exec"),
+            ("finally", "_finally"),
+            ("for", "_for"),
+            ("from", "_from"),
+            ("global", "_global"),
+            ("if", "_if"),
+            ("import", "_import"),
+            ("in", "_in"),
+            ("is", "_is"),
+            ("lambda", "_lambda"),
+            ("nonlocal", "_nonlocal"),
+            ("not", "_not"),
+            ("or", "_or"),
+            ("pass", "_pass"),
+            ("print", "_print"),
+            ("raise", "_raise"),
+            ("return", "_return"),
+            ("try", "_try"),
+            ("while", "_while"),
+            ("with", "_with"),
+            ("yield", "_yield"),
+        ]
+    }
 }
 
 #[derive(Debug)]

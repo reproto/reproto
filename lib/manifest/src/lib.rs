@@ -30,6 +30,11 @@ pub trait Lang: Default {
     fn keywords() -> Vec<(&'static str, &'static str)> {
         vec![]
     }
+
+    /// Indicates if the language requires keyword-escaping in the packages.
+    fn safe_packages() -> bool {
+        true
+    }
 }
 
 /// Fallback language support in case no language is specified.

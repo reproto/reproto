@@ -55,7 +55,7 @@ class EnumExplicit:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumExplicit _value: {!r}>".format(self._value)
+    return "<EnumExplicit value: {!r}>".format(self._value)
 
 class EnumImplicit:
   def __init__(self, _value):
@@ -73,7 +73,7 @@ class EnumImplicit:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumImplicit _value: {!r}>".format(self._value)
+    return "<EnumImplicit value: {!r}>".format(self._value)
 
 class EnumLongNames:
   def __init__(self, _value):
@@ -91,7 +91,7 @@ class EnumLongNames:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumLongNames _value: {!r}>".format(self._value)
+    return "<EnumLongNames value: {!r}>".format(self._value)
 
 EnumExplicit = enum.Enum("EnumExplicit", [("A", "foo"), ("B", "bar")], type=EnumExplicit)
 

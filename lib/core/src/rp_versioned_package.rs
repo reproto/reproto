@@ -1,6 +1,7 @@
 //! A versioned package declaration
 
 use super::{RpPackage, RpPackageFormat, Version};
+use std::collections::HashMap;
 use std::fmt;
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -35,6 +36,14 @@ impl RpVersionedPackage {
 
     pub fn without_version(self) -> RpVersionedPackage {
         RpVersionedPackage::new(self.package, None)
+    }
+
+    /// Replace all keyword components in this package.
+    pub fn with_replacements(self, keywords: &HashMap<String, String>) -> Self {
+        Self {
+            package: self.package.with_replacements(keywords),
+            ..self
+        }
     }
 }
 

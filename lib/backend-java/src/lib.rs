@@ -79,6 +79,7 @@ impl Lang for JavaLang {
             ("long", "_long"),
             ("native", "_native"),
             ("new", "_new"),
+            ("null", "_null"),
             ("package", "_package"),
             ("private", "_private"),
             ("protected", "_protected"),

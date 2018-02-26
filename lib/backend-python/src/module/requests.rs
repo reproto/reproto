@@ -45,9 +45,7 @@ struct RequestsServiceCodegen {
 
 impl RequestsServiceCodegen {
     pub fn new() -> RequestsServiceCodegen {
-        Self {
-            requests: imported("requests"),
-        }
+        Self { requests: imported("requests") }
     }
 }
 
@@ -61,7 +59,7 @@ impl ServiceCodegen for RequestsServiceCodegen {
             extra,
             ..
         }: ServiceAdded,
-    ) -> Result<()> {
+) -> Result<()>{
         type_body.push(toks!["class ", type_name, "_Requests:"]);
         type_body.nested({
             let mut t = Tokens::new();
@@ -222,9 +220,9 @@ impl Initializer for Module {
     type Options = Options;
 
     fn initialize(&self, options: &mut Options) -> Result<()> {
-        options
-            .service_generators
-            .push(Box::new(RequestsServiceCodegen::new()));
+        options.service_generators.push(Box::new(
+            RequestsServiceCodegen::new(),
+        ));
 
         Ok(())
     }

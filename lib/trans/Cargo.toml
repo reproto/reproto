@@ -19,6 +19,7 @@ reproto-ast = {path = "../ast", version = "0.3"}
 reproto-parser = {path = "../parser", version = "0.3"}
 reproto-path-parser = {path = "../path-parser", version = "0.3"}
 reproto-naming = {path = "../naming", version = "0.3"}
+reproto-manifest = {path = "../manifest", version = "0.3"}
 
 log = "0.3"
 linked-hash-map = {version = "0.5", features = ["serde"]}

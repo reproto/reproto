@@ -1,0 +1,37 @@
+use _yield as t;
+
+type Entry {
+  _as?: string;
+  and?: string;
+  assert?: string;
+  break?: string;
+  class?: string;
+  continue?: string;
+  def?: string;
+  del?: string;
+  elif?: string;
+  else?: string;
+  except?: string;
+  exec?: string;
+  finally?: string;
+  for?: string;
+  from?: string;
+  global?: string;
+  if?: string;
+  import?: string;
+  in?: string;
+  is?: string;
+  lambda?: string;
+  nonlocal?: string;
+  not?: string;
+  or?: string;
+  pass?: string;
+  print?: string;
+  raise?: string;
+  return?: string;
+  try?: string;
+  while?: string;
+  with?: string;
+  yield?: string;
+  imported?: t::Empty;
+}

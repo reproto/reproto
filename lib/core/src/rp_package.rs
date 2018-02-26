@@ -1,6 +1,8 @@
 use super::RpVersionedPackage;
 use serde;
+use std::collections::HashMap;
 use std::fmt;
+use std::mem;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpPackage {
@@ -58,10 +60,20 @@ impl RpPackage {
             return false;
         }
 
-        self.parts
-            .iter()
-            .zip(other.parts.iter())
-            .all(|(a, b)| a == b)
+        self.parts.iter().zip(other.parts.iter()).all(
+            |(a, b)| a == b,
+        )
+    }
+
+    /// Replace all keyword components in this package.
+    pub fn with_replacements(mut self, keywords: &HashMap<String, String>) -> Self {
+        for p in self.parts.iter_mut() {
+            if let Some(keyword) = keywords.get(p.as_str()) {
+                mem::replace(p, keyword.to_string());
+            }
+        }
+
+        self
     }
 }
 

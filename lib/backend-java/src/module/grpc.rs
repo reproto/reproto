@@ -257,7 +257,7 @@ impl GrpcClient {
 
         let method_name = Rc::new(format!(
             "METHOD_{}",
-            self.to_upper_snake.convert(endpoint.id.as_str())
+            self.to_upper_snake.convert(endpoint.ident())
         ));
 
         let descriptor_ty = self.method_descriptor.with_arguments(vec![
@@ -296,7 +296,7 @@ impl GrpcClient {
                     ".generateFullMethodName(",
                     service_name.quoted(),
                     ", ",
-                    endpoint.name.as_str().quoted(),
+                    endpoint.name().quoted(),
                     "))",
                 ]);
 

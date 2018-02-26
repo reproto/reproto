@@ -1,3 +1,5 @@
+use trait as t;
+
 type Entry {
   _as?: string;
   break?: string;
@@ -50,4 +52,5 @@ type Entry {
   unsized?: string;
   virtual?: string;
   yield?: string;
+  imported?: t::Empty;
 }

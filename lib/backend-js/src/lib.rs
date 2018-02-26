@@ -43,6 +43,78 @@ impl Lang for JsLang {
     fn comment(input: &str) -> Option<String> {
         Some(format!("# {}", input))
     }
+
+    fn keywords() -> Vec<(&'static str, &'static str)> {
+        vec![
+            ("abstract", "_abstract"),
+            ("await", "_await"),
+            ("boolean", "_boolean"),
+            ("break", "_break"),
+            ("byte", "_byte"),
+            ("case", "_case"),
+            ("catch", "_catch"),
+            ("char", "_char"),
+            ("class", "_class"),
+            ("const", "_const"),
+            ("continue", "_continue"),
+            ("debugger", "_debugger"),
+            ("default", "_default"),
+            ("delete", "_delete"),
+            ("do", "_do"),
+            ("double", "_double"),
+            ("else", "_else"),
+            ("enum", "_enum"),
+            ("export", "_export"),
+            ("extends", "_extends"),
+            ("false", "_false"),
+            ("final", "_final"),
+            ("finally", "_finally"),
+            ("float", "_float"),
+            ("for", "_for"),
+            ("function", "_function"),
+            ("goto", "_goto"),
+            ("if", "_if"),
+            ("implements", "_implements"),
+            ("import", "_import"),
+            ("in", "_in"),
+            ("instanceof", "_instanceof"),
+            ("int", "_int"),
+            ("interface", "_interface"),
+            ("let", "_let"),
+            ("long", "_long"),
+            ("native", "_native"),
+            ("new", "_new"),
+            ("null", "_null"),
+            ("package", "_package"),
+            ("private", "_private"),
+            ("protected", "_protected"),
+            ("public", "_public"),
+            ("return", "_return"),
+            ("short", "_short"),
+            ("static", "_static"),
+            ("super", "_super"),
+            ("switch", "_switch"),
+            ("synchronized", "_synchronized"),
+            ("this", "_this"),
+            ("throw", "_throw"),
+            ("throws", "_throws"),
+            ("transient", "_transient"),
+            ("true", "_true"),
+            ("try", "_try"),
+            ("typeof", "_typeof"),
+            ("var", "_var"),
+            ("void", "_void"),
+            ("volatile", "_volatile"),
+            ("while", "_while"),
+            ("with", "_with"),
+            ("yield", "_yield"),
+        ]
+    }
+
+    fn safe_packages() -> bool {
+        // NB: JavaScript imports by string literals, no keyword escaping needed.
+        false
+    }
 }
 
 #[derive(Debug)]

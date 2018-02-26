@@ -27,9 +27,13 @@
   * [Custom Code](#custom-code)
 * [Language Support](#language-support)
   * [Java](#java)
+    * [Java Language Keywords](#java-language-keywords)
   * [Rust](#rust)
+    * [Rust Language Keywords](#rust-language-keywords)
   * [Python](#python)
-  * [Javascript](#javascript)
+    * [Python Language Keywords](#python-language-keywords)
+  * [JavaScript](#javascript)
+    * [JavaScript Language Keywords](#javascript-language-keywords)
 
 # Specifications
 
@@ -863,6 +867,13 @@ public class Foo {
 }
 ```
 
+#### Java Language Keywords
+
+Fields which matches keywords of the language will be prefixed with `_`.
+
+The accessor for any field named `class` will be `getClass_` (ends with underscore) to avoid
+conflicting with the implicitly defined `Object#getClass`.
+
 #### Module: `jackson`
 
 ```toml
@@ -997,6 +1008,31 @@ struct Foo_Bar {
 
 [Serde]: https://serde.rs
 
+#### Rust Language Keywords
+
+Fields which matches keywords of the language will be prefixed with `_`.
+
+For example:
+
+```reproto
+type Entry {
+  trait: string;
+  _true: string;
+}
+```
+
+Results in the following Rust `struct`:
+
+```rust
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Entry {
+  #[serde(rename = "trait")]
+  _trait: String,
+  #[serde(rename = "true")]
+  _true: String,
+}
+```
+
 #### Module: `chrono`
 
 ```toml
@@ -1054,7 +1090,61 @@ class Foo_Bar:
   pass
 ```
 
-### Javascript
+#### Python Language Keywords
+
+Fields which matches keywords of the language will be prefixed with `_`.
+
+For example:
+
+```reproto
+type Entry {
+  import: string;
+  print: string;
+}
+```
+
+Results in the following Python class:
+
+```python
+class Entry:
+  def __init__(self, _import, _print):
+    self._import = _import
+    self._print = _print
+
+  @staticmethod
+  def decode(data):
+    if "import" in data:
+      f_import = data["import"]
+
+      if f_import is not None:
+        f_import = f_import
+    else:
+      f_import = None
+
+    if "print" in data:
+      f_print = data["print"]
+
+      if f_print is not None:
+        f_print = f_print
+    else:
+      f_print = None
+
+    return Entry(f_import, f_print)
+
+  def encode(self):
+    if self._import is not None:
+      data["import"] = self._import
+
+    if self._print is not None:
+      data["print"] = self._print
+
+    return data
+
+  def __repr__(self):
+    return "<Entry import: {!r}, print: {!r}>".format(self._import, self._print)
+```
+
+### JavaScript
 
 ```toml
 # File: reproto.toml
@@ -1064,7 +1154,7 @@ paths = ["src"]
 output = "target"
 ```
 
-In Javascript, generated types follow a naming strategy like the following:
+In JavaScript, generated types follow a naming strategy like the following:
 
 ```reproto
 // File: src/io/reproto/example.reproto
@@ -1091,3 +1181,61 @@ class Foo_Bar {
 ```
 
 [`reproto.toml`]: manifest.md
+
+#### JavaScript Language Keywords
+
+Fields which matches keywords of the language will be prefixed with `_`.
+
+For example:
+
+```reproto
+type Entry {
+  abstract: string;
+  _true: string;
+}
+```
+
+Results in the following JavaScript class:
+
+```javascript
+export class Entry {
+  constructor(_abstract, _true) {
+    this._abstract = _abstract;
+    this._true = _true;
+  }
+
+  static decode(data) {
+    let v_abstract = data["abstract"];
+
+    if (v_abstract !== null && v_abstract !== undefined) {
+      v_abstract = v_abstract;
+    } else {
+      v_abstract = null;
+    }
+
+    let v_true = data["true"];
+
+    if (v_true !== null && v_true !== undefined) {
+      v_true = v_true;
+    } else {
+      v_true = null;
+    }
+
+    return new Entry(v_abstract, v_true);
+  }
+
+  encode() {
+    const data = {};
+
+    if (this._abstract !== null && this._abstract !== undefined) {
+      data["abstract"] = this._abstract;
+    }
+
+    if (this._true !== null && this._true !== undefined) {
+      data["true"] = this._true;
+    }
+
+    return data;
+  }
+}
+```
