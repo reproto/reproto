@@ -60,9 +60,10 @@ impl RpPackage {
             return false;
         }
 
-        self.parts.iter().zip(other.parts.iter()).all(
-            |(a, b)| a == b,
-        )
+        self.parts
+            .iter()
+            .zip(other.parts.iter())
+            .all(|(a, b)| a == b)
     }
 
     /// Replace all keyword components in this package.
@@ -71,6 +72,19 @@ impl RpPackage {
             if let Some(keyword) = keywords.get(p.as_str()) {
                 mem::replace(p, keyword.to_string());
             }
+        }
+
+        self
+    }
+
+    /// Apply the given naming policy to each part.
+    pub fn with_naming<N>(mut self, naming: N) -> Self
+    where
+        N: Fn(&str) -> String,
+    {
+        for p in self.parts.iter_mut() {
+            let new_name = naming(p);
+            mem::replace(p, new_name);
         }
 
         self

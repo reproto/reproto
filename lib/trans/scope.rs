@@ -15,6 +15,26 @@ struct Root {
     field_naming: Option<Box<Naming>>,
     keywords: Rc<HashMap<String, String>>,
     safe_packages: bool,
+    package_naming: Option<Box<Naming>>,
+}
+
+impl Root {
+    /// Rename the package, if applicable.
+    pub fn package(&self, package: RpVersionedPackage) -> RpVersionedPackage {
+        let package = if self.safe_packages {
+            package.with_replacements(&self.keywords)
+        } else {
+            package
+        };
+
+        let package = if let Some(ref naming) = self.package_naming {
+            package.with_naming(|p| naming.convert(p))
+        } else {
+            package
+        };
+
+        package
+    }
 }
 
 /// Model of a scope.
@@ -39,6 +59,7 @@ impl Scope {
         field_naming: Option<Box<Naming>>,
         keywords: Rc<HashMap<String, String>>,
         safe_packages: bool,
+        package_naming: Option<Box<Naming>>,
     ) -> Scope {
         Scope(Rc::new(Inner::Root(Rc::new(Root {
             ctx,
@@ -49,6 +70,7 @@ impl Scope {
             field_naming,
             keywords,
             safe_packages,
+            package_naming,
         }))))
     }
 
@@ -84,13 +106,7 @@ impl Scope {
     pub fn lookup_prefix(&self, prefix: &String) -> Option<RpVersionedPackage> {
         let root = self.root();
 
-        root.prefixes.get(prefix).map(|p| {
-            if root.safe_packages {
-                p.clone().with_replacements(&root.keywords)
-            } else {
-                p.clone()
-            }
-        })
+        root.prefixes.get(prefix).map(|p| root.package(p.clone()))
     }
 
     /// Get the package that this scope belongs to.
@@ -102,11 +118,7 @@ impl Scope {
             .map(|prefix| prefix.join_versioned(&root.package))
             .unwrap_or_else(|| root.package.clone());
 
-        if root.safe_packages {
-            return package.with_replacements(&root.keywords);
-        }
-
-        package
+        root.package(package)
     }
 
     /// Get the current path as a name.
@@ -177,7 +189,7 @@ mod tests {
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let prefixes = HashMap::new();
         let keywords = Rc::new(HashMap::new());
-        let s = Scope::new(ctx, None, package, prefixes, None, None, keywords, false);
+        let s = Scope::new(ctx, None, package, prefixes, None, None, keywords, false, None);
 
         let s2 = s.child("foo");
         let s3 = s2.child("bar");

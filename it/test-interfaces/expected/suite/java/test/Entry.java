@@ -1,8 +1,11 @@
 package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import java.util.Objects;
+import java.util.Optional;
 
 @JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="@type")
 @JsonSubTypes({
@@ -12,14 +15,29 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
   @JsonSubTypes.Type(name="Baz", value=Entry.Baz.class)
 })
 public interface Entry {
+  String getShared();
+
   public static class A implements Entry {
+    @JsonProperty("shared")
+    private final String shared;
+
     @JsonCreator
-    public A() {
+    public A(
+      @JsonProperty("shared") final String shared
+    ) {
+      Objects.requireNonNull(shared, "shared");
+      this.shared = shared;
+    }
+
+    @Override
+    public String getShared() {
+      return this.shared;
     }
 
     @Override
     public int hashCode() {
       int result = 1;
+      result = result * 31 + this.shared.hashCode();
       return result;
     }
 
@@ -36,6 +54,10 @@ public interface Entry {
       @SuppressWarnings("unchecked")
       final A o = (A) other;
 
+      if (!this.shared.equals(o.shared)) {
+        return false;
+      }
+
       return true;
     }
 
@@ -45,27 +67,50 @@ public interface Entry {
 
       b.append("A");
       b.append("(");
+      b.append("shared=");
+      b.append(this.shared.toString());
       b.append(")");
 
       return b.toString();
     }
 
     public static class Builder {
-      public A build() {
+      private Optional<String> shared = Optional.empty();
 
-        return new A();
+      public Builder shared(final String shared) {
+        this.shared = Optional.of(shared);
+        return this;
+      }
+
+      public A build() {
+        final String shared = this.shared.orElseThrow(() -> new RuntimeException("shared: is required"));
+
+        return new A(shared);
       }
     }
   }
 
   public static class B implements Entry {
+    @JsonProperty("shared")
+    private final String shared;
+
     @JsonCreator
-    public B() {
+    public B(
+      @JsonProperty("shared") final String shared
+    ) {
+      Objects.requireNonNull(shared, "shared");
+      this.shared = shared;
+    }
+
+    @Override
+    public String getShared() {
+      return this.shared;
     }
 
     @Override
     public int hashCode() {
       int result = 1;
+      result = result * 31 + this.shared.hashCode();
       return result;
     }
 
@@ -82,6 +127,10 @@ public interface Entry {
       @SuppressWarnings("unchecked")
       final B o = (B) other;
 
+      if (!this.shared.equals(o.shared)) {
+        return false;
+      }
+
       return true;
     }
 
@@ -91,27 +140,50 @@ public interface Entry {
 
       b.append("B");
       b.append("(");
+      b.append("shared=");
+      b.append(this.shared.toString());
       b.append(")");
 
       return b.toString();
     }
 
     public static class Builder {
-      public B build() {
+      private Optional<String> shared = Optional.empty();
 
-        return new B();
+      public Builder shared(final String shared) {
+        this.shared = Optional.of(shared);
+        return this;
+      }
+
+      public B build() {
+        final String shared = this.shared.orElseThrow(() -> new RuntimeException("shared: is required"));
+
+        return new B(shared);
       }
     }
   }
 
   public static class Bar implements Entry {
+    @JsonProperty("shared")
+    private final String shared;
+
     @JsonCreator
-    public Bar() {
+    public Bar(
+      @JsonProperty("shared") final String shared
+    ) {
+      Objects.requireNonNull(shared, "shared");
+      this.shared = shared;
+    }
+
+    @Override
+    public String getShared() {
+      return this.shared;
     }
 
     @Override
     public int hashCode() {
       int result = 1;
+      result = result * 31 + this.shared.hashCode();
       return result;
     }
 
@@ -128,6 +200,10 @@ public interface Entry {
       @SuppressWarnings("unchecked")
       final Bar o = (Bar) other;
 
+      if (!this.shared.equals(o.shared)) {
+        return false;
+      }
+
       return true;
     }
 
@@ -137,27 +213,50 @@ public interface Entry {
 
       b.append("Bar");
       b.append("(");
+      b.append("shared=");
+      b.append(this.shared.toString());
       b.append(")");
 
       return b.toString();
     }
 
     public static class Builder {
-      public Bar build() {
+      private Optional<String> shared = Optional.empty();
 
-        return new Bar();
+      public Builder shared(final String shared) {
+        this.shared = Optional.of(shared);
+        return this;
+      }
+
+      public Bar build() {
+        final String shared = this.shared.orElseThrow(() -> new RuntimeException("shared: is required"));
+
+        return new Bar(shared);
       }
     }
   }
 
   public static class Baz implements Entry {
+    @JsonProperty("shared")
+    private final String shared;
+
     @JsonCreator
-    public Baz() {
+    public Baz(
+      @JsonProperty("shared") final String shared
+    ) {
+      Objects.requireNonNull(shared, "shared");
+      this.shared = shared;
+    }
+
+    @Override
+    public String getShared() {
+      return this.shared;
     }
 
     @Override
     public int hashCode() {
       int result = 1;
+      result = result * 31 + this.shared.hashCode();
       return result;
     }
 
@@ -174,6 +273,10 @@ public interface Entry {
       @SuppressWarnings("unchecked")
       final Baz o = (Baz) other;
 
+      if (!this.shared.equals(o.shared)) {
+        return false;
+      }
+
       return true;
     }
 
@@ -183,15 +286,25 @@ public interface Entry {
 
       b.append("Baz");
       b.append("(");
+      b.append("shared=");
+      b.append(this.shared.toString());
       b.append(")");
 
       return b.toString();
     }
 
     public static class Builder {
-      public Baz build() {
+      private Optional<String> shared = Optional.empty();
 
-        return new Baz();
+      public Builder shared(final String shared) {
+        this.shared = Optional.of(shared);
+        return this;
+      }
+
+      public Baz build() {
+        final String shared = this.shared.orElseThrow(() -> new RuntimeException("shared: is required"));
+
+        return new Baz(shared);
       }
     }
   }

@@ -62,7 +62,6 @@ Enum: EnumBody<'input> =
 EnumMember: EnumMember<'input> = {
     <option:Loc<OptionDecl>> => EnumMember::Option(option),
     <code:Loc<Code>> => EnumMember::Code(code),
-    <decl:Decl> => EnumMember::InnerDecl(decl),
 };
 
 Interface: InterfaceBody<'input> =

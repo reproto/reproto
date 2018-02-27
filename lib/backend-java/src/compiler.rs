@@ -860,14 +860,20 @@ impl Compiler {
                     spec.modifiers.push(Modifier::Static);
                 }
 
+                container.push(spec);
+            }
+            RpDecl::Service(ref ty) => {
+                let mut spec = self.process_service(ty)?;
+
+                // Inner classes should be static.
+                if depth > 0 {
+                    spec.modifiers.push(Modifier::Static);
+                }
+
                 for d in &ty.decls {
                     self.process_decl(d, depth + 1, &mut spec.body)?;
                 }
 
-                container.push(spec);
-            }
-            RpDecl::Service(ref ty) => {
-                let spec = self.process_service(ty)?;
                 container.push(spec);
             }
         }

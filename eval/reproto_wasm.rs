@@ -6,6 +6,7 @@ extern crate serde_json;
 extern crate stdweb;
 
 extern crate reproto_ast as ast;
+extern crate reproto_backend_csharp as csharp;
 extern crate reproto_backend_java as java;
 extern crate reproto_backend_js as js;
 extern crate reproto_backend_json as json;
@@ -40,6 +41,8 @@ enum Output {
     Reproto,
     #[serde(rename = "java")]
     Java,
+    #[serde(rename = "csharp")]
+    Csharp,
     #[serde(rename = "python")]
     Python,
     #[serde(rename = "rust")]
@@ -66,6 +69,13 @@ impl Output {
 
                 Box::new(java::JavaLang)
             }
+            Output::Csharp => {
+                if settings.csharp.json_net {
+                    modules.push(Box::new(csharp::CsharpModule::JsonNet));
+                }
+
+                Box::new(csharp::CsharpLang)
+            }
             Output::Python => Box::new(python::PythonLang),
             Output::Rust => {
                 if settings.rust.chrono {
@@ -90,6 +100,14 @@ js_serializable!(JavaSettings);
 js_deserializable!(JavaSettings);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+struct CsharpSettings {
+    json_net: bool,
+}
+
+js_serializable!(CsharpSettings);
+js_deserializable!(CsharpSettings);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct RustSettings {
     chrono: bool,
 }
@@ -101,6 +119,7 @@ js_deserializable!(RustSettings);
 struct Settings {
     java: JavaSettings,
     rust: RustSettings,
+    csharp: CsharpSettings,
 }
 
 js_serializable!(Settings);

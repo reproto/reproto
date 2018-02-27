@@ -52,9 +52,10 @@ $(call test-cmd,python,$(PYTHON) --version)
 $(call test-cmd,python3,$(PYTHON3) --version)
 $(call test-cmd,rust,cargo --version)
 $(call test-cmd,js,node --version \&\& babel --version)
+$(call test-cmd,csharp,dotnet --version)
 endef
 
-export PROJECTS := $(shell $(call check-deps))
+export PROJECTS ?= $(shell $(call check-deps))
 
 .PHONY: all update tests dumps all-tests clean
 .PHONY: suites update-suites clean-suites

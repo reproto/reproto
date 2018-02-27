@@ -14,9 +14,6 @@ type RootType {
 
   enum NestedEnum {
     Foo;
-
-    type Nested {
-    }
   }
 
   tuple NestedTuple {
@@ -47,9 +44,6 @@ interface RootInterface {
 
     enum NestedEnum as string {
       Foo;
-
-      type Nested {
-      }
     }
 
     tuple NestedTuple {
@@ -66,33 +60,6 @@ interface RootInterface {
 
 enum RootEnum as string {
   Foo;
-
-  type NestedType {
-  }
-
-  interface NestedInterface {
-    Foo {
-      type Nested {
-      }
-    }
-  }
-
-  enum NestedEnum as string {
-    Foo;
-
-    type Nested {
-    }
-  }
-
-  tuple NestedTuple {
-    type Nested {
-    }
-  }
-
-  service NestedService {
-    type Nested {
-    }
-  }
 }
 
 tuple RootTuple {
@@ -108,9 +75,6 @@ tuple RootTuple {
 
   enum NestedEnum as string {
     Foo;
-
-    type Nested {
-    }
   }
 
   tuple NestedTuple {
@@ -137,9 +101,6 @@ service RootService {
 
   enum NestedEnum as string {
     Foo;
-
-    type Nested {
-    }
   }
 
   tuple NestedTuple {

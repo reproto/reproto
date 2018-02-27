@@ -33,6 +33,7 @@ deps-python3 := script.py
 deps-rust := Cargo.toml src/lib.rs src/main.rs
 deps-js := src/script.js
 deps-java := pom.xml src/main/java/Test.java
+deps-csharp :=
 
 expected := expected
 target := target
@@ -43,12 +44,13 @@ workdir-source := $(ROOT)/it/workdir
 
 python-args :=
 python3-args :=
-java-args := -m builder
-js-args :=
 rust-args :=
+js-args :=
+java-args := -m builder
+csharp-args := -m Json.NET
 doc-args :=
 
-suites := python python3 java js rust doc
+suites := python python3 java js rust csharp doc
 paths := proto
 exclude-projects :=
 exclude-suites :=
@@ -67,6 +69,7 @@ js-suite := build --lang js $(compile-args) $(js-args)
 python-suite := build --lang python $(compile-args) $(python-args)
 python3-suite := build --lang python $(compile-args) $(python3-args)
 rust-suite := build --lang rust $(compile-args) $(rust-args)
+csharp-suite := build --lang csharp $(compile-args) $(csharp-args)
 doc-suite := doc $(compile-args) --skip-static $(doc-args)
 
 # how to build projects
@@ -75,6 +78,7 @@ js-project := build --lang js $(compile-args) $(js-args) -o $(workdir)/js/genera
 python-project := build --lang python $(compile-args) $(python-args) -o $(workdir)/python/generated
 python3-project := build --lang python $(compile-args) $(python3-args) -o $(workdir)/python3/generated
 rust-project := build --lang rust $(compile-args) $(rust-args) -o $(workdir)/rust/src --package-prefix generated
+csharp-project := build --lang csharp $(compile-args) $(csharp-args) -o $(workdir)/csharp
 
 # base command invocations
 reproto-cmd := $(REPROTO) $(REPROTO_FLAGS)

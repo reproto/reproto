@@ -22,7 +22,7 @@ reproto-trans = {path = "../trans", version = "0.3"}
 reproto-lexer = {path = "../lexer", version = "0.3"}
 reproto-manifest = {path = "../manifest", version = "0.3"}
 
-genco = "0.2"
+genco = "0.3"
 toml = "0.4"
 log = "0.3"
 

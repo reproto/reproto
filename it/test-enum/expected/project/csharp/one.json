@@ -1,0 +1,8 @@
+Entry(explicit=A, implicit=A)
+{"explicit":"foo","implicit":"A"}
+Entry(explicit=B, implicit=A)
+{"explicit":"bar","implicit":"A"}
+Entry(explicit=A, implicit=A)
+{"explicit":"foo","implicit":"A"}
+Entry(explicit=A, implicit=B)
+{"explicit":"foo","implicit":"B"}

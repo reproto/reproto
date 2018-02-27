@@ -1,5 +1,7 @@
 #[type_info(strategy = "tagged", tag = "@type")]
 interface Entry {
+  shared: string;
+
   A as "foo";
 
   B as "b";

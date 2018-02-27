@@ -1,4 +1,4 @@
-{"@type": "foo"}
-{"@type": "b"}
-{"@type": "Bar"}
-{"@type": "Baz"}
+{"@type": "foo", "shared": "string"}
+{"@type": "b", "shared": "string"}
+{"@type": "Bar", "shared": "string"}
+{"@type": "Baz", "shared": "string"}

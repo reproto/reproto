@@ -1,8 +1,8 @@
-<Entry_A>
-{"@type": "foo"}
-<Entry_B>
-{"@type": "b"}
-<Entry_Bar>
-{"@type": "Bar"}
-<Entry_Baz>
-{"@type": "Baz"}
+<Entry_A shared:'string'>
+{"@type": "foo", "shared": "string"}
+<Entry_B shared:'string'>
+{"@type": "b", "shared": "string"}
+<Entry_Bar shared:'string'>
+{"@type": "Bar", "shared": "string"}
+<Entry_Baz shared:'string'>
+{"@type": "Baz", "shared": "string"}

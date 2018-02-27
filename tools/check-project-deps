@@ -31,3 +31,9 @@ if noecho cargo --version; then
 else
     echo "disabling: rust" 1>&2
 fi
+
+if noecho dotnet --version; then
+    echo "csharp"
+else
+    echo "disabling: csharp" 1>&2
+fi

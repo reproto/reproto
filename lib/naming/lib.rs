@@ -20,6 +20,9 @@ pub trait Source {
 
 pub trait Naming {
     fn convert(&self, input: &str) -> String;
+
+    /// Copy the given naming policy.
+    fn copy(&self) -> Box<Naming>;
 }
 
 #[derive(Clone, Copy)]
@@ -28,6 +31,10 @@ pub struct ToLowerCamel(());
 impl Naming for ToLowerCamel {
     fn convert(&self, input: &str) -> String {
         operate::<Self>(input)
+    }
+
+    fn copy(&self) -> Box<Naming> {
+        Box::new(*self)
     }
 }
 
@@ -53,11 +60,16 @@ impl Operator for ToLowerCamel {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct ToUpperCamel(());
 
 impl Naming for ToUpperCamel {
     fn convert(&self, input: &str) -> String {
         operate::<Self>(input)
+    }
+
+    fn copy(&self) -> Box<Naming> {
+        Box::new(*self)
     }
 }
 
@@ -83,11 +95,16 @@ impl Operator for ToUpperCamel {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct ToLowerSnake(());
 
 impl Naming for ToLowerSnake {
     fn convert(&self, input: &str) -> String {
         operate::<Self>(input)
+    }
+
+    fn copy(&self) -> Box<Naming> {
+        Box::new(*self)
     }
 }
 
@@ -113,11 +130,16 @@ impl Operator for ToLowerSnake {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct ToUpperSnake(());
 
 impl Naming for ToUpperSnake {
     fn convert(&self, input: &str) -> String {
         operate::<Self>(input)
+    }
+
+    fn copy(&self) -> Box<Naming> {
+        Box::new(*self)
     }
 }
 

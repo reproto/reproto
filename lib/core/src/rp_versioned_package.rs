@@ -45,6 +45,17 @@ impl RpVersionedPackage {
             ..self
         }
     }
+
+    /// Apply the given naming policy to this package.
+    pub fn with_naming<N>(self, naming: N) -> Self
+    where
+        N: Fn(&str) -> String,
+    {
+        Self {
+            package: self.package.with_naming(naming),
+            ..self
+        }
+    }
 }
 
 impl fmt::Display for RpVersionedPackage {

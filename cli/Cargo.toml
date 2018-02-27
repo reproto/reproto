@@ -29,6 +29,7 @@ reproto-repository-http = {path = "../lib/repository-http", version = "0.3"}
 reproto-backend = {path = "../lib/backend", version = "0.3"}
 reproto-backend-doc = {path = "../lib/backend-doc", version = "0.3"}
 reproto-backend-java = {path = "../lib/backend-java", version = "0.3"}
+reproto-backend-csharp = {path = "../lib/backend-csharp", version = "0.3"}
 reproto-backend-js = {path = "../lib/backend-js", version = "0.3"}
 reproto-backend-json = {path = "../lib/backend-json", version = "0.3"}
 reproto-backend-python = {path = "../lib/backend-python", version = "0.3"}
@@ -47,4 +48,4 @@ serde_derive = "1.0"
 toml = "0.4"
 url = "1.6"
 url_serde = "0.2"
-genco = "0.2"
+genco = {version = "0.3"}

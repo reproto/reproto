@@ -237,52 +237,6 @@ public interface RootInterface {
       public String toValue() {
         return this.value;
       }
-
-      public static class Nested {
-        @JsonCreator
-        public Nested() {
-        }
-
-        @Override
-        public int hashCode() {
-          int result = 1;
-          return result;
-        }
-
-        @Override
-        public boolean equals(final Object other) {
-          if (other == null) {
-            return false;
-          }
-
-          if (!(other instanceof Nested)) {
-            return false;
-          }
-
-          @SuppressWarnings("unchecked")
-          final Nested o = (Nested) other;
-
-          return true;
-        }
-
-        @Override
-        public String toString() {
-          final StringBuilder b = new StringBuilder();
-
-          b.append("Nested");
-          b.append("(");
-          b.append(")");
-
-          return b.toString();
-        }
-
-        public static class Builder {
-          public Nested build() {
-
-            return new Nested();
-          }
-        }
-      }
     }
 
     @JsonSerialize(using = NestedTuple.Serializer.class)
@@ -394,7 +348,52 @@ public interface RootInterface {
       }
     }
 
-    public interface NestedService {
+    public static interface NestedService {
+      public static class Nested {
+        @JsonCreator
+        public Nested() {
+        }
+
+        @Override
+        public int hashCode() {
+          int result = 1;
+          return result;
+        }
+
+        @Override
+        public boolean equals(final Object other) {
+          if (other == null) {
+            return false;
+          }
+
+          if (!(other instanceof Nested)) {
+            return false;
+          }
+
+          @SuppressWarnings("unchecked")
+          final Nested o = (Nested) other;
+
+          return true;
+        }
+
+        @Override
+        public String toString() {
+          final StringBuilder b = new StringBuilder();
+
+          b.append("Nested");
+          b.append("(");
+          b.append(")");
+
+          return b.toString();
+        }
+
+        public static class Builder {
+          public Nested build() {
+
+            return new Nested();
+          }
+        }
+      }
     }
   }
 }

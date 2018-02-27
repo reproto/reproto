@@ -24,15 +24,28 @@ export class Entry {
 }
 
 export class Entry_A {
-  constructor() {
+  constructor(shared) {
+    this.shared = shared;
   }
   static decode(data) {
-    return new Entry_A();
+    const v_shared = data["shared"];
+
+    if (v_shared === null || v_shared === undefined) {
+      throw new Error("shared" + ": required field");
+    }
+
+    return new Entry_A(v_shared);
   }
   encode() {
     const data = {};
 
     data["@type"] = Entry.TYPE;
+
+    if (this.shared === null || this.shared === undefined) {
+      throw new Error("shared: is a required field");
+    }
+
+    data["shared"] = this.shared;
 
     return data;
   }
@@ -41,15 +54,28 @@ export class Entry_A {
 Entry.TYPE = "Entry_A";
 
 export class Entry_B {
-  constructor() {
+  constructor(shared) {
+    this.shared = shared;
   }
   static decode(data) {
-    return new Entry_B();
+    const v_shared = data["shared"];
+
+    if (v_shared === null || v_shared === undefined) {
+      throw new Error("shared" + ": required field");
+    }
+
+    return new Entry_B(v_shared);
   }
   encode() {
     const data = {};
 
     data["@type"] = Entry.TYPE;
+
+    if (this.shared === null || this.shared === undefined) {
+      throw new Error("shared: is a required field");
+    }
+
+    data["shared"] = this.shared;
 
     return data;
   }
@@ -58,15 +84,28 @@ export class Entry_B {
 Entry.TYPE = "Entry_B";
 
 export class Entry_Bar {
-  constructor() {
+  constructor(shared) {
+    this.shared = shared;
   }
   static decode(data) {
-    return new Entry_Bar();
+    const v_shared = data["shared"];
+
+    if (v_shared === null || v_shared === undefined) {
+      throw new Error("shared" + ": required field");
+    }
+
+    return new Entry_Bar(v_shared);
   }
   encode() {
     const data = {};
 
     data["@type"] = Entry.TYPE;
+
+    if (this.shared === null || this.shared === undefined) {
+      throw new Error("shared: is a required field");
+    }
+
+    data["shared"] = this.shared;
 
     return data;
   }
@@ -75,15 +114,28 @@ export class Entry_Bar {
 Entry.TYPE = "Entry_Bar";
 
 export class Entry_Baz {
-  constructor() {
+  constructor(shared) {
+    this.shared = shared;
   }
   static decode(data) {
-    return new Entry_Baz();
+    const v_shared = data["shared"];
+
+    if (v_shared === null || v_shared === undefined) {
+      throw new Error("shared" + ": required field");
+    }
+
+    return new Entry_Baz(v_shared);
   }
   encode() {
     const data = {};
 
     data["@type"] = Entry.TYPE;
+
+    if (this.shared === null || this.shared === undefined) {
+      throw new Error("shared: is a required field");
+    }
+
+    data["shared"] = this.shared;
 
     return data;
   }

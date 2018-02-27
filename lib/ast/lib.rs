@@ -166,7 +166,6 @@ pub struct EnumVariant<'input> {
 pub enum EnumMember<'input> {
     Code(Loc<Code<'input>>),
     Option(Loc<OptionDecl<'input>>),
-    InnerDecl(Decl<'input>),
 }
 
 /// A field.

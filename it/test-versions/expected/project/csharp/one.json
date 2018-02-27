@@ -1,0 +1,6 @@
+Entry(thing=Thing(name=The Thing, other=, other2=))
+{"thing":{"name":"The Thing"}}
+Entry(thing=Thing(name=, other=Other(name=The Other Thing), other2=))
+{"thing":{"other":{"name":"The Other Thing"}}}
+Entry(thing=Thing(name=, other=, other2=Other(name2=The Other-Other Thing)))
+{"thing":{"other2":{"name2":"The Other-Other Thing"}}}

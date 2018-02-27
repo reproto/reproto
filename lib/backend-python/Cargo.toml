@@ -18,7 +18,7 @@ reproto-core = {path = "../core", version = "0.3"}
 reproto-trans = {path = "../trans", version = "0.3"}
 reproto-manifest = {path = "../manifest", version = "0.3"}
 
-genco = {version = "0.2"}
+genco = {version = "0.3"}
 log = "0.3"
 serde = "1.0"
 serde_derive = "1.0"

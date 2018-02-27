@@ -208,7 +208,6 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
 
             let mut codes = Vec::new();
             let mut options = Vec::new();
-            let mut decls = Vec::new();
 
             for member in item.members {
                 match member {
@@ -217,9 +216,6 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                     }
                     EnumMember::Option(option) => {
                         options.push(option.into_model(scope)?);
-                    }
-                    EnumMember::InnerDecl(decl) => {
-                        decls.push(decl.into_model(scope)?);
                     }
                 };
             }
@@ -248,7 +244,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 name: scope.as_name(),
                 local_name: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
-                decls: decls,
+                decls: vec![],
                 variant_type: variant_type,
                 variants: variants,
                 codes: codes,

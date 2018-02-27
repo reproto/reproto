@@ -2,6 +2,7 @@ import * as React from "react";
 import {Input} from "./Input";
 import {OutputEditor} from "./OutputEditor";
 import {JavaSettings, JavaSettingsForm} from "./JavaSettings";
+import {CsharpSettings, CsharpSettingsForm} from "./CsharpSettings";
 import {RustSettings, RustSettingsForm} from "./RustSettings";
 import * as WebAssembly from "webassembly";
 import {Annotation, Marker as AceMarker} from 'react-ace';
@@ -15,6 +16,7 @@ const languages = [
   "yaml",
   "json",
   "java",
+  "csharp",
   "rust",
   "python",
   "javascript",
@@ -29,6 +31,7 @@ const FORMAT_LANGUAGE_MAP: {[key: string]: string} = {
   yaml: "yaml",
   json: "json",
   java: "java",
+  csharp: "csharp",
   rust: "rust",
   python: "python",
   js: "javascript",
@@ -93,6 +96,7 @@ enum Format {
 enum Output {
   Reproto = "reproto",
   Java = "java",
+  Csharp = "csharp",
   Rust = "rust",
   Python = "python",
   JavaScript = "js",
@@ -114,6 +118,7 @@ interface File {
 
 interface Settings {
   java: JavaSettings;
+  csharp: CsharpSettings;
   rust: RustSettings;
 }
 
@@ -178,6 +183,9 @@ export class Main extends React.Component<MainProps, MainState> {
         },
         rust: {
           chrono: true,
+        },
+        csharp: {
+          json_net: true,
         }
       },
       root_name: "Generated",
@@ -396,6 +404,9 @@ export class Main extends React.Component<MainProps, MainState> {
       case "java":
         output = "java" as Output;
         break;
+      case "csharp":
+        output = "csharp" as Output;
+        break;
       case "python":
         output = "python" as Output;
         break;
@@ -443,6 +454,15 @@ export class Main extends React.Component<MainProps, MainState> {
       let settings = {...state.settings};
       settings.rust = {...settings.rust};
       cb(settings.rust);
+      return {settings: settings};
+    }, () => this.recompile());
+  }
+
+  updateCsharp(cb: (settings: CsharpSettings) => void) {
+    this.setState((state: MainState, props: MainProps) => {
+      let settings = {...state.settings};
+      settings.csharp = {...settings.csharp};
+      cb(settings.csharp);
       return {settings: settings};
     }, () => this.recompile());
   }
@@ -640,6 +660,11 @@ export class Main extends React.Component<MainProps, MainState> {
             onChrono={update => this.updateRust(rust => rust.chrono = update)}
             />;
           break;
+        case "csharp":
+          settingsForm = <CsharpSettingsForm settings={settings.csharp}
+            onJsonNet={update => this.updateCsharp(csharp => csharp.json_net = update)}
+            />;
+          break;
         default:
           break;
       }
@@ -736,6 +761,7 @@ export class Main extends React.Component<MainProps, MainState> {
                         onChange={e => this.setOutput(e.target.value)}>
                         <option value="reproto">Reproto</option>
                         <option value="java">Java</option>
+                        <option value="csharp">C#</option>
                         <option value="python">Python</option>
                         <option value="js">JavaScript</option>
                         <option value="rust">Rust</option>

@@ -269,91 +269,6 @@ export class RootInterface_Foo_NestedTuple {
   }
 }
 
-export class RootEnum_NestedType {
-  constructor() {
-  }
-
-  static decode(data) {
-    return new RootEnum_NestedType();
-  }
-
-  encode() {
-    const data = {};
-
-    return data;
-  }
-}
-
-export class RootEnum_NestedInterface {
-  static decode(data) {
-    const f_tag = data["type"]
-
-    if (f_tag === "Foo") {
-      return RootEnum_NestedInterface_Foo.decode(data);
-    }
-
-    throw new Error("bad type: " + f_tag);
-  }
-}
-
-export class RootEnum_NestedInterface_Foo {
-  constructor() {
-  }
-  static decode(data) {
-    return new RootEnum_NestedInterface_Foo();
-  }
-  encode() {
-    const data = {};
-
-    data["type"] = RootEnum_NestedInterface.TYPE;
-
-    return data;
-  }
-}
-
-RootEnum_NestedInterface.TYPE = "RootEnum_NestedInterface_Foo";
-
-export class RootEnum_NestedEnum {
-  constructor(name, value) {
-    this.name = name;
-    this.value = value;
-  }
-
-  encode() {
-    return this.value;
-  }
-  static decode(data) {
-    for (let i = 0, l = RootEnum_NestedEnum.values.length; i < l; i++) {
-      const member = RootEnum_NestedEnum.values[i]
-
-
-
-      if (member.value === data) {
-        return member;
-      }
-    }
-
-    throw new Error("no matching value: " + data);
-  }
-}
-
-RootEnum_NestedEnum.Foo = new RootEnum_NestedEnum("Foo", "Foo");
-
-RootEnum_NestedEnum.values = [RootEnum_NestedEnum.Foo];
-
-export class RootEnum_NestedTuple {
-  constructor() {
-  }
-
-  static decode(data) {
-    return new RootEnum_NestedTuple();
-  }
-
-  encode() {
-    return [];
-  }
-}
-
 export class RootTuple_NestedType {
   constructor() {
   }
@@ -539,21 +454,6 @@ export class RootType_NestedInterface_Foo_Nested {
   }
 }
 
-export class RootType_NestedEnum_Nested {
-  constructor() {
-  }
-
-  static decode(data) {
-    return new RootType_NestedEnum_Nested();
-  }
-
-  encode() {
-    const data = {};
-
-    return data;
-  }
-}
-
 export class RootType_NestedTuple_Nested {
   constructor() {
   }
@@ -599,21 +499,6 @@ export class RootInterface_Foo_NestedInterface_NestedFoo_Nested {
   }
 }
 
-export class RootInterface_Foo_NestedEnum_Nested {
-  constructor() {
-  }
-
-  static decode(data) {
-    return new RootInterface_Foo_NestedEnum_Nested();
-  }
-
-  encode() {
-    const data = {};
-
-    return data;
-  }
-}
-
 export class RootInterface_Foo_NestedTuple_Nested {
   constructor() {
   }
@@ -644,87 +529,12 @@ export class RootInterface_Foo_NestedService_Nested {
   }
 }
 
-export class RootEnum_NestedInterface_Foo_Nested {
-  constructor() {
-  }
-
-  static decode(data) {
-    return new RootEnum_NestedInterface_Foo_Nested();
-  }
-
-  encode() {
-    const data = {};
-
-    return data;
-  }
-}
-
-export class RootEnum_NestedEnum_Nested {
-  constructor() {
-  }
-
-  static decode(data) {
-    return new RootEnum_NestedEnum_Nested();
-  }
-
-  encode() {
-    const data = {};
-
-    return data;
-  }
-}
-
-export class RootEnum_NestedTuple_Nested {
-  constructor() {
-  }
-
-  static decode(data) {
-    return new RootEnum_NestedTuple_Nested();
-  }
-
-  encode() {
-    const data = {};
-
-    return data;
-  }
-}
-
-export class RootEnum_NestedService_Nested {
-  constructor() {
-  }
-
-  static decode(data) {
-    return new RootEnum_NestedService_Nested();
-  }
-
-  encode() {
-    const data = {};
-
-    return data;
-  }
-}
-
 export class RootTuple_NestedInterface_Foo_Nested {
   constructor() {
   }
 
   static decode(data) {
     return new RootTuple_NestedInterface_Foo_Nested();
-  }
-
-  encode() {
-    const data = {};
-
-    return data;
-  }
-}
-
-export class RootTuple_NestedEnum_Nested {
-  constructor() {
-  }
-
-  static decode(data) {
-    return new RootTuple_NestedEnum_Nested();
   }
 
   encode() {
@@ -770,21 +580,6 @@ export class RootService_NestedInterface_Foo_Nested {
 
   static decode(data) {
     return new RootService_NestedInterface_Foo_Nested();
-  }
-
-  encode() {
-    const data = {};
-
-    return data;
-  }
-}
-
-export class RootService_NestedEnum_Nested {
-  constructor() {
-  }
-
-  static decode(data) {
-    return new RootService_NestedEnum_Nested();
   }
 
   encode() {

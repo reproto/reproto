@@ -262,88 +262,6 @@ class RootInterface_Foo_NestedTuple:
     return "<RootInterface_Foo_NestedTuple>".format()
 
 
-class RootEnum_NestedType:
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootEnum_NestedType()
-
-  def encode(self):
-    data = dict()
-
-    return data
-
-  def __repr__(self):
-    return "<RootEnum_NestedType>".format()
-
-class RootEnum_NestedInterface:
-  @staticmethod
-  def decode(data):
-    f_tag = data["type"]
-
-    if f_tag == "Foo":
-      return RootEnum_NestedInterface_Foo.decode(data)
-
-    raise Exception("bad type" + f_tag)
-
-class RootEnum_NestedInterface_Foo:
-  TYPE = "Foo"
-
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootEnum_NestedInterface_Foo()
-
-  def encode(self):
-    data = dict()
-
-    data["type"] = "Foo"
-
-    return data
-
-  def __repr__(self):
-    return "<RootEnum_NestedInterface_Foo>".format()
-
-class RootEnum_NestedEnum:
-  def __init__(self, _value):
-    self._value = _value
-
-  def get_value(self):
-    return self._value
-
-  def encode(self):
-    return self._value
-
-  @classmethod
-  def decode(cls, data):
-    for value in cls.__members__.values():
-      if value._value == data:
-        return value
-
-    raise Exception("data does not match enum")
-
-  def __repr__(self):
-    return "<RootEnum_NestedEnum value:{!r}>".format(self._value)
-
-class RootEnum_NestedTuple:
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootEnum_NestedTuple()
-
-  def encode(self):
-    return ()
-
-  def __repr__(self):
-    return "<RootEnum_NestedTuple>".format()
-
-
 class RootTuple_NestedType:
   def __init__(self):
     pass
@@ -524,22 +442,6 @@ class RootType_NestedInterface_Foo_Nested:
   def __repr__(self):
     return "<RootType_NestedInterface_Foo_Nested>".format()
 
-class RootType_NestedEnum_Nested:
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootType_NestedEnum_Nested()
-
-  def encode(self):
-    data = dict()
-
-    return data
-
-  def __repr__(self):
-    return "<RootType_NestedEnum_Nested>".format()
-
 class RootType_NestedTuple_Nested:
   def __init__(self):
     pass
@@ -588,22 +490,6 @@ class RootInterface_Foo_NestedInterface_NestedFoo_Nested:
   def __repr__(self):
     return "<RootInterface_Foo_NestedInterface_NestedFoo_Nested>".format()
 
-class RootInterface_Foo_NestedEnum_Nested:
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootInterface_Foo_NestedEnum_Nested()
-
-  def encode(self):
-    data = dict()
-
-    return data
-
-  def __repr__(self):
-    return "<RootInterface_Foo_NestedEnum_Nested>".format()
-
 class RootInterface_Foo_NestedTuple_Nested:
   def __init__(self):
     pass
@@ -636,70 +522,6 @@ class RootInterface_Foo_NestedService_Nested:
   def __repr__(self):
     return "<RootInterface_Foo_NestedService_Nested>".format()
 
-class RootEnum_NestedInterface_Foo_Nested:
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootEnum_NestedInterface_Foo_Nested()
-
-  def encode(self):
-    data = dict()
-
-    return data
-
-  def __repr__(self):
-    return "<RootEnum_NestedInterface_Foo_Nested>".format()
-
-class RootEnum_NestedEnum_Nested:
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootEnum_NestedEnum_Nested()
-
-  def encode(self):
-    data = dict()
-
-    return data
-
-  def __repr__(self):
-    return "<RootEnum_NestedEnum_Nested>".format()
-
-class RootEnum_NestedTuple_Nested:
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootEnum_NestedTuple_Nested()
-
-  def encode(self):
-    data = dict()
-
-    return data
-
-  def __repr__(self):
-    return "<RootEnum_NestedTuple_Nested>".format()
-
-class RootEnum_NestedService_Nested:
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootEnum_NestedService_Nested()
-
-  def encode(self):
-    data = dict()
-
-    return data
-
-  def __repr__(self):
-    return "<RootEnum_NestedService_Nested>".format()
-
 class RootTuple_NestedInterface_Foo_Nested:
   def __init__(self):
     pass
@@ -715,22 +537,6 @@ class RootTuple_NestedInterface_Foo_Nested:
 
   def __repr__(self):
     return "<RootTuple_NestedInterface_Foo_Nested>".format()
-
-class RootTuple_NestedEnum_Nested:
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootTuple_NestedEnum_Nested()
-
-  def encode(self):
-    data = dict()
-
-    return data
-
-  def __repr__(self):
-    return "<RootTuple_NestedEnum_Nested>".format()
 
 class RootTuple_NestedTuple_Nested:
   def __init__(self):
@@ -780,22 +586,6 @@ class RootService_NestedInterface_Foo_Nested:
   def __repr__(self):
     return "<RootService_NestedInterface_Foo_Nested>".format()
 
-class RootService_NestedEnum_Nested:
-  def __init__(self):
-    pass
-
-  @staticmethod
-  def decode(data):
-    return RootService_NestedEnum_Nested()
-
-  def encode(self):
-    data = dict()
-
-    return data
-
-  def __repr__(self):
-    return "<RootService_NestedEnum_Nested>".format()
-
 class RootService_NestedTuple_Nested:
   def __init__(self):
     pass
@@ -833,8 +623,6 @@ RootEnum = enum.Enum("RootEnum", [("Foo", "Foo")], type=RootEnum)
 RootType_NestedEnum = enum.Enum("RootType_NestedEnum", [("Foo", "Foo")], type=RootType_NestedEnum)
 
 RootInterface_Foo_NestedEnum = enum.Enum("RootInterface_Foo_NestedEnum", [("Foo", "Foo")], type=RootInterface_Foo_NestedEnum)
-
-RootEnum_NestedEnum = enum.Enum("RootEnum_NestedEnum", [("Foo", "Foo")], type=RootEnum_NestedEnum)
 
 RootTuple_NestedEnum = enum.Enum("RootTuple_NestedEnum", [("Foo", "Foo")], type=RootTuple_NestedEnum)
 

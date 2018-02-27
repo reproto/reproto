@@ -611,6 +611,7 @@ pub fn convert_lang(input: Language) -> Box<Lang> {
         Json => Box::new(::json::JsonLang),
         Python => Box::new(::python::PythonLang),
         Rust => Box::new(::rust::RustLang),
+        Csharp => Box::new(::csharp::CsharpLang),
     }
 }
 

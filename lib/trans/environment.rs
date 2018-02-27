@@ -74,6 +74,8 @@ pub struct Environment {
     keywords: Rc<HashMap<String, String>>,
     /// Whether to perform package translation or not.
     safe_packages: bool,
+    /// Package naming to apply.
+    package_naming: Option<Box<Naming>>,
 }
 
 /// Environment containing all loaded declarations.
@@ -93,6 +95,7 @@ impl Environment {
             files: BTreeMap::new(),
             keywords: Rc::new(HashMap::new()),
             safe_packages: false,
+            package_naming: None,
         }
     }
 
@@ -108,6 +111,14 @@ impl Environment {
     pub fn with_keywords(self, keywords: HashMap<String, String>) -> Self {
         Self {
             keywords: Rc::new(keywords),
+            ..self
+        }
+    }
+
+    /// Set package naming policy.
+    pub fn with_package_naming(self, package_naming: Box<Naming>) -> Self {
+        Self {
+            package_naming: Some(package_naming),
             ..self
         }
     }
@@ -295,6 +306,7 @@ impl Environment {
             field_naming,
             self.keywords.clone(),
             self.safe_packages,
+            self.package_naming.as_ref().map(|n| n.copy()),
         );
 
         Ok(file.into_model(&scope)?)

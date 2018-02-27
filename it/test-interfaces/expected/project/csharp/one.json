@@ -1,0 +1,8 @@
+A(shared=string)
+{"shared":"string","@type":"foo"}
+B(shared=string)
+{"shared":"string","@type":"b"}
+Bar(shared=string)
+{"shared":"string","@type":"Bar"}
+Baz(shared=string)
+{"shared":"string","@type":"Baz"}

@@ -5,6 +5,7 @@
 
 extern crate relative_path;
 extern crate reproto_core as core;
+extern crate reproto_naming as naming;
 pub extern crate reproto_trans as trans;
 extern crate serde;
 #[macro_use]
@@ -13,6 +14,7 @@ extern crate toml;
 
 use core::{Range, RpPackage, RpRequiredPackage, Version};
 use core::errors::Result;
+use naming::Naming;
 use relative_path::{RelativePath, RelativePathBuf};
 use std::any::Any;
 use std::collections::HashMap;
@@ -105,9 +107,22 @@ pub trait Lang: fmt::Debug {
             .map(|(f, t)| (f.to_string(), t.to_string()))
             .collect();
 
-        trans::Environment::new(ctx.clone(), package_prefix.clone(), resolver)
+        let e = trans::Environment::new(ctx.clone(), package_prefix.clone(), resolver)
             .with_keywords(keywords)
-            .with_safe_packages(self.safe_packages())
+            .with_safe_packages(self.safe_packages());
+
+        let e = if let Some(package_naming) = self.package_naming() {
+            e.with_package_naming(package_naming)
+        } else {
+            e
+        };
+
+        e
+    }
+
+    /// Rename packages according to the given naming convention.
+    fn package_naming(&self) -> Option<Box<Naming>> {
+        None
     }
 }
 
@@ -245,6 +260,7 @@ pub enum Language {
     Json,
     Python,
     Rust,
+    Csharp,
 }
 
 impl Language {
@@ -257,6 +273,7 @@ impl Language {
             "json" => Json,
             "python" => Python,
             "rust" => Rust,
+            "csharp" => Csharp,
             _ => return None,
         };
 

@@ -1,8 +1,8 @@
-Entry_A {}
-{"@type":"Entry_Baz"}
-Entry_B {}
-{"@type":"Entry_Baz"}
-Entry_Bar {}
-{"@type":"Entry_Baz"}
-Entry_Baz {}
-{"@type":"Entry_Baz"}
+Entry_A { shared: 'string' }
+{"@type":"Entry_Baz","shared":"string"}
+Entry_B { shared: 'string' }
+{"@type":"Entry_Baz","shared":"string"}
+Entry_Bar { shared: 'string' }
+{"@type":"Entry_Baz","shared":"string"}
+Entry_Baz { shared: 'string' }
+{"@type":"Entry_Baz","shared":"string"}
