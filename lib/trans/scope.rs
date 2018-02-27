@@ -174,7 +174,7 @@ mod tests {
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let prefixes = HashMap::new();
         let keywords = Rc::new(HashMap::new());
-        let s = Scope::new(ctx, None, package, prefixes, None, None, keywords);
+        let s = Scope::new(ctx, None, package, prefixes, None, None, keywords, false);
 
         let s2 = s.child("foo");
         let s3 = s2.child("bar");
