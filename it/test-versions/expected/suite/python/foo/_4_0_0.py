@@ -7,6 +7,15 @@ class Thing:
     self.other = other
     self.other2 = other2
 
+  def get_name(self):
+    return self.name
+
+  def get_other(self):
+    return self.other
+
+  def get_other2(self):
+    return self.other2
+
   @staticmethod
   def decode(data):
     if "name" in data:
@@ -50,4 +59,4 @@ class Thing:
     return data
 
   def __repr__(self):
-    return "<Thing name: {!r}, other: {!r}, other2: {!r}>".format(self.name, self.other, self.other2)
+    return "<Thing name:{!r}, other:{!r}, other2:{!r}>".format(self.name, self.other, self.other2)

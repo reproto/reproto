@@ -2,6 +2,9 @@ class Other:
   def __init__(self, name2):
     self.name2 = name2
 
+  def get_name2(self):
+    return self.name2
+
   @staticmethod
   def decode(data):
     f_name2 = data["name2"]
@@ -19,4 +22,4 @@ class Other:
     return data
 
   def __repr__(self):
-    return "<Other name2: {!r}>".format(self.name2)
+    return "<Other name2:{!r}>".format(self.name2)

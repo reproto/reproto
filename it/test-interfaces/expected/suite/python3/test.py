@@ -35,7 +35,7 @@ class Entry_A:
     return data
 
   def __repr__(self):
-    return "<Entry_A >".format()
+    return "<Entry_A>".format()
 
 class Entry_B:
   TYPE = "b"
@@ -55,7 +55,7 @@ class Entry_B:
     return data
 
   def __repr__(self):
-    return "<Entry_B >".format()
+    return "<Entry_B>".format()
 
 class Entry_Bar:
   TYPE = "Bar"
@@ -75,7 +75,7 @@ class Entry_Bar:
     return data
 
   def __repr__(self):
-    return "<Entry_Bar >".format()
+    return "<Entry_Bar>".format()
 
 class Entry_Baz:
   TYPE = "Baz"
@@ -95,4 +95,4 @@ class Entry_Baz:
     return data
 
   def __repr__(self):
-    return "<Entry_Baz >".format()
+    return "<Entry_Baz>".format()

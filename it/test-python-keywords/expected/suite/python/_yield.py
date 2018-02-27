@@ -12,4 +12,4 @@ class Empty:
     return data
 
   def __repr__(self):
-    return "<Empty >".format()
+    return "<Empty>".format()

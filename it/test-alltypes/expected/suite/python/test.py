@@ -14,6 +14,45 @@ class Entry:
     self.array_type = array_type
     self.map_type = map_type
 
+  def get_boolean_type(self):
+    return self.boolean_type
+
+  def get_string_type(self):
+    return self.string_type
+
+  def get_datetime_type(self):
+    return self.datetime_type
+
+  def get_unsigned_32(self):
+    return self.unsigned_32
+
+  def get_unsigned_64(self):
+    return self.unsigned_64
+
+  def get_signed_32(self):
+    return self.signed_32
+
+  def get_signed_64(self):
+    return self.signed_64
+
+  def get_float_type(self):
+    return self.float_type
+
+  def get_double_type(self):
+    return self.double_type
+
+  def get_bytes_type(self):
+    return self.bytes_type
+
+  def get_any_type(self):
+    return self.any_type
+
+  def get_array_type(self):
+    return self.array_type
+
+  def get_map_type(self):
+    return self.map_type
+
   @staticmethod
   def decode(data):
     if "boolean_type" in data:
@@ -167,4 +206,4 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry boolean_type: {!r}, string_type: {!r}, datetime_type: {!r}, unsigned_32: {!r}, unsigned_64: {!r}, signed_32: {!r}, signed_64: {!r}, float_type: {!r}, double_type: {!r}, bytes_type: {!r}, any_type: {!r}, array_type: {!r}, map_type: {!r}>".format(self.boolean_type, self.string_type, self.datetime_type, self.unsigned_32, self.unsigned_64, self.signed_32, self.signed_64, self.float_type, self.double_type, self.bytes_type, self.any_type, self.array_type, self.map_type)
+    return "<Entry boolean_type:{!r}, string_type:{!r}, datetime_type:{!r}, unsigned_32:{!r}, unsigned_64:{!r}, signed_32:{!r}, signed_64:{!r}, float_type:{!r}, double_type:{!r}, bytes_type:{!r}, any_type:{!r}, array_type:{!r}, map_type:{!r}>".format(self.boolean_type, self.string_type, self.datetime_type, self.unsigned_32, self.unsigned_64, self.signed_32, self.signed_64, self.float_type, self.double_type, self.bytes_type, self.any_type, self.array_type, self.map_type)

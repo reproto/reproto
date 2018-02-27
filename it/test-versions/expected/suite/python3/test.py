@@ -4,6 +4,9 @@ class Entry:
   def __init__(self, thing):
     self.thing = thing
 
+  def get_thing(self):
+    return self.thing
+
   @staticmethod
   def decode(data):
     if "thing" in data:
@@ -25,4 +28,4 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry thing: {!r}>".format(self.thing)
+    return "<Entry thing:{!r}>".format(self.thing)

@@ -36,6 +36,105 @@ class Entry:
     self._yield = _yield
     self.imported = imported
 
+  def get_as(self):
+    return self._as
+
+  def get_and(self):
+    return self._and
+
+  def get_assert(self):
+    return self._assert
+
+  def get_break(self):
+    return self._break
+
+  def get_class(self):
+    return self._class
+
+  def get_continue(self):
+    return self._continue
+
+  def get_def(self):
+    return self._def
+
+  def get_del(self):
+    return self._del
+
+  def get_elif(self):
+    return self._elif
+
+  def get_else(self):
+    return self._else
+
+  def get_except(self):
+    return self._except
+
+  def get_exec(self):
+    return self._exec
+
+  def get_finally(self):
+    return self._finally
+
+  def get_for(self):
+    return self._for
+
+  def get_from(self):
+    return self._from
+
+  def get_global(self):
+    return self._global
+
+  def get_if(self):
+    return self._if
+
+  def get_import(self):
+    return self._import
+
+  def get_in(self):
+    return self._in
+
+  def get_is(self):
+    return self._is
+
+  def get_lambda(self):
+    return self._lambda
+
+  def get_nonlocal(self):
+    return self._nonlocal
+
+  def get_not(self):
+    return self._not
+
+  def get_or(self):
+    return self._or
+
+  def get_pass(self):
+    return self._pass
+
+  def get_print(self):
+    return self._print
+
+  def get_raise(self):
+    return self._raise
+
+  def get_return(self):
+    return self._return
+
+  def get_try(self):
+    return self._try
+
+  def get_while(self):
+    return self._while
+
+  def get_with(self):
+    return self._with
+
+  def get_yield(self):
+    return self._yield
+
+  def get_imported(self):
+    return self.imported
+
   @staticmethod
   def decode(data):
     if "as" in data:
@@ -409,4 +508,4 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry as: {!r}, and: {!r}, assert: {!r}, break: {!r}, class: {!r}, continue: {!r}, def: {!r}, del: {!r}, elif: {!r}, else: {!r}, except: {!r}, exec: {!r}, finally: {!r}, for: {!r}, from: {!r}, global: {!r}, if: {!r}, import: {!r}, in: {!r}, is: {!r}, lambda: {!r}, nonlocal: {!r}, not: {!r}, or: {!r}, pass: {!r}, print: {!r}, raise: {!r}, return: {!r}, try: {!r}, while: {!r}, with: {!r}, yield: {!r}, imported: {!r}>".format(self._as, self._and, self._assert, self._break, self._class, self._continue, self._def, self._del, self._elif, self._else, self._except, self._exec, self._finally, self._for, self._from, self._global, self._if, self._import, self._in, self._is, self._lambda, self._nonlocal, self._not, self._or, self._pass, self._print, self._raise, self._return, self._try, self._while, self._with, self._yield, self.imported)
+    return "<Entry as:{!r}, and:{!r}, assert:{!r}, break:{!r}, class:{!r}, continue:{!r}, def:{!r}, del:{!r}, elif:{!r}, else:{!r}, except:{!r}, exec:{!r}, finally:{!r}, for:{!r}, from:{!r}, global:{!r}, if:{!r}, import:{!r}, in:{!r}, is:{!r}, lambda:{!r}, nonlocal:{!r}, not:{!r}, or:{!r}, pass:{!r}, print:{!r}, raise:{!r}, return:{!r}, try:{!r}, while:{!r}, with:{!r}, yield:{!r}, imported:{!r}>".format(self._as, self._and, self._assert, self._break, self._class, self._continue, self._def, self._del, self._elif, self._else, self._except, self._exec, self._finally, self._for, self._from, self._global, self._if, self._import, self._in, self._is, self._lambda, self._nonlocal, self._not, self._or, self._pass, self._print, self._raise, self._return, self._try, self._while, self._with, self._yield, self.imported)

@@ -5,6 +5,12 @@ class Entry:
     self.explicit = explicit
     self.implicit = implicit
 
+  def get_explicit(self):
+    return self.explicit
+
+  def get_implicit(self):
+    return self.implicit
+
   @staticmethod
   def decode(data):
     if "explicit" in data:
@@ -37,12 +43,15 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry explicit: {!r}, implicit: {!r}>".format(self.explicit, self.implicit)
+    return "<Entry explicit:{!r}, implicit:{!r}>".format(self.explicit, self.implicit)
 
 class EnumExplicit:
   def __init__(self, _value):
     self._value = _value
 
+  def get_value(self):
+    return self._value
+
   def encode(self):
     return self._value
 
@@ -55,12 +64,15 @@ class EnumExplicit:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumExplicit value: {!r}>".format(self._value)
+    return "<EnumExplicit value:{!r}>".format(self._value)
 
 class EnumImplicit:
   def __init__(self, _value):
     self._value = _value
 
+  def get_value(self):
+    return self._value
+
   def encode(self):
     return self._value
 
@@ -73,12 +85,15 @@ class EnumImplicit:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumImplicit value: {!r}>".format(self._value)
+    return "<EnumImplicit value:{!r}>".format(self._value)
 
 class EnumLongNames:
   def __init__(self, _value):
     self._value = _value
 
+  def get_value(self):
+    return self._value
+
   def encode(self):
     return self._value
 
@@ -91,7 +106,7 @@ class EnumLongNames:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumLongNames value: {!r}>".format(self._value)
+    return "<EnumLongNames value:{!r}>".format(self._value)
 
 EnumExplicit = enum.Enum("EnumExplicit", [("A", "foo"), ("B", "bar")], type=EnumExplicit)
 

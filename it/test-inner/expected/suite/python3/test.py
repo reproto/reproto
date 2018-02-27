@@ -3,6 +3,12 @@ class Entry:
     self.a = a
     self.b = b
 
+  def get_a(self):
+    return self.a
+
+  def get_b(self):
+    return self.b
+
   @staticmethod
   def decode(data):
     if "a" in data:
@@ -35,11 +41,14 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry a: {!r}, b: {!r}>".format(self.a, self.b)
+    return "<Entry a:{!r}, b:{!r}>".format(self.a, self.b)
 
 class A:
   def __init__(self, b):
     self.b = b
+
+  def get_b(self):
+    return self.b
 
   @staticmethod
   def decode(data):
@@ -58,11 +67,14 @@ class A:
     return data
 
   def __repr__(self):
-    return "<A b: {!r}>".format(self.b)
+    return "<A b:{!r}>".format(self.b)
 
 class A_B:
   def __init__(self, field):
     self.field = field
+
+  def get_field(self):
+    return self.field
 
   @staticmethod
   def decode(data):
@@ -81,4 +93,4 @@ class A_B:
     return data
 
   def __repr__(self):
-    return "<A_B field: {!r}>".format(self.field)
+    return "<A_B field:{!r}>".format(self.field)

@@ -14,7 +14,7 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry >".format()
+    return "<Entry>".format()
 
 class RootType:
   def __init__(self):
@@ -30,7 +30,7 @@ class RootType:
     return data
 
   def __repr__(self):
-    return "<RootType >".format()
+    return "<RootType>".format()
 
 class RootInterface:
   @staticmethod
@@ -60,11 +60,14 @@ class RootInterface_Foo:
     return data
 
   def __repr__(self):
-    return "<RootInterface_Foo >".format()
+    return "<RootInterface_Foo>".format()
 
 class RootEnum:
   def __init__(self, _value):
     self._value = _value
+
+  def get_value(self):
+    return self._value
 
   def encode(self):
     return self._value
@@ -78,7 +81,7 @@ class RootEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootEnum value: {!r}>".format(self._value)
+    return "<RootEnum value:{!r}>".format(self._value)
 
 class RootTuple:
   def __init__(self):
@@ -92,7 +95,7 @@ class RootTuple:
     return ()
 
   def __repr__(self):
-    return "<RootTuple >".format()
+    return "<RootTuple>".format()
 
 
 class RootType_NestedType:
@@ -109,7 +112,7 @@ class RootType_NestedType:
     return data
 
   def __repr__(self):
-    return "<RootType_NestedType >".format()
+    return "<RootType_NestedType>".format()
 
 class RootType_NestedInterface:
   @staticmethod
@@ -139,11 +142,14 @@ class RootType_NestedInterface_Foo:
     return data
 
   def __repr__(self):
-    return "<RootType_NestedInterface_Foo >".format()
+    return "<RootType_NestedInterface_Foo>".format()
 
 class RootType_NestedEnum:
   def __init__(self, _value):
     self._value = _value
+
+  def get_value(self):
+    return self._value
 
   def encode(self):
     return self._value
@@ -157,7 +163,7 @@ class RootType_NestedEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootType_NestedEnum value: {!r}>".format(self._value)
+    return "<RootType_NestedEnum value:{!r}>".format(self._value)
 
 class RootType_NestedTuple:
   def __init__(self):
@@ -171,7 +177,7 @@ class RootType_NestedTuple:
     return ()
 
   def __repr__(self):
-    return "<RootType_NestedTuple >".format()
+    return "<RootType_NestedTuple>".format()
 
 
 class RootInterface_Foo_NestedType:
@@ -188,7 +194,7 @@ class RootInterface_Foo_NestedType:
     return data
 
   def __repr__(self):
-    return "<RootInterface_Foo_NestedType >".format()
+    return "<RootInterface_Foo_NestedType>".format()
 
 class RootInterface_Foo_NestedInterface:
   @staticmethod
@@ -218,11 +224,14 @@ class RootInterface_Foo_NestedInterface_NestedFoo:
     return data
 
   def __repr__(self):
-    return "<RootInterface_Foo_NestedInterface_NestedFoo >".format()
+    return "<RootInterface_Foo_NestedInterface_NestedFoo>".format()
 
 class RootInterface_Foo_NestedEnum:
   def __init__(self, _value):
     self._value = _value
+
+  def get_value(self):
+    return self._value
 
   def encode(self):
     return self._value
@@ -236,7 +245,7 @@ class RootInterface_Foo_NestedEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootInterface_Foo_NestedEnum value: {!r}>".format(self._value)
+    return "<RootInterface_Foo_NestedEnum value:{!r}>".format(self._value)
 
 class RootInterface_Foo_NestedTuple:
   def __init__(self):
@@ -250,7 +259,7 @@ class RootInterface_Foo_NestedTuple:
     return ()
 
   def __repr__(self):
-    return "<RootInterface_Foo_NestedTuple >".format()
+    return "<RootInterface_Foo_NestedTuple>".format()
 
 
 class RootEnum_NestedType:
@@ -267,7 +276,7 @@ class RootEnum_NestedType:
     return data
 
   def __repr__(self):
-    return "<RootEnum_NestedType >".format()
+    return "<RootEnum_NestedType>".format()
 
 class RootEnum_NestedInterface:
   @staticmethod
@@ -297,11 +306,14 @@ class RootEnum_NestedInterface_Foo:
     return data
 
   def __repr__(self):
-    return "<RootEnum_NestedInterface_Foo >".format()
+    return "<RootEnum_NestedInterface_Foo>".format()
 
 class RootEnum_NestedEnum:
   def __init__(self, _value):
     self._value = _value
+
+  def get_value(self):
+    return self._value
 
   def encode(self):
     return self._value
@@ -315,7 +327,7 @@ class RootEnum_NestedEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootEnum_NestedEnum value: {!r}>".format(self._value)
+    return "<RootEnum_NestedEnum value:{!r}>".format(self._value)
 
 class RootEnum_NestedTuple:
   def __init__(self):
@@ -329,7 +341,7 @@ class RootEnum_NestedTuple:
     return ()
 
   def __repr__(self):
-    return "<RootEnum_NestedTuple >".format()
+    return "<RootEnum_NestedTuple>".format()
 
 
 class RootTuple_NestedType:
@@ -346,7 +358,7 @@ class RootTuple_NestedType:
     return data
 
   def __repr__(self):
-    return "<RootTuple_NestedType >".format()
+    return "<RootTuple_NestedType>".format()
 
 class RootTuple_NestedInterface:
   @staticmethod
@@ -376,11 +388,14 @@ class RootTuple_NestedInterface_Foo:
     return data
 
   def __repr__(self):
-    return "<RootTuple_NestedInterface_Foo >".format()
+    return "<RootTuple_NestedInterface_Foo>".format()
 
 class RootTuple_NestedEnum:
   def __init__(self, _value):
     self._value = _value
+
+  def get_value(self):
+    return self._value
 
   def encode(self):
     return self._value
@@ -394,7 +409,7 @@ class RootTuple_NestedEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootTuple_NestedEnum value: {!r}>".format(self._value)
+    return "<RootTuple_NestedEnum value:{!r}>".format(self._value)
 
 class RootTuple_NestedTuple:
   def __init__(self):
@@ -408,7 +423,7 @@ class RootTuple_NestedTuple:
     return ()
 
   def __repr__(self):
-    return "<RootTuple_NestedTuple >".format()
+    return "<RootTuple_NestedTuple>".format()
 
 
 class RootService_NestedType:
@@ -425,7 +440,7 @@ class RootService_NestedType:
     return data
 
   def __repr__(self):
-    return "<RootService_NestedType >".format()
+    return "<RootService_NestedType>".format()
 
 class RootService_NestedInterface:
   @staticmethod
@@ -455,11 +470,14 @@ class RootService_NestedInterface_Foo:
     return data
 
   def __repr__(self):
-    return "<RootService_NestedInterface_Foo >".format()
+    return "<RootService_NestedInterface_Foo>".format()
 
 class RootService_NestedEnum:
   def __init__(self, _value):
     self._value = _value
+
+  def get_value(self):
+    return self._value
 
   def encode(self):
     return self._value
@@ -473,7 +491,7 @@ class RootService_NestedEnum:
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootService_NestedEnum value: {!r}>".format(self._value)
+    return "<RootService_NestedEnum value:{!r}>".format(self._value)
 
 class RootService_NestedTuple:
   def __init__(self):
@@ -487,7 +505,7 @@ class RootService_NestedTuple:
     return ()
 
   def __repr__(self):
-    return "<RootService_NestedTuple >".format()
+    return "<RootService_NestedTuple>".format()
 
 
 class RootType_NestedInterface_Foo_Nested:
@@ -504,7 +522,7 @@ class RootType_NestedInterface_Foo_Nested:
     return data
 
   def __repr__(self):
-    return "<RootType_NestedInterface_Foo_Nested >".format()
+    return "<RootType_NestedInterface_Foo_Nested>".format()
 
 class RootType_NestedEnum_Nested:
   def __init__(self):
@@ -520,7 +538,7 @@ class RootType_NestedEnum_Nested:
     return data
 
   def __repr__(self):
-    return "<RootType_NestedEnum_Nested >".format()
+    return "<RootType_NestedEnum_Nested>".format()
 
 class RootType_NestedTuple_Nested:
   def __init__(self):
@@ -536,7 +554,7 @@ class RootType_NestedTuple_Nested:
     return data
 
   def __repr__(self):
-    return "<RootType_NestedTuple_Nested >".format()
+    return "<RootType_NestedTuple_Nested>".format()
 
 class RootType_NestedService_Nested:
   def __init__(self):
@@ -552,7 +570,7 @@ class RootType_NestedService_Nested:
     return data
 
   def __repr__(self):
-    return "<RootType_NestedService_Nested >".format()
+    return "<RootType_NestedService_Nested>".format()
 
 class RootInterface_Foo_NestedInterface_NestedFoo_Nested:
   def __init__(self):
@@ -568,7 +586,7 @@ class RootInterface_Foo_NestedInterface_NestedFoo_Nested:
     return data
 
   def __repr__(self):
-    return "<RootInterface_Foo_NestedInterface_NestedFoo_Nested >".format()
+    return "<RootInterface_Foo_NestedInterface_NestedFoo_Nested>".format()
 
 class RootInterface_Foo_NestedEnum_Nested:
   def __init__(self):
@@ -584,7 +602,7 @@ class RootInterface_Foo_NestedEnum_Nested:
     return data
 
   def __repr__(self):
-    return "<RootInterface_Foo_NestedEnum_Nested >".format()
+    return "<RootInterface_Foo_NestedEnum_Nested>".format()
 
 class RootInterface_Foo_NestedTuple_Nested:
   def __init__(self):
@@ -600,7 +618,7 @@ class RootInterface_Foo_NestedTuple_Nested:
     return data
 
   def __repr__(self):
-    return "<RootInterface_Foo_NestedTuple_Nested >".format()
+    return "<RootInterface_Foo_NestedTuple_Nested>".format()
 
 class RootInterface_Foo_NestedService_Nested:
   def __init__(self):
@@ -616,7 +634,7 @@ class RootInterface_Foo_NestedService_Nested:
     return data
 
   def __repr__(self):
-    return "<RootInterface_Foo_NestedService_Nested >".format()
+    return "<RootInterface_Foo_NestedService_Nested>".format()
 
 class RootEnum_NestedInterface_Foo_Nested:
   def __init__(self):
@@ -632,7 +650,7 @@ class RootEnum_NestedInterface_Foo_Nested:
     return data
 
   def __repr__(self):
-    return "<RootEnum_NestedInterface_Foo_Nested >".format()
+    return "<RootEnum_NestedInterface_Foo_Nested>".format()
 
 class RootEnum_NestedEnum_Nested:
   def __init__(self):
@@ -648,7 +666,7 @@ class RootEnum_NestedEnum_Nested:
     return data
 
   def __repr__(self):
-    return "<RootEnum_NestedEnum_Nested >".format()
+    return "<RootEnum_NestedEnum_Nested>".format()
 
 class RootEnum_NestedTuple_Nested:
   def __init__(self):
@@ -664,7 +682,7 @@ class RootEnum_NestedTuple_Nested:
     return data
 
   def __repr__(self):
-    return "<RootEnum_NestedTuple_Nested >".format()
+    return "<RootEnum_NestedTuple_Nested>".format()
 
 class RootEnum_NestedService_Nested:
   def __init__(self):
@@ -680,7 +698,7 @@ class RootEnum_NestedService_Nested:
     return data
 
   def __repr__(self):
-    return "<RootEnum_NestedService_Nested >".format()
+    return "<RootEnum_NestedService_Nested>".format()
 
 class RootTuple_NestedInterface_Foo_Nested:
   def __init__(self):
@@ -696,7 +714,7 @@ class RootTuple_NestedInterface_Foo_Nested:
     return data
 
   def __repr__(self):
-    return "<RootTuple_NestedInterface_Foo_Nested >".format()
+    return "<RootTuple_NestedInterface_Foo_Nested>".format()
 
 class RootTuple_NestedEnum_Nested:
   def __init__(self):
@@ -712,7 +730,7 @@ class RootTuple_NestedEnum_Nested:
     return data
 
   def __repr__(self):
-    return "<RootTuple_NestedEnum_Nested >".format()
+    return "<RootTuple_NestedEnum_Nested>".format()
 
 class RootTuple_NestedTuple_Nested:
   def __init__(self):
@@ -728,7 +746,7 @@ class RootTuple_NestedTuple_Nested:
     return data
 
   def __repr__(self):
-    return "<RootTuple_NestedTuple_Nested >".format()
+    return "<RootTuple_NestedTuple_Nested>".format()
 
 class RootTuple_NestedService_Nested:
   def __init__(self):
@@ -744,7 +762,7 @@ class RootTuple_NestedService_Nested:
     return data
 
   def __repr__(self):
-    return "<RootTuple_NestedService_Nested >".format()
+    return "<RootTuple_NestedService_Nested>".format()
 
 class RootService_NestedInterface_Foo_Nested:
   def __init__(self):
@@ -760,7 +778,7 @@ class RootService_NestedInterface_Foo_Nested:
     return data
 
   def __repr__(self):
-    return "<RootService_NestedInterface_Foo_Nested >".format()
+    return "<RootService_NestedInterface_Foo_Nested>".format()
 
 class RootService_NestedEnum_Nested:
   def __init__(self):
@@ -776,7 +794,7 @@ class RootService_NestedEnum_Nested:
     return data
 
   def __repr__(self):
-    return "<RootService_NestedEnum_Nested >".format()
+    return "<RootService_NestedEnum_Nested>".format()
 
 class RootService_NestedTuple_Nested:
   def __init__(self):
@@ -792,7 +810,7 @@ class RootService_NestedTuple_Nested:
     return data
 
   def __repr__(self):
-    return "<RootService_NestedTuple_Nested >".format()
+    return "<RootService_NestedTuple_Nested>".format()
 
 class RootService_NestedService_Nested:
   def __init__(self):
@@ -808,7 +826,7 @@ class RootService_NestedService_Nested:
     return data
 
   def __repr__(self):
-    return "<RootService_NestedService_Nested >".format()
+    return "<RootService_NestedService_Nested>".format()
 
 RootEnum = enum.Enum("RootEnum", [("Foo", "Foo")], type=RootEnum)
 

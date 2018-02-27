@@ -14,7 +14,7 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry >".format()
+    return "<Entry>".format()
 
 class MyService_Requests:
   def __init__(self, **kw):

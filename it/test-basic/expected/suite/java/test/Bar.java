@@ -6,6 +6,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Bar {
+  /**
+   * <pre>
+   * The inner field.
+   * </pre>
+   */
   @JsonProperty("field")
   private final Bar.Inner field;
 
@@ -17,6 +22,11 @@ public class Bar {
     this.field = field;
   }
 
+  /**
+   * <pre>
+   * The inner field.
+   * </pre>
+   */
   public Bar.Inner getField() {
     return this.field;
   }
@@ -77,6 +87,11 @@ public class Bar {
   }
 
   public static class Inner {
+    /**
+     * <pre>
+     * The field.
+     * </pre>
+     */
     @JsonProperty("field")
     private final String field;
 
@@ -88,6 +103,11 @@ public class Bar {
       this.field = field;
     }
 
+    /**
+     * <pre>
+     * The field.
+     * </pre>
+     */
     public String getField() {
       return this.field;
     }

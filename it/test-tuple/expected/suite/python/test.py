@@ -3,6 +3,12 @@ class Entry:
     self.tuple1 = tuple1
     self.tuple2 = tuple2
 
+  def get_tuple1(self):
+    return self.tuple1
+
+  def get_tuple2(self):
+    return self.tuple2
+
   @staticmethod
   def decode(data):
     if "tuple1" in data:
@@ -35,12 +41,18 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry tuple1: {!r}, tuple2: {!r}>".format(self.tuple1, self.tuple2)
+    return "<Entry tuple1:{!r}, tuple2:{!r}>".format(self.tuple1, self.tuple2)
 
 class Tuple1:
   def __init__(self, a, b):
     self.a = a
     self.b = b
+
+  def get_a(self):
+    return self.a
+
+  def get_b(self):
+    return self.b
 
   @staticmethod
   def decode(data):
@@ -60,12 +72,18 @@ class Tuple1:
     return (self.a, self.b)
 
   def __repr__(self):
-    return "<Tuple1 a: {!r}, b: {!r}>".format(self.a, self.b)
+    return "<Tuple1 a:{!r}, b:{!r}>".format(self.a, self.b)
 
 class Tuple2:
   def __init__(self, a, b):
     self.a = a
     self.b = b
+
+  def get_a(self):
+    return self.a
+
+  def get_b(self):
+    return self.b
 
   @staticmethod
   def decode(data):
@@ -85,11 +103,14 @@ class Tuple2:
     return (self.a, self.b.encode())
 
   def __repr__(self):
-    return "<Tuple2 a: {!r}, b: {!r}>".format(self.a, self.b)
+    return "<Tuple2 a:{!r}, b:{!r}>".format(self.a, self.b)
 
 class Other:
   def __init__(self, a):
     self.a = a
+
+  def get_a(self):
+    return self.a
 
   @staticmethod
   def decode(data):
@@ -108,4 +129,4 @@ class Other:
     return data
 
   def __repr__(self):
-    return "<Other a: {!r}>".format(self.a)
+    return "<Other a:{!r}>".format(self.a)

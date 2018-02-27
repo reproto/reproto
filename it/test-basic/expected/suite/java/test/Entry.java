@@ -6,6 +6,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
+  /**
+   * <pre>
+   * The foo field.
+   * </pre>
+   */
   @JsonProperty("foo")
   private final Optional<Foo> foo;
 
@@ -17,6 +22,11 @@ public class Entry {
     this.foo = foo;
   }
 
+  /**
+   * <pre>
+   * The foo field.
+   * </pre>
+   */
   public Optional<Foo> getFoo() {
     return this.foo;
   }

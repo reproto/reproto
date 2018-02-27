@@ -2,6 +2,12 @@ class Entry:
   def __init__(self, foo):
     self.foo = foo
 
+  def get_foo(self):
+    """
+    The foo field.
+    """
+    return self.foo
+
   @staticmethod
   def decode(data):
     if "foo" in data:
@@ -23,11 +29,17 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry foo: {!r}>".format(self.foo)
+    return "<Entry foo:{!r}>".format(self.foo)
 
 class Foo:
   def __init__(self, field):
     self.field = field
+
+  def get_field(self):
+    """
+    The field.
+    """
+    return self.field
 
   @staticmethod
   def decode(data):
@@ -46,11 +58,17 @@ class Foo:
     return data
 
   def __repr__(self):
-    return "<Foo field: {!r}>".format(self.field)
+    return "<Foo field:{!r}>".format(self.field)
 
 class Bar:
   def __init__(self, field):
     self.field = field
+
+  def get_field(self):
+    """
+    The inner field.
+    """
+    return self.field
 
   @staticmethod
   def decode(data):
@@ -69,11 +87,17 @@ class Bar:
     return data
 
   def __repr__(self):
-    return "<Bar field: {!r}>".format(self.field)
+    return "<Bar field:{!r}>".format(self.field)
 
 class Bar_Inner:
   def __init__(self, field):
     self.field = field
+
+  def get_field(self):
+    """
+    The field.
+    """
+    return self.field
 
   @staticmethod
   def decode(data):
@@ -92,4 +116,4 @@ class Bar_Inner:
     return data
 
   def __repr__(self):
-    return "<Bar_Inner field: {!r}>".format(self.field)
+    return "<Bar_Inner field:{!r}>".format(self.field)

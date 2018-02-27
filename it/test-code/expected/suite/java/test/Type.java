@@ -38,7 +38,7 @@ public class Type {
     return b.toString();
   }
 
-  public void foo() {
+  public void typeMethod() {
   }
 
   public static class Builder {
