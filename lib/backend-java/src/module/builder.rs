@@ -1,11 +1,18 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::ClassCodegen;
+use codegen::{ClassAdded, ClassCodegen, Configure};
 use core::errors::*;
 use genco::{Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Field, Method, Modifier};
-use listeners::{ClassAdded, Configure, Listeners};
 use std::rc::Rc;
+
+pub struct Module;
+
+impl Module {
+    pub fn initialize(self, e: Configure) {
+        e.options.class_generators.push(Box::new(Builder::new()));
+    }
+}
 
 pub struct Builder {
     optional: Java<'static>,
@@ -109,13 +116,5 @@ impl ClassCodegen for Builder {
 
         e.spec.body.push(builder);
         Ok(())
-    }
-}
-
-pub struct Module;
-
-impl Listeners for Module {
-    fn configure<'a>(&self, e: Configure<'a>) {
-        e.options.class_generators.push(Box::new(Builder::new()));
     }
 }

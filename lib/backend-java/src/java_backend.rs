@@ -2,6 +2,7 @@
 
 use super::JAVA_CONTEXT;
 use backend::{Code, Converter};
+use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use core::{ForEachLoc, Handle, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody,
            RpName, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use core::errors::*;
@@ -11,7 +12,6 @@ use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum,
 use java_field::JavaField;
 use java_file::JavaFile;
 use java_options::JavaOptions;
-use listeners::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
@@ -504,10 +504,10 @@ impl JavaBackend {
             .push(self.build_enum_constructor(&spec.fields));
 
         let variant_field = body.variant_type.as_field();
-        let variant_java_field = self.convert_field(&variant_field)?;
+        let java_field = self.field(&variant_field)?;
 
-        let mut from_value = self.enum_from_value_method(spec.name(), &variant_java_field.spec);
-        let mut to_value = self.enum_to_value_method(&variant_java_field.spec);
+        let mut from_value = self.enum_from_value_method(spec.name(), &java_field.spec);
+        let mut to_value = self.enum_to_value_method(&java_field.spec);
 
         for generator in &self.options.enum_generators {
             generator.generate(EnumAdded {
@@ -528,7 +528,7 @@ impl JavaBackend {
     fn process_tuple<'el>(&self, body: &'el RpTupleBody) -> Result<Class<'el>> {
         let mut spec = Class::new(body.local_name.clone());
 
-        let fields = self.convert_fields(&body.fields)?;
+        let fields = self.fields(&body.fields)?;
 
         self.add_class(
             spec.name(),
@@ -562,7 +562,7 @@ impl JavaBackend {
 
     fn process_type<'el>(&self, body: &'el RpTypeBody) -> Result<Class<'el>> {
         let mut spec = Class::new(body.local_name.clone());
-        let fields = self.convert_fields(&body.fields)?;
+        let fields = self.fields(&body.fields)?;
         let names: Vec<_> = fields.iter().map(|f| f.name.clone()).collect();
 
         for field in &fields {
@@ -605,13 +605,13 @@ impl JavaBackend {
     ) -> Result<Interface<'el>> {
         use self::Modifier::*;
         let mut spec = Interface::new(body.local_name.clone());
-        let interface_fields = self.convert_fields(&body.fields)?;
+        let interface_fields = self.fields(&body.fields)?;
 
         body.sub_types.values().for_each_loc(|sub_type| {
             let mut class = Class::new(sub_type.local_name.clone());
             class.modifiers = vec![Public, Static];
 
-            let sub_type_fields = self.convert_fields(&sub_type.fields)?;
+            let sub_type_fields = self.fields(&sub_type.fields)?;
 
             class
                 .body
@@ -683,10 +683,10 @@ impl JavaBackend {
             })?;
         }
 
-        if self.options.build_getters {
-            for field in &interface_fields {
-                spec.methods.push(field.getter_without_body());
-            }
+        for field in &interface_fields {
+            let mut m = field.getter_without_body();
+            m.modifiers = vec![];
+            spec.methods.push(m);
         }
 
         spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
@@ -762,7 +762,8 @@ impl JavaBackend {
         Ok(spec)
     }
 
-    fn convert_field<'el>(&self, field: &RpField) -> Result<JavaField<'el>> {
+    /// Convert a single field to `JavaField`, without comments.
+    fn field<'el>(&self, field: &RpField) -> Result<JavaField<'el>> {
         let java_value_type = self.utils.into_java_type(&field.ty)?;
 
         let java_type = if field.is_optional() {
@@ -777,7 +778,18 @@ impl JavaBackend {
         let ident = Rc::new(self.to_lower_camel.convert(field.safe_ident()));
         let field_accessor = Rc::new(self.to_upper_camel.convert(field.ident()));
 
-        let spec = Field::new(java_type, ident.clone());
+        let mut spec = Field::new(java_type, ident.clone());
+
+        if !field.comment.is_empty() {
+            spec.comments.push("<pre>".into());
+            spec.comments.extend(
+                field
+                    .comment
+                    .iter()
+                    .map(|c| Cons::from(Rc::new(c.to_string()))),
+            );
+            spec.comments.push("</pre>".into());
+        }
 
         Ok(JavaField {
             name: Rc::new(field.name().to_string()).into(),
@@ -787,11 +799,12 @@ impl JavaBackend {
         })
     }
 
-    fn convert_fields<'el>(&self, fields: &'el [Loc<RpField>]) -> Result<Vec<JavaField<'el>>> {
+    /// Convert fields to `JavaField`.
+    fn fields<'el>(&self, fields: &'el [Loc<RpField>]) -> Result<Vec<JavaField<'el>>> {
         let mut out = Vec::new();
 
         fields.for_each_loc(|field| {
-            out.push(self.convert_field(field)?);
+            out.push(self.field(field)?);
             Ok(()) as Result<()>
         })?;
 

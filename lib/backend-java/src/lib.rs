@@ -17,17 +17,16 @@ mod processor;
 mod java_backend;
 mod java_options;
 mod java_file;
-mod listeners;
 mod java_field;
 mod module;
 mod codegen;
 mod utils;
 
+use codegen::Configure;
 use core::Context;
 use core::errors::*;
 use java_backend::JavaBackend;
 use java_options::JavaOptions;
-use listeners::{Configure, Listeners};
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
@@ -162,21 +161,21 @@ fn setup_options<'a>(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> JavaOptions
     let mut options = JavaOptions::new();
 
     for module in modules {
-        let listener: Box<Listeners> = match module {
-            Jackson => Box::new(module::Jackson),
-            Lombok => Box::new(module::Lombok),
-            Grpc => Box::new(module::Grpc),
-            Builder => Box::new(module::Builder),
-            ConstructorProperties => Box::new(module::ConstructorProperties),
-            Mutable => Box::new(module::Mutable),
-            Nullable => Box::new(module::Nullable),
-            OkHttp(config) => Box::new(module::OkHttp::new(config)),
-        };
-
-        listener.configure(Configure {
+        let c = Configure {
             options: &mut options,
             utils: utils,
-        })
+        };
+
+        match module {
+            Jackson => module::Jackson.initialize(c),
+            Lombok => module::Lombok.initialize(c),
+            Grpc => module::Grpc.initialize(c),
+            Builder => module::Builder.initialize(c),
+            ConstructorProperties => module::ConstructorProperties.initialize(c),
+            Mutable => module::Mutable.initialize(c),
+            Nullable => module::Nullable.initialize(c),
+            OkHttp(config) => module::OkHttp::new(config).initialize(c),
+        };
     }
 
     options

@@ -38,6 +38,7 @@ impl<'el> JavaField<'el> {
         };
 
         let mut method = Method::new(Rc::new(format!("get{}", field_accessor)));
+        method.comments = self.spec.comments.clone();
         method.returns = self.spec.ty().as_field();
         method
     }

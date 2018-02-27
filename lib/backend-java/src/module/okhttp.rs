@@ -1,11 +1,10 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::ServiceCodegen;
+use codegen::{Configure, EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::{RpEndpoint, RpPathPart};
 use core::errors::*;
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, optional, Argument, Class, Constructor, Field, Method, Modifier};
-use listeners::{Configure, EndpointExtra, Listeners, ServiceAdded};
 use utils::Override;
 
 #[derive(Debug, Deserialize)]
@@ -35,6 +34,14 @@ pub struct Module {
 impl Module {
     pub fn new(config: Config) -> Module {
         Module { config: config }
+    }
+}
+
+impl Module {
+    pub fn initialize(self, e: Configure) {
+        e.options
+            .service_generators
+            .push(Box::new(OkHttpServiceCodegen::new()));
     }
 }
 
@@ -316,13 +323,5 @@ impl ServiceCodegen for OkHttpServiceCodegen {
         spec.body.push(c);
         spec.body.push(builder);
         Ok(())
-    }
-}
-
-impl Listeners for Module {
-    fn configure(&self, e: Configure) {
-        e.options
-            .service_generators
-            .push(Box::new(OkHttpServiceCodegen::new()));
     }
 }

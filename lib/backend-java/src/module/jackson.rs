@@ -1,13 +1,27 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::{ClassCodegen, EnumCodegen, InterfaceCodegen, TupleCodegen};
+use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, InterfaceAdded,
+              InterfaceCodegen, TupleAdded, TupleCodegen};
 use core::RpSubTypeStrategy;
 use core::errors::*;
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Field, Modifier, DOUBLE, FLOAT, INTEGER, LONG,
                   SHORT};
-use listeners::{ClassAdded, Configure, EnumAdded, InterfaceAdded, Listeners, TupleAdded};
 use std::rc::Rc;
+
+pub struct Module;
+
+impl Module {
+    pub fn initialize(self, e: Configure) {
+        let jackson = Rc::new(Jackson::new());
+        e.options.class_generators.push(Box::new(jackson.clone()));
+        e.options.tuple_generators.push(Box::new(jackson.clone()));
+        e.options
+            .interface_generators
+            .push(Box::new(jackson.clone()));
+        e.options.enum_generators.push(Box::new(jackson.clone()));
+    }
+}
 
 /// @JsonSubTypes.Type annotation
 struct SubTypesType<'a, 'el>(&'a Jackson, Tokens<'el, Java<'el>>);
@@ -478,19 +492,5 @@ impl InterfaceCodegen for Jackson {
         }
 
         Ok(())
-    }
-}
-
-pub struct Module;
-
-impl Listeners for Module {
-    fn configure(&self, e: Configure) {
-        let jackson = Rc::new(Jackson::new());
-        e.options.class_generators.push(Box::new(jackson.clone()));
-        e.options.tuple_generators.push(Box::new(jackson.clone()));
-        e.options
-            .interface_generators
-            .push(Box::new(jackson.clone()));
-        e.options.enum_generators.push(Box::new(jackson.clone()));
     }
 }

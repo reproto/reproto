@@ -1,15 +1,19 @@
 type Entry {
-    foo?: Foo;
+  /// The foo field.
+  foo?: Foo;
 }
 
 type Foo {
-    field: string;
+  /// The field.
+  field: string;
 }
 
 type Bar {
-    field: ::Inner;
+  /// The inner field.
+  field: ::Inner;
 
-    type Inner {
-      field: string;
-    }
+  type Inner {
+    /// The field.
+    field: string;
+  }
 }

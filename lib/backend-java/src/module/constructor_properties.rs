@@ -1,10 +1,19 @@
 //! Module that adds the @ConstructorProperties annotation to every constructor.
 
-use codegen::ClassCodegen;
-use core::errors::*;
+use codegen::{ClassAdded, ClassCodegen, Configure};
+use core::errors::Result;
 use genco::{Java, Quoted, Tokens};
 use genco::java::imported;
-use listeners::{ClassAdded, Configure, Listeners};
+
+pub struct Module;
+
+impl Module {
+    pub fn initialize(self, e: Configure) {
+        e.options
+            .class_generators
+            .push(Box::new(ConstructorProperties::new()));
+    }
+}
 
 pub struct ConstructorProperties {
     annotation: Java<'static>,
@@ -28,15 +37,5 @@ impl ClassCodegen for ConstructorProperties {
         }
 
         Ok(())
-    }
-}
-
-pub struct Module;
-
-impl Listeners for Module {
-    fn configure<'a>(&self, e: Configure<'a>) {
-        e.options
-            .class_generators
-            .push(Box::new(ConstructorProperties::new()));
     }
 }

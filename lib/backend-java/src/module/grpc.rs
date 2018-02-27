@@ -1,12 +1,11 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::ServiceCodegen;
+use codegen::{Configure, EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::{Loc, RpChannel, RpEndpoint};
 use core::errors::*;
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
 use java_backend::JavaBackend;
-use listeners::{Configure, EndpointExtra, Listeners, ServiceAdded};
 use naming::{self, Naming};
 use processor::Processor;
 use std::borrow::Borrow;
@@ -15,6 +14,17 @@ use utils::{Override, Utils};
 
 const CLIENT_STUB_NAME: &'static str = "ClientStub";
 const SERVER_STUB_NAME: &'static str = "ServerStub";
+
+pub struct Module;
+
+impl Module {
+    pub fn initialize(self, e: Configure) {
+        e.options.suppress_service_methods = true;
+        e.options
+            .service_generators
+            .push(Box::new(GrpcClient::new(e.utils)));
+    }
+}
 
 pub enum MethodType {
     Unary,
@@ -738,16 +748,5 @@ impl ServiceCodegen for GrpcClient {
         spec.body.push(JsonMarshaller(self));
         spec.body.push(VoidMarshaller(self));
         Ok(())
-    }
-}
-
-pub struct Module;
-
-impl Listeners for Module {
-    fn configure(&self, e: Configure) {
-        e.options.suppress_service_methods = true;
-        e.options
-            .service_generators
-            .push(Box::new(GrpcClient::new(e.utils)));
     }
 }

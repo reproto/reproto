@@ -1,9 +1,9 @@
-use listeners::{Configure, Listeners};
+use codegen::Configure;
 
 pub struct Module;
 
-impl Listeners for Module {
-    fn configure(&self, e: Configure) {
+impl Module {
+    pub fn initialize(self, e: Configure) {
         e.options.nullable = true;
     }
 }
