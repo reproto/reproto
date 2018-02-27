@@ -1,6 +1,6 @@
 //! Java backend for reproto
 
-use super::JAVA_CONTEXT;
+use {Options, JAVA_CONTEXT};
 use backend::{Code, Converter};
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use core::{ForEachLoc, Handle, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody,
@@ -11,17 +11,16 @@ use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum,
                   Method, Modifier, BOOLEAN, INTEGER};
 use java_field::JavaField;
 use java_file::JavaFile;
-use java_options::JavaOptions;
 use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
 use trans::Environment;
-use utils::Utils;
+use utils::{Override, Utils};
 
-pub struct JavaBackend {
+pub struct Compiler {
     env: Rc<Environment>,
     utils: Rc<Utils>,
-    options: JavaOptions,
+    options: Options,
     to_upper_camel: naming::ToUpperCamel,
     to_lower_camel: naming::ToLowerCamel,
     variant_naming: naming::ToUpperSnake,
@@ -29,7 +28,6 @@ pub struct JavaBackend {
     suppress_warnings: Java<'static>,
     string_builder: Java<'static>,
     pub void: Java<'static>,
-    override_: Java<'static>,
     objects: Java<'static>,
     object: Java<'static>,
     string: Java<'static>,
@@ -38,17 +36,17 @@ pub struct JavaBackend {
     async_container: Java<'static>,
 }
 
-impl Processor for JavaBackend {}
+impl Processor for Compiler {}
 
-impl JavaBackend {
-    pub fn new(env: &Rc<Environment>, utils: &Rc<Utils>, options: JavaOptions) -> JavaBackend {
+impl Compiler {
+    pub fn new(env: &Rc<Environment>, utils: &Rc<Utils>, options: Options) -> Compiler {
         let async_container = options
             .async_container
             .as_ref()
             .map(Clone::clone)
             .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
 
-        JavaBackend {
+        Compiler {
             env: Rc::clone(env),
             utils: Rc::clone(utils),
             options: options,
@@ -57,7 +55,6 @@ impl JavaBackend {
             variant_naming: naming::to_upper_snake(),
             null_string: "null".quoted(),
             void: imported("java.lang", "Void"),
-            override_: imported("java.lang", "Override"),
             objects: imported("java.util", "Objects"),
             suppress_warnings: imported("java.lang", "SuppressWarnings"),
             string_builder: imported("java.lang", "StringBuilder"),
@@ -151,7 +148,7 @@ impl JavaBackend {
     fn build_hash_code<'el>(&self, fields: &[JavaField<'el>]) -> Method<'el> {
         let mut hash_code = Method::new("hashCode");
 
-        hash_code.annotation(toks!["@", self.override_.clone()]);
+        hash_code.annotation(Override);
         hash_code.returns = INTEGER;
 
         hash_code.body.push("int result = 1;");
@@ -195,7 +192,7 @@ impl JavaBackend {
 
         let mut equals = Method::new("equals");
 
-        equals.annotation(toks!["@", self.override_.clone()]);
+        equals.annotation(Override);
         equals.returns = BOOLEAN;
         equals.arguments.push(argument.clone());
 
@@ -297,7 +294,7 @@ impl JavaBackend {
     fn build_to_string<'el>(&self, name: Cons<'el>, fields: &[JavaField<'el>]) -> Method<'el> {
         let mut to_string = Method::new("toString");
 
-        to_string.annotation(toks!["@", self.override_.clone()]);
+        to_string.annotation(Override);
         to_string.returns = self.string.clone();
 
         to_string.body.push(toks![
@@ -631,13 +628,13 @@ impl JavaBackend {
             for field in &interface_fields {
                 if self.options.build_getters {
                     let mut getter = field.getter();
-                    getter.annotation(toks!["@", self.override_.clone()]);
+                    getter.annotation(Override);
                     class.methods.push(getter);
                 }
 
                 if self.options.build_setters {
                     if let Some(mut setter) = field.setter() {
-                        setter.annotation(toks!["@", self.override_.clone()]);
+                        setter.annotation(Override);
                         class.methods.push(setter);
                     }
                 }
@@ -752,7 +749,7 @@ impl JavaBackend {
 
         for generator in &self.options.service_generators {
             generator.generate(ServiceAdded {
-                backend: self,
+                compiler: self,
                 body: body,
                 extra: &extra,
                 spec: &mut spec,
@@ -879,7 +876,7 @@ impl JavaBackend {
     }
 }
 
-impl<'el> Converter<'el> for JavaBackend {
+impl<'el> Converter<'el> for Compiler {
     type Custom = Java<'el>;
 
     fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {

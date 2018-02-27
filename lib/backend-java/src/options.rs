@@ -3,7 +3,7 @@
 use codegen::{ClassCodegen, Codegen, EnumCodegen, InterfaceCodegen, ServiceCodegen, TupleCodegen};
 use genco::Java;
 
-pub struct JavaOptions {
+pub struct Options {
     /// Should fields be nullable?
     pub nullable: bool,
     /// Should the type be immutable?
@@ -38,9 +38,9 @@ pub struct JavaOptions {
     pub enum_generators: Vec<Box<EnumCodegen>>,
 }
 
-impl JavaOptions {
-    pub fn new() -> JavaOptions {
-        JavaOptions {
+impl Options {
+    pub fn new() -> Self {
+        Self {
             nullable: false,
             immutable: true,
             build_setters: true,

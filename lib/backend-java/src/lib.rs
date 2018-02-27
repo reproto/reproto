@@ -14,8 +14,8 @@ extern crate serde_derive;
 extern crate toml;
 
 mod processor;
-mod java_backend;
-mod java_options;
+mod compiler;
+mod options;
 mod java_file;
 mod java_field;
 mod module;
@@ -23,11 +23,11 @@ mod codegen;
 mod utils;
 
 use codegen::Configure;
+use compiler::Compiler;
 use core::Context;
-use core::errors::*;
-use java_backend::JavaBackend;
-use java_options::JavaOptions;
+use core::errors::Result;
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
+use options::Options;
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
@@ -155,10 +155,10 @@ impl TryFromToml for JavaModule {
     }
 }
 
-fn setup_options<'a>(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> JavaOptions {
+fn setup_options<'a>(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> Options {
     use self::JavaModule::*;
 
-    let mut options = JavaOptions::new();
+    let mut options = Options::new();
 
     for module in modules {
         let c = Configure {
@@ -186,9 +186,9 @@ fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()>
     let utils = Rc::new(Utils::new(&env));
     let modules = checked_modules(manifest.modules)?;
     let options = setup_options(modules, &utils);
-    let backend = JavaBackend::new(&env, &utils, options);
+    let compiler = Compiler::new(&env, &utils, options);
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
-    backend.compile(handle.as_ref())
+    compiler.compile(handle.as_ref())
 }

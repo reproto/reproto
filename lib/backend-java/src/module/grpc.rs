@@ -1,11 +1,11 @@
 //! Module that adds fasterxml annotations to generated classes.
 
+use Compiler;
 use codegen::{Configure, EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::{Loc, RpChannel, RpEndpoint};
 use core::errors::*;
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
-use java_backend::JavaBackend;
 use naming::{self, Naming};
 use processor::Processor;
 use std::borrow::Borrow;
@@ -252,7 +252,7 @@ impl GrpcClient {
     fn method_field<'el>(
         &self,
         service_name: Rc<String>,
-        backend: &JavaBackend,
+        compiler: &Compiler,
         request_ty: &Java<'static>,
         response_ty: &Java<'static>,
         method_type: &MethodType,
@@ -303,7 +303,7 @@ impl GrpcClient {
                     "))",
                 ]);
 
-                if request_ty != &backend.void {
+                if request_ty != &compiler.void {
                     t.push(toks![
                         ".setRequestMarshaller(new JsonMarshaller(",
                         "new ",
@@ -315,7 +315,7 @@ impl GrpcClient {
                     t.push(".setRequestMarshaller(new VoidMarshaller())");
                 }
 
-                if response_ty != &backend.void {
+                if response_ty != &compiler.void {
                     t.push(toks![
                         ".setResponseMarshaller(new JsonMarshaller(",
                         "new ",
@@ -654,7 +654,7 @@ impl Processor for GrpcClient {}
 impl ServiceCodegen for GrpcClient {
     fn generate(&self, e: ServiceAdded) -> Result<()> {
         let ServiceAdded {
-            backend,
+            compiler,
             body,
             spec,
             extra,
@@ -690,20 +690,20 @@ impl ServiceCodegen for GrpcClient {
             let request_ty = if let Some(req) = request {
                 self.utils.into_java_type(req.ty())?
             } else {
-                backend.void.clone()
+                compiler.void.clone()
             };
 
             let response_ty = if let Some(ref res) = endpoint.response.as_ref() {
                 self.utils.into_java_type(res.ty())?
             } else {
-                backend.void.clone()
+                compiler.void.clone()
             };
 
             let method_type = self.method_type(endpoint)?;
 
             let field = self.method_field(
                 service_name.clone(),
-                &backend,
+                &compiler,
                 &request_ty,
                 &response_ty,
                 &method_type,

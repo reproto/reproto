@@ -230,7 +230,7 @@ impl OkHttpServiceCodegen {
 impl ServiceCodegen for OkHttpServiceCodegen {
     fn generate(&self, e: ServiceAdded) -> Result<()> {
         let ServiceAdded {
-            backend,
+            compiler,
             body,
             spec,
             extra,
@@ -277,7 +277,7 @@ impl ServiceCodegen for OkHttpServiceCodegen {
         builder_fields.push(Field::new(
             optional(
                 self.string.clone(),
-                backend.optional.with_arguments(vec![self.string.clone()]),
+                compiler.optional.with_arguments(vec![self.string.clone()]),
             ),
             "baseUrl",
         ));
@@ -309,7 +309,7 @@ impl ServiceCodegen for OkHttpServiceCodegen {
 
         let builder = Builder {
             ty: local(c.name()),
-            optional: backend.optional.clone(),
+            optional: compiler.optional.clone(),
             client_field: client_field.clone(),
             fields: builder_fields
                 .iter()

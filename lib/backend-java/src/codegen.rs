@@ -1,14 +1,11 @@
 //! Code generator for the given path.
 
-use core::{RpEnumBody, RpInterfaceBody, RpServiceBody};
-use core::Handle;
+use {Compiler, Options, Utils};
+use core::{Handle, RpEnumBody, RpInterfaceBody, RpServiceBody};
 use core::errors::Result;
 use genco::{Cons, Java};
 use genco::java::{Argument, Class, Enum, Interface, Method};
-use java_backend::JavaBackend;
-use java_options::JavaOptions;
 use std::rc::Rc;
-use utils::Utils;
 
 pub struct ClassAdded<'a, 'el: 'a> {
     pub names: &'a [Cons<'el>],
@@ -38,14 +35,14 @@ pub struct EndpointExtra<'el> {
 }
 
 pub struct ServiceAdded<'a, 'el: 'a> {
-    pub backend: &'a JavaBackend,
+    pub compiler: &'a Compiler,
     pub body: &'el RpServiceBody,
     pub extra: &'a [EndpointExtra<'el>],
     pub spec: &'a mut Interface<'el>,
 }
 
 pub struct Configure<'a> {
-    pub options: &'a mut JavaOptions,
+    pub options: &'a mut Options,
     pub utils: &'a Rc<Utils>,
 }
 
