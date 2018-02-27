@@ -18,6 +18,7 @@ extern crate reproto_derive as derive;
 extern crate reproto_manifest as manifest;
 extern crate reproto_parser as parser;
 
+use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::str;
@@ -47,6 +48,36 @@ enum Output {
     JavaScript,
     #[serde(rename = "json")]
     Json,
+}
+
+impl Output {
+    /// Convert into a manifest language and accumulate modules.
+    fn into_lang(self, settings: Settings, modules: &mut Vec<Box<Any>>) -> Box<manifest::Lang> {
+        match self {
+            Output::Reproto => Box::new(reproto::ReprotoLang),
+            Output::Java => {
+                if settings.java.jackson {
+                    modules.push(Box::new(java::JavaModule::Jackson));
+                }
+
+                if settings.java.lombok {
+                    modules.push(Box::new(java::JavaModule::Lombok));
+                }
+
+                Box::new(java::JavaLang)
+            }
+            Output::Python => Box::new(python::PythonLang),
+            Output::Rust => {
+                if settings.rust.chrono {
+                    modules.push(Box::new(rust::RustModule::Chrono));
+                }
+
+                Box::new(rust::RustLang)
+            }
+            Output::JavaScript => Box::new(js::JsLang),
+            Output::Json => Box::new(json::JsonLang),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -327,80 +358,12 @@ fn derive(derive: Derive) -> DeriveResult {
             .resolver(resolver)
             .package_prefix(package_prefix);
 
-        match derive.output {
-            Output::Reproto => {
-                let mut modules = Vec::new();
+        let mut modules = Vec::new();
 
-                compile::simple_compile::<reproto::ReprotoLang, _>(
-                    &mut buf,
-                    simple_compile,
-                    modules,
-                    reproto::compile,
-                )?;
-            }
-            Output::Java => {
-                let mut modules = Vec::new();
+        let settings = derive.settings;
+        let lang = derive.output.into_lang(settings, &mut modules);
 
-                if derive.settings.java.jackson {
-                    modules.push(java::JavaModule::Jackson);
-                }
-
-                if derive.settings.java.lombok {
-                    modules.push(java::JavaModule::Lombok);
-                }
-
-                compile::simple_compile::<java::JavaLang, _>(
-                    &mut buf,
-                    simple_compile,
-                    modules,
-                    java::compile,
-                )?;
-            }
-            Output::Python => {
-                let mut modules = Vec::new();
-
-                compile::simple_compile::<python::PythonLang, _>(
-                    &mut buf,
-                    simple_compile,
-                    modules,
-                    python::compile,
-                )?;
-            }
-            Output::Rust => {
-                let mut modules = Vec::new();
-
-                if derive.settings.rust.chrono {
-                    modules.push(rust::RustModule::Chrono);
-                }
-
-                compile::simple_compile::<rust::RustLang, _>(
-                    &mut buf,
-                    simple_compile,
-                    modules,
-                    rust::compile,
-                )?;
-            }
-            Output::JavaScript => {
-                let mut modules = Vec::new();
-
-                compile::simple_compile::<js::JsLang, _>(
-                    &mut buf,
-                    simple_compile,
-                    modules,
-                    js::compile,
-                )?;
-            }
-            Output::Json => {
-                let mut modules = Vec::new();
-
-                compile::simple_compile::<json::JsonLang, _>(
-                    &mut buf,
-                    simple_compile,
-                    modules,
-                    json::compile,
-                )?;
-            }
-        }
+        compile::simple_compile(&mut buf, simple_compile, modules, lang.as_ref())?;
 
         Ok(buf)
     }

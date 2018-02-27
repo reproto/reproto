@@ -4,6 +4,7 @@ extern crate genco;
 extern crate log;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
+#[macro_use]
 extern crate reproto_manifest as manifest;
 extern crate reproto_naming as naming;
 extern crate reproto_trans as trans;
@@ -27,7 +28,8 @@ use core::errors::*;
 use java_backend::JavaBackend;
 use java_options::JavaOptions;
 use listeners::{Configure, Listeners};
-use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
+use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
@@ -35,17 +37,17 @@ use utils::Utils;
 
 pub const JAVA_CONTEXT: &str = "java";
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct JavaLang;
 
 impl Lang for JavaLang {
-    type Module = JavaModule;
+    lang_base!(JavaModule, compile);
 
-    fn comment(input: &str) -> Option<String> {
+    fn comment(&self, input: &str) -> Option<String> {
         Some(format!("// {}", input))
     }
 
-    fn keywords() -> Vec<(&'static str, &'static str)> {
+    fn keywords(&self) -> Vec<(&'static str, &'static str)> {
         vec![
             ("abstract", "_abstract"),
             ("assert", "_assert"),
@@ -154,7 +156,7 @@ impl TryFromToml for JavaModule {
     }
 }
 
-fn setup_options(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> JavaOptions {
+fn setup_options<'a>(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> JavaOptions {
     use self::JavaModule::*;
 
     let mut options = JavaOptions::new();
@@ -180,10 +182,11 @@ fn setup_options(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> JavaOptions {
     options
 }
 
-pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<JavaLang>) -> Result<()> {
+fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
     let env = Rc::new(env);
     let utils = Rc::new(Utils::new(&env));
-    let options = setup_options(manifest.modules, &utils);
+    let modules = checked_modules(manifest.modules)?;
+    let options = setup_options(modules, &utils);
     let backend = JavaBackend::new(&env, &utils, options);
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;

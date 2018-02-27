@@ -4,6 +4,7 @@ extern crate genco;
 extern crate log;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
+#[macro_use]
 extern crate reproto_manifest as manifest;
 extern crate reproto_naming as naming;
 extern crate reproto_trans as trans;
@@ -27,6 +28,7 @@ use core::errors::*;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use options::Options;
 use python_backend::PythonBackend;
+use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
@@ -36,17 +38,17 @@ const INIT_PY: &str = "__init__.py";
 const EXT: &str = "py";
 const PYTHON_CONTEXT: &str = "python";
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct PythonLang;
 
 impl Lang for PythonLang {
-    type Module = PythonModule;
+    lang_base!(PythonModule, compile);
 
-    fn comment(input: &str) -> Option<String> {
+    fn comment(&self, input: &str) -> Option<String> {
         Some(format!("# {}", input))
     }
 
-    fn keywords() -> Vec<(&'static str, &'static str)> {
+    fn keywords(&self) -> Vec<(&'static str, &'static str)> {
         // NB: combined set of keywords for Python 2/3 to avoid having two codegen implementations.
         vec![
             ("and", "_and"),
@@ -130,8 +132,9 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     Ok(options)
 }
 
-pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<PythonLang>) -> Result<()> {
-    let options = setup_options(manifest.modules)?;
+fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
+    let modules = manifest::checked_modules(manifest.modules)?;
+    let options = setup_options(modules)?;
     let backend = PythonBackend::new(env, options);
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
     let compiler = backend.compiler(handle.as_ref())?;

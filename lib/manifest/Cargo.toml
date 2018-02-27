@@ -13,6 +13,7 @@ Rethinking Protocol Generators
 
 [dependencies]
 reproto-core = {path = "../core", version = "0.3"}
+reproto-trans = {path = "../trans", version = "0.3"}
 
 relative-path = {version = "0.1", features = ["serde"]}
 semver = {version = "0.9", features = ["serde"]}

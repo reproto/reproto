@@ -130,9 +130,7 @@ impl RustBackend {
 
         if let Some(ref prefix) = name.prefix {
             let package_name = self.package(&name.package).parts.join("::");
-            return Ok(
-                imported_alias(package_name, local_name, prefix.as_str()).into(),
-            );
+            return Ok(imported_alias(package_name, local_name, prefix.as_str()).into());
         }
 
         Ok(local_name.into())
@@ -173,9 +171,7 @@ impl RustBackend {
             return Ok(datetime.clone().into());
         }
 
-        Err(
-            "Missing implementation for `datetime`, try: -m chrono".into(),
-        )
+        Err("Missing implementation for `datetime`, try: -m chrono".into())
     }
 
     pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Rust<'a>>> {
@@ -332,10 +328,9 @@ impl RustBackend {
 
             for field in &body.fields {
                 t.push_unless_empty(Comments(&field.comment));
-                t.push(Loc::take(Loc::and_then(
-                    Loc::as_ref(field),
-                    |f| self.field_element(f),
-                )?));
+                t.push(Loc::take(Loc::and_then(Loc::as_ref(field), |f| {
+                    self.field_element(f)
+                })?));
             }
 
             t

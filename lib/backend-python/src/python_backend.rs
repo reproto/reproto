@@ -7,7 +7,7 @@ use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModi
            RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, WithPos};
 use core::errors::*;
 use genco::{Element, Quoted, Tokens};
-use genco::python::{Python, imported};
+use genco::python::{imported, Python};
 use naming::{self, Naming};
 use options::Options;
 use python_compiler::PythonCompiler;
@@ -120,9 +120,8 @@ impl PythonBackend {
         for field in fields {
             let toks = toks!["self.", field.safe_ident.clone()];
             encode_body.push(self.raise_if_none(toks.clone(), field));
-            values.append(self.dynamic_encode(field.ty, toks).with_pos(
-                Loc::pos(field),
-            )?);
+            values.append(self.dynamic_encode(field.ty, toks)
+                .with_pos(Loc::pos(field))?);
         }
 
         encode_body.push(toks!["return (", values.join(", "), ")"]);
@@ -207,18 +206,14 @@ impl PythonBackend {
             let toks = match *field.modifier {
                 RpModifier::Optional => {
                     let var_name = toks!(var_name.clone());
-                    let var_toks = self.dynamic_decode(field.ty, var_name.clone()).with_pos(
-                        Loc::pos(
-                            field,
-                        ),
-                    )?;
+                    let var_toks = self.dynamic_decode(field.ty, var_name.clone())
+                        .with_pos(Loc::pos(field))?;
                     self.optional_check(var_name.clone(), var, var_toks)
                 }
                 _ => {
                     let data = toks!["data[", var.clone(), "]"];
-                    let var_toks = self.dynamic_decode(field.ty, data).with_pos(
-                        Loc::pos(field),
-                    )?;
+                    let var_toks = self.dynamic_decode(field.ty, data)
+                        .with_pos(Loc::pos(field))?;
                     toks![var_name.clone(), " = ", var_toks]
                 }
             };
@@ -302,12 +297,10 @@ impl PythonBackend {
 
         if let Some(ref used) = name.prefix {
             let package = self.package(&name.package).parts.join(".");
-            return Ok(
-                imported(package)
-                    .alias(used.as_str())
-                    .name(local_name)
-                    .into(),
-            );
+            return Ok(imported(package)
+                .alias(used.as_str())
+                .name(local_name)
+                .into());
         }
 
         Ok(local_name.into())
@@ -418,11 +411,7 @@ impl PythonBackend {
 
         tuple_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
-        let decode = self.decode_method(
-            &body.name,
-            &fields,
-            |i, _| i.to_string().into(),
-        )?;
+        let decode = self.decode_method(&body.name, &fields, |i, _| i.to_string().into())?;
         tuple_body.push(decode);
 
         let encode = self.encode_tuple_method(&fields)?;
@@ -494,9 +483,9 @@ impl PythonBackend {
 
             decode_body.push(member_loop);
             decode_body.push(toks![
-                             "raise Exception(",
-                             "data does not match enum".quoted(),
-                             ")",
+                "raise Exception(",
+                "data does not match enum".quoted(),
+                ")",
             ]);
 
             let mut m = Tokens::new();
@@ -530,11 +519,8 @@ impl PythonBackend {
             }
         }
 
-        let decode = self.decode_method(
-            &body.name,
-            &fields,
-            |_, field| toks!(field.name.quoted()),
-        )?;
+        let decode =
+            self.decode_method(&body.name, &fields, |_, field| toks!(field.name.quoted()))?;
 
         class_body.push(decode);
 
@@ -607,9 +593,7 @@ impl PythonBackend {
                     let encode = self.encode_method(
                         &fields,
                         self.dict.clone().into(),
-                        Some(
-                            toks!["data[", tk, "] = ", sub_type.name().quoted(),],
-                        ),
+                        Some(toks!["data[", tk, "] = ", sub_type.name().quoted(),]),
                     )?;
 
                     sub_type_body.push(encode);
@@ -641,9 +625,8 @@ impl PythonBackend {
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
                 Some((
                     "data",
-                    self.dynamic_decode(res.ty(), "data".into()).with_pos(
-                        Loc::pos(res),
-                    )?,
+                    self.dynamic_decode(res.ty(), "data".into())
+                        .with_pos(Loc::pos(res))?,
                 ))
             } else {
                 None
@@ -697,8 +680,7 @@ impl<'el> DynamicConverter<'el> for PythonBackend {
         use self::RpType::*;
 
         match *ty {
-            Signed { size: _ } |
-            Unsigned { size: _ } => true,
+            Signed { size: _ } | Unsigned { size: _ } => true,
             Float | Double => true,
             String => true,
             Any => true,

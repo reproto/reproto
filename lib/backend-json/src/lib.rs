@@ -4,6 +4,7 @@ extern crate log;
 #[macro_use]
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
+#[macro_use]
 extern crate reproto_manifest as manifest;
 extern crate reproto_trans as trans;
 extern crate serde;
@@ -13,20 +14,16 @@ extern crate toml;
 use core::{Context, RelativePathBuf};
 use core::errors::*;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct JsonLang;
 
 impl Lang for JsonLang {
-    type Module = JsonModule;
-
-    fn comment(_: &str) -> Option<String> {
-        // comments not supported
-        None
-    }
+    lang_base!(JsonModule, compile);
 }
 
 #[derive(Debug)]
@@ -43,7 +40,7 @@ impl TryFromToml for JsonModule {
     }
 }
 
-pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<JsonLang>) -> Result<()> {
+fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
     let root = RelativePathBuf::from(".");

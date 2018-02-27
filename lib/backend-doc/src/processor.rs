@@ -1,7 +1,6 @@
 //! Processor trait.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use trans::Environment;
 use core::{ForEachLoc, Loc, RpDecl, RpField, RpName, RpType, RpVersionedPackage, WithPos};
 use core::errors::*;
 use doc_builder::DocBuilder;
@@ -11,6 +10,7 @@ use rendering::markdown_to_html;
 use std::ops::DerefMut;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
+use trans::Environment;
 
 pub trait Processor<'env> {
     /// Access the current builder.

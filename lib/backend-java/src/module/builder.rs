@@ -3,7 +3,7 @@
 use codegen::ClassCodegen;
 use core::errors::*;
 use genco::{Java, Quoted, Tokens};
-use genco::java::{Argument, Class, Field, Method, Modifier, imported, local};
+use genco::java::{imported, local, Argument, Class, Field, Method, Modifier};
 use listeners::{ClassAdded, Configure, Listeners};
 use std::rc::Rc;
 

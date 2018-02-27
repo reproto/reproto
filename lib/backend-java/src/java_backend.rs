@@ -6,8 +6,8 @@ use core::{ForEachLoc, Handle, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpI
            RpName, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use core::errors::*;
 use genco::{Cons, Element, Java, Quoted, Tokens};
-use genco::java::{Argument, BOOLEAN, Class, Constructor, Enum, Field, INTEGER, Interface, Method,
-                  Modifier, imported, local, optional};
+use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum, Field, Interface,
+                  Method, Modifier, BOOLEAN, INTEGER};
 use java_field::JavaField;
 use java_file::JavaFile;
 use java_options::JavaOptions;
@@ -42,12 +42,11 @@ impl Processor for JavaBackend {}
 
 impl JavaBackend {
     pub fn new(env: &Rc<Environment>, utils: &Rc<Utils>, options: JavaOptions) -> JavaBackend {
-        let async_container =
-            options
-                .async_container
-                .as_ref()
-                .map(Clone::clone)
-                .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
+        let async_container = options
+            .async_container
+            .as_ref()
+            .map(Clone::clone)
+            .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
 
         JavaBackend {
             env: Rc::clone(env),
@@ -115,11 +114,7 @@ impl JavaBackend {
             let argument = Argument::new(spec.ty(), spec.var());
 
             if !self.options.nullable {
-                if let Some(non_null) = self.require_non_null(
-                    spec,
-                    &argument,
-                    field.name().into(),
-                )
+                if let Some(non_null) = self.require_non_null(spec, &argument, field.name().into())
                 {
                     c.body.push(non_null);
                 }
@@ -127,9 +122,8 @@ impl JavaBackend {
 
             c.arguments.push(argument.clone());
 
-            c.body.push(
-                toks!["this.", field.spec.var(), " = ", argument.var(), ";",],
-            );
+            c.body
+                .push(toks!["this.", field.spec.var(), " = ", argument.var(), ";",]);
         }
 
         c
@@ -149,14 +143,7 @@ impl JavaBackend {
             _ => {
                 let req = toks![self.objects.clone(), ".requireNonNull"];
 
-                Some(toks![
-                    req,
-                    "(",
-                    argument.var(),
-                    ", ",
-                    name.quoted(),
-                    ");",
-                ])
+                Some(toks![req, "(", argument.var(), ", ", name.quoted(), ");",])
             }
         }
     }
@@ -194,9 +181,9 @@ impl JavaBackend {
                 value
             };
 
-            hash_code.body.push(
-                toks!["result = result * 31 + ", value, ";"],
-            );
+            hash_code
+                .body
+                .push(toks!["result = result * 31 + ", value, ";"]);
         }
 
         hash_code.body.push("return result;");
@@ -416,9 +403,8 @@ impl JavaBackend {
                 }
             }
 
-            c.body.push(
-                toks!["this.", field.var(), " = ", argument.var(), ";",],
-            );
+            c.body
+                .push(toks!["this.", field.var(), " = ", argument.var(), ";",]);
 
             c.arguments.push(argument);
         }
@@ -460,8 +446,7 @@ impl JavaBackend {
         from_value.modifiers = vec![Public, Static];
         from_value.returns = local(name.clone());
 
-        let throw =
-            toks![
+        let throw = toks![
             "throw new ",
             self.illegal_argument.clone(),
             "(",
@@ -515,9 +500,8 @@ impl JavaBackend {
             spec.variants.append(enum_value);
         }
 
-        spec.constructors.push(
-            self.build_enum_constructor(&spec.fields),
-        );
+        spec.constructors
+            .push(self.build_enum_constructor(&spec.fields));
 
         let variant_field = body.variant_type.as_field();
         let variant_java_field = self.convert_field(&variant_field)?;
@@ -629,9 +613,9 @@ impl JavaBackend {
 
             let sub_type_fields = self.convert_fields(&sub_type.fields)?;
 
-            class.body.push_unless_empty(
-                Code(&sub_type.codes, JAVA_CONTEXT),
-            );
+            class
+                .body
+                .push_unless_empty(Code(&sub_type.codes, JAVA_CONTEXT));
 
             class.implements = vec![local(spec.name())];
 
@@ -752,11 +736,9 @@ impl JavaBackend {
 
                 if !endpoint.comment.is_empty() {
                     method.comments.push("<pre>".into());
-                    method.comments.extend(
-                        endpoint.comment.iter().cloned().map(
-                            Into::into,
-                        ),
-                    );
+                    method
+                        .comments
+                        .extend(endpoint.comment.iter().cloned().map(Into::into));
                     method.comments.push("</pre>".into());
                 }
 

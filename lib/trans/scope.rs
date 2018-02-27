@@ -55,14 +55,15 @@ impl Scope {
     #[inline(always)]
     fn root(&self) -> &Rc<Root> {
         match *self.0 {
-            Inner::Root(ref root) |
-            Inner::Child { ref root, .. } => root,
+            Inner::Root(ref root) | Inner::Child { ref root, .. } => root,
         }
     }
 
     /// Walk the entire path of the scope.
     pub fn walk(&self) -> ScopeWalker {
-        ScopeWalker { current: self.0.clone() }
+        ScopeWalker {
+            current: self.0.clone(),
+        }
     }
 
     /// Create a new child scope.
@@ -83,10 +84,12 @@ impl Scope {
     pub fn lookup_prefix(&self, prefix: &String) -> Option<RpVersionedPackage> {
         let root = self.root();
 
-        root.prefixes.get(prefix).map(|p| if root.safe_packages {
-            p.clone().with_replacements(&root.keywords)
-        } else {
-            p.clone()
+        root.prefixes.get(prefix).map(|p| {
+            if root.safe_packages {
+                p.clone().with_replacements(&root.keywords)
+            } else {
+                p.clone()
+            }
         })
     }
 

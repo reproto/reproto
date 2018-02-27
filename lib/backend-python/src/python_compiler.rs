@@ -80,9 +80,7 @@ impl<'el> PackageProcessor<'el> for PythonCompiler<'el> {
             if let Some(ref mut file_spec) = files.get_mut(&body.name.package) {
                 file_spec.0.push(self.backend.enum_variants(&body)?);
             } else {
-                return Err(
-                    format!("missing file for package: {}", &body.name.package).into(),
-                );
+                return Err(format!("missing file for package: {}", &body.name.package).into());
             }
         }
 

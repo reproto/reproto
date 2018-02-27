@@ -4,8 +4,8 @@ use codegen::{ClassCodegen, EnumCodegen, InterfaceCodegen, TupleCodegen};
 use core::RpSubTypeStrategy;
 use core::errors::*;
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
-use genco::java::{Argument, Class, DOUBLE, FLOAT, Field, INTEGER, LONG, Modifier, SHORT, imported,
-                  local};
+use genco::java::{imported, local, Argument, Class, Field, Modifier, DOUBLE, FLOAT, INTEGER, LONG,
+                  SHORT};
 use listeners::{ClassAdded, Configure, EnumAdded, InterfaceAdded, Listeners, TupleAdded};
 use std::rc::Rc;
 
@@ -172,7 +172,12 @@ impl Jackson {
         &self,
         ty: Java<'el>,
         parser: A,
-    ) -> Result<(Option<(Tokens<'el, Java<'el>>, &'el str)>, Tokens<'el, Java<'el>>)>
+    ) -> Result<
+        (
+            Option<(Tokens<'el, Java<'el>>, &'el str)>,
+            Tokens<'el, Java<'el>>,
+        ),
+    >
     where
         A: Into<Tokens<'el, Java<'el>>>,
     {
@@ -207,8 +212,7 @@ impl Jackson {
             }
             class @ Java::Class { .. } => {
                 if class == self.string {
-                    let test =
-                        toks![
+                    let test = toks![
                         p.clone(),
                         ".nextToken() != ",
                         self.token.clone(),
@@ -319,8 +323,7 @@ impl Jackson {
                 }
 
                 let variable = toks!["v_", field.var()];
-                let assign =
-                    toks![
+                let assign = toks![
                     "final ",
                     field.ty(),
                     " ",
@@ -412,8 +415,7 @@ impl Jackson {
             deserializer.name().as_ref()
         ));
 
-        let deserialize =
-            toks![
+        let deserialize = toks![
             "@",
             self.deserialize.clone(),
             "(using = ",
@@ -486,9 +488,9 @@ impl Listeners for Module {
         let jackson = Rc::new(Jackson::new());
         e.options.class_generators.push(Box::new(jackson.clone()));
         e.options.tuple_generators.push(Box::new(jackson.clone()));
-        e.options.interface_generators.push(
-            Box::new(jackson.clone()),
-        );
+        e.options
+            .interface_generators
+            .push(Box::new(jackson.clone()));
         e.options.enum_generators.push(Box::new(jackson.clone()));
     }
 }

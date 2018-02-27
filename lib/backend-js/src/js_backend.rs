@@ -143,9 +143,7 @@ impl JsBackend {
         loop_body.push(js![if match_member, toks!["return member;"]]);
 
         let mut member_loop = Tokens::new();
-        member_loop.push(
-            js![for loop_init; "i < l"; "i++", loop_body.join_line_spacing()],
-        );
+        member_loop.push(js![for loop_init; "i < l"; "i++", loop_body.join_line_spacing()]);
 
         let mut body = Tokens::new();
         body.push(member_loop);
@@ -174,9 +172,8 @@ impl JsBackend {
             let var_name = Rc::new(format!("v_{}", field.ident.as_str()));
             let var = variable_fn(i, field);
 
-            let toks = Loc::take(Loc::and_then(
-                Loc::as_ref(field),
-                |field| match *field.modifier {
+            let toks = Loc::take(Loc::and_then(Loc::as_ref(field), |field| {
+                match *field.modifier {
                     RpModifier::Optional => {
                         let var_name = toks![var_name.clone()];
                         let var_toks = self.dynamic_decode(field.ty, var_name.clone())?;
@@ -204,8 +201,8 @@ impl JsBackend {
 
                         Ok(check.join_line_spacing().into()) as Result<Tokens<'el, JavaScript<'el>>>
                     }
-                },
-            )?);
+                }
+            })?);
 
             assign.push(toks);
             arguments.append(var_name);
@@ -376,11 +373,7 @@ impl JsBackend {
             }
         }
 
-        class_body.push(self.decode_method(
-            &fields,
-            tuple_name.clone(),
-            Self::field_by_index,
-        )?);
+        class_body.push(self.decode_method(&fields, tuple_name.clone(), Self::field_by_index)?);
 
         class_body.push(self.encode_tuple_method(&fields)?);
         class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
@@ -482,11 +475,7 @@ impl JsBackend {
             }
         }
 
-        class_body.push(self.decode_method(
-            &fields,
-            type_name.clone(),
-            Self::field_by_name,
-        )?);
+        class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
 
         class_body.push(self.encode_method(&fields, "{}", None)?);
         class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
@@ -545,9 +534,12 @@ impl JsBackend {
             let fields: Vec<Loc<JsField>> = interface_fields
                 .iter()
                 .cloned()
-                .chain(sub_type.fields.iter().map(|f| {
-                    Loc::map(Loc::as_ref(f), |f| self.into_js_field(f))
-                }))
+                .chain(
+                    sub_type
+                        .fields
+                        .iter()
+                        .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_js_field(f))),
+                )
                 .collect();
 
             class_body.push(self.build_constructor(&fields));
@@ -559,11 +551,7 @@ impl JsBackend {
                 }
             }
 
-            class_body.push(self.decode_method(
-                &fields,
-                type_name.clone(),
-                Self::field_by_name,
-            )?);
+            class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
 
             match body.sub_type_strategy {
                 RpSubTypeStrategy::Tagged { ref tag, .. } => {
@@ -628,8 +616,7 @@ impl<'el> DynamicConverter<'el> for JsBackend {
         use self::RpType::*;
 
         match *ty {
-            Signed { size: _ } |
-            Unsigned { size: _ } => true,
+            Signed { size: _ } | Unsigned { size: _ } => true,
             Float | RpType::Double => true,
             String => true,
             Any => true,

@@ -1,19 +1,15 @@
 //! Derive a schema from the given input.
 
 use ast;
+use build_spec::convert_lang;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use compile;
 use core::{Context, Object, PathObject, RpPackage, RpVersionedPackage, StdinObject};
 use core::errors::Result;
 use derive;
 use genco::IoFmt;
-use java;
-use js;
-use json;
-use manifest::{Lang, TryFromToml};
-use python;
-use reproto;
-use rust;
+use manifest::{Lang, Language};
+use std::any::Any;
 use std::io;
 use std::path::Path;
 use std::rc::Rc;
@@ -117,70 +113,29 @@ pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
         .flat_map(|s| s.map(|s| s.to_string()))
         .collect();
 
-    match matches.value_of("lang") {
-        Some("reproto") => {
-            compile::simple_compile::<reproto::ReprotoLang, _>(
-                &mut IoFmt(&mut stdout.lock()),
-                simple_compile,
-                load_modules::<reproto::ReprotoLang>(modules)?,
-                reproto::compile,
-            )?;
-        }
-        Some("java") => {
-            compile::simple_compile::<java::JavaLang, _>(
-                &mut IoFmt(&mut stdout.lock()),
-                simple_compile,
-                load_modules::<java::JavaLang>(modules)?,
-                java::compile,
-            )?;
-        }
-        Some("python") => {
-            compile::simple_compile::<python::PythonLang, _>(
-                &mut IoFmt(&mut stdout.lock()),
-                simple_compile,
-                load_modules::<python::PythonLang>(modules)?,
-                python::compile,
-            )?;
-        }
-        Some("js") => {
-            compile::simple_compile::<js::JsLang, _>(
-                &mut IoFmt(&mut stdout.lock()),
-                simple_compile,
-                load_modules::<js::JsLang>(modules)?,
-                js::compile,
-            )?;
-        }
-        Some("rust") => {
-            compile::simple_compile::<rust::RustLang, _>(
-                &mut IoFmt(&mut stdout.lock()),
-                simple_compile,
-                load_modules::<rust::RustLang>(modules)?,
-                rust::compile,
-            )?;
-        }
-        Some("json") => {
-            compile::simple_compile::<json::JsonLang, _>(
-                &mut IoFmt(&mut stdout.lock()),
-                simple_compile,
-                load_modules::<json::JsonLang>(modules)?,
-                json::compile,
-            )?;
-        }
-        Some(lang) => return Err(format!("Unsupported language: {}", lang).into()),
-        None => return Err("Language not specified".into()),
-    }
+    let language = matches
+        .value_of("lang")
+        .and_then(Language::parse)
+        .ok_or_else(|| "no language specified, use `--lang`")?;
+
+    let lang = convert_lang(language);
+
+    let modules = load_modules(lang.as_ref(), modules)?;
+
+    compile::simple_compile(
+        &mut IoFmt(&mut stdout.lock()),
+        simple_compile,
+        modules,
+        lang.as_ref(),
+    )?;
 
     return Ok(());
 
-    fn load_modules<L: Lang>(names: Vec<String>) -> Result<Vec<L::Module>> {
+    fn load_modules(lang: &Lang, names: Vec<String>) -> Result<Vec<Box<Any>>> {
         let mut modules = Vec::new();
 
         for name in names {
-            modules.push(L::Module::try_from_string(
-                Path::new("."),
-                name.as_str(),
-                name.to_string(),
-            )?);
+            modules.push(lang.string_spec(Path::new("."), name.as_str())?);
         }
 
         Ok(modules)

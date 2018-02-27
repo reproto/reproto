@@ -2,6 +2,7 @@
 extern crate genco;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
+#[macro_use]
 extern crate reproto_manifest as manifest;
 extern crate reproto_naming as naming;
 extern crate reproto_trans as trans;
@@ -26,6 +27,7 @@ use js_backend::JsBackend;
 use js_options::JsOptions;
 use listeners::Listeners;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
@@ -34,17 +36,17 @@ const TYPE_SEP: &str = "_";
 const EXT: &str = "js";
 const JS_CONTEXT: &str = "js";
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct JsLang;
 
 impl Lang for JsLang {
-    type Module = JsModule;
+    lang_base!(JsModule, compile);
 
-    fn comment(input: &str) -> Option<String> {
+    fn comment(&self, input: &str) -> Option<String> {
         Some(format!("# {}", input))
     }
 
-    fn keywords() -> Vec<(&'static str, &'static str)> {
+    fn keywords(&self) -> Vec<(&'static str, &'static str)> {
         vec![
             ("abstract", "_abstract"),
             ("await", "_await"),
@@ -111,7 +113,7 @@ impl Lang for JsLang {
         ]
     }
 
-    fn safe_packages() -> bool {
+    fn safe_packages(&self) -> bool {
         // NB: JavaScript imports by string literals, no keyword escaping needed.
         false
     }
@@ -131,11 +133,11 @@ impl TryFromToml for JsModule {
     }
 }
 
-fn setup_listeners(modules: &[JsModule]) -> Result<(JsOptions, Box<Listeners>)> {
+fn setup_listeners(modules: Vec<JsModule>) -> Result<(JsOptions, Box<Listeners>)> {
     let listeners: Vec<Box<Listeners>> = Vec::new();
 
-    for module in modules {
-        match *module {}
+    for m in modules {
+        match m {}
     }
 
     let mut options = JsOptions::new();
@@ -147,8 +149,9 @@ fn setup_listeners(modules: &[JsModule]) -> Result<(JsOptions, Box<Listeners>)> 
     Ok((options, Box::new(listeners)))
 }
 
-pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<JsLang>) -> Result<()> {
-    let (options, listeners) = setup_listeners(&manifest.modules)?;
+fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
+    let modules = manifest::checked_modules(manifest.modules)?;
+    let (options, listeners) = setup_listeners(modules)?;
     let backend = JsBackend::new(env, options, listeners);
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
     let compiler = backend.compiler(handle.as_ref())?;

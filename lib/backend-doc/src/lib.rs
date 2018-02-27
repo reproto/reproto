@@ -35,7 +35,7 @@ pub const DEFAULT_SYNTAX_THEME: &str = "ayu-mirage";
 use clap::{App, Arg, ArgMatches};
 use core::errors::*;
 use doc_compiler::DocCompiler;
-use manifest::{Lang, Manifest};
+use manifest::Manifest;
 use std::collections::HashMap;
 use syntect::dumps::from_binary;
 use syntect::highlighting::{Theme, ThemeSet};
@@ -110,15 +110,14 @@ pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 }
 
 /// Load and execute the provided clojure with a syntax theme.
-fn with_initialized<F, L>(
+fn with_initialized<F>(
     matches: &ArgMatches,
-    manifest: Manifest<L>,
+    manifest: Manifest,
     themes: &HashMap<&'static str, &'static [u8]>,
     f: F,
 ) -> Result<()>
 where
     F: FnOnce(&Theme, &SyntaxSet, &[u8]) -> Result<()>,
-    L: Lang,
 {
     let syntax_theme = matches
         .value_of("syntax-theme")
@@ -200,10 +199,7 @@ fn list_syntax_themes() -> Result<()> {
     Ok(())
 }
 
-pub fn compile<L>(env: Environment, matches: &ArgMatches, manifest: Manifest<L>) -> Result<()>
-where
-    L: Lang,
-{
+pub fn compile(env: Environment, matches: &ArgMatches, manifest: Manifest) -> Result<()> {
     let themes = build_themes();
 
     let mut done = false;

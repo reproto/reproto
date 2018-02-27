@@ -1,10 +1,10 @@
 //! Update action that synchronizes all repositories.
 
-use build_spec::{manifest_preamble, setup_repository};
+use build_spec::{convert_lang, manifest, manifest_preamble, repository};
 use clap::{App, ArgMatches, SubCommand};
 use core::Context;
 use core::errors::*;
-use manifest::{Lang, Manifest};
+use manifest::NoLang;
 use repository::Update;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -14,21 +14,23 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
+pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
     let preamble = manifest_preamble(matches)?;
-    return do_manifest_use!(ctx, matches, preamble, inner);
 
-    fn inner<L>(_ctx: Rc<Context>, _matches: &ArgMatches, manifest: Manifest<L>) -> Result<()>
-    where
-        L: Lang,
-    {
-        let repository = setup_repository(&manifest)?;
-        let updates: HashSet<Update> = repository.update()?.into_iter().collect();
+    let lang = preamble
+        .language
+        .as_ref()
+        .map(|l| convert_lang(*l))
+        .unwrap_or_else(|| Box::new(NoLang));
 
-        for update in updates {
-            update.update()?;
-        }
+    let manifest = manifest(lang.as_ref(), matches, preamble)?;
 
-        Ok(())
+    let repository = repository(&manifest)?;
+    let updates: HashSet<Update> = repository.update()?.into_iter().collect();
+
+    for update in updates {
+        update.update()?;
     }
+
+    Ok(())
 }

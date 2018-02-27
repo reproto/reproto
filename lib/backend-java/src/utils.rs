@@ -1,7 +1,7 @@
 use core::{RpName, RpType, RpVersionedPackage};
 use core::errors::*;
 use genco::{IntoTokens, Java, Tokens};
-use genco::java::{BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG, imported};
+use genco::java::{imported, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG};
 use processor::Processor;
 use std::rc::Rc;
 use trans::Environment;
@@ -70,11 +70,7 @@ impl Utils {
 
         let package_name = self.java_package_name(&name.package);
 
-        let name = Rc::new(registered.local_name(
-            name,
-            |p| p.join("."),
-            |c| c.join("."),
-        ));
+        let name = Rc::new(registered.local_name(name, |p| p.join("."), |c| c.join(".")));
 
         Ok(imported(package_name, name))
     }

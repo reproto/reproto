@@ -1,9 +1,9 @@
 //! build command
 
-use build_spec::{manifest_compile, manifest_preamble};
+use build_spec::{convert_lang, environment, manifest, manifest_preamble};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::Context;
-use core::errors::*;
+use core::errors::Result;
 use manifest::Language;
 use std::rc::Rc;
 
@@ -21,8 +21,6 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 }
 
 pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
-    use manifest::Language::*;
-
     let preamble = manifest_preamble(matches)?;
 
     let language = preamble
@@ -32,15 +30,11 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
         .or_else(|| matches.value_of("lang").and_then(Language::parse))
         .ok_or_else(|| "no language specified either through manifest or cli (--lang)")?;
 
-    match language {
-        Java => manifest_compile::<::java::JavaLang, _>(ctx, matches, preamble, ::java::compile),
-        Js => manifest_compile::<::js::JsLang, _>(ctx, matches, preamble, ::js::compile),
-        Json => manifest_compile::<::json::JsonLang, _>(ctx, matches, preamble, ::json::compile),
-        Python => {
-            manifest_compile::<::python::PythonLang, _>(ctx, matches, preamble, ::python::compile)
-        }
-        Rust => manifest_compile::<::rust::RustLang, _>(ctx, matches, preamble, ::rust::compile),
-    }?;
+    let lang = convert_lang(language);
 
+    let manifest = manifest(lang.as_ref(), matches, preamble)?;
+    let env = environment(lang.as_ref(), ctx.clone(), &manifest)?;
+
+    lang.compile(ctx, env, manifest)?;
     Ok(())
 }

@@ -3,12 +3,12 @@ use config_env::ConfigEnv;
 use core::{BytesObject, Context, Object, Resolved, ResolvedByPrefix, Resolver, RpChannel,
            RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Version};
 use core::errors::*;
-use manifest::{Lang, Manifest, ManifestFile, ManifestPreamble, Publish, TryFromToml,
-               read_manifest, read_manifest_preamble, self as m};
+use manifest::{self as m, read_manifest, read_manifest_preamble, Lang, Language, Manifest,
+               ManifestFile, ManifestPreamble, NoLang, Publish};
 use relative_path::RelativePath;
-use repository::{Index, IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths,
-                 Repository, Resolvers, index_from_path, index_from_url, objects_from_path,
-                 objects_from_url};
+use repository::{index_from_path, index_from_url, objects_from_path, objects_from_url, Index,
+                 IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository,
+                 Resolvers};
 use repository_http;
 use semck;
 use std::collections::HashMap;
@@ -19,7 +19,6 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
-use toml;
 use trans::Environment;
 use url;
 
@@ -30,9 +29,9 @@ fn load_index(base: &Path, index_url: &str, config: IndexConfig) -> Result<Box<I
     let index_path = Path::new(index_url);
 
     if index_path.is_dir() {
-        let index_path = index_path.canonicalize().map_err(|e| {
-            format!("index: bad path: {}: {}", e, index_path.display())
-        })?;
+        let index_path = index_path
+            .canonicalize()
+            .map_err(|e| format!("index: bad path: {}: {}", e, index_path.display()))?;
 
         return index_from_path(&index_path)
             .map(|i| Box::new(i) as Box<Index>)
@@ -70,9 +69,9 @@ fn load_objects(
     let objects_path = Path::new(objects_url);
 
     if objects_path.is_dir() {
-        let objects_path = objects_path.canonicalize().map_err(|e| {
-            format!("objects: bad path: {}: {}", e, objects_path.display())
-        })?;
+        let objects_path = objects_path
+            .canonicalize()
+            .map_err(|e| format!("objects: bad path: {}: {}", e, objects_path.display()))?;
 
         return objects_from_path(objects_path)
             .map(|o| Box::new(o) as Box<Objects>)
@@ -81,36 +80,29 @@ fn load_objects(
 
     match url::Url::parse(objects_url) {
         // Relative to index index repository!
-        Err(url::ParseError::RelativeUrlWithoutBase) => {
-            index
-                .objects_from_index(RelativePath::new(objects_url))
-                .map_err(Into::into)
-        }
+        Err(url::ParseError::RelativeUrlWithoutBase) => index
+            .objects_from_index(RelativePath::new(objects_url))
+            .map_err(Into::into),
         Err(e) => return Err(e.into()),
-        Ok(url) => {
-            objects_from_url(config, &url, |config, scheme, url| match scheme {
-                "http" => Ok(Some(repository_http::objects_from_url(config, url)?)),
-                _ => Ok(None),
-            }).map_err(Into::into)
-        }
+        Ok(url) => objects_from_url(config, &url, |config, scheme, url| match scheme {
+            "http" => Ok(Some(repository_http::objects_from_url(config, url)?)),
+            _ => Ok(None),
+        }).map_err(Into::into),
     }
 }
 
-pub fn setup_repository<L>(manifest: &Manifest<L>) -> Result<Repository>
-where
-    L: Lang,
-{
+pub fn repository(manifest: &Manifest) -> Result<Repository> {
     let repository = &manifest.repository;
 
     if repository.no_repository {
         return Ok(Repository::new(Box::new(NoIndex), Box::new(NoObjects)));
     }
 
-    let base = manifest.path.as_ref().and_then(|p| p.parent()).ok_or_else(
-        || {
-            "no parent path to manifest"
-        },
-    )?;
+    let base = manifest
+        .path
+        .as_ref()
+        .and_then(|p| p.parent())
+        .ok_or_else(|| "no parent path to manifest")?;
 
     let mut repo_dir = None;
     let mut cache_dir = None;
@@ -127,7 +119,9 @@ where
     let repo_dir = repo_dir.ok_or_else(|| "repo_dir: must be specified")?;
 
     let index_url = index.unwrap_or_else(|| DEFAULT_INDEX.to_owned());
-    let index_config = IndexConfig { repo_dir: repo_dir.clone() };
+    let index_config = IndexConfig {
+        repo_dir: repo_dir.clone(),
+    };
 
     let index = load_index(base, index_url.as_str(), index_config)?;
 
@@ -141,10 +135,7 @@ where
     Ok(Repository::new(index, objects))
 }
 
-pub fn setup_path_resolver<L>(manifest: &Manifest<L>) -> Result<Option<Box<Resolver>>>
-where
-    L: Lang,
-{
+pub fn path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>> {
     if manifest.paths.is_empty() {
         return Ok(None);
     }
@@ -155,20 +146,18 @@ where
         published.insert(publish.package.clone(), publish.version.clone());
     }
 
-    Ok(Some(
-        Box::new(Paths::new(manifest.paths.clone(), published)),
-    ))
+    Ok(Some(Box::new(Paths::new(
+        manifest.paths.clone(),
+        published,
+    ))))
 }
 
-pub fn setup_resolvers<L>(manifest: &Manifest<L>) -> Result<Box<Resolver>>
-where
-    L: Lang,
-{
+pub fn resolvers(manifest: &Manifest) -> Result<Box<Resolver>> {
     let mut resolvers: Vec<Box<Resolver>> = Vec::new();
 
-    resolvers.push(Box::new(setup_repository(manifest)?));
+    resolvers.push(Box::new(repository(manifest)?));
 
-    if let Some(resolver) = setup_path_resolver(manifest)? {
+    if let Some(resolver) = path_resolver(manifest)? {
         resolvers.push(resolver);
     }
 
@@ -189,39 +178,36 @@ pub fn manifest_preamble<'a>(matches: &ArgMatches<'a>) -> Result<ManifestPreambl
     debug!("reading manifest: {}", manifest_path.display());
     let reader = File::open(manifest_path.clone())?;
 
-    read_manifest_preamble(&manifest_path, reader).map_err(|e| {
-        format!("{}: {}", manifest_path.display(), e.display()).into()
-    })
+    read_manifest_preamble(&manifest_path, reader)
+        .map_err(|e| format!("{}: {}", manifest_path.display(), e.display()).into())
 }
 
 /// Read the manifest based on the current environment.
-pub fn manifest<'a, L>(matches: &ArgMatches<'a>, preamble: ManifestPreamble) -> Result<Manifest<L>>
-where
-    L: Lang,
-{
+pub fn manifest<'a>(
+    lang: &Lang,
+    matches: &ArgMatches<'a>,
+    preamble: ManifestPreamble,
+) -> Result<Manifest> {
     let path = preamble.path.clone();
 
-    let mut manifest = read_manifest(preamble).map_err(
-        |e| if let Some(path) = path {
+    let mut manifest = read_manifest(lang, preamble).map_err(|e| {
+        if let Some(path) = path {
             format!("{}: {}", path.display(), e.display()).into()
         } else {
             e
-        },
-    )?;
+        }
+    })?;
 
-    manifest_from_matches(&mut manifest, matches)?;
+    manifest_from_matches(lang, &mut manifest, matches)?;
     Ok(manifest)
 }
 
 /// Setup environment.
-pub fn setup_environment<L>(ctx: Rc<Context>, manifest: &Manifest<L>) -> Result<Environment>
-where
-    L: Lang,
-{
-    let resolvers = setup_resolvers(manifest)?;
+pub fn environment(lang: &Lang, ctx: Rc<Context>, manifest: &Manifest) -> Result<Environment> {
+    let resolvers = resolvers(manifest)?;
     let package_prefix = manifest.package_prefix.clone();
 
-    let mut env = Environment::from_lang::<L>(ctx, package_prefix, resolvers);
+    let mut env = lang.into_env(ctx, package_prefix, resolvers);
 
     let mut errors = Vec::new();
 
@@ -233,9 +219,9 @@ where
 
     // TODO: use version and package from the provided file.
     for file in &manifest.files {
-        let package = file.package.as_ref().map(|p| {
-            RpVersionedPackage::new(p.clone(), file.version.clone())
-        });
+        let package = file.package
+            .as_ref()
+            .map(|p| RpVersionedPackage::new(p.clone(), file.version.clone()));
 
         if let Err(e) = env.import_path(&file.path, package) {
             errors.push(e.into());
@@ -255,9 +241,10 @@ where
 
         let stdin = io::stdin();
 
-        stdin.lock().read_to_end(&mut buffer).map_err(|e| {
-            format!("failed to read <stdin>: {}", e)
-        })?;
+        stdin
+            .lock()
+            .read_to_end(&mut buffer)
+            .map_err(|e| format!("failed to read <stdin>: {}", e))?;
 
         let object = BytesObject::new("<stdin>".to_string(), Arc::new(buffer));
 
@@ -294,10 +281,7 @@ fn repository_from_matches(repository: &mut m::Repository, matches: &ArgMatches)
     Ok(())
 }
 
-fn manifest_from_matches<L>(manifest: &mut Manifest<L>, matches: &ArgMatches) -> Result<()>
-where
-    L: Lang,
-{
+fn manifest_from_matches(lang: &Lang, manifest: &mut Manifest, matches: &ArgMatches) -> Result<()> {
     manifest.paths.extend(
         matches
             .values_of("path")
@@ -314,9 +298,9 @@ where
                 "-" => manifest.stdin = true,
                 // read from file
                 file => {
-                    manifest.files.push(
-                        ManifestFile::from_path(Path::new(file)),
-                    );
+                    manifest
+                        .files
+                        .push(ManifestFile::from_path(Path::new(file)));
                 }
             }
         }
@@ -325,22 +309,15 @@ where
     // TODO: we want to be able to load modules, when we have paths.
     if let Some(path) = manifest.path.as_ref() {
         for module in matches.values_of("module").into_iter().flat_map(|it| it) {
-            let module = L::Module::try_from_value(
-                path,
-                module,
-                toml::Value::Table(toml::value::Table::default()),
-            )?;
-
-            manifest.modules.push(module);
+            manifest.modules.push(lang.string_spec(path, module)?);
         }
     }
 
     for package in matches.values_of("package").into_iter().flat_map(|it| it) {
         let parsed = RpRequiredPackage::parse(package);
 
-        let parsed = parsed.chain_err(|| {
-            format!("failed to parse --package argument: {}", package)
-        })?;
+        let parsed =
+            parsed.chain_err(|| format!("failed to parse --package argument: {}", package))?;
 
         manifest.packages.push(parsed);
     }
@@ -366,7 +343,7 @@ where
 pub struct Match(pub Version, pub Box<Object>, pub RpPackage);
 
 /// Setup matches from a publish manifest.
-pub fn setup_publish_matches<'a, I>(
+pub fn publish_matches<'a, I>(
     resolver: &mut Resolver,
     version_override: Option<&Version>,
     publish: I,
@@ -380,9 +357,7 @@ where
         let resolved = resolver.resolve_by_prefix(&publish.package)?;
 
         if resolved.is_empty() {
-            return Err(
-                format!("no matching packages found for: {}", publish.package).into(),
-            );
+            return Err(format!("no matching packages found for: {}", publish.package).into());
         }
 
         for ResolvedByPrefix { package, object } in resolved {
@@ -394,7 +369,7 @@ where
     Ok(results)
 }
 
-pub fn setup_matches<'a, I>(
+pub fn matches<'a, I>(
     resolver: &mut Resolver,
     version_override: Option<&Version>,
     packages: I,
@@ -408,9 +383,7 @@ where
         let resolved = resolver.resolve(package)?;
 
         if resolved.is_empty() {
-            return Err(
-                format!("no matching packages found for: {}", package).into(),
-            );
+            return Err(format!("no matching packages found for: {}", package).into());
         }
 
         let mut it = resolved.into_iter();
@@ -431,9 +404,8 @@ where
         let Resolved { version, object } = first;
         let version = version_override.cloned().or(version);
 
-        let version = version.ok_or_else(|| {
-            format!("No version to publish for package: {}", package.package)
-        })?;
+        let version = version
+            .ok_or_else(|| format!("No version to publish for package: {}", package.package))?;
 
         results.push(Match(version, object, package.package.clone()));
     }
@@ -459,9 +431,9 @@ pub fn semck_check(
     {
         debug!("Checking semantics of {} -> {}", d.version, version);
 
-        let previous = repository.get_object(&d)?.ok_or_else(|| {
-            format!("No object found for deployment: {:?}", d)
-        })?;
+        let previous = repository
+            .get_object(&d)?
+            .ok_or_else(|| format!("No object found for deployment: {:?}", d))?;
 
         let name = RpPackageFormat(package, Some(&d.version)).to_string();
         let previous = previous.with_name(name);
@@ -629,36 +601,31 @@ pub fn semck_check(
     }
 }
 
-/// High-level helper function to call the given clojure with all the necessary compile options.
-pub fn manifest_compile<L, F>(
-    ctx: Rc<Context>,
-    matches: &ArgMatches,
-    preamble: ManifestPreamble,
-    compile: F,
-) -> Result<()>
-where
-    L: Lang,
-    F: FnOnce(Rc<Context>, Environment, Manifest<L>) -> Result<()>,
-{
-    let manifest = manifest::<L>(matches, preamble)?;
-    let env = setup_environment(ctx.clone(), &manifest)?;
+/// Convert the manifest language to an actual language implementation.
+pub fn convert_lang(input: Language) -> Box<Lang> {
+    use self::Language::*;
 
-    compile(ctx.clone(), env, manifest)?;
-    Ok(())
+    match input {
+        Java => Box::new(::java::JavaLang),
+        Js => Box::new(::js::JsLang),
+        Json => Box::new(::json::JsonLang),
+        Python => Box::new(::python::PythonLang),
+        Rust => Box::new(::rust::RustLang),
+    }
 }
 
-/// High-level helper function to call the given clojure with all the necessary compile options.
-pub fn manifest_use<'a, L, F>(
-    ctx: Rc<Context>,
-    matches: &'a ArgMatches,
-    preamble: ManifestPreamble,
-    use_f: F,
-) -> Result<()>
-where
-    L: Lang,
-    F: FnOnce(Rc<Context>, &'a ArgMatches, Manifest<L>) -> Result<()>,
-{
-    let manifest = manifest::<L>(matches, preamble)?;
-    use_f(ctx.clone(), matches, manifest)?;
-    Ok(())
+/// Setup a basic environment falling back to `NoLang` unless one is specified.
+pub fn simple_config(ctx: &Rc<Context>, matches: &ArgMatches) -> Result<(Manifest, Environment)> {
+    let preamble = manifest_preamble(matches)?;
+
+    let lang = preamble
+        .language
+        .map(|l| convert_lang(l))
+        .unwrap_or_else(|| Box::new(NoLang) as Box<Lang>);
+
+    let manifest = manifest(lang.as_ref(), matches, preamble)?;
+
+    let env = environment(lang.as_ref(), ctx.clone(), &manifest)?;
+
+    Ok((manifest, env))
 }

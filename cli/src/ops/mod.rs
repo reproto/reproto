@@ -1,5 +1,3 @@
-#[macro_use]
-mod macros;
 mod build;
 mod doc;
 mod publish;

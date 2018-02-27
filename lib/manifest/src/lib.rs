@@ -5,6 +5,7 @@
 
 extern crate relative_path;
 extern crate reproto_core as core;
+pub extern crate reproto_trans as trans;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -13,32 +14,105 @@ extern crate toml;
 use core::{Range, RpPackage, RpRequiredPackage, Version};
 use core::errors::Result;
 use relative_path::{RelativePath, RelativePathBuf};
+use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
+
+#[macro_export]
+macro_rules! lang_base {
+    ($module:ty, $compile:ident) => {
+        fn copy(&self) -> Box<Lang> {
+            Box::new(*self)
+        }
+
+        /// Module specs.
+        fn module_specs(&self, path: &Path, input: Option<toml::Value>) -> Result<Vec<Box<Any>>> {
+            $crate::parse_section_any::<$module>(path, input)
+        }
+
+        fn string_spec(&self, path: &Path, input: &str) -> Result<Box<Any>> {
+            $crate::parse_string_any::<$module>(path, input)
+        }
+
+        fn compile(
+            &self,
+            ctx: ::std::rc::Rc<core::Context>,
+            env: $crate::trans::Environment,
+            manifest: $crate::Manifest
+        ) -> Result<()> {
+            $compile(ctx, env, manifest)
+        }
+    }
+}
 
 /// The trait that describes the specific implementation of a given language.
-pub trait Lang: Default {
-    /// Module type used.
-    type Module: 'static + TryFromToml;
+///
+/// TODO: move language-specific integrations into own crate.
+/// Options would have to be transferred to a local type.
+pub trait Lang: fmt::Debug {
+    /// Copy self.
+    ///
+    /// Implemented through `lang_base!` macro.
+    fn copy(&self) -> Box<Lang>;
+
+    /// Parse a complex set of module configurations.
+    ///
+    /// Implemented through `lang_base!` macro.
+    fn module_specs(&self, path: &Path, input: Option<toml::Value>) -> Result<Vec<Box<Any>>>;
+
+    /// Parse a module configuration consisting of _only_ a string.
+    ///
+    /// Implemented through `lang_base!` macro.
+    fn string_spec(&self, path: &Path, input: &str) -> Result<Box<Any>>;
+
+    /// Language-specific compile hook.
+    ///
+    /// Implemented through `lang_base!` macro.
+    fn compile(
+        &self,
+        ctx: Rc<core::Context>,
+        env: trans::Environment,
+        manifest: Manifest,
+    ) -> Result<()>;
 
     /// Comment the given string.
-    fn comment(input: &str) -> Option<String>;
+    fn comment(&self, _input: &str) -> Option<String> {
+        None
+    }
 
     /// Get a list of keywords to transliterate.
-    fn keywords() -> Vec<(&'static str, &'static str)> {
+    fn keywords(&self) -> Vec<(&'static str, &'static str)> {
         vec![]
     }
 
     /// Indicates if the language requires keyword-escaping in the packages.
-    fn safe_packages() -> bool {
+    fn safe_packages(&self) -> bool {
         true
+    }
+
+    /// Helper to convert into environment.
+    fn into_env(
+        &self,
+        ctx: Rc<core::Context>,
+        package_prefix: Option<core::RpPackage>,
+        resolver: Box<core::Resolver>,
+    ) -> trans::Environment {
+        let keywords = self.keywords()
+            .into_iter()
+            .map(|(f, t)| (f.to_string(), t.to_string()))
+            .collect();
+
+        trans::Environment::new(ctx.clone(), package_prefix.clone(), resolver)
+            .with_keywords(keywords)
+            .with_safe_packages(self.safe_packages())
     }
 }
 
 /// Fallback language support in case no language is specified.
-#[derive(Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct NoLang;
 
 pub enum NoModule {
@@ -62,11 +136,15 @@ impl TryFromToml for NoModule {
 }
 
 impl Lang for NoLang {
-    type Module = NoModule;
+    lang_base!(NoModule, no_compile);
+}
 
-    fn comment(_input: &str) -> Option<String> {
-        None
-    }
+fn no_compile(
+    _ctx: Rc<core::Context>,
+    _env: trans::Environment,
+    _manifest: Manifest,
+) -> Result<()> {
+    Ok(())
 }
 
 /// Trait to convert different types.
@@ -114,9 +192,8 @@ impl TryFromToml for ManifestFile {
 impl TryFromToml for Publish {
     fn try_from_string(_: &Path, id: &str, value: String) -> Result<Self> {
         let package = RpPackage::parse(id);
-        let version = Version::parse(value.as_str()).map_err(|e| {
-            format!("bad version: {}: {}", e, value)
-        })?;
+        let version =
+            Version::parse(value.as_str()).map_err(|e| format!("bad version: {}: {}", e, value))?;
 
         Ok(Publish {
             package: package,
@@ -144,9 +221,8 @@ impl TryFromToml for RpRequiredPackage {
     fn try_from_string(_: &Path, id: &str, value: String) -> Result<Self> {
         let package = RpPackage::parse(id);
 
-        let range = Range::parse(value.as_str()).map_err(|e| {
-            format!("bad version: {}: {}", e, value)
-        })?;
+        let range =
+            Range::parse(value.as_str()).map_err(|e| format!("bad version: {}: {}", e, value))?;
 
         Ok(RpRequiredPackage::new(package, range))
     }
@@ -161,7 +237,7 @@ impl TryFromToml for RpRequiredPackage {
 }
 
 /// Enum designating which language is being compiled.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Language {
     Java,
@@ -225,11 +301,46 @@ where
 }
 
 /// Parse optional specs.
-pub fn opt_specs<T: 'static>(base: &Path, value: Option<toml::Value>) -> Result<Vec<T>>
+fn parse_section<T: 'static>(base: &Path, value: Option<toml::Value>) -> Result<Vec<T>>
 where
     T: TryFromToml,
 {
     value.map(|v| parse_specs(base, v)).unwrap_or(Ok(vec![]))
+}
+
+/// Parsing modules into Any.
+pub fn parse_section_any<T: 'static>(
+    base: &Path,
+    value: Option<toml::Value>,
+) -> Result<Vec<Box<Any>>>
+where
+    T: TryFromToml,
+{
+    Ok(parse_section::<T>(base, value)?
+        .into_iter()
+        .map(|b| Box::new(b) as Box<Any>)
+        .collect())
+}
+
+/// Parse the given string as a module.
+pub fn parse_string_any<T: 'static>(base: &Path, name: &str) -> Result<Box<Any>>
+where
+    T: TryFromToml,
+{
+    let value = toml::Value::Table(toml::value::Table::default());
+    Ok(Box::new(parse_spec::<T>(base, name, value)?) as Box<Any>)
+}
+
+/// Attempt to perform a checked conversion of the given vector of modules.
+pub fn checked_modules<M: Any>(modules: Vec<Box<Any>>) -> Result<Vec<M>> {
+    let mut out = Vec::new();
+
+    for m in modules {
+        out.push(*m.downcast::<M>()
+            .map_err(|m| format!("Failed to downcast module: {:?}", m))?);
+    }
+
+    Ok(out)
 }
 
 /// A quick bundle of configuration that can be applied, depending on what the project looks like.
@@ -242,20 +353,15 @@ pub enum Preset {
 impl Preset {}
 
 /// Apply the given preset to a manifest.
-fn apply_preset_to<L>(value: toml::Value, manifest: &mut Manifest<L>, base: &Path) -> Result<()>
-where
-    L: Lang,
-{
+fn apply_preset_to(value: toml::Value, manifest: &mut Manifest, base: &Path) -> Result<()> {
     use self::Preset::*;
     use self::toml::Value::*;
 
     match value {
-        String(name) => {
-            match name.as_str() {
-                "maven" => maven_apply_to(manifest, base)?,
-                name => return Err(format!("unsupported preset: {}", name).into()),
-            }
-        }
+        String(name) => match name.as_str() {
+            "maven" => maven_apply_to(manifest, base)?,
+            name => return Err(format!("unsupported preset: {}", name).into()),
+        },
         value => {
             let preset: Preset = value.try_into()?;
 
@@ -267,19 +373,19 @@ where
 
     return Ok(());
 
-    fn maven_apply_to<L>(manifest: &mut Manifest<L>, base: &Path) -> Result<()>
-    where
-        L: Lang,
-    {
+    fn maven_apply_to(manifest: &mut Manifest, base: &Path) -> Result<()> {
         // default path
-        manifest.paths.push(
-            base.join("src").join("main").join("reproto"),
-        );
+        manifest
+            .paths
+            .push(base.join("src").join("main").join("reproto"));
 
         // output directory
-        manifest.output = Some(base.join("target").join("generated").join("reproto").join(
-            "java",
-        ));
+        manifest.output = Some(
+            base.join("target")
+                .join("generated")
+                .join("reproto")
+                .join("java"),
+        );
 
         Ok(())
     }
@@ -345,11 +451,10 @@ impl ManifestPreamble {
 /// The realized project manifest.
 ///
 /// * All paths are absolute.
-#[derive(Debug, Clone)]
-pub struct Manifest<L = NoLang>
-where
-    L: Lang,
-{
+#[derive(Debug)]
+pub struct Manifest {
+    /// Language manifest is being compiled for.
+    pub lang: Box<Lang>,
     /// Path where manifest was loaded from.
     pub path: Option<PathBuf>,
     /// Packages to build.
@@ -363,7 +468,7 @@ where
     /// Packages to publish.
     pub publish: Vec<Publish>,
     /// Modules to enable.
-    pub modules: Vec<L::Module>,
+    pub modules: Vec<Box<Any>>,
     /// Additional paths specified.
     pub paths: Vec<PathBuf>,
     /// Output directory.
@@ -378,12 +483,10 @@ where
     pub doc: Doc,
 }
 
-impl<L> Manifest<L>
-where
-    L: Lang,
-{
-    pub fn new(path: Option<&Path>) -> Manifest<L> {
-        Manifest {
+impl Manifest {
+    pub fn new(lang: Box<Lang>, path: Option<&Path>) -> Self {
+        Self {
+            lang: lang,
             path: path.map(|p| p.to_owned()),
             packages: Vec::default(),
             files: Vec::default(),
@@ -417,9 +520,9 @@ where
     T: Default + serde::Deserialize<'de>,
 {
     if let Some(field) = value.remove(name) {
-        field.try_into().map_err(
-            |e| format!("{}: {}", name, e).into(),
-        )
+        field
+            .try_into()
+            .map_err(|e| format!("{}: {}", name, e).into())
     } else {
         Ok(T::default())
     }
@@ -429,9 +532,7 @@ fn check_empty(value: &toml::value::Table) -> Result<()> {
     let unexpected: Vec<String> = value.keys().map(Clone::clone).collect();
 
     if unexpected.len() > 0 {
-        return Err(
-            format!("unexpected entries: {}", unexpected.join(", ")).into(),
-        );
+        return Err(format!("unexpected entries: {}", unexpected.join(", ")).into());
     }
 
     Ok(())
@@ -443,9 +544,7 @@ where
 {
     let mut inner = take_field::<toml::value::Table>(value, "repository")?;
     func(&mut inner)?;
-    check_empty(&inner).map_err(
-        |e| format!("{}: {}", name, e.display()),
-    )?;
+    check_empty(&inner).map_err(|e| format!("{}: {}", name, e.display()))?;
     Ok(())
 }
 
@@ -453,25 +552,20 @@ where
 ///
 /// `manifest` is the manifest that will be populated.
 /// `base` is the base directory for which all paths specified in the manifest will be resolved.
-pub fn load_common_manifest<L>(
-    manifest: &mut Manifest<L>,
+pub fn load_common_manifest(
+    manifest: &mut Manifest,
     base: &Path,
     value: &mut toml::value::Table,
-) -> Result<()>
-where
-    L: Lang,
-{
-    manifest.packages.extend(opt_specs(
-        base,
-        take_field(value, "packages")?,
-    )?);
-    manifest.files.extend(
-        opt_specs(base, take_field(value, "files")?)?,
-    );
-    manifest.publish.extend(opt_specs(
-        base,
-        take_field(value, "publish")?,
-    )?);
+) -> Result<()> {
+    manifest
+        .packages
+        .extend(parse_section(base, take_field(value, "packages")?)?);
+    manifest
+        .files
+        .extend(parse_section(base, take_field(value, "files")?)?);
+    manifest
+        .publish
+        .extend(parse_section(base, take_field(value, "publish")?)?);
 
     manifest.paths.extend(
         take_field::<Vec<RelativePathBuf>>(value, "paths")?
@@ -516,9 +610,8 @@ pub fn read_manifest_preamble<'a, P: AsRef<Path>, R: Read>(
     let mut content = String::new();
     reader.read_to_string(&mut content)?;
 
-    let mut value: toml::value::Table = toml::from_str(content.as_str()).map_err(|e| {
-        format!("{}: bad manifest: {}", path.display(), e)
-    })?;
+    let mut value: toml::value::Table = toml::from_str(content.as_str())
+        .map_err(|e| format!("{}: bad manifest: {}", path.display(), e))?;
 
     let language = take_field::<Option<Language>>(&mut value, "language")?;
 
@@ -533,19 +626,13 @@ pub fn read_manifest_preamble<'a, P: AsRef<Path>, R: Read>(
 ///
 /// Takes a path since it's used to convert declarations.
 /// Returns `true` if the manifest is present, `false` otherwise.
-pub fn read_manifest<L>(mut preamble: ManifestPreamble) -> Result<Manifest<L>>
-where
-    L: Lang,
-{
-    let mut manifest = Manifest::new(preamble.path.as_ref().map(AsRef::as_ref));
+pub fn read_manifest(lang: &Lang, mut preamble: ManifestPreamble) -> Result<Manifest> {
+    let mut manifest = Manifest::new(lang.copy(), preamble.path.as_ref().map(AsRef::as_ref));
 
     // Only load components if we have a parent path.
     if let Some(parent) = preamble.path.as_ref().and_then(|p| p.parent()) {
-        manifest.modules.extend(opt_specs(
-            parent,
-            take_field(&mut preamble.value, "modules")?,
-        )?);
-
+        let modules = take_field(&mut preamble.value, "modules")?;
+        manifest.modules.extend(lang.module_specs(parent, modules)?);
         load_common_manifest(&mut manifest, parent, &mut preamble.value)?;
     }
 
@@ -575,7 +662,8 @@ mod tests {
                 &path, Cursor::new(include_vec!($name)))
                 .expect("to read preamble of manifest");
 
-            read_manifest::<NoLang>(preamble).expect("to read manifest")
+            let lang = Box::new(NoLang) as Box<Lang>;
+            read_manifest(lang.as_ref(), preamble).expect("to read manifest")
         }}
     }
 

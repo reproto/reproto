@@ -1,14 +1,14 @@
 extern crate reproto_ast as ast;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
-extern crate reproto_trans as trans;
 
 use core::{ContextItem, Object, Resolver, RpPackage, RpVersionedPackage};
+use manifest::Lang;
+use std::any::Any;
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 use std::str;
-use trans::Environment;
 
 /// Input to the compiler.
 pub enum Input<'input> {
@@ -64,15 +64,12 @@ impl<'input> SimpleCompile<'input> {
 
 /// Perform a simplified compilation that outputs the result into the provided Write
 /// implementation.
-pub fn simple_compile<L: manifest::Lang, C>(
+pub fn simple_compile(
     out: &mut fmt::Write,
     config: SimpleCompile,
-    modules: Vec<L::Module>,
-    compile: C,
-) -> core::errors::Result<()>
-where
-    C: Fn(Rc<core::Context>, Environment, manifest::Manifest<L>) -> core::errors::Result<()>,
-{
+    modules: Vec<Box<Any>>,
+    lang: &Lang,
+) -> core::errors::Result<()> {
     let SimpleCompile {
         input,
         package_prefix,
@@ -95,7 +92,7 @@ where
 
     let ctx = Rc::new(ctx);
 
-    let mut env = Environment::from_lang::<L>(ctx.clone(), package_prefix.clone(), resolver);
+    let mut env = lang.into_env(ctx.clone(), package_prefix.clone(), resolver);
 
     match input {
         Input::File(file, package) => {
@@ -107,11 +104,11 @@ where
     }
 
     let preamble = manifest::ManifestPreamble::new(Some(manifest::Language::Java), None);
-    let mut manifest = manifest::read_manifest::<L>(preamble)?;
+    let mut manifest = manifest::read_manifest(lang, preamble)?;
     manifest.modules = modules;
     manifest.package_prefix = package_prefix;
 
-    compile(ctx, env, manifest)?;
+    lang.compile(ctx, env, manifest)?;
 
     let borrowed = capturing.files().try_borrow()?;
 
@@ -120,7 +117,7 @@ where
         borrowed.len()
     );
 
-    if let Some(comment) = L::comment(comment.as_str()) {
+    if let Some(comment) = lang.comment(comment.as_str()) {
         writeln!(out, "{}", comment.as_str())?;
         writeln!(out, "")?;
     }
@@ -128,7 +125,7 @@ where
     let mut it = borrowed.iter().peekable();
 
     while let Some((path, content)) = it.next() {
-        if let Some(comment) = L::comment(format!(" File: {}", path.display()).as_str()) {
+        if let Some(comment) = lang.comment(format!(" File: {}", path.display()).as_str()) {
             writeln!(out, "{}", comment)?;
             writeln!(out, "")?;
         }

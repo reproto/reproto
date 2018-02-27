@@ -5,27 +5,29 @@ extern crate log;
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 extern crate reproto_lexer as lexer;
+#[macro_use]
 extern crate reproto_manifest as manifest;
 extern crate reproto_trans as trans;
 extern crate toml;
 
-use core::{Context, DEFAULT_TAG, RelativePathBuf, RpDecl, RpField, RpInterfaceBody,
-           RpSubTypeStrategy, RpTupleBody, RpTypeBody};
+use core::{Context, RelativePathBuf, RpDecl, RpField, RpInterfaceBody, RpSubTypeStrategy,
+           RpTupleBody, RpTypeBody, DEFAULT_TAG};
 use core::errors::Result;
 use genco::{Custom, Formatter, IoFmt, Quoted, Tokens, WriteTokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use std::any::Any;
 use std::fmt::{self, Write};
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct ReprotoLang;
 
 impl Lang for ReprotoLang {
-    type Module = ReprotoModule;
+    lang_base!(ReprotoModule, compile);
 
-    fn comment(input: &str) -> Option<String> {
+    fn comment(&self, input: &str) -> Option<String> {
         Some(format!("//{}", input.to_string()))
     }
 }
@@ -75,20 +77,21 @@ impl Custom for Reproto {
 }
 
 /// Compile to a reproto manifest.
-pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<ReprotoLang>) -> Result<()> {
+fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
     let root = RelativePathBuf::from(".");
 
     for (package, file) in env.for_each_file() {
-        let mut path = package.package.parts.iter().fold(
-            root.clone(),
-            |path, part| path.join(part),
-        );
+        let mut path = package
+            .package
+            .parts
+            .iter()
+            .fold(root.clone(), |path, part| path.join(part));
 
-        let parent = path.parent().map(ToOwned::to_owned).unwrap_or_else(
-            || root.clone(),
-        );
+        let parent = path.parent()
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| root.clone());
 
         if !handle.is_dir(&parent) {
             debug!("+dir: {}", parent.display());
@@ -96,9 +99,8 @@ pub fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest<ReprotoLan
         }
 
         let path = if let Some(version) = package.version.as_ref() {
-            let stem = path.file_stem().ok_or_else(|| {
-                format!("Missing file stem: {}", path.display())
-            })?;
+            let stem = path.file_stem()
+                .ok_or_else(|| format!("Missing file stem: {}", path.display()))?;
 
             let file_name = format!("{}-{}.reproto", stem, version);
             path.with_file_name(file_name)
@@ -263,11 +265,9 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         let field_name = field.safe_ident();
 
         let field_name = match lexer::match_keyword(field_name) {
-            Some(token) => {
-                token.keyword_safe().ok_or_else(|| {
-                    format!("keyword does not have a safe variant: {}", field_name)
-                })?
-            }
+            Some(token) => token
+                .keyword_safe()
+                .ok_or_else(|| format!("keyword does not have a safe variant: {}", field_name))?,
             None => field_name,
         };
 

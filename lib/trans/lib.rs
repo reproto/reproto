@@ -5,7 +5,6 @@ extern crate reproto_ast as ast;
 extern crate reproto_core as core;
 extern crate reproto_naming as naming;
 extern crate reproto_parser as parser;
-extern crate reproto_manifest as manifest;
 extern crate reproto_path_parser as path_parser;
 
 mod into_model;
