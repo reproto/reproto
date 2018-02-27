@@ -597,14 +597,14 @@ impl PackageUtils for JsBackend {}
 impl<'el> Converter<'el> for JsBackend {
     type Custom = JavaScript<'el>;
 
-    fn convert_type(&self, name: &'el RpName) -> Result<Tokens<'el, JavaScript<'el>>> {
+    fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, JavaScript<'el>>> {
         let registered = self.env.lookup(name)?;
 
         let local_name = registered.local_name(name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(ref used) = name.prefix {
             let package = self.package(&name.package).parts.join(".");
-            return Ok(imported_alias(package, local_name, used.as_str()).into());
+            return Ok(imported_alias(package, local_name, used.to_string()).into());
         }
 
         Ok(local_name.into())

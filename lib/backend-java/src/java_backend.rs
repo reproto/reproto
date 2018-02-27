@@ -882,7 +882,7 @@ impl JavaBackend {
 impl<'el> Converter<'el> for JavaBackend {
     type Custom = Java<'el>;
 
-    fn convert_type(&self, name: &'el RpName) -> Result<Tokens<'el, Self::Custom>> {
+    fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {
         Ok(toks![self.utils.convert_type_id(name)?])
     }
 }

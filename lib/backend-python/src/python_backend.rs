@@ -6,7 +6,7 @@ use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
            RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, WithPos};
 use core::errors::*;
-use genco::{Element, Quoted, Tokens};
+use genco::{Cons, Element, Quoted, Tokens};
 use genco::python::{imported, Python};
 use naming::{self, Naming};
 use options::Options;
@@ -50,7 +50,7 @@ impl PythonBackend {
         field: &PythonField,
     ) -> Tokens<'el, Python<'el>> {
         let mut raise_if_none = Tokens::new();
-        let required_error = format!("{}: is a required field", field.name).quoted();
+        let required_error = format!("{}: is a required field", field.name.as_ref()).quoted();
 
         raise_if_none.push(toks!["if ", toks, " is None:"]);
         raise_if_none.nested(toks!["raise Exception(", required_error, ")"]);
@@ -73,12 +73,12 @@ impl PythonBackend {
         }
 
         fields.for_each_loc(|field| {
-            let var_string = field.name.quoted();
+            let var_string = field.name.clone().quoted();
             let field_toks = toks!["self.", field.safe_ident.clone()];
 
-            let value_toks = self.dynamic_encode(field.ty, field_toks.clone())?;
+            let value_toks = self.dynamic_encode(&field.ty, field_toks.clone())?;
 
-            match *field.modifier {
+            match field.modifier {
                 RpModifier::Optional => {
                     let mut check_if_none = Tokens::new();
 
@@ -120,7 +120,7 @@ impl PythonBackend {
         for field in fields {
             let toks = toks!["self.", field.safe_ident.clone()];
             encode_body.push(self.raise_if_none(toks.clone(), field));
-            values.append(self.dynamic_encode(field.ty, toks)
+            values.append(self.dynamic_encode(&field.ty, toks)
                 .with_pos(Loc::pos(field))?);
         }
 
@@ -189,7 +189,7 @@ impl PythonBackend {
 
     fn decode_method<'el, F>(
         &self,
-        name: &'el RpName,
+        name: &RpName,
         fields: &[Loc<PythonField<'el>>],
         variable_fn: F,
     ) -> Result<Tokens<'el, Python<'el>>>
@@ -203,16 +203,16 @@ impl PythonBackend {
             let var_name = Rc::new(format!("f_{}", field.ident));
             let var = variable_fn(i, field);
 
-            let toks = match *field.modifier {
+            let toks = match field.modifier {
                 RpModifier::Optional => {
                     let var_name = toks!(var_name.clone());
-                    let var_toks = self.dynamic_decode(field.ty, var_name.clone())
+                    let var_toks = self.dynamic_decode(&field.ty, var_name.clone())
                         .with_pos(Loc::pos(field))?;
                     self.optional_check(var_name.clone(), var, var_toks)
                 }
                 _ => {
                     let data = toks!["data[", var.clone(), "]"];
-                    let var_toks = self.dynamic_decode(field.ty, data)
+                    let var_toks = self.dynamic_decode(&field.ty, data)
                         .with_pos(Loc::pos(field))?;
                     toks![var_name.clone(), " = ", var_toks]
                 }
@@ -266,9 +266,9 @@ impl PythonBackend {
         constructor
     }
 
-    fn build_getters<'a, 'el, I>(&self, fields: I) -> Result<Vec<Tokens<'el, Python<'el>>>>
+    fn build_getters<'a, 'el: 'a, I>(&self, fields: I) -> Result<Vec<Tokens<'el, Python<'el>>>>
     where
-        I: IntoIterator<Item = &'a Loc<PythonField<'a>>>,
+        I: IntoIterator<Item = &'a Loc<PythonField<'el>>>,
     {
         let mut result = Vec::new();
 
@@ -276,7 +276,24 @@ impl PythonBackend {
             let name = Rc::new(self.to_lower_snake.convert(field.ident.as_str()));
             let mut body = Tokens::new();
             body.push(toks!("def get_", name, "(self):"));
-            body.nested(toks!["return self.", field.safe_ident.clone()]);
+
+            body.nested({
+                let mut t = Tokens::new();
+
+                if !field.comment.is_empty() {
+                    t.push("\"\"\"");
+
+                    for c in &field.comment {
+                        t.push(Element::from(c.clone()));
+                    }
+
+                    t.push("\"\"\"");
+                }
+
+                t.push(toks!["return self.", field.safe_ident.clone()]);
+                t
+            });
+
             result.push(body);
         }
 
@@ -285,7 +302,7 @@ impl PythonBackend {
 
     fn convert_type_id<'el, F>(
         &self,
-        name: &'el RpName,
+        name: &RpName,
         path_syntax: F,
     ) -> Result<Tokens<'el, Python<'el>>>
     where
@@ -297,8 +314,9 @@ impl PythonBackend {
 
         if let Some(ref used) = name.prefix {
             let package = self.package(&name.package).parts.join(".");
+
             return Ok(imported(package)
-                .alias(used.as_str())
+                .alias(used.to_string())
                 .name(local_name)
                 .into());
         }
@@ -349,20 +367,23 @@ impl PythonBackend {
         }
     }
 
-    fn into_python_field_with<'el, F>(
-        &self,
-        field: &'el RpField,
-        python_field_f: F,
-    ) -> PythonField<'el>
+    fn into_python_field_with<'el, F>(&self, field: &RpField, python_field_f: F) -> PythonField<'el>
     where
         F: Fn(PythonField) -> PythonField,
     {
+        let comment = field
+            .comment
+            .iter()
+            .map(|c| Cons::from(Rc::new(c.to_string())))
+            .collect();
+
         python_field_f(PythonField {
-            modifier: &field.modifier,
-            ty: &field.ty,
-            name: field.name(),
+            modifier: field.modifier,
+            ty: field.ty.clone(),
+            name: Rc::new(field.name().to_string()).into(),
             ident: Rc::new(field.ident().to_string()),
             safe_ident: Rc::new(field.safe_ident().to_string()),
+            comment: comment,
         })
     }
 
@@ -402,11 +423,8 @@ impl PythonBackend {
 
         tuple_body.push(self.build_constructor(&fields));
 
-        // TODO: make configurable
-        if false {
-            for getter in self.build_getters(&fields)? {
-                tuple_body.push(getter);
-            }
+        for getter in self.build_getters(&fields)? {
+            tuple_body.push(getter);
         }
 
         tuple_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
@@ -443,11 +461,8 @@ impl PythonBackend {
 
         class_body.push(self.build_constructor(iter::once(&field)));
 
-        // TODO: make configurable
-        if false {
-            for getter in self.build_getters(iter::once(&field))? {
-                class_body.push(getter);
-            }
+        for getter in self.build_getters(iter::once(&field))? {
+            class_body.push(getter);
         }
 
         class_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
@@ -512,15 +527,13 @@ impl PythonBackend {
         let constructor = self.build_constructor(&fields);
         class_body.push(constructor);
 
-        // TODO: make configurable
-        if false {
-            for getter in self.build_getters(&fields)? {
-                class_body.push(getter);
-            }
+        for getter in self.build_getters(&fields)? {
+            class_body.push(getter);
         }
 
-        let decode =
-            self.decode_method(&body.name, &fields, |_, field| toks!(field.name.quoted()))?;
+        let decode = self.decode_method(&body.name, &fields, |_, field| {
+            toks!(field.name.clone().quoted())
+        })?;
 
         class_body.push(decode);
 
@@ -573,11 +586,8 @@ impl PythonBackend {
             let constructor = self.build_constructor(&fields);
             sub_type_body.push(constructor);
 
-            // TODO: make configurable
-            if false {
-                for getter in self.build_getters(&fields)? {
-                    sub_type_body.push(getter);
-                }
+            for getter in self.build_getters(&fields)? {
+                sub_type_body.push(getter);
             }
 
             let decode = self.decode_method(&sub_type.name, &fields, |_, field| {
@@ -658,11 +668,11 @@ impl PackageUtils for PythonBackend {}
 impl<'el> Converter<'el> for PythonBackend {
     type Custom = Python<'el>;
 
-    fn convert_type(&self, name: &'el RpName) -> Result<Tokens<'el, Self::Custom>> {
+    fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {
         self.convert_type_id(name, |v| v.join(TYPE_SEP))
     }
 
-    fn convert_constant(&self, name: &'el RpName) -> Result<Tokens<'el, Self::Custom>> {
+    fn convert_constant(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {
         // TODO: only last part in a constant lookup should be separated with dots.
         self.convert_type_id(name, |mut v| {
             let at = v.len().saturating_sub(2);

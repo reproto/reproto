@@ -36,7 +36,7 @@ where
 
     fn dynamic_encode(
         &self,
-        ty: &'el RpType,
+        ty: &RpType,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         use self::RpType::*;
@@ -82,7 +82,7 @@ where
 {
     fn base_encode(
         &self,
-        ty: &'el RpType,
+        ty: &RpType,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         self.dynamic_encode(ty, input)

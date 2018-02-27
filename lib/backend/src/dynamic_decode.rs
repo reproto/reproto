@@ -61,7 +61,7 @@ where
 
     fn dynamic_decode(
         &self,
-        ty: &'el RpType,
+        ty: &RpType,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         use self::RpType::*;
@@ -129,7 +129,7 @@ where
 {
     fn base_decode(
         &self,
-        ty: &'el RpType,
+        ty: &RpType,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         self.dynamic_decode(ty, input)

@@ -11,7 +11,7 @@ where
 {
     fn base_decode(
         &self,
-        ty: &'el RpType,
+        ty: &RpType,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>>;
 }
