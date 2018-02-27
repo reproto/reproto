@@ -607,6 +607,14 @@ impl JavaBackend {
         let mut spec = Interface::new(body.local_name.clone());
         let interface_fields = self.fields(&body.fields)?;
 
+        for field in &interface_fields {
+            let mut m = field.getter_without_body();
+            m.modifiers = vec![];
+            spec.methods.push(m);
+        }
+
+        spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
+
         body.sub_types.values().for_each_loc(|sub_type| {
             let mut class = Class::new(sub_type.local_name.clone());
             class.modifiers = vec![Public, Static];
@@ -682,14 +690,6 @@ impl JavaBackend {
                 spec: &mut spec,
             })?;
         }
-
-        for field in &interface_fields {
-            let mut m = field.getter_without_body();
-            m.modifiers = vec![];
-            spec.methods.push(m);
-        }
-
-        spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
 
         Ok(spec)
     }

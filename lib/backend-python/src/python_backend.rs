@@ -140,11 +140,15 @@ impl PythonBackend {
         let mut vars = Tokens::new();
 
         for field in fields {
-            args.push(format!("{}: {{!r}}", field.ident.as_str()));
+            args.push(format!("{}:{{!r}}", field.ident.as_str()));
             vars.append(toks!["self.", field.safe_ident.clone()]);
         }
 
-        let format = format!("<{} {}>", name, args.join(", "));
+        let format = if !args.is_empty() {
+            format!("<{} {}>", name, args.join(", "))
+        } else {
+            format!("<{}>", name)
+        };
 
         let mut repr = Tokens::new();
         repr.push("def __repr__(self):");
