@@ -4,7 +4,6 @@ extern crate bytes;
 extern crate hex;
 #[macro_use]
 extern crate log;
-extern crate relative_path;
 extern crate reproto_core as core;
 extern crate ring;
 extern crate serde;

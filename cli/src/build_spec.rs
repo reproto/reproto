@@ -1,11 +1,10 @@
 use clap::ArgMatches;
 use config_env::ConfigEnv;
-use core::{BytesObject, Context, Object, Resolved, ResolvedByPrefix, Resolver, RpChannel,
-           RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Version};
+use core::{BytesObject, Context, Object, RelativePath, Resolved, ResolvedByPrefix, Resolver,
+           RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Version};
 use core::errors::*;
 use manifest::{self as m, read_manifest, read_manifest_preamble, Lang, Language, Manifest,
                ManifestFile, ManifestPreamble, NoLang, Publish};
-use relative_path::RelativePath;
 use repository::{index_from_path, index_from_url, objects_from_path, objects_from_url, Index,
                  IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository,
                  Resolvers};
@@ -213,7 +212,7 @@ pub fn environment(lang: &Lang, ctx: Rc<Context>, manifest: &Manifest) -> Result
 
     let mut stdin = manifest.stdin;
 
-    if manifest.files.is_empty() && manifest.packages.is_empty() {
+    if manifest.files.is_empty() && manifest.packages.is_empty() && manifest.path.is_none() {
         stdin = true;
     }
 
@@ -237,6 +236,8 @@ pub fn environment(lang: &Lang, ctx: Rc<Context>, manifest: &Manifest) -> Result
     }
 
     if stdin {
+        debug!("Reading file to build from stdin");
+
         let mut buffer = Vec::new();
 
         let stdin = io::stdin();

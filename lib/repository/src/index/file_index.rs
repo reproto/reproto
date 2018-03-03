@@ -1,9 +1,8 @@
 use checksum::Checksum;
-use core::{Range, RpPackage, Version};
+use core::{Range, RelativePath, RpPackage, Version};
 use core::errors::*;
 use index::{Deployment, Index};
 use objects::{FileObjects, Objects};
-use relative_path::RelativePath;
 use serde_json;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read, Write};

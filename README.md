@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
 [![Chat on Gitter](https://badges.gitter.im/reproto/reproto.svg)](https://gitter.im/reproto/reproto)
 
-This is the home of `reproto`, a system for managing JSON schemas.
+This is the home of `reproto`, an experimental system for managing JSON schemas.
 
 If you want to take the system for a leasurely spin, please go to <https://reproto.github.io>.
 
@@ -59,15 +59,11 @@ Also make sure to [join our Gitter channel].
 
 * See the [documentation] for an overview of how the reproto language and its build manifest works.
 * See [examples] for some example specifications.
-* See [config] for information on how to configure the system.
 * See the [integration tests] for even more examples on how protocol specifications can be used.
-* See the [TODO][todo] for a list of things that still needs to be done.
 
 [documentation]: /doc/
-[integration tests]: /it
 [examples]: /examples
-[config]: /doc/config.md
-[todo]: /doc/todo.md
+[integration tests]: /it
 
 ## Language Support
 

@@ -5,6 +5,7 @@ mod repo;
 mod update;
 mod check;
 mod derive;
+mod init;
 
 use clap::{App, Arg, ArgMatches};
 use core::Context;
@@ -120,6 +121,7 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.subcommand(base_args(update::options()));
     let out = out.subcommand(base_args(repo::options()));
     let out = out.subcommand(derive::options());
+    let out = out.subcommand(init::options());
     out
 }
 
@@ -135,6 +137,7 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
         "publish" => return publish::entry(ctx, matches),
         "repo" => return repo::entry(ctx, matches),
         "derive" => return derive::entry(ctx, matches),
+        "init" => return init::entry(ctx, matches),
         _ => {}
     }
 

@@ -36,7 +36,6 @@ reproto-backend-python = {path = "../lib/backend-python", version = "0.3"}
 reproto-backend-rust = {path = "../lib/backend-rust", version = "0.3"}
 reproto-backend-reproto = {path = "../lib/backend-reproto", version = "0.3"}
 
-relative-path = {version = "0.1", features = ["serde"]}
 ansi_term = "0.9"
 atty = "0.2"
 clap = "2.24"

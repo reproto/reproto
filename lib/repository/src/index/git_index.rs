@@ -1,10 +1,9 @@
 use checksum::Checksum;
-use core::{Range, RpPackage, Version};
+use core::{Range, RelativePath, RpPackage, Version};
 use core::errors::*;
 use git::GitRepo;
 use index::{file_index, Deployment, Index};
 use objects::{FileObjects, GitObjects, Objects};
-use relative_path::RelativePath;
 use std::rc::Rc;
 use update::Update;
 use url::Url;
@@ -56,7 +55,7 @@ impl Index for GitIndex {
         let mut url = self.url.clone();
 
         for c in relative_path.components() {
-            url = url.join(c)?;
+            url = url.join(c.as_str())?;
         }
 
         Ok(Box::new(GitObjects::new(
