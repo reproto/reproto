@@ -1,6 +1,12 @@
 //! # An example package importing another package.
+//!
+//! This version 1.0.0 of the `example.common` package.
 
-use example.common as c;
+// Importing version 1.0.0 of example.common
+use example.common "^1" as c;
+
+// Try to comment this out:
+// use example.common "^2" as c2;
 
 /// An envelope containing a message.
 type Envelope {

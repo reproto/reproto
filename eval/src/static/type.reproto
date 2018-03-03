@@ -1,4 +1,10 @@
 //! # An example `type` in reproto
+//!
+//! This is the simplest structure,
+//! fields directly associated with an Object.
+//!
+//! Hint: there are more packages to explore,
+//!       see the dropdown menu up top!
 
 /// A blog post.
 type Post {
@@ -13,8 +19,7 @@ type Post {
 
   /// The tags for our post!
   enum Tag as string {
-    Java as "java";
-    Long as "long";
-    Short as "short";
+    Programming as "programming";
+    Politics as "politics";
   }
 }

@@ -1,0 +1,20 @@
+//! # An example `tuple` in reproto
+//!
+//! Tuples permit defining schemas that matches distinct indexes in arrays.
+//!
+//! The below would permit deserializing an array where the first element is a string, and the
+//! second element is a number, like:
+//!
+//! ```json
+//! ["Meaning of Everything", 42]
+//! ["Meters in a kilometer", 1000]
+//! ```
+
+/// A blog post.
+tuple Pair {
+  /// The string in the pair.
+  left: string;
+
+  /// The numeric value of the pair.
+  right: u64;
+}

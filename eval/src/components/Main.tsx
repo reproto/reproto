@@ -53,8 +53,10 @@ themes.forEach((theme) => {
 const DEFAULT_JSON = require("raw-loader!../static/default.json");
 const DEFAULT_YAML = require("raw-loader!../static/default.yaml");
 const COMMON_REPROTO: string = require("raw-loader!../static/common.reproto");
+const COMMON2_REPROTO: string = require("raw-loader!../static/common2.reproto");
 const IMPORT_REPROTO: string = require("raw-loader!../static/import.reproto");
 const TYPE_REPROTO: string = require("raw-loader!../static/type.reproto");
+const TUPLE_REPROTO: string = require("raw-loader!../static/tuple.reproto");
 const INTERFACE_REPROTO: string = require("raw-loader!../static/interface.reproto");
 const DEFAULT_NEW_FILE_REPROTO: string = require("raw-loader!../static/default-new.reproto");
 const logo = require("../static/logo.256.png");
@@ -165,13 +167,22 @@ export class Main extends React.Component<MainProps, MainState> {
           content: INTERFACE_REPROTO,
         },
         {
+          package: "example.tuple",
+          content: TUPLE_REPROTO,
+        },
+        {
+          package: "example.import",
+          content: IMPORT_REPROTO,
+        },
+        {
           package: "example.common",
           version: "1.0.0",
           content: COMMON_REPROTO,
         },
         {
-          package: "example.import",
-          content: IMPORT_REPROTO,
+          package: "example.common",
+          version: "2.0.0",
+          content: COMMON2_REPROTO,
         },
       ],
       file_index: 0,
