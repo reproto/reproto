@@ -16,6 +16,7 @@ candidates+=(lib/derive)
 candidates+=(lib/manifest lib/backend lib/semck)
 candidates+=(lib/repository lib/repository-http)
 candidates+=(lib/trans)
+candidates+=(lib/compile)
 
 for manifest in $root/lib/backend-*/Cargo.toml; do
     b=$(basename $(dirname $manifest))
