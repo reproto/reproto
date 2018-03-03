@@ -18,6 +18,9 @@ If you want to take the system for a leasurely spin, please go to <https://repro
 * A build system with a package manager and a `reproto.toml` [build manifest].
 * A rich, markdown-based [documentation generator].
 * (eventually) A [central repository] of usable schemas.
+* [Structural code-generation] instead of template-based.
+  This permits reproto to generate idiomatic, well-indented code with sparse imports.
+  Similar to what you would write by hand.
 
 These things combined support an ecosystem where schemas can be maintained and shared across
 projects.
@@ -34,6 +37,7 @@ but avoid building large repositories of specifications right now.
 [central repository]: https://github.com/reproto/reproto-index
 [build manifest]: /doc/manifest.md
 [stdweb]: https://github.com/koute/stdweb
+[Structural code-generation]: https://github.com/udoprog/genco
 
 ## Helping Out
 
@@ -70,6 +74,8 @@ Also make sure to [join our Gitter channel].
 * Java (`java`)
   * Data models using [jackson] (`jackson`), and/or [lombok] (`lombok`).
   * [gRPC] services through the `grpc` module.
+* C# (`csharp`)
+  * Data models using [Json.NET] (`Json.NET`).
 * Python (`python`)
   * Plain-python classes, compatible with 2 and 3 for binding data efficiently.
 * Rust (`rust`)
@@ -85,6 +91,7 @@ Also make sure to [join our Gitter channel].
 [jackson]: https://github.com/FasterXML/jackson-databind
 [`chrono`]: https://crates.io/crates/chrono
 [js integration test]: /it/workdir/js
+[Json.NET]: https://www.newtonsoft.com/json
 
 ## Generating Documentation
 
