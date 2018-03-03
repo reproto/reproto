@@ -1,25 +1,28 @@
+using JsonSubTypes;
+using Newtonsoft.Json;
 using System;
+using System.Text;
 
 namespace Test {
-  [Newtonsoft.Json.JsonConverter(typeof(JsonSubTypes.JsonSubtypes), "type")]
-  [JsonSubTypes.JsonSubtypes.KnownSubType(typeof(Interface.SubType), "SubType")]
+  [JsonConverter(typeof(JsonSubtypes), "type")]
+  [JsonSubtypes.KnownSubType(typeof(Interface.SubType), "SubType")]
   public abstract class Interface {
-    [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.DisallowNull)]
-    private System.String TypeField {
+    [JsonProperty("type", Required = Required.DisallowNull)]
+    private String TypeField {
       get;
     }
 
     public Interface(
-      System.String TypeField
+      String TypeField
     ) {
       this.TypeField = TypeField;
     }
 
-    [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
     public class SubType : Interface {
-      [Newtonsoft.Json.JsonConstructor]
+      [JsonConstructor]
       public SubType(
-        [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.DisallowNull)] System.String TypeField
+        [JsonProperty("type", Required = Required.DisallowNull)] String TypeField
       ) : base(TypeField) {
       }
 
@@ -28,7 +31,7 @@ namespace Test {
         return result;
       }
 
-      public override Boolean Equals(System.Object other) {
+      public override Boolean Equals(Object other) {
         SubType o = other as SubType;
 
         if (o == null) {
@@ -38,8 +41,8 @@ namespace Test {
         return true;
       }
 
-      public override System.String ToString() {
-        System.Text.StringBuilder b = new System.Text.StringBuilder();
+      public override String ToString() {
+        StringBuilder b = new StringBuilder();
 
         b.Append("SubType");
         b.Append("(");

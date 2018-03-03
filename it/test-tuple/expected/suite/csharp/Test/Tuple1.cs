@@ -1,9 +1,13 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace Test {
-  [Newtonsoft.Json.JsonConverter(typeof(Tuple1.Json_Net_Converter))]
+  [JsonConverter(typeof(Tuple1.Json_Net_Converter))]
   public class Tuple1 {
-    public System.String a {
+    public String a {
       get;
     }
     public UInt64 b {
@@ -11,7 +15,7 @@ namespace Test {
     }
 
     public Tuple1(
-      System.String a,
+      String a,
       UInt64 b
     ) {
       this.a = a;
@@ -25,7 +29,7 @@ namespace Test {
       return result;
     }
 
-    public override Boolean Equals(System.Object other) {
+    public override Boolean Equals(Object other) {
       Tuple1 o = other as Tuple1;
 
       if (o == null) {
@@ -43,8 +47,8 @@ namespace Test {
       return true;
     }
 
-    public override System.String ToString() {
-      System.Text.StringBuilder b = new System.Text.StringBuilder();
+    public override String ToString() {
+      StringBuilder b = new StringBuilder();
 
       b.Append("Tuple1");
       b.Append("(");
@@ -58,28 +62,28 @@ namespace Test {
       return b.ToString();
     }
 
-    public class Json_Net_Converter : Newtonsoft.Json.JsonConverter {
+    public class Json_Net_Converter : JsonConverter {
       public override Boolean CanConvert(System.Type objectType) {
         return objectType == typeof(Tuple1);
       }
 
-      public override void WriteJson(Newtonsoft.Json.JsonWriter writer, System.Object obj, Newtonsoft.Json.JsonSerializer serializer) {
+      public override void WriteJson(JsonWriter writer, Object obj, JsonSerializer serializer) {
         Tuple1 o = (Tuple1)obj;
-        Newtonsoft.Json.Linq.JArray array = new Newtonsoft.Json.Linq.JArray();
-        array.Add(Newtonsoft.Json.Linq.JToken.FromObject(o.a, serializer));
-        array.Add(Newtonsoft.Json.Linq.JToken.FromObject(o.b, serializer));
+        JArray array = new JArray();
+        array.Add(JToken.FromObject(o.a, serializer));
+        array.Add(JToken.FromObject(o.b, serializer));
         array.WriteTo(writer);
       }
 
-      public override System.Object ReadJson(Newtonsoft.Json.JsonReader reader, System.Type objectType, System.Object existingValue, Newtonsoft.Json.JsonSerializer serializer) {
-        Newtonsoft.Json.Linq.JArray array = Newtonsoft.Json.Linq.JArray.Load(reader);
-        System.Collections.Generic.IEnumerator<Newtonsoft.Json.Linq.JToken> enumerator = array.GetEnumerator();
+      public override Object ReadJson(JsonReader reader, System.Type objectType, Object existingValue, JsonSerializer serializer) {
+        JArray array = JArray.Load(reader);
+        IEnumerator<JToken> enumerator = array.GetEnumerator();
         if (!enumerator.MoveNext()) {
-          throw new System.InvalidOperationException("expected more items in array");
+          throw new InvalidOperationException("expected more items in array");
         }
-        System.String a = enumerator.Current.ToObject<System.String>(serializer);;
+        String a = enumerator.Current.ToObject<String>(serializer);;
         if (!enumerator.MoveNext()) {
-          throw new System.InvalidOperationException("expected more items in array");
+          throw new InvalidOperationException("expected more items in array");
         }
         UInt64 b = enumerator.Current.ToObject<UInt64>(serializer);;
         return new Tuple1(a, b);

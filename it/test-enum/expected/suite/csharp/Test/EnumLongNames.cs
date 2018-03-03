@@ -1,10 +1,13 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System.Runtime.Serialization;
 
 namespace Test {
-  [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+  [JsonConverter(typeof(StringEnumConverter))]
   public enum EnumLongNames {
-    [System.Runtime.Serialization.EnumMember(Value = "FooBar")]
+    [EnumMember(Value = "FooBar")]
     FOO_BAR,
-    [System.Runtime.Serialization.EnumMember(Value = "Baz")]
+    [EnumMember(Value = "Baz")]
     BAZ
   }
 }

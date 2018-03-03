@@ -1,9 +1,11 @@
+using Newtonsoft.Json;
 using System;
+using System.Text;
 
 namespace Test {
-  [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+  [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
   public class Entry {
-    [Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor]
     public Entry() {
     }
 
@@ -12,7 +14,7 @@ namespace Test {
       return result;
     }
 
-    public override Boolean Equals(System.Object other) {
+    public override Boolean Equals(Object other) {
       Entry o = other as Entry;
 
       if (o == null) {
@@ -22,8 +24,8 @@ namespace Test {
       return true;
     }
 
-    public override System.String ToString() {
-      System.Text.StringBuilder b = new System.Text.StringBuilder();
+    public override String ToString() {
+      StringBuilder b = new StringBuilder();
 
       b.Append("Entry");
       b.Append("(");

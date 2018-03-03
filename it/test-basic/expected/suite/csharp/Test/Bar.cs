@@ -1,19 +1,21 @@
+using Newtonsoft.Json;
 using System;
+using System.Text;
 
 namespace Test {
-  [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+  [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
   public class Bar {
     /// <summary>
     /// The inner field.
     /// </summary>
-    [Newtonsoft.Json.JsonProperty("field", Required = Newtonsoft.Json.Required.DisallowNull)]
-    public Test.Bar.Inner field {
+    [JsonProperty("field", Required = Required.DisallowNull)]
+    public Bar.Inner field {
       get;
     }
 
-    [Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor]
     public Bar(
-      [Newtonsoft.Json.JsonProperty("field", Required = Newtonsoft.Json.Required.DisallowNull)] Test.Bar.Inner field
+      [JsonProperty("field", Required = Required.DisallowNull)] Bar.Inner field
     ) {
       this.field = field;
     }
@@ -24,7 +26,7 @@ namespace Test {
       return result;
     }
 
-    public override Boolean Equals(System.Object other) {
+    public override Boolean Equals(Object other) {
       Bar o = other as Bar;
 
       if (o == null) {
@@ -38,8 +40,8 @@ namespace Test {
       return true;
     }
 
-    public override System.String ToString() {
-      System.Text.StringBuilder b = new System.Text.StringBuilder();
+    public override String ToString() {
+      StringBuilder b = new StringBuilder();
 
       b.Append("Bar");
       b.Append("(");
@@ -50,19 +52,19 @@ namespace Test {
       return b.ToString();
     }
 
-    [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
     public class Inner {
       /// <summary>
       /// The field.
       /// </summary>
-      [Newtonsoft.Json.JsonProperty("field", Required = Newtonsoft.Json.Required.DisallowNull)]
-      public System.String field {
+      [JsonProperty("field", Required = Required.DisallowNull)]
+      public String field {
         get;
       }
 
-      [Newtonsoft.Json.JsonConstructor]
+      [JsonConstructor]
       public Inner(
-        [Newtonsoft.Json.JsonProperty("field", Required = Newtonsoft.Json.Required.DisallowNull)] System.String field
+        [JsonProperty("field", Required = Required.DisallowNull)] String field
       ) {
         this.field = field;
       }
@@ -73,7 +75,7 @@ namespace Test {
         return result;
       }
 
-      public override Boolean Equals(System.Object other) {
+      public override Boolean Equals(Object other) {
         Inner o = other as Inner;
 
         if (o == null) {
@@ -87,8 +89,8 @@ namespace Test {
         return true;
       }
 
-      public override System.String ToString() {
-        System.Text.StringBuilder b = new System.Text.StringBuilder();
+      public override String ToString() {
+        StringBuilder b = new StringBuilder();
 
         b.Append("Inner");
         b.Append("(");

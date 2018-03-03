@@ -1,34 +1,37 @@
+using JsonSubTypes;
+using Newtonsoft.Json;
 using System;
+using System.Text;
 
 namespace Test {
-  [Newtonsoft.Json.JsonConverter(typeof(JsonSubTypes.JsonSubtypes), "@type")]
-  [JsonSubTypes.JsonSubtypes.KnownSubType(typeof(Entry.A), "foo")]
-  [JsonSubTypes.JsonSubtypes.KnownSubType(typeof(Entry.B), "b")]
-  [JsonSubTypes.JsonSubtypes.KnownSubType(typeof(Entry.Bar), "Bar")]
-  [JsonSubTypes.JsonSubtypes.KnownSubType(typeof(Entry.Baz), "Baz")]
+  [JsonConverter(typeof(JsonSubtypes), "@type")]
+  [JsonSubtypes.KnownSubType(typeof(Entry.A), "foo")]
+  [JsonSubtypes.KnownSubType(typeof(Entry.B), "b")]
+  [JsonSubtypes.KnownSubType(typeof(Entry.Bar), "Bar")]
+  [JsonSubtypes.KnownSubType(typeof(Entry.Baz), "Baz")]
   public abstract class Entry {
-    [Newtonsoft.Json.JsonProperty("@type", Required = Newtonsoft.Json.Required.DisallowNull)]
-    private System.String TypeField {
+    [JsonProperty("@type", Required = Required.DisallowNull)]
+    private String TypeField {
       get;
     }
 
     public Entry(
-      System.String TypeField
+      String TypeField
     ) {
       this.TypeField = TypeField;
     }
 
-    [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
     public class A : Entry {
-      [Newtonsoft.Json.JsonProperty("shared", Required = Newtonsoft.Json.Required.DisallowNull)]
-      public System.String shared {
+      [JsonProperty("shared", Required = Required.DisallowNull)]
+      public String shared {
         get;
       }
 
-      [Newtonsoft.Json.JsonConstructor]
+      [JsonConstructor]
       public A(
-        [Newtonsoft.Json.JsonProperty("@type", Required = Newtonsoft.Json.Required.DisallowNull)] System.String TypeField,
-        [Newtonsoft.Json.JsonProperty("shared", Required = Newtonsoft.Json.Required.DisallowNull)] System.String shared
+        [JsonProperty("@type", Required = Required.DisallowNull)] String TypeField,
+        [JsonProperty("shared", Required = Required.DisallowNull)] String shared
       ) : base(TypeField) {
         this.shared = shared;
       }
@@ -39,7 +42,7 @@ namespace Test {
         return result;
       }
 
-      public override Boolean Equals(System.Object other) {
+      public override Boolean Equals(Object other) {
         A o = other as A;
 
         if (o == null) {
@@ -53,8 +56,8 @@ namespace Test {
         return true;
       }
 
-      public override System.String ToString() {
-        System.Text.StringBuilder b = new System.Text.StringBuilder();
+      public override String ToString() {
+        StringBuilder b = new StringBuilder();
 
         b.Append("A");
         b.Append("(");
@@ -66,17 +69,17 @@ namespace Test {
       }
     }
 
-    [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
     public class B : Entry {
-      [Newtonsoft.Json.JsonProperty("shared", Required = Newtonsoft.Json.Required.DisallowNull)]
-      public System.String shared {
+      [JsonProperty("shared", Required = Required.DisallowNull)]
+      public String shared {
         get;
       }
 
-      [Newtonsoft.Json.JsonConstructor]
+      [JsonConstructor]
       public B(
-        [Newtonsoft.Json.JsonProperty("@type", Required = Newtonsoft.Json.Required.DisallowNull)] System.String TypeField,
-        [Newtonsoft.Json.JsonProperty("shared", Required = Newtonsoft.Json.Required.DisallowNull)] System.String shared
+        [JsonProperty("@type", Required = Required.DisallowNull)] String TypeField,
+        [JsonProperty("shared", Required = Required.DisallowNull)] String shared
       ) : base(TypeField) {
         this.shared = shared;
       }
@@ -87,7 +90,7 @@ namespace Test {
         return result;
       }
 
-      public override Boolean Equals(System.Object other) {
+      public override Boolean Equals(Object other) {
         B o = other as B;
 
         if (o == null) {
@@ -101,8 +104,8 @@ namespace Test {
         return true;
       }
 
-      public override System.String ToString() {
-        System.Text.StringBuilder b = new System.Text.StringBuilder();
+      public override String ToString() {
+        StringBuilder b = new StringBuilder();
 
         b.Append("B");
         b.Append("(");
@@ -114,17 +117,17 @@ namespace Test {
       }
     }
 
-    [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
     public class Bar : Entry {
-      [Newtonsoft.Json.JsonProperty("shared", Required = Newtonsoft.Json.Required.DisallowNull)]
-      public System.String shared {
+      [JsonProperty("shared", Required = Required.DisallowNull)]
+      public String shared {
         get;
       }
 
-      [Newtonsoft.Json.JsonConstructor]
+      [JsonConstructor]
       public Bar(
-        [Newtonsoft.Json.JsonProperty("@type", Required = Newtonsoft.Json.Required.DisallowNull)] System.String TypeField,
-        [Newtonsoft.Json.JsonProperty("shared", Required = Newtonsoft.Json.Required.DisallowNull)] System.String shared
+        [JsonProperty("@type", Required = Required.DisallowNull)] String TypeField,
+        [JsonProperty("shared", Required = Required.DisallowNull)] String shared
       ) : base(TypeField) {
         this.shared = shared;
       }
@@ -135,7 +138,7 @@ namespace Test {
         return result;
       }
 
-      public override Boolean Equals(System.Object other) {
+      public override Boolean Equals(Object other) {
         Bar o = other as Bar;
 
         if (o == null) {
@@ -149,8 +152,8 @@ namespace Test {
         return true;
       }
 
-      public override System.String ToString() {
-        System.Text.StringBuilder b = new System.Text.StringBuilder();
+      public override String ToString() {
+        StringBuilder b = new StringBuilder();
 
         b.Append("Bar");
         b.Append("(");
@@ -162,17 +165,17 @@ namespace Test {
       }
     }
 
-    [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
     public class Baz : Entry {
-      [Newtonsoft.Json.JsonProperty("shared", Required = Newtonsoft.Json.Required.DisallowNull)]
-      public System.String shared {
+      [JsonProperty("shared", Required = Required.DisallowNull)]
+      public String shared {
         get;
       }
 
-      [Newtonsoft.Json.JsonConstructor]
+      [JsonConstructor]
       public Baz(
-        [Newtonsoft.Json.JsonProperty("@type", Required = Newtonsoft.Json.Required.DisallowNull)] System.String TypeField,
-        [Newtonsoft.Json.JsonProperty("shared", Required = Newtonsoft.Json.Required.DisallowNull)] System.String shared
+        [JsonProperty("@type", Required = Required.DisallowNull)] String TypeField,
+        [JsonProperty("shared", Required = Required.DisallowNull)] String shared
       ) : base(TypeField) {
         this.shared = shared;
       }
@@ -183,7 +186,7 @@ namespace Test {
         return result;
       }
 
-      public override Boolean Equals(System.Object other) {
+      public override Boolean Equals(Object other) {
         Baz o = other as Baz;
 
         if (o == null) {
@@ -197,8 +200,8 @@ namespace Test {
         return true;
       }
 
-      public override System.String ToString() {
-        System.Text.StringBuilder b = new System.Text.StringBuilder();
+      public override String ToString() {
+        StringBuilder b = new StringBuilder();
 
         b.Append("Baz");
         b.Append("(");

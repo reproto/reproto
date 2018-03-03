@@ -1,16 +1,18 @@
+using Newtonsoft.Json;
 using System;
+using System.Text;
 
 namespace Test {
-  [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+  [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
   public class A {
-    [Newtonsoft.Json.JsonProperty("b", Required = Newtonsoft.Json.Required.DisallowNull)]
-    public Test.A.B b {
+    [JsonProperty("b", Required = Required.DisallowNull)]
+    public A.B b {
       get;
     }
 
-    [Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor]
     public A(
-      [Newtonsoft.Json.JsonProperty("b", Required = Newtonsoft.Json.Required.DisallowNull)] Test.A.B b
+      [JsonProperty("b", Required = Required.DisallowNull)] A.B b
     ) {
       this.b = b;
     }
@@ -21,7 +23,7 @@ namespace Test {
       return result;
     }
 
-    public override Boolean Equals(System.Object other) {
+    public override Boolean Equals(Object other) {
       A o = other as A;
 
       if (o == null) {
@@ -35,8 +37,8 @@ namespace Test {
       return true;
     }
 
-    public override System.String ToString() {
-      System.Text.StringBuilder b = new System.Text.StringBuilder();
+    public override String ToString() {
+      StringBuilder b = new StringBuilder();
 
       b.Append("A");
       b.Append("(");
@@ -47,16 +49,16 @@ namespace Test {
       return b.ToString();
     }
 
-    [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
     public class B {
-      [Newtonsoft.Json.JsonProperty("field", Required = Newtonsoft.Json.Required.DisallowNull)]
-      public System.String field {
+      [JsonProperty("field", Required = Required.DisallowNull)]
+      public String field {
         get;
       }
 
-      [Newtonsoft.Json.JsonConstructor]
+      [JsonConstructor]
       public B(
-        [Newtonsoft.Json.JsonProperty("field", Required = Newtonsoft.Json.Required.DisallowNull)] System.String field
+        [JsonProperty("field", Required = Required.DisallowNull)] String field
       ) {
         this.field = field;
       }
@@ -67,7 +69,7 @@ namespace Test {
         return result;
       }
 
-      public override Boolean Equals(System.Object other) {
+      public override Boolean Equals(Object other) {
         B o = other as B;
 
         if (o == null) {
@@ -81,8 +83,8 @@ namespace Test {
         return true;
       }
 
-      public override System.String ToString() {
-        System.Text.StringBuilder b = new System.Text.StringBuilder();
+      public override String ToString() {
+        StringBuilder b = new StringBuilder();
 
         b.Append("B");
         b.Append("(");

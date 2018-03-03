@@ -1,8 +1,11 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System.Runtime.Serialization;
 
 namespace Test {
-  [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+  [JsonConverter(typeof(StringEnumConverter))]
   public enum Enum {
-    [System.Runtime.Serialization.EnumMember(Value = "Variant")]
+    [EnumMember(Value = "Variant")]
     VARIANT
   }
 }

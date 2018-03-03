@@ -52,7 +52,7 @@ impl JsonNet {
     pub fn new() -> Self {
         Self {
             object: using("System", "Object"),
-            type_: using("System", "Type"),
+            type_: using("System", "Type").qualified(),
             invalid_operation: using("System", "InvalidOperationException"),
             enumerator: using("System.Collections.Generic", "IEnumerator"),
             j_array: using("Newtonsoft.Json.Linq", "JArray"),

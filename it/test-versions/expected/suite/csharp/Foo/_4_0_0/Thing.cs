@@ -1,26 +1,29 @@
+using Bar._1_0_0;
+using Newtonsoft.Json;
 using System;
+using System.Text;
 
 namespace Foo._4_0_0 {
-  [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+  [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
   public class Thing {
-    [Newtonsoft.Json.JsonProperty("name")]
-    public System.String name {
+    [JsonProperty("name")]
+    public String name {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("other")]
-    public Bar._1_0_0.Other other {
+    [JsonProperty("other")]
+    public Other other {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("other2")]
+    [JsonProperty("other2")]
     public Bar._2_0_0.Other other2 {
       get;
     }
 
-    [Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor]
     public Thing(
-      [Newtonsoft.Json.JsonProperty("name")] System.String name,
-      [Newtonsoft.Json.JsonProperty("other")] Bar._1_0_0.Other other,
-      [Newtonsoft.Json.JsonProperty("other2")] Bar._2_0_0.Other other2
+      [JsonProperty("name")] String name,
+      [JsonProperty("other")] Other other,
+      [JsonProperty("other2")] Bar._2_0_0.Other other2
     ) {
       this.name = name;
       this.other = other;
@@ -35,7 +38,7 @@ namespace Foo._4_0_0 {
       return result;
     }
 
-    public override Boolean Equals(System.Object other) {
+    public override Boolean Equals(Object other) {
       Thing o = other as Thing;
 
       if (o == null) {
@@ -75,8 +78,8 @@ namespace Foo._4_0_0 {
       return true;
     }
 
-    public override System.String ToString() {
-      System.Text.StringBuilder b = new System.Text.StringBuilder();
+    public override String ToString() {
+      StringBuilder b = new StringBuilder();
 
       b.Append("Thing");
       b.Append("(");

@@ -1,16 +1,18 @@
+using Newtonsoft.Json;
 using System;
+using System.Text;
 
 namespace Bar._2_0_0 {
-  [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+  [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
   public class Other {
-    [Newtonsoft.Json.JsonProperty("name2", Required = Newtonsoft.Json.Required.DisallowNull)]
-    public System.String name2 {
+    [JsonProperty("name2", Required = Required.DisallowNull)]
+    public String name2 {
       get;
     }
 
-    [Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor]
     public Other(
-      [Newtonsoft.Json.JsonProperty("name2", Required = Newtonsoft.Json.Required.DisallowNull)] System.String name2
+      [JsonProperty("name2", Required = Required.DisallowNull)] String name2
     ) {
       this.name2 = name2;
     }
@@ -21,7 +23,7 @@ namespace Bar._2_0_0 {
       return result;
     }
 
-    public override Boolean Equals(System.Object other) {
+    public override Boolean Equals(Object other) {
       Other o = other as Other;
 
       if (o == null) {
@@ -35,8 +37,8 @@ namespace Bar._2_0_0 {
       return true;
     }
 
-    public override System.String ToString() {
-      System.Text.StringBuilder b = new System.Text.StringBuilder();
+    public override String ToString() {
+      StringBuilder b = new StringBuilder();
 
       b.Append("Other");
       b.Append("(");

@@ -9,6 +9,7 @@ CP ?= cp
 DIFF ?= diff
 EXCLUDE ?=
 INCLUDE ?= %
+SUITES ?= python python3 java js rust csharp doc
 
 ifeq ($(ROOT),)
 $(error "ROOT: missing variable")
@@ -50,16 +51,20 @@ java-args := -m builder
 csharp-args := -m Json.NET
 doc-args :=
 
-suites := python python3 java js rust csharp doc
 paths := proto
-exclude-projects :=
-exclude-suites :=
+suites := %
 projects := %
+exclude-suites :=
+exclude-projects :=
 
 -include $(or $(target-file),Makefile)
 
-suites := $(filter $(INCLUDE), $(filter-out $(EXCLUDE) $(exclude-suites), $(suites)))
-projects := $(filter $(projects), $(filter $(INCLUDE), $(filter-out $(EXCLUDE) $(exclude-projects), $(PROJECTS))))
+define do-filter
+$(filter $(1), $(filter $(INCLUDE), $(filter-out $(2) $(EXCLUDE), $(3))))
+endef
+
+suites := $(call do-filter,$(suites),$(exclude-suites),$(SUITES))
+projects := $(call do-filter,$(projects),$(exclude-projects),$(PROJECTS))
 
 compile-args := --no-repository $(paths:%=--path %) $(targets:%=--package %)
 

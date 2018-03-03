@@ -1,76 +1,79 @@
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace Test {
-  [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+  [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
   public class Entry {
-    [Newtonsoft.Json.JsonProperty("boolean_type")]
+    [JsonProperty("boolean_type")]
     public Boolean? booleanType {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("string_type")]
-    public System.String stringType {
+    [JsonProperty("string_type")]
+    public String stringType {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("datetime_type")]
-    public System.DateTime? datetimeType {
+    [JsonProperty("datetime_type")]
+    public DateTime? datetimeType {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("unsigned_32")]
+    [JsonProperty("unsigned_32")]
     public UInt32? unsigned32 {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("unsigned_64")]
+    [JsonProperty("unsigned_64")]
     public UInt32? unsigned64 {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("signed_32")]
+    [JsonProperty("signed_32")]
     public Int32? signed32 {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("signed_64")]
+    [JsonProperty("signed_64")]
     public Int64? signed64 {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("float_type")]
+    [JsonProperty("float_type")]
     public Single? floatType {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("double_type")]
+    [JsonProperty("double_type")]
     public Double? doubleType {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("bytes_type")]
+    [JsonProperty("bytes_type")]
     public Byte[] bytesType {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("any_type")]
-    public System.Object anyType {
+    [JsonProperty("any_type")]
+    public Object anyType {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("array_type")]
-    public System.Collections.Generic.List<Test.Entry> arrayType {
+    [JsonProperty("array_type")]
+    public List<Entry> arrayType {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("map_type")]
-    public System.Collections.Generic.Dictionary<System.String, Test.Entry> mapType {
+    [JsonProperty("map_type")]
+    public Dictionary<String, Entry> mapType {
       get;
     }
 
-    [Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor]
     public Entry(
-      [Newtonsoft.Json.JsonProperty("boolean_type")] Boolean? booleanType,
-      [Newtonsoft.Json.JsonProperty("string_type")] System.String stringType,
-      [Newtonsoft.Json.JsonProperty("datetime_type")] System.DateTime? datetimeType,
-      [Newtonsoft.Json.JsonProperty("unsigned_32")] UInt32? unsigned32,
-      [Newtonsoft.Json.JsonProperty("unsigned_64")] UInt32? unsigned64,
-      [Newtonsoft.Json.JsonProperty("signed_32")] Int32? signed32,
-      [Newtonsoft.Json.JsonProperty("signed_64")] Int64? signed64,
-      [Newtonsoft.Json.JsonProperty("float_type")] Single? floatType,
-      [Newtonsoft.Json.JsonProperty("double_type")] Double? doubleType,
-      [Newtonsoft.Json.JsonProperty("bytes_type")] Byte[] bytesType,
-      [Newtonsoft.Json.JsonProperty("any_type")] System.Object anyType,
-      [Newtonsoft.Json.JsonProperty("array_type")] System.Collections.Generic.List<Test.Entry> arrayType,
-      [Newtonsoft.Json.JsonProperty("map_type")] System.Collections.Generic.Dictionary<System.String, Test.Entry> mapType
+      [JsonProperty("boolean_type")] Boolean? booleanType,
+      [JsonProperty("string_type")] String stringType,
+      [JsonProperty("datetime_type")] DateTime? datetimeType,
+      [JsonProperty("unsigned_32")] UInt32? unsigned32,
+      [JsonProperty("unsigned_64")] UInt32? unsigned64,
+      [JsonProperty("signed_32")] Int32? signed32,
+      [JsonProperty("signed_64")] Int64? signed64,
+      [JsonProperty("float_type")] Single? floatType,
+      [JsonProperty("double_type")] Double? doubleType,
+      [JsonProperty("bytes_type")] Byte[] bytesType,
+      [JsonProperty("any_type")] Object anyType,
+      [JsonProperty("array_type")] List<Entry> arrayType,
+      [JsonProperty("map_type")] Dictionary<String, Entry> mapType
     ) {
       this.booleanType = booleanType;
       this.stringType = stringType;
@@ -105,7 +108,7 @@ namespace Test {
       return result;
     }
 
-    public override Boolean Equals(System.Object other) {
+    public override Boolean Equals(Object other) {
       Entry o = other as Entry;
 
       if (o == null) {
@@ -197,8 +200,8 @@ namespace Test {
       return true;
     }
 
-    public override System.String ToString() {
-      System.Text.StringBuilder b = new System.Text.StringBuilder();
+    public override String ToString() {
+      StringBuilder b = new StringBuilder();
 
       b.Append("Entry");
       b.Append("(");

@@ -1,21 +1,23 @@
+using Newtonsoft.Json;
 using System;
+using System.Text;
 
 namespace Test {
-  [Newtonsoft.Json.JsonObject(ItemNullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+  [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
   public class Entry {
-    [Newtonsoft.Json.JsonProperty("explicit")]
-    public Test.EnumExplicit _explicit {
+    [JsonProperty("explicit")]
+    public EnumExplicit _explicit {
       get;
     }
-    [Newtonsoft.Json.JsonProperty("implicit")]
-    public Test.EnumImplicit _implicit {
+    [JsonProperty("implicit")]
+    public EnumImplicit _implicit {
       get;
     }
 
-    [Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor]
     public Entry(
-      [Newtonsoft.Json.JsonProperty("explicit")] Test.EnumExplicit _explicit,
-      [Newtonsoft.Json.JsonProperty("implicit")] Test.EnumImplicit _implicit
+      [JsonProperty("explicit")] EnumExplicit _explicit,
+      [JsonProperty("implicit")] EnumImplicit _implicit
     ) {
       this._explicit = _explicit;
       this._implicit = _implicit;
@@ -28,7 +30,7 @@ namespace Test {
       return result;
     }
 
-    public override Boolean Equals(System.Object other) {
+    public override Boolean Equals(Object other) {
       Entry o = other as Entry;
 
       if (o == null) {
@@ -58,8 +60,8 @@ namespace Test {
       return true;
     }
 
-    public override System.String ToString() {
-      System.Text.StringBuilder b = new System.Text.StringBuilder();
+    public override String ToString() {
+      StringBuilder b = new StringBuilder();
 
       b.Append("Entry");
       b.Append("(");

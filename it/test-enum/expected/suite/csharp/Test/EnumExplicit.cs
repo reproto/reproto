@@ -1,10 +1,13 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System.Runtime.Serialization;
 
 namespace Test {
-  [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+  [JsonConverter(typeof(StringEnumConverter))]
   public enum EnumExplicit {
-    [System.Runtime.Serialization.EnumMember(Value = "foo")]
+    [EnumMember(Value = "foo")]
     A,
-    [System.Runtime.Serialization.EnumMember(Value = "bar")]
+    [EnumMember(Value = "bar")]
     B
   }
 }
