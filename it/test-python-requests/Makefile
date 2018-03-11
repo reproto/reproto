@@ -1,2 +1,0 @@
-suites := python
-projects := python

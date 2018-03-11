@@ -1,8 +1,0 @@
-<Entry explicit:<EnumExplicit.A: 'foo'>, implicit:None>
-{"explicit": "foo"}
-<Entry explicit:<EnumExplicit.B: 'bar'>, implicit:None>
-{"explicit": "bar"}
-<Entry explicit:None, implicit:<EnumImplicit.A: 'A'>>
-{"implicit": "A"}
-<Entry explicit:None, implicit:<EnumImplicit.B: 'B'>>
-{"implicit": "B"}

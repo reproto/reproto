@@ -6,8 +6,6 @@ Each test directory (`test-*`) does the following.
   directory. These are then compared against the reference output in the `expected` directory.
 * Build one or more _projects_, see [Projects](#projects)
 
-Each test is configured in the `Makefile` for that test.
-
 # Running Tests
 
 Tests should be run from the root of the project:
@@ -16,10 +14,10 @@ Tests should be run from the root of the project:
 $> make suites projects
 ```
 
-A single test can be targeted with the `IT` parameter:
+A single test can be targeted with the `FILTER` parameter:
 
 ```bash
-$> make suites projects IT="it/test-inner"
+$> make suites projects FILTER="inner"
 ```
 
 For more information, see:
@@ -41,10 +39,10 @@ Each project is expected to fulfill the following protocol:
 * Running the generated `script.sh` should read JSON from stdin, line-by-line. And feed them into
   the deserialize implementation.
   * `script.sh` exiting with a non-zero exit status indicated a failure.
-  * The run script is permitted to output anything it wants. This will be compared against the
-    expected output.
-  * Most implementation also attempts to serialize the output, in which case it is also printed to
-    stdout.
+  * The script when run is expected to read JSON documents from stdin, and print them to stdout
+    without modification.
+    This assumes that the documents have been feed through internal models, therefore testing that
+    the serialization is sound.
 
 The base project available are:
 
@@ -53,3 +51,4 @@ The base project available are:
 * [Rust](workdir/rust)
 * [Python](workdir/python)
 * [Python 3](workdir/python3)
+* [C#](workdir/csharp)

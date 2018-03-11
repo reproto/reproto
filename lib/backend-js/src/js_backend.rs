@@ -518,7 +518,7 @@ impl JsBackend {
             let mut tokens = Tokens::new();
 
             tokens.push(toks!["export class ", interface_type_name.clone(), " {"]);
-            tokens.nested(interface_body);
+            tokens.nested(interface_body.join_line_spacing());
             tokens.push("}");
 
             tokens
@@ -556,10 +556,7 @@ impl JsBackend {
             match body.sub_type_strategy {
                 RpSubTypeStrategy::Tagged { ref tag, .. } => {
                     let tk: Tokens<'el, JavaScript<'el>> = tag.as_str().quoted().into();
-
-                    let type_toks =
-                        toks!["data[", tk, "] = ", interface_type_name.clone(), ".TYPE;",];
-
+                    let type_toks = toks!["data[", tk, "] = ", sub_type.name().quoted(), ";"];
                     class_body.push(self.encode_method(&fields, "{}", Some(type_toks))?);
                 }
             }
@@ -570,19 +567,11 @@ impl JsBackend {
                 let mut tokens = Tokens::new();
 
                 tokens.push(toks!["export class ", type_name.clone(), " {"]);
-                tokens.nested(class_body);
+                tokens.nested(class_body.join_line_spacing());
                 tokens.push("}");
 
                 tokens
             });
-
-            classes.push(toks![
-                interface_type_name.clone(),
-                ".TYPE",
-                " = ",
-                type_name.quoted(),
-                ";",
-            ]);
 
             Ok(()) as Result<()>
         })?;

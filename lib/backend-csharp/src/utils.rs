@@ -70,7 +70,13 @@ impl Utils {
 
         let name = Rc::new(registered.local_name(name, |p| p.join("."), |c| c.join(".")));
 
-        Ok(using(package_name, name))
+        let ty = using(package_name, name);
+
+        if registered.is_enum() {
+            return Ok(ty.into_enum());
+        }
+
+        Ok(ty)
     }
 
     fn csharp_package_name(&self, pkg: &RpVersionedPackage) -> Rc<String> {

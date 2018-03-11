@@ -1,7 +1,7 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, InterfaceAdded,
-              InterfaceCodegen, TupleAdded, TupleCodegen};
+use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, GetterAdded,
+              GetterCodegen, InterfaceAdded, InterfaceCodegen, TupleAdded, TupleCodegen};
 use core::RpSubTypeStrategy;
 use core::errors::*;
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
@@ -14,6 +14,7 @@ pub struct Module;
 impl Module {
     pub fn initialize(self, e: Configure) {
         let jackson = Rc::new(Jackson::new());
+        e.options.getter_generators.push(Box::new(jackson.clone()));
         e.options.class_generators.push(Box::new(jackson.clone()));
         e.options.tuple_generators.push(Box::new(jackson.clone()));
         e.options
@@ -59,11 +60,32 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for TypeInfo<'a, 'el> {
     }
 }
 
+struct JsonFormat;
+
+impl<'el> IntoTokens<'el, Java<'el>> for JsonFormat {
+    fn into_tokens(self) -> Tokens<'el, Java<'el>> {
+        let json_format = imported("com.fasterxml.jackson.annotation", "JsonFormat");
+
+        let mut args = Tokens::new();
+        args.append(toks!["shape = ", json_format.clone(), ".Shape.STRING"]);
+
+        toks!["@", json_format, "(", args.join(", "), ")"]
+    }
+}
+
+struct JsonProperty<'el>(Cons<'el>);
+
+impl<'el> IntoTokens<'el, Java<'el>> for JsonProperty<'el> {
+    fn into_tokens(self) -> Tokens<'el, Java<'el>> {
+        let json_property = imported("com.fasterxml.jackson.annotation", "JsonProperty");
+        toks!["@", json_property, "(", self.0.quoted(), ")"]
+    }
+}
+
 pub struct Jackson {
     override_: Java<'static>,
     creator: Java<'static>,
     value: Java<'static>,
-    property: Java<'static>,
     sub_types: Java<'static>,
     sub_type: Java<'static>,
     type_info: Java<'static>,
@@ -78,6 +100,7 @@ pub struct Jackson {
     type_reference: Java<'static>,
     token: Java<'static>,
     string: Java<'static>,
+    instant: Java<'static>,
     io_exception: Java<'static>,
 }
 
@@ -87,7 +110,6 @@ impl Jackson {
             override_: imported("java.lang", "Override"),
             creator: imported("com.fasterxml.jackson.annotation", "JsonCreator"),
             value: imported("com.fasterxml.jackson.annotation", "JsonValue"),
-            property: imported("com.fasterxml.jackson.annotation", "JsonProperty"),
             sub_types: imported("com.fasterxml.jackson.annotation", "JsonSubTypes"),
             sub_type: imported("com.fasterxml.jackson.annotation", "JsonSubTypes").path("Type"),
             type_info: imported("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
@@ -108,6 +130,7 @@ impl Jackson {
             type_reference: imported("com.fasterxml.jackson.core.type", "TypeReference"),
             token: imported("com.fasterxml.jackson.core", "JsonToken"),
             string: imported("java.lang", "String"),
+            instant: imported("java.time", "Instant"),
             io_exception: imported("java.io", "IOException"),
         }
     }
@@ -388,15 +411,17 @@ impl Jackson {
             c.annotation(toks!["@", self.creator.clone()]);
 
             for (argument, name) in c.arguments.iter_mut().zip(names.iter()) {
-                let ann = toks!["@", self.property.clone(), "(", name.clone().quoted(), ")"];
-                argument.annotation(ann.clone());
+                argument.annotation(JsonProperty(name.clone()));
             }
         }
 
         // Also add field annotations, since they are used during serialization!
         for (field, name) in spec.fields.iter_mut().zip(names.iter()) {
-            let ann = toks!["@", self.property.clone(), "(", name.clone().quoted(), ")"];
-            field.annotation(ann.clone());
+            field.annotation(JsonProperty(name.clone()));
+
+            if field.ty().as_value() == self.instant {
+                field.annotation(JsonFormat);
+            }
         }
 
         Ok(())
@@ -439,6 +464,13 @@ impl Jackson {
 
         spec.annotation(deserialize);
         spec.body.push(deserializer);
+        Ok(())
+    }
+}
+
+impl GetterCodegen for Jackson {
+    fn generate(&self, e: GetterAdded) -> Result<()> {
+        e.getter.annotation(JsonProperty(e.name.clone()));
         Ok(())
     }
 }

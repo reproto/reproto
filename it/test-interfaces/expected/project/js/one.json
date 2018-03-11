@@ -1,8 +1,0 @@
-Entry_A { shared: 'string' }
-{"@type":"Entry_Baz","shared":"string"}
-Entry_B { shared: 'string' }
-{"@type":"Entry_Baz","shared":"string"}
-Entry_Bar { shared: 'string' }
-{"@type":"Entry_Baz","shared":"string"}
-Entry_Baz { shared: 'string' }
-{"@type":"Entry_Baz","shared":"string"}

@@ -25,7 +25,6 @@ public class Test {
       }
 
       final Entry entry = m.readValue(line, Entry.class);
-      System.out.println(entry);
       System.out.println(m.writeValueAsString(entry));
     }
   }

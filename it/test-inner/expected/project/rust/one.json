@@ -1,4 +1,0 @@
-Entry { a: Some(A { b: A_B { field: "value" } }), b: None }
-{"a":{"b":{"field":"value"}}}
-Entry { a: None, b: Some(A_B { field: "value" }) }
-{"b":{"field":"value"}}

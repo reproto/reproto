@@ -1,6 +1,0 @@
-Entry(thing=Optional[Thing(name=Optional[The Thing], other=Optional.empty, other2=Optional.empty)])
-{"thing":{"name":"The Thing"}}
-Entry(thing=Optional[Thing(name=Optional.empty, other=Optional[Other(name=The Other Thing)], other2=Optional.empty)])
-{"thing":{"other":{"name":"The Other Thing"}}}
-Entry(thing=Optional[Thing(name=Optional.empty, other=Optional.empty, other2=Optional[Other(name2=The Other-Other Thing)])])
-{"thing":{"other2":{"name2":"The Other-Other Thing"}}}

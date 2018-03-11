@@ -1,8 +1,0 @@
-A { shared: "string" }
-{"@type":"foo","shared":"string"}
-B { shared: "string" }
-{"@type":"b","shared":"string"}
-Bar { shared: "string" }
-{"@type":"Bar","shared":"string"}
-Baz { shared: "string" }
-{"@type":"Baz","shared":"string"}

@@ -25,6 +25,7 @@ members = [
   "lib/semver",
   "lib/trans",
   "tools/pack",
+  "tools/it",
 ]
 
 exclude = [

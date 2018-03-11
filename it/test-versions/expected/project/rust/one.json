@@ -1,6 +1,0 @@
-Entry { thing: Some(Thing { name: Some("The Thing"), other: None, other2: None }) }
-{"thing":{"name":"The Thing"}}
-Entry { thing: Some(Thing { name: None, other: Some(Other { name: "The Other Thing" }), other2: None }) }
-{"thing":{"other":{"name":"The Other Thing"}}}
-Entry { thing: Some(Thing { name: None, other: None, other2: Some(Other { name2: "The Other-Other Thing" }) }) }
-{"thing":{"other2":{"name2":"The Other-Other Thing"}}}
