@@ -1,6 +1,7 @@
 //! Options for java code generation.
 
-use codegen::{ClassCodegen, Codegen, EnumCodegen, InterfaceCodegen, ServiceCodegen, TupleCodegen};
+use codegen::{ClassCodegen, Codegen, EnumCodegen, GetterCodegen, InterfaceCodegen, ServiceCodegen,
+              TupleCodegen};
 use genco::Java;
 
 pub struct Options {
@@ -26,6 +27,8 @@ pub struct Options {
     pub suppress_service_methods: bool,
     /// Hook to generate code called in the root of the declarations.
     pub root_generators: Vec<Box<Codegen>>,
+    /// Hook to run getter generators.
+    pub getter_generators: Vec<Box<GetterCodegen>>,
     /// Hook to run class generators.
     pub class_generators: Vec<Box<ClassCodegen>>,
     /// Hook to run service generators.
@@ -52,6 +55,7 @@ impl Options {
             async_container: None,
             suppress_service_methods: false,
             root_generators: Vec::new(),
+            getter_generators: Vec::new(),
             class_generators: Vec::new(),
             service_generators: Vec::new(),
             tuple_generators: Vec::new(),

@@ -7,6 +7,25 @@ use genco::{Cons, Java};
 use genco::java::{Argument, Class, Enum, Interface, Method};
 use std::rc::Rc;
 
+/// Generate helper implementations for codegen traits.
+macro_rules! codegen {
+    ($type:tt, $e:ty) => {
+        impl<T> $type for Rc<T>
+        where
+            T: $type,
+        {
+            fn generate(&self, e: $e) -> Result<()> {
+                self.as_ref().generate(e)
+            }
+        }
+    }
+}
+
+pub struct GetterAdded<'a, 'el: 'a> {
+    pub name: Cons<'el>,
+    pub getter: &'a mut Method<'el>,
+}
+
 pub struct ClassAdded<'a, 'el: 'a> {
     pub names: &'a [Cons<'el>],
     pub spec: &'a mut Class<'el>,
@@ -51,15 +70,6 @@ pub trait Codegen {
     fn generate(&self, handle: &Handle) -> Result<()>;
 }
 
-impl<T> Codegen for Rc<T>
-where
-    T: Codegen,
-{
-    fn generate(&self, handle: &Handle) -> Result<()> {
-        self.as_ref().generate(handle)
-    }
-}
-
 /// Generate service-based code.
 pub trait ServiceCodegen {
     fn generate(&self, e: ServiceAdded) -> Result<()>;
@@ -74,58 +84,37 @@ where
     }
 }
 
+/// Generate code for getters.
+pub trait GetterCodegen {
+    fn generate(&self, e: GetterAdded) -> Result<()>;
+}
+
+codegen!(GetterCodegen, GetterAdded);
+
 /// Generate class-based code.
 pub trait ClassCodegen {
     fn generate(&self, e: ClassAdded) -> Result<()>;
 }
 
-impl<T> ClassCodegen for Rc<T>
-where
-    T: ClassCodegen,
-{
-    fn generate(&self, e: ClassAdded) -> Result<()> {
-        self.as_ref().generate(e)
-    }
-}
+codegen!(ClassCodegen, ClassAdded);
 
 /// Generate tuple-based code.
 pub trait TupleCodegen {
     fn generate(&self, e: TupleAdded) -> Result<()>;
 }
 
-impl<T> TupleCodegen for Rc<T>
-where
-    T: TupleCodegen,
-{
-    fn generate(&self, e: TupleAdded) -> Result<()> {
-        self.as_ref().generate(e)
-    }
-}
+codegen!(TupleCodegen, TupleAdded);
 
 /// Generate interface-based code.
 pub trait InterfaceCodegen {
     fn generate(&self, e: InterfaceAdded) -> Result<()>;
 }
 
-impl<T> InterfaceCodegen for Rc<T>
-where
-    T: InterfaceCodegen,
-{
-    fn generate(&self, e: InterfaceAdded) -> Result<()> {
-        self.as_ref().generate(e)
-    }
-}
+codegen!(InterfaceCodegen, InterfaceAdded);
 
 /// Generate enum-based code.
 pub trait EnumCodegen {
     fn generate(&self, e: EnumAdded) -> Result<()>;
 }
 
-impl<T> EnumCodegen for Rc<T>
-where
-    T: EnumCodegen,
-{
-    fn generate(&self, e: EnumAdded) -> Result<()> {
-        self.as_ref().generate(e)
-    }
-}
+codegen!(EnumCodegen, EnumAdded);

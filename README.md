@@ -148,16 +148,11 @@ Suites are tests which compiled a given set of rules, and compares with expected
 Projects are complete project tests.
 These are projects written for various programming languages, and are generally harder to build.
 
-The tool [`check-project-deps`] is used to determine
-which projects your local system can build.
-
 To run all tests, do:
 
 ```bash
 $> make clean all
 ```
-
-[`check-project-deps`]: /tools/check-project-deps
 
 ## Comparison with other systems
 

@@ -11,7 +11,6 @@ fn main() {
     for line in input.lines() {
         let line = line.unwrap();
         let entry: rust::generated::test::Entry = json::from_str(&line).unwrap();
-        println!("{:?}", entry);
         println!("{}", json::to_string(&entry).unwrap());
     }
 }

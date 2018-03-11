@@ -1,8 +1,0 @@
-Entry(explicit=Optional[A], implicit=Optional.empty)
-{"explicit":"foo"}
-Entry(explicit=Optional[B], implicit=Optional.empty)
-{"explicit":"bar"}
-Entry(explicit=Optional.empty, implicit=Optional[A])
-{"implicit":"A"}
-Entry(explicit=Optional.empty, implicit=Optional[B])
-{"implicit":"B"}

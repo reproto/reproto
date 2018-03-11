@@ -1,1 +1,0 @@
-java-args += -m jackson

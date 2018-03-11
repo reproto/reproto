@@ -7,7 +7,7 @@ override CARGO_FLAGS += -q
 endif
 
 all:
-	$(CARGO) build $(CARGO_FLAGS)
+	@$(CARGO) build $(CARGO_FLAGS)
 	@echo "#!/usr/bin/env bash" > script.sh
 	@echo "exec $(BINARY)" >> script.sh
-	chmod +x script.sh
+	@chmod +x script.sh

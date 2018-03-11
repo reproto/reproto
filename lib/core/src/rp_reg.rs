@@ -81,8 +81,7 @@ impl RpReg {
                 let p = name.parts.iter().map(String::as_str).collect();
                 package_fn(p)
             }
-            SubType { .. } |
-            EnumVariant { .. } => {
+            SubType { .. } | EnumVariant { .. } => {
                 let mut v: Vec<&str> = name.parts.iter().map(String::as_str).collect();
                 let at = v.len().saturating_sub(2);
                 let last = inner_fn(v.split_off(at));
@@ -114,6 +113,16 @@ impl RpReg {
 
         // simple case
         (result, None)
+    }
+
+    /// Check if registered type is an enum.
+    pub fn is_enum(&self) -> bool {
+        use self::RpReg::*;
+
+        match *self {
+            Enum(_) => true,
+            _ => false,
+        }
     }
 }
 

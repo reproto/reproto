@@ -1,2 +1,0 @@
-suites := java
-projects := java

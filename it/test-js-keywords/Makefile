@@ -1,2 +1,0 @@
-suites := js
-projects := js

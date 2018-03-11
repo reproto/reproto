@@ -1,4 +1,0 @@
-Entry { a: A { b: A_B { field: 'value' } }, b: null }
-{"a":{"b":{"field":"value"}}}
-Entry { a: null, b: A_B { field: 'value' } }
-{"b":{"field":"value"}}

@@ -2,7 +2,8 @@
 
 use {Options, JAVA_CONTEXT};
 use backend::{Code, Converter};
-use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded};
+use codegen::{ClassAdded, EndpointExtra, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded,
+              TupleAdded};
 use core::{ForEachLoc, Handle, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody,
            RpName, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use core::errors::*;
@@ -16,6 +17,14 @@ use processor::Processor;
 use std::rc::Rc;
 use trans::Environment;
 use utils::{Override, Utils};
+
+macro_rules! call_codegen {
+    ($source:expr, $event:expr) => {
+        for g in $source {
+            g.generate($event)?;
+        }
+    }
+}
 
 pub struct Compiler {
     env: Rc<Environment>,
@@ -506,14 +515,15 @@ impl Compiler {
         let mut from_value = self.enum_from_value_method(spec.name(), &java_field.spec);
         let mut to_value = self.enum_to_value_method(&java_field.spec);
 
-        for generator in &self.options.enum_generators {
-            generator.generate(EnumAdded {
+        call_codegen!(
+            &self.options.enum_generators,
+            EnumAdded {
                 body: body,
                 spec: &mut spec,
                 from_value: &mut from_value,
                 to_value: &mut to_value,
-            })?;
-        }
+            }
+        );
 
         spec.methods.push(from_value);
         spec.methods.push(to_value);
@@ -536,7 +546,17 @@ impl Compiler {
 
         for field in fields {
             if self.options.build_getters {
-                spec.methods.push(field.getter());
+                let mut getter = field.getter();
+
+                call_codegen!(
+                    &self.options.getter_generators,
+                    GetterAdded {
+                        name: field.name(),
+                        getter: &mut getter,
+                    }
+                );
+
+                spec.methods.push(getter);
             }
 
             if self.options.build_setters {
@@ -550,9 +570,10 @@ impl Compiler {
 
         spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
 
-        for generator in &self.options.tuple_generators {
-            generator.generate(TupleAdded { spec: &mut spec })?;
-        }
+        call_codegen!(
+            &self.options.tuple_generators,
+            TupleAdded { spec: &mut spec }
+        );
 
         Ok(spec)
     }
@@ -566,7 +587,17 @@ impl Compiler {
             spec.fields.push(field.spec.clone());
 
             if self.options.build_getters {
-                spec.methods.push(field.getter());
+                let mut getter = field.getter();
+
+                call_codegen!(
+                    &self.options.getter_generators,
+                    GetterAdded {
+                        name: field.name(),
+                        getter: &mut getter,
+                    }
+                );
+
+                spec.methods.push(getter);
             }
 
             if self.options.build_setters {
@@ -629,6 +660,15 @@ impl Compiler {
                 if self.options.build_getters {
                     let mut getter = field.getter();
                     getter.annotation(Override);
+
+                    call_codegen!(
+                        &self.options.getter_generators,
+                        GetterAdded {
+                            name: field.name(),
+                            getter: &mut getter,
+                        }
+                    );
+
                     class.methods.push(getter);
                 }
 
@@ -642,7 +682,17 @@ impl Compiler {
 
             for field in &sub_type_fields {
                 if self.options.build_getters {
-                    class.methods.push(field.getter());
+                    let mut getter = field.getter();
+
+                    call_codegen!(
+                        &self.options.getter_generators,
+                        GetterAdded {
+                            name: field.name(),
+                            getter: &mut getter,
+                        }
+                    );
+
+                    class.methods.push(getter);
                 }
 
                 if self.options.build_setters {
