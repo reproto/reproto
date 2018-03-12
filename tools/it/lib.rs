@@ -16,10 +16,13 @@ use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::result;
 use std::str;
 use std::time::{Duration, Instant};
 
 mod utils;
+
+pub type Result<T> = result::Result<T, failure::Error>;
 
 #[macro_export]
 macro_rules! define {
@@ -78,6 +81,24 @@ impl fmt::Display for DurationFmt {
     }
 }
 
+/// Perform a timed run of the given segment and report its results.
+pub fn timed_run<C>(id: String, cb: C) -> Result<()>
+where
+    C: FnOnce() -> Result<()>,
+{
+    let before = Instant::now();
+    let res = cb().map_err(|e| format_err!("{}: {}", id, e));
+    let duration = Instant::now() - before;
+
+    if res.is_err() {
+        println!("FAIL {} ({})", id, DurationFmt(duration));
+    } else {
+        println!("  OK {} ({})", id, DurationFmt(duration));
+    }
+
+    res
+}
+
 /// Wrapping the reproto command invocation.
 #[derive(Debug, Clone)]
 pub struct Reproto {
@@ -86,7 +107,7 @@ pub struct Reproto {
 }
 
 impl Reproto {
-    pub fn from_project(cli: PathBuf) -> Result<Reproto, failure::Error> {
+    pub fn from_project(cli: PathBuf) -> Result<Reproto> {
         let mut cmd = Command::new("cargo");
 
         cmd.arg("build");
@@ -150,7 +171,7 @@ impl Reproto {
     }
 
     /// Build a reproto project.
-    pub fn build(&self, manifest: Manifest) -> Result<(), failure::Error> {
+    pub fn build(&self, manifest: Manifest) -> Result<()> {
         if !manifest.path.is_dir() {
             bail!("No such proto path: {}", manifest.path.display());
         }
@@ -284,7 +305,7 @@ pub trait Runner: Send {
     }
 
     /// Run the current runner.
-    fn run(&self) -> Result<(), failure::Error>;
+    fn run(&self) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -342,7 +363,7 @@ impl<'a> ProjectRunner<'a> {
         }
     }
 
-    fn try_run(&self) -> Result<(), failure::Error> {
+    fn try_run(&self) -> Result<()> {
         let script = self.target_workdir.join("script.sh");
 
         utils::copy_dir(&self.source_workdir, &self.target_workdir)?;
@@ -450,13 +471,11 @@ impl<'a> Runner for ProjectRunner<'a> {
     }
 
     /// Run the suite.
-    fn run(&self) -> Result<(), failure::Error> {
-        let before = Instant::now();
-        let id = format!("project:{}/{}", self.suite, self.language.name());
-        self.try_run().map_err(|e| format_err!("{}: {}", id, e))?;
-        let duration = Instant::now() - before;
-        println!("done {} ({})", id, DurationFmt(duration));
-        Ok(())
+    fn run(&self) -> Result<()> {
+        timed_run(
+            format!("project {} ({})", self.suite, self.language.name()),
+            || self.try_run(),
+        )
     }
 }
 
@@ -497,7 +516,7 @@ impl<'a> SuiteRunner<'a> {
         }
     }
 
-    fn try_run(&self) -> Result<(), failure::Error> {
+    fn try_run(&self) -> Result<()> {
         use utils::Diff::*;
 
         match self.action {
@@ -593,13 +612,11 @@ impl<'a> Runner for SuiteRunner<'a> {
     }
 
     /// Run the suite.
-    fn run(&self) -> Result<(), failure::Error> {
-        let before = Instant::now();
-        let id = format!("suite:{}/{}", self.suite, self.language.name());
-        self.try_run().map_err(|e| format_err!("{}: {}", id, e))?;
-        let duration = Instant::now() - before;
-        println!("done {} ({})", id, DurationFmt(duration));
-        Ok(())
+    fn run(&self) -> Result<()> {
+        timed_run(
+            format!("suite {} ({})", self.suite, self.language.name()),
+            || self.try_run(),
+        )
     }
 }
 
@@ -692,7 +709,7 @@ impl<'a> Suite<'a> {
         self,
         root: &Path,
         project: &'a Project<'a>,
-    ) -> Result<Vec<Box<'a + Runner>>, failure::Error> {
+    ) -> Result<Vec<Box<'a + Runner>>> {
         let mut runners: Vec<Box<Runner>> = Vec::new();
 
         let suite = self.suite;
@@ -774,7 +791,7 @@ impl<'a> Suite<'a> {
         return Ok(runners);
 
         /// Read path to all JSON files in the given directory.
-        fn json_files(dir: &Path) -> Result<Vec<PathBuf>, failure::Error> {
+        fn json_files(dir: &Path) -> Result<Vec<PathBuf>> {
             let mut out = Vec::new();
 
             for e in fs::read_dir(dir)? {
@@ -791,7 +808,7 @@ impl<'a> Suite<'a> {
         }
 
         /// Read all files in directory.
-        fn files_in_dir(dir: &Path) -> Result<Vec<PathBuf>, failure::Error> {
+        fn files_in_dir(dir: &Path) -> Result<Vec<PathBuf>> {
             let mut out = Vec::new();
 
             if !dir.is_dir() {

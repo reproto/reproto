@@ -3,7 +3,7 @@ extern crate failure;
 extern crate it;
 extern crate rayon;
 
-use it::{Action, Language, Project, Reproto};
+use it::{Action, Language, Project, Reproto, Result};
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::env;
@@ -53,7 +53,7 @@ fn detect() -> Vec<Language> {
     out
 }
 
-fn try_main() -> Result<(), failure::Error> {
+fn try_main() -> Result<()> {
     let languages = detect();
 
     let mut root = env::current_dir()?;

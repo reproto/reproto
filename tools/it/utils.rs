@@ -1,5 +1,5 @@
+use Result;
 use diff;
-use failure;
 use relative_path::RelativePathBuf;
 use std::collections::{HashSet, VecDeque};
 use std::fmt;
@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 /// Extract relative parts from the given path.
-fn relative_parts<'a>(path: &'a Path, depth: usize) -> Result<Vec<&'a str>, failure::Error> {
+fn relative_parts<'a>(path: &'a Path, depth: usize) -> Result<Vec<&'a str>> {
     let mut parts = path.components().rev().take(depth).collect::<Vec<_>>();
     parts.reverse();
 
@@ -27,7 +27,7 @@ fn relative_parts<'a>(path: &'a Path, depth: usize) -> Result<Vec<&'a str>, fail
 }
 
 /// Resolve relative path from the given path with a known depth.
-fn convert_relative(root: &Path, path: &Path, depth: usize) -> Result<PathBuf, failure::Error> {
+fn convert_relative(root: &Path, path: &Path, depth: usize) -> Result<PathBuf> {
     let parts = relative_parts(path, depth)?;
     let path = parts
         .into_iter()
@@ -72,11 +72,7 @@ pub enum Diff {
 }
 
 /// Calculate a difference between two directories.
-pub fn diff_recursive(
-    src: &Path,
-    dst: &Path,
-    errors: &mut Vec<Diff>,
-) -> Result<(), failure::Error> {
+pub fn diff_recursive(src: &Path, dst: &Path, errors: &mut Vec<Diff>) -> Result<()> {
     use self::Diff::*;
     use self::Location::*;
     use io::ErrorKind::NotFound;
@@ -202,7 +198,7 @@ pub fn diff_recursive(
 
     return Ok(());
 
-    fn read_contents(path: &Path) -> Result<String, failure::Error> {
+    fn read_contents(path: &Path) -> Result<String> {
         let mut buffer = String::new();
         File::open(path)?.read_to_string(&mut buffer)?;
         Ok(buffer)
@@ -210,7 +206,7 @@ pub fn diff_recursive(
 }
 
 /// Recursively copy a directory.
-pub fn copy_dir(source: &Path, target: &Path) -> Result<(), failure::Error> {
+pub fn copy_dir(source: &Path, target: &Path) -> Result<()> {
     use io::ErrorKind::NotFound;
 
     // whether we should attempt to hard link or not.
