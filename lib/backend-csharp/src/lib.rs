@@ -27,7 +27,7 @@ use codegen::Configure;
 use compiler::Compiler;
 use core::Context;
 use core::errors::Result;
-use manifest::{Lang, Manifest, NoModule, TryFromToml, checked_modules};
+use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use naming::Naming;
 use options::Options;
 use std::any::Any;
@@ -99,7 +99,6 @@ impl Lang for CsharpLang {
             ("object", "_object"),
             ("operator", "_operator"),
             ("out", "_out"),
-            ("out", "_out"),
             ("override", "_override"),
             ("params", "_params"),
             ("private", "_private"),
@@ -113,7 +112,6 @@ impl Lang for CsharpLang {
             ("short", "_short"),
             ("sizeof", "_sizeof"),
             ("stackalloc", "_stackalloc"),
-            ("static", "_static"),
             ("static", "_static"),
             ("string", "_string"),
             ("struct", "_struct"),
@@ -129,12 +127,16 @@ impl Lang for CsharpLang {
             ("unsafe", "_unsafe"),
             ("ushort", "_ushort"),
             ("using", "_using"),
-            ("using", "_using"),
             ("virtual", "_virtual"),
             ("void", "_void"),
             ("volatile", "_volatile"),
             ("while", "_while"),
         ]
+    }
+
+    fn safe_packages(&self) -> bool {
+        // NB: C# packages are upper-camel case, no keyword escaping needed.
+        false
     }
 }
 

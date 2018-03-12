@@ -207,10 +207,15 @@ impl Reproto {
             .map_err(|e| format_err!("bad exit status: {}", e))?;
 
         if !output.status.success() {
+            let stdout = str::from_utf8(&output.stdout)?;
+            let stderr = str::from_utf8(&output.stderr)?;
+
             bail!(
-                "failed to run reproto on project: {}: {}",
+                "failed to run reproto on project: {}: {}: {}: {}",
                 manifest.current_dir.display(),
-                output.status
+                output.status,
+                stdout,
+                stderr,
             );
         }
 
@@ -521,6 +526,11 @@ impl<'a> SuiteRunner<'a> {
 
         match self.action {
             Action::Update => {
+                if self.expected_struct.is_dir() {
+                    // Remove existing expected directory.
+                    fs::remove_dir_all(&self.expected_struct)?;
+                }
+
                 fs::create_dir_all(&self.expected_struct)?;
                 self.reproto.build(self.manifest(&self.expected_struct))?;
             }
