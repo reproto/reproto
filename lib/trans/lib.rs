@@ -9,6 +9,6 @@ extern crate reproto_path_parser as path_parser;
 
 mod into_model;
 mod scope;
-mod environment;
+pub mod environment;
 
 pub use self::environment::Environment;

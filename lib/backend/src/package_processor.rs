@@ -4,17 +4,18 @@ use core::{Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfac
 use core::errors::*;
 use std::collections::BTreeMap;
 use std::io::Write;
-use trans::Environment;
 
 pub trait PackageProcessor<'el>
 where
     Self: 'el + Sized,
 {
     type Out: Default + IntoBytes<Self>;
+    type DeclIter: Iterator<Item = &'el RpDecl>;
 
     fn ext(&self) -> &str;
 
-    fn env(&self) -> &'el Environment;
+    /// Iterate over all existing declarations.
+    fn decl_iter(&self) -> Self::DeclIter;
 
     fn handle(&self) -> &'el Handle;
 
@@ -61,7 +62,7 @@ where
         let mut files = BTreeMap::new();
 
         // Process all types discovered so far.
-        for decl in self.env().decl_iter() {
+        for decl in self.decl_iter() {
             callback(decl)
                 .and_then(|_| {
                     let mut out = files

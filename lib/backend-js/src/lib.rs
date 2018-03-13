@@ -15,17 +15,14 @@ extern crate toml;
 #[macro_use]
 mod utils;
 mod js_field;
-mod listeners;
-mod js_backend;
-mod js_compiler;
+mod compiler;
 mod js_file_spec;
 mod js_options;
 
+use compiler::Compiler;
 use core::Context;
 use core::errors::*;
-use js_backend::JsBackend;
 use js_options::JsOptions;
-use listeners::Listeners;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
@@ -133,27 +130,9 @@ impl TryFromToml for JsModule {
     }
 }
 
-fn setup_listeners(modules: Vec<JsModule>) -> Result<(JsOptions, Box<Listeners>)> {
-    let listeners: Vec<Box<Listeners>> = Vec::new();
-
-    for m in modules {
-        match m {}
-    }
-
-    let mut options = JsOptions::new();
-
-    for listener in &listeners {
-        listener.configure(&mut options)?;
-    }
-
-    Ok((options, Box::new(listeners)))
-}
-
 fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
-    let modules = manifest::checked_modules(manifest.modules)?;
-    let (options, listeners) = setup_listeners(modules)?;
-    let backend = JsBackend::new(env, options, listeners);
+    let _modules: Vec<JsModule> = manifest::checked_modules(manifest.modules)?;
+    let options = JsOptions::new();
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    let compiler = backend.compiler(handle.as_ref())?;
-    compiler.compile()
+    Compiler::new(&env, options, handle.as_ref()).compile()
 }

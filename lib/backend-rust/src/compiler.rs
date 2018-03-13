@@ -1,18 +1,17 @@
 //! Backend for Rust
 
-use super::RUST_CONTEXT;
-use backend::{Code, PackageUtils};
-use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpEnumOrdinal, RpField, RpInterfaceBody, RpName,
-           RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody};
+use {Options, EXT, MOD, RUST_CONTEXT};
+use backend::{Code, PackageProcessor, PackageUtils};
+use core::{ForEachLoc, Handle, Loc, RelativePath, RelativePathBuf, RpEnumBody, RpEnumOrdinal,
+           RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpSubTypeStrategy,
+           RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
 use genco::{Element, IntoTokens, Quoted, Rust, Tokens};
 use genco::rust::{imported, imported_alias};
-use listeners::Listeners;
-use rust_compiler::RustCompiler;
 use rust_file_spec::RustFileSpec;
-use rust_options::RustOptions;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
-use trans::Environment;
+use trans::{self, Environment};
 
 /// #[allow(non_camel_case_types)] attribute.
 pub struct AllowNonCamelCaseTypes;
@@ -68,38 +67,27 @@ impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Rust<'el>> for Comments<'el, S> {
 const TYPE_SEP: &'static str = "_";
 const SCOPE_SEP: &'static str = "::";
 
-pub struct RustBackend {
-    pub env: Environment,
-    listeners: Box<Listeners>,
+pub struct Compiler<'el> {
+    pub env: &'el Environment,
+    handle: &'el Handle,
     hash_map: Rust<'static>,
     json_value: Rust<'static>,
     datetime: Option<Tokens<'static, Rust<'static>>>,
 }
 
-impl RustBackend {
-    pub fn new(env: Environment, options: RustOptions, listeners: Box<Listeners>) -> RustBackend {
-        RustBackend {
+impl<'el> Compiler<'el> {
+    pub fn new(env: &'el Environment, options: Options, handle: &'el Handle) -> Compiler<'el> {
+        Compiler {
             env: env,
-            listeners: listeners,
+            handle: handle,
             hash_map: imported("std::collections", "HashMap"),
             json_value: imported_alias("serde_json", "Value", "json"),
             datetime: options.datetime.clone(),
         }
     }
 
-    pub fn compiler<'el>(&'el self, handle: &'el Handle) -> Result<RustCompiler<'el>> {
-        Ok(RustCompiler {
-            handle: handle,
-            backend: self,
-        })
-    }
-
     /// Build an implementation of the given name and body.
-    fn build_impl<'el>(
-        &self,
-        name: Rc<String>,
-        body: Tokens<'el, Rust<'el>>,
-    ) -> Tokens<'el, Rust<'el>> {
+    fn build_impl(&self, name: Rc<String>, body: Tokens<'el, Rust<'el>>) -> Tokens<'el, Rust<'el>> {
         let mut out_impl = Tokens::new();
 
         out_impl.push(toks!["impl ", name.clone(), " {"]);
@@ -225,11 +213,95 @@ impl RustBackend {
         Ok(t.into())
     }
 
-    pub fn process_tuple<'a>(
-        &self,
-        out: &mut RustFileSpec<'a>,
-        body: &'a RpTupleBody,
-    ) -> Result<()> {
+    pub fn compile(&self) -> Result<()> {
+        let files = self.populate_files()?;
+        self.write_mod_files(&files)?;
+        self.write_files(files)
+    }
+
+    fn write_mod_files(&self, files: &BTreeMap<RpVersionedPackage, RustFileSpec>) -> Result<()> {
+        let mut packages: BTreeMap<RelativePathBuf, BTreeSet<String>> = BTreeMap::new();
+        let mut root_names = BTreeSet::new();
+
+        for (key, _) in files {
+            let mut current = RelativePathBuf::new();
+
+            let mut it = self.package(key).parts.into_iter().peekable();
+
+            if let Some(root) = it.peek() {
+                root_names.insert(root.to_owned());
+            }
+
+            while let Some(part) = it.next() {
+                current = current.join(part);
+
+                if let Some(next) = it.peek() {
+                    let mut full_path = current.join(MOD);
+                    full_path.set_extension(self.ext());
+
+                    packages
+                        .entry(full_path)
+                        .or_insert_with(BTreeSet::new)
+                        .insert(next.clone());
+                }
+            }
+        }
+
+        let mut root_mod = RelativePathBuf::new().join(MOD);
+        root_mod.set_extension(self.ext());
+        packages.insert(root_mod, root_names);
+
+        let handle = self.handle();
+
+        for (full_path, children) in packages {
+            let parent = full_path.parent().unwrap_or(RelativePath::new("."));
+
+            if !self.handle.is_dir(&parent) {
+                debug!("+dir: {}", parent.display());
+                handle.create_dir_all(&parent)?;
+            }
+
+            if !handle.is_file(&full_path) {
+                debug!("+mod: {}", full_path.display());
+                let mut f = handle.create(&full_path)?;
+
+                for child in children {
+                    writeln!(f, "pub mod {};", child)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<'el> PackageUtils for Compiler<'el> {}
+
+impl<'el> PackageProcessor<'el> for Compiler<'el> {
+    type Out = RustFileSpec<'el>;
+    type DeclIter = trans::environment::DeclIter<'el>;
+
+    fn ext(&self) -> &str {
+        EXT
+    }
+
+    fn decl_iter(&self) -> Self::DeclIter {
+        self.env.decl_iter()
+    }
+
+    fn handle(&self) -> &'el Handle {
+        self.handle
+    }
+
+    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
+        self.package(package)
+    }
+
+    fn default_process(&self, _out: &mut Self::Out, _: &RpName) -> Result<()> {
+        Ok(())
+    }
+
+    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
         let mut fields = Tokens::new();
 
         for field in &body.fields {
@@ -249,7 +321,7 @@ impl RustBackend {
         Ok(())
     }
 
-    pub fn process_enum<'a>(&self, out: &mut RustFileSpec<'a>, body: &'a RpEnumBody) -> Result<()> {
+    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
 
         // variant declarations
@@ -313,7 +385,7 @@ impl RustBackend {
         Ok(())
     }
 
-    pub fn process_type<'a>(&self, out: &mut RustFileSpec<'a>, body: &'a RpTypeBody) -> Result<()> {
+    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
@@ -348,11 +420,7 @@ impl RustBackend {
         Ok(())
     }
 
-    pub fn process_interface<'a>(
-        &self,
-        out: &mut RustFileSpec<'a>,
-        body: &'a RpInterfaceBody,
-    ) -> Result<()> {
+    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
 
         let mut t = Tokens::new();
@@ -411,11 +479,7 @@ impl RustBackend {
         Ok(())
     }
 
-    pub fn process_service<'a>(
-        &self,
-        out: &mut RustFileSpec<'a>,
-        body: &'a RpServiceBody,
-    ) -> Result<()> {
+    fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
         let mut t = Tokens::new();
 
@@ -443,5 +507,3 @@ impl RustBackend {
         Ok(())
     }
 }
-
-impl PackageUtils for RustBackend {}

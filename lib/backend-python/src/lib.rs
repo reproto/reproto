@@ -14,20 +14,18 @@ extern crate serde_derive;
 extern crate toml;
 
 mod codegen;
-mod python_backend;
-mod python_compiler;
+mod compiler;
 mod python_field;
 mod python_file_spec;
-mod options;
 mod module;
 mod utils;
 
 use backend::Initializer;
+use codegen::ServiceCodegen;
+use compiler::Compiler;
 use core::Context;
 use core::errors::*;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
-use options::Options;
-use python_backend::PythonBackend;
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
@@ -116,6 +114,22 @@ impl TryFromToml for PythonModule {
     }
 }
 
+pub struct Options {
+    pub build_getters: bool,
+    pub build_constructor: bool,
+    pub service_generators: Vec<Box<ServiceCodegen>>,
+}
+
+impl Options {
+    pub fn new() -> Options {
+        Options {
+            build_getters: true,
+            build_constructor: true,
+            service_generators: Vec::new(),
+        }
+    }
+}
+
 pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     use self::PythonModule::*;
 
@@ -135,8 +149,6 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
 fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = setup_options(modules)?;
-    let backend = PythonBackend::new(env, options);
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    let compiler = backend.compiler(handle.as_ref())?;
-    compiler.compile()
+    Compiler::new(&env, options, handle.as_ref()).compile()
 }

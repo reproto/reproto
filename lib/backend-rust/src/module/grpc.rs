@@ -1,6 +1,7 @@
 //! gRPC module for Rust.
 
-use listeners::Listeners;
+use Options;
+use backend::Initializer;
 
 pub struct Module {}
 
@@ -10,4 +11,6 @@ impl Module {
     }
 }
 
-impl Listeners for Module {}
+impl Initializer for Module {
+    type Options = Options;
+}

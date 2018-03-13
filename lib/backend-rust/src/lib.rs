@@ -2,7 +2,6 @@
 extern crate genco;
 #[macro_use]
 extern crate log;
-#[macro_use]
 extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 #[macro_use]
@@ -14,19 +13,16 @@ extern crate serde;
 extern crate serde_derive;
 extern crate toml;
 
-mod listeners;
-mod rust_backend;
-mod rust_compiler;
+mod compiler;
 mod rust_file_spec;
-mod rust_options;
 mod module;
 
+use backend::Initializer;
+use compiler::Compiler;
 use core::Context;
 use core::errors::*;
-use listeners::Listeners;
+use genco::{Rust, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
-use rust_backend::RustBackend;
-use rust_options::RustOptions;
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
@@ -135,36 +131,38 @@ impl TryFromToml for RustModule {
     }
 }
 
-pub fn setup_listeners(modules: Vec<RustModule>) -> Result<(RustOptions, Box<Listeners>)> {
+pub struct Options {
+    pub datetime: Option<Tokens<'static, Rust<'static>>>,
+}
+
+impl Options {
+    pub fn new() -> Options {
+        Options { datetime: None }
+    }
+}
+
+pub fn options(modules: Vec<RustModule>) -> Result<Options> {
     use self::RustModule::*;
 
-    let mut listeners: Vec<Box<Listeners>> = Vec::new();
+    let mut options = Options::new();
 
     for m in modules {
         debug!("+module: {:?}", m);
 
-        let listener = match m {
-            Chrono => Box::new(module::Chrono::new()) as Box<Listeners>,
-            Grpc => Box::new(module::Grpc::new()) as Box<Listeners>,
+        let initializer: Box<Initializer<Options = Options>> = match m {
+            Chrono => Box::new(module::Chrono::new()),
+            Grpc => Box::new(module::Grpc::new()),
         };
 
-        listeners.push(listener);
+        initializer.initialize(&mut options)?;
     }
 
-    let mut options = RustOptions::new();
-
-    for listener in &listeners {
-        listener.configure(&mut options)?;
-    }
-
-    Ok((options, Box::new(listeners)))
+    Ok(options)
 }
 
 fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
-    let (options, listeners) = setup_listeners(modules)?;
-    let backend = RustBackend::new(env, options, listeners);
+    let options = options(modules)?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    let compiler = backend.compiler(handle.as_ref())?;
-    compiler.compile()
+    Compiler::new(&env, options, handle.as_ref()).compile()
 }

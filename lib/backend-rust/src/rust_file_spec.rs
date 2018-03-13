@@ -1,20 +1,20 @@
 //! The file spec collecting changes.
 
 use backend::IntoBytes;
-use core::errors::*;
+use compiler::Compiler;
+use core::errors::Result;
 use genco::{Rust, Tokens};
-use rust_compiler::RustCompiler;
 
 pub struct RustFileSpec<'a>(pub Tokens<'a, Rust<'a>>);
 
-impl<'processor> Default for RustFileSpec<'processor> {
+impl<'el> Default for RustFileSpec<'el> {
     fn default() -> Self {
         RustFileSpec(Tokens::new())
     }
 }
 
-impl<'processor> IntoBytes<RustCompiler<'processor>> for RustFileSpec<'processor> {
-    fn into_bytes(self, _: &RustCompiler<'processor>) -> Result<Vec<u8>> {
+impl<'el> IntoBytes<Compiler<'el>> for RustFileSpec<'el> {
+    fn into_bytes(self, _: &Compiler<'el>) -> Result<Vec<u8>> {
         let out = self.0.join_line_spacing().to_file()?;
         Ok(out.into_bytes())
     }

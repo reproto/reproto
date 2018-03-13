@@ -1,18 +1,18 @@
 use backend::IntoBytes;
-use core::errors::*;
+use compiler::Compiler;
+use core::errors::Result;
 use genco::{Python, Tokens};
-use python_compiler::PythonCompiler;
 
-pub struct PythonFileSpec<'element>(pub Tokens<'element, Python<'element>>);
+pub struct PythonFileSpec<'el>(pub Tokens<'el, Python<'el>>);
 
-impl<'element> Default for PythonFileSpec<'element> {
+impl<'el> Default for PythonFileSpec<'el> {
     fn default() -> Self {
         PythonFileSpec(Tokens::new())
     }
 }
 
-impl<'element> IntoBytes<PythonCompiler<'element>> for PythonFileSpec<'element> {
-    fn into_bytes(self, _: &PythonCompiler<'element>) -> Result<Vec<u8>> {
+impl<'el> IntoBytes<Compiler<'el>> for PythonFileSpec<'el> {
+    fn into_bytes(self, _: &Compiler<'el>) -> Result<Vec<u8>> {
         let out = self.0.join_line_spacing().to_file()?;
         Ok(out.into_bytes())
     }

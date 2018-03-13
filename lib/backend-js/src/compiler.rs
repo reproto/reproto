@@ -1,48 +1,45 @@
-use super::{JS_CONTEXT, TYPE_SEP};
-use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageUtils};
+use super::{EXT, JS_CONTEXT, TYPE_SEP};
+use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageProcessor,
+              PackageUtils};
 use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
-           RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody};
+           RpPackage, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
 use genco::{Element, JavaScript, Quoted, Tokens};
 use genco::js::imported_alias;
-use js_compiler::JsCompiler;
 use js_field::JsField;
 use js_file_spec::JsFileSpec;
 use js_options::JsOptions;
-use listeners::Listeners;
 use naming::{self, Naming};
 use std::rc::Rc;
-use trans::Environment;
+use trans::{self, Environment};
 use utils::{is_defined, is_not_defined};
 
-pub struct JsBackend {
-    pub env: Environment,
-    listeners: Box<Listeners>,
+pub struct Compiler<'el> {
+    pub env: &'el Environment,
+    handle: &'el Handle,
     to_lower_snake: naming::ToLowerSnake,
     values: Tokens<'static, JavaScript<'static>>,
     enum_name: Tokens<'static, JavaScript<'static>>,
 }
 
-impl JsBackend {
-    pub fn new(env: Environment, _: JsOptions, listeners: Box<Listeners>) -> JsBackend {
-        JsBackend {
+impl<'el> Compiler<'el> {
+    pub fn new(env: &'el Environment, _: JsOptions, handle: &'el Handle) -> Compiler<'el> {
+        Compiler {
             env: env,
-            listeners: listeners,
+            handle: handle,
             to_lower_snake: naming::to_lower_snake(),
             values: "values".into(),
             enum_name: "name".into(),
         }
     }
 
-    pub fn compiler<'el>(&'el self, handle: &'el Handle) -> Result<JsCompiler<'el>> {
-        Ok(JsCompiler {
-            handle: handle,
-            backend: self,
-        })
+    pub fn compile(&self) -> Result<()> {
+        let files = self.populate_files()?;
+        self.write_files(files)
     }
 
     /// Build a function that throws an exception if the given value `toks` is None.
-    fn throw_if_null<'el, S>(&self, toks: S, field: &JsField) -> Tokens<'el, JavaScript<'el>>
+    fn throw_if_null<S>(&self, toks: S, field: &JsField) -> Tokens<'el, JavaScript<'el>>
     where
         S: Into<Tokens<'el, JavaScript<'el>>>,
     {
@@ -50,7 +47,7 @@ impl JsBackend {
         js![if is_not_defined(toks), js![throw required_error]]
     }
 
-    fn encode_method<'el, B>(
+    fn encode_method<B>(
         &self,
         fields: &[JsField<'el>],
         builder: B,
@@ -103,10 +100,7 @@ impl JsBackend {
         })
     }
 
-    fn encode_tuple_method<'el>(
-        &self,
-        fields: &[JsField<'el>],
-    ) -> Result<Tokens<'el, JavaScript<'el>>> {
+    fn encode_tuple_method(&self, fields: &[JsField<'el>]) -> Result<Tokens<'el, JavaScript<'el>>> {
         let mut values = Tokens::new();
 
         let mut body = Tokens::new();
@@ -126,7 +120,7 @@ impl JsBackend {
         Ok(encode)
     }
 
-    fn decode_enum_method<'el>(
+    fn decode_enum_method(
         &self,
         type_name: Rc<String>,
         ident: Rc<String>,
@@ -153,7 +147,7 @@ impl JsBackend {
         Ok(decode)
     }
 
-    fn decode_method<'el, F>(
+    fn decode_method<F>(
         &self,
         fields: &[JsField<'el>],
         type_name: Rc<String>,
@@ -218,15 +212,15 @@ impl JsBackend {
         Ok(decode)
     }
 
-    fn field_by_name<'el>(_i: usize, field: &JsField<'el>) -> Element<'el, JavaScript<'el>> {
+    fn field_by_name(_i: usize, field: &JsField<'el>) -> Element<'el, JavaScript<'el>> {
         field.name.quoted()
     }
 
-    fn field_by_index<'el>(i: usize, _field: &JsField<'el>) -> Element<'el, JavaScript<'el>> {
+    fn field_by_index(i: usize, _field: &JsField<'el>) -> Element<'el, JavaScript<'el>> {
         i.to_string().into()
     }
 
-    fn build_constructor<'el>(&self, fields: &[JsField<'el>]) -> Tokens<'el, JavaScript<'el>> {
+    fn build_constructor(&self, fields: &[JsField<'el>]) -> Tokens<'el, JavaScript<'el>> {
         let mut arguments = Tokens::new();
         let mut assignments = Tokens::new();
 
@@ -248,7 +242,7 @@ impl JsBackend {
         ctor
     }
 
-    fn build_enum_constructor<'a, 'el>(&self, field: &JsField<'a>) -> Tokens<'el, JavaScript<'el>> {
+    fn build_enum_constructor<'a>(&self, field: &JsField<'a>) -> Tokens<'el, JavaScript<'el>> {
         let mut arguments = Tokens::new();
         let mut assignments = Tokens::new();
 
@@ -277,7 +271,7 @@ impl JsBackend {
         ctor
     }
 
-    fn enum_encode_decode<'a, 'el>(
+    fn enum_encode_decode<'a>(
         &self,
         field: &JsField<'a>,
         type_name: Rc<String>,
@@ -297,10 +291,7 @@ impl JsBackend {
         return Ok(elements.into());
     }
 
-    fn build_getters<'el>(
-        &self,
-        fields: &[JsField<'el>],
-    ) -> Result<Vec<Tokens<'el, JavaScript<'el>>>> {
+    fn build_getters(&self, fields: &[JsField<'el>]) -> Result<Vec<Tokens<'el, JavaScript<'el>>>> {
         let mut result = Vec::new();
 
         for field in fields {
@@ -329,7 +320,7 @@ impl JsBackend {
         }
     }
 
-    fn into_js_field_with<'el, F>(&self, field: &'el RpField, js_field_f: F) -> JsField<'el>
+    fn into_js_field_with<F>(&self, field: &'el RpField, js_field_f: F) -> JsField<'el>
     where
         F: Fn(JsField) -> JsField,
     {
@@ -342,227 +333,14 @@ impl JsBackend {
         })
     }
 
-    fn into_js_field<'el>(&self, field: &'el RpField) -> JsField<'el> {
+    fn into_js_field(&self, field: &'el RpField) -> JsField<'el> {
         self.into_js_field_with(field, Self::any_ident)
-    }
-
-    pub fn process_tuple<'el>(
-        &self,
-        out: &mut JsFileSpec<'el>,
-        body: &'el RpTupleBody,
-    ) -> Result<()> {
-        let tuple_name = Rc::new(body.name.join(TYPE_SEP));
-        let mut class_body = Tokens::new();
-
-        let fields: Vec<JsField> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
-
-        class_body.push(self.build_constructor(&fields));
-
-        // TODO: make configurable
-        if false {
-            for getter in self.build_getters(&fields)? {
-                class_body.push(getter);
-            }
-        }
-
-        class_body.push(self.decode_method(&fields, tuple_name.clone(), Self::field_by_index)?);
-
-        class_body.push(self.encode_tuple_method(&fields)?);
-        class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
-
-        let mut class = Tokens::new();
-
-        class.push(toks!["export class ", tuple_name, " {"]);
-        class.nested(class_body.join_line_spacing());
-        class.push("}");
-
-        out.0.push(class);
-        Ok(())
-    }
-
-    /// Convert enum to JavaScript.
-    pub fn process_enum<'el>(
-        &self,
-        out: &mut JsFileSpec<'el>,
-        body: &'el RpEnumBody,
-    ) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
-
-        let mut class_body = Tokens::new();
-
-        let variant_field = body.variant_type.as_field();
-
-        let field = self.into_js_field_with(&variant_field, Self::enum_ident);
-
-        let mut members = Tokens::new();
-
-        class_body.push(self.build_enum_constructor(&field));
-        class_body.push(self.enum_encode_decode(&field, type_name.clone())?);
-
-        let mut values = Tokens::new();
-
-        body.variants.iter().for_each_loc(|variant| {
-            let type_id = self.convert_type(&body.name)?;
-            let mut arguments = Tokens::new();
-
-            arguments.append(variant.local_name.as_str().quoted());
-            arguments.append(self.ordinal(variant)?);
-
-            let arguments = js![new type_id, arguments];
-            let member = toks![type_name.clone(), ".", variant.local_name.as_str()];
-
-            values.push(js![= member.clone(), arguments]);
-            members.append(member);
-
-            Ok(()) as Result<()>
-        })?;
-
-        class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
-
-        let mut elements = Tokens::new();
-
-        let mut class = Tokens::new();
-
-        class.push(toks!["export class ", type_name.clone(), " {"]);
-        class.nested(class_body.join_line_spacing());
-        class.push("}");
-
-        // class declaration
-        elements.push(class);
-
-        // enum literal values
-        elements.push(values);
-
-        // push members field
-        let members_key = toks![type_name.clone(), ".", self.values.clone()];
-        elements.push(js![= members_key, js!([members])]);
-
-        out.0.push(elements.join_line_spacing());
-        Ok(())
-    }
-
-    pub fn process_type<'el>(
-        &self,
-        out: &mut JsFileSpec<'el>,
-        body: &'el RpTypeBody,
-    ) -> Result<()> {
-        let fields: Vec<JsField> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
-
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
-
-        let mut class_body = Tokens::new();
-
-        class_body.push(self.build_constructor(&fields));
-
-        // TODO: make configurable
-        if false {
-            for getter in self.build_getters(&fields)? {
-                class_body.push(getter);
-            }
-        }
-
-        class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
-
-        class_body.push(self.encode_method(&fields, "{}", None)?);
-        class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
-
-        let mut class = Tokens::new();
-
-        class.push(toks!["export class ", type_name, " {"]);
-        class.nested(class_body.join_line_spacing());
-        class.push("}");
-
-        out.0.push(class);
-        Ok(())
-    }
-
-    pub fn process_interface<'el>(
-        &self,
-        out: &mut JsFileSpec<'el>,
-        body: &'el RpInterfaceBody,
-    ) -> Result<()> {
-        let mut classes = Tokens::new();
-        let interface_type_name = Rc::new(body.name.join(TYPE_SEP));
-
-        let mut interface_body = Tokens::new();
-
-        match body.sub_type_strategy {
-            RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                let tk = tag.as_str().quoted().into();
-                interface_body.push(self.interface_decode_method(&body, &tk)?);
-            }
-        }
-
-        interface_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
-
-        let interface_fields: Vec<JsField> =
-            body.fields.iter().map(|f| self.into_js_field(f)).collect();
-
-        classes.push({
-            let mut tokens = Tokens::new();
-
-            tokens.push(toks!["export class ", interface_type_name.clone(), " {"]);
-            tokens.nested(interface_body.join_line_spacing());
-            tokens.push("}");
-
-            tokens
-        });
-
-        let sub_types = body.sub_types.values().map(|t| Loc::as_ref(t));
-
-        sub_types.for_each_loc(|sub_type| {
-            let type_name = Rc::new(sub_type.name.join(TYPE_SEP));
-
-            let mut class_body = Tokens::new();
-
-            let fields: Vec<JsField> = interface_fields
-                .iter()
-                .cloned()
-                .chain(sub_type.fields.iter().map(|f| self.into_js_field(f)))
-                .collect();
-
-            class_body.push(self.build_constructor(&fields));
-
-            // TODO: make configurable
-            if false {
-                for getter in self.build_getters(&fields)? {
-                    class_body.push(getter);
-                }
-            }
-
-            class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
-
-            match body.sub_type_strategy {
-                RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                    let tk: Tokens<'el, JavaScript<'el>> = tag.as_str().quoted().into();
-                    let type_toks = toks!["data[", tk, "] = ", sub_type.name().quoted(), ";"];
-                    class_body.push(self.encode_method(&fields, "{}", Some(type_toks))?);
-                }
-            }
-
-            class_body.push_unless_empty(Code(&sub_type.codes, JS_CONTEXT));
-
-            classes.push({
-                let mut tokens = Tokens::new();
-
-                tokens.push(toks!["export class ", type_name.clone(), " {"]);
-                tokens.nested(class_body.join_line_spacing());
-                tokens.push("}");
-
-                tokens
-            });
-
-            Ok(()) as Result<()>
-        })?;
-
-        out.0.push(classes.join_line_spacing());
-        Ok(())
     }
 }
 
-impl PackageUtils for JsBackend {}
+impl<'el> PackageUtils for Compiler<'el> {}
 
-impl<'el> Converter<'el> for JsBackend {
+impl<'el> Converter<'el> for Compiler<'el> {
     type Custom = JavaScript<'el>;
 
     fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, JavaScript<'el>>> {
@@ -579,7 +357,7 @@ impl<'el> Converter<'el> for JsBackend {
     }
 }
 
-impl<'el> DynamicConverter<'el> for JsBackend {
+impl<'el> DynamicConverter<'el> for Compiler<'el> {
     fn is_native(&self, ty: &RpType) -> bool {
         use self::RpType::*;
 
@@ -608,7 +386,7 @@ impl<'el> DynamicConverter<'el> for JsBackend {
     }
 }
 
-impl<'el> DynamicDecode<'el> for JsBackend {
+impl<'el> DynamicDecode<'el> for Compiler<'el> {
     fn name_decode(
         &self,
         input: Tokens<'el, JavaScript<'el>>,
@@ -687,7 +465,7 @@ impl<'el> DynamicDecode<'el> for JsBackend {
     }
 }
 
-impl<'el> DynamicEncode<'el> for JsBackend {
+impl<'el> DynamicEncode<'el> for Compiler<'el> {
     fn name_encode(
         &self,
         input: Tokens<'el, JavaScript<'el>>,
@@ -721,5 +499,222 @@ impl<'el> DynamicEncode<'el> for JsBackend {
         t.append(toks![" })(", input, ")"]);
 
         t
+    }
+}
+
+impl<'el> PackageProcessor<'el> for Compiler<'el> {
+    type Out = JsFileSpec<'el>;
+    type DeclIter = trans::environment::DeclIter<'el>;
+
+    fn ext(&self) -> &str {
+        EXT
+    }
+
+    fn decl_iter(&self) -> Self::DeclIter {
+        self.env.decl_iter()
+    }
+
+    fn handle(&self) -> &'el Handle {
+        self.handle
+    }
+
+    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
+        self.package(package)
+    }
+
+    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
+        let tuple_name = Rc::new(body.name.join(TYPE_SEP));
+        let mut class_body = Tokens::new();
+
+        let fields: Vec<JsField> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
+
+        class_body.push(self.build_constructor(&fields));
+
+        // TODO: make configurable
+        if false {
+            for getter in self.build_getters(&fields)? {
+                class_body.push(getter);
+            }
+        }
+
+        class_body.push(self.decode_method(&fields, tuple_name.clone(), Self::field_by_index)?);
+
+        class_body.push(self.encode_tuple_method(&fields)?);
+        class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
+
+        let mut class = Tokens::new();
+
+        class.push(toks!["export class ", tuple_name, " {"]);
+        class.nested(class_body.join_line_spacing());
+        class.push("}");
+
+        out.0.push(class);
+        Ok(())
+    }
+
+    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
+        let type_name = Rc::new(body.name.join(TYPE_SEP));
+
+        let mut class_body = Tokens::new();
+
+        let variant_field = body.variant_type.as_field();
+
+        let field = self.into_js_field_with(&variant_field, Self::enum_ident);
+
+        let mut members = Tokens::new();
+
+        class_body.push(self.build_enum_constructor(&field));
+        class_body.push(self.enum_encode_decode(&field, type_name.clone())?);
+
+        let mut values = Tokens::new();
+
+        body.variants.iter().for_each_loc(|variant| {
+            let type_id = self.convert_type(&body.name)?;
+            let mut arguments = Tokens::new();
+
+            arguments.append(variant.local_name.as_str().quoted());
+            arguments.append(self.ordinal(variant)?);
+
+            let arguments = js![new type_id, arguments];
+            let member = toks![type_name.clone(), ".", variant.local_name.as_str()];
+
+            values.push(js![= member.clone(), arguments]);
+            members.append(member);
+
+            Ok(()) as Result<()>
+        })?;
+
+        class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
+
+        let mut elements = Tokens::new();
+
+        let mut class = Tokens::new();
+
+        class.push(toks!["export class ", type_name.clone(), " {"]);
+        class.nested(class_body.join_line_spacing());
+        class.push("}");
+
+        // class declaration
+        elements.push(class);
+
+        // enum literal values
+        elements.push(values);
+
+        // push members field
+        let members_key = toks![type_name.clone(), ".", self.values.clone()];
+        elements.push(js![= members_key, js!([members])]);
+
+        out.0.push(elements.join_line_spacing());
+        Ok(())
+    }
+
+    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
+        let fields: Vec<JsField> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
+
+        let type_name = Rc::new(body.name.join(TYPE_SEP));
+
+        let mut class_body = Tokens::new();
+
+        class_body.push(self.build_constructor(&fields));
+
+        // TODO: make configurable
+        if false {
+            for getter in self.build_getters(&fields)? {
+                class_body.push(getter);
+            }
+        }
+
+        class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
+
+        class_body.push(self.encode_method(&fields, "{}", None)?);
+        class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
+
+        let mut class = Tokens::new();
+
+        class.push(toks!["export class ", type_name, " {"]);
+        class.nested(class_body.join_line_spacing());
+        class.push("}");
+
+        out.0.push(class);
+        Ok(())
+    }
+
+    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
+        let mut classes = Tokens::new();
+        let interface_type_name = Rc::new(body.name.join(TYPE_SEP));
+
+        let mut interface_body = Tokens::new();
+
+        match body.sub_type_strategy {
+            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                let tk = tag.as_str().quoted().into();
+                interface_body.push(self.interface_decode_method(&body, &tk)?);
+            }
+        }
+
+        interface_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
+
+        let interface_fields: Vec<JsField> =
+            body.fields.iter().map(|f| self.into_js_field(f)).collect();
+
+        classes.push({
+            let mut tokens = Tokens::new();
+
+            tokens.push(toks!["export class ", interface_type_name.clone(), " {"]);
+            tokens.nested(interface_body.join_line_spacing());
+            tokens.push("}");
+
+            tokens
+        });
+
+        let sub_types = body.sub_types.values().map(|t| Loc::as_ref(t));
+
+        sub_types.for_each_loc(|sub_type| {
+            let type_name = Rc::new(sub_type.name.join(TYPE_SEP));
+
+            let mut class_body = Tokens::new();
+
+            let fields: Vec<JsField> = interface_fields
+                .iter()
+                .cloned()
+                .chain(sub_type.fields.iter().map(|f| self.into_js_field(f)))
+                .collect();
+
+            class_body.push(self.build_constructor(&fields));
+
+            // TODO: make configurable
+            if false {
+                for getter in self.build_getters(&fields)? {
+                    class_body.push(getter);
+                }
+            }
+
+            class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
+
+            match body.sub_type_strategy {
+                RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                    let tk: Tokens<'el, JavaScript<'el>> = tag.as_str().quoted().into();
+                    let type_toks = toks!["data[", tk, "] = ", sub_type.name().quoted(), ";"];
+                    class_body.push(self.encode_method(&fields, "{}", Some(type_toks))?);
+                }
+            }
+
+            class_body.push_unless_empty(Code(&sub_type.codes, JS_CONTEXT));
+
+            classes.push({
+                let mut tokens = Tokens::new();
+
+                tokens.push(toks!["export class ", type_name.clone(), " {"]);
+                tokens.nested(class_body.join_line_spacing());
+                tokens.push("}");
+
+                tokens
+            });
+
+            Ok(()) as Result<()>
+        })?;
+
+        out.0.push(classes.join_line_spacing());
+        Ok(())
     }
 }

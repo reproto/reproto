@@ -1,7 +1,6 @@
 use core::RpServiceBody;
 use core::errors::Result;
 use genco::{Python, Tokens};
-use python_backend::PythonBackend;
 use std::rc::Rc;
 
 pub struct EndpointExtra<'el> {
@@ -10,7 +9,6 @@ pub struct EndpointExtra<'el> {
 }
 
 pub struct ServiceAdded<'a, 'el: 'a> {
-    pub backend: &'a PythonBackend,
     pub body: &'el RpServiceBody,
     pub type_name: Rc<String>,
     pub type_body: &'a mut Tokens<'el, Python<'el>>,

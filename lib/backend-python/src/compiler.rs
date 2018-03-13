@@ -1,50 +1,51 @@
-//! Python Backend
+//! Python Compiler
 
-use super::{PYTHON_CONTEXT, TYPE_SEP};
-use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageUtils};
+use {Options, EXT, INIT_PY, PYTHON_CONTEXT, TYPE_SEP};
+use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageProcessor,
+              PackageUtils};
 use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
-use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
-           RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, WithPos};
+use core::{ForEachLoc, Handle, Loc, RelativePathBuf, RpDecl, RpEnumBody, RpField, RpInterfaceBody,
+           RpModifier, RpName, RpPackage, RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType,
+           RpTypeBody, RpVersionedPackage, WithPos};
 use core::errors::*;
 use genco::{Cons, Element, Quoted, Tokens};
 use genco::python::{imported, Python};
 use naming::{self, Naming};
-use options::Options;
-use python_compiler::PythonCompiler;
 use python_field::PythonField;
 use python_file_spec::PythonFileSpec;
+use std::collections::BTreeMap;
 use std::iter;
 use std::rc::Rc;
-use trans::Environment;
+use trans::{self, Environment};
 
-pub struct PythonBackend {
-    pub env: Environment,
+pub struct Compiler<'el> {
+    pub env: &'el Environment,
     to_lower_snake: naming::ToLowerSnake,
     dict: Element<'static, Python<'static>>,
     enum_enum: Python<'static>,
     service_generators: Vec<Box<ServiceCodegen>>,
+    handle: &'el Handle,
 }
 
-impl PythonBackend {
-    pub fn new(env: Environment, options: Options) -> PythonBackend {
-        PythonBackend {
+impl<'el> Compiler<'el> {
+    pub fn new(env: &'el Environment, options: Options, handle: &'el Handle) -> Compiler<'el> {
+        Compiler {
             env: env,
             to_lower_snake: naming::to_lower_snake(),
             dict: "dict".into(),
             enum_enum: imported("enum").name("Enum"),
             service_generators: options.service_generators,
+            handle: handle,
         }
     }
 
-    pub fn compiler<'el>(&'el self, handle: &'el Handle) -> Result<PythonCompiler<'el>> {
-        Ok(PythonCompiler {
-            handle: handle,
-            backend: self,
-        })
+    /// Compile the given backend.
+    pub fn compile(&self) -> Result<()> {
+        self.write_files(self.populate_files()?)
     }
 
     /// Build a function that raises an exception if the given value `toks` is None.
-    fn raise_if_none<'el>(
+    fn raise_if_none(
         &self,
         toks: Tokens<'el, Python<'el>>,
         field: &PythonField,
@@ -58,7 +59,7 @@ impl PythonBackend {
         raise_if_none
     }
 
-    fn encode_method<'el>(
+    fn encode_method(
         &self,
         fields: &[PythonField<'el>],
         builder: Tokens<'el, Python<'el>>,
@@ -108,10 +109,7 @@ impl PythonBackend {
         Ok(encode)
     }
 
-    fn encode_tuple_method<'el>(
-        &self,
-        fields: &[PythonField<'el>],
-    ) -> Result<Tokens<'el, Python<'el>>> {
+    fn encode_tuple_method(&self, fields: &[PythonField<'el>]) -> Result<Tokens<'el, Python<'el>>> {
         let mut values = Tokens::new();
         let mut encode_body = Tokens::new();
 
@@ -129,9 +127,9 @@ impl PythonBackend {
         Ok(encode)
     }
 
-    fn repr_method<'a, 'el, I>(&self, name: Rc<String>, fields: I) -> Tokens<'el, Python<'el>>
+    fn repr_method<'a, 'b: 'a, I>(&self, name: Rc<String>, fields: I) -> Tokens<'b, Python<'b>>
     where
-        I: IntoIterator<Item = &'a PythonField<'a>>,
+        I: IntoIterator<Item = &'a PythonField<'b>>,
     {
         let mut args = Vec::new();
         let mut vars = Tokens::new();
@@ -159,7 +157,7 @@ impl PythonBackend {
         repr
     }
 
-    fn optional_check<'el>(
+    fn optional_check(
         &self,
         var: Tokens<'el, Python<'el>>,
         index: Tokens<'el, Python<'el>>,
@@ -188,7 +186,7 @@ impl PythonBackend {
         check.into()
     }
 
-    fn decode_method<'el, F>(
+    fn decode_method<F>(
         &self,
         name: &RpName,
         fields: &[PythonField<'el>],
@@ -233,9 +231,9 @@ impl PythonBackend {
         Ok(decode)
     }
 
-    fn build_constructor<'a, 'el, I>(&self, fields: I) -> Tokens<'el, Python<'el>>
+    fn build_constructor<'a, 'b: 'a, I>(&self, fields: I) -> Tokens<'b, Python<'b>>
     where
-        I: IntoIterator<Item = &'a PythonField<'a>>,
+        I: IntoIterator<Item = &'a PythonField<'b>>,
     {
         let mut args = Tokens::new();
         let mut assign = Tokens::new();
@@ -265,9 +263,9 @@ impl PythonBackend {
         constructor
     }
 
-    fn build_getters<'a, 'el: 'a, I>(&self, fields: I) -> Result<Vec<Tokens<'el, Python<'el>>>>
+    fn build_getters<'a, 'b: 'a, I>(&self, fields: I) -> Result<Vec<Tokens<'b, Python<'b>>>>
     where
-        I: IntoIterator<Item = &'a PythonField<'el>>,
+        I: IntoIterator<Item = &'a PythonField<'b>>,
     {
         let mut result = Vec::new();
 
@@ -299,11 +297,7 @@ impl PythonBackend {
         Ok(result)
     }
 
-    fn convert_type_id<'el, F>(
-        &self,
-        name: &RpName,
-        path_syntax: F,
-    ) -> Result<Tokens<'el, Python<'el>>>
+    fn convert_type_id<F>(&self, name: &RpName, path_syntax: F) -> Result<Tokens<'el, Python<'el>>>
     where
         F: Fn(Vec<&str>) -> String,
     {
@@ -323,7 +317,7 @@ impl PythonBackend {
         Ok(local_name.into())
     }
 
-    pub fn enum_variants<'el>(&self, body: &'el RpEnumBody) -> Result<Tokens<'el, Python<'el>>> {
+    pub fn enum_variants(&self, body: &'el RpEnumBody) -> Result<Tokens<'el, Python<'el>>> {
         let type_name = Rc::new(body.name.join(TYPE_SEP));
 
         let mut args = Tokens::new();
@@ -366,7 +360,7 @@ impl PythonBackend {
         }
     }
 
-    fn into_python_field_with<'el, F>(&self, field: &RpField, python_field_f: F) -> PythonField<'el>
+    fn into_python_field_with<F>(&self, field: &RpField, python_field_f: F) -> PythonField<'el>
     where
         F: Fn(PythonField) -> PythonField,
     {
@@ -386,11 +380,11 @@ impl PythonBackend {
         })
     }
 
-    fn into_python_field<'el>(&self, field: &'el RpField) -> PythonField<'el> {
+    fn into_python_field(&self, field: &'el RpField) -> PythonField<'el> {
         self.into_python_field_with(field, |ident| ident)
     }
 
-    fn as_class<'el>(
+    fn as_class(
         &self,
         name: Rc<String>,
         body: Tokens<'el, Python<'el>>,
@@ -406,262 +400,11 @@ impl PythonBackend {
 
         class
     }
-
-    pub fn process_tuple<'el>(
-        &self,
-        out: &mut PythonFileSpec<'el>,
-        body: &'el RpTupleBody,
-    ) -> Result<()> {
-        let mut tuple_body = Tokens::new();
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
-
-        let fields: Vec<PythonField> = body.fields
-            .iter()
-            .map(|f| self.into_python_field(f))
-            .collect();
-
-        tuple_body.push(self.build_constructor(&fields));
-
-        for getter in self.build_getters(&fields)? {
-            tuple_body.push(getter);
-        }
-
-        tuple_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
-
-        let decode = self.decode_method(&body.name, &fields, |i, _| i.to_string().into())?;
-        tuple_body.push(decode);
-
-        let encode = self.encode_tuple_method(&fields)?;
-        tuple_body.push(encode);
-
-        let repr_method = self.repr_method(type_name.clone(), &fields);
-        tuple_body.push(repr_method);
-
-        let class = self.as_class(type_name, tuple_body);
-
-        out.0.push(class);
-        Ok(())
-    }
-
-    /// Process an enum for Python.
-    pub fn process_enum<'el>(
-        &self,
-        out: &mut PythonFileSpec<'el>,
-        body: &'el RpEnumBody,
-    ) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
-        let mut class_body = Tokens::new();
-        let variant_field = body.variant_type.as_field();
-
-        let field = self.into_python_field_with(&variant_field, Self::enum_ident);
-
-        class_body.push(self.build_constructor(iter::once(&field)));
-
-        for getter in self.build_getters(iter::once(&field))? {
-            class_body.push(getter);
-        }
-
-        class_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
-
-        class_body.push(encode_method(&field)?);
-        class_body.push(decode_method(&field)?);
-
-        let repr_method = self.repr_method(type_name.clone(), iter::once(&field));
-        class_body.push(repr_method);
-
-        let class = self.as_class(type_name, class_body);
-        out.0.push(class);
-        return Ok(());
-
-        fn encode_method<'el>(field: &PythonField) -> Result<Tokens<'el, Python<'el>>> {
-            let mut m = Tokens::new();
-            m.push("def encode(self):");
-            m.nested(toks!["return self.", field.safe_ident.clone()]);
-            Ok(m)
-        }
-
-        fn decode_method<'el>(field: &PythonField) -> Result<Tokens<'el, Python<'el>>> {
-            let mut decode_body = Tokens::new();
-
-            let mut check = Tokens::new();
-            check.push(toks!["if value.", field.safe_ident.clone(), " == data:"]);
-            check.nested(toks!["return value"]);
-
-            let mut member_loop = Tokens::new();
-
-            member_loop.push("for value in cls.__members__.values():");
-            member_loop.nested(check);
-
-            decode_body.push(member_loop);
-            decode_body.push(toks![
-                "raise Exception(",
-                "data does not match enum".quoted(),
-                ")",
-            ]);
-
-            let mut m = Tokens::new();
-            m.push("@classmethod");
-            m.push("def decode(cls, data):");
-            m.nested(decode_body.join_line_spacing());
-            Ok(m)
-        }
-    }
-
-    pub fn process_type<'el>(
-        &self,
-        out: &mut PythonFileSpec<'el>,
-        body: &'el RpTypeBody,
-    ) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
-        let mut class_body = Tokens::new();
-
-        let fields: Vec<PythonField> = body.fields
-            .iter()
-            .map(|f| self.into_python_field(f))
-            .collect();
-
-        let constructor = self.build_constructor(&fields);
-        class_body.push(constructor);
-
-        for getter in self.build_getters(&fields)? {
-            class_body.push(getter);
-        }
-
-        let decode = self.decode_method(&body.name, &fields, |_, field| {
-            toks!(field.name.clone().quoted())
-        })?;
-
-        class_body.push(decode);
-
-        let encode = self.encode_method(&fields, self.dict.clone().into(), None)?;
-
-        class_body.push(encode);
-
-        let repr_method = self.repr_method(type_name.clone(), &fields);
-        class_body.push(repr_method);
-        class_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
-
-        out.0.push(self.as_class(type_name, class_body));
-        Ok(())
-    }
-
-    pub fn process_interface<'el>(
-        &self,
-        out: &mut PythonFileSpec<'el>,
-        body: &'el RpInterfaceBody,
-    ) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
-        let mut type_body = Tokens::new();
-
-        match body.sub_type_strategy {
-            RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                let tk = tag.as_str().quoted().into();
-                type_body.push(self.interface_decode_method(&body, &tk)?);
-            }
-        }
-
-        type_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
-
-        out.0.push(self.as_class(type_name, type_body));
-
-        let values = body.sub_types.values().map(|l| Loc::as_ref(l));
-
-        values.for_each_loc(|sub_type| {
-            let sub_type_name = Rc::new(sub_type.name.join(TYPE_SEP));
-
-            let mut sub_type_body = Tokens::new();
-
-            sub_type_body.push(toks!["TYPE = ", sub_type.name().quoted()]);
-
-            let fields: Vec<PythonField> = body.fields
-                .iter()
-                .chain(sub_type.fields.iter())
-                .map(|f| self.into_python_field(f))
-                .collect();
-
-            let constructor = self.build_constructor(&fields);
-            sub_type_body.push(constructor);
-
-            for getter in self.build_getters(&fields)? {
-                sub_type_body.push(getter);
-            }
-
-            let decode = self.decode_method(&sub_type.name, &fields, |_, field| {
-                toks!(field.ident.clone().quoted())
-            })?;
-
-            sub_type_body.push(decode);
-
-            match body.sub_type_strategy {
-                RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                    let tk: Tokens<'el, Python<'el>> = tag.as_str().quoted().into();
-
-                    let encode = self.encode_method(
-                        &fields,
-                        self.dict.clone().into(),
-                        Some(toks!["data[", tk, "] = ", sub_type.name().quoted(),]),
-                    )?;
-
-                    sub_type_body.push(encode);
-                }
-            }
-
-            let repr_method = self.repr_method(sub_type_name.clone(), &fields);
-            sub_type_body.push(repr_method);
-            sub_type_body.push_unless_empty(Code(&sub_type.codes, PYTHON_CONTEXT));
-
-            out.0.push(self.as_class(sub_type_name, sub_type_body));
-            Ok(()) as Result<()>
-        })?;
-
-        Ok(())
-    }
-
-    pub fn process_service<'el>(
-        &self,
-        out: &mut PythonFileSpec<'el>,
-        body: &'el RpServiceBody,
-    ) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
-        let mut type_body = Tokens::new();
-
-        let mut extra: Vec<EndpointExtra> = Vec::new();
-
-        for endpoint in body.endpoints.values() {
-            let response_ty = if let Some(res) = endpoint.response.as_ref() {
-                Some((
-                    "data",
-                    self.dynamic_decode(res.ty(), "data".into())
-                        .with_pos(Loc::pos(res))?,
-                ))
-            } else {
-                None
-            };
-
-            extra.push(EndpointExtra {
-                name: endpoint.ident(),
-                response_ty: response_ty,
-            });
-        }
-
-        for g in &self.service_generators {
-            g.generate(ServiceAdded {
-                backend: self,
-                body: body,
-                type_name: type_name.clone(),
-                type_body: &mut type_body,
-                extra: &extra,
-            })?;
-        }
-
-        out.0.push(type_body);
-        Ok(())
-    }
 }
 
-impl PackageUtils for PythonBackend {}
+impl<'el> PackageUtils for Compiler<'el> {}
 
-impl<'el> Converter<'el> for PythonBackend {
+impl<'el> Converter<'el> for Compiler<'el> {
     type Custom = Python<'el>;
 
     fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {
@@ -681,7 +424,7 @@ impl<'el> Converter<'el> for PythonBackend {
     }
 }
 
-impl<'el> DynamicConverter<'el> for PythonBackend {
+impl<'el> DynamicConverter<'el> for Compiler<'el> {
     fn is_native(&self, ty: &RpType) -> bool {
         use self::RpType::*;
 
@@ -710,7 +453,7 @@ impl<'el> DynamicConverter<'el> for PythonBackend {
     }
 }
 
-impl<'el> DynamicDecode<'el> for PythonBackend {
+impl<'el> DynamicDecode<'el> for Compiler<'el> {
     fn name_decode(
         &self,
         input: Tokens<'el, Self::Custom>,
@@ -798,7 +541,7 @@ impl<'el> DynamicDecode<'el> for PythonBackend {
     }
 }
 
-impl<'el> DynamicEncode<'el> for PythonBackend {
+impl<'el> DynamicEncode<'el> for Compiler<'el> {
     fn name_encode(
         &self,
         input: Tokens<'el, Self::Custom>,
@@ -843,5 +586,310 @@ impl<'el> DynamicEncode<'el> for PythonBackend {
             input,
             ".items())",
         ]
+    }
+}
+
+impl<'el> PackageProcessor<'el> for Compiler<'el> {
+    type Out = PythonFileSpec<'el>;
+    type DeclIter = trans::environment::DeclIter<'el>;
+
+    fn ext(&self) -> &str {
+        EXT
+    }
+
+    fn decl_iter(&self) -> Self::DeclIter {
+        self.env.decl_iter()
+    }
+
+    fn handle(&self) -> &'el Handle {
+        self.handle
+    }
+
+    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
+        self.package(package)
+    }
+
+    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
+        let mut tuple_body = Tokens::new();
+        let type_name = Rc::new(body.name.join(TYPE_SEP));
+
+        let fields: Vec<PythonField> = body.fields
+            .iter()
+            .map(|f| self.into_python_field(f))
+            .collect();
+
+        tuple_body.push(self.build_constructor(&fields));
+
+        for getter in self.build_getters(&fields)? {
+            tuple_body.push(getter);
+        }
+
+        tuple_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
+
+        let decode = self.decode_method(&body.name, &fields, |i, _| i.to_string().into())?;
+        tuple_body.push(decode);
+
+        let encode = self.encode_tuple_method(&fields)?;
+        tuple_body.push(encode);
+
+        let repr_method = self.repr_method(type_name.clone(), &fields);
+        tuple_body.push(repr_method);
+
+        let class = self.as_class(type_name, tuple_body);
+
+        out.0.push(class);
+        Ok(())
+    }
+
+    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
+        let type_name = Rc::new(body.name.join(TYPE_SEP));
+        let mut class_body = Tokens::new();
+        let variant_field = body.variant_type.as_field();
+
+        let field = self.into_python_field_with(&variant_field, Self::enum_ident);
+
+        class_body.push(self.build_constructor(iter::once(&field)));
+
+        for getter in self.build_getters(iter::once(&field))? {
+            class_body.push(getter);
+        }
+
+        class_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
+
+        class_body.push(encode_method(&field)?);
+        class_body.push(decode_method(&field)?);
+
+        let repr_method = self.repr_method(type_name.clone(), iter::once(&field));
+        class_body.push(repr_method);
+
+        let class = self.as_class(type_name, class_body);
+        out.0.push(class);
+        return Ok(());
+
+        fn encode_method<'el>(field: &PythonField) -> Result<Tokens<'el, Python<'el>>> {
+            let mut m = Tokens::new();
+            m.push("def encode(self):");
+            m.nested(toks!["return self.", field.safe_ident.clone()]);
+            Ok(m)
+        }
+
+        fn decode_method<'el>(field: &PythonField) -> Result<Tokens<'el, Python<'el>>> {
+            let mut decode_body = Tokens::new();
+
+            let mut check = Tokens::new();
+            check.push(toks!["if value.", field.safe_ident.clone(), " == data:"]);
+            check.nested(toks!["return value"]);
+
+            let mut member_loop = Tokens::new();
+
+            member_loop.push("for value in cls.__members__.values():");
+            member_loop.nested(check);
+
+            decode_body.push(member_loop);
+            decode_body.push(toks![
+                "raise Exception(",
+                "data does not match enum".quoted(),
+                ")",
+            ]);
+
+            let mut m = Tokens::new();
+            m.push("@classmethod");
+            m.push("def decode(cls, data):");
+            m.nested(decode_body.join_line_spacing());
+            Ok(m)
+        }
+    }
+
+    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
+        let type_name = Rc::new(body.name.join(TYPE_SEP));
+        let mut class_body = Tokens::new();
+
+        let fields: Vec<PythonField> = body.fields
+            .iter()
+            .map(|f| self.into_python_field(f))
+            .collect();
+
+        let constructor = self.build_constructor(&fields);
+        class_body.push(constructor);
+
+        for getter in self.build_getters(&fields)? {
+            class_body.push(getter);
+        }
+
+        let decode = self.decode_method(&body.name, &fields, |_, field| {
+            toks!(field.name.clone().quoted())
+        })?;
+
+        class_body.push(decode);
+
+        let encode = self.encode_method(&fields, self.dict.clone().into(), None)?;
+
+        class_body.push(encode);
+
+        let repr_method = self.repr_method(type_name.clone(), &fields);
+        class_body.push(repr_method);
+        class_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
+
+        out.0.push(self.as_class(type_name, class_body));
+        Ok(())
+    }
+
+    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
+        let type_name = Rc::new(body.name.join(TYPE_SEP));
+        let mut type_body = Tokens::new();
+
+        match body.sub_type_strategy {
+            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                let tk = tag.as_str().quoted().into();
+                type_body.push(self.interface_decode_method(&body, &tk)?);
+            }
+        }
+
+        type_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
+
+        out.0.push(self.as_class(type_name, type_body));
+
+        let values = body.sub_types.values().map(|l| Loc::as_ref(l));
+
+        values.for_each_loc(|sub_type| {
+            let sub_type_name = Rc::new(sub_type.name.join(TYPE_SEP));
+
+            let mut sub_type_body = Tokens::new();
+
+            sub_type_body.push(toks!["TYPE = ", sub_type.name().quoted()]);
+
+            let fields: Vec<PythonField> = body.fields
+                .iter()
+                .chain(sub_type.fields.iter())
+                .map(|f| self.into_python_field(f))
+                .collect();
+
+            let constructor = self.build_constructor(&fields);
+            sub_type_body.push(constructor);
+
+            for getter in self.build_getters(&fields)? {
+                sub_type_body.push(getter);
+            }
+
+            let decode = self.decode_method(&sub_type.name, &fields, |_, field| {
+                toks!(field.ident.clone().quoted())
+            })?;
+
+            sub_type_body.push(decode);
+
+            match body.sub_type_strategy {
+                RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                    let tk: Tokens<'el, Python<'el>> = tag.as_str().quoted().into();
+
+                    let encode = self.encode_method(
+                        &fields,
+                        self.dict.clone().into(),
+                        Some(toks!["data[", tk, "] = ", sub_type.name().quoted(),]),
+                    )?;
+
+                    sub_type_body.push(encode);
+                }
+            }
+
+            let repr_method = self.repr_method(sub_type_name.clone(), &fields);
+            sub_type_body.push(repr_method);
+            sub_type_body.push_unless_empty(Code(&sub_type.codes, PYTHON_CONTEXT));
+
+            out.0.push(self.as_class(sub_type_name, sub_type_body));
+            Ok(()) as Result<()>
+        })?;
+
+        Ok(())
+    }
+
+    fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody) -> Result<()> {
+        let type_name = Rc::new(body.name.join(TYPE_SEP));
+        let mut type_body = Tokens::new();
+
+        let mut extra: Vec<EndpointExtra> = Vec::new();
+
+        for endpoint in body.endpoints.values() {
+            let response_ty = if let Some(res) = endpoint.response.as_ref() {
+                Some((
+                    "data",
+                    self.dynamic_decode(res.ty(), "data".into())
+                        .with_pos(Loc::pos(res))?,
+                ))
+            } else {
+                None
+            };
+
+            extra.push(EndpointExtra {
+                name: endpoint.ident(),
+                response_ty: response_ty,
+            });
+        }
+
+        for g in &self.service_generators {
+            g.generate(ServiceAdded {
+                body: body,
+                type_name: type_name.clone(),
+                type_body: &mut type_body,
+                extra: &extra,
+            })?;
+        }
+
+        out.0.push(type_body);
+        Ok(())
+    }
+
+    fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, PythonFileSpec<'el>>> {
+        let mut enums = Vec::new();
+
+        let mut files = self.do_populate_files(|decl| {
+            if let RpDecl::Enum(ref body) = *decl {
+                enums.push(body);
+            }
+
+            Ok(())
+        })?;
+
+        // Process picked up enums.
+        // These are added to the end of the file to declare enums:
+        // https://docs.python.org/3/library/enum.html
+        for body in enums {
+            if let Some(ref mut file_spec) = files.get_mut(&body.name.package) {
+                file_spec.0.push(self.enum_variants(&body)?);
+            } else {
+                return Err(format!("missing file for package: {}", &body.name.package).into());
+            }
+        }
+
+        Ok(files)
+    }
+
+    fn resolve_full_path(&self, package: &RpPackage) -> Result<RelativePathBuf> {
+        let handle = self.handle();
+
+        let mut full_path = RelativePathBuf::new();
+        let mut iter = package.parts.iter().peekable();
+
+        while let Some(part) = iter.next() {
+            full_path = full_path.join(part);
+
+            if iter.peek().is_none() {
+                continue;
+            }
+
+            if !handle.is_dir(&full_path) {
+                debug!("+dir: {}", full_path.display());
+                handle.create_dir_all(&full_path)?;
+            }
+
+            let init_path = full_path.join(INIT_PY);
+
+            if !handle.is_file(&init_path) {
+                debug!("+init: {}", init_path.display());
+                handle.create(&init_path)?;
+            }
+        }
+
+        full_path.set_extension(self.ext());
+        Ok(full_path)
     }
 }

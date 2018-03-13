@@ -1,10 +1,10 @@
 //! Chrono module for Rust.
 
+use Options;
+use backend::Initializer;
 use core::errors::*;
 use genco::Rust;
 use genco::rust::imported;
-use listeners::Listeners;
-use rust_options::RustOptions;
 
 pub struct Module {
     datetime: Rust<'static>,
@@ -20,8 +20,10 @@ impl Module {
     }
 }
 
-impl Listeners for Module {
-    fn configure(&self, options: &mut RustOptions) -> Result<()> {
+impl Initializer for Module {
+    type Options = Options;
+
+    fn initialize(&self, options: &mut Self::Options) -> Result<()> {
         options.datetime = Some(toks![
             self.datetime.clone(),
             "<",
