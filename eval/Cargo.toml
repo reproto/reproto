@@ -20,13 +20,14 @@ reproto-compile = {path = "../lib/compile", version = "0.3"}
 reproto-derive = {path = "../lib/derive", version = "0.3"}
 reproto-manifest = {path = "../lib/manifest", version = "0.3"}
 reproto-parser = {path = "../lib/parser", version = "0.3"}
-reproto-backend-java = {path = "../lib/backend-java", version = "0.3"}
 reproto-backend-csharp = {path = "../lib/backend-csharp", version = "0.3"}
+reproto-backend-java = {path = "../lib/backend-java", version = "0.3"}
 reproto-backend-js = {path = "../lib/backend-js", version = "0.3"}
 reproto-backend-json = {path = "../lib/backend-json", version = "0.3"}
 reproto-backend-python = {path = "../lib/backend-python", version = "0.3"}
-reproto-backend-rust = {path = "../lib/backend-rust", version = "0.3"}
 reproto-backend-reproto = {path = "../lib/backend-reproto", version = "0.3"}
+reproto-backend-rust = {path = "../lib/backend-rust", version = "0.3"}
+reproto-backend-swift = {path = "../lib/backend-swift", version = "0.3"}
 
 stdweb = "0.3"
 serde = "1"

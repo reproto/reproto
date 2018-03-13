@@ -12,9 +12,8 @@ tuple Tuple {
 }
 
 #[attribute]
+#[reserved(foo)]
 type Foo {
-  option reserved = "foo";
-
   #[attribute]
   boolean_type?: boolean;
   string_type?: string;
@@ -38,9 +37,8 @@ type Foo {
 }
 
 #[attribute]
+#[reserved(a)]
 interface Bar {
-  option reserved = "a";
-
   java {{
     default int hello() {
       return 42;
@@ -86,6 +84,5 @@ service Foo {
   #[http]
   #[allow(nothing)]
   #[deny(everything)]
-  #[foo(ty1=[string], ty2=Foo, ty3=u32)]
   bidi_streaming(request: stream Foo) -> stream Foo;
 }

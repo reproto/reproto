@@ -50,6 +50,10 @@ fn detect() -> Vec<Language> {
         out.push(Language::Csharp);
     }
 
+    if test("swift", &["--version"]) {
+        out.push(Language::Swift);
+    }
+
     out
 }
 

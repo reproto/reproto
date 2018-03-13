@@ -1,6 +1,4 @@
 interface Foo {
-  option reserved = 1;
-
   java {{
   }}
 

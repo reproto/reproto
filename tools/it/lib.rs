@@ -211,7 +211,7 @@ impl Reproto {
             let stderr = str::from_utf8(&output.stderr)?;
 
             bail!(
-                "failed to run reproto on project: {}: {}: {}: {}",
+                "failed to run reproto on project: {}: {}:\nstdout: {}\nstderr: {}",
                 manifest.current_dir.display(),
                 output.status,
                 stdout,
@@ -231,6 +231,7 @@ pub enum Language {
     Python,
     Python3,
     Rust,
+    Swift,
 }
 
 impl Language {
@@ -245,6 +246,7 @@ impl Language {
             Python => "python",
             Python3 => "python3",
             Rust => "rust",
+            Swift => "swift",
         }
     }
 
@@ -259,6 +261,7 @@ impl Language {
             Python => "python",
             Python3 => "python",
             Rust => "rust",
+            Swift => "swift",
         }
     }
 
@@ -273,6 +276,7 @@ impl Language {
             Python => RelativePath::new("generated"),
             Python3 => RelativePath::new("generated"),
             Rust => RelativePath::new("src"),
+            Swift => RelativePath::new("Sources/Models"),
         }
     }
 
@@ -378,8 +382,6 @@ impl<'a> ProjectRunner<'a> {
         // building project
         let output = Command::new("make")
             .current_dir(&self.target_workdir)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
             .output()
             .map_err(|e| {
                 format_err!(
@@ -390,10 +392,15 @@ impl<'a> ProjectRunner<'a> {
             })?;
 
         if !output.status.success() {
+            let stdout = str::from_utf8(&output.stdout)?;
+            let stderr = str::from_utf8(&output.stderr)?;
+
             bail!(
-                "failed to make project: {}: {}",
+                "failed to make project: {}: {}\nstdout: {}\nstderr: {}",
                 self.target_workdir.display(),
-                output.status
+                output.status,
+                stdout,
+                stderr,
             );
         }
 
@@ -407,6 +414,7 @@ impl<'a> ProjectRunner<'a> {
             .stderr(Stdio::inherit())
             .spawn()?;
 
+        let mut errors = Vec::new();
         let mut actual: Vec<json::Value> = Vec::new();
         let mut expected: Vec<json::Value> = Vec::new();
 
@@ -435,11 +443,19 @@ impl<'a> ProjectRunner<'a> {
 
             for line in BufReader::new(stdout).lines() {
                 let line = line?;
-                actual.push(json::from_str(&line)?);
+
+                match json::from_str(&line) {
+                    Ok(doc) => actual.push(doc),
+                    Err(e) => errors.push(e.to_string()),
+                }
             }
         }
 
         child.wait()?;
+
+        if !errors.is_empty() {
+            bail!("Got bad JSON on stdout:\n{}", errors.join("\n"),);
+        }
 
         if actual.len() != expected.len() {
             bail!(
@@ -452,7 +468,7 @@ impl<'a> ProjectRunner<'a> {
         let mut errors = Vec::new();
 
         for (i, (actual, expected)) in actual.into_iter().zip(expected).enumerate() {
-            if actual == expected {
+            if similar(&actual, &expected) {
                 continue;
             }
 
@@ -466,7 +482,57 @@ impl<'a> ProjectRunner<'a> {
             bail!("test failed: {}", errors.join(", "));
         }
 
-        Ok(())
+        return Ok(());
+
+        /// Check if the two documents are similar enough to be considered equal.
+        fn similar(left: &json::Value, right: &json::Value) -> bool {
+            use json::Value::*;
+
+            match (left, right) {
+                (&Null, &Null) => true,
+                (&Bool(ref left), &Bool(ref right)) => left == right,
+                (&Number(ref left), &Number(ref right)) => match (left, right) {
+                    (l, r) if l.is_u64() && r.is_u64() => {
+                        l.as_u64().unwrap() == r.as_u64().unwrap()
+                    }
+                    (l, r) if l.is_i64() && r.is_i64() => {
+                        l.as_i64().unwrap() == r.as_i64().unwrap()
+                    }
+                    (l, r) if l.is_f64() && r.is_f64() => {
+                        let l = l.as_f64().unwrap();
+                        let r = r.as_f64().unwrap();
+
+                        (l.fract() - r.fract()).abs() < 0.0001f64
+                    }
+                    _ => false,
+                },
+                (&String(ref left), &String(ref right)) => left == right,
+                (&Array(ref left), &Array(ref right)) => {
+                    if left.len() != right.len() {
+                        return false;
+                    }
+
+                    left.iter().zip(right.iter()).all(|(l, r)| similar(l, r))
+                }
+                (&Object(ref left), &Object(ref right)) => {
+                    if left.len() != right.len() {
+                        return false;
+                    }
+
+                    for (key, left) in left {
+                        match right.get(key) {
+                            None => return false,
+                            Some(right) => if !similar(left, right) {
+                                return false;
+                            },
+                        }
+                    }
+
+                    return true;
+                }
+                _ => false,
+            }
+        }
     }
 }
 

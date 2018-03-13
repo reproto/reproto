@@ -17,6 +17,7 @@ const languages = [
   "json",
   "java",
   "csharp",
+  "swift",
   "rust",
   "python",
   "javascript",
@@ -32,6 +33,7 @@ const FORMAT_LANGUAGE_MAP: {[key: string]: string} = {
   json: "json",
   java: "java",
   csharp: "csharp",
+  swift: "swift",
   rust: "rust",
   python: "python",
   js: "javascript",
@@ -99,6 +101,7 @@ enum Output {
   Reproto = "reproto",
   Java = "java",
   Csharp = "csharp",
+  Swift = "swift",
   Rust = "rust",
   Python = "python",
   JavaScript = "js",
@@ -417,6 +420,9 @@ export class Main extends React.Component<MainProps, MainState> {
         break;
       case "csharp":
         output = "csharp" as Output;
+        break;
+      case "swift":
+        output = "swift" as Output;
         break;
       case "python":
         output = "python" as Output;
@@ -773,6 +779,7 @@ export class Main extends React.Component<MainProps, MainState> {
                         <option value="reproto">Reproto</option>
                         <option value="java">Java</option>
                         <option value="csharp">C#</option>
+                        <option value="swift">Swift</option>
                         <option value="python">Python</option>
                         <option value="js">JavaScript</option>
                         <option value="rust">Rust</option>

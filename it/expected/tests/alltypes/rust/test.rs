@@ -14,7 +14,7 @@ pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
   unsigned_32: Option<u32>,
   #[serde(skip_serializing_if="Option::is_none")]
-  unsigned_64: Option<u32>,
+  unsigned_64: Option<u64>,
   #[serde(skip_serializing_if="Option::is_none")]
   signed_32: Option<i32>,
   #[serde(skip_serializing_if="Option::is_none")]

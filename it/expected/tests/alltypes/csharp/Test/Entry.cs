@@ -23,7 +23,7 @@ namespace Test {
       get;
     }
     [JsonProperty("unsigned_64")]
-    public UInt32? unsigned64 {
+    public UInt64? unsigned64 {
       get;
     }
     [JsonProperty("signed_32")]
@@ -65,7 +65,7 @@ namespace Test {
       [JsonProperty("string_type")] String stringType,
       [JsonProperty("datetime_type")] DateTime? datetimeType,
       [JsonProperty("unsigned_32")] UInt32? unsigned32,
-      [JsonProperty("unsigned_64")] UInt32? unsigned64,
+      [JsonProperty("unsigned_64")] UInt64? unsigned64,
       [JsonProperty("signed_32")] Int32? signed32,
       [JsonProperty("signed_64")] Int64? signed64,
       [JsonProperty("float_type")] Single? floatType,

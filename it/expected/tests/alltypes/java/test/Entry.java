@@ -21,7 +21,7 @@ public class Entry {
   @JsonProperty("unsigned_32")
   private final Optional<Integer> unsigned32;
   @JsonProperty("unsigned_64")
-  private final Optional<Integer> unsigned64;
+  private final Optional<Long> unsigned64;
   @JsonProperty("signed_32")
   private final Optional<Integer> signed32;
   @JsonProperty("signed_64")
@@ -45,7 +45,7 @@ public class Entry {
     @JsonProperty("string_type") final Optional<String> stringType,
     @JsonProperty("datetime_type") final Optional<Instant> datetimeType,
     @JsonProperty("unsigned_32") final Optional<Integer> unsigned32,
-    @JsonProperty("unsigned_64") final Optional<Integer> unsigned64,
+    @JsonProperty("unsigned_64") final Optional<Long> unsigned64,
     @JsonProperty("signed_32") final Optional<Integer> signed32,
     @JsonProperty("signed_64") final Optional<Long> signed64,
     @JsonProperty("float_type") final Optional<Float> floatType,
@@ -104,7 +104,7 @@ public class Entry {
   }
 
   @JsonProperty("unsigned_64")
-  public Optional<Integer> getUnsigned64() {
+  public Optional<Long> getUnsigned64() {
     return this.unsigned64;
   }
 
@@ -289,7 +289,7 @@ public class Entry {
     private Optional<String> stringType = Optional.empty();
     private Optional<Instant> datetimeType = Optional.empty();
     private Optional<Integer> unsigned32 = Optional.empty();
-    private Optional<Integer> unsigned64 = Optional.empty();
+    private Optional<Long> unsigned64 = Optional.empty();
     private Optional<Integer> signed32 = Optional.empty();
     private Optional<Long> signed64 = Optional.empty();
     private Optional<Float> floatType = Optional.empty();
@@ -319,7 +319,7 @@ public class Entry {
       return this;
     }
 
-    public Builder unsigned64(final int unsigned64) {
+    public Builder unsigned64(final long unsigned64) {
       this.unsigned64 = Optional.of(unsigned64);
       return this;
     }
@@ -369,7 +369,7 @@ public class Entry {
       final Optional<String> stringType = this.stringType;
       final Optional<Instant> datetimeType = this.datetimeType;
       final Optional<Integer> unsigned32 = this.unsigned32;
-      final Optional<Integer> unsigned64 = this.unsigned64;
+      final Optional<Long> unsigned64 = this.unsigned64;
       final Optional<Integer> signed32 = this.signed32;
       final Optional<Long> signed64 = this.signed64;
       final Optional<Float> floatType = this.floatType;

@@ -244,17 +244,4 @@ mod tests {
         assert_type_spec_eq!(Type::String, "string");
         assert_type_spec_eq!(Type::Name { name: c }, "Hello::World");
     }
-
-    #[test]
-    fn test_option_decl() {
-        let member = parse_member("option foo_bar_baz = true;");
-
-        if let TypeMember::Option(option) = member {
-            assert_eq!("foo_bar_baz", option.name);
-            assert_eq!(Value::Boolean(true), *Loc::value(&option.value));
-            return;
-        }
-
-        panic!("option did not match");
-    }
 }

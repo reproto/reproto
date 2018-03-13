@@ -261,6 +261,7 @@ pub enum Language {
     Python,
     Rust,
     Csharp,
+    Swift,
 }
 
 impl Language {
@@ -274,6 +275,7 @@ impl Language {
             "python" => Python,
             "rust" => Rust,
             "csharp" => Csharp,
+            "swift" => Swift,
             _ => return None,
         };
 

@@ -3,7 +3,7 @@ type Entry {
     string_type?: string;
     datetime_type?: datetime;
     unsigned_32?: u32;
-    unsigned_64?: u32;
+    unsigned_64?: u64;
     signed_32?: i32;
     signed_64?: i64;
     float_type?: float;

@@ -613,6 +613,7 @@ pub fn convert_lang(input: Language) -> Box<Lang> {
         Python => Box::new(::python::PythonLang),
         Rust => Box::new(::rust::RustLang),
         Csharp => Box::new(::csharp::CsharpLang),
+        Swift => Box::new(::swift::SwiftLang),
     }
 }
 

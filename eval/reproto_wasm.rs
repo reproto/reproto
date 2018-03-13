@@ -13,6 +13,7 @@ extern crate reproto_backend_json as json;
 extern crate reproto_backend_python as python;
 extern crate reproto_backend_reproto as reproto;
 extern crate reproto_backend_rust as rust;
+extern crate reproto_backend_swift as swift;
 extern crate reproto_compile as compile;
 extern crate reproto_core as core;
 extern crate reproto_derive as derive;
@@ -43,6 +44,8 @@ enum Output {
     Java,
     #[serde(rename = "csharp")]
     Csharp,
+    #[serde(rename = "swift")]
+    Swift,
     #[serde(rename = "python")]
     Python,
     #[serde(rename = "rust")]
@@ -76,6 +79,7 @@ impl Output {
 
                 Box::new(csharp::CsharpLang)
             }
+            Output::Swift => Box::new(swift::SwiftLang),
             Output::Python => Box::new(python::PythonLang),
             Output::Rust => {
                 if settings.rust.chrono {
@@ -434,7 +438,7 @@ fn derive(derive: Derive) -> DeriveResult {
         let file = ast::File {
             comment: vec!["Generated from reproto derive".to_string().into()],
             uses: vec![],
-            options: vec![],
+            attributes: vec![],
             decls: vec![decl],
         };
 
