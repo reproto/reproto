@@ -2,7 +2,7 @@
 
 use super::EXT;
 use backend::{PackageProcessor, PackageUtils};
-use core::{Handle, Loc, RpEnumBody, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
+use core::{Handle, RpEnumBody, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
            RpVersionedPackage};
 use core::errors::*;
 use js_backend::JsBackend;
@@ -40,23 +40,19 @@ impl<'el> PackageProcessor<'el> for JsCompiler<'el> {
         self.backend.package(package)
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, body: &'el Loc<RpTupleBody>) -> Result<()> {
+    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
         self.backend.process_tuple(out, body)
     }
 
-    fn process_enum(&self, out: &mut Self::Out, body: &'el Loc<RpEnumBody>) -> Result<()> {
+    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
         self.backend.process_enum(out, body)
     }
 
-    fn process_type(&self, out: &mut Self::Out, body: &'el Loc<RpTypeBody>) -> Result<()> {
+    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
         self.backend.process_type(out, body)
     }
 
-    fn process_interface(
-        &self,
-        out: &mut Self::Out,
-        body: &'el Loc<RpInterfaceBody>,
-    ) -> Result<()> {
+    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
         self.backend.process_interface(out, body)
     }
 }

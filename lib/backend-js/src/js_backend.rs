@@ -52,7 +52,7 @@ impl JsBackend {
 
     fn encode_method<'el, B>(
         &self,
-        fields: &[Loc<JsField<'el>>],
+        fields: &[JsField<'el>],
         builder: B,
         extra: Option<Tokens<'el, JavaScript<'el>>>,
     ) -> Result<Tokens<'el, JavaScript<'el>>>
@@ -69,7 +69,7 @@ impl JsBackend {
 
         let mut assign = Tokens::new();
 
-        fields.for_each_loc(|field| {
+        for field in fields {
             let var_string = field.name.quoted();
             let field_toks = toks!["this.", field.safe_ident.clone()];
             let value_toks = self.dynamic_encode(field.ty, field_toks.clone())?;
@@ -86,9 +86,7 @@ impl JsBackend {
                     assign.push(toks);
                 }
             }
-
-            Ok(()) as Result<()>
-        })?;
+        }
 
         if !assign.is_empty() {
             body.push(assign.join_line_spacing());
@@ -107,18 +105,17 @@ impl JsBackend {
 
     fn encode_tuple_method<'el>(
         &self,
-        fields: &[Loc<JsField<'el>>],
+        fields: &[JsField<'el>],
     ) -> Result<Tokens<'el, JavaScript<'el>>> {
         let mut values = Tokens::new();
 
         let mut body = Tokens::new();
 
-        fields.for_each_loc(|field| {
+        for field in fields {
             let toks = toks!["this.", field.safe_ident.clone()];
             body.push(self.throw_if_null(toks.clone(), field));
             values.push(self.dynamic_encode(field.ty, toks)?);
-            Ok(()) as Result<()>
-        })?;
+        }
 
         body.push(js![@return [ values ]]);
 
@@ -158,7 +155,7 @@ impl JsBackend {
 
     fn decode_method<'el, F>(
         &self,
-        fields: &[Loc<JsField<'el>>],
+        fields: &[JsField<'el>],
         type_name: Rc<String>,
         variable_fn: F,
     ) -> Result<Tokens<'el, JavaScript<'el>>>
@@ -172,37 +169,35 @@ impl JsBackend {
             let var_name = Rc::new(format!("v_{}", field.ident.as_str()));
             let var = variable_fn(i, field);
 
-            let toks = Loc::take(Loc::and_then(Loc::as_ref(field), |field| {
-                match *field.modifier {
-                    RpModifier::Optional => {
-                        let var_name = toks![var_name.clone()];
-                        let var_toks = self.dynamic_decode(field.ty, var_name.clone())?;
+            let toks = match *field.modifier {
+                RpModifier::Optional => {
+                    let var_name = toks![var_name.clone()];
+                    let var_toks = self.dynamic_decode(field.ty, var_name.clone())?;
 
-                        let mut check = Tokens::new();
+                    let mut check = Tokens::new();
 
-                        check.push(toks!["let ", var_name.clone(), " = data[", var, "];"]);
-                        check.push(js![if is_defined(var_name.clone()),
+                    check.push(toks!["let ", var_name.clone(), " = data[", var, "];"]);
+                    check.push(js![if is_defined(var_name.clone()),
                                       toks![var_name.clone(), " = ", var_toks, ";"],
                                       toks![var_name, " = null", ";"]]);
 
-                        Ok(check.join_line_spacing().into()) as Result<Tokens<'el, JavaScript<'el>>>
-                    }
-                    _ => {
-                        let var_toks = toks!["data[", var.clone(), "]"];
-                        let var_toks = self.dynamic_decode(field.ty, var_toks.into())?;
+                    check.join_line_spacing()
+                }
+                _ => {
+                    let var_toks = toks!["data[", var.clone(), "]"];
+                    let var_toks = self.dynamic_decode(field.ty, var_toks.into())?;
 
-                        let mut check = Tokens::new();
+                    let mut check = Tokens::new();
 
-                        let var_name = toks![var_name.clone()];
+                    let var_name = toks![var_name.clone()];
 
-                        check.push(toks!["const ", var_name.clone(), " = ", var_toks, ";"]);
-                        check.push(js![if is_not_defined(var_name),
+                    check.push(toks!["const ", var_name.clone(), " = ", var_toks, ";"]);
+                    check.push(js![if is_not_defined(var_name),
                                    js![throw var, " + ", ": required field".quoted()]]);
 
-                        Ok(check.join_line_spacing().into()) as Result<Tokens<'el, JavaScript<'el>>>
-                    }
+                    check.join_line_spacing()
                 }
-            })?);
+            };
 
             assign.push(toks);
             arguments.append(var_name);
@@ -231,7 +226,7 @@ impl JsBackend {
         i.to_string().into()
     }
 
-    fn build_constructor<'el>(&self, fields: &[Loc<JsField<'el>>]) -> Tokens<'el, JavaScript<'el>> {
+    fn build_constructor<'el>(&self, fields: &[JsField<'el>]) -> Tokens<'el, JavaScript<'el>> {
         let mut arguments = Tokens::new();
         let mut assignments = Tokens::new();
 
@@ -304,7 +299,7 @@ impl JsBackend {
 
     fn build_getters<'el>(
         &self,
-        fields: &[Loc<JsField<'el>>],
+        fields: &[JsField<'el>],
     ) -> Result<Vec<Tokens<'el, JavaScript<'el>>>> {
         let mut result = Vec::new();
 
@@ -359,10 +354,7 @@ impl JsBackend {
         let tuple_name = Rc::new(body.name.join(TYPE_SEP));
         let mut class_body = Tokens::new();
 
-        let fields: Vec<Loc<JsField>> = body.fields
-            .iter()
-            .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_js_field(f)))
-            .collect();
+        let fields: Vec<JsField> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         class_body.push(self.build_constructor(&fields));
 
@@ -392,7 +384,7 @@ impl JsBackend {
     pub fn process_enum<'el>(
         &self,
         out: &mut JsFileSpec<'el>,
-        body: &'el Loc<RpEnumBody>,
+        body: &'el RpEnumBody,
     ) -> Result<()> {
         let type_name = Rc::new(body.name.join(TYPE_SEP));
 
@@ -400,10 +392,7 @@ impl JsBackend {
 
         let variant_field = body.variant_type.as_field();
 
-        let field = Loc::new(
-            self.into_js_field_with(&variant_field, Self::enum_ident),
-            Loc::pos(body).clone(),
-        );
+        let field = self.into_js_field_with(&variant_field, Self::enum_ident);
 
         let mut members = Tokens::new();
 
@@ -457,10 +446,7 @@ impl JsBackend {
         out: &mut JsFileSpec<'el>,
         body: &'el RpTypeBody,
     ) -> Result<()> {
-        let fields: Vec<Loc<JsField>> = body.fields
-            .iter()
-            .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_js_field(f)))
-            .collect();
+        let fields: Vec<JsField> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         let type_name = Rc::new(body.name.join(TYPE_SEP));
 
@@ -509,10 +495,8 @@ impl JsBackend {
 
         interface_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
 
-        let interface_fields: Vec<Loc<JsField>> = body.fields
-            .iter()
-            .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_js_field(f)))
-            .collect();
+        let interface_fields: Vec<JsField> =
+            body.fields.iter().map(|f| self.into_js_field(f)).collect();
 
         classes.push({
             let mut tokens = Tokens::new();
@@ -531,15 +515,10 @@ impl JsBackend {
 
             let mut class_body = Tokens::new();
 
-            let fields: Vec<Loc<JsField>> = interface_fields
+            let fields: Vec<JsField> = interface_fields
                 .iter()
                 .cloned()
-                .chain(
-                    sub_type
-                        .fields
-                        .iter()
-                        .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_js_field(f))),
-                )
+                .chain(sub_type.fields.iter().map(|f| self.into_js_field(f)))
                 .collect();
 
             class_body.push(self.build_constructor(&fields));

@@ -60,7 +60,7 @@ impl PythonBackend {
 
     fn encode_method<'el>(
         &self,
-        fields: &[Loc<PythonField<'el>>],
+        fields: &[PythonField<'el>],
         builder: Tokens<'el, Python<'el>>,
         extra: Option<Tokens<'el, Python<'el>>>,
     ) -> Result<Tokens<'el, Python<'el>>> {
@@ -72,7 +72,7 @@ impl PythonBackend {
             encode_body.push(extra);
         }
 
-        fields.for_each_loc(|field| {
+        for field in fields {
             let var_string = field.name.clone().quoted();
             let field_toks = toks!["self.", field.safe_ident.clone()];
 
@@ -98,9 +98,7 @@ impl PythonBackend {
                     encode_body.push(toks);
                 }
             }
-
-            Ok(()) as Result<()>
-        })?;
+        }
 
         encode_body.push(toks!["return data"]);
 
@@ -112,7 +110,7 @@ impl PythonBackend {
 
     fn encode_tuple_method<'el>(
         &self,
-        fields: &[Loc<PythonField<'el>>],
+        fields: &[PythonField<'el>],
     ) -> Result<Tokens<'el, Python<'el>>> {
         let mut values = Tokens::new();
         let mut encode_body = Tokens::new();
@@ -120,8 +118,7 @@ impl PythonBackend {
         for field in fields {
             let toks = toks!["self.", field.safe_ident.clone()];
             encode_body.push(self.raise_if_none(toks.clone(), field));
-            values.append(self.dynamic_encode(&field.ty, toks)
-                .with_pos(Loc::pos(field))?);
+            values.append(self.dynamic_encode(&field.ty, toks)?);
         }
 
         encode_body.push(toks!["return (", values.join(", "), ")"]);
@@ -134,7 +131,7 @@ impl PythonBackend {
 
     fn repr_method<'a, 'el, I>(&self, name: Rc<String>, fields: I) -> Tokens<'el, Python<'el>>
     where
-        I: IntoIterator<Item = &'a Loc<PythonField<'a>>>,
+        I: IntoIterator<Item = &'a PythonField<'a>>,
     {
         let mut args = Vec::new();
         let mut vars = Tokens::new();
@@ -194,7 +191,7 @@ impl PythonBackend {
     fn decode_method<'el, F>(
         &self,
         name: &RpName,
-        fields: &[Loc<PythonField<'el>>],
+        fields: &[PythonField<'el>],
         variable_fn: F,
     ) -> Result<Tokens<'el, Python<'el>>>
     where
@@ -210,14 +207,12 @@ impl PythonBackend {
             let toks = match field.modifier {
                 RpModifier::Optional => {
                     let var_name = toks!(var_name.clone());
-                    let var_toks = self.dynamic_decode(&field.ty, var_name.clone())
-                        .with_pos(Loc::pos(field))?;
+                    let var_toks = self.dynamic_decode(&field.ty, var_name.clone())?;
                     self.optional_check(var_name.clone(), var, var_toks)
                 }
                 _ => {
                     let data = toks!["data[", var.clone(), "]"];
-                    let var_toks = self.dynamic_decode(&field.ty, data)
-                        .with_pos(Loc::pos(field))?;
+                    let var_toks = self.dynamic_decode(&field.ty, data)?;
                     toks![var_name.clone(), " = ", var_toks]
                 }
             };
@@ -240,7 +235,7 @@ impl PythonBackend {
 
     fn build_constructor<'a, 'el, I>(&self, fields: I) -> Tokens<'el, Python<'el>>
     where
-        I: IntoIterator<Item = &'a Loc<PythonField<'a>>>,
+        I: IntoIterator<Item = &'a PythonField<'a>>,
     {
         let mut args = Tokens::new();
         let mut assign = Tokens::new();
@@ -272,7 +267,7 @@ impl PythonBackend {
 
     fn build_getters<'a, 'el: 'a, I>(&self, fields: I) -> Result<Vec<Tokens<'el, Python<'el>>>>
     where
-        I: IntoIterator<Item = &'a Loc<PythonField<'el>>>,
+        I: IntoIterator<Item = &'a PythonField<'el>>,
     {
         let mut result = Vec::new();
 
@@ -420,9 +415,9 @@ impl PythonBackend {
         let mut tuple_body = Tokens::new();
         let type_name = Rc::new(body.name.join(TYPE_SEP));
 
-        let fields: Vec<Loc<PythonField>> = body.fields
+        let fields: Vec<PythonField> = body.fields
             .iter()
-            .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_python_field(f)))
+            .map(|f| self.into_python_field(f))
             .collect();
 
         tuple_body.push(self.build_constructor(&fields));
@@ -452,16 +447,13 @@ impl PythonBackend {
     pub fn process_enum<'el>(
         &self,
         out: &mut PythonFileSpec<'el>,
-        body: &'el Loc<RpEnumBody>,
+        body: &'el RpEnumBody,
     ) -> Result<()> {
         let type_name = Rc::new(body.name.join(TYPE_SEP));
         let mut class_body = Tokens::new();
         let variant_field = body.variant_type.as_field();
 
-        let field = Loc::new(
-            self.into_python_field_with(&variant_field, Self::enum_ident),
-            Loc::pos(body).clone(),
-        );
+        let field = self.into_python_field_with(&variant_field, Self::enum_ident);
 
         class_body.push(self.build_constructor(iter::once(&field)));
 
@@ -523,9 +515,9 @@ impl PythonBackend {
         let type_name = Rc::new(body.name.join(TYPE_SEP));
         let mut class_body = Tokens::new();
 
-        let fields: Vec<Loc<PythonField>> = body.fields
+        let fields: Vec<PythonField> = body.fields
             .iter()
-            .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_python_field(f)))
+            .map(|f| self.into_python_field(f))
             .collect();
 
         let constructor = self.build_constructor(&fields);
@@ -581,10 +573,10 @@ impl PythonBackend {
 
             sub_type_body.push(toks!["TYPE = ", sub_type.name().quoted()]);
 
-            let fields: Vec<Loc<PythonField>> = body.fields
+            let fields: Vec<PythonField> = body.fields
                 .iter()
                 .chain(sub_type.fields.iter())
-                .map(|f| Loc::map(Loc::as_ref(f), |f| self.into_python_field(f)))
+                .map(|f| self.into_python_field(f))
                 .collect();
 
             let constructor = self.build_constructor(&fields);

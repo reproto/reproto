@@ -328,9 +328,7 @@ impl RustBackend {
 
             for field in &body.fields {
                 t.push_unless_empty(Comments(&field.comment));
-                t.push(Loc::take(Loc::and_then(Loc::as_ref(field), |f| {
-                    self.field_element(f)
-                })?));
+                t.push(self.field_element(field)?);
             }
 
             t

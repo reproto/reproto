@@ -1,6 +1,6 @@
 use super::into_bytes::IntoBytes;
-use core::{Handle, Loc, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
-           RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
+use core::{Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody, RpName,
+           RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
 use core::errors::*;
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -25,27 +25,23 @@ where
 
     fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage;
 
-    fn process_interface(
-        &self,
-        out: &mut Self::Out,
-        body: &'el Loc<RpInterfaceBody>,
-    ) -> Result<()> {
+    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_type(&self, out: &mut Self::Out, body: &'el Loc<RpTypeBody>) -> Result<()> {
+    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, body: &'el Loc<RpTupleBody>) -> Result<()> {
+    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_enum(&self, out: &mut Self::Out, body: &'el Loc<RpEnumBody>) -> Result<()> {
+    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_service(&self, out: &mut Self::Out, body: &'el Loc<RpServiceBody>) -> Result<()> {
+    fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody) -> Result<()> {
         self.default_process(out, &body.name)
     }
 

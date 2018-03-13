@@ -2,8 +2,8 @@
 
 use super::{EXT, MOD};
 use backend::{PackageProcessor, PackageUtils};
-use core::{Handle, Loc, RelativePath, RelativePathBuf, RpEnumBody, RpInterfaceBody, RpName,
-           RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage};
+use core::{Handle, RelativePath, RelativePathBuf, RpEnumBody, RpInterfaceBody, RpName, RpPackage,
+           RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
 use rust_backend::RustBackend;
 use rust_file_spec::RustFileSpec;
@@ -102,24 +102,24 @@ impl<'p> PackageProcessor<'p> for RustCompiler<'p> {
         Ok(())
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, body: &'p Loc<RpTupleBody>) -> Result<()> {
+    fn process_tuple(&self, out: &mut Self::Out, body: &'p RpTupleBody) -> Result<()> {
         self.backend.process_tuple(out, body)?;
         Ok(())
     }
 
-    fn process_enum(&self, out: &mut Self::Out, body: &'p Loc<RpEnumBody>) -> Result<()> {
+    fn process_enum(&self, out: &mut Self::Out, body: &'p RpEnumBody) -> Result<()> {
         self.backend.process_enum(out, body)
     }
 
-    fn process_type(&self, out: &mut Self::Out, body: &'p Loc<RpTypeBody>) -> Result<()> {
+    fn process_type(&self, out: &mut Self::Out, body: &'p RpTypeBody) -> Result<()> {
         self.backend.process_type(out, body)
     }
 
-    fn process_interface(&self, out: &mut Self::Out, body: &'p Loc<RpInterfaceBody>) -> Result<()> {
+    fn process_interface(&self, out: &mut Self::Out, body: &'p RpInterfaceBody) -> Result<()> {
         self.backend.process_interface(out, body)
     }
 
-    fn process_service(&self, out: &mut Self::Out, body: &'p Loc<RpServiceBody>) -> Result<()> {
+    fn process_service(&self, out: &mut Self::Out, body: &'p RpServiceBody) -> Result<()> {
         self.backend.process_service(out, body)
     }
 }
