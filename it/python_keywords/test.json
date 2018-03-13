@@ -1,5 +1,5 @@
-{"as": "string"}
 {"and": "string"}
+{"as": "string"}
 {"assert": "string"}
 {"break": "string"}
 {"class": "string"}
@@ -16,6 +16,7 @@
 {"global": "string"}
 {"if": "string"}
 {"import": "string"}
+{"imported": {}}
 {"in": "string"}
 {"is": "string"}
 {"lambda": "string"}
@@ -30,4 +31,3 @@
 {"while": "string"}
 {"with": "string"}
 {"yield": "string"}
-{"imported": {}}

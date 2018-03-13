@@ -93,7 +93,7 @@ pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
 
     let file = ast::File {
         comment: vec!["Generated from reproto derive CLI".to_string().into()],
-        options: vec![],
+        attributes: vec![],
         uses: vec![],
         decls: vec![decl],
     };

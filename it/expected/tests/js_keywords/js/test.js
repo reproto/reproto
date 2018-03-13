@@ -1,16 +1,10 @@
 import * as t from "true.js";
 
 export class Entry {
-  constructor(_boolean, _double, _enum, _false, _float, _interface, _true, _abstract, _await, _break, _byte, _case, _catch, _char, _class, _const, _continue, _debugger, _default, _delete, _do, _else, _export, _extends, _final, _finally, _for, _function, _goto, _if, _implements, _import, _in, _instanceof, _int, _let, _long, _native, _new, _package, _private, _protected, _public, _return, _short, _static, _super, _switch, _synchronized, _this, _throw, _throws, _transient, _try, _typeof, _var, _void, _volatile, _while, _with, _yield, imported) {
-    this._boolean = _boolean;
-    this._double = _double;
-    this._enum = _enum;
-    this._false = _false;
-    this._float = _float;
-    this._interface = _interface;
-    this._true = _true;
+  constructor(_abstract, _await, _boolean, _break, _byte, _case, _catch, _char, _class, _const, _continue, _debugger, _default, _delete, _do, _double, _else, _enum, _export, _extends, _false, _final, _finally, _float, _for, _function, _goto, _if, _implements, _import, imported, _in, _instanceof, _int, _interface, _let, _long, _native, _new, _package, _private, _protected, _public, _return, _short, _static, _super, _switch, _synchronized, _this, _throw, _throws, _transient, _true, _try, _typeof, _var, _void, _volatile, _while, _with, _yield) {
     this._abstract = _abstract;
     this._await = _await;
+    this._boolean = _boolean;
     this._break = _break;
     this._byte = _byte;
     this._case = _case;
@@ -23,20 +17,26 @@ export class Entry {
     this._default = _default;
     this._delete = _delete;
     this._do = _do;
+    this._double = _double;
     this._else = _else;
+    this._enum = _enum;
     this._export = _export;
     this._extends = _extends;
+    this._false = _false;
     this._final = _final;
     this._finally = _finally;
+    this._float = _float;
     this._for = _for;
     this._function = _function;
     this._goto = _goto;
     this._if = _if;
     this._implements = _implements;
     this._import = _import;
+    this.imported = imported;
     this._in = _in;
     this._instanceof = _instanceof;
     this._int = _int;
+    this._interface = _interface;
     this._let = _let;
     this._long = _long;
     this._native = _native;
@@ -55,6 +55,7 @@ export class Entry {
     this._throw = _throw;
     this._throws = _throws;
     this._transient = _transient;
+    this._true = _true;
     this._try = _try;
     this._typeof = _typeof;
     this._var = _var;
@@ -63,66 +64,9 @@ export class Entry {
     this._while = _while;
     this._with = _with;
     this._yield = _yield;
-    this.imported = imported;
   }
 
   static decode(data) {
-    let v_boolean = data["boolean"];
-
-    if (v_boolean !== null && v_boolean !== undefined) {
-      v_boolean = v_boolean;
-    } else {
-      v_boolean = null;
-    }
-
-    let v_double = data["double"];
-
-    if (v_double !== null && v_double !== undefined) {
-      v_double = v_double;
-    } else {
-      v_double = null;
-    }
-
-    let v_enum = data["enum"];
-
-    if (v_enum !== null && v_enum !== undefined) {
-      v_enum = v_enum;
-    } else {
-      v_enum = null;
-    }
-
-    let v_false = data["false"];
-
-    if (v_false !== null && v_false !== undefined) {
-      v_false = v_false;
-    } else {
-      v_false = null;
-    }
-
-    let v_float = data["float"];
-
-    if (v_float !== null && v_float !== undefined) {
-      v_float = v_float;
-    } else {
-      v_float = null;
-    }
-
-    let v_interface = data["interface"];
-
-    if (v_interface !== null && v_interface !== undefined) {
-      v_interface = v_interface;
-    } else {
-      v_interface = null;
-    }
-
-    let v_true = data["true"];
-
-    if (v_true !== null && v_true !== undefined) {
-      v_true = v_true;
-    } else {
-      v_true = null;
-    }
-
     let v_abstract = data["abstract"];
 
     if (v_abstract !== null && v_abstract !== undefined) {
@@ -137,6 +81,14 @@ export class Entry {
       v_await = v_await;
     } else {
       v_await = null;
+    }
+
+    let v_boolean = data["boolean"];
+
+    if (v_boolean !== null && v_boolean !== undefined) {
+      v_boolean = v_boolean;
+    } else {
+      v_boolean = null;
     }
 
     let v_break = data["break"];
@@ -235,12 +187,28 @@ export class Entry {
       v_do = null;
     }
 
+    let v_double = data["double"];
+
+    if (v_double !== null && v_double !== undefined) {
+      v_double = v_double;
+    } else {
+      v_double = null;
+    }
+
     let v_else = data["else"];
 
     if (v_else !== null && v_else !== undefined) {
       v_else = v_else;
     } else {
       v_else = null;
+    }
+
+    let v_enum = data["enum"];
+
+    if (v_enum !== null && v_enum !== undefined) {
+      v_enum = v_enum;
+    } else {
+      v_enum = null;
     }
 
     let v_export = data["export"];
@@ -259,6 +227,14 @@ export class Entry {
       v_extends = null;
     }
 
+    let v_false = data["false"];
+
+    if (v_false !== null && v_false !== undefined) {
+      v_false = v_false;
+    } else {
+      v_false = null;
+    }
+
     let v_final = data["final"];
 
     if (v_final !== null && v_final !== undefined) {
@@ -273,6 +249,14 @@ export class Entry {
       v_finally = v_finally;
     } else {
       v_finally = null;
+    }
+
+    let v_float = data["float"];
+
+    if (v_float !== null && v_float !== undefined) {
+      v_float = v_float;
+    } else {
+      v_float = null;
     }
 
     let v_for = data["for"];
@@ -323,6 +307,14 @@ export class Entry {
       v_import = null;
     }
 
+    let v_imported = data["imported"];
+
+    if (v_imported !== null && v_imported !== undefined) {
+      v_imported = t.Empty.decode(v_imported);
+    } else {
+      v_imported = null;
+    }
+
     let v_in = data["in"];
 
     if (v_in !== null && v_in !== undefined) {
@@ -345,6 +337,14 @@ export class Entry {
       v_int = v_int;
     } else {
       v_int = null;
+    }
+
+    let v_interface = data["interface"];
+
+    if (v_interface !== null && v_interface !== undefined) {
+      v_interface = v_interface;
+    } else {
+      v_interface = null;
     }
 
     let v_let = data["let"];
@@ -491,6 +491,14 @@ export class Entry {
       v_transient = null;
     }
 
+    let v_true = data["true"];
+
+    if (v_true !== null && v_true !== undefined) {
+      v_true = v_true;
+    } else {
+      v_true = null;
+    }
+
     let v_try = data["try"];
 
     if (v_try !== null && v_try !== undefined) {
@@ -555,47 +563,11 @@ export class Entry {
       v_yield = null;
     }
 
-    let v_imported = data["imported"];
-
-    if (v_imported !== null && v_imported !== undefined) {
-      v_imported = t.Empty.decode(v_imported);
-    } else {
-      v_imported = null;
-    }
-
-    return new Entry(v_boolean, v_double, v_enum, v_false, v_float, v_interface, v_true, v_abstract, v_await, v_break, v_byte, v_case, v_catch, v_char, v_class, v_const, v_continue, v_debugger, v_default, v_delete, v_do, v_else, v_export, v_extends, v_final, v_finally, v_for, v_function, v_goto, v_if, v_implements, v_import, v_in, v_instanceof, v_int, v_let, v_long, v_native, v_new, v_package, v_private, v_protected, v_public, v_return, v_short, v_static, v_super, v_switch, v_synchronized, v_this, v_throw, v_throws, v_transient, v_try, v_typeof, v_var, v_void, v_volatile, v_while, v_with, v_yield, v_imported);
+    return new Entry(v_abstract, v_await, v_boolean, v_break, v_byte, v_case, v_catch, v_char, v_class, v_const, v_continue, v_debugger, v_default, v_delete, v_do, v_double, v_else, v_enum, v_export, v_extends, v_false, v_final, v_finally, v_float, v_for, v_function, v_goto, v_if, v_implements, v_import, v_imported, v_in, v_instanceof, v_int, v_interface, v_let, v_long, v_native, v_new, v_package, v_private, v_protected, v_public, v_return, v_short, v_static, v_super, v_switch, v_synchronized, v_this, v_throw, v_throws, v_transient, v_true, v_try, v_typeof, v_var, v_void, v_volatile, v_while, v_with, v_yield);
   }
 
   encode() {
     const data = {};
-
-    if (this._boolean !== null && this._boolean !== undefined) {
-      data["boolean"] = this._boolean;
-    }
-
-    if (this._double !== null && this._double !== undefined) {
-      data["double"] = this._double;
-    }
-
-    if (this._enum !== null && this._enum !== undefined) {
-      data["enum"] = this._enum;
-    }
-
-    if (this._false !== null && this._false !== undefined) {
-      data["false"] = this._false;
-    }
-
-    if (this._float !== null && this._float !== undefined) {
-      data["float"] = this._float;
-    }
-
-    if (this._interface !== null && this._interface !== undefined) {
-      data["interface"] = this._interface;
-    }
-
-    if (this._true !== null && this._true !== undefined) {
-      data["true"] = this._true;
-    }
 
     if (this._abstract !== null && this._abstract !== undefined) {
       data["abstract"] = this._abstract;
@@ -603,6 +575,10 @@ export class Entry {
 
     if (this._await !== null && this._await !== undefined) {
       data["await"] = this._await;
+    }
+
+    if (this._boolean !== null && this._boolean !== undefined) {
+      data["boolean"] = this._boolean;
     }
 
     if (this._break !== null && this._break !== undefined) {
@@ -653,8 +629,16 @@ export class Entry {
       data["do"] = this._do;
     }
 
+    if (this._double !== null && this._double !== undefined) {
+      data["double"] = this._double;
+    }
+
     if (this._else !== null && this._else !== undefined) {
       data["else"] = this._else;
+    }
+
+    if (this._enum !== null && this._enum !== undefined) {
+      data["enum"] = this._enum;
     }
 
     if (this._export !== null && this._export !== undefined) {
@@ -665,12 +649,20 @@ export class Entry {
       data["extends"] = this._extends;
     }
 
+    if (this._false !== null && this._false !== undefined) {
+      data["false"] = this._false;
+    }
+
     if (this._final !== null && this._final !== undefined) {
       data["final"] = this._final;
     }
 
     if (this._finally !== null && this._finally !== undefined) {
       data["finally"] = this._finally;
+    }
+
+    if (this._float !== null && this._float !== undefined) {
+      data["float"] = this._float;
     }
 
     if (this._for !== null && this._for !== undefined) {
@@ -697,6 +689,10 @@ export class Entry {
       data["import"] = this._import;
     }
 
+    if (this.imported !== null && this.imported !== undefined) {
+      data["imported"] = this.imported.encode();
+    }
+
     if (this._in !== null && this._in !== undefined) {
       data["in"] = this._in;
     }
@@ -707,6 +703,10 @@ export class Entry {
 
     if (this._int !== null && this._int !== undefined) {
       data["int"] = this._int;
+    }
+
+    if (this._interface !== null && this._interface !== undefined) {
+      data["interface"] = this._interface;
     }
 
     if (this._let !== null && this._let !== undefined) {
@@ -781,6 +781,10 @@ export class Entry {
       data["transient"] = this._transient;
     }
 
+    if (this._true !== null && this._true !== undefined) {
+      data["true"] = this._true;
+    }
+
     if (this._try !== null && this._try !== undefined) {
       data["try"] = this._try;
     }
@@ -811,10 +815,6 @@ export class Entry {
 
     if (this._yield !== null && this._yield !== undefined) {
       data["yield"] = this._yield;
-    }
-
-    if (this.imported !== null && this.imported !== undefined) {
-      data["imported"] = this.imported.encode();
     }
 
     return data;

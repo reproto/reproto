@@ -1,12 +1,11 @@
 //! File declarations
 
-use super::{Loc, RpDecl, RpOptionDecl};
+use super::RpDecl;
 use std::collections::LinkedList;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpFile {
     pub comment: Vec<String>,
-    pub options: Vec<Loc<RpOptionDecl>>,
     pub decls: Vec<RpDecl>,
 }
 

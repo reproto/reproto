@@ -1,6 +1,6 @@
 use ast::{self, UseDecl};
-use core::{Context, Loc, Object, Options, PathObject, Range, Resolved, Resolver, RpDecl, RpFile,
-           RpName, RpPackage, RpReg, RpRequiredPackage, RpVersionedPackage, WithPos};
+use core::{Context, Loc, Object, PathObject, Range, Resolved, Resolver, RpDecl, RpFile, RpName,
+           RpPackage, RpReg, RpRequiredPackage, RpVersionedPackage, WithPos};
 use core::errors::{Error, Result};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
@@ -257,15 +257,13 @@ impl Environment {
     /// Parse a naming option.
     ///
     /// Since lower_camel is default, do nothing on that case.
-    fn parse_naming(&self, naming: Loc<String>) -> Result<Option<Box<Naming>>> {
-        let (naming, pos) = Loc::take_pair(naming);
-
-        let result: Option<Box<Naming>> = match naming.as_str() {
+    fn parse_naming(&self, naming: &str) -> Result<Option<Box<Naming>>> {
+        let result: Option<Box<Naming>> = match naming {
             "upper_camel" => Some(Box::new(naming::to_upper_camel())),
             "lower_camel" => Some(Box::new(naming::to_lower_camel())),
             "upper_snake" => Some(Box::new(naming::to_upper_snake())),
             "lower_snake" => None,
-            _ => return Err("illegal value".into()).with_pos(pos),
+            _ => return Err("illegal value".into()),
         };
 
         Ok(result)
@@ -281,33 +279,56 @@ impl Environment {
     }
 
     /// Loads the given file, without registering it to the set of visited packages.
-    fn load_file(&mut self, file: ast::File, package: &RpVersionedPackage) -> Result<RpFile> {
+    fn load_file(&mut self, mut file: ast::File, package: &RpVersionedPackage) -> Result<RpFile> {
         let prefixes = self.process_uses(&file.uses)?;
 
-        let endpoint_naming = match file.options.find_one_identifier("endpoint_naming")? {
-            Some(naming) => self.parse_naming(naming)?,
-            _ => None,
-        };
-
-        let field_naming = match file.options.find_one_identifier("field_naming")? {
-            Some(naming) => self.parse_naming(naming)?,
-            _ => None,
-        };
+        // TODO: support through file attributes.
 
         let package_prefix = self.package_prefix.clone();
         let package = package.clone();
 
-        let scope = Scope::new(
+        let mut scope = Scope::new(
             self.ctx.clone(),
             package_prefix,
             package,
             prefixes,
-            endpoint_naming,
-            field_naming,
             self.keywords.clone(),
             self.safe_packages,
             self.package_naming.as_ref().map(|n| n.copy()),
         );
+
+        let attributes = file.attributes.drain(..).collect::<Vec<_>>();
+        let mut attributes = attributes.into_model(&scope)?;
+
+        {
+            let root = scope.mut_root()?;
+
+            if let Some(endpoint_naming) = attributes.take_selection("endpoint_naming") {
+                let (mut endpoint_naming, pos) = Loc::take_pair(endpoint_naming);
+
+                root.endpoint_naming = endpoint_naming
+                    .take_word()
+                    .ok_or_else(|| Error::from("expected argument"))
+                    .and_then(|n| n.as_identifier().and_then(|n| self.parse_naming(n)))
+                    .with_pos(&pos)?;
+
+                check_selection!(&self.ctx, endpoint_naming);
+            }
+
+            if let Some(field_naming) = attributes.take_selection("field_naming") {
+                let (mut field_naming, pos) = Loc::take_pair(field_naming);
+
+                root.field_naming = field_naming
+                    .take_word()
+                    .ok_or_else(|| Error::from("expected argument"))
+                    .and_then(|n| n.as_identifier().and_then(|n| self.parse_naming(n)))
+                    .with_pos(&pos)?;
+
+                check_selection!(&self.ctx, field_naming);
+            }
+
+            check_attributes!(&self.ctx, attributes);
+        }
 
         Ok(file.into_model(&scope)?)
     }

@@ -40,10 +40,7 @@ pub fn match_keyword(content: &str) -> Option<Token> {
         "string" => Token::StringKeyword,
         "datetime" => Token::DateTimeKeyword,
         "bytes" => Token::BytesKeyword,
-        "true" => Token::TrueKeyword,
-        "false" => Token::FalseKeyword,
         "stream" => Token::StreamKeyword,
-        "option" => Token::OptionKeyword,
         _ => return None,
     };
 
@@ -450,6 +447,7 @@ impl<'input> Lexer<'input> {
                     '.' => Token::Dot,
                     '?' => Token::QuestionMark,
                     '#' => Token::Hash,
+                    '!' => Token::Bang,
                     '=' => Token::Equal,
                     '_' | 'a'...'z' => return Some(self.identifier(start)),
                     'A'...'Z' => return Some(self.type_identifier(start)),
@@ -605,7 +603,10 @@ pub mod tests {
 
         let tokens = tokenize("he/* this is a comment */llo");
         assert_eq!(
-            vec![(0, Identifier("he".into()), 2), (25, Identifier("llo".into()), 28)],
+            vec![
+                (0, Identifier("he".into()), 2),
+                (25, Identifier("llo".into()), 28),
+            ],
             tokens.unwrap()
         );
 
@@ -626,7 +627,13 @@ pub mod tests {
     #[test]
     pub fn test_doc_comment() {
         let tokens = tokenize("/// foo\n\r      /// bar \r\n     /// baz ").unwrap();
-        let reference = [(0, DocComment(vec![" foo".into(), " bar ".into(), " baz ".into()]), 38)];
+        let reference = [
+            (
+                0,
+                DocComment(vec![" foo".into(), " bar ".into(), " baz ".into()]),
+                38,
+            ),
+        ];
         assert_eq!(reference, &tokens[..]);
     }
 }

@@ -22,6 +22,7 @@ pub enum Token<'input> {
     Scope,
     QuestionMark,
     Hash,
+    Bang,
     RightArrow,
     CodeOpen,
     CodeClose,
@@ -46,10 +47,7 @@ pub enum Token<'input> {
     StringKeyword,
     DateTimeKeyword,
     BytesKeyword,
-    TrueKeyword,
-    FalseKeyword,
     StreamKeyword,
-    OptionKeyword,
 }
 
 impl<'input> Token<'input> {
@@ -74,10 +72,7 @@ impl<'input> Token<'input> {
             Token::StringKeyword => "_string",
             Token::DateTimeKeyword => "_datetime",
             Token::BytesKeyword => "_bytes",
-            Token::TrueKeyword => "_true",
-            Token::FalseKeyword => "_false",
             Token::StreamKeyword => "_stream",
-            Token::OptionKeyword => "_option",
             _ => return None,
         };
 

@@ -1,7 +1,6 @@
 extern crate reproto_core as core;
 
-use core::{Loc, OptionEntry, RpModifier, RpNumber, RpPackage, WithPos};
-use core::errors::Result;
+use core::{Loc, RpModifier, RpNumber, RpPackage, WithPos};
 use std::borrow::Cow;
 use std::ops;
 use std::result;
@@ -165,7 +164,6 @@ pub struct EnumVariant<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum EnumMember<'input> {
     Code(Loc<Code<'input>>),
-    Option(Loc<OptionDecl<'input>>),
 }
 
 /// A field.
@@ -193,7 +191,7 @@ pub struct Field<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct File<'input> {
     pub comment: Vec<Cow<'input, str>>,
-    pub options: Vec<Loc<OptionDecl<'input>>>,
+    pub attributes: Vec<Loc<Attribute<'input>>>,
     pub uses: Vec<Loc<UseDecl<'input>>>,
     pub decls: Vec<Decl<'input>>,
 }
@@ -260,46 +258,7 @@ pub struct Code<'input> {
 pub enum TypeMember<'input> {
     Field(Item<'input, Field<'input>>),
     Code(Loc<Code<'input>>),
-    Option(Loc<OptionDecl<'input>>),
     InnerDecl(Decl<'input>),
-}
-
-/// An option declaration.
-///
-/// ```ignore
-/// option <name> = <value>;
-/// ```
-#[derive(Debug, PartialEq, Eq)]
-pub struct OptionDecl<'input> {
-    pub name: Cow<'input, str>,
-    pub value: Loc<Value<'input>>,
-}
-
-impl<'input> OptionEntry for OptionDecl<'input> {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn as_string(&self) -> Result<String> {
-        match *Loc::value(&self.value) {
-            Value::String(ref string) => Ok(string.to_string()),
-            _ => Err("expected string".into()),
-        }
-    }
-
-    fn as_number(&self) -> Result<RpNumber> {
-        match *Loc::value(&self.value) {
-            Value::Number(ref number) => Ok(number.clone()),
-            _ => Err("expected number".into()),
-        }
-    }
-
-    fn as_identifier(&self) -> Result<String> {
-        match *Loc::value(&self.value) {
-            Value::Identifier(ref identifier) => Ok(identifier.to_string()),
-            _ => Err("expected identifier".into()),
-        }
-    }
 }
 
 /// The body of a service declaration.
@@ -319,7 +278,6 @@ pub struct ServiceBody<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum ServiceMember<'input> {
     Endpoint(Item<'input, Endpoint<'input>>),
-    Option(Loc<OptionDecl<'input>>),
     InnerDecl(Decl<'input>),
 }
 
@@ -334,7 +292,6 @@ pub enum ServiceMember<'input> {
 pub struct Endpoint<'input> {
     pub id: Loc<Cow<'input, str>>,
     pub alias: Option<String>,
-    pub options: Vec<Loc<OptionDecl<'input>>>,
     pub arguments: Vec<(Loc<Cow<'input, str>>, Loc<Channel>)>,
     pub response: Option<Loc<Channel>>,
 }
@@ -413,10 +370,8 @@ pub struct UseDecl<'input> {
 pub enum Value<'input> {
     String(String),
     Number(RpNumber),
-    Boolean(bool),
     Identifier(Cow<'input, str>),
     Array(Vec<Loc<Value<'input>>>),
-    Type(Type),
 }
 
 /// A part of a step.

@@ -11,34 +11,6 @@ use std::option;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-macro_rules! check_attributes {
-    ($scope:expr, $attr:expr) => {{
-        let mut __a_r = $scope.ctx().report();
-
-        for unused in $attr.unused() {
-            __a_r = __a_r.err(unused, "unknown attribute");
-        }
-
-        if let Some(e) = __a_r.close() {
-            return Err(e.into());
-        }
-    }}
-}
-
-macro_rules! check_selection {
-    ($scope:expr, $sel:expr) => {{
-        let mut __a_r = $scope.ctx().report();
-
-        for unused in $sel.unused() {
-            __a_r = __a_r.err(unused, "unknown attribute");
-        }
-
-        if let Some(e) = __a_r.close() {
-            return Err(e.into());
-        }
-    }}
-}
-
 /// Adds a method for all types that supports conversion into core types.
 pub trait IntoModel {
     type Output;
@@ -207,15 +179,11 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             let mut variants: Vec<Rc<Loc<RpVariant>>> = Vec::new();
 
             let mut codes = Vec::new();
-            let mut options = Vec::new();
 
             for member in item.members {
                 match member {
                     EnumMember::Code(code) => {
                         codes.push(code.into_model(scope)?);
-                    }
-                    EnumMember::Option(option) => {
-                        options.push(option.into_model(scope)?);
                     }
                 };
             }
@@ -238,7 +206,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             }
 
             let attributes = attributes.into_model(scope)?;
-            check_attributes!(scope, attributes);
+            check_attributes!(scope.ctx(), attributes);
 
             Ok(RpEnumBody {
                 name: scope.as_name(),
@@ -302,7 +270,7 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
             };
 
             let attributes = attributes.into_model(scope)?;
-            check_attributes!(scope, attributes);
+            check_attributes!(scope.ctx(), attributes);
 
             Ok(RpVariant {
                 name: scope.as_name().push(item.name.to_string()),
@@ -358,7 +326,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
             );
 
             let attributes = attributes.into_model(scope)?;
-            check_attributes!(scope, attributes);
+            check_attributes!(scope.ctx(), attributes);
 
             Ok(RpField {
                 modifier: item.modifier,
@@ -376,12 +344,10 @@ impl<'input> IntoModel for File<'input> {
     type Output = RpFile;
 
     fn into_model(self, scope: &Scope) -> Result<RpFile> {
-        let options = self.options.into_model(scope)?;
         let decls = self.decls.into_model(scope)?;
 
         Ok(RpFile {
             comment: Comment(&self.comment).into_model(scope)?,
-            options: options,
             decls: decls,
         })
     }
@@ -396,7 +362,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
         self.map(|comment, attributes, item| {
             let ctx = scope.ctx();
 
-            let (fields, codes, _options, decls) = item.members.into_model(scope)?;
+            let (fields, codes, decls) = item.members.into_model(scope)?;
 
             let mut sub_types: BTreeMap<String, Rc<Loc<RpSubType>>> = BTreeMap::new();
 
@@ -425,10 +391,10 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
             if let Some(mut type_info) = attributes.take_selection("type_info") {
                 sub_type_strategy = push_type_info(ctx, &mut type_info)?;
-                check_selection!(scope, type_info);
+                check_selection!(scope.ctx(), type_info);
             }
 
-            check_attributes!(scope, attributes);
+            check_attributes!(scope.ctx(), attributes);
 
             return Ok(RpInterfaceBody {
                 name: scope.as_name(),
@@ -512,19 +478,6 @@ impl<'input> IntoModel for (&'input Path, usize, usize) {
     }
 }
 
-impl<'input> IntoModel for OptionDecl<'input> {
-    type Output = RpOptionDecl;
-
-    fn into_model(self, scope: &Scope) -> Result<RpOptionDecl> {
-        let decl = RpOptionDecl {
-            name: self.name.to_string(),
-            value: self.value.into_model(scope)?,
-        };
-
-        Ok(decl)
-    }
-}
-
 impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
     type Output = Loc<RpServiceBody>;
 
@@ -536,16 +489,12 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
 
             let mut endpoint_names: HashMap<String, ErrorPos> = HashMap::new();
             let mut endpoints = LinkedHashMap::new();
-            let mut options = Vec::new();
             let mut decls = Vec::new();
 
             for member in item.members {
                 match member {
                     ServiceMember::Endpoint(endpoint) => {
                         handle_endpoint(endpoint, scope, &mut endpoint_names, &mut endpoints)?;
-                    }
-                    ServiceMember::Option(option) => {
-                        options.push(option.into_model(scope)?);
                     }
                     ServiceMember::InnerDecl(decl) => {
                         decls.push(decl.into_model(scope)?);
@@ -560,10 +509,10 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
             if let Some(selection) = attributes.take_selection("http") {
                 let (mut selection, pos) = Loc::take_pair(selection);
                 push_http(ctx, scope, &mut selection, &mut http).with_pos(pos)?;
-                check_selection!(scope, selection);
+                check_selection!(scope.ctx(), selection);
             }
 
-            check_attributes!(scope, attributes);
+            check_attributes!(scope.ctx(), attributes);
 
             Ok(RpServiceBody {
                 name: scope.as_name(),
@@ -681,10 +630,10 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                     &mut http,
                 ).with_pos(&pos)?;
 
-                check_selection!(scope, selection);
+                check_selection!(scope.ctx(), selection);
             }
 
-            check_attributes!(scope, attributes);
+            check_attributes!(scope.ctx(), attributes);
 
             Ok(RpEndpoint {
                 ident: ident,
@@ -864,7 +813,6 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
 
             let mut fields: Vec<Loc<RpField>> = Vec::new();
             let mut codes = Vec::new();
-            let mut options = Vec::new();
             let mut decls = Vec::new();
 
             for member in item.members {
@@ -887,9 +835,6 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
                     Code(code) => {
                         codes.push(code.into_model(scope)?);
                     }
-                    Option(option) => {
-                        options.push(option.into_model(scope)?);
-                    }
                     InnerDecl(decl) => {
                         decls.push(decl.into_model(scope)?);
                     }
@@ -899,7 +844,7 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
             let sub_type_name = sub_type_name(item.alias, scope)?;
 
             let attributes = attributes.into_model(scope)?;
-            check_attributes!(scope, attributes);
+            check_attributes!(scope.ctx(), attributes);
 
             Ok(RpSubType {
                 name: scope.as_name(),
@@ -940,10 +885,10 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (fields, codes, _options, decls) = item.members.into_model(scope)?;
+            let (fields, codes, decls) = item.members.into_model(scope)?;
 
             let attributes = attributes.into_model(scope)?;
-            check_attributes!(scope, attributes);
+            check_attributes!(scope.ctx(), attributes);
 
             Ok(RpTupleBody {
                 name: scope.as_name(),
@@ -962,15 +907,24 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (fields, codes, options, decls) = item.members.into_model(scope)?;
+            let (fields, codes, decls) = item.members.into_model(scope)?;
 
-            let reserved: HashSet<Loc<String>> = options
-                .find_all_identifiers("reserved")?
-                .into_iter()
-                .collect();
+            let mut reserved: HashSet<Loc<String>> = HashSet::new();
+            let mut attributes = attributes.into_model(scope)?;
 
-            let attributes = attributes.into_model(scope)?;
-            check_attributes!(scope, attributes);
+            if let Some(selection) = attributes.take_selection("reserved") {
+                let (mut selection, _pos) = Loc::take_pair(selection);
+
+                for word in selection.take_words() {
+                    reserved.insert(Loc::and_then(word, |w| {
+                        w.as_identifier().map(|id| id.to_string())
+                    })?);
+                }
+
+                check_selection!(scope.ctx(), selection);
+            }
+
+            check_attributes!(scope.ctx(), attributes);
 
             Ok(RpTypeBody {
                 name: scope.as_name(),
@@ -986,12 +940,7 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
 }
 
 impl<'input> IntoModel for Vec<TypeMember<'input>> {
-    type Output = (
-        Vec<Loc<RpField>>,
-        Vec<Loc<RpCode>>,
-        Vec<Loc<RpOptionDecl>>,
-        Vec<RpDecl>,
-    );
+    type Output = (Vec<Loc<RpField>>, Vec<Loc<RpCode>>, Vec<RpDecl>);
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use self::TypeMember::*;
@@ -1000,7 +949,6 @@ impl<'input> IntoModel for Vec<TypeMember<'input>> {
 
         let mut fields: Vec<Loc<RpField>> = Vec::new();
         let mut codes = Vec::new();
-        let mut options = Vec::new();
         let mut decls = Vec::new();
 
         for member in self {
@@ -1021,12 +969,11 @@ impl<'input> IntoModel for Vec<TypeMember<'input>> {
                     fields.push(field);
                 }
                 Code(code) => codes.push(code.into_model(scope)?),
-                Option(option) => options.push(option.into_model(scope)?),
                 InnerDecl(decl) => decls.push(decl.into_model(scope)?),
             }
         }
 
-        Ok((fields, codes, options, decls))
+        Ok((fields, codes, decls))
     }
 }
 
@@ -1050,10 +997,8 @@ impl<'input> IntoModel for Value<'input> {
         let out = match self {
             String(string) => RpValue::String(string),
             Number(number) => RpValue::Number(number),
-            Boolean(boolean) => RpValue::Boolean(boolean),
             Identifier(identifier) => RpValue::Identifier(identifier.to_string()),
             Array(inner) => RpValue::Array(inner.into_model(scope)?),
-            Type(ty) => RpValue::Type(ty.into_model(scope)?),
         };
 
         Ok(out)

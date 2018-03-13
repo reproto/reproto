@@ -1,0 +1,10 @@
+#![endpoint_naming(upper_snake)]
+#![field_naming(upper_snake)]
+
+type Value {
+  foo_bar: string;
+}
+
+service Service {
+  foo_bar();
+}

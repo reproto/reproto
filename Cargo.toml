@@ -12,6 +12,7 @@ members = [
   "lib/backend-python",
   "lib/backend-rust",
   "lib/backend-reproto",
+  "lib/backend-csharp",
   "lib/compile",
   "lib/core",
   "lib/manifest",

@@ -1,0 +1,10 @@
+#![endpoint_naming(upper_camel)]
+#![field_naming(upper_camel)]
+
+type Value {
+  foo_bar: string;
+}
+
+service Service {
+  foo_bar();
+}

@@ -52,4 +52,5 @@ define!{
     },
     tuple => {},
     versions => {},
+    default_naming => {},
 }

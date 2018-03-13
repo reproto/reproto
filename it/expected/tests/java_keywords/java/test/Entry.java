@@ -7,24 +7,12 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
-  @JsonProperty("boolean")
-  private final Optional<String> _boolean;
-  @JsonProperty("double")
-  private final Optional<String> _double;
-  @JsonProperty("enum")
-  private final Optional<String> _enum;
-  @JsonProperty("false")
-  private final Optional<String> _false;
-  @JsonProperty("float")
-  private final Optional<String> _float;
-  @JsonProperty("interface")
-  private final Optional<String> _interface;
-  @JsonProperty("true")
-  private final Optional<String> _true;
   @JsonProperty("abstract")
   private final Optional<String> _abstract;
   @JsonProperty("assert")
   private final Optional<String> _assert;
+  @JsonProperty("boolean")
+  private final Optional<String> _boolean;
   @JsonProperty("break")
   private final Optional<String> _break;
   @JsonProperty("byte")
@@ -45,14 +33,22 @@ public class Entry {
   private final Optional<String> _default;
   @JsonProperty("do")
   private final Optional<String> _do;
+  @JsonProperty("double")
+  private final Optional<String> _double;
   @JsonProperty("else")
   private final Optional<String> _else;
+  @JsonProperty("enum")
+  private final Optional<String> _enum;
   @JsonProperty("extends")
   private final Optional<String> _extends;
+  @JsonProperty("false")
+  private final Optional<String> _false;
   @JsonProperty("final")
   private final Optional<String> _final;
   @JsonProperty("finally")
   private final Optional<String> _finally;
+  @JsonProperty("float")
+  private final Optional<String> _float;
   @JsonProperty("for")
   private final Optional<String> _for;
   @JsonProperty("goto")
@@ -63,10 +59,14 @@ public class Entry {
   private final Optional<String> _implements;
   @JsonProperty("import")
   private final Optional<String> _import;
+  @JsonProperty("imported")
+  private final Optional<Empty> imported;
   @JsonProperty("instanceof")
   private final Optional<String> _instanceof;
   @JsonProperty("int")
   private final Optional<String> _int;
+  @JsonProperty("interface")
+  private final Optional<String> _interface;
   @JsonProperty("long")
   private final Optional<String> _long;
   @JsonProperty("native")
@@ -105,6 +105,8 @@ public class Entry {
   private final Optional<String> _throws;
   @JsonProperty("transient")
   private final Optional<String> _transient;
+  @JsonProperty("true")
+  private final Optional<String> _true;
   @JsonProperty("try")
   private final Optional<String> _try;
   @JsonProperty("void")
@@ -113,20 +115,12 @@ public class Entry {
   private final Optional<String> _volatile;
   @JsonProperty("while")
   private final Optional<String> _while;
-  @JsonProperty("imported")
-  private final Optional<Empty> imported;
 
   @JsonCreator
   public Entry(
-    @JsonProperty("boolean") final Optional<String> _boolean,
-    @JsonProperty("double") final Optional<String> _double,
-    @JsonProperty("enum") final Optional<String> _enum,
-    @JsonProperty("false") final Optional<String> _false,
-    @JsonProperty("float") final Optional<String> _float,
-    @JsonProperty("interface") final Optional<String> _interface,
-    @JsonProperty("true") final Optional<String> _true,
     @JsonProperty("abstract") final Optional<String> _abstract,
     @JsonProperty("assert") final Optional<String> _assert,
+    @JsonProperty("boolean") final Optional<String> _boolean,
     @JsonProperty("break") final Optional<String> _break,
     @JsonProperty("byte") final Optional<String> _byte,
     @JsonProperty("case") final Optional<String> _case,
@@ -137,17 +131,23 @@ public class Entry {
     @JsonProperty("continue") final Optional<String> _continue,
     @JsonProperty("default") final Optional<String> _default,
     @JsonProperty("do") final Optional<String> _do,
+    @JsonProperty("double") final Optional<String> _double,
     @JsonProperty("else") final Optional<String> _else,
+    @JsonProperty("enum") final Optional<String> _enum,
     @JsonProperty("extends") final Optional<String> _extends,
+    @JsonProperty("false") final Optional<String> _false,
     @JsonProperty("final") final Optional<String> _final,
     @JsonProperty("finally") final Optional<String> _finally,
+    @JsonProperty("float") final Optional<String> _float,
     @JsonProperty("for") final Optional<String> _for,
     @JsonProperty("goto") final Optional<String> _goto,
     @JsonProperty("if") final Optional<String> _if,
     @JsonProperty("implements") final Optional<String> _implements,
     @JsonProperty("import") final Optional<String> _import,
+    @JsonProperty("imported") final Optional<Empty> imported,
     @JsonProperty("instanceof") final Optional<String> _instanceof,
     @JsonProperty("int") final Optional<String> _int,
+    @JsonProperty("interface") final Optional<String> _interface,
     @JsonProperty("long") final Optional<String> _long,
     @JsonProperty("native") final Optional<String> _native,
     @JsonProperty("new") final Optional<String> _new,
@@ -167,30 +167,18 @@ public class Entry {
     @JsonProperty("throw") final Optional<String> _throw,
     @JsonProperty("throws") final Optional<String> _throws,
     @JsonProperty("transient") final Optional<String> _transient,
+    @JsonProperty("true") final Optional<String> _true,
     @JsonProperty("try") final Optional<String> _try,
     @JsonProperty("void") final Optional<String> _void,
     @JsonProperty("volatile") final Optional<String> _volatile,
-    @JsonProperty("while") final Optional<String> _while,
-    @JsonProperty("imported") final Optional<Empty> imported
+    @JsonProperty("while") final Optional<String> _while
   ) {
-    Objects.requireNonNull(_boolean, "boolean");
-    this._boolean = _boolean;
-    Objects.requireNonNull(_double, "double");
-    this._double = _double;
-    Objects.requireNonNull(_enum, "enum");
-    this._enum = _enum;
-    Objects.requireNonNull(_false, "false");
-    this._false = _false;
-    Objects.requireNonNull(_float, "float");
-    this._float = _float;
-    Objects.requireNonNull(_interface, "interface");
-    this._interface = _interface;
-    Objects.requireNonNull(_true, "true");
-    this._true = _true;
     Objects.requireNonNull(_abstract, "abstract");
     this._abstract = _abstract;
     Objects.requireNonNull(_assert, "assert");
     this._assert = _assert;
+    Objects.requireNonNull(_boolean, "boolean");
+    this._boolean = _boolean;
     Objects.requireNonNull(_break, "break");
     this._break = _break;
     Objects.requireNonNull(_byte, "byte");
@@ -211,14 +199,22 @@ public class Entry {
     this._default = _default;
     Objects.requireNonNull(_do, "do");
     this._do = _do;
+    Objects.requireNonNull(_double, "double");
+    this._double = _double;
     Objects.requireNonNull(_else, "else");
     this._else = _else;
+    Objects.requireNonNull(_enum, "enum");
+    this._enum = _enum;
     Objects.requireNonNull(_extends, "extends");
     this._extends = _extends;
+    Objects.requireNonNull(_false, "false");
+    this._false = _false;
     Objects.requireNonNull(_final, "final");
     this._final = _final;
     Objects.requireNonNull(_finally, "finally");
     this._finally = _finally;
+    Objects.requireNonNull(_float, "float");
+    this._float = _float;
     Objects.requireNonNull(_for, "for");
     this._for = _for;
     Objects.requireNonNull(_goto, "goto");
@@ -229,10 +225,14 @@ public class Entry {
     this._implements = _implements;
     Objects.requireNonNull(_import, "import");
     this._import = _import;
+    Objects.requireNonNull(imported, "imported");
+    this.imported = imported;
     Objects.requireNonNull(_instanceof, "instanceof");
     this._instanceof = _instanceof;
     Objects.requireNonNull(_int, "int");
     this._int = _int;
+    Objects.requireNonNull(_interface, "interface");
+    this._interface = _interface;
     Objects.requireNonNull(_long, "long");
     this._long = _long;
     Objects.requireNonNull(_native, "native");
@@ -271,6 +271,8 @@ public class Entry {
     this._throws = _throws;
     Objects.requireNonNull(_transient, "transient");
     this._transient = _transient;
+    Objects.requireNonNull(_true, "true");
+    this._true = _true;
     Objects.requireNonNull(_try, "try");
     this._try = _try;
     Objects.requireNonNull(_void, "void");
@@ -279,43 +281,6 @@ public class Entry {
     this._volatile = _volatile;
     Objects.requireNonNull(_while, "while");
     this._while = _while;
-    Objects.requireNonNull(imported, "imported");
-    this.imported = imported;
-  }
-
-  @JsonProperty("boolean")
-  public Optional<String> getBoolean() {
-    return this._boolean;
-  }
-
-  @JsonProperty("double")
-  public Optional<String> getDouble() {
-    return this._double;
-  }
-
-  @JsonProperty("enum")
-  public Optional<String> getEnum() {
-    return this._enum;
-  }
-
-  @JsonProperty("false")
-  public Optional<String> getFalse() {
-    return this._false;
-  }
-
-  @JsonProperty("float")
-  public Optional<String> getFloat() {
-    return this._float;
-  }
-
-  @JsonProperty("interface")
-  public Optional<String> getInterface() {
-    return this._interface;
-  }
-
-  @JsonProperty("true")
-  public Optional<String> getTrue() {
-    return this._true;
   }
 
   @JsonProperty("abstract")
@@ -326,6 +291,11 @@ public class Entry {
   @JsonProperty("assert")
   public Optional<String> getAssert() {
     return this._assert;
+  }
+
+  @JsonProperty("boolean")
+  public Optional<String> getBoolean() {
+    return this._boolean;
   }
 
   @JsonProperty("break")
@@ -378,14 +348,29 @@ public class Entry {
     return this._do;
   }
 
+  @JsonProperty("double")
+  public Optional<String> getDouble() {
+    return this._double;
+  }
+
   @JsonProperty("else")
   public Optional<String> getElse() {
     return this._else;
   }
 
+  @JsonProperty("enum")
+  public Optional<String> getEnum() {
+    return this._enum;
+  }
+
   @JsonProperty("extends")
   public Optional<String> getExtends() {
     return this._extends;
+  }
+
+  @JsonProperty("false")
+  public Optional<String> getFalse() {
+    return this._false;
   }
 
   @JsonProperty("final")
@@ -396,6 +381,11 @@ public class Entry {
   @JsonProperty("finally")
   public Optional<String> getFinally() {
     return this._finally;
+  }
+
+  @JsonProperty("float")
+  public Optional<String> getFloat() {
+    return this._float;
   }
 
   @JsonProperty("for")
@@ -423,6 +413,11 @@ public class Entry {
     return this._import;
   }
 
+  @JsonProperty("imported")
+  public Optional<Empty> getImported() {
+    return this.imported;
+  }
+
   @JsonProperty("instanceof")
   public Optional<String> getInstanceof() {
     return this._instanceof;
@@ -431,6 +426,11 @@ public class Entry {
   @JsonProperty("int")
   public Optional<String> getInt() {
     return this._int;
+  }
+
+  @JsonProperty("interface")
+  public Optional<String> getInterface() {
+    return this._interface;
   }
 
   @JsonProperty("long")
@@ -528,6 +528,11 @@ public class Entry {
     return this._transient;
   }
 
+  @JsonProperty("true")
+  public Optional<String> getTrue() {
+    return this._true;
+  }
+
   @JsonProperty("try")
   public Optional<String> getTry() {
     return this._try;
@@ -548,23 +553,12 @@ public class Entry {
     return this._while;
   }
 
-  @JsonProperty("imported")
-  public Optional<Empty> getImported() {
-    return this.imported;
-  }
-
   @Override
   public int hashCode() {
     int result = 1;
-    result = result * 31 + this._boolean.hashCode();
-    result = result * 31 + this._double.hashCode();
-    result = result * 31 + this._enum.hashCode();
-    result = result * 31 + this._false.hashCode();
-    result = result * 31 + this._float.hashCode();
-    result = result * 31 + this._interface.hashCode();
-    result = result * 31 + this._true.hashCode();
     result = result * 31 + this._abstract.hashCode();
     result = result * 31 + this._assert.hashCode();
+    result = result * 31 + this._boolean.hashCode();
     result = result * 31 + this._break.hashCode();
     result = result * 31 + this._byte.hashCode();
     result = result * 31 + this._case.hashCode();
@@ -575,17 +569,23 @@ public class Entry {
     result = result * 31 + this._continue.hashCode();
     result = result * 31 + this._default.hashCode();
     result = result * 31 + this._do.hashCode();
+    result = result * 31 + this._double.hashCode();
     result = result * 31 + this._else.hashCode();
+    result = result * 31 + this._enum.hashCode();
     result = result * 31 + this._extends.hashCode();
+    result = result * 31 + this._false.hashCode();
     result = result * 31 + this._final.hashCode();
     result = result * 31 + this._finally.hashCode();
+    result = result * 31 + this._float.hashCode();
     result = result * 31 + this._for.hashCode();
     result = result * 31 + this._goto.hashCode();
     result = result * 31 + this._if.hashCode();
     result = result * 31 + this._implements.hashCode();
     result = result * 31 + this._import.hashCode();
+    result = result * 31 + this.imported.hashCode();
     result = result * 31 + this._instanceof.hashCode();
     result = result * 31 + this._int.hashCode();
+    result = result * 31 + this._interface.hashCode();
     result = result * 31 + this._long.hashCode();
     result = result * 31 + this._native.hashCode();
     result = result * 31 + this._new.hashCode();
@@ -605,11 +605,11 @@ public class Entry {
     result = result * 31 + this._throw.hashCode();
     result = result * 31 + this._throws.hashCode();
     result = result * 31 + this._transient.hashCode();
+    result = result * 31 + this._true.hashCode();
     result = result * 31 + this._try.hashCode();
     result = result * 31 + this._void.hashCode();
     result = result * 31 + this._volatile.hashCode();
     result = result * 31 + this._while.hashCode();
-    result = result * 31 + this.imported.hashCode();
     return result;
   }
 
@@ -626,39 +626,15 @@ public class Entry {
     @SuppressWarnings("unchecked")
     final Entry o = (Entry) other;
 
-    if (!this._boolean.equals(o._boolean)) {
-      return false;
-    }
-
-    if (!this._double.equals(o._double)) {
-      return false;
-    }
-
-    if (!this._enum.equals(o._enum)) {
-      return false;
-    }
-
-    if (!this._false.equals(o._false)) {
-      return false;
-    }
-
-    if (!this._float.equals(o._float)) {
-      return false;
-    }
-
-    if (!this._interface.equals(o._interface)) {
-      return false;
-    }
-
-    if (!this._true.equals(o._true)) {
-      return false;
-    }
-
     if (!this._abstract.equals(o._abstract)) {
       return false;
     }
 
     if (!this._assert.equals(o._assert)) {
+      return false;
+    }
+
+    if (!this._boolean.equals(o._boolean)) {
       return false;
     }
 
@@ -702,11 +678,23 @@ public class Entry {
       return false;
     }
 
+    if (!this._double.equals(o._double)) {
+      return false;
+    }
+
     if (!this._else.equals(o._else)) {
       return false;
     }
 
+    if (!this._enum.equals(o._enum)) {
+      return false;
+    }
+
     if (!this._extends.equals(o._extends)) {
+      return false;
+    }
+
+    if (!this._false.equals(o._false)) {
       return false;
     }
 
@@ -715,6 +703,10 @@ public class Entry {
     }
 
     if (!this._finally.equals(o._finally)) {
+      return false;
+    }
+
+    if (!this._float.equals(o._float)) {
       return false;
     }
 
@@ -738,11 +730,19 @@ public class Entry {
       return false;
     }
 
+    if (!this.imported.equals(o.imported)) {
+      return false;
+    }
+
     if (!this._instanceof.equals(o._instanceof)) {
       return false;
     }
 
     if (!this._int.equals(o._int)) {
+      return false;
+    }
+
+    if (!this._interface.equals(o._interface)) {
       return false;
     }
 
@@ -822,6 +822,10 @@ public class Entry {
       return false;
     }
 
+    if (!this._true.equals(o._true)) {
+      return false;
+    }
+
     if (!this._try.equals(o._try)) {
       return false;
     }
@@ -838,10 +842,6 @@ public class Entry {
       return false;
     }
 
-    if (!this.imported.equals(o.imported)) {
-      return false;
-    }
-
     return true;
   }
 
@@ -851,32 +851,14 @@ public class Entry {
 
     b.append("Entry");
     b.append("(");
-    b.append("boolean=");
-    b.append(this._boolean.toString());
-    b.append(", ");
-    b.append("double=");
-    b.append(this._double.toString());
-    b.append(", ");
-    b.append("enum=");
-    b.append(this._enum.toString());
-    b.append(", ");
-    b.append("false=");
-    b.append(this._false.toString());
-    b.append(", ");
-    b.append("float=");
-    b.append(this._float.toString());
-    b.append(", ");
-    b.append("interface=");
-    b.append(this._interface.toString());
-    b.append(", ");
-    b.append("true=");
-    b.append(this._true.toString());
-    b.append(", ");
     b.append("abstract=");
     b.append(this._abstract.toString());
     b.append(", ");
     b.append("assert=");
     b.append(this._assert.toString());
+    b.append(", ");
+    b.append("boolean=");
+    b.append(this._boolean.toString());
     b.append(", ");
     b.append("break=");
     b.append(this._break.toString());
@@ -908,17 +890,29 @@ public class Entry {
     b.append("do=");
     b.append(this._do.toString());
     b.append(", ");
+    b.append("double=");
+    b.append(this._double.toString());
+    b.append(", ");
     b.append("else=");
     b.append(this._else.toString());
     b.append(", ");
+    b.append("enum=");
+    b.append(this._enum.toString());
+    b.append(", ");
     b.append("extends=");
     b.append(this._extends.toString());
+    b.append(", ");
+    b.append("false=");
+    b.append(this._false.toString());
     b.append(", ");
     b.append("final=");
     b.append(this._final.toString());
     b.append(", ");
     b.append("finally=");
     b.append(this._finally.toString());
+    b.append(", ");
+    b.append("float=");
+    b.append(this._float.toString());
     b.append(", ");
     b.append("for=");
     b.append(this._for.toString());
@@ -935,11 +929,17 @@ public class Entry {
     b.append("import=");
     b.append(this._import.toString());
     b.append(", ");
+    b.append("imported=");
+    b.append(this.imported.toString());
+    b.append(", ");
     b.append("instanceof=");
     b.append(this._instanceof.toString());
     b.append(", ");
     b.append("int=");
     b.append(this._int.toString());
+    b.append(", ");
+    b.append("interface=");
+    b.append(this._interface.toString());
     b.append(", ");
     b.append("long=");
     b.append(this._long.toString());
@@ -998,6 +998,9 @@ public class Entry {
     b.append("transient=");
     b.append(this._transient.toString());
     b.append(", ");
+    b.append("true=");
+    b.append(this._true.toString());
+    b.append(", ");
     b.append("try=");
     b.append(this._try.toString());
     b.append(", ");
@@ -1009,24 +1012,15 @@ public class Entry {
     b.append(", ");
     b.append("while=");
     b.append(this._while.toString());
-    b.append(", ");
-    b.append("imported=");
-    b.append(this.imported.toString());
     b.append(")");
 
     return b.toString();
   }
 
   public static class Builder {
-    private Optional<String> _boolean = Optional.empty();
-    private Optional<String> _double = Optional.empty();
-    private Optional<String> _enum = Optional.empty();
-    private Optional<String> _false = Optional.empty();
-    private Optional<String> _float = Optional.empty();
-    private Optional<String> _interface = Optional.empty();
-    private Optional<String> _true = Optional.empty();
     private Optional<String> _abstract = Optional.empty();
     private Optional<String> _assert = Optional.empty();
+    private Optional<String> _boolean = Optional.empty();
     private Optional<String> _break = Optional.empty();
     private Optional<String> _byte = Optional.empty();
     private Optional<String> _case = Optional.empty();
@@ -1037,17 +1031,23 @@ public class Entry {
     private Optional<String> _continue = Optional.empty();
     private Optional<String> _default = Optional.empty();
     private Optional<String> _do = Optional.empty();
+    private Optional<String> _double = Optional.empty();
     private Optional<String> _else = Optional.empty();
+    private Optional<String> _enum = Optional.empty();
     private Optional<String> _extends = Optional.empty();
+    private Optional<String> _false = Optional.empty();
     private Optional<String> _final = Optional.empty();
     private Optional<String> _finally = Optional.empty();
+    private Optional<String> _float = Optional.empty();
     private Optional<String> _for = Optional.empty();
     private Optional<String> _goto = Optional.empty();
     private Optional<String> _if = Optional.empty();
     private Optional<String> _implements = Optional.empty();
     private Optional<String> _import = Optional.empty();
+    private Optional<Empty> imported = Optional.empty();
     private Optional<String> _instanceof = Optional.empty();
     private Optional<String> _int = Optional.empty();
+    private Optional<String> _interface = Optional.empty();
     private Optional<String> _long = Optional.empty();
     private Optional<String> _native = Optional.empty();
     private Optional<String> _new = Optional.empty();
@@ -1067,46 +1067,11 @@ public class Entry {
     private Optional<String> _throw = Optional.empty();
     private Optional<String> _throws = Optional.empty();
     private Optional<String> _transient = Optional.empty();
+    private Optional<String> _true = Optional.empty();
     private Optional<String> _try = Optional.empty();
     private Optional<String> _void = Optional.empty();
     private Optional<String> _volatile = Optional.empty();
     private Optional<String> _while = Optional.empty();
-    private Optional<Empty> imported = Optional.empty();
-
-    public Builder _boolean(final String _boolean) {
-      this._boolean = Optional.of(_boolean);
-      return this;
-    }
-
-    public Builder _double(final String _double) {
-      this._double = Optional.of(_double);
-      return this;
-    }
-
-    public Builder _enum(final String _enum) {
-      this._enum = Optional.of(_enum);
-      return this;
-    }
-
-    public Builder _false(final String _false) {
-      this._false = Optional.of(_false);
-      return this;
-    }
-
-    public Builder _float(final String _float) {
-      this._float = Optional.of(_float);
-      return this;
-    }
-
-    public Builder _interface(final String _interface) {
-      this._interface = Optional.of(_interface);
-      return this;
-    }
-
-    public Builder _true(final String _true) {
-      this._true = Optional.of(_true);
-      return this;
-    }
 
     public Builder _abstract(final String _abstract) {
       this._abstract = Optional.of(_abstract);
@@ -1115,6 +1080,11 @@ public class Entry {
 
     public Builder _assert(final String _assert) {
       this._assert = Optional.of(_assert);
+      return this;
+    }
+
+    public Builder _boolean(final String _boolean) {
+      this._boolean = Optional.of(_boolean);
       return this;
     }
 
@@ -1168,13 +1138,28 @@ public class Entry {
       return this;
     }
 
+    public Builder _double(final String _double) {
+      this._double = Optional.of(_double);
+      return this;
+    }
+
     public Builder _else(final String _else) {
       this._else = Optional.of(_else);
       return this;
     }
 
+    public Builder _enum(final String _enum) {
+      this._enum = Optional.of(_enum);
+      return this;
+    }
+
     public Builder _extends(final String _extends) {
       this._extends = Optional.of(_extends);
+      return this;
+    }
+
+    public Builder _false(final String _false) {
+      this._false = Optional.of(_false);
       return this;
     }
 
@@ -1185,6 +1170,11 @@ public class Entry {
 
     public Builder _finally(final String _finally) {
       this._finally = Optional.of(_finally);
+      return this;
+    }
+
+    public Builder _float(final String _float) {
+      this._float = Optional.of(_float);
       return this;
     }
 
@@ -1213,6 +1203,11 @@ public class Entry {
       return this;
     }
 
+    public Builder imported(final Empty imported) {
+      this.imported = Optional.of(imported);
+      return this;
+    }
+
     public Builder _instanceof(final String _instanceof) {
       this._instanceof = Optional.of(_instanceof);
       return this;
@@ -1220,6 +1215,11 @@ public class Entry {
 
     public Builder _int(final String _int) {
       this._int = Optional.of(_int);
+      return this;
+    }
+
+    public Builder _interface(final String _interface) {
+      this._interface = Optional.of(_interface);
       return this;
     }
 
@@ -1318,6 +1318,11 @@ public class Entry {
       return this;
     }
 
+    public Builder _true(final String _true) {
+      this._true = Optional.of(_true);
+      return this;
+    }
+
     public Builder _try(final String _try) {
       this._try = Optional.of(_try);
       return this;
@@ -1338,21 +1343,10 @@ public class Entry {
       return this;
     }
 
-    public Builder imported(final Empty imported) {
-      this.imported = Optional.of(imported);
-      return this;
-    }
-
     public Entry build() {
-      final Optional<String> _boolean = this._boolean;
-      final Optional<String> _double = this._double;
-      final Optional<String> _enum = this._enum;
-      final Optional<String> _false = this._false;
-      final Optional<String> _float = this._float;
-      final Optional<String> _interface = this._interface;
-      final Optional<String> _true = this._true;
       final Optional<String> _abstract = this._abstract;
       final Optional<String> _assert = this._assert;
+      final Optional<String> _boolean = this._boolean;
       final Optional<String> _break = this._break;
       final Optional<String> _byte = this._byte;
       final Optional<String> _case = this._case;
@@ -1363,17 +1357,23 @@ public class Entry {
       final Optional<String> _continue = this._continue;
       final Optional<String> _default = this._default;
       final Optional<String> _do = this._do;
+      final Optional<String> _double = this._double;
       final Optional<String> _else = this._else;
+      final Optional<String> _enum = this._enum;
       final Optional<String> _extends = this._extends;
+      final Optional<String> _false = this._false;
       final Optional<String> _final = this._final;
       final Optional<String> _finally = this._finally;
+      final Optional<String> _float = this._float;
       final Optional<String> _for = this._for;
       final Optional<String> _goto = this._goto;
       final Optional<String> _if = this._if;
       final Optional<String> _implements = this._implements;
       final Optional<String> _import = this._import;
+      final Optional<Empty> imported = this.imported;
       final Optional<String> _instanceof = this._instanceof;
       final Optional<String> _int = this._int;
+      final Optional<String> _interface = this._interface;
       final Optional<String> _long = this._long;
       final Optional<String> _native = this._native;
       final Optional<String> _new = this._new;
@@ -1393,13 +1393,13 @@ public class Entry {
       final Optional<String> _throw = this._throw;
       final Optional<String> _throws = this._throws;
       final Optional<String> _transient = this._transient;
+      final Optional<String> _true = this._true;
       final Optional<String> _try = this._try;
       final Optional<String> _void = this._void;
       final Optional<String> _volatile = this._volatile;
       final Optional<String> _while = this._while;
-      final Optional<Empty> imported = this.imported;
 
-      return new Entry(_boolean, _double, _enum, _false, _float, _interface, _true, _abstract, _assert, _break, _byte, _case, _catch, _char, _class, _const, _continue, _default, _do, _else, _extends, _final, _finally, _for, _goto, _if, _implements, _import, _instanceof, _int, _long, _native, _new, _null, _package, _private, _protected, _public, _return, _short, _static, _strictfp, _super, _switch, _synchronized, _this, _throw, _throws, _transient, _try, _void, _volatile, _while, imported);
+      return new Entry(_abstract, _assert, _boolean, _break, _byte, _case, _catch, _char, _class, _const, _continue, _default, _do, _double, _else, _enum, _extends, _false, _final, _finally, _float, _for, _goto, _if, _implements, _import, imported, _instanceof, _int, _interface, _long, _native, _new, _null, _package, _private, _protected, _public, _return, _short, _static, _strictfp, _super, _switch, _synchronized, _this, _throw, _throws, _transient, _true, _try, _void, _volatile, _while);
     }
   }
 }

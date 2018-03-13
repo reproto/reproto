@@ -2,7 +2,7 @@
 
 * [Specifications](#specifications)
 * [Directory Structure](#directory-structure)
-* [File Options](#file-options)
+* [File Attributes](#file-attributes)
 * [Distribution](#distribution)
 * [Versioning](#versioning)
   * [Ephemeral Specifications](#ephemeral-specifications)
@@ -76,23 +76,24 @@ If this is present it's called a [versioned specification](#versioned-specificat
 
 Otherwise, it's known as an [ephemeral specification](#ephemeral-specifications).
 
-# File Options
+# File Attributes
 
-File options are specification-global options that affect the default behavior of the compiler.
+File attributes are specification-global attributes that affect the default behavior of the
+compiler for the given file.
 
 They are specified in the root of the specification like this:
 
 ```reproto
-use foo as bar;
+#![field_naming(upper_camel)]
 
-option field_naming = upper_camel;
+use foo as bar;
 
 // snip
 ```
 
-The following are legal file options.
+The following are legal file attributes.
 
-## `option endpoint_naming = <ident>`
+## `#![endpoint_naming(<naming>)]`
 
 The default endpoint naming strategy to use.
 
@@ -110,9 +111,9 @@ service MyService {
 
 With the default naming strategy, this would result in endpoints named `put_foo` and `get_baz`.
 
-This option changes what endpoints are named by default.
+This attribute changes what endpoints are named by default.
 
-Valid options are:
+Valid arguments are:
 
 * `lower_camel`, fields would be named as `lowerCamel`.
 * `upper_camel`, fields would be named as `UpperCamel`.
@@ -122,7 +123,7 @@ Valid options are:
 This does _not_ affect explicitly named endpoinds using `as`.
 
 ```reproto
-option endpoint_naming upper_camel;
+#![endpoint_naming(upper_camel)]
 
 service MyService {
   /// Would be named `put_foo`.
@@ -133,13 +134,13 @@ service MyService {
 }
 ```
 
-## `option field_naming <naming>`
+## `#![field_naming(<naming>)]`
 
 The default field naming strategy to use.
 
-This option changes the format that a field will take, depending on its name.
+This attribute changes the format that a field will take, depending on its name.
 
-Valid options are:
+Valid arguments are:
 
 * `lower_camel`, fields would be serialized as `lowerCamel`.
 * `upper_camel`, fields would be serialized as `UpperCamel`.
@@ -477,7 +478,7 @@ For example using `new Sampling.Percentile(10, 0.5F)`:
 {"type": "average", "sample_size": 10, "percentile": 0.5}
 ```
 
-The following options are supported by interfaces:
+The following attributes are supported on interfaces:
 
 [`type_info`]: #type-info
 
@@ -496,13 +497,11 @@ interface Foo {
 }
 ```
 
-The body of the sub-type can contain fields, and options:
+The body of the sub-type can contain fields, and attributes:
 
 ```reproto
 interface Foo {
   Bar {
-    option my_option = "hello";
-
     name: string;
   }
 }
@@ -625,9 +624,9 @@ service MyService {
 }
 ```
 
-Endpoints can have a set of options associated with them, by expanding their body.
+Endpoints can have a set of attributes associated with them, by expanding their body.
 
-These options might affect how code generation works for certain backends.
+These attributes might affect how code generation works for certain backends.
 
 ```reproto
 type Foo {
@@ -636,9 +635,8 @@ type Foo {
 /// My Service.
 service MyService {
   /// Get foo.
-  get_foo() -> Foo {
-    http_status 200;
-  }
+  #[http(method = "POST")]
+  get_foo() -> Foo;
 
   /// Set foo.
   set_foo(Foo);
@@ -676,14 +674,14 @@ HTTP is supported in reproto through [attributes].
 The primary attribute in use is the `#[http(...)]` selection.
 This can be applied to [services] and [endpoints].
 
-For services, the following options are available:
+For services, the following attributes are available:
 
 * `#[http(url = <string>)]`, configure the default URL for this service.
 
-For endpoints, the following options are available:
+For endpoints, the following attributes are available:
 
 * `#[http(path = <string>)]`, configure which path the endpoint uses. For example, `/post/{id}`.
-  This option is _required_. See [HTTP paths] for more information.
+  This attribute is _required_. See [HTTP paths] for more information.
 * `#[http(method = <string>)]`, configure which method the endpoint uses. Defaults to `GET`.
 
 [HTTP paths]: #http-paths
@@ -693,7 +691,7 @@ For endpoints, the following options are available:
 
 ### HTTP paths
 
-Paths are specified using the `#[http(path = <string>)]` option on [endpoints].
+Paths are specified using the `#[http(path = <string>)]` attribute on [endpoints].
 
 Variables can be capture in paths using the `{var}` syntax.
 This requires the variable to be declared in the endpoint, like the following:
@@ -739,13 +737,12 @@ This might be more viable if reproto supported other formats in the future.
 
 ## Reserved fields
 
-Fields can be reserved using a special option called `reserved`.
+Fields can be reserved using the `#[reserved(<field>)]` attribute.
 Fields which are reserved _cannot_ be added to the schema.
 
 ```reproto
+#[reserved(author, no_can_do)]
 type Post {
-  option reserved = [author, no_can_do];
-
   id: string;
 }
 ```

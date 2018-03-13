@@ -48,6 +48,8 @@ impl RpPathSpec {
             }
         }
 
-        Vars { iter: vars.into_iter() }
+        Vars {
+            iter: vars.into_iter(),
+        }
     }
 }

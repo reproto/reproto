@@ -10,13 +10,13 @@ grammar<'input, 'object>(input_object: &'object Rc<Box<Object>>);
 
 pub File: File<'input> =
     <comment:"//!"?>
+    <attributes:Loc<FileAttribute>*>
     <uses:Loc<Use>*>
-    <options:Loc<OptionDecl>*>
     <decls:Decl*> => {
         File {
             comment: comment.unwrap_or_else(Vec::new),
+            attributes: attributes,
             uses: uses,
-            options: options,
             decls: decls,
         }
 };
@@ -35,7 +35,7 @@ Use: UseDecl<'input> =
 
 UseAlias: Cow<'input, str> = "as" <value:ident> => value;
 
-Package: RpPackage = <parts:OneOrMore<".", ident>> => {
+Package: RpPackage = <parts:OneOrMore<".", Ident>> => {
     RpPackage::new(parts.into_iter().map(|s| s.to_string()).collect())
 };
 
@@ -60,7 +60,6 @@ Enum: EnumBody<'input> =
     };
 
 EnumMember: EnumMember<'input> = {
-    <option:Loc<OptionDecl>> => EnumMember::Option(option),
     <code:Loc<Code>> => EnumMember::Code(code),
 };
 
@@ -107,17 +106,13 @@ pub ServiceMember: ServiceMember<'input> = {
         ServiceMember::Endpoint(endpoint)
     },
 
-    <option:Loc<OptionDecl>> => {
-        ServiceMember::Option(option)
-    },
-
     <decl:Decl> => {
         ServiceMember::InnerDecl(decl)
     },
 };
 
 Endpoint: Endpoint<'input> = {
-    <id:Loc<ident>> "("
+    <id:Loc<Ident>> "("
         <arguments:ZeroOrMore<",", EndpointArgument>>
     ")" <response:("->" Loc<Channel>)?>
     <alias:FieldAlias?>
@@ -125,22 +120,6 @@ Endpoint: Endpoint<'input> = {
         Endpoint {
             id: id,
             alias: alias,
-            options: vec![],
-            arguments: arguments,
-            response: response.map(|r| r.1),
-        }
-    },
-
-    <id:Loc<ident>> "("
-        <arguments:ZeroOrMore<",", EndpointArgument>>
-    ")" <response:("->" Loc<Channel>)?>
-    <alias:FieldAlias?> "{"
-        <options:Loc<OptionDecl>*>
-    "}" => {
-        Endpoint {
-            id: id,
-            alias: alias,
-            options: options,
             arguments: arguments,
             response: response.map(|r| r.1),
         }
@@ -148,7 +127,7 @@ Endpoint: Endpoint<'input> = {
 };
 
 EndpointArgument: (Loc<Cow<'input, str>>, Loc<Channel>) =
-    <name:Loc<ident>> ":" <channel:Loc<Channel>> =>
+    <name:Loc<Ident>> ":" <channel:Loc<Channel>> =>
     (name, channel);
 
 Channel: Channel = {
@@ -165,8 +144,31 @@ Channel: Channel = {
     },
 };
 
+Ident: Cow<'input, str> = {
+    any => "any".into(),
+    float => "float".into(),
+    double => "double".into(),
+    u32 => "u32".into(),
+    u64 => "u64".into(),
+    i32 => "i32".into(),
+    i64 => "i64".into(),
+    boolean => "boolean".into(),
+    string => "string".into(),
+    datetime => "datetime".into(),
+    bytes => "bytes".into(),
+    stream => "stream".into(),
+    "use" => "use".into(),
+    "as" => "as".into(),
+    "enum" => "enum".into(),
+    "type" => "type".into(),
+    "interface" => "interface".into(),
+    "tuple" => "tuple".into(),
+    "service" => "service".into(),
+    <value:ident> => value,
+};
+
 FieldAlias: String = {
-    "as" <value:ident> => value.to_string(),
+    "as" <value:Ident> => value.to_string(),
     "as" <value:"string"> => value,
 };
 
@@ -183,32 +185,24 @@ Modifier: RpModifier =
 
 pub TypeMember: TypeMember<'input> = {
     <field:Item<Field>> => TypeMember::Field(field),
-    <option:Loc<OptionDecl>> => TypeMember::Option(option),
     <code:Loc<Code>> => TypeMember::Code(code),
     <decl:Decl> => TypeMember::InnerDecl(decl),
 };
 
 Code: Code<'input> =
-    <context:ident> "{{" <content:code> "}}" =>
+    <context:Ident> "{{" <content:code> "}}" =>
     Code {
         context: context,
         content: strip_code_block(content),
     };
 
 Field: Field<'input> =
-    <name:ident> <modifier:Modifier> ":" <ty:TypeSpec> <alias:FieldAlias?> ";" =>
+    <name:Ident> <modifier:Modifier> ":" <ty:TypeSpec> <alias:FieldAlias?> ";" =>
     Field {
         modifier: modifier,
         name: name,
         ty: ty,
         field_as: alias,
-    };
-
-OptionDecl: OptionDecl<'input> =
-    option <name:ident> "=" <value:Loc<Value>> ";" =>
-    OptionDecl {
-        name: name,
-        value: value,
     };
 
 SubType: SubType<'input> = {
@@ -233,10 +227,7 @@ pub Value: Value<'input> = {
     "(" <values:ZeroOrMore<",", Loc<Value>>> ")" => Value::Array(values),
     <string:"string"> => Value::String(string),
     <number:number> => Value::Number(number),
-    <true> => Value::Boolean(true),
-    <false> => Value::Boolean(false),
-    <ident:ident> => Value::Identifier(ident),
-    <ty:TypeSpec> => Value::Type(ty),
+    <id:Ident> => Value::Identifier(id),
 };
 
 pub TypeSpec: Type = {
@@ -274,19 +265,29 @@ Name: Name = {
     },
 };
 
-Attribute: Attribute<'input> = {
-    "#" "[" <ident:Loc<ident>>  "]" => {
-        Attribute::Word(ident)
+FileAttribute: Attribute<'input> = {
+    "#" "!" "[" <id:Loc<Ident>>  "]" => {
+        Attribute::Word(id)
     },
 
-    "#" "[" <ident:Loc<ident>> "(" <name_value:ZeroOrMoreTrailing<",", AttributeItem>> ")" "]" => {
-        Attribute::List(ident, name_value)
+    "#" "!" "[" <id:Loc<Ident>> "(" <name_value:ZeroOrMoreTrailing<",", AttributeItem>> ")" "]" => {
+        Attribute::List(id, name_value)
+    },
+};
+
+Attribute: Attribute<'input> = {
+    "#" "[" <id:Loc<Ident>>  "]" => {
+        Attribute::Word(id)
+    },
+
+    "#" "[" <id:Loc<Ident>> "(" <name_value:ZeroOrMoreTrailing<",", AttributeItem>> ")" "]" => {
+        Attribute::List(id, name_value)
     },
 };
 
 AttributeItem: AttributeItem<'input> = {
-    <ident:Loc<ident>> "=" <value:Loc<Value>> => AttributeItem::NameValue {
-        name: ident,
+    <id:Loc<Ident>> "=" <value:Loc<Value>> => AttributeItem::NameValue {
+        name: id,
         value: value,
     },
 
@@ -359,6 +360,7 @@ extern {
         ":" => Token::Colon,
         "?" => Token::QuestionMark,
         "#" => Token::Hash,
+        "!" => Token::Bang,
         "->" => Token::RightArrow,
         "," => Token::Comma,
         "." => Token::Dot,
@@ -377,9 +379,6 @@ extern {
         string => Token::StringKeyword,
         datetime => Token::DateTimeKeyword,
         bytes => Token::BytesKeyword,
-        true => Token::TrueKeyword,
-        false => Token::FalseKeyword,
         stream => Token::StreamKeyword,
-        option => Token::OptionKeyword,
     }
 }

@@ -1,9 +1,9 @@
 import _yield as t
 
 class Entry:
-  def __init__(self, _as, _and, _assert, _break, _class, _continue, _def, _del, _elif, _else, _except, _exec, _finally, _for, _from, _global, _if, _import, _in, _is, _lambda, _nonlocal, _not, _or, _pass, _print, _raise, _return, _try, _while, _with, _yield, imported):
-    self._as = _as
+  def __init__(self, _and, _as, _assert, _break, _class, _continue, _def, _del, _elif, _else, _except, _exec, _finally, _for, _from, _global, _if, _import, imported, _in, _is, _lambda, _nonlocal, _not, _or, _pass, _print, _raise, _return, _try, _while, _with, _yield):
     self._and = _and
+    self._as = _as
     self._assert = _assert
     self._break = _break
     self._class = _class
@@ -20,6 +20,7 @@ class Entry:
     self._global = _global
     self._if = _if
     self._import = _import
+    self.imported = imported
     self._in = _in
     self._is = _is
     self._lambda = _lambda
@@ -34,13 +35,12 @@ class Entry:
     self._while = _while
     self._with = _with
     self._yield = _yield
-    self.imported = imported
-
-  def get_as(self):
-    return self._as
 
   def get_and(self):
     return self._and
+
+  def get_as(self):
+    return self._as
 
   def get_assert(self):
     return self._assert
@@ -90,6 +90,9 @@ class Entry:
   def get_import(self):
     return self._import
 
+  def get_imported(self):
+    return self.imported
+
   def get_in(self):
     return self._in
 
@@ -132,19 +135,8 @@ class Entry:
   def get_yield(self):
     return self._yield
 
-  def get_imported(self):
-    return self.imported
-
   @staticmethod
   def decode(data):
-    if "as" in data:
-      f_as = data["as"]
-
-      if f_as is not None:
-        f_as = f_as
-    else:
-      f_as = None
-
     if "and" in data:
       f_and = data["and"]
 
@@ -152,6 +144,14 @@ class Entry:
         f_and = f_and
     else:
       f_and = None
+
+    if "as" in data:
+      f_as = data["as"]
+
+      if f_as is not None:
+        f_as = f_as
+    else:
+      f_as = None
 
     if "assert" in data:
       f_assert = data["assert"]
@@ -281,6 +281,14 @@ class Entry:
     else:
       f_import = None
 
+    if "imported" in data:
+      f_imported = data["imported"]
+
+      if f_imported is not None:
+        f_imported = t.Empty.decode(f_imported)
+    else:
+      f_imported = None
+
     if "in" in data:
       f_in = data["in"]
 
@@ -393,24 +401,16 @@ class Entry:
     else:
       f_yield = None
 
-    if "imported" in data:
-      f_imported = data["imported"]
-
-      if f_imported is not None:
-        f_imported = t.Empty.decode(f_imported)
-    else:
-      f_imported = None
-
-    return Entry(f_as, f_and, f_assert, f_break, f_class, f_continue, f_def, f_del, f_elif, f_else, f_except, f_exec, f_finally, f_for, f_from, f_global, f_if, f_import, f_in, f_is, f_lambda, f_nonlocal, f_not, f_or, f_pass, f_print, f_raise, f_return, f_try, f_while, f_with, f_yield, f_imported)
+    return Entry(f_and, f_as, f_assert, f_break, f_class, f_continue, f_def, f_del, f_elif, f_else, f_except, f_exec, f_finally, f_for, f_from, f_global, f_if, f_import, f_imported, f_in, f_is, f_lambda, f_nonlocal, f_not, f_or, f_pass, f_print, f_raise, f_return, f_try, f_while, f_with, f_yield)
 
   def encode(self):
     data = dict()
 
-    if self._as is not None:
-      data["as"] = self._as
-
     if self._and is not None:
       data["and"] = self._and
+
+    if self._as is not None:
+      data["as"] = self._as
 
     if self._assert is not None:
       data["assert"] = self._assert
@@ -460,6 +460,9 @@ class Entry:
     if self._import is not None:
       data["import"] = self._import
 
+    if self.imported is not None:
+      data["imported"] = self.imported.encode()
+
     if self._in is not None:
       data["in"] = self._in
 
@@ -502,10 +505,7 @@ class Entry:
     if self._yield is not None:
       data["yield"] = self._yield
 
-    if self.imported is not None:
-      data["imported"] = self.imported.encode()
-
     return data
 
   def __repr__(self):
-    return "<Entry as:{!r}, and:{!r}, assert:{!r}, break:{!r}, class:{!r}, continue:{!r}, def:{!r}, del:{!r}, elif:{!r}, else:{!r}, except:{!r}, exec:{!r}, finally:{!r}, for:{!r}, from:{!r}, global:{!r}, if:{!r}, import:{!r}, in:{!r}, is:{!r}, lambda:{!r}, nonlocal:{!r}, not:{!r}, or:{!r}, pass:{!r}, print:{!r}, raise:{!r}, return:{!r}, try:{!r}, while:{!r}, with:{!r}, yield:{!r}, imported:{!r}>".format(self._as, self._and, self._assert, self._break, self._class, self._continue, self._def, self._del, self._elif, self._else, self._except, self._exec, self._finally, self._for, self._from, self._global, self._if, self._import, self._in, self._is, self._lambda, self._nonlocal, self._not, self._or, self._pass, self._print, self._raise, self._return, self._try, self._while, self._with, self._yield, self.imported)
+    return "<Entry and:{!r}, as:{!r}, assert:{!r}, break:{!r}, class:{!r}, continue:{!r}, def:{!r}, del:{!r}, elif:{!r}, else:{!r}, except:{!r}, exec:{!r}, finally:{!r}, for:{!r}, from:{!r}, global:{!r}, if:{!r}, import:{!r}, imported:{!r}, in:{!r}, is:{!r}, lambda:{!r}, nonlocal:{!r}, not:{!r}, or:{!r}, pass:{!r}, print:{!r}, raise:{!r}, return:{!r}, try:{!r}, while:{!r}, with:{!r}, yield:{!r}>".format(self._and, self._as, self._assert, self._break, self._class, self._continue, self._def, self._del, self._elif, self._else, self._except, self._exec, self._finally, self._for, self._from, self._global, self._if, self._import, self.imported, self._in, self._is, self._lambda, self._nonlocal, self._not, self._or, self._pass, self._print, self._raise, self._return, self._try, self._while, self._with, self._yield)

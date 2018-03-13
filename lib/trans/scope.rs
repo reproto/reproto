@@ -1,18 +1,19 @@
 //! Propagates scope-specific information to `into_model` transformations.
 
 use core::{Context, RpName, RpPackage, RpVersionedPackage};
+use core::errors::{Error, Result};
 use naming::Naming;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 /// Root of the scope.
-struct Root {
+pub struct Root {
     ctx: Rc<Context>,
     package_prefix: Option<RpPackage>,
     package: RpVersionedPackage,
     prefixes: HashMap<String, RpVersionedPackage>,
-    endpoint_naming: Option<Box<Naming>>,
-    field_naming: Option<Box<Naming>>,
+    pub endpoint_naming: Option<Box<Naming>>,
+    pub field_naming: Option<Box<Naming>>,
     keywords: Rc<HashMap<String, String>>,
     safe_packages: bool,
     package_naming: Option<Box<Naming>>,
@@ -55,23 +56,35 @@ impl Scope {
         package_prefix: Option<RpPackage>,
         package: RpVersionedPackage,
         prefixes: HashMap<String, RpVersionedPackage>,
-        endpoint_naming: Option<Box<Naming>>,
-        field_naming: Option<Box<Naming>>,
         keywords: Rc<HashMap<String, String>>,
         safe_packages: bool,
         package_naming: Option<Box<Naming>>,
     ) -> Scope {
-        Scope(Rc::new(Inner::Root(Rc::new(Root {
+        let root = Rc::new(Root {
             ctx,
             package_prefix,
             package,
             prefixes,
-            endpoint_naming,
-            field_naming,
+            endpoint_naming: None,
+            field_naming: None,
             keywords,
             safe_packages,
             package_naming,
-        }))))
+        });
+
+        Scope(Rc::new(Inner::Root(root)))
+    }
+
+    #[inline(always)]
+    pub fn mut_root(&mut self) -> Result<&mut Root> {
+        let inner = Rc::get_mut(&mut self.0).ok_or_else(|| Error::from("not uniquely owned"))?;
+
+        match inner {
+            &mut Inner::Root(ref mut root) => {
+                Rc::get_mut(root).ok_or_else(|| Error::from("not uniquely owned"))
+            }
+            _ => return Err("scope is not a root element".into()),
+        }
     }
 
     #[inline(always)]

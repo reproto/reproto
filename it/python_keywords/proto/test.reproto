@@ -1,8 +1,8 @@
-use _yield as t;
+use yield as t;
 
 type Entry {
-  _as?: string;
   and?: string;
+  as?: string;
   assert?: string;
   break?: string;
   class?: string;
@@ -19,6 +19,7 @@ type Entry {
   global?: string;
   if?: string;
   import?: string;
+  imported?: t::Empty;
   in?: string;
   is?: string;
   lambda?: string;
@@ -33,5 +34,4 @@ type Entry {
   while?: string;
   with?: string;
   yield?: string;
-  imported?: t::Empty;
 }

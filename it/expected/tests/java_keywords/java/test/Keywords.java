@@ -3,23 +3,11 @@ package test;
 import java.util.concurrent.CompletableFuture;
 
 public interface Keywords {
-  CompletableFuture<String> _boolean();
-
-  CompletableFuture<String> _double();
-
-  CompletableFuture<String> _enum();
-
-  CompletableFuture<String> _false();
-
-  CompletableFuture<String> _float();
-
-  CompletableFuture<String> _interface();
-
-  CompletableFuture<String> _true();
-
   CompletableFuture<String> _abstract();
 
   CompletableFuture<String> _assert();
+
+  CompletableFuture<String> _boolean();
 
   CompletableFuture<String> _break();
 
@@ -41,13 +29,21 @@ public interface Keywords {
 
   CompletableFuture<String> _do();
 
+  CompletableFuture<String> _double();
+
   CompletableFuture<String> _else();
 
+  CompletableFuture<String> _enum();
+
   CompletableFuture<String> _extends();
+
+  CompletableFuture<String> _false();
 
   CompletableFuture<String> _final();
 
   CompletableFuture<String> _finally();
+
+  CompletableFuture<String> _float();
 
   CompletableFuture<String> _for();
 
@@ -62,6 +58,8 @@ public interface Keywords {
   CompletableFuture<String> _instanceof();
 
   CompletableFuture<String> _int();
+
+  CompletableFuture<String> _interface();
 
   CompletableFuture<String> _long();
 
@@ -100,6 +98,8 @@ public interface Keywords {
   CompletableFuture<String> _throws();
 
   CompletableFuture<String> _transient();
+
+  CompletableFuture<String> _true();
 
   CompletableFuture<String> _try();
 

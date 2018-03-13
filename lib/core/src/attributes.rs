@@ -57,12 +57,19 @@ impl Selection {
         mem::replace(&mut self.words, vec![])
     }
 
+    /// Take a single word.
+    pub fn take_word(&mut self) -> Option<Loc<RpValue>> {
+        self.words.pop()
+    }
+
     /// Get an iterator over unused positions.
     pub fn unused(&self) -> Unused {
         let mut positions = Vec::new();
         positions.extend(self.words.iter().map(|v| Loc::pos(v)));
         positions.extend(self.values.values().map(|v| Loc::pos(&v.0)));
-        Unused { iter: positions.into_iter() }
+        Unused {
+            iter: positions.into_iter(),
+        }
     }
 }
 
@@ -106,6 +113,8 @@ impl Attributes {
         let mut positions = Vec::new();
         positions.extend(self.words.values());
         positions.extend(self.selections.values().map(Loc::pos));
-        Unused { iter: positions.into_iter() }
+        Unused {
+            iter: positions.into_iter(),
+        }
     }
 }

@@ -1,0 +1,4 @@
+{"lower_camel": {"fooBar": "string"}}
+{"lower_snake": {"foo_bar": "string"}}
+{"upper_camel": {"FooBar": "string"}}
+{"upper_snake": {"FOO_BAR": "string"}}

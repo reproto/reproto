@@ -1,6 +1,6 @@
 //! Value of models
 
-use super::{Loc, RpEnumOrdinal, RpNumber, RpType};
+use super::{Loc, RpEnumOrdinal, RpNumber};
 use errors::{Error, Result};
 use std::fmt;
 
@@ -9,10 +9,8 @@ use std::fmt;
 pub enum RpValue {
     String(String),
     Number(RpNumber),
-    Boolean(bool),
     Identifier(String),
     Array(Vec<Loc<RpValue>>),
-    Type(RpType),
 }
 
 impl RpValue {
@@ -58,10 +56,8 @@ impl fmt::Display for RpValue {
         let out = match *self {
             RpValue::String(_) => "<string>",
             RpValue::Number(_) => "<number>",
-            RpValue::Boolean(_) => "<boolean>",
             RpValue::Identifier(_) => "<identifier>",
             RpValue::Array(_) => "<array>",
-            RpValue::Type(ref ty) => return ty.fmt(f),
         };
 
         write!(f, "{}", out)
