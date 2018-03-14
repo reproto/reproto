@@ -1,2 +1,1 @@
-[[presets]]
-type = "maven"
+[presets.maven]

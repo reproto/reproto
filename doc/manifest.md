@@ -32,8 +32,7 @@ output = "target/generated"
 toystore = "*"
 
 # Add a preset
-[[presets]]
-type = "maven"
+[presets.maven]
 ```
 
 ## Build Path
@@ -150,8 +149,7 @@ Sets default options suitable for building with a default Maven project.
 ```toml
 # File: reproto.toml
 
-[[presets]]
-type = "maven"
+[presets.maven]
 ```
 
 This preset is equivalent to the following manifest:

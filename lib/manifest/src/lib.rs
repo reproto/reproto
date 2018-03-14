@@ -370,56 +370,25 @@ pub enum Preset {
     Swift {},
 }
 
-impl Preset {}
+impl TryFromToml for Preset {
+    fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
+        let preset = match id {
+            "maven" => Preset::Maven {},
+            "swift" => Preset::Swift {},
+            _ => return NoModule::illegal(path, id, value),
+        };
 
-/// Apply the given preset to a manifest.
-fn apply_preset_to(value: toml::Value, manifest: &mut Manifest, base: &Path) -> Result<()> {
-    use self::Preset::*;
-    use self::toml::Value::*;
-
-    match value {
-        String(name) => match name.as_str() {
-            "maven" => maven_apply_to(manifest, base)?,
-            "swift" => swift_apply_to(manifest, base)?,
-            name => return Err(format!("unsupported preset: {}", name).into()),
-        },
-        value => {
-            let preset: Preset = value.try_into()?;
-
-            match preset {
-                Maven { .. } => maven_apply_to(manifest, base)?,
-                Swift { .. } => swift_apply_to(manifest, base)?,
-            }
-        }
+        Ok(preset)
     }
 
-    return Ok(());
+    fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
+        let preset = match id {
+            "maven" => Preset::Maven {},
+            "swift" => Preset::Swift {},
+            _ => return NoModule::illegal(path, id, value),
+        };
 
-    fn maven_apply_to(manifest: &mut Manifest, base: &Path) -> Result<()> {
-        // default path
-        manifest
-            .paths
-            .push(base.join("src").join("main").join("reproto"));
-
-        // output directory
-        manifest.output = Some(
-            base.join("target")
-                .join("generated")
-                .join("reproto")
-                .join("java"),
-        );
-
-        Ok(())
-    }
-
-    fn swift_apply_to(manifest: &mut Manifest, base: &Path) -> Result<()> {
-        // default path
-        manifest.paths.push(base.join("reproto"));
-
-        // output directory
-        manifest.output = Some(base.join("Sources").join("Modules"));
-
-        Ok(())
+        Ok(preset)
     }
 }
 
@@ -535,18 +504,6 @@ impl Manifest {
     }
 }
 
-/// Load and apply all repository-specific information.
-pub fn load_repository(
-    repository: &mut Repository,
-    _base: &Path,
-    value: &mut toml::value::Table,
-) -> Result<()> {
-    repository.no_repository = take_field(value, "no_repository")?;
-    repository.index = take_field(value, "index")?;
-    repository.objects = take_field(value, "objects")?;
-    Ok(())
-}
-
 fn take_field<'de, T>(value: &mut toml::value::Table, name: &str) -> Result<T>
 where
     T: Default + serde::Deserialize<'de>,
@@ -609,7 +566,7 @@ pub fn load_common_manifest(
         manifest.output = Some(output.to_path(base));
     }
 
-    for preset in take_field::<Vec<toml::Value>>(value, "presets")? {
+    for preset in parse_section(base, take_field(value, "presets")?)? {
         apply_preset_to(preset, manifest, &base)?;
     }
 
@@ -629,7 +586,58 @@ pub fn load_common_manifest(
         manifest.doc = doc;
     }
 
-    Ok(())
+    return Ok(());
+
+    /// Load and apply all repository-specific information.
+    pub fn load_repository(
+        repository: &mut Repository,
+        _base: &Path,
+        value: &mut toml::value::Table,
+    ) -> Result<()> {
+        repository.no_repository = take_field(value, "no_repository")?;
+        repository.index = take_field(value, "index")?;
+        repository.objects = take_field(value, "objects")?;
+        Ok(())
+    }
+
+    /// Apply the given preset to a manifest.
+    fn apply_preset_to(preset: Preset, manifest: &mut Manifest, base: &Path) -> Result<()> {
+        use self::Preset::*;
+
+        match preset {
+            Maven { .. } => maven_apply_to(manifest, base)?,
+            Swift { .. } => swift_apply_to(manifest, base)?,
+        }
+
+        return Ok(());
+
+        fn maven_apply_to(manifest: &mut Manifest, base: &Path) -> Result<()> {
+            // default path
+            manifest
+                .paths
+                .push(base.join("src").join("main").join("reproto"));
+
+            // output directory
+            manifest.output = Some(
+                base.join("target")
+                    .join("generated")
+                    .join("reproto")
+                    .join("java"),
+            );
+
+            Ok(())
+        }
+
+        fn swift_apply_to(manifest: &mut Manifest, base: &Path) -> Result<()> {
+            // default path
+            manifest.paths.push(base.join("reproto"));
+
+            // output directory
+            manifest.output = Some(base.join("Sources").join("Modules"));
+
+            Ok(())
+        }
+    }
 }
 
 /// Read and parse the manifest as TOML, extracting the language (if present) in the process.

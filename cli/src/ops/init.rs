@@ -36,6 +36,7 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
 
     let mut with_output = true;
     let mut maven = false;
+    let mut swift = false;
 
     let package = vec!["io", "reproto", "example"];
 
@@ -43,6 +44,12 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
     if handle.is_file(RelativePath::new("pom.xml")) {
         with_output = false;
         maven = true;
+    }
+
+    // looks like a swift project
+    if handle.is_file(RelativePath::new("Package.swift")) {
+        with_output = false;
+        swift = true;
     }
 
     if !handle.is_file(manifest) {
@@ -58,9 +65,12 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
         }
 
         if maven {
-            writeln!(manifest, "[[presets]]")?;
-            writeln!(manifest, "type = \"maven\"")?;
+            writeln!(manifest, "[presets.maven]")?;
             path = RelativePath::new("src/main/reproto");
+        }
+
+        if swift {
+            writeln!(manifest, "[presets.swift]")?;
         }
 
         writeln!(manifest, "")?;

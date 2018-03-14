@@ -1,1 +1,2 @@
-presets = ["maven"]
+[presets]
+maven = {}

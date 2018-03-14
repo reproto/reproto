@@ -800,8 +800,10 @@ This section is dedicated towards describing language-specific behaviors provide
 
 language = "java"
 
-[[presets]]
-type = "maven"
+[presets.maven]
+
+[packages]
+"io.reproto.example" = "*"
 ```
 
 Java classes are generated using _nested_ classes that matches the hierarchy specified in the
@@ -850,9 +852,12 @@ conflicting with the implicitly defined `Object#getClass`.
 # reproto.toml
 
 language = "java"
-paths = ['src']
+paths = ["src"]
 
 [modules.jackson]
+
+[packages]
+"io.reproto.example" = "*"
 ```
 
 Adds [jackson] annotations to generated classes and generates support classes for handling tuples.
@@ -865,9 +870,12 @@ Adds [jackson] annotations to generated classes and generates support classes fo
 # reproto.toml
 
 language = "java"
-paths = ['src']
+paths = ["src"]
 
 [modules.lombok]
+
+[packages]
+"io.reproto.example" = "*"
 ```
 
 Adds [lombok] annotations to generated classes.
@@ -880,9 +888,12 @@ Adds [lombok] annotations to generated classes.
 # reproto.toml
 
 language = "java"
-paths = ['src']
+paths = ["src"]
 
 [modules.builder]
+
+[packages]
+"io.reproto.example" = "*"
 ```
 
 Generates builders for all data classes.
@@ -927,6 +938,9 @@ public class Foo {
 language = "rust"
 paths = ["src"]
 output = "target"
+
+[packages]
+"io.reproto.example" = "*"
 ```
 
 Code generation for rust relies entirely on [Serde].
@@ -1012,6 +1026,9 @@ language = "rust"
 paths = ["src"]
 
 [modules.chrono]
+
+[packages]
+"io.reproto.example" = "*"
 ```
 
 Rust doesn't have a native type to represent `datetime`, so the `chrono` module is used to
@@ -1034,6 +1051,9 @@ chrono = {version = "0.4", features = ["serde"]}
 language = "python"
 paths = ["src"]
 output = "target"
+
+[packages]
+"io.reproto.example" = "*"
 ```
 
 In python, generated types follow a naming strategy like the following:
@@ -1122,6 +1142,9 @@ class Entry:
 language = "js"
 paths = ["src"]
 output = "target"
+
+[packages]
+"io.reproto.example" = "*"
 ```
 
 In JavaScript, generated types follow a naming strategy like the following:
@@ -1159,7 +1182,7 @@ For example:
 ```reproto
 type Entry {
   abstract: string;
-  _true: string;
+  true: string;
 }
 ```
 
@@ -1215,7 +1238,9 @@ export class Entry {
 
 language = "csharp"
 paths = ["src"]
-output = ""
+
+[packages]
+"io.reproto.example" = "*"
 ```
 
 In C#, generated types follow a naming strategy like the following:
@@ -1253,8 +1278,10 @@ namespace Io.Reproto.Example {
 
 language = "swift"
 
-[[presets]]
-type = "swift"
+[presets.swift]
+
+[packages]
+"io.reproto.example" = "*"
 ```
 
 In Swift, generated types follow a naming strategy like the following:
