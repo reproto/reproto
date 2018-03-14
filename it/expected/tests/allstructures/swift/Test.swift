@@ -1,39 +1,64 @@
-public struct Test_Entry {
+public struct Test_Entry: Codable {
 }
 
 public extension Test_Entry {
   static func decode(json: Any) throws -> Test_Entry {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_Entry()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootType {
+public struct Test_RootType: Codable {
 }
 
 public extension Test_RootType {
   static func decode(json: Any) throws -> Test_RootType {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootType()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_RootInterface {
   case Foo(Test_RootInterface_Foo)
+  enum CodingKeys: String, CodingKey {
+    case tag = "type"
+  }
+}
+
+extension Test_RootInterface: Decodable {
+  public init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+
+    switch try values.decode(String.self, forKey: .tag) {
+    case "Foo":
+      self = try .Foo(Test_RootInterface_Foo(from: decoder))
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "type")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_RootInterface: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.container(keyedBy: CodingKeys.self)
+
+    switch self {
+    case .Foo(let d):
+      try values.encode("Foo", forKey: .tag)
+      try d.encode(to: encoder)
+    }
+  }
 }
 
 public extension Test_RootInterface {
@@ -61,24 +86,22 @@ public extension Test_RootInterface {
   }
 }
 
-public struct Test_RootInterface_Foo {
+public struct Test_RootInterface_Foo: Codable {
 }
 public extension Test_RootInterface_Foo {
   static func decode(json: Any) throws -> Test_RootInterface_Foo {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootInterface_Foo()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_RootEnum {
-  case Foo()
+  case Foo
 }
 
 public extension Test_RootEnum {
@@ -87,7 +110,7 @@ public extension Test_RootEnum {
 
     switch json {
       case "Foo":
-        return Test_RootEnum.Foo()
+        return Test_RootEnum.Foo
       default:
         throw SerializationError.bad_value()
     }
@@ -99,6 +122,31 @@ public extension Test_RootEnum {
         return "Foo"
       default:
         throw SerializationError.bad_value()
+    }
+  }
+}
+
+extension Test_RootEnum: Decodable {
+  public init(from decoder: Decoder) throws {
+    let value = try decoder.singleValueContainer()
+
+    switch try value.decode(String.self) {
+    case "Foo":
+      self = .Foo
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_RootEnum: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var value = encoder.singleValueContainer()
+
+    switch self {
+    case .Foo:
+      try value.encode("Foo")
     }
   }
 }
@@ -119,25 +167,66 @@ public extension Test_RootTuple {
   }
 }
 
-public struct Test_RootType_NestedType {
+extension Test_RootTuple: Decodable {
+  public init(from decoder: Decoder) throws {
+    var values = try decoder.unkeyedContainer()
+
+  }
+}
+
+extension Test_RootTuple: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.unkeyedContainer()
+
+  }
+}
+
+public struct Test_RootType_NestedType: Codable {
 }
 
 public extension Test_RootType_NestedType {
   static func decode(json: Any) throws -> Test_RootType_NestedType {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootType_NestedType()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_RootType_NestedInterface {
   case Foo(Test_RootType_NestedInterface_Foo)
+  enum CodingKeys: String, CodingKey {
+    case tag = "type"
+  }
+}
+
+extension Test_RootType_NestedInterface: Decodable {
+  public init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+
+    switch try values.decode(String.self, forKey: .tag) {
+    case "Foo":
+      self = try .Foo(Test_RootType_NestedInterface_Foo(from: decoder))
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "type")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_RootType_NestedInterface: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.container(keyedBy: CodingKeys.self)
+
+    switch self {
+    case .Foo(let d):
+      try values.encode("Foo", forKey: .tag)
+      try d.encode(to: encoder)
+    }
+  }
 }
 
 public extension Test_RootType_NestedInterface {
@@ -165,24 +254,22 @@ public extension Test_RootType_NestedInterface {
   }
 }
 
-public struct Test_RootType_NestedInterface_Foo {
+public struct Test_RootType_NestedInterface_Foo: Codable {
 }
 public extension Test_RootType_NestedInterface_Foo {
   static func decode(json: Any) throws -> Test_RootType_NestedInterface_Foo {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootType_NestedInterface_Foo()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_RootType_NestedEnum {
-  case Foo()
+  case Foo
 }
 
 public extension Test_RootType_NestedEnum {
@@ -191,7 +278,7 @@ public extension Test_RootType_NestedEnum {
 
     switch json {
       case "Foo":
-        return Test_RootType_NestedEnum.Foo()
+        return Test_RootType_NestedEnum.Foo
       default:
         throw SerializationError.bad_value()
     }
@@ -203,6 +290,31 @@ public extension Test_RootType_NestedEnum {
         return "Foo"
       default:
         throw SerializationError.bad_value()
+    }
+  }
+}
+
+extension Test_RootType_NestedEnum: Decodable {
+  public init(from decoder: Decoder) throws {
+    let value = try decoder.singleValueContainer()
+
+    switch try value.decode(String.self) {
+    case "Foo":
+      self = .Foo
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_RootType_NestedEnum: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var value = encoder.singleValueContainer()
+
+    switch self {
+    case .Foo:
+      try value.encode("Foo")
     }
   }
 }
@@ -223,25 +335,66 @@ public extension Test_RootType_NestedTuple {
   }
 }
 
-public struct Test_RootInterface_Foo_NestedType {
+extension Test_RootType_NestedTuple: Decodable {
+  public init(from decoder: Decoder) throws {
+    var values = try decoder.unkeyedContainer()
+
+  }
+}
+
+extension Test_RootType_NestedTuple: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.unkeyedContainer()
+
+  }
+}
+
+public struct Test_RootInterface_Foo_NestedType: Codable {
 }
 
 public extension Test_RootInterface_Foo_NestedType {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedType {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootInterface_Foo_NestedType()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_RootInterface_Foo_NestedInterface {
   case NestedFoo(Test_RootInterface_Foo_NestedInterface_NestedFoo)
+  enum CodingKeys: String, CodingKey {
+    case tag = "type"
+  }
+}
+
+extension Test_RootInterface_Foo_NestedInterface: Decodable {
+  public init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+
+    switch try values.decode(String.self, forKey: .tag) {
+    case "NestedFoo":
+      self = try .NestedFoo(Test_RootInterface_Foo_NestedInterface_NestedFoo(from: decoder))
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "type")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_RootInterface_Foo_NestedInterface: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.container(keyedBy: CodingKeys.self)
+
+    switch self {
+    case .NestedFoo(let d):
+      try values.encode("NestedFoo", forKey: .tag)
+      try d.encode(to: encoder)
+    }
+  }
 }
 
 public extension Test_RootInterface_Foo_NestedInterface {
@@ -269,24 +422,22 @@ public extension Test_RootInterface_Foo_NestedInterface {
   }
 }
 
-public struct Test_RootInterface_Foo_NestedInterface_NestedFoo {
+public struct Test_RootInterface_Foo_NestedInterface_NestedFoo: Codable {
 }
 public extension Test_RootInterface_Foo_NestedInterface_NestedFoo {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedInterface_NestedFoo {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootInterface_Foo_NestedInterface_NestedFoo()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_RootInterface_Foo_NestedEnum {
-  case Foo()
+  case Foo
 }
 
 public extension Test_RootInterface_Foo_NestedEnum {
@@ -295,7 +446,7 @@ public extension Test_RootInterface_Foo_NestedEnum {
 
     switch json {
       case "Foo":
-        return Test_RootInterface_Foo_NestedEnum.Foo()
+        return Test_RootInterface_Foo_NestedEnum.Foo
       default:
         throw SerializationError.bad_value()
     }
@@ -307,6 +458,31 @@ public extension Test_RootInterface_Foo_NestedEnum {
         return "Foo"
       default:
         throw SerializationError.bad_value()
+    }
+  }
+}
+
+extension Test_RootInterface_Foo_NestedEnum: Decodable {
+  public init(from decoder: Decoder) throws {
+    let value = try decoder.singleValueContainer()
+
+    switch try value.decode(String.self) {
+    case "Foo":
+      self = .Foo
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_RootInterface_Foo_NestedEnum: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var value = encoder.singleValueContainer()
+
+    switch self {
+    case .Foo:
+      try value.encode("Foo")
     }
   }
 }
@@ -327,25 +503,66 @@ public extension Test_RootInterface_Foo_NestedTuple {
   }
 }
 
-public struct Test_RootTuple_NestedType {
+extension Test_RootInterface_Foo_NestedTuple: Decodable {
+  public init(from decoder: Decoder) throws {
+    var values = try decoder.unkeyedContainer()
+
+  }
+}
+
+extension Test_RootInterface_Foo_NestedTuple: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.unkeyedContainer()
+
+  }
+}
+
+public struct Test_RootTuple_NestedType: Codable {
 }
 
 public extension Test_RootTuple_NestedType {
   static func decode(json: Any) throws -> Test_RootTuple_NestedType {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootTuple_NestedType()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_RootTuple_NestedInterface {
   case Foo(Test_RootTuple_NestedInterface_Foo)
+  enum CodingKeys: String, CodingKey {
+    case tag = "type"
+  }
+}
+
+extension Test_RootTuple_NestedInterface: Decodable {
+  public init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+
+    switch try values.decode(String.self, forKey: .tag) {
+    case "Foo":
+      self = try .Foo(Test_RootTuple_NestedInterface_Foo(from: decoder))
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "type")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_RootTuple_NestedInterface: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.container(keyedBy: CodingKeys.self)
+
+    switch self {
+    case .Foo(let d):
+      try values.encode("Foo", forKey: .tag)
+      try d.encode(to: encoder)
+    }
+  }
 }
 
 public extension Test_RootTuple_NestedInterface {
@@ -373,24 +590,22 @@ public extension Test_RootTuple_NestedInterface {
   }
 }
 
-public struct Test_RootTuple_NestedInterface_Foo {
+public struct Test_RootTuple_NestedInterface_Foo: Codable {
 }
 public extension Test_RootTuple_NestedInterface_Foo {
   static func decode(json: Any) throws -> Test_RootTuple_NestedInterface_Foo {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootTuple_NestedInterface_Foo()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_RootTuple_NestedEnum {
-  case Foo()
+  case Foo
 }
 
 public extension Test_RootTuple_NestedEnum {
@@ -399,7 +614,7 @@ public extension Test_RootTuple_NestedEnum {
 
     switch json {
       case "Foo":
-        return Test_RootTuple_NestedEnum.Foo()
+        return Test_RootTuple_NestedEnum.Foo
       default:
         throw SerializationError.bad_value()
     }
@@ -411,6 +626,31 @@ public extension Test_RootTuple_NestedEnum {
         return "Foo"
       default:
         throw SerializationError.bad_value()
+    }
+  }
+}
+
+extension Test_RootTuple_NestedEnum: Decodable {
+  public init(from decoder: Decoder) throws {
+    let value = try decoder.singleValueContainer()
+
+    switch try value.decode(String.self) {
+    case "Foo":
+      self = .Foo
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_RootTuple_NestedEnum: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var value = encoder.singleValueContainer()
+
+    switch self {
+    case .Foo:
+      try value.encode("Foo")
     }
   }
 }
@@ -431,25 +671,66 @@ public extension Test_RootTuple_NestedTuple {
   }
 }
 
-public struct Test_RootService_NestedType {
+extension Test_RootTuple_NestedTuple: Decodable {
+  public init(from decoder: Decoder) throws {
+    var values = try decoder.unkeyedContainer()
+
+  }
+}
+
+extension Test_RootTuple_NestedTuple: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.unkeyedContainer()
+
+  }
+}
+
+public struct Test_RootService_NestedType: Codable {
 }
 
 public extension Test_RootService_NestedType {
   static func decode(json: Any) throws -> Test_RootService_NestedType {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootService_NestedType()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_RootService_NestedInterface {
   case Foo(Test_RootService_NestedInterface_Foo)
+  enum CodingKeys: String, CodingKey {
+    case tag = "type"
+  }
+}
+
+extension Test_RootService_NestedInterface: Decodable {
+  public init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+
+    switch try values.decode(String.self, forKey: .tag) {
+    case "Foo":
+      self = try .Foo(Test_RootService_NestedInterface_Foo(from: decoder))
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "type")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_RootService_NestedInterface: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.container(keyedBy: CodingKeys.self)
+
+    switch self {
+    case .Foo(let d):
+      try values.encode("Foo", forKey: .tag)
+      try d.encode(to: encoder)
+    }
+  }
 }
 
 public extension Test_RootService_NestedInterface {
@@ -477,24 +758,22 @@ public extension Test_RootService_NestedInterface {
   }
 }
 
-public struct Test_RootService_NestedInterface_Foo {
+public struct Test_RootService_NestedInterface_Foo: Codable {
 }
 public extension Test_RootService_NestedInterface_Foo {
   static func decode(json: Any) throws -> Test_RootService_NestedInterface_Foo {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootService_NestedInterface_Foo()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_RootService_NestedEnum {
-  case Foo()
+  case Foo
 }
 
 public extension Test_RootService_NestedEnum {
@@ -503,7 +782,7 @@ public extension Test_RootService_NestedEnum {
 
     switch json {
       case "Foo":
-        return Test_RootService_NestedEnum.Foo()
+        return Test_RootService_NestedEnum.Foo
       default:
         throw SerializationError.bad_value()
     }
@@ -515,6 +794,31 @@ public extension Test_RootService_NestedEnum {
         return "Foo"
       default:
         throw SerializationError.bad_value()
+    }
+  }
+}
+
+extension Test_RootService_NestedEnum: Decodable {
+  public init(from decoder: Decoder) throws {
+    let value = try decoder.singleValueContainer()
+
+    switch try value.decode(String.self) {
+    case "Foo":
+      self = .Foo
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_RootService_NestedEnum: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var value = encoder.singleValueContainer()
+
+    switch self {
+    case .Foo:
+      try value.encode("Foo")
     }
   }
 }
@@ -535,206 +839,196 @@ public extension Test_RootService_NestedTuple {
   }
 }
 
-public struct Test_RootType_NestedInterface_Foo_Nested {
+extension Test_RootService_NestedTuple: Decodable {
+  public init(from decoder: Decoder) throws {
+    var values = try decoder.unkeyedContainer()
+
+  }
+}
+
+extension Test_RootService_NestedTuple: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.unkeyedContainer()
+
+  }
+}
+
+public struct Test_RootType_NestedInterface_Foo_Nested: Codable {
 }
 
 public extension Test_RootType_NestedInterface_Foo_Nested {
   static func decode(json: Any) throws -> Test_RootType_NestedInterface_Foo_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootType_NestedInterface_Foo_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootType_NestedTuple_Nested {
+public struct Test_RootType_NestedTuple_Nested: Codable {
 }
 
 public extension Test_RootType_NestedTuple_Nested {
   static func decode(json: Any) throws -> Test_RootType_NestedTuple_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootType_NestedTuple_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootType_NestedService_Nested {
+public struct Test_RootType_NestedService_Nested: Codable {
 }
 
 public extension Test_RootType_NestedService_Nested {
   static func decode(json: Any) throws -> Test_RootType_NestedService_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootType_NestedService_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested {
+public struct Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested: Codable {
 }
 
 public extension Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootInterface_Foo_NestedTuple_Nested {
+public struct Test_RootInterface_Foo_NestedTuple_Nested: Codable {
 }
 
 public extension Test_RootInterface_Foo_NestedTuple_Nested {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedTuple_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootInterface_Foo_NestedTuple_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootInterface_Foo_NestedService_Nested {
+public struct Test_RootInterface_Foo_NestedService_Nested: Codable {
 }
 
 public extension Test_RootInterface_Foo_NestedService_Nested {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedService_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootInterface_Foo_NestedService_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootTuple_NestedInterface_Foo_Nested {
+public struct Test_RootTuple_NestedInterface_Foo_Nested: Codable {
 }
 
 public extension Test_RootTuple_NestedInterface_Foo_Nested {
   static func decode(json: Any) throws -> Test_RootTuple_NestedInterface_Foo_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootTuple_NestedInterface_Foo_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootTuple_NestedTuple_Nested {
+public struct Test_RootTuple_NestedTuple_Nested: Codable {
 }
 
 public extension Test_RootTuple_NestedTuple_Nested {
   static func decode(json: Any) throws -> Test_RootTuple_NestedTuple_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootTuple_NestedTuple_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootTuple_NestedService_Nested {
+public struct Test_RootTuple_NestedService_Nested: Codable {
 }
 
 public extension Test_RootTuple_NestedService_Nested {
   static func decode(json: Any) throws -> Test_RootTuple_NestedService_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootTuple_NestedService_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootService_NestedInterface_Foo_Nested {
+public struct Test_RootService_NestedInterface_Foo_Nested: Codable {
 }
 
 public extension Test_RootService_NestedInterface_Foo_Nested {
   static func decode(json: Any) throws -> Test_RootService_NestedInterface_Foo_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootService_NestedInterface_Foo_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootService_NestedTuple_Nested {
+public struct Test_RootService_NestedTuple_Nested: Codable {
 }
 
 public extension Test_RootService_NestedTuple_Nested {
   static func decode(json: Any) throws -> Test_RootService_NestedTuple_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootService_NestedTuple_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_RootService_NestedService_Nested {
+public struct Test_RootService_NestedService_Nested: Codable {
 }
 
 public extension Test_RootService_NestedService_Nested {
   static func decode(json: Any) throws -> Test_RootService_NestedService_Nested {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_RootService_NestedService_Nested()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }

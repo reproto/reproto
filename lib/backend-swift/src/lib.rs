@@ -129,6 +129,8 @@ impl Lang for SwiftLang {
 #[derive(Debug)]
 pub enum SwiftModule {
     Grpc,
+    Simple,
+    Codable,
 }
 
 impl TryFromToml for SwiftModule {
@@ -137,6 +139,8 @@ impl TryFromToml for SwiftModule {
 
         let result = match id {
             "grpc" => Grpc,
+            "simple" => Simple,
+            "codable" => Codable,
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -148,6 +152,8 @@ impl TryFromToml for SwiftModule {
 
         let result = match id {
             "grpc" => Grpc,
+            "simple" => Simple,
+            "codable" => Codable,
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -155,11 +161,17 @@ impl TryFromToml for SwiftModule {
     }
 }
 
-pub struct Options {}
+pub struct Options {
+    pub simple: bool,
+    pub codable: bool,
+}
 
 impl Options {
     pub fn new() -> Options {
-        Options {}
+        Options {
+            simple: false,
+            codable: false,
+        }
     }
 }
 
@@ -173,6 +185,8 @@ pub fn options(modules: Vec<SwiftModule>) -> Result<Options> {
 
         let initializer: Box<Initializer<Options = Options>> = match m {
             Grpc => Box::new(module::Grpc::new()),
+            Simple => Box::new(module::Simple::new()),
+            Codable => Box::new(module::Codable::new()),
         };
 
         initializer.initialize(&mut options)?;

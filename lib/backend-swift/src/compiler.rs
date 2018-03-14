@@ -51,6 +51,7 @@ const TYPE_SEP: &'static str = "_";
 
 pub struct Compiler<'el> {
     pub env: &'el Environment,
+    options: Options,
     handle: &'el Handle,
     data: Swift<'static>,
     date: Swift<'static>,
@@ -58,9 +59,10 @@ pub struct Compiler<'el> {
 }
 
 impl<'el> Compiler<'el> {
-    pub fn new(env: &'el Environment, _: Options, handle: &'el Handle) -> Compiler<'el> {
+    pub fn new(env: &'el Environment, options: Options, handle: &'el Handle) -> Compiler<'el> {
         Compiler {
             env: env,
+            options: options,
             handle: handle,
             data: imported("Foundation", "Data"),
             date: imported("Foundation", "Date"),
@@ -119,18 +121,6 @@ impl<'el> Compiler<'el> {
         }
 
         Ok(stmt)
-    }
-
-    // Build the corresponding element out of a field declaration.
-    fn field_element<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Swift<'a>>> {
-        let mut t = Tokens::new();
-
-        let ident = field.safe_ident();
-        let ty = self.into_field(field)?;
-
-        t.push(toks!["let ", ident, ": ", ty]);
-
-        Ok(t.into())
     }
 
     /// Decode the given value.
@@ -669,26 +659,63 @@ impl<'el> Compiler<'el> {
         name: Tokens<'a, Swift<'a>>,
         comment: &'a [String],
         fields: F,
+        codable: bool,
     ) -> Result<Tokens<'a, Swift<'a>>>
     where
         F: IntoIterator<Item = &'a Loc<RpField>>,
     {
+        let fields = fields.into_iter().collect::<Vec<_>>();
+
         let mut t = Tokens::new();
 
         t.push_unless_empty(Comments(comment));
 
-        t.push(toks!["public struct ", name.clone(), " {"]);
+        if codable {
+            t.push(toks!["public struct ", name.clone(), ": Codable {"]);
+        } else {
+            t.push(toks!["public struct ", name.clone(), " {"]);
+        }
 
         // fields
         t.nested({
             let mut t = Tokens::new();
 
-            for field in fields.into_iter() {
-                t.push_unless_empty(Comments(&field.comment));
-                t.push(self.field_element(field)?);
+            t.push({
+                let mut t = Tokens::new();
+
+                for field in fields.iter() {
+                    t.push_unless_empty(Comments(&field.comment));
+                    let ty = self.into_field(field)?;
+                    t.push(toks!["let ", field.safe_ident(), ": ", ty]);
+                }
+
+                t
+            });
+
+            if codable {
+                if !fields.is_empty() {
+                    t.push({
+                        let mut t = Tokens::new();
+
+                        t.push("enum CodingKeys: String, CodingKey {");
+
+                        for field in fields.iter() {
+                            t.nested(toks![
+                                "case ",
+                                field.safe_ident(),
+                                " = ",
+                                field.name().quoted()
+                            ]);
+                        }
+
+                        t.push("}");
+
+                        t
+                    });
+                }
             }
 
-            t
+            t.join_line_spacing()
         });
 
         t.push("}");
@@ -709,25 +736,32 @@ impl<'el> Compiler<'el> {
 
         let mut tokens = Tokens::new();
 
-        tokens.push(self.model_struct(name.clone(), comment, fields.iter().cloned())?);
+        tokens.push(self.model_struct(name.clone(), comment, fields.iter().cloned(), false)?);
 
-        tokens.push({
-            let mut t = Tokens::new();
-
-            t.push(toks!["public extension ", name.clone(), " {"]);
-
-            t.push({
+        if self.options.simple {
+            tokens.push({
                 let mut t = Tokens::new();
 
-                t.nested(decode(self, name.clone(), &fields)?);
-                t.nested(encode(self, &fields)?);
+                t.push(toks!["public extension ", name.clone(), " {"]);
 
-                t.join_line_spacing()
+                t.push({
+                    let mut t = Tokens::new();
+
+                    t.nested(decode(self, name.clone(), &fields)?);
+                    t.nested(encode(self, &fields)?);
+
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+                t
             });
+        }
 
-            t.push("}");
-            t
-        });
+        if self.options.codable {
+            tokens.push(decodable(self, name.clone(), &fields)?);
+            tokens.push(encodable(name.clone(), &fields)?);
+        }
 
         return Ok(tokens);
 
@@ -799,6 +833,119 @@ impl<'el> Compiler<'el> {
 
             Ok(t)
         }
+
+        fn decodable<'a>(
+            compiler: &Compiler,
+            name: Tokens<'a, Swift<'a>>,
+            fields: &[&'a Loc<RpField>],
+        ) -> Result<Tokens<'a, Swift<'a>>> {
+            let mut t = Tokens::new();
+            t.push(toks!["extension ", name, ": Decodable {"]);
+            t.nested(init(compiler, fields)?);
+            t.push("}");
+
+            return Ok(t);
+
+            fn init<'a>(
+                compiler: &Compiler,
+                fields: &[&'a Loc<RpField>],
+            ) -> Result<Tokens<'a, Swift<'a>>> {
+                let mut t = Tokens::new();
+
+                t.push("public init(from decoder: Decoder) throws {");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    t.push("var values = try decoder.unkeyedContainer()");
+
+                    t.push({
+                        let mut t = Tokens::new();
+
+                        for field in fields {
+                            let s = toks!["self.", field.safe_ident()];
+                            let ty = compiler.field_type(&field.ty)?;
+
+                            if field.is_optional() {
+                                t.push(toks![s, " = try values.decodeIfPresent(", ty, ".self)"]);
+                            } else {
+                                t.push(toks![s, " = try values.decode(", ty, ".self)"]);
+                            }
+                        }
+
+                        t
+                    });
+
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+
+                Ok(t)
+            }
+        }
+
+        fn encodable<'a>(
+            name: Tokens<'a, Swift<'a>>,
+            fields: &[&'a Loc<RpField>],
+        ) -> Result<Tokens<'a, Swift<'a>>> {
+            let mut t = Tokens::new();
+            t.push(toks!["extension ", name, ": Encodable {"]);
+
+            t.push({
+                let mut t = Tokens::new();
+                t.nested(encode(fields)?);
+                t.join_line_spacing()
+            });
+
+            t.push("}");
+
+            return Ok(t);
+
+            fn encode<'a>(fields: &[&'a Loc<RpField>]) -> Result<Tokens<'a, Swift<'a>>> {
+                let mut t = Tokens::new();
+
+                t.push("public func encode(to encoder: Encoder) throws {");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    t.push("var values = encoder.unkeyedContainer()");
+
+                    t.push({
+                        let mut t = Tokens::new();
+
+                        for field in fields {
+                            let s = toks!["self.", field.safe_ident()];
+
+                            if field.is_optional() {
+                                let var = field.safe_ident();
+
+                                t.push({
+                                    let mut t = Tokens::new();
+
+                                    t.push(toks!["if let ", var.clone(), " = ", s, "{"]);
+                                    t.nested(toks!["try values.encode(", var, ")"]);
+                                    t.push("}");
+
+                                    t
+                                });
+                            } else {
+                                t.push(toks!["try values.encode(", s, ")"]);
+                            }
+                        }
+
+                        t
+                    });
+
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+
+                Ok(t)
+            }
+        }
     }
 
     fn type_index<'a>(field: &'a RpField, var: Cons<'a>) -> (Cons<'a>, Tokens<'a, Swift<'a>>) {
@@ -823,26 +970,33 @@ impl<'el> Compiler<'el> {
 
         let mut tokens = Tokens::new();
 
-        tokens.push(self.model_struct(name.clone(), comment, fields.iter().cloned())?);
+        tokens.push(self.model_struct(
+            name.clone(),
+            comment,
+            fields.iter().cloned(),
+            self.options.codable,
+        )?);
 
-        tokens.push({
-            let mut t = Tokens::new();
-
-            t.push(toks!["public extension ", name.clone(), " {"]);
-
-            t.push({
+        if self.options.simple {
+            tokens.push({
                 let mut t = Tokens::new();
 
-                // decode function
-                t.nested(decode(self, name.clone(), &fields)?);
-                t.nested(encode(self, &fields)?);
+                t.push(toks!["public extension ", name.clone(), " {"]);
 
-                t.join_line_spacing()
+                t.push({
+                    let mut t = Tokens::new();
+
+                    // decode function
+                    t.nested(decode(self, name.clone(), &fields)?);
+                    t.nested(encode(self, &fields)?);
+
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+                t
             });
-
-            t.push("}");
-            t
-        });
+        }
 
         return Ok(tokens);
 
@@ -852,7 +1006,6 @@ impl<'el> Compiler<'el> {
             fields: &[&'a Loc<RpField>],
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
-            let mut args = Tokens::new();
 
             t.push(toks![
                 "static func decode(json: Any) throws -> ",
@@ -861,17 +1014,21 @@ impl<'el> Compiler<'el> {
             ]);
             t.nested({
                 let mut t = Tokens::new();
+                let mut args = Tokens::new();
 
-                t.push(toks!["let json = try decode_value(json as? [String: Any])"]);
+                if !fields.is_empty() {
+                    t.push(toks!["let json = try decode_value(json as? [String: Any])"]);
 
-                for field in fields.iter().cloned() {
-                    let ident = field.safe_ident();
-                    t.push(compiler.decode_field(field, Compiler::type_index)?);
-                    args.append(toks![ident.clone(), ": ", ident.clone()]);
+                    for field in fields.iter().cloned() {
+                        let ident = field.safe_ident();
+                        t.push(compiler.decode_field(field, Compiler::type_index)?);
+                        args.append(toks![ident.clone(), ": ", ident.clone()]);
+                    }
+                } else {
+                    t.push(toks!["let _ = try decode_value(json as? [String: Any])"]);
                 }
 
                 t.push(toks!["return ", name.clone(), "(", args.join(", "), ")"]);
-
                 t.join_line_spacing()
             });
 
@@ -890,19 +1047,23 @@ impl<'el> Compiler<'el> {
             t.nested({
                 let mut t = Tokens::new();
 
-                t.push("var json = [String: Any]()");
-                t.push_unless_empty({
-                    let mut t = Tokens::new();
+                if !fields.is_empty() {
+                    t.push("var json = [String: Any]()");
+                    t.push({
+                        let mut t = Tokens::new();
 
-                    for field in fields.iter().cloned() {
-                        t.push(compiler.encode_field(field, |value| {
-                            toks!["json[", field.name().quoted(), "] = ", value]
-                        })?);
-                    }
+                        for field in fields.iter().cloned() {
+                            t.push(compiler.encode_field(field, |value| {
+                                toks!["json[", field.name().quoted(), "] = ", value]
+                            })?);
+                        }
 
-                    t
-                });
-                t.push("return json");
+                        t
+                    });
+                    t.push("return json");
+                } else {
+                    t.push("return [String: Any]()");
+                }
 
                 t.join_line_spacing()
             });
@@ -952,7 +1113,11 @@ impl<'el> Compiler<'el> {
 
     pub fn compile(&self) -> Result<()> {
         let mut files = self.populate_files()?;
-        files.insert(self.utils_package(), self.utils()?);
+
+        if self.options.simple {
+            files.insert(self.utils_package(), self.utils()?);
+        }
+
         self.write_files(files)
     }
 }
@@ -1010,7 +1175,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             t.push(toks!["public enum ", name.clone(), " {"]);
 
             for variant in &body.variants {
-                t.nested(toks!["case ", variant.local_name.as_str(), "()"]);
+                t.nested(toks!["case ", variant.local_name.as_str()]);
             }
 
             t.push("}");
@@ -1018,97 +1183,76 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             t
         });
 
-        out.0.push({
-            let mut t = Tokens::new();
-
-            t.push(toks!["public extension ", name.clone(), " {"]);
-
-            t.push({
+        if self.options.simple {
+            out.0.push({
                 let mut t = Tokens::new();
 
-                // decode function
-                t.nested({
+                t.push(toks!["public extension ", name.clone(), " {"]);
+
+                t.push({
                     let mut t = Tokens::new();
 
-                    t.push(toks![
-                        "static func decode(json: Any) throws -> ",
-                        name.clone(),
-                        " {"
-                    ]);
-                    t.nested({
-                        let mut t = Tokens::new();
+                    // decode function
+                    t.nested(decode(body, name.clone())?);
+                    t.nested(encode(body)?);
 
-                        t.push(toks!["let json = try decode_value(json as? String)"]);
-
-                        t.push({
-                            let mut t = Tokens::new();
-
-                            t.push("switch json {");
-
-                            for variant in &body.variants {
-                                t.nested({
-                                    let mut t = Tokens::new();
-                                    t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
-                                    t.nested(toks![
-                                        "return ",
-                                        name.clone(),
-                                        ".",
-                                        variant.local_name.as_str(),
-                                        "()"
-                                    ]);
-                                    t
-                                });
-                            }
-
-                            t.nested({
-                                let mut t = Tokens::new();
-                                t.push("default:");
-                                t.nested("throw SerializationError.bad_value()");
-                                t
-                            });
-
-                            t.push("}");
-
-                            t
-                        });
-
-                        t.join_line_spacing()
-                    });
-
-                    t.push("}");
-
-                    t
+                    t.join_line_spacing()
                 });
 
-                t.nested({
+                t.push("}");
+                t
+            });
+        }
+
+        if self.options.codable {
+            out.0.push(decodable(name.clone(), body)?);
+            out.0.push(encodable(name.clone(), body)?);
+        }
+
+        return Ok(());
+
+        fn decode<'a>(
+            body: &'a RpEnumBody,
+            name: Tokens<'a, Swift<'a>>,
+        ) -> Result<Tokens<'a, Swift<'a>>> {
+            let mut t = Tokens::new();
+
+            t.push(toks![
+                "static func decode(json: Any) throws -> ",
+                name.clone(),
+                " {"
+            ]);
+            t.nested({
+                let mut t = Tokens::new();
+
+                t.push(toks!["let json = try decode_value(json as? String)"]);
+
+                t.push({
                     let mut t = Tokens::new();
 
-                    t.push("func encode() throws -> String {");
-                    t.nested({
-                        let mut t = Tokens::new();
+                    t.push("switch json {");
 
-                        t.push("switch self {");
-
-                        for variant in &body.variants {
-                            t.nested({
-                                let mut t = Tokens::new();
-                                t.push(toks!["case .", variant.local_name.as_str(), ":"]);
-                                t.nested(toks!["return ", variant.ordinal().quoted()]);
-                                t
-                            });
-                        }
-
+                    for variant in &body.variants {
                         t.nested({
                             let mut t = Tokens::new();
-                            t.push("default:");
-                            t.nested("throw SerializationError.bad_value()");
+                            t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
+                            t.nested(toks![
+                                "return ",
+                                name.clone(),
+                                ".",
+                                variant.local_name.as_str(),
+                            ]);
                             t
                         });
+                    }
 
-                        t.push("}");
-
+                    t.nested({
+                        let mut t = Tokens::new();
+                        t.push("default:");
+                        t.nested("throw SerializationError.bad_value()");
                         t
                     });
+
                     t.push("}");
 
                     t
@@ -1118,10 +1262,165 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             });
 
             t.push("}");
-            t
-        });
 
-        Ok(())
+            Ok(t)
+        }
+
+        fn encode<'a>(body: &'a RpEnumBody) -> Result<Tokens<'a, Swift<'a>>> {
+            let mut t = Tokens::new();
+
+            t.push("func encode() throws -> String {");
+            t.nested({
+                let mut t = Tokens::new();
+
+                t.push("switch self {");
+
+                for variant in &body.variants {
+                    t.nested({
+                        let mut t = Tokens::new();
+                        t.push(toks!["case .", variant.local_name.as_str(), ":"]);
+                        t.nested(toks!["return ", variant.ordinal().quoted()]);
+                        t
+                    });
+                }
+
+                t.nested({
+                    let mut t = Tokens::new();
+                    t.push("default:");
+                    t.nested("throw SerializationError.bad_value()");
+                    t
+                });
+
+                t.push("}");
+
+                t
+            });
+            t.push("}");
+
+            Ok(t)
+        }
+
+        fn decodable<'a>(
+            name: Tokens<'a, Swift<'a>>,
+            body: &'a RpEnumBody,
+        ) -> Result<Tokens<'a, Swift<'a>>> {
+            let mut t = Tokens::new();
+            t.push(toks!["extension ", name, ": Decodable {"]);
+            t.nested(init(body)?);
+            t.push("}");
+
+            return Ok(t);
+
+            fn init<'a>(body: &'a RpEnumBody) -> Result<Tokens<'a, Swift<'a>>> {
+                let mut t = Tokens::new();
+
+                t.push("public init(from decoder: Decoder) throws {");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    t.push("let value = try decoder.singleValueContainer()");
+
+                    t.push({
+                        let mut t = Tokens::new();
+
+                        t.push("switch try value.decode(String.self) {");
+
+                        for variant in &body.variants {
+                            t.push({
+                                let mut t = Tokens::new();
+                                t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
+                                t.nested(toks!["self = .", variant.local_name.as_str()]);
+                                t
+                            });
+                        }
+
+                        t.push({
+                            let mut t = Tokens::new();
+
+                            t.push("default:");
+                            t.nested(toks![
+                                "let context = DecodingError.Context(codingPath: [], \
+                                 debugDescription: ",
+                                "enum variant".quoted(),
+                                ")"
+                            ]);
+                            t.nested("throw DecodingError.dataCorrupted(context)");
+
+                            t
+                        });
+                        t.push("}");
+
+                        t
+                    });
+
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+
+                Ok(t)
+            }
+        }
+
+        fn encodable<'a>(
+            name: Tokens<'a, Swift<'a>>,
+            body: &'a RpEnumBody,
+        ) -> Result<Tokens<'a, Swift<'a>>> {
+            let mut t = Tokens::new();
+            t.push(toks!["extension ", name, ": Encodable {"]);
+
+            t.push({
+                let mut t = Tokens::new();
+                t.nested(encode(body)?);
+                t.join_line_spacing()
+            });
+
+            t.push("}");
+
+            return Ok(t);
+
+            fn encode<'a>(body: &'a RpEnumBody) -> Result<Tokens<'a, Swift<'a>>> {
+                let mut t = Tokens::new();
+
+                t.push("public func encode(to encoder: Encoder) throws {");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    t.push("var value = encoder.singleValueContainer()");
+
+                    t.push({
+                        let mut t = Tokens::new();
+
+                        t.push("switch self {");
+
+                        for variant in &body.variants {
+                            t.push({
+                                let mut t = Tokens::new();
+                                t.push(toks!["case .", variant.local_name.as_str(), ":"]);
+                                t.nested(toks![
+                                    "try value.encode(",
+                                    variant.ordinal().quoted(),
+                                    ")"
+                                ]);
+                                t
+                            });
+                        }
+
+                        t.push("}");
+
+                        t
+                    });
+
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+
+                Ok(t)
+            }
+        }
     }
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
@@ -1139,33 +1438,62 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
                 t.nested(toks!["case ", local_name, "(", name.clone(), ")"]);
             }
 
-            t.push("}");
-            t
-        });
-
-        out.0.push({
-            let mut t = Tokens::new();
-
-            t.push_unless_empty(Comments(&body.comment));
-            t.push(toks!["public extension ", name.clone(), " {"]);
-
-            t.push({
-                let mut t = Tokens::new();
-
+            if self.options.codable {
                 match body.sub_type_strategy {
                     RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                        // decode function
-                        t.nested(self.decode_tag(name.clone(), tag.as_str(), &body.sub_types)?);
-                        t.nested(self.encode_tag(tag.as_str(), &body.sub_types)?);
+                        t.nested({
+                            let mut t = Tokens::new();
+
+                            t.push({
+                                let mut t = Tokens::new();
+
+                                t.push("enum CodingKeys: String, CodingKey {");
+                                t.nested(toks!["case tag = ", tag.as_str().quoted()]);
+                                t.push("}");
+
+                                t
+                            });
+
+                            t
+                        });
                     }
                 }
-
-                t.join_line_spacing()
-            });
+            }
 
             t.push("}");
             t
         });
+
+        if self.options.codable {
+            out.0.push(decodable(self, name.clone(), body)?);
+            out.0.push(encodable(name.clone(), body)?);
+        }
+
+        if self.options.simple {
+            out.0.push({
+                let mut t = Tokens::new();
+
+                t.push_unless_empty(Comments(&body.comment));
+                t.push(toks!["public extension ", name.clone(), " {"]);
+
+                t.push({
+                    let mut t = Tokens::new();
+
+                    match body.sub_type_strategy {
+                        RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                            // decode function
+                            t.nested(self.decode_tag(name.clone(), tag.as_str(), &body.sub_types)?);
+                            t.nested(self.encode_tag(tag.as_str(), &body.sub_types)?);
+                        }
+                    }
+
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+                t
+            });
+        }
 
         for sub_type in body.sub_types.values() {
             let sub_type_name = self.convert_name(&sub_type.name)?;
@@ -1176,6 +1504,154 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
                 .push(self.model_type(sub_type_name, &sub_type.comment, fields)?);
         }
 
-        Ok(())
+        return Ok(());
+
+        fn decodable<'a>(
+            compiler: &Compiler,
+            name: Tokens<'a, Swift<'a>>,
+            body: &'a RpInterfaceBody,
+        ) -> Result<Tokens<'a, Swift<'a>>> {
+            let mut t = Tokens::new();
+            t.push(toks!["extension ", name, ": Decodable {"]);
+
+            t.push({
+                let mut t = Tokens::new();
+
+                match body.sub_type_strategy {
+                    RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                        t.nested(init(compiler, body, tag)?);
+                    }
+                }
+
+                t.join_line_spacing()
+            });
+
+            t.push("}");
+
+            return Ok(t);
+
+            fn init<'a>(
+                compiler: &Compiler,
+                body: &'a RpInterfaceBody,
+                tag: &'a str,
+            ) -> Result<Tokens<'a, Swift<'a>>> {
+                let mut t = Tokens::new();
+
+                t.push("public init(from decoder: Decoder) throws {");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    t.push("let values = try decoder.container(keyedBy: CodingKeys.self)");
+
+                    t.push({
+                        let mut t = Tokens::new();
+
+                        t.push("switch try values.decode(String.self, forKey: .tag) {");
+
+                        for sub_type in body.sub_types.values() {
+                            t.push({
+                                let mut t = Tokens::new();
+
+                                let name = compiler.convert_name(&sub_type.name)?;
+                                let n = sub_type.local_name.as_str();
+
+                                let d = toks![name, "(from: decoder)"];
+                                let d = toks![".", n, "(", d, ")"];
+
+                                t.push(toks!["case ", sub_type.name().quoted(), ":"]);
+                                t.nested(toks!["self = try ", d]);
+
+                                t
+                            });
+                        }
+
+                        t.push({
+                            let mut t = Tokens::new();
+
+                            t.push("default:");
+                            t.nested(toks![
+                                "let context = DecodingError.Context(codingPath: [], \
+                                 debugDescription: ",
+                                tag.quoted(),
+                                ")"
+                            ]);
+                            t.nested("throw DecodingError.dataCorrupted(context)");
+
+                            t
+                        });
+                        t.push("}");
+
+                        t
+                    });
+
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+
+                Ok(t)
+            }
+        }
+
+        fn encodable<'a>(
+            name: Tokens<'a, Swift<'a>>,
+            body: &'a RpInterfaceBody,
+        ) -> Result<Tokens<'a, Swift<'a>>> {
+            let mut t = Tokens::new();
+            t.push(toks!["extension ", name, ": Encodable {"]);
+
+            t.push({
+                let mut t = Tokens::new();
+                t.nested(encode(body)?);
+                t.join_line_spacing()
+            });
+
+            t.push("}");
+
+            return Ok(t);
+
+            fn encode<'a>(body: &'a RpInterfaceBody) -> Result<Tokens<'a, Swift<'a>>> {
+                let mut t = Tokens::new();
+
+                t.push("public func encode(to encoder: Encoder) throws {");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    t.push("var values = encoder.container(keyedBy: CodingKeys.self)");
+
+                    t.push({
+                        let mut t = Tokens::new();
+
+                        t.push("switch self {");
+
+                        for sub_type in body.sub_types.values() {
+                            let n = sub_type.local_name.as_str();
+                            let name = sub_type.name();
+                            let ty = toks!["try values.encode(", name.quoted(), ", forKey: .tag)"];
+
+                            t.push({
+                                let mut t = Tokens::new();
+                                t.push(toks!["case .", n, "(let d):"]);
+                                t.nested(ty);
+                                t.nested(toks!["try d.encode(to: encoder)"]);
+                                t
+                            });
+                        }
+
+                        t.push("}");
+
+                        t
+                    });
+
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+
+                Ok(t)
+            }
+        }
     }
 }

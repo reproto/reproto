@@ -1,6 +1,10 @@
-public struct Test_Entry {
+public struct Test_Entry: Codable {
   // The foo field.
   let foo: Test_Foo?
+
+  enum CodingKeys: String, CodingKey {
+    case foo = "foo"
+  }
 }
 
 public extension Test_Entry {
@@ -27,9 +31,13 @@ public extension Test_Entry {
   }
 }
 
-public struct Test_Foo {
+public struct Test_Foo: Codable {
   // The field.
   let field: String
+
+  enum CodingKeys: String, CodingKey {
+    case field = "field"
+  }
 }
 
 public extension Test_Foo {
@@ -54,9 +62,13 @@ public extension Test_Foo {
   }
 }
 
-public struct Test_Bar {
+public struct Test_Bar: Codable {
   // The inner field.
   let field: Test_Bar_Inner
+
+  enum CodingKeys: String, CodingKey {
+    case field = "field"
+  }
 }
 
 public extension Test_Bar {
@@ -81,9 +93,13 @@ public extension Test_Bar {
   }
 }
 
-public struct Test_Bar_Inner {
+public struct Test_Bar_Inner: Codable {
   // The field.
   let field: String
+
+  enum CodingKeys: String, CodingKey {
+    case field = "field"
+  }
 }
 
 public extension Test_Bar_Inner {

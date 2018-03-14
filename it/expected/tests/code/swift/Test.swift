@@ -1,39 +1,64 @@
-public struct Test_Entry {
+public struct Test_Entry: Codable {
 }
 
 public extension Test_Entry {
   static func decode(json: Any) throws -> Test_Entry {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_Entry()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
-public struct Test_Type {
+public struct Test_Type: Codable {
 }
 
 public extension Test_Type {
   static func decode(json: Any) throws -> Test_Type {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_Type()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_Interface {
   case SubType(Test_Interface_SubType)
+  enum CodingKeys: String, CodingKey {
+    case tag = "type"
+  }
+}
+
+extension Test_Interface: Decodable {
+  public init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+
+    switch try values.decode(String.self, forKey: .tag) {
+    case "SubType":
+      self = try .SubType(Test_Interface_SubType(from: decoder))
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "type")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_Interface: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.container(keyedBy: CodingKeys.self)
+
+    switch self {
+    case .SubType(let d):
+      try values.encode("SubType", forKey: .tag)
+      try d.encode(to: encoder)
+    }
+  }
 }
 
 public extension Test_Interface {
@@ -61,24 +86,22 @@ public extension Test_Interface {
   }
 }
 
-public struct Test_Interface_SubType {
+public struct Test_Interface_SubType: Codable {
 }
 public extension Test_Interface_SubType {
   static func decode(json: Any) throws -> Test_Interface_SubType {
-    let json = try decode_value(json as? [String: Any])
+    let _ = try decode_value(json as? [String: Any])
 
     return Test_Interface_SubType()
   }
 
   func encode() throws -> [String: Any] {
-    var json = [String: Any]()
-
-    return json
+    return [String: Any]()
   }
 }
 
 public enum Test_Enum {
-  case Variant()
+  case Variant
 }
 
 public extension Test_Enum {
@@ -87,7 +110,7 @@ public extension Test_Enum {
 
     switch json {
       case "Variant":
-        return Test_Enum.Variant()
+        return Test_Enum.Variant
       default:
         throw SerializationError.bad_value()
     }
@@ -99,6 +122,31 @@ public extension Test_Enum {
         return "Variant"
       default:
         throw SerializationError.bad_value()
+    }
+  }
+}
+
+extension Test_Enum: Decodable {
+  public init(from decoder: Decoder) throws {
+    let value = try decoder.singleValueContainer()
+
+    switch try value.decode(String.self) {
+    case "Variant":
+      self = .Variant
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_Enum: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var value = encoder.singleValueContainer()
+
+    switch self {
+    case .Variant:
+      try value.encode("Variant")
     }
   }
 }
@@ -116,5 +164,19 @@ public extension Test_Tuple {
     var json = [Any]()
 
     return json
+  }
+}
+
+extension Test_Tuple: Decodable {
+  public init(from decoder: Decoder) throws {
+    var values = try decoder.unkeyedContainer()
+
+  }
+}
+
+extension Test_Tuple: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var values = encoder.unkeyedContainer()
+
   }
 }

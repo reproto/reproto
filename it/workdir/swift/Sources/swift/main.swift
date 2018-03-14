@@ -1,13 +1,24 @@
 import Foundation
 import Models
 
-while let line = readLine() {
-    let json = try? JSONSerialization.jsonObject(
-        with: line.data(using: String.Encoding.utf8)!
-    )
+let decoder = JSONDecoder()
+let encoder = JSONEncoder()
 
-    let entry = try Test_Entry.decode(json: json as! [String: Any])
-    let data = try JSONSerialization.data(withJSONObject: entry.encode())
+while let line = readLine() {
+    let json = line.data(using: String.Encoding.utf8)!
+    let entry = try decoder.decode(Test_Entry.self, from: json)
+    let data = try encoder.encode(entry)
     let out = String(data: data, encoding: String.Encoding.utf8) as String!
     print(out!)
 }
+
+/*
+while let line = readLine() {
+    let json = line.data(using: String.Encoding.utf8)!
+    let object = try? JSONSerialization.jsonObject(with: json)
+    let entry = try Test_Entry.decode(json: object as! [String: Any])
+    let out_data = try JSONSerialization.data(withJSONObject: entry.encode())
+    let out = String(data: out_data, encoding: String.Encoding.utf8) as String!
+    print(out!)
+}
+*/

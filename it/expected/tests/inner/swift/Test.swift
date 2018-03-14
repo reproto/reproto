@@ -1,6 +1,11 @@
-public struct Test_Entry {
+public struct Test_Entry: Codable {
   let a: Test_A?
   let b: Test_A_B?
+
+  enum CodingKeys: String, CodingKey {
+    case a = "a"
+    case b = "b"
+  }
 }
 
 public extension Test_Entry {
@@ -36,8 +41,12 @@ public extension Test_Entry {
   }
 }
 
-public struct Test_A {
+public struct Test_A: Codable {
   let b: Test_A_B
+
+  enum CodingKeys: String, CodingKey {
+    case b = "b"
+  }
 }
 
 public extension Test_A {
@@ -62,8 +71,12 @@ public extension Test_A {
   }
 }
 
-public struct Test_A_B {
+public struct Test_A_B: Codable {
   let field: String
+
+  enum CodingKeys: String, CodingKey {
+    case field = "field"
+  }
 }
 
 public extension Test_A_B {

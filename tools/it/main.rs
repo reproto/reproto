@@ -102,6 +102,7 @@ fn try_main() -> Result<()> {
 
     project.arg(Language::Java, &["-m", "builder", "-m", "jackson"]);
     project.arg(Language::Csharp, &["-m", "Json.NET"]);
+    project.arg(Language::Swift, &["-m", "simple", "-m", "codable"]);
 
     it::entry(&mut project);
 

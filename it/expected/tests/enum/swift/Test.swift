@@ -1,6 +1,11 @@
-public struct Test_Entry {
+public struct Test_Entry: Codable {
   let explicit: Test_EnumExplicit?
   let implicit: Test_EnumImplicit?
+
+  enum CodingKeys: String, CodingKey {
+    case explicit = "explicit"
+    case implicit = "implicit"
+  }
 }
 
 public extension Test_Entry {
@@ -37,8 +42,8 @@ public extension Test_Entry {
 }
 
 public enum Test_EnumExplicit {
-  case A()
-  case B()
+  case A
+  case B
 }
 
 public extension Test_EnumExplicit {
@@ -47,9 +52,9 @@ public extension Test_EnumExplicit {
 
     switch json {
       case "foo":
-        return Test_EnumExplicit.A()
+        return Test_EnumExplicit.A
       case "bar":
-        return Test_EnumExplicit.B()
+        return Test_EnumExplicit.B
       default:
         throw SerializationError.bad_value()
     }
@@ -67,9 +72,38 @@ public extension Test_EnumExplicit {
   }
 }
 
+extension Test_EnumExplicit: Decodable {
+  public init(from decoder: Decoder) throws {
+    let value = try decoder.singleValueContainer()
+
+    switch try value.decode(String.self) {
+    case "foo":
+      self = .A
+    case "bar":
+      self = .B
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_EnumExplicit: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var value = encoder.singleValueContainer()
+
+    switch self {
+    case .A:
+      try value.encode("foo")
+    case .B:
+      try value.encode("bar")
+    }
+  }
+}
+
 public enum Test_EnumImplicit {
-  case A()
-  case B()
+  case A
+  case B
 }
 
 public extension Test_EnumImplicit {
@@ -78,9 +112,9 @@ public extension Test_EnumImplicit {
 
     switch json {
       case "A":
-        return Test_EnumImplicit.A()
+        return Test_EnumImplicit.A
       case "B":
-        return Test_EnumImplicit.B()
+        return Test_EnumImplicit.B
       default:
         throw SerializationError.bad_value()
     }
@@ -98,9 +132,38 @@ public extension Test_EnumImplicit {
   }
 }
 
+extension Test_EnumImplicit: Decodable {
+  public init(from decoder: Decoder) throws {
+    let value = try decoder.singleValueContainer()
+
+    switch try value.decode(String.self) {
+    case "A":
+      self = .A
+    case "B":
+      self = .B
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_EnumImplicit: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var value = encoder.singleValueContainer()
+
+    switch self {
+    case .A:
+      try value.encode("A")
+    case .B:
+      try value.encode("B")
+    }
+  }
+}
+
 public enum Test_EnumLongNames {
-  case FooBar()
-  case Baz()
+  case FooBar
+  case Baz
 }
 
 public extension Test_EnumLongNames {
@@ -109,9 +172,9 @@ public extension Test_EnumLongNames {
 
     switch json {
       case "FooBar":
-        return Test_EnumLongNames.FooBar()
+        return Test_EnumLongNames.FooBar
       case "Baz":
-        return Test_EnumLongNames.Baz()
+        return Test_EnumLongNames.Baz
       default:
         throw SerializationError.bad_value()
     }
@@ -125,6 +188,35 @@ public extension Test_EnumLongNames {
         return "Baz"
       default:
         throw SerializationError.bad_value()
+    }
+  }
+}
+
+extension Test_EnumLongNames: Decodable {
+  public init(from decoder: Decoder) throws {
+    let value = try decoder.singleValueContainer()
+
+    switch try value.decode(String.self) {
+    case "FooBar":
+      self = .FooBar
+    case "Baz":
+      self = .Baz
+    default:
+      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      throw DecodingError.dataCorrupted(context)
+    }
+  }
+}
+
+extension Test_EnumLongNames: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    var value = encoder.singleValueContainer()
+
+    switch self {
+    case .FooBar:
+      try value.encode("FooBar")
+    case .Baz:
+      try value.encode("Baz")
     }
   }
 }
