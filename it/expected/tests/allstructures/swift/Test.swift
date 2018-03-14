@@ -7,8 +7,10 @@ public extension Test_Entry {
 
     return Test_Entry()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -22,8 +24,10 @@ public extension Test_RootType {
 
     return Test_RootType()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -46,6 +50,7 @@ public extension Test_RootInterface {
         throw SerializationError.invalid(type)
     }
   }
+
   func encode() throws -> [String: Any] {
     switch self {
       case .Foo(let s):
@@ -64,8 +69,10 @@ public extension Test_RootInterface_Foo {
 
     return Test_RootInterface_Foo()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -85,6 +92,7 @@ public extension Test_RootEnum {
         throw SerializationError.bad_value()
     }
   }
+
   func encode() throws -> String {
     switch self {
       case .Foo:
@@ -103,8 +111,10 @@ public extension Test_RootTuple {
     let json = try decode_value(json as? [Any])
     return Test_RootTuple()
   }
+
   func encode() throws -> [Any] {
     var json = [Any]()
+
     return json
   }
 }
@@ -118,8 +128,10 @@ public extension Test_RootType_NestedType {
 
     return Test_RootType_NestedType()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -142,6 +154,7 @@ public extension Test_RootType_NestedInterface {
         throw SerializationError.invalid(type)
     }
   }
+
   func encode() throws -> [String: Any] {
     switch self {
       case .Foo(let s):
@@ -160,8 +173,10 @@ public extension Test_RootType_NestedInterface_Foo {
 
     return Test_RootType_NestedInterface_Foo()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -181,6 +196,7 @@ public extension Test_RootType_NestedEnum {
         throw SerializationError.bad_value()
     }
   }
+
   func encode() throws -> String {
     switch self {
       case .Foo:
@@ -199,8 +215,10 @@ public extension Test_RootType_NestedTuple {
     let json = try decode_value(json as? [Any])
     return Test_RootType_NestedTuple()
   }
+
   func encode() throws -> [Any] {
     var json = [Any]()
+
     return json
   }
 }
@@ -214,8 +232,10 @@ public extension Test_RootInterface_Foo_NestedType {
 
     return Test_RootInterface_Foo_NestedType()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -238,6 +258,7 @@ public extension Test_RootInterface_Foo_NestedInterface {
         throw SerializationError.invalid(type)
     }
   }
+
   func encode() throws -> [String: Any] {
     switch self {
       case .NestedFoo(let s):
@@ -256,8 +277,10 @@ public extension Test_RootInterface_Foo_NestedInterface_NestedFoo {
 
     return Test_RootInterface_Foo_NestedInterface_NestedFoo()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -277,6 +300,7 @@ public extension Test_RootInterface_Foo_NestedEnum {
         throw SerializationError.bad_value()
     }
   }
+
   func encode() throws -> String {
     switch self {
       case .Foo:
@@ -295,8 +319,10 @@ public extension Test_RootInterface_Foo_NestedTuple {
     let json = try decode_value(json as? [Any])
     return Test_RootInterface_Foo_NestedTuple()
   }
+
   func encode() throws -> [Any] {
     var json = [Any]()
+
     return json
   }
 }
@@ -310,8 +336,10 @@ public extension Test_RootTuple_NestedType {
 
     return Test_RootTuple_NestedType()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -334,6 +362,7 @@ public extension Test_RootTuple_NestedInterface {
         throw SerializationError.invalid(type)
     }
   }
+
   func encode() throws -> [String: Any] {
     switch self {
       case .Foo(let s):
@@ -352,8 +381,10 @@ public extension Test_RootTuple_NestedInterface_Foo {
 
     return Test_RootTuple_NestedInterface_Foo()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -373,6 +404,7 @@ public extension Test_RootTuple_NestedEnum {
         throw SerializationError.bad_value()
     }
   }
+
   func encode() throws -> String {
     switch self {
       case .Foo:
@@ -391,8 +423,10 @@ public extension Test_RootTuple_NestedTuple {
     let json = try decode_value(json as? [Any])
     return Test_RootTuple_NestedTuple()
   }
+
   func encode() throws -> [Any] {
     var json = [Any]()
+
     return json
   }
 }
@@ -406,8 +440,10 @@ public extension Test_RootService_NestedType {
 
     return Test_RootService_NestedType()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -430,6 +466,7 @@ public extension Test_RootService_NestedInterface {
         throw SerializationError.invalid(type)
     }
   }
+
   func encode() throws -> [String: Any] {
     switch self {
       case .Foo(let s):
@@ -448,8 +485,10 @@ public extension Test_RootService_NestedInterface_Foo {
 
     return Test_RootService_NestedInterface_Foo()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -469,6 +508,7 @@ public extension Test_RootService_NestedEnum {
         throw SerializationError.bad_value()
     }
   }
+
   func encode() throws -> String {
     switch self {
       case .Foo:
@@ -487,8 +527,10 @@ public extension Test_RootService_NestedTuple {
     let json = try decode_value(json as? [Any])
     return Test_RootService_NestedTuple()
   }
+
   func encode() throws -> [Any] {
     var json = [Any]()
+
     return json
   }
 }
@@ -502,8 +544,10 @@ public extension Test_RootType_NestedInterface_Foo_Nested {
 
     return Test_RootType_NestedInterface_Foo_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -517,8 +561,10 @@ public extension Test_RootType_NestedTuple_Nested {
 
     return Test_RootType_NestedTuple_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -532,8 +578,10 @@ public extension Test_RootType_NestedService_Nested {
 
     return Test_RootType_NestedService_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -547,8 +595,10 @@ public extension Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested {
 
     return Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -562,8 +612,10 @@ public extension Test_RootInterface_Foo_NestedTuple_Nested {
 
     return Test_RootInterface_Foo_NestedTuple_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -577,8 +629,10 @@ public extension Test_RootInterface_Foo_NestedService_Nested {
 
     return Test_RootInterface_Foo_NestedService_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -592,8 +646,10 @@ public extension Test_RootTuple_NestedInterface_Foo_Nested {
 
     return Test_RootTuple_NestedInterface_Foo_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -607,8 +663,10 @@ public extension Test_RootTuple_NestedTuple_Nested {
 
     return Test_RootTuple_NestedTuple_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -622,8 +680,10 @@ public extension Test_RootTuple_NestedService_Nested {
 
     return Test_RootTuple_NestedService_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -637,8 +697,10 @@ public extension Test_RootService_NestedInterface_Foo_Nested {
 
     return Test_RootService_NestedInterface_Foo_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -652,8 +714,10 @@ public extension Test_RootService_NestedTuple_Nested {
 
     return Test_RootService_NestedTuple_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -667,8 +731,10 @@ public extension Test_RootService_NestedService_Nested {
 
     return Test_RootService_NestedService_Nested()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }

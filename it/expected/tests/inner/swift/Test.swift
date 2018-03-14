@@ -21,14 +21,17 @@ public extension Test_Entry {
 
     return Test_Entry(a: a, b: b)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     if let value = self.a {
       json["a"] = try value.encode()
     }
     if let value = self.b {
       json["b"] = try value.encode()
     }
+
     return json
   }
 }
@@ -49,9 +52,12 @@ public extension Test_A {
 
     return Test_A(b: b)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["b"] = try self.b.encode()
+
     return json
   }
 }
@@ -72,9 +78,12 @@ public extension Test_A_B {
 
     return Test_A_B(field: field)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["field"] = self.field
+
     return json
   }
 }

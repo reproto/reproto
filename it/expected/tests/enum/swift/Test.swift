@@ -21,14 +21,17 @@ public extension Test_Entry {
 
     return Test_Entry(explicit: explicit, implicit: implicit)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     if let value = self.explicit {
       json["explicit"] = try value.encode()
     }
     if let value = self.implicit {
       json["implicit"] = try value.encode()
     }
+
     return json
   }
 }
@@ -51,6 +54,7 @@ public extension Test_EnumExplicit {
         throw SerializationError.bad_value()
     }
   }
+
   func encode() throws -> String {
     switch self {
       case .A:
@@ -81,6 +85,7 @@ public extension Test_EnumImplicit {
         throw SerializationError.bad_value()
     }
   }
+
   func encode() throws -> String {
     switch self {
       case .A:
@@ -111,6 +116,7 @@ public extension Test_EnumLongNames {
         throw SerializationError.bad_value()
     }
   }
+
   func encode() throws -> String {
     switch self {
       case .FooBar:

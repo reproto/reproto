@@ -100,8 +100,10 @@ public extension Test_Entry {
 
     return Test_Entry(boolean_type: boolean_type, string_type: string_type, datetime_type: datetime_type, unsigned_32: unsigned_32, unsigned_64: unsigned_64, signed_32: signed_32, signed_64: signed_64, float_type: float_type, double_type: double_type, bytes_type: bytes_type, any_type: any_type, array_type: array_type, map_type: map_type)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     if let value = self.boolean_type {
       json["boolean_type"] = value
     }
@@ -141,6 +143,7 @@ public extension Test_Entry {
     if let value = self.map_type {
       json["map_type"] = try encode_map(value, name: "map_type", value: { value in try value.encode() })
     }
+
     return json
   }
 }

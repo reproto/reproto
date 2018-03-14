@@ -28,6 +28,7 @@ public extension Test_Entry {
         throw SerializationError.invalid(type)
     }
   }
+
   func encode() throws -> [String: Any] {
     switch self {
       case .A(let s):
@@ -65,9 +66,12 @@ public extension Test_Entry_A {
 
     return Test_Entry_A(shared: shared)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["shared"] = self.shared
+
     return json
   }
 }
@@ -87,9 +91,12 @@ public extension Test_Entry_B {
 
     return Test_Entry_B(shared: shared)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["shared"] = self.shared
+
     return json
   }
 }
@@ -109,9 +116,12 @@ public extension Test_Entry_Bar {
 
     return Test_Entry_Bar(shared: shared)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["shared"] = self.shared
+
     return json
   }
 }
@@ -131,9 +141,12 @@ public extension Test_Entry_Baz {
 
     return Test_Entry_Baz(shared: shared)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["shared"] = self.shared
+
     return json
   }
 }

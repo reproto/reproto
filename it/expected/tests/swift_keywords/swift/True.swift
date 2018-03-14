@@ -7,8 +7,10 @@ public extension True_Empty {
 
     return True_Empty()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }

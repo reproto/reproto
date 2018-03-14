@@ -7,8 +7,10 @@ public extension Test_Entry {
 
     return Test_Entry()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -22,8 +24,10 @@ public extension Test_Type {
 
     return Test_Type()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -46,6 +50,7 @@ public extension Test_Interface {
         throw SerializationError.invalid(type)
     }
   }
+
   func encode() throws -> [String: Any] {
     switch self {
       case .SubType(let s):
@@ -64,8 +69,10 @@ public extension Test_Interface_SubType {
 
     return Test_Interface_SubType()
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     return json
   }
 }
@@ -85,6 +92,7 @@ public extension Test_Enum {
         throw SerializationError.bad_value()
     }
   }
+
   func encode() throws -> String {
     switch self {
       case .Variant:
@@ -103,8 +111,10 @@ public extension Test_Tuple {
     let json = try decode_value(json as? [Any])
     return Test_Tuple()
   }
+
   func encode() throws -> [Any] {
     var json = [Any]()
+
     return json
   }
 }

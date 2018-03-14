@@ -28,8 +28,10 @@ public extension Foo__4_0_0_Thing {
 
     return Foo__4_0_0_Thing(name: name, other: other, other2: other2)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     if let value = self.name {
       json["name"] = value
     }
@@ -39,6 +41,7 @@ public extension Foo__4_0_0_Thing {
     if let value = self.other2 {
       json["other2"] = try value.encode()
     }
+
     return json
   }
 }

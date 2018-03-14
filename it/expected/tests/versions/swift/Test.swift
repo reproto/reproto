@@ -14,11 +14,14 @@ public extension Test_Entry {
 
     return Test_Entry(thing: thing)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     if let value = self.thing {
       json["thing"] = try value.encode()
     }
+
     return json
   }
 }

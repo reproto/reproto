@@ -21,14 +21,17 @@ public extension Test_Entry {
 
     return Test_Entry(tuple1: tuple1, tuple2: tuple2)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     if let value = self.tuple1 {
       json["tuple1"] = try value.encode()
     }
     if let value = self.tuple2 {
       json["tuple2"] = try value.encode()
     }
+
     return json
   }
 }
@@ -56,10 +59,13 @@ public extension Test_Tuple1 {
     let b = try decode_name(unbox(f_b, as: UInt64.self), name: "[1]")
     return Test_Tuple1(a: a, b: b)
   }
+
   func encode() throws -> [Any] {
     var json = [Any]()
+
     json.append(self.a)
     json.append(self.b)
+
     return json
   }
 }
@@ -87,10 +93,13 @@ public extension Test_Tuple2 {
     let b = try Test_Other.decode(json: f_b)
     return Test_Tuple2(a: a, b: b)
   }
+
   func encode() throws -> [Any] {
     var json = [Any]()
+
     json.append(self.a)
     json.append(try self.b.encode())
+
     return json
   }
 }
@@ -112,9 +121,12 @@ public extension Test_Other {
 
     return Test_Other(a: a)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["a"] = self.a
+
     return json
   }
 }

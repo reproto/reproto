@@ -14,9 +14,12 @@ public extension UpperSnake_Value {
 
     return UpperSnake_Value(foo_bar: foo_bar)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["FOO_BAR"] = self.foo_bar
+
     return json
   }
 }

@@ -518,8 +518,10 @@ public extension Test_Entry {
 
     return Test_Entry(as_: as_, associatedtype_: associatedtype_, associativity_: associativity_, break_: break_, case_: case_, catch_: catch_, class_: class_, continue_: continue_, convenience_: convenience_, default_: default_, defer_: defer_, deinit_: deinit_, do_: do_, dynamic_: dynamic_, else_: else_, enum_: enum_, extension_: extension_, fallthrough_: fallthrough_, false_: false_, fileprivate_: fileprivate_, final_: final_, for_: for_, func_: func_, get_: get_, guard_: guard_, if_: if_, import_: import_, in_: in_, indirect_: indirect_, infix_: infix_, init_: init_, inout_: inout_, internal_: internal_, is_: is_, lazy_: lazy_, left_: left_, let_: let_, mutating_: mutating_, nil_: nil_, none_: none_, nonmutating_: nonmutating_, open_: open_, operator_: operator_, optional_: optional_, override_: override_, postfix_: postfix_, precedence_: precedence_, prefix_: prefix_, private_: private_, protocol_: protocol_, public_: public_, repeat_: repeat_, required_: required_, rethrows_: rethrows_, return_: return_, right_: right_, self_: self_, set_: set_, static_: static_, struct_: struct_, subscript_: subscript_, super_: super_, switch_: switch_, throw_: throw_, throws_: throws_, true_: true_, try_: try_, typealias_: typealias_, unowned_: unowned_, var_: var_, weak_: weak_, where_: where_, while_: while_)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     if let value = self.as_ {
       json["as"] = value
     }
@@ -739,6 +741,7 @@ public extension Test_Entry {
     if let value = self.while_ {
       json["while"] = value
     }
+
     return json
   }
 }

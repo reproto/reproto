@@ -14,9 +14,12 @@ public extension UpperCamel_Value {
 
     return UpperCamel_Value(foo_bar: foo_bar)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["FooBar"] = self.foo_bar
+
     return json
   }
 }

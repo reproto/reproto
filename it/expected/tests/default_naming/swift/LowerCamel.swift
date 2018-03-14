@@ -14,9 +14,12 @@ public extension LowerCamel_Value {
 
     return LowerCamel_Value(foo_bar: foo_bar)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["fooBar"] = self.foo_bar
+
     return json
   }
 }

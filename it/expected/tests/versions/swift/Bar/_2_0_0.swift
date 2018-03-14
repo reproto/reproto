@@ -14,9 +14,12 @@ public extension Bar__2_0_0_Other {
 
     return Bar__2_0_0_Other(name2: name2)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     json["name2"] = self.name2
+
     return json
   }
 }

@@ -35,8 +35,10 @@ public extension Test_Entry {
 
     return Test_Entry(lower_camel: lower_camel, lower_snake: lower_snake, upper_camel: upper_camel, upper_snake: upper_snake)
   }
+
   func encode() throws -> [String: Any] {
     var json = [String: Any]()
+
     if let value = self.lower_camel {
       json["lower_camel"] = try value.encode()
     }
@@ -49,6 +51,7 @@ public extension Test_Entry {
     if let value = self.upper_snake {
       json["upper_snake"] = try value.encode()
     }
+
     return json
   }
 }
