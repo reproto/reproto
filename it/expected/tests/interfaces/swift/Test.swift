@@ -56,11 +56,13 @@ public struct Test_Entry_A {
 public extension Test_Entry_A {
   static func decode(json: Any) throws -> Test_Entry_A {
     let json = try decode_value(json as? [String: Any])
+
     guard let f_shared = json["shared"] else {
       throw SerializationError.missing("shared")
     }
 
     let shared = try decode_name(unbox(f_shared, as: String.self), name: "shared")
+
     return Test_Entry_A(shared: shared)
   }
   func encode() throws -> [String: Any] {
@@ -76,11 +78,13 @@ public struct Test_Entry_B {
 public extension Test_Entry_B {
   static func decode(json: Any) throws -> Test_Entry_B {
     let json = try decode_value(json as? [String: Any])
+
     guard let f_shared = json["shared"] else {
       throw SerializationError.missing("shared")
     }
 
     let shared = try decode_name(unbox(f_shared, as: String.self), name: "shared")
+
     return Test_Entry_B(shared: shared)
   }
   func encode() throws -> [String: Any] {
@@ -96,11 +100,13 @@ public struct Test_Entry_Bar {
 public extension Test_Entry_Bar {
   static func decode(json: Any) throws -> Test_Entry_Bar {
     let json = try decode_value(json as? [String: Any])
+
     guard let f_shared = json["shared"] else {
       throw SerializationError.missing("shared")
     }
 
     let shared = try decode_name(unbox(f_shared, as: String.self), name: "shared")
+
     return Test_Entry_Bar(shared: shared)
   }
   func encode() throws -> [String: Any] {
@@ -116,11 +122,13 @@ public struct Test_Entry_Baz {
 public extension Test_Entry_Baz {
   static func decode(json: Any) throws -> Test_Entry_Baz {
     let json = try decode_value(json as? [String: Any])
+
     guard let f_shared = json["shared"] else {
       throw SerializationError.missing("shared")
     }
 
     let shared = try decode_name(unbox(f_shared, as: String.self), name: "shared")
+
     return Test_Entry_Baz(shared: shared)
   }
   func encode() throws -> [String: Any] {

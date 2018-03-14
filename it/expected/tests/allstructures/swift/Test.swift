@@ -4,6 +4,7 @@ public struct Test_Entry {
 public extension Test_Entry {
   static func decode(json: Any) throws -> Test_Entry {
     let json = try decode_value(json as? [String: Any])
+
     return Test_Entry()
   }
   func encode() throws -> [String: Any] {
@@ -18,6 +19,7 @@ public struct Test_RootType {
 public extension Test_RootType {
   static func decode(json: Any) throws -> Test_RootType {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootType()
   }
   func encode() throws -> [String: Any] {
@@ -59,6 +61,7 @@ public struct Test_RootInterface_Foo {
 public extension Test_RootInterface_Foo {
   static func decode(json: Any) throws -> Test_RootInterface_Foo {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootInterface_Foo()
   }
   func encode() throws -> [String: Any] {
@@ -74,6 +77,7 @@ public enum Test_RootEnum {
 public extension Test_RootEnum {
   static func decode(json: Any) throws -> Test_RootEnum {
     let json = try decode_value(json as? String)
+
     switch json {
       case "Foo":
         return Test_RootEnum.Foo()
@@ -111,6 +115,7 @@ public struct Test_RootType_NestedType {
 public extension Test_RootType_NestedType {
   static func decode(json: Any) throws -> Test_RootType_NestedType {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootType_NestedType()
   }
   func encode() throws -> [String: Any] {
@@ -152,6 +157,7 @@ public struct Test_RootType_NestedInterface_Foo {
 public extension Test_RootType_NestedInterface_Foo {
   static func decode(json: Any) throws -> Test_RootType_NestedInterface_Foo {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootType_NestedInterface_Foo()
   }
   func encode() throws -> [String: Any] {
@@ -167,6 +173,7 @@ public enum Test_RootType_NestedEnum {
 public extension Test_RootType_NestedEnum {
   static func decode(json: Any) throws -> Test_RootType_NestedEnum {
     let json = try decode_value(json as? String)
+
     switch json {
       case "Foo":
         return Test_RootType_NestedEnum.Foo()
@@ -204,6 +211,7 @@ public struct Test_RootInterface_Foo_NestedType {
 public extension Test_RootInterface_Foo_NestedType {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedType {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootInterface_Foo_NestedType()
   }
   func encode() throws -> [String: Any] {
@@ -245,6 +253,7 @@ public struct Test_RootInterface_Foo_NestedInterface_NestedFoo {
 public extension Test_RootInterface_Foo_NestedInterface_NestedFoo {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedInterface_NestedFoo {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootInterface_Foo_NestedInterface_NestedFoo()
   }
   func encode() throws -> [String: Any] {
@@ -260,6 +269,7 @@ public enum Test_RootInterface_Foo_NestedEnum {
 public extension Test_RootInterface_Foo_NestedEnum {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedEnum {
     let json = try decode_value(json as? String)
+
     switch json {
       case "Foo":
         return Test_RootInterface_Foo_NestedEnum.Foo()
@@ -297,6 +307,7 @@ public struct Test_RootTuple_NestedType {
 public extension Test_RootTuple_NestedType {
   static func decode(json: Any) throws -> Test_RootTuple_NestedType {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootTuple_NestedType()
   }
   func encode() throws -> [String: Any] {
@@ -338,6 +349,7 @@ public struct Test_RootTuple_NestedInterface_Foo {
 public extension Test_RootTuple_NestedInterface_Foo {
   static func decode(json: Any) throws -> Test_RootTuple_NestedInterface_Foo {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootTuple_NestedInterface_Foo()
   }
   func encode() throws -> [String: Any] {
@@ -353,6 +365,7 @@ public enum Test_RootTuple_NestedEnum {
 public extension Test_RootTuple_NestedEnum {
   static func decode(json: Any) throws -> Test_RootTuple_NestedEnum {
     let json = try decode_value(json as? String)
+
     switch json {
       case "Foo":
         return Test_RootTuple_NestedEnum.Foo()
@@ -390,6 +403,7 @@ public struct Test_RootService_NestedType {
 public extension Test_RootService_NestedType {
   static func decode(json: Any) throws -> Test_RootService_NestedType {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootService_NestedType()
   }
   func encode() throws -> [String: Any] {
@@ -431,6 +445,7 @@ public struct Test_RootService_NestedInterface_Foo {
 public extension Test_RootService_NestedInterface_Foo {
   static func decode(json: Any) throws -> Test_RootService_NestedInterface_Foo {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootService_NestedInterface_Foo()
   }
   func encode() throws -> [String: Any] {
@@ -446,6 +461,7 @@ public enum Test_RootService_NestedEnum {
 public extension Test_RootService_NestedEnum {
   static func decode(json: Any) throws -> Test_RootService_NestedEnum {
     let json = try decode_value(json as? String)
+
     switch json {
       case "Foo":
         return Test_RootService_NestedEnum.Foo()
@@ -483,6 +499,7 @@ public struct Test_RootType_NestedInterface_Foo_Nested {
 public extension Test_RootType_NestedInterface_Foo_Nested {
   static func decode(json: Any) throws -> Test_RootType_NestedInterface_Foo_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootType_NestedInterface_Foo_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -497,6 +514,7 @@ public struct Test_RootType_NestedTuple_Nested {
 public extension Test_RootType_NestedTuple_Nested {
   static func decode(json: Any) throws -> Test_RootType_NestedTuple_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootType_NestedTuple_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -511,6 +529,7 @@ public struct Test_RootType_NestedService_Nested {
 public extension Test_RootType_NestedService_Nested {
   static func decode(json: Any) throws -> Test_RootType_NestedService_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootType_NestedService_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -525,6 +544,7 @@ public struct Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested {
 public extension Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -539,6 +559,7 @@ public struct Test_RootInterface_Foo_NestedTuple_Nested {
 public extension Test_RootInterface_Foo_NestedTuple_Nested {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedTuple_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootInterface_Foo_NestedTuple_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -553,6 +574,7 @@ public struct Test_RootInterface_Foo_NestedService_Nested {
 public extension Test_RootInterface_Foo_NestedService_Nested {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedService_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootInterface_Foo_NestedService_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -567,6 +589,7 @@ public struct Test_RootTuple_NestedInterface_Foo_Nested {
 public extension Test_RootTuple_NestedInterface_Foo_Nested {
   static func decode(json: Any) throws -> Test_RootTuple_NestedInterface_Foo_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootTuple_NestedInterface_Foo_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -581,6 +604,7 @@ public struct Test_RootTuple_NestedTuple_Nested {
 public extension Test_RootTuple_NestedTuple_Nested {
   static func decode(json: Any) throws -> Test_RootTuple_NestedTuple_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootTuple_NestedTuple_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -595,6 +619,7 @@ public struct Test_RootTuple_NestedService_Nested {
 public extension Test_RootTuple_NestedService_Nested {
   static func decode(json: Any) throws -> Test_RootTuple_NestedService_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootTuple_NestedService_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -609,6 +634,7 @@ public struct Test_RootService_NestedInterface_Foo_Nested {
 public extension Test_RootService_NestedInterface_Foo_Nested {
   static func decode(json: Any) throws -> Test_RootService_NestedInterface_Foo_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootService_NestedInterface_Foo_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -623,6 +649,7 @@ public struct Test_RootService_NestedTuple_Nested {
 public extension Test_RootService_NestedTuple_Nested {
   static func decode(json: Any) throws -> Test_RootService_NestedTuple_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootService_NestedTuple_Nested()
   }
   func encode() throws -> [String: Any] {
@@ -637,6 +664,7 @@ public struct Test_RootService_NestedService_Nested {
 public extension Test_RootService_NestedService_Nested {
   static func decode(json: Any) throws -> Test_RootService_NestedService_Nested {
     let json = try decode_value(json as? [String: Any])
+
     return Test_RootService_NestedService_Nested()
   }
   func encode() throws -> [String: Any] {

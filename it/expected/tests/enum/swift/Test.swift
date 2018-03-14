@@ -6,14 +6,19 @@ public struct Test_Entry {
 public extension Test_Entry {
   static func decode(json: Any) throws -> Test_Entry {
     let json = try decode_value(json as? [String: Any])
+
     var explicit: Test_EnumExplicit? = Optional.none
+
     if let value = json["explicit"] {
       explicit = Optional.some(try Test_EnumExplicit.decode(json: value))
     }
+
     var implicit: Test_EnumImplicit? = Optional.none
+
     if let value = json["implicit"] {
       implicit = Optional.some(try Test_EnumImplicit.decode(json: value))
     }
+
     return Test_Entry(explicit: explicit, implicit: implicit)
   }
   func encode() throws -> [String: Any] {
@@ -36,6 +41,7 @@ public enum Test_EnumExplicit {
 public extension Test_EnumExplicit {
   static func decode(json: Any) throws -> Test_EnumExplicit {
     let json = try decode_value(json as? String)
+
     switch json {
       case "foo":
         return Test_EnumExplicit.A()
@@ -65,6 +71,7 @@ public enum Test_EnumImplicit {
 public extension Test_EnumImplicit {
   static func decode(json: Any) throws -> Test_EnumImplicit {
     let json = try decode_value(json as? String)
+
     switch json {
       case "A":
         return Test_EnumImplicit.A()
@@ -94,6 +101,7 @@ public enum Test_EnumLongNames {
 public extension Test_EnumLongNames {
   static func decode(json: Any) throws -> Test_EnumLongNames {
     let json = try decode_value(json as? String)
+
     switch json {
       case "FooBar":
         return Test_EnumLongNames.FooBar()

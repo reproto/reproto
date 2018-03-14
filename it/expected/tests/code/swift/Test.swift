@@ -4,6 +4,7 @@ public struct Test_Entry {
 public extension Test_Entry {
   static func decode(json: Any) throws -> Test_Entry {
     let json = try decode_value(json as? [String: Any])
+
     return Test_Entry()
   }
   func encode() throws -> [String: Any] {
@@ -18,6 +19,7 @@ public struct Test_Type {
 public extension Test_Type {
   static func decode(json: Any) throws -> Test_Type {
     let json = try decode_value(json as? [String: Any])
+
     return Test_Type()
   }
   func encode() throws -> [String: Any] {
@@ -59,6 +61,7 @@ public struct Test_Interface_SubType {
 public extension Test_Interface_SubType {
   static func decode(json: Any) throws -> Test_Interface_SubType {
     let json = try decode_value(json as? [String: Any])
+
     return Test_Interface_SubType()
   }
   func encode() throws -> [String: Any] {
@@ -74,6 +77,7 @@ public enum Test_Enum {
 public extension Test_Enum {
   static func decode(json: Any) throws -> Test_Enum {
     let json = try decode_value(json as? String)
+
     switch json {
       case "Variant":
         return Test_Enum.Variant()

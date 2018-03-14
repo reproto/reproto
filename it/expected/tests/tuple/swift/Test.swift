@@ -6,14 +6,19 @@ public struct Test_Entry {
 public extension Test_Entry {
   static func decode(json: Any) throws -> Test_Entry {
     let json = try decode_value(json as? [String: Any])
+
     var tuple1: Test_Tuple1? = Optional.none
+
     if let value = json["tuple1"] {
       tuple1 = Optional.some(try Test_Tuple1.decode(json: value))
     }
+
     var tuple2: Test_Tuple2? = Optional.none
+
     if let value = json["tuple2"] {
       tuple2 = Optional.some(try Test_Tuple2.decode(json: value))
     }
+
     return Test_Entry(tuple1: tuple1, tuple2: tuple2)
   }
   func encode() throws -> [String: Any] {
@@ -37,11 +42,13 @@ public struct Test_Tuple1 {
 public extension Test_Tuple1 {
   static func decode(json: Any) throws -> Test_Tuple1 {
     let json = try decode_value(json as? [Any])
+
     guard let f_a = Optional.some(json[0]) else {
       throw SerializationError.missing("[0]")
     }
 
     let a = try decode_name(unbox(f_a, as: String.self), name: "[0]")
+
     guard let f_b = Optional.some(json[1]) else {
       throw SerializationError.missing("[1]")
     }
@@ -66,11 +73,13 @@ public struct Test_Tuple2 {
 public extension Test_Tuple2 {
   static func decode(json: Any) throws -> Test_Tuple2 {
     let json = try decode_value(json as? [Any])
+
     guard let f_a = Optional.some(json[0]) else {
       throw SerializationError.missing("[0]")
     }
 
     let a = try decode_name(unbox(f_a, as: String.self), name: "[0]")
+
     guard let f_b = Optional.some(json[1]) else {
       throw SerializationError.missing("[1]")
     }
@@ -94,11 +103,13 @@ public struct Test_Other {
 public extension Test_Other {
   static func decode(json: Any) throws -> Test_Other {
     let json = try decode_value(json as? [String: Any])
+
     guard let f_a = json["a"] else {
       throw SerializationError.missing("a")
     }
 
     let a = try decode_name(unbox(f_a, as: String.self), name: "a")
+
     return Test_Other(a: a)
   }
   func encode() throws -> [String: Any] {

@@ -7,7 +7,7 @@ use core::{Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage,
 use core::errors::*;
 use genco::{Cons, IntoTokens, Quoted, Tokens};
 use std::rc::Rc;
-use swift::Swift;
+use swift::{imported, Swift};
 use trans::{self, Environment};
 
 /// Documentation comments.
@@ -52,6 +52,9 @@ const TYPE_SEP: &'static str = "_";
 pub struct Compiler<'el> {
     pub env: &'el Environment,
     handle: &'el Handle,
+    data: Swift<'static>,
+    date: Swift<'static>,
+    formatter: Swift<'static>,
 }
 
 impl<'el> Compiler<'el> {
@@ -59,6 +62,9 @@ impl<'el> Compiler<'el> {
         Compiler {
             env: env,
             handle: handle,
+            data: imported("Foundation", "Data"),
+            date: imported("Foundation", "Date"),
+            formatter: imported("Foundation", "ISO8601DateFormatter"),
         }
     }
 
@@ -79,8 +85,8 @@ impl<'el> Compiler<'el> {
 
         let ty = match *ty {
             String => toks!["String"],
-            DateTime => toks!["String"],
-            Bytes => toks!["String"],
+            DateTime => toks![self.date.clone()],
+            Bytes => toks![self.data.clone()],
             Signed { size: 32 } => toks!["Int32"],
             Signed { size: 64 } => toks!["Int64"],
             Unsigned { size: 32 } => toks!["UInt32"],
@@ -138,8 +144,17 @@ impl<'el> Compiler<'el> {
 
         let unbox = match *ty {
             String => unbox(var, "String"),
-            DateTime => unbox(var, "String"),
-            Bytes => unbox(var, "String"),
+            DateTime => {
+                let string = toks!["try decode_value(", var, " as? String)"];
+                let date = toks![self.formatter.clone(), "().date(from: ", string, ")"];
+                toks!["try decode_value(", date, ")"]
+            }
+            Bytes => toks![
+                self.data.clone(),
+                "(base64Encoded: try decode_value(",
+                var,
+                " as? String))"
+            ],
             Signed { size: 32 } => unbox(var, "Int32"),
             Signed { size: 64 } => unbox(var, "Int64"),
             Unsigned { size: 32 } => unbox(var, "UInt32"),
@@ -213,21 +228,28 @@ impl<'el> Compiler<'el> {
                 let mut t = Tokens::new();
 
                 t.push(toks!["var ", ident, ": ", ty, " = Optional.none"]);
-                t.push(toks!["if let value = ", index, " {",]);
 
-                t.nested({
+                t.push({
                     let mut t = Tokens::new();
 
-                    let value = self.decode_value(&field.ty, name, "value".into())?;
+                    t.push(toks!["if let value = ", index, " {",]);
 
-                    t.push(toks![ident, " = Optional.some(", value, ")"]);
+                    t.nested({
+                        let mut t = Tokens::new();
 
-                    t.join_line_spacing()
+                        let value = self.decode_value(&field.ty, name, "value".into())?;
+
+                        t.push(toks![ident, " = Optional.some(", value, ")"]);
+
+                        t.join_line_spacing()
+                    });
+
+                    t.push("}");
+
+                    t
                 });
 
-                t.push("}");
-
-                t
+                t.join_line_spacing()
             });
         } else {
             t.push(GuardMissing(
@@ -253,6 +275,8 @@ impl<'el> Compiler<'el> {
         use self::RpType::*;
 
         let encode = match *ty {
+            DateTime => toks![self.formatter.clone(), "().string(from: ", var, ")"],
+            Bytes => toks![var, ".base64EncodedString()"],
             Array { ref inner } => {
                 let inner = self.encode_value(inner, name, "inner".into())?;
                 toks![
@@ -719,7 +743,7 @@ impl<'el> Compiler<'el> {
                         args.append(toks![ident.clone(), ": ", ident.clone()]);
                     }
 
-                    t
+                    t.join_line_spacing()
                 });
 
                 t.nested(toks!["return ", name.clone(), "(", args.join(", "), ")"]);
@@ -807,10 +831,11 @@ impl<'el> Compiler<'el> {
                         args.append(toks![ident.clone(), ": ", ident.clone()]);
                     }
 
-                    t
+                    t.push(toks!["return ", name.clone(), "(", args.join(", "), ")"]);
+
+                    t.join_line_spacing()
                 });
 
-                t.nested(toks!["return ", name.clone(), "(", args.join(", "), ")"]);
                 t.push("}");
 
                 t
@@ -970,33 +995,39 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
                     t.push(toks!["let json = try decode_value(json as? String)"]);
 
-                    t.push("switch json {");
+                    t.push({
+                        let mut t = Tokens::new();
 
-                    for variant in &body.variants {
+                        t.push("switch json {");
+
+                        for variant in &body.variants {
+                            t.nested({
+                                let mut t = Tokens::new();
+                                t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
+                                t.nested(toks![
+                                    "return ",
+                                    name.clone(),
+                                    ".",
+                                    variant.local_name.as_str(),
+                                    "()"
+                                ]);
+                                t
+                            });
+                        }
+
                         t.nested({
                             let mut t = Tokens::new();
-                            t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
-                            t.nested(toks![
-                                "return ",
-                                name.clone(),
-                                ".",
-                                variant.local_name.as_str(),
-                                "()"
-                            ]);
+                            t.push("default:");
+                            t.nested("throw SerializationError.bad_value()");
                             t
                         });
-                    }
 
-                    t.nested({
-                        let mut t = Tokens::new();
-                        t.push("default:");
-                        t.nested("throw SerializationError.bad_value()");
+                        t.push("}");
+
                         t
                     });
 
-                    t.push("}");
-
-                    t
+                    t.join_line_spacing()
                 });
 
                 t.push("}");

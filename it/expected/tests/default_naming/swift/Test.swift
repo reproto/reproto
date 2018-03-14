@@ -8,22 +8,31 @@ public struct Test_Entry {
 public extension Test_Entry {
   static func decode(json: Any) throws -> Test_Entry {
     let json = try decode_value(json as? [String: Any])
+
     var lower_camel: LowerCamel_Value? = Optional.none
+
     if let value = json["lower_camel"] {
       lower_camel = Optional.some(try LowerCamel_Value.decode(json: value))
     }
+
     var lower_snake: LowerSnake_Value? = Optional.none
+
     if let value = json["lower_snake"] {
       lower_snake = Optional.some(try LowerSnake_Value.decode(json: value))
     }
+
     var upper_camel: UpperCamel_Value? = Optional.none
+
     if let value = json["upper_camel"] {
       upper_camel = Optional.some(try UpperCamel_Value.decode(json: value))
     }
+
     var upper_snake: UpperSnake_Value? = Optional.none
+
     if let value = json["upper_snake"] {
       upper_snake = Optional.some(try UpperSnake_Value.decode(json: value))
     }
+
     return Test_Entry(lower_camel: lower_camel, lower_snake: lower_snake, upper_camel: upper_camel, upper_snake: upper_snake)
   }
   func encode() throws -> [String: Any] {

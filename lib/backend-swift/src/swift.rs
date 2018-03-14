@@ -2,9 +2,8 @@
 
 use genco::{Custom, Formatter, Tokens};
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::fmt::{self, Write};
-
-static SEP: &'static str = ".";
 
 /// Swift token specialization.
 #[derive(Debug, Clone)]
@@ -18,7 +17,36 @@ pub enum Swift<'el> {
     },
 }
 
-impl<'el> Swift<'el> {}
+impl<'el> Swift<'el> {
+    fn imports<'a>(tokens: &'a Tokens<'a, Self>) -> Option<Tokens<'a, Self>> {
+        use self::Swift::*;
+
+        let mut modules = BTreeSet::new();
+
+        for custom in tokens.walk_custom() {
+            match *custom {
+                Imported { ref module, .. } => modules.insert(module.as_ref()),
+            };
+        }
+
+        if modules.is_empty() {
+            return None;
+        }
+
+        let mut out = Tokens::new();
+
+        for module in modules {
+            let mut s = Tokens::new();
+
+            s.append("import ");
+            s.append(module);
+
+            out.push(s);
+        }
+
+        Some(out)
+    }
+}
 
 impl<'el> Custom for Swift<'el> {
     type Extra = ();
@@ -27,13 +55,7 @@ impl<'el> Custom for Swift<'el> {
         use self::Swift::*;
 
         match *self {
-            Imported {
-                ref module,
-                ref name,
-                ..
-            } => {
-                out.write_str(module)?;
-                out.write_str(SEP)?;
+            Imported { ref name, .. } => {
                 out.write_str(name)?;
             }
         }
@@ -67,6 +89,11 @@ impl<'el> Custom for Swift<'el> {
         level: usize,
     ) -> fmt::Result {
         let mut toks: Tokens<Self> = Tokens::new();
+
+        if let Some(imports) = Self::imports(&tokens) {
+            toks.push(imports);
+        }
+
         toks.push_ref(&tokens);
         toks.join_line_spacing().format(out, extra, level)
     }
@@ -105,7 +132,7 @@ mod tests {
         toks.push(toks!(&dbg));
 
         assert_eq!(
-            Ok("Foo.Debug\n"),
+            Ok("import Foo\n\nDebug\n"),
             toks.to_file().as_ref().map(|s| s.as_str())
         );
     }
