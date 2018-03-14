@@ -1231,13 +1231,15 @@ export class Entry {
 }
 ```
 
-### <span id="csharp">C#</span>
+### <a id="csharp"></a>C#
 
 ```toml
 # File: reproto.toml
 
 language = "csharp"
 paths = ["src"]
+
+[modules."Json.NET"]
 
 [packages]
 "io.reproto.example" = "*"
@@ -1249,7 +1251,7 @@ In C#, generated types follow a naming strategy like the following:
 // File: src/io/reproto/example.reproto
 
 type Foo {
-  // skipped
+  name: string;
 
   type Bar {
     // skipped
@@ -1268,6 +1270,35 @@ namespace Io.Reproto.Example {
   class Foo_Bar {
     // skipped
   }
+}
+```
+
+In order to use the generated modules there are two required dependencies that can be installed
+with `dotnet`:
+
+```bash
+dotnet add package Newtonsoft.Json
+dotnet add package JsonSubTypes
+```
+
+After this, you can use the models like this:
+
+```cs
+using System;
+using Newtonsoft.Json;
+using Io.Reproto.Example;
+
+namespace Reproto
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string line = "{\"name\": \"world\"}";
+            Foo foo = JsonConvert.DeserializeObject<Foo>(line);
+            Console.WriteLine(JsonConvert.SerializeObject(foo));
+        }
+    }
 }
 ```
 
@@ -1290,7 +1321,7 @@ In Swift, generated types follow a naming strategy like the following:
 // File: src/io/reproto/example.reproto
 
 type Foo {
-  hello: string;
+  name: string;
 
   type Bar {
     // skipped
@@ -1324,7 +1355,7 @@ The following is an example of how these can be used:
 import Foundation;
 import Models;
 
-let data = "{\"hello\": \"world\"}"
+let data = "{\"name\": \"world\"}"
 
 let json = try? JSONSerialization.jsonObject(
     with: data.data(using: String.Encoding.utf8)!
