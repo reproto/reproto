@@ -67,19 +67,21 @@ Also make sure to [join our Gitter channel].
 
 ## Language Support
 
-* Java (`java`)
+* Java ([`java`](/doc/spec.md#java))
   * Data models using [jackson] (`jackson`), and/or [lombok] (`lombok`).
   * [gRPC] services through the `grpc` module.
-* C# (`csharp`)
+* C# ([`csharp`](/doc/spec.md#csharp))
   * Data models using [Json.NET] (`Json.NET`).
-* Python (`python`)
+* Python ([`python`](/doc/spec.md#python))
   * Plain-python classes, compatible with 2 and 3 for binding data efficiently.
-* Rust (`rust`)
+* Rust ([`rust`](/doc/spec.md#rust))
   * [Serde]-based serialization for data structures.
   * `datetime` support through the [`chrono`] crate.
-* JavaScript (`js`)
+* JavaScript ([`js`](/doc/spec.md#javascript))
   * ES2015 classes, that can be transpiled using babel for older targets, see the
     [js integration test].
+* Swift ([`swift`](/doc/spec.md#swift))
+  * Data models binding through `Any`.
 
 [gRPC]: https://grpc.io
 [lombok]: https://projectlombok.org/

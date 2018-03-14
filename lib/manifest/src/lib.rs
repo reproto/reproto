@@ -367,6 +367,7 @@ pub fn checked_modules<M: Any>(modules: Vec<Box<Any>>) -> Result<Vec<M>> {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Preset {
     Maven {},
+    Swift {},
 }
 
 impl Preset {}
@@ -379,6 +380,7 @@ fn apply_preset_to(value: toml::Value, manifest: &mut Manifest, base: &Path) -> 
     match value {
         String(name) => match name.as_str() {
             "maven" => maven_apply_to(manifest, base)?,
+            "swift" => swift_apply_to(manifest, base)?,
             name => return Err(format!("unsupported preset: {}", name).into()),
         },
         value => {
@@ -386,6 +388,7 @@ fn apply_preset_to(value: toml::Value, manifest: &mut Manifest, base: &Path) -> 
 
             match preset {
                 Maven { .. } => maven_apply_to(manifest, base)?,
+                Swift { .. } => swift_apply_to(manifest, base)?,
             }
         }
     }
@@ -405,6 +408,16 @@ fn apply_preset_to(value: toml::Value, manifest: &mut Manifest, base: &Path) -> 
                 .join("reproto")
                 .join("java"),
         );
+
+        Ok(())
+    }
+
+    fn swift_apply_to(manifest: &mut Manifest, base: &Path) -> Result<()> {
+        // default path
+        manifest.paths.push(base.join("reproto"));
+
+        // output directory
+        manifest.output = Some(base.join("Sources").join("Modules"));
 
         Ok(())
     }

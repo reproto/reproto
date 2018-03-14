@@ -34,6 +34,8 @@
     * [Python Language Keywords](#python-language-keywords)
   * [JavaScript](#javascript)
     * [JavaScript Language Keywords](#javascript-language-keywords)
+  * [C#](#csharp)
+  * [Swift](#swift)
 
 # Specifications
 
@@ -172,6 +174,7 @@ Ephemeral specifications are the default way to store specifications.
 They are preferred over versioned specifications because bumping the version number for ephemeral
 specifications is a change in [`reproto.toml`] and not renaming a file.
 
+[`reproto.toml`]: manifest.md
 [publish]: manifest.md#publish
 
 ## Versioned specifications
@@ -193,6 +196,7 @@ think of them as 'lightweight' repositories.
 Versioned specifications would primarily be used to store out-of-tree specifications which hasn't
 made it to central (yet), but that you need to depend on for some reason.
 
+[`reproto.toml`]: manifest.md
 [semver]: https://semver.org
 
 # The reproto language
@@ -795,8 +799,9 @@ This section is dedicated towards describing language-specific behaviors provide
 # File: reproto.toml
 
 language = "java"
-paths = ["src"]
-output = "target"
+
+[[presets]]
+type = "maven"
 ```
 
 Java classes are generated using _nested_ classes that matches the hierarchy specified in the
@@ -1145,8 +1150,6 @@ class Foo_Bar {
 }
 ```
 
-[`reproto.toml`]: manifest.md
-
 #### JavaScript Language Keywords
 
 Fields which matches keywords of the language will be prefixed with `_`.
@@ -1203,4 +1206,149 @@ export class Entry {
     return data;
   }
 }
+```
+
+### <span id="csharp">C#</span>
+
+```toml
+# File: reproto.toml
+
+language = "csharp"
+paths = ["src"]
+output = ""
+```
+
+In C#, generated types follow a naming strategy like the following:
+
+```reproto
+// File: src/io/reproto/example.reproto
+
+type Foo {
+  // skipped
+
+  type Bar {
+    // skipped
+  }
+}
+```
+
+```cs
+// File: Io/Reproto/Example/Foo.cs
+
+namespace Io.Reproto.Example {
+  class Foo {
+    // skipped
+  }
+
+  class Foo_Bar {
+    // skipped
+  }
+}
+```
+
+### Swift
+
+```toml
+# File: reproto.toml
+
+language = "swift"
+
+[[presets]]
+type = "swift"
+```
+
+In Swift, generated types follow a naming strategy like the following:
+
+```reproto
+// File: src/io/reproto/example.reproto
+
+type Foo {
+  hello: string;
+
+  type Bar {
+    // skipped
+  }
+}
+```
+
+```swift
+// File: Models/Io/Reproto/Example.swift
+
+public struct Io_Reproto_Example_Foo {
+  // skipped
+}
+
+public extension Io_Reproto_Example_Foo {
+  static func decode(json: Any) throws -> Io_Reproto_Example_Foo;
+}
+
+public struct Io_Reproto_Example_Foo_Bar {
+  // skipped
+}
+```
+
+The backend generated `decode` and `encode` methods for each type.
+These provide implementations of the encoding and decoding mechanisms necessary to bind
+deserialized JSON to the struct.
+
+The following is an example of how these can be used:
+
+```swift
+import Foundation;
+import Models;
+
+let data = "{\"hello\": \"world\"}"
+
+let json = try? JSONSerialization.jsonObject(
+    with: data.data(using: String.Encoding.utf8)!
+)
+
+let entry = try Io_Reproto_Example_Foo.decode(json: json as! [String: Any])
+let data = try JSONSerialization.data(withJSONObject: entry.encode())
+let out = String(data: data, encoding: String.Encoding.utf8) as String!
+```
+
+The Swift backend will also build a `ReprotoUtils.swift`, which contains a number of module-private
+helper functions needed to drive serialization.
+
+```swift
+// File: Sources/Models/ReprotoUtils.swift
+
+enum SerializationError: Error {
+  case missing(String)
+  case invalid(String)
+  case bad_value()
+}
+
+func decode_name<T>(_ unbox: T?, name string: String) throws -> T;
+
+func decode_value<T>(_ value: T?) throws -> T;
+
+func unbox(_ value: Any, as type: Int.Type) -> Int?;
+
+func unbox(_ value: Any, as type: UInt.Type) -> UInt?;
+
+func unbox(_ value: Any, as type: Int32.Type) -> Int32?;
+
+func unbox(_ value: Any, as type: Int64.Type) -> Int64?;
+
+func unbox(_ value: Any, as type: UInt32.Type) -> UInt32?;
+
+func unbox(_ value: Any, as type: UInt64.Type) -> UInt64?;
+
+func unbox(_ value: Any, as type: Float.Type) -> Float?;
+
+func unbox(_ value: Any, as type: Double.Type) -> Double?;
+
+func unbox(_ value: Any, as type: String.Type) -> String?;
+
+func unbox(_ value: Any, as type: Bool.Type) -> Bool?;
+
+func decode_array<T>(_ value: Any, name: String, inner: (Any) throws -> T) throws -> [T];
+
+func encode_array<T>(_ array: [T], name: String, inner: (T) throws -> Any) throws -> [Any];
+
+func decode_map<T>(_ map: Any, name: String, value: (Any) throws -> T) throws -> [String: T];
+
+func encode_map<T>(_ map: [String: T], name: String, value: (T) throws -> Any) throws -> [String: Any];
 ```
