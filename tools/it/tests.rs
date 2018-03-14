@@ -26,6 +26,9 @@ define!{
     csharp_keywords => {
         csharp_keywords.include(Csharp);
     },
+    swift_keywords => {
+        swift_keywords.include(Swift);
+    },
     java_okhttp1 => {
         java_okhttp1.include(Java);
     },
