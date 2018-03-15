@@ -26,19 +26,17 @@ pub type Result<T> = result::Result<T, failure::Error>;
 
 #[macro_export]
 macro_rules! define {
-    ($($suite:ident => $blk:block,)*) => {
+    ($($test:ident => $blk:block,)*) => {
         $(
         #[allow(unused)]
-        fn $suite($suite: &mut $crate::Suite) $blk
+        fn $test($test: &mut $crate::Suite) $blk
         )*
 
-        pub fn entry<'a>(test: &'a str, project: &mut $crate::Project<'a>) {
+        pub fn entry<'a>(project: &mut $crate::Project<'a>) {
             $(
-            let suite = stringify!($suite).trim_matches('_');
-            let mut suite = $crate::Suite::new(
-                test, suite, project.do_suite, project.do_project, project.action
-            );
-            $suite(&mut suite);
+            let test = stringify!($test).trim_matches('_');
+            let mut suite = $crate::Suite::new(test);
+            $test(&mut suite);
             project.suite(suite);
             )*
         }
@@ -51,8 +49,7 @@ macro_rules! tests {
 
         pub fn entry(project: &mut $crate::Project) {
             $(
-            let test = stringify!($name).trim_matches('_');
-            $name::entry(test, project);
+            $name::entry(project);
             )*
         }
     }
@@ -338,7 +335,8 @@ pub struct Manifest<'m> {
 #[derive(Debug)]
 pub struct ProjectRunner<'a> {
     test: &'a str,
-    suite: &'a str,
+    /// Instance of this test.
+    instance: String,
     /// Path to build packages from.
     path: PathBuf,
     /// Package to build.
@@ -381,6 +379,7 @@ impl<'a> ProjectRunner<'a> {
 
         // building project
         let output = Command::new("make")
+            .arg(self.instance.as_str())
             .current_dir(&self.target_workdir)
             .output()
             .map_err(|e| {
@@ -538,22 +537,28 @@ impl<'a> ProjectRunner<'a> {
 
 impl<'a> Runner for ProjectRunner<'a> {
     fn keywords(&self) -> Vec<&str> {
-        vec![self.test, self.suite, self.language.name()]
+        vec![self.test, self.instance.as_str(), self.language.name()]
     }
 
     /// Run the suite.
     fn run(&self) -> Result<()> {
         timed_run(
-            format!("project {} ({})", self.suite, self.language.name()),
+            format!(
+                "project {:20} (lang: {}, instance: {})",
+                self.test,
+                self.language.name(),
+                self.instance.as_str(),
+            ),
             || self.try_run(),
         )
     }
 }
 
+/// A runner that builds a specification and compares with a known, expected structure.
 #[derive(Debug)]
-pub struct SuiteRunner<'a> {
+pub struct StructureRunner<'a> {
     test: &'a str,
-    suite: &'a str,
+    instance: String,
     /// Action to run.
     action: Action,
     /// Path to build packages from.
@@ -574,7 +579,7 @@ pub struct SuiteRunner<'a> {
     extra: Vec<String>,
 }
 
-impl<'a> SuiteRunner<'a> {
+impl<'a> StructureRunner<'a> {
     pub fn manifest<'m>(&'m self, output: &'m Path) -> Manifest<'m> {
         Manifest {
             path: &self.path,
@@ -682,15 +687,20 @@ impl<'a> SuiteRunner<'a> {
     }
 }
 
-impl<'a> Runner for SuiteRunner<'a> {
+impl<'a> Runner for StructureRunner<'a> {
     fn keywords(&self) -> Vec<&str> {
-        vec![self.test, self.suite, self.language.name()]
+        vec![self.test, self.instance.as_str(), self.language.name()]
     }
 
     /// Run the suite.
     fn run(&self) -> Result<()> {
         timed_run(
-            format!("suite {} ({})", self.suite, self.language.name()),
+            format!(
+                "structure {:20} (lang: {}, instance: {})",
+                self.test,
+                self.language.name(),
+                self.instance.as_str(),
+            ),
             || self.try_run(),
         )
     }
@@ -708,13 +718,6 @@ pub enum Action {
 #[derive(Debug)]
 pub struct Suite<'a> {
     test: &'a str,
-    suite: &'a str,
-    /// Run the suite.
-    do_suite: bool,
-    /// Run the project.
-    do_project: bool,
-    /// Suite action to apply.
-    action: Action,
     /// Proto path to build.
     proto: Vec<RelativePathBuf>,
     inputs: Vec<RelativePathBuf>,
@@ -728,19 +731,9 @@ pub struct Suite<'a> {
 }
 
 impl<'a> Suite<'a> {
-    pub fn new(
-        test: &'a str,
-        suite: &'a str,
-        do_suite: bool,
-        do_project: bool,
-        action: Action,
-    ) -> Self {
+    pub fn new(test: &'a str) -> Self {
         Self {
             test: test,
-            suite: suite,
-            do_suite: do_suite,
-            do_project: do_project,
-            action: action,
             proto: Vec::new(),
             inputs: Vec::new(),
             arguments: HashMap::new(),
@@ -779,88 +772,178 @@ impl<'a> Suite<'a> {
     pub fn input<P: AsRef<RelativePath>>(&mut self, path: P) {
         self.inputs.push(path.as_ref().to_owned());
     }
+}
 
-    /// Setup suite runners for suite.
-    pub fn suite_runners(
-        self,
-        root: &Path,
-        project: &'a Project<'a>,
-    ) -> Result<Vec<Box<'a + Runner>>> {
+#[derive(Debug)]
+pub struct Instance {
+    name: String,
+    arguments: Vec<String>,
+}
+
+impl Instance {
+    pub fn new<S: AsRef<str>>(name: S) -> Self {
+        Self {
+            name: name.as_ref().to_string(),
+            arguments: Vec::new(),
+        }
+    }
+
+    /// Associate arguments with this instance.
+    pub fn args(&mut self, args: &[&str]) {
+        self.arguments.extend(args.iter().map(|s| s.to_string()));
+    }
+}
+
+/// A project, collecting all suites.
+#[derive(Debug)]
+pub struct Project<'a> {
+    languages: &'a [Language],
+    reproto: &'a Reproto,
+    /// Run the suite.
+    do_suite: bool,
+    /// Run the project.
+    do_project: bool,
+    /// Action to run.
+    action: Action,
+    pub suites: Vec<Suite<'a>>,
+    /// Arguments to apply per language.
+    arguments: HashMap<Language, &'a [&'a str]>,
+    /// Instances to build.
+    ///
+    /// By default only a single instance named `default` is used.
+    instances: HashMap<Language, Vec<Instance>>,
+}
+
+impl<'a> Project<'a> {
+    pub fn new(
+        languages: &'a [Language],
+        reproto: &'a Reproto,
+        do_suite: bool,
+        do_project: bool,
+        action: Action,
+    ) -> Self {
+        Self {
+            languages: languages,
+            reproto: reproto,
+            do_suite: do_suite,
+            do_project: do_project,
+            action: action,
+            suites: Vec::new(),
+            arguments: HashMap::new(),
+            instances: HashMap::new(),
+        }
+    }
+
+    /// Add the given instance.
+    pub fn add(&mut self, lang: Language, instance: Instance) {
+        self.instances
+            .entry(lang)
+            .or_insert_with(Vec::new)
+            .push(instance);
+    }
+
+    /// Associate an argument with a given language.
+    pub fn arg(&mut self, lang: Language, args: &'a [&'a str]) {
+        self.arguments.insert(lang, args);
+    }
+
+    /// Hook up another suite.
+    pub fn suite(&mut self, suite: Suite<'a>) {
+        self.suites.push(suite);
+    }
+
+    pub fn runners(&self, root: &Path) -> Result<Vec<Box<'a + Runner>>> {
         let mut runners: Vec<Box<Runner>> = Vec::new();
 
-        let suite = self.suite;
+        let default_instances = vec![Instance::new("default")];
 
-        let current_dir = self.dir
-            .as_ref()
-            .map(|p| p.as_ref())
-            .unwrap_or_else(|| RelativePath::new(suite))
-            .to_path(root);
+        for suite in &self.suites {
+            let current_dir = suite
+                .dir
+                .as_ref()
+                .map(|p| p.as_ref())
+                .unwrap_or_else(|| RelativePath::new(suite.test))
+                .to_path(root);
 
-        if !current_dir.is_dir() {
-            bail!("expected directory: {}", current_dir.display());
-        }
-
-        let path = current_dir.join("proto");
-        let input = current_dir.join("input");
-
-        let mut inputs = Vec::new();
-
-        inputs.extend(json_files(&current_dir)?);
-        inputs.extend(files_in_dir(&input)?);
-
-        for language in project.languages {
-            if !self.include.is_empty() && !self.include.contains(language) {
-                continue;
+            if !current_dir.is_dir() {
+                bail!("expected directory: {}", current_dir.display());
             }
 
-            let mut extra = Vec::new();
+            let path = current_dir.join("proto");
+            let input = current_dir.join("input");
 
-            if let Some(args) = self.arguments.get(language) {
-                extra.extend(args.iter().map(|a| a.to_string()));
-            }
+            let mut inputs = Vec::new();
 
-            if let Some(args) = project.arguments.get(language) {
-                extra.extend(args.iter().map(|a| a.to_string()));
-            }
+            inputs.extend(json_files(&current_dir)?);
+            inputs.extend(files_in_dir(&input)?);
 
-            if self.do_project {
-                let source_workdir = language.source_workdir(root);
-                let target_workdir =
-                    language.path(root, &["target", "workdir", self.test, self.suite]);
+            for language in self.languages {
+                if !suite.include.is_empty() && !suite.include.contains(language) {
+                    continue;
+                }
 
-                runners.push(Box::new(ProjectRunner {
-                    test: self.test,
-                    suite: self.suite,
-                    path: path.clone(),
-                    packages: self.packages.clone(),
-                    inputs: inputs.clone(),
-                    source_workdir: source_workdir,
-                    target_workdir: target_workdir,
-                    current_dir: current_dir.clone(),
-                    language: language,
-                    reproto: project.reproto,
-                    extra: extra.clone(),
-                }));
-            }
+                let mut extra = Vec::new();
 
-            if self.do_suite {
-                let expected_struct = language.path(root, &["expected", self.test, self.suite]);
-                let target_struct =
-                    language.path(root, &["target", "struct", self.test, self.suite]);
+                if let Some(args) = suite.arguments.get(language) {
+                    extra.extend(args.iter().map(|a| a.to_string()));
+                }
 
-                runners.push(Box::new(SuiteRunner {
-                    test: self.test,
-                    suite: self.suite,
-                    action: self.action,
-                    path: path.clone(),
-                    packages: self.packages.clone(),
-                    expected_struct: expected_struct,
-                    target_struct: target_struct,
-                    current_dir: current_dir.clone(),
-                    language: language,
-                    reproto: project.reproto,
-                    extra: extra.clone(),
-                }));
+                if let Some(args) = self.arguments.get(language) {
+                    extra.extend(args.iter().map(|a| a.to_string()));
+                }
+
+                let instances = self.instances.get(language).unwrap_or(&default_instances);
+
+                for instance in instances {
+                    let mut extra = extra.clone();
+
+                    if !instance.arguments.is_empty() {
+                        extra.extend(instance.arguments.iter().cloned());
+                    }
+
+                    let name = &instance.name.as_str();
+
+                    if self.do_project {
+                        let source_workdir = language.source_workdir(root);
+                        let target_workdir =
+                            language.path(root, &["target", "workdir", suite.test, name]);
+
+                        runners.push(Box::new(ProjectRunner {
+                            test: suite.test,
+                            instance: name.to_string(),
+                            path: path.clone(),
+                            packages: suite.packages.clone(),
+                            inputs: inputs.clone(),
+                            source_workdir: source_workdir,
+                            target_workdir: target_workdir,
+                            current_dir: current_dir.clone(),
+                            language: language,
+                            reproto: self.reproto,
+                            extra: extra.clone(),
+                        }));
+                    }
+
+                    if self.do_suite {
+                        let expected_struct =
+                            language.path(root, &["expected-structures", suite.test, name]);
+                        let target_struct =
+                            language.path(root, &["target", "structures", suite.test, name]);
+
+                        runners.push(Box::new(StructureRunner {
+                            test: suite.test,
+                            instance: name.to_string(),
+                            action: self.action,
+                            path: path.clone(),
+                            packages: suite.packages.clone(),
+                            expected_struct: expected_struct,
+                            target_struct: target_struct,
+                            current_dir: current_dir.clone(),
+                            language: language,
+                            reproto: self.reproto,
+                            extra: extra.clone(),
+                        }));
+                    }
+                }
             }
         }
 
@@ -901,50 +984,5 @@ impl<'a> Suite<'a> {
 
             Ok(out)
         }
-    }
-}
-
-/// A project, collecting all suites.
-#[derive(Debug)]
-pub struct Project<'a> {
-    languages: &'a [Language],
-    reproto: &'a Reproto,
-    /// Run the suite.
-    do_suite: bool,
-    /// Run the project.
-    do_project: bool,
-    /// Action to run.
-    action: Action,
-    pub suites: Vec<Suite<'a>>,
-    arguments: HashMap<Language, &'a [&'a str]>,
-}
-
-impl<'a> Project<'a> {
-    pub fn new(
-        languages: &'a [Language],
-        reproto: &'a Reproto,
-        do_suite: bool,
-        do_project: bool,
-        action: Action,
-    ) -> Self {
-        Self {
-            languages: languages,
-            reproto: reproto,
-            do_suite: do_suite,
-            do_project: do_project,
-            action: action,
-            suites: Vec::new(),
-            arguments: HashMap::new(),
-        }
-    }
-
-    /// Associate an argument with a given language.
-    pub fn arg(&mut self, lang: Language, args: &'a [&'a str]) {
-        self.arguments.insert(lang, args);
-    }
-
-    /// Hook up another suite.
-    pub fn suite(&mut self, suite: Suite<'a>) {
-        self.suites.push(suite);
     }
 }

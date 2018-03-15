@@ -3,11 +3,10 @@ extern crate failure;
 extern crate it;
 extern crate rayon;
 
-use it::{Action, Language, Project, Reproto, Result};
+use it::{Action, Instance, Language, Project, Reproto, Result};
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::env;
-use std::mem;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::time::Instant;
@@ -102,20 +101,25 @@ fn try_main() -> Result<()> {
 
     project.arg(Language::Java, &["-m", "builder", "-m", "jackson"]);
     project.arg(Language::Csharp, &["-m", "Json.NET"]);
-    // project.arg(Language::Swift, &["-m", "simple"]);
-    project.arg(Language::Swift, &["-m", "codable"]);
+
+    project.add(Language::Swift, {
+        let mut i = Instance::new("simple");
+        i.args(&["-m", "simple"]);
+        i
+    });
+
+    project.add(Language::Swift, {
+        let mut i = Instance::new("codable");
+        i.args(&["-m", "codable"]);
+        i
+    });
 
     it::entry(&mut project);
 
-    let mut runners = Vec::new();
-
-    for s in mem::replace(&mut project.suites, vec![]) {
-        runners.extend(s.suite_runners(&root, &project)?);
-    }
-
     let before = Instant::now();
 
-    let res = runners
+    let res = project
+        .runners(&root)?
         .into_par_iter()
         .filter(|s| {
             filters

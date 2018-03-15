@@ -6,7 +6,7 @@ else
 override MVN_FLAGS += -q
 endif
 
-all:
+default:
 	@$(MVN) $(MVN_FLAGS) package
 	@$(MVN) $(MVN_FLAGS) dependency:build-classpath -D mdep.outputFile=.classpath
 	@echo "#!/usr/bin/env bash" > script.sh
