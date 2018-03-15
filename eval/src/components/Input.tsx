@@ -24,6 +24,7 @@ export class Input extends React.Component<InputProps, {}> {
         annotations={this.props.annotations}
         markers={this.props.markers}
         onChange={this.props.onChange.bind(this)}
+        editorProps={{$blockScrolling: false}}
         />
     );
   }

@@ -211,7 +211,46 @@ export class Main extends React.Component<MainProps, MainState> {
     };
   }
 
+  componentWillUpdate(nextProps: MainProps, nextState: MainState) {
+    // Update URL if needed
+    const { format, output, file_index, files } = nextState;
+
+    let f = files[file_index];
+
+    let params = new URLSearchParams(location.search);
+    let update = false;
+
+    if (params.get("input") != format) {
+      params.set("input", format);
+      update = true;
+    }
+
+    if (params.get("output") != output) {
+      params.set("output", output);
+      update = true;
+    }
+
+    if (params.get("package") != f["package"]) {
+      params.set("package", f["package"]);
+      update = true;
+    }
+
+    if (update) {
+      window.history.replaceState({}, "", location.pathname + "?" + params);
+    }
+  }
+
   componentDidMount() {
+    const params = new URLSearchParams(location.search)
+
+    const input = params.get("input")
+    const output = params.get("output")
+    const pkg = params.get("package")
+
+    this.setPackage(pkg);
+    this.setFormat(input);
+    this.setOutput(output);
+
     fetch("reproto-wasm.wasm")
       .then(response => response.arrayBuffer())
       .then(buffer => WebAssembly.compile(buffer))
@@ -278,8 +317,6 @@ export class Main extends React.Component<MainProps, MainState> {
       }
 
       const result = derive(request) as DeriveResult;
-
-      console.log("derive", request, result);
 
       const input_annotations: Annotation[] = [];
       const input_markers: AceMarker[] = [];
@@ -405,6 +442,19 @@ export class Main extends React.Component<MainProps, MainState> {
 
     this.setState({
       format: format
+    }, () => this.recompile());
+  }
+
+  setPackage(pkg: string) {
+    this.setState((state: MainState, props: MainProps) => {
+      const { files } = state;
+      const index = files.findIndex((f: File) => f["package"] == pkg);
+
+      if (index < 0) {
+        return {} as MainState;
+      }
+
+      return {file_index: index};
     }, () => this.recompile());
   }
 
@@ -720,9 +770,26 @@ export class Main extends React.Component<MainProps, MainState> {
         <div className="box-row header">
           <nav className="navbar navbar-expand-lg navbar-light bg-light">
             <a className="navbar-brand" href="https://github.com/reproto">
-              <img src={logo} width={48} height={48} title="reproto" />
+              <img src={logo} width={32} height={32} title="reproto" />
             </a>
-            <a className="navbar-brand" href="#">reproto eval</a>
+            <a className="navbar-brand mr-auto" href="#">reproto eval</a>
+
+            <ul className="navbar-nav">
+              <li className="nav-item">
+                <a className="nav-link" href="https://github.com/reproto/reproto/tree/master/doc">
+                  <i className="fa fa-book"></i>
+                  &nbsp;
+                  docs
+                </a>
+              </li>
+              <li className="nav-item">
+                <a className="nav-link" href="https://github.com/reproto/reproto">
+                  <i className="fa fa-github"></i>
+                  &nbsp;
+                  reproto/reproto
+                </a>
+              </li>
+            </ul>
           </nav>
 
           <div className="container-fluid">
