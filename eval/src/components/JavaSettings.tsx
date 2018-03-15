@@ -17,33 +17,37 @@ export class JavaSettingsForm extends React.Component<JavaSettingsFormProps, {}>
     let { settings } = this.props;
 
     return (
-      <div className="form-row">
-        <div className="col-auto">
-          <div className="form-check">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              checked={settings.jackson}
-              onChange={e => this.props.onJackson(e.target.checked)}
-              id="java-jackson" />
+      <form>
+      <div className="form-check mb-2">
+        <input
+          className="form-check-input"
+          type="checkbox"
+          checked={settings.jackson}
+          onChange={e => this.props.onJackson(e.target.checked)}
+          id="java-jackson" />
 
-            <label htmlFor="java-jackson" className="lb-sm">Jackson Support</label>
-          </div>
-        </div>
+        <label htmlFor="java-jackson" className="lb-sm">Jackson Support</label>
 
-        <div className="col-auto">
-          <div className="form-check">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              checked={settings.lombok}
-              onChange={e => this.props.onLombok(e.target.checked)}
-              id="java-lombok" />
-
-            <label htmlFor="java-lombok" className="lb-sm">Lombok</label>
-          </div>
-        </div>
+        <small id="java-jackson-help" className="form-text form-text-sm text-muted">
+          Support for <a href="https://github.com/FasterXML/jackson">Jackson</a>
+        </small>
       </div>
+
+      <div className="form-check mb-2">
+        <input
+          className="form-check-input"
+          type="checkbox"
+          checked={settings.lombok}
+          onChange={e => this.props.onLombok(e.target.checked)}
+          id="java-lombok" />
+
+        <label htmlFor="java-lombok" className="lb-sm">Lombok</label>
+
+        <small id="java-lombok-help" className="form-text form-text-sm text-muted">
+          Support for <a href="https://projectlombok.org/">Lombok Annotations</a>
+        </small>
+      </div>
+      </form>
     );
   }
 }

@@ -32,9 +32,7 @@ module.exports = {
         use: [
           {
             loader: "babel-loader",
-            options: {
-              presets: ['@babel/preset-env']
-            }
+            options: { presets: ['@babel/preset-env'] }
           },
           "awesome-typescript-loader",
         ],
@@ -43,9 +41,7 @@ module.exports = {
         test: /\.js?$/,
         loader: "babel-loader",
         exclude: /(node_modules|bower_components)/,
-        options: {
-          presets: ['@babel/preset-env']
-        }
+        options: { presets: ['@babel/preset-env'] }
       },
       { enforce: "pre", test: /\.js$/, loader: "source-map-loader" },
       { test: /\-wasm\.js$/, loader: "exports-loader?__initialize" },

@@ -80,7 +80,14 @@ impl Output {
                 Box::new(csharp::CsharpLang)
             }
             Output::Swift => {
-                modules.push(Box::new(swift::SwiftModule::Codable));
+                if settings.swift.codable {
+                    modules.push(Box::new(swift::SwiftModule::Codable));
+                }
+
+                if settings.swift.simple {
+                    modules.push(Box::new(swift::SwiftModule::Simple));
+                }
+
                 Box::new(swift::SwiftLang)
             }
             Output::Python => Box::new(python::PythonLang),
@@ -115,6 +122,15 @@ js_serializable!(CsharpSettings);
 js_deserializable!(CsharpSettings);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+struct SwiftSettings {
+    codable: bool,
+    simple: bool,
+}
+
+js_serializable!(SwiftSettings);
+js_deserializable!(SwiftSettings);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct RustSettings {
     chrono: bool,
 }
@@ -125,6 +141,7 @@ js_deserializable!(RustSettings);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Settings {
     java: JavaSettings,
+    swift: SwiftSettings,
     rust: RustSettings,
     csharp: CsharpSettings,
 }

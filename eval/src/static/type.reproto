@@ -11,8 +11,11 @@ type Post {
   /// Title of this post.
   title: string;
 
-  /// Author _responsible_ for this post.
+  /// Author of the post.
   author: string;
+
+  /// Time at when the post was posted.
+  posted_at: datetime;
 
   /// Tags associated with this post.
   tags: [::Tag];

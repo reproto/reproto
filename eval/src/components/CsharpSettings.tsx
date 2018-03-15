@@ -15,20 +15,22 @@ export class CsharpSettingsForm extends React.Component<CsharpSettingsFormProps,
     let { settings } = this.props;
 
     return (
-      <div className="form-row">
-        <div className="col-auto">
-          <div className="form-check">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              checked={settings.json_net}
-              onChange={e => this.props.onJsonNet(e.target.checked)}
-              id="java-json-net" />
+      <form>
+      <div className="form-check mb-2">
+        <input
+          className="form-check-input"
+          type="checkbox"
+          checked={settings.json_net}
+          onChange={e => this.props.onJsonNet(e.target.checked)}
+          id="csharp-json-net" />
 
-            <label htmlFor="java-json-net" className="lb-sm">Json.NET Support</label>
-          </div>
-        </div>
+        <label htmlFor="csharp-json-net" className="lb-sm">Json.NET Support</label>
+
+        <small id="csharp-json-net-help" className="form-text form-text-sm text-muted">
+          Support for <a href="https://www.newtonsoft.com/json">Newtonsoft.Json (Json.NET)</a>
+        </small>
       </div>
+      </form>
     );
   }
 }

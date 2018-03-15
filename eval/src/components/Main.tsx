@@ -4,6 +4,7 @@ import {OutputEditor} from "./OutputEditor";
 import {JavaSettings, JavaSettingsForm} from "./JavaSettings";
 import {CsharpSettings, CsharpSettingsForm} from "./CsharpSettings";
 import {RustSettings, RustSettingsForm} from "./RustSettings";
+import {SwiftSettings, SwiftSettingsForm} from "./SwiftSettings";
 import * as WebAssembly from "webassembly";
 import {Annotation, Marker as AceMarker} from 'react-ace';
 import AceEditor from 'react-ace';
@@ -125,6 +126,7 @@ interface Settings {
   java: JavaSettings;
   csharp: CsharpSettings;
   rust: RustSettings;
+  swift: SwiftSettings;
 }
 
 export interface MainState {
@@ -141,6 +143,7 @@ export interface MainState {
   output: Output;
   root_name: string;
   package_prefix: string;
+  settings_enabled: boolean,
   // Error annotations (gutter markers) on input.
   input_annotations: Annotation[];
   // Error markers on input.
@@ -200,10 +203,15 @@ export class Main extends React.Component<MainProps, MainState> {
         },
         csharp: {
           json_net: true,
-        }
+        },
+        swift: {
+          codable: true,
+          simple: false,
+        },
       },
       root_name: "Generated",
       package_prefix: "reproto",
+      settings_enabled: false,
       input_annotations: [],
       input_markers: [],
       format: Format.Reproto,
@@ -525,6 +533,15 @@ export class Main extends React.Component<MainProps, MainState> {
     }, () => this.recompile());
   }
 
+  updateSwift(cb: (settings: SwiftSettings) => void) {
+    this.setState((state: MainState, props: MainProps) => {
+      let settings = {...state.settings};
+      settings.swift = {...settings.swift};
+      cb(settings.swift);
+      return {settings: settings};
+    }, () => this.recompile());
+  }
+
   updateCsharp(cb: (settings: CsharpSettings) => void) {
     this.setState((state: MainState, props: MainProps) => {
       let settings = {...state.settings};
@@ -579,6 +596,7 @@ export class Main extends React.Component<MainProps, MainState> {
       settings,
       compiled,
       derive,
+      settings_enabled,
     } = this.state;
 
     let content = this.content();
@@ -590,9 +608,9 @@ export class Main extends React.Component<MainProps, MainState> {
     let compiledResult;
 
     var wasmLoading;
-    var settingsForm;
 
-    var view = null;
+    var settingsForm = undefined;
+    var view = undefined;
 
     if (format == "reproto") {
       let {version, package: file_package} = files[file_index];
@@ -729,6 +747,12 @@ export class Main extends React.Component<MainProps, MainState> {
         case "csharp":
           settingsForm = <CsharpSettingsForm settings={settings.csharp}
             onJsonNet={update => this.updateCsharp(csharp => csharp.json_net = update)}
+            />;
+          break;
+        case "swift":
+          settingsForm = <SwiftSettingsForm settings={settings.swift}
+            onCodable={update => this.updateSwift(swift => swift.codable = update)}
+            onSimple={update => this.updateSwift(swift => swift.simple = update)}
             />;
           break;
         default:
@@ -869,11 +893,36 @@ export class Main extends React.Component<MainProps, MainState> {
                         onChange={e => this.setRootName(e.target.value)} />
                     </div> : undefined}
 
-                    {settingsForm ? (
-                    <div className="col">{settingsForm}</div>
-                    ) : undefined}
+                    <div className="input-group-sm col-auto mb-2">
+                      <button className="btn btn-sm btn-light"
+                        type="button"
+                        title="Show Settings"
+                        style={{display: settings_enabled ? 'none' : null }}
+                        disabled={!settingsForm}
+                        onClick={() => {
+                          this.setState({settings_enabled: true});
+                        }}>
+                        <i className="fa fa-cog"></i>
+                        &nbsp;
+                        Show
+                      </button>
+                      <button className="btn btn-sm btn-dark"
+                        type="button"
+                        title="Hide Settings"
+                        style={{display: settings_enabled ? null : 'none' }}
+                        disabled={!settingsForm}
+                        onClick={() => {
+                          this.setState({settings_enabled: false});
+                        }}>
+                        <i className="fa fa-cog"></i>
+                        &nbsp;
+                        Hide
+                      </button>
+                    </div>
                   </div>
                 </form>
+
+                {settings_enabled ? settingsForm : undefined}
               </div>
             </div>
           </div>
