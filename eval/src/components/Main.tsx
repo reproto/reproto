@@ -882,14 +882,14 @@ export class Main extends React.Component<MainProps, MainState> {
                         className="form-control"
                         value={output}
                         onChange={e => this.setOutput(e.target.value)}>
-                        <option value="reproto">Reproto</option>
-                        <option value="java">Java</option>
                         <option value="csharp">C#</option>
-                        <option value="swift">Swift</option>
-                        <option value="python">Python</option>
+                        <option value="java">Java</option>
                         <option value="js">JavaScript</option>
-                        <option value="rust">Rust</option>
                         <option value="json">JSON (RpIR)</option>
+                        <option value="python">Python</option>
+                        <option value="reproto">Reproto</option>
+                        <option value="rust">Rust</option>
+                        <option value="swift">Swift</option>
                       </select>
                     </div>
                   </div>
