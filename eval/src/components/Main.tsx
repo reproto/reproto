@@ -578,6 +578,7 @@ export class Main extends React.Component<MainProps, MainState> {
       return {
         files: files.filter((_, i: number) => i != file_index),
         file_index: 0,
+        file_editing_meta: false,
       };
     }, () => this.recompile());
   }
@@ -619,7 +620,7 @@ export class Main extends React.Component<MainProps, MainState> {
       if (file_editing_meta) {
         view = (
           <div className="form-row">
-            <div className="input-group input-group-sm col-md-5">
+            <div className="input-group input-group-sm col mb-2">
               <div className="input-group-prepend">
                 <label htmlFor="file-package" className="input-group-text lb-sm">File:</label>
               </div>
@@ -636,7 +637,7 @@ export class Main extends React.Component<MainProps, MainState> {
                 value={file_package} />
             </div>
 
-            <div className="col-md-5">
+            <div className="col-md-4 mb-2">
               <input
                 id="file-version"
                 type="text"
@@ -655,11 +656,27 @@ export class Main extends React.Component<MainProps, MainState> {
                 value={version || ""} />
             </div>
 
-            <div className="col">
-              <button type="button" className="btn btn-primary btn-sm w-100" onClick={() => {
-                this.setState({file_editing_meta: false});
-              }}>
-                ok
+            <div className="col-auto mb-2">
+              <button
+                type="button"
+                title="Save file"
+                className="btn btn-primary btn-sm w-100"
+                onClick={() => {
+                  this.setState({file_editing_meta: false});
+                }}>
+                <i className="fa fa-save"></i>
+              </button>
+            </div>
+
+            <div className="col-auto mb-2">
+              <button
+                type="button"
+                title="Delete file"
+                className="btn btn-danger btn-sm w-100"
+                onClick={() => {
+                  this.deleteFile();
+                }}>
+                <i className="fa fa-trash"></i>
               </button>
             </div>
           </div>
@@ -667,7 +684,7 @@ export class Main extends React.Component<MainProps, MainState> {
       } else {
         view = (
           <div className="form-row">
-            <div className="input-group input-group-sm col-md-7 mb-2">
+            <div className="input-group input-group-sm col mb-2">
               <div className="input-group-prepend">
                 <label htmlFor="file-package" className="input-group-text lb-sm">File:</label>
               </div>
@@ -683,27 +700,39 @@ export class Main extends React.Component<MainProps, MainState> {
               </select>
             </div>
 
-            <div className="col mb-2">
-              <button type="button" className="btn btn-default btn-sm w-100" onClick={() => {
-                this.setState({file_editing_meta: true});
-              }}>
-                edit
+            <div className="col-auto mb-2">
+              <button
+                type="button"
+                title="Edit file name and version"
+                className="btn btn-info btn-sm w-100"
+                onClick={() => {
+                  this.setState({file_editing_meta: true});
+                }}>
+                <i className="fa fa-edit"></i>
               </button>
             </div>
 
-            <div className="col mb-2">
-              <button type="button" className="btn btn-default btn-sm w-100" onClick={() => {
-                this.newFile();
-              }}>
-                new
+            <div className="col-auto mb-2">
+              <button
+                type="button"
+                title="Add a new file"
+                className="btn btn-success btn-sm w-100"
+                onClick={() => {
+                  this.newFile();
+                }}>
+                <i className="fa fa-plus"></i>
               </button>
             </div>
 
-            <div className="col mb-2">
-              <button type="button" className="btn btn-danger btn-sm w-100" onClick={() => {
-                this.deleteFile();
-              }}>
-                delete
+            <div className="col-auto mb-2">
+              <button
+                type="button"
+                title="Delete file"
+                className="btn btn-danger btn-sm w-100"
+                onClick={() => {
+                  this.deleteFile();
+                }}>
+                <i className="fa fa-trash"></i>
               </button>
             </div>
           </div>
