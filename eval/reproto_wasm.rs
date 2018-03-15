@@ -79,7 +79,10 @@ impl Output {
 
                 Box::new(csharp::CsharpLang)
             }
-            Output::Swift => Box::new(swift::SwiftLang),
+            Output::Swift => {
+                modules.push(Box::new(swift::SwiftModule::Codable));
+                Box::new(swift::SwiftLang)
+            }
             Output::Python => Box::new(python::PythonLang),
             Output::Rust => {
                 if settings.rust.chrono {
