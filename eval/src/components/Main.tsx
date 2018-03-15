@@ -542,106 +542,105 @@ export class Main extends React.Component<MainProps, MainState> {
     var wasmLoading;
     var settingsForm;
 
-    var packages;
+    var view = null;
 
     if (format == "reproto") {
       let {version, package: file_package} = files[file_index];
       let {file_editing_meta} = this.state;
 
-      let view;
-
       if (file_editing_meta) {
         view = (
           <div className="form-row">
-          <div className="col-auto">
-            <input
-              id="file-package"
-              type="text"
-              className="form-control form-control-sm"
-              placeholder="package"
-              onChange={e => {
-                let value = e.target.value;
-                this.setFile(file_index, file => file.package = value);
-              }}
-              value={file_package} />
-          </div>
+            <div className="input-group input-group-sm col-md-5">
+              <div className="input-group-prepend">
+                <label htmlFor="file-package" className="input-group-text lb-sm">File:</label>
+              </div>
 
-          <div className="col-auto">
-            <input
-              id="file-version"
-              type="text"
-              className="form-control form-control-sm"
-              placeholder="version"
-              onChange={e => {
-                let value = e.target.value;
-                this.setFile(file_index, file => {
-                  if (value == "") {
-                    delete file.version;
-                  } else {
-                    file.version = value;
-                  }
-                });
-              }}
-              value={version || ""} />
-          </div>
+              <input
+                id="file-package"
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="package"
+                onChange={e => {
+                  let value = e.target.value;
+                  this.setFile(file_index, file => file.package = value);
+                }}
+                value={file_package} />
+            </div>
 
-          <div className="col-auto">
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => {
-              this.setState({file_editing_meta: false});
-            }}>
-              ok
-            </button>
-          </div>
+            <div className="col-md-5">
+              <input
+                id="file-version"
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="version"
+                onChange={e => {
+                  let value = e.target.value;
+                  this.setFile(file_index, file => {
+                    if (value == "") {
+                      delete file.version;
+                    } else {
+                      file.version = value;
+                    }
+                  });
+                }}
+                value={version || ""} />
+            </div>
+
+            <div className="col">
+              <button type="button" className="btn btn-primary btn-sm w-100" onClick={() => {
+                this.setState({file_editing_meta: false});
+              }}>
+                ok
+              </button>
+            </div>
           </div>
         );
       } else {
         view = (
           <div className="form-row">
-          <div className="col-auto">
-            <select
-              className="custom-select custom-select-sm"
-              value={file_index}
-              onChange={e => this.setFileIndex(e.target.value)}>
-              { files.map((f, index) => {
-                return <option key={index} value={index}>{f.package} {f.version || ""}</option>;
-              }) }
-            </select>
-          </div>
+            <div className="input-group input-group-sm col-md-7 mb-2">
+              <div className="input-group-prepend">
+                <label htmlFor="file-package" className="input-group-text lb-sm">File:</label>
+              </div>
 
-          <div className="col-auto">
-            <button type="button" className="btn btn-default btn-sm" onClick={() => {
-              this.setState({file_editing_meta: true});
-            }}>
-              edit
-            </button>
-          </div>
+              <select
+                id="file-package"
+                value={file_index}
+                className="form-control"
+                onChange={e => this.setFileIndex(e.target.value)}>
+                { files.map((f, index) => {
+                  return <option key={index} value={index}>{f.package} {f.version || ""}</option>;
+                }) }
+              </select>
+            </div>
 
-          <div className="col-auto">
-            <button type="button" className="btn btn-default btn-sm" onClick={() => {
-              this.newFile();
-            }}>
-              new
-            </button>
-          </div>
+            <div className="col mb-2">
+              <button type="button" className="btn btn-default btn-sm w-100" onClick={() => {
+                this.setState({file_editing_meta: true});
+              }}>
+                edit
+              </button>
+            </div>
 
-          <div className="col-auto">
-            <button type="button" className="btn btn-danger btn-sm" onClick={() => {
-              this.deleteFile();
-            }}>
-              delete
-            </button>
-          </div>
+            <div className="col mb-2">
+              <button type="button" className="btn btn-default btn-sm w-100" onClick={() => {
+                this.newFile();
+              }}>
+                new
+              </button>
+            </div>
+
+            <div className="col mb-2">
+              <button type="button" className="btn btn-danger btn-sm w-100" onClick={() => {
+                this.deleteFile();
+              }}>
+                delete
+              </button>
+            </div>
           </div>
         );
       }
-
-      packages = (
-        <div className="row">
-          <div className="col">
-            <form>{view}</form>
-          </div>
-        </div>
-      );
     }
 
     if (!derive) {
@@ -728,52 +727,39 @@ export class Main extends React.Component<MainProps, MainState> {
 
           <div className="container-fluid">
             <div className="row mb-2 mt-2">
+              <div className="col-6 col-xl-5 input">
+                <form>
+                  <div className="input-group input-group-sm mb-2">
+                    <div className="input-group-prepend">
+                      <label htmlFor="output" className="input-group-text lb-sm">Input:</label>
+                    </div>
+
+                    <select
+                      id="format"
+                      className="form-control"
+                      value={format}
+                      onChange={e => this.setFormat(e.target.value)}>
+                      <option value="reproto">Reproto</option>
+                      <option value="json">JSON (Derive)</option>
+                      <option value="yaml">YAML (Derive)</option>
+                    </select>
+                  </div>
+
+                  {view}
+                </form>
+              </div>
+
               <div className="col">
                 <form>
                   <div className="form-row">
-                    <div className="col-auto">
-                      <label htmlFor="format" className="lb-sm">Format:</label>
-
-                      <select
-                        id="format"
-                        className="custom-select custom-select-sm"
-                        value={format}
-                        onChange={e => this.setFormat(e.target.value)}>
-                        <option value="reproto">Reproto</option>
-                        <option value="json">JSON (Derive)</option>
-                        <option value="yaml">YAML (Derive)</option>
-                      </select>
-                    </div>
-
-                    {format != "reproto" ?
-                    <div className="col-auto">
-                      <label htmlFor="root-name" className="lb-sm">Generated Name:</label>
-
-                      <input
-                        id="root-name"
-                        type="text"
-                        className="form-control form-control-sm"
-                        value={root_name}
-                        onChange={e => this.setRootName(e.target.value)} />
-                    </div> : undefined}
-
-                    <div className="col-auto">
-                      <label htmlFor="package-prefix" className="lb-sm">Package Prefix:</label>
-
-                      <input
-                        id="package-prefix"
-                        type="text"
-                        className="form-control form-control-sm"
-                        value={package_prefix}
-                        onChange={e => this.setPackagePrefix(e.target.value)} />
-                    </div>
-
-                    <div className="col-auto">
-                      <label htmlFor="output" className="lb-sm">Output:</label>
+                    <div className="input-group input-group-sm col mb-2">
+                      <div className="input-group-prepend">
+                        <label htmlFor="output" className="input-group-text lb-sm">Output:</label>
+                      </div>
 
                       <select
                         id="output"
-                        className="custom-select custom-select-sm"
+                        className="form-control"
                         value={output}
                         onChange={e => this.setOutput(e.target.value)}>
                         <option value="reproto">Reproto</option>
@@ -786,27 +772,47 @@ export class Main extends React.Component<MainProps, MainState> {
                         <option value="json">JSON (RpIR)</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="input-group input-group-sm col-md-4 mb-2">
+                      <div className="input-group-prepend">
+                        <label htmlFor="package-prefix" className="input-group-text lb-sm">Package:</label>
+                      </div>
+
+                      <input
+                        id="package-prefix"
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={package_prefix}
+                        onChange={e => this.setPackagePrefix(e.target.value)} />
+                    </div>
+
+                    {format != "reproto" ?
+                    <div className="input-group input-group-sm col-md-4 mb-2">
+                      <div className="input-group-prepend">
+                        <label htmlFor="root-name" className="input-group-text lb-sm">Generated Name:</label>
+                      </div>
+
+                      <input
+                        id="root-name"
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={root_name}
+                        onChange={e => this.setRootName(e.target.value)} />
+                    </div> : undefined}
 
                     {settingsForm ? (
-                    <div className="col-auto">
-                      <label className="lb-sm">Settings:</label>
-                      <div>{settingsForm}</div>
-                    </div>
+                    <div className="col">{settingsForm}</div>
                     ) : undefined}
                   </div>
                 </form>
               </div>
             </div>
-
-            {packages ? (
-            <div className="row mb-2 mt-2">
-              <div className="col">{packages}</div>
-            </div>
-            ) : undefined}
           </div>
         </div>
 
-        <div className="box-row content">
+        <div className="box-row content container-fluid">
           <div className="row editors">
             <div className="col-6 col-xl-5 input">
               <AceEditor
