@@ -39,6 +39,16 @@ but avoid building large repositories of specifications right now.
 [stdweb]: https://github.com/koute/stdweb
 [Structural code-generation]: https://github.com/udoprog/genco
 
+## Getting Started
+
+* See the [documentation] for an overview of how the reproto language and its build manifest works.
+* See [examples] for some example specifications.
+* See the [integration tests] for even more examples on how protocol specifications can be used.
+
+[documentation]: /doc/
+[examples]: /examples
+[integration tests]: /it
+
 ## Helping Out
 
 You want to help out? Great!
@@ -54,16 +64,6 @@ Also make sure to [join our Gitter channel].
 [good first issue]: https://github.com/reproto/reproto/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22
 [language support]: https://github.com/reproto/reproto/issues?q=is%3Aissue+is%3Aopen+label%3Alang-support
 [join our Gitter channel]: https://gitter.im/reproto/reproto
-
-## Getting Started
-
-* See the [documentation] for an overview of how the reproto language and its build manifest works.
-* See [examples] for some example specifications.
-* See the [integration tests] for even more examples on how protocol specifications can be used.
-
-[documentation]: /doc/
-[examples]: /examples
-[integration tests]: /it
 
 ## Language Support
 

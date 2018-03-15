@@ -1,10 +1,19 @@
 # reproto integration tests
 
-Each test directory (`test-*`) does the following.
+Expected output for each suite, test, and language is listed in the [`expected`] directory.
+
+Each test directory does the following.
 
 * Build a _suite_, which is a very fast compilation of all the source specifications in the `proto`
   directory. These are then compared against the reference output in the `expected` directory.
 * Build one or more _projects_, see [Projects](#projects)
+
+Tests are all defined in [`tools/it/tests.rs`].
+Some default options are defined in [`tools/it/main.rs`].
+
+[`expected`]: expected
+[`tools/it/tests.rs`]: /tools/it/tests.rs
+[`tools/it/main.rs`]: /tools/it/main.rs
 
 # Running Tests
 
