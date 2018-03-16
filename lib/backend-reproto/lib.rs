@@ -10,8 +10,8 @@ extern crate reproto_manifest as manifest;
 extern crate reproto_trans as trans;
 extern crate toml;
 
-use core::{Context, RelativePathBuf, RpDecl, RpField, RpInterfaceBody, RpSubTypeStrategy,
-           RpTupleBody, RpTypeBody, DEFAULT_TAG};
+use core::{Context, RelativePathBuf, RpDecl, RpEnumBody, RpEnumOrdinal, RpEnumType, RpField,
+           RpInterfaceBody, RpSubTypeStrategy, RpTupleBody, RpTypeBody, RpVariant, DEFAULT_TAG};
 use core::errors::Result;
 use genco::{Custom, Formatter, IoFmt, Quoted, Tokens, WriteTokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -129,7 +129,8 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         RpDecl::Type(ref type_) => format_type(type_),
         RpDecl::Interface(ref interface) => format_interface(interface),
         RpDecl::Tuple(ref tuple) => format_tuple(tuple),
-        ref decl => return Err(format!("Unsupported declaration: {:?}", decl).into()),
+        RpDecl::Enum(ref en) => format_enum(en),
+        RpDecl::Service(_) => return Err("service is not supported".into()),
     };
 
     return result;
@@ -251,6 +252,33 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         Ok(tuple)
     }
 
+    fn format_enum<'el>(body: &'el RpEnumBody) -> Result<Tokens<'el, Reproto>> {
+        let mut tuple = Tokens::new();
+
+        match body.variant_type {
+            RpEnumType::String => {
+                tuple.push(toks!["enum ", body.local_name.as_str(), " as string {"]);
+            }
+            RpEnumType::Generated => {
+                tuple.push(toks!["enum ", body.local_name.as_str(), " {"]);
+            }
+        }
+
+        tuple.nested({
+            let mut t = Tokens::new();
+
+            for v in &body.variants {
+                t.push(format_variant(v)?);
+            }
+
+            t.join_line_spacing()
+        });
+
+        tuple.push("}");
+
+        Ok(tuple)
+    }
+
     fn format_field<'el>(field: &'el RpField) -> Result<Tokens<'el, Reproto>> {
         let mut t = Tokens::new();
 
@@ -282,6 +310,34 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         }
 
         t.append(";");
+
+        Ok(t)
+    }
+
+    fn format_variant<'el>(variant: &'el RpVariant) -> Result<Tokens<'el, Reproto>> {
+        let mut t = Tokens::new();
+
+        for line in &variant.comment {
+            if line.is_empty() {
+                t.push("///");
+            } else {
+                t.push(toks!["/// ", line.as_str()]);
+            }
+        }
+
+        t.push_into(|t| {
+            t.append(variant.local_name.as_str());
+
+            match variant.ordinal {
+                RpEnumOrdinal::Generated => {}
+                RpEnumOrdinal::String(ref string) => {
+                    t.append(" as ");
+                    t.append(string.as_str().quoted());
+                }
+            }
+
+            t.append(";");
+        });
 
         Ok(t)
     }

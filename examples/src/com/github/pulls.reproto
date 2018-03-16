@@ -2,9 +2,9 @@
 //!
 //! See: <https://developer.github.com/v3/pulls/>
 
-use com.github.common "^3" as c;
+#![field_naming(lower_camel)]
 
-option field_naming = lower_camel;
+use com.github.common "^3" as c;
 
 /// Milestone related to a project.
 type Milestone {
