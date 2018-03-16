@@ -26,7 +26,7 @@ use codegen::Configure;
 use compiler::Compiler;
 use core::Context;
 use core::errors::Result;
-use manifest::{Lang, Manifest, NoModule, TryFromToml, checked_modules};
+use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use options::Options;
 use std::any::Any;
 use std::path::Path;

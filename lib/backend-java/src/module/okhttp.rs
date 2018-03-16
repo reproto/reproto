@@ -4,7 +4,7 @@ use codegen::{Configure, EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::{RpEndpoint, RpPathPart};
 use core::errors::*;
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
-use genco::java::{Argument, Class, Constructor, Field, Method, Modifier, imported, local, optional};
+use genco::java::{imported, local, optional, Argument, Class, Constructor, Field, Method, Modifier};
 use utils::Override;
 
 #[derive(Debug, Deserialize)]
@@ -39,9 +39,9 @@ impl Module {
 
 impl Module {
     pub fn initialize(self, e: Configure) {
-        e.options.service_generators.push(Box::new(
-            OkHttpServiceCodegen::new(),
-        ));
+        e.options
+            .service_generators
+            .push(Box::new(OkHttpServiceCodegen::new()));
     }
 }
 
@@ -258,9 +258,8 @@ impl ServiceCodegen for OkHttpServiceCodegen {
                 m.arguments.extend(arguments.iter().cloned());
 
                 // FIXME: compile-time error?
-                m.body.push(
-                    "throw new RuntimeException(\"endpoint does not support HTTP\");",
-                );
+                m.body
+                    .push("throw new RuntimeException(\"endpoint does not support HTTP\");");
 
                 c.methods.push(m);
                 continue;
@@ -301,9 +300,11 @@ impl ServiceCodegen for OkHttpServiceCodegen {
             }
 
             c.arguments.push(client_arg);
-            c.arguments.extend(builder_fields.iter().map(
-                |f| Argument::new(f.ty(), f.var()),
-            ));
+            c.arguments.extend(
+                builder_fields
+                    .iter()
+                    .map(|f| Argument::new(f.ty(), f.var())),
+            );
             c
         });
 

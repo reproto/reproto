@@ -2,7 +2,7 @@ extern crate reproto_ast as ast;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 
-use core::{ContextItem, Object, Resolver, RpPackage, RpVersionedPackage, RelativePath};
+use core::{ContextItem, Object, RelativePath, Resolver, RpPackage, RpVersionedPackage};
 use manifest::Lang;
 use std::any::Any;
 use std::cell::RefCell;
@@ -69,7 +69,9 @@ pub fn simple_compile<O>(
     modules: Vec<Box<Any>>,
     lang: &Lang,
 ) -> core::errors::Result<()>
-where O: FnMut(&RelativePath, &str) -> core::errors::Result<()> {
+where
+    O: FnMut(&RelativePath, &str) -> core::errors::Result<()>,
+{
     let SimpleCompile {
         input,
         package_prefix,

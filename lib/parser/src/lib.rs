@@ -42,8 +42,11 @@ pub fn parse<'input>(object: Rc<Box<Object>>, input: &'input str) -> Result<ast:
             UnrecognizedToken { token, expected } => {
                 let e = if let Some((start, token, end)) = token {
                     let pos = (object.clone(), start, end);
-                    Error::new(format!("syntax error, got token {:?}, expected: {}",
-                                           token, expected.join(", "))).with_pos(pos)
+                    Error::new(format!(
+                        "syntax error, got token {:?}, expected: {}",
+                        token,
+                        expected.join(", ")
+                    )).with_pos(pos)
                 } else {
                     Error::new(format!("syntax error, expected: {}", expected.join(", ")))
                 };
