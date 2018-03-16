@@ -7,6 +7,7 @@ pub struct RpField {
     /// Modifier of the field.
     pub modifier: RpModifier,
     /// Mangled identifier, taking target-specific keywords into account.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub safe_ident: Option<String>,
     /// Original identifier used to specify the field.
     pub ident: String,
@@ -15,6 +16,7 @@ pub struct RpField {
     #[serde(rename = "type")]
     pub ty: RpType,
     /// Alias of field in JSON.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub field_as: Option<String>,
 }
 

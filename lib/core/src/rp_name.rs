@@ -6,6 +6,7 @@ use std::fmt;
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpName {
     /// Alias used if the name was imported from another package.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub prefix: Option<String>,
     /// Package that name belongs to.
     pub package: RpVersionedPackage,
