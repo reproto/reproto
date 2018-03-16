@@ -12,6 +12,8 @@
 {"float_type": 42.42}
 {"double_type": 42.42}
 {"bytes_type": "YW55IGNhcm5hbCBwbGVhcw=="}
+{"bytes_type": "YWJjMTIzIT8kKiYoKSctPUB+"}
+{"bytes_type": "YWJjMTIzIT8kKiYoKSctPUB/"}
 {"any_type": {"baz": 42}}
 {"any_type": {"foo": "bar"}}
 {"any_type": 42}

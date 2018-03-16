@@ -329,8 +329,8 @@ There are a number of built-in types available:
 | `i32`, `i64`       | Signed integer values which can store a given number of bits |
 | `double`, `float`  | Floating point precision numbers |
 | `string`           | UTF-8 encoded strings |
-| `datetime`         | ISO-8601 dates encoded as strings. Combined date and time with timezone. |
-| `bytes`            | Arbitrary byte-arrays, are encoded as base64-strings in JSON |
+| `datetime`         | ISO-8601 dates encoded as strings. Combined date and time with timezone. Only supports full timestamps normalized to the `Z` timezone, like `2017-10-14T11:42:06Z`. |
+| `bytes`            | Byte arrays, are encoded as base64-strings in JSON using `+`, and `/` as supplementary characters and `=` for padding |
 | `boolean`          | Boolean values, `true` or `false` |
 | `[<type>]`         | Arrays which store the given type  |
 | `{<type>: <type>}` | Associations with the given key and value (note: the `<type>` of the key currently _must_ be `string` due to limitations in JSON, but might be subject to change if other formats are supported in the future) |
