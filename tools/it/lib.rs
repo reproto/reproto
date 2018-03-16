@@ -45,7 +45,11 @@ macro_rules! define {
 
 macro_rules! tests {
     ($($name:ident)*) => {
-        $(pub mod $name;)*
+        $(
+        mod $name {
+            include!(concat!("../../it/", stringify!($name), ".rs"));
+        }
+        )*
 
         pub fn entry(project: &mut $crate::Project) {
             $(
@@ -410,7 +414,7 @@ impl<'a> ProjectRunner<'a> {
         let mut child = Command::new(script)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::null())
             .spawn()?;
 
         let mut errors = Vec::new();
@@ -450,7 +454,11 @@ impl<'a> ProjectRunner<'a> {
             }
         }
 
-        child.wait()?;
+        let status = child.wait()?;
+
+        if !status.success() {
+            bail!("Child exited with non-zero exit: {}", status);
+        }
 
         if !errors.is_empty() {
             bail!("Got bad JSON on stdout:\n{}", errors.join("\n"),);
