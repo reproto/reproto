@@ -15,12 +15,9 @@ If you want to take the system for a leasurely spin, please go to <https://repro
 * A compiler which generates code for [various languages].
 * A [semantic version checker] which verifies that modifications to schemas do not violate
   [semantic versioning].
-* A build system with a package manager and a `reproto.toml` [build manifest].
+* A build system with a package manager using a [build manifest].
 * A rich, markdown-based [documentation generator].
 * (eventually) A [central repository] of usable schemas.
-* [Structural code-generation] instead of template-based.
-  This permits reproto to generate idiomatic, well-indented code with sparse imports.
-  Similar to what you would write by hand.
 
 These things combined support an ecosystem where schemas can be maintained and shared across
 projects.
@@ -37,7 +34,6 @@ but avoid building large repositories of specifications right now.
 [central repository]: https://github.com/reproto/reproto-index
 [build manifest]: /doc/manifest.md
 [stdweb]: https://github.com/koute/stdweb
-[Structural code-generation]: https://github.com/udoprog/genco
 
 ## Getting Started
 

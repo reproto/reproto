@@ -1,4 +1,4 @@
-# Compiler Basics
+# How the reproto compiler works
 
 The compiler works in the following phases:
 

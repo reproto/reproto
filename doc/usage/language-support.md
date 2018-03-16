@@ -1,67 +1,22 @@
-# Using reproto
+# Language support
 
-* [Installing Reproto](#installing-reproto)
-* [Getting Started](#getting-started)
-* [Language support](#language-support)
-  * [Java](#java)
-    * [Java keywords](#java-keywords)
-    * [`jackson` module](#modulesjackson)
-    * [`lombok` module](#moduleslombok)
-    * [`builder` module](#modulesbuilder)
-  * [Rust](#rust)
-    * [Rust keywords](#rust-keywords)
-    * [`chrono` module](#moduleschrono)
-  * [Python](#python)
-    * [Python keywords](#python-keywords)
-  * [JavaScript](#javascript)
-    * [JavaScript keywords](#javascript-keywords)
-  * [C#](#csharp)
-    * [`Json.NET` module](#modulesjsonnet)
-  * [Swift](#swift)
-    * [`codable` module](#modulescodable)
-    * [`simple` module](#modulessimple)
-* [Setting up a repository](#setting-up-a-repository)
-
-## Installing Reproto
-
-Reproto can be installed through cargo:
-
-```
-$ cargo install reproto
-```
-
-## Getting Started
-
-To easily get started with reproto, you can initialize a new project using `reproto init`.
-This will create a basic [`reproto.toml`](manifest.md), which can be used to customize how your
-specifications are built.
-
-Let's start by setting up a simple specification in an isolated directory:
-
-```bash
-$ mkdir example
-$ cd example
-$ reproto init
-INFO - Writing Manifest: reproto.toml
-INFO - Creating: proto/io/reproto
-INFO - Writing: proto/io/reproto/example.reproto
-```
-
-Next, let's try to compile this project into Java using a couple of modules:
-
-```bash
-$ reproto --debug build --lang java --module jackson --module lombok
-```
-
-You should now have a number of files generated in `target/io/reproto/example`, corresponding to
-the schema that is defined in `proto/example.reproto`.
-
-Next up, you might be interested to read the following sections:
-
-* Documentation for the [specification language](spec.md).
-* Documentation for the [build manifest](manifest.md).
-
-## Language support
+* [Java](#java)
+  * [Java keywords](#java-keywords)
+  * [`jackson` module](#modulesjackson)
+  * [`lombok` module](#moduleslombok)
+  * [`builder` module](#modulesbuilder)
+* [Rust](#rust)
+  * [Rust keywords](#rust-keywords)
+  * [`chrono` module](#moduleschrono)
+* [Python](#python)
+  * [Python keywords](#python-keywords)
+* [JavaScript](#javascript)
+  * [JavaScript keywords](#javascript-keywords)
+* [C#](#csharp)
+  * [`Json.NET` module](#modulesjsonnet)
+* [Swift](#swift)
+  * [`codable` module](#modulescodable)
+  * [`simple` module](#modulessimple)
 
 This section details the how each language behaves, and which modules and options are available to
 tweak this behavior.
@@ -95,7 +50,7 @@ public class Example {
 
 Find the relevant section for your language to find out how this is done.
 
-### Java
+## Java
 
 Java is a statically typed language that has a number of framework avaialble to do JSON
 serialization.
@@ -133,14 +88,14 @@ public class Foo {
 }
 ```
 
-#### Java keywords
+### Java keywords
 
 Fields which matches keywords of the language will be prefixed with `_`.
 
 The accessor for any field named `class` will be `getClass_` (ends with underscore) to avoid
 conflicting with the implicitly defined `Object#getClass`.
 
-#### `[modules.jackson]`
+### `[modules.jackson]`
 
 ```toml
 # reproto.toml
@@ -196,7 +151,7 @@ public class Test {
 
 [jackson]: https://github.com/FasterXML/jackson
 
-#### `[modules.lombok]`
+### `[modules.lombok]`
 
 ```toml
 # reproto.toml
@@ -214,7 +169,7 @@ Adds [lombok] annotations to generated classes.
 
 [lombok]: https://projectlombok.org
 
-#### `[modules.builder]`
+### `[modules.builder]`
 
 ```toml
 # reproto.toml
@@ -262,7 +217,7 @@ public class Foo {
 }
 ```
 
-### Rust
+## Rust
 
 ```toml
 # reproto.toml
@@ -324,7 +279,7 @@ struct Foo_Bar {
 
 [Serde]: https://serde.rs
 
-#### Rust keywords
+### Rust keywords
 
 Fields which matches keywords of the language will be prefixed with `_`.
 
@@ -349,7 +304,7 @@ pub struct Entry {
 }
 ```
 
-#### `[modules.chrono]`
+### `[modules.chrono]`
 
 ```toml
 # reproto.toml
@@ -375,7 +330,7 @@ chrono = {version = "0.4", features = ["serde"]}
 
 [`chrono` crate]: https://crates.io/crates/chrono
 
-### Python
+## Python
 
 ```toml
 # File: reproto.toml
@@ -412,7 +367,7 @@ class Foo_Bar:
   pass
 ```
 
-#### Python keywords
+### Python keywords
 
 Fields which matches keywords of the language will be prefixed with `_`.
 
@@ -466,7 +421,7 @@ class Entry:
     return "<Entry import: {!r}, print: {!r}>".format(self._import, self._print)
 ```
 
-### JavaScript
+## JavaScript
 
 ```toml
 # File: reproto.toml
@@ -505,7 +460,7 @@ class Foo_Bar {
 }
 ```
 
-#### JavaScript keywords
+### JavaScript keywords
 
 Fields which matches keywords of the language will be prefixed with `_`.
 
@@ -563,7 +518,7 @@ export class Entry {
 }
 ```
 
-### <a id="csharp"></a>C#
+## <a id="csharp"></a>C#
 
 ```toml
 # File: reproto.toml
@@ -634,7 +589,7 @@ namespace Reproto
 }
 ```
 
-#### `[modules."Json.NET"]`
+### `[modules."Json.NET"]`
 
 ```toml
 # File: reproto.toml
@@ -673,7 +628,7 @@ namespace Reproto
 [`Json.NET`]: https://www.newtonsoft.com/json
 [`JsonSubTypes`]: https://github.com/manuc66/JsonSubTypes
 
-### Swift
+## Swift
 
 ```toml
 # File: reproto.toml
@@ -718,7 +673,7 @@ public struct Io_Reproto_Example_Foo_Bar {
 }
 ```
 
-#### `[modules.codable]`
+### `[modules.codable]`
 
 ```toml
 # reproto.toml
@@ -755,7 +710,7 @@ while let line = readLine() {
 
 [`Codable`]: https://developer.apple.com/documentation/swift/codable
 
-##### `ReprotoCodable_Utils.swift`
+#### `ReprotoCodable_Utils.swift`
 
 This is a helper generated by the `codable` module.
 
@@ -764,7 +719,7 @@ support `Any`.
 
 [`Codable`]: https://developer.apple.com/documentation/swift/codable
 
-#### `[modules.simple]`
+### `[modules.simple]`
 
 ```toml
 # reproto.toml
@@ -790,7 +745,7 @@ let data = try JSONSerialization.data(withJSONObject: entry.encode())
 let out = String(data: data, encoding: String.Encoding.utf8) as String!
 ```
 
-##### `ReprotoSimple_Utils.swift`
+#### `ReprotoSimple_Utils.swift`
 
 This is a support file that is generated for the `simple` module.
 
@@ -836,55 +791,4 @@ func encode_array<T>(_ array: [T], name: String, inner: (T) throws -> Any) throw
 func decode_map<T>(_ map: Any, name: String, value: (Any) throws -> T) throws -> [String: T];
 
 func encode_map<T>(_ map: [String: T], name: String, value: (T) throws -> Any) throws -> [String: Any];
-```
-
-## Setting up a repository
-
-New repositories can be setup using the `reproto repo init <dir>` command:
-
-```bash
-$ reproto repo init my-repo
-$ (cd my-repo && git init)
-```
-
-This can then be used as a target to publish manifest towards:
-
-```bash
-$ local_repo=$PWD/my-repo
-$ cd examples
-$ reproto publish --index $local_repo
-$ cd -
-```
-
-This will publish all the example manifests to that repository.
-
-You can now commit and push the changes to the git repository:
-
-```
-$ cd $local_repo
-$ repo=$USER/reproto-index # change to some repository you own
-$ git add .
-$ git commit -m "published some changes"
-$ git remote add origin git@github.com:$repo
-$ git push origin master
-$ cd -
-```
-
-You can now try to build the following manifest using the new repo that you just set up:
-
-```toml
-# File: reproto.toml
-
-output = "output"
-
-[packages."io.reproto.toystore"]
-version = "1"
-```
-
-```bash
-$ mkdir my-project
-$ cd my-project
-$ # write reproto.toml
-$ reproto --debug doc --index git+https://github.com/$repo
-$ open output/index.html
 ```

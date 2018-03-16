@@ -1,16 +1,16 @@
-# reproto specification
+# Specification
 
-* [Specifications](#specifications)
-* [Directory Structure](#directory-structure)
-* [File Attributes](#file-attributes)
+* [Specification files](#specification-files)
+* [Directory structure](#directory-structure)
+* [File attributes](#file-attributes)
 * [Distribution](#distribution)
 * [Versioning](#versioning)
-  * [Ephemeral Specifications](#ephemeral-specifications)
-  * [Versioned Specifications](#versioned-specifications)
+  * [Ephemeral specifications](#ephemeral-specifications)
+  * [Versioned specifications](#versioned-specifications)
 * [The reproto language](#the-reproto-language)
-  * [Specification Files](#specification-files)
+  * [Specification files](#specification-files)
   * [Imports](#imports)
-  * [Built-In Types](#built-in-types)
+  * [Built-in types](#built-in-types)
   * [Attributes](#attributes)
   * [Documentation](#documentation)
   * [Types](#types)
@@ -26,19 +26,16 @@
   * [Reserved fields](#reserved-fields)
   * [Custom Code](#custom-code)
 
-# Specifications
+# Specification files
 
-Specifications are written in UTF-8, the file ending of reproto specifications must be `.reproto`.
+Specification files have the extension `.reproto`.
 
-Each specification contains declarations.
+Each specification contains a number of _declarations_.
 
-The following declarations are currently supported:
-
- * [`type`], which specifies the structure of a JSON object.
- * [`enum`], which specifies a discrete set of valid string values.
- * [`interface`], which specifies a polymorhic JSON object, whose type is determined from the
-   structure.
- * [`tuple`], which specifies a JSON array, where each index has a specific type.
+ * [`type`], the structure of a [JSON object].
+ * [`enum`], a discrete set of [string] values.
+ * [`interface`], a polymorhic [JSON object], whose type is determined from the structure.
+ * [`tuple`], a [JSON array], where each index has a specific type.
  * [`service`], which specifies [bi-directional] services with endpoints, suitable for use with
    rpc systems like `gRPC`.
 
@@ -48,26 +45,36 @@ The following declarations are currently supported:
 [`tuple`]: #tuples
 [bi-directional]: #bi-directional-services
 [`service`]: #services
+[string]: https://www.json.org/
+[JSON Object]: https://www.json.org/
+[JSON Array]: https://www.json.org/
 
-# Directory Structure
+# Directory structure
 
-The compiler expects that multiple _paths_ are provided to it.
-
-For each path, it expected the following package structure (example with package `foo.bar.baz`):
+The compiler is provided with a number of [build paths].
+For each build path, it is expected to have a directory structure like the following:
 
 ```
-foo/bar/baz.reproto
-foo/bar/baz-1.0.0.reproto
-foo/bar/baz-1.0.1-beta1.reproto
+io/reproto/example.reproto
+io/reproto/example-1.0.0-beta1.reproto
+io/foo-0.2.0.reproto
 ```
 
-Note that the file may be suffixed with a version number.
+Each directory indicate a package component.
+The name of the file has the structure `<name>[-<version>].reproto`.
+The version is optional, and if it is left unspecified the file is an [ephemeral specification].
+If the version is present, it's called a [versioned specification].
 
-If this is present it's called a [versioned specification](#versioned-specifications).
+For the example above, we can see _three_ specifications.
 
-Otherwise, it's known as an [ephemeral specification](#ephemeral-specifications).
+ * An ephemeral specification, for the package `io.reproto.example`.
+ * A versioned specification, for the package `io.reproto.example` and version `1.0.0-beta1`.
+ * A versioned specification, for the package `io.foo` and version `0.2.0`.
 
-# File Attributes
+[ephemeral specification]: #ephemeral-specifications
+[versioned specification]: #versioned-specifications
+
+# File attributes
 
 File attributes are specification-global attributes that affect the default behavior of the
 compiler for the given file.
@@ -269,7 +276,7 @@ final String json = m.writeValueAsString(toy);
 [`examples`]: /examples
 [fasterxml]: https://github.com/FasterXML/jackson-databind
 
-## Specification Files
+## Specification files
 
 A specification is a UTF-8 encoded file containing declarations.
 
@@ -319,7 +326,7 @@ The following are a few examples for Java:
 
 [semver-package-requirements]: https://docs.rs/semver/0.7.0/semver/#requirements
 
-## Built-In Types
+## Built-in types
 
 There are a number of built-in types available:
 

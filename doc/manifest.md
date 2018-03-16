@@ -1,52 +1,53 @@
-# reproto manifest files (`reproto.toml`)
+# Build manifests
 
- * [Build Path](#build-path)
+ * [Build paths](#build-paths)
  * [`packages` section](#packages)
- * [`files` section](#files)
- * [`publish` section](#publish)
- * [`presets` section](#presets)
+ * [`files` section](#files-section)
+ * [`publish` section](#publish-section)
+ * [`presets` section](#presets-section)
+   * [`maven` preset](#maven-preset)
+   * [`swift` preset](#swift-preset)
  * [`doc` section](#doc)
 
-You tell `reproto` what to do by writing manifests.
-
+You tell `reproto` what to do by writing build manifests.
 The default build manifest that reproto looks for is `reproto.toml` in the current directory.
-This can be modified with the `--manifest-path <path>` option.
+These are stored with the project, and describe _what_ should be built.
 
-These are stored with the project, and describe among other things _what_ should be built:
+The following is an example manifest:
 
 ```toml
 # File: reproto.toml
 
 language = "java"
 
-# Additional build paths, relative to this manifest.
-paths = [
-    "src/extra"
-]
-
-# Path to put generated sources
-output = "target/generated"
-
 # Packages to build.
 [packages]
 toystore = "*"
 
-# Add a preset
+# Use a maven preset.
 [presets.maven]
 ```
 
-## Build Path
+This specifies that reproto should built _any_ available version of the toystore package, suitable
+for a [Maven project].
 
-The build path is specified in the `paths` key.
+[Maven project]: #maven-preset
+
+## Build paths
+
+Build paths is specified under the `paths` key.
+These are the directories where reproto will look for local specification when they are [built],
+imported, or [published].
 
 ```toml
 paths = ["src"]
 ```
 
-This determines where the compiler should look for specifications when they are being built or
-imported.
+[built]: #package-section
+[published]: #publish-section
+[ephemeral specifications]: spec.md#ephemeral-specifications
 
-## `packages`
+## `packages` section
 
 The `[packages]` section designate which packages should be built on `reproto build`.
 
@@ -69,7 +70,7 @@ Or:
 version = "*"
 ```
 
-## `files`
+## `files` section
 
 The `[files]` section permits building a single, local file as some specific package and version.
 This would typically be used to patch external manifests:
@@ -94,12 +95,12 @@ path = "patches/toystore.reproto"
 version = "1.0.1"
 ```
 
-## `publish`
+## `publish` section
 
 In order to publish packages, the version of the package needs to be known.
 
 Since specifications would typically be unversioned during development, reproto supports
-a `[publish]` section where you can map what version local specifications belong to.
+a `[publish]` section where you can map what version a local specification belongs to.
 
 The package specified is a prefix. The version will apply to any contained packages.
 
@@ -134,7 +135,7 @@ $> reproto publish
 Additional specifications can be added to `src/io/reproto`, and they will also be published with
 the same version.
 
-## `presets`
+## `presets` section
 
 Presets are bundles of configuration that can be activated through the `presets` key.
 
@@ -159,6 +160,25 @@ This preset is equivalent to the following manifest:
 
 paths = ["src/main/reproto"]
 output = "target/generated/reproto/java"
+```
+
+### `swift` preset
+
+Sets default options suitable for building a Swift project.
+
+```toml
+# File: reproto.toml
+
+[presets.swift]
+```
+
+This preset is equivalent to the following manifest:
+
+```toml
+# File: reproto.toml
+
+paths = ["proto"]
+output = "Sources/Modules"
 ```
 
 ## `doc`
