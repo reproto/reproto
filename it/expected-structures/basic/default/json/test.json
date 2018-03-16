@@ -1,0 +1,136 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "optional",
+          "ident": "foo",
+          "comment": [
+            "The foo field."
+          ],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "Foo"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    },
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Foo"
+        ]
+      },
+      "ident": "Foo",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "required",
+          "ident": "field",
+          "comment": [
+            "The field."
+          ],
+          "type": {
+            "type": "string"
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    },
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Bar"
+        ]
+      },
+      "ident": "Bar",
+      "comment": [],
+      "decls": [
+        {
+          "type": "type",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "Bar",
+              "Inner"
+            ]
+          },
+          "ident": "Inner",
+          "comment": [],
+          "decls": [],
+          "fields": [
+            {
+              "modifier": "required",
+              "ident": "field",
+              "comment": [
+                "The field."
+              ],
+              "type": {
+                "type": "string"
+              }
+            }
+          ],
+          "codes": [],
+          "reserved": []
+        }
+      ],
+      "fields": [
+        {
+          "modifier": "required",
+          "ident": "field",
+          "comment": [
+            "The inner field."
+          ],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "Bar",
+                "Inner"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    }
+  ]
+}

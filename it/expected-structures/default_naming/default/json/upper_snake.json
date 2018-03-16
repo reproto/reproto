@@ -1,0 +1,62 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "upper_snake"
+        },
+        "parts": [
+          "Value"
+        ]
+      },
+      "ident": "Value",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "required",
+          "ident": "foo_bar",
+          "comment": [],
+          "type": {
+            "type": "string"
+          },
+          "field_as": "FOO_BAR"
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    },
+    {
+      "type": "service",
+      "name": {
+        "package": {
+          "package": "upper_snake"
+        },
+        "parts": [
+          "Service"
+        ]
+      },
+      "ident": "Service",
+      "comment": [],
+      "decls": [],
+      "http": {},
+      "endpoints": {
+        "foo_bar": {
+          "ident": "foo_bar",
+          "name": "FOO_BAR",
+          "comment": [],
+          "attributes": {
+            "words": {},
+            "selections": {}
+          },
+          "arguments": {},
+          "http": {
+            "accept": "json"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+type Value {
+  foo_bar: string as "fooBar";
+}
+
+service Service {
+  foo_bar()
+}

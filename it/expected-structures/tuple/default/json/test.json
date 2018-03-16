@@ -1,0 +1,162 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "optional",
+          "ident": "tuple1",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "Tuple1"
+              ]
+            }
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "tuple2",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "Tuple2"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    },
+    {
+      "type": "tuple",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Tuple1"
+        ]
+      },
+      "ident": "Tuple1",
+      "comment": [
+        "Tuple containing primitive."
+      ],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "required",
+          "ident": "a",
+          "comment": [],
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "modifier": "required",
+          "ident": "b",
+          "comment": [],
+          "type": {
+            "type": "unsigned",
+            "size": 64
+          }
+        }
+      ],
+      "codes": []
+    },
+    {
+      "type": "tuple",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Tuple2"
+        ]
+      },
+      "ident": "Tuple2",
+      "comment": [
+        "Tuple containing object."
+      ],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "required",
+          "ident": "a",
+          "comment": [],
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "modifier": "required",
+          "ident": "b",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "Other"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": []
+    },
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Other"
+        ]
+      },
+      "ident": "Other",
+      "comment": [
+        "Complex object."
+      ],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "required",
+          "ident": "a",
+          "comment": [],
+          "type": {
+            "type": "string"
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    }
+  ]
+}

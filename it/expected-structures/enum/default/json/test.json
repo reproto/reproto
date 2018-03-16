@@ -1,0 +1,203 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "optional",
+          "ident": "explicit",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "EnumExplicit"
+              ]
+            }
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "implicit",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "EnumImplicit"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    },
+    {
+      "type": "enum",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "EnumExplicit"
+        ]
+      },
+      "ident": "EnumExplicit",
+      "comment": [
+        "Explicitly assigned strings"
+      ],
+      "decls": [],
+      "variant_type": "String",
+      "variants": [
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "EnumExplicit",
+              "A"
+            ]
+          },
+          "ident": "A",
+          "comment": [],
+          "ordinal": {
+            "String": "foo"
+          }
+        },
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "EnumExplicit",
+              "B"
+            ]
+          },
+          "ident": "B",
+          "comment": [],
+          "ordinal": {
+            "String": "bar"
+          }
+        }
+      ],
+      "codes": []
+    },
+    {
+      "type": "enum",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "EnumImplicit"
+        ]
+      },
+      "ident": "EnumImplicit",
+      "comment": [
+        "Implicit naming depending on the variant"
+      ],
+      "decls": [],
+      "variant_type": "Generated",
+      "variants": [
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "EnumImplicit",
+              "A"
+            ]
+          },
+          "ident": "A",
+          "comment": [],
+          "ordinal": "Generated"
+        },
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "EnumImplicit",
+              "B"
+            ]
+          },
+          "ident": "B",
+          "comment": [],
+          "ordinal": "Generated"
+        }
+      ],
+      "codes": []
+    },
+    {
+      "type": "enum",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "EnumLongNames"
+        ]
+      },
+      "ident": "EnumLongNames",
+      "comment": [
+        "Variants with long names."
+      ],
+      "decls": [],
+      "variant_type": "Generated",
+      "variants": [
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "EnumLongNames",
+              "FooBar"
+            ]
+          },
+          "ident": "FooBar",
+          "comment": [],
+          "ordinal": "Generated"
+        },
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "EnumLongNames",
+              "Baz"
+            ]
+          },
+          "ident": "Baz",
+          "comment": [],
+          "ordinal": "Generated"
+        }
+      ],
+      "codes": []
+    }
+  ]
+}

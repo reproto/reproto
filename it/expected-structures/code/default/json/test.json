@@ -1,0 +1,270 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [],
+      "codes": [],
+      "reserved": []
+    },
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Type"
+        ]
+      },
+      "ident": "Type",
+      "comment": [],
+      "decls": [],
+      "fields": [],
+      "codes": [
+        {
+          "context": "rust",
+          "lines": [
+            "pub fn type_method(&self) {",
+            "}"
+          ]
+        },
+        {
+          "context": "java",
+          "lines": [
+            "public void typeMethod() {",
+            "}"
+          ]
+        },
+        {
+          "context": "js",
+          "lines": [
+            "typeMethod() {",
+            "}"
+          ]
+        },
+        {
+          "context": "python",
+          "lines": [
+            "def type_method(self):",
+            "  pass"
+          ]
+        }
+      ],
+      "reserved": []
+    },
+    {
+      "type": "interface",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Interface"
+        ]
+      },
+      "ident": "Interface",
+      "comment": [],
+      "decls": [],
+      "fields": [],
+      "codes": [
+        {
+          "context": "rust",
+          "lines": [
+            "pub fn interface_method(&self) {",
+            "}"
+          ]
+        },
+        {
+          "context": "java",
+          "lines": [
+            "public void interfaceMethod();"
+          ]
+        },
+        {
+          "context": "js",
+          "lines": [
+            "interfaceMethod() {",
+            "}"
+          ]
+        },
+        {
+          "context": "python",
+          "lines": [
+            "def interface_method(self):",
+            "  pass"
+          ]
+        }
+      ],
+      "sub_types": [
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "Interface",
+              "SubType"
+            ]
+          },
+          "ident": "SubType",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": [
+            {
+              "context": "rust",
+              "lines": [
+                "pub fn subtype_method(&self) {",
+                "}"
+              ]
+            },
+            {
+              "context": "java",
+              "lines": [
+                "@Override",
+                "public void interfaceMethod() {",
+                "}"
+              ]
+            },
+            {
+              "context": "js",
+              "lines": [
+                "subtypeMethod() {",
+                "}"
+              ]
+            },
+            {
+              "context": "python",
+              "lines": [
+                "def subtype_method(self):",
+                "  pass"
+              ]
+            }
+          ]
+        }
+      ],
+      "sub_type_strategy": {
+        "type": "tagged",
+        "tag": "type"
+      }
+    },
+    {
+      "type": "enum",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Enum"
+        ]
+      },
+      "ident": "Enum",
+      "comment": [],
+      "decls": [],
+      "variant_type": "Generated",
+      "variants": [
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "Enum",
+              "Variant"
+            ]
+          },
+          "ident": "Variant",
+          "comment": [],
+          "ordinal": "Generated"
+        }
+      ],
+      "codes": [
+        {
+          "context": "rust",
+          "lines": [
+            "pub fn enum_method(&self) {",
+            "}"
+          ]
+        },
+        {
+          "context": "java",
+          "lines": [
+            "public void enumMethod() {",
+            "}"
+          ]
+        },
+        {
+          "context": "js",
+          "lines": [
+            "enumMethod() {",
+            "}"
+          ]
+        },
+        {
+          "context": "python",
+          "lines": [
+            "def enum_method(self):",
+            "  pass"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tuple",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Tuple"
+        ]
+      },
+      "ident": "Tuple",
+      "comment": [],
+      "decls": [],
+      "fields": [],
+      "codes": [
+        {
+          "context": "rust",
+          "lines": [
+            "pub fn tuple_method(&self) {",
+            "}"
+          ]
+        },
+        {
+          "context": "java",
+          "lines": [
+            "public void tupleMethod() {",
+            "}"
+          ]
+        },
+        {
+          "context": "js",
+          "lines": [
+            "tupleMethod() {",
+            "}"
+          ]
+        },
+        {
+          "context": "python",
+          "lines": [
+            "def tuple_method(self):",
+            "  pass"
+          ]
+        }
+      ]
+    }
+  ]
+}

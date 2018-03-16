@@ -1,0 +1,62 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "upper_camel"
+        },
+        "parts": [
+          "Value"
+        ]
+      },
+      "ident": "Value",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "required",
+          "ident": "foo_bar",
+          "comment": [],
+          "type": {
+            "type": "string"
+          },
+          "field_as": "FooBar"
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    },
+    {
+      "type": "service",
+      "name": {
+        "package": {
+          "package": "upper_camel"
+        },
+        "parts": [
+          "Service"
+        ]
+      },
+      "ident": "Service",
+      "comment": [],
+      "decls": [],
+      "http": {},
+      "endpoints": {
+        "foo_bar": {
+          "ident": "foo_bar",
+          "name": "FooBar",
+          "comment": [],
+          "attributes": {
+            "words": {},
+            "selections": {}
+          },
+          "arguments": {},
+          "http": {
+            "accept": "json"
+          }
+        }
+      }
+    }
+  ]
+}

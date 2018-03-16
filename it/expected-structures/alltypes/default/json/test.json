@@ -1,0 +1,156 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "optional",
+          "ident": "boolean_type",
+          "comment": [],
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "string_type",
+          "comment": [],
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "datetime_type",
+          "comment": [],
+          "type": {
+            "type": "date_time"
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "unsigned_32",
+          "comment": [],
+          "type": {
+            "type": "unsigned",
+            "size": 32
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "unsigned_64",
+          "comment": [],
+          "type": {
+            "type": "unsigned",
+            "size": 64
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "signed_32",
+          "comment": [],
+          "type": {
+            "type": "signed",
+            "size": 32
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "signed_64",
+          "comment": [],
+          "type": {
+            "type": "signed",
+            "size": 64
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "float_type",
+          "comment": [],
+          "type": {
+            "type": "float"
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "double_type",
+          "comment": [],
+          "type": {
+            "type": "double"
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "bytes_type",
+          "comment": [],
+          "type": {
+            "type": "bytes"
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "any_type",
+          "comment": [],
+          "type": {
+            "type": "any"
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "array_type",
+          "comment": [],
+          "type": {
+            "type": "array",
+            "inner": {
+              "type": "name",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "Entry"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "map_type",
+          "comment": [],
+          "type": {
+            "type": "map",
+            "key": {
+              "type": "string"
+            },
+            "value": {
+              "type": "name",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "Entry"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    }
+  ]
+}

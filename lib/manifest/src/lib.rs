@@ -255,12 +255,13 @@ impl TryFromToml for RpRequiredPackage {
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Language {
+    Csharp,
     Java,
     Js,
     Json,
     Python,
+    Reproto,
     Rust,
-    Csharp,
     Swift,
 }
 
@@ -269,12 +270,13 @@ impl Language {
         use self::Language::*;
 
         let language = match input {
+            "csharp" => Csharp,
             "java" => Java,
             "js" => Js,
             "json" => Json,
             "python" => Python,
+            "reproto" => Reproto,
             "rust" => Rust,
-            "csharp" => Csharp,
             "swift" => Swift,
             _ => return None,
         };

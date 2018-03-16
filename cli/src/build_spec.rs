@@ -607,12 +607,13 @@ pub fn convert_lang(input: Language) -> Box<Lang> {
     use self::Language::*;
 
     match input {
+        Csharp => Box::new(::csharp::CsharpLang),
         Java => Box::new(::java::JavaLang),
         Js => Box::new(::js::JsLang),
         Json => Box::new(::json::JsonLang),
         Python => Box::new(::python::PythonLang),
+        Reproto => Box::new(::reproto::ReprotoLang),
         Rust => Box::new(::rust::RustLang),
-        Csharp => Box::new(::csharp::CsharpLang),
         Swift => Box::new(::swift::SwiftLang),
     }
 }

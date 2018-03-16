@@ -11,6 +11,7 @@ pub struct RpSubType {
     pub decls: Vec<RpDecl>,
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sub_type_name: Option<Loc<String>>,
 }
 

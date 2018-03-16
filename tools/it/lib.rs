@@ -229,13 +229,25 @@ pub enum Language {
     Csharp,
     Java,
     JavaScript,
+    Json,
     Python,
     Python3,
+    Reproto,
     Rust,
     Swift,
 }
 
 impl Language {
+    /// Does the language support building a project?
+    pub fn supports_project(&self) -> bool {
+        use self::Language::*;
+
+        match *self {
+            Json | Reproto => false,
+            _ => true,
+        }
+    }
+
     /// Get the name of the working directory.
     pub fn name(&self) -> &'static str {
         use self::Language::*;
@@ -244,8 +256,10 @@ impl Language {
             Csharp => "csharp",
             Java => "java",
             JavaScript => "js",
+            Json => "json",
             Python => "python",
             Python3 => "python3",
+            Reproto => "reproto",
             Rust => "rust",
             Swift => "swift",
         }
@@ -259,8 +273,10 @@ impl Language {
             Csharp => "csharp",
             Java => "java",
             JavaScript => "js",
+            Json => "json",
             Python => "python",
             Python3 => "python",
+            Reproto => "reproto",
             Rust => "rust",
             Swift => "swift",
         }
@@ -271,13 +287,13 @@ impl Language {
         use self::Language::*;
 
         match *self {
-            Csharp => RelativePath::new("."),
             Java => RelativePath::new("target/generated-sources/reproto"),
             JavaScript => RelativePath::new("generated"),
             Python => RelativePath::new("generated"),
             Python3 => RelativePath::new("generated"),
             Rust => RelativePath::new("src"),
             Swift => RelativePath::new("Sources/Models"),
+            _ => RelativePath::new("."),
         }
     }
 
@@ -925,7 +941,7 @@ impl<'a> Project<'a> {
 
                     let name = &instance.name.as_str();
 
-                    if self.do_project {
+                    if self.do_project && language.supports_project() {
                         let source_workdir = language.source_workdir(root);
                         let target_workdir =
                             language.path(root, &["target", "workdir", suite.test, name]);

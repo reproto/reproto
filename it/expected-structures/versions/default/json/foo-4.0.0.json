@@ -1,0 +1,68 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "foo",
+          "version": "4.0.0"
+        },
+        "parts": [
+          "Thing"
+        ]
+      },
+      "ident": "Thing",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "optional",
+          "ident": "name",
+          "comment": [],
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "other",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "prefix": "bar",
+              "package": {
+                "package": "bar",
+                "version": "1.0.0"
+              },
+              "parts": [
+                "Other"
+              ]
+            }
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "other2",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "prefix": "bar2",
+              "package": {
+                "package": "bar",
+                "version": "2.0.0"
+              },
+              "parts": [
+                "Other"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    }
+  ]
+}

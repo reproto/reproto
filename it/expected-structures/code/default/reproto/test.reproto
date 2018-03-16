@@ -1,0 +1,17 @@
+type Entry {
+}
+
+type Type {
+}
+
+interface Interface {
+  SubType {
+  }
+}
+
+enum Enum {
+  Variant;
+}
+
+tuple Tuple {
+}

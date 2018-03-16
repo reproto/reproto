@@ -1,0 +1,903 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [],
+      "codes": [],
+      "reserved": []
+    },
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "RootType"
+        ]
+      },
+      "ident": "RootType",
+      "comment": [],
+      "decls": [
+        {
+          "type": "type",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootType",
+              "NestedType"
+            ]
+          },
+          "ident": "NestedType",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": [],
+          "reserved": []
+        },
+        {
+          "type": "interface",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootType",
+              "NestedInterface"
+            ]
+          },
+          "ident": "NestedInterface",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": [],
+          "sub_types": [
+            {
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootType",
+                  "NestedInterface",
+                  "Foo"
+                ]
+              },
+              "ident": "Foo",
+              "comment": [],
+              "decls": [
+                {
+                  "type": "type",
+                  "name": {
+                    "package": {
+                      "package": "test"
+                    },
+                    "parts": [
+                      "RootType",
+                      "NestedInterface",
+                      "Foo",
+                      "Nested"
+                    ]
+                  },
+                  "ident": "Nested",
+                  "comment": [],
+                  "decls": [],
+                  "fields": [],
+                  "codes": [],
+                  "reserved": []
+                }
+              ],
+              "fields": [],
+              "codes": []
+            }
+          ],
+          "sub_type_strategy": {
+            "type": "tagged",
+            "tag": "type"
+          }
+        },
+        {
+          "type": "enum",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootType",
+              "NestedEnum"
+            ]
+          },
+          "ident": "NestedEnum",
+          "comment": [],
+          "decls": [],
+          "variant_type": "Generated",
+          "variants": [
+            {
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootType",
+                  "NestedEnum",
+                  "Foo"
+                ]
+              },
+              "ident": "Foo",
+              "comment": [],
+              "ordinal": "Generated"
+            }
+          ],
+          "codes": []
+        },
+        {
+          "type": "tuple",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootType",
+              "NestedTuple"
+            ]
+          },
+          "ident": "NestedTuple",
+          "comment": [],
+          "decls": [
+            {
+              "type": "type",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootType",
+                  "NestedTuple",
+                  "Nested"
+                ]
+              },
+              "ident": "Nested",
+              "comment": [],
+              "decls": [],
+              "fields": [],
+              "codes": [],
+              "reserved": []
+            }
+          ],
+          "fields": [],
+          "codes": []
+        },
+        {
+          "type": "service",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootType",
+              "NestedService"
+            ]
+          },
+          "ident": "NestedService",
+          "comment": [],
+          "decls": [
+            {
+              "type": "type",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootType",
+                  "NestedService",
+                  "Nested"
+                ]
+              },
+              "ident": "Nested",
+              "comment": [],
+              "decls": [],
+              "fields": [],
+              "codes": [],
+              "reserved": []
+            }
+          ],
+          "http": {},
+          "endpoints": {}
+        }
+      ],
+      "fields": [],
+      "codes": [],
+      "reserved": []
+    },
+    {
+      "type": "interface",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "RootInterface"
+        ]
+      },
+      "ident": "RootInterface",
+      "comment": [],
+      "decls": [],
+      "fields": [],
+      "codes": [],
+      "sub_types": [
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootInterface",
+              "Foo"
+            ]
+          },
+          "ident": "Foo",
+          "comment": [],
+          "decls": [
+            {
+              "type": "type",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootInterface",
+                  "Foo",
+                  "NestedType"
+                ]
+              },
+              "ident": "NestedType",
+              "comment": [],
+              "decls": [],
+              "fields": [],
+              "codes": [],
+              "reserved": []
+            },
+            {
+              "type": "interface",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootInterface",
+                  "Foo",
+                  "NestedInterface"
+                ]
+              },
+              "ident": "NestedInterface",
+              "comment": [],
+              "decls": [],
+              "fields": [],
+              "codes": [],
+              "sub_types": [
+                {
+                  "name": {
+                    "package": {
+                      "package": "test"
+                    },
+                    "parts": [
+                      "RootInterface",
+                      "Foo",
+                      "NestedInterface",
+                      "NestedFoo"
+                    ]
+                  },
+                  "ident": "NestedFoo",
+                  "comment": [],
+                  "decls": [
+                    {
+                      "type": "type",
+                      "name": {
+                        "package": {
+                          "package": "test"
+                        },
+                        "parts": [
+                          "RootInterface",
+                          "Foo",
+                          "NestedInterface",
+                          "NestedFoo",
+                          "Nested"
+                        ]
+                      },
+                      "ident": "Nested",
+                      "comment": [],
+                      "decls": [],
+                      "fields": [],
+                      "codes": [],
+                      "reserved": []
+                    }
+                  ],
+                  "fields": [],
+                  "codes": []
+                }
+              ],
+              "sub_type_strategy": {
+                "type": "tagged",
+                "tag": "type"
+              }
+            },
+            {
+              "type": "enum",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootInterface",
+                  "Foo",
+                  "NestedEnum"
+                ]
+              },
+              "ident": "NestedEnum",
+              "comment": [],
+              "decls": [],
+              "variant_type": "String",
+              "variants": [
+                {
+                  "name": {
+                    "package": {
+                      "package": "test"
+                    },
+                    "parts": [
+                      "RootInterface",
+                      "Foo",
+                      "NestedEnum",
+                      "Foo"
+                    ]
+                  },
+                  "ident": "Foo",
+                  "comment": [],
+                  "ordinal": "Generated"
+                }
+              ],
+              "codes": []
+            },
+            {
+              "type": "tuple",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootInterface",
+                  "Foo",
+                  "NestedTuple"
+                ]
+              },
+              "ident": "NestedTuple",
+              "comment": [],
+              "decls": [
+                {
+                  "type": "type",
+                  "name": {
+                    "package": {
+                      "package": "test"
+                    },
+                    "parts": [
+                      "RootInterface",
+                      "Foo",
+                      "NestedTuple",
+                      "Nested"
+                    ]
+                  },
+                  "ident": "Nested",
+                  "comment": [],
+                  "decls": [],
+                  "fields": [],
+                  "codes": [],
+                  "reserved": []
+                }
+              ],
+              "fields": [],
+              "codes": []
+            },
+            {
+              "type": "service",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootInterface",
+                  "Foo",
+                  "NestedService"
+                ]
+              },
+              "ident": "NestedService",
+              "comment": [],
+              "decls": [
+                {
+                  "type": "type",
+                  "name": {
+                    "package": {
+                      "package": "test"
+                    },
+                    "parts": [
+                      "RootInterface",
+                      "Foo",
+                      "NestedService",
+                      "Nested"
+                    ]
+                  },
+                  "ident": "Nested",
+                  "comment": [],
+                  "decls": [],
+                  "fields": [],
+                  "codes": [],
+                  "reserved": []
+                }
+              ],
+              "http": {},
+              "endpoints": {}
+            }
+          ],
+          "fields": [],
+          "codes": []
+        }
+      ],
+      "sub_type_strategy": {
+        "type": "tagged",
+        "tag": "type"
+      }
+    },
+    {
+      "type": "enum",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "RootEnum"
+        ]
+      },
+      "ident": "RootEnum",
+      "comment": [],
+      "decls": [],
+      "variant_type": "String",
+      "variants": [
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootEnum",
+              "Foo"
+            ]
+          },
+          "ident": "Foo",
+          "comment": [],
+          "ordinal": "Generated"
+        }
+      ],
+      "codes": []
+    },
+    {
+      "type": "tuple",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "RootTuple"
+        ]
+      },
+      "ident": "RootTuple",
+      "comment": [],
+      "decls": [
+        {
+          "type": "type",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootTuple",
+              "NestedType"
+            ]
+          },
+          "ident": "NestedType",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": [],
+          "reserved": []
+        },
+        {
+          "type": "interface",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootTuple",
+              "NestedInterface"
+            ]
+          },
+          "ident": "NestedInterface",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": [],
+          "sub_types": [
+            {
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootTuple",
+                  "NestedInterface",
+                  "Foo"
+                ]
+              },
+              "ident": "Foo",
+              "comment": [],
+              "decls": [
+                {
+                  "type": "type",
+                  "name": {
+                    "package": {
+                      "package": "test"
+                    },
+                    "parts": [
+                      "RootTuple",
+                      "NestedInterface",
+                      "Foo",
+                      "Nested"
+                    ]
+                  },
+                  "ident": "Nested",
+                  "comment": [],
+                  "decls": [],
+                  "fields": [],
+                  "codes": [],
+                  "reserved": []
+                }
+              ],
+              "fields": [],
+              "codes": []
+            }
+          ],
+          "sub_type_strategy": {
+            "type": "tagged",
+            "tag": "type"
+          }
+        },
+        {
+          "type": "enum",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootTuple",
+              "NestedEnum"
+            ]
+          },
+          "ident": "NestedEnum",
+          "comment": [],
+          "decls": [],
+          "variant_type": "String",
+          "variants": [
+            {
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootTuple",
+                  "NestedEnum",
+                  "Foo"
+                ]
+              },
+              "ident": "Foo",
+              "comment": [],
+              "ordinal": "Generated"
+            }
+          ],
+          "codes": []
+        },
+        {
+          "type": "tuple",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootTuple",
+              "NestedTuple"
+            ]
+          },
+          "ident": "NestedTuple",
+          "comment": [],
+          "decls": [
+            {
+              "type": "type",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootTuple",
+                  "NestedTuple",
+                  "Nested"
+                ]
+              },
+              "ident": "Nested",
+              "comment": [],
+              "decls": [],
+              "fields": [],
+              "codes": [],
+              "reserved": []
+            }
+          ],
+          "fields": [],
+          "codes": []
+        },
+        {
+          "type": "service",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootTuple",
+              "NestedService"
+            ]
+          },
+          "ident": "NestedService",
+          "comment": [],
+          "decls": [
+            {
+              "type": "type",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootTuple",
+                  "NestedService",
+                  "Nested"
+                ]
+              },
+              "ident": "Nested",
+              "comment": [],
+              "decls": [],
+              "fields": [],
+              "codes": [],
+              "reserved": []
+            }
+          ],
+          "http": {},
+          "endpoints": {}
+        }
+      ],
+      "fields": [],
+      "codes": []
+    },
+    {
+      "type": "service",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "RootService"
+        ]
+      },
+      "ident": "RootService",
+      "comment": [],
+      "decls": [
+        {
+          "type": "type",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootService",
+              "NestedType"
+            ]
+          },
+          "ident": "NestedType",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": [],
+          "reserved": []
+        },
+        {
+          "type": "interface",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootService",
+              "NestedInterface"
+            ]
+          },
+          "ident": "NestedInterface",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": [],
+          "sub_types": [
+            {
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootService",
+                  "NestedInterface",
+                  "Foo"
+                ]
+              },
+              "ident": "Foo",
+              "comment": [],
+              "decls": [
+                {
+                  "type": "type",
+                  "name": {
+                    "package": {
+                      "package": "test"
+                    },
+                    "parts": [
+                      "RootService",
+                      "NestedInterface",
+                      "Foo",
+                      "Nested"
+                    ]
+                  },
+                  "ident": "Nested",
+                  "comment": [],
+                  "decls": [],
+                  "fields": [],
+                  "codes": [],
+                  "reserved": []
+                }
+              ],
+              "fields": [],
+              "codes": []
+            }
+          ],
+          "sub_type_strategy": {
+            "type": "tagged",
+            "tag": "type"
+          }
+        },
+        {
+          "type": "enum",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootService",
+              "NestedEnum"
+            ]
+          },
+          "ident": "NestedEnum",
+          "comment": [],
+          "decls": [],
+          "variant_type": "String",
+          "variants": [
+            {
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootService",
+                  "NestedEnum",
+                  "Foo"
+                ]
+              },
+              "ident": "Foo",
+              "comment": [],
+              "ordinal": "Generated"
+            }
+          ],
+          "codes": []
+        },
+        {
+          "type": "tuple",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootService",
+              "NestedTuple"
+            ]
+          },
+          "ident": "NestedTuple",
+          "comment": [],
+          "decls": [
+            {
+              "type": "type",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootService",
+                  "NestedTuple",
+                  "Nested"
+                ]
+              },
+              "ident": "Nested",
+              "comment": [],
+              "decls": [],
+              "fields": [],
+              "codes": [],
+              "reserved": []
+            }
+          ],
+          "fields": [],
+          "codes": []
+        },
+        {
+          "type": "service",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RootService",
+              "NestedService"
+            ]
+          },
+          "ident": "NestedService",
+          "comment": [],
+          "decls": [
+            {
+              "type": "type",
+              "name": {
+                "package": {
+                  "package": "test"
+                },
+                "parts": [
+                  "RootService",
+                  "NestedService",
+                  "Nested"
+                ]
+              },
+              "ident": "Nested",
+              "comment": [],
+              "decls": [],
+              "fields": [],
+              "codes": [],
+              "reserved": []
+            }
+          ],
+          "http": {},
+          "endpoints": {}
+        }
+      ],
+      "http": {},
+      "endpoints": {}
+    }
+  ]
+}

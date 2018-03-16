@@ -1,0 +1,32 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "bar",
+          "version": "1.0.0"
+        },
+        "parts": [
+          "Other"
+        ]
+      },
+      "ident": "Other",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "required",
+          "ident": "name",
+          "comment": [],
+          "type": {
+            "type": "string"
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    }
+  ]
+}

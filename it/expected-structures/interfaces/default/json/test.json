@@ -1,0 +1,102 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "interface",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "required",
+          "ident": "shared",
+          "comment": [],
+          "type": {
+            "type": "string"
+          }
+        }
+      ],
+      "codes": [],
+      "sub_types": [
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "Entry",
+              "A"
+            ]
+          },
+          "ident": "A",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": [],
+          "sub_type_name": "foo"
+        },
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "Entry",
+              "B"
+            ]
+          },
+          "ident": "B",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": [],
+          "sub_type_name": "b"
+        },
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "Entry",
+              "Bar"
+            ]
+          },
+          "ident": "Bar",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": []
+        },
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "Entry",
+              "Baz"
+            ]
+          },
+          "ident": "Baz",
+          "comment": [],
+          "decls": [],
+          "fields": [],
+          "codes": []
+        }
+      ],
+      "sub_type_strategy": {
+        "type": "tagged",
+        "tag": "@type"
+      }
+    }
+  ]
+}

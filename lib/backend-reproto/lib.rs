@@ -10,16 +10,40 @@ extern crate reproto_manifest as manifest;
 extern crate reproto_trans as trans;
 extern crate toml;
 
-use core::{Context, RelativePathBuf, RpDecl, RpEnumBody, RpEnumOrdinal, RpEnumType, RpField,
-           RpInterfaceBody, RpSubTypeStrategy, RpTupleBody, RpTypeBody, RpVariant, DEFAULT_TAG};
+use core::{Context, RelativePathBuf, RpDecl, RpEndpoint, RpEnumBody, RpEnumOrdinal, RpEnumType,
+           RpField, RpInterfaceBody, RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpTypeBody,
+           RpVariant, DEFAULT_TAG};
 use core::errors::Result;
-use genco::{Custom, Formatter, IoFmt, Quoted, Tokens, WriteTokens};
+use genco::{Custom, Formatter, IntoTokens, IoFmt, Quoted, Tokens, WriteTokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::fmt::{self, Write};
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
+
+pub struct Comments<'el, S: 'el>(&'el [S]);
+
+impl<'el, S> IntoTokens<'el, Reproto> for Comments<'el, S>
+where
+    S: AsRef<str>,
+{
+    fn into_tokens(self) -> Tokens<'el, Reproto> {
+        let mut t = Tokens::new();
+
+        for line in self.0 {
+            let line = line.as_ref();
+
+            if line.is_empty() {
+                t.push("///");
+            } else {
+                t.push(toks!["/// ", line]);
+            }
+        }
+
+        t
+    }
+}
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct ReprotoLang;
@@ -130,17 +154,18 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         RpDecl::Interface(ref interface) => format_interface(interface),
         RpDecl::Tuple(ref tuple) => format_tuple(tuple),
         RpDecl::Enum(ref en) => format_enum(en),
-        RpDecl::Service(_) => return Err("service is not supported".into()),
+        RpDecl::Service(ref service) => format_service(service),
     };
 
     return result;
 
     fn format_type<'el>(body: &'el RpTypeBody) -> Result<Tokens<'el, Reproto>> {
-        let mut tuple = Tokens::new();
+        let mut t = Tokens::new();
 
-        tuple.push(toks!["type ", body.ident.as_str(), " {"]);
+        t.push_unless_empty(Comments(&body.comment));
+        t.push(toks!["type ", body.ident.as_str(), " {"]);
 
-        tuple.nested({
+        t.nested({
             let mut t = Tokens::new();
 
             for f in &body.fields {
@@ -154,18 +179,18 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
             t.join_line_spacing()
         });
 
-        tuple.push("}");
+        t.push("}");
 
-        Ok(tuple)
+        Ok(t)
     }
 
     fn format_interface<'el>(body: &'el RpInterfaceBody) -> Result<Tokens<'el, Reproto>> {
-        let mut interface = Tokens::new();
+        let mut t = Tokens::new();
 
         match body.sub_type_strategy {
             RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 if tag != DEFAULT_TAG {
-                    interface.push(toks![
+                    t.push(toks![
                         "#[type_info(strategy = ",
                         "tagged".quoted(),
                         ", tag = ",
@@ -176,9 +201,10 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
             }
         }
 
-        interface.push(toks!["interface ", body.ident.as_str(), " {"]);
+        t.push_unless_empty(Comments(&body.comment));
+        t.push(toks!["interface ", body.ident.as_str(), " {"]);
 
-        interface.nested({
+        t.nested({
             let mut t = Tokens::new();
 
             for sub_type in body.sub_types.iter() {
@@ -223,17 +249,18 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
             t.join_line_spacing()
         });
 
-        interface.push("}");
+        t.push("}");
 
-        Ok(interface)
+        Ok(t)
     }
 
     fn format_tuple<'el>(body: &'el RpTupleBody) -> Result<Tokens<'el, Reproto>> {
-        let mut tuple = Tokens::new();
+        let mut t = Tokens::new();
 
-        tuple.push(toks!["tuple ", body.ident.as_str(), " {"]);
+        t.push_unless_empty(Comments(&body.comment));
+        t.push(toks!["tuple ", body.ident.as_str(), " {"]);
 
-        tuple.nested({
+        t.nested({
             let mut t = Tokens::new();
 
             for f in &body.fields {
@@ -247,24 +274,26 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
             t.join_line_spacing()
         });
 
-        tuple.push("}");
+        t.push("}");
 
-        Ok(tuple)
+        Ok(t)
     }
 
     fn format_enum<'el>(body: &'el RpEnumBody) -> Result<Tokens<'el, Reproto>> {
-        let mut tuple = Tokens::new();
+        let mut t = Tokens::new();
+
+        t.push_unless_empty(Comments(&body.comment));
 
         match body.variant_type {
             RpEnumType::String => {
-                tuple.push(toks!["enum ", body.ident.as_str(), " as string {"]);
+                t.push(toks!["enum ", body.ident.as_str(), " as string {"]);
             }
             RpEnumType::Generated => {
-                tuple.push(toks!["enum ", body.ident.as_str(), " {"]);
+                t.push(toks!["enum ", body.ident.as_str(), " {"]);
             }
         }
 
-        tuple.nested({
+        t.nested({
             let mut t = Tokens::new();
 
             for v in &body.variants {
@@ -274,21 +303,63 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
             t.join_line_spacing()
         });
 
-        tuple.push("}");
+        t.push("}");
 
-        Ok(tuple)
+        Ok(t)
+    }
+
+    fn format_service<'el>(body: &'el RpServiceBody) -> Result<Tokens<'el, Reproto>> {
+        let mut t = Tokens::new();
+        t.push_unless_empty(Comments(&body.comment));
+        t.push(toks!["service ", body.ident.as_str(), " {"]);
+
+        t.nested({
+            let mut t = Tokens::new();
+
+            for (_, e) in &body.endpoints {
+                t.push_unless_empty(Comments(&e.comment));
+                t.push(format_endpoint(e)?);
+            }
+
+            t.join_line_spacing()
+        });
+
+        t.push("}");
+
+        return Ok(t);
+
+        fn format_endpoint<'el>(e: &'el RpEndpoint) -> Result<Tokens<'el, Reproto>> {
+            let mut t = Tokens::new();
+
+            t.append(e.ident.as_str());
+            t.append("(");
+            t.append({
+                let mut t = Tokens::new();
+
+                for (_, &(ref var, ref ch)) in &e.arguments {
+                    t.append({
+                        let mut t = Tokens::new();
+
+                        t.append(var.as_str());
+                        t.append(": ");
+                        t.append(ch.to_string());
+
+                        t
+                    });
+                }
+
+                t.join(", ")
+            });
+            t.append(")");
+
+            Ok(t)
+        }
     }
 
     fn format_field<'el>(field: &'el RpField) -> Result<Tokens<'el, Reproto>> {
         let mut t = Tokens::new();
 
-        for line in &field.comment {
-            if line.is_empty() {
-                t.push("///");
-            } else {
-                t.push(toks!["/// ", line.as_str()]);
-            }
-        }
+        t.push_unless_empty(Comments(&field.comment));
 
         let field_name = field.safe_ident();
 
@@ -317,13 +388,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
     fn format_variant<'el>(variant: &'el RpVariant) -> Result<Tokens<'el, Reproto>> {
         let mut t = Tokens::new();
 
-        for line in &variant.comment {
-            if line.is_empty() {
-                t.push("///");
-            } else {
-                t.push(toks!["/// ", line.as_str()]);
-            }
-        }
+        t.push_unless_empty(Comments(&variant.comment));
 
         t.push_into(|t| {
             t.append(variant.ident.as_str());

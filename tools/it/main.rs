@@ -23,7 +23,7 @@ fn test(command: &str, args: &[&str]) -> bool {
 
 /// Detect supported languages
 fn detect() -> Vec<Language> {
-    let mut out = Vec::new();
+    let mut out = vec![Language::Json, Language::Reproto];
 
     if test("mvn", &["--version"]) {
         out.push(Language::Java);

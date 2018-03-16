@@ -1,0 +1,26 @@
+type Entry {
+  explicit?: EnumExplicit;
+
+  implicit?: EnumImplicit;
+}
+
+/// Explicitly assigned strings
+enum EnumExplicit as string {
+  A as "foo";
+
+  B as "bar";
+}
+
+/// Implicit naming depending on the variant
+enum EnumImplicit {
+  A;
+
+  B;
+}
+
+/// Variants with long names.
+enum EnumLongNames {
+  FooBar;
+
+  Baz;
+}

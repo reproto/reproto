@@ -1,0 +1,119 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "optional",
+          "ident": "a",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "A"
+              ]
+            }
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "b",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "A",
+                "B"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    },
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "A"
+        ]
+      },
+      "ident": "A",
+      "comment": [],
+      "decls": [
+        {
+          "type": "type",
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "A",
+              "B"
+            ]
+          },
+          "ident": "B",
+          "comment": [],
+          "decls": [],
+          "fields": [
+            {
+              "modifier": "required",
+              "ident": "field",
+              "comment": [],
+              "type": {
+                "type": "string"
+              }
+            }
+          ],
+          "codes": [],
+          "reserved": []
+        }
+      ],
+      "fields": [
+        {
+          "modifier": "required",
+          "ident": "b",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "A",
+                "B"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    }
+  ]
+}

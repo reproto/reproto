@@ -1,0 +1,13 @@
+type Entry {
+  a?: A;
+
+  b?: A::B;
+}
+
+type A {
+  b: A::B;
+
+  type B {
+    field: string;
+  }
+}

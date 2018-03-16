@@ -1,0 +1,41 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "optional",
+          "ident": "thing",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "prefix": "foo",
+              "package": {
+                "package": "foo",
+                "version": "4.0.0"
+              },
+              "parts": [
+                "Thing"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    }
+  ]
+}

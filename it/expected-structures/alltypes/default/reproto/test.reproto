@@ -1,0 +1,27 @@
+type Entry {
+  boolean_type?: boolean;
+
+  string_type?: string;
+
+  datetime_type?: datetime;
+
+  unsigned_32?: u32;
+
+  unsigned_64?: u64;
+
+  signed_32?: i32;
+
+  signed_64?: i64;
+
+  float_type?: float;
+
+  double_type?: double;
+
+  bytes_type?: bytes;
+
+  any_type?: any;
+
+  array_type?: [Entry];
+
+  map_type?: {string: Entry};
+}

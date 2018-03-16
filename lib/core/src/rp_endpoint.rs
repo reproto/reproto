@@ -49,10 +49,13 @@ impl default::Default for RpAccept {
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct RpEndpointHttp {
     /// Path specification.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<RpPathSpec>,
     /// Argument that is the body of the request.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub body: Option<String>,
     /// HTTP method.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub method: Option<RpHttpMethod>,
     /// Accepted media types.
     pub accept: RpAccept,
@@ -63,8 +66,10 @@ pub struct RpEndpoint {
     /// Name of the endpoint. Guaranteed to be unique.
     pub ident: String,
     /// Safe identifier of the endpoint, avoiding any language-specific keywords.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub safe_ident: Option<String>,
     /// Name of the endpoint. This is the name which is being sent over the wire.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// Comments for documentation.
     pub comment: Vec<String>,
@@ -73,6 +78,7 @@ pub struct RpEndpoint {
     /// Request type that this endpoint expects.
     pub arguments: LinkedHashMap<String, (Loc<String>, Loc<RpChannel>)>,
     /// Response type that this endpoint responds with.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub response: Option<Loc<RpChannel>>,
     /// HTTP configuration.
     pub http: RpEndpointHttp,

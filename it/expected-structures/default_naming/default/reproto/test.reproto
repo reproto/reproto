@@ -1,0 +1,9 @@
+type Entry {
+  lower_camel?: lower_camel::Value;
+
+  lower_snake?: lower_snake::Value;
+
+  upper_camel?: upper_camel::Value;
+
+  upper_snake?: upper_snake::Value;
+}

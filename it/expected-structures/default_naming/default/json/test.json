@@ -1,0 +1,91 @@
+{
+  "comment": [],
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "modifier": "optional",
+          "ident": "lower_camel",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "prefix": "lower_camel",
+              "package": {
+                "package": "lower_camel"
+              },
+              "parts": [
+                "Value"
+              ]
+            }
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "lower_snake",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "prefix": "lower_snake",
+              "package": {
+                "package": "lower_snake"
+              },
+              "parts": [
+                "Value"
+              ]
+            }
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "upper_camel",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "prefix": "upper_camel",
+              "package": {
+                "package": "upper_camel"
+              },
+              "parts": [
+                "Value"
+              ]
+            }
+          }
+        },
+        {
+          "modifier": "optional",
+          "ident": "upper_snake",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "prefix": "upper_snake",
+              "package": {
+                "package": "upper_snake"
+              },
+              "parts": [
+                "Value"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": [],
+      "reserved": []
+    }
+  ]
+}
