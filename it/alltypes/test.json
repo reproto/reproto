@@ -1,21 +1,32 @@
 {"boolean_type": true}
+{"boolean_type": false}
+
 {"string_type": "foo"}
+{"string_type": ""}
+{"string_type": "\u00e5\u00e4\u00f6\n\r"}
+
 # TODO: should be supported
 # See: https://github.com/FasterXML/jackson-modules-java8/issues/38
 # {"datetime_type": "2017-10-14T11:42:06+01:00"}
 # {"datetime_type": "2017-10-14T11:42:06+0100"}
 {"datetime_type": "2017-10-14T11:42:06Z"}
+{"datetime_type": "0001-01-01T00:00:00Z"}
+{"datetime_type": "3000-01-01T00:00:00Z"}
+
 {"unsigned_32": 42}
 {"unsigned_64": 42}
 {"signed_32": -42}
 {"signed_64": -42}
 {"float_type": 42.42}
 {"double_type": 42.42}
+
 {"bytes_type": "YW55IGNhcm5hbCBwbGVhcw=="}
 {"bytes_type": "YWJjMTIzIT8kKiYoKSctPUB+"}
 {"bytes_type": "YWJjMTIzIT8kKiYoKSctPUB/"}
+
 {"any_type": {"baz": 42}}
 {"any_type": {"foo": "bar"}}
 {"any_type": 42}
+
 {"array_type": [{"string_type": "foo"}]}
 {"map_type": {"foo": {"string_type": "foo"}}}

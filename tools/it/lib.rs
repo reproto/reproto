@@ -13,7 +13,7 @@ use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fs::{self, File};
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::result;
@@ -422,25 +422,8 @@ impl<'a> ProjectRunner<'a> {
         let mut expected: Vec<json::Value> = Vec::new();
 
         {
-            let mut stdin = child.stdin.take().ok_or_else(|| format_err!("no stdin"))?;
-
-            for input in &self.inputs {
-                let f = File::open(&input).map_err(|e| format_err!("{}: {}", input.display(), e))?;
-
-                for line in BufReader::new(f).lines() {
-                    let line = line?;
-
-                    // skip comments.
-                    if line.starts_with('#') {
-                        continue;
-                    }
-
-                    expected.push(json::from_str(&line)?);
-                    writeln!(stdin, "{}", line)?;
-                }
-            }
-
-            drop(stdin);
+            let stdin = child.stdin.take().ok_or_else(|| format_err!("no stdin"))?;
+            expected.extend(write_json_inputs(&self.inputs, stdin)?);
 
             let stdout = child.stdout.take().ok_or_else(|| format_err!("no stdout"))?;
 
@@ -490,6 +473,37 @@ impl<'a> ProjectRunner<'a> {
         }
 
         return Ok(());
+
+        /// Write inputs to the stdin of the process and collect expected documents.
+        fn write_json_inputs<W>(inputs: &[PathBuf], mut stdin: W) -> Result<Vec<json::Value>>
+        where
+            W: io::Write,
+        {
+            let mut expected = Vec::new();
+
+            for input in inputs {
+                let f = File::open(&input).map_err(|e| format_err!("{}: {}", input.display(), e))?;
+
+                for line in BufReader::new(f).lines() {
+                    let line = line?;
+
+                    // skip comments.
+                    if line.starts_with('#') {
+                        continue;
+                    }
+
+                    // skip empty lines
+                    if line.trim() == "" {
+                        continue;
+                    }
+
+                    expected.push(json::from_str(&line)?);
+                    writeln!(stdin, "{}", line)?;
+                }
+            }
+
+            Ok(expected)
+        }
 
         /// Check if the two documents are similar enough to be considered equal.
         fn similar(left: &json::Value, right: &json::Value) -> bool {
