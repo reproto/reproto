@@ -54,6 +54,10 @@ namespace Test {
     public List<Entry> arrayType {
       get;
     }
+    [JsonProperty("array_of_array_type")]
+    public List<List<Entry>> arrayOfArrayType {
+      get;
+    }
     [JsonProperty("map_type")]
     public Dictionary<String, Entry> mapType {
       get;
@@ -73,6 +77,7 @@ namespace Test {
       [JsonProperty("bytes_type")] Byte[] bytesType,
       [JsonProperty("any_type")] Object anyType,
       [JsonProperty("array_type")] List<Entry> arrayType,
+      [JsonProperty("array_of_array_type")] List<List<Entry>> arrayOfArrayType,
       [JsonProperty("map_type")] Dictionary<String, Entry> mapType
     ) {
       this.booleanType = booleanType;
@@ -87,6 +92,7 @@ namespace Test {
       this.bytesType = bytesType;
       this.anyType = anyType;
       this.arrayType = arrayType;
+      this.arrayOfArrayType = arrayOfArrayType;
       this.mapType = mapType;
     }
 
@@ -104,6 +110,7 @@ namespace Test {
       result = result * 31 + this.bytesType.GetHashCode();
       result = result * 31 + this.anyType.GetHashCode();
       result = result * 31 + this.arrayType.GetHashCode();
+      result = result * 31 + this.arrayOfArrayType.GetHashCode();
       result = result * 31 + this.mapType.GetHashCode();
       return result;
     }
@@ -187,6 +194,16 @@ namespace Test {
         }
       }
 
+      if (this.arrayOfArrayType == null) {
+        if (o.arrayOfArrayType != null) {
+          return false;
+        }
+      } else {
+        if (!this.arrayOfArrayType.Equals(o.arrayOfArrayType)) {
+          return false;
+        }
+      }
+
       if (this.mapType == null) {
         if (o.mapType != null) {
           return false;
@@ -240,6 +257,9 @@ namespace Test {
       b.Append(", ");
       b.Append("array_type=");
       b.Append(this.arrayType);
+      b.Append(", ");
+      b.Append("array_of_array_type=");
+      b.Append(this.arrayOfArrayType);
       b.Append(", ");
       b.Append("map_type=");
       b.Append(this.mapType);

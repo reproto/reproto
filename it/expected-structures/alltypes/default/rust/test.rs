@@ -30,5 +30,7 @@ pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
   array_type: Option<Vec<Entry>>,
   #[serde(skip_serializing_if="Option::is_none")]
+  array_of_array_type: Option<Vec<Vec<Entry>>>,
+  #[serde(skip_serializing_if="Option::is_none")]
   map_type: Option<collections::HashMap<String, Entry>>,
 }

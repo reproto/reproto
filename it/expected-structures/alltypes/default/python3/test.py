@@ -1,5 +1,5 @@
 class Entry:
-  def __init__(self, boolean_type, string_type, datetime_type, unsigned_32, unsigned_64, signed_32, signed_64, float_type, double_type, bytes_type, any_type, array_type, map_type):
+  def __init__(self, boolean_type, string_type, datetime_type, unsigned_32, unsigned_64, signed_32, signed_64, float_type, double_type, bytes_type, any_type, array_type, array_of_array_type, map_type):
     self.boolean_type = boolean_type
     self.string_type = string_type
     self.datetime_type = datetime_type
@@ -12,6 +12,7 @@ class Entry:
     self.bytes_type = bytes_type
     self.any_type = any_type
     self.array_type = array_type
+    self.array_of_array_type = array_of_array_type
     self.map_type = map_type
 
   def get_boolean_type(self):
@@ -49,6 +50,9 @@ class Entry:
 
   def get_array_type(self):
     return self.array_type
+
+  def get_array_of_array_type(self):
+    return self.array_of_array_type
 
   def get_map_type(self):
     return self.map_type
@@ -151,6 +155,14 @@ class Entry:
     else:
       f_array_type = None
 
+    if "array_of_array_type" in data:
+      f_array_of_array_type = data["array_of_array_type"]
+
+      if f_array_of_array_type is not None:
+        f_array_of_array_type = [[Entry.decode(v) for v in v] for v in f_array_of_array_type]
+    else:
+      f_array_of_array_type = None
+
     if "map_type" in data:
       f_map_type = data["map_type"]
 
@@ -159,7 +171,7 @@ class Entry:
     else:
       f_map_type = None
 
-    return Entry(f_boolean_type, f_string_type, f_datetime_type, f_unsigned_32, f_unsigned_64, f_signed_32, f_signed_64, f_float_type, f_double_type, f_bytes_type, f_any_type, f_array_type, f_map_type)
+    return Entry(f_boolean_type, f_string_type, f_datetime_type, f_unsigned_32, f_unsigned_64, f_signed_32, f_signed_64, f_float_type, f_double_type, f_bytes_type, f_any_type, f_array_type, f_array_of_array_type, f_map_type)
 
   def encode(self):
     data = dict()
@@ -200,10 +212,13 @@ class Entry:
     if self.array_type is not None:
       data["array_type"] = [v.encode() for v in self.array_type]
 
+    if self.array_of_array_type is not None:
+      data["array_of_array_type"] = [[v.encode() for v in v] for v in self.array_of_array_type]
+
     if self.map_type is not None:
       data["map_type"] = dict((k, v.encode()) for (k, v) in self.map_type.items())
 
     return data
 
   def __repr__(self):
-    return "<Entry boolean_type:{!r}, string_type:{!r}, datetime_type:{!r}, unsigned_32:{!r}, unsigned_64:{!r}, signed_32:{!r}, signed_64:{!r}, float_type:{!r}, double_type:{!r}, bytes_type:{!r}, any_type:{!r}, array_type:{!r}, map_type:{!r}>".format(self.boolean_type, self.string_type, self.datetime_type, self.unsigned_32, self.unsigned_64, self.signed_32, self.signed_64, self.float_type, self.double_type, self.bytes_type, self.any_type, self.array_type, self.map_type)
+    return "<Entry boolean_type:{!r}, string_type:{!r}, datetime_type:{!r}, unsigned_32:{!r}, unsigned_64:{!r}, signed_32:{!r}, signed_64:{!r}, float_type:{!r}, double_type:{!r}, bytes_type:{!r}, any_type:{!r}, array_type:{!r}, array_of_array_type:{!r}, map_type:{!r}>".format(self.boolean_type, self.string_type, self.datetime_type, self.unsigned_32, self.unsigned_64, self.signed_32, self.signed_64, self.float_type, self.double_type, self.bytes_type, self.any_type, self.array_type, self.array_of_array_type, self.map_type)

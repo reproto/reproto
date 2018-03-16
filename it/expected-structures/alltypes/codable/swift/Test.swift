@@ -13,6 +13,7 @@ public struct Test_Entry: Codable {
   let bytes_type: Data?
   let any_type: AnyCodable?
   let array_type: [Test_Entry]?
+  let array_of_array_type: [[Test_Entry]]?
   let map_type: [String: Test_Entry]?
 
   enum CodingKeys: String, CodingKey {
@@ -28,6 +29,7 @@ public struct Test_Entry: Codable {
     case bytes_type = "bytes_type"
     case any_type = "any_type"
     case array_type = "array_type"
+    case array_of_array_type = "array_of_array_type"
     case map_type = "map_type"
   }
 }

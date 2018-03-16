@@ -1,6 +1,6 @@
 
 export class Entry {
-  constructor(boolean_type, string_type, datetime_type, unsigned_32, unsigned_64, signed_32, signed_64, float_type, double_type, bytes_type, any_type, array_type, map_type) {
+  constructor(boolean_type, string_type, datetime_type, unsigned_32, unsigned_64, signed_32, signed_64, float_type, double_type, bytes_type, any_type, array_type, array_of_array_type, map_type) {
     this.boolean_type = boolean_type;
     this.string_type = string_type;
     this.datetime_type = datetime_type;
@@ -13,6 +13,7 @@ export class Entry {
     this.bytes_type = bytes_type;
     this.any_type = any_type;
     this.array_type = array_type;
+    this.array_of_array_type = array_of_array_type;
     this.map_type = map_type;
   }
 
@@ -113,6 +114,14 @@ export class Entry {
       v_array_type = null;
     }
 
+    let v_array_of_array_type = data["array_of_array_type"];
+
+    if (v_array_of_array_type !== null && v_array_of_array_type !== undefined) {
+      v_array_of_array_type = v_array_of_array_type.map(function(v) { return v.map(function(v) { return Entry.decode(v); }); });
+    } else {
+      v_array_of_array_type = null;
+    }
+
     let v_map_type = data["map_type"];
 
     if (v_map_type !== null && v_map_type !== undefined) {
@@ -121,7 +130,7 @@ export class Entry {
       v_map_type = null;
     }
 
-    return new Entry(v_boolean_type, v_string_type, v_datetime_type, v_unsigned_32, v_unsigned_64, v_signed_32, v_signed_64, v_float_type, v_double_type, v_bytes_type, v_any_type, v_array_type, v_map_type);
+    return new Entry(v_boolean_type, v_string_type, v_datetime_type, v_unsigned_32, v_unsigned_64, v_signed_32, v_signed_64, v_float_type, v_double_type, v_bytes_type, v_any_type, v_array_type, v_array_of_array_type, v_map_type);
   }
 
   encode() {
@@ -173,6 +182,10 @@ export class Entry {
 
     if (this.array_type !== null && this.array_type !== undefined) {
       data["array_type"] = this.array_type.map(function(v) { return v.encode(); });
+    }
+
+    if (this.array_of_array_type !== null && this.array_of_array_type !== undefined) {
+      data["array_of_array_type"] = this.array_of_array_type.map(function(v) { return v.map(function(v) { return v.encode(); }); });
     }
 
     if (this.map_type !== null && this.map_type !== undefined) {

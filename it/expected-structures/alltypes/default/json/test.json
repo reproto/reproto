@@ -128,6 +128,28 @@
         },
         {
           "modifier": "optional",
+          "ident": "array_of_array_type",
+          "comment": [],
+          "type": {
+            "type": "array",
+            "inner": {
+              "type": "array",
+              "inner": {
+                "type": "name",
+                "name": {
+                  "package": {
+                    "package": "test"
+                  },
+                  "parts": [
+                    "Entry"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "modifier": "optional",
           "ident": "map_type",
           "comment": [],
           "type": {

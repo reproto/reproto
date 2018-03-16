@@ -13,6 +13,7 @@ public struct Test_Entry {
   let bytes_type: Data?
   let any_type: Any?
   let array_type: [Test_Entry]?
+  let array_of_array_type: [[Test_Entry]]?
   let map_type: [String: Test_Entry]?
 }
 
@@ -92,13 +93,19 @@ public extension Test_Entry {
       array_type = Optional.some(try decode_array(value, name: "array_type", inner: { inner in try Test_Entry.decode(json: inner) }))
     }
 
+    var array_of_array_type: [[Test_Entry]]? = Optional.none
+
+    if let value = json["array_of_array_type"] {
+      array_of_array_type = Optional.some(try decode_array(value, name: "array_of_array_type", inner: { inner in try decode_array(inner, name: "array_of_array_type", inner: { inner in try Test_Entry.decode(json: inner) }) }))
+    }
+
     var map_type: [String: Test_Entry]? = Optional.none
 
     if let value = json["map_type"] {
       map_type = Optional.some(try decode_map(value, name: "map_type", value: { value in try Test_Entry.decode(json: value) }))
     }
 
-    return Test_Entry(boolean_type: boolean_type, string_type: string_type, datetime_type: datetime_type, unsigned_32: unsigned_32, unsigned_64: unsigned_64, signed_32: signed_32, signed_64: signed_64, float_type: float_type, double_type: double_type, bytes_type: bytes_type, any_type: any_type, array_type: array_type, map_type: map_type)
+    return Test_Entry(boolean_type: boolean_type, string_type: string_type, datetime_type: datetime_type, unsigned_32: unsigned_32, unsigned_64: unsigned_64, signed_32: signed_32, signed_64: signed_64, float_type: float_type, double_type: double_type, bytes_type: bytes_type, any_type: any_type, array_type: array_type, array_of_array_type: array_of_array_type, map_type: map_type)
   }
 
   func encode() throws -> [String: Any] {
@@ -139,6 +146,9 @@ public extension Test_Entry {
     }
     if let value = self.array_type {
       json["array_type"] = try encode_array(value, name: "array_type", inner: { inner in try inner.encode() })
+    }
+    if let value = self.array_of_array_type {
+      json["array_of_array_type"] = try encode_array(value, name: "array_of_array_type", inner: { inner in try encode_array(inner, name: "array_of_array_type", inner: { inner in try inner.encode() }) })
     }
     if let value = self.map_type {
       json["map_type"] = try encode_map(value, name: "map_type", value: { value in try value.encode() })
