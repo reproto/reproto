@@ -667,7 +667,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             tokens
         });
 
-        let sub_types = body.sub_types.values().map(|t| Loc::as_ref(t));
+        let sub_types = body.sub_types.iter().map(|t| Loc::as_ref(t));
 
         sub_types.for_each_loc(|sub_type| {
             let type_name = Rc::new(sub_type.name.join(TYPE_SEP));

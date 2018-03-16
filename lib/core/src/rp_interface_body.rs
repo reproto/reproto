@@ -1,7 +1,6 @@
 //! Model for tuples.
 
 use super::{Loc, RpCode, RpField, RpSubType};
-use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::slice;
 
@@ -26,7 +25,7 @@ impl Default for RpSubTypeStrategy {
 decl_body!(pub struct RpInterfaceBody {
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
-    pub sub_types: BTreeMap<String, Rc<Loc<RpSubType>>>,
+    pub sub_types: Vec<Rc<Loc<RpSubType>>>,
     pub sub_type_strategy: RpSubTypeStrategy,
 });
 

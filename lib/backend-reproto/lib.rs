@@ -181,7 +181,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         interface.nested({
             let mut t = Tokens::new();
 
-            for sub_type in body.sub_types.values() {
+            for sub_type in body.sub_types.iter() {
                 t.push({
                     let mut t = Tokens::new();
 

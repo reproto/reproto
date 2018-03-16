@@ -437,7 +437,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
         t.push(toks!["pub enum ", name.clone(), " {"]);
 
-        let sub_types = body.sub_types.values().map(AsRef::as_ref);
+        let sub_types = body.sub_types.iter().map(AsRef::as_ref);
 
         sub_types.for_each_loc(|s| {
             t.nested({

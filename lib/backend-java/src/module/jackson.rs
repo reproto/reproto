@@ -510,11 +510,17 @@ impl InterfaceCodegen for Jackson {
         {
             let mut args = Tokens::new();
 
-            for (key, sub_type) in &body.sub_types {
+            for sub_type in &body.sub_types {
                 let mut a = Tokens::new();
 
                 a.append(toks!["name=", sub_type.name().quoted()]);
-                a.append(toks!["value=", spec.name(), ".", key.as_str(), ".class",]);
+                a.append(toks![
+                    "value=",
+                    spec.name(),
+                    ".",
+                    sub_type.local_name.as_str(),
+                    ".class",
+                ]);
 
                 let arg = SubTypesType(self, a).into_tokens();
                 args.append(arg);

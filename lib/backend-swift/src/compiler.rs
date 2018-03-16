@@ -319,7 +319,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             t.push_unless_empty(Comments(&body.comment));
             t.push(toks!["public enum ", name.clone(), " {"]);
 
-            for sub_type in body.sub_types.values() {
+            for sub_type in body.sub_types.iter() {
                 let name = self.convert_name(&sub_type.name)?;
                 let local_name = sub_type.local_name.as_str();
                 t.nested(toks!["case ", local_name, "(", name.clone(), ")"]);
@@ -345,7 +345,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             })?;
         }
 
-        for sub_type in body.sub_types.values() {
+        for sub_type in body.sub_types.iter() {
             let sub_type_name = self.convert_name(&sub_type.name)?;
 
             let fields = body.fields

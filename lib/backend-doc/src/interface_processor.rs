@@ -17,7 +17,7 @@ define_processor!(InterfaceProcessor, RpInterfaceBody, self,
 
                 self.doc(&self.body.comment)?;
 
-                for sub_type in self.body.sub_types.values() {
+                for sub_type in self.body.sub_types.iter() {
                     self.sub_type(sub_type)?;
                 }
 

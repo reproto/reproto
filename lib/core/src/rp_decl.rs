@@ -37,7 +37,7 @@ impl RpDecl {
             Type(ref body) => body.decls.iter().collect::<Vec<_>>().into_iter(),
             Interface(ref body) => {
                 let mut decls = body.decls.iter().collect::<Vec<_>>();
-                decls.extend(body.sub_types.values().flat_map(|s| s.decls.iter()));
+                decls.extend(body.sub_types.iter().flat_map(|s| s.decls.iter()));
                 decls.into_iter()
             }
             Enum(ref body) => body.decls.iter().collect::<Vec<_>>().into_iter(),
@@ -95,7 +95,7 @@ impl RpDecl {
                 out.push(RpReg::Type(Rc::clone(ty)));
             }
             Interface(ref interface) => {
-                for sub_type in interface.sub_types.values() {
+                for sub_type in interface.sub_types.iter() {
                     out.push(RpReg::SubType(Rc::clone(interface), Rc::clone(sub_type)));
                 }
 

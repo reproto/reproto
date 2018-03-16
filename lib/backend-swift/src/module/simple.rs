@@ -925,7 +925,7 @@ impl InterfaceCodegen for Codegen {
             sub_types: S,
         ) -> Result<Tokens<'el, Swift<'el>>>
         where
-            S: IntoIterator<Item = (&'el String, &'el Rc<Loc<RpSubType>>)>,
+            S: IntoIterator<Item = &'el Rc<Loc<RpSubType>>>,
         {
             let mut t = Tokens::new();
 
@@ -950,7 +950,7 @@ impl InterfaceCodegen for Codegen {
                     let mut t = Tokens::new();
                     t.push("switch type {");
 
-                    for (_, sub_type) in sub_types.into_iter() {
+                    for sub_type in sub_types.into_iter() {
                         let n = compiler.convert_name(&sub_type.name)?;
 
                         let local_name = sub_type.local_name.as_str();
@@ -987,7 +987,7 @@ impl InterfaceCodegen for Codegen {
         /// Build a method to decode a tagged interface.
         fn encode_tag<'el, S>(tag: &'el str, sub_types: S) -> Result<Tokens<'el, Swift<'el>>>
         where
-            S: IntoIterator<Item = (&'el String, &'el Rc<Loc<RpSubType>>)>,
+            S: IntoIterator<Item = &'el Rc<Loc<RpSubType>>>,
         {
             let mut t = Tokens::new();
 
@@ -996,7 +996,7 @@ impl InterfaceCodegen for Codegen {
                 let mut t = Tokens::new();
                 t.push("switch self {");
 
-                for (_, sub_type) in sub_types.into_iter() {
+                for sub_type in sub_types.into_iter() {
                     let name = sub_type.name();
                     let local_name = sub_type.local_name.as_str();
 

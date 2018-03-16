@@ -749,7 +749,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
         out.0.push(self.as_class(type_name, type_body));
 
-        let values = body.sub_types.values().map(|l| Loc::as_ref(l));
+        let values = body.sub_types.iter().map(|l| Loc::as_ref(l));
 
         values.for_each_loc(|sub_type| {
             let sub_type_name = Rc::new(sub_type.name.join(TYPE_SEP));

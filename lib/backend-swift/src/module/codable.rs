@@ -1009,7 +1009,7 @@ impl InterfaceCodegen for Codegen {
 
                         t.push("switch try values.decode(String.self, forKey: .tag) {");
 
-                        for sub_type in body.sub_types.values() {
+                        for sub_type in body.sub_types.iter() {
                             t.push({
                                 let mut t = Tokens::new();
 
@@ -1086,7 +1086,7 @@ impl InterfaceCodegen for Codegen {
 
                         t.push("switch self {");
 
-                        for sub_type in body.sub_types.values() {
+                        for sub_type in body.sub_types.iter() {
                             let n = sub_type.local_name.as_str();
                             let name = sub_type.name();
                             let ty = toks!["try values.encode(", name.quoted(), ", forKey: .tag)"];

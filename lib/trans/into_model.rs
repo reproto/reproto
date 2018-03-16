@@ -6,7 +6,7 @@ use naming::Naming;
 use path_parser;
 use scope::Scope;
 use std::borrow::Cow;
-use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
+use std::collections::{hash_map, HashMap, HashSet};
 use std::option;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -176,6 +176,8 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
+            let ctx = scope.ctx();
+
             let mut variants: Vec<Rc<Loc<RpVariant>>> = Vec::new();
 
             let mut codes = Vec::new();
@@ -200,8 +202,36 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 RpEnumType::Generated
             };
 
+            let mut ordinals = HashMap::new();
+            let mut local_names = HashMap::new();
+
             for variant in item.variants {
-                let variant = (variants.as_slice(), variant, &variant_type).into_model(scope)?;
+                let variant = (variant, &variant_type).into_model(scope)?;
+                let variant = Rc::new(variant);
+
+                match ordinals.entry(variant.ordinal().to_string()) {
+                    hash_map::Entry::Vacant(entry) => entry.insert(Rc::clone(&variant)),
+                    hash_map::Entry::Occupied(entry) => {
+                        return Err(ctx.report()
+                            .err(
+                                Loc::pos(&variant),
+                                format!("ordinal `{}` already defined", variant.ordinal()),
+                            )
+                            .info(Loc::pos(entry.get()), "already defined here")
+                            .into());
+                    }
+                };
+
+                match local_names.entry(variant.local_name.clone()) {
+                    hash_map::Entry::Vacant(entry) => entry.insert(Rc::clone(&variant)),
+                    hash_map::Entry::Occupied(entry) => {
+                        return Err(ctx.report()
+                            .err(Loc::pos(&variant), "variant already defined")
+                            .info(Loc::pos(entry.get()), "already defined here")
+                            .into());
+                    }
+                };
+
                 variants.push(variant);
             }
 
@@ -218,34 +248,6 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 codes: codes,
             })
         })
-    }
-}
-
-impl<'input, 'a> IntoModel
-    for (
-        &'input [Rc<Loc<RpVariant>>],
-        Item<'input, EnumVariant<'input>>,
-        &'a RpEnumType,
-    ) {
-    type Output = Rc<Loc<RpVariant>>;
-
-    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (variants, variant, ty) = self;
-
-        let ctx = scope.ctx();
-        let variant = (variant, ty).into_model(scope)?;
-
-        if let Some(other) = variants
-            .iter()
-            .find(|v| *v.local_name == *variant.local_name)
-        {
-            return Err(ctx.report()
-                .err(Loc::pos(&variant.local_name), "conflicting enum name")
-                .info(Loc::pos(&other.local_name), "previous variant here")
-                .into());
-        }
-
-        Ok(Rc::new(variant))
     }
 }
 
@@ -357,14 +359,14 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
     type Output = Loc<RpInterfaceBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        use std::collections::btree_map::Entry::*;
-
         self.map(|comment, attributes, item| {
             let ctx = scope.ctx();
 
             let (fields, codes, decls) = item.members.into_model(scope)?;
 
-            let mut sub_types: BTreeMap<String, Rc<Loc<RpSubType>>> = BTreeMap::new();
+            let mut names = HashMap::new();
+            let mut local_names = HashMap::new();
+            let mut sub_types = Vec::new();
 
             for sub_type in item.sub_types {
                 let scope = scope.child(Loc::value(&sub_type.name).to_owned());
@@ -374,15 +376,32 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 // key has to be owned by entry
                 let key = sub_type.local_name.clone();
 
-                match sub_types.entry(key) {
-                    Vacant(entry) => entry.insert(Rc::new(sub_type)),
-                    Occupied(entry) => {
+                let sub_type = Rc::new(sub_type);
+
+                match names.entry(sub_type.name().to_string()) {
+                    hash_map::Entry::Vacant(entry) => entry.insert(Rc::clone(&sub_type)),
+                    hash_map::Entry::Occupied(entry) => {
+                        return Err(ctx.report()
+                            .err(
+                                Loc::pos(&sub_type),
+                                format!("sub-type name `{}` already defined", sub_type.name()),
+                            )
+                            .info(Loc::pos(entry.get()), "already defined here")
+                            .into());
+                    }
+                };
+
+                match local_names.entry(key) {
+                    hash_map::Entry::Vacant(entry) => entry.insert(Rc::clone(&sub_type)),
+                    hash_map::Entry::Occupied(entry) => {
                         return Err(ctx.report()
                             .err(Loc::pos(&sub_type), "sub-type already defined")
                             .info(Loc::pos(entry.get()), "already defined here")
                             .into());
                     }
                 };
+
+                sub_types.push(sub_type);
             }
 
             let mut attributes = attributes.into_model(scope)?;

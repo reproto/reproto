@@ -110,7 +110,7 @@ where
         let tag_var = "f_tag";
         decode_body.push(self.assign_tag_var(data, tag_var, tag));
 
-        for sub_type in body.sub_types.values() {
+        for sub_type in body.sub_types.iter() {
             let type_name = self.convert_type(&sub_type.name)
                 .with_pos(Loc::pos(sub_type))?;
             decode_body.push(self.check_tag_var(data, tag_var, sub_type.name(), type_name));

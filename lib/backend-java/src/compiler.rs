@@ -643,7 +643,7 @@ impl Compiler {
 
         spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
 
-        body.sub_types.values().for_each_loc(|sub_type| {
+        body.sub_types.iter().for_each_loc(|sub_type| {
             let mut class = Class::new(sub_type.local_name.clone());
             class.modifiers = vec![Public, Static];
 
