@@ -46,9 +46,9 @@ struct Context<'a> {
 
 impl<'a> Context<'a> {
     /// Extract the 'local name' (last component).
-    fn local_name(&self) -> Result<&str> {
-        if let Some(local_name) = self.path.iter().last() {
-            Ok(local_name.as_str())
+    fn ident(&self) -> Result<&str> {
+        if let Some(ident) = self.path.iter().last() {
+            Ok(ident.as_str())
         } else {
             Err(format!("No last component in name").into())
         }
@@ -327,7 +327,7 @@ impl<'a> TypeRefiner<'a> {
         object: &LinkedHashMap<String, FieldSir>,
     ) -> Result<Item<'input, TypeBody<'input>>> {
         let mut body = TypeBody {
-            name: self.ctx.local_name()?.to_string().into(),
+            name: self.ctx.ident()?.to_string().into(),
             members: Vec::new(),
         };
 
@@ -369,7 +369,7 @@ impl<'a> SubTypeRefiner<'a> {
     /// Derive an struct body from the given input array.
     fn derive<'input>(&mut self, sub_type: &SubTypeSir) -> Result<Item<'input, SubType<'input>>> {
         let mut body = SubType {
-            name: Loc::new(self.ctx.local_name()?.to_string().into(), self.pos.clone()),
+            name: Loc::new(self.ctx.ident()?.to_string().into(), self.pos.clone()),
             members: vec![],
             alias: None,
         };
@@ -435,7 +435,7 @@ impl<'a> InterfaceRefiner<'a> {
         };
 
         let mut body = InterfaceBody {
-            name: self.ctx.local_name()?.to_string().into(),
+            name: self.ctx.ident()?.to_string().into(),
             members: Vec::new(),
             sub_types: Vec::new(),
         };
@@ -455,8 +455,8 @@ impl<'a> InterfaceRefiner<'a> {
         sub_types: &[SubTypeSir],
     ) -> Result<()> {
         for st in sub_types {
-            let local_name = to_pascal_case(&st.name);
-            let ctx = self.ctx.join(local_name.clone());
+            let ident = to_pascal_case(&st.name);
+            let ctx = self.ctx.join(ident.clone());
 
             let sub_type = SubTypeRefiner {
                 pos: self.pos,
@@ -481,7 +481,7 @@ impl<'a> TupleRefiner<'a> {
     /// Derive an tuple body from the given input array.
     fn derive<'input>(&mut self, array: &[FieldSir]) -> Result<Item<'input, TupleBody<'input>>> {
         let mut body = TupleBody {
-            name: self.ctx.local_name()?.to_string().into(),
+            name: self.ctx.ident()?.to_string().into(),
             members: Vec::new(),
         };
 

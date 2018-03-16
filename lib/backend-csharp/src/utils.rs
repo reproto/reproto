@@ -68,7 +68,7 @@ impl Utils {
 
         let package_name = self.csharp_package_name(&name.package);
 
-        let name = Rc::new(registered.local_name(name, |p| p.join("."), |c| c.join(".")));
+        let name = Rc::new(registered.ident(name, |p| p.join("."), |c| c.join(".")));
 
         let ty = using(package_name, name);
 

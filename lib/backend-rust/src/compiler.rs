@@ -114,14 +114,14 @@ impl<'el> Compiler<'el> {
     fn convert_type_id<'a>(&self, name: &'a RpName) -> Result<Element<'a, Rust<'a>>> {
         let registered = self.env.lookup(name)?;
 
-        let local_name = registered.local_name(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
+        let ident = registered.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
 
         if let Some(ref prefix) = name.prefix {
             let package_name = self.package(&name.package).parts.join("::");
-            return Ok(imported_alias(package_name, local_name, prefix.as_str()).into());
+            return Ok(imported_alias(package_name, ident, prefix.as_str()).into());
         }
 
-        Ok(local_name.into())
+        Ok(ident.into())
     }
 
     fn into_type<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
@@ -331,24 +331,19 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
         body.variants.iter().for_each_loc(|variant| {
             let value = if let RpEnumOrdinal::String(ref s) = variant.ordinal {
-                if s != variant.local_name.as_str() {
+                if s != variant.ident.as_str() {
                     variants.push(Rename(s.as_str()));
                 }
 
                 s
             } else {
-                variant.local_name.as_str()
+                variant.ident.as_str()
             };
 
-            match_body.push(toks![
-                variant.local_name.as_str(),
-                " => ",
-                value.quoted(),
-                ",",
-            ]);
+            match_body.push(toks![variant.ident.as_str(), " => ", value.quoted(), ",",]);
 
             variants.push_unless_empty(Comments(&variant.comment));
-            variants.push(toks![variant.local_name.as_str(), ","]);
+            variants.push(toks![variant.ident.as_str(), ","]);
             Ok(()) as Result<()>
         })?;
 
@@ -447,12 +442,12 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
                 // TODO: clone should not be needed
                 if let Some(ref name) = s.sub_type_name {
-                    if name.as_str() != s.local_name.as_str() {
+                    if name.as_str() != s.ident.as_str() {
                         t.push(Rename(name));
                     }
                 }
 
-                t.push(toks![s.local_name.as_str(), " {"]);
+                t.push(toks![s.ident.as_str(), " {"]);
 
                 for field in body.fields.iter().chain(s.fields.iter()) {
                     t.nested(self.field_element(field)?);

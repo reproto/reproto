@@ -4,7 +4,7 @@ macro_rules! decl_body {
         #[derive(Debug, Clone, Serialize)]
         pub struct $name {
             pub name: $crate::rp_name::RpName,
-            pub local_name: String,
+            pub ident: String,
             pub comment: Vec<String>,
             pub decls: Vec<$crate::rp_decl::RpDecl>,
             $($rest)*

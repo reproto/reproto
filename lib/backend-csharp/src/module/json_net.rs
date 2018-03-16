@@ -148,7 +148,7 @@ impl InterfaceCodegen for JsonNet {
         }
 
         for sub_type in &body.sub_types {
-            let v = toks![spec.name(), ".", sub_type.local_name.as_str()];
+            let v = toks![spec.name(), ".", sub_type.ident.as_str()];
             spec.attribute(JsonSubType(sub_type.name().into(), v));
         }
 

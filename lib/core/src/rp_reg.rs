@@ -64,7 +64,7 @@ impl RpReg {
         Ok(fields)
     }
 
-    pub fn local_name<PackageFn, InnerFn>(
+    pub fn ident<PackageFn, InnerFn>(
         &self,
         name: &RpName,
         package_fn: PackageFn,

@@ -11,6 +11,17 @@ use std::option;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
+macro_rules! check_defined {
+    ($ctx:expr, $names:expr, $item:expr, $accessor:expr, $what:expr) => {
+        if let Some(other) = $names.insert($accessor.to_string(), Loc::pos(&$item).clone()) {
+            return Err($ctx.report()
+              .err(Loc::pos(&$item), format!(concat!($what, " `{}` is already defined"), $accessor))
+              .info(other, "previously defined here")
+              .into());
+        }
+    }
+}
+
 /// Adds a method for all types that supports conversion into core types.
 pub trait IntoModel {
     type Output;
@@ -202,37 +213,14 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 RpEnumType::Generated
             };
 
+            let mut idents = HashMap::new();
             let mut ordinals = HashMap::new();
-            let mut local_names = HashMap::new();
 
             for variant in item.variants {
                 let variant = (variant, &variant_type).into_model(scope)?;
-                let variant = Rc::new(variant);
-
-                match ordinals.entry(variant.ordinal().to_string()) {
-                    hash_map::Entry::Vacant(entry) => entry.insert(Rc::clone(&variant)),
-                    hash_map::Entry::Occupied(entry) => {
-                        return Err(ctx.report()
-                            .err(
-                                Loc::pos(&variant),
-                                format!("ordinal `{}` already defined", variant.ordinal()),
-                            )
-                            .info(Loc::pos(entry.get()), "already defined here")
-                            .into());
-                    }
-                };
-
-                match local_names.entry(variant.local_name.clone()) {
-                    hash_map::Entry::Vacant(entry) => entry.insert(Rc::clone(&variant)),
-                    hash_map::Entry::Occupied(entry) => {
-                        return Err(ctx.report()
-                            .err(Loc::pos(&variant), "variant already defined")
-                            .info(Loc::pos(entry.get()), "already defined here")
-                            .into());
-                    }
-                };
-
-                variants.push(variant);
+                check_defined!(ctx, idents, variant, variant.ident, "variant");
+                check_defined!(ctx, ordinals, variant, variant.ordinal(), "variant ordinal");
+                variants.push(Rc::new(variant));
             }
 
             let attributes = attributes.into_model(scope)?;
@@ -240,7 +228,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
 
             Ok(RpEnumBody {
                 name: scope.as_name(),
-                local_name: item.name.to_string(),
+                ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: vec![],
                 variant_type: variant_type,
@@ -276,7 +264,7 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
 
             Ok(RpVariant {
                 name: scope.as_name().push(item.name.to_string()),
-                local_name: Loc::map(item.name.clone(), |s| s.to_string()),
+                ident: Loc::map(item.name.clone(), |s| s.to_string()),
                 comment: Comment(&comment).into_model(scope)?,
                 ordinal: ordinal,
             })
@@ -365,43 +353,15 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             let (fields, codes, decls) = item.members.into_model(scope)?;
 
             let mut names = HashMap::new();
-            let mut local_names = HashMap::new();
+            let mut idents = HashMap::new();
             let mut sub_types = Vec::new();
 
             for sub_type in item.sub_types {
                 let scope = scope.child(Loc::value(&sub_type.name).to_owned());
-
                 let sub_type = sub_type.into_model(&scope)?;
-
-                // key has to be owned by entry
-                let key = sub_type.local_name.clone();
-
-                let sub_type = Rc::new(sub_type);
-
-                match names.entry(sub_type.name().to_string()) {
-                    hash_map::Entry::Vacant(entry) => entry.insert(Rc::clone(&sub_type)),
-                    hash_map::Entry::Occupied(entry) => {
-                        return Err(ctx.report()
-                            .err(
-                                Loc::pos(&sub_type),
-                                format!("sub-type name `{}` already defined", sub_type.name()),
-                            )
-                            .info(Loc::pos(entry.get()), "already defined here")
-                            .into());
-                    }
-                };
-
-                match local_names.entry(key) {
-                    hash_map::Entry::Vacant(entry) => entry.insert(Rc::clone(&sub_type)),
-                    hash_map::Entry::Occupied(entry) => {
-                        return Err(ctx.report()
-                            .err(Loc::pos(&sub_type), "sub-type already defined")
-                            .info(Loc::pos(entry.get()), "already defined here")
-                            .into());
-                    }
-                };
-
-                sub_types.push(sub_type);
+                check_defined!(ctx, idents, sub_type, sub_type.ident, "sub-type");
+                check_defined!(ctx, names, sub_type, sub_type.name(), "sub-type name");
+                sub_types.push(Rc::new(sub_type));
             }
 
             let mut attributes = attributes.into_model(scope)?;
@@ -417,7 +377,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
             return Ok(RpInterfaceBody {
                 name: scope.as_name(),
-                local_name: item.name.to_string(),
+                ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
                 fields: fields,
@@ -506,7 +466,7 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
         return self.map(|comment, attributes, item| {
             let ctx = scope.ctx();
 
-            let mut endpoint_names: HashMap<String, ErrorPos> = HashMap::new();
+            let mut endpoint_names = HashMap::new();
             let mut endpoints = LinkedHashMap::new();
             let mut decls = Vec::new();
 
@@ -535,7 +495,7 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
 
             Ok(RpServiceBody {
                 name: scope.as_name(),
-                local_name: item.name.to_string(),
+                ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
                 http: http,
@@ -561,7 +521,7 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
         fn handle_endpoint<'input>(
             endpoint: Item<'input, Endpoint<'input>>,
             scope: &Scope,
-            endpoint_names: &mut HashMap<String, ErrorPos>,
+            names: &mut HashMap<String, Pos>,
             endpoints: &mut LinkedHashMap<String, Loc<RpEndpoint>>,
         ) -> Result<()> {
             let ctx = scope.ctx();
@@ -569,15 +529,7 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
             let endpoint = endpoint.into_model(scope)?;
 
             // Check that there are no conflicting endpoint names.
-            match endpoint_names.entry(endpoint.name().to_string()) {
-                hash_map::Entry::Vacant(entry) => entry.insert(Loc::pos(&endpoint).into()),
-                hash_map::Entry::Occupied(entry) => {
-                    return Err(ctx.report()
-                        .err(Loc::pos(&endpoint), "conflicting name of endpoint")
-                        .info(entry.get().clone_error_pos(), "previous name here")
-                        .into());
-                }
-            };
+            check_defined!(ctx, names, endpoint, endpoint.name(), "endpoint name");
 
             // Check that there are no conflicting endpoint IDs.
             match endpoints.entry(endpoint.ident().to_string()) {
@@ -830,25 +782,19 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
         return self.map(|comment, attributes, item| {
             let ctx = scope.ctx();
 
-            let mut fields: Vec<Loc<RpField>> = Vec::new();
+            let mut fields = Vec::new();
             let mut codes = Vec::new();
             let mut decls = Vec::new();
+
+            let mut field_idents = HashMap::new();
+            let mut field_names = HashMap::new();
 
             for member in item.members {
                 match member {
                     Field(field) => {
                         let field = field.into_model(scope)?;
-
-                        if let Some(other) = fields
-                            .iter()
-                            .find(|f| f.name() == field.name() || f.ident() == field.ident())
-                        {
-                            return Err(ctx.report()
-                                .err(Loc::pos(&field), "conflict in field")
-                                .info(Loc::pos(other), "previous declaration here")
-                                .into());
-                        }
-
+                        check_defined!(ctx, field_idents, field, field.ident(), "field");
+                        check_defined!(ctx, field_names, field, field.name(), "field name");
                         fields.push(field);
                     }
                     Code(code) => {
@@ -867,7 +813,7 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
 
             Ok(RpSubType {
                 name: scope.as_name(),
-                local_name: item.name.to_string(),
+                ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
                 fields: fields,
@@ -911,7 +857,7 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
 
             Ok(RpTupleBody {
                 name: scope.as_name(),
-                local_name: item.name.to_string(),
+                ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
                 fields: fields,
@@ -947,7 +893,7 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
 
             Ok(RpTypeBody {
                 name: scope.as_name(),
-                local_name: item.name.to_string(),
+                ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
                 fields: fields,

@@ -64,7 +64,7 @@ impl Compiler {
     fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
         let package_name = self.csharp_package(&decl.name().package).parts.join(".");
 
-        CsharpFile::new(package_name.as_str(), decl.local_name(), |out| {
+        CsharpFile::new(package_name.as_str(), decl.ident(), |out| {
             self.process_decl(decl, 0usize, out)
         }).process(handle)
     }
@@ -263,12 +263,12 @@ impl Compiler {
     }
 
     fn process_enum<'el>(&self, body: &'el RpEnumBody) -> Result<Enum<'el>> {
-        let mut spec = Enum::new(body.local_name.clone());
+        let mut spec = Enum::new(body.ident.clone());
 
         let mut names = Vec::new();
 
         for variant in &body.variants {
-            let name = Rc::new(self.variant_naming.convert(variant.local_name.as_str()));
+            let name = Rc::new(self.variant_naming.convert(variant.ident.as_str()));
             names.push(variant.ordinal().into());
             spec.variants.append(toks![name]);
         }
@@ -287,7 +287,7 @@ impl Compiler {
     }
 
     fn process_tuple<'el>(&self, body: &'el RpTupleBody) -> Result<Class<'el>> {
-        let mut spec = Class::new(body.local_name.clone());
+        let mut spec = Class::new(body.ident.clone());
 
         let fields = self.fields(&body.fields)?;
 
@@ -313,7 +313,7 @@ impl Compiler {
     }
 
     fn process_type<'el>(&self, body: &'el RpTypeBody) -> Result<Class<'el>> {
-        let mut spec = Class::new(body.local_name.clone());
+        let mut spec = Class::new(body.ident.clone());
         let fields = self.fields(&body.fields)?;
         let names: Vec<_> = fields.iter().map(|f| f.name.clone()).collect();
 
@@ -348,7 +348,7 @@ impl Compiler {
         depth: usize,
         body: &'el RpInterfaceBody,
     ) -> Result<Class<'el>> {
-        let mut spec = Class::new(body.local_name.clone());
+        let mut spec = Class::new(body.ident.clone());
         spec.modifiers = vec![Modifier::Abstract, Modifier::Public];
         let interface_fields = self.fields(&body.fields)?;
 
@@ -395,7 +395,7 @@ impl Compiler {
             .push_unless_empty(Code(&body.codes, CSHARP_CONTEXT));
 
         body.sub_types.iter().for_each_loc(|sub_type| {
-            let mut class = Class::new(sub_type.local_name.clone());
+            let mut class = Class::new(sub_type.ident.clone());
             class.modifiers = vec![Modifier::Public];
 
             let sub_type_fields = self.fields(&sub_type.fields)?;
@@ -448,7 +448,7 @@ impl Compiler {
     }
 
     fn process_service<'el>(&self, body: &'el RpServiceBody) -> Result<Class<'el>> {
-        let mut spec = Class::new(body.local_name.as_str());
+        let mut spec = Class::new(body.ident.as_str());
         spec.modifiers = vec![Modifier::Abstract, Modifier::Public];
 
         let mut extra: Vec<EndpointExtra> = Vec::new();

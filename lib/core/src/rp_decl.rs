@@ -48,15 +48,15 @@ impl RpDecl {
         Decls { iter: iter }
     }
 
-    pub fn local_name(&self) -> &str {
+    pub fn ident(&self) -> &str {
         use self::RpDecl::*;
 
         match *self {
-            Type(ref body) => body.local_name.as_str(),
-            Interface(ref body) => body.local_name.as_str(),
-            Enum(ref body) => body.local_name.as_str(),
-            Tuple(ref body) => body.local_name.as_str(),
-            Service(ref body) => body.local_name.as_str(),
+            Type(ref body) => body.ident.as_str(),
+            Interface(ref body) => body.ident.as_str(),
+            Enum(ref body) => body.ident.as_str(),
+            Tuple(ref body) => body.ident.as_str(),
+            Service(ref body) => body.ident.as_str(),
         }
     }
 

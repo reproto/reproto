@@ -518,7 +518,7 @@ impl InterfaceCodegen for Jackson {
                     "value=",
                     spec.name(),
                     ".",
-                    sub_type.local_name.as_str(),
+                    sub_type.ident.as_str(),
                     ".class",
                 ]);
 

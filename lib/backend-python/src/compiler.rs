@@ -303,18 +303,15 @@ impl<'el> Compiler<'el> {
     {
         let registered = self.env.lookup(name)?;
 
-        let local_name = registered.local_name(name, |p| p.join(TYPE_SEP), path_syntax);
+        let ident = registered.ident(name, |p| p.join(TYPE_SEP), path_syntax);
 
         if let Some(ref used) = name.prefix {
             let package = self.package(&name.package).parts.join(".");
 
-            return Ok(imported(package)
-                .alias(used.to_string())
-                .name(local_name)
-                .into());
+            return Ok(imported(package).alias(used.to_string()).name(ident).into());
         }
 
-        Ok(local_name.into())
+        Ok(ident.into())
     }
 
     pub fn enum_variants(&self, body: &'el RpEnumBody) -> Result<Tokens<'el, Python<'el>>> {
@@ -325,7 +322,7 @@ impl<'el> Compiler<'el> {
         let variants = body.variants.iter().map(|l| Loc::as_ref(l));
 
         variants.for_each_loc(|variant| {
-            let var_name = variant.local_name.as_str().quoted();
+            let var_name = variant.ident.as_str().quoted();
 
             let mut enum_arguments = Tokens::new();
 

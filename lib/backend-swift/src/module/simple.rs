@@ -810,12 +810,7 @@ impl EnumCodegen for Codegen {
                         t.nested({
                             let mut t = Tokens::new();
                             t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
-                            t.nested(toks![
-                                "return ",
-                                name.clone(),
-                                ".",
-                                variant.local_name.as_str(),
-                            ]);
+                            t.nested(toks!["return ", name.clone(), ".", variant.ident.as_str(),]);
                             t
                         });
                     }
@@ -852,7 +847,7 @@ impl EnumCodegen for Codegen {
                 for variant in &body.variants {
                     t.nested({
                         let mut t = Tokens::new();
-                        t.push(toks!["case .", variant.local_name.as_str(), ":"]);
+                        t.push(toks!["case .", variant.ident.as_str(), ":"]);
                         t.nested(toks!["return ", variant.ordinal().quoted()]);
                         t
                     });
@@ -953,13 +948,13 @@ impl InterfaceCodegen for Codegen {
                     for sub_type in sub_types.into_iter() {
                         let n = compiler.convert_name(&sub_type.name)?;
 
-                        let local_name = sub_type.local_name.as_str();
+                        let ident = sub_type.ident.as_str();
 
                         t.nested({
                             let mut t = Tokens::new();
                             t.push(toks!["case ", sub_type.name().quoted(), ":"]);
                             t.nested(toks!["let v = try ", n.clone(), ".decode(json: json)"]);
-                            t.nested(toks!["return ", name.clone(), ".", local_name, "(v)"]);
+                            t.nested(toks!["return ", name.clone(), ".", ident, "(v)"]);
                             t
                         });
                     }
@@ -998,11 +993,11 @@ impl InterfaceCodegen for Codegen {
 
                 for sub_type in sub_types.into_iter() {
                     let name = sub_type.name();
-                    let local_name = sub_type.local_name.as_str();
+                    let ident = sub_type.ident.as_str();
 
                     t.nested({
                         let mut t = Tokens::new();
-                        t.push(toks!["case .", local_name, "(let s):"]);
+                        t.push(toks!["case .", ident, "(let s):"]);
                         t.nested(toks!["var json = try s.encode()"]);
                         t.nested(toks!["json[", tag.quoted(), "] = ", name.quoted()]);
                         t.nested(toks!["return json"]);

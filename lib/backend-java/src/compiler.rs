@@ -90,7 +90,7 @@ impl Compiler {
     fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
         let package_name = self.java_package(&decl.name().package).parts.join(".");
 
-        JavaFile::new(package_name.as_str(), decl.local_name(), |out| {
+        JavaFile::new(package_name.as_str(), decl.ident(), |out| {
             self.process_decl(decl, 0usize, out)
         }).process(handle)
     }
@@ -486,7 +486,7 @@ impl Compiler {
     }
 
     fn process_enum<'el>(&self, body: &'el RpEnumBody) -> Result<Enum<'el>> {
-        let mut spec = Enum::new(body.local_name.clone());
+        let mut spec = Enum::new(body.ident.clone());
 
         let enum_type = self.enum_type_to_java(&body.variant_type)?;
         spec.fields.push(self.new_field_spec(&enum_type, "value"));
@@ -495,7 +495,7 @@ impl Compiler {
             let mut enum_value = Tokens::new();
 
             // convert .reproto (upper-camel) convertion to Java
-            let name = Rc::new(self.variant_naming.convert(variant.local_name.as_str()));
+            let name = Rc::new(self.variant_naming.convert(variant.ident.as_str()));
 
             let mut enum_toks = toks![name];
 
@@ -533,7 +533,7 @@ impl Compiler {
     }
 
     fn process_tuple<'el>(&self, body: &'el RpTupleBody) -> Result<Class<'el>> {
-        let mut spec = Class::new(body.local_name.clone());
+        let mut spec = Class::new(body.ident.clone());
 
         let fields = self.fields(&body.fields)?;
 
@@ -579,7 +579,7 @@ impl Compiler {
     }
 
     fn process_type<'el>(&self, body: &'el RpTypeBody) -> Result<Class<'el>> {
-        let mut spec = Class::new(body.local_name.clone());
+        let mut spec = Class::new(body.ident.clone());
         let fields = self.fields(&body.fields)?;
         let names: Vec<_> = fields.iter().map(|f| f.name.clone()).collect();
 
@@ -632,7 +632,7 @@ impl Compiler {
         body: &'el RpInterfaceBody,
     ) -> Result<Interface<'el>> {
         use self::Modifier::*;
-        let mut spec = Interface::new(body.local_name.clone());
+        let mut spec = Interface::new(body.ident.clone());
         let interface_fields = self.fields(&body.fields)?;
 
         for field in &interface_fields {
@@ -644,7 +644,7 @@ impl Compiler {
         spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
 
         body.sub_types.iter().for_each_loc(|sub_type| {
-            let mut class = Class::new(sub_type.local_name.clone());
+            let mut class = Class::new(sub_type.ident.clone());
             class.modifiers = vec![Public, Static];
 
             let sub_type_fields = self.fields(&sub_type.fields)?;
@@ -742,7 +742,7 @@ impl Compiler {
     }
 
     fn process_service<'el>(&self, body: &'el RpServiceBody) -> Result<Interface<'el>> {
-        let mut spec = Interface::new(body.local_name.as_str());
+        let mut spec = Interface::new(body.ident.as_str());
 
         let mut extra: Vec<EndpointExtra> = Vec::new();
 

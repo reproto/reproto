@@ -77,9 +77,9 @@ impl<'el> Compiler<'el> {
     /// conventions.
     pub fn convert_name<'a>(&self, name: &'a RpName) -> Result<Tokens<'a, Swift<'a>>> {
         let registered = self.env.lookup(name)?;
-        let local_name = registered.local_name(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
+        let ident = registered.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
         let package_name = self.package(&name.package).parts.join("_");
-        return Ok(toks![package_name, "_", local_name]);
+        return Ok(toks![package_name, "_", ident]);
     }
 
     /// Convert to the type declaration of a field.
@@ -291,7 +291,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             t.push(toks!["public enum ", name.clone(), " {"]);
 
             for variant in &body.variants {
-                t.nested(toks!["case ", variant.local_name.as_str()]);
+                t.nested(toks!["case ", variant.ident.as_str()]);
             }
 
             t.push("}");
@@ -321,8 +321,8 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
             for sub_type in body.sub_types.iter() {
                 let name = self.convert_name(&sub_type.name)?;
-                let local_name = sub_type.local_name.as_str();
-                t.nested(toks!["case ", local_name, "(", name.clone(), ")"]);
+                let ident = sub_type.ident.as_str();
+                t.nested(toks!["case ", ident, "(", name.clone(), ")"]);
             }
 
             for g in &self.options.interface_model_gens {

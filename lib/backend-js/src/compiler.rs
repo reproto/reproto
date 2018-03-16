@@ -346,14 +346,14 @@ impl<'el> Converter<'el> for Compiler<'el> {
     fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, JavaScript<'el>>> {
         let registered = self.env.lookup(name)?;
 
-        let local_name = registered.local_name(name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
+        let ident = registered.ident(name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(ref used) = name.prefix {
             let package = self.package(&name.package).parts.join(".");
-            return Ok(imported_alias(package, local_name, used.to_string()).into());
+            return Ok(imported_alias(package, ident, used.to_string()).into());
         }
 
-        Ok(local_name.into())
+        Ok(ident.into())
     }
 }
 
@@ -572,11 +572,11 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             let type_id = self.convert_type(&body.name)?;
             let mut arguments = Tokens::new();
 
-            arguments.append(variant.local_name.as_str().quoted());
+            arguments.append(variant.ident.as_str().quoted());
             arguments.append(self.ordinal(variant)?);
 
             let arguments = js![new type_id, arguments];
-            let member = toks![type_name.clone(), ".", variant.local_name.as_str()];
+            let member = toks![type_name.clone(), ".", variant.ident.as_str()];
 
             values.push(js![= member.clone(), arguments]);
             members.append(member);

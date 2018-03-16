@@ -824,7 +824,7 @@ impl EnumCodegen for Codegen {
                             t.push({
                                 let mut t = Tokens::new();
                                 t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
-                                t.nested(toks!["self = .", variant.local_name.as_str()]);
+                                t.nested(toks!["self = .", variant.ident.as_str()]);
                                 t
                             });
                         }
@@ -892,7 +892,7 @@ impl EnumCodegen for Codegen {
                         for variant in &body.variants {
                             t.push({
                                 let mut t = Tokens::new();
-                                t.push(toks!["case .", variant.local_name.as_str(), ":"]);
+                                t.push(toks!["case .", variant.ident.as_str(), ":"]);
                                 t.nested(toks![
                                     "try value.encode(",
                                     variant.ordinal().quoted(),
@@ -1014,7 +1014,7 @@ impl InterfaceCodegen for Codegen {
                                 let mut t = Tokens::new();
 
                                 let name = compiler.convert_name(&sub_type.name)?;
-                                let n = sub_type.local_name.as_str();
+                                let n = sub_type.ident.as_str();
 
                                 let d = toks![name, "(from: decoder)"];
                                 let d = toks![".", n, "(", d, ")"];
@@ -1087,7 +1087,7 @@ impl InterfaceCodegen for Codegen {
                         t.push("switch self {");
 
                         for sub_type in body.sub_types.iter() {
-                            let n = sub_type.local_name.as_str();
+                            let n = sub_type.ident.as_str();
                             let name = sub_type.name();
                             let ty = toks!["try values.encode(", name.quoted(), ", forKey: .tag)"];
 

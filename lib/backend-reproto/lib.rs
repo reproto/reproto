@@ -138,7 +138,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
     fn format_type<'el>(body: &'el RpTypeBody) -> Result<Tokens<'el, Reproto>> {
         let mut tuple = Tokens::new();
 
-        tuple.push(toks!["type ", body.local_name.as_str(), " {"]);
+        tuple.push(toks!["type ", body.ident.as_str(), " {"]);
 
         tuple.nested({
             let mut t = Tokens::new();
@@ -176,7 +176,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
             }
         }
 
-        interface.push(toks!["interface ", body.local_name.as_str(), " {"]);
+        interface.push(toks!["interface ", body.ident.as_str(), " {"]);
 
         interface.nested({
             let mut t = Tokens::new();
@@ -187,13 +187,13 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
 
                     if let Some(ref alias) = sub_type.sub_type_name {
                         t.push(toks![
-                            sub_type.local_name.as_str(),
+                            sub_type.ident.as_str(),
                             " as ",
                             alias.as_str().quoted(),
                             " {",
                         ]);
                     } else {
-                        t.push(toks![sub_type.local_name.as_str(), " {"]);
+                        t.push(toks![sub_type.ident.as_str(), " {"]);
                     }
 
                     t.nested({
@@ -231,7 +231,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
     fn format_tuple<'el>(body: &'el RpTupleBody) -> Result<Tokens<'el, Reproto>> {
         let mut tuple = Tokens::new();
 
-        tuple.push(toks!["tuple ", body.local_name.as_str(), " {"]);
+        tuple.push(toks!["tuple ", body.ident.as_str(), " {"]);
 
         tuple.nested({
             let mut t = Tokens::new();
@@ -257,10 +257,10 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
 
         match body.variant_type {
             RpEnumType::String => {
-                tuple.push(toks!["enum ", body.local_name.as_str(), " as string {"]);
+                tuple.push(toks!["enum ", body.ident.as_str(), " as string {"]);
             }
             RpEnumType::Generated => {
-                tuple.push(toks!["enum ", body.local_name.as_str(), " {"]);
+                tuple.push(toks!["enum ", body.ident.as_str(), " {"]);
             }
         }
 
@@ -326,7 +326,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         }
 
         t.push_into(|t| {
-            t.append(variant.local_name.as_str());
+            t.append(variant.ident.as_str());
 
             match variant.ordinal {
                 RpEnumOrdinal::Generated => {}

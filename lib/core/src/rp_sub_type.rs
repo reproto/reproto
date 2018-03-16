@@ -5,7 +5,7 @@ use super::{Loc, RpCode, RpDecl, RpField, RpName};
 #[derive(Debug, Clone, Serialize)]
 pub struct RpSubType {
     pub name: RpName,
-    pub local_name: String,
+    pub ident: String,
     pub comment: Vec<String>,
     /// Inner declarations.
     pub decls: Vec<RpDecl>,
@@ -19,6 +19,6 @@ impl RpSubType {
         self.sub_type_name
             .as_ref()
             .map(|t| t.as_str())
-            .unwrap_or(&self.local_name)
+            .unwrap_or(&self.ident)
     }
 }
