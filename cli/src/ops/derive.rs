@@ -13,6 +13,7 @@ use std::any::Any;
 use std::io;
 use std::path::Path;
 use std::rc::Rc;
+use std::fmt::Write;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("derive").about("Derive a schema from the given input");
@@ -122,8 +123,20 @@ pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
 
     let modules = load_modules(lang.as_ref(), modules)?;
 
+    let mut stdout = stdout.lock();
+
     compile::simple_compile(
-        &mut IoFmt(&mut stdout.lock()),
+        |path, content| {
+            let mut buf = IoFmt(&mut stdout);
+
+            if let Some(comment) = lang.comment(format!(" File: {}", path.display()).as_str()) {
+                writeln!(buf, "{}", comment)?;
+                writeln!(buf, "")?;
+            }
+
+            buf.write_str(content)?;
+            Ok(())
+        },
         simple_compile,
         modules,
         lang.as_ref(),

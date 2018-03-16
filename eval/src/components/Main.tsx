@@ -85,8 +85,13 @@ interface Marker {
   col_end: number;
 }
 
+interface DeriveFile {
+  path: string;
+  content: string;
+}
+
 interface DeriveResult {
-  result?: string;
+  files: DeriveFile[];
   error?: string;
   error_markers: Marker[];
   info_markers: Marker[];
@@ -366,8 +371,8 @@ export class Main extends React.Component<MainProps, MainState> {
       });
 
       // Don't hide old result on errors.
-      if (!result.result && compiled && compiled.result.result) {
-        result.result = compiled.result.result;
+      if (result.error && compiled) {
+        result.files = compiled.result.files;
       }
 
       return {
@@ -606,7 +611,7 @@ export class Main extends React.Component<MainProps, MainState> {
     let output_mode = FORMAT_LANGUAGE_MAP[output as string];
 
     let errorMessage;
-    let compiledResult;
+    let compiledFiles: DeriveFile[] = [];
 
     var wasmLoading;
 
@@ -790,10 +795,10 @@ export class Main extends React.Component<MainProps, MainState> {
     }
 
     if (compiled) {
-      let { error, error_markers, result } = compiled.result;
+      let { error, error_markers, files } = compiled.result;
 
-      if (result) {
-        compiledResult = result;
+      if (files) {
+        compiledFiles = files;
       }
 
       if (error) {
@@ -974,12 +979,20 @@ export class Main extends React.Component<MainProps, MainState> {
                 />
             </div>
 
-            <div className="col">
+            <div className="col output">
               {errorMessage}
 
-              <OutputEditor
-                mode={output_mode as string}
-                value={compiledResult} />
+              {compiledFiles.map((f, index) => {
+                return (
+                  <div key={index} className="output-file">
+                    <div className="title">
+                      <i className="title-icon fa fa-file"></i>
+                      <span className="title-text">{f.path}</span>
+                    </div>
+                    <OutputEditor mode={output_mode as string} value={f.content} />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

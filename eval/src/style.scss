@@ -9,6 +9,24 @@
 
   .output {
     height: 100%;
+    overflow-y: scroll;
+
+    .output-file {
+      .title {
+        margin: 5px 10px;
+        font-weight: bold;
+        padding: 5px 0;
+
+        .title-icon {
+        }
+
+        .title-text {
+          margin-left: 10px;
+          font-size: 80%;
+          font-family: "Courier New", Courier, monospace;
+        }
+      }
+    }
   }
 }
 

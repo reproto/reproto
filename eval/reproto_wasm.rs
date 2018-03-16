@@ -236,8 +236,17 @@ js_serializable!(Marker);
 js_deserializable!(Marker);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+struct DeriveFile {
+    path: String,
+    content: String,
+}
+
+js_serializable!(DeriveFile);
+js_deserializable!(DeriveFile);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct DeriveResult {
-    result: Option<String>,
+    files: Vec<DeriveFile>,
     error: Option<String>,
     error_markers: Vec<Marker>,
     info_markers: Vec<Marker>,
@@ -319,7 +328,7 @@ fn derive(derive: Derive) -> DeriveResult {
 
     return match try_derive(derive, errors.clone()) {
         Ok(result) => DeriveResult {
-            result: Some(result),
+            files: result,
             error: None,
             error_markers: vec![],
             info_markers: vec![],
@@ -344,7 +353,7 @@ fn derive(derive: Derive) -> DeriveResult {
             }
 
             DeriveResult {
-                result: None,
+                files: vec![],
                 error: Some(e.display().to_string()),
                 error_markers: error_markers,
                 info_markers: info_markers,
@@ -355,7 +364,7 @@ fn derive(derive: Derive) -> DeriveResult {
     fn try_derive(
         derive: Derive,
         errors: Rc<RefCell<Vec<core::ContextItem>>>,
-    ) -> core::errors::Result<String> {
+    ) -> core::errors::Result<Vec<DeriveFile>> {
         let (object, package) = match derive.content {
             Content::Content { ref content } => {
                 let bytes = content.as_bytes().to_vec();
@@ -390,8 +399,6 @@ fn derive(derive: Derive) -> DeriveResult {
             Format::Reproto => compile::Input::Object(Box::new(object), package),
         };
 
-        let mut buf = String::new();
-
         let files = parse_files(derive.files)?;
 
         let resolver = Box::new(MapResolver(files));
@@ -406,9 +413,18 @@ fn derive(derive: Derive) -> DeriveResult {
         let settings = derive.settings;
         let lang = derive.output.into_lang(settings, &mut modules);
 
-        compile::simple_compile(&mut buf, simple_compile, modules, lang.as_ref())?;
+        let mut files = Vec::new();
 
-        Ok(buf)
+        compile::simple_compile(|path, content| {
+            files.push(DeriveFile {
+                path: path.display().to_string(),
+                content: content.to_string(),
+            });
+
+            Ok(())
+        }, simple_compile, modules, lang.as_ref())?;
+
+        Ok(files)
     }
 
     fn parse_files(files: Vec<File>) -> core::errors::Result<Vec<ParsedFile>> {
