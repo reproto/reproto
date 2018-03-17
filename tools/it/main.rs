@@ -67,7 +67,8 @@ fn try_main() -> Result<()> {
     let mut args = env::args();
     args.next();
 
-    let mut do_suite = false;
+    let mut do_checks = false;
+    let mut do_structures = false;
     let mut do_project = false;
     let mut action = Action::Verify;
     let mut filters = HashSet::new();
@@ -77,8 +78,11 @@ fn try_main() -> Result<()> {
             "--update" => {
                 action = Action::Update;
             }
+            "--check" => {
+                do_checks = true;
+            }
             "--suite" => {
-                do_suite = true;
+                do_structures = true;
             }
             "--project" => {
                 do_project = true;
@@ -101,7 +105,14 @@ fn try_main() -> Result<()> {
 
     let reproto = Reproto::from_project(cli)?;
 
-    let mut project = Project::new(&languages, &reproto, do_suite, do_project, action);
+    let mut project = Project::new(
+        &languages,
+        &reproto,
+        do_checks,
+        do_structures,
+        do_project,
+        action,
+    );
 
     project.arg(Language::Go, &["-m", "encoding/json"]);
     project.arg(Language::Java, &["-m", "builder", "-m", "jackson"]);

@@ -18,6 +18,11 @@ Reproto is fundamentally an experiment intended to push the envelope in how to d
 for JSON.
 We aim to improve the state-of-the art.
 
+**Correctness before performance** &mdash;
+Schemas are worthless if they don't provide guarantees in the structure they describe.
+We do our best to guarantee that the generated code follow the specification provided to the
+letter.
+
 ## Documentation
 
 The documentation is composed of the following sections:

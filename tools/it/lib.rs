@@ -13,7 +13,7 @@ use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fs::{self, File};
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::result;
@@ -222,6 +222,39 @@ impl Reproto {
 
         Ok(())
     }
+
+    /// Check a reproto project.
+    pub fn check(&self, check: Check) -> Result<CheckResult> {
+        if !check.path.is_dir() {
+            bail!("No such proto path: {}", check.path.display());
+        }
+
+        let mut cmd = Command::new(&self.binary);
+
+        if false {
+            cmd.arg("--debug");
+        }
+
+        cmd.arg("check");
+
+        // Path to resolve packages from.
+        cmd.args(&["--path", check.path.display().to_string().as_str()]);
+
+        cmd.args(&[check.package.as_str()]);
+
+        let output = cmd.current_dir(check.current_dir)
+            .output()
+            .map_err(|e| format_err!("failed to spawn reproto: {}", e))?;
+
+        let stdout = str::from_utf8(&output.stdout)?;
+        let stderr = str::from_utf8(&output.stderr)?;
+
+        Ok(CheckResult {
+            status: output.status.success(),
+            stdout: stdout.lines().map(|s| s.to_string()).collect(),
+            stderr: stderr.lines().map(|s| s.to_string()).collect(),
+        })
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -354,6 +387,141 @@ pub struct Manifest<'m> {
     extra: &'m [String],
     /// Package prefix to apply.
     package_prefix: Option<&'m str>,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CheckResult {
+    status: bool,
+    stdout: Vec<String>,
+    stderr: Vec<String>,
+}
+
+impl fmt::Display for CheckResult {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(fmt, "status: {}", self.status)?;
+        writeln!(fmt, "stdout:")?;
+
+        for line in &self.stdout {
+            writeln!(fmt, "{}", line)?;
+        }
+
+        writeln!(fmt, "stderr:")?;
+
+        for line in &self.stderr {
+            writeln!(fmt, "{}", line)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct Check<'m> {
+    /// Path to build packages from.
+    path: &'m Path,
+    /// Working directory.
+    current_dir: &'m Path,
+    /// Build the given packages.
+    package: &'m String,
+}
+
+#[derive(Debug)]
+pub struct CheckRunner<'a> {
+    /// Name of the test.
+    test: &'a str,
+    /// Instance of this test.
+    instance: String,
+    /// Package to build.
+    package: String,
+    /// Action to run.
+    action: Action,
+    /// Path to build packages from.
+    path: PathBuf,
+    /// Current project directory.
+    current_dir: PathBuf,
+    /// Reproto command wrapper.
+    reproto: &'a Reproto,
+}
+
+/// Perform a check and compare expected errors.
+impl<'a> CheckRunner<'a> {
+    pub fn check<'m>(&'m self) -> Check<'m> {
+        Check {
+            path: &self.path,
+            current_dir: &self.current_dir,
+            package: &self.package,
+        }
+    }
+
+    fn try_run(&self) -> Result<()> {
+        let checks = self.current_dir.join("checks");
+        let check_path = checks.join(&self.package).with_extension("json");
+
+        match self.action {
+            Action::Update => {
+                if !checks.is_dir() {
+                    fs::create_dir_all(&checks).map_err(|e| {
+                        format_err!("failed to create directory: {}: {}", checks.display(), e)
+                    })?;
+                }
+
+                let result = self.reproto.check(self.check())?;
+
+                let bytes = json::to_string(&result)?;
+
+                let mut f = File::create(check_path)?;
+                f.write_all(bytes.as_bytes())?;
+            }
+            Action::Verify => {
+                let actual = self.reproto.check(self.check())?;
+
+                if !check_path.is_file() {
+                    bail!(
+                        "ACTUAL:\n{}\nNO EXPECTED: no such file: {}",
+                        actual,
+                        check_path.display()
+                    );
+                }
+
+                let f = File::open(&check_path)
+                    .map_err(|e| format_err!("failed to open: {}: {}", check_path.display(), e))?;
+
+                let doc = json::Deserializer::from_reader(f)
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| {
+                        format_err!("Expected one document in: {}", check_path.display())
+                    })?;
+
+                let expected: CheckResult = doc?;
+
+                if actual != expected {
+                    bail!("ACTUAL:\n{}\nEXPECTED:\n{}", actual, expected);
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> Runner for CheckRunner<'a> {
+    fn keywords(&self) -> Vec<&str> {
+        vec![self.test, self.instance.as_str()]
+    }
+
+    /// Run the suite.
+    fn run(&self) -> Result<()> {
+        timed_run(
+            format!(
+                "check {:20} (instance: {}, package: {})",
+                self.test,
+                self.instance.as_str(),
+                self.package.as_str(),
+            ),
+            || self.try_run(),
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -766,6 +934,8 @@ pub struct Suite<'a> {
     arguments: HashMap<Language, &'a [&'a str]>,
     /// Build the given packages.
     packages: Vec<String>,
+    /// Package to run checks for.
+    checks: Vec<String>,
     /// Extract suite from the given directory.
     dir: Option<RelativePathBuf>,
     /// Include only the following languages.
@@ -780,6 +950,7 @@ impl<'a> Suite<'a> {
             inputs: Vec::new(),
             arguments: HashMap::new(),
             packages: vec!["test".to_string()],
+            checks: vec![],
             dir: None,
             include: HashSet::new(),
         }
@@ -798,6 +969,11 @@ impl<'a> Suite<'a> {
     /// Set the package to build.
     pub fn package<P: AsRef<str>>(&mut self, package: P) {
         self.packages.push(package.as_ref().to_string());
+    }
+
+    /// Set the package to check.
+    pub fn check<P: AsRef<str>>(&mut self, package: P) {
+        self.checks.push(package.as_ref().to_string());
     }
 
     /// Associate an argument with a given language.
@@ -841,8 +1017,10 @@ impl Instance {
 pub struct Project<'a> {
     languages: &'a [Language],
     reproto: &'a Reproto,
+    /// Run checks.
+    do_checks: bool,
     /// Run the suite.
-    do_suite: bool,
+    do_structures: bool,
     /// Run the project.
     do_project: bool,
     /// Action to run.
@@ -860,14 +1038,16 @@ impl<'a> Project<'a> {
     pub fn new(
         languages: &'a [Language],
         reproto: &'a Reproto,
-        do_suite: bool,
+        do_checks: bool,
+        do_structures: bool,
         do_project: bool,
         action: Action,
     ) -> Self {
         Self {
             languages: languages,
             reproto: reproto,
-            do_suite: do_suite,
+            do_checks: do_checks,
+            do_structures: do_structures,
             do_project: do_project,
             action: action,
             suites: Vec::new(),
@@ -911,6 +1091,9 @@ impl<'a> Project<'a> {
                 bail!("expected directory: {}", current_dir.display());
             }
 
+            // structure and project entrypoint
+            let entry_reproto = current_dir.join("proto").join("test.reproto");
+
             let path = current_dir.join("proto");
             let input = current_dir.join("input");
 
@@ -918,6 +1101,26 @@ impl<'a> Project<'a> {
 
             inputs.extend(json_files(&current_dir)?);
             inputs.extend(files_in_dir(&input)?);
+
+            if self.do_checks {
+                if suite.checks.is_empty() {
+                    continue;
+                }
+
+                for instance in &default_instances {
+                    for package in &suite.checks {
+                        runners.push(Box::new(CheckRunner {
+                            test: suite.test,
+                            instance: instance.name.to_string(),
+                            package: package.to_string(),
+                            action: self.action,
+                            path: path.clone(),
+                            current_dir: current_dir.clone(),
+                            reproto: self.reproto,
+                        }));
+                    }
+                }
+            }
 
             for language in self.languages {
                 if !suite.include.is_empty() && !suite.include.contains(language) {
@@ -945,6 +1148,10 @@ impl<'a> Project<'a> {
 
                     let name = &instance.name.as_str();
 
+                    if !entry_reproto.is_file() {
+                        continue;
+                    }
+
                     if self.do_project && language.supports_project() {
                         let source_workdir = language.source_workdir(root);
                         let target_workdir =
@@ -965,7 +1172,7 @@ impl<'a> Project<'a> {
                         }));
                     }
 
-                    if self.do_suite {
+                    if self.do_structures {
                         let expected_struct =
                             language.path(root, &["expected-structures", suite.test, name]);
                         let target_struct =

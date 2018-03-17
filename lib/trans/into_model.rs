@@ -22,6 +22,30 @@ macro_rules! check_defined {
     }
 }
 
+macro_rules! check_field {
+    ($ctx:ident, $field:expr, $strategy:expr) => {
+        match $strategy {
+            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                if $field.name() == tag {
+                    let report = $ctx.report()
+                        .err(
+                            Loc::pos(&$field),
+                            format!("field name `{}` is the same as tag used in type_info", tag),
+                        )
+                        .into();
+
+                    return Err(report);
+                }
+            }
+        }
+    };
+}
+
+#[derive(Debug, Default)]
+pub struct MemberConstraint<'input> {
+    sub_type_strategy: Option<&'input RpSubTypeStrategy>,
+}
+
 /// Adds a method for all types that supports conversion into core types.
 pub trait IntoModel {
     type Output;
@@ -361,20 +385,6 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
         self.map(|comment, attributes, item| {
             let ctx = scope.ctx();
 
-            let (fields, codes, decls) = item.members.into_model(scope)?;
-
-            let mut names = HashMap::new();
-            let mut idents = HashMap::new();
-            let mut sub_types = Vec::new();
-
-            for sub_type in item.sub_types {
-                let scope = scope.child(Loc::value(&sub_type.name).to_owned());
-                let sub_type = sub_type.into_model(&scope)?;
-                check_defined!(ctx, idents, sub_type, sub_type.ident, "sub-type");
-                check_defined!(ctx, names, sub_type, sub_type.name(), "sub-type name");
-                sub_types.push(Rc::new(sub_type));
-            }
-
             let mut attributes = attributes.into_model(scope)?;
 
             let mut sub_type_strategy = RpSubTypeStrategy::default();
@@ -385,6 +395,26 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             }
 
             check_attributes!(scope.ctx(), attributes);
+
+            let (fields, codes, decls) = {
+                let constraint = MemberConstraint {
+                    sub_type_strategy: Some(&sub_type_strategy),
+                };
+
+                (item.members, constraint).into_model(scope)?
+            };
+
+            let mut names = HashMap::new();
+            let mut idents = HashMap::new();
+            let mut sub_types = Vec::new();
+
+            for sub_type in item.sub_types {
+                let scope = scope.child(Loc::value(&sub_type.name).to_owned());
+                let sub_type = (sub_type, &sub_type_strategy).into_model(&scope)?;
+                check_defined!(ctx, idents, sub_type, sub_type.ident, "sub-type");
+                check_defined!(ctx, names, sub_type, sub_type.name(), "sub-type name");
+                sub_types.push(Rc::new(sub_type));
+            }
 
             return Ok(RpInterfaceBody {
                 name: scope.as_name(),
@@ -785,13 +815,15 @@ impl<'input> IntoModel for Channel {
     }
 }
 
-impl<'input> IntoModel for Item<'input, SubType<'input>> {
+impl<'input> IntoModel for (Item<'input, SubType<'input>>, &'input RpSubTypeStrategy) {
     type Output = Loc<RpSubType>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use self::TypeMember::*;
 
-        return self.map(|comment, attributes, item| {
+        let (item, sub_type_strategy) = self;
+
+        return item.map(|comment, attributes, item| {
             let ctx = scope.ctx();
 
             let mut fields = Vec::new();
@@ -807,6 +839,7 @@ impl<'input> IntoModel for Item<'input, SubType<'input>> {
                         let field = field.into_model(scope)?;
                         check_defined!(ctx, field_idents, field, field.ident(), "field");
                         check_defined!(ctx, field_names, field, field.name(), "field name");
+                        check_field!(ctx, field, *sub_type_strategy);
                         fields.push(field);
                     }
                     Code(code) => {
@@ -916,11 +949,23 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
     }
 }
 
+/// Default constraints.
 impl<'input> IntoModel for Vec<TypeMember<'input>> {
     type Output = (Vec<Loc<RpField>>, Vec<Loc<RpCode>>, Vec<RpDecl>);
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        (self, MemberConstraint::default()).into_model(scope)
+    }
+}
+
+impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
+    type Output = (Vec<Loc<RpField>>, Vec<Loc<RpCode>>, Vec<RpDecl>);
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use self::TypeMember::*;
+
+        let (members, constraint) = self;
+        let MemberConstraint { sub_type_strategy } = constraint;
 
         let ctx = scope.ctx();
 
@@ -928,7 +973,7 @@ impl<'input> IntoModel for Vec<TypeMember<'input>> {
         let mut codes = Vec::new();
         let mut decls = Vec::new();
 
-        for member in self {
+        for member in members {
             match member {
                 Field(field) => {
                     let field = field.into_model(scope)?;
@@ -941,6 +986,10 @@ impl<'input> IntoModel for Vec<TypeMember<'input>> {
                             .err(Loc::pos(&field), "conflict in field")
                             .info(Loc::pos(other), "previous declaration here")
                             .into());
+                    }
+
+                    if let Some(sub_type_strategy) = sub_type_strategy {
+                        check_field!(ctx, field, *sub_type_strategy);
                     }
 
                     fields.push(field);

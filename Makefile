@@ -30,6 +30,9 @@ clean: it-clean
 suites:
 	$(it-cmd) --suite $(FILTER)
 
+checks:
+	$(it-cmd) --check $(FILTER)
+
 projects:
 	$(it-cmd) --project $(FILTER)
 
@@ -38,6 +41,9 @@ update-suites:
 
 update-projects:
 	$(it-cmd) --update --project $(FILTER)
+
+update-checks:
+	$(it-cmd) --update --check $(FILTER)
 
 help:
 	@echo ""

@@ -119,7 +119,7 @@ Valid arguments are:
 * `upper_snake`, fields would be named as `UPPER_SNAKE`.
 * `lower_snake`, fields would be named as `lower_snake` (default).
 
-This does _not_ affect explicitly named endpoinds using `as`.
+This does _not_ affect explicitly named endpoints using `as`.
 
 ```reproto
 #![endpoint_naming(upper_camel)]
@@ -446,42 +446,36 @@ maps to JSON for resolving sub-types.
 The following is an example interface with two sub-types.
 
 ```reproto
-/// Describes how a time series should be sampled.
-///
-/// Sampling is when a time series which is very dense is samples to reduce its size.
-interface Sampling {
-    /// size of the sample.
-    sample_size: u32;
+/// Describes an animal.
+interface Animal {
+    /// Name of the animal.
+    name: string;
 
-    /// Take the average value for each sample.
-    Average as "average";
+    /// Age of the animal in years.
+    age: u32;
 
-    /// Take the first value encountered for each sample.
-    First as "first";
+    /// A cat.
+    Cheetah as "cheetah" {
+        /// How quickly can this cheetah run?.
+        landspeed: u32;
+    }
 
-    /// Take the last value encountered for each sample.
-    Last as "last";
-
-    /// Take the value which is in the given percentile for each sample.
-    Percentile as "percentile" {
-        /// Which percentile to sample, as a value between 0-1.0
-        percentile: float;
+    /// An eagle.
+    Eagle as "eagle" {
+        /// The wingspan of the eagle.
+        wingspan: u32;
     }
 }
 ```
 
-By default, sub-types are encoded as objects with a special `type` field.
+By default, sub-types are encoded as objects with a special _tag field_.
 This behavior can be controlled using the [`type_info`] attribute.
 
-For example using `new Sampling.Percentile(10, 0.5F)`:
+For example using `new Animal.Eagle("George", 8, 213)`:
 
 ```json
-{"type": "average", "sample_size": 10, "percentile": 0.5}
+{"type": "eagle", "name": "George", "age": 8, "wingspan": 213}
 ```
-
-The following attributes are supported on interfaces:
-
-[`type_info`]: #type-info
 
 ### Interface sub-types
 
@@ -512,7 +506,8 @@ interface Foo {
 
 The following are all attributes which can be added to interfaces.
 
-* [`#[type_info(..)]`](#type-info) attribute, controls how type information is encoded in the JSON object.
+* [`#[type_info(..)]`](#type-info) attribute, controls how type information is encoded in the JSON
+  object.
 
 The following is an example controlling which tag is used to encode the sub-type:
 
@@ -541,8 +536,19 @@ Valid strategies are:
 #### <a id="type-info-tagged" />`#[type_info(strategy = "tagged", tag = <string>)]`
 
 The default sub-type strategy.
+Sub-types are encoded as objects, with a special tag field indicated by the `tag` selector.
 
-Sub-types are encoded as objects, with a special tag field indicated by `tag`.
+By default interfaces are _internally tagged_, in that the field indicating the type lives in the
+same level as the fields.
+When interfaces are internally tagged, no field may conflict with the tag field as showcased here:
+
+```reproto
+interface Example {
+    Foo as "foo" {
+        type: string;
+    }
+}
+```
 
 The following is an example specification and the JSON it corresponds to:
 

@@ -1,0 +1,7 @@
+#[type_info(strategy = "tagged", tag = "@type")]
+interface Example {
+  Foo {
+    /// Conflicts with explicit strategy.
+    type: string as "@type";
+  }
+}

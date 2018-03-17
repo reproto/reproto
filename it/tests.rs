@@ -56,4 +56,8 @@ define!{
     tuple => {},
     versions => {},
     default_naming => {},
+    ui => {
+        ui.check("interface_conflict");
+        ui.check("interface_conflict2");
+    },
 }
