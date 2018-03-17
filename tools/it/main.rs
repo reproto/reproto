@@ -1,3 +1,4 @@
+extern crate diff;
 #[macro_use]
 extern crate failure;
 extern crate it;
@@ -7,7 +8,7 @@ use it::{Action, Instance, Language, Project, Reproto, Result};
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::time::Instant;
 
@@ -22,46 +23,115 @@ fn test(command: &str, args: &[&str]) -> bool {
 }
 
 /// Detect supported languages
-fn detect() -> Vec<Language> {
-    let mut out = vec![Language::Json, Language::Reproto];
+fn detect() -> HashSet<Language> {
+    let mut out = HashSet::new();
+    out.extend(vec![Language::Json, Language::Reproto]);
 
     if test("mvn", &["--version"]) {
-        out.push(Language::Java);
+        out.insert(Language::Java);
     }
 
     if test("python", &["--version"]) {
-        out.push(Language::Python);
+        out.insert(Language::Python);
     }
 
     if test("python3", &["--version"]) {
-        out.push(Language::Python3);
+        out.insert(Language::Python3);
     }
 
     if test("cargo", &["--version"]) {
-        out.push(Language::Rust);
+        out.insert(Language::Rust);
     }
 
     if test("node", &["--version"]) && test("babel", &["--version"]) {
-        out.push(Language::JavaScript);
+        out.insert(Language::JavaScript);
     }
 
     if test("dotnet", &["--version"]) {
-        out.push(Language::Csharp);
+        out.insert(Language::Csharp);
     }
 
     if test("swift", &["--version"]) {
-        out.push(Language::Swift);
+        out.insert(Language::Swift);
     }
 
     if test("go", &["version"]) {
-        out.push(Language::Go);
+        out.insert(Language::Go);
     }
 
     out
 }
 
+/// Print the differences between the two provided paths.
+fn print_differences(source: &Path, target: &Path, errors: &[it::utils::Diff]) {
+    use it::utils::Diff::*;
+
+    println!(
+        "differences between {} and {}",
+        source.display(),
+        target.display(),
+    );
+
+    for e in errors {
+        match *e {
+            MissingDir(ref loc, ref dir) => {
+                println!("missing dir in {}:{}", loc.display(), dir.display());
+            }
+            ExpectedDir(ref loc, ref file) => {
+                println!("expected dir in {}:{}", loc.display(), file.display());
+            }
+            MissingFile(ref loc, ref file) => {
+                println!("missing file in {}:{}", loc.display(), file.display());
+            }
+            ExpectedFile(ref loc, ref file) => {
+                println!("expected file in {}:{}", loc.display(), file.display());
+            }
+            Mismatch(ref src, _, ref mismatch) => {
+                let added = mismatch
+                    .iter()
+                    .map(|m| match m {
+                        &diff::Result::Right(_) => 1,
+                        _ => 0,
+                    })
+                    .sum::<u32>();
+
+                let removed = mismatch
+                    .iter()
+                    .map(|m| match m {
+                        &diff::Result::Left(_) => 1,
+                        _ => 0,
+                    })
+                    .sum::<u32>();
+
+                println!("{}: +{}, -{}", src.display(), added, removed);
+
+                for m in mismatch {
+                    match m {
+                        &diff::Result::Left(ref l) => println!("-{}", l),
+                        &diff::Result::Right(ref r) => println!("+{}", r),
+                        &diff::Result::Both(ref l, _) => println!(" {}", l),
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn try_main() -> Result<()> {
-    let languages = detect();
+    let project_languages = detect();
+
+    let all_languages = vec![
+        it::Language::Csharp,
+        it::Language::Go,
+        it::Language::Java,
+        it::Language::JavaScript,
+        it::Language::Json,
+        it::Language::Python,
+        it::Language::Python3,
+        it::Language::Reproto,
+        it::Language::Rust,
+        it::Language::Swift,
+    ];
 
     let mut root = env::current_dir()?;
     let mut args = env::args();
@@ -106,7 +176,8 @@ fn try_main() -> Result<()> {
     let reproto = Reproto::from_project(cli)?;
 
     let mut project = Project::new(
-        &languages,
+        &project_languages,
+        &all_languages,
         &reproto,
         do_checks,
         do_structures,
@@ -158,9 +229,43 @@ fn try_main() -> Result<()> {
     if res.len() > 0 {
         for (i, e) in res.iter().enumerate() {
             eprintln!("error #{}: {}", i, e);
+
+            if let Some(error) = e.root_cause().downcast_ref::<it::Error>() {
+                match *error {
+                    it::Error::CheckFailed {
+                        ref expected,
+                        ref actual,
+                    } => {
+                        if let Some(expected) = expected.as_ref() {
+                            println!("Expected:");
+                            print!("{}", expected);
+                        } else {
+                            println!("# Expected *Nothing* (no file)");
+                        }
+
+                        println!("# Actual:");
+                        print!("{}", actual);
+                    }
+                    it::Error::Differences {
+                        ref source,
+                        ref target,
+                        ref errors,
+                    } => {
+                        print_differences(source, target, errors);
+                    }
+                }
+
+                continue;
+            }
+
+            for cause in e.causes() {
+                println!("Caused by: {}", cause);
+            }
+
+            continue;
         }
 
-        bail!("encountered {} error(s)", res.len());
+        bail!("Encountered {} error(s)", res.len());
     }
 
     Ok(())

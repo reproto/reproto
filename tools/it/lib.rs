@@ -19,8 +19,34 @@ use std::process::{Command, Stdio};
 use std::result;
 use std::str;
 use std::time::{Duration, Instant};
+use failure::ResultExt;
 
-mod utils;
+pub mod utils;
+
+#[derive(Debug)]
+pub struct Test(String);
+
+impl fmt::Display for Test {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(fmt)
+    }
+}
+
+#[derive(Debug, Fail)]
+pub enum Error {
+    #[fail(display = "check failed")]
+    CheckFailed {
+        expected: Option<CheckResult>,
+        actual: CheckResult,
+    },
+
+    #[fail(display = "differences between two directories")]
+    Differences {
+        source: PathBuf,
+        target: PathBuf,
+        errors: Vec<utils::Diff>,
+    },
+}
 
 pub type Result<T> = result::Result<T, failure::Error>;
 
@@ -88,7 +114,7 @@ where
     C: FnOnce() -> Result<()>,
 {
     let before = Instant::now();
-    let res = cb().map_err(|e| format_err!("{}: {}", id, e));
+    let res = cb().context(Test(id.to_string())).map_err(Into::into);
     let duration = Instant::now() - before;
 
     if res.is_err() {
@@ -237,6 +263,8 @@ impl Reproto {
 
         cmd.arg("check");
 
+        // Do not use the local repository.
+        cmd.arg("--no-repository");
         // Path to resolve packages from.
         cmd.args(&["--path", check.path.display().to_string().as_str()]);
 
@@ -249,10 +277,22 @@ impl Reproto {
         let stdout = str::from_utf8(&output.stdout)?;
         let stderr = str::from_utf8(&output.stderr)?;
 
+        let stdout = if !stdout.is_empty() {
+            stdout.lines().map(|s| s.to_string()).collect()
+        } else {
+            vec![]
+        };
+
+        let stderr = if !stderr.is_empty() {
+            stderr.lines().map(|s| s.to_string()).collect()
+        } else {
+            vec![]
+        };
+
         Ok(CheckResult {
             status: output.status.success(),
-            stdout: stdout.lines().map(|s| s.to_string()).collect(),
-            stderr: stderr.lines().map(|s| s.to_string()).collect(),
+            stdout: stdout,
+            stderr: stderr,
         })
     }
 }
@@ -399,16 +439,25 @@ pub struct CheckResult {
 impl fmt::Display for CheckResult {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         writeln!(fmt, "status: {}", self.status)?;
-        writeln!(fmt, "stdout:")?;
 
-        for line in &self.stdout {
-            writeln!(fmt, "{}", line)?;
+        if self.stdout.is_empty() {
+            writeln!(fmt, "stdout *empty*")?;
+        } else {
+            writeln!(fmt, "stdout:")?;
+
+            for line in &self.stdout {
+                writeln!(fmt, "{}", line)?;
+            }
         }
 
-        writeln!(fmt, "stderr:")?;
+        if self.stderr.is_empty() {
+            writeln!(fmt, "stderr *empty*")?;
+        } else {
+            writeln!(fmt, "stderr:")?;
 
-        for line in &self.stderr {
-            writeln!(fmt, "{}", line)?;
+            for line in &self.stderr {
+                writeln!(fmt, "{}", line)?;
+            }
         }
 
         Ok(())
@@ -467,7 +516,7 @@ impl<'a> CheckRunner<'a> {
 
                 let result = self.reproto.check(self.check())?;
 
-                let bytes = json::to_string(&result)?;
+                let bytes = json::to_string_pretty(&result)?;
 
                 let mut f = File::create(check_path)?;
                 f.write_all(bytes.as_bytes())?;
@@ -476,11 +525,10 @@ impl<'a> CheckRunner<'a> {
                 let actual = self.reproto.check(self.check())?;
 
                 if !check_path.is_file() {
-                    bail!(
-                        "ACTUAL:\n{}\nNO EXPECTED: no such file: {}",
-                        actual,
-                        check_path.display()
-                    );
+                    return Err(Error::CheckFailed {
+                        expected: None,
+                        actual: actual,
+                    }.into());
                 }
 
                 let f = File::open(&check_path)
@@ -512,15 +560,14 @@ impl<'a> Runner for CheckRunner<'a> {
 
     /// Run the suite.
     fn run(&self) -> Result<()> {
-        timed_run(
-            format!(
-                "check {:20} (instance: {}, package: {})",
-                self.test,
-                self.instance.as_str(),
-                self.package.as_str(),
-            ),
-            || self.try_run(),
-        )
+        let id = format!(
+            "check {} (instance: {}, package: {})",
+            self.test,
+            self.instance.as_str(),
+            self.package.as_str(),
+        );
+
+        timed_run(id, || self.try_run())
     }
 }
 
@@ -752,15 +799,14 @@ impl<'a> Runner for ProjectRunner<'a> {
 
     /// Run the suite.
     fn run(&self) -> Result<()> {
-        timed_run(
-            format!(
-                "project {:20} (lang: {}, instance: {})",
-                self.test,
-                self.language.name(),
-                self.instance.as_str(),
-            ),
-            || self.try_run(),
-        )
+        let id = format!(
+            "project {} (lang: {}, instance: {})",
+            self.test,
+            self.language.name(),
+            self.instance.as_str(),
+        );
+
+        timed_run(id, || self.try_run())
     }
 }
 
@@ -803,8 +849,6 @@ impl<'a> StructureRunner<'a> {
     }
 
     fn try_run(&self) -> Result<()> {
-        use utils::Diff::*;
-
         match self.action {
             Action::Update => {
                 if self.expected_struct.is_dir() {
@@ -831,65 +875,11 @@ impl<'a> StructureRunner<'a> {
                     return Ok(());
                 }
 
-                println!(
-                    "differences between {} ({}) and {} ({})",
-                    self.expected_struct.display(),
-                    utils::Location::Source.display(),
-                    self.target_struct.display(),
-                    utils::Location::Dest.display(),
-                );
-
-                for e in errors {
-                    match e {
-                        MissingDir(loc, dir) => {
-                            println!("missing dir in {}:{}", loc.display(), dir.display());
-                        }
-                        ExpectedDir(loc, file) => {
-                            println!("expected dir in {}:{}", loc.display(), file.display());
-                        }
-                        MissingFile(loc, file) => {
-                            println!("missing file in {}:{}", loc.display(), file.display());
-                        }
-                        ExpectedFile(loc, file) => {
-                            println!("expected file in {}:{}", loc.display(), file.display());
-                        }
-                        Mismatch(src, _, mismatch) => {
-                            let added = mismatch
-                                .iter()
-                                .map(|m| match m {
-                                    &diff::Result::Right(_) => 1,
-                                    _ => 0,
-                                })
-                                .sum::<u32>();
-
-                            let removed = mismatch
-                                .iter()
-                                .map(|m| match m {
-                                    &diff::Result::Left(_) => 1,
-                                    _ => 0,
-                                })
-                                .sum::<u32>();
-
-                            println!("{}: +{}, -{}", src.display(), added, removed);
-
-                            for m in mismatch {
-                                match m {
-                                    diff::Result::Left(l) => println!("-{}", l),
-                                    diff::Result::Right(r) => println!("+{}", r),
-                                    diff::Result::Both(l, _) => println!(" {}", l),
-                                }
-                            }
-                        }
-                    }
-                }
-
-                bail!(
-                    "differences between {} ({}) and {} ({})",
-                    self.expected_struct.display(),
-                    utils::Location::Source.display(),
-                    self.target_struct.display(),
-                    utils::Location::Dest.display(),
-                );
+                return Err(Error::Differences {
+                    source: self.expected_struct.to_owned(),
+                    target: self.target_struct.to_owned(),
+                    errors: errors,
+                }.into());
             }
         }
 
@@ -904,15 +894,14 @@ impl<'a> Runner for StructureRunner<'a> {
 
     /// Run the suite.
     fn run(&self) -> Result<()> {
-        timed_run(
-            format!(
-                "structure {:20} (lang: {}, instance: {})",
-                self.test,
-                self.language.name(),
-                self.instance.as_str(),
-            ),
-            || self.try_run(),
-        )
+        let id = format!(
+            "structure {} (lang: {}, instance: {})",
+            self.test,
+            self.language.name(),
+            self.instance.as_str(),
+        );
+
+        timed_run(id, || self.try_run())
     }
 }
 
@@ -1015,7 +1004,8 @@ impl Instance {
 /// A project, collecting all suites.
 #[derive(Debug)]
 pub struct Project<'a> {
-    languages: &'a [Language],
+    project_languages: &'a HashSet<Language>,
+    all_languages: &'a [Language],
     reproto: &'a Reproto,
     /// Run checks.
     do_checks: bool,
@@ -1036,7 +1026,8 @@ pub struct Project<'a> {
 
 impl<'a> Project<'a> {
     pub fn new(
-        languages: &'a [Language],
+        project_languages: &'a HashSet<Language>,
+        all_languages: &'a [Language],
         reproto: &'a Reproto,
         do_checks: bool,
         do_structures: bool,
@@ -1044,7 +1035,8 @@ impl<'a> Project<'a> {
         action: Action,
     ) -> Self {
         Self {
-            languages: languages,
+            project_languages: project_languages,
+            all_languages: all_languages,
             reproto: reproto,
             do_checks: do_checks,
             do_structures: do_structures,
@@ -1122,7 +1114,7 @@ impl<'a> Project<'a> {
                 }
             }
 
-            for language in self.languages {
+            for language in self.all_languages.iter() {
                 if !suite.include.is_empty() && !suite.include.contains(language) {
                     continue;
                 }
@@ -1152,7 +1144,9 @@ impl<'a> Project<'a> {
                         continue;
                     }
 
-                    if self.do_project && language.supports_project() {
+                    if self.do_project && language.supports_project()
+                        && self.project_languages.contains(language)
+                    {
                         let source_workdir = language.source_workdir(root);
                         let target_workdir =
                             language.path(root, &["target", "workdir", suite.test, name]);
