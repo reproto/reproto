@@ -67,6 +67,11 @@ const INTERFACE_REPROTO: string = require("raw-loader!../static/interface.reprot
 const DEFAULT_NEW_FILE_REPROTO: string = require("raw-loader!../static/default-new.reproto");
 const logo = require("../static/logo.256.png");
 
+interface Dialog {
+  className: string;
+  message: any;
+}
+
 interface Compiled {
   request: Derive;
   result: DeriveResult;
@@ -630,10 +635,8 @@ export class Main extends React.Component<MainProps, MainState> {
     let input_mode = FORMAT_LANGUAGE_MAP[format as string];
     let output_mode = FORMAT_LANGUAGE_MAP[output as string];
 
-    let errorMessage;
+    let dialogs: Dialog[] = [];
     let compiledFiles: DeriveFile[] = [];
-
-    var wasmLoading;
 
     var settingsForm = undefined;
     var view = undefined;
@@ -766,23 +769,21 @@ export class Main extends React.Component<MainProps, MainState> {
     }
 
     if (!derive) {
-      wasmLoading = (
-        <div className="modal" role="dialog" style={{display: "block"}}>
-          <div className="modal-dialog" role="document">
-            <div className="modal-content">
-              <div className="modal-body">
-                <div style={{textAlign: "center"}}>
-                  <div className="col-auto">
-                    <i className="fa fa-spinner fa-spin" style={{fontSize: "24px"}} /><br />
-                  </div>
-                  <br />
-                  <p>Loading WASM component...</p>
-                </div>
-              </div>
+      dialogs.push({
+        className: "alert alert-info",
+        message: (
+          <div className="clearfix">
+            <i className="fa fa-spinner fa-spin" style={{display: "inline-block", float: "left", fontSize: "150%"}} />
+            <div className="ml-2" style={{display: "inline-block", float: "left"}}>
+              <span>
+                Loading <a href="https://github.com/reproto/reproto/blob/master/eval/reproto_wasm.rs" target="_blank">reproto wasm</a>
+              </span>
+              <br />
+              <small>Did you know that wasm <a href="https://hacks.mozilla.org/2018/01/making-webassembly-even-faster-firefoxs-new-streaming-and-tiering-compiler/">loads <em>faster</em> in Firefox</a>?</small>
             </div>
           </div>
-        </div>
-      );
+        ),
+      });
     }
 
     if (format) {
@@ -827,29 +828,26 @@ export class Main extends React.Component<MainProps, MainState> {
       }
 
       if (error) {
-        errorMessage = (
-          <div className="error row mt-2">
-            <div className="col">
-              {error_markers.length == 0 ?
-                  <div className="alert alert-danger">{error}</div>
-              : undefined }
-              {error_markers.map((m, key) => {
-                return (
-                  <div key={key} className="alert alert-danger">
-                    {m.row_start + 1}:{m.col_start}: {m.message}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
+        if (error_markers.length == 0) {
+          dialogs.push({
+            className: "alert alert-danger",
+            message: String(error),
+          });
+        }
+
+        error_markers.forEach(m => {
+          dialogs.push({
+            className: "alert alert-danger",
+            message: (
+              <small>{m.row_start + 1}:{m.col_start}: {m.message}</small>
+            ),
+          });
+        });
       }
     }
 
     return (
       <div className="box">
-        {wasmLoading}
-
         <div className="box-row header">
           <nav className="navbar navbar-expand-lg navbar-light bg-light">
             <a className="navbar-brand" href="https://github.com/reproto">
@@ -1006,7 +1004,17 @@ export class Main extends React.Component<MainProps, MainState> {
             </div>
 
             <div className="col output">
-              {errorMessage}
+              {dialogs.length > 0 ? (
+                <div className="dialogs row mt-2">
+                  <div className="col">
+                    {dialogs.map((d, key) => (
+                      <div key={key} className={d.className}>
+                        {d.message}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : undefined}
 
               {compiledFiles.map((f, index) => {
                 return (
