@@ -17,6 +17,7 @@
   * [Enums](#enums)
   * [Interfaces](#interfaces)
     * [Interface sub-types](#interface-sub-types)
+    * [Interface attributes](#interface-attributes)
   * [Tuples](#tuples)
   * [Services](#services)
     * [Endpoints](#endpoints)
@@ -507,9 +508,28 @@ interface Foo {
 }
 ```
 
-### <a id="type-info" />`#[type_info(strategy = <string>, ...)]`
+### Interface attributes
 
-This annotation controls which strategy is used for determining sub-types in [interfaces].
+The following are all attributes which can be added to interfaces.
+
+* [`#[type_info(..)]`](#type-info) attribute, controls how type information is encoded in the JSON object.
+
+The following is an example controlling which tag is used to encode the sub-type:
+
+```reproto
+#[type_info(strategy = "tagged", tag = "@class")]
+interface Foo {
+    /// Would be encoded as `{"@class": "bar"}`
+    Bar as "bar";
+
+    /// Would be encoded as `{"@class": "baz"}`
+    Baz as "baz";
+}
+```
+
+#### <a id="type-info" />`#[type_info(strategy = <string>, ...)]`
+
+This attribute controls which strategy is used for determining sub-types in [interfaces].
 
 Valid strategies are:
 
@@ -518,7 +538,7 @@ Valid strategies are:
 [interfaces]: #interfaces
 [`tagged`]: #type-info-tagged
 
-### <a id="type-info-tagged" />`#[type_info(strategy = "tagged", tag = <string>)]`
+#### <a id="type-info-tagged" />`#[type_info(strategy = "tagged", tag = <string>)]`
 
 The default sub-type strategy.
 
