@@ -1,5 +1,5 @@
 // vim: ft=rust
-use core::{RpNumber, Loc, RpModifier, RpPackage, Object};
+use core::{RpNumber, Loc, RpPackage, Object};
 use std::rc::Rc;
 use ast::*;
 use lexer::{self, Token};
@@ -179,9 +179,7 @@ EnumVariant: EnumVariant<'input> =
         argument: argument.map(|a| a.1),
     };
 
-Modifier: RpModifier =
-    <modifier:"?"?> =>
-    modifier.map(|_| RpModifier::Optional).unwrap_or(RpModifier::Required);
+Optional: bool = <modifier:"?"?> => modifier.map(|_| true).unwrap_or(false);
 
 pub TypeMember: TypeMember<'input> = {
     <field:Item<Field>> => TypeMember::Field(field),
@@ -197,9 +195,9 @@ Code: Code<'input> =
     };
 
 Field: Field<'input> =
-    <name:Ident> <modifier:Modifier> ":" <ty:TypeSpec> <alias:FieldAlias?> ";" =>
+    <name:Ident> <optional:Optional> ":" <ty:TypeSpec> <alias:FieldAlias?> ";" =>
     Field {
-        modifier: modifier,
+        required: !optional,
         name: name,
         ty: ty,
         field_as: alias,

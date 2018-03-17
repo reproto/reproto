@@ -1,6 +1,6 @@
 //! Model for enum types
 
-use super::{RpField, RpModifier, RpType, RpValue};
+use RpValue;
 use std::fmt;
 
 #[derive(Debug, Clone, Serialize)]
@@ -16,25 +16,6 @@ impl RpEnumType {
         match (self, value) {
             (&String, &RpValue::String(_)) => true,
             _ => false,
-        }
-    }
-
-    pub fn as_type(&self) -> RpType {
-        use self::RpEnumType::*;
-
-        match *self {
-            String | Generated => RpType::String,
-        }
-    }
-
-    pub fn as_field(&self) -> RpField {
-        RpField {
-            modifier: RpModifier::Required,
-            ident: String::from("value"),
-            safe_ident: None,
-            comment: vec![],
-            ty: self.as_type(),
-            field_as: None,
         }
     }
 }

@@ -16,7 +16,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "a",
           "comment": [],
           "type": {
@@ -32,7 +32,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "b",
           "comment": [],
           "type": {
@@ -81,7 +81,7 @@
           "decls": [],
           "fields": [
             {
-              "modifier": "required",
+              "required": true,
               "ident": "field",
               "comment": [],
               "type": {
@@ -95,7 +95,7 @@
       ],
       "fields": [
         {
-          "modifier": "required",
+          "required": true,
           "ident": "b",
           "comment": [],
           "type": {

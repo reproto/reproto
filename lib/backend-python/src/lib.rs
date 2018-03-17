@@ -15,16 +15,16 @@ extern crate toml;
 
 mod codegen;
 mod compiler;
-mod python_field;
-mod python_file_spec;
 mod module;
 mod utils;
 
-use backend::Initializer;
+use backend::{Initializer, IntoBytes};
 use codegen::ServiceCodegen;
 use compiler::Compiler;
-use core::Context;
-use core::errors::*;
+use core::RpPackage;
+use core::errors::Result;
+use core::{Context, Loc, Pos, RpField, RpType};
+use genco::{Python, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
@@ -130,6 +130,21 @@ impl Options {
     }
 }
 
+pub struct FileSpec<'el>(pub Tokens<'el, Python<'el>>);
+
+impl<'el> Default for FileSpec<'el> {
+    fn default() -> Self {
+        FileSpec(Tokens::new())
+    }
+}
+
+impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
+    fn into_bytes(self, _: &Compiler<'el>, _: &RpPackage) -> Result<Vec<u8>> {
+        let out = self.0.join_line_spacing().to_file()?;
+        Ok(out.into_bytes())
+    }
+}
+
 pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     use self::PythonModule::*;
 
@@ -150,5 +165,7 @@ fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()>
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = setup_options(modules)?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    Compiler::new(&env, options, handle.as_ref()).compile()
+    let variant_field = Loc::new(RpField::new("ordinal", RpType::String), Pos::empty());
+
+    Compiler::new(&env, &variant_field, options, handle.as_ref()).compile()
 }

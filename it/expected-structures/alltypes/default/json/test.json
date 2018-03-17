@@ -16,7 +16,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "boolean_type",
           "comment": [],
           "type": {
@@ -24,7 +24,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "string_type",
           "comment": [],
           "type": {
@@ -32,7 +32,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "datetime_type",
           "comment": [],
           "type": {
@@ -40,7 +40,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "unsigned_32",
           "comment": [],
           "type": {
@@ -49,7 +49,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "unsigned_64",
           "comment": [],
           "type": {
@@ -58,7 +58,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "signed_32",
           "comment": [],
           "type": {
@@ -67,7 +67,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "signed_64",
           "comment": [],
           "type": {
@@ -76,7 +76,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "float_type",
           "comment": [],
           "type": {
@@ -84,7 +84,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "double_type",
           "comment": [],
           "type": {
@@ -92,7 +92,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "bytes_type",
           "comment": [],
           "type": {
@@ -100,7 +100,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "any_type",
           "comment": [],
           "type": {
@@ -108,7 +108,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "array_type",
           "comment": [],
           "type": {
@@ -127,7 +127,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "array_of_array_type",
           "comment": [],
           "type": {
@@ -149,7 +149,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "map_type",
           "comment": [],
           "type": {

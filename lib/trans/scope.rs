@@ -14,6 +14,7 @@ pub struct Root {
     prefixes: HashMap<String, RpVersionedPackage>,
     pub endpoint_naming: Option<Box<Naming>>,
     pub field_naming: Option<Box<Naming>>,
+    /// Language keywords to avoid.
     keywords: Rc<HashMap<String, String>>,
     safe_packages: bool,
     package_naming: Option<Box<Naming>>,
@@ -210,6 +211,7 @@ mod tests {
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let prefixes = HashMap::new();
         let keywords = Rc::new(HashMap::new());
+
         let s = Scope::new(ctx, None, package, prefixes, keywords, false, None, None);
 
         let s2 = s.child("foo");

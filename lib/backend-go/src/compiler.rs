@@ -299,18 +299,22 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
         let name = self.convert_name(&body.name)?;
-        // marker method
-        let m = toks!["is", name.clone()];
 
         out.0.push({
             let mut t = Tokens::new();
 
-            t.push_into(|t| {
+            t.try_push_into::<Error, _>(|t| {
                 t.push(Comments(&body.comment));
-                t.push(toks!["type ", name.clone(), " interface {"]);
-                t.nested(toks![m.clone(), "()"]);
+                t.push(toks!["type ", name.clone(), " struct {"]);
+
+                for sub_type in &body.sub_types {
+                    let sub_name = self.convert_name(&sub_type.name)?;
+                    nested!(t, sub_type.ident, " *", sub_name);
+                }
+
                 t.push("}");
-            });
+                Ok(())
+            })?;
 
             t.push({
                 let mut t = Tokens::new();
@@ -326,18 +330,6 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
                             .chain(sub_type.fields.iter())
                             .map(Loc::value),
                     )?);
-
-                    // implement marker interface
-                    t.push_into(|t| {
-                        t.push(toks![
-                            "func (this ",
-                            sub_name.clone(),
-                            ") ",
-                            m.clone(),
-                            "() {"
-                        ]);
-                        t.push("}");
-                    });
                 }
 
                 t.join_line_spacing()

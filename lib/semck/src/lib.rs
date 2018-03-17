@@ -444,7 +444,7 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
     ) -> Result<()> {
         common_check_field(Patch, violations, from_field, to_field)?;
 
-        if to_field.modifier != from_field.modifier {
+        if to_field.required != from_field.required {
             violations.push(FieldModifierChange(
                 Patch,
                 Loc::pos(from_field).into(),

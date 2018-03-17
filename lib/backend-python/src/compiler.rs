@@ -1,25 +1,24 @@
 //! Python Compiler
 
-use {Options, EXT, INIT_PY, PYTHON_CONTEXT, TYPE_SEP};
+use {FileSpec, Options, EXT, INIT_PY, PYTHON_CONTEXT, TYPE_SEP};
 use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageProcessor,
               PackageUtils};
 use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::{ForEachLoc, Handle, Loc, RelativePathBuf, RpDecl, RpEnumBody, RpField, RpInterfaceBody,
-           RpModifier, RpName, RpPackage, RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType,
-           RpTypeBody, RpVersionedPackage, WithPos};
+           RpName, RpPackage, RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody,
+           RpVersionedPackage, WithPos};
 use core::errors::*;
-use genco::{Cons, Element, Quoted, Tokens};
+use genco::{Element, Quoted, Tokens};
 use genco::python::{imported, Python};
 use naming::{self, Naming};
-use python_field::PythonField;
-use python_file_spec::PythonFileSpec;
 use std::collections::BTreeMap;
-use std::iter;
 use std::rc::Rc;
 use trans::{self, Environment};
+use std::iter;
 
 pub struct Compiler<'el> {
     pub env: &'el Environment,
+    variant_field: &'el Loc<RpField>,
     to_lower_snake: naming::ToLowerSnake,
     dict: Element<'static, Python<'static>>,
     enum_enum: Python<'static>,
@@ -28,9 +27,15 @@ pub struct Compiler<'el> {
 }
 
 impl<'el> Compiler<'el> {
-    pub fn new(env: &'el Environment, options: Options, handle: &'el Handle) -> Compiler<'el> {
+    pub fn new(
+        env: &'el Environment,
+        variant_field: &'el Loc<RpField>,
+        options: Options,
+        handle: &'el Handle,
+    ) -> Compiler<'el> {
         Compiler {
             env: env,
+            variant_field: variant_field,
             to_lower_snake: naming::to_lower_snake(),
             dict: "dict".into(),
             enum_enum: imported("enum").name("Enum"),
@@ -48,10 +53,10 @@ impl<'el> Compiler<'el> {
     fn raise_if_none(
         &self,
         toks: Tokens<'el, Python<'el>>,
-        field: &PythonField,
+        field: &RpField,
     ) -> Tokens<'el, Python<'el>> {
         let mut raise_if_none = Tokens::new();
-        let required_error = format!("{}: is a required field", field.name.as_ref()).quoted();
+        let required_error = format!("{}: is a required field", field.name()).quoted();
 
         raise_if_none.push(toks!["if ", toks, " is None:"]);
         raise_if_none.nested(toks!["raise Exception(", required_error, ")"]);
@@ -59,12 +64,15 @@ impl<'el> Compiler<'el> {
         raise_if_none
     }
 
-    fn encode_method(
+    fn encode_method<I>(
         &self,
-        fields: &[PythonField<'el>],
+        fields: I,
         builder: Tokens<'el, Python<'el>>,
         extra: Option<Tokens<'el, Python<'el>>>,
-    ) -> Result<Tokens<'el, Python<'el>>> {
+    ) -> Result<Tokens<'el, Python<'el>>>
+    where
+        I: IntoIterator<Item = &'el Loc<RpField>>,
+    {
         let mut encode_body = Tokens::new();
 
         encode_body.push(toks!["data = ", builder.clone(), "()"]);
@@ -74,30 +82,27 @@ impl<'el> Compiler<'el> {
         }
 
         for field in fields {
-            let var_string = field.name.clone().quoted();
-            let field_toks = toks!["self.", field.safe_ident.clone()];
+            let var_string = field.name().quoted();
+            let field_toks = toks!["self.", field.safe_ident()];
 
             let value_toks = self.dynamic_encode(&field.ty, field_toks.clone())?;
 
-            match field.modifier {
-                RpModifier::Optional => {
-                    let mut check_if_none = Tokens::new();
+            if field.is_optional() {
+                let mut check_if_none = Tokens::new();
 
-                    check_if_none.push(toks!["if ", field_toks, " is not None:"]);
+                check_if_none.push(toks!["if ", field_toks, " is not None:"]);
 
-                    let toks = toks!["data[", var_string, "] = ", value_toks];
+                let toks = toks!["data[", var_string, "] = ", value_toks];
 
-                    check_if_none.nested(toks);
+                check_if_none.nested(toks);
 
-                    encode_body.push(check_if_none);
-                }
-                _ => {
-                    encode_body.push(self.raise_if_none(field_toks, field));
+                encode_body.push(check_if_none);
+            } else {
+                encode_body.push(self.raise_if_none(field_toks, field));
 
-                    let toks = toks!["data[", var_string, "] = ", value_toks];
+                let toks = toks!["data[", var_string, "] = ", value_toks];
 
-                    encode_body.push(toks);
-                }
+                encode_body.push(toks);
             }
         }
 
@@ -109,12 +114,15 @@ impl<'el> Compiler<'el> {
         Ok(encode)
     }
 
-    fn encode_tuple_method(&self, fields: &[PythonField<'el>]) -> Result<Tokens<'el, Python<'el>>> {
+    fn encode_tuple_method<I>(&self, fields: I) -> Result<Tokens<'el, Python<'el>>>
+    where
+        I: IntoIterator<Item = &'el Loc<RpField>>,
+    {
         let mut values = Tokens::new();
         let mut encode_body = Tokens::new();
 
-        for field in fields {
-            let toks = toks!["self.", field.safe_ident.clone()];
+        for field in fields.into_iter() {
+            let toks = toks!["self.", field.safe_ident()];
             encode_body.push(self.raise_if_none(toks.clone(), field));
             values.append(self.dynamic_encode(&field.ty, toks)?);
         }
@@ -127,16 +135,16 @@ impl<'el> Compiler<'el> {
         Ok(encode)
     }
 
-    fn repr_method<'a, 'b: 'a, I>(&self, name: Rc<String>, fields: I) -> Tokens<'b, Python<'b>>
+    fn repr_method<I>(&self, name: Rc<String>, fields: I) -> Tokens<'el, Python<'el>>
     where
-        I: IntoIterator<Item = &'a PythonField<'b>>,
+        I: IntoIterator<Item = &'el Loc<RpField>>,
     {
         let mut args = Vec::new();
         let mut vars = Tokens::new();
 
         for field in fields {
             args.push(format!("{}:{{!r}}", field.ident.as_str()));
-            vars.append(toks!["self.", field.safe_ident.clone()]);
+            vars.append(toks!["self.", field.safe_ident()]);
         }
 
         let format = if !args.is_empty() {
@@ -186,14 +194,15 @@ impl<'el> Compiler<'el> {
         check.into()
     }
 
-    fn decode_method<F>(
+    fn decode_method<F, I>(
         &self,
         name: &RpName,
-        fields: &[PythonField<'el>],
+        fields: I,
         variable_fn: F,
     ) -> Result<Tokens<'el, Python<'el>>>
     where
-        F: Fn(usize, &PythonField<'el>) -> Tokens<'el, Python<'el>>,
+        F: Fn(usize, &'el RpField) -> Tokens<'el, Python<'el>>,
+        I: IntoIterator<Item = &'el Loc<RpField>>,
     {
         let mut body = Tokens::new();
         let mut args = Tokens::new();
@@ -202,17 +211,14 @@ impl<'el> Compiler<'el> {
             let var_name = Rc::new(format!("f_{}", field.ident));
             let var = variable_fn(i, field);
 
-            let toks = match field.modifier {
-                RpModifier::Optional => {
-                    let var_name = toks!(var_name.clone());
-                    let var_toks = self.dynamic_decode(&field.ty, var_name.clone())?;
-                    self.optional_check(var_name.clone(), var, var_toks)
-                }
-                _ => {
-                    let data = toks!["data[", var.clone(), "]"];
-                    let var_toks = self.dynamic_decode(&field.ty, data)?;
-                    toks![var_name.clone(), " = ", var_toks]
-                }
+            let toks = if field.is_optional() {
+                let var_name = toks!(var_name.clone());
+                let var_toks = self.dynamic_decode(&field.ty, var_name.clone())?;
+                self.optional_check(var_name.clone(), var, var_toks)
+            } else {
+                let data = toks!["data[", var.clone(), "]"];
+                let var_toks = self.dynamic_decode(&field.ty, data)?;
+                toks![var_name.clone(), " = ", var_toks]
             };
 
             body.push(toks);
@@ -231,9 +237,9 @@ impl<'el> Compiler<'el> {
         Ok(decode)
     }
 
-    fn build_constructor<'a, 'b: 'a, I>(&self, fields: I) -> Tokens<'b, Python<'b>>
+    fn build_constructor<I>(&self, fields: I) -> Tokens<'el, Python<'el>>
     where
-        I: IntoIterator<Item = &'a PythonField<'b>>,
+        I: IntoIterator<Item = &'el Loc<RpField>>,
     {
         let mut args = Tokens::new();
         let mut assign = Tokens::new();
@@ -241,13 +247,13 @@ impl<'el> Compiler<'el> {
         args.append("self");
 
         for field in fields {
-            args.append(field.safe_ident.clone());
+            args.append(field.safe_ident());
 
             assign.push(toks![
                 "self.",
-                field.safe_ident.clone(),
+                field.safe_ident(),
                 " = ",
-                field.safe_ident.clone(),
+                field.safe_ident(),
             ]);
         }
 
@@ -263,9 +269,9 @@ impl<'el> Compiler<'el> {
         constructor
     }
 
-    fn build_getters<'a, 'b: 'a, I>(&self, fields: I) -> Result<Vec<Tokens<'b, Python<'b>>>>
+    fn build_getters<I>(&self, fields: I) -> Result<Vec<Tokens<'el, Python<'el>>>>
     where
-        I: IntoIterator<Item = &'a PythonField<'b>>,
+        I: IntoIterator<Item = &'el Loc<RpField>>,
     {
         let mut result = Vec::new();
 
@@ -287,7 +293,7 @@ impl<'el> Compiler<'el> {
                     t.push("\"\"\"");
                 }
 
-                t.push(toks!["return self.", field.safe_ident.clone()]);
+                t.push(toks!["return self.", field.safe_ident()]);
                 t
             });
 
@@ -346,39 +352,6 @@ impl<'el> Compiler<'el> {
             self.convert_type(&body.name)?,
             ")",
         ])
-    }
-
-    fn enum_ident(field: PythonField) -> PythonField {
-        match field.safe_ident.as_str() {
-            "name" => field.with_safe_ident("_name".to_owned()),
-            "value" => field.with_safe_ident("_value".to_owned()),
-            "ordinal" => field.with_safe_ident("_ordinal".to_owned()),
-            _ => field,
-        }
-    }
-
-    fn into_python_field_with<F>(&self, field: &RpField, python_field_f: F) -> PythonField<'el>
-    where
-        F: Fn(PythonField) -> PythonField,
-    {
-        let comment = field
-            .comment
-            .iter()
-            .map(|c| Cons::from(Rc::new(c.to_string())))
-            .collect();
-
-        python_field_f(PythonField {
-            modifier: field.modifier,
-            ty: field.ty.clone(),
-            name: Rc::new(field.name().to_string()).into(),
-            ident: Rc::new(field.ident().to_string()),
-            safe_ident: Rc::new(field.safe_ident().to_string()),
-            comment: comment,
-        })
-    }
-
-    fn into_python_field(&self, field: &'el RpField) -> PythonField<'el> {
-        self.into_python_field_with(field, |ident| ident)
     }
 
     fn as_class(
@@ -587,7 +560,7 @@ impl<'el> DynamicEncode<'el> for Compiler<'el> {
 }
 
 impl<'el> PackageProcessor<'el> for Compiler<'el> {
-    type Out = PythonFileSpec<'el>;
+    type Out = FileSpec<'el>;
     type DeclIter = trans::environment::DeclIter<'el>;
 
     fn ext(&self) -> &str {
@@ -610,26 +583,21 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         let mut tuple_body = Tokens::new();
         let type_name = Rc::new(body.name.join(TYPE_SEP));
 
-        let fields: Vec<PythonField> = body.fields
-            .iter()
-            .map(|f| self.into_python_field(f))
-            .collect();
+        tuple_body.push(self.build_constructor(&body.fields));
 
-        tuple_body.push(self.build_constructor(&fields));
-
-        for getter in self.build_getters(&fields)? {
+        for getter in self.build_getters(&body.fields)? {
             tuple_body.push(getter);
         }
 
         tuple_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
-        let decode = self.decode_method(&body.name, &fields, |i, _| i.to_string().into())?;
+        let decode = self.decode_method(&body.name, &body.fields, |i, _| i.to_string().into())?;
         tuple_body.push(decode);
 
-        let encode = self.encode_tuple_method(&fields)?;
+        let encode = self.encode_tuple_method(&body.fields)?;
         tuple_body.push(encode);
 
-        let repr_method = self.repr_method(type_name.clone(), &fields);
+        let repr_method = self.repr_method(type_name.clone(), &body.fields);
         tuple_body.push(repr_method);
 
         let class = self.as_class(type_name, tuple_body);
@@ -641,40 +609,37 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
     fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
         let type_name = Rc::new(body.name.join(TYPE_SEP));
         let mut class_body = Tokens::new();
-        let variant_field = body.variant_type.as_field();
 
-        let field = self.into_python_field_with(&variant_field, Self::enum_ident);
+        class_body.push(self.build_constructor(iter::once(self.variant_field)));
 
-        class_body.push(self.build_constructor(iter::once(&field)));
-
-        for getter in self.build_getters(iter::once(&field))? {
+        for getter in self.build_getters(iter::once(self.variant_field))? {
             class_body.push(getter);
         }
 
         class_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
-        class_body.push(encode_method(&field)?);
-        class_body.push(decode_method(&field)?);
+        class_body.push(encode_method(self.variant_field)?);
+        class_body.push(decode_method(self.variant_field)?);
 
-        let repr_method = self.repr_method(type_name.clone(), iter::once(&field));
+        let repr_method = self.repr_method(type_name.clone(), iter::once(self.variant_field));
         class_body.push(repr_method);
 
         let class = self.as_class(type_name, class_body);
         out.0.push(class);
         return Ok(());
 
-        fn encode_method<'el>(field: &PythonField) -> Result<Tokens<'el, Python<'el>>> {
+        fn encode_method<'el>(field: &'el Loc<RpField>) -> Result<Tokens<'el, Python<'el>>> {
             let mut m = Tokens::new();
             m.push("def encode(self):");
-            m.nested(toks!["return self.", field.safe_ident.clone()]);
+            m.nested(toks!["return self.", field.safe_ident()]);
             Ok(m)
         }
 
-        fn decode_method<'el>(field: &PythonField) -> Result<Tokens<'el, Python<'el>>> {
+        fn decode_method<'el>(field: &'el Loc<RpField>) -> Result<Tokens<'el, Python<'el>>> {
             let mut decode_body = Tokens::new();
 
             let mut check = Tokens::new();
-            check.push(toks!["if value.", field.safe_ident.clone(), " == data:"]);
+            check.push(toks!["if value.", field.safe_ident(), " == data:"]);
             check.nested(toks!["return value"]);
 
             let mut member_loop = Tokens::new();
@@ -701,29 +666,24 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         let type_name = Rc::new(body.name.join(TYPE_SEP));
         let mut class_body = Tokens::new();
 
-        let fields: Vec<PythonField> = body.fields
-            .iter()
-            .map(|f| self.into_python_field(f))
-            .collect();
-
-        let constructor = self.build_constructor(&fields);
+        let constructor = self.build_constructor(&body.fields);
         class_body.push(constructor);
 
-        for getter in self.build_getters(&fields)? {
+        for getter in self.build_getters(&body.fields)? {
             class_body.push(getter);
         }
 
-        let decode = self.decode_method(&body.name, &fields, |_, field| {
-            toks!(field.name.clone().quoted())
+        let decode = self.decode_method(&body.name, &body.fields, |_, field| {
+            toks!(field.name().quoted())
         })?;
 
         class_body.push(decode);
 
-        let encode = self.encode_method(&fields, self.dict.clone().into(), None)?;
+        let encode = self.encode_method(&body.fields, self.dict.clone().into(), None)?;
 
         class_body.push(encode);
 
-        let repr_method = self.repr_method(type_name.clone(), &fields);
+        let repr_method = self.repr_method(type_name.clone(), &body.fields);
         class_body.push(repr_method);
         class_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
@@ -755,20 +715,17 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
             sub_type_body.push(toks!["TYPE = ", sub_type.name().quoted()]);
 
-            let fields: Vec<PythonField> = body.fields
-                .iter()
-                .chain(sub_type.fields.iter())
-                .map(|f| self.into_python_field(f))
-                .collect();
+            let fields: Vec<&Loc<RpField>> =
+                body.fields.iter().chain(sub_type.fields.iter()).collect();
 
-            let constructor = self.build_constructor(&fields);
+            let constructor = self.build_constructor(fields.iter().cloned());
             sub_type_body.push(constructor);
 
-            for getter in self.build_getters(&fields)? {
+            for getter in self.build_getters(fields.iter().cloned())? {
                 sub_type_body.push(getter);
             }
 
-            let decode = self.decode_method(&sub_type.name, &fields, |_, field| {
+            let decode = self.decode_method(&sub_type.name, fields.iter().cloned(), |_, field| {
                 toks!(field.ident.clone().quoted())
             })?;
 
@@ -779,7 +736,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
                     let tk: Tokens<'el, Python<'el>> = tag.as_str().quoted().into();
 
                     let encode = self.encode_method(
-                        &fields,
+                        fields.iter().cloned(),
                         self.dict.clone().into(),
                         Some(toks!["data[", tk, "] = ", sub_type.name().quoted(),]),
                     )?;
@@ -788,7 +745,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
                 }
             }
 
-            let repr_method = self.repr_method(sub_type_name.clone(), &fields);
+            let repr_method = self.repr_method(sub_type_name.clone(), fields.iter().cloned());
             sub_type_body.push(repr_method);
             sub_type_body.push_unless_empty(Code(&sub_type.codes, PYTHON_CONTEXT));
 
@@ -835,7 +792,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         Ok(())
     }
 
-    fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, PythonFileSpec<'el>>> {
+    fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, FileSpec<'el>>> {
         let mut enums = Vec::new();
 
         let mut files = self.do_populate_files(|decl| {

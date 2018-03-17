@@ -54,7 +54,7 @@ pub struct EndpointExtra<'el> {
 }
 
 pub struct ServiceAdded<'a, 'el: 'a> {
-    pub compiler: &'a Compiler,
+    pub compiler: &'a Compiler<'el>,
     pub body: &'el RpServiceBody,
     pub extra: &'a [EndpointExtra<'el>],
     pub spec: &'a mut Interface<'el>,

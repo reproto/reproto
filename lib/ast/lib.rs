@@ -1,6 +1,6 @@
 extern crate reproto_core as core;
 
-use core::{Loc, RpModifier, RpNumber, RpPackage, WithPos};
+use core::{Loc, RpNumber, RpPackage, WithPos};
 use std::borrow::Cow;
 use std::ops;
 use std::result;
@@ -173,7 +173,7 @@ pub enum EnumMember<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct Field<'input> {
-    pub modifier: RpModifier,
+    pub required: bool,
     pub name: Cow<'input, str>,
     pub ty: Type,
     pub field_as: Option<String>,
@@ -198,10 +198,7 @@ pub struct File<'input> {
 
 impl<'input> Field<'input> {
     pub fn is_optional(&self) -> bool {
-        match self.modifier {
-            RpModifier::Optional => true,
-            _ => false,
-        }
+        !self.required
     }
 }
 

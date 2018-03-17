@@ -14,15 +14,13 @@ extern crate toml;
 
 #[macro_use]
 mod utils;
-mod js_field;
 mod compiler;
-mod js_file_spec;
-mod js_options;
 
+use backend::IntoBytes;
 use compiler::Compiler;
-use core::Context;
-use core::errors::*;
-use js_options::JsOptions;
+use core::errors::Result;
+use core::{Context, Loc, Pos, RpField, RpPackage, RpType};
+use genco::{JavaScript, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
@@ -130,9 +128,40 @@ impl TryFromToml for JsModule {
     }
 }
 
+pub struct Options {
+    pub build_getters: bool,
+    pub build_constructor: bool,
+}
+
+impl Options {
+    pub fn new() -> Options {
+        Options {
+            build_getters: false,
+            build_constructor: true,
+        }
+    }
+}
+
+pub struct FileSpec<'el>(pub Tokens<'el, JavaScript<'el>>);
+
+impl<'el> Default for FileSpec<'el> {
+    fn default() -> Self {
+        FileSpec(Tokens::new())
+    }
+}
+
+impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
+    fn into_bytes(self, _: &Compiler<'el>, _: &RpPackage) -> Result<Vec<u8>> {
+        let out = self.0.join_line_spacing().to_file()?;
+        Ok(out.into_bytes())
+    }
+}
+
 fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
     let _modules: Vec<JsModule> = manifest::checked_modules(manifest.modules)?;
-    let options = JsOptions::new();
+    let options = Options::new();
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    Compiler::new(&env, options, handle.as_ref()).compile()
+    let variant_field = Loc::new(RpField::new("value", RpType::String), Pos::empty());
+
+    Compiler::new(&env, &variant_field, options, handle.as_ref()).compile()
 }

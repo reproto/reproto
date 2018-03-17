@@ -330,7 +330,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
             check_attributes!(scope.ctx(), attributes);
 
             Ok(RpField {
-                modifier: item.modifier,
+                required: item.required,
                 safe_ident: safe_ident,
                 ident: ident,
                 comment: Comment(&comment).into_model(scope)?,

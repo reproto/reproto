@@ -3,8 +3,8 @@
 use {EnumAdded, EnumCodegen, FieldAdded, FieldCodegen, InterfaceAdded, InterfaceCodegen, Options,
      TupleAdded, TupleCodegen};
 use backend::Initializer;
-use core::errors::Result;
-use core::{RpEnumBody, RpInterfaceBody, RpTupleBody};
+use core::errors::{Error, Result};
+use core::{self, RpEnumBody, RpInterfaceBody, RpTupleBody};
 use std::rc::Rc;
 use genco::{Quoted, Tokens};
 use go::{imported, Go};
@@ -78,17 +78,13 @@ impl EnumCodegen for Codegen {
         return Ok(());
 
         fn unmarshal_json<'el>(
-            codegen: &Codegen,
+            c: &Codegen,
             name: Go<'el>,
             body: &'el RpEnumBody,
         ) -> Tokens<'el, Go<'el>> {
             let mut t = Tokens::new();
 
-            t.push(toks![
-                "func (this *",
-                name.clone(),
-                ") UnmarshalJSON(b []byte) error {"
-            ]);
+            push!(t, "func (this *", name, ") UnmarshalJSON(b []byte) error {");
 
             t.nested({
                 let mut t = Tokens::new();
@@ -96,13 +92,9 @@ impl EnumCodegen for Codegen {
                 t.push("var s string");
 
                 t.push_into(|t| {
-                    t.push(toks![
-                        "if err := ",
-                        codegen.unmarshal.clone(),
-                        "(b, &s); err != nil {"
-                    ]);
-                    t.nested("return err");
-                    t.push("}");
+                    push!(t, "if err := ", c.unmarshal, "(b, &s); err != nil {");
+                    nested!(t, "return err");
+                    push!(t, "}");
                 });
 
                 t.push_into(|t| {
@@ -110,20 +102,14 @@ impl EnumCodegen for Codegen {
 
                     for v in &body.variants {
                         t.push_into(|t| {
-                            t.push(toks!["case ", v.ordinal().quoted(), ":"]);
-                            t.nested(toks!["*this = ", name.clone(), "_", v.ident.as_str()]);
+                            push!(t, "case ", v.ordinal().quoted(), ":");
+                            nested!(t, "*this = ", name, "_", v.ident.as_str());
                         });
                     }
 
                     t.push_into(|t| {
-                        t.push("default:");
-                        t.nested(toks![
-                            "return ",
-                            codegen.new_error.clone(),
-                            "(",
-                            "bad value".quoted(),
-                            ")"
-                        ]);
+                        push!(t, "default:");
+                        nested!(t, "return ", c.new_error, "(", "bad value".quoted(), ")");
                     });
 
                     t.push("}");
@@ -140,17 +126,13 @@ impl EnumCodegen for Codegen {
         }
 
         fn marshal_json<'el>(
-            codegen: &Codegen,
+            c: &Codegen,
             name: Go<'el>,
             body: &'el RpEnumBody,
         ) -> Tokens<'el, Go<'el>> {
             let mut t = Tokens::new();
 
-            t.push(toks![
-                "func (this ",
-                name.clone(),
-                ") MarshalJSON() ([]byte, error) {"
-            ]);
+            push!(t, "func (this ", name, ") MarshalJSON() ([]byte, error) {");
 
             t.nested({
                 let mut t = Tokens::new();
@@ -168,20 +150,21 @@ impl EnumCodegen for Codegen {
                     }
 
                     t.push_into(|t| {
-                        t.push("default:");
-                        t.nested(toks![
+                        push!(t, "default:");
+                        nested!(
+                            t,
                             "return nil, ",
-                            codegen.new_error.clone(),
+                            c.new_error,
                             "(",
                             "bad value".quoted(),
                             ")"
-                        ]);
+                        );
                     });
 
                     t.push("}");
                 });
 
-                t.push(toks!["return ", codegen.marshal.clone(), "(s)"]);
+                push!(t, "return ", c.marshal, "(s)");
 
                 t.join_line_spacing()
             });
@@ -216,72 +199,77 @@ impl TupleCodegen for Codegen {
         ) -> Result<Tokens<'el, Go<'el>>> {
             let mut t = Tokens::new();
 
-            t.push(toks![
-                "func (this *",
-                name.clone(),
-                ") UnmarshalJSON(b []byte) error {"
-            ]);
+            t.try_push_into::<Error, _>(|t| {
+                push!(
+                    t,
+                    "func (this *",
+                    name.clone(),
+                    ") UnmarshalJSON(b []byte) error {"
+                );
 
-            t.nested({
-                let mut t = Tokens::new();
-
-                t.push(toks!["var array []", c.raw_message.clone()]);
-
-                t.push_into(|t| {
-                    t.push(toks![
-                        "if err := ",
-                        c.unmarshal.clone(),
-                        "(b, &array); err != nil {"
-                    ]);
-                    t.nested("return err");
-                    t.push("}");
-                });
-
-                t.push({
+                t.nested({
                     let mut t = Tokens::new();
 
-                    for (i, f) in body.fields.iter().enumerate() {
-                        let a = toks!["array[", i.to_string(), "]"];
+                    t.push(toks!["var array []", c.raw_message.clone()]);
 
-                        let ty = compiler.field_type(&f.ty)?;
-                        let var = f.safe_ident();
+                    t.push_into(|t| {
+                        t.push(toks![
+                            "if err := ",
+                            c.unmarshal.clone(),
+                            "(b, &array); err != nil {"
+                        ]);
+                        t.nested("return err");
+                        t.push("}");
+                    });
 
-                        t.push({
-                            let mut t = Tokens::new();
+                    t.push({
+                        let mut t = Tokens::new();
 
-                            t.push_into(|t| {
-                                t.push(toks!["var ", var.clone(), " ", ty]);
+                        for (i, f) in body.fields.iter().enumerate() {
+                            let a = toks!["array[", i.to_string(), "]"];
+
+                            let ty = compiler.field_type(&f.ty)?;
+                            let var = f.safe_ident();
+
+                            t.push({
+                                let mut t = Tokens::new();
 
                                 t.push_into(|t| {
-                                    t.push(toks![
-                                        "if err := ",
-                                        c.unmarshal.clone(),
-                                        "(",
-                                        a,
-                                        ", &",
-                                        var.clone(),
-                                        "); err != nil {"
-                                    ]);
-                                    t.nested("return err");
-                                    t.push("}");
+                                    t.push(toks!["var ", var.clone(), " ", ty]);
+
+                                    t.push_into(|t| {
+                                        t.push(toks![
+                                            "if err := ",
+                                            c.unmarshal.clone(),
+                                            "(",
+                                            a,
+                                            ", &",
+                                            var.clone(),
+                                            "); err != nil {"
+                                        ]);
+                                        t.nested("return err");
+                                        t.push("}");
+                                    });
+
+                                    t.push(toks!["this.", f.safe_ident(), " = ", var.clone()]);
                                 });
 
-                                t.push(toks!["this.", f.safe_ident(), " = ", var.clone()]);
+                                t.join_line_spacing()
                             });
+                        }
 
-                            t.join_line_spacing()
-                        });
-                    }
+                        t.join_line_spacing()
+                    });
+
+                    t.push("return nil");
 
                     t.join_line_spacing()
                 });
 
-                t.push("return nil");
+                t.push("}");
 
-                t.join_line_spacing()
-            });
-
-            t.push("}");
+                Ok(())
+            })?;
 
             Ok(t)
         }
@@ -293,16 +281,12 @@ impl TupleCodegen for Codegen {
         ) -> Result<Tokens<'el, Go<'el>>> {
             let mut t = Tokens::new();
 
-            t.push(toks![
-                "func (this ",
-                name.clone(),
-                ") MarshalJSON() ([]byte, error) {"
-            ]);
+            push!(t, "func (this ", name, ") MarshalJSON() ([]byte, error) {");
 
             t.nested({
                 let mut t = Tokens::new();
 
-                t.push(toks!["var array []", c.raw_message.clone()]);
+                push!(t, "var array []", c.raw_message);
 
                 t.push({
                     let mut t = Tokens::new();
@@ -312,15 +296,9 @@ impl TupleCodegen for Codegen {
 
                         t.push({
                             let mut t = Tokens::new();
+                            let ident = toks!["this.", f.safe_ident()];
 
-                            t.push(toks![
-                                var.clone(),
-                                ", err := ",
-                                c.marshal.clone(),
-                                "(this.",
-                                f.safe_ident(),
-                                ")"
-                            ]);
+                            push!(t, var, ", err := ", c.marshal, "(", ident, ")");
 
                             t.push_into(|t| {
                                 t.push("if err != nil {");
@@ -328,7 +306,7 @@ impl TupleCodegen for Codegen {
                                 t.push("}");
                             });
 
-                            t.push(toks!["array = append(array, ", var.clone(), ")"]);
+                            push!(t, "array = append(array, ", var, ")");
 
                             t.join_line_spacing()
                         });
@@ -337,7 +315,7 @@ impl TupleCodegen for Codegen {
                     t.join_line_spacing()
                 });
 
-                t.push(toks!["return ", c.marshal.clone(), "(array)"]);
+                push!(t, "return ", c.marshal, "(array)");
 
                 t.join_line_spacing()
             });
@@ -372,15 +350,94 @@ impl InterfaceCodegen for Codegen {
         ) -> Result<Tokens<'el, Go<'el>>> {
             let mut t = Tokens::new();
 
-            t.push(toks![
-                "func (this ",
-                name.clone(),
-                ") UnmarshalJSON(b []byte) error {"
-            ]);
+            t.try_push_into::<Error, _>(|t| {
+                push!(t, "func (this *", name, ") UnmarshalJSON(b []byte) error {");
 
-            t.push("}");
+                match body.sub_type_strategy {
+                    core::RpSubTypeStrategy::Tagged { ref tag } => {
+                        t.nested(unmarshal_envelope(c, body, compiler, tag)?);
+                    }
+                }
 
-            Ok(t)
+                push!(t, "}");
+                Ok(())
+            })?;
+
+            return Ok(t);
+
+            /// Unmarshal the envelope and extract the type field.
+            fn unmarshal_envelope<'el>(
+                c: &Codegen,
+                body: &'el RpInterfaceBody,
+                compiler: &Compiler<'el>,
+                tag: &'el str,
+            ) -> Result<Tokens<'el, Go<'el>>> {
+                let mut t = Tokens::new();
+
+                t.push_into(|t| {
+                    push!(t, "var err error");
+                    push!(t, "var ok bool");
+                    push!(t, "env := make(map[string]", c.raw_message, ")");
+                });
+
+                t.push_into(|t| {
+                    push!(t, "if err := ", c.unmarshal, "(b, &env); err != nil {");
+                    nested!(t, "return err");
+                    push!(t, "}");
+                });
+
+                push!(t, "var raw_tag ", c.raw_message);
+
+                t.push_into(|t| {
+                    push!(t, "if raw_tag, ok = env[", tag.quoted(), "]; !ok {");
+                    nested!(t, "return ", c.new_error, "(", "missing tag".quoted(), ")");
+                    push!(t, "}");
+                });
+
+                push!(t, "var tag string");
+
+                t.push_into(|t| {
+                    push!(t, "if err = ", c.unmarshal, "(raw_tag, &tag); err != nil {");
+                    nested!(t, "return err");
+                    push!(t, "}");
+                });
+
+                t.try_push_into::<Error, _>(|t| {
+                    push!(t, "switch (tag) {");
+
+                    for sub_type in &body.sub_types {
+                        let name = compiler.convert_name(&sub_type.name)?;
+                        push!(t, "case ", sub_type.name().quoted(), ":");
+
+                        t.nested({
+                            let mut t = Tokens::new();
+
+                            push!(t, "sub := ", name, "{}");
+
+                            t.push_into(|t| {
+                                push!(t, "if err = ", c.unmarshal, "(b, &sub); err != nil {");
+                                nested!(t, "return err");
+                                push!(t, "}");
+                            });
+
+                            t.push_into(|t| {
+                                push!(t, "this.", sub_type.ident, " = &sub");
+                                push!(t, "return nil");
+                            });
+
+                            t.join_line_spacing()
+                        });
+                    }
+
+                    push!(t, "default:");
+                    nested!(t, "return ", c.new_error, "(", "bad tag".quoted(), ")");
+
+                    push!(t, "}");
+                    Ok(())
+                })?;
+
+                Ok(t.join_line_spacing())
+            }
         }
 
         fn marshal_json<'el>(
@@ -390,15 +447,99 @@ impl InterfaceCodegen for Codegen {
         ) -> Result<Tokens<'el, Go<'el>>> {
             let mut t = Tokens::new();
 
-            t.push(toks![
-                "func (this ",
-                name.clone(),
-                ") MarshalJSON() ([]byte, error) {"
-            ]);
+            t.push({
+                let mut t = Tokens::new();
 
-            t.push("}");
+                push!(t, "func (this ", name, ") MarshalJSON() ([]byte, error) {");
 
-            Ok(t)
+                match body.sub_type_strategy {
+                    core::RpSubTypeStrategy::Tagged { ref tag } => {
+                        t.nested(marshal_envelope(c, body, tag)?);
+                    }
+                }
+
+                push!(t, "}");
+
+                t
+            });
+
+            return Ok(t);
+
+            /// Marshal the envelope and extract the type field.
+            fn marshal_envelope<'el>(
+                c: &Codegen,
+                body: &'el RpInterfaceBody,
+                tag: &'el str,
+            ) -> Result<Tokens<'el, Go<'el>>> {
+                let mut t = Tokens::new();
+
+                t.push_into(|t| {
+                    push!(t, "var b []byte");
+                    push!(t, "var err error");
+                    push!(t, "env := make(map[string]", c.raw_message, ")");
+                });
+
+                t.push({
+                    let mut t = Tokens::new();
+
+                    for sub_type in &body.sub_types {
+                        let ident = toks!("this.", sub_type.ident.clone());
+                        t.push(sub_type_check(c, ident, sub_type, tag));
+                    }
+
+                    t.join_line_spacing()
+                });
+
+                let error = toks!(c.new_error.clone(), "(", "no sub-type set".quoted(), ")");
+                push!(t, "return nil, ", error);
+
+                return Ok(t.join_line_spacing());
+            }
+
+            fn sub_type_check<'el>(
+                c: &Codegen,
+                ident: Tokens<'el, Go<'el>>,
+                sub_type: &'el core::RpSubType,
+                tag: &'el str,
+            ) -> Tokens<'el, Go<'el>> {
+                let mut t = Tokens::new();
+
+                push!(t, "if this.", sub_type.ident, " != nil {");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    t.push_into(|t| {
+                        push!(t, "if b, err = ", c.marshal, "(&", ident, "); err != nil {");
+                        nested!(t, "return nil, err");
+                        push!(t, "}");
+                    });
+
+                    t.push_into(|t| {
+                        push!(t, "if err = ", c.unmarshal, "(b, &env); err != nil {");
+                        nested!(t, "return nil, err");
+                        push!(t, "}");
+                    });
+
+                    let o = toks!("env[", tag.quoted(), "]");
+
+                    t.push_into(|t| {
+                        let m = toks!(c.marshal.clone(), "(", sub_type.name().quoted(), ")");
+
+                        push!(t, "if ", o, ", err = ", m, "; err != nil {");
+                        nested!(t, "return nil, err");
+                        push!(t, "}");
+                    });
+
+                    push!(t, "return ", c.marshal, "(env)");
+
+                    t.join_line_spacing()
+                });
+
+                push!(t, "}");
+
+                t
+            }
         }
     }
 }

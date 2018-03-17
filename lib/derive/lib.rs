@@ -17,7 +17,7 @@ pub use self::json::Json;
 pub use self::yaml::Yaml;
 use ast::{Attribute, AttributeItem, Decl, Field, InterfaceBody, Item, Name, SubType, TupleBody,
           Type, TypeBody, TypeMember, Value};
-use core::{Loc, Object, Pos, RpModifier, RpPackage, DEFAULT_TAG};
+use core::{Loc, Object, Pos, RpPackage, DEFAULT_TAG};
 use core::errors::Result;
 use inflector::cases::pascalcase::to_pascal_case;
 use inflector::cases::snakecase::to_snake_case;
@@ -222,11 +222,7 @@ impl<'a> FieldInit<'a> {
         };
 
         let field = Field {
-            modifier: if sir.optional {
-                RpModifier::Optional
-            } else {
-                RpModifier::Required
-            },
+            required: !sir.optional,
             name: name.clone().into(),
             ty: ty,
             field_as: field_as,

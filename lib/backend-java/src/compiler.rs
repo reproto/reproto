@@ -26,9 +26,10 @@ macro_rules! call_codegen {
     }
 }
 
-pub struct Compiler {
-    env: Rc<Environment>,
-    utils: Rc<Utils>,
+pub struct Compiler<'el> {
+    env: &'el Environment,
+    variant_field: &'el Loc<RpField>,
+    utils: &'el Utils,
     options: Options,
     to_upper_camel: naming::ToUpperCamel,
     to_lower_camel: naming::ToLowerCamel,
@@ -45,10 +46,15 @@ pub struct Compiler {
     async_container: Java<'static>,
 }
 
-impl Processor for Compiler {}
+impl<'el> Processor for Compiler<'el> {}
 
-impl Compiler {
-    pub fn new(env: &Rc<Environment>, utils: &Rc<Utils>, options: Options) -> Compiler {
+impl<'el> Compiler<'el> {
+    pub fn new(
+        env: &'el Environment,
+        variant_field: &'el Loc<RpField>,
+        utils: &'el Utils,
+        options: Options,
+    ) -> Compiler<'el> {
         let async_container = options
             .async_container
             .as_ref()
@@ -56,8 +62,9 @@ impl Compiler {
             .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
 
         Compiler {
-            env: Rc::clone(env),
-            utils: Rc::clone(utils),
+            env: env,
+            variant_field: variant_field,
+            utils: utils,
             options: options,
             to_upper_camel: naming::to_upper_camel(),
             to_lower_camel: naming::to_lower_camel(),
@@ -105,13 +112,13 @@ impl Compiler {
         }
     }
 
-    fn new_field_spec<'el>(&self, ty: &Java<'el>, name: &'el str) -> Field<'el> {
+    fn new_field_spec(&self, ty: &Java<'el>, name: &'el str) -> Field<'el> {
         let mut field = Field::new(ty.clone(), name);
         field.modifiers = self.field_mods();
         field
     }
 
-    fn build_constructor<'a, 'el>(&self, fields: &[JavaField<'el>]) -> Constructor<'el> {
+    fn build_constructor(&self, fields: &[JavaField<'el>]) -> Constructor<'el> {
         let mut c = Constructor::new();
 
         for field in fields {
@@ -136,7 +143,7 @@ impl Compiler {
     }
 
     /// Build a require-non-null check.
-    fn require_non_null<'el>(
+    fn require_non_null(
         &self,
         field: &Field<'el>,
         argument: &Argument<'el>,
@@ -154,7 +161,7 @@ impl Compiler {
         }
     }
 
-    fn build_hash_code<'el>(&self, fields: &[JavaField<'el>]) -> Method<'el> {
+    fn build_hash_code(&self, fields: &[JavaField<'el>]) -> Method<'el> {
         let mut hash_code = Method::new("hashCode");
 
         hash_code.annotation(Override);
@@ -196,7 +203,7 @@ impl Compiler {
         hash_code
     }
 
-    fn build_equals<'el>(&self, name: Cons<'el>, fields: &[JavaField<'el>]) -> Method<'el> {
+    fn build_equals(&self, name: Cons<'el>, fields: &[JavaField<'el>]) -> Method<'el> {
         let argument = Argument::new(self.object.clone(), "other");
 
         let mut equals = Method::new("equals");
@@ -300,7 +307,7 @@ impl Compiler {
         equals
     }
 
-    fn build_to_string<'el>(&self, name: Cons<'el>, fields: &[JavaField<'el>]) -> Method<'el> {
+    fn build_to_string(&self, name: Cons<'el>, fields: &[JavaField<'el>]) -> Method<'el> {
         let mut to_string = Method::new("toString");
 
         to_string.annotation(Override);
@@ -367,7 +374,7 @@ impl Compiler {
         to_string
     }
 
-    fn add_class<'el>(
+    fn add_class(
         &self,
         name: Cons<'el>,
         fields: &[JavaField<'el>],
@@ -393,7 +400,7 @@ impl Compiler {
         Ok(())
     }
 
-    fn build_enum_constructor<'el>(&self, fields: &[Field<'el>]) -> Constructor<'el> {
+    fn build_enum_constructor(&self, fields: &[Field<'el>]) -> Constructor<'el> {
         use self::Modifier::*;
 
         let mut c = Constructor::new();
@@ -418,7 +425,7 @@ impl Compiler {
         c
     }
 
-    fn enum_from_value_method<'el>(&self, name: Cons<'el>, field: &Field<'el>) -> Method<'el> {
+    fn enum_from_value_method(&self, name: Cons<'el>, field: &Field<'el>) -> Method<'el> {
         use self::Modifier::*;
 
         let argument = Argument::new(field.ty(), field.var());
@@ -469,14 +476,14 @@ impl Compiler {
         from_value
     }
 
-    fn enum_to_value_method<'el>(&self, field: &Field<'el>) -> Method<'el> {
+    fn enum_to_value_method(&self, field: &Field<'el>) -> Method<'el> {
         let mut to_value = Method::new("toValue");
         to_value.returns = field.ty();
         to_value.body.push(toks!["return this.", field.var(), ";"]);
         to_value
     }
 
-    fn enum_type_to_java<'b, 'el>(&self, ty: &'b RpEnumType) -> Result<Java<'el>> {
+    fn enum_type_to_java(&self, ty: &'el RpEnumType) -> Result<Java<'el>> {
         use self::RpEnumType::*;
 
         match *ty {
@@ -485,7 +492,7 @@ impl Compiler {
         }
     }
 
-    fn process_enum<'el>(&self, body: &'el RpEnumBody) -> Result<Enum<'el>> {
+    fn process_enum(&self, body: &'el RpEnumBody) -> Result<Enum<'el>> {
         let mut spec = Enum::new(body.ident.clone());
 
         let enum_type = self.enum_type_to_java(&body.variant_type)?;
@@ -509,8 +516,7 @@ impl Compiler {
         spec.constructors
             .push(self.build_enum_constructor(&spec.fields));
 
-        let variant_field = body.variant_type.as_field();
-        let java_field = self.field(&variant_field)?;
+        let java_field = self.field(self.variant_field)?;
 
         let mut from_value = self.enum_from_value_method(spec.name(), &java_field.spec);
         let mut to_value = self.enum_to_value_method(&java_field.spec);
@@ -532,7 +538,7 @@ impl Compiler {
         Ok(spec)
     }
 
-    fn process_tuple<'el>(&self, body: &'el RpTupleBody) -> Result<Class<'el>> {
+    fn process_tuple(&self, body: &'el RpTupleBody) -> Result<Class<'el>> {
         let mut spec = Class::new(body.ident.clone());
 
         let fields = self.fields(&body.fields)?;
@@ -578,7 +584,7 @@ impl Compiler {
         Ok(spec)
     }
 
-    fn process_type<'el>(&self, body: &'el RpTypeBody) -> Result<Class<'el>> {
+    fn process_type(&self, body: &'el RpTypeBody) -> Result<Class<'el>> {
         let mut spec = Class::new(body.ident.clone());
         let fields = self.fields(&body.fields)?;
         let names: Vec<_> = fields.iter().map(|f| f.name.clone()).collect();
@@ -626,7 +632,7 @@ impl Compiler {
         Ok(spec)
     }
 
-    fn process_interface<'el>(
+    fn process_interface(
         &self,
         depth: usize,
         body: &'el RpInterfaceBody,
@@ -741,7 +747,7 @@ impl Compiler {
         Ok(spec)
     }
 
-    fn process_service<'el>(&self, body: &'el RpServiceBody) -> Result<Interface<'el>> {
+    fn process_service(&self, body: &'el RpServiceBody) -> Result<Interface<'el>> {
         let mut spec = Interface::new(body.ident.as_str());
 
         let mut extra: Vec<EndpointExtra> = Vec::new();
@@ -810,7 +816,7 @@ impl Compiler {
     }
 
     /// Convert a single field to `JavaField`, without comments.
-    fn field<'el>(&self, field: &RpField) -> Result<JavaField<'el>> {
+    fn field(&self, field: &'el RpField) -> Result<JavaField<'el>> {
         let java_value_type = self.utils.into_java_type(&field.ty)?;
 
         let java_type = if field.is_optional() {
@@ -829,17 +835,13 @@ impl Compiler {
 
         if !field.comment.is_empty() {
             spec.comments.push("<pre>".into());
-            spec.comments.extend(
-                field
-                    .comment
-                    .iter()
-                    .map(|c| Cons::from(Rc::new(c.to_string()))),
-            );
+            spec.comments
+                .extend(field.comment.iter().map(|c| Cons::from(c.as_str())));
             spec.comments.push("</pre>".into());
         }
 
         Ok(JavaField {
-            name: Rc::new(field.name().to_string()).into(),
+            name: Cons::from(field.name()),
             ident: ident,
             field_accessor: field_accessor,
             spec: spec,
@@ -847,7 +849,7 @@ impl Compiler {
     }
 
     /// Convert fields to `JavaField`.
-    fn fields<'el>(&self, fields: &'el [Loc<RpField>]) -> Result<Vec<JavaField<'el>>> {
+    fn fields(&self, fields: &'el [Loc<RpField>]) -> Result<Vec<JavaField<'el>>> {
         let mut out = Vec::new();
 
         fields.for_each_loc(|field| {
@@ -858,7 +860,7 @@ impl Compiler {
         Ok(out)
     }
 
-    pub fn process_decl<'el>(
+    pub fn process_decl(
         &self,
         decl: &'el RpDecl,
         depth: usize,
@@ -932,7 +934,7 @@ impl Compiler {
     }
 }
 
-impl<'el> Converter<'el> for Compiler {
+impl<'el> Converter<'el> for Compiler<'el> {
     type Custom = Java<'el>;
 
     fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {

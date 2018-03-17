@@ -46,67 +46,67 @@ class Entry:
     return "<Entry explicit:{!r}, implicit:{!r}>".format(self.explicit, self.implicit)
 
 class EnumExplicit:
-  def __init__(self, _value):
-    self._value = _value
+  def __init__(self, ordinal):
+    self.ordinal = ordinal
 
-  def get_value(self):
-    return self._value
+  def get_ordinal(self):
+    return self.ordinal
 
   def encode(self):
-    return self._value
+    return self.ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value._value == data:
+      if value.ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumExplicit value:{!r}>".format(self._value)
+    return "<EnumExplicit ordinal:{!r}>".format(self.ordinal)
 
 class EnumImplicit:
-  def __init__(self, _value):
-    self._value = _value
+  def __init__(self, ordinal):
+    self.ordinal = ordinal
 
-  def get_value(self):
-    return self._value
+  def get_ordinal(self):
+    return self.ordinal
 
   def encode(self):
-    return self._value
+    return self.ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value._value == data:
+      if value.ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumImplicit value:{!r}>".format(self._value)
+    return "<EnumImplicit ordinal:{!r}>".format(self.ordinal)
 
 class EnumLongNames:
-  def __init__(self, _value):
-    self._value = _value
+  def __init__(self, ordinal):
+    self.ordinal = ordinal
 
-  def get_value(self):
-    return self._value
+  def get_ordinal(self):
+    return self.ordinal
 
   def encode(self):
-    return self._value
+    return self.ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value._value == data:
+      if value.ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumLongNames value:{!r}>".format(self._value)
+    return "<EnumLongNames ordinal:{!r}>".format(self.ordinal)
 
 EnumExplicit = enum.Enum("EnumExplicit", [("A", "foo"), ("B", "bar")], type=EnumExplicit)
 

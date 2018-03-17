@@ -16,7 +16,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "foo",
           "comment": [
             "The foo field."
@@ -52,7 +52,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "required",
+          "required": true,
           "ident": "field",
           "comment": [
             "The field."
@@ -94,7 +94,7 @@
           "decls": [],
           "fields": [
             {
-              "modifier": "required",
+              "required": true,
               "ident": "field",
               "comment": [
                 "The field."
@@ -110,7 +110,7 @@
       ],
       "fields": [
         {
-          "modifier": "required",
+          "required": true,
           "ident": "field",
           "comment": [
             "The inner field."

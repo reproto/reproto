@@ -16,7 +16,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "tuple1",
           "comment": [],
           "type": {
@@ -32,7 +32,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "tuple2",
           "comment": [],
           "type": {
@@ -68,7 +68,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "required",
+          "required": true,
           "ident": "a",
           "comment": [],
           "type": {
@@ -76,7 +76,7 @@
           }
         },
         {
-          "modifier": "required",
+          "required": true,
           "ident": "b",
           "comment": [],
           "type": {
@@ -104,7 +104,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "required",
+          "required": true,
           "ident": "a",
           "comment": [],
           "type": {
@@ -112,7 +112,7 @@
           }
         },
         {
-          "modifier": "required",
+          "required": true,
           "ident": "b",
           "comment": [],
           "type": {
@@ -147,7 +147,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "required",
+          "required": true,
           "ident": "a",
           "comment": [],
           "type": {

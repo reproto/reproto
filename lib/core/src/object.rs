@@ -27,9 +27,9 @@ pub struct EmptyObject {
 
 impl EmptyObject {
     /// Create a new empty object with the given name.
-    pub fn new(name: String) -> EmptyObject {
+    pub fn new<S: AsRef<str>>(name: S) -> EmptyObject {
         EmptyObject {
-            name: Arc::new(name),
+            name: Arc::new(name.as_ref().to_string()),
         }
     }
 }

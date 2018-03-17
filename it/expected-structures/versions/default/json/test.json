@@ -16,7 +16,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "thing",
           "comment": [],
           "type": {

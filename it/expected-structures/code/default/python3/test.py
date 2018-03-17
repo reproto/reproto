@@ -72,28 +72,28 @@ class Interface_SubType:
     pass
 
 class Enum:
-  def __init__(self, _value):
-    self._value = _value
+  def __init__(self, ordinal):
+    self.ordinal = ordinal
 
-  def get_value(self):
-    return self._value
+  def get_ordinal(self):
+    return self.ordinal
 
   def enum_method(self):
     pass
 
   def encode(self):
-    return self._value
+    return self.ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value._value == data:
+      if value.ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<Enum value:{!r}>".format(self._value)
+    return "<Enum ordinal:{!r}>".format(self.ordinal)
 
 class Tuple:
   def __init__(self):

@@ -1,14 +1,11 @@
-use super::{EXT, JS_CONTEXT, TYPE_SEP};
+use {FileSpec, Options, EXT, JS_CONTEXT, TYPE_SEP};
 use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageProcessor,
               PackageUtils};
-use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpModifier, RpName,
-           RpPackage, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
+use core::{ForEachLoc, Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage,
+           RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
 use genco::{Element, JavaScript, Quoted, Tokens};
 use genco::js::imported_alias;
-use js_field::JsField;
-use js_file_spec::JsFileSpec;
-use js_options::JsOptions;
 use naming::{self, Naming};
 use std::rc::Rc;
 use trans::{self, Environment};
@@ -16,6 +13,7 @@ use utils::{is_defined, is_not_defined};
 
 pub struct Compiler<'el> {
     pub env: &'el Environment,
+    variant_field: &'el Loc<RpField>,
     handle: &'el Handle,
     to_lower_snake: naming::ToLowerSnake,
     values: Tokens<'static, JavaScript<'static>>,
@@ -23,9 +21,15 @@ pub struct Compiler<'el> {
 }
 
 impl<'el> Compiler<'el> {
-    pub fn new(env: &'el Environment, _: JsOptions, handle: &'el Handle) -> Compiler<'el> {
+    pub fn new(
+        env: &'el Environment,
+        variant_field: &'el Loc<RpField>,
+        _: Options,
+        handle: &'el Handle,
+    ) -> Compiler<'el> {
         Compiler {
             env: env,
+            variant_field: variant_field,
             handle: handle,
             to_lower_snake: naming::to_lower_snake(),
             values: "values".into(),
@@ -39,22 +43,23 @@ impl<'el> Compiler<'el> {
     }
 
     /// Build a function that throws an exception if the given value `toks` is None.
-    fn throw_if_null<S>(&self, toks: S, field: &JsField) -> Tokens<'el, JavaScript<'el>>
+    fn throw_if_null<S>(&self, toks: S, field: &Loc<RpField>) -> Tokens<'el, JavaScript<'el>>
     where
         S: Into<Tokens<'el, JavaScript<'el>>>,
     {
-        let required_error = format!("{}: is a required field", field.name).quoted();
+        let required_error = format!("{}: is a required field", field.name()).quoted();
         js![if is_not_defined(toks), js![throw required_error]]
     }
 
-    fn encode_method<B>(
+    fn encode_method<B, I>(
         &self,
-        fields: &[JsField<'el>],
+        fields: I,
         builder: B,
         extra: Option<Tokens<'el, JavaScript<'el>>>,
     ) -> Result<Tokens<'el, JavaScript<'el>>>
     where
         B: Into<Tokens<'el, JavaScript<'el>>>,
+        I: IntoIterator<Item = &'el Loc<RpField>>,
     {
         let mut body = Tokens::new();
 
@@ -67,21 +72,18 @@ impl<'el> Compiler<'el> {
         let mut assign = Tokens::new();
 
         for field in fields {
-            let var_string = field.name.quoted();
-            let field_toks = toks!["this.", field.safe_ident.clone()];
-            let value_toks = self.dynamic_encode(field.ty, field_toks.clone())?;
+            let var_string = field.name().quoted();
+            let field_toks = toks!["this.", field.safe_ident()];
+            let value_toks = self.dynamic_encode(&field.ty, field_toks.clone())?;
 
-            match *field.modifier {
-                RpModifier::Optional => {
-                    let toks = js![if is_defined(field_toks),
+            if field.is_optional() {
+                let toks = js![if is_defined(field_toks),
                                       toks!["data[", var_string, "] = ", value_toks, ";"]];
-                    assign.push(toks);
-                }
-                _ => {
-                    assign.push(self.throw_if_null(field_toks, field));
-                    let toks = toks!["data[", var_string, "] = ", value_toks, ";"];
-                    assign.push(toks);
-                }
+                assign.push(toks);
+            } else {
+                assign.push(self.throw_if_null(field_toks, field));
+                let toks = toks!["data[", var_string, "] = ", value_toks, ";"];
+                assign.push(toks);
             }
         }
 
@@ -100,15 +102,18 @@ impl<'el> Compiler<'el> {
         })
     }
 
-    fn encode_tuple_method(&self, fields: &[JsField<'el>]) -> Result<Tokens<'el, JavaScript<'el>>> {
+    fn encode_tuple_method<I>(&self, fields: I) -> Result<Tokens<'el, JavaScript<'el>>>
+    where
+        I: IntoIterator<Item = &'el Loc<RpField>>,
+    {
         let mut values = Tokens::new();
 
         let mut body = Tokens::new();
 
         for field in fields {
-            let toks = toks!["this.", field.safe_ident.clone()];
+            let toks = toks!["this.", field.safe_ident()];
             body.push(self.throw_if_null(toks.clone(), field));
-            values.push(self.dynamic_encode(field.ty, toks)?);
+            values.push(self.dynamic_encode(&field.ty, toks)?);
         }
 
         body.push(js![@return [ values ]]);
@@ -123,7 +128,7 @@ impl<'el> Compiler<'el> {
     fn decode_enum_method(
         &self,
         type_name: Rc<String>,
-        ident: Rc<String>,
+        ident: &'el str,
     ) -> Result<Tokens<'el, JavaScript<'el>>> {
         let members = toks![type_name, ".", self.values.clone()];
         let loop_init = toks!["let i = 0, l = ", members.clone(), ".length"];
@@ -147,50 +152,48 @@ impl<'el> Compiler<'el> {
         Ok(decode)
     }
 
-    fn decode_method<F>(
+    fn decode_method<F, I>(
         &self,
-        fields: &[JsField<'el>],
+        fields: I,
         type_name: Rc<String>,
         variable_fn: F,
     ) -> Result<Tokens<'el, JavaScript<'el>>>
     where
-        F: Fn(usize, &JsField<'el>) -> Element<'el, JavaScript<'el>>,
+        F: Fn(usize, &'el Loc<RpField>) -> Element<'el, JavaScript<'el>>,
+        I: IntoIterator<Item = &'el Loc<RpField>>,
     {
         let mut arguments = Tokens::new();
         let mut assign = Tokens::new();
 
-        for (i, field) in fields.iter().enumerate() {
-            let var_name = Rc::new(format!("v_{}", field.ident.as_str()));
+        for (i, field) in fields.into_iter().enumerate() {
+            let var_name = Rc::new(format!("v_{}", field.ident()));
             let var = variable_fn(i, field);
 
-            let toks = match *field.modifier {
-                RpModifier::Optional => {
-                    let var_name = toks![var_name.clone()];
-                    let var_toks = self.dynamic_decode(field.ty, var_name.clone())?;
+            let toks = if field.is_optional() {
+                let var_name = toks![var_name.clone()];
+                let var_toks = self.dynamic_decode(&field.ty, var_name.clone())?;
 
-                    let mut check = Tokens::new();
+                let mut check = Tokens::new();
 
-                    check.push(toks!["let ", var_name.clone(), " = data[", var, "];"]);
-                    check.push(js![if is_defined(var_name.clone()),
+                check.push(toks!["let ", var_name.clone(), " = data[", var, "];"]);
+                check.push(js![if is_defined(var_name.clone()),
                                       toks![var_name.clone(), " = ", var_toks, ";"],
                                       toks![var_name, " = null", ";"]]);
 
-                    check.join_line_spacing()
-                }
-                _ => {
-                    let var_toks = toks!["data[", var.clone(), "]"];
-                    let var_toks = self.dynamic_decode(field.ty, var_toks.into())?;
+                check.join_line_spacing()
+            } else {
+                let var_toks = toks!["data[", var.clone(), "]"];
+                let var_toks = self.dynamic_decode(&field.ty, var_toks.into())?;
 
-                    let mut check = Tokens::new();
+                let mut check = Tokens::new();
 
-                    let var_name = toks![var_name.clone()];
+                let var_name = toks![var_name.clone()];
 
-                    check.push(toks!["const ", var_name.clone(), " = ", var_toks, ";"]);
-                    check.push(js![if is_not_defined(var_name),
+                check.push(toks!["const ", var_name.clone(), " = ", var_toks, ";"]);
+                check.push(js![if is_not_defined(var_name),
                                    js![throw var, " + ", ": required field".quoted()]]);
 
-                    check.join_line_spacing()
-                }
+                check.join_line_spacing()
             };
 
             assign.push(toks);
@@ -212,25 +215,28 @@ impl<'el> Compiler<'el> {
         Ok(decode)
     }
 
-    fn field_by_name(_i: usize, field: &JsField<'el>) -> Element<'el, JavaScript<'el>> {
-        field.name.quoted()
+    fn field_by_name(_i: usize, field: &'el Loc<RpField>) -> Element<'el, JavaScript<'el>> {
+        field.name().quoted()
     }
 
-    fn field_by_index(i: usize, _field: &JsField<'el>) -> Element<'el, JavaScript<'el>> {
+    fn field_by_index(i: usize, _field: &'el Loc<RpField>) -> Element<'el, JavaScript<'el>> {
         i.to_string().into()
     }
 
-    fn build_constructor(&self, fields: &[JsField<'el>]) -> Tokens<'el, JavaScript<'el>> {
+    fn build_constructor<I>(&self, fields: I) -> Tokens<'el, JavaScript<'el>>
+    where
+        I: IntoIterator<Item = &'el Loc<RpField>>,
+    {
         let mut arguments = Tokens::new();
         let mut assignments = Tokens::new();
 
         for field in fields {
-            arguments.append(field.safe_ident.clone());
+            arguments.append(field.safe_ident());
             assignments.push(toks![
                 "this.",
-                field.safe_ident.clone(),
+                field.safe_ident(),
                 " = ",
-                field.safe_ident.clone(),
+                field.safe_ident(),
                 ";",
             ]);
         }
@@ -242,7 +248,7 @@ impl<'el> Compiler<'el> {
         ctor
     }
 
-    fn build_enum_constructor<'a>(&self, field: &JsField<'a>) -> Tokens<'el, JavaScript<'el>> {
+    fn build_enum_constructor<'a>(&self, field: &'el RpField) -> Tokens<'el, JavaScript<'el>> {
         let mut arguments = Tokens::new();
         let mut assignments = Tokens::new();
 
@@ -255,12 +261,12 @@ impl<'el> Compiler<'el> {
             ";",
         ]);
 
-        arguments.append(field.safe_ident.clone());
+        arguments.append(field.safe_ident());
         assignments.push(toks![
             "this.",
-            field.safe_ident.clone(),
+            field.safe_ident(),
             " = ",
-            field.safe_ident.clone(),
+            field.safe_ident(),
             ";",
         ]);
 
@@ -271,9 +277,9 @@ impl<'el> Compiler<'el> {
         ctor
     }
 
-    fn enum_encode_decode<'a>(
+    fn enum_encode_decode(
         &self,
-        field: &JsField<'a>,
+        field: &'el Loc<RpField>,
         type_name: Rc<String>,
     ) -> Result<Tokens<'el, JavaScript<'el>>> {
         let mut elements = Tokens::new();
@@ -281,17 +287,20 @@ impl<'el> Compiler<'el> {
         elements.push({
             let mut encode = Tokens::new();
             encode.push("encode() {");
-            encode.nested(js![return "this.", field.safe_ident.clone()]);
+            encode.nested(js![return "this.", field.safe_ident()]);
             encode.push("}");
             encode
         });
 
-        let decode = self.decode_enum_method(type_name, field.safe_ident.clone())?;
+        let decode = self.decode_enum_method(type_name, field.safe_ident())?;
         elements.push(decode);
         return Ok(elements.into());
     }
 
-    fn build_getters(&self, fields: &[JsField<'el>]) -> Result<Vec<Tokens<'el, JavaScript<'el>>>> {
+    fn build_getters<I>(&self, fields: I) -> Result<Vec<Tokens<'el, JavaScript<'el>>>>
+    where
+        I: IntoIterator<Item = &'el Loc<RpField>>,
+    {
         let mut result = Vec::new();
 
         for field in fields {
@@ -307,34 +316,6 @@ impl<'el> Compiler<'el> {
         }
 
         Ok(result)
-    }
-
-    fn any_ident(field: JsField) -> JsField {
-        field
-    }
-
-    fn enum_ident(field: JsField) -> JsField {
-        match field.safe_ident.as_str() {
-            "name" => field.with_ident("_name".to_owned()),
-            _ => field,
-        }
-    }
-
-    fn into_js_field_with<F>(&self, field: &'el RpField, js_field_f: F) -> JsField<'el>
-    where
-        F: Fn(JsField) -> JsField,
-    {
-        js_field_f(JsField {
-            modifier: &field.modifier,
-            ty: &field.ty,
-            name: field.name(),
-            ident: Rc::new(field.ident().to_string()),
-            safe_ident: Rc::new(field.safe_ident().to_string()),
-        })
-    }
-
-    fn into_js_field(&self, field: &'el RpField) -> JsField<'el> {
-        self.into_js_field_with(field, Self::any_ident)
     }
 }
 
@@ -503,7 +484,7 @@ impl<'el> DynamicEncode<'el> for Compiler<'el> {
 }
 
 impl<'el> PackageProcessor<'el> for Compiler<'el> {
-    type Out = JsFileSpec<'el>;
+    type Out = FileSpec<'el>;
     type DeclIter = trans::environment::DeclIter<'el>;
 
     fn ext(&self) -> &str {
@@ -526,20 +507,22 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         let tuple_name = Rc::new(body.name.join(TYPE_SEP));
         let mut class_body = Tokens::new();
 
-        let fields: Vec<JsField> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
-
-        class_body.push(self.build_constructor(&fields));
+        class_body.push(self.build_constructor(&body.fields));
 
         // TODO: make configurable
         if false {
-            for getter in self.build_getters(&fields)? {
+            for getter in self.build_getters(&body.fields)? {
                 class_body.push(getter);
             }
         }
 
-        class_body.push(self.decode_method(&fields, tuple_name.clone(), Self::field_by_index)?);
+        class_body.push(self.decode_method(
+            &body.fields,
+            tuple_name.clone(),
+            Self::field_by_index,
+        )?);
 
-        class_body.push(self.encode_tuple_method(&fields)?);
+        class_body.push(self.encode_tuple_method(&body.fields)?);
         class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
 
         let mut class = Tokens::new();
@@ -557,14 +540,10 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
         let mut class_body = Tokens::new();
 
-        let variant_field = body.variant_type.as_field();
-
-        let field = self.into_js_field_with(&variant_field, Self::enum_ident);
-
         let mut members = Tokens::new();
 
-        class_body.push(self.build_enum_constructor(&field));
-        class_body.push(self.enum_encode_decode(&field, type_name.clone())?);
+        class_body.push(self.build_enum_constructor(self.variant_field));
+        class_body.push(self.enum_encode_decode(self.variant_field, type_name.clone())?);
 
         let mut values = Tokens::new();
 
@@ -609,24 +588,22 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
     }
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        let fields: Vec<JsField> = body.fields.iter().map(|f| self.into_js_field(f)).collect();
-
         let type_name = Rc::new(body.name.join(TYPE_SEP));
 
         let mut class_body = Tokens::new();
 
-        class_body.push(self.build_constructor(&fields));
+        class_body.push(self.build_constructor(&body.fields));
 
         // TODO: make configurable
         if false {
-            for getter in self.build_getters(&fields)? {
+            for getter in self.build_getters(&body.fields)? {
                 class_body.push(getter);
             }
         }
 
-        class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
+        class_body.push(self.decode_method(&body.fields, type_name.clone(), Self::field_by_name)?);
 
-        class_body.push(self.encode_method(&fields, "{}", None)?);
+        class_body.push(self.encode_method(&body.fields, "{}", None)?);
         class_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
 
         let mut class = Tokens::new();
@@ -654,9 +631,6 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
         interface_body.push_unless_empty(Code(&body.codes, JS_CONTEXT));
 
-        let interface_fields: Vec<JsField> =
-            body.fields.iter().map(|f| self.into_js_field(f)).collect();
-
         classes.push({
             let mut tokens = Tokens::new();
 
@@ -674,28 +648,33 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
             let mut class_body = Tokens::new();
 
-            let fields: Vec<JsField> = interface_fields
-                .iter()
-                .cloned()
-                .chain(sub_type.fields.iter().map(|f| self.into_js_field(f)))
-                .collect();
+            let fields: Vec<&Loc<RpField>> =
+                body.fields.iter().chain(sub_type.fields.iter()).collect();
 
-            class_body.push(self.build_constructor(&fields));
+            class_body.push(self.build_constructor(fields.iter().cloned()));
 
             // TODO: make configurable
             if false {
-                for getter in self.build_getters(&fields)? {
+                for getter in self.build_getters(fields.iter().cloned())? {
                     class_body.push(getter);
                 }
             }
 
-            class_body.push(self.decode_method(&fields, type_name.clone(), Self::field_by_name)?);
+            class_body.push(self.decode_method(
+                fields.iter().cloned(),
+                type_name.clone(),
+                Self::field_by_name,
+            )?);
 
             match body.sub_type_strategy {
                 RpSubTypeStrategy::Tagged { ref tag, .. } => {
                     let tk: Tokens<'el, JavaScript<'el>> = tag.as_str().quoted().into();
                     let type_toks = toks!["data[", tk, "] = ", sub_type.name().quoted(), ";"];
-                    class_body.push(self.encode_method(&fields, "{}", Some(type_toks))?);
+                    class_body.push(self.encode_method(
+                        fields.iter().cloned(),
+                        "{}",
+                        Some(type_toks),
+                    )?);
                 }
             }
 

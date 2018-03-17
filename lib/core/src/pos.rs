@@ -1,4 +1,4 @@
-use super::Object;
+use {EmptyObject, Object};
 use std::rc::Rc;
 
 #[derive(Clone, Debug, Serialize)]
@@ -7,6 +7,16 @@ pub struct Pos {
     pub object: Rc<Box<Object>>,
     pub start: usize,
     pub end: usize,
+}
+
+impl Pos {
+    pub fn empty() -> Pos {
+        Pos {
+            object: Rc::new(Box::new(EmptyObject::new("empty"))),
+            start: 0,
+            end: 0,
+        }
+    }
 }
 
 impl From<(Rc<Box<Object>>, usize, usize)> for Pos {

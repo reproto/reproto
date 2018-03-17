@@ -17,7 +17,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "required",
+          "required": true,
           "ident": "name2",
           "comment": [],
           "type": {

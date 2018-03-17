@@ -63,25 +63,25 @@ class RootInterface_Foo:
     return "<RootInterface_Foo>".format()
 
 class RootEnum:
-  def __init__(self, _value):
-    self._value = _value
+  def __init__(self, ordinal):
+    self.ordinal = ordinal
 
-  def get_value(self):
-    return self._value
+  def get_ordinal(self):
+    return self.ordinal
 
   def encode(self):
-    return self._value
+    return self.ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value._value == data:
+      if value.ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootEnum value:{!r}>".format(self._value)
+    return "<RootEnum ordinal:{!r}>".format(self.ordinal)
 
 class RootTuple:
   def __init__(self):
@@ -145,25 +145,25 @@ class RootType_NestedInterface_Foo:
     return "<RootType_NestedInterface_Foo>".format()
 
 class RootType_NestedEnum:
-  def __init__(self, _value):
-    self._value = _value
+  def __init__(self, ordinal):
+    self.ordinal = ordinal
 
-  def get_value(self):
-    return self._value
+  def get_ordinal(self):
+    return self.ordinal
 
   def encode(self):
-    return self._value
+    return self.ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value._value == data:
+      if value.ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootType_NestedEnum value:{!r}>".format(self._value)
+    return "<RootType_NestedEnum ordinal:{!r}>".format(self.ordinal)
 
 class RootType_NestedTuple:
   def __init__(self):
@@ -227,25 +227,25 @@ class RootInterface_Foo_NestedInterface_NestedFoo:
     return "<RootInterface_Foo_NestedInterface_NestedFoo>".format()
 
 class RootInterface_Foo_NestedEnum:
-  def __init__(self, _value):
-    self._value = _value
+  def __init__(self, ordinal):
+    self.ordinal = ordinal
 
-  def get_value(self):
-    return self._value
+  def get_ordinal(self):
+    return self.ordinal
 
   def encode(self):
-    return self._value
+    return self.ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value._value == data:
+      if value.ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootInterface_Foo_NestedEnum value:{!r}>".format(self._value)
+    return "<RootInterface_Foo_NestedEnum ordinal:{!r}>".format(self.ordinal)
 
 class RootInterface_Foo_NestedTuple:
   def __init__(self):
@@ -309,25 +309,25 @@ class RootTuple_NestedInterface_Foo:
     return "<RootTuple_NestedInterface_Foo>".format()
 
 class RootTuple_NestedEnum:
-  def __init__(self, _value):
-    self._value = _value
+  def __init__(self, ordinal):
+    self.ordinal = ordinal
 
-  def get_value(self):
-    return self._value
+  def get_ordinal(self):
+    return self.ordinal
 
   def encode(self):
-    return self._value
+    return self.ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value._value == data:
+      if value.ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootTuple_NestedEnum value:{!r}>".format(self._value)
+    return "<RootTuple_NestedEnum ordinal:{!r}>".format(self.ordinal)
 
 class RootTuple_NestedTuple:
   def __init__(self):
@@ -391,25 +391,25 @@ class RootService_NestedInterface_Foo:
     return "<RootService_NestedInterface_Foo>".format()
 
 class RootService_NestedEnum:
-  def __init__(self, _value):
-    self._value = _value
+  def __init__(self, ordinal):
+    self.ordinal = ordinal
 
-  def get_value(self):
-    return self._value
+  def get_ordinal(self):
+    return self.ordinal
 
   def encode(self):
-    return self._value
+    return self.ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value._value == data:
+      if value.ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<RootService_NestedEnum value:{!r}>".format(self._value)
+    return "<RootService_NestedEnum ordinal:{!r}>".format(self.ordinal)
 
 class RootService_NestedTuple:
   def __init__(self):

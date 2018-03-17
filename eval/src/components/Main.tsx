@@ -913,7 +913,7 @@ export class Main extends React.Component<MainProps, MainState> {
                         value={output}
                         onChange={e => this.setOutput(e.target.value)}>
                         <option value="csharp">C#</option>
-                        <option value="go">Go (WIP)</option>
+                        <option value="go">Go</option>
                         <option value="java">Java</option>
                         <option value="js">JavaScript</option>
                         <option value="json">JSON (RpIR)</option>

@@ -16,7 +16,7 @@
       "decls": [],
       "fields": [
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "lower_camel",
           "comment": [],
           "type": {
@@ -33,7 +33,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "lower_snake",
           "comment": [],
           "type": {
@@ -50,7 +50,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "upper_camel",
           "comment": [],
           "type": {
@@ -67,7 +67,7 @@
           }
         },
         {
-          "modifier": "optional",
+          "required": false,
           "ident": "upper_snake",
           "comment": [],
           "type": {

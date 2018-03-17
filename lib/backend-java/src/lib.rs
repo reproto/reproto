@@ -24,7 +24,7 @@ mod utils;
 
 use codegen::Configure;
 use compiler::Compiler;
-use core::Context;
+use core::{Context, Loc, Pos, RpField, RpType};
 use core::errors::Result;
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use options::Options;
@@ -186,7 +186,9 @@ fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()>
     let utils = Rc::new(Utils::new(&env));
     let modules = checked_modules(manifest.modules)?;
     let options = setup_options(modules, &utils);
-    let compiler = Compiler::new(&env, &utils, options);
+    let variant_field = Loc::new(RpField::new("value", RpType::String), Pos::empty());
+
+    let compiler = Compiler::new(&env, &variant_field, &utils, options);
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 

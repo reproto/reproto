@@ -1,11 +1,11 @@
 //! Data Models for fields
 
-use super::{RpModifier, RpType};
+use super::RpType;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct RpField {
-    /// Modifier of the field.
-    pub modifier: RpModifier,
+    /// Is the field required.
+    pub required: bool,
     /// Mangled identifier, taking target-specific keywords into account.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub safe_ident: Option<String>,
@@ -21,15 +21,23 @@ pub struct RpField {
 }
 
 impl RpField {
-    pub fn is_optional(&self) -> bool {
-        match self.modifier {
-            RpModifier::Optional => true,
-            _ => false,
+    pub fn new<S: AsRef<str>>(ident: S, ty: RpType) -> Self {
+        RpField {
+            required: true,
+            safe_ident: None,
+            ident: ident.as_ref().to_string(),
+            comment: Vec::new(),
+            ty: ty,
+            field_as: None,
         }
     }
 
+    pub fn is_optional(&self) -> bool {
+        !self.required
+    }
+
     pub fn is_required(&self) -> bool {
-        !self.is_optional()
+        self.required
     }
 
     /// Get the keyword-safe identifier.
@@ -37,6 +45,14 @@ impl RpField {
     /// This will be the identifier escaped to avoid any target-language keywords.
     pub fn safe_ident(&self) -> &str {
         self.safe_ident.as_ref().unwrap_or(&self.ident)
+    }
+
+    /// Change the safe identifier.
+    pub fn with_safe_ident<S: AsRef<str>>(self, safe_ident: S) -> RpField {
+        Self {
+            safe_ident: Some(safe_ident.as_ref().to_string()),
+            ..self
+        }
     }
 
     /// Get the original identifier of the field.
