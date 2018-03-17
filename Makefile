@@ -14,7 +14,7 @@ tests: dumps
 dumps: lib/backend-doc/dumps/syntaxdump lib/backend-doc/dumps/themedump
 
 dumps-cmd := cargo run --bin reproto-pack --manifest-path=$(CURDIR)/tools/pack/Cargo.toml --
-it-cmd := cargo run --manifest-path=$(CURDIR)/tools/it/Cargo.toml -- --root $(CURDIR)/it
+it-cmd := cargo run --manifest-path=$(CURDIR)/tools/it/Cargo.toml -- --root it
 
 lib/backend-doc/dumps/syntaxdump:
 	$(dumps-cmd) --build-syntax=$(@)

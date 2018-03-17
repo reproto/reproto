@@ -2,10 +2,10 @@
   "status": false,
   "stdout": [
     "Error when building",
-    "/home/udoprog/repo/reproto/it/ui/proto/interface_conflict2.reproto:3:3-9:",
+    "it/ui/proto/interface_conflict2.reproto:3:3-9:",
     "  3:   Foo {",
     "       ^^^^^^ - Error in Context",
-    "/home/udoprog/repo/reproto/it/ui/proto/interface_conflict2.reproto:5:5-29:",
+    "it/ui/proto/interface_conflict2.reproto:5:5-29:",
     "  5:     type: string as \"@type\";",
     "         ^^^^^^^^^^^^^^^^^^^^^^^^ - field name `@type` is the same as tag used in type_info"
   ],

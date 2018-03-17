@@ -2,10 +2,10 @@
   "status": false,
   "stdout": [
     "Error when building",
-    "/home/udoprog/repo/reproto/it/ui/proto/interface_conflict.reproto:2:3-9:",
+    "it/ui/proto/interface_conflict.reproto:2:3-9:",
     "  2:   Foo {",
     "       ^^^^^^ - Error in Context",
-    "/home/udoprog/repo/reproto/it/ui/proto/interface_conflict.reproto:4:5-18:",
+    "it/ui/proto/interface_conflict.reproto:4:5-18:",
     "  4:     type: string;",
     "         ^^^^^^^^^^^^^ - field name `type` is the same as tag used in type_info"
   ],

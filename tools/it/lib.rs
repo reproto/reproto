@@ -216,6 +216,15 @@ impl Reproto {
             cmd.args(&["--package-prefix", package_prefix]);
         }
 
+        let reproto_toml = manifest.current_dir.join("reproto.toml");
+
+        if reproto_toml.is_file() {
+            cmd.args(&[
+                "--manifest-path",
+                reproto_toml.display().to_string().as_str(),
+            ]);
+        }
+
         // Output directory.
         cmd.args(&["-o", manifest.output.display().to_string().as_str()]);
         // Disable using local repository.
@@ -229,8 +238,7 @@ impl Reproto {
 
         cmd.args(manifest.extra);
 
-        let output = cmd.current_dir(manifest.current_dir)
-            .output()
+        let output = cmd.output()
             .map_err(|e| format_err!("bad exit status: {}", e))?;
 
         if !output.status.success() {
@@ -263,6 +271,15 @@ impl Reproto {
 
         cmd.arg("check");
 
+        let reproto_toml = check.current_dir.join("reproto.toml");
+
+        if reproto_toml.is_file() {
+            cmd.args(&[
+                "--manifest-path",
+                reproto_toml.display().to_string().as_str(),
+            ]);
+        }
+
         // Do not use the local repository.
         cmd.arg("--no-repository");
         // Path to resolve packages from.
@@ -270,8 +287,7 @@ impl Reproto {
 
         cmd.args(&[check.package.as_str()]);
 
-        let output = cmd.current_dir(check.current_dir)
-            .output()
+        let output = cmd.output()
             .map_err(|e| format_err!("failed to spawn reproto: {}", e))?;
 
         let stdout = str::from_utf8(&output.stdout)?;
