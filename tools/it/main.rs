@@ -29,34 +29,50 @@ fn detect() -> HashSet<Language> {
 
     if test("mvn", &["--version"]) {
         out.insert(Language::Java);
+    } else {
+        println!("WARN: `mvn --version` failed, not building Java projects");
     }
 
     if test("python", &["--version"]) {
         out.insert(Language::Python);
+    } else {
+        println!("WARN: `python --version` failed, not building Python projects");
     }
 
     if test("python3", &["--version"]) {
         out.insert(Language::Python3);
+    } else {
+        println!("WARN: `python3 --version` failed, not building Python 3 projects");
     }
 
     if test("cargo", &["--version"]) {
         out.insert(Language::Rust);
+    } else {
+        println!("WARN: `cargo --version` failed, not building Rust projects");
     }
 
     if test("node", &["--version"]) && test("babel", &["--version"]) {
         out.insert(Language::JavaScript);
+    } else {
+        println!("WARN: `node --version` or `babel --version` failed, not building JavaScript projects");
     }
 
     if test("dotnet", &["--version"]) {
         out.insert(Language::Csharp);
+    } else {
+        println!("WARN: `dotnet --version` failed, not building C# projects");
     }
 
     if test("swift", &["--version"]) {
         out.insert(Language::Swift);
+    } else {
+        println!("WARN: `swift --version` failed, not building Swift projects");
     }
 
     if test("go", &["version"]) {
         out.insert(Language::Go);
+    } else {
+        println!("WARN: `go version` failed, not building Go projects");
     }
 
     out
@@ -151,7 +167,7 @@ fn try_main() -> Result<()> {
             "--check" => {
                 do_checks = true;
             }
-            "--suite" => {
+            "--structure" => {
                 do_structures = true;
             }
             "--project" => {

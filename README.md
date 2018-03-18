@@ -107,20 +107,20 @@ Make sure you have [gotten started with Rust][rust-get-started].
 Initialize submodules:
 
 ```bash
-$ git submodule update --init
+git submodule update --init
 ```
 
 Pack syntax highlighting and themes:
 
 ```bash
-$ make dumps
+make dumps
 ```
 
 Build and install the CLI.
 This will install `reproto` into `~/.cargo/bin`, make sure it is in your PATH:
 
 ```bash
-$ cargo install --path $PWD/cli reproto
+cargo install --path $PWD/cli reproto
 ```
 
 [rust-get-started]: https://rustup.rs
@@ -143,16 +143,27 @@ This project includes an extensive set of integration tests.
 
 See `make help` for documentation on what can be done.
 
-Suites are tests which compiled a given set of rules, and compares with expected output.
+Suites are fast tests which compiles a given set of rules, and compares with expected output stored
+in this repository.
+
+```bash
+make suites
+```
 
 Projects are complete project tests.
 These are projects written for various programming languages, and are generally harder to build.
 
+```bash
+make projects
+```
+
 To run all tests, do:
 
 ```bash
-$> make clean all
+make all
 ```
+
+For more information, run `make help`.
 
 ## Comparison with other systems
 

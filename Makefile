@@ -28,33 +28,26 @@ clean: it-clean
 	cargo clean
 
 suites:
-	$(it-cmd) --suite $(FILTER)
-
-checks:
-	$(it-cmd) --check $(FILTER)
+	$(it-cmd) --structure --check $(FILTER)
 
 projects:
 	$(it-cmd) --project $(FILTER)
 
 update-suites:
-	$(it-cmd) --update --suite $(FILTER)
+	$(it-cmd) --update --structure --check $(FILTER)
 
 update-projects:
 	$(it-cmd) --update --project $(FILTER)
 
-update-checks:
-	$(it-cmd) --update --check $(FILTER)
-
 help:
 	@echo ""
-	@echo "Please read 'Suites & Projects' in README.md"
+	@echo "Please read 'Testing' in README.md"
 	@echo ""
 	@echo "Variables (specified like 'make VARIABLE=VALUE <target>'):"
-	@echo "  PROJECTS=foo     - only build the listed kinds of projects"
-	@echo "  DEBUG=all        - (very) verbose output"
-	@echo "  DEBUG=reproto    - debug reproto"
-	@echo "  DEBUG=mvn        - debug Maven"
-	@echo "  IT=basic - only build the specifiec integration tests"
+	@echo "  FILTER=\"suite allstructures\"   - only run things matching suite _and_ allstructures"
+	@echo "  DEBUG=all                      - (very) verbose output"
+	@echo "  DEBUG=reproto                  - debug reproto"
+	@echo "  DEBUG=mvn                      - debug Maven"
 	@echo ""
 	@echo "Targets:"
 	@echo "  all    - default target (suites projects)"

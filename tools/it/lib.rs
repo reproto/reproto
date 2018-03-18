@@ -571,7 +571,12 @@ impl<'a> CheckRunner<'a> {
 
 impl<'a> Runner for CheckRunner<'a> {
     fn keywords(&self) -> Vec<&str> {
-        vec![self.test, self.instance.as_str(), self.package.as_str()]
+        vec![
+            "check",
+            self.test,
+            self.instance.as_str(),
+            self.package.as_str(),
+        ]
     }
 
     /// Run the suite.
@@ -810,7 +815,12 @@ impl<'a> ProjectRunner<'a> {
 
 impl<'a> Runner for ProjectRunner<'a> {
     fn keywords(&self) -> Vec<&str> {
-        vec![self.test, self.instance.as_str(), self.language.name()]
+        vec![
+            "project",
+            self.test,
+            self.instance.as_str(),
+            self.language.name(),
+        ]
     }
 
     /// Run the suite.
@@ -905,7 +915,12 @@ impl<'a> StructureRunner<'a> {
 
 impl<'a> Runner for StructureRunner<'a> {
     fn keywords(&self) -> Vec<&str> {
-        vec![self.test, self.instance.as_str(), self.language.name()]
+        vec![
+            "structure",
+            self.test,
+            self.instance.as_str(),
+            self.language.name(),
+        ]
     }
 
     /// Run the suite.
@@ -1215,7 +1230,7 @@ impl<'a> Project<'a> {
 
                     if self.do_structures {
                         let expected_struct =
-                            language.path(root, &["expected-structures", suite.test, name]);
+                            language.path(root, &[suite.test, "structures", name]);
                         let target_struct =
                             language.path(root, &["target", "structures", suite.test, name]);
 
