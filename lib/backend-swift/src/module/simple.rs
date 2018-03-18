@@ -810,7 +810,7 @@ impl EnumCodegen for Codegen {
                         t.nested({
                             let mut t = Tokens::new();
                             t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
-                            t.nested(toks!["return ", name.clone(), ".", variant.ident.as_str(),]);
+                            t.nested(toks!["return ", name.clone(), ".", variant.ident(),]);
                             t
                         });
                     }
@@ -847,7 +847,7 @@ impl EnumCodegen for Codegen {
                 for variant in &body.variants {
                     t.nested({
                         let mut t = Tokens::new();
-                        t.push(toks!["case .", variant.ident.as_str(), ":"]);
+                        t.push(toks!["case .", variant.ident(), ":"]);
                         t.nested(toks!["return ", variant.ordinal().quoted()]);
                         t
                     });

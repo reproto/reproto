@@ -1,9 +1,8 @@
 //! # Converter for core data structures into processor-specific ones.
 
-use core::{RpName, RpVariant};
+use core::RpName;
 use core::errors::*;
-use genco::{Custom, Quoted, Tokens};
-use std::rc::Rc;
+use genco::{Custom, Tokens};
 
 pub trait Converter<'el> {
     type Custom: 'el + Custom + Clone;
@@ -12,10 +11,5 @@ pub trait Converter<'el> {
 
     fn convert_constant(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {
         self.convert_type(name)
-    }
-
-    /// Build an ordinal value.
-    fn ordinal(&self, variant: &RpVariant) -> Result<Tokens<'el, Self::Custom>> {
-        Ok(Rc::new(variant.ordinal().to_string()).quoted().into())
     }
 }

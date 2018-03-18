@@ -331,19 +331,19 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
         body.variants.iter().for_each_loc(|variant| {
             let value = if let RpEnumOrdinal::String(ref s) = variant.ordinal {
-                if s != variant.ident.as_str() {
+                if s != variant.ident() {
                     variants.push(Rename(s.as_str()));
                 }
 
                 s
             } else {
-                variant.ident.as_str()
+                variant.ident()
             };
 
-            match_body.push(toks![variant.ident.as_str(), " => ", value.quoted(), ",",]);
+            match_body.push(toks![variant.ident(), " => ", value.quoted(), ",",]);
 
             variants.push_unless_empty(Comments(&variant.comment));
-            variants.push(toks![variant.ident.as_str(), ","]);
+            variants.push(toks![variant.ident(), ","]);
             Ok(()) as Result<()>
         })?;
 

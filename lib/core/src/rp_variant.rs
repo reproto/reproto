@@ -11,12 +11,18 @@ pub struct RpVariant {
 }
 
 impl RpVariant {
+    /// Get the identifier of the variant.
+    pub fn ident(&self) -> &str {
+        self.ident.as_str()
+    }
+
+    /// Get the ordinal value of the variant.
     pub fn ordinal(&self) -> &str {
         use self::RpEnumOrdinal::*;
 
         match self.ordinal {
             String(ref string) => string.as_str(),
-            Generated => self.ident.as_str(),
+            Generated => self.ident(),
         }
     }
 }

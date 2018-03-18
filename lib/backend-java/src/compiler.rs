@@ -499,18 +499,13 @@ impl<'el> Compiler<'el> {
         spec.fields.push(self.new_field_spec(&enum_type, "value"));
 
         for variant in &body.variants {
-            let mut enum_value = Tokens::new();
+            let mut t = Tokens::new();
 
             // convert .reproto (upper-camel) convertion to Java
-            let name = Rc::new(self.variant_naming.convert(variant.ident.as_str()));
+            let name = self.variant_naming.convert(variant.ident());
+            push!(t, name, "(", variant.ordinal().quoted(), ")");
 
-            let mut enum_toks = toks![name];
-
-            let value = self.ordinal(variant)?;
-            enum_toks.append(toks!["(", value, ")"]);
-
-            enum_value.push(enum_toks);
-            spec.variants.append(enum_value);
+            spec.variants.append(t);
         }
 
         spec.constructors

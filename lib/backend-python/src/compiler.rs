@@ -328,12 +328,10 @@ impl<'el> Compiler<'el> {
         let variants = body.variants.iter().map(|l| Loc::as_ref(l));
 
         variants.for_each_loc(|variant| {
-            let var_name = variant.ident.as_str().quoted();
-
             let mut enum_arguments = Tokens::new();
 
-            enum_arguments.append(var_name);
-            enum_arguments.append(self.ordinal(variant)?);
+            enum_arguments.append(variant.ident().quoted());
+            enum_arguments.append(variant.ordinal().quoted());
 
             args.append(toks!["(", enum_arguments.join(", "), ")"]);
 

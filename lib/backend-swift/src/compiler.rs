@@ -291,7 +291,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             t.push(toks!["public enum ", name.clone(), " {"]);
 
             for variant in &body.variants {
-                t.nested(toks!["case ", variant.ident.as_str()]);
+                t.nested(toks!["case ", variant.ident()]);
             }
 
             t.push("}");

@@ -551,11 +551,11 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             let type_id = self.convert_type(&body.name)?;
             let mut arguments = Tokens::new();
 
-            arguments.append(variant.ident.as_str().quoted());
-            arguments.append(self.ordinal(variant)?);
+            arguments.append(variant.ident().quoted());
+            arguments.append(variant.ordinal().quoted());
 
             let arguments = js![new type_id, arguments];
-            let member = toks![type_name.clone(), ".", variant.ident.as_str()];
+            let member = toks![type_name.clone(), ".", variant.ident()];
 
             values.push(js![= member.clone(), arguments]);
             members.append(member);

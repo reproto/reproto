@@ -391,7 +391,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         t.push_unless_empty(Comments(&variant.comment));
 
         t.push_into(|t| {
-            t.append(variant.ident.as_str());
+            t.append(variant.ident());
 
             match variant.ordinal {
                 RpEnumOrdinal::Generated => {}

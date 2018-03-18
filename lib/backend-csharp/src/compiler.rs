@@ -268,7 +268,7 @@ impl Compiler {
         let mut names = Vec::new();
 
         for variant in &body.variants {
-            let name = Rc::new(self.variant_naming.convert(variant.ident.as_str()));
+            let name = Rc::new(self.variant_naming.convert(variant.ident()));
             names.push(variant.ordinal().into());
             spec.variants.append(toks![name]);
         }
