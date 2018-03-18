@@ -1,0 +1,3 @@
+enum Example as string {
+  Foo as 42;
+}

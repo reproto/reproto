@@ -227,21 +227,17 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
 
             let ty = item.ty.into_model(scope)?;
 
-            let variant_type = if let Some(ty) = ty {
-                Loc::take(Loc::and_then(ty, |ty| {
-                    ty.as_enum_type()
-                        .ok_or_else(|| "expected string or absent".into())
-                        as Result<RpEnumType>
-                })?)
-            } else {
-                RpEnumType::Generated
-            };
+            let enum_type = Loc::take(Loc::and_then(ty, |ty| {
+                ty.as_enum_type()
+                    .ok_or_else(|| "illegal enum type, expected `string`".into())
+                    as Result<RpEnumType>
+            })?);
 
             let mut idents = HashMap::new();
             let mut ordinals = HashMap::new();
 
             for variant in item.variants {
-                let variant = (variant, &variant_type).into_model(scope)?;
+                let variant = (variant, &enum_type).into_model(scope)?;
                 check_defined!(ctx, idents, variant, variant.ident, "variant");
                 check_defined!(ctx, ordinals, variant, variant.ordinal(), "variant ordinal");
                 variants.push(Rc::new(variant));
@@ -255,7 +251,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: vec![],
-                variant_type: variant_type,
+                enum_type: enum_type,
                 variants: variants,
                 codes: codes,
             })
@@ -270,12 +266,20 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         let (variant, ty) = self;
 
+        let ctx = scope.ctx();
+
         variant.map(|comment, attributes, item| {
             let ordinal = if let Some(argument) = item.argument.into_model(scope)? {
-                if !ty.is_assignable_from(&argument) {
-                    return Err(
-                        format!("unexpected value {}, expected type {}", argument, ty).into(),
-                    );
+                match *ty {
+                    RpEnumType::String if !argument.is_string() => {
+                        return Err(ctx.report()
+                            .err(
+                                Loc::pos(&argument),
+                                format!("expected `{}`, did you mean \"{}\"?", ty, argument),
+                            )
+                            .into());
+                    }
+                    _ => {}
                 }
 
                 Loc::take(Loc::and_then(argument, |value| value.into_ordinal())?)
@@ -284,7 +288,7 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
             };
 
             let attributes = attributes.into_model(scope)?;
-            check_attributes!(scope.ctx(), attributes);
+            check_attributes!(ctx, attributes);
 
             Ok(RpVariant {
                 name: scope.as_name().push(item.name.to_string()),

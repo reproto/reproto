@@ -149,7 +149,7 @@ impl<'input> Decl<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumBody<'input> {
     pub name: Cow<'input, str>,
-    pub ty: Option<Loc<Type>>,
+    pub ty: Loc<Type>,
     pub variants: Vec<Item<'input, EnumVariant<'input>>>,
     pub members: Vec<EnumMember<'input>>,
 }

@@ -124,7 +124,7 @@
           "ident": "NestedEnum",
           "comment": [],
           "decls": [],
-          "variant_type": "Generated",
+          "enum_type": "String",
           "variants": [
             {
               "name": {
@@ -350,7 +350,7 @@
               "ident": "NestedEnum",
               "comment": [],
               "decls": [],
-              "variant_type": "String",
+              "enum_type": "String",
               "variants": [
                 {
                   "name": {
@@ -472,7 +472,7 @@
       "ident": "RootEnum",
       "comment": [],
       "decls": [],
-      "variant_type": "String",
+      "enum_type": "String",
       "variants": [
         {
           "name": {
@@ -597,7 +597,7 @@
           "ident": "NestedEnum",
           "comment": [],
           "decls": [],
-          "variant_type": "String",
+          "enum_type": "String",
           "variants": [
             {
               "name": {
@@ -801,7 +801,7 @@
           "ident": "NestedEnum",
           "comment": [],
           "decls": [],
-          "variant_type": "String",
+          "enum_type": "String",
           "variants": [
             {
               "name": {

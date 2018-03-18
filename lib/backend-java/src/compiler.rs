@@ -488,14 +488,13 @@ impl<'el> Compiler<'el> {
 
         match *ty {
             String => Ok(self.string.clone().into()),
-            Generated => Ok(self.string.clone().into()),
         }
     }
 
     fn process_enum(&self, body: &'el RpEnumBody) -> Result<Enum<'el>> {
         let mut spec = Enum::new(body.ident.clone());
 
-        let enum_type = self.enum_type_to_java(&body.variant_type)?;
+        let enum_type = self.enum_type_to_java(&body.enum_type)?;
         spec.fields.push(self.new_field_spec(&enum_type, "value"));
 
         for variant in &body.variants {

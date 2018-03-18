@@ -10,13 +10,13 @@ enum EnumExplicit as string {
 }
 
 /// Implicit naming depending on the variant
-enum EnumImplicit {
+enum EnumImplicit as string {
     A;
     B;
 }
 
 /// Variants with long names.
-enum EnumLongNames {
+enum EnumLongNames as string {
     FooBar;
     Baz;
 }

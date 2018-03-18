@@ -12,7 +12,7 @@ type RootType {
     }
   }
 
-  enum NestedEnum {
+  enum NestedEnum as string {
     Foo;
   }
 

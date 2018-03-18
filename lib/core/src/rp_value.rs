@@ -41,6 +41,16 @@ impl RpValue {
         }
     }
 
+    /// Is this value a string.
+    pub fn is_string(&self) -> bool {
+        use self::RpValue::*;
+
+        match *self {
+            String(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn into_ordinal(self) -> Result<RpEnumOrdinal> {
         let ordinal = match self {
             RpValue::String(value) => RpEnumOrdinal::String(value),
@@ -53,13 +63,26 @@ impl RpValue {
 
 impl fmt::Display for RpValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let out = match *self {
-            RpValue::String(_) => "<string>",
-            RpValue::Number(_) => "<number>",
-            RpValue::Identifier(_) => "<identifier>",
-            RpValue::Array(_) => "<array>",
-        };
+        match *self {
+            RpValue::String(ref string) => write!(f, "\"{}\"", string),
+            RpValue::Number(ref number) => number.fmt(f),
+            RpValue::Identifier(ref identifier) => identifier.fmt(f),
+            RpValue::Array(ref values) => {
+                write!(f, "[")?;
 
-        write!(f, "{}", out)
+                let mut it = values.iter().peekable();
+
+                while let Some(v) = it.next() {
+                    v.fmt(f)?;
+
+                    if it.peek().is_some() {
+                        write!(f, ", ")?;
+                    }
+                }
+
+                write!(f, "]")?;
+                Ok(())
+            }
+        }
     }
 }

@@ -591,22 +591,41 @@ A single sample (e.g. `new Sample(1, 2.0)`) would be encoded like this in JSON:
 
 ## Enums
 
-Enums can take on of a given set of constant values.
+Enums are types that can take on of a given set of constant values.
+They convert loosely typed data like `"strings"` into something that can be checked by the
+compiler or a decoder implementation.
+
+Only `string` is currently supported as an enum type.
 
 ```reproto
-enum SI as string {
-    NANO as "nano";
-    MICRO as "micro";
-    MILLI as "milli";
-    KILO as "kilo";
-    MEGA as "mega";
+enum Si as string {
+    Nano as "nano";
+    Micro as "micro";
+    Milli as "milli";
+    Kilo as "kilo";
+    Mega as "mega";
 }
 ```
 
-Using this, `SI.NANO` would be serialized as:
+Using this, `Si.Nano` would be serialized as:
 
 ```json
 "nano"
+```
+
+Enum values do not have to be explicitly specified, but can be generated from the variant name:
+
+```reproto
+enum CarModel as string {
+    /// JSON: `"Toyota"`
+    Toyota;
+    /// JSON: `"Mercedes"`
+    Mercedes;
+    /// JSON: `"Ford"`
+    Ford;
+    /// JSON: `"Volvo"`
+    Volvo;
+}
 ```
 
 ## Services

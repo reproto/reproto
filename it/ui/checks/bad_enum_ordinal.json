@@ -1,0 +1,13 @@
+{
+  "status": false,
+  "stdout": [
+    "Error when building",
+    "it/ui/proto/bad_enum_ordinal.reproto:2:3-13:",
+    "  2:   Foo as 42;",
+    "       ^^^^^^^^^^ - Error in Context",
+    "it/ui/proto/bad_enum_ordinal.reproto:2:10-12:",
+    "  2:   Foo as 42;",
+    "              ^^ - expected `string`, did you mean \"42\"?"
+  ],
+  "stderr": []
+}

@@ -173,7 +173,7 @@
       "ident": "Enum",
       "comment": [],
       "decls": [],
-      "variant_type": "Generated",
+      "enum_type": "String",
       "variants": [
         {
           "name": {

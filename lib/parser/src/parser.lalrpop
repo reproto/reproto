@@ -48,13 +48,13 @@ Decl: Decl<'input> = {
 };
 
 Enum: EnumBody<'input> =
-    "enum" <name:TypeIdent> <ty:("as" Loc<TypeSpec>)?> "{"
+    "enum" <name:TypeIdent> "as" <ty:Loc<TypeSpec>> "{"
         <variants:Item<EnumVariant>*>
         <members:EnumMember*>
     "}" =>
     EnumBody {
         name: name,
-        ty: ty.map(|ty| ty.1),
+        ty: ty,
         variants: variants,
         members: members,
     };

@@ -284,12 +284,9 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
 
         t.push_unless_empty(Comments(&body.comment));
 
-        match body.variant_type {
+        match body.enum_type {
             RpEnumType::String => {
                 t.push(toks!["enum ", body.ident.as_str(), " as string {"]);
-            }
-            RpEnumType::Generated => {
-                t.push(toks!["enum ", body.ident.as_str(), " {"]);
             }
         }
 

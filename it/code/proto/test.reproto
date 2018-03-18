@@ -67,7 +67,7 @@ interface Interface {
   }
 }
 
-enum Enum {
+enum Enum as string {
   Variant;
 
   rust {{

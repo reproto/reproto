@@ -6,7 +6,6 @@ use std::fmt;
 #[derive(Debug, Clone, Serialize)]
 pub enum RpEnumType {
     String,
-    Generated,
 }
 
 impl RpEnumType {
@@ -26,7 +25,6 @@ impl fmt::Display for RpEnumType {
 
         match *self {
             String => write!(f, "string"),
-            Generated => write!(f, "generated"),
         }
     }
 }

@@ -1,0 +1,10 @@
+{
+  "status": false,
+  "stdout": [
+    "Error when building",
+    "it/ui/proto/bad_enum_type.reproto:2:17-20:",
+    "  2: enum Example as u32 {",
+    "                     ^^^ - illegal enum type, expected `string`"
+  ],
+  "stderr": []
+}
