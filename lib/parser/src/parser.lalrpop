@@ -126,9 +126,11 @@ Endpoint: Endpoint<'input> = {
     },
 };
 
-EndpointArgument: (Loc<Cow<'input, str>>, Loc<Channel>) =
-    <name:Loc<Ident>> ":" <channel:Loc<Channel>> =>
-    (name, channel);
+EndpointArgument: EndpointArgument<'input> =
+    <ident:Loc<Ident>> ":" <channel:Loc<Channel>> => EndpointArgument {
+        ident: ident,
+        channel: channel,
+    };
 
 Channel: Channel = {
     <stream:stream?> <ty:TypeSpec> => {

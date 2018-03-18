@@ -1,6 +1,6 @@
 //! Helper utilities for processors.
 
-use core::{Loc, RpChannel, RpEndpoint, RpPackage, RpVersionedPackage};
+use core::{RpChannel, RpEndpoint, RpPackage, RpVersionedPackage};
 use core::errors::*;
 
 pub trait Processor {
@@ -18,11 +18,10 @@ pub trait Processor {
         &self,
         endpoint: &'a RpEndpoint,
     ) -> Result<Option<(&'a str, &'a RpChannel)>> {
-        let mut it = endpoint.arguments.values();
+        let mut it = endpoint.arguments.iter();
 
-        if let Some(&(ref name, ref first)) = it.next() {
-            let channel = Loc::value(first);
-            return Ok(Some((name.as_str(), channel)));
+        if let Some(arg) = it.next() {
+            return Ok(Some((arg.ident.as_str(), &arg.channel)));
         }
 
         Ok(None)

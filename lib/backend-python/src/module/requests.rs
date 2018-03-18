@@ -162,10 +162,7 @@ impl ServiceCodegen for RequestsServiceCodegen {
 
                     let mut args = Tokens::new();
                     args.append("self");
-
-                    for a in endpoint.arguments.values() {
-                        args.append(a.0.as_str());
-                    }
+                    args.extend(endpoint.arguments.iter().map(|a| a.safe_ident().into()));
 
                     t.push(toks!["def ", name.clone(), "(", args.join(", "), "):"]);
                     t.nested(BlockComment(&endpoint.comment));

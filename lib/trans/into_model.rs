@@ -1,7 +1,7 @@
 use ast::*;
 use core::*;
 use core::errors::{Error, Result};
-use linked_hash_map::{self, LinkedHashMap};
+use linked_hash_map::LinkedHashMap;
 use naming::Naming;
 use scope::Scope;
 use std::borrow::Cow;
@@ -333,13 +333,11 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
 }
 
 /// Helper function to build a safe name.
-fn build_item_name(
+fn build_item_ident(
     scope: &Scope,
     ident: &str,
-    name: Option<&str>,
-    default_naming: Option<&Naming>,
     default_ident_naming: Option<&Naming>,
-) -> (String, Option<String>, Option<String>) {
+) -> (String, Option<String>) {
     let converted_ident = if let Some(ident_naming) = default_ident_naming {
         ident_naming.convert(ident)
     } else {
@@ -351,6 +349,19 @@ fn build_item_name(
     let safe_ident = scope
         .keyword(converted_ident.as_str())
         .map(|s| s.to_string());
+
+    (converted_ident, safe_ident)
+}
+
+/// Helper function to build a safe name.
+fn build_item_name(
+    scope: &Scope,
+    ident: &str,
+    name: Option<&str>,
+    default_naming: Option<&Naming>,
+    default_ident_naming: Option<&Naming>,
+) -> (String, Option<String>, Option<String>) {
+    let (converted_ident, safe_ident) = build_item_ident(scope, ident, default_ident_naming);
 
     // Apply specification-wide naming convention unless field name explicitly specified.
     let name = name.map(|s| s.to_string())
@@ -642,6 +653,26 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
     }
 }
 
+impl<'input> IntoModel for EndpointArgument<'input> {
+    type Output = RpEndpointArgument;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        let ident = self.ident.into_model(scope)?;
+        let (ident, pos) = Loc::take_pair(ident);
+
+        let (ident, safe_ident) =
+            build_item_ident(scope, ident.as_str(), scope.field_ident_naming());
+
+        let ident = Loc::new(ident, pos);
+
+        Ok(RpEndpointArgument {
+            ident: ident,
+            safe_ident: safe_ident,
+            channel: self.channel.into_model(scope)?,
+        })
+    }
+}
+
 impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
     type Output = Loc<RpEndpoint>;
 
@@ -660,23 +691,23 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                 None,
             );
 
-            let mut arguments = LinkedHashMap::new();
+            let mut arguments = Vec::new();
+            let mut seen = HashMap::new();
 
-            for (name, channel) in item.arguments {
-                let name = name.into_model(scope)?;
-                let channel = channel.into_model(scope)?;
+            for argument in item.arguments {
+                let argument = argument.into_model(scope)?;
 
-                match arguments.entry(Loc::value(&name).clone()) {
-                    linked_hash_map::Entry::Vacant(entry) => {
-                        entry.insert((name, channel));
-                    }
-                    linked_hash_map::Entry::Occupied(entry) => {
-                        return Err(ctx.report()
-                            .err(Loc::pos(&name), "argument already present")
-                            .info(Loc::pos(&entry.get().0), "argument present here")
-                            .into());
-                    }
+                if let Some(other) = seen.insert(
+                    argument.ident.to_string(),
+                    Loc::pos(&argument.ident).clone(),
+                ) {
+                    return Err(ctx.report()
+                        .err(Loc::pos(&argument.ident), "argument already present")
+                        .info(other, "argument present here")
+                        .into());
                 }
+
+                arguments.push(argument);
             }
 
             let response = item.response.into_model(scope)?;

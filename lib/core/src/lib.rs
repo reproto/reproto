@@ -74,7 +74,7 @@ pub use self::resolver::{EmptyResolver, Resolved, ResolvedByPrefix, Resolver};
 pub use self::rp_channel::RpChannel;
 pub use self::rp_code::RpCode;
 pub use self::rp_decl::RpDecl;
-pub use self::rp_endpoint::{RpAccept, RpEndpoint, RpEndpointHttp, RpHttpMethod};
+pub use self::rp_endpoint::{RpAccept, RpEndpoint, RpEndpointArgument, RpEndpointHttp, RpHttpMethod};
 pub use self::rp_enum_body::RpEnumBody;
 pub use self::rp_enum_ordinal::RpEnumOrdinal;
 pub use self::rp_enum_type::RpEnumType;

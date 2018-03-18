@@ -1,10 +1,9 @@
 //! Handle parsing of attributes.
 
-use core::{Attributes, Context, Loc, Pos, RpAccept, RpChannel, RpEndpointHttp, RpHttpMethod,
-           RpPathSpec, RpType, RpValue, WithPos};
+use core::{Attributes, Context, Loc, Pos, RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp,
+           RpHttpMethod, RpPathSpec, RpType, RpValue, WithPos};
 use core::errors::Result;
 use scope::Scope;
-use linked_hash_map::LinkedHashMap;
 use std::collections::HashMap;
 use path_parser;
 use into_model::IntoModel;
@@ -36,7 +35,7 @@ pub fn endpoint_http(
     scope: &Scope,
     attributes: &mut Attributes,
     response: Option<&Loc<RpChannel>>,
-    arguments: &LinkedHashMap<String, (Loc<String>, Loc<RpChannel>)>,
+    arguments: &Vec<RpEndpointArgument>,
 ) -> Result<RpEndpointHttp> {
     let mut http = RpEndpointHttp::default();
 
@@ -52,7 +51,7 @@ pub fn endpoint_http(
     // Keep track of used variables.
     let mut unused_args = arguments
         .iter()
-        .map(|(key, value)| (key.as_str(), &value.0))
+        .map(|a| (a.ident.as_str(), Loc::pos(&a.ident)))
         .collect::<HashMap<_, _>>();
 
     if let Some(path) = selection.take("path") {
@@ -98,8 +97,8 @@ pub fn endpoint_http(
     if !unused_args.is_empty() {
         let mut report = ctx.report();
 
-        for arg in unused_args.values() {
-            report = report.err(Loc::pos(arg), "Argument not used in #[http(...)] attribute");
+        for pos in unused_args.values() {
+            report = report.err(*pos, "Argument not used in #[http(...)] attribute");
         }
 
         return Err(report.into());
@@ -112,7 +111,7 @@ pub fn endpoint_http(
     fn parse_path(
         scope: &Scope,
         path: RpValue,
-        unused_args: &mut HashMap<&str, &Loc<String>>,
+        unused_args: &mut HashMap<&str, &Pos>,
     ) -> Result<RpPathSpec> {
         let path = path.as_string()?;
         let path =
@@ -121,7 +120,9 @@ pub fn endpoint_http(
 
         for var in path.vars() {
             if unused_args.remove(var).is_none() {
-                return Err(format!("no such argument: {}", var).into());
+                return Err(
+                    format!("path variable `{}` is not an argument to endpoint", var).into(),
+                );
             }
         }
 

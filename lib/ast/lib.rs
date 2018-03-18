@@ -278,6 +278,13 @@ pub enum ServiceMember<'input> {
     InnerDecl(Decl<'input>),
 }
 
+/// The argument in and endpoint.
+#[derive(Debug, PartialEq, Eq)]
+pub struct EndpointArgument<'input> {
+    pub ident: Loc<Cow<'input, str>>,
+    pub channel: Loc<Channel>,
+}
+
 /// An endpoint
 ///
 /// ```ignore
@@ -289,7 +296,7 @@ pub enum ServiceMember<'input> {
 pub struct Endpoint<'input> {
     pub id: Loc<Cow<'input, str>>,
     pub alias: Option<String>,
-    pub arguments: Vec<(Loc<Cow<'input, str>>, Loc<Channel>)>,
+    pub arguments: Vec<EndpointArgument<'input>>,
     pub response: Option<Loc<Channel>>,
 }
 

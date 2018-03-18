@@ -333,13 +333,13 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
             t.append({
                 let mut t = Tokens::new();
 
-                for (_, &(ref var, ref ch)) in &e.arguments {
+                for a in &e.arguments {
                     t.append({
                         let mut t = Tokens::new();
 
-                        t.append(var.as_str());
+                        t.append(a.ident.as_str());
                         t.append(": ");
-                        t.append(ch.to_string());
+                        t.append(a.channel.to_string());
 
                         t
                     });

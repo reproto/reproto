@@ -465,9 +465,9 @@ impl Compiler {
 
             let mut arguments = Vec::new();
 
-            for &(ref name, ref channel) in endpoint.arguments.values() {
-                let ty = self.utils.into_csharp_type(channel.ty())?;
-                arguments.push(Argument::new(ty, name.as_str()));
+            for arg in &endpoint.arguments {
+                let ty = self.utils.into_csharp_type(arg.channel.ty())?;
+                arguments.push(Argument::new(ty, arg.safe_ident()));
             }
 
             extra.push(EndpointExtra {
