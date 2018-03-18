@@ -1,14 +1,11 @@
 //! Model for tuples.
 
 use super::{Loc, RpCode, RpField};
-use std::collections::HashSet;
 use std::slice;
 
 decl_body!(pub struct RpTypeBody {
     pub fields: Vec<Loc<RpField>>,
     pub codes: Vec<Loc<RpCode>>,
-    // Set of fields which are reserved for this type.
-    pub reserved: HashSet<Loc<String>>,
 });
 
 /// Iterator over fields.

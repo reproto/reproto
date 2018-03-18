@@ -26,8 +26,7 @@ pub fn entry(ctx: Rc<Context>, m: &ArgMatches) -> Result<()> {
         path_resolver(&manifest)?.ok_or_else(|| "could not setup manifest resolver")?;
 
     let version_override = if let Some(version) = m.value_of("version") {
-        Some(Version::parse(version)
-            .map_err(|e| format!("not a valid version: {}: {}", version, e))?)
+        Some(Version::parse(version).map_err(|e| format!("bad version: {}: {}", version, e))?)
     } else {
         None
     };

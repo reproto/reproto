@@ -3,7 +3,7 @@ mod non_colored;
 
 pub use self::colored::Colored;
 pub use self::non_colored::NonColored;
-use core::{self, Context, ContextItem};
+use core::{self, ContextItem};
 use core::errors::*;
 use log;
 use std::io::{self, Write};
@@ -30,9 +30,7 @@ impl LockableWrite for io::Stdout {
 pub trait Output {
     fn lock<'a>(&'a self) -> Box<Write + 'a>;
 
-    fn handle_context(&self, ctx: &Context) -> Result<()> {
-        let errors = ctx.errors()?;
-
+    fn handle_context(&self, errors: &[ContextItem]) -> Result<()> {
         for e in errors.iter() {
             match *e {
                 ContextItem::ErrorPos(ref pos, ref message) => {

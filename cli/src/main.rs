@@ -63,8 +63,14 @@ fn entry(matches: &ArgMatches, output: &output::Output) -> Result<()> {
     let ctx = Rc::new(Context::new(Box::new(RealFilesystem::new())));
 
     if let Err(e) = guarded_entry(Rc::clone(&ctx), matches, output) {
-        output.handle_error(&e)?;
-        output.handle_context(ctx.as_ref())?;
+        let ctx_errors = ctx.errors()?;
+
+        if ctx_errors.is_empty() {
+            output.handle_error(&e)?;
+        } else {
+            output.handle_context(ctx_errors.as_ref())?;
+        }
+
         ::std::process::exit(1);
     }
 

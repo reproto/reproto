@@ -405,8 +405,8 @@ where
         let Resolved { version, object } = first;
         let version = version_override.cloned().or(version);
 
-        let version = version
-            .ok_or_else(|| format!("No version to publish for package: {}", package.package))?;
+        let version =
+            version.ok_or_else(|| format!("No version for package: {}", package.package))?;
 
         results.push(Match(version, object, package.package.clone()));
     }

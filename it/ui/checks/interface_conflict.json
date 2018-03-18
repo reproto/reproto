@@ -1,10 +1,6 @@
 {
   "status": false,
   "stdout": [
-    "Error when building",
-    "it/ui/proto/interface_conflict.reproto:2:3-9:",
-    "  2:   Foo {",
-    "       ^^^^^^ - Error in Context",
     "it/ui/proto/interface_conflict.reproto:4:5-18:",
     "  4:     type: string;",
     "         ^^^^^^^^^^^^^ - field name `type` is the same as tag used in type_info"

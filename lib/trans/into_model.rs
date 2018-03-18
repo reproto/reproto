@@ -6,7 +6,7 @@ use naming::Naming;
 use path_parser;
 use scope::Scope;
 use std::borrow::Cow;
-use std::collections::{hash_map, HashMap, HashSet};
+use std::collections::{hash_map, HashMap};
 use std::option;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -44,6 +44,7 @@ macro_rules! check_field {
 #[derive(Debug, Default)]
 pub struct MemberConstraint<'input> {
     sub_type_strategy: Option<&'input RpSubTypeStrategy>,
+    reserved: Option<&'input HashMap<String, Pos>>,
 }
 
 /// Adds a method for all types that supports conversion into core types.
@@ -403,6 +404,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             let (fields, codes, decls) = {
                 let constraint = MemberConstraint {
                     sub_type_strategy: Some(&sub_type_strategy),
+                    ..MemberConstraint::default()
                 };
 
                 (item.members, constraint).into_model(scope)?
@@ -921,24 +923,36 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (fields, codes, decls) = item.members.into_model(scope)?;
-
-            let mut reserved: HashSet<Loc<String>> = HashSet::new();
+            let mut reserved: HashMap<String, Pos> = HashMap::new();
             let mut attributes = attributes.into_model(scope)?;
 
             if let Some(selection) = attributes.take_selection("reserved") {
                 let (mut selection, _pos) = Loc::take_pair(selection);
 
                 for word in selection.take_words() {
-                    reserved.insert(Loc::and_then(word, |w| {
-                        w.as_identifier().map(|id| id.to_string())
-                    })?);
+                    let (field, pos) = Loc::take_pair(word);
+
+                    let field = field
+                        .as_identifier()
+                        .map(|id| id.to_string())
+                        .with_pos(&pos)?;
+
+                    reserved.insert(field, pos);
                 }
 
                 check_selection!(scope.ctx(), selection);
             }
 
             check_attributes!(scope.ctx(), attributes);
+
+            let (fields, codes, decls) = {
+                let constraint = MemberConstraint {
+                    reserved: Some(&reserved),
+                    ..MemberConstraint::default()
+                };
+
+                (item.members, constraint).into_model(scope)?
+            };
 
             Ok(RpTypeBody {
                 name: scope.as_name(),
@@ -947,7 +961,6 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
                 decls: decls,
                 fields: fields,
                 codes: codes,
-                reserved: reserved,
             })
         })
     }
@@ -969,7 +982,10 @@ impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
         use self::TypeMember::*;
 
         let (members, constraint) = self;
-        let MemberConstraint { sub_type_strategy } = constraint;
+        let MemberConstraint {
+            sub_type_strategy,
+            reserved,
+        } = constraint;
 
         let ctx = scope.ctx();
 
@@ -994,6 +1010,16 @@ impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
 
                     if let Some(sub_type_strategy) = sub_type_strategy {
                         check_field!(ctx, field, *sub_type_strategy);
+                    }
+
+                    if let Some(reserved) = reserved.and_then(|r| r.get(field.ident())) {
+                        return Err(ctx.report()
+                            .err(
+                                Loc::pos(&field),
+                                format!("field `{}` is reserved", field.ident()),
+                            )
+                            .info(reserved, "reserved here")
+                            .into());
                     }
 
                     fields.push(field);
