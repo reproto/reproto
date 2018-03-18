@@ -3,13 +3,13 @@ use core::*;
 use core::errors::{Error, Result};
 use linked_hash_map::{self, LinkedHashMap};
 use naming::Naming;
-use path_parser;
 use scope::Scope;
 use std::borrow::Cow;
 use std::collections::{hash_map, HashMap};
 use std::option;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use attributes;
 
 macro_rules! check_defined {
     ($ctx:expr, $names:expr, $item:expr, $accessor:expr, $what:expr) => {
@@ -53,28 +53,6 @@ macro_rules! check_field_reserved {
                 .into());
         }
     }
-}
-
-/// Parse the `#[reserved(..)]` attribute.
-fn reserved_attr(scope: &Scope, attributes: &mut Attributes) -> Result<HashMap<String, Pos>> {
-    let mut reserved: HashMap<String, Pos> = HashMap::new();
-
-    let selection = match attributes.take_selection("reserved") {
-        None => return Ok(reserved),
-        Some(selection) => selection,
-    };
-
-    let (mut selection, _pos) = Loc::take_pair(selection);
-
-    for word in selection.take_words() {
-        let (field, pos) = Loc::take_pair(word);
-        let field = field.as_string().map(|id| id.to_string()).with_pos(&pos)?;
-        reserved.insert(field, pos);
-    }
-
-    check_selection!(scope.ctx(), selection);
-
-    Ok(reserved)
 }
 
 #[derive(Debug, Default)]
@@ -445,7 +423,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
             let mut attributes = attributes.into_model(scope)?;
 
-            let reserved = reserved_attr(scope, &mut attributes)?;
+            let reserved = attributes::reserved(scope, &mut attributes)?;
 
             let mut sub_type_strategy = RpSubTypeStrategy::default();
 
@@ -705,22 +683,8 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
 
             let mut attributes = attributes.into_model(scope)?;
 
-            let mut http = RpEndpointHttp::default();
-
-            if let Some(selection) = attributes.take_selection("http") {
-                let (mut selection, pos) = Loc::take_pair(selection);
-
-                push_http(
-                    ctx,
-                    scope,
-                    response.as_ref(),
-                    &arguments,
-                    &mut selection,
-                    &mut http,
-                ).with_pos(&pos)?;
-
-                check_selection!(scope.ctx(), selection);
-            }
+            let http =
+                attributes::endpoint_http(scope, &mut attributes, response.as_ref(), &arguments)?;
 
             check_attributes!(scope.ctx(), attributes);
 
@@ -735,140 +699,6 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                 http: http,
             })
         });
-
-        /// Add HTTP options associated with an endpoint.
-        fn push_http(
-            ctx: &Context,
-            scope: &Scope,
-            response: Option<&Loc<RpChannel>>,
-            arguments: &LinkedHashMap<String, (Loc<String>, Loc<RpChannel>)>,
-            selection: &mut Selection,
-            http: &mut RpEndpointHttp,
-        ) -> Result<()> {
-            // Keep track of used variables.
-            let mut unused_args = arguments
-                .iter()
-                .map(|(key, value)| (key.as_str(), &value.0))
-                .collect::<HashMap<_, _>>();
-
-            if let Some(path) = selection.take("path") {
-                let (path, pos) = Loc::take_pair(path);
-                http.path = Some(parse_path(scope, path, &mut unused_args).with_pos(pos)?);
-            }
-
-            if let Some(body) = selection.take("body") {
-                let (body, pos) = Loc::take_pair(body);
-                let body = body.as_identifier().with_pos(&pos)?;
-
-                if unused_args.remove(body).is_none() {
-                    return Err(format!("no such argument: {}", body).into()).with_pos(&pos);
-                }
-
-                http.body = Some(body.to_string());
-            }
-
-            if let Some(method) = selection.take("method") {
-                let (method, pos) = Loc::take_pair(method);
-                http.method = Some(parse_method(method).with_pos(pos)?);
-            }
-
-            if let Some(accept) = selection.take("accept") {
-                let accept = Loc::and_then(accept, |a| {
-                    a.as_string().and_then(|a| match a {
-                        "application/json" => Ok(RpAccept::Json),
-                        "text/plain" => Ok(RpAccept::Text),
-                        _ => Err("unsupported media type".into()),
-                    })
-                })?;
-
-                http_verify_accept(ctx, &accept, response)?;
-                http.accept = Loc::take(accept);
-            }
-
-            // Assert that all arguments are used somehow.
-            if !unused_args.is_empty() {
-                let mut report = ctx.report();
-
-                for arg in unused_args.values() {
-                    report =
-                        report.err(Loc::pos(arg), "Argument not used in #[http(...)] attribute");
-                }
-
-                return Err(report.into());
-            }
-
-            Ok(())
-        }
-
-        /// Parse a path specification.
-        fn parse_path(
-            scope: &Scope,
-            path: RpValue,
-            unused_args: &mut HashMap<&str, &Loc<String>>,
-        ) -> Result<RpPathSpec> {
-            let path = path.as_string()?;
-            let path = path_parser::parse(path)
-                .map_err(|e| format!("Bad path: {}: {}", path, e.display()))?;
-            let path = path.into_model(scope)?;
-
-            for var in path.vars() {
-                if unused_args.remove(var).is_none() {
-                    return Err(format!("no such argument: {}", var).into());
-                }
-            }
-
-            Ok(path)
-        }
-
-        /// Parse a method.
-        fn parse_method(method: RpValue) -> Result<RpHttpMethod> {
-            use self::RpHttpMethod::*;
-
-            let m = match method.as_string()? {
-                "GET" => GET,
-                "POST" => POST,
-                "PUT" => PUT,
-                "UPDATE" => UPDATE,
-                "DELETE" => DELETE,
-                "PATCH" => PATCH,
-                "HEAD" => HEAD,
-                method => return Err(format!("no such method: {}", method).into()),
-            };
-
-            Ok(m)
-        }
-
-        /// Check that accept matches response.
-        fn http_verify_accept(
-            ctx: &Context,
-            accept: &Loc<RpAccept>,
-            response: Option<&Loc<RpChannel>>,
-        ) -> Result<()> {
-            let response = match response {
-                Some(response) => response,
-                None => return Ok(()),
-            };
-
-            let (accept, pos) = Loc::borrow_pair(&accept);
-
-            match *accept {
-                // Can handle complex data types.
-                ref accept if *accept == RpAccept::Json => return Ok(()),
-                _ => {
-                    if *response.ty() == RpType::String {
-                        return Ok(());
-                    }
-
-                    return Err(ctx.report()
-                        .err(
-                            Loc::pos(response),
-                            "Only `string` responses are supported for the given `accept`",
-                        )
-                        .info(pos, "Specified here")
-                        .into());
-                }
-            }
-        }
     }
 }
 
@@ -910,7 +740,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             let ctx = scope.ctx();
 
             let mut attributes = attributes.into_model(scope)?;
-            let reserved = reserved_attr(scope, &mut attributes)?;
+            let reserved = attributes::reserved(scope, &mut attributes)?;
             check_attributes!(ctx, attributes);
 
             let mut fields = Vec::new();
@@ -1012,7 +842,7 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
             let mut attributes = attributes.into_model(scope)?;
-            let reserved = reserved_attr(scope, &mut attributes)?;
+            let reserved = attributes::reserved(scope, &mut attributes)?;
 
             check_attributes!(scope.ctx(), attributes);
 

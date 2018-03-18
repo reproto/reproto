@@ -40,5 +40,6 @@ macro_rules! check_selection {
 mod into_model;
 mod scope;
 pub mod environment;
+mod attributes;
 
 pub use self::environment::Environment;
