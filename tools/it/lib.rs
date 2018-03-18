@@ -571,7 +571,7 @@ impl<'a> CheckRunner<'a> {
 
 impl<'a> Runner for CheckRunner<'a> {
     fn keywords(&self) -> Vec<&str> {
-        vec![self.test, self.instance.as_str()]
+        vec![self.test, self.instance.as_str(), self.package.as_str()]
     }
 
     /// Run the suite.
@@ -939,6 +939,8 @@ pub struct Suite<'a> {
     arguments: HashMap<Language, &'a [&'a str]>,
     /// Build the given packages.
     packages: Vec<String>,
+    /// If we should automatically discovery checks or not.
+    discover_checks: bool,
     /// Package to run checks for.
     checks: Vec<String>,
     /// Extract suite from the given directory.
@@ -955,6 +957,7 @@ impl<'a> Suite<'a> {
             inputs: Vec::new(),
             arguments: HashMap::new(),
             packages: vec!["test".to_string()],
+            discover_checks: false,
             checks: vec![],
             dir: None,
             include: HashSet::new(),
@@ -974,6 +977,11 @@ impl<'a> Suite<'a> {
     /// Set the package to build.
     pub fn package<P: AsRef<str>>(&mut self, package: P) {
         self.packages.push(package.as_ref().to_string());
+    }
+
+    /// Assume that the test is meant to checks, and discover all available checks.
+    pub fn discover_checks(&mut self) {
+        self.discover_checks = true;
     }
 
     /// Set the package to check.
@@ -1105,18 +1113,41 @@ impl<'a> Project<'a> {
             let path = current_dir.join("proto");
             let input = current_dir.join("input");
 
+            let mut checks = suite.checks.clone();
+
+            // read the path for reproto files.
+            if suite.discover_checks {
+                for e in fs::read_dir(&path)? {
+                    let e = e?;
+                    let p = e.path();
+
+                    let has_reproto_ext = p.extension()
+                        .and_then(|s| s.to_str())
+                        .map(|e| e == "reproto")
+                        .unwrap_or(false);
+
+                    if p.is_file() && has_reproto_ext {
+                        if let Some(file_stem) = p.file_stem().and_then(|s| s.to_str()) {
+                            checks.push(file_stem.to_string());
+                        } else {
+                            bail!("no file stem: {}", p.display());
+                        }
+                    }
+                }
+            }
+
             let mut inputs = Vec::new();
 
             inputs.extend(json_files(&current_dir)?);
             inputs.extend(files_in_dir(&input)?);
 
             if self.do_checks {
-                if suite.checks.is_empty() {
+                if checks.is_empty() {
                     continue;
                 }
 
                 for instance in &default_instances {
-                    for package in &suite.checks {
+                    for package in &checks {
                         runners.push(Box::new(CheckRunner {
                             test: suite.test,
                             instance: instance.name.to_string(),

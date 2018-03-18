@@ -57,7 +57,6 @@ define!{
     versions => {},
     default_naming => {},
     ui => {
-        ui.check("interface_conflict");
-        ui.check("interface_conflict2");
+        ui.discover_checks();
     },
 }
