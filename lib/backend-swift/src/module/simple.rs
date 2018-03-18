@@ -586,7 +586,7 @@ impl TypeCodegen for Codegen {
         fn decode<'a>(
             codegen: &Codegen,
             compiler: &Compiler,
-            name: Tokens<'a, Swift<'a>>,
+            name: Swift<'a>,
             fields: &[&'a RpField],
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
@@ -687,7 +687,7 @@ impl TupleCodegen for Codegen {
         fn decode<'a>(
             codegen: &Codegen,
             compiler: &Compiler,
-            name: Tokens<'a, Swift<'a>>,
+            name: Swift<'a>,
             fields: &[&'a RpField],
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
@@ -785,10 +785,7 @@ impl EnumCodegen for Codegen {
 
         return Ok(());
 
-        fn decode<'a>(
-            body: &'a RpEnumBody,
-            name: Tokens<'a, Swift<'a>>,
-        ) -> Result<Tokens<'a, Swift<'a>>> {
+        fn decode<'a>(body: &'a RpEnumBody, name: Swift<'a>) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
 
             t.push(toks![
@@ -915,7 +912,7 @@ impl InterfaceCodegen for Codegen {
         /// Build a method to decode a tagged interface.
         fn decode_tag<'el, S>(
             compiler: &Compiler,
-            name: Tokens<'el, Swift<'el>>,
+            name: Swift<'el>,
             tag: &'el str,
             sub_types: S,
         ) -> Result<Tokens<'el, Swift<'el>>>

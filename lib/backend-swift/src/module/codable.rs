@@ -667,7 +667,7 @@ impl TupleCodegen for Codegen {
 
         fn decodable<'a>(
             compiler: &Compiler,
-            name: Tokens<'a, Swift<'a>>,
+            name: Swift<'a>,
             fields: &[&'a RpField],
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
@@ -716,10 +716,7 @@ impl TupleCodegen for Codegen {
             }
         }
 
-        fn encodable<'a>(
-            name: Tokens<'a, Swift<'a>>,
-            fields: &[&'a RpField],
-        ) -> Result<Tokens<'a, Swift<'a>>> {
+        fn encodable<'a>(name: Swift<'a>, fields: &[&'a RpField]) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
             t.push(toks!["extension ", name, ": Encodable {"]);
 
@@ -794,10 +791,7 @@ impl EnumCodegen for Codegen {
 
         return Ok(());
 
-        fn decodable<'a>(
-            name: Tokens<'a, Swift<'a>>,
-            body: &'a RpEnumBody,
-        ) -> Result<Tokens<'a, Swift<'a>>> {
+        fn decodable<'a>(name: Swift<'a>, body: &'a RpEnumBody) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
             t.push(toks!["extension ", name, ": Decodable {"]);
             t.nested(init(body)?);
@@ -857,10 +851,7 @@ impl EnumCodegen for Codegen {
             }
         }
 
-        fn encodable<'a>(
-            name: Tokens<'a, Swift<'a>>,
-            body: &'a RpEnumBody,
-        ) -> Result<Tokens<'a, Swift<'a>>> {
+        fn encodable<'a>(name: Swift<'a>, body: &'a RpEnumBody) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
             t.push(toks!["extension ", name, ": Encodable {"]);
 
@@ -968,7 +959,7 @@ impl InterfaceCodegen for Codegen {
 
         fn decodable<'a>(
             compiler: &Compiler,
-            name: Tokens<'a, Swift<'a>>,
+            name: Swift<'a>,
             body: &'a RpInterfaceBody,
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
@@ -1055,7 +1046,7 @@ impl InterfaceCodegen for Codegen {
         }
 
         fn encodable<'a>(
-            name: Tokens<'a, Swift<'a>>,
+            name: Swift<'a>,
             body: &'a RpInterfaceBody,
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();

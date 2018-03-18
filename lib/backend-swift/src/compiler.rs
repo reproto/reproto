@@ -7,7 +7,7 @@ use core::{Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage,
            RpType, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
 use genco::{IntoTokens, Tokens};
-use swift::{imported, Swift};
+use swift::{self, Swift};
 use trans::{self, Environment};
 
 /// Documentation comments.
@@ -63,8 +63,8 @@ impl<'el> Compiler<'el> {
             env: env,
             options: options,
             handle: handle,
-            data: imported("Foundation", "Data"),
-            date: imported("Foundation", "Date"),
+            data: swift::imported("Foundation", "Data"),
+            date: swift::imported("Foundation", "Date"),
             any: any,
         };
 
@@ -75,11 +75,11 @@ impl<'el> Compiler<'el> {
     ///
     /// Optionally also emit the necessary attributes to suppress warnings for bad naming
     /// conventions.
-    pub fn convert_name<'a>(&self, name: &'a RpName) -> Result<Tokens<'a, Swift<'a>>> {
+    pub fn convert_name<'a>(&self, name: &'a RpName) -> Result<Swift<'a>> {
         let registered = self.env.lookup(name)?;
         let ident = registered.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
         let package_name = self.package(&name.package).parts.join("_");
-        return Ok(toks![package_name, "_", ident]);
+        return Ok(swift::local(format!("{}_{}", package_name, ident)));
     }
 
     /// Convert to the type declaration of a field.
@@ -127,7 +127,7 @@ impl<'el> Compiler<'el> {
     /// Set up a model structure for the given fields.
     fn model_struct<'a, F>(
         &self,
-        name: Tokens<'a, Swift<'a>>,
+        name: Swift<'a>,
         comment: &'a [String],
         fields: F,
         extends: bool,
@@ -181,7 +181,7 @@ impl<'el> Compiler<'el> {
     /// Build a model struct for the given set of fields.
     fn model_type<'a, F>(
         &self,
-        name: Tokens<'a, Swift<'a>>,
+        name: Swift<'a>,
         comment: &'a [String],
         fields: F,
     ) -> Result<Tokens<'a, Swift<'a>>>

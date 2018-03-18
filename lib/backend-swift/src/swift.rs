@@ -15,6 +15,11 @@ pub enum Swift<'el> {
         /// Name imported.
         name: Cow<'el, str>,
     },
+    /// A local name.
+    Local {
+        /// The local name.
+        name: Cow<'el, str>,
+    },
 }
 
 impl<'el> Swift<'el> {
@@ -25,7 +30,10 @@ impl<'el> Swift<'el> {
 
         for custom in tokens.walk_custom() {
             match *custom {
-                Imported { ref module, .. } => modules.insert(module.as_ref()),
+                Imported { ref module, .. } => {
+                    modules.insert(module.as_ref());
+                }
+                _ => {}
             };
         }
 
@@ -56,6 +64,9 @@ impl<'el> Custom for Swift<'el> {
 
         match *self {
             Imported { ref name, .. } => {
+                out.write_str(name)?;
+            }
+            Local { ref name, .. } => {
                 out.write_str(name)?;
             }
         }
@@ -109,6 +120,14 @@ where
         module: module.into(),
         name: name.into(),
     }
+}
+
+/// Setup a local element.
+pub fn local<'a, N>(name: N) -> Swift<'a>
+where
+    N: Into<Cow<'a, str>>,
+{
+    Swift::Local { name: name.into() }
 }
 
 #[cfg(test)]

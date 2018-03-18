@@ -246,7 +246,7 @@ macro_rules! codegen {
 pub struct TypeAdded<'a, 'c: 'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
     pub compiler: &'a Compiler<'c>,
-    pub name: &'a Tokens<'el, Swift<'el>>,
+    pub name: &'a Swift<'el>,
     pub fields: &'a [&'el RpField],
 }
 
@@ -256,7 +256,7 @@ codegen!(TypeCodegen, TypeAdded);
 pub struct TupleAdded<'a, 'c: 'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
     pub compiler: &'a Compiler<'c>,
-    pub name: &'a Tokens<'el, Swift<'el>>,
+    pub name: &'a Swift<'el>,
     pub fields: &'a [&'el RpField],
 }
 
@@ -273,7 +273,7 @@ codegen!(StructModelCodegen, StructModelAdded);
 /// Event emitted when an enum has been added.
 pub struct EnumAdded<'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
-    pub name: &'a Tokens<'el, Swift<'el>>,
+    pub name: &'a Swift<'el>,
     pub body: &'el core::RpEnumBody,
 }
 
@@ -283,7 +283,7 @@ codegen!(EnumCodegen, EnumAdded);
 pub struct InterfaceAdded<'a, 'c: 'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
     pub compiler: &'a Compiler<'c>,
-    pub name: &'a Tokens<'el, Swift<'el>>,
+    pub name: &'a Swift<'el>,
     pub body: &'el core::RpInterfaceBody,
 }
 
