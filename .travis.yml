@@ -13,7 +13,7 @@ rust:
 
 script:
   - make --version
-  - make tests suites checks -j 2
+  - make tests suites -j 2
 
 matrix:
   allow_failures:

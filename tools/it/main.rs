@@ -54,7 +54,9 @@ fn detect() -> HashSet<Language> {
     if test("node", &["--version"]) && test("babel", &["--version"]) {
         out.insert(Language::JavaScript);
     } else {
-        println!("WARN: `node --version` or `babel --version` failed, not building JavaScript projects");
+        println!(
+            "WARN: `node --version` or `babel --version` failed, not building JavaScript projects"
+        );
     }
 
     if test("dotnet", &["--version"]) {
@@ -134,8 +136,6 @@ fn print_differences(source: &Path, target: &Path, errors: &[it::utils::Diff]) {
 }
 
 fn try_main() -> Result<()> {
-    let project_languages = detect();
-
     let all_languages = vec![
         it::Language::Csharp,
         it::Language::Go,
@@ -190,6 +190,8 @@ fn try_main() -> Result<()> {
     let cli = parent.join("cli");
 
     let reproto = Reproto::from_project(cli)?;
+
+    let project_languages = if do_project { detect() } else { HashSet::new() };
 
     let mut project = Project::new(
         &project_languages,
