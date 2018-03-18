@@ -48,7 +48,7 @@
             "words": {},
             "selections": {}
           },
-          "arguments": {},
+          "arguments": [],
           "http": {
             "accept": "json"
           }

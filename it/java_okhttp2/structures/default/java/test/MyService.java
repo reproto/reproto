@@ -12,21 +12,21 @@ public interface MyService {
    * UNKNOWN
    * </pre>
    */
-  CompletableFuture<Void> unknown();
+  CompletableFuture<Void> unknown(final int id);
 
   /**
    * <pre>
    * UNKNOWN
    * </pre>
    */
-  CompletableFuture<Entry> unknownReturn();
+  CompletableFuture<Entry> unknownReturn(final int id);
 
   /**
    * <pre>
    * UNKNOWN
    * </pre>
    */
-  CompletableFuture<Void> unknownArgument(final Entry request);
+  CompletableFuture<Void> unknownArgument(final Entry request, final int id);
 
   /**
    * <pre>
@@ -34,27 +34,6 @@ public interface MyService {
    * </pre>
    */
   CompletableFuture<Entry> unary(final Entry request, final int id);
-
-  /**
-   * <pre>
-   * SERVER_STREMAING
-   * </pre>
-   */
-  CompletableFuture<Entry> serverStreaming(final Entry request);
-
-  /**
-   * <pre>
-   * CLIENT_STREAMING
-   * </pre>
-   */
-  CompletableFuture<Entry> clientStreaming(final Entry request);
-
-  /**
-   * <pre>
-   * BIDI_STREAMING
-   * </pre>
-   */
-  CompletableFuture<Entry> bidiStreaming(final Entry request);
 
   public class OkHttp implements MyService {
     private final OkHttpClient client;
@@ -69,18 +48,39 @@ public interface MyService {
     }
 
     @Override
-    public CompletableFuture<Void> unknown() {
-      throw new RuntimeException("endpoint does not support HTTP");
+    public CompletableFuture<Void> unknown(final int id) {
+      final HttpUrl url = new HttpUrl.Builder()
+        .addPathSegment("unknown")
+        .addPathSegment(Integer.toString(id))
+        .build();
+      new Request.Builder()
+        .url(url)
+        .build();
+      throw new IllegalStateException("not implemented");
     }
 
     @Override
-    public CompletableFuture<Entry> unknownReturn() {
-      throw new RuntimeException("endpoint does not support HTTP");
+    public CompletableFuture<Entry> unknownReturn(final int id) {
+      final HttpUrl url = new HttpUrl.Builder()
+        .addPathSegment("unknown-return")
+        .addPathSegment(Integer.toString(id))
+        .build();
+      new Request.Builder()
+        .url(url)
+        .build();
+      throw new IllegalStateException("not implemented");
     }
 
     @Override
-    public CompletableFuture<Void> unknownArgument(final Entry request) {
-      throw new RuntimeException("endpoint does not support HTTP");
+    public CompletableFuture<Void> unknownArgument(final Entry request, final int id) {
+      final HttpUrl url = new HttpUrl.Builder()
+        .addPathSegment("unknown-argument")
+        .addPathSegment(Integer.toString(id))
+        .build();
+      new Request.Builder()
+        .url(url)
+        .build();
+      throw new IllegalStateException("not implemented");
     }
 
     @Override
@@ -93,21 +93,6 @@ public interface MyService {
         .url(url)
         .build();
       throw new IllegalStateException("not implemented");
-    }
-
-    @Override
-    public CompletableFuture<Entry> serverStreaming(final Entry request) {
-      throw new RuntimeException("endpoint does not support HTTP");
-    }
-
-    @Override
-    public CompletableFuture<Entry> clientStreaming(final Entry request) {
-      throw new RuntimeException("endpoint does not support HTTP");
-    }
-
-    @Override
-    public CompletableFuture<Entry> bidiStreaming(final Entry request) {
-      throw new RuntimeException("endpoint does not support HTTP");
     }
   }
 

@@ -1,0 +1,9 @@
+{
+  "status": false,
+  "stdout": [
+    "it/ui/proto/http_argument_not_used.reproto:3:22-29:",
+    "  3:     server_streaming(request: any) -> any;",
+    "                          ^^^^^^^ - Argument not used in #[http(...)] attribute"
+  ],
+  "stderr": []
+}

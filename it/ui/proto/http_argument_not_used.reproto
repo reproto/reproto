@@ -1,0 +1,4 @@
+service MyService {
+    #[http()]
+    server_streaming(request: any) -> any;
+}
