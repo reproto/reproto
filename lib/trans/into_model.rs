@@ -41,10 +41,63 @@ macro_rules! check_field {
     };
 }
 
+macro_rules! check_field_reserved {
+    ($ctx:ident, $field:expr, $reserved:expr) => {
+        if let Some(reserved) = $reserved.get($field.name()) {
+            return Err($ctx.report()
+                .err(
+                    Loc::pos(&$field),
+                    format!("field with name `{}` is reserved", $field.name()),
+                )
+                .info(reserved, "reserved here")
+                .into());
+        }
+    }
+}
+
+/// Parse the `#[reserved(..)]` attribute.
+fn reserved_attr(scope: &Scope, attributes: &mut Attributes) -> Result<HashMap<String, Pos>> {
+    let mut reserved: HashMap<String, Pos> = HashMap::new();
+
+    let selection = match attributes.take_selection("reserved") {
+        None => return Ok(reserved),
+        Some(selection) => selection,
+    };
+
+    let (mut selection, _pos) = Loc::take_pair(selection);
+
+    for word in selection.take_words() {
+        let (field, pos) = Loc::take_pair(word);
+        let field = field.as_string().map(|id| id.to_string()).with_pos(&pos)?;
+        reserved.insert(field, pos);
+    }
+
+    check_selection!(scope.ctx(), selection);
+
+    Ok(reserved)
+}
+
 #[derive(Debug, Default)]
 pub struct MemberConstraint<'input> {
     sub_type_strategy: Option<&'input RpSubTypeStrategy>,
     reserved: Option<&'input HashMap<String, Pos>>,
+}
+
+#[derive(Debug)]
+pub struct SubTypeConstraint<'input> {
+    sub_type_strategy: &'input RpSubTypeStrategy,
+    reserved: &'input HashMap<String, Pos>,
+    field_idents: &'input HashMap<String, Pos>,
+    field_names: &'input HashMap<String, Pos>,
+}
+
+#[derive(Debug)]
+pub struct Members {
+    fields: Vec<Loc<RpField>>,
+    codes: Vec<Loc<RpCode>>,
+    decls: Vec<RpDecl>,
+    field_names: HashMap<String, Pos>,
+    field_idents: HashMap<String, Pos>,
 }
 
 /// Adds a method for all types that supports conversion into core types.
@@ -392,6 +445,8 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
             let mut attributes = attributes.into_model(scope)?;
 
+            let reserved = reserved_attr(scope, &mut attributes)?;
+
             let mut sub_type_strategy = RpSubTypeStrategy::default();
 
             if let Some(mut type_info) = attributes.take_selection("type_info") {
@@ -401,7 +456,14 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
             check_attributes!(scope.ctx(), attributes);
 
-            let (fields, codes, decls) = {
+            let Members {
+                fields,
+                codes,
+                decls,
+                field_idents,
+                field_names,
+                ..
+            } = {
                 let constraint = MemberConstraint {
                     sub_type_strategy: Some(&sub_type_strategy),
                     ..MemberConstraint::default()
@@ -416,7 +478,15 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
             for sub_type in item.sub_types {
                 let scope = scope.child(Loc::value(&sub_type.name).to_owned());
-                let sub_type = (sub_type, &sub_type_strategy).into_model(&scope)?;
+
+                let constraint = SubTypeConstraint {
+                    sub_type_strategy: &sub_type_strategy,
+                    reserved: &reserved,
+                    field_idents: &field_idents,
+                    field_names: &field_names,
+                };
+
+                let sub_type = (sub_type, constraint).into_model(&scope)?;
                 check_defined!(ctx, idents, sub_type, sub_type.ident, "sub-type");
                 check_defined!(ctx, names, sub_type, sub_type.name(), "sub-type name");
                 sub_types.push(Rc::new(sub_type));
@@ -821,23 +891,34 @@ impl<'input> IntoModel for Channel {
     }
 }
 
-impl<'input> IntoModel for (Item<'input, SubType<'input>>, &'input RpSubTypeStrategy) {
+impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'input>) {
     type Output = Loc<RpSubType>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use self::TypeMember::*;
 
-        let (item, sub_type_strategy) = self;
+        let (item, constraint) = self;
+
+        let SubTypeConstraint {
+            reserved: interface_reserved,
+            field_idents,
+            field_names,
+            sub_type_strategy,
+        } = constraint;
 
         return item.map(|comment, attributes, item| {
             let ctx = scope.ctx();
+
+            let mut attributes = attributes.into_model(scope)?;
+            let reserved = reserved_attr(scope, &mut attributes)?;
+            check_attributes!(ctx, attributes);
 
             let mut fields = Vec::new();
             let mut codes = Vec::new();
             let mut decls = Vec::new();
 
-            let mut field_idents = HashMap::new();
-            let mut field_names = HashMap::new();
+            let mut field_idents = field_idents.clone();
+            let mut field_names = field_names.clone();
 
             for member in item.members {
                 match member {
@@ -845,7 +926,12 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, &'input RpSubTypeStra
                         let field = field.into_model(scope)?;
                         check_defined!(ctx, field_idents, field, field.ident(), "field");
                         check_defined!(ctx, field_names, field, field.name(), "field name");
+
                         check_field!(ctx, field, *sub_type_strategy);
+
+                        check_field_reserved!(ctx, field, interface_reserved);
+                        check_field_reserved!(ctx, field, reserved);
+
                         fields.push(field);
                     }
                     Code(code) => {
@@ -858,9 +944,6 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, &'input RpSubTypeStra
             }
 
             let sub_type_name = sub_type_name(item.alias, scope)?;
-
-            let attributes = attributes.into_model(scope)?;
-            check_attributes!(scope.ctx(), attributes);
 
             Ok(RpSubType {
                 name: scope.as_name(),
@@ -901,7 +984,12 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (fields, codes, decls) = item.members.into_model(scope)?;
+            let Members {
+                fields,
+                codes,
+                decls,
+                ..
+            } = item.members.into_model(scope)?;
 
             let attributes = attributes.into_model(scope)?;
             check_attributes!(scope.ctx(), attributes);
@@ -923,29 +1011,17 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let mut reserved: HashMap<String, Pos> = HashMap::new();
             let mut attributes = attributes.into_model(scope)?;
-
-            if let Some(selection) = attributes.take_selection("reserved") {
-                let (mut selection, _pos) = Loc::take_pair(selection);
-
-                for word in selection.take_words() {
-                    let (field, pos) = Loc::take_pair(word);
-
-                    let field = field
-                        .as_identifier()
-                        .map(|id| id.to_string())
-                        .with_pos(&pos)?;
-
-                    reserved.insert(field, pos);
-                }
-
-                check_selection!(scope.ctx(), selection);
-            }
+            let reserved = reserved_attr(scope, &mut attributes)?;
 
             check_attributes!(scope.ctx(), attributes);
 
-            let (fields, codes, decls) = {
+            let Members {
+                fields,
+                codes,
+                decls,
+                ..
+            } = {
                 let constraint = MemberConstraint {
                     reserved: Some(&reserved),
                     ..MemberConstraint::default()
@@ -968,7 +1044,7 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
 
 /// Default constraints.
 impl<'input> IntoModel for Vec<TypeMember<'input>> {
-    type Output = (Vec<Loc<RpField>>, Vec<Loc<RpCode>>, Vec<RpDecl>);
+    type Output = Members;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         (self, MemberConstraint::default()).into_model(scope)
@@ -976,12 +1052,13 @@ impl<'input> IntoModel for Vec<TypeMember<'input>> {
 }
 
 impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
-    type Output = (Vec<Loc<RpField>>, Vec<Loc<RpCode>>, Vec<RpDecl>);
+    type Output = Members;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         use self::TypeMember::*;
 
         let (members, constraint) = self;
+
         let MemberConstraint {
             sub_type_strategy,
             reserved,
@@ -993,33 +1070,23 @@ impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
         let mut codes = Vec::new();
         let mut decls = Vec::new();
 
+        let mut field_idents = HashMap::new();
+        let mut field_names = HashMap::new();
+
         for member in members {
             match member {
                 Field(field) => {
                     let field = field.into_model(scope)?;
 
-                    if let Some(other) = fields
-                        .iter()
-                        .find(|f| f.name() == field.name() || f.ident() == field.ident())
-                    {
-                        return Err(ctx.report()
-                            .err(Loc::pos(&field), "conflict in field")
-                            .info(Loc::pos(other), "previous declaration here")
-                            .into());
-                    }
+                    check_defined!(ctx, field_idents, field, field.ident(), "field");
+                    check_defined!(ctx, field_names, field, field.name(), "field name");
 
                     if let Some(sub_type_strategy) = sub_type_strategy {
                         check_field!(ctx, field, *sub_type_strategy);
                     }
 
-                    if let Some(reserved) = reserved.and_then(|r| r.get(field.ident())) {
-                        return Err(ctx.report()
-                            .err(
-                                Loc::pos(&field),
-                                format!("field `{}` is reserved", field.ident()),
-                            )
-                            .info(reserved, "reserved here")
-                            .into());
+                    if let Some(reserved) = reserved {
+                        check_field_reserved!(ctx, field, reserved);
                     }
 
                     fields.push(field);
@@ -1029,7 +1096,13 @@ impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
             }
         }
 
-        Ok((fields, codes, decls))
+        Ok(Members {
+            fields: fields,
+            codes: codes,
+            decls: decls,
+            field_names: field_names,
+            field_idents: field_idents,
+        })
     }
 }
 

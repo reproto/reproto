@@ -1,0 +1,6 @@
+interface Example {
+  #[reserved("foo")]
+  Foo {
+    foo: string;
+  }
+}

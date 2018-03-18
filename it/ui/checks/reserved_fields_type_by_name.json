@@ -1,0 +1,12 @@
+{
+  "status": false,
+  "stdout": [
+    "it/ui/proto/reserved_fields_type_by_name.reproto:3:3-24:",
+    "  3:   foo: string as \"bar\";",
+    "       ^^^^^^^^^^^^^^^^^^^^^ - field with name `bar` is reserved",
+    "it/ui/proto/reserved_fields_type_by_name.reproto:1:12-17:",
+    "  1: #[reserved(\"bar\")]",
+    "                ^^^^^ - reserved here"
+  ],
+  "stderr": []
+}

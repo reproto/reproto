@@ -15,8 +15,7 @@
       "comment": [],
       "decls": [],
       "fields": [],
-      "codes": [],
-      "reserved": []
+      "codes": []
     },
     {
       "type": "type",
@@ -46,8 +45,7 @@
           "comment": [],
           "decls": [],
           "fields": [],
-          "codes": [],
-          "reserved": []
+          "codes": []
         },
         {
           "type": "interface",
@@ -97,8 +95,7 @@
                   "comment": [],
                   "decls": [],
                   "fields": [],
-                  "codes": [],
-                  "reserved": []
+                  "codes": []
                 }
               ],
               "fields": [],
@@ -174,8 +171,7 @@
               "comment": [],
               "decls": [],
               "fields": [],
-              "codes": [],
-              "reserved": []
+              "codes": []
             }
           ],
           "fields": [],
@@ -211,8 +207,7 @@
               "comment": [],
               "decls": [],
               "fields": [],
-              "codes": [],
-              "reserved": []
+              "codes": []
             }
           ],
           "http": {},
@@ -220,8 +215,7 @@
         }
       ],
       "fields": [],
-      "codes": [],
-      "reserved": []
+      "codes": []
     },
     {
       "type": "interface",
@@ -268,8 +262,7 @@
               "comment": [],
               "decls": [],
               "fields": [],
-              "codes": [],
-              "reserved": []
+              "codes": []
             },
             {
               "type": "interface",
@@ -322,8 +315,7 @@
                       "comment": [],
                       "decls": [],
                       "fields": [],
-                      "codes": [],
-                      "reserved": []
+                      "codes": []
                     }
                   ],
                   "fields": [],
@@ -403,8 +395,7 @@
                   "comment": [],
                   "decls": [],
                   "fields": [],
-                  "codes": [],
-                  "reserved": []
+                  "codes": []
                 }
               ],
               "fields": [],
@@ -442,8 +433,7 @@
                   "comment": [],
                   "decls": [],
                   "fields": [],
-                  "codes": [],
-                  "reserved": []
+                  "codes": []
                 }
               ],
               "http": {},
@@ -519,8 +509,7 @@
           "comment": [],
           "decls": [],
           "fields": [],
-          "codes": [],
-          "reserved": []
+          "codes": []
         },
         {
           "type": "interface",
@@ -570,8 +559,7 @@
                   "comment": [],
                   "decls": [],
                   "fields": [],
-                  "codes": [],
-                  "reserved": []
+                  "codes": []
                 }
               ],
               "fields": [],
@@ -647,8 +635,7 @@
               "comment": [],
               "decls": [],
               "fields": [],
-              "codes": [],
-              "reserved": []
+              "codes": []
             }
           ],
           "fields": [],
@@ -684,8 +671,7 @@
               "comment": [],
               "decls": [],
               "fields": [],
-              "codes": [],
-              "reserved": []
+              "codes": []
             }
           ],
           "http": {},
@@ -723,8 +709,7 @@
           "comment": [],
           "decls": [],
           "fields": [],
-          "codes": [],
-          "reserved": []
+          "codes": []
         },
         {
           "type": "interface",
@@ -774,8 +759,7 @@
                   "comment": [],
                   "decls": [],
                   "fields": [],
-                  "codes": [],
-                  "reserved": []
+                  "codes": []
                 }
               ],
               "fields": [],
@@ -851,8 +835,7 @@
               "comment": [],
               "decls": [],
               "fields": [],
-              "codes": [],
-              "reserved": []
+              "codes": []
             }
           ],
           "fields": [],
@@ -888,8 +871,7 @@
               "comment": [],
               "decls": [],
               "fields": [],
-              "codes": [],
-              "reserved": []
+              "codes": []
             }
           ],
           "http": {},

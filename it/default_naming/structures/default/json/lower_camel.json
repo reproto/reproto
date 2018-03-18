@@ -25,8 +25,7 @@
           "field_as": "fooBar"
         }
       ],
-      "codes": [],
-      "reserved": []
+      "codes": []
     },
     {
       "type": "service",

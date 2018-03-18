@@ -1,0 +1,4 @@
+#[reserved("bar")]
+type Example {
+  foo: string as "bar";
+}

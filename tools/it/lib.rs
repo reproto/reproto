@@ -1157,12 +1157,8 @@ impl<'a> Project<'a> {
             inputs.extend(files_in_dir(&input)?);
 
             if self.do_checks {
-                if checks.is_empty() {
-                    continue;
-                }
-
-                for instance in &default_instances {
-                    for package in &checks {
+                for package in &checks {
+                    for instance in &default_instances {
                         runners.push(Box::new(CheckRunner {
                             test: suite.test,
                             instance: instance.name.to_string(),

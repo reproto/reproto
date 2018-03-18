@@ -48,8 +48,7 @@
           }
         }
       ],
-      "codes": [],
-      "reserved": []
+      "codes": []
     },
     {
       "type": "tuple",
@@ -155,8 +154,7 @@
           }
         }
       ],
-      "codes": [],
-      "reserved": []
+      "codes": []
     }
   ]
 }

@@ -25,8 +25,7 @@
           "field_as": "FOO_BAR"
         }
       ],
-      "codes": [],
-      "reserved": []
+      "codes": []
     },
     {
       "type": "service",

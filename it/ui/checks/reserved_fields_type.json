@@ -3,10 +3,10 @@
   "stdout": [
     "it/ui/proto/reserved_fields_type.reproto:3:3-15:",
     "  3:   foo: string;",
-    "       ^^^^^^^^^^^^ - field `foo` is reserved",
-    "it/ui/proto/reserved_fields_type.reproto:1:12-15:",
-    "  1: #[reserved(foo)]",
-    "                ^^^ - reserved here"
+    "       ^^^^^^^^^^^^ - field with name `foo` is reserved",
+    "it/ui/proto/reserved_fields_type.reproto:1:12-17:",
+    "  1: #[reserved(\"foo\")]",
+    "                ^^^^^ - reserved here"
   ],
   "stderr": []
 }

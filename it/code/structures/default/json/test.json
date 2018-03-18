@@ -15,8 +15,7 @@
       "comment": [],
       "decls": [],
       "fields": [],
-      "codes": [],
-      "reserved": []
+      "codes": []
     },
     {
       "type": "type",
@@ -61,8 +60,7 @@
             "  pass"
           ]
         }
-      ],
-      "reserved": []
+      ]
     },
     {
       "type": "interface",

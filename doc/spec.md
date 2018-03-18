@@ -784,6 +784,7 @@ This might be more viable if reproto supported other formats in the future.
 
 Fields can be reserved using the `#[reserved(<field>)]` attribute.
 Fields which are reserved _cannot_ be added to the schema.
+Fields can be reserved on [types], [interfaces], and [sub-types].
 
 ```reproto
 #[reserved(author, no_can_do)]
@@ -792,20 +793,24 @@ type Post {
 }
 ```
 
-Attempting to use a reserved field will yield an error like the following:
+Attempting to use a reserved field will result in an error:
 
-```bash
-examples/toystore.reproto:55:3-21:
- 55:   no_can_do: string;
-       ^^^^^^^^^^^^^^^^^^ - field reserved
-examples/toystore.reproto:49:12-21:
- 49:   reserved no_can_do;
-       ^^^^^^^^^^^^^^^^^^^ - field reserved here
+```
+it/ui/proto/reserved_fields_type_by_name.reproto:3:3-24:
+  3:   foo: string as "bar";
+       ^^^^^^^^^^^^^^^^^^^^^ - field with name `bar` is reserved
+it/ui/proto/reserved_fields_type_by_name.reproto:1:12-17:
+  1: #[reserved("bar")]
+                ^^^^^ - reserved here
 ```
 
 As long as the reserved statement is preserved, it prevents future introductions of a given field.
 
 Clients decoding a reserved field should raise an error.
+
+[types]: #types
+[interfaces]: #interfaces
+[sub-types]: #interface-sub-types
 
 ## Custom Code
 

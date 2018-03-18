@@ -1,0 +1,12 @@
+{
+  "status": false,
+  "stdout": [
+    "it/ui/proto/interface_sub_type_field_conflict.reproto:5:5-17:",
+    "  5:     foo: string;",
+    "         ^^^^^^^^^^^^ - field `foo` is already defined",
+    "it/ui/proto/interface_sub_type_field_conflict.reproto:2:3-15:",
+    "  2:   foo: string;",
+    "       ^^^^^^^^^^^^ - previously defined here"
+  ],
+  "stderr": []
+}

@@ -1,4 +1,4 @@
-#[reserved(foo)]
+#[reserved("foo")]
 type Example {
   foo: string;
 }

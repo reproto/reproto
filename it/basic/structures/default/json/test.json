@@ -34,8 +34,7 @@
           }
         }
       ],
-      "codes": [],
-      "reserved": []
+      "codes": []
     },
     {
       "type": "type",
@@ -62,8 +61,7 @@
           }
         }
       ],
-      "codes": [],
-      "reserved": []
+      "codes": []
     },
     {
       "type": "type",
@@ -104,8 +102,7 @@
               }
             }
           ],
-          "codes": [],
-          "reserved": []
+          "codes": []
         }
       ],
       "fields": [
@@ -129,8 +126,7 @@
           }
         }
       ],
-      "codes": [],
-      "reserved": []
+      "codes": []
     }
   ]
 }

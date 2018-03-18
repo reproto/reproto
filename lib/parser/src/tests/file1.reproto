@@ -52,7 +52,7 @@ interface Bar {
 }
 
 #[attribute]
-enum Baz {
+enum Baz as string {
   #[attribute]
   First as "first";
   Second as "second";
