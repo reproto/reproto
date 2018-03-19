@@ -211,7 +211,7 @@
             }
           ],
           "http": {},
-          "endpoints": {}
+          "endpoints": []
         }
       ],
       "fields": [],
@@ -437,7 +437,7 @@
                 }
               ],
               "http": {},
-              "endpoints": {}
+              "endpoints": []
             }
           ],
           "fields": [],
@@ -675,7 +675,7 @@
             }
           ],
           "http": {},
-          "endpoints": {}
+          "endpoints": []
         }
       ],
       "fields": [],
@@ -875,11 +875,11 @@
             }
           ],
           "http": {},
-          "endpoints": {}
+          "endpoints": []
         }
       ],
       "http": {},
-      "endpoints": {}
+      "endpoints": []
     }
   ]
 }

@@ -1,6 +1,6 @@
 //! C# backend for reproto
 
-use {Options, CSHARP_CONTEXT};
+use {CSHARP_CONTEXT, Options};
 use backend::{Code, Converter};
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded,
               TypeField, TypeFieldAdded};
@@ -10,8 +10,8 @@ use core::errors::*;
 use csharp_field::CsharpField;
 use csharp_file::CsharpFile;
 use genco::{Cons, Csharp, Element, Quoted, Tokens};
-use genco::csharp::{local, optional, using, Argument, Class, Constructor, Enum, Field, INT32,
-                    Method, Modifier, BOOLEAN};
+use genco::csharp::{Argument, BOOLEAN, Class, Constructor, Enum, Field, INT32, Method, Modifier,
+                    local, optional, using};
 use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
@@ -79,8 +79,9 @@ impl Compiler {
 
             c.arguments.push(argument.clone());
 
-            c.body
-                .push(toks!["this.", field.spec.var(), " = ", argument.var(), ";",]);
+            c.body.push(
+                toks!["this.", field.spec.var(), " = ", argument.var(), ";",],
+            );
         }
 
         c
@@ -101,9 +102,9 @@ impl Compiler {
 
             let value = toks![field_toks.clone(), ".GetHashCode()"];
 
-            hash_code
-                .body
-                .push(toks!["result = result * 31 + ", value, ";"]);
+            hash_code.body.push(
+                toks!["result = result * 31 + ", value, ";"],
+            );
         }
 
         hash_code.body.push("return result;");
@@ -175,7 +176,9 @@ impl Compiler {
                     t.push(toks!["if (", this.clone(), " == null) {"]);
                     t.nested(self.false_cond(toks![o.clone(), " != null"]));
                     t.push(toks!["} else {"]);
-                    t.nested(self.false_cond(toks!["!", this.clone(), ".Equals(", o.clone(), ")"]));
+                    t.nested(self.false_cond(
+                        toks!["!", this.clone(), ".Equals(", o.clone(), ")"],
+                    ));
                     t.push("}");
 
                     t
@@ -302,8 +305,9 @@ impl Compiler {
             spec.fields.push(field.spec);
         }
 
-        spec.body
-            .push_unless_empty(Code(&body.codes, CSHARP_CONTEXT));
+        spec.body.push_unless_empty(
+            Code(&body.codes, CSHARP_CONTEXT),
+        );
 
         for generator in &self.options.tuple_generators {
             generator.generate(TupleAdded { spec: &mut spec })?;
@@ -321,8 +325,9 @@ impl Compiler {
             spec.fields.push(field.spec.clone());
         }
 
-        spec.body
-            .push_unless_empty(Code(&body.codes, CSHARP_CONTEXT));
+        spec.body.push_unless_empty(
+            Code(&body.codes, CSHARP_CONTEXT),
+        );
 
         self.add_class(
             spec.name(),
@@ -384,15 +389,17 @@ impl Compiler {
 
             if let Some(&TypeField { ref field, .. }) = type_field.as_ref() {
                 c.arguments.push(Argument::new(field.ty(), field.var()));
-                c.body
-                    .push(toks!["this.", field.var(), " = ", field.var(), ";"]);
+                c.body.push(
+                    toks!["this.", field.var(), " = ", field.var(), ";"],
+                );
             }
 
             c
         });
 
-        spec.body
-            .push_unless_empty(Code(&body.codes, CSHARP_CONTEXT));
+        spec.body.push_unless_empty(
+            Code(&body.codes, CSHARP_CONTEXT),
+        );
 
         body.sub_types.iter().for_each_loc(|sub_type| {
             let mut class = Class::new(sub_type.ident.clone());
@@ -400,9 +407,9 @@ impl Compiler {
 
             let sub_type_fields = self.fields(&sub_type.fields)?;
 
-            class
-                .body
-                .push_unless_empty(Code(&sub_type.codes, CSHARP_CONTEXT));
+            class.body.push_unless_empty(
+                Code(&sub_type.codes, CSHARP_CONTEXT),
+            );
 
             class.implements = vec![local(spec.name())];
 
@@ -453,7 +460,7 @@ impl Compiler {
 
         let mut extra: Vec<EndpointExtra> = Vec::new();
 
-        for endpoint in body.endpoints.values() {
+        for endpoint in &body.endpoints {
             let name = self.to_lower_camel.convert(endpoint.safe_ident());
 
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
@@ -478,7 +485,7 @@ impl Compiler {
         }
 
         if !self.options.suppress_service_methods {
-            for (endpoint, extra) in body.endpoints.values().zip(extra.iter()) {
+            for (endpoint, extra) in body.endpoints.iter().zip(extra.iter()) {
                 let EndpointExtra {
                     ref name,
                     ref response_ty,
@@ -492,9 +499,11 @@ impl Compiler {
 
                 if !endpoint.comment.is_empty() {
                     method.comments.push("<summary>".into());
-                    method
-                        .comments
-                        .extend(endpoint.comment.iter().cloned().map(Into::into));
+                    method.comments.extend(
+                        endpoint.comment.iter().cloned().map(
+                            Into::into,
+                        ),
+                    );
                     method.comments.push("</summary>".into());
                 }
 
@@ -534,12 +543,9 @@ impl Compiler {
 
         if !field.comment.is_empty() {
             spec.comments.push("<summary>".into());
-            spec.comments.extend(
-                field
-                    .comment
-                    .iter()
-                    .map(|c| Cons::from(Rc::new(c.to_string()))),
-            );
+            spec.comments.extend(field.comment.iter().map(
+                |c| Cons::from(Rc::new(c.to_string())),
+            ));
             spec.comments.push("</summary>".into());
         }
 

@@ -1,4 +1,4 @@
-use super::{Pos, WithPos};
+use {Pos, WithPos};
 use serde;
 use std::borrow;
 use std::cmp;
@@ -159,5 +159,11 @@ where
 {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "<{:?}@{:?}>", self.inner, self.pos)
+    }
+}
+
+impl<'a, T> From<&'a Loc<T>> for Pos {
+    fn from(value: &'a Loc<T>) -> Self {
+        Loc::pos(value).clone()
     }
 }

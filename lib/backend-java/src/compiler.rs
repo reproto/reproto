@@ -1,6 +1,6 @@
 //! Java backend for reproto
 
-use {Options, JAVA_CONTEXT};
+use {JAVA_CONTEXT, Options};
 use backend::{Code, Converter};
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded,
               TupleAdded};
@@ -8,8 +8,8 @@ use core::{ForEachLoc, Handle, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpI
            RpName, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use core::errors::*;
 use genco::{Cons, Element, Java, Quoted, Tokens};
-use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum, Field, Interface,
-                  Method, Modifier, BOOLEAN, INTEGER};
+use genco::java::{Argument, BOOLEAN, Class, Constructor, Enum, Field, INTEGER, Interface, Method,
+                  Modifier, imported, local, optional};
 use java_field::JavaField;
 use java_file::JavaFile;
 use naming::{self, Naming};
@@ -55,11 +55,12 @@ impl<'el> Compiler<'el> {
         utils: &'el Utils,
         options: Options,
     ) -> Compiler<'el> {
-        let async_container = options
-            .async_container
-            .as_ref()
-            .map(Clone::clone)
-            .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
+        let async_container =
+            options
+                .async_container
+                .as_ref()
+                .map(Clone::clone)
+                .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
 
         Compiler {
             env: env,
@@ -127,7 +128,11 @@ impl<'el> Compiler<'el> {
             let argument = Argument::new(spec.ty(), spec.var());
 
             if !self.options.nullable {
-                if let Some(non_null) = self.require_non_null(spec, &argument, field.name().into())
+                if let Some(non_null) = self.require_non_null(
+                    spec,
+                    &argument,
+                    field.name().into(),
+                )
                 {
                     c.body.push(non_null);
                 }
@@ -135,8 +140,9 @@ impl<'el> Compiler<'el> {
 
             c.arguments.push(argument.clone());
 
-            c.body
-                .push(toks!["this.", field.spec.var(), " = ", argument.var(), ";",]);
+            c.body.push(
+                toks!["this.", field.spec.var(), " = ", argument.var(), ";",],
+            );
         }
 
         c
@@ -194,9 +200,9 @@ impl<'el> Compiler<'el> {
                 value
             };
 
-            hash_code
-                .body
-                .push(toks!["result = result * 31 + ", value, ";"]);
+            hash_code.body.push(
+                toks!["result = result * 31 + ", value, ";"],
+            );
         }
 
         hash_code.body.push("return result;");
@@ -416,8 +422,9 @@ impl<'el> Compiler<'el> {
                 }
             }
 
-            c.body
-                .push(toks!["this.", field.var(), " = ", argument.var(), ";",]);
+            c.body.push(
+                toks!["this.", field.var(), " = ", argument.var(), ";",],
+            );
 
             c.arguments.push(argument);
         }
@@ -459,7 +466,8 @@ impl<'el> Compiler<'el> {
         from_value.modifiers = vec![Public, Static];
         from_value.returns = local(name.clone());
 
-        let throw = toks![
+        let throw =
+            toks![
             "throw new ",
             self.illegal_argument.clone(),
             "(",
@@ -507,8 +515,9 @@ impl<'el> Compiler<'el> {
             spec.variants.append(t);
         }
 
-        spec.constructors
-            .push(self.build_enum_constructor(&spec.fields));
+        spec.constructors.push(
+            self.build_enum_constructor(&spec.fields),
+        );
 
         let java_field = self.field(self.variant_field)?;
 
@@ -649,9 +658,9 @@ impl<'el> Compiler<'el> {
 
             let sub_type_fields = self.fields(&sub_type.fields)?;
 
-            class
-                .body
-                .push_unless_empty(Code(&sub_type.codes, JAVA_CONTEXT));
+            class.body.push_unless_empty(
+                Code(&sub_type.codes, JAVA_CONTEXT),
+            );
 
             class.implements = vec![local(spec.name())];
 
@@ -746,7 +755,7 @@ impl<'el> Compiler<'el> {
 
         let mut extra: Vec<EndpointExtra> = Vec::new();
 
-        for endpoint in body.endpoints.values() {
+        for endpoint in &body.endpoints {
             let name = self.to_lower_camel.convert(endpoint.safe_ident());
 
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
@@ -771,7 +780,7 @@ impl<'el> Compiler<'el> {
         }
 
         if !self.options.suppress_service_methods {
-            for (endpoint, extra) in body.endpoints.values().zip(extra.iter()) {
+            for (endpoint, extra) in body.endpoints.iter().zip(extra.iter()) {
                 let EndpointExtra {
                     ref name,
                     ref response_ty,
@@ -783,9 +792,11 @@ impl<'el> Compiler<'el> {
 
                 if !endpoint.comment.is_empty() {
                     method.comments.push("<pre>".into());
-                    method
-                        .comments
-                        .extend(endpoint.comment.iter().cloned().map(Into::into));
+                    method.comments.extend(
+                        endpoint.comment.iter().cloned().map(
+                            Into::into,
+                        ),
+                    );
                     method.comments.push("</pre>".into());
                 }
 
@@ -829,8 +840,9 @@ impl<'el> Compiler<'el> {
 
         if !field.comment.is_empty() {
             spec.comments.push("<pre>".into());
-            spec.comments
-                .extend(field.comment.iter().map(|c| Cons::from(c.as_str())));
+            spec.comments.extend(field.comment.iter().map(
+                |c| Cons::from(c.as_str()),
+            ));
             spec.comments.push("</pre>".into());
         }
 

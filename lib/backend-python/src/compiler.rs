@@ -1,6 +1,6 @@
 //! Python Compiler
 
-use {FileSpec, Options, EXT, INIT_PY, PYTHON_CONTEXT, TYPE_SEP};
+use {EXT, FileSpec, INIT_PY, Options, PYTHON_CONTEXT, TYPE_SEP};
 use backend::{Code, Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageProcessor,
               PackageUtils};
 use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
@@ -9,12 +9,12 @@ use core::{ForEachLoc, Handle, Loc, RelativePathBuf, RpDecl, RpEnumBody, RpField
            RpVersionedPackage, WithPos};
 use core::errors::*;
 use genco::{Element, Quoted, Tokens};
-use genco::python::{imported, Python};
+use genco::python::{Python, imported};
 use naming::{self, Naming};
 use std::collections::BTreeMap;
+use std::iter;
 use std::rc::Rc;
 use trans::{self, Environment};
-use std::iter;
 
 pub struct Compiler<'el> {
     pub env: &'el Environment,
@@ -397,7 +397,8 @@ impl<'el> DynamicConverter<'el> for Compiler<'el> {
         use self::RpType::*;
 
         match *ty {
-            Signed { size: _ } | Unsigned { size: _ } => true,
+            Signed { size: _ } |
+            Unsigned { size: _ } => true,
             Float | Double => true,
             String => true,
             Any => true,
@@ -589,7 +590,11 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
         tuple_body.push_unless_empty(Code(&body.codes, PYTHON_CONTEXT));
 
-        let decode = self.decode_method(&body.name, &body.fields, |i, _| i.to_string().into())?;
+        let decode = self.decode_method(
+            &body.name,
+            &body.fields,
+            |i, _| i.to_string().into(),
+        )?;
         tuple_body.push(decode);
 
         let encode = self.encode_tuple_method(&body.fields)?;
@@ -677,7 +682,11 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
         class_body.push(decode);
 
-        let encode = self.encode_method(&body.fields, self.dict.clone().into(), None)?;
+        let encode = self.encode_method(
+            &body.fields,
+            self.dict.clone().into(),
+            None,
+        )?;
 
         class_body.push(encode);
 
@@ -723,9 +732,11 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
                 sub_type_body.push(getter);
             }
 
-            let decode = self.decode_method(&sub_type.name, fields.iter().cloned(), |_, field| {
-                toks!(field.ident.clone().quoted())
-            })?;
+            let decode = self.decode_method(
+                &sub_type.name,
+                fields.iter().cloned(),
+                |_, field| toks!(field.ident.clone().quoted()),
+            )?;
 
             sub_type_body.push(decode);
 
@@ -736,7 +747,9 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
                     let encode = self.encode_method(
                         fields.iter().cloned(),
                         self.dict.clone().into(),
-                        Some(toks!["data[", tk, "] = ", sub_type.name().quoted(),]),
+                        Some(
+                            toks!["data[", tk, "] = ", sub_type.name().quoted(),],
+                        ),
                     )?;
 
                     sub_type_body.push(encode);
@@ -760,12 +773,13 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
         let mut extra: Vec<EndpointExtra> = Vec::new();
 
-        for endpoint in body.endpoints.values() {
+        for endpoint in &body.endpoints {
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
                 Some((
                     "data",
-                    self.dynamic_decode(res.ty(), "data".into())
-                        .with_pos(Loc::pos(res))?,
+                    self.dynamic_decode(res.ty(), "data".into()).with_pos(
+                        Loc::pos(res),
+                    )?,
                 ))
             } else {
                 None
@@ -808,7 +822,9 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             if let Some(ref mut file_spec) = files.get_mut(&body.name.package) {
                 file_spec.0.push(self.enum_variants(&body)?);
             } else {
-                return Err(format!("missing file for package: {}", &body.name.package).into());
+                return Err(
+                    format!("missing file for package: {}", &body.name.package).into(),
+                );
             }
         }
 

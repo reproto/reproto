@@ -1,0 +1,12 @@
+{
+  "status": false,
+  "stdout": [
+    "it/ui/proto/service_duplicate_endpoint_ident.reproto:4:3-9:",
+    "  4:   foo();",
+    "       ^^^^^^ - endpoint `foo` is already defined",
+    "it/ui/proto/service_duplicate_endpoint_ident.reproto:2:3-9:",
+    "  2:   foo();",
+    "       ^^^^^^ - previously defined here"
+  ],
+  "stderr": []
+}

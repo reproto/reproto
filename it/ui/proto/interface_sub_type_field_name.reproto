@@ -1,0 +1,7 @@
+interface Example {
+  foo: string;
+
+  Foo {
+    bar: string as "foo";
+  }
+}

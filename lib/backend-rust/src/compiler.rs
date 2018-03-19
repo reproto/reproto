@@ -1,6 +1,6 @@
 //! Backend for Rust
 
-use {Options, EXT, MOD, RUST_CONTEXT};
+use {EXT, MOD, Options, RUST_CONTEXT};
 use backend::{Code, PackageProcessor, PackageUtils};
 use core::{ForEachLoc, Handle, Loc, RelativePath, RelativePathBuf, RpEnumBody, RpEnumOrdinal,
            RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpSubTypeStrategy,
@@ -159,7 +159,9 @@ impl<'el> Compiler<'el> {
             return Ok(datetime.clone().into());
         }
 
-        Err("Missing implementation for `datetime`, try: -m chrono".into())
+        Err(
+            "Missing implementation for `datetime`, try: -m chrono".into(),
+        )
     }
 
     pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Rust<'a>>> {
@@ -482,7 +484,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         t.push_unless_empty(attributes);
         t.push(toks!["pub trait ", name.clone(), " {"]);
 
-        let endpoints = body.endpoints.values().map(Loc::as_ref);
+        let endpoints = body.endpoints.iter().map(Loc::as_ref);
 
         endpoints.for_each_loc(|e| {
             t.nested({

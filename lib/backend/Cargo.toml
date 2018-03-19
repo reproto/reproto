@@ -19,6 +19,5 @@ reproto-path-parser = {path = "../path-parser", version = "0.3"}
 reproto-naming = {path = "../naming", version = "0.3"}
 
 log = "0.3"
-linked-hash-map = {version = "0.5", features = ["serde"]}
 serde_json = "1.0"
 genco = {version = "0.3"}

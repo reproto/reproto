@@ -1,5 +1,4 @@
 extern crate genco;
-extern crate linked_hash_map;
 #[macro_use]
 extern crate log;
 extern crate reproto_core as core;

@@ -160,3 +160,9 @@ impl fmt::Display for RpDecl {
         }
     }
 }
+
+impl<'a> From<&'a RpDecl> for Pos {
+    fn from(value: &'a RpDecl) -> Self {
+        value.pos().clone()
+    }
+}

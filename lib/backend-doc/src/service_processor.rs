@@ -18,7 +18,7 @@ define_processor!(ServiceProcessor, RpServiceBody, self,
 
                 self.doc(&self.body.comment)?;
 
-                for endpoint in self.body.endpoints.values() {
+                for endpoint in &self.body.endpoints {
                     self.endpoint(endpoint)?;
                 }
 

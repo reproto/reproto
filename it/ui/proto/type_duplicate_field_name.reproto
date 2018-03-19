@@ -1,0 +1,5 @@
+type Example {
+  foo: string;
+
+  bar: string as "foo";
+}

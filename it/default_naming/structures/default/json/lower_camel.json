@@ -41,8 +41,8 @@
       "comment": [],
       "decls": [],
       "http": {},
-      "endpoints": {
-        "foo_bar": {
+      "endpoints": [
+        {
           "ident": "foo_bar",
           "name": "fooBar",
           "comment": [],
@@ -55,7 +55,7 @@
             "accept": "json"
           }
         }
-      }
+      ]
     }
   ]
 }

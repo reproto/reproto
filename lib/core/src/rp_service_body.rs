@@ -1,7 +1,6 @@
 //! Model for services.
 
 use super::{Loc, RpEndpoint};
-use linked_hash_map::LinkedHashMap;
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct RpServiceBodyHttp {
@@ -12,5 +11,5 @@ pub struct RpServiceBodyHttp {
 
 decl_body!(pub struct RpServiceBody {
     pub http: RpServiceBodyHttp,
-    pub endpoints: LinkedHashMap<String, Loc<RpEndpoint>>,
+    pub endpoints: Vec<Loc<RpEndpoint>>,
 });

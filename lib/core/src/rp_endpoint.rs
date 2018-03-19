@@ -119,18 +119,17 @@ impl RpEndpoint {
 
     /// Get the name of the endpoint.
     pub fn name(&self) -> &str {
-        self.name
-            .as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or(self.ident())
+        self.name.as_ref().map(|s| s.as_str()).unwrap_or(
+            self.ident(),
+        )
     }
 
     /// Safe identifier of the endpoint.
     pub fn safe_ident(&self) -> &str {
-        self.safe_ident
-            .as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or(self.ident.as_str())
+        self.safe_ident.as_ref().map(|s| s.as_str()).unwrap_or(
+            self.ident
+                .as_str(),
+        )
     }
 
     /// Get the identifier of the endpoint.

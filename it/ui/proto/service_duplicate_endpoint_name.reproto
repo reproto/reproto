@@ -1,0 +1,5 @@
+service Example {
+  foo();
+
+  bar() as "foo";
+}
