@@ -1,15 +1,15 @@
 //! Java backend for reproto
 
-use {JAVA_CONTEXT, Options};
-use backend::{Code, Converter};
+use Options;
+use backend::Converter;
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded,
               TupleAdded};
-use core::{ForEachLoc, Handle, Loc, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody,
-           RpName, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
+use core::{ForEachLoc, Handle, Loc, RpCode, RpContext, RpDecl, RpEnumBody, RpEnumType, RpField,
+           RpInterfaceBody, RpName, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use core::errors::*;
 use genco::{Cons, Element, Java, Quoted, Tokens};
-use genco::java::{Argument, BOOLEAN, Class, Constructor, Enum, Field, INTEGER, Interface, Method,
-                  Modifier, imported, local, optional};
+use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum, Field, Interface,
+                  Method, Modifier, BOOLEAN, INTEGER};
 use java_field::JavaField;
 use java_file::JavaFile;
 use naming::{self, Naming};
@@ -17,6 +17,37 @@ use processor::Processor;
 use std::rc::Rc;
 use trans::Environment;
 use utils::{Override, Utils};
+
+/// Helper macro to implement listeners opt loop.
+fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {
+    let mut t = Tokens::new();
+
+    for c in codes {
+        if let RpContext::Java { ref imports, .. } = c.context {
+            for import in imports {
+                if let Some(split) = import.rfind('.') {
+                    let (package, name) = import.split_at(split);
+                    let name = &name[1..];
+                    t.register(imported(package, name));
+                }
+            }
+
+            // TODO: explicitly include imports through genco. Tokens::opaque?
+
+            t.append({
+                let mut t = Tokens::new();
+
+                for line in &c.lines {
+                    t.push(line.as_str());
+                }
+
+                t
+            });
+        }
+    }
+
+    t
+}
 
 macro_rules! call_codegen {
     ($source:expr, $event:expr) => {
@@ -55,12 +86,11 @@ impl<'el> Compiler<'el> {
         utils: &'el Utils,
         options: Options,
     ) -> Compiler<'el> {
-        let async_container =
-            options
-                .async_container
-                .as_ref()
-                .map(Clone::clone)
-                .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
+        let async_container = options
+            .async_container
+            .as_ref()
+            .map(Clone::clone)
+            .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
 
         Compiler {
             env: env,
@@ -128,11 +158,7 @@ impl<'el> Compiler<'el> {
             let argument = Argument::new(spec.ty(), spec.var());
 
             if !self.options.nullable {
-                if let Some(non_null) = self.require_non_null(
-                    spec,
-                    &argument,
-                    field.name().into(),
-                )
+                if let Some(non_null) = self.require_non_null(spec, &argument, field.name().into())
                 {
                     c.body.push(non_null);
                 }
@@ -140,9 +166,8 @@ impl<'el> Compiler<'el> {
 
             c.arguments.push(argument.clone());
 
-            c.body.push(
-                toks!["this.", field.spec.var(), " = ", argument.var(), ";",],
-            );
+            c.body
+                .push(toks!["this.", field.spec.var(), " = ", argument.var(), ";",]);
         }
 
         c
@@ -200,9 +225,9 @@ impl<'el> Compiler<'el> {
                 value
             };
 
-            hash_code.body.push(
-                toks!["result = result * 31 + ", value, ";"],
-            );
+            hash_code
+                .body
+                .push(toks!["result = result * 31 + ", value, ";"]);
         }
 
         hash_code.body.push("return result;");
@@ -422,9 +447,8 @@ impl<'el> Compiler<'el> {
                 }
             }
 
-            c.body.push(
-                toks!["this.", field.var(), " = ", argument.var(), ";",],
-            );
+            c.body
+                .push(toks!["this.", field.var(), " = ", argument.var(), ";",]);
 
             c.arguments.push(argument);
         }
@@ -466,8 +490,7 @@ impl<'el> Compiler<'el> {
         from_value.modifiers = vec![Public, Static];
         from_value.returns = local(name.clone());
 
-        let throw =
-            toks![
+        let throw = toks![
             "throw new ",
             self.illegal_argument.clone(),
             "(",
@@ -515,9 +538,8 @@ impl<'el> Compiler<'el> {
             spec.variants.append(t);
         }
 
-        spec.constructors.push(
-            self.build_enum_constructor(&spec.fields),
-        );
+        spec.constructors
+            .push(self.build_enum_constructor(&spec.fields));
 
         let java_field = self.field(self.variant_field)?;
 
@@ -536,7 +558,7 @@ impl<'el> Compiler<'el> {
 
         spec.methods.push(from_value);
         spec.methods.push(to_value);
-        spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
+        spec.body.push_unless_empty(code(&body.codes));
 
         Ok(spec)
     }
@@ -577,7 +599,7 @@ impl<'el> Compiler<'el> {
             spec.fields.push(field.spec);
         }
 
-        spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
+        spec.body.push_unless_empty(code(&body.codes));
 
         call_codegen!(
             &self.options.tuple_generators,
@@ -616,7 +638,7 @@ impl<'el> Compiler<'el> {
             }
         }
 
-        spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
+        spec.body.push_unless_empty(code(&body.codes));
 
         self.add_class(
             spec.name(),
@@ -650,7 +672,7 @@ impl<'el> Compiler<'el> {
             spec.methods.push(m);
         }
 
-        spec.body.push_unless_empty(Code(&body.codes, JAVA_CONTEXT));
+        spec.body.push_unless_empty(code(&body.codes));
 
         body.sub_types.iter().for_each_loc(|sub_type| {
             let mut class = Class::new(sub_type.ident.clone());
@@ -658,9 +680,7 @@ impl<'el> Compiler<'el> {
 
             let sub_type_fields = self.fields(&sub_type.fields)?;
 
-            class.body.push_unless_empty(
-                Code(&sub_type.codes, JAVA_CONTEXT),
-            );
+            class.body.push_unless_empty(code(&sub_type.codes));
 
             class.implements = vec![local(spec.name())];
 
@@ -792,11 +812,9 @@ impl<'el> Compiler<'el> {
 
                 if !endpoint.comment.is_empty() {
                     method.comments.push("<pre>".into());
-                    method.comments.extend(
-                        endpoint.comment.iter().cloned().map(
-                            Into::into,
-                        ),
-                    );
+                    method
+                        .comments
+                        .extend(endpoint.comment.iter().cloned().map(Into::into));
                     method.comments.push("</pre>".into());
                 }
 
@@ -840,9 +858,8 @@ impl<'el> Compiler<'el> {
 
         if !field.comment.is_empty() {
             spec.comments.push("<pre>".into());
-            spec.comments.extend(field.comment.iter().map(
-                |c| Cons::from(c.as_str()),
-            ));
+            spec.comments
+                .extend(field.comment.iter().map(|c| Cons::from(c.as_str())));
             spec.comments.push("</pre>".into());
         }
 

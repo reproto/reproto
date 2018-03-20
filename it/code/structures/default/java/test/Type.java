@@ -1,6 +1,8 @@
 package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.List;
+import java.util.Map;
 
 public class Type {
   @JsonCreator
@@ -40,7 +42,7 @@ public class Type {
     return b.toString();
   }
 
-  public void typeMethod() {
+  public List<Map<String, String>> typeMethod() {
   }
 
   public static class Builder {

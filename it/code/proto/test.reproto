@@ -7,8 +7,9 @@ type Type {
   }
   }}
 
+  #[import("java.util.List", "java.util.Map")]
   java {{
-  public void typeMethod() {
+  public List<Map<String, String>> typeMethod() {
   }
   }}
 

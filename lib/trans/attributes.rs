@@ -3,10 +3,10 @@
 use core::{Attributes, Context, Loc, Pos, RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp,
            RpHttpMethod, RpPathSpec, RpType, RpValue, WithPos};
 use core::errors::Result;
+use into_model::IntoModel;
+use path_parser;
 use scope::Scope;
 use std::collections::HashMap;
-use path_parser;
-use into_model::IntoModel;
 
 /// `#[reserved(..)]` attribute.
 pub fn reserved(scope: &Scope, attributes: &mut Attributes) -> Result<HashMap<String, Pos>> {
@@ -178,4 +178,23 @@ pub fn endpoint_http(
             }
         }
     }
+}
+
+/// `#[import(..)]` attributes
+pub fn import(scope: &Scope, attributes: &mut Attributes) -> Result<Vec<Loc<String>>> {
+    let mut out = Vec::new();
+
+    if let Some(mut imports) = attributes.take_selection("import") {
+        let ctx = scope.ctx();
+
+        for import in imports.take_words() {
+            out.push(Loc::and_then(import, |w| {
+                w.as_str().map(ToString::to_string)
+            })?);
+        }
+
+        check_selection!(ctx, imports);
+    }
+
+    Ok(out)
 }
