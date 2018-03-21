@@ -645,7 +645,7 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
 }
 
 impl<'input> IntoModel for EndpointArgument<'input> {
-    type Output = RpEndpointArgument;
+    type Output = (RpEndpointArgument, Option<Loc<Attribute<'input>>>);
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         let ident = self.ident.into_model(scope)?;
@@ -656,11 +656,13 @@ impl<'input> IntoModel for EndpointArgument<'input> {
 
         let ident = Loc::new(ident, pos);
 
-        Ok(RpEndpointArgument {
+        let argument = RpEndpointArgument {
             ident: ident,
             safe_ident: safe_ident,
             channel: self.channel.into_model(scope)?,
-        })
+        };
+
+        Ok((argument, self.attribute))
     }
 }
 
@@ -685,8 +687,11 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             let mut arguments = Vec::new();
             let mut seen = HashMap::new();
 
+            let response = item.response.into_model(scope)?;
+            let mut request: Option<RpEndpointArgument> = None;
+
             for argument in item.arguments {
-                let argument = argument.into_model(scope)?;
+                let (argument, attribute) = argument.into_model(scope)?;
 
                 if let Some(other) = seen.insert(
                     argument.ident.to_string(),
@@ -698,10 +703,31 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                         .into());
                 }
 
-                arguments.push(argument);
-            }
+                let mut is_body = false;
 
-            let response = item.response.into_model(scope)?;
+                if let Some(attribute) = attribute {
+                    let mut attributes = vec![attribute].into_model(scope)?;
+
+                    if let Some(_) = attributes.take_selection("body") {
+                        if let Some(other) = request.as_ref() {
+                            return Err(ctx.report()
+                                .err(Loc::pos(&argument.ident), "body declared more than once")
+                                .info(Loc::pos(&other.ident), "previously declared here")
+                                .into());
+                        }
+
+                        is_body = true;
+                    }
+
+                    check_attributes!(scope.ctx(), attributes);
+                }
+
+                if is_body {
+                    request = Some(argument);
+                } else {
+                    arguments.push(argument);
+                }
+            }
 
             let mut attributes = attributes.into_model(scope)?;
 
@@ -717,6 +743,7 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                 comment: Comment(&comment).into_model(scope)?,
                 attributes: attributes,
                 arguments: arguments,
+                request: request,
                 response: response,
                 http: http,
             })

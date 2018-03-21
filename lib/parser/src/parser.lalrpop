@@ -127,8 +127,10 @@ Endpoint: Endpoint<'input> = {
 };
 
 EndpointArgument: EndpointArgument<'input> =
+    <attribute:Loc<Attribute>?>
     <ident:Loc<Ident>> ":" <channel:Loc<Channel>> => EndpointArgument {
         ident: ident,
+        attribute: attribute,
         channel: channel,
     };
 

@@ -105,6 +105,9 @@ pub struct RpEndpoint {
     /// Response type that this endpoint responds with.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response: Option<Loc<RpChannel>>,
+    /// Type of request body to be sent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request: Option<RpEndpointArgument>,
     /// HTTP configuration.
     pub http: RpEndpointHttp,
 }

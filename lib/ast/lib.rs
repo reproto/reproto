@@ -283,6 +283,7 @@ pub enum ServiceMember<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct EndpointArgument<'input> {
     pub ident: Loc<Cow<'input, str>>,
+    pub attribute: Option<Loc<Attribute<'input>>>,
     pub channel: Loc<Channel>,
 }
 
