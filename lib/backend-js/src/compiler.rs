@@ -1,4 +1,4 @@
-use {EXT, FileSpec, Options, TYPE_SEP};
+use {FileSpec, Options, EXT, TYPE_SEP};
 use backend::{Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageProcessor,
               PackageUtils};
 use core::{ForEachLoc, Handle, Loc, RpContext, RpEnumBody, RpField, RpInterfaceBody, RpName,
@@ -139,9 +139,7 @@ impl<'el> Compiler<'el> {
         loop_body.push(js![if match_member, toks!["return member;"]]);
 
         let mut member_loop = Tokens::new();
-        member_loop.push(
-            js![for loop_init; "i < l"; "i++", loop_body.join_line_spacing()],
-        );
+        member_loop.push(js![for loop_init; "i < l"; "i++", loop_body.join_line_spacing()]);
 
         let mut body = Tokens::new();
         body.push(member_loop);
@@ -345,8 +343,7 @@ impl<'el> DynamicConverter<'el> for Compiler<'el> {
         use self::RpType::*;
 
         match *ty {
-            Signed { size: _ } |
-            Unsigned { size: _ } => true,
+            Signed { size: _ } | Unsigned { size: _ } => true,
             Float | RpType::Double => true,
             String => true,
             Any => true,
@@ -546,10 +543,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         let mut members = Tokens::new();
 
         class_body.push(self.build_enum_constructor(self.variant_field));
-        class_body.push(self.enum_encode_decode(
-            self.variant_field,
-            type_name.clone(),
-        )?);
+        class_body.push(self.enum_encode_decode(self.variant_field, type_name.clone())?);
 
         let mut values = Tokens::new();
 
@@ -607,11 +601,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             }
         }
 
-        class_body.push(self.decode_method(
-            &body.fields,
-            type_name.clone(),
-            Self::field_by_name,
-        )?);
+        class_body.push(self.decode_method(&body.fields, type_name.clone(), Self::field_by_name)?);
 
         class_body.push(self.encode_method(&body.fields, "{}", None)?);
         class_body.push_unless_empty(code!(&body.codes, RpContext::Js));

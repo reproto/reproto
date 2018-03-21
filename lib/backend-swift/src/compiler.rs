@@ -7,7 +7,7 @@ use core::{Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage,
            RpType, RpTypeBody, RpVersionedPackage};
 use core::errors::*;
 use genco::{IntoTokens, Tokens};
-use swift::{self, Swift};
+use genco::swift::{self, Swift};
 use trans::{self, Environment};
 
 /// Documentation comments.

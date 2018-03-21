@@ -3,12 +3,12 @@
 use {EnumAdded, EnumCodegen, FieldAdded, FieldCodegen, InterfaceAdded, InterfaceCodegen, Options,
      TupleAdded, TupleCodegen};
 use backend::Initializer;
-use core::errors::{Error, Result};
-use core::{self, RpEnumBody, RpInterfaceBody, RpTupleBody};
-use std::rc::Rc;
-use genco::{Quoted, Tokens};
-use go::{imported, Go};
 use compiler::Compiler;
+use core::{self, RpEnumBody, RpInterfaceBody, RpTupleBody};
+use core::errors::{Error, Result};
+use genco::{Quoted, Tokens};
+use genco::go::{imported, Go};
+use std::rc::Rc;
 
 pub struct Module {}
 

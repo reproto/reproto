@@ -50,11 +50,11 @@ fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {
 }
 
 macro_rules! call_codegen {
-    ($source:expr, $event:expr) => {
+    ($source: expr, $event: expr) => {
         for g in $source {
             g.generate($event)?;
         }
-    }
+    };
 }
 
 pub struct Compiler<'el> {

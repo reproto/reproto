@@ -26,7 +26,9 @@ pub struct Lombok {
 
 impl Lombok {
     pub fn new() -> Lombok {
-        Lombok { data: imported("lombok", "Data") }
+        Lombok {
+            data: imported("lombok", "Data"),
+        }
     }
 }
 

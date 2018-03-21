@@ -16,20 +16,19 @@ extern crate toml;
 
 mod compiler;
 mod module;
-mod swift;
 
 use backend::{Initializer, IntoBytes};
 use compiler::Compiler;
 use core::{Context, RpField, RpPackage, RpVersionedPackage};
 use core::errors::Result;
 use genco::Tokens;
+use genco::swift::Swift;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use naming::Naming;
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
-use swift::Swift;
 use trans::Environment;
 
 const EXT: &str = "swift";
@@ -229,17 +228,20 @@ impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
 
 /// Build codegen hooks.
 macro_rules! codegen {
-    ($c:tt, $e:ty) => {
+    ($c: tt, $e: ty) => {
         pub trait $c {
             fn generate(&self, e: $e) -> Result<()>;
         }
 
-        impl<T> $c for Rc<T> where T: $c {
+        impl<T> $c for Rc<T>
+        where
+            T: $c,
+        {
             fn generate(&self, e: $e) -> Result<()> {
                 self.as_ref().generate(e)
             }
         }
-    }
+    };
 }
 
 /// Event emitted when a struct has been added.

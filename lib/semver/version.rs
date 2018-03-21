@@ -335,7 +335,7 @@ mod tests {
                 patch: 3,
                 pre: Vec::new(),
                 build: Vec::new(),
-            })
+            },)
         );
 
         assert_eq!(Version::parse("1.2.3"), Ok(Version::new(1, 2, 3)));
@@ -348,7 +348,7 @@ mod tests {
                 patch: 3,
                 pre: Vec::new(),
                 build: Vec::new(),
-            })
+            },)
         );
         assert_eq!(
             Version::parse("1.2.3-alpha1"),
@@ -358,7 +358,7 @@ mod tests {
                 patch: 3,
                 pre: vec![Identifier::AlphaNumeric(String::from("alpha1"))],
                 build: Vec::new(),
-            })
+            },)
         );
         assert_eq!(
             Version::parse("  1.2.3-alpha1  "),
@@ -368,7 +368,7 @@ mod tests {
                 patch: 3,
                 pre: vec![Identifier::AlphaNumeric(String::from("alpha1"))],
                 build: Vec::new(),
-            })
+            },)
         );
         assert_eq!(
             Version::parse("1.2.3+build5"),
@@ -378,7 +378,7 @@ mod tests {
                 patch: 3,
                 pre: Vec::new(),
                 build: vec![Identifier::AlphaNumeric(String::from("build5"))],
-            })
+            },)
         );
         assert_eq!(
             Version::parse("  1.2.3+build5  "),
@@ -388,7 +388,7 @@ mod tests {
                 patch: 3,
                 pre: Vec::new(),
                 build: vec![Identifier::AlphaNumeric(String::from("build5"))],
-            })
+            },)
         );
         assert_eq!(
             Version::parse("1.2.3-alpha1+build5"),
@@ -398,7 +398,7 @@ mod tests {
                 patch: 3,
                 pre: vec![Identifier::AlphaNumeric(String::from("alpha1"))],
                 build: vec![Identifier::AlphaNumeric(String::from("build5"))],
-            })
+            },)
         );
         assert_eq!(
             Version::parse("  1.2.3-alpha1+build5  "),
@@ -408,7 +408,7 @@ mod tests {
                 patch: 3,
                 pre: vec![Identifier::AlphaNumeric(String::from("alpha1"))],
                 build: vec![Identifier::AlphaNumeric(String::from("build5"))],
-            })
+            },)
         );
         assert_eq!(
             Version::parse("1.2.3-1.alpha1.9+build5.7.3aedf  "),
@@ -426,7 +426,7 @@ mod tests {
                     Identifier::Numeric(7),
                     Identifier::AlphaNumeric(String::from("3aedf")),
                 ],
-            })
+            },)
         );
         assert_eq!(
             Version::parse("0.4.0-beta.1+0851523"),
@@ -439,7 +439,7 @@ mod tests {
                     Identifier::Numeric(1),
                 ],
                 build: vec![Identifier::AlphaNumeric(String::from("0851523"))],
-            })
+            },)
         );
     }
 
@@ -645,7 +645,7 @@ mod tests {
                 patch: 3,
                 pre: Vec::new(),
                 build: Vec::new(),
-            })
+            },)
         );
         assert_eq!(
             Version::parse("  1.2.3  "),
@@ -655,7 +655,7 @@ mod tests {
                 patch: 3,
                 pre: Vec::new(),
                 build: Vec::new(),
-            })
+            },)
         );
         assert_eq!(
             Version::parse("1.2.3-alpha1"),
@@ -665,7 +665,7 @@ mod tests {
                 patch: 3,
                 pre: vec![Identifier::AlphaNumeric(String::from("alpha1"))],
                 build: Vec::new(),
-            })
+            },)
         );
         assert_eq!(
             Version::parse("  1.2.3-alpha1  "),
@@ -675,7 +675,7 @@ mod tests {
                 patch: 3,
                 pre: vec![Identifier::AlphaNumeric(String::from("alpha1"))],
                 build: Vec::new(),
-            })
+            },)
         );
         assert_eq!(
             Version::parse("1.2.3+build5"),
@@ -685,7 +685,7 @@ mod tests {
                 patch: 3,
                 pre: Vec::new(),
                 build: vec![Identifier::AlphaNumeric(String::from("build5"))],
-            })
+            },)
         );
         assert_eq!(
             Version::parse("  1.2.3+build5  "),
@@ -695,7 +695,7 @@ mod tests {
                 patch: 3,
                 pre: Vec::new(),
                 build: vec![Identifier::AlphaNumeric(String::from("build5"))],
-            })
+            },)
         );
         assert_eq!(
             Version::parse("1.2.3-alpha1+build5"),
@@ -705,7 +705,7 @@ mod tests {
                 patch: 3,
                 pre: vec![Identifier::AlphaNumeric(String::from("alpha1"))],
                 build: vec![Identifier::AlphaNumeric(String::from("build5"))],
-            })
+            },)
         );
         assert_eq!(
             Version::parse("  1.2.3-alpha1+build5  "),
@@ -715,7 +715,7 @@ mod tests {
                 patch: 3,
                 pre: vec![Identifier::AlphaNumeric(String::from("alpha1"))],
                 build: vec![Identifier::AlphaNumeric(String::from("build5"))],
-            })
+            },)
         );
         assert_eq!(
             Version::parse("1.2.3-1.alpha1.9+build5.7.3aedf  "),
@@ -733,7 +733,7 @@ mod tests {
                     Identifier::Numeric(7),
                     Identifier::AlphaNumeric(String::from("3aedf")),
                 ],
-            })
+            },)
         );
         assert_eq!(
             Version::parse("0.4.0-beta.1+0851523"),
@@ -746,7 +746,7 @@ mod tests {
                     Identifier::Numeric(1),
                 ],
                 build: vec![Identifier::AlphaNumeric(String::from("0851523"))],
-            })
+            },)
         );
     }
 

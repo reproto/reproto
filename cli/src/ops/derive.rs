@@ -10,10 +10,10 @@ use derive;
 use genco::IoFmt;
 use manifest::{Lang, Language};
 use std::any::Any;
+use std::fmt::Write;
 use std::io;
 use std::path::Path;
 use std::rc::Rc;
-use std::fmt::Write;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("derive").about("Derive a schema from the given input");

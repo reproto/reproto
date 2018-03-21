@@ -80,7 +80,7 @@ pub use self::rp_enum_ordinal::RpEnumOrdinal;
 pub use self::rp_enum_type::RpEnumType;
 pub use self::rp_field::RpField;
 pub use self::rp_file::RpFile;
-pub use self::rp_interface_body::{DEFAULT_TAG, RpInterfaceBody, RpSubTypeStrategy};
+pub use self::rp_interface_body::{RpInterfaceBody, RpSubTypeStrategy, DEFAULT_TAG};
 pub use self::rp_name::RpName;
 pub use self::rp_number::RpNumber;
 pub use self::rp_package::RpPackage;

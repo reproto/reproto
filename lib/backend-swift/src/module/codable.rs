@@ -7,8 +7,8 @@ use backend::Initializer;
 use core::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpSubTypeStrategy, RpVersionedPackage};
 use core::errors::{Error, Result};
 use genco::{Quoted, Tokens};
+use genco::swift::Swift;
 use std::rc::Rc;
-use swift::Swift;
 
 pub struct Module {}
 

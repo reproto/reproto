@@ -46,8 +46,7 @@ where
         }
 
         let stmt = match *ty {
-            Signed { size: _ } |
-            Unsigned { size: _ } => input,
+            Signed { size: _ } | Unsigned { size: _ } => input,
             Float | Double => input,
             String => input,
             DateTime => self.datetime_encode(input),

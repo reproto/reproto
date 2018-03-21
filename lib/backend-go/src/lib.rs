@@ -16,21 +16,20 @@ extern crate toml;
 
 mod compiler;
 mod module;
-mod go;
 
 use backend::{Initializer, IntoBytes};
 use compiler::Compiler;
 use core::{Context, RpField, RpPackage};
 use core::errors::Result;
 use genco::{Element, IntoTokens, Tokens};
+use genco::go::{self, Go};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use naming::Naming;
 use std::any::Any;
+use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
-use go::Go;
 use trans::Environment;
-use std::collections::HashMap;
 
 const EXT: &str = "go";
 
@@ -144,17 +143,20 @@ impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
 
 /// Build codegen hooks.
 macro_rules! codegen {
-    ($c:tt, $e:ty) => {
+    ($c: tt, $e: ty) => {
         pub trait $c {
             fn generate(&self, e: $e) -> Result<()>;
         }
 
-        impl<T> $c for Rc<T> where T: $c {
+        impl<T> $c for Rc<T>
+        where
+            T: $c,
+        {
             fn generate(&self, e: $e) -> Result<()> {
                 self.as_ref().generate(e)
             }
         }
-    }
+    };
 }
 
 /// Event emitted when a field has been added.

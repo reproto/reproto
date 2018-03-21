@@ -4,7 +4,7 @@ use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, Inter
 use core::RpSubTypeStrategy;
 use core::errors::Result;
 use genco::{Cons, Csharp, Element, IntoTokens, Quoted, Tokens};
-use genco::csharp::{Argument, using};
+use genco::csharp::{using, Argument};
 use std::rc::Rc;
 
 pub struct Module;
@@ -13,25 +13,25 @@ impl Module {
     pub fn initialize(self, e: Configure) {
         let json_net = Rc::new(JsonNet::new());
 
-        e.options.class_generators.push(
-            Box::new(Rc::clone(&json_net)),
-        );
+        e.options
+            .class_generators
+            .push(Box::new(Rc::clone(&json_net)));
 
-        e.options.enum_generators.push(
-            Box::new(Rc::clone(&json_net)),
-        );
+        e.options
+            .enum_generators
+            .push(Box::new(Rc::clone(&json_net)));
 
-        e.options.interface_generators.push(
-            Box::new(Rc::clone(&json_net)),
-        );
+        e.options
+            .interface_generators
+            .push(Box::new(Rc::clone(&json_net)));
 
-        e.options.type_field_generators.push(Box::new(
-            Rc::clone(&json_net),
-        ));
+        e.options
+            .type_field_generators
+            .push(Box::new(Rc::clone(&json_net)));
 
-        e.options.tuple_generators.push(
-            Box::new(Rc::clone(&json_net)),
-        );
+        e.options
+            .tuple_generators
+            .push(Box::new(Rc::clone(&json_net)));
     }
 }
 
@@ -91,9 +91,9 @@ impl ClassCodegen for JsonNet {
 
             // Modify the class to deserialize, and pass type field into the super class.
             if let Some(&mut TypeField {
-                            ref mut field,
-                            ref tag,
-                        }) = type_field.as_mut()
+                ref mut field,
+                ref tag,
+            }) = type_field.as_mut()
             {
                 let mut a = Argument::new(field.ty(), field.var());
                 a.attribute(JsonProperty(tag.clone(), Required::DisallowNull));
@@ -194,7 +194,7 @@ impl TypeFieldCodegen for JsonNet {
 
 impl TupleCodegen for JsonNet {
     fn generate(&self, TupleAdded { mut spec }: TupleAdded) -> Result<()> {
-        use genco::csharp::{BOOLEAN, Class, Method, Modifier, local};
+        use genco::csharp::{local, Class, Method, Modifier, BOOLEAN};
 
         let converter = Rc::new(format!("{}.Json_Net_Converter", spec.name().as_ref()));
         spec.attribute(JsonConverter(local(converter)));
@@ -225,10 +225,9 @@ impl TupleCodegen for JsonNet {
                 let cls = local(self.1.name());
 
                 let mut can_convert = Method::new("CanConvert");
-                can_convert.arguments.push(Argument::new(
-                    self.0.type_.clone(),
-                    "objectType",
-                ));
+                can_convert
+                    .arguments
+                    .push(Argument::new(self.0.type_.clone(), "objectType"));
                 can_convert.modifiers = vec![Modifier::Public, Modifier::Override];
                 can_convert.returns = BOOLEAN;
 
@@ -247,18 +246,15 @@ impl TupleCodegen for JsonNet {
         impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for WriteJson<'a, 'el> {
             fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
                 let mut read_json = Method::new("WriteJson");
-                read_json.arguments.push(Argument::new(
-                    self.0.json_writer.clone(),
-                    "writer",
-                ));
-                read_json.arguments.push(Argument::new(
-                    self.0.object.clone(),
-                    "obj",
-                ));
-                read_json.arguments.push(Argument::new(
-                    self.0.json_serializer.clone(),
-                    "serializer",
-                ));
+                read_json
+                    .arguments
+                    .push(Argument::new(self.0.json_writer.clone(), "writer"));
+                read_json
+                    .arguments
+                    .push(Argument::new(self.0.object.clone(), "obj"));
+                read_json
+                    .arguments
+                    .push(Argument::new(self.0.json_serializer.clone(), "serializer"));
                 read_json.modifiers = vec![Modifier::Public, Modifier::Override];
 
                 read_json.body.push({
@@ -276,8 +272,7 @@ impl TupleCodegen for JsonNet {
                     ]);
 
                     for f in &self.1.fields {
-                        let mut ser =
-                            toks![
+                        let mut ser = toks![
                             self.0.j_token.clone(),
                             ".FromObject(o.",
                             f.var(),
@@ -304,22 +299,18 @@ impl TupleCodegen for JsonNet {
                 let cls = local(self.1.name());
 
                 let mut read_json = Method::new("ReadJson");
-                read_json.arguments.push(Argument::new(
-                    self.0.json_reader.clone(),
-                    "reader",
-                ));
-                read_json.arguments.push(Argument::new(
-                    self.0.type_.clone(),
-                    "objectType",
-                ));
-                read_json.arguments.push(Argument::new(
-                    self.0.object.clone(),
-                    "existingValue",
-                ));
-                read_json.arguments.push(Argument::new(
-                    self.0.json_serializer.clone(),
-                    "serializer",
-                ));
+                read_json
+                    .arguments
+                    .push(Argument::new(self.0.json_reader.clone(), "reader"));
+                read_json
+                    .arguments
+                    .push(Argument::new(self.0.type_.clone(), "objectType"));
+                read_json
+                    .arguments
+                    .push(Argument::new(self.0.object.clone(), "existingValue"));
+                read_json
+                    .arguments
+                    .push(Argument::new(self.0.json_serializer.clone(), "serializer"));
                 read_json.modifiers = vec![Modifier::Public, Modifier::Override];
                 read_json.returns = self.0.object.clone();
 
@@ -331,9 +322,9 @@ impl TupleCodegen for JsonNet {
                 ]);
 
                 read_json.body.push(toks![
-                    self.0.enumerator.with_arguments(
-                        vec![self.0.j_token.clone()]
-                    ),
+                    self.0
+                        .enumerator
+                        .with_arguments(vec![self.0.j_token.clone()]),
                     " enumerator = array.GetEnumerator();",
                 ]);
 
@@ -353,14 +344,9 @@ impl TupleCodegen for JsonNet {
 
                     let to_object = toks!["enumerator.Current.ToObject<", f.ty(), ">(serializer);"];
 
-                    read_json.body.push(toks![
-                        f.ty(),
-                        " ",
-                        f.var(),
-                        " = ",
-                        to_object,
-                        ";",
-                    ]);
+                    read_json
+                        .body
+                        .push(toks![f.ty(), " ", f.var(), " = ", to_object, ";",]);
 
                     args.append(f.var());
                 }

@@ -101,17 +101,17 @@ mod tests {
 
     /// Check that a parsed value equals expected.
     macro_rules! assert_value_eq {
-        ($expected:expr, $input:expr) => {{
+        ($expected: expr, $input: expr) => {{
             let v = parser::parse_Value(&new_context(), parse($input)).unwrap();
             assert_eq!($expected, v);
-        }}
+        }};
     }
 
     macro_rules! assert_type_spec_eq {
-        ($expected:expr, $input:expr) => {{
+        ($expected: expr, $input: expr) => {{
             let v = parser::parse_TypeSpec(&new_context(), parse($input)).unwrap();
             assert_eq!($expected, v);
-        }}
+        }};
     }
 
     const FILE1: &[u8] = include_bytes!("tests/file1.reproto");
@@ -208,7 +208,7 @@ mod tests {
             Value::Number(RpNumber {
                 digits: 125.into(),
                 decimal: 2,
-            }),
+            },),
             "1.25"
         );
 
@@ -216,7 +216,7 @@ mod tests {
             Value::Number(RpNumber {
                 digits: 12500.into(),
                 decimal: 0,
-            }),
+            },),
             "1.25e4"
         );
 
@@ -224,7 +224,7 @@ mod tests {
             Value::Number(RpNumber {
                 digits: (-12500).into(),
                 decimal: 0,
-            }),
+            },),
             "-1.25e4"
         );
 
@@ -232,7 +232,7 @@ mod tests {
             Value::Number(RpNumber {
                 digits: (1234).into(),
                 decimal: 8,
-            }),
+            },),
             "0.00001234"
         );
     }

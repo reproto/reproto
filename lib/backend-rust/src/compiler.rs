@@ -1,6 +1,6 @@
 //! Backend for Rust
 
-use {EXT, MOD, Options};
+use {Options, EXT, MOD};
 use backend::{PackageProcessor, PackageUtils};
 use core::{ForEachLoc, Handle, Loc, RelativePath, RelativePathBuf, RpContext, RpEnumBody,
            RpEnumOrdinal, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
@@ -159,9 +159,7 @@ impl<'el> Compiler<'el> {
             return Ok(datetime.clone().into());
         }
 
-        Err(
-            "Missing implementation for `datetime`, try: -m chrono".into(),
-        )
+        Err("Missing implementation for `datetime`, try: -m chrono".into())
     }
 
     pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Rust<'a>>> {

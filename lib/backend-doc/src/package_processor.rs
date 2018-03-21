@@ -16,25 +16,25 @@ pub struct Data<'a> {
 }
 
 macro_rules! types_section {
-    ($slf:ident, $var:ident, $name:expr) => {
+    ($slf: ident, $var: ident, $name: expr) => {
         if !$var.is_empty() {
             html!($slf, h2 {class => "kind"} ~ $name);
 
             html!($slf, table {} => {
-                for v in $var {
-                    html!($slf, tr {} => {
-                        html!($slf, td {class => "package-item"} => {
-                            $slf.full_name_without_package(&v.name)?;
-                        });
+                                for v in $var {
+                                    html!($slf, tr {} => {
+                                        html!($slf, td {class => "package-item"} => {
+                                            $slf.full_name_without_package(&v.name)?;
+                                        });
 
-                        html!($slf, td {class => "package-item-doc"} => {
-                            $slf.doc(v.comment.iter().take(1))?;
-                        });
-                    });
-                }
-            });
+                                        html!($slf, td {class => "package-item-doc"} => {
+                                            $slf.doc(v.comment.iter().take(1))?;
+                                        });
+                                    });
+                                }
+                            });
         }
-    }
+    };
 }
 
 define_processor!(PackageProcessor, Data<'env>, self,

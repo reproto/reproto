@@ -28,7 +28,9 @@ pub struct EmptyObject {
 impl EmptyObject {
     /// Create a new empty object with the given name.
     pub fn new<S: AsRef<str>>(name: S) -> EmptyObject {
-        EmptyObject { name: Arc::new(name.as_ref().to_string()) }
+        EmptyObject {
+            name: Arc::new(name.as_ref().to_string()),
+        }
     }
 }
 
@@ -42,11 +44,15 @@ impl Object for EmptyObject {
     }
 
     fn clone_object(&self) -> Box<Object> {
-        Box::new(EmptyObject { name: Arc::clone(&self.name) })
+        Box::new(EmptyObject {
+            name: Arc::clone(&self.name),
+        })
     }
 
     fn with_name(&self, name: String) -> Box<Object> {
-        Box::new(EmptyObject { name: Arc::new(name) })
+        Box::new(EmptyObject {
+            name: Arc::new(name),
+        })
     }
 }
 
@@ -172,7 +178,9 @@ pub struct StdinObject {
 
 impl StdinObject {
     pub fn new() -> Self {
-        Self { name: Arc::new("stdin".to_string()) }
+        Self {
+            name: Arc::new("stdin".to_string()),
+        }
     }
 }
 
@@ -186,11 +194,15 @@ impl Object for StdinObject {
     }
 
     fn clone_object(&self) -> Box<Object> {
-        Box::new(StdinObject { name: Arc::clone(&self.name) })
+        Box::new(StdinObject {
+            name: Arc::clone(&self.name),
+        })
     }
 
     fn with_name(&self, name: String) -> Box<Object> {
-        Box::new(StdinObject { name: Arc::new(name) })
+        Box::new(StdinObject {
+            name: Arc::new(name),
+        })
     }
 }
 

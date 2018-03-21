@@ -87,17 +87,28 @@ pub enum Attribute<'input> {
 pub enum Type {
     Double,
     Float,
-    Signed { size: usize },
-    Unsigned { size: usize },
+    Signed {
+        size: usize,
+    },
+    Unsigned {
+        size: usize,
+    },
     Boolean,
     String,
     Bytes,
     Any,
     /// ISO-8601 for date and time.
     DateTime,
-    Name { name: Name },
-    Array { inner: Box<Type> },
-    Map { key: Box<Type>, value: Box<Type> },
+    Name {
+        name: Name,
+    },
+    Array {
+        inner: Box<Type>,
+    },
+    Map {
+        key: Box<Type>,
+        value: Box<Type>,
+    },
 }
 
 /// Any kind of declaration.
@@ -208,7 +219,9 @@ impl<'input> Field<'input> {
 /// Note: prefixes names are _always_ imported with `UseDecl`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Name {
-    Relative { parts: Vec<String> },
+    Relative {
+        parts: Vec<String>,
+    },
     Absolute {
         prefix: Option<String>,
         parts: Vec<String>,

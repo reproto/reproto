@@ -8,8 +8,8 @@ use core::{Loc, RpEnumBody, RpField, RpPackage, RpSubType, RpSubTypeStrategy, Rp
            RpVersionedPackage};
 use core::errors::Result;
 use genco::{Cons, IntoTokens, Quoted, Tokens};
+use genco::swift::{imported, Swift};
 use std::rc::Rc;
-use swift::{imported, Swift};
 
 pub struct GuardMissing<'el>(Cons<'el>, Tokens<'el, Swift<'el>>, Cons<'el>);
 

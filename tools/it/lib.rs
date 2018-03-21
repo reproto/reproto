@@ -8,6 +8,7 @@ extern crate serde_derive;
 extern crate serde_json as json;
 extern crate walkdir;
 
+use failure::ResultExt;
 use relative_path::{RelativePath, RelativePathBuf};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -19,7 +20,6 @@ use std::process::{Command, Stdio};
 use std::result;
 use std::str;
 use std::time::{Duration, Instant};
-use failure::ResultExt;
 
 pub mod utils;
 

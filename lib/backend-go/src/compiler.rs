@@ -6,7 +6,7 @@ use core::{Handle, Loc, RelativePathBuf, RpEnumBody, RpField, RpInterfaceBody, R
            RpTupleBody, RpType, RpTypeBody, RpVersionedPackage, Version};
 use core::errors::*;
 use genco::{IntoTokens, Tokens};
-use go::{imported, local, Go};
+use genco::go::{imported, local, Go};
 use trans::{self, Environment};
 
 /// Documentation comments.
