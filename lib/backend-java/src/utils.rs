@@ -1,7 +1,7 @@
 use core::{RpName, RpType, RpVersionedPackage};
 use core::errors::*;
 use genco::{IntoTokens, Java, Tokens};
-use genco::java::{imported, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG};
+use genco::java::{imported, local, Argument, Class, Method, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG};
 use processor::Processor;
 use std::rc::Rc;
 use trans::Environment;
@@ -86,5 +86,31 @@ pub struct Override;
 impl<'el> IntoTokens<'el, Java<'el>> for Override {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
         toks!["@Override"]
+    }
+}
+
+/// Observer interface used for bidirectional streaming communication.
+pub struct Observer;
+
+impl<'el> IntoTokens<'el, Java<'el>> for Observer {
+    fn into_tokens(self) -> Tokens<'el, Java<'el>> {
+        let mut c = Class::new("Observer");
+        let v = local("V");
+
+        let throwable = imported("java.lang", "Throwable");
+
+        c.methods.push({ Method::new("onCompleted") });
+        c.methods.push({
+            let mut m = Method::new("onError");
+            m.arguments.push(Argument::new(throwable.clone(), "error"));
+            m
+        });
+        c.methods.push({
+            let mut m = Method::new("onNext");
+            m.arguments.push(Argument::new(v.clone(), "value"));
+            m
+        });
+
+        c.into_tokens()
     }
 }

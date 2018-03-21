@@ -16,7 +16,7 @@ use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
 use trans::Environment;
-use utils::{Override, Utils};
+use utils::{Observer, Override, Utils};
 
 /// Helper macro to implement listeners opt loop.
 fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {
@@ -117,6 +117,11 @@ impl<'el> Compiler<'el> {
         for generator in &self.options.root_generators {
             generator.generate(handle)?;
         }
+
+        JavaFile::new("io.reproto", "Observer", |out| {
+            out.push(Observer);
+            Ok(())
+        }).process(handle)?;
 
         for decl in self.env.toplevel_decl_iter() {
             self.compile_decl(handle, decl).with_pos(decl.pos())?;
