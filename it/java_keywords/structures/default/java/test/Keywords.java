@@ -1,111 +1,111 @@
 package test;
 
-import java.util.concurrent.CompletableFuture;
+import io.reproto.Observer;
 
 public interface Keywords {
-  CompletableFuture<String> _abstract();
+  Observer<String> _abstract();
 
-  CompletableFuture<String> _assert();
+  Observer<String> _assert();
 
-  CompletableFuture<String> _boolean();
+  Observer<String> _boolean();
 
-  CompletableFuture<String> _break();
+  Observer<String> _break();
 
-  CompletableFuture<String> _byte();
+  Observer<String> _byte();
 
-  CompletableFuture<String> _case();
+  Observer<String> _case();
 
-  CompletableFuture<String> _catch();
+  Observer<String> _catch();
 
-  CompletableFuture<String> _char();
+  Observer<String> _char();
 
-  CompletableFuture<String> _class();
+  Observer<String> _class();
 
-  CompletableFuture<String> _const();
+  Observer<String> _const();
 
-  CompletableFuture<String> _continue();
+  Observer<String> _continue();
 
-  CompletableFuture<String> _default();
+  Observer<String> _default();
 
-  CompletableFuture<String> _do();
+  Observer<String> _do();
 
-  CompletableFuture<String> _double();
+  Observer<String> _double();
 
-  CompletableFuture<String> _else();
+  Observer<String> _else();
 
-  CompletableFuture<String> _enum();
+  Observer<String> _enum();
 
-  CompletableFuture<String> _extends();
+  Observer<String> _extends();
 
-  CompletableFuture<String> _false();
+  Observer<String> _false();
 
-  CompletableFuture<String> _final();
+  Observer<String> _final();
 
-  CompletableFuture<String> _finally();
+  Observer<String> _finally();
 
-  CompletableFuture<String> _float();
+  Observer<String> _float();
 
-  CompletableFuture<String> _for();
+  Observer<String> _for();
 
-  CompletableFuture<String> _goto();
+  Observer<String> _goto();
 
-  CompletableFuture<String> _if();
+  Observer<String> _if();
 
-  CompletableFuture<String> _implements();
+  Observer<String> _implements();
 
-  CompletableFuture<String> _import();
+  Observer<String> _import();
 
-  CompletableFuture<String> _instanceof();
+  Observer<String> _instanceof();
 
-  CompletableFuture<String> _int();
+  Observer<String> _int();
 
-  CompletableFuture<String> _interface();
+  Observer<String> _interface();
 
-  CompletableFuture<String> _long();
+  Observer<String> _long();
 
-  CompletableFuture<String> _native();
+  Observer<String> _native();
 
-  CompletableFuture<String> _new();
+  Observer<String> _new();
 
-  CompletableFuture<String> _null();
+  Observer<String> _null();
 
-  CompletableFuture<String> _package();
+  Observer<String> _package();
 
-  CompletableFuture<String> _private();
+  Observer<String> _private();
 
-  CompletableFuture<String> _protected();
+  Observer<String> _protected();
 
-  CompletableFuture<String> _public();
+  Observer<String> _public();
 
-  CompletableFuture<String> _return();
+  Observer<String> _return();
 
-  CompletableFuture<String> _short();
+  Observer<String> _short();
 
-  CompletableFuture<String> _static();
+  Observer<String> _static();
 
-  CompletableFuture<String> _strictfp();
+  Observer<String> _strictfp();
 
-  CompletableFuture<String> _super();
+  Observer<String> _super();
 
-  CompletableFuture<String> _switch();
+  Observer<String> _switch();
 
-  CompletableFuture<String> _synchronized();
+  Observer<String> _synchronized();
 
-  CompletableFuture<String> _this();
+  Observer<String> _this();
 
-  CompletableFuture<String> _throw();
+  Observer<String> _throw();
 
-  CompletableFuture<String> _throws();
+  Observer<String> _throws();
 
-  CompletableFuture<String> _transient();
+  Observer<String> _transient();
 
-  CompletableFuture<String> _true();
+  Observer<String> _true();
 
-  CompletableFuture<String> _try();
+  Observer<String> _try();
 
-  CompletableFuture<String> _void();
+  Observer<String> _void();
 
-  CompletableFuture<String> _volatile();
+  Observer<String> _volatile();
 
-  CompletableFuture<String> _while();
+  Observer<String> _while();
 }

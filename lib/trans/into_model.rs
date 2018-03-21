@@ -656,11 +656,13 @@ impl<'input> IntoModel for EndpointArgument<'input> {
 
         let ident = Loc::new(ident, pos);
 
-        Ok(RpEndpointArgument {
+        let argument = RpEndpointArgument {
             ident: ident,
             safe_ident: safe_ident,
             channel: self.channel.into_model(scope)?,
-        })
+        };
+
+        Ok(argument)
     }
 }
 
@@ -698,15 +700,21 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                         .into());
                 }
 
-                arguments.push(argument);
+                arguments.push(Rc::new(argument));
             }
 
             let response = item.response.into_model(scope)?;
+            let mut request = arguments.iter().cloned().next();
 
             let mut attributes = attributes.into_model(scope)?;
 
-            let http =
-                attributes::endpoint_http(scope, &mut attributes, response.as_ref(), &arguments)?;
+            let http = attributes::endpoint_http(
+                scope,
+                &mut attributes,
+                &mut request,
+                response.as_ref(),
+                &arguments,
+            )?;
 
             check_attributes!(scope.ctx(), attributes);
 
@@ -717,6 +725,7 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                 comment: Comment(&comment).into_model(scope)?,
                 attributes: attributes,
                 arguments: arguments,
+                request: request,
                 response: response,
                 http: http,
             })
@@ -1090,34 +1099,65 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
     }
 }
 
-impl<'input> IntoModel for PathSpec<'input> {
+#[allow(unused)]
+type Variables<'a> = HashMap<&'a str, &'a Rc<RpEndpointArgument>>;
+
+impl<'input, 'a: 'input> IntoModel for (&'input mut Variables<'a>, PathSpec<'input>) {
     type Output = RpPathSpec;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        Ok(RpPathSpec {
-            steps: self.steps.into_model(scope)?,
-        })
+        let (vars, spec) = self;
+
+        let mut out = Vec::new();
+
+        for s in spec.steps {
+            out.push((&mut *vars, s).into_model(scope)?);
+        }
+
+        Ok(RpPathSpec { steps: out })
     }
 }
 
-impl<'input> IntoModel for PathStep<'input> {
+impl<'input, 'a: 'input> IntoModel for (&'input mut Variables<'a>, PathStep<'input>) {
     type Output = RpPathStep;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        Ok(RpPathStep {
-            parts: self.parts.into_model(scope)?,
-        })
+        let (vars, step) = self;
+
+        let mut out = Vec::new();
+
+        for p in step.parts {
+            out.push((&mut *vars, p).into_model(scope)?);
+        }
+
+        Ok(RpPathStep { parts: out })
     }
 }
 
-impl<'input> IntoModel for PathPart<'input> {
+impl<'input, 'a: 'input> IntoModel for (&'input mut Variables<'a>, PathPart<'input>) {
     type Output = RpPathPart;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        let (vars, part) = self;
+
         use self::PathPart::*;
 
-        let out = match self {
-            Variable(variable) => RpPathPart::Variable(variable.into_model(scope)?),
+        let out = match part {
+            Variable(variable) => {
+                let var = variable.into_model(scope)?;
+
+                let var = match vars.remove(var.as_str()) {
+                    Some(rp) => Rc::clone(rp),
+                    None => {
+                        return Err(format!(
+                            "path variable `{}` is not an argument to endpoint",
+                            var
+                        ).into());
+                    }
+                };
+
+                RpPathPart::Variable(var)
+            }
             Segment(segment) => RpPathPart::Segment(segment),
         };
 

@@ -66,6 +66,11 @@ impl<'a> Reporter<'a> {
         errors.extend(self.errors);
         Some(Error::new("Error in Context"))
     }
+
+    /// Check if reporter is empty.
+    pub fn is_empty(&self) -> bool {
+        self.errors.is_empty()
+    }
 }
 
 impl<'a> From<Reporter<'a>> for Error {

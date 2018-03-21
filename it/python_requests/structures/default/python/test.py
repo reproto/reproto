@@ -44,7 +44,7 @@ class MyService_Requests:
 
     url = "".join(path)
 
-    r = self.session.request("POST", url, json=request.encode())
+    r = self.session.request("POST", url)
 
     r.raise_for_status()
 

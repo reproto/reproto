@@ -11,10 +11,10 @@ service MyService {
     unknown_return(id: u32) -> Entry;
 
     /// UNKNOWN
-    #[http(path = "/unknown-argument/{id}", body=request)]
+    #[http(path = "/unknown-argument/{id}")]
     unknown_argument(request: Entry, id: u32);
 
     /// UNARY
-    #[http(path = "/foo/{id}", body=request)]
+    #[http(path = "/foo/{id}")]
     unary(request: Entry, id: u32) -> Entry;
 }

@@ -1,7 +1,8 @@
 use core::{RpName, RpType, RpVersionedPackage};
 use core::errors::*;
 use genco::{IntoTokens, Java, Tokens};
-use genco::java::{imported, local, Argument, Class, Method, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG};
+use genco::java::{imported, local, Argument, Interface, Method, BOOLEAN, DOUBLE, FLOAT, INTEGER,
+                  LONG};
 use processor::Processor;
 use std::rc::Rc;
 use trans::Environment;
@@ -94,8 +95,10 @@ pub struct Observer;
 
 impl<'el> IntoTokens<'el, Java<'el>> for Observer {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
-        let mut c = Class::new("Observer");
+        let mut c = Interface::new("Observer");
         let v = local("V");
+
+        c.parameters.push(toks![v.clone()]);
 
         let throwable = imported("java.lang", "Throwable");
 

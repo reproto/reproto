@@ -15,7 +15,7 @@ service MyService {
     unknown_argument(request: Entry);
 
     /// UNARY
-    #[http(path = "/foo/{id}", method = "POST", body = request)]
+    #[http(path = "/foo/{id}", method = "POST")]
     unary(request: Entry, id: u32) -> Entry;
 
     #[http(path = "/", accept="text/plain")]

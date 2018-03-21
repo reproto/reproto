@@ -5,7 +5,7 @@ use core::{RpEndpoint, RpPathPart, RpPathStep};
 use core::errors::*;
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
-use utils::Override;
+use utils::{Override, Utils};
 
 #[derive(Debug, Deserialize)]
 pub enum Version {
@@ -190,12 +190,10 @@ impl OkHttpServiceCodegen {
         &self,
         mut method: Method<'el>,
         endpoint: &'el RpEndpoint,
-        extra: &EndpointExtra<'el>,
         client: Field<'el>,
         base_url: Field<'el>,
+        utils: &Utils,
     ) -> Result<Method<'el>> {
-        let EndpointExtra { ref arguments, .. } = *extra;
-
         method.body.push({
             let mut t = Tokens::new();
 
@@ -209,7 +207,7 @@ impl OkHttpServiceCodegen {
 
             if let Some(ref path) = endpoint.http.path {
                 for step in &path.steps {
-                    let args = step_args(step, arguments)?;
+                    let args = step_args(step, utils)?;
                     t.nested(toks![".addPathSegment(", args.join(" + "), ")"]);
                 }
             }
@@ -319,26 +317,18 @@ impl OkHttpServiceCodegen {
         method.body = method.body.join_line_spacing();
         return Ok(method);
 
-        fn step_args<'el>(
-            step: &'el RpPathStep,
-            arguments: &[Argument<'el>],
-        ) -> Result<Tokens<'el, Java<'el>>> {
+        fn step_args<'el>(step: &'el RpPathStep, utils: &Utils) -> Result<Tokens<'el, Java<'el>>> {
             let mut args = Tokens::new();
 
             for part in &step.parts {
                 match *part {
-                    RpPathPart::Variable(ref s) => {
-                        let arg = arguments
-                            .iter()
-                            .find(|a| a.var().as_ref() == s)
-                            .ok_or_else(|| format!("Missing argument: {}", s))?;
-
-                        let ty = arg.ty();
+                    RpPathPart::Variable(ref arg) => {
+                        let ty = utils.into_java_type(arg.channel.ty())?;
 
                         if ty.is_primitive() {
-                            args.append(toks![ty.as_boxed(), ".toString(", s.as_str(), ")"]);
+                            args.append(toks![ty.as_boxed(), ".toString(", arg.safe_ident(), ")"]);
                         } else {
-                            args.append(s.as_str());
+                            args.append(arg.safe_ident());
                         }
                     }
                     RpPathPart::Segment(ref s) => {
@@ -359,6 +349,7 @@ impl ServiceCodegen for OkHttpServiceCodegen {
             body,
             spec,
             extra,
+            utils,
             ..
         } = e;
 
@@ -396,7 +387,7 @@ impl ServiceCodegen for OkHttpServiceCodegen {
             m.arguments.extend(arguments.iter().cloned());
 
             c.methods
-                .push(self.request(m, endpoint, extra, client.clone(), base_url.clone())?);
+                .push(self.request(m, endpoint, client.clone(), base_url.clone(), utils)?);
         }
 
         c.constructors.push({

@@ -46,11 +46,13 @@
             "type": "java",
             "imports": [
               "java.util.List",
+              "java.util.ArrayList",
               "java.util.Map"
             ]
           },
           "lines": [
             "public List<Map<String, String>> typeMethod() {",
+            "  return new ArrayList<>();",
             "}"
           ]
         },

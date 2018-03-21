@@ -1,7 +1,7 @@
 package lower_snake;
 
-import java.util.concurrent.CompletableFuture;
+import io.reproto.Observer;
 
 public interface Service {
-  CompletableFuture<Void> fooBar();
+  Observer<Void> fooBar();
 }

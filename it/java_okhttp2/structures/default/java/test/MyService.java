@@ -1,8 +1,8 @@
 package test;
 
+import io.reproto.Observer;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.HttpUrl;
@@ -16,28 +16,28 @@ public interface MyService {
    * UNKNOWN
    * </pre>
    */
-  CompletableFuture<Void> unknown(final int id);
+  Observer<Void> unknown(final int id);
 
   /**
    * <pre>
    * UNKNOWN
    * </pre>
    */
-  CompletableFuture<Entry> unknownReturn(final int id);
+  Observer<Entry> unknownReturn(final int id);
 
   /**
    * <pre>
    * UNKNOWN
    * </pre>
    */
-  CompletableFuture<Void> unknownArgument(final Entry request, final int id);
+  Observer<Void> unknownArgument(final Entry request, final int id);
 
   /**
    * <pre>
    * UNARY
    * </pre>
    */
-  CompletableFuture<Entry> unary(final Entry request, final int id);
+  Observer<Entry> unary(final Entry request, final int id);
 
   public class OkHttp implements MyService {
     private final OkHttpClient client;
@@ -52,7 +52,7 @@ public interface MyService {
     }
 
     @Override
-    public CompletableFuture<Void> unknown(final int id) {
+    public Observer<Void> unknown(final int id) {
       final HttpUrl url_ = this.baseUrl.newBuilder()
         .addPathSegment("unknown")
         .addPathSegment(Integer.toString(id))
@@ -63,7 +63,7 @@ public interface MyService {
         .method("GET", null)
         .build();
 
-      final CompletableFuture<Void> future_ = new CompletableFuture<Void>();
+      final Observer<Void> future_ = new Observer<Void>();
 
       this.client.newCall(req_).enqueue(new Callback() {
         @Override
@@ -85,7 +85,7 @@ public interface MyService {
     }
 
     @Override
-    public CompletableFuture<Entry> unknownReturn(final int id) {
+    public Observer<Entry> unknownReturn(final int id) {
       final HttpUrl url_ = this.baseUrl.newBuilder()
         .addPathSegment("unknown-return")
         .addPathSegment(Integer.toString(id))
@@ -96,7 +96,7 @@ public interface MyService {
         .method("GET", null)
         .build();
 
-      final CompletableFuture<Entry> future_ = new CompletableFuture<Entry>();
+      final Observer<Entry> future_ = new Observer<Entry>();
 
       this.client.newCall(req_).enqueue(new Callback() {
         @Override
@@ -118,7 +118,7 @@ public interface MyService {
     }
 
     @Override
-    public CompletableFuture<Void> unknownArgument(final Entry request, final int id) {
+    public Observer<Void> unknownArgument(final Entry request, final int id) {
       final HttpUrl url_ = this.baseUrl.newBuilder()
         .addPathSegment("unknown-argument")
         .addPathSegment(Integer.toString(id))
@@ -129,7 +129,7 @@ public interface MyService {
         .method("GET", null)
         .build();
 
-      final CompletableFuture<Void> future_ = new CompletableFuture<Void>();
+      final Observer<Void> future_ = new Observer<Void>();
 
       this.client.newCall(req_).enqueue(new Callback() {
         @Override
@@ -151,7 +151,7 @@ public interface MyService {
     }
 
     @Override
-    public CompletableFuture<Entry> unary(final Entry request, final int id) {
+    public Observer<Entry> unary(final Entry request, final int id) {
       final HttpUrl url_ = this.baseUrl.newBuilder()
         .addPathSegment("foo")
         .addPathSegment(Integer.toString(id))
@@ -162,7 +162,7 @@ public interface MyService {
         .method("GET", null)
         .build();
 
-      final CompletableFuture<Entry> future_ = new CompletableFuture<Entry>();
+      final Observer<Entry> future_ = new Observer<Entry>();
 
       this.client.newCall(req_).enqueue(new Callback() {
         @Override

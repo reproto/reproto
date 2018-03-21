@@ -1,7 +1,7 @@
 package test;
 
+import io.reproto.Observer;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 
@@ -11,49 +11,49 @@ public interface MyService {
    * UNKNOWN
    * </pre>
    */
-  CompletableFuture<Void> unknown();
+  Observer<Void> unknown();
 
   /**
    * <pre>
    * UNKNOWN
    * </pre>
    */
-  CompletableFuture<Entry> unknownReturn();
+  Observer<Entry> unknownReturn();
 
   /**
    * <pre>
    * UNKNOWN
    * </pre>
    */
-  CompletableFuture<Void> unknownArgument(final Entry request);
+  Observer<Void> unknownArgument(final Entry request);
 
   /**
    * <pre>
    * UNARY
    * </pre>
    */
-  CompletableFuture<Entry> unary(final Entry request);
+  Observer<Entry> unary(final Entry request);
 
   /**
    * <pre>
    * SERVER_STREMAING
    * </pre>
    */
-  CompletableFuture<Entry> serverStreaming(final Entry request);
+  Observer<Entry> serverStreaming(final Entry request);
 
   /**
    * <pre>
    * CLIENT_STREAMING
    * </pre>
    */
-  CompletableFuture<Entry> clientStreaming(final Entry request);
+  Observer<Entry> clientStreaming(final Entry request);
 
   /**
    * <pre>
    * BIDI_STREAMING
    * </pre>
    */
-  CompletableFuture<Entry> bidiStreaming(final Entry request);
+  Observer<Entry> bidiStreaming(final Entry request);
 
   public class OkHttp implements MyService {
     private final OkHttpClient client;
@@ -68,37 +68,37 @@ public interface MyService {
     }
 
     @Override
-    public CompletableFuture<Void> unknown() {
+    public Observer<Void> unknown() {
       throw new RuntimeException("endpoint does not support HTTP");
     }
 
     @Override
-    public CompletableFuture<Entry> unknownReturn() {
+    public Observer<Entry> unknownReturn() {
       throw new RuntimeException("endpoint does not support HTTP");
     }
 
     @Override
-    public CompletableFuture<Void> unknownArgument(final Entry request) {
+    public Observer<Void> unknownArgument(final Entry request) {
       throw new RuntimeException("endpoint does not support HTTP");
     }
 
     @Override
-    public CompletableFuture<Entry> unary(final Entry request) {
+    public Observer<Entry> unary(final Entry request) {
       throw new RuntimeException("endpoint does not support HTTP");
     }
 
     @Override
-    public CompletableFuture<Entry> serverStreaming(final Entry request) {
+    public Observer<Entry> serverStreaming(final Entry request) {
       throw new RuntimeException("endpoint does not support HTTP");
     }
 
     @Override
-    public CompletableFuture<Entry> clientStreaming(final Entry request) {
+    public Observer<Entry> clientStreaming(final Entry request) {
       throw new RuntimeException("endpoint does not support HTTP");
     }
 
     @Override
-    public CompletableFuture<Entry> bidiStreaming(final Entry request) {
+    public Observer<Entry> bidiStreaming(final Entry request) {
       throw new RuntimeException("endpoint does not support HTTP");
     }
   }

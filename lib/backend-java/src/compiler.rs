@@ -60,7 +60,7 @@ macro_rules! call_codegen {
 pub struct Compiler<'el> {
     env: &'el Environment,
     variant_field: &'el Loc<RpField>,
-    utils: &'el Utils,
+    utils: &'el Rc<Utils>,
     options: Options,
     to_upper_camel: naming::ToUpperCamel,
     to_lower_camel: naming::ToLowerCamel,
@@ -74,7 +74,7 @@ pub struct Compiler<'el> {
     string: Java<'static>,
     pub optional: Java<'static>,
     illegal_argument: Java<'static>,
-    async_container: Java<'static>,
+    observer: Java<'static>,
 }
 
 impl<'el> Processor for Compiler<'el> {}
@@ -83,15 +83,9 @@ impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Environment,
         variant_field: &'el Loc<RpField>,
-        utils: &'el Utils,
+        utils: &'el Rc<Utils>,
         options: Options,
     ) -> Compiler<'el> {
-        let async_container = options
-            .async_container
-            .as_ref()
-            .map(Clone::clone)
-            .unwrap_or_else(|| imported("java.util.concurrent", "CompletableFuture"));
-
         Compiler {
             env: env,
             variant_field: variant_field,
@@ -109,7 +103,7 @@ impl<'el> Compiler<'el> {
             string: imported("java.lang", "String"),
             optional: imported("java.util", "Optional"),
             illegal_argument: imported("java.lang", "IllegalArgumentException"),
-            async_container: async_container,
+            observer: imported("io.reproto", "Observer"),
         }
     }
 
@@ -785,9 +779,16 @@ impl<'el> Compiler<'el> {
 
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
                 let ty = self.utils.into_java_type(res.ty())?;
-                self.async_container.with_arguments(vec![ty])
+                self.observer.with_arguments(vec![ty])
             } else {
-                self.async_container.with_arguments(vec![self.void.clone()])
+                self.observer.with_arguments(vec![self.void.clone()])
+            };
+
+            let request_ty = if let Some(req) = endpoint.request.as_ref() {
+                let ty = self.utils.into_java_type(req.channel.ty())?;
+                self.observer.with_arguments(vec![ty])
+            } else {
+                self.observer.with_arguments(vec![self.void.clone()])
             };
 
             let mut arguments = Vec::new();
@@ -800,6 +801,7 @@ impl<'el> Compiler<'el> {
             extra.push(EndpointExtra {
                 name: Rc::new(name).into(),
                 response_ty: response_ty,
+                request_ty: request_ty,
                 arguments: arguments,
             });
         }
@@ -837,6 +839,7 @@ impl<'el> Compiler<'el> {
                 body: body,
                 extra: &extra,
                 spec: &mut spec,
+                utils: &self.utils,
             })?;
         }
 

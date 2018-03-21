@@ -50,6 +50,7 @@ pub struct InterfaceAdded<'a, 'el: 'a> {
 pub struct EndpointExtra<'el> {
     pub name: Cons<'el>,
     pub response_ty: Java<'el>,
+    pub request_ty: Java<'el>,
     pub arguments: Vec<Argument<'el>>,
 }
 
@@ -58,6 +59,7 @@ pub struct ServiceAdded<'a, 'el: 'a> {
     pub body: &'el RpServiceBody,
     pub extra: &'a [EndpointExtra<'el>],
     pub spec: &'a mut Interface<'el>,
+    pub utils: &'a Rc<Utils>,
 }
 
 pub struct Configure<'a> {

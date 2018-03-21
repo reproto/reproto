@@ -7,9 +7,10 @@ type Type {
   }
   }}
 
-  #[import("java.util.List", "java.util.Map")]
+  #[import("java.util.List", "java.util.ArrayList", "java.util.Map")]
   java {{
   public List<Map<String, String>> typeMethod() {
+    return new ArrayList<>();
   }
   }}
 

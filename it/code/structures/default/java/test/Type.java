@@ -1,6 +1,7 @@
 package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -43,6 +44,7 @@ public class Type {
   }
 
   public List<Map<String, String>> typeMethod() {
+    return new ArrayList<>();
   }
 
   public static class Builder {

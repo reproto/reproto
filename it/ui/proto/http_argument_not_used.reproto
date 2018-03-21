@@ -1,4 +1,4 @@
 service MyService {
-    #[http()]
+    #[http]
     server_streaming(request: any) -> any;
 }
