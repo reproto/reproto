@@ -1,9 +1,9 @@
 //! Model for declarations
 
-use {Flavor, Loc, Pos, RpEnumBody, RpInterfaceBody, RpName, RpReg, RpServiceBody, RpTupleBody,
-     RpTypeBody};
+use {Flavor, Loc, Pos, RpEnumBody, RpInterfaceBody, RpName, RpReg, RpServiceBody, RpSubType,
+     RpTupleBody, RpTypeBody, RpVariant, Translate, Translator};
+use errors::Result;
 use std::fmt;
-use std::rc::Rc;
 use std::vec;
 
 /// Iterator over declarations.
@@ -25,17 +25,67 @@ where
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum RpNamed<'a, F: 'static>
+where
+    F: Flavor,
+{
+    Type(&'a Loc<RpTypeBody<F>>),
+    Tuple(&'a Loc<RpTupleBody<F>>),
+    Interface(&'a Loc<RpInterfaceBody<F>>),
+    SubType(&'a Loc<RpSubType<F>>),
+    Enum(&'a Loc<RpEnumBody<F>>),
+    EnumVariant(&'a Loc<RpVariant>),
+    Service(&'a Loc<RpServiceBody<F>>),
+}
+
+impl<'a, F: 'static> RpNamed<'a, F>
+where
+    F: Flavor,
+{
+    /// Get the name of the named element.
+    pub fn name(&self) -> &RpName {
+        use self::RpNamed::*;
+
+        match *self {
+            Type(body) => &body.name,
+            Tuple(tuple) => &tuple.name,
+            Interface(interface) => &interface.name,
+            SubType(sub_type) => &sub_type.name,
+            Enum(en) => &en.name,
+            EnumVariant(variant) => &variant.name,
+            Service(service) => &service.name,
+        }
+    }
+
+    /// Get the position of the named element.
+    pub fn pos(&self) -> &Pos {
+        use self::RpNamed::*;
+
+        match *self {
+            Type(body) => Loc::pos(body),
+            Tuple(tuple) => Loc::pos(tuple),
+            Interface(interface) => Loc::pos(interface),
+            SubType(sub_type) => Loc::pos(sub_type),
+            Enum(en) => Loc::pos(en),
+            EnumVariant(variant) => Loc::pos(variant),
+            Service(service) => Loc::pos(service),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpDecl<F: 'static>
 where
     F: Flavor,
 {
-    Type(Rc<Loc<RpTypeBody<F>>>),
-    Tuple(Rc<Loc<RpTupleBody<F>>>),
-    Interface(Rc<Loc<RpInterfaceBody<F>>>),
-    Enum(Rc<Loc<RpEnumBody<F>>>),
-    Service(Rc<Loc<RpServiceBody<F>>>),
+    Type(Loc<RpTypeBody<F>>),
+    Tuple(Loc<RpTupleBody<F>>),
+    Interface(Loc<RpInterfaceBody<F>>),
+    Enum(Loc<RpEnumBody<F>>),
+    Service(Loc<RpServiceBody<F>>),
 }
 
 impl<F: 'static> RpDecl<F>
@@ -97,38 +147,74 @@ where
     }
 
     /// Convert a declaration into its registered types.
-    pub fn to_reg(&self) -> Vec<RpReg<F>> {
+    pub fn to_reg(&self) -> Vec<(&RpName, &Pos, RpReg)> {
         use self::RpDecl::*;
 
         let mut out = Vec::new();
 
         match *self {
             Type(ref ty) => {
-                out.push(RpReg::Type(Rc::clone(ty)));
+                out.push((&ty.name, Loc::pos(ty), RpReg::Type));
             }
             Interface(ref interface) => {
                 for sub_type in interface.sub_types.iter() {
-                    out.push(RpReg::SubType(Rc::clone(interface), Rc::clone(sub_type)));
+                    out.push((&sub_type.name, Loc::pos(sub_type), RpReg::SubType));
                 }
 
-                out.push(RpReg::Interface(Rc::clone(interface)));
+                out.push((&interface.name, Loc::pos(interface), RpReg::Interface));
             }
             Enum(ref en) => {
                 for variant in &en.variants {
-                    out.push(RpReg::EnumVariant(Rc::clone(en), Rc::clone(variant)));
+                    out.push((&variant.name, Loc::pos(variant), RpReg::EnumVariant));
                 }
 
-                out.push(RpReg::Enum(Rc::clone(en)));
+                out.push((&en.name, Loc::pos(en), RpReg::Enum));
             }
             Tuple(ref tuple) => {
-                out.push(RpReg::Tuple(Rc::clone(tuple)));
+                out.push((&tuple.name, Loc::pos(tuple), RpReg::Tuple));
             }
             Service(ref service) => {
-                out.push(RpReg::Service(Rc::clone(service)));
+                out.push((&service.name, Loc::pos(service), RpReg::Service));
             }
         }
 
         out.extend(self.decls().flat_map(|d| d.to_reg()));
+        out
+    }
+
+    /// Convert a declaration into its names.
+    pub fn to_named(&self) -> Vec<RpNamed<F>> {
+        use self::RpDecl::*;
+
+        let mut out = Vec::new();
+
+        match *self {
+            Type(ref ty) => {
+                out.push(RpNamed::Type(ty));
+            }
+            Interface(ref interface) => {
+                for sub_type in interface.sub_types.iter() {
+                    out.push(RpNamed::SubType(sub_type));
+                }
+
+                out.push(RpNamed::Interface(interface));
+            }
+            Enum(ref en) => {
+                for variant in &en.variants {
+                    out.push(RpNamed::EnumVariant(variant));
+                }
+
+                out.push(RpNamed::Enum(en));
+            }
+            Tuple(ref tuple) => {
+                out.push(RpNamed::Tuple(tuple));
+            }
+            Service(ref service) => {
+                out.push(RpNamed::Service(service));
+            }
+        }
+
+        out.extend(self.decls().flat_map(|d| d.to_named()));
         out
     }
 
@@ -156,6 +242,30 @@ where
             Tuple(ref body) => Loc::pos(body),
             Service(ref body) => Loc::pos(body),
         }
+    }
+}
+
+impl<F: 'static, T> Translate<T> for RpDecl<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpDecl<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpDecl<T::Target>> {
+        use self::RpDecl::*;
+
+        let out = match self {
+            Type(body) => Type(body.translate(translator)?),
+            Tuple(body) => Tuple(body.translate(translator)?),
+            Interface(body) => Interface(body.translate(translator)?),
+            Enum(body) => Enum(body.translate(translator)?),
+            Service(body) => Service(body.translate(translator)?),
+        };
+
+        Ok(out)
     }
 }
 

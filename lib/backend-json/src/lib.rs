@@ -11,7 +11,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate toml;
 
-use core::{Context, RelativePathBuf};
+use core::{Context, CoreFlavor, RelativePathBuf};
 use core::errors::*;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -40,7 +40,8 @@ impl TryFromToml for JsonModule {
     }
 }
 
-fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
+fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let env = env.translate_default()?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
     let root = RelativePathBuf::from(".");

@@ -1,8 +1,8 @@
 use clap::ArgMatches;
 use config_env::ConfigEnv;
-use core::{BytesObject, Context, Flavor, Object, RelativePath, Resolved, ResolvedByPrefix,
-           Resolver, RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage,
-           Version};
+use core::{BytesObject, Context, CoreFlavor, Flavor, Object, RelativePath, Resolved,
+           ResolvedByPrefix, Resolver, RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage,
+           RpVersionedPackage, Version};
 use core::errors::*;
 use manifest::{self as m, read_manifest, read_manifest_preamble, Lang, Language, Manifest,
                ManifestFile, ManifestPreamble, NoLang, Publish};
@@ -203,7 +203,11 @@ pub fn manifest<'a>(
 }
 
 /// Setup environment.
-pub fn environment(lang: &Lang, ctx: Rc<Context>, manifest: &Manifest) -> Result<Environment> {
+pub fn environment(
+    lang: &Lang,
+    ctx: Rc<Context>,
+    manifest: &Manifest,
+) -> Result<Environment<CoreFlavor>> {
     let resolvers = resolvers(manifest)?;
     let package_prefix = manifest.package_prefix.clone();
 
@@ -419,7 +423,7 @@ pub fn semck_check(
     ctx: &Context,
     errors: &mut Vec<Error>,
     repository: &mut Repository,
-    env: &mut Environment,
+    env: &mut Environment<CoreFlavor>,
     m: &Match,
 ) -> Result<()> {
     let Match(ref version, ref object, ref package) = *m;
@@ -626,7 +630,10 @@ pub fn convert_lang(input: Language) -> Box<Lang> {
 }
 
 /// Setup a basic environment falling back to `NoLang` unless one is specified.
-pub fn simple_config(ctx: &Rc<Context>, matches: &ArgMatches) -> Result<(Manifest, Environment)> {
+pub fn simple_config(
+    ctx: &Rc<Context>,
+    matches: &ArgMatches,
+) -> Result<(Manifest, Environment<CoreFlavor>)> {
     let preamble = manifest_preamble(matches)?;
 
     let lang = preamble

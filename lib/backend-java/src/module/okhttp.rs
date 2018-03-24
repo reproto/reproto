@@ -3,10 +3,10 @@
 use codegen::{Configure, EndpointExtra, ServiceAdded, ServiceCodegen};
 use core;
 use core::errors::*;
-use core::flavored::{RpEndpoint, RpPathStep};
+use flavored::{RpEndpoint, RpPathStep};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
-use utils::{Override, Utils};
+use utils::Override;
 
 #[derive(Debug, Deserialize)]
 pub enum Version {
@@ -193,7 +193,6 @@ impl OkHttpServiceCodegen {
         endpoint: &'el RpEndpoint,
         client: Field<'el>,
         base_url: Field<'el>,
-        utils: &Utils,
     ) -> Result<Method<'el>> {
         method.body.push({
             let mut t = Tokens::new();
@@ -208,7 +207,7 @@ impl OkHttpServiceCodegen {
 
             if let Some(ref path) = endpoint.http.path {
                 for step in &path.steps {
-                    let args = step_args(step, utils)?;
+                    let args = step_args(step)?;
                     t.nested(toks![".addPathSegment(", args.join(" + "), ")"]);
                 }
             }
@@ -318,13 +317,13 @@ impl OkHttpServiceCodegen {
         method.body = method.body.join_line_spacing();
         return Ok(method);
 
-        fn step_args<'el>(step: &'el RpPathStep, utils: &Utils) -> Result<Tokens<'el, Java<'el>>> {
+        fn step_args<'el>(step: &'el RpPathStep) -> Result<Tokens<'el, Java<'el>>> {
             let mut args = Tokens::new();
 
             for part in &step.parts {
                 match *part {
                     core::RpPathPart::Variable(ref arg) => {
-                        let ty = utils.into_java_type(arg.channel.ty())?;
+                        let ty = arg.channel.ty();
 
                         if ty.is_primitive() {
                             args.append(toks![ty.as_boxed(), ".toString(", arg.safe_ident(), ")"]);
@@ -350,7 +349,6 @@ impl ServiceCodegen for OkHttpServiceCodegen {
             body,
             spec,
             extra,
-            utils,
             ..
         } = e;
 
@@ -388,7 +386,7 @@ impl ServiceCodegen for OkHttpServiceCodegen {
             m.arguments.extend(arguments.iter().cloned());
 
             c.methods
-                .push(self.request(m, endpoint, client.clone(), base_url.clone(), utils)?);
+                .push(self.request(m, endpoint, client.clone(), base_url.clone())?);
         }
 
         c.constructors.push({

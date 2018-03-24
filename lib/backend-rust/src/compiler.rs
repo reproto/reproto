@@ -11,7 +11,7 @@ use genco::rust::{imported, imported_alias};
 use rust_file_spec::RustFileSpec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
-use trans::{self, Environment};
+use trans::{self, Translated};
 
 /// #[allow(non_camel_case_types)] attribute.
 pub struct AllowNonCamelCaseTypes;
@@ -68,7 +68,7 @@ const TYPE_SEP: &'static str = "_";
 const SCOPE_SEP: &'static str = "::";
 
 pub struct Compiler<'el> {
-    pub env: &'el Environment,
+    pub env: &'el Translated<CoreFlavor>,
     handle: &'el Handle,
     hash_map: Rust<'static>,
     json_value: Rust<'static>,
@@ -76,7 +76,11 @@ pub struct Compiler<'el> {
 }
 
 impl<'el> Compiler<'el> {
-    pub fn new(env: &'el Environment, options: Options, handle: &'el Handle) -> Compiler<'el> {
+    pub fn new(
+        env: &'el Translated<CoreFlavor>,
+        options: Options,
+        handle: &'el Handle,
+    ) -> Compiler<'el> {
         Compiler {
             env: env,
             handle: handle,
@@ -279,7 +283,7 @@ impl<'el> PackageUtils for Compiler<'el> {}
 
 impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = RustFileSpec<'el>;
-    type DeclIter = trans::environment::DeclIter<'el>;
+    type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
 
     fn ext(&self) -> &str {
         EXT
@@ -432,9 +436,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
 
         t.push(toks!["pub enum ", name.clone(), " {"]);
 
-        let sub_types = body.sub_types.iter().map(AsRef::as_ref);
-
-        sub_types.for_each_loc(|s| {
+        body.sub_types.iter().for_each_loc(|s| {
             t.nested({
                 let mut t = Tokens::new();
 

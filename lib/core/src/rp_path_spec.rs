@@ -1,7 +1,7 @@
 //! Path specifications
 
-use {Flavor, RpEndpointArgument};
-use std::rc::Rc;
+use {Flavor, RpEndpointArgument, Translate, Translator};
+use errors::Result;
 use std::vec;
 
 /// A part of a step.
@@ -11,8 +11,29 @@ pub enum RpPathPart<F: 'static>
 where
     F: Flavor,
 {
-    Variable(Rc<RpEndpointArgument<F>>),
+    Variable(RpEndpointArgument<F>),
     Segment(String),
+}
+
+impl<F: 'static, T> Translate<T> for RpPathPart<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpPathPart<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpPathPart<T::Target>> {
+        use self::RpPathPart::*;
+
+        let out = match self {
+            Variable(arg) => Variable(arg.translate(translator)?),
+            Segment(segment) => Segment(segment),
+        };
+
+        Ok(out)
+    }
 }
 
 /// A step in a path specification.
@@ -22,6 +43,22 @@ where
     F: Flavor,
 {
     pub parts: Vec<RpPathPart<F>>,
+}
+
+impl<F: 'static, T> Translate<T> for RpPathStep<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpPathStep<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpPathStep<T::Target>> {
+        Ok(RpPathStep {
+            parts: self.parts.translate(translator)?,
+        })
+    }
 }
 
 /// A path specification.
@@ -63,7 +100,7 @@ where
         for step in &self.steps {
             for part in &step.parts {
                 if let RpPathPart::Variable(ref var) = *part {
-                    vars.push(Rc::as_ref(var));
+                    vars.push(var);
                 }
             }
         }
@@ -71,5 +108,21 @@ where
         Vars {
             iter: vars.into_iter(),
         }
+    }
+}
+
+impl<F: 'static, T> Translate<T> for RpPathSpec<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpPathSpec<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpPathSpec<T::Target>> {
+        Ok(RpPathSpec {
+            steps: self.steps.translate(translator)?,
+        })
     }
 }

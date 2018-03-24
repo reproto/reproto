@@ -1,6 +1,7 @@
 //! Model for endpoints
 
-use {Attributes, Flavor, Loc, RpChannel, RpPathSpec};
+use {Attributes, Flavor, Loc, RpChannel, RpPathSpec, Translate, Translator};
+use errors::Result;
 use std::default;
 use std::rc::Rc;
 
@@ -56,12 +57,31 @@ where
     pub path: Option<RpPathSpec<F>>,
     /// Argument that is the body of the request.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub body: Option<Rc<RpEndpointArgument<F>>>,
+    pub body: Option<RpEndpointArgument<F>>,
     /// HTTP method.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub method: Option<RpHttpMethod>,
     /// Accepted media types.
     pub accept: RpAccept,
+}
+
+impl<F: 'static, T> Translate<T> for RpEndpointHttp<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpEndpointHttp<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpEndpointHttp<T::Target>> {
+        Ok(RpEndpointHttp {
+            path: self.path.translate(translator)?,
+            body: self.body.translate(translator)?,
+            method: self.method,
+            accept: self.accept,
+        })
+    }
 }
 
 /// An argument to an endpont.
@@ -71,11 +91,29 @@ where
     F: Flavor,
 {
     /// Identifier of the argument.
-    pub ident: Loc<String>,
+    pub ident: Rc<Loc<String>>,
     /// Safe identifier for the argument.
-    pub safe_ident: Option<String>,
+    pub safe_ident: Rc<Option<String>>,
     /// Channel of the argument.
     pub channel: Loc<RpChannel<F>>,
+}
+
+impl<F: 'static, T> Translate<T> for RpEndpointArgument<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpEndpointArgument<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpEndpointArgument<T::Target>> {
+        Ok(RpEndpointArgument {
+            ident: self.ident,
+            safe_ident: self.safe_ident,
+            channel: self.channel.translate(translator)?,
+        })
+    }
 }
 
 impl<F: 'static> RpEndpointArgument<F>
@@ -89,8 +127,7 @@ where
 
     /// Access the safe identifier for the endpoint argument.
     pub fn safe_ident(&self) -> &str {
-        self.safe_ident
-            .as_ref()
+        Option::as_ref(&self.safe_ident)
             .map(|s| s.as_str())
             .unwrap_or_else(|| self.ident.as_str())
     }
@@ -114,10 +151,10 @@ where
     /// Attributes associated with the endpoint.
     pub attributes: Attributes,
     /// Request type that this endpoint expects.
-    pub arguments: Vec<Rc<RpEndpointArgument<F>>>,
+    pub arguments: Vec<RpEndpointArgument<F>>,
     /// Request type that this endpoint accepts with.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub request: Option<Rc<RpEndpointArgument<F>>>,
+    pub request: Option<RpEndpointArgument<F>>,
     /// Response type that this endpoint responds with.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response: Option<Loc<RpChannel<F>>>,
@@ -164,5 +201,29 @@ where
         }
 
         true
+    }
+}
+
+impl<F: 'static, T> Translate<T> for RpEndpoint<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpEndpoint<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpEndpoint<T::Target>> {
+        Ok(RpEndpoint {
+            ident: self.ident,
+            safe_ident: self.safe_ident,
+            name: self.name,
+            comment: self.comment,
+            attributes: self.attributes,
+            arguments: self.arguments.translate(translator)?,
+            request: self.request.translate(translator)?,
+            response: self.response.translate(translator)?,
+            http: self.http.translate(translator)?,
+        })
     }
 }

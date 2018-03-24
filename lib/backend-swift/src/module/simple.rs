@@ -917,7 +917,7 @@ impl InterfaceCodegen for Codegen {
             sub_types: S,
         ) -> Result<Tokens<'el, Swift<'el>>>
         where
-            S: IntoIterator<Item = &'el Rc<Loc<RpSubType>>>,
+            S: IntoIterator<Item = &'el Loc<RpSubType>>,
         {
             let mut t = Tokens::new();
 
@@ -979,7 +979,7 @@ impl InterfaceCodegen for Codegen {
         /// Build a method to decode a tagged interface.
         fn encode_tag<'el, S>(tag: &'el str, sub_types: S) -> Result<Tokens<'el, Swift<'el>>>
         where
-            S: IntoIterator<Item = &'el Rc<Loc<RpSubType>>>,
+            S: IntoIterator<Item = &'el Loc<RpSubType>>,
         {
             let mut t = Tokens::new();
 

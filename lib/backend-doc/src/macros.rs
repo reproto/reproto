@@ -40,14 +40,14 @@ macro_rules! define_processor {
     ($name:ident, $body:ty, $slf:ident, $($tail:tt)*) => (
         pub struct $name<'env> {
             pub out: ::std::cell::RefCell<DocBuilder<'env>>,
-            pub env: &'env Environment,
+            pub env: &'env $crate::trans::Translated<$crate::core::CoreFlavor>,
             pub syntax: (&'env ::syntect::highlighting::Theme, &'env ::syntect::parsing::SyntaxSet),
             pub root: &'env str,
             pub body: &'env $body,
         }
 
         impl<'env> Processor<'env> for $name<'env> {
-            fn env(&self) -> &'env Environment {
+            fn env(&self) -> &'env $crate::trans::Translated<$crate::core::CoreFlavor> {
                 self.env
             }
 

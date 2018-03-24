@@ -1,13 +1,12 @@
 //! Java backend for reproto
 
 use Options;
-use backend::Converter;
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded,
               TupleAdded};
 use core::{self, ForEachLoc, Handle, Loc, WithPos};
 use core::errors::*;
-use core::flavored::{RpCode, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody, RpName,
-                     RpServiceBody, RpTupleBody, RpTypeBody};
+use flavored::{JavaFlavor, RpCode, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody,
+               RpServiceBody, RpTupleBody, RpTypeBody};
 use genco::{Cons, Element, Java, Quoted, Tokens};
 use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum, Field, Interface,
                   Method, Modifier, BOOLEAN, INTEGER};
@@ -16,8 +15,8 @@ use java_file::JavaFile;
 use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
-use trans::Environment;
-use utils::{Observer, Override, Utils};
+use trans::Translated;
+use utils::{Observer, Override};
 
 /// Helper macro to implement listeners opt loop.
 fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {
@@ -59,9 +58,8 @@ macro_rules! call_codegen {
 }
 
 pub struct Compiler<'el> {
-    env: &'el Environment,
+    env: &'el Translated<JavaFlavor>,
     variant_field: &'el Loc<RpField>,
-    utils: &'el Rc<Utils>,
     options: Options,
     to_upper_camel: naming::ToUpperCamel,
     to_lower_camel: naming::ToLowerCamel,
@@ -82,15 +80,13 @@ impl<'el> Processor for Compiler<'el> {}
 
 impl<'el> Compiler<'el> {
     pub fn new(
-        env: &'el Environment,
+        env: &'el Translated<JavaFlavor>,
         variant_field: &'el Loc<RpField>,
-        utils: &'el Rc<Utils>,
         options: Options,
     ) -> Compiler<'el> {
         Compiler {
             env: env,
             variant_field: variant_field,
-            utils: utils,
             options: options,
             to_upper_camel: naming::to_upper_camel(),
             to_lower_camel: naming::to_lower_camel(),
@@ -779,15 +775,13 @@ impl<'el> Compiler<'el> {
             let name = self.to_lower_camel.convert(endpoint.safe_ident());
 
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
-                let ty = self.utils.into_java_type(res.ty())?;
-                self.observer.with_arguments(vec![ty])
+                self.observer.with_arguments(vec![res.ty().clone()])
             } else {
                 self.observer.with_arguments(vec![self.void.clone()])
             };
 
             let request_ty = if let Some(req) = endpoint.request.as_ref() {
-                let ty = self.utils.into_java_type(req.channel.ty())?;
-                self.observer.with_arguments(vec![ty])
+                self.observer.with_arguments(vec![req.channel.ty().clone()])
             } else {
                 self.observer.with_arguments(vec![self.void.clone()])
             };
@@ -795,8 +789,7 @@ impl<'el> Compiler<'el> {
             let mut arguments = Vec::new();
 
             for arg in &endpoint.arguments {
-                let ty = self.utils.into_java_type(arg.channel.ty())?;
-                arguments.push(Argument::new(ty, arg.safe_ident()));
+                arguments.push(Argument::new(arg.channel.ty().clone(), arg.safe_ident()));
             }
 
             extra.push(EndpointExtra {
@@ -840,7 +833,6 @@ impl<'el> Compiler<'el> {
                 body: body,
                 extra: &extra,
                 spec: &mut spec,
-                utils: &self.utils,
             })?;
         }
 
@@ -849,15 +841,13 @@ impl<'el> Compiler<'el> {
 
     /// Convert a single field to `JavaField`, without comments.
     fn field(&self, field: &'el RpField) -> Result<JavaField<'el>> {
-        let java_value_type = self.utils.into_java_type(&field.ty)?;
-
         let java_type = if field.is_optional() {
             optional(
-                java_value_type.clone(),
-                self.optional.with_arguments(vec![java_value_type.clone()]),
+                field.ty().clone(),
+                self.optional.with_arguments(vec![field.ty().clone()]),
             )
         } else {
-            java_value_type
+            field.ty().clone()
         };
 
         let ident = Rc::new(self.to_lower_camel.convert(field.safe_ident()));
@@ -965,13 +955,5 @@ impl<'el> Compiler<'el> {
         }
 
         Ok(())
-    }
-}
-
-impl<'el> Converter<'el, core::CoreFlavor> for Compiler<'el> {
-    type Custom = Java<'el>;
-
-    fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {
-        Ok(toks![self.utils.convert_type_id(name)?])
     }
 }

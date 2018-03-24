@@ -19,7 +19,7 @@ mod module;
 
 use backend::{Initializer, IntoBytes};
 use compiler::Compiler;
-use core::Context;
+use core::{Context, CoreFlavor};
 use core::errors::Result;
 use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody};
 use genco::{Element, IntoTokens, Tokens};
@@ -273,7 +273,8 @@ impl<'el> IntoTokens<'el, Go<'el>> for Tags {
     }
 }
 
-fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
+fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let env = env.translate_default()?;
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;

@@ -14,10 +14,10 @@ use naming::{self, Naming};
 use std::collections::BTreeMap;
 use std::iter;
 use std::rc::Rc;
-use trans::{self, Environment};
+use trans::{self, Translated};
 
 pub struct Compiler<'el> {
-    pub env: &'el Environment,
+    pub env: &'el Translated<CoreFlavor>,
     variant_field: &'el Loc<RpField>,
     to_lower_snake: naming::ToLowerSnake,
     dict: Element<'static, Python<'static>>,
@@ -28,7 +28,7 @@ pub struct Compiler<'el> {
 
 impl<'el> Compiler<'el> {
     pub fn new(
-        env: &'el Environment,
+        env: &'el Translated<CoreFlavor>,
         variant_field: &'el Loc<RpField>,
         options: Options,
         handle: &'el Handle,
@@ -559,7 +559,7 @@ impl<'el> DynamicEncode<'el, CoreFlavor> for Compiler<'el> {
 
 impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = FileSpec<'el>;
-    type DeclIter = trans::environment::DeclIter<'el>;
+    type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
 
     fn ext(&self) -> &str {
         EXT

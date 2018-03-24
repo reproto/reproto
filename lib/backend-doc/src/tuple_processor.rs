@@ -5,7 +5,6 @@ use core::flavored::RpTupleBody;
 use doc_builder::DocBuilder;
 use macros::FormatAttribute;
 use processor::Processor;
-use trans::Environment;
 
 define_processor!(TupleProcessor, RpTupleBody, self,
     process => {

@@ -1,6 +1,7 @@
 //! Data Models for fields
 
-use Flavor;
+use {Flavor, Translate, Translator};
+use errors::Result;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct RpField<F: 'static>
@@ -74,7 +75,33 @@ where
         self.field_as.as_ref().unwrap_or(&self.ident)
     }
 
+    /// Get the type of the field.
+    pub fn ty(&self) -> &F::Type {
+        &self.ty
+    }
+
     pub fn display(&self) -> String {
         self.name().to_owned()
+    }
+}
+
+impl<F: 'static, T> Translate<T> for RpField<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpField<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpField<T::Target>> {
+        Ok(RpField {
+            required: self.required,
+            safe_ident: self.safe_ident,
+            ident: self.ident,
+            comment: self.comment,
+            ty: translator.translate_type(self.ty)?,
+            field_as: self.field_as,
+        })
     }
 }

@@ -8,7 +8,6 @@ use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
 use processor::Processor;
-use trans::Environment;
 
 pub struct Data<'a> {
     pub package: &'a RpVersionedPackage,
@@ -20,7 +19,7 @@ macro_rules! types_section {
         if !$var.is_empty() {
             html!($slf, h2 {class => "kind"} ~ $name);
 
-            html!($slf, table {} => {
+            html!{$slf, table {} => {
                 for v in $var {
                     html!($slf, tr {} => {
                         html!($slf, td {class => "package-item"} => {
@@ -32,7 +31,7 @@ macro_rules! types_section {
                         });
                     });
                 }
-            });
+            }};
         }
     };
 }

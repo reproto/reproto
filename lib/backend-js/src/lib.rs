@@ -19,7 +19,7 @@ mod compiler;
 
 use backend::IntoBytes;
 use compiler::Compiler;
-use core::{Context, Loc, Pos, RpField, RpPackage, RpType};
+use core::{Context, CoreFlavor, Loc, Pos, RpField, RpPackage, RpType};
 use core::errors::Result;
 use genco::{JavaScript, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -157,7 +157,8 @@ impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
     }
 }
 
-fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
+fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let env = env.translate_default()?;
     let _modules: Vec<JsModule> = manifest::checked_modules(manifest.modules)?;
     let options = Options::new();
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;

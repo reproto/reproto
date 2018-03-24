@@ -4,7 +4,7 @@ use self::Component::*;
 use self::Violation::*;
 use core::{ErrorPos, Loc, Version};
 use core::errors::*;
-use core::flavored::{RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpReg, RpType,
+use core::flavored::{RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpNamed, RpType,
                      RpVariant};
 use std::collections::HashMap;
 
@@ -72,50 +72,50 @@ pub enum Violation {
     ),
 }
 
-fn fields(reg: &RpReg) -> Vec<&Loc<RpField>> {
-    use core::RpReg::*;
+fn fields<'a>(named: &RpNamed<'a>) -> Vec<&'a Loc<RpField>> {
+    use core::RpNamed::*;
 
-    match *reg {
-        Type(ref target) => target.fields.iter().collect(),
-        Tuple(ref target) => target.fields.iter().collect(),
-        Interface(ref target) => target.fields.iter().collect(),
-        SubType(_, ref target) => target.fields.iter().collect(),
+    match *named {
+        Type(target) => target.fields.iter().collect(),
+        Tuple(target) => target.fields.iter().collect(),
+        Interface(target) => target.fields.iter().collect(),
+        SubType(target) => target.fields.iter().collect(),
         _ => vec![],
     }
 }
 
-fn enum_variants(reg: &RpReg) -> Vec<&Loc<RpVariant>> {
-    use core::RpReg::*;
+fn enum_variants<'a>(named: &'a RpNamed) -> Vec<&'a Loc<RpVariant>> {
+    use core::RpNamed::*;
 
-    match *reg {
-        Enum(ref target) => target.variants.iter().map(|v| &**v).collect(),
+    match *named {
+        Enum(target) => target.variants.iter().collect(),
         _ => vec![],
     }
 }
 
-fn endpoints_to_map(reg: &RpReg) -> HashMap<&str, &Loc<RpEndpoint>> {
-    use core::RpReg::*;
+fn endpoints_to_map<'a>(named: &RpNamed<'a>) -> HashMap<&'a str, &'a Loc<RpEndpoint>> {
+    use core::RpNamed::*;
 
-    match *reg {
-        Service(ref target) => target.endpoints.iter().map(|e| (e.ident(), e)).collect(),
+    match *named {
+        Service(target) => target.endpoints.iter().map(|e| (e.ident(), e)).collect(),
         _ => HashMap::new(),
     }
 }
 
-fn decls_to_map<'a, I: 'a>(decls: I) -> HashMap<RpName, RpReg>
+fn decls_to_map<'a, I: 'a>(decls: I) -> HashMap<RpName, RpNamed<'a>>
 where
     I: IntoIterator<Item = &'a RpDecl>,
 {
     let mut storage = HashMap::new();
 
     for decl in decls {
-        for reg in decl.to_reg() {
+        for named in decl.to_named() {
             // Checked separately for each Enum.
-            if let core::RpReg::EnumVariant(_, _) = reg {
+            if let core::RpNamed::EnumVariant(_) = named {
                 continue;
             }
 
-            storage.insert(reg.name().clone().localize(), reg);
+            storage.insert(named.name().clone().localize(), named);
         }
     }
 
@@ -282,10 +282,10 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
     let from_storage = decls_to_map(&from.decls);
     let mut to_storage = decls_to_map(&to.decls);
 
-    for (name, from_reg) in from_storage {
-        if let Some(to_reg) = to_storage.remove(&name) {
-            let from_fields = fields_to_map(fields(&from_reg));
-            let mut to_fields = fields_to_map(fields(&to_reg));
+    for (name, from_named) in from_storage {
+        if let Some(to_named) = to_storage.remove(&name) {
+            let from_fields = fields_to_map(fields(&from_named));
+            let mut to_fields = fields_to_map(fields(&to_named));
 
             for (name, from_field) in from_fields.into_iter() {
                 if let Some(to_field) = to_fields.remove(&name) {
@@ -302,8 +302,8 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 }
             }
 
-            let from_variants = variants_to_map(enum_variants(&from_reg));
-            let mut to_variants = variants_to_map(enum_variants(&to_reg));
+            let from_variants = variants_to_map(enum_variants(&from_named));
+            let mut to_variants = variants_to_map(enum_variants(&to_named));
 
             for (name, from_variant) in from_variants.into_iter() {
                 if let Some(to_variant) = to_variants.remove(&name) {
@@ -313,8 +313,8 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 }
             }
 
-            let from_endpoints = endpoints_to_map(&from_reg);
-            let mut to_endpoints = endpoints_to_map(&to_reg);
+            let from_endpoints = endpoints_to_map(&from_named);
+            let mut to_endpoints = endpoints_to_map(&to_named);
 
             for (name, from_endpoint) in from_endpoints.into_iter() {
                 if let Some(to_endpoint) = to_endpoints.remove(&name) {
@@ -324,7 +324,7 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 }
             }
         } else {
-            violations.push(DeclRemoved(Minor, from_reg.pos().into()));
+            violations.push(DeclRemoved(Minor, from_named.pos().into()));
         }
     }
 
@@ -374,10 +374,10 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
     let from_storage = decls_to_map(&from.decls);
     let mut to_storage = decls_to_map(&to.decls);
 
-    for (name, from_reg) in from_storage {
-        if let Some(to_reg) = to_storage.remove(&name) {
-            let from_fields = fields_to_map(fields(&from_reg));
-            let mut to_fields = fields_to_map(fields(&to_reg));
+    for (name, from_named) in from_storage {
+        if let Some(to_named) = to_storage.remove(&name) {
+            let from_fields = fields_to_map(fields(&from_named));
+            let mut to_fields = fields_to_map(fields(&to_named));
 
             for (name, from_field) in from_fields.into_iter() {
                 if let Some(to_field) = to_fields.remove(&name) {
@@ -392,8 +392,8 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 violations.push(AddField(Patch, Loc::pos(to_field).into()));
             }
 
-            let from_variants = variants_to_map(enum_variants(&from_reg));
-            let mut to_variants = variants_to_map(enum_variants(&to_reg));
+            let from_variants = variants_to_map(enum_variants(&from_named));
+            let mut to_variants = variants_to_map(enum_variants(&to_named));
 
             for (name, from_variant) in from_variants.into_iter() {
                 if let Some(to_variant) = to_variants.remove(&name) {
@@ -408,8 +408,8 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 violations.push(AddVariant(Patch, Loc::pos(to_variant).into()));
             }
 
-            let from_endpoints = endpoints_to_map(&from_reg);
-            let mut to_endpoints = endpoints_to_map(&to_reg);
+            let from_endpoints = endpoints_to_map(&from_named);
+            let mut to_endpoints = endpoints_to_map(&to_named);
 
             for (name, from_endpoint) in from_endpoints.into_iter() {
                 if let Some(to_endpoint) = to_endpoints.remove(&name) {
@@ -424,12 +424,12 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 violations.push(AddEndpoint(Patch, Loc::pos(to_endpoint).into()));
             }
         } else {
-            violations.push(DeclRemoved(Patch, from_reg.pos().into()));
+            violations.push(DeclRemoved(Patch, from_named.pos().into()));
         }
     }
 
-    for (_, to_reg) in to_storage.into_iter() {
-        violations.push(DeclAdded(Patch, to_reg.pos().into()));
+    for (_, to_named) in to_storage.into_iter() {
+        violations.push(DeclAdded(Patch, to_named.pos().into()));
     }
 
     return Ok(violations);

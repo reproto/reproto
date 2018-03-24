@@ -1,9 +1,9 @@
 //! Code generator for the given path.
 
-use {Compiler, Options, Utils};
+use {Compiler, Options};
 use core::Handle;
 use core::errors::Result;
-use core::flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
+use flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
 use genco::{Cons, Java};
 use genco::java::{Argument, Class, Enum, Interface, Method};
 use std::rc::Rc;
@@ -60,12 +60,10 @@ pub struct ServiceAdded<'a, 'el: 'a> {
     pub body: &'el RpServiceBody,
     pub extra: &'a [EndpointExtra<'el>],
     pub spec: &'a mut Interface<'el>,
-    pub utils: &'a Rc<Utils>,
 }
 
 pub struct Configure<'a> {
     pub options: &'a mut Options,
-    pub utils: &'a Rc<Utils>,
 }
 
 pub trait Codegen {

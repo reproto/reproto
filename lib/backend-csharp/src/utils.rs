@@ -1,13 +1,13 @@
-use core::{RpName, RpType, RpVersionedPackage};
+use core::{CoreFlavor, RpName, RpType, RpVersionedPackage};
 use core::errors::*;
 use genco::{Cons, Csharp, IntoTokens, Quoted, Tokens};
 use genco::csharp::{self, array, struct_, using};
 use processor::Processor;
 use std::rc::Rc;
-use trans::Environment;
+use trans::Translated;
 
 pub struct Utils {
-    env: Rc<Environment>,
+    env: Rc<Translated<CoreFlavor>>,
     list: Csharp<'static>,
     dictionary: Csharp<'static>,
     string: Csharp<'static>,
@@ -19,7 +19,7 @@ pub struct Utils {
 impl Processor for Utils {}
 
 impl Utils {
-    pub fn new(env: &Rc<Environment>) -> Utils {
+    pub fn new(env: &Rc<Translated<CoreFlavor>>) -> Utils {
         Utils {
             env: Rc::clone(env),
             list: using("System.Collections.Generic", "List"),

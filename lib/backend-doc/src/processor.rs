@@ -1,7 +1,7 @@
 //! Processor trait.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use core::{ForEachLoc, Loc, WithPos};
+use core::{self, CoreFlavor, ForEachLoc, Loc, WithPos};
 use core::errors::*;
 use core::flavored::{RpDecl, RpField, RpName, RpType, RpVersionedPackage};
 use doc_builder::DocBuilder;
@@ -11,14 +11,14 @@ use rendering::markdown_to_html;
 use std::ops::DerefMut;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
-use trans::Environment;
+use trans::Translated;
 
 pub trait Processor<'env> {
     /// Access the current builder.
     fn out(&self) -> ::std::cell::RefMut<DocBuilder<'env>>;
 
     /// Access the current environment.
-    fn env(&self) -> &'env Environment;
+    fn env(&self) -> &'env Translated<CoreFlavor>;
 
     /// Path to root.
     fn root(&self) -> &'env str;
@@ -35,13 +35,11 @@ pub trait Processor<'env> {
 
     /// Generate a type URL.
     fn type_url(&self, name: &RpName) -> Result<String> {
-        let registered = self.env().lookup(name)?;
+        let reg = self.env().lookup(name)?;
 
-        let (kind, member) = registered.kind();
-
-        let (fragment, parts) = match member {
-            Some(member) => {
-                let fragment = format!("#{}", member.name().parts.join("_"));
+        let (fragment, parts) = match *reg {
+            core::RpReg::EnumVariant | core::RpReg::SubType => {
+                let fragment = format!("#{}", name.parts.clone().join("_"));
 
                 let parts: Vec<_> = name.parts
                     .iter()
@@ -51,7 +49,7 @@ pub trait Processor<'env> {
 
                 (fragment, parts)
             }
-            None => {
+            _ => {
                 let fragment = "".to_string();
                 (fragment, name.parts.clone())
             }
@@ -64,13 +62,13 @@ pub trait Processor<'env> {
                 "{}/{}/{}.{}.html{}",
                 self.root(),
                 path,
-                kind,
+                reg,
                 parts.join("."),
                 fragment,
             ));
         }
 
-        Ok(format!("{}.{}.html{}", kind, parts.join("."), fragment))
+        Ok(format!("{}.{}.html{}", reg, parts.join("."), fragment))
     }
 
     fn markdown(&self, comment: &str) -> Result<()> {

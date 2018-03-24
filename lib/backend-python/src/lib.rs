@@ -22,7 +22,7 @@ mod utils;
 use backend::{Initializer, IntoBytes};
 use codegen::ServiceCodegen;
 use compiler::Compiler;
-use core::{Context, Loc, Pos, RpField, RpType};
+use core::{Context, CoreFlavor, Loc, Pos, RpField, RpType};
 use core::RpPackage;
 use core::errors::Result;
 use genco::{Python, Tokens};
@@ -161,7 +161,9 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     Ok(options)
 }
 
-fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
+fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let env = env.translate_default()?;
+
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = setup_options(modules)?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;

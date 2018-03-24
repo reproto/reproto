@@ -4,7 +4,7 @@
 //! project-specific configuration for reproto.
 
 extern crate relative_path;
-extern crate reproto_core as core;
+pub extern crate reproto_core as core;
 extern crate reproto_naming as naming;
 pub extern crate reproto_trans as trans;
 extern crate serde;
@@ -12,7 +12,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate toml;
 
-use core::{Range, RpPackage, RpRequiredPackage, Version};
+use core::{CoreFlavor, Range, RpPackage, RpRequiredPackage, Version};
 use core::errors::Result;
 use naming::Naming;
 use relative_path::{RelativePath, RelativePathBuf};
@@ -42,7 +42,7 @@ macro_rules! lang_base {
         fn compile(
             &self,
             ctx: ::std::rc::Rc<core::Context>,
-            env: $crate::trans::Environment,
+            env: $crate::trans::Environment<$crate::core::CoreFlavor>,
             manifest: $crate::Manifest
         ) -> Result<()> {
             $compile(ctx, env, manifest)
@@ -76,7 +76,7 @@ pub trait Lang: fmt::Debug {
     fn compile(
         &self,
         ctx: Rc<core::Context>,
-        env: trans::Environment,
+        env: trans::Environment<CoreFlavor>,
         manifest: Manifest,
     ) -> Result<()>;
 
@@ -101,7 +101,7 @@ pub trait Lang: fmt::Debug {
         ctx: Rc<core::Context>,
         package_prefix: Option<core::RpPackage>,
         resolver: Box<core::Resolver>,
-    ) -> trans::Environment {
+    ) -> trans::Environment<CoreFlavor> {
         let keywords = self.keywords()
             .into_iter()
             .map(|(f, t)| (f.to_string(), t.to_string()))
@@ -167,7 +167,7 @@ impl Lang for NoLang {
 
 fn no_compile(
     _ctx: Rc<core::Context>,
-    _env: trans::Environment,
+    _env: trans::Environment<CoreFlavor>,
     _manifest: Manifest,
 ) -> Result<()> {
     Ok(())

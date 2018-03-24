@@ -1,6 +1,7 @@
 //! Data model for request or responses for endpoints
 
-use Flavor;
+use {Flavor, Translate, Translator};
+use errors::Result;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -44,9 +45,34 @@ where
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         if self.is_streaming() {
-            write!(fmt, "stream {}", self.ty())
+            write!(fmt, "stream {:?}", self.ty())
         } else {
-            write!(fmt, "{}", self.ty())
+            write!(fmt, "{:?}", self.ty())
         }
+    }
+}
+
+impl<F: 'static, T> Translate<T> for RpChannel<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpChannel<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpChannel<T::Target>> {
+        use self::RpChannel::*;
+
+        let out = match self {
+            Unary { ty } => Unary {
+                ty: translator.translate_type(ty)?,
+            },
+            Streaming { ty } => Streaming {
+                ty: translator.translate_type(ty)?,
+            },
+        };
+
+        Ok(out)
     }
 }

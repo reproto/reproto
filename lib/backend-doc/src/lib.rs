@@ -33,6 +33,7 @@ pub const DEFAULT_THEME: &str = "light";
 pub const DEFAULT_SYNTAX_THEME: &str = "ayu-mirage";
 
 use clap::{App, Arg, ArgMatches};
+use core::CoreFlavor;
 use core::errors::*;
 use doc_compiler::DocCompiler;
 use manifest::Manifest;
@@ -199,7 +200,13 @@ fn list_syntax_themes() -> Result<()> {
     Ok(())
 }
 
-pub fn compile(env: Environment, matches: &ArgMatches, manifest: Manifest) -> Result<()> {
+pub fn compile(
+    env: Environment<CoreFlavor>,
+    matches: &ArgMatches,
+    manifest: Manifest,
+) -> Result<()> {
+    let env = env.translate_default()?;
+
     let themes = build_themes();
 
     let mut done = false;

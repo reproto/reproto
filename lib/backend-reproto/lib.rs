@@ -10,7 +10,7 @@ extern crate reproto_manifest as manifest;
 extern crate reproto_trans as trans;
 extern crate toml;
 
-use core::{Context, RelativePathBuf, DEFAULT_TAG};
+use core::{Context, CoreFlavor, RelativePathBuf, DEFAULT_TAG};
 use core::errors::Result;
 use core::flavored::{RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody,
                      RpTupleBody, RpTypeBody, RpVariant};
@@ -101,7 +101,8 @@ impl Custom for Reproto {
 }
 
 /// Compile to a reproto manifest.
-fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
+fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let env = env.translate_default()?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
     let root = RelativePathBuf::from(".");

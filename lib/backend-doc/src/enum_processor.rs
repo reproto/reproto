@@ -7,8 +7,6 @@ use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
 use processor::Processor;
-use std::rc::Rc;
-use trans::Environment;
 
 define_processor!(EnumProcessor, RpEnumBody, self,
     process => {
@@ -32,7 +30,7 @@ define_processor!(EnumProcessor, RpEnumBody, self,
 impl<'p> EnumProcessor<'p> {
     fn variants<'b, I>(&self, variants: I) -> Result<()>
     where
-        I: IntoIterator<Item = &'b Rc<Loc<RpVariant>>>,
+        I: IntoIterator<Item = &'b Loc<RpVariant>>,
     {
         let mut it = variants.into_iter().peekable();
 

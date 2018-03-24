@@ -3,6 +3,7 @@ extern crate genco;
 #[macro_use]
 extern crate log;
 extern crate reproto_backend as backend;
+#[macro_use]
 extern crate reproto_core as core;
 #[macro_use]
 extern crate reproto_manifest as manifest;
@@ -21,18 +22,19 @@ mod java_field;
 mod module;
 mod codegen;
 mod utils;
+mod flavored;
 
 use codegen::Configure;
 use compiler::Compiler;
-use core::{Context, Loc, Pos, RpField, RpType};
+use core::{Context, CoreFlavor, Loc, Pos, RpField};
 use core::errors::Result;
+use genco::java::imported;
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use options::Options;
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
-use utils::Utils;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct JavaLang;
@@ -153,7 +155,7 @@ impl TryFromToml for JavaModule {
     }
 }
 
-fn setup_options<'a>(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> Options {
+fn setup_options<'a>(modules: Vec<JavaModule>) -> Options {
     use self::JavaModule::*;
 
     let mut options = Options::new();
@@ -161,7 +163,6 @@ fn setup_options<'a>(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> Options {
     for module in modules {
         let c = Configure {
             options: &mut options,
-            utils: utils,
         };
 
         match module {
@@ -179,14 +180,19 @@ fn setup_options<'a>(modules: Vec<JavaModule>, utils: &Rc<Utils>) -> Options {
     options
 }
 
-fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
-    let env = Rc::new(env);
-    let utils = Rc::new(Utils::new(&env));
-    let modules = checked_modules(manifest.modules)?;
-    let options = setup_options(modules, &utils);
-    let variant_field = Loc::new(RpField::new("value", RpType::String), Pos::empty());
+fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let env = env.translate(flavored::JavaTypeTranslator::new())?;
 
-    let compiler = Compiler::new(&env, &variant_field, &utils, options);
+    let env = Rc::new(env);
+    let modules = checked_modules(manifest.modules)?;
+    let options = setup_options(modules);
+
+    let variant_field = Loc::new(
+        RpField::new("value", imported("java.lang", "String")),
+        Pos::empty(),
+    );
+
+    let compiler = Compiler::new(&env, &variant_field, options);
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 

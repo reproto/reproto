@@ -55,4 +55,17 @@ This is a non-comprehensive list of what happens when translating `AST` to `RpIR
   The specification permits relative names, and names imported from other files.
 * Attributes are validated and translated into safer, easier to work with types.
 
+## Flavors
+
+RpIR can be flavored (default being `CoreFlavor`).
+
+A flavor defines which types are used to store certain types of information.
+RpIR can be translated from one flavor to another using `Environment::translate`.
+
+This process requires that one implements and provides the necessary `*Translator` traits which
+decide how one flavor (e.g. `CoreFlavor`) is translated to another flavor.
+
+If a backend wants to use `CoreFlavor`, `Environment::translate_default` is available which does
+the minimal amount of processing (referential integrity) but retains the original flavor.
+
 [parsed specification]: /doc/spec.md

@@ -1,6 +1,7 @@
 //! File declarations
 
-use {Flavor, RpDecl};
+use {Flavor, RpDecl, Translate, Translator};
+use errors::Result;
 use std::collections::LinkedList;
 
 #[derive(Debug, Clone, Serialize)]
@@ -46,5 +47,22 @@ where
         let mut queue = LinkedList::new();
         queue.extend(self.decls.iter());
         ForEachDecl { queue: queue }
+    }
+}
+
+impl<F: 'static, T> Translate<T> for RpFile<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpFile<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpFile<T::Target>> {
+        Ok(RpFile {
+            comment: self.comment,
+            decls: self.decls.translate(translator)?,
+        })
     }
 }

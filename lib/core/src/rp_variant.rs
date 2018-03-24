@@ -1,6 +1,7 @@
 //! Variant in an enum
 
-use super::{Loc, RpEnumOrdinal, RpName};
+use {Flavor, Loc, RpEnumOrdinal, RpName, Translate, Translator};
+use errors::Result;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RpVariant {
@@ -24,5 +25,26 @@ impl RpVariant {
             String(ref string) => string.as_str(),
             Generated => self.ident(),
         }
+    }
+}
+
+impl<F: 'static, T> Translate<T> for RpVariant
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpVariant;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpVariant> {
+        translator.visit(&self.name)?;
+
+        Ok(RpVariant {
+            name: self.name,
+            ident: self.ident,
+            comment: self.comment,
+            ordinal: self.ordinal,
+        })
     }
 }

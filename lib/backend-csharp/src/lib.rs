@@ -26,7 +26,7 @@ mod module;
 
 use codegen::Configure;
 use compiler::Compiler;
-use core::Context;
+use core::{Context, CoreFlavor};
 use core::errors::Result;
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use naming::Naming;
@@ -187,7 +187,8 @@ fn setup_options<'a>(modules: Vec<CsharpModule>, utils: &Rc<Utils>) -> Options {
     options
 }
 
-fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()> {
+fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let env = env.translate_default()?;
     let env = Rc::new(env);
     let utils = Rc::new(Utils::new(&env));
     let modules = checked_modules(manifest.modules)?;

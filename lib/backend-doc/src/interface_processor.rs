@@ -5,7 +5,6 @@ use core::flavored::{RpInterfaceBody, RpSubType};
 use doc_builder::DocBuilder;
 use macros::FormatAttribute;
 use processor::Processor;
-use trans::Environment;
 
 define_processor!(InterfaceProcessor, RpInterfaceBody, self,
     process => {

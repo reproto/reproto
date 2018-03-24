@@ -1,67 +1,24 @@
 use ast::{self, UseDecl};
-use core::{self, Context, CoreFlavor, Loc, Object, PathObject, Range, Resolved, Resolver, RpName,
-           RpPackage, RpRequiredPackage, RpVersionedPackage, WithPos};
+use core::{translator, Context, CoreFlavor, Flavor, Loc, Object, PathObject, Range, Resolved,
+           Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage, RpVersionedPackage,
+           Translate, TypeTranslator, WithPos};
 use core::errors::{Error, Result};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
 use parser;
 use scope::Scope;
-use std::collections::{btree_map, BTreeMap, HashMap, LinkedList};
+use std::cell::RefCell;
+use std::collections::{btree_map, BTreeMap, HashMap};
 use std::path::Path;
 use std::rc::Rc;
-use std::vec;
-
-type RpFile = core::RpFile<CoreFlavor>;
-type RpReg = core::RpReg<CoreFlavor>;
-type RpDecl = core::RpDecl<CoreFlavor>;
-
-/// Iterate over all files in the environment.
-pub struct ForEachFile<'a> {
-    iter: btree_map::Iter<'a, RpVersionedPackage, RpFile>,
-}
-
-impl<'a> Iterator for ForEachFile<'a> {
-    type Item = (&'a RpVersionedPackage, &'a RpFile);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
-/// Iterator over all toplevel declarations.
-pub struct ToplevelDeclIter<'a> {
-    it: vec::IntoIter<&'a RpDecl>,
-}
-
-impl<'a> Iterator for ToplevelDeclIter<'a> {
-    type Item = &'a RpDecl;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.it.next()
-    }
-}
-
-/// Iterator over all declarations in a file.
-pub struct DeclIter<'a> {
-    queue: LinkedList<&'a RpDecl>,
-}
-
-impl<'a> Iterator for DeclIter<'a> {
-    type Item = &'a RpDecl;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(decl) = self.queue.pop_front() {
-            self.queue.extend(decl.decls());
-            Some(decl)
-        } else {
-            None
-        }
-    }
-}
+use translated::Translated;
 
 /// Scoped environment for evaluating reproto IDLs.
-pub struct Environment {
+pub struct Environment<F: 'static>
+where
+    F: Flavor,
+{
     /// Global context for collecting errors.
     ctx: Rc<Context>,
     /// Global package prefix.
@@ -70,10 +27,10 @@ pub struct Environment {
     resolver: Box<Resolver>,
     /// Store required packages, to avoid unnecessary lookups.
     visited: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
+    /// Files and associated declarations.
+    files: BTreeMap<RpVersionedPackage, RpFile<F>>,
     /// Registered types.
     types: LinkedHashMap<RpName, RpReg>,
-    /// Files and associated declarations.
-    files: BTreeMap<RpVersionedPackage, RpFile>,
     /// Keywords that need to be translated.
     keywords: Rc<HashMap<String, String>>,
     /// Whether to perform package translation or not.
@@ -85,20 +42,23 @@ pub struct Environment {
 }
 
 /// Environment containing all loaded declarations.
-impl Environment {
+impl<F: 'static> Environment<F>
+where
+    F: Flavor,
+{
     /// Construct a new, language-neutral environment.
     pub fn new(
         ctx: Rc<Context>,
         package_prefix: Option<RpPackage>,
         resolver: Box<Resolver>,
-    ) -> Environment {
+    ) -> Environment<F> {
         Environment {
             ctx: ctx,
             package_prefix: package_prefix,
             resolver: resolver,
             visited: HashMap::new(),
-            types: LinkedHashMap::new(),
             files: BTreeMap::new(),
+            types: LinkedHashMap::new(),
             keywords: Rc::new(HashMap::new()),
             safe_packages: false,
             package_naming: None,
@@ -137,18 +97,36 @@ impl Environment {
             ..self
         }
     }
+}
 
-    /// Lookup the declaration matching the given name.
-    ///
-    /// Returns the registered reference, if present.
-    pub fn lookup<'a>(&'a self, name: &RpName) -> Result<&'a RpReg> {
-        let key = name.clone().without_prefix();
+impl Environment<CoreFlavor> {
+    /// Translate the current environment into another.
+    pub fn translate<T: 'static>(self, type_translator: T) -> Result<Translated<T::Target>>
+    where
+        T: TypeTranslator<Source = CoreFlavor>,
+    {
+        let mut files = BTreeMap::new();
+        let types = RefCell::new(LinkedHashMap::new());
 
-        if let Some(registered) = self.types.get(&key) {
-            return Ok(registered);
+        {
+            let context = translator::Context {
+                type_translator: &type_translator,
+                types: &self.types,
+                decls: &types,
+            };
+
+            for (package, file) in self.files {
+                files.insert(package, file.translate(&context)?);
+            }
         }
 
-        return Err(format!("no such type: {}", name).into());
+        let types = types.into_inner();
+        Ok(Translated::new(types, files))
+    }
+
+    /// Translate without changing the flavor.
+    pub fn translate_default(self) -> Result<Translated<CoreFlavor>> {
+        return self.translate(translator::CoreTypeTranslator);
     }
 
     /// Import a path into the environment.
@@ -243,32 +221,6 @@ impl Environment {
         Ok(())
     }
 
-    /// Iterate over all files.
-    pub fn for_each_file(&self) -> ForEachFile {
-        ForEachFile {
-            iter: self.files.iter(),
-        }
-    }
-
-    /// Iterate over top level declarations of all registered objects.
-    pub fn toplevel_decl_iter(&self) -> ToplevelDeclIter {
-        let values = self.files
-            .values()
-            .flat_map(|f| f.decls.iter())
-            .collect::<Vec<_>>();
-
-        ToplevelDeclIter {
-            it: values.into_iter(),
-        }
-    }
-
-    /// Walks the entire tree of declarations recursively of all registered objects.
-    pub fn decl_iter(&self) -> DeclIter {
-        let mut queue = LinkedList::new();
-        queue.extend(self.files.values().flat_map(|f| f.decls.iter()));
-        DeclIter { queue: queue }
-    }
-
     /// Parse a naming option.
     ///
     /// Since lower_camel is default, do nothing on that case.
@@ -286,7 +238,11 @@ impl Environment {
 
     /// Load the provided Object into an `RpFile` without registering it to the set of visited
     /// files.
-    pub fn load_object(&mut self, object: &Object, package: &RpVersionedPackage) -> Result<RpFile> {
+    pub fn load_object(
+        &mut self,
+        object: &Object,
+        package: &RpVersionedPackage,
+    ) -> Result<RpFile<CoreFlavor>> {
         let object = Rc::new(object.clone_object());
         let input = parser::read_to_string(object.read()?)?;
         let file = parser::parse(object, input.as_str())?;
@@ -294,7 +250,11 @@ impl Environment {
     }
 
     /// Loads the given file, without registering it to the set of visited packages.
-    fn load_file(&mut self, mut file: ast::File, package: &RpVersionedPackage) -> Result<RpFile> {
+    fn load_file(
+        &mut self,
+        mut file: ast::File,
+        package: &RpVersionedPackage,
+    ) -> Result<RpFile<CoreFlavor>> {
         let prefixes = self.process_uses(&file.uses)?;
 
         // TODO: support through file attributes.
@@ -412,7 +372,11 @@ impl Environment {
     }
 
     /// Process a single file, populating the environment.
-    fn process_file(&mut self, package: RpVersionedPackage, file: RpFile) -> Result<()> {
+    fn process_file(
+        &mut self,
+        package: RpVersionedPackage,
+        file: RpFile<CoreFlavor>,
+    ) -> Result<()> {
         use linked_hash_map::Entry::*;
 
         let new_package = package.clone().with_replacements(&self.keywords);
@@ -424,19 +388,15 @@ impl Environment {
             }
         };
 
-        for t in file.decls.iter().flat_map(|d| d.to_reg()) {
-            let key = t.name().clone().without_prefix();
+        for (key, pos, t) in file.decls.iter().flat_map(|d| d.to_reg()) {
+            let key = key.clone().without_prefix();
 
             debug!("new reg ty: {}", key);
 
             match self.types.entry(key) {
                 Vacant(entry) => entry.insert(t),
-                Occupied(entry) => {
-                    return Err(self.ctx
-                        .report()
-                        .err(t.pos(), "conflicting declaration")
-                        .info(entry.get().pos(), "last declaration here")
-                        .into());
+                Occupied(_) => {
+                    return Err(self.ctx.report().err(pos, "conflicting declaration").into());
                 }
             };
         }

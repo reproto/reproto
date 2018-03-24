@@ -235,11 +235,11 @@ impl<'input> IntoModel for Decl<'input> {
         let s = scope.child(self.name().to_owned());
 
         let out = match self {
-            Type(body) => core::RpDecl::Type(Rc::new(body.into_model(&s)?)),
-            Interface(body) => core::RpDecl::Interface(Rc::new(body.into_model(&s)?)),
-            Enum(body) => core::RpDecl::Enum(Rc::new(body.into_model(&s)?)),
-            Tuple(body) => core::RpDecl::Tuple(Rc::new(body.into_model(&s)?)),
-            Service(body) => core::RpDecl::Service(Rc::new(body.into_model(&s)?)),
+            Type(body) => core::RpDecl::Type(body.into_model(&s)?),
+            Interface(body) => core::RpDecl::Interface(body.into_model(&s)?),
+            Enum(body) => core::RpDecl::Enum(body.into_model(&s)?),
+            Tuple(body) => core::RpDecl::Tuple(body.into_model(&s)?),
+            Service(body) => core::RpDecl::Service(body.into_model(&s)?),
         };
 
         Ok(out)
@@ -253,7 +253,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
         self.map(|comment, attributes, item| {
             let ctx = scope.ctx();
 
-            let mut variants: Vec<Rc<Loc<RpVariant>>> = Vec::new();
+            let mut variants = Vec::new();
 
             let mut codes = Vec::new();
 
@@ -282,7 +282,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 check_conflict!(ctx, idents, variant, variant.ident, "variant");
                 check_conflict!(ctx, ordinals, variant, variant.ordinal(), "variant ordinal");
 
-                variants.push(Rc::new(variant));
+                variants.push(variant);
             }
 
             let attributes = attributes.into_model(scope)?;
@@ -490,7 +490,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 check_conflict!(ctx, idents, sub_type, sub_type.ident, "sub-type");
                 check_conflict!(ctx, names, sub_type, sub_type.name(), "sub-type with name");
 
-                sub_types.push(Rc::new(sub_type));
+                sub_types.push(sub_type);
             }
 
             return Ok(RpInterfaceBody {
@@ -658,8 +658,8 @@ impl<'input> IntoModel for EndpointArgument<'input> {
         let ident = Loc::new(ident, pos);
 
         let argument = RpEndpointArgument {
-            ident: ident,
-            safe_ident: safe_ident,
+            ident: Rc::new(ident),
+            safe_ident: Rc::new(safe_ident),
             channel: self.channel.into_model(scope)?,
         };
 
@@ -701,7 +701,7 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                         .into());
                 }
 
-                arguments.push(Rc::new(argument));
+                arguments.push(argument);
             }
 
             let response = item.response.into_model(scope)?;
@@ -1101,7 +1101,7 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
 }
 
 #[allow(unused)]
-type Variables<'a> = HashMap<&'a str, &'a Rc<RpEndpointArgument>>;
+type Variables<'a> = HashMap<&'a str, &'a RpEndpointArgument>;
 
 impl<'input, 'a: 'input> IntoModel for (&'input mut Variables<'a>, PathSpec<'input>) {
     type Output = RpPathSpec;
@@ -1148,7 +1148,7 @@ impl<'input, 'a: 'input> IntoModel for (&'input mut Variables<'a>, PathPart<'inp
                 let var = variable.into_model(scope)?;
 
                 let var = match vars.remove(var.as_str()) {
-                    Some(rp) => Rc::clone(rp),
+                    Some(rp) => rp.clone(),
                     None => {
                         return Err(format!(
                             "path variable `{}` is not an argument to endpoint",

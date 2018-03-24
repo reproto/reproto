@@ -12,6 +12,7 @@ macro_rules! decl_body {
     };
 }
 
+#[macro_export]
 macro_rules! decl_flavor {
     ($flavor: ident, $source: ident) => {
         pub type RpAccept = $source::RpAccept;
@@ -29,7 +30,8 @@ macro_rules! decl_flavor {
         pub type RpPathPart = $source::RpPathPart<$flavor>;
         pub type RpPathSpec = $source::RpPathSpec<$flavor>;
         pub type RpPathStep = $source::RpPathStep<$flavor>;
-        pub type RpReg = $source::RpReg<$flavor>;
+        pub type RpReg = $source::RpReg;
+        pub type RpNamed<'a> = $source::RpNamed<'a, $flavor>;
         pub type RpSubType = $source::RpSubType<$flavor>;
         pub type RpTupleBody = $source::RpTupleBody<$flavor>;
         pub type RpTypeBody = $source::RpTypeBody<$flavor>;

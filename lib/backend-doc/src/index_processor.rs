@@ -6,7 +6,6 @@ use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
 use processor::Processor;
-use trans::Environment;
 
 pub struct Data<'a> {
     pub entries: Vec<(&'a RpVersionedPackage, &'a RpFile)>,

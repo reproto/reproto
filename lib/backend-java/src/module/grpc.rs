@@ -4,14 +4,14 @@ use Compiler;
 use codegen::{Configure, EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::Loc;
 use core::errors::*;
-use core::flavored::RpEndpoint;
+use flavored::RpEndpoint;
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
-use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
+use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier, VOID};
 use naming::{self, Naming};
 use processor::Processor;
 use std::borrow::Borrow;
 use std::rc::Rc;
-use utils::{Override, Utils};
+use utils::Override;
 
 const CLIENT_STUB_NAME: &'static str = "ClientStub";
 const SERVER_STUB_NAME: &'static str = "ServerStub";
@@ -23,7 +23,7 @@ impl Module {
         e.options.suppress_service_methods = true;
         e.options
             .service_generators
-            .push(Box::new(GrpcClient::new(e.utils)));
+            .push(Box::new(GrpcClient::new()));
     }
 }
 
@@ -65,19 +65,17 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for VoidMarshaller<'a> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
         use self::Modifier::*;
 
-        let void = &self.0.utils.void;
-
         let mut class = Class::new("VoidMarshaller");
-        class.implements = vec![self.0.marshaller.with_arguments(vec![void.clone()])];
+        class.implements = vec![self.0.marshaller.with_arguments(vec![VOID.as_boxed()])];
         class.modifiers.push(Static);
 
         // parse
         class.methods.push({
             let mut m = Method::new("parse");
             m.annotation(Override);
-            m.returns = void.clone();
             m.arguments
                 .push(Argument::new(self.0.input_stream.clone(), "stream"));
+            m.returns = VOID.as_boxed();
 
             m.body.push("return null;");
             m
@@ -88,7 +86,7 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for VoidMarshaller<'a> {
             let mut m = Method::new("stream");
             m.annotation(Override);
             m.returns = self.0.input_stream.clone();
-            m.arguments.push(Argument::new(void.clone(), "value"));
+            m.arguments.push(Argument::new(VOID.as_boxed(), "value"));
 
             m.body
                 .push(toks!["return new ", self.0.bais.clone(), "(new byte[0]);",]);
@@ -188,7 +186,6 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for JsonMarshaller<'a> {
 }
 
 pub struct GrpcClient {
-    utils: Rc<Utils>,
     to_upper_snake: naming::ToUpperSnake,
     mapper_provider: Java<'static>,
     bais: Java<'static>,
@@ -209,9 +206,8 @@ pub struct GrpcClient {
 }
 
 impl GrpcClient {
-    pub fn new(utils: &Rc<Utils>) -> GrpcClient {
+    pub fn new() -> GrpcClient {
         GrpcClient {
-            utils: Rc::clone(utils),
             to_upper_snake: naming::to_upper_snake(),
             mapper_provider: imported("io.reproto", "MapperProvider"),
             bais: imported("java.io", "ByteArrayInputStream"),
@@ -689,13 +685,13 @@ impl ServiceCodegen for GrpcClient {
             let request = self.endpoint_request(endpoint)?.map(|v| v.1);
 
             let request_ty = if let Some(req) = request {
-                self.utils.into_java_type(req.ty())?
+                req.ty().clone()
             } else {
                 compiler.void.clone()
             };
 
             let response_ty = if let Some(ref res) = endpoint.response.as_ref() {
-                self.utils.into_java_type(res.ty())?
+                res.ty().clone()
             } else {
                 compiler.void.clone()
             };

@@ -16,11 +16,11 @@ use genco::csharp::{local, optional, using, Argument, Class, Constructor, Enum, 
 use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
-use trans::Environment;
+use trans::Translated;
 use utils::Utils;
 
 pub struct Compiler {
-    env: Rc<Environment>,
+    env: Rc<Translated<CoreFlavor>>,
     utils: Rc<Utils>,
     options: Options,
     to_upper_camel: naming::ToUpperCamel,
@@ -35,7 +35,7 @@ pub struct Compiler {
 impl Processor for Compiler {}
 
 impl Compiler {
-    pub fn new(env: &Rc<Environment>, utils: &Rc<Utils>, options: Options) -> Compiler {
+    pub fn new(env: &Rc<Translated<CoreFlavor>>, utils: &Rc<Utils>, options: Options) -> Compiler {
         Compiler {
             env: Rc::clone(env),
             utils: Rc::clone(utils),

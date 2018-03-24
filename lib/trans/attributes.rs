@@ -8,7 +8,6 @@ use into_model::IntoModel;
 use path_parser;
 use scope::Scope;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 /// `#[reserved(..)]` attribute.
 pub fn reserved(scope: &Scope, attributes: &mut Attributes) -> Result<HashMap<String, Pos>> {
@@ -36,9 +35,9 @@ pub fn reserved(scope: &Scope, attributes: &mut Attributes) -> Result<HashMap<St
 pub fn endpoint_http(
     scope: &Scope,
     attributes: &mut Attributes,
-    request: &mut Option<Rc<RpEndpointArgument>>,
+    request: &mut Option<RpEndpointArgument>,
     response: Option<&Loc<RpChannel>>,
-    arguments: &Vec<Rc<RpEndpointArgument>>,
+    arguments: &Vec<RpEndpointArgument>,
 ) -> Result<RpEndpointHttp> {
     let mut http = RpEndpointHttp::default();
 
@@ -114,7 +113,7 @@ pub fn endpoint_http(
     fn parse_path<'a, 'b: 'a>(
         scope: &Scope,
         path: RpValue,
-        args: &'a mut HashMap<&'b str, &'b Rc<RpEndpointArgument>>,
+        args: &'a mut HashMap<&'b str, &'b RpEndpointArgument>,
     ) -> Result<RpPathSpec> {
         let path = path.as_string()?;
         let path =

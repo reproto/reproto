@@ -9,7 +9,7 @@ use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, Rp
                      RpTypeBody, RpVersionedPackage};
 use genco::{IntoTokens, Tokens};
 use genco::swift::{self, Swift};
-use trans::{self, Environment};
+use trans::{self, Translated};
 
 /// Documentation comments.
 pub struct Comments<'el, S: 'el>(pub &'el [S]);
@@ -29,7 +29,7 @@ impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Swift<'el>> for Comments<'el, S> 
 const TYPE_SEP: &'static str = "_";
 
 pub struct Compiler<'el> {
-    pub env: &'el Environment,
+    pub env: &'el Translated<CoreFlavor>,
     options: Options,
     handle: &'el Handle,
     data: Swift<'static>,
@@ -39,7 +39,7 @@ pub struct Compiler<'el> {
 
 impl<'el> Compiler<'el> {
     pub fn new(
-        env: &'el Environment,
+        env: &'el Translated<CoreFlavor>,
         options: Options,
         handle: &'el Handle,
     ) -> Result<Compiler<'el>> {
@@ -222,7 +222,7 @@ impl<'el> PackageUtils for Compiler<'el> {}
 
 impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = FileSpec<'el>;
-    type DeclIter = trans::environment::DeclIter<'el>;
+    type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
 
     fn ext(&self) -> &str {
         EXT

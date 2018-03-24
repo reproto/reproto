@@ -1,7 +1,7 @@
 //! Compiler for generating documentation.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use core::WithPos;
+use core::{CoreFlavor, WithPos};
 use core::errors::*;
 use core::flavored::{RpDecl, RpFile, RpVersionedPackage};
 use doc_builder::DocBuilder;
@@ -19,14 +19,14 @@ use std::io::Write;
 use std::path::PathBuf;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
-use trans::Environment;
+use trans::Translated;
 use tuple_processor::TupleProcessor;
 use type_processor::TypeProcessor;
 
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
 pub struct DocCompiler<'a> {
-    pub env: Environment,
+    pub env: Translated<CoreFlavor>,
     pub out_path: PathBuf,
     pub skip_static: bool,
     pub theme_css: &'a [u8],
