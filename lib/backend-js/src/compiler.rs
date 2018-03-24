@@ -1,9 +1,10 @@
 use {FileSpec, Options, EXT, TYPE_SEP};
 use backend::{Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageProcessor,
               PackageUtils};
-use core::{ForEachLoc, Handle, Loc, RpContext, RpEnumBody, RpField, RpInterfaceBody, RpName,
-           RpPackage, RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
+use core::{self, CoreFlavor, ForEachLoc, Handle, Loc};
 use core::errors::*;
+use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpTupleBody, RpType,
+                     RpTypeBody, RpVersionedPackage};
 use genco::{Element, JavaScript, Quoted, Tokens};
 use genco::js::imported_alias;
 use naming::{self, Naming};
@@ -321,7 +322,7 @@ impl<'el> Compiler<'el> {
 
 impl<'el> PackageUtils for Compiler<'el> {}
 
-impl<'el> Converter<'el> for Compiler<'el> {
+impl<'el> Converter<'el, CoreFlavor> for Compiler<'el> {
     type Custom = JavaScript<'el>;
 
     fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, JavaScript<'el>>> {
@@ -338,13 +339,13 @@ impl<'el> Converter<'el> for Compiler<'el> {
     }
 }
 
-impl<'el> DynamicConverter<'el> for Compiler<'el> {
+impl<'el> DynamicConverter<'el, CoreFlavor> for Compiler<'el> {
     fn is_native(&self, ty: &RpType) -> bool {
-        use self::RpType::*;
+        use core::RpType::*;
 
         match *ty {
             Signed { size: _ } | Unsigned { size: _ } => true,
-            Float | RpType::Double => true,
+            Float | Double => true,
             String => true,
             Any => true,
             Boolean => true,
@@ -367,7 +368,7 @@ impl<'el> DynamicConverter<'el> for Compiler<'el> {
     }
 }
 
-impl<'el> DynamicDecode<'el> for Compiler<'el> {
+impl<'el> DynamicDecode<'el, CoreFlavor> for Compiler<'el> {
     fn name_decode(
         &self,
         input: Tokens<'el, JavaScript<'el>>,
@@ -446,7 +447,7 @@ impl<'el> DynamicDecode<'el> for Compiler<'el> {
     }
 }
 
-impl<'el> DynamicEncode<'el> for Compiler<'el> {
+impl<'el> DynamicEncode<'el, CoreFlavor> for Compiler<'el> {
     fn name_encode(
         &self,
         input: Tokens<'el, JavaScript<'el>>,
@@ -483,7 +484,7 @@ impl<'el> DynamicEncode<'el> for Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::environment::DeclIter<'el>;
 
@@ -523,7 +524,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         )?);
 
         class_body.push(self.encode_tuple_method(&body.fields)?);
-        class_body.push_unless_empty(code!(&body.codes, RpContext::Js));
+        class_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
 
         let mut class = Tokens::new();
 
@@ -563,7 +564,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             Ok(()) as Result<()>
         })?;
 
-        class_body.push_unless_empty(code!(&body.codes, RpContext::Js));
+        class_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
 
         let mut elements = Tokens::new();
 
@@ -604,7 +605,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         class_body.push(self.decode_method(&body.fields, type_name.clone(), Self::field_by_name)?);
 
         class_body.push(self.encode_method(&body.fields, "{}", None)?);
-        class_body.push_unless_empty(code!(&body.codes, RpContext::Js));
+        class_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
 
         let mut class = Tokens::new();
 
@@ -623,13 +624,13 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         let mut interface_body = Tokens::new();
 
         match body.sub_type_strategy {
-            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 let tk = tag.as_str().quoted().into();
                 interface_body.push(self.interface_decode_method(&body, &tk)?);
             }
         }
 
-        interface_body.push_unless_empty(code!(&body.codes, RpContext::Js));
+        interface_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
 
         classes.push({
             let mut tokens = Tokens::new();
@@ -667,7 +668,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             )?);
 
             match body.sub_type_strategy {
-                RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                     let tk: Tokens<'el, JavaScript<'el>> = tag.as_str().quoted().into();
                     let type_toks = toks!["data[", tk, "] = ", sub_type.name().quoted(), ";"];
                     class_body.push(self.encode_method(
@@ -678,7 +679,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
                 }
             }
 
-            class_body.push_unless_empty(code!(&sub_type.codes, RpContext::Js));
+            class_body.push_unless_empty(code!(&sub_type.codes, core::RpContext::Js));
 
             classes.push({
                 let mut tokens = Tokens::new();

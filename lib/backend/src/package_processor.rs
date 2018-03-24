@@ -1,16 +1,18 @@
 use IntoBytes;
-use core::{Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody, RpName,
-           RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
+use core::{Flavor, Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
+           RpName, RpPackage, RpServiceBody, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage,
+           WithPos};
 use core::errors::*;
 use std::collections::BTreeMap;
 use std::io::Write;
 
-pub trait PackageProcessor<'el>
+pub trait PackageProcessor<'el, F: 'static>
 where
     Self: 'el + Sized,
+    F: Flavor<Type = RpType>,
 {
     type Out: Default + IntoBytes<Self>;
-    type DeclIter: Iterator<Item = &'el RpDecl>;
+    type DeclIter: Iterator<Item = &'el RpDecl<F>>;
 
     fn ext(&self) -> &str;
 
@@ -26,23 +28,23 @@ where
 
     fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage;
 
-    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
+    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
+    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
+    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
+    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody) -> Result<()> {
+    fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
@@ -50,12 +52,12 @@ where
         self.do_populate_files(|_| Ok(()))
     }
 
-    fn do_populate_files<F>(
+    fn do_populate_files<C>(
         &self,
-        mut callback: F,
+        mut callback: C,
     ) -> Result<BTreeMap<RpVersionedPackage, Self::Out>>
     where
-        F: FnMut(&'el RpDecl) -> Result<()>,
+        C: FnMut(&'el RpDecl<F>) -> Result<()>,
     {
         use self::RpDecl::*;
 

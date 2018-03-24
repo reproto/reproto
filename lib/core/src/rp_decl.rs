@@ -1,18 +1,24 @@
 //! Model for declarations
 
-use super::{Loc, Pos, RpEnumBody, RpInterfaceBody, RpName, RpReg, RpServiceBody, RpTupleBody,
-            RpTypeBody};
+use {Flavor, Loc, Pos, RpEnumBody, RpInterfaceBody, RpName, RpReg, RpServiceBody, RpTupleBody,
+     RpTypeBody};
 use std::fmt;
 use std::rc::Rc;
 use std::vec;
 
 /// Iterator over declarations.
-pub struct Decls<'a> {
-    iter: vec::IntoIter<&'a RpDecl>,
+pub struct Decls<'a, F: 'static>
+where
+    F: Flavor,
+{
+    iter: vec::IntoIter<&'a RpDecl<F>>,
 }
 
-impl<'a> Iterator for Decls<'a> {
-    type Item = &'a RpDecl;
+impl<'a, F: 'static> Iterator for Decls<'a, F>
+where
+    F: Flavor,
+{
+    type Item = &'a RpDecl<F>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
@@ -21,16 +27,22 @@ impl<'a> Iterator for Decls<'a> {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum RpDecl {
-    Type(Rc<Loc<RpTypeBody>>),
-    Tuple(Rc<Loc<RpTupleBody>>),
-    Interface(Rc<Loc<RpInterfaceBody>>),
-    Enum(Rc<Loc<RpEnumBody>>),
-    Service(Rc<Loc<RpServiceBody>>),
+pub enum RpDecl<F: 'static>
+where
+    F: Flavor,
+{
+    Type(Rc<Loc<RpTypeBody<F>>>),
+    Tuple(Rc<Loc<RpTupleBody<F>>>),
+    Interface(Rc<Loc<RpInterfaceBody<F>>>),
+    Enum(Rc<Loc<RpEnumBody<F>>>),
+    Service(Rc<Loc<RpServiceBody<F>>>),
 }
 
-impl RpDecl {
-    pub fn decls(&self) -> Decls {
+impl<F: 'static> RpDecl<F>
+where
+    F: Flavor,
+{
+    pub fn decls(&self) -> Decls<F> {
         use self::RpDecl::*;
 
         let iter = match *self {
@@ -85,7 +97,7 @@ impl RpDecl {
     }
 
     /// Convert a declaration into its registered types.
-    pub fn to_reg(&self) -> Vec<RpReg> {
+    pub fn to_reg(&self) -> Vec<RpReg<F>> {
         use self::RpDecl::*;
 
         let mut out = Vec::new();
@@ -147,7 +159,10 @@ impl RpDecl {
     }
 }
 
-impl fmt::Display for RpDecl {
+impl<F: 'static> fmt::Display for RpDecl<F>
+where
+    F: Flavor,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::RpDecl::*;
 
@@ -161,8 +176,11 @@ impl fmt::Display for RpDecl {
     }
 }
 
-impl<'a> From<&'a RpDecl> for Pos {
-    fn from(value: &'a RpDecl) -> Self {
+impl<'a, F: 'static> From<&'a RpDecl<F>> for Pos
+where
+    F: Flavor,
+{
+    fn from(value: &'a RpDecl<F>) -> Self {
         value.pos().clone()
     }
 }

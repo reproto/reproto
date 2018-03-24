@@ -1,8 +1,9 @@
 //! Handle parsing of attributes.
 
-use core::{Attributes, Context, Loc, Pos, RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp,
-           RpHttpMethod, RpPathSpec, RpType, RpValue, WithPos};
+use core::{self, Attributes, Context, Loc, Pos, WithPos};
 use core::errors::Result;
+use core::flavored::{RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp, RpHttpMethod,
+                     RpPathSpec, RpValue};
 use into_model::IntoModel;
 use path_parser;
 use scope::Scope;
@@ -69,8 +70,8 @@ pub fn endpoint_http(
     if let Some(accept) = selection.take("accept") {
         let accept = Loc::and_then(accept, |a| {
             a.as_string().and_then(|a| match a {
-                "application/json" => Ok(RpAccept::Json),
-                "text/plain" => Ok(RpAccept::Text),
+                "application/json" => Ok(core::RpAccept::Json),
+                "text/plain" => Ok(core::RpAccept::Text),
                 _ => Err("unsupported media type".into()),
             })
         })?;
@@ -124,7 +125,7 @@ pub fn endpoint_http(
 
     /// Parse a method.
     fn parse_method(method: RpValue) -> Result<RpHttpMethod> {
-        use self::RpHttpMethod::*;
+        use core::RpHttpMethod::*;
 
         let m = match method.as_string()? {
             "GET" => GET,
@@ -155,9 +156,9 @@ pub fn endpoint_http(
 
         match *accept {
             // Can handle complex data types.
-            ref accept if *accept == RpAccept::Json => return Ok(()),
+            ref accept if *accept == core::RpAccept::Json => return Ok(()),
             _ => {
-                if *response.ty() == RpType::String {
+                if *response.ty() == core::RpType::String {
                     return Ok(());
                 }
 

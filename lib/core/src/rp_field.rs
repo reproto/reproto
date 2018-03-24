@@ -1,9 +1,12 @@
 //! Data Models for fields
 
-use super::RpType;
+use Flavor;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct RpField {
+pub struct RpField<F: 'static>
+where
+    F: Flavor,
+{
     /// Is the field required.
     pub required: bool,
     /// Mangled identifier, taking target-specific keywords into account.
@@ -14,14 +17,17 @@ pub struct RpField {
     /// Field comments.
     pub comment: Vec<String>,
     #[serde(rename = "type")]
-    pub ty: RpType,
+    pub ty: F::Type,
     /// Alias of field in JSON.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field_as: Option<String>,
 }
 
-impl RpField {
-    pub fn new<S: AsRef<str>>(ident: S, ty: RpType) -> Self {
+impl<F: 'static> RpField<F>
+where
+    F: Flavor,
+{
+    pub fn new<S: AsRef<str>>(ident: S, ty: F::Type) -> Self {
         RpField {
             required: true,
             safe_ident: None,
@@ -48,7 +54,7 @@ impl RpField {
     }
 
     /// Change the safe identifier.
-    pub fn with_safe_ident<S: AsRef<str>>(self, safe_ident: S) -> RpField {
+    pub fn with_safe_ident<S: AsRef<str>>(self, safe_ident: S) -> RpField<F> {
         Self {
             safe_ident: Some(safe_ident.as_ref().to_string()),
             ..self

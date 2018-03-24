@@ -2,8 +2,8 @@
 //!
 //! Build an overview of available packages.
 
-use core::{RpDecl, RpFile, RpVersionedPackage};
 use core::errors::*;
+use core::flavored::{RpFile, RpVersionedPackage};
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
@@ -21,25 +21,25 @@ macro_rules! types_section {
             html!($slf, h2 {class => "kind"} ~ $name);
 
             html!($slf, table {} => {
-                                for v in $var {
-                                    html!($slf, tr {} => {
-                                        html!($slf, td {class => "package-item"} => {
-                                            $slf.full_name_without_package(&v.name)?;
-                                        });
+                for v in $var {
+                    html!($slf, tr {} => {
+                        html!($slf, td {class => "package-item"} => {
+                            $slf.full_name_without_package(&v.name)?;
+                        });
 
-                                        html!($slf, td {class => "package-item-doc"} => {
-                                            $slf.doc(v.comment.iter().take(1))?;
-                                        });
-                                    });
-                                }
-                            });
+                        html!($slf, td {class => "package-item-doc"} => {
+                            $slf.doc(v.comment.iter().take(1))?;
+                        });
+                    });
+                }
+            });
         }
     };
 }
 
 define_processor!(PackageProcessor, Data<'env>, self,
     process => {
-        use self::RpDecl::*;
+        use core::RpDecl::*;
 
         self.write_doc(|| {
             let mut types = Vec::new();

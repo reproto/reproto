@@ -1,14 +1,15 @@
 //! # Helper trait for building a dynamic-language encode method
 
 use base_encode::BaseEncode;
-use core::RpType;
+use core::{Flavor, RpType};
 use core::errors::*;
 use dynamic_converter::DynamicConverter;
 use genco::Tokens;
 
-pub trait DynamicEncode<'el>
+pub trait DynamicEncode<'el, F>
 where
-    Self: DynamicConverter<'el>,
+    Self: DynamicConverter<'el, F>,
+    F: Flavor<Type = RpType>,
 {
     fn name_encode(
         &self,
@@ -36,10 +37,10 @@ where
 
     fn dynamic_encode(
         &self,
-        ty: &RpType,
+        ty: &F::Type,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
-        use self::RpType::*;
+        use core::RpType::*;
 
         if self.is_native(ty) {
             return Ok(input);
@@ -76,13 +77,14 @@ where
 }
 
 /// Dynamic encode is a valid decoding mechanism
-impl<'el, T> BaseEncode<'el> for T
+impl<'el, T, F> BaseEncode<'el, F> for T
 where
-    T: DynamicEncode<'el>,
+    T: DynamicEncode<'el, F>,
+    F: Flavor<Type = RpType>,
 {
     fn base_encode(
         &self,
-        ty: &RpType,
+        ty: &F::Type,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         self.dynamic_encode(ty, input)

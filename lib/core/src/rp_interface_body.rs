@@ -1,6 +1,6 @@
 //! Model for tuples.
 
-use super::{Loc, RpCode, RpField, RpSubType};
+use {Flavor, Loc, RpCode, RpField, RpSubType};
 use std::rc::Rc;
 use std::slice;
 
@@ -22,28 +22,37 @@ impl Default for RpSubTypeStrategy {
     }
 }
 
-decl_body!(pub struct RpInterfaceBody {
-    pub fields: Vec<Loc<RpField>>,
+decl_body!(pub struct RpInterfaceBody<F> {
+    pub fields: Vec<Loc<RpField<F>>>,
     pub codes: Vec<Loc<RpCode>>,
-    pub sub_types: Vec<Rc<Loc<RpSubType>>>,
+    pub sub_types: Vec<Rc<Loc<RpSubType<F>>>>,
     pub sub_type_strategy: RpSubTypeStrategy,
 });
 
 /// Iterator over fields.
-pub struct Fields<'a> {
-    iter: slice::Iter<'a, Loc<RpField>>,
+pub struct Fields<'a, F: 'static>
+where
+    F: Flavor,
+{
+    iter: slice::Iter<'a, Loc<RpField<F>>>,
 }
 
-impl<'a> Iterator for Fields<'a> {
-    type Item = &'a Loc<RpField>;
+impl<'a, F: 'static> Iterator for Fields<'a, F>
+where
+    F: Flavor,
+{
+    type Item = &'a Loc<RpField<F>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
     }
 }
 
-impl RpInterfaceBody {
-    pub fn fields(&self) -> Fields {
+impl<F: 'static> RpInterfaceBody<F>
+where
+    F: Flavor,
+{
+    pub fn fields(&self) -> Fields<F> {
         Fields {
             iter: self.fields.iter(),
         }

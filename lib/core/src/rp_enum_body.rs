@@ -3,7 +3,7 @@
 use {Loc, RpCode, RpEnumType, RpVariant};
 use std::rc::Rc;
 
-decl_body!(pub struct RpEnumBody {
+decl_body!(pub struct RpEnumBody<F> {
     /// The type of the variant.
     pub enum_type: RpEnumType,
     /// Variants in the enum.

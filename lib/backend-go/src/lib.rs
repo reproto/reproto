@@ -19,8 +19,9 @@ mod module;
 
 use backend::{Initializer, IntoBytes};
 use compiler::Compiler;
-use core::{Context, RpField, RpPackage};
+use core::Context;
 use core::errors::Result;
+use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody};
 use genco::{Element, IntoTokens, Tokens};
 use genco::go::{self, Go};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -171,7 +172,7 @@ codegen!(FieldCodegen, FieldAdded);
 pub struct EnumAdded<'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Go<'el>>,
     pub name: Go<'el>,
-    pub body: &'el core::RpEnumBody,
+    pub body: &'el RpEnumBody,
 }
 
 codegen!(EnumCodegen, EnumAdded);
@@ -180,7 +181,7 @@ codegen!(EnumCodegen, EnumAdded);
 pub struct TupleAdded<'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Go<'el>>,
     pub name: Go<'el>,
-    pub body: &'el core::RpTupleBody,
+    pub body: &'el RpTupleBody,
     pub compiler: &'a Compiler<'el>,
 }
 
@@ -190,7 +191,7 @@ codegen!(TupleCodegen, TupleAdded);
 pub struct InterfaceAdded<'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Go<'el>>,
     pub name: Go<'el>,
-    pub body: &'el core::RpInterfaceBody,
+    pub body: &'el RpInterfaceBody,
     pub compiler: &'a Compiler<'el>,
 }
 

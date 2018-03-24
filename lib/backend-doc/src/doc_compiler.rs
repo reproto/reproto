@@ -1,8 +1,9 @@
 //! Compiler for generating documentation.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use core::{RpDecl, RpFile, RpVersionedPackage, WithPos};
+use core::WithPos;
 use core::errors::*;
+use core::flavored::{RpDecl, RpFile, RpVersionedPackage};
 use doc_builder::DocBuilder;
 use enum_processor::EnumProcessor;
 use genco::IoFmt;
@@ -57,7 +58,7 @@ impl<'a> DocCompiler<'a> {
 
     /// Process a single declaration.
     fn process_decl(&self, decl: &RpDecl) -> Result<()> {
-        use self::RpDecl::*;
+        use core::RpDecl::*;
 
         let package = decl.name().package.clone().as_package(|v| v.to_string());
 

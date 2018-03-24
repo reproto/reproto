@@ -4,8 +4,9 @@ use {EnumAdded, EnumCodegen, FieldAdded, FieldCodegen, InterfaceAdded, Interface
      TupleAdded, TupleCodegen};
 use backend::Initializer;
 use compiler::Compiler;
-use core::{self, RpEnumBody, RpInterfaceBody, RpTupleBody};
+use core;
 use core::errors::{Error, Result};
+use core::flavored::{RpEnumBody, RpInterfaceBody, RpSubType, RpTupleBody};
 use genco::{Quoted, Tokens};
 use genco::go::{imported, Go};
 use std::rc::Rc;
@@ -499,7 +500,7 @@ impl InterfaceCodegen for Codegen {
             fn sub_type_check<'el>(
                 c: &Codegen,
                 ident: Tokens<'el, Go<'el>>,
-                sub_type: &'el core::RpSubType,
+                sub_type: &'el RpSubType,
                 tag: &'el str,
             ) -> Tokens<'el, Go<'el>> {
                 let mut t = Tokens::new();

@@ -1,7 +1,7 @@
 //! Processor for service declarations.
 
-use core::RpTupleBody;
 use core::errors::*;
+use core::flavored::RpTupleBody;
 use doc_builder::DocBuilder;
 use macros::FormatAttribute;
 use processor::Processor;

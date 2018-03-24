@@ -4,9 +4,9 @@ use {Compiler, EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodege
      PackageAdded, PackageCodegen, TupleAdded, TupleCodegen, TypeAdded, TypeCodegen};
 use backend::Initializer;
 use compiler::Comments;
-use core::{Loc, RpEnumBody, RpField, RpPackage, RpSubType, RpSubTypeStrategy, RpType,
-           RpVersionedPackage};
+use core::{self, Loc};
 use core::errors::Result;
+use core::flavored::{RpEnumBody, RpField, RpPackage, RpSubType, RpType, RpVersionedPackage};
 use genco::{Cons, IntoTokens, Quoted, Tokens};
 use genco::swift::{imported, Swift};
 use std::rc::Rc;
@@ -76,7 +76,7 @@ impl Codegen {
         name: Cons<'a>,
         var: Tokens<'a, Swift<'a>>,
     ) -> Result<Tokens<'a, Swift<'a>>> {
-        use self::RpType::*;
+        use core::RpType::*;
 
         let unbox = match *ty {
             String => unbox(var, "String"),
@@ -153,7 +153,7 @@ impl Codegen {
         name: &'a str,
         var: Tokens<'a, Swift<'a>>,
     ) -> Result<Tokens<'a, Swift<'a>>> {
-        use self::RpType::*;
+        use core::RpType::*;
 
         let encode = match *ty {
             DateTime => toks![self.formatter.clone(), "().string(from: ", var, ")"],
@@ -888,7 +888,7 @@ impl InterfaceCodegen for Codegen {
                 let mut t = Tokens::new();
 
                 match body.sub_type_strategy {
-                    RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                    core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                         // decode function
                         t.nested(decode_tag(
                             compiler,

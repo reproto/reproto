@@ -1,7 +1,8 @@
 use ast::*;
 use attributes;
-use core::*;
+use core::{self, Attributes, Context, Loc, Pos, Selection, WithPos};
 use core::errors::{Error, Result};
+use core::flavored::*;
 use naming::Naming;
 use scope::Scope;
 use std::borrow::Cow;
@@ -29,7 +30,7 @@ macro_rules! check_conflict {
 macro_rules! check_field_sub_type {
     ($ctx: ident, $field: expr, $strategy: expr) => {
         match $strategy {
-            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 if $field.name() == tag {
                     let report = $ctx.report()
                         .err(
@@ -200,25 +201,25 @@ impl IntoModel for Type {
         use self::Type::*;
 
         let out = match self {
-            Double => RpType::Double,
-            Float => RpType::Float,
-            Signed { size } => RpType::Signed { size: size },
-            Unsigned { size } => RpType::Unsigned { size: size },
-            Boolean => RpType::Boolean,
-            String => RpType::String,
-            DateTime => RpType::DateTime,
-            Name { name } => RpType::Name {
+            Double => core::RpType::Double,
+            Float => core::RpType::Float,
+            Signed { size } => core::RpType::Signed { size: size },
+            Unsigned { size } => core::RpType::Unsigned { size: size },
+            Boolean => core::RpType::Boolean,
+            String => core::RpType::String,
+            DateTime => core::RpType::DateTime,
+            Name { name } => core::RpType::Name {
                 name: name.into_model(scope)?,
             },
-            Array { inner } => RpType::Array {
+            Array { inner } => core::RpType::Array {
                 inner: inner.into_model(scope)?,
             },
-            Map { key, value } => RpType::Map {
+            Map { key, value } => core::RpType::Map {
                 key: key.into_model(scope)?,
                 value: value.into_model(scope)?,
             },
-            Any => RpType::Any,
-            Bytes => RpType::Bytes,
+            Any => core::RpType::Any,
+            Bytes => core::RpType::Bytes,
         };
 
         Ok(out)
@@ -234,11 +235,11 @@ impl<'input> IntoModel for Decl<'input> {
         let s = scope.child(self.name().to_owned());
 
         let out = match self {
-            Type(body) => RpDecl::Type(Rc::new(body.into_model(&s)?)),
-            Interface(body) => RpDecl::Interface(Rc::new(body.into_model(&s)?)),
-            Enum(body) => RpDecl::Enum(Rc::new(body.into_model(&s)?)),
-            Tuple(body) => RpDecl::Tuple(Rc::new(body.into_model(&s)?)),
-            Service(body) => RpDecl::Service(Rc::new(body.into_model(&s)?)),
+            Type(body) => core::RpDecl::Type(Rc::new(body.into_model(&s)?)),
+            Interface(body) => core::RpDecl::Interface(Rc::new(body.into_model(&s)?)),
+            Enum(body) => core::RpDecl::Enum(Rc::new(body.into_model(&s)?)),
+            Tuple(body) => core::RpDecl::Tuple(Rc::new(body.into_model(&s)?)),
+            Service(body) => core::RpDecl::Service(Rc::new(body.into_model(&s)?)),
         };
 
         Ok(out)
@@ -312,7 +313,7 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
         variant.map(|comment, attributes, item| {
             let ordinal = if let Some(argument) = item.argument.into_model(scope)? {
                 match *ty {
-                    RpEnumType::String if !argument.is_string() => {
+                    core::RpEnumType::String if !argument.is_string() => {
                         return Err(ctx.report()
                             .err(
                                 Loc::pos(&argument),
@@ -325,7 +326,7 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
 
                 Loc::take(Loc::and_then(argument, |value| value.into_ordinal())?)
             } else {
-                RpEnumOrdinal::Generated
+                core::RpEnumOrdinal::Generated
             };
 
             let attributes = attributes.into_model(scope)?;
@@ -516,7 +517,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                             if let Some(tag) = selection.take("tag") {
                                 let tag = tag.as_string()?;
 
-                                return Ok(RpSubTypeStrategy::Tagged {
+                                return Ok(core::RpSubTypeStrategy::Tagged {
                                     tag: tag.to_string(),
                                 });
                             }
@@ -740,10 +741,10 @@ impl<'input> IntoModel for Channel {
         use self::Channel::*;
 
         let result = match self {
-            Unary { ty, .. } => RpChannel::Unary {
+            Unary { ty, .. } => core::RpChannel::Unary {
                 ty: ty.into_model(scope)?,
             },
-            Streaming { ty, .. } => RpChannel::Streaming {
+            Streaming { ty, .. } => core::RpChannel::Streaming {
                 ty: ty.into_model(scope)?,
             },
         };
@@ -826,7 +827,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             let (alias, pos) = Loc::take_pair(alias.into_model(scope)?);
 
             match alias {
-                RpValue::String(string) => Ok(Loc::new(string, pos)),
+                core::RpValue::String(string) => Ok(Loc::new(string, pos)),
                 _ => Err("expected string".into()).with_pos(pos),
             }
         }
@@ -988,17 +989,17 @@ impl<'input> IntoModel for Code<'input> {
             let (context, pos) = Loc::take_pair(context);
 
             match context.as_str() {
-                "csharp" => RpContext::Csharp {},
-                "go" => RpContext::Go {},
+                "csharp" => core::RpContext::Csharp {},
+                "go" => core::RpContext::Go {},
                 "java" => {
                     let imports = attributes::import(scope, &mut attributes)?;
-                    RpContext::Java { imports: imports }
+                    core::RpContext::Java { imports: imports }
                 }
-                "js" => RpContext::Js {},
-                "python" => RpContext::Python {},
-                "reproto" => RpContext::Reproto {},
-                "rust" => RpContext::Rust {},
-                "swift" => RpContext::Swift {},
+                "js" => core::RpContext::Js {},
+                "python" => core::RpContext::Python {},
+                "reproto" => core::RpContext::Reproto {},
+                "rust" => core::RpContext::Rust {},
+                "swift" => core::RpContext::Swift {},
                 context => {
                     return Err(scope
                         .ctx()
@@ -1025,10 +1026,10 @@ impl<'input> IntoModel for Value<'input> {
         use self::Value::*;
 
         let out = match self {
-            String(string) => RpValue::String(string),
-            Number(number) => RpValue::Number(number),
-            Identifier(identifier) => RpValue::Identifier(identifier.to_string()),
-            Array(inner) => RpValue::Array(inner.into_model(scope)?),
+            String(string) => core::RpValue::String(string),
+            Number(number) => core::RpValue::Number(number),
+            Identifier(identifier) => core::RpValue::Identifier(identifier.to_string()),
+            Array(inner) => core::RpValue::Array(inner.into_model(scope)?),
         };
 
         Ok(out)
@@ -1156,9 +1157,9 @@ impl<'input, 'a: 'input> IntoModel for (&'input mut Variables<'a>, PathPart<'inp
                     }
                 };
 
-                RpPathPart::Variable(var)
+                core::RpPathPart::Variable(var)
             }
-            Segment(segment) => RpPathPart::Segment(segment),
+            Segment(segment) => core::RpPathPart::Segment(segment),
         };
 
         Ok(out)

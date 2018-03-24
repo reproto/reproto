@@ -2,9 +2,10 @@
 
 use {EnumAdded, FieldAdded, FileSpec, InterfaceAdded, Options, Tags, TupleAdded, EXT};
 use backend::{PackageProcessor, PackageUtils};
-use core::{Handle, Loc, RelativePathBuf, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage,
-           RpTupleBody, RpType, RpTypeBody, RpVersionedPackage, Version};
+use core::{CoreFlavor, Handle, Loc, RelativePathBuf, Version};
 use core::errors::*;
+use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpTupleBody, RpType,
+                     RpTypeBody, RpVersionedPackage};
 use genco::{IntoTokens, Tokens};
 use genco::go::{imported, local, Go};
 use trans::{self, Environment};
@@ -68,7 +69,7 @@ impl<'el> Compiler<'el> {
 
     /// Convert the given type to a Go type suitable for adding as a field to a struct.
     pub fn field_type(&self, ty: &'el RpType) -> Result<Tokens<'el, Go<'el>>> {
-        use self::RpType::*;
+        use core::RpType::*;
 
         let ty = match *ty {
             String => toks!["string"],
@@ -157,7 +158,7 @@ impl<'el> PackageUtils for Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::environment::DeclIter<'el>;
 

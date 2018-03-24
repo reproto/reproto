@@ -1,7 +1,8 @@
 //! Processor for service declarations.
 
-use core::{Loc, RpEndpoint, RpServiceBody, WithPos};
+use core::{Loc, WithPos};
 use core::errors::*;
+use core::flavored::{RpEndpoint, RpServiceBody};
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;

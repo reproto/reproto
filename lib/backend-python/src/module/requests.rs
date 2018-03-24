@@ -3,7 +3,7 @@
 use Options;
 use backend::Initializer;
 use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
-use core::{RpAccept, RpHttpMethod, RpPathPart};
+use core;
 use core::errors::Result;
 use genco::{Python, Quoted, Tokens};
 use genco::python::imported;
@@ -132,10 +132,12 @@ impl ServiceCodegen for RequestsServiceCodegen {
 
                             for part in &step.parts {
                                 let var = match *part {
-                                    RpPathPart::Variable(ref arg) => {
+                                    core::RpPathPart::Variable(ref arg) => {
                                         toks!["str(", arg.safe_ident(), ")"]
                                     }
-                                    RpPathPart::Segment(ref s) => toks![s.to_string().quoted()],
+                                    core::RpPathPart::Segment(ref s) => {
+                                        toks![s.to_string().quoted()]
+                                    }
                                 };
 
                                 path.push(toks!["path.append(", var, ")"]);
@@ -159,7 +161,7 @@ impl ServiceCodegen for RequestsServiceCodegen {
                         .http
                         .method
                         .as_ref()
-                        .unwrap_or(&RpHttpMethod::GET)
+                        .unwrap_or(&core::RpHttpMethod::GET)
                         .as_str();
 
                     let mut args = Tokens::new();
@@ -193,11 +195,11 @@ impl ServiceCodegen for RequestsServiceCodegen {
 
                         if let Some(&(name, ref response)) = response_ty.as_ref() {
                             match endpoint.http.accept {
-                                RpAccept::Json => {
+                                core::RpAccept::Json => {
                                     t.push(toks![name, " = r.json()"]);
                                     t.push(toks!["return ", response.clone()]);
                                 }
-                                RpAccept::Text => {
+                                core::RpAccept::Text => {
                                     t.push("return r.text");
                                 }
                             }

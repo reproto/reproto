@@ -1,10 +1,11 @@
-extern crate reproto_core;
+extern crate reproto_core as core;
 
 use self::Component::*;
 use self::Violation::*;
-use reproto_core::{ErrorPos, Loc, RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpReg,
-                   RpType, RpVariant, Version};
-use reproto_core::errors::*;
+use core::{ErrorPos, Loc, Version};
+use core::errors::*;
+use core::flavored::{RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpReg, RpType,
+                     RpVariant};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -72,7 +73,7 @@ pub enum Violation {
 }
 
 fn fields(reg: &RpReg) -> Vec<&Loc<RpField>> {
-    use self::RpReg::*;
+    use core::RpReg::*;
 
     match *reg {
         Type(ref target) => target.fields.iter().collect(),
@@ -84,7 +85,7 @@ fn fields(reg: &RpReg) -> Vec<&Loc<RpField>> {
 }
 
 fn enum_variants(reg: &RpReg) -> Vec<&Loc<RpVariant>> {
-    use self::RpReg::*;
+    use core::RpReg::*;
 
     match *reg {
         Enum(ref target) => target.variants.iter().map(|v| &**v).collect(),
@@ -93,7 +94,7 @@ fn enum_variants(reg: &RpReg) -> Vec<&Loc<RpVariant>> {
 }
 
 fn endpoints_to_map(reg: &RpReg) -> HashMap<&str, &Loc<RpEndpoint>> {
-    use self::RpReg::*;
+    use core::RpReg::*;
 
     match *reg {
         Service(ref target) => target.endpoints.iter().map(|e| (e.ident(), e)).collect(),
@@ -110,7 +111,7 @@ where
     for decl in decls {
         for reg in decl.to_reg() {
             // Checked separately for each Enum.
-            if let RpReg::EnumVariant(_, _) = reg {
+            if let core::RpReg::EnumVariant(_, _) = reg {
                 continue;
             }
 

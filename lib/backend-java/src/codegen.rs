@@ -1,8 +1,9 @@
 //! Code generator for the given path.
 
 use {Compiler, Options, Utils};
-use core::{Handle, RpEnumBody, RpInterfaceBody, RpServiceBody};
+use core::Handle;
 use core::errors::Result;
+use core::flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
 use genco::{Cons, Java};
 use genco::java::{Argument, Class, Enum, Interface, Method};
 use std::rc::Rc;

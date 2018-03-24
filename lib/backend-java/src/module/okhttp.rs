@@ -1,8 +1,9 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use codegen::{Configure, EndpointExtra, ServiceAdded, ServiceCodegen};
-use core::{RpEndpoint, RpPathPart, RpPathStep};
+use core;
 use core::errors::*;
+use core::flavored::{RpEndpoint, RpPathStep};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
 use utils::{Override, Utils};
@@ -322,7 +323,7 @@ impl OkHttpServiceCodegen {
 
             for part in &step.parts {
                 match *part {
-                    RpPathPart::Variable(ref arg) => {
+                    core::RpPathPart::Variable(ref arg) => {
                         let ty = utils.into_java_type(arg.channel.ty())?;
 
                         if ty.is_primitive() {
@@ -331,7 +332,7 @@ impl OkHttpServiceCodegen {
                             args.append(arg.safe_ident());
                         }
                     }
-                    RpPathPart::Segment(ref s) => {
+                    core::RpPathPart::Segment(ref s) => {
                         args.append(s.to_string().quoted());
                     }
                 }

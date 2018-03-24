@@ -4,9 +4,10 @@ use Options;
 use backend::Converter;
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded,
               TypeField, TypeFieldAdded};
-use core::{ForEachLoc, Handle, Loc, RpContext, RpDecl, RpEnumBody, RpField, RpInterfaceBody,
-           RpName, RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpTypeBody, WithPos};
+use core::{self, CoreFlavor, ForEachLoc, Handle, Loc, RpContext, WithPos};
 use core::errors::*;
+use core::flavored::{RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody,
+                     RpTupleBody, RpTypeBody};
 use csharp_field::CsharpField;
 use csharp_file::CsharpFile;
 use genco::{Cons, Csharp, Element, Quoted, Tokens};
@@ -353,7 +354,7 @@ impl Compiler {
         let interface_fields = self.fields(&body.fields)?;
 
         let type_field = match body.sub_type_strategy {
-            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 let mut f = Field::new(self.string.clone(), Cons::from("TypeField"));
 
                 let mut block = Tokens::new();
@@ -579,8 +580,10 @@ impl Compiler {
         depth: usize,
         container: &mut Tokens<'el, Csharp<'el>>,
     ) -> Result<()> {
+        use core::RpDecl::*;
+
         match *decl {
-            RpDecl::Interface(ref interface) => {
+            Interface(ref interface) => {
                 let mut spec = self.process_interface(depth + 1, interface)?;
 
                 for d in &interface.decls {
@@ -589,7 +592,7 @@ impl Compiler {
 
                 container.push(spec);
             }
-            RpDecl::Type(ref ty) => {
+            Type(ref ty) => {
                 let mut spec = self.process_type(ty)?;
 
                 for d in &ty.decls {
@@ -598,7 +601,7 @@ impl Compiler {
 
                 container.push(spec);
             }
-            RpDecl::Tuple(ref ty) => {
+            Tuple(ref ty) => {
                 let mut spec = self.process_tuple(ty)?;
 
                 for d in &ty.decls {
@@ -607,10 +610,10 @@ impl Compiler {
 
                 container.push(spec);
             }
-            RpDecl::Enum(ref ty) => {
+            Enum(ref ty) => {
                 container.push(self.process_enum(ty)?);
             }
-            RpDecl::Service(ref ty) => {
+            Service(ref ty) => {
                 let mut spec = self.process_service(ty)?;
 
                 for d in &ty.decls {
@@ -625,7 +628,7 @@ impl Compiler {
     }
 }
 
-impl<'el> Converter<'el> for Compiler {
+impl<'el> Converter<'el, CoreFlavor> for Compiler {
     type Custom = Csharp<'el>;
 
     fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {

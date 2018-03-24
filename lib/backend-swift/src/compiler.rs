@@ -3,9 +3,10 @@
 use {EnumAdded, FileSpec, InterfaceAdded, InterfaceModelAdded, Options, PackageAdded,
      StructModelAdded, TupleAdded, TypeAdded, EXT};
 use backend::{PackageProcessor, PackageUtils};
-use core::{Handle, Loc, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpTupleBody,
-           RpType, RpTypeBody, RpVersionedPackage};
+use core::{CoreFlavor, Handle, Loc};
 use core::errors::*;
+use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpTupleBody, RpType,
+                     RpTypeBody, RpVersionedPackage};
 use genco::{IntoTokens, Tokens};
 use genco::swift::{self, Swift};
 use trans::{self, Environment};
@@ -84,7 +85,7 @@ impl<'el> Compiler<'el> {
 
     /// Convert to the type declaration of a field.
     pub fn field_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Swift<'a>>> {
-        use self::RpType::*;
+        use core::RpType::*;
 
         let ty = match *ty {
             String => toks!["String"],
@@ -219,7 +220,7 @@ impl<'el> Compiler<'el> {
 
 impl<'el> PackageUtils for Compiler<'el> {}
 
-impl<'el> PackageProcessor<'el> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::environment::DeclIter<'el>;
 

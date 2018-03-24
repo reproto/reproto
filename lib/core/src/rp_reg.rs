@@ -1,23 +1,29 @@
 //! Model for registered types.
 
-use {Loc, Pos, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpSubType,
+use {Flavor, Loc, Pos, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpSubType,
      RpTupleBody, RpTypeBody, RpVariant};
 use errors::Result;
 use std::fmt;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
-pub enum RpReg {
-    Type(Rc<Loc<RpTypeBody>>),
-    Tuple(Rc<Loc<RpTupleBody>>),
-    Interface(Rc<Loc<RpInterfaceBody>>),
-    SubType(Rc<Loc<RpInterfaceBody>>, Rc<Loc<RpSubType>>),
-    Enum(Rc<Loc<RpEnumBody>>),
-    EnumVariant(Rc<Loc<RpEnumBody>>, Rc<Loc<RpVariant>>),
-    Service(Rc<Loc<RpServiceBody>>),
+pub enum RpReg<F: 'static>
+where
+    F: Flavor,
+{
+    Type(Rc<Loc<RpTypeBody<F>>>),
+    Tuple(Rc<Loc<RpTupleBody<F>>>),
+    Interface(Rc<Loc<RpInterfaceBody<F>>>),
+    SubType(Rc<Loc<RpInterfaceBody<F>>>, Rc<Loc<RpSubType<F>>>),
+    Enum(Rc<Loc<RpEnumBody<F>>>),
+    EnumVariant(Rc<Loc<RpEnumBody<F>>>, Rc<Loc<RpVariant>>),
+    Service(Rc<Loc<RpServiceBody<F>>>),
 }
 
-impl RpReg {
+impl<F: 'static> RpReg<F>
+where
+    F: Flavor,
+{
     /// Get the name of the registered declaration.
     pub fn name(&self) -> &RpName {
         use self::RpReg::*;
@@ -48,10 +54,10 @@ impl RpReg {
         }
     }
 
-    pub fn fields<'a>(&'a self) -> Result<Box<Iterator<Item = &Loc<RpField>> + 'a>> {
+    pub fn fields<'a>(&'a self) -> Result<Box<Iterator<Item = &Loc<RpField<F>>> + 'a>> {
         use self::RpReg::*;
 
-        let fields: Box<Iterator<Item = &Loc<RpField>>> = match *self {
+        let fields: Box<Iterator<Item = &Loc<RpField<F>>>> = match *self {
             Type(ref target) => Box::new(target.fields.iter()),
             Tuple(ref target) => Box::new(target.fields.iter()),
             Interface(ref target) => Box::new(target.fields.iter()),
@@ -98,7 +104,7 @@ impl RpReg {
     ///
     /// This returns the base kind as the first member of the tuple.
     /// Then the registered type as the second (if applicable).
-    pub fn kind(&self) -> (&str, Option<&RpReg>) {
+    pub fn kind(&self) -> (&str, Option<&RpReg<F>>) {
         use self::RpReg::*;
 
         let result = match *self {
@@ -126,7 +132,10 @@ impl RpReg {
     }
 }
 
-impl fmt::Display for RpReg {
+impl<F: 'static> fmt::Display for RpReg<F>
+where
+    F: Flavor,
+{
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         use self::RpReg::*;
 

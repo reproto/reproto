@@ -2,10 +2,10 @@
 
 use {Options, EXT, MOD};
 use backend::{PackageProcessor, PackageUtils};
-use core::{ForEachLoc, Handle, Loc, RelativePath, RelativePathBuf, RpContext, RpEnumBody,
-           RpEnumOrdinal, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
-           RpSubTypeStrategy, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
+use core::{self, CoreFlavor, ForEachLoc, Handle, Loc, RelativePath, RelativePathBuf};
 use core::errors::*;
+use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
+                     RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
 use genco::{Element, IntoTokens, Quoted, Rust, Tokens};
 use genco::rust::{imported, imported_alias};
 use rust_file_spec::RustFileSpec;
@@ -163,7 +163,7 @@ impl<'el> Compiler<'el> {
     }
 
     pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Rust<'a>>> {
-        use self::RpType::*;
+        use core::RpType::*;
 
         let ty = match *ty {
             String => toks!["String"],
@@ -277,7 +277,7 @@ impl<'el> Compiler<'el> {
 
 impl<'el> PackageUtils for Compiler<'el> {}
 
-impl<'el> PackageProcessor<'el> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = RustFileSpec<'el>;
     type DeclIter = trans::environment::DeclIter<'el>;
 
@@ -330,7 +330,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         let mut match_body = Tokens::new();
 
         body.variants.iter().for_each_loc(|variant| {
-            let value = if let RpEnumOrdinal::String(ref s) = variant.ordinal {
+            let value = if let core::RpEnumOrdinal::String(ref s) = variant.ordinal {
                 if s != variant.ident() {
                     variants.push(Rename(s.as_str()));
                 }
@@ -368,7 +368,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
             t.nested({
                 let mut t = Tokens::new();
                 t.push(self.enum_value_fn(name.clone(), match_body));
-                t.push_unless_empty(code!(&body.codes, RpContext::Rust));
+                t.push_unless_empty(code!(&body.codes, core::RpContext::Rust));
                 t
             });
 
@@ -406,7 +406,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         out.0.push(t);
 
         // if custom code is present, punt it into an impl.
-        let impl_body = code!(&body.codes, RpContext::Rust).into_tokens();
+        let impl_body = code!(&body.codes, core::RpContext::Rust).into_tokens();
 
         if !impl_body.is_empty() {
             out.0.push(self.build_impl(name.clone(), impl_body));
@@ -425,7 +425,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
         t.push(Derives);
 
         match body.sub_type_strategy {
-            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 t.push(Tag(tag.as_str()));
             }
         }
@@ -465,7 +465,7 @@ impl<'el> PackageProcessor<'el> for Compiler<'el> {
 
         out.0.push(t);
 
-        let impl_body = code!(&body.codes, RpContext::Rust).into_tokens();
+        let impl_body = code!(&body.codes, core::RpContext::Rust).into_tokens();
 
         if !impl_body.is_empty() {
             out.0.push(self.build_impl(name.clone(), impl_body));

@@ -1,19 +1,25 @@
 //! Data model for request or responses for endpoints
 
-use super::RpType;
+use Flavor;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub enum RpChannel {
+pub enum RpChannel<F: 'static>
+where
+    F: Flavor,
+{
     /// Single send.
-    Unary { ty: RpType },
+    Unary { ty: F::Type },
     /// Multiple sends.
-    Streaming { ty: RpType },
+    Streaming { ty: F::Type },
 }
 
-impl RpChannel {
+impl<F: 'static> RpChannel<F>
+where
+    F: Flavor,
+{
     /// Get the type of the channel.
-    pub fn ty(&self) -> &RpType {
+    pub fn ty(&self) -> &F::Type {
         use self::RpChannel::*;
 
         match *self {
@@ -32,7 +38,10 @@ impl RpChannel {
     }
 }
 
-impl fmt::Display for RpChannel {
+impl<F: 'static> fmt::Display for RpChannel<F>
+where
+    F: Flavor,
+{
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         if self.is_streaming() {
             write!(fmt, "stream {}", self.ty())

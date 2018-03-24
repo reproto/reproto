@@ -4,9 +4,10 @@ use Options;
 use backend::Converter;
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded,
               TupleAdded};
-use core::{ForEachLoc, Handle, Loc, RpCode, RpContext, RpDecl, RpEnumBody, RpEnumType, RpField,
-           RpInterfaceBody, RpName, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
+use core::{self, ForEachLoc, Handle, Loc, WithPos};
 use core::errors::*;
+use core::flavored::{RpCode, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody, RpName,
+                     RpServiceBody, RpTupleBody, RpTypeBody};
 use genco::{Cons, Element, Java, Quoted, Tokens};
 use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum, Field, Interface,
                   Method, Modifier, BOOLEAN, INTEGER};
@@ -23,7 +24,7 @@ fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {
     let mut t = Tokens::new();
 
     for c in codes {
-        if let RpContext::Java { ref imports, .. } = c.context {
+        if let core::RpContext::Java { ref imports, .. } = c.context {
             for import in imports {
                 if let Some(split) = import.rfind('.') {
                     let (package, name) = import.split_at(split);
@@ -514,7 +515,7 @@ impl<'el> Compiler<'el> {
     }
 
     fn enum_type_to_java(&self, ty: &'el RpEnumType) -> Result<Java<'el>> {
-        use self::RpEnumType::*;
+        use core::RpEnumType::*;
 
         match *ty {
             String => Ok(self.string.clone().into()),
@@ -897,8 +898,10 @@ impl<'el> Compiler<'el> {
         depth: usize,
         container: &mut Tokens<'el, Java<'el>>,
     ) -> Result<()> {
+        use core::RpDecl::*;
+
         match *decl {
-            RpDecl::Interface(ref interface) => {
+            Interface(ref interface) => {
                 let mut spec = self.process_interface(depth + 1, interface)?;
 
                 for d in &interface.decls {
@@ -907,7 +910,7 @@ impl<'el> Compiler<'el> {
 
                 container.push(spec);
             }
-            RpDecl::Type(ref ty) => {
+            Type(ref ty) => {
                 let mut spec = self.process_type(ty)?;
 
                 // Inner classes should be static.
@@ -921,7 +924,7 @@ impl<'el> Compiler<'el> {
 
                 container.push(spec);
             }
-            RpDecl::Tuple(ref ty) => {
+            Tuple(ref ty) => {
                 let mut spec = self.process_tuple(ty)?;
 
                 // Inner classes should be static.
@@ -935,7 +938,7 @@ impl<'el> Compiler<'el> {
 
                 container.push(spec);
             }
-            RpDecl::Enum(ref ty) => {
+            Enum(ref ty) => {
                 let mut spec = self.process_enum(ty)?;
 
                 // Inner classes should be static.
@@ -945,7 +948,7 @@ impl<'el> Compiler<'el> {
 
                 container.push(spec);
             }
-            RpDecl::Service(ref ty) => {
+            Service(ref ty) => {
                 let mut spec = self.process_service(ty)?;
 
                 // Inner classes should be static.
@@ -965,7 +968,7 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> Converter<'el> for Compiler<'el> {
+impl<'el> Converter<'el, core::CoreFlavor> for Compiler<'el> {
     type Custom = Java<'el>;
 
     fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {

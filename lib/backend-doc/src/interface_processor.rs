@@ -1,7 +1,7 @@
 //! Processor for service declarations.
 
-use core::{RpInterfaceBody, RpSubType};
 use core::errors::Result;
+use core::flavored::{RpInterfaceBody, RpSubType};
 use doc_builder::DocBuilder;
 use macros::FormatAttribute;
 use processor::Processor;

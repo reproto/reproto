@@ -1,8 +1,9 @@
 //! Processor trait.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use core::{ForEachLoc, Loc, RpDecl, RpField, RpName, RpType, RpVersionedPackage, WithPos};
+use core::{ForEachLoc, Loc, WithPos};
 use core::errors::*;
+use core::flavored::{RpDecl, RpField, RpName, RpType, RpVersionedPackage};
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
@@ -106,7 +107,7 @@ pub trait Processor<'env> {
     }
 
     fn write_type(&self, ty: &RpType) -> Result<()> {
-        use self::RpType::*;
+        use core::RpType::*;
 
         write!(self.out(), "<span class=\"ty\">")?;
 

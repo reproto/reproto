@@ -2,15 +2,16 @@
 
 use base_decode::BaseDecode;
 use converter::Converter;
-use core::{Loc, RpInterfaceBody, RpType, WithPos};
+use core::{Flavor, Loc, RpInterfaceBody, RpType, WithPos};
 use core::errors::*;
 use dynamic_converter::DynamicConverter;
 use genco::Tokens;
 
-pub trait DynamicDecode<'el>
+pub trait DynamicDecode<'el, F>
 where
-    Self: Converter<'el>,
-    Self: DynamicConverter<'el>,
+    Self: Converter<'el, F>,
+    Self: DynamicConverter<'el, F>,
+    F: Flavor<Type = RpType>,
 {
     fn assign_tag_var(
         &self,
@@ -101,7 +102,7 @@ where
 
     fn interface_decode_method(
         &self,
-        body: &'el RpInterfaceBody,
+        body: &'el RpInterfaceBody<F>,
         tag: &Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         let mut decode_body: Tokens<Self::Custom> = Tokens::new();
@@ -123,9 +124,10 @@ where
 }
 
 /// Dynamic decode is a valid decoding mechanism
-impl<'el, T> BaseDecode<'el> for T
+impl<'el, T, F> BaseDecode<'el, F> for T
 where
-    T: DynamicDecode<'el>,
+    T: DynamicDecode<'el, F>,
+    F: Flavor<Type = RpType>,
 {
     fn base_decode(
         &self,

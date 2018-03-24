@@ -10,10 +10,10 @@ extern crate reproto_manifest as manifest;
 extern crate reproto_trans as trans;
 extern crate toml;
 
-use core::{Context, RelativePathBuf, RpDecl, RpEndpoint, RpEnumBody, RpEnumOrdinal, RpEnumType,
-           RpField, RpInterfaceBody, RpServiceBody, RpSubTypeStrategy, RpTupleBody, RpTypeBody,
-           RpVariant, DEFAULT_TAG};
+use core::{Context, RelativePathBuf, DEFAULT_TAG};
 use core::errors::Result;
+use core::flavored::{RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody,
+                     RpTupleBody, RpTypeBody, RpVariant};
 use genco::{Custom, Formatter, IntoTokens, IoFmt, Quoted, Tokens, WriteTokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -150,11 +150,11 @@ fn compile(ctx: Rc<Context>, env: Environment, manifest: Manifest) -> Result<()>
 /// Format a single declaration as a reproto specification.
 pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
     let result = match *decl {
-        RpDecl::Type(ref type_) => format_type(type_),
-        RpDecl::Interface(ref interface) => format_interface(interface),
-        RpDecl::Tuple(ref tuple) => format_tuple(tuple),
-        RpDecl::Enum(ref en) => format_enum(en),
-        RpDecl::Service(ref service) => format_service(service),
+        core::RpDecl::Type(ref type_) => format_type(type_),
+        core::RpDecl::Interface(ref interface) => format_interface(interface),
+        core::RpDecl::Tuple(ref tuple) => format_tuple(tuple),
+        core::RpDecl::Enum(ref en) => format_enum(en),
+        core::RpDecl::Service(ref service) => format_service(service),
     };
 
     return result;
@@ -188,7 +188,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         let mut t = Tokens::new();
 
         match body.sub_type_strategy {
-            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 if tag != DEFAULT_TAG {
                     t.push(toks![
                         "#[type_info(strategy = ",
@@ -285,7 +285,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         t.push_unless_empty(Comments(&body.comment));
 
         match body.enum_type {
-            RpEnumType::String => {
+            core::RpEnumType::String => {
                 t.push(toks!["enum ", body.ident.as_str(), " as string {"]);
             }
         }
@@ -391,8 +391,8 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
             t.append(variant.ident());
 
             match variant.ordinal {
-                RpEnumOrdinal::Generated => {}
-                RpEnumOrdinal::String(ref string) => {
+                core::RpEnumOrdinal::Generated => {}
+                core::RpEnumOrdinal::String(ref string) => {
                     t.append(" as ");
                     t.append(string.as_str().quoted());
                 }

@@ -55,12 +55,15 @@ mod context;
 mod attributes;
 mod resolver;
 mod fs;
+mod flavor;
 pub mod errors;
 pub mod utils;
+pub mod flavored;
 
 pub use self::attributes::{Attributes, Selection};
 pub use self::context::{Context, ContextItem, Reporter};
 pub use self::error_pos::ErrorPos;
+pub use self::flavor::{CoreFlavor, Flavor};
 pub use self::for_each_loc::ForEachLoc;
 pub use self::fs::{CapturingFilesystem, Filesystem, Handle, RealFilesystem};
 pub use self::loc::Loc;

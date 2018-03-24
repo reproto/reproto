@@ -1,6 +1,6 @@
 //! Model for endpoints
 
-use {Attributes, Loc, RpChannel, RpPathSpec};
+use {Attributes, Flavor, Loc, RpChannel, RpPathSpec};
 use std::default;
 use std::rc::Rc;
 
@@ -47,13 +47,16 @@ impl default::Default for RpAccept {
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
-pub struct RpEndpointHttp {
+pub struct RpEndpointHttp<F: 'static>
+where
+    F: Flavor,
+{
     /// Path specification.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub path: Option<RpPathSpec>,
+    pub path: Option<RpPathSpec<F>>,
     /// Argument that is the body of the request.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub body: Option<Rc<RpEndpointArgument>>,
+    pub body: Option<Rc<RpEndpointArgument<F>>>,
     /// HTTP method.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub method: Option<RpHttpMethod>,
@@ -63,16 +66,22 @@ pub struct RpEndpointHttp {
 
 /// An argument to an endpont.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct RpEndpointArgument {
+pub struct RpEndpointArgument<F: 'static>
+where
+    F: Flavor,
+{
     /// Identifier of the argument.
     pub ident: Loc<String>,
     /// Safe identifier for the argument.
     pub safe_ident: Option<String>,
     /// Channel of the argument.
-    pub channel: Loc<RpChannel>,
+    pub channel: Loc<RpChannel<F>>,
 }
 
-impl RpEndpointArgument {
+impl<F: 'static> RpEndpointArgument<F>
+where
+    F: Flavor,
+{
     /// Access the actual identifier of the endpoint argument.
     pub fn ident(&self) -> &str {
         self.ident.as_str()
@@ -88,7 +97,10 @@ impl RpEndpointArgument {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct RpEndpoint {
+pub struct RpEndpoint<F: 'static>
+where
+    F: Flavor,
+{
     /// Name of the endpoint. Guaranteed to be unique.
     pub ident: String,
     /// Safe identifier of the endpoint, avoiding any language-specific keywords.
@@ -102,21 +114,24 @@ pub struct RpEndpoint {
     /// Attributes associated with the endpoint.
     pub attributes: Attributes,
     /// Request type that this endpoint expects.
-    pub arguments: Vec<Rc<RpEndpointArgument>>,
+    pub arguments: Vec<Rc<RpEndpointArgument<F>>>,
     /// Request type that this endpoint accepts with.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub request: Option<Rc<RpEndpointArgument>>,
+    pub request: Option<Rc<RpEndpointArgument<F>>>,
     /// Response type that this endpoint responds with.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub response: Option<Loc<RpChannel>>,
+    pub response: Option<Loc<RpChannel<F>>>,
     /// HTTP configuration.
-    pub http: RpEndpointHttp,
+    pub http: RpEndpointHttp<F>,
 }
 
-impl RpEndpoint {
-    pub fn id_parts<F>(&self, filter: F) -> Vec<String>
+impl<F: 'static> RpEndpoint<F>
+where
+    F: Flavor,
+{
+    pub fn id_parts<T>(&self, filter: T) -> Vec<String>
     where
-        F: Fn(&str) -> String,
+        T: Fn(&str) -> String,
     {
         vec![filter(self.ident.as_str())]
     }

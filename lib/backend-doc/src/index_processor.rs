@@ -1,7 +1,7 @@
 //! Processor for service declarations.
 
-use core::{RpFile, RpVersionedPackage};
 use core::errors::*;
+use core::flavored::{RpFile, RpVersionedPackage};
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;

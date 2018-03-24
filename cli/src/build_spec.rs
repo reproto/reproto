@@ -1,7 +1,8 @@
 use clap::ArgMatches;
 use config_env::ConfigEnv;
-use core::{BytesObject, Context, Object, RelativePath, Resolved, ResolvedByPrefix, Resolver,
-           RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Version};
+use core::{BytesObject, Context, Flavor, Object, RelativePath, Resolved, ResolvedByPrefix,
+           Resolver, RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage,
+           Version};
 use core::errors::*;
 use manifest::{self as m, read_manifest, read_manifest_preamble, Lang, Language, Manifest,
                ManifestFile, ManifestPreamble, NoLang, Publish};
@@ -589,9 +590,14 @@ pub fn semck_check(
         return Ok(());
 
         /// Helper struct to display information on channels.
-        struct FmtChannel<'a>(Option<&'a RpChannel>);
+        struct FmtChannel<'a, F: 'static>(Option<&'a RpChannel<F>>)
+        where
+            F: Flavor;
 
-        impl<'a> fmt::Display for FmtChannel<'a> {
+        impl<'a, F: 'static> fmt::Display for FmtChannel<'a, F>
+        where
+            F: Flavor,
+        {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 match self.0 {
                     None => write!(fmt, "*empty*"),

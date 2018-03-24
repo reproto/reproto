@@ -4,8 +4,9 @@ use {Compiler, EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodege
      InterfaceModelAdded, InterfaceModelCodegen, Options, PackageAdded, PackageCodegen,
      StructModelAdded, StructModelCodegen, TupleAdded, TupleCodegen};
 use backend::Initializer;
-use core::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpSubTypeStrategy, RpVersionedPackage};
+use core;
 use core::errors::{Error, Result};
+use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpVersionedPackage};
 use genco::{Quoted, Tokens};
 use genco::swift::Swift;
 use std::rc::Rc;
@@ -969,7 +970,7 @@ impl InterfaceCodegen for Codegen {
                 let mut t = Tokens::new();
 
                 match body.sub_type_strategy {
-                    RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                    core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                         t.nested(init(compiler, body, tag)?);
                     }
                 }
@@ -1114,7 +1115,7 @@ impl InterfaceModelCodegen for Codegen {
         } = e;
 
         match body.sub_type_strategy {
-            RpSubTypeStrategy::Tagged { ref tag, .. } => {
+            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 container.nested({
                     let mut t = Tokens::new();
 

@@ -2,8 +2,9 @@
 
 use Compiler;
 use codegen::{Configure, EndpointExtra, ServiceAdded, ServiceCodegen};
-use core::{Loc, RpChannel, RpEndpoint};
+use core::Loc;
 use core::errors::*;
+use core::flavored::RpEndpoint;
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
 use naming::{self, Naming};
@@ -233,7 +234,7 @@ impl GrpcClient {
 
     /// Get the MethodType variant for the given endpoint.
     fn method_type(&self, endpoint: &RpEndpoint) -> Result<MethodType> {
-        use self::RpChannel::*;
+        use core::RpChannel::*;
 
         let request = self.endpoint_request(endpoint)?.map(|v| v.1);
 

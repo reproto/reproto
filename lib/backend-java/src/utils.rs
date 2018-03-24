@@ -98,7 +98,7 @@ impl<'el> IntoTokens<'el, Java<'el>> for Observer {
         let mut c = Interface::new("Observer");
         let v = local("V");
 
-        c.parameters.push(toks![v.clone()]);
+        c.parameters.append(v.clone());
 
         let throwable = imported("java.lang", "Throwable");
 

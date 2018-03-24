@@ -1,45 +1,63 @@
 //! Path specifications
 
-use RpEndpointArgument;
+use {Flavor, RpEndpointArgument};
 use std::rc::Rc;
 use std::vec;
 
 /// A part of a step.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum RpPathPart {
-    Variable(Rc<RpEndpointArgument>),
+pub enum RpPathPart<F: 'static>
+where
+    F: Flavor,
+{
+    Variable(Rc<RpEndpointArgument<F>>),
     Segment(String),
 }
 
 /// A step in a path specification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct RpPathStep {
-    pub parts: Vec<RpPathPart>,
+pub struct RpPathStep<F: 'static>
+where
+    F: Flavor,
+{
+    pub parts: Vec<RpPathPart<F>>,
 }
 
 /// A path specification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct RpPathSpec {
-    pub steps: Vec<RpPathStep>,
+pub struct RpPathSpec<F: 'static>
+where
+    F: Flavor,
+{
+    pub steps: Vec<RpPathStep<F>>,
 }
 
 #[derive(Debug)]
-pub struct Vars<'a> {
-    iter: vec::IntoIter<&'a RpEndpointArgument>,
+pub struct Vars<'a, F: 'static>
+where
+    F: Flavor,
+{
+    iter: vec::IntoIter<&'a RpEndpointArgument<F>>,
 }
 
-impl<'a> Iterator for Vars<'a> {
-    type Item = &'a RpEndpointArgument;
+impl<'a, F: 'static> Iterator for Vars<'a, F>
+where
+    F: Flavor,
+{
+    type Item = &'a RpEndpointArgument<F>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
     }
 }
 
-impl RpPathSpec {
+impl<F: 'static> RpPathSpec<F>
+where
+    F: Flavor,
+{
     /// List all variables in the path spec.
-    pub fn vars(&self) -> Vars {
+    pub fn vars(&self) -> Vars<F> {
         let mut vars = Vec::new();
 
         for step in &self.steps {

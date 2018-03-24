@@ -1,7 +1,8 @@
 //! Processor for service declarations.
 
-use core::{Loc, RpEnumBody, RpVariant};
+use core::Loc;
 use core::errors::*;
+use core::flavored::{RpEnumBody, RpVariant};
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;

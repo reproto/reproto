@@ -9,7 +9,7 @@ pub struct RpServiceBodyHttp {
     pub url: Option<Loc<String>>,
 }
 
-decl_body!(pub struct RpServiceBody {
+decl_body!(pub struct RpServiceBody<F> {
     pub http: RpServiceBodyHttp,
-    pub endpoints: Vec<Loc<RpEndpoint>>,
+    pub endpoints: Vec<Loc<RpEndpoint<F>>>,
 });

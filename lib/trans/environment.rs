@@ -1,6 +1,6 @@
 use ast::{self, UseDecl};
-use core::{Context, Loc, Object, PathObject, Range, Resolved, Resolver, RpDecl, RpFile, RpName,
-           RpPackage, RpReg, RpRequiredPackage, RpVersionedPackage, WithPos};
+use core::{self, Context, CoreFlavor, Loc, Object, PathObject, Range, Resolved, Resolver, RpName,
+           RpPackage, RpRequiredPackage, RpVersionedPackage, WithPos};
 use core::errors::{Error, Result};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
@@ -11,6 +11,10 @@ use std::collections::{btree_map, BTreeMap, HashMap, LinkedList};
 use std::path::Path;
 use std::rc::Rc;
 use std::vec;
+
+type RpFile = core::RpFile<CoreFlavor>;
+type RpReg = core::RpReg<CoreFlavor>;
+type RpDecl = core::RpDecl<CoreFlavor>;
 
 /// Iterate over all files in the environment.
 pub struct ForEachFile<'a> {

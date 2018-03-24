@@ -19,8 +19,9 @@ mod module;
 
 use backend::{Initializer, IntoBytes};
 use compiler::Compiler;
-use core::{Context, RpField, RpPackage, RpVersionedPackage};
+use core::Context;
 use core::errors::Result;
+use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpVersionedPackage};
 use genco::Tokens;
 use genco::swift::Swift;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -276,7 +277,7 @@ codegen!(StructModelCodegen, StructModelAdded);
 pub struct EnumAdded<'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
     pub name: &'a Swift<'el>,
-    pub body: &'el core::RpEnumBody,
+    pub body: &'el RpEnumBody,
 }
 
 codegen!(EnumCodegen, EnumAdded);
@@ -286,7 +287,7 @@ pub struct InterfaceAdded<'a, 'c: 'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
     pub compiler: &'a Compiler<'c>,
     pub name: &'a Swift<'el>,
-    pub body: &'el core::RpInterfaceBody,
+    pub body: &'el RpInterfaceBody,
 }
 
 codegen!(InterfaceCodegen, InterfaceAdded);
@@ -294,7 +295,7 @@ codegen!(InterfaceCodegen, InterfaceAdded);
 /// Event emitted when an interface model has been added.
 pub struct InterfaceModelAdded<'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
-    pub body: &'el core::RpInterfaceBody,
+    pub body: &'el RpInterfaceBody,
 }
 
 codegen!(InterfaceModelCodegen, InterfaceModelAdded);

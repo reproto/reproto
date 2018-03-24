@@ -1,7 +1,7 @@
 //! Helper utilities for processors.
 
-use core::{RpChannel, RpEndpoint, RpPackage, RpVersionedPackage};
 use core::errors::*;
+use core::flavored::{RpChannel, RpEndpoint, RpPackage, RpVersionedPackage};
 
 pub trait Processor {
     /// Build the java package of a given package.
