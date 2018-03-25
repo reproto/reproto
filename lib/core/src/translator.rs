@@ -5,6 +5,7 @@ use Flavor;
 use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 pub trait TypeTranslator {
     type Source: 'static + Clone + Flavor;
@@ -241,16 +242,16 @@ where
 }
 
 /// Context used when translating.
-pub struct Context<'a, T: 'static> {
+pub struct Context<T> {
     /// Type used to translate types.
-    pub type_translator: &'a T,
+    pub type_translator: T,
     /// Registered declarations of the source type.
-    pub types: &'a LinkedHashMap<RpName, RpReg>,
+    pub types: Rc<LinkedHashMap<RpName, RpReg>>,
     /// Cached and translated registered declarations.
-    pub decls: &'a RefCell<LinkedHashMap<RpName, RpReg>>,
+    pub decls: RefCell<LinkedHashMap<RpName, RpReg>>,
 }
 
-impl<'a, T> Context<'a, T> {
+impl<T> Context<T> {
     /// Lookup and cause the given name to be registered.
     fn lookup(&self, key: &RpName) -> Result<RpReg> {
         let key = key.clone().without_prefix();
@@ -274,7 +275,7 @@ impl<'a, T> Context<'a, T> {
     }
 }
 
-impl<'a, T: 'static> Translator for Context<'a, T>
+impl<T> Translator for Context<T>
 where
     T: TypeTranslator<Source = CoreFlavor>,
 {

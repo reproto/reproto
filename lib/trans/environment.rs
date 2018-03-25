@@ -30,7 +30,7 @@ where
     /// Files and associated declarations.
     files: BTreeMap<RpVersionedPackage, RpFile<F>>,
     /// Registered types.
-    types: LinkedHashMap<RpName, RpReg>,
+    types: Rc<LinkedHashMap<RpName, RpReg>>,
     /// Keywords that need to be translated.
     keywords: Rc<HashMap<String, String>>,
     /// Whether to perform package translation or not.
@@ -58,7 +58,7 @@ where
             resolver: resolver,
             visited: HashMap::new(),
             files: BTreeMap::new(),
-            types: LinkedHashMap::new(),
+            types: Rc::new(LinkedHashMap::new()),
             keywords: Rc::new(HashMap::new()),
             safe_packages: false,
             package_naming: None,
@@ -100,33 +100,37 @@ where
 }
 
 impl Environment<CoreFlavor> {
+    /// Build a new translator.
+    pub fn translator<T: 'static>(&self, type_translator: T) -> translator::Context<T>
+    where
+        T: TypeTranslator<Source = CoreFlavor>,
+    {
+        translator::Context {
+            type_translator: type_translator,
+            types: Rc::clone(&self.types),
+            decls: RefCell::new(LinkedHashMap::new()),
+        }
+    }
+
     /// Translate the current environment into another.
-    pub fn translate<T: 'static>(self, type_translator: T) -> Result<Translated<T::Target>>
+    pub fn translate<T: 'static>(self, ctx: translator::Context<T>) -> Result<Translated<T::Target>>
     where
         T: TypeTranslator<Source = CoreFlavor>,
     {
         let mut files = BTreeMap::new();
-        let types = RefCell::new(LinkedHashMap::new());
 
-        {
-            let context = translator::Context {
-                type_translator: &type_translator,
-                types: &self.types,
-                decls: &types,
-            };
-
-            for (package, file) in self.files {
-                files.insert(package, file.translate(&context)?);
-            }
+        for (package, file) in self.files {
+            files.insert(package, file.translate(&ctx)?);
         }
 
-        let types = types.into_inner();
+        let types = ctx.decls.into_inner();
         Ok(Translated::new(types, files))
     }
 
     /// Translate without changing the flavor.
     pub fn translate_default(self) -> Result<Translated<CoreFlavor>> {
-        return self.translate(translator::CoreTypeTranslator);
+        let ctx = self.translator(translator::CoreTypeTranslator);
+        return self.translate(ctx);
     }
 
     /// Import a path into the environment.
@@ -393,7 +397,9 @@ impl Environment<CoreFlavor> {
 
             debug!("new reg ty: {}", key);
 
-            match self.types.entry(key) {
+            let types = Rc::get_mut(&mut self.types).ok_or_else(|| "types registry in use")?;
+
+            match types.entry(key) {
                 Vacant(entry) => entry.insert(t),
                 Occupied(_) => {
                     return Err(self.ctx.report().err(pos, "conflicting declaration").into());

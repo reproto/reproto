@@ -4,11 +4,12 @@ use genco::java::{Argument, Field, Method, Modifier};
 use std::rc::Rc;
 
 /// A single field.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JavaField<'el> {
     pub name: Cons<'el>,
     pub ident: Rc<String>,
     pub field_accessor: Rc<String>,
+    #[serde(skip_serializing)]
     pub spec: Field<'el>,
 }
 

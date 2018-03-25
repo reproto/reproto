@@ -26,9 +26,8 @@ mod flavored;
 
 use codegen::Configure;
 use compiler::Compiler;
-use core::{Context, CoreFlavor, Loc, Pos, RpField};
+use core::{Context, CoreFlavor, Loc, Pos, RpField, RpType, Translator};
 use core::errors::Result;
-use genco::java::imported;
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use options::Options;
 use std::any::Any;
@@ -181,16 +180,18 @@ fn setup_options<'a>(modules: Vec<JavaModule>) -> Options {
 }
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let env = env.translate(flavored::JavaTypeTranslator::new())?;
+    let translator = env.translator(flavored::JavaTypeTranslator::new());
+
+    let variant_field = Loc::new(
+        translator.translate_field(RpField::new("value", RpType::String))?,
+        Pos::empty(),
+    );
+
+    let env = env.translate(translator)?;
 
     let env = Rc::new(env);
     let modules = checked_modules(manifest.modules)?;
     let options = setup_options(modules);
-
-    let variant_field = Loc::new(
-        RpField::new("value", imported("java.lang", "String")),
-        Pos::empty(),
-    );
 
     let compiler = Compiler::new(&env, &variant_field, options);
 

@@ -5,11 +5,11 @@ use codegen::{ClassAdded, EndpointExtra, EnumAdded, GetterAdded, InterfaceAdded,
               TupleAdded};
 use core::{self, ForEachLoc, Handle, Loc, WithPos};
 use core::errors::*;
-use flavored::{JavaFlavor, RpCode, RpDecl, RpEnumBody, RpEnumType, RpField, RpInterfaceBody,
-               RpServiceBody, RpTupleBody, RpTypeBody};
+use flavored::{JavaFlavor, RpCode, RpDecl, RpEnumBody, RpEnumType, RpInterfaceBody, RpServiceBody,
+               RpTupleBody, RpTypeBody};
 use genco::{Cons, Element, Java, Quoted, Tokens};
-use genco::java::{imported, local, optional, Argument, Class, Constructor, Enum, Field, Interface,
-                  Method, Modifier, BOOLEAN, INTEGER};
+use genco::java::{imported, local, Argument, Class, Constructor, Enum, Field, Interface, Method,
+                  Modifier, BOOLEAN, INTEGER};
 use java_field::JavaField;
 use java_file::JavaFile;
 use naming::{self, Naming};
@@ -59,9 +59,8 @@ macro_rules! call_codegen {
 
 pub struct Compiler<'el> {
     env: &'el Translated<JavaFlavor>,
-    variant_field: &'el Loc<RpField>,
+    variant_field: &'el Loc<JavaField<'static>>,
     options: Options,
-    to_upper_camel: naming::ToUpperCamel,
     to_lower_camel: naming::ToLowerCamel,
     variant_naming: naming::ToUpperSnake,
     null_string: Element<'static, Java<'static>>,
@@ -81,14 +80,13 @@ impl<'el> Processor for Compiler<'el> {}
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<JavaFlavor>,
-        variant_field: &'el Loc<RpField>,
+        variant_field: &'el Loc<JavaField<'static>>,
         options: Options,
     ) -> Compiler<'el> {
         Compiler {
             env: env,
             variant_field: variant_field,
             options: options,
-            to_upper_camel: naming::to_upper_camel(),
             to_lower_camel: naming::to_lower_camel(),
             variant_naming: naming::to_upper_snake(),
             null_string: "null".quoted(),
@@ -145,7 +143,7 @@ impl<'el> Compiler<'el> {
         field
     }
 
-    fn build_constructor(&self, fields: &[JavaField<'el>]) -> Constructor<'el> {
+    fn build_constructor(&self, fields: &[Loc<JavaField<'el>>]) -> Constructor<'el> {
         let mut c = Constructor::new();
 
         for field in fields {
@@ -188,7 +186,7 @@ impl<'el> Compiler<'el> {
         }
     }
 
-    fn build_hash_code(&self, fields: &[JavaField<'el>]) -> Method<'el> {
+    fn build_hash_code(&self, fields: &[Loc<JavaField<'el>>]) -> Method<'el> {
         let mut hash_code = Method::new("hashCode");
 
         hash_code.annotation(Override);
@@ -230,7 +228,7 @@ impl<'el> Compiler<'el> {
         hash_code
     }
 
-    fn build_equals(&self, name: Cons<'el>, fields: &[JavaField<'el>]) -> Method<'el> {
+    fn build_equals(&self, name: Cons<'el>, fields: &[Loc<JavaField<'el>>]) -> Method<'el> {
         let argument = Argument::new(self.object.clone(), "other");
 
         let mut equals = Method::new("equals");
@@ -334,7 +332,7 @@ impl<'el> Compiler<'el> {
         equals
     }
 
-    fn build_to_string(&self, name: Cons<'el>, fields: &[JavaField<'el>]) -> Method<'el> {
+    fn build_to_string(&self, name: Cons<'el>, fields: &[Loc<JavaField<'el>>]) -> Method<'el> {
         let mut to_string = Method::new("toString");
 
         to_string.annotation(Override);
@@ -404,7 +402,7 @@ impl<'el> Compiler<'el> {
     fn add_class(
         &self,
         name: Cons<'el>,
-        fields: &[JavaField<'el>],
+        fields: &[Loc<JavaField<'el>>],
         methods: &mut Vec<Method<'el>>,
         constructors: &mut Vec<Constructor<'el>>,
     ) -> Result<()> {
@@ -537,10 +535,8 @@ impl<'el> Compiler<'el> {
         spec.constructors
             .push(self.build_enum_constructor(&spec.fields));
 
-        let java_field = self.field(self.variant_field)?;
-
-        let mut from_value = self.enum_from_value_method(spec.name(), &java_field.spec);
-        let mut to_value = self.enum_to_value_method(&java_field.spec);
+        let mut from_value = self.enum_from_value_method(spec.name(), &self.variant_field.spec);
+        let mut to_value = self.enum_to_value_method(&self.variant_field.spec);
 
         call_codegen!(
             &self.options.enum_generators,
@@ -562,16 +558,14 @@ impl<'el> Compiler<'el> {
     fn process_tuple(&self, body: &'el RpTupleBody) -> Result<Class<'el>> {
         let mut spec = Class::new(body.ident.clone());
 
-        let fields = self.fields(&body.fields)?;
-
         self.add_class(
             spec.name(),
-            &fields,
+            &body.fields,
             &mut spec.methods,
             &mut spec.constructors,
         )?;
 
-        for field in fields {
+        for field in &body.fields {
             if self.options.build_getters {
                 let mut getter = field.getter();
 
@@ -592,7 +586,7 @@ impl<'el> Compiler<'el> {
                 }
             }
 
-            spec.fields.push(field.spec);
+            spec.fields.push(field.spec.clone());
         }
 
         spec.body.push_unless_empty(code(&body.codes));
@@ -607,10 +601,9 @@ impl<'el> Compiler<'el> {
 
     fn process_type(&self, body: &'el RpTypeBody) -> Result<Class<'el>> {
         let mut spec = Class::new(body.ident.clone());
-        let fields = self.fields(&body.fields)?;
-        let names: Vec<_> = fields.iter().map(|f| f.name.clone()).collect();
+        let names: Vec<_> = body.fields.iter().map(|f| f.name.clone()).collect();
 
-        for field in &fields {
+        for field in &body.fields {
             spec.fields.push(field.spec.clone());
 
             if self.options.build_getters {
@@ -638,7 +631,7 @@ impl<'el> Compiler<'el> {
 
         self.add_class(
             spec.name(),
-            &fields,
+            &body.fields,
             &mut spec.methods,
             &mut spec.constructors,
         )?;
@@ -660,9 +653,8 @@ impl<'el> Compiler<'el> {
     ) -> Result<Interface<'el>> {
         use self::Modifier::*;
         let mut spec = Interface::new(body.ident.clone());
-        let interface_fields = self.fields(&body.fields)?;
 
-        for field in &interface_fields {
+        for field in &body.fields {
             let mut m = field.getter_without_body();
             m.modifiers = vec![];
             spec.methods.push(m);
@@ -674,14 +666,12 @@ impl<'el> Compiler<'el> {
             let mut class = Class::new(sub_type.ident.clone());
             class.modifiers = vec![Public, Static];
 
-            let sub_type_fields = self.fields(&sub_type.fields)?;
-
             class.body.push_unless_empty(code(&sub_type.codes));
 
             class.implements = vec![local(spec.name())];
 
             // override methods for interface fields.
-            for field in &interface_fields {
+            for field in &body.fields {
                 if self.options.build_getters {
                     let mut getter = field.getter();
                     getter.annotation(Override);
@@ -705,7 +695,7 @@ impl<'el> Compiler<'el> {
                 }
             }
 
-            for field in &sub_type_fields {
+            for field in &sub_type.fields {
                 if self.options.build_getters {
                     let mut getter = field.getter();
 
@@ -727,8 +717,8 @@ impl<'el> Compiler<'el> {
                 }
             }
 
-            let mut fields = interface_fields.to_vec();
-            fields.extend(sub_type_fields);
+            let mut fields = body.fields.iter().cloned().collect::<Vec<_>>();
+            fields.extend(sub_type.fields.iter().cloned());
             let names: Vec<_> = fields.iter().map(|f| f.name.clone()).collect();
 
             class.fields.extend(fields.iter().map(|f| f.spec.clone()));
@@ -837,49 +827,6 @@ impl<'el> Compiler<'el> {
         }
 
         Ok(spec)
-    }
-
-    /// Convert a single field to `JavaField`, without comments.
-    fn field(&self, field: &'el RpField) -> Result<JavaField<'el>> {
-        let java_type = if field.is_optional() {
-            optional(
-                field.ty().clone(),
-                self.optional.with_arguments(vec![field.ty().clone()]),
-            )
-        } else {
-            field.ty().clone()
-        };
-
-        let ident = Rc::new(self.to_lower_camel.convert(field.safe_ident()));
-        let field_accessor = Rc::new(self.to_upper_camel.convert(field.ident()));
-
-        let mut spec = Field::new(java_type, ident.clone());
-
-        if !field.comment.is_empty() {
-            spec.comments.push("<pre>".into());
-            spec.comments
-                .extend(field.comment.iter().map(|c| Cons::from(c.as_str())));
-            spec.comments.push("</pre>".into());
-        }
-
-        Ok(JavaField {
-            name: Cons::from(field.name()),
-            ident: ident,
-            field_accessor: field_accessor,
-            spec: spec,
-        })
-    }
-
-    /// Convert fields to `JavaField`.
-    fn fields(&self, fields: &'el [Loc<RpField>]) -> Result<Vec<JavaField<'el>>> {
-        let mut out = Vec::new();
-
-        fields.for_each_loc(|field| {
-            out.push(self.field(field)?);
-            Ok(()) as Result<()>
-        })?;
-
-        Ok(out)
     }
 
     pub fn process_decl(

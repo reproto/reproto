@@ -1,8 +1,9 @@
 //! Model for tuples.
 
-use {Flavor, Loc, RpCode, RpField, RpSubType, Translate, Translator};
+use {Flavor, Loc, RpCode, RpSubType, Translate, Translator};
 use errors::Result;
 use std::slice;
+use translator;
 
 /// Default key to use for tagged sub type strategy.
 pub const DEFAULT_TAG: &str = "type";
@@ -23,7 +24,7 @@ impl Default for RpSubTypeStrategy {
 }
 
 decl_body!(pub struct RpInterfaceBody<F> {
-    pub fields: Vec<Loc<RpField<F>>>,
+    pub fields: Vec<Loc<F::Field>>,
     pub codes: Vec<Loc<RpCode>>,
     pub sub_types: Vec<Loc<RpSubType<F>>>,
     pub sub_type_strategy: RpSubTypeStrategy,
@@ -34,14 +35,14 @@ pub struct Fields<'a, F: 'static>
 where
     F: Flavor,
 {
-    iter: slice::Iter<'a, Loc<RpField<F>>>,
+    iter: slice::Iter<'a, Loc<F::Field>>,
 }
 
 impl<'a, F: 'static> Iterator for Fields<'a, F>
 where
     F: Flavor,
 {
-    type Item = &'a Loc<RpField<F>>;
+    type Item = &'a Loc<F::Field>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
@@ -76,7 +77,7 @@ where
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(translator)?,
-            fields: self.fields.translate(translator)?,
+            fields: translator::Fields(self.fields).translate(translator)?,
             codes: self.codes,
             sub_types: self.sub_types.translate(translator)?,
             sub_type_strategy: self.sub_type_strategy,
