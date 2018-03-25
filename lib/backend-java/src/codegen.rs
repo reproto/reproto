@@ -1,11 +1,11 @@
 //! Code generator for the given path.
 
-use {Compiler, Options};
+use Options;
 use core::Handle;
 use core::errors::Result;
 use flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
-use genco::{Cons, Java};
-use genco::java::{Argument, Class, Enum, Interface, Method};
+use genco::Cons;
+use genco::java::{Class, Enum, Interface, Method};
 use std::rc::Rc;
 
 /// Generate helper implementations for codegen traits.
@@ -48,17 +48,8 @@ pub struct InterfaceAdded<'a, 'el: 'a> {
     pub spec: &'a mut Interface<'el>,
 }
 
-pub struct EndpointExtra<'el> {
-    pub name: Cons<'el>,
-    pub response_ty: Java<'el>,
-    pub request_ty: Java<'el>,
-    pub arguments: Vec<Argument<'el>>,
-}
-
 pub struct ServiceAdded<'a, 'el: 'a> {
-    pub compiler: &'a Compiler<'el>,
     pub body: &'el RpServiceBody,
-    pub extra: &'a [EndpointExtra<'el>],
     pub spec: &'a mut Interface<'el>,
 }
 
@@ -76,14 +67,7 @@ pub trait ServiceCodegen {
     fn generate(&self, e: ServiceAdded) -> Result<()>;
 }
 
-impl<T> ServiceCodegen for Rc<T>
-where
-    T: ServiceCodegen,
-{
-    fn generate(&self, e: ServiceAdded) -> Result<()> {
-        self.as_ref().generate(e)
-    }
-}
+codegen!(ServiceCodegen, ServiceAdded);
 
 /// Generate code for getters.
 pub trait GetterCodegen {

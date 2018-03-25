@@ -1,10 +1,9 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use Compiler;
-use codegen::{Configure, EndpointExtra, ServiceAdded, ServiceCodegen};
+use codegen::{Configure, ServiceAdded, ServiceCodegen};
 use core::Loc;
 use core::errors::*;
-use flavored::RpEndpoint;
+use flavored::JavaEndpoint;
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier, VOID};
 use naming::{self, Naming};
@@ -229,12 +228,13 @@ impl GrpcClient {
     }
 
     /// Get the MethodType variant for the given endpoint.
-    fn method_type(&self, endpoint: &RpEndpoint) -> Result<MethodType> {
+    fn method_type(&self, e: &Loc<JavaEndpoint>) -> Result<MethodType> {
         use core::RpChannel::*;
 
-        let request = self.endpoint_request(endpoint)?.map(|v| v.1);
+        let request = e.request.as_ref().map(|v| Loc::value(&v.channel));
+        let response = e.response.as_ref().map(|v| Loc::value(v));
 
-        let out = match (request, endpoint.response.as_ref().map(Loc::value)) {
+        let out = match (request, response) {
             (Some(&Unary { .. }), Some(&Unary { .. })) => MethodType::Unary,
             (Some(&Streaming { .. }), Some(&Unary { .. })) => MethodType::ClientStreaming,
             (Some(&Unary { .. }), Some(&Streaming { .. })) => MethodType::ServerStreaming,
@@ -249,18 +249,14 @@ impl GrpcClient {
     fn method_field<'el>(
         &self,
         service_name: Rc<String>,
-        compiler: &Compiler,
-        request_ty: &Java<'static>,
-        response_ty: &Java<'static>,
         method_type: &MethodType,
-        endpoint: &'el RpEndpoint,
+        e: &'el Loc<JavaEndpoint>,
+        request_ty: &Java<'el>,
+        response_ty: &Java<'el>,
     ) -> Field<'el> {
         use self::Modifier::*;
 
-        let method_name = Rc::new(format!(
-            "METHOD_{}",
-            self.to_upper_snake.convert(endpoint.ident())
-        ));
+        let method_name = Rc::new(format!("METHOD_{}", self.to_upper_snake.convert(&e.ident)));
 
         let descriptor_ty = self.method_descriptor
             .with_arguments(vec![request_ty.clone(), response_ty.clone()]);
@@ -271,14 +267,15 @@ impl GrpcClient {
         field.initializer({
             let mut init = Tokens::new();
 
-            init.push(toks![
-                self.method_descriptor.clone(),
+            push!(
+                init,
+                self.method_descriptor,
                 ".<",
-                request_ty.clone(),
+                request_ty.as_boxed(),
                 ", ",
-                response_ty.clone(),
-                ">newBuilder()",
-            ]);
+                response_ty.as_boxed(),
+                ">newBuilder()"
+            );
 
             init.nested({
                 let mut t = Tokens::new();
@@ -296,11 +293,11 @@ impl GrpcClient {
                     ".generateFullMethodName(",
                     service_name.quoted(),
                     ", ",
-                    endpoint.name().quoted(),
+                    e.name.clone().quoted(),
                     "))",
                 ]);
 
-                if request_ty != &compiler.void {
+                if *request_ty != VOID {
                     t.push(toks![
                         ".setRequestMarshaller(new JsonMarshaller(",
                         "new ",
@@ -312,7 +309,7 @@ impl GrpcClient {
                     t.push(".setRequestMarshaller(new VoidMarshaller())");
                 }
 
-                if response_ty != &compiler.void {
+                if *response_ty != VOID {
                     t.push(toks![
                         ".setResponseMarshaller(new JsonMarshaller(",
                         "new ",
@@ -367,20 +364,19 @@ impl GrpcClient {
     /// This is built differently depending on which MethodType has been used.
     fn client_method<'el>(
         &self,
-        name: Cons<'el>,
         field: &Field<'el>,
-        request_ty: &Java<'static>,
-        response_ty: &Java<'static>,
         method_type: &MethodType,
-        endpoint: &'el RpEndpoint,
+        e: &'el Loc<JavaEndpoint>,
+        request_ty: &Java<'el>,
+        response_ty: &Java<'el>,
     ) -> Method<'el> {
         use self::MethodType::*;
         use self::Modifier::*;
 
-        let mut method = Method::new(name);
+        let mut method = Method::new(e.ident.clone());
         method.modifiers = vec![Public];
 
-        Self::javadoc_comments(&mut method.comments, &endpoint.comment);
+        Self::javadoc_comments(&mut method.comments, &e.comment);
 
         let request_observer_ty = self.stream_observer
             .with_arguments(vec![request_ty.clone()]);
@@ -461,20 +457,19 @@ impl GrpcClient {
     /// Build the server method that will handle the request.
     fn server_method<'el>(
         &self,
-        name: Cons<'el>,
         field: &Field<'el>,
-        request_ty: &Java<'static>,
-        response_ty: &Java<'static>,
         method_type: &MethodType,
-        endpoint: &'el RpEndpoint,
+        e: &'el Loc<JavaEndpoint>,
+        request_ty: &Java<'el>,
+        response_ty: &Java<'el>,
     ) -> Method<'el> {
         use self::MethodType::*;
         use self::Modifier::*;
 
-        let mut method = Method::new(name);
+        let mut method = Method::new(e.ident.clone());
         method.modifiers = vec![Public];
 
-        Self::javadoc_comments(&mut method.comments, &endpoint.comment);
+        Self::javadoc_comments(&mut method.comments, &e.comment);
 
         let request_observer_ty = self.stream_observer
             .with_arguments(vec![request_ty.clone()]);
@@ -599,7 +594,7 @@ impl GrpcClient {
     /// Build the addMethod call for a given endpoint to populate the server definition.
     fn server_definition_add_method<'el>(
         &self,
-        name: Cons<'el>,
+        ident: Cons<'el>,
         field: &Field<'el>,
         method_type: &MethodType,
     ) -> Tokens<'el, Java<'el>> {
@@ -612,7 +607,7 @@ impl GrpcClient {
                 args.append(toks![
                     self.server_calls.clone(),
                     ".asyncUnaryCall(this::",
-                    name,
+                    ident,
                     ")",
                 ]);
             }
@@ -620,7 +615,7 @@ impl GrpcClient {
                 args.append(toks![
                     self.server_calls.clone(),
                     ".asyncClientStreamingCall(this::",
-                    name,
+                    ident,
                     ")",
                 ]);
             }
@@ -628,7 +623,7 @@ impl GrpcClient {
                 args.append(toks![
                     self.server_calls.clone(),
                     ".asyncServerStreamingCall(this::",
-                    name,
+                    ident,
                     ")",
                 ]);
             }
@@ -636,7 +631,7 @@ impl GrpcClient {
                 args.append(toks![
                     self.server_calls.clone(),
                     ".asyncBidiStreamingCall(this::",
-                    name,
+                    ident,
                     ")",
                 ]);
             }
@@ -650,13 +645,7 @@ impl Processor for GrpcClient {}
 
 impl ServiceCodegen for GrpcClient {
     fn generate(&self, e: ServiceAdded) -> Result<()> {
-        let ServiceAdded {
-            compiler,
-            body,
-            spec,
-            extra,
-            ..
-        } = e;
+        let ServiceAdded { body, spec, .. } = e;
 
         let mut client_stub = self.client_stub();
         let mut server_stub = self.server_stub();
@@ -679,54 +668,32 @@ impl ServiceCodegen for GrpcClient {
             .body
             .nested(toks![".builder(", service_name.clone().quoted(), ")",]);
 
-        for (endpoint, extra) in body.endpoints.iter().zip(extra.iter()) {
-            let EndpointExtra { ref name, .. } = *extra;
+        for e in &body.endpoints {
+            let method_type = self.method_type(e)?;
 
-            let request = self.endpoint_request(endpoint)?.map(|v| v.1);
+            let request_ty = e.request
+                .as_ref()
+                .map(|r| r.channel.ty())
+                .unwrap_or(&VOID)
+                .clone();
 
-            let request_ty = if let Some(req) = request {
-                req.ty().clone()
-            } else {
-                compiler.void.clone()
-            };
-
-            let response_ty = if let Some(ref res) = endpoint.response.as_ref() {
-                res.ty().clone()
-            } else {
-                compiler.void.clone()
-            };
-
-            let method_type = self.method_type(endpoint)?;
+            let response_ty = e.response.as_ref().map(|r| r.ty()).unwrap_or(&VOID).clone();
 
             let field = self.method_field(
                 service_name.clone(),
-                &compiler,
+                &method_type,
+                e,
                 &request_ty,
                 &response_ty,
-                &method_type,
-                endpoint,
             );
 
-            let server_method = self.server_method(
-                name.clone(),
-                &field,
-                &request_ty,
-                &response_ty,
-                &method_type,
-                endpoint,
-            );
-
-            let client_method = self.client_method(
-                name.clone(),
-                &field,
-                &request_ty,
-                &response_ty,
-                &method_type,
-                endpoint,
-            );
+            let server_method =
+                self.server_method(&field, &method_type, e, &request_ty, &response_ty);
+            let client_method =
+                self.client_method(&field, &method_type, e, &request_ty, &response_ty);
 
             bind_service.body.nested(self.server_definition_add_method(
-                name.clone(),
+                e.ident.clone(),
                 &field,
                 &method_type,
             ));

@@ -1,11 +1,13 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::{Configure, EndpointExtra, ServiceAdded, ServiceCodegen};
-use core;
+use codegen::{Codegen, Configure, ServiceAdded, ServiceCodegen};
+use core::{self, Handle, Loc};
 use core::errors::*;
-use flavored::{RpEndpoint, RpPathStep};
+use flavored::{JavaEndpoint, JavaHttp, RpPathStep};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
-use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier};
+use genco::java::{imported, local, Argument, Class, Constructor, Field, Interface, Method,
+                  Modifier};
+use java_file::JavaFile;
 use utils::Override;
 
 #[derive(Debug, Deserialize)]
@@ -43,6 +45,10 @@ impl Module {
         e.options
             .service_generators
             .push(Box::new(OkHttpServiceCodegen::new()));
+
+        e.options
+            .root_generators
+            .push(Box::new(OkHttpSerialization::new()));
     }
 }
 
@@ -52,29 +58,39 @@ pub struct Builder<'el> {
     optional: Java<'el>,
     client: Field<'el>,
     base_url: Field<'el>,
+    ser: Field<'el>,
 }
 
 impl<'el> Builder<'el> {
     fn build(&self) -> Method<'el> {
+        macro_rules! opt_check {
+            ($d: expr, $v: expr) => {
+                push!(
+                    $d,
+                    "final ",
+                    $v.ty().as_value(),
+                    " ",
+                    $v.var(),
+                    " = ",
+                    required(&$v),
+                    ";"
+                )
+            };
+        }
+
         let mut args = Tokens::new();
 
         args.append(self.client.var());
         args.append(self.base_url.var());
+        args.append(self.ser.var());
 
         let mut build = Method::new("build");
 
         build.returns = self.ty.clone();
 
-        push!(
-            build.body,
-            "final ",
-            self.base_url.ty().as_value(),
-            " ",
-            self.base_url.var(),
-            " = ",
-            required(&self.base_url),
-            ";"
-        );
+        opt_check!(build.body, self.base_url);
+        opt_check!(build.body, self.ser);
+
         push!(
             build.body,
             "return new ",
@@ -133,11 +149,17 @@ impl<'el> IntoTokens<'el, Java<'el>> for Builder<'el> {
         builder.modifiers = vec![Modifier::Static, Modifier::Public];
 
         let base_url = self.field(self.base_url.var(), self.base_url.ty());
+        let ser = self.field(self.ser.var(), self.ser.ty());
 
         builder.fields.push(base_url.clone());
+        builder.fields.push(ser.clone());
+
         builder
             .methods
             .push(self.setter(self.base_url.var(), self.base_url.ty()));
+        builder
+            .methods
+            .push(self.setter(self.ser.var(), self.ser.ty()));
 
         let mut c = Constructor::new();
 
@@ -162,6 +184,194 @@ impl<'el> IntoTokens<'el, Java<'el>> for Builder<'el> {
     }
 }
 
+pub struct OkHttpSerialization {
+    request_body: Java<'static>,
+    response_body: Java<'static>,
+    cls: Java<'static>,
+}
+
+impl OkHttpSerialization {
+    pub fn new() -> Self {
+        Self {
+            request_body: imported("okhttp3", "RequestBody"),
+            response_body: imported("okhttp3", "ResponseBody"),
+            cls: imported("java.lang", "Class"),
+        }
+    }
+}
+
+impl Codegen for OkHttpSerialization {
+    fn generate(&self, handle: &Handle) -> Result<()> {
+        JavaFile::new("io.reproto", "OkHttpSerialization", |out| {
+            let mut c = Interface::new("OkHttpSerialization");
+
+            let t = local("T");
+
+            let entity = Argument::new(t.clone(), "entity");
+
+            let encode = {
+                let mut m = Method::new("encode");
+                m.comments.push("Encode the request body.".into());
+                m.parameters.append(t.clone());
+                m.arguments.push(entity.clone());
+                m.returns = self.request_body.clone();
+                m.modifiers = vec![];
+                m
+            };
+
+            let body = Argument::new(self.response_body.clone(), "body");
+            let cls = Argument::new(self.cls.with_arguments(vec![t.clone()]), "cls");
+
+            let decode = {
+                let mut m = Method::new("decode");
+                m.comments.push("Decode the response body.".into());
+                m.parameters.append(t.clone());
+                m.arguments.push(body.clone());
+                m.arguments.push(cls.clone());
+                m.returns = t.clone();
+                m.modifiers = vec![];
+                m
+            };
+
+            c.methods.push(encode.clone());
+            c.methods.push(decode.clone());
+
+            c.body.push(Jackson::new(encode, decode, body, cls, entity));
+
+            out.push(c);
+            Ok(())
+        }).process(handle)?;
+
+        return Ok(());
+
+        pub struct Jackson<'el> {
+            encode: Method<'el>,
+            decode: Method<'el>,
+            body: Argument<'el>,
+            cls: Argument<'el>,
+            entity: Argument<'el>,
+            request_body: Java<'static>,
+            object_mapper: Java<'static>,
+            runtime_exc: Java<'static>,
+            io_exc: Java<'static>,
+            media_type: Java<'static>,
+        }
+
+        impl<'el> Jackson<'el> {
+            pub fn new(
+                encode: Method<'el>,
+                decode: Method<'el>,
+                body: Argument<'el>,
+                cls: Argument<'el>,
+                entity: Argument<'el>,
+            ) -> Jackson<'el> {
+                Jackson {
+                    encode,
+                    decode,
+                    body,
+                    cls,
+                    entity,
+                    request_body: imported("okhttp3", "RequestBody"),
+                    object_mapper: imported("com.fasterxml.jackson.databind", "ObjectMapper"),
+                    runtime_exc: imported("java.lang", "RuntimeException"),
+                    io_exc: imported("java.io", "IOException"),
+                    media_type: imported("okhttp3", "MediaType"),
+                }
+            }
+        }
+
+        impl<'el> IntoTokens<'el, Java<'el>> for Jackson<'el> {
+            fn into_tokens(self) -> Tokens<'el, Java<'el>> {
+                let mut c = Class::new("Jackson");
+
+                let mut json = Field::new(self.media_type.clone(), "JSON");
+                json.modifiers = vec![Modifier::Private, Modifier::Static, Modifier::Final];
+                json.initializer(toks![
+                    self.media_type.clone(),
+                    ".parse(",
+                    "application/json; charset=utf-8".quoted(),
+                    ")"
+                ]);
+
+                let f = Field::new(self.object_mapper.clone(), "m");
+                let m = Argument::new(self.object_mapper.clone(), "m");
+
+                c.implements = vec![local("OkHttpSerialization")];
+                c.fields.push(json.clone());
+                c.fields.push(f.clone());
+
+                c.constructors.push({
+                    let mut c = Constructor::new();
+
+                    c.arguments.push(m.clone());
+                    push!(c.body, "this.", f.var(), " = ", m.var(), ";");
+
+                    c
+                });
+
+                c.methods.push({
+                    let mut m = self.decode.clone();
+                    m.annotation(Override);
+                    m.modifiers = vec![Modifier::Public];
+
+                    let read = toks![
+                        "m.readValue(",
+                        self.body.var(),
+                        ".bytes(), ",
+                        self.cls.var(),
+                        ")"
+                    ];
+
+                    push!(m.body, "try {");
+                    nested!(m.body, "return ", read, ";");
+                    push!(m.body, "} catch (final ", self.io_exc, " e) {");
+                    nested!(m.body, "throw new ", self.runtime_exc, "(e);");
+                    push!(m.body, "}");
+
+                    m
+                });
+
+                c.methods.push({
+                    let mut m = self.encode.clone();
+                    m.annotation(Override);
+                    m.modifiers = vec![Modifier::Public];
+
+                    let write = toks!["m.writeValueAsBytes(", self.entity.var(), ")"];
+
+                    push!(m.body, "final byte[] buffer;");
+
+                    m.body.push({
+                        let mut t = Tokens::new();
+
+                        push!(t, "try {");
+                        nested!(t, "buffer = ", write, ";");
+                        push!(t, "} catch (final ", self.io_exc, " e) {");
+                        nested!(t, "throw new ", self.runtime_exc, "(e);");
+                        push!(t, "}");
+
+                        t
+                    });
+
+                    push!(
+                        m.body,
+                        "return ",
+                        self.request_body,
+                        ".create(",
+                        json.var(),
+                        ", buffer);"
+                    );
+
+                    m.body = m.body.join_line_spacing();
+
+                    m
+                });
+
+                c.into_tokens()
+            }
+        }
+    }
+}
+
 pub struct OkHttpServiceCodegen {
     client: Java<'static>,
     request: Java<'static>,
@@ -170,6 +380,9 @@ pub struct OkHttpServiceCodegen {
     call: Java<'static>,
     response: Java<'static>,
     io_exc: Java<'static>,
+    optional: Java<'static>,
+    completable_future: Java<'static>,
+    serialization: Java<'static>,
 }
 
 impl OkHttpServiceCodegen {
@@ -182,6 +395,9 @@ impl OkHttpServiceCodegen {
             call: imported("okhttp3", "Call"),
             response: imported("okhttp3", "Response"),
             io_exc: imported("java.io", "IOException"),
+            optional: imported("java.util", "Optional"),
+            completable_future: imported("java.util.concurrent", "CompletableFuture"),
+            serialization: imported("io.reproto", "OkHttpSerialization"),
         }
     }
 }
@@ -190,10 +406,23 @@ impl OkHttpServiceCodegen {
     fn request<'el>(
         &self,
         mut method: Method<'el>,
-        endpoint: &'el RpEndpoint,
+        e: &'el Loc<JavaEndpoint>,
+        http: &'el JavaHttp<'el>,
         client: Field<'el>,
         base_url: Field<'el>,
     ) -> Result<Method<'el>> {
+        let ser = "OkHttp.this.serialization";
+
+        let request_var = e.request
+            .as_ref()
+            .map(|r| toks![ser.clone(), ".encode(", r.safe_ident(), ")"])
+            .unwrap_or_else(|| toks!["null"]);
+
+        let response_var = e.response
+            .as_ref()
+            .map(|r| toks![ser.clone(), ".decode(response.body(), ", r.ty(), ".class)"])
+            .unwrap_or_else(|| toks!["null"]);
+
         method.body.push({
             let mut t = Tokens::new();
 
@@ -205,11 +434,9 @@ impl OkHttpServiceCodegen {
                 ".newBuilder()",
             ]);
 
-            if let Some(ref path) = endpoint.http.path {
-                for step in &path.steps {
-                    let args = step_args(step)?;
-                    t.nested(toks![".addPathSegment(", args.join(" + "), ")"]);
-                }
+            for step in &http.path.steps {
+                let args = step_args(step)?;
+                t.nested(toks![".addPathSegment(", args.join(" + "), ")"]);
             }
 
             t.nested(".build();");
@@ -229,16 +456,11 @@ impl OkHttpServiceCodegen {
                 ".Builder()"
             );
 
-            let method = endpoint
-                .http
-                .method
-                .as_ref()
-                .map(|m| m.as_str())
-                .unwrap_or("GET");
+            let method = http.method.as_str();
 
             nested!(t, ".url(url_)");
             // TODO: actually provide the body
-            nested!(t, ".method(", method.quoted(), ", null)");
+            nested!(t, ".method(", method.quoted(), ", ", request_var, ")");
             nested!(t, ".build();");
 
             t
@@ -290,14 +512,14 @@ impl OkHttpServiceCodegen {
                         let exc = toks![
                             "new IOException(",
                             "bad response: ".quoted(),
-                            " + response)"
+                            " + response)",
                         ];
 
                         t.push("if (!response.isSuccessful()) {");
                         nested!(t, "future_.completeExceptionally(", exc, ");");
                         t.push("} else {");
                         // TODO: complete with the response
-                        nested!(t, "future_.complete(null);");
+                        nested!(t, "future_.complete(", response_var, ");");
                         t.push("}");
                     });
 
@@ -344,76 +566,60 @@ impl OkHttpServiceCodegen {
 
 impl ServiceCodegen for OkHttpServiceCodegen {
     fn generate(&self, e: ServiceAdded) -> Result<()> {
-        let ServiceAdded {
-            compiler,
-            body,
-            spec,
-            extra,
-            ..
-        } = e;
-
-        let mut c = Class::new("OkHttp");
-        c.implements = vec![local(spec.name())];
+        let ServiceAdded { body, spec, .. } = e;
 
         let client = Field::new(self.client.clone(), "client");
         let base_url = Field::new(self.http_url.clone(), "baseUrl");
+        let ser = Field::new(self.serialization.clone(), "serialization");
 
-        for (endpoint, extra) in body.endpoints.iter().zip(extra.iter()) {
-            let EndpointExtra {
-                ref name,
-                ref response_ty,
-                ref arguments,
-                ..
-            } = *extra;
+        let ok_http = {
+            let mut c = Class::new("OkHttp");
+            c.implements = vec![local(spec.name().to_string())];
 
-            if !endpoint.has_http_support() {
-                let mut m = Method::new(name.clone());
-                m.annotation(Override);
-                m.returns = response_ty.clone();
-                m.arguments.extend(arguments.iter().cloned());
+            for e in &body.endpoints {
+                if let Some(http) = e.http.as_ref() {
+                    let mut m = Method::new(e.ident.clone());
+                    m.returns = self.completable_future
+                        .with_arguments(vec![http.response.clone()]);
+                    m.arguments.extend(e.arguments.iter().cloned());
 
-                // FIXME: compile-time error?
-                m.body
-                    .push("throw new RuntimeException(\"endpoint does not support HTTP\");");
-
-                c.methods.push(m);
-                continue;
+                    c.methods
+                        .push(self.request(m, e, http, client.clone(), base_url.clone())?);
+                }
             }
 
-            let mut m = Method::new(name.clone());
-            m.annotation(Override);
-            m.returns = response_ty.clone();
-            m.arguments.extend(arguments.iter().cloned());
+            c.constructors.push({
+                let mut c = Constructor::new();
+                let client_arg = Argument::new(client.ty(), client.var());
+                let base_arg = Argument::new(base_url.ty(), base_url.var());
+                let ser_arg = Argument::new(ser.ty(), ser.var());
 
-            c.methods
-                .push(self.request(m, endpoint, client.clone(), base_url.clone())?);
-        }
+                push!(c.body, "this.", client.var(), " = ", client_arg.var(), ";");
+                push!(c.body, "this.", base_url.var(), " = ", base_arg.var(), ";");
+                push!(c.body, "this.", ser.var(), " = ", ser_arg.var(), ";");
 
-        c.constructors.push({
-            let mut c = Constructor::new();
-            let client_arg = Argument::new(client.ty(), client.var());
+                c.arguments.push(client_arg);
+                c.arguments.push(base_arg);
+                c.arguments.push(ser_arg);
+                c
+            });
 
-            push!(c.body, "this.", client.var(), " = ", client_arg.var(), ";");
-            push!(c.body, "this.", base_url.var(), " = ", base_url.var(), ";");
-
-            c.arguments.push(client_arg);
-            c.arguments
-                .push(Argument::new(base_url.ty(), base_url.var()));
+            c.fields.push(client.clone());
+            c.fields.push(base_url.clone());
+            c.fields.push(ser.clone());
             c
-        });
-
-        let builder = Builder {
-            ty: local(c.name()),
-            optional: compiler.optional.clone(),
-            client: client.clone(),
-            base_url: base_url.clone(),
         };
 
-        c.fields.push(client);
-        c.fields.push(base_url);
+        spec.body.push(ok_http);
 
-        spec.body.push(c);
-        spec.body.push(builder);
+        spec.body.push(Builder {
+            ty: local("OkHttp"),
+            optional: self.optional.clone(),
+            client: client,
+            base_url: base_url,
+            ser: ser,
+        });
+
         Ok(())
     }
 }

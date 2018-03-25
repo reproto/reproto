@@ -3,16 +3,20 @@ type Entry {
 
 service MyService {
     /// UNKNOWN
-    unknown();
+    #[http(path = "/unknown/{id}")]
+    unknown(id: u32);
 
     /// UNKNOWN
-    unknown_return() -> Entry;
+    #[http(path = "/unknown-return/{id}")]
+    unknown_return(id: u32) -> Entry;
 
     /// UNKNOWN
-    unknown_argument(request: Entry);
+    #[http(path = "/unknown-argument/{id}")]
+    unknown_argument(request: Entry, id: u32);
 
     /// UNARY
-    unary(request: Entry) -> Entry;
+    #[http(path = "/unary/{id}")]
+    unary(request: Entry, id: u32) -> Entry;
 
     /// SERVER_STREMAING
     server_streaming(request: Entry) -> stream Entry;

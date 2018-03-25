@@ -2,13 +2,96 @@
 
 #![allow(unused)]
 
-use core::{self, CoreFlavor, Flavor, Translator, TypeTranslator};
+use core::{self, CoreFlavor, Flavor, Loc, Translate, Translator, TypeTranslator};
 use core::errors::Result;
 use genco::{Cons, Java};
-use genco::java::{imported, optional, Field, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG};
-use java_field::JavaField;
+use genco::java::{imported, optional, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT,
+                  INTEGER, LONG, VOID};
 use naming::{self, Naming};
 use std::rc::Rc;
+
+#[derive(Debug, Clone)]
+pub struct JavaHttp<'el> {
+    pub request: Java<'el>,
+    pub response: Java<'el>,
+    pub path: RpPathSpec,
+    pub method: RpHttpMethod,
+}
+
+#[derive(Debug, Clone)]
+pub struct JavaEndpoint<'el> {
+    pub ident: Cons<'el>,
+    pub name: Cons<'el>,
+    pub response: Option<Loc<RpChannel>>,
+    pub request: Option<RpEndpointArgument>,
+    pub arguments: Vec<Argument<'el>>,
+    pub comment: Vec<String>,
+    pub http: Option<JavaHttp<'el>>,
+}
+
+no_serializer!(JavaEndpoint<'a>);
+
+impl<'el> JavaEndpoint<'el> {
+    /// If endpoint has metadata for HTTP.
+    pub fn has_http_support(&self) -> bool {
+        self.http.is_some()
+    }
+}
+
+/// A single field.
+#[derive(Debug, Clone)]
+pub struct JavaField<'el> {
+    pub name: Cons<'el>,
+    pub ident: Rc<String>,
+    pub field_accessor: Rc<String>,
+    pub spec: Field<'el>,
+}
+
+no_serializer!(JavaField<'a>);
+
+impl<'el> JavaField<'el> {
+    pub fn setter(&self) -> Option<Method<'el>> {
+        if self.spec.modifiers.contains(&Modifier::Final) {
+            return None;
+        }
+
+        let argument = Argument::new(self.spec.ty(), self.spec.var());
+        let mut m = Method::new(Rc::new(format!("set{}", self.field_accessor)));
+
+        m.arguments.push(argument.clone());
+
+        m.body
+            .push(toks!["this.", self.spec.var(), " = ", argument.var(), ";",]);
+
+        Some(m)
+    }
+
+    /// Create a new getter method without a body.
+    pub fn getter_without_body(&self) -> Method<'el> {
+        // Avoid `getClass`, a common built-in method for any Object.
+        let field_accessor = match self.field_accessor.as_str() {
+            "Class" => "Class_",
+            accessor => accessor,
+        };
+
+        let mut method = Method::new(Rc::new(format!("get{}", field_accessor)));
+        method.comments = self.spec.comments.clone();
+        method.returns = self.spec.ty().as_field();
+        method
+    }
+
+    /// Build a new complete getter.
+    pub fn getter(&self) -> Method<'el> {
+        let mut m = self.getter_without_body();
+        m.body.push(toks!["return this.", self.spec.var(), ";"]);
+        m
+    }
+
+    /// The JSON name of the field.
+    pub fn name(&self) -> Cons<'el> {
+        self.name.clone()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct JavaFlavor;
@@ -16,6 +99,7 @@ pub struct JavaFlavor;
 impl Flavor for JavaFlavor {
     type Type = Java<'static>;
     type Field = JavaField<'static>;
+    type Endpoint = JavaEndpoint<'static>;
 }
 
 /// Responsible for translating RpType -> Java type.
@@ -26,7 +110,6 @@ pub struct JavaTypeTranslator {
     instant: Java<'static>,
     object: Java<'static>,
     byte_buffer: Java<'static>,
-    pub void: Java<'static>,
     optional: Java<'static>,
     to_upper_camel: naming::ToUpperCamel,
     to_lower_camel: naming::ToLowerCamel,
@@ -41,7 +124,6 @@ impl JavaTypeTranslator {
             instant: imported("java.time", "Instant"),
             object: imported("java.lang", "Object"),
             byte_buffer: imported("java.nio", "ByteBuffer"),
-            void: imported("java.lang", "Void"),
             optional: imported("java.util", "Optional"),
             to_upper_camel: naming::to_upper_camel(),
             to_lower_camel: naming::to_lower_camel(),
@@ -149,6 +231,82 @@ impl TypeTranslator for JavaTypeTranslator {
             field_accessor: field_accessor,
             spec: spec,
         })
+    }
+
+    fn translate_endpoint<T>(
+        &self,
+        translator: &T,
+        e: core::RpEndpoint<CoreFlavor>,
+    ) -> Result<JavaEndpoint<'static>>
+    where
+        T: Translator<Source = CoreFlavor, Target = JavaFlavor>,
+    {
+        let ident = Cons::from(self.to_lower_camel.convert(e.safe_ident()));
+
+        let name = {
+            let ident = e.ident;
+            e.name.map(Cons::from).unwrap_or_else(|| Cons::from(ident))
+        };
+
+        let response = e.response.translate(translator)?;
+        let request = e.request.translate(translator)?;
+
+        let mut arguments = Vec::new();
+
+        for arg in e.arguments {
+            let ty = translator.translate_type(arg.channel.ty().clone())?;
+            arguments.push(Argument::new(ty, arg.safe_ident().to_string()));
+        }
+
+        let http = e.http.translate(translator)?;
+        let http = decode_http(http, &request, &response);
+
+        return Ok(JavaEndpoint {
+            ident,
+            name,
+            response,
+            request,
+            arguments: arguments,
+            comment: e.comment,
+            http: http,
+        });
+
+        fn decode_http<'el>(
+            http: RpEndpointHttp,
+            request: &Option<RpEndpointArgument>,
+            response: &Option<Loc<RpChannel>>,
+        ) -> Option<JavaHttp<'el>> {
+            let request_ty = request.as_ref().map(|r| Loc::value(&r.channel));
+            let response_ty = response.as_ref().map(|r| Loc::value(r));
+
+            let path = match http.path {
+                Some(path) => path,
+                None => return None,
+            };
+
+            let method = http.method.unwrap_or(core::RpHttpMethod::GET);
+
+            let (request, response) = match (request_ty, response_ty) {
+                (
+                    Some(&core::RpChannel::Unary { ty: ref request }),
+                    Some(&core::RpChannel::Unary { ty: ref response }),
+                ) => (request.clone(), response.clone()),
+                (None, Some(&core::RpChannel::Unary { ty: ref response })) => {
+                    (VOID.clone(), response.clone())
+                }
+                (Some(&core::RpChannel::Unary { ty: ref request }), None) => {
+                    (request.clone(), VOID.clone())
+                }
+                _ => return None,
+            };
+
+            return Some(JavaHttp {
+                request: request,
+                response: response,
+                path: path,
+                method: method,
+            });
+        }
     }
 }
 
