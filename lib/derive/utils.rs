@@ -20,7 +20,7 @@ pub fn is_datetime(input: &str) -> bool {
     }
 
     macro_rules! skip {
-        ($value: expr) => {
+        ($value:expr) => {
             match $value.char_indices().skip(1).next() {
                 Some((add, _)) => &$value[add..],
                 None => return false,

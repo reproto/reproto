@@ -144,7 +144,7 @@ impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
 
 /// Build codegen hooks.
 macro_rules! codegen {
-    ($c: tt, $e: ty) => {
+    ($c:tt, $e:ty) => {
         pub trait $c {
             fn generate(&self, e: $e) -> Result<()>;
         }

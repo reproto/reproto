@@ -46,7 +46,7 @@ use version::{Identifier, Version};
 
 /// Evaluate if parser contains the given pattern as a separator, surrounded by whitespace.
 macro_rules! has_ws_separator {
-    ($slf: expr, $pat: pat) => {{
+    ($slf:expr, $pat:pat) => {{
         $slf.skip_whitespace()?;
 
         match $slf.peek() {

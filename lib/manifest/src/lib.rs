@@ -716,7 +716,7 @@ mod tests {
     use std::path::Path;
 
     macro_rules! include_vec {
-        ($name: expr) => {{
+        ($name:expr) => {{
             let mut v = Vec::new();
             v.extend(include_bytes!($name).iter());
             v
@@ -724,7 +724,7 @@ mod tests {
     }
 
     macro_rules! include_manifest {
-        ($name: expr) => {{
+        ($name:expr) => {{
             let path = Path::new(".").join($name);
 
             let preamble = read_manifest_preamble(&path, Cursor::new(include_vec!($name)))

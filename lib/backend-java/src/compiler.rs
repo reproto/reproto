@@ -2,13 +2,13 @@
 
 use Options;
 use codegen::{ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, TupleAdded};
-use core::{self, ForEachLoc, Handle, Loc, WithPos};
 use core::errors::*;
+use core::{self, ForEachLoc, Handle, Loc, WithPos};
 use flavored::{JavaField, JavaFlavor, RpCode, RpDecl, RpEnumBody, RpEnumType, RpInterfaceBody,
                RpServiceBody, RpTupleBody, RpTypeBody};
-use genco::{Cons, Element, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Enum, Field, Interface, Method,
                   Modifier, BOOLEAN, INTEGER};
+use genco::{Cons, Element, Java, Quoted, Tokens};
 use java_file::JavaFile;
 use naming::{self, Naming};
 use processor::Processor;
@@ -46,7 +46,7 @@ fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {
 }
 
 macro_rules! call_codegen {
-    ($source: expr, $event: expr) => {
+    ($source:expr, $event:expr) => {
         for g in $source {
             g.generate($event)?;
         }

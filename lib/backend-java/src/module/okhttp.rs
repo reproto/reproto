@@ -1,12 +1,12 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use codegen::{Codegen, Configure, ServiceAdded, ServiceCodegen};
-use core::{self, Handle, Loc};
 use core::errors::*;
+use core::{self, Handle, Loc};
 use flavored::{JavaEndpoint, JavaHttp, RpPathStep};
-use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Interface, Method,
                   Modifier};
+use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use java_file::JavaFile;
 use utils::Override;
 
@@ -64,7 +64,7 @@ pub struct Builder<'el> {
 impl<'el> Builder<'el> {
     fn build(&self) -> Method<'el> {
         macro_rules! opt_check {
-            ($d: expr, $v: expr) => {
+            ($d:expr, $v:expr) => {
                 push!(
                     $d,
                     "final ",

@@ -101,14 +101,14 @@ mod tests {
 
     /// Check that a parsed value equals expected.
     macro_rules! assert_value_eq {
-        ($expected: expr, $input: expr) => {{
+        ($expected:expr, $input:expr) => {{
             let v = parser::parse_Value(&new_context(), parse($input)).unwrap();
             assert_eq!($expected, v);
         }};
     }
 
     macro_rules! assert_type_spec_eq {
-        ($expected: expr, $input: expr) => {{
+        ($expected:expr, $input:expr) => {{
             let v = parser::parse_TypeSpec(&new_context(), parse($input)).unwrap();
             assert_eq!($expected, v);
         }};

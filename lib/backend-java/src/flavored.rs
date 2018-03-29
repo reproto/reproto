@@ -2,11 +2,11 @@
 
 #![allow(unused)]
 
-use core::{self, CoreFlavor, Flavor, Loc, Translate, Translator, TypeTranslator};
 use core::errors::Result;
-use genco::{Cons, Java};
+use core::{self, CoreFlavor, Flavor, Loc, Translate, Translator, TypeTranslator};
 use genco::java::{imported, optional, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT,
                   INTEGER, LONG, VOID};
+use genco::{Cons, Java};
 use naming::{self, Naming};
 use std::rc::Rc;
 

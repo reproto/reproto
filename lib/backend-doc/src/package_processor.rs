@@ -15,7 +15,7 @@ pub struct Data<'a> {
 }
 
 macro_rules! types_section {
-    ($slf: ident, $var: ident, $name: expr) => {
+    ($slf:ident, $var:ident, $name:expr) => {
         if !$var.is_empty() {
             html!($slf, h2 {class => "kind"} ~ $name);
 

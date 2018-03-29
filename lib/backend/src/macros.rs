@@ -1,7 +1,7 @@
 /// Helper macro to implement listeners opt loop.
 #[macro_export]
 macro_rules! code {
-    ($codes: expr, $context: path) => {{
+    ($codes:expr, $context:path) => {{
         let mut t = Tokens::new();
 
         for c in $codes {

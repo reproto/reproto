@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 /// Generate helper implementations for codegen traits.
 macro_rules! codegen {
-    ($type: tt, $e: ty) => {
+    ($type:tt, $e:ty) => {
         impl<T> $type for Rc<T>
         where
             T: $type,

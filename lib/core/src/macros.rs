@@ -14,7 +14,7 @@ macro_rules! decl_body {
 
 #[macro_export]
 macro_rules! decl_flavor {
-    ($flavor: ident, $source: ident) => {
+    ($flavor:ident, $source:ident) => {
         pub type RpAccept = $source::RpAccept;
         pub type RpCode = $source::RpCode;
         pub type RpContext = $source::RpContext;
@@ -55,7 +55,7 @@ macro_rules! decl_flavor {
 /// Implement a Serialize that fails when trying to serializer for the given type.
 #[macro_export]
 macro_rules! no_serializer {
-    ($ty: ident < $lifetime: tt >) => {
+    ($ty:ident < $lifetime:tt >) => {
         impl<$lifetime> $crate::serde::Serialize for $ty<$lifetime> {
             fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
             where

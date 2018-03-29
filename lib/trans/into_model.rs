@@ -13,7 +13,7 @@ use std::rc::Rc;
 
 /// Check for conflicting items and generate appropriate error messages if they are.
 macro_rules! check_conflict {
-    ($ctx: expr, $existing: expr, $item: expr, $accessor: expr, $what: expr) => {
+    ($ctx:expr, $existing:expr, $item:expr, $accessor:expr, $what:expr) => {
         if let Some(other) = $existing.insert($accessor.to_string(), Pos::from(&$item).clone())
         {
             return Err($ctx.report()
@@ -28,7 +28,7 @@ macro_rules! check_conflict {
 }
 
 macro_rules! check_field_sub_type {
-    ($ctx: ident, $field: expr, $strategy: expr) => {
+    ($ctx:ident, $field:expr, $strategy:expr) => {
         match $strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 if $field.name() == tag {
@@ -50,7 +50,7 @@ macro_rules! check_field_sub_type {
 }
 
 macro_rules! check_field_reserved {
-    ($ctx: ident, $field: expr, $reserved: expr) => {
+    ($ctx:ident, $field:expr, $reserved:expr) => {
         if let Some(reserved) = $reserved.get($field.name()) {
             return Err($ctx.report()
                 .err(
