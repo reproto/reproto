@@ -1,6 +1,7 @@
 type Entry {
 }
 
+#[http(url = "http://example.com")]
 service MyService {
     /// UNKNOWN
     #[http(path = "/unknown/{id}")]

@@ -31,20 +31,37 @@ class MyService_Requests:
     self.url = url
     self.session = session
 
-  def unary(self, request, id):
+  def unknown(self, id):
     """
-    UNARY
+    UNKNOWN
     """
     path = list()
     path.append(self.url)
     path.append("/")
-    path.append("foo")
+    path.append("unknown")
     path.append("/")
     path.append(str(id))
 
     url = "".join(path)
 
-    r = self.session.request("POST", url)
+    r = self.session.request("GET", url)
+
+    r.raise_for_status()
+
+  def unknown_return(self, id):
+    """
+    UNKNOWN
+    """
+    path = list()
+    path.append(self.url)
+    path.append("/")
+    path.append("unknown-return")
+    path.append("/")
+    path.append(str(id))
+
+    url = "".join(path)
+
+    r = self.session.request("GET", url)
 
     r.raise_for_status()
 
@@ -52,11 +69,40 @@ class MyService_Requests:
 
     return Entry.decode(data)
 
-  def main(self):
+  def unknown_argument(self, request, id):
     """
+    UNKNOWN
     """
-    r = self.session.request("GET", self.url)
+    path = list()
+    path.append(self.url)
+    path.append("/")
+    path.append("unknown-argument")
+    path.append("/")
+    path.append(str(id))
+
+    url = "".join(path)
+
+    r = self.session.request("GET", url)
 
     r.raise_for_status()
 
-    return r.text
+  def unary(self, request, id):
+    """
+    UNARY
+    """
+    path = list()
+    path.append(self.url)
+    path.append("/")
+    path.append("unary")
+    path.append("/")
+    path.append(str(id))
+
+    url = "".join(path)
+
+    r = self.session.request("GET", url)
+
+    r.raise_for_status()
+
+    data = r.json()
+
+    return Entry.decode(data)
