@@ -65,29 +65,28 @@ Also make sure to [join our Gitter channel].
 
 ## Language Support
 
-* Java ([`java`](/doc/spec.md#java))
-  * Data models using [jackson] (`jackson`), and/or [lombok] (`lombok`).
-  * [gRPC] services through the `grpc` module.
-* C# ([`csharp`](/doc/spec.md#csharp))
-  * Data models using [Json.NET] (`Json.NET`).
-* Python ([`python`](/doc/spec.md#python))
-  * Plain-python classes, compatible with 2 and 3 for binding data efficiently.
-* Rust ([`rust`](/doc/spec.md#rust))
-  * [Serde]-based serialization for data structures.
-  * `datetime` support through the [`chrono`] crate.
-* JavaScript ([`js`](/doc/spec.md#javascript))
-  * ES2015 classes, that can be transpiled using babel for older targets, see the
-    [js integration test].
-* Swift ([`swift`](/doc/spec.md#swift))
-  * Data models binding through `Any`.
+| Language     | JSON | [gRPC] | HTTP/1.1*                  |
+|--------------|------|--------|----------------------------|
+| [Java]       | ✔️    | ✔️      | ✔️  [test][java-http]       |
+| [Python]     | ✔️    | ✖️      | ✔️  [test][python-requests] |
+| [C#]         | ✔️    | ✖️      | ✖️                          |
+| [Rust]       | ✔️    | ✖️      | ✖️                          |
+| [JavaScript] | ✔️    | ✖️      | ✖️                          |
+| [Swift]      | ✔️    | ✖️      | ✖️                          |
+| [Go]         | ✔️    | ✖️      | ✖️                          |
 
+*: HTTP/1.1 support is actively being outlined in [#2](https://github.com/reproto/reproto/issues/2)
+
+[Java]: /doc/usage/language-support.md#java
+[Python]: /doc/usage/language-support.md#python
+[C#]: /doc/usage/language-support.md#csharp
+[Rust]: /doc/usage/language-support.md#rust
+[JavaScript]: /doc/usage/language-support.md#javascript
+[Swift]: /doc/usage/language-support.md#swift
+[Go]: /doc/usage/language-support.md#go
 [gRPC]: https://grpc.io
-[lombok]: https://projectlombok.org/
-[Serde]: https://serde.rs
-[jackson]: https://github.com/FasterXML/jackson-databind
-[`chrono`]: https://crates.io/crates/chrono
-[js integration test]: /it/workdir/js
-[Json.NET]: https://www.newtonsoft.com/json
+[java-http]: /it/java_okhttp2/proto/test.reproto
+[python-requests]: /it/python_requests/proto/test.reproto
 
 ## Generating Documentation
 
