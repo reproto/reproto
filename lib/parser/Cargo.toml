@@ -24,4 +24,4 @@ lalrpop-util = "0.13.1"
 num-bigint = {version = "0.1", default_features = false}
 
 [build-dependencies]
-lalrpop = "0.13.1"
+lalrpop = "0.15"

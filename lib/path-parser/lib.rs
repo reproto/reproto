@@ -14,7 +14,9 @@ pub fn parse(input: &str) -> Result<PathSpec> {
 
     let lexer = path_lexer::path_lex(input);
 
-    match parser::parse_path(lexer) {
+    let parser = parser::PathParser::new();
+
+    match parser.parse(lexer) {
         Ok(file) => Ok(file),
         Err(e) => match e {
             InvalidToken { location } => {

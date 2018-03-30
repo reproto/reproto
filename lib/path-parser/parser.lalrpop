@@ -5,7 +5,7 @@ use std::borrow::Cow;
 
 grammar<'input>();
 
-pub path: PathSpec<'input> = {
+pub Path: PathSpec<'input> = {
     "/" =>
     PathSpec {
         steps: vec![],

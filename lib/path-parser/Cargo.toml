@@ -23,4 +23,4 @@ lalrpop-util = "0.13.1"
 error-chain = "0.11"
 
 [build-dependencies]
-lalrpop = "0.13.1"
+lalrpop = "0.15"

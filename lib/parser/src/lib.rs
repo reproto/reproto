@@ -31,8 +31,9 @@ pub fn parse<'input>(object: Rc<Box<Object>>, input: &'input str) -> Result<ast:
     use lalrpop_util::ParseError::*;
 
     let lexer = lexer::lex(input);
+    let parser = parser::FileParser::new();
 
-    match parser::parse_File(&object, lexer) {
+    match parser.parse(&object, lexer) {
         Ok(file) => Ok(file),
         Err(e) => match e {
             InvalidToken { location } => {
