@@ -29,8 +29,6 @@ pub struct JavaEndpoint<'el> {
     pub http: Option<JavaHttp<'el>>,
 }
 
-no_serializer!(JavaEndpoint<'a>);
-
 impl<'el> JavaEndpoint<'el> {
     /// If endpoint has metadata for HTTP.
     pub fn has_http_support(&self) -> bool {
@@ -46,8 +44,6 @@ pub struct JavaField<'el> {
     pub field_accessor: Rc<String>,
     pub spec: Field<'el>,
 }
-
-no_serializer!(JavaField<'a>);
 
 impl<'el> JavaField<'el> {
     pub fn setter(&self) -> Option<Method<'el>> {
@@ -95,8 +91,6 @@ impl<'el> JavaField<'el> {
 
 #[derive(Debug, Clone)]
 pub struct JavaFlavor;
-
-no_serializer!(JavaFlavor);
 
 impl Flavor for JavaFlavor {
     type Type = Java<'static>;

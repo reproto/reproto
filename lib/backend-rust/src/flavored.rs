@@ -13,8 +13,6 @@ use {SCOPE_SEP, TYPE_SEP};
 #[derive(Debug, Clone)]
 pub struct RustFlavor;
 
-no_serializer!(RustFlavor);
-
 impl Flavor for RustFlavor {
     type Type = Rust<'static>;
     type Field = core::RpField<RustFlavor>;
