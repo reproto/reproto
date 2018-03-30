@@ -2,6 +2,7 @@
 macro_rules! decl_body {
     (pub struct $name:ident<$f:ident> { $($rest:tt)* }) => {
         #[derive(Debug, Clone, Serialize)]
+        #[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: ::serde::Serialize")]
         pub struct $name<$f: 'static> where $f: $crate::flavor::Flavor {
             pub name: $crate::rp_name::RpName,
             pub ident: String,
@@ -57,6 +58,17 @@ macro_rules! decl_flavor {
 macro_rules! no_serializer {
     ($ty:ident < $lifetime:tt >) => {
         impl<$lifetime> $crate::serde::Serialize for $ty<$lifetime> {
+            fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+            where
+                S: $crate::serde::Serializer,
+            {
+                Err($crate::serde::ser::Error::custom("not supported"))
+            }
+        }
+    };
+
+    ($ty:ident) => {
+        impl $crate::serde::Serialize for $ty {
             fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
             where
                 S: $crate::serde::Serializer,

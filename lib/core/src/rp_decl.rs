@@ -26,6 +26,8 @@ where
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
+#[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: \
+                 ::serde::Serialize")]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpNamed<'a, F: 'static>
 where
@@ -76,6 +78,8 @@ where
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: \
+                 ::serde::Serialize")]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpDecl<F: 'static>
 where

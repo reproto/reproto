@@ -2,16 +2,15 @@
 
 use backend::{PackageProcessor, PackageUtils};
 use core::errors::*;
-use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
-                     RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
-use core::{self, CoreFlavor, ForEachLoc, Handle, Loc, RelativePath, RelativePathBuf};
-use genco::rust::{imported, imported_alias};
-use genco::{Element, IntoTokens, Quoted, Rust, Tokens};
+use core::{self, ForEachLoc, Handle, Loc, RelativePath, RelativePathBuf};
+use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
+               RpTupleBody, RpTypeBody, RpVersionedPackage, RustFlavor};
+use genco::{IntoTokens, Quoted, Rust, Tokens};
 use rust_file_spec::RustFileSpec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use trans::{self, Translated};
-use {Options, EXT, MOD};
+use {Options, EXT, MOD, TYPE_SEP};
 
 /// #[allow(non_camel_case_types)] attribute.
 pub struct AllowNonCamelCaseTypes;
@@ -64,29 +63,20 @@ impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Rust<'el>> for Comments<'el, S> {
     }
 }
 
-const TYPE_SEP: &'static str = "_";
-const SCOPE_SEP: &'static str = "::";
-
 pub struct Compiler<'el> {
-    pub env: &'el Translated<CoreFlavor>,
+    pub env: &'el Translated<RustFlavor>,
     handle: &'el Handle,
-    hash_map: Rust<'static>,
-    json_value: Rust<'static>,
-    datetime: Option<Tokens<'static, Rust<'static>>>,
 }
 
 impl<'el> Compiler<'el> {
     pub fn new(
-        env: &'el Translated<CoreFlavor>,
-        options: Options,
+        env: &'el Translated<RustFlavor>,
+        _options: Options,
         handle: &'el Handle,
     ) -> Compiler<'el> {
         Compiler {
             env: env,
             handle: handle,
-            hash_map: imported("std::collections", "HashMap"),
-            json_value: imported_alias("serde_json", "Value", "json"),
-            datetime: options.datetime.clone(),
         }
     }
 
@@ -115,21 +105,8 @@ impl<'el> Compiler<'el> {
         (Rc::new(name.join(TYPE_SEP)), attributes)
     }
 
-    fn convert_type_id<'a>(&self, name: &'a RpName) -> Result<Element<'a, Rust<'a>>> {
-        let registered = self.env.lookup(name)?;
-
-        let ident = registered.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
-
-        if let Some(ref prefix) = name.prefix {
-            let package_name = self.package(&name.package).parts.join("::");
-            return Ok(imported_alias(package_name, ident, prefix.as_str()).into());
-        }
-
-        Ok(ident.into())
-    }
-
     fn into_type<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
-        let stmt = self.into_rust_type(&field.ty)?;
+        let stmt = toks![field.ty.clone()];
 
         if field.is_optional() {
             return Ok(toks!["Option<", stmt, ">"]);
@@ -156,45 +133,6 @@ impl<'el> Compiler<'el> {
         value_fn.push("}");
 
         value_fn
-    }
-
-    fn datetime<'a>(&self, _ty: &RpType) -> Result<Tokens<'a, Rust<'a>>> {
-        if let Some(ref datetime) = self.datetime {
-            return Ok(datetime.clone().into());
-        }
-
-        Err("Missing implementation for `datetime`, try: -m chrono".into())
-    }
-
-    pub fn into_rust_type<'a>(&self, ty: &'a RpType) -> Result<Tokens<'a, Rust<'a>>> {
-        use core::RpType::*;
-
-        let ty = match *ty {
-            String => toks!["String"],
-            DateTime => self.datetime(ty)?,
-            Bytes => toks!["String"],
-            Signed { size: 32 } => toks!["i32"],
-            Signed { size: 64 } => toks!["i64"],
-            Unsigned { size: 32 } => toks!["u32"],
-            Unsigned { size: 64 } => toks!["u64"],
-            Float => toks!["f32"],
-            Double => toks!["f64"],
-            Boolean => toks!["bool"],
-            Array { ref inner } => {
-                let argument = self.into_rust_type(inner)?;
-                toks!["Vec<", argument, ">"]
-            }
-            Name { ref name } => toks![self.convert_type_id(name)?],
-            Map { ref key, ref value } => {
-                let key = self.into_rust_type(key)?;
-                let value = self.into_rust_type(value)?;
-                toks![self.hash_map.clone(), "<", key, ", ", value, ">"]
-            }
-            Any => toks![self.json_value.clone()],
-            _ => return Err(format!("unsupported type: {}", ty).into()),
-        };
-
-        Ok(ty)
     }
 
     // Build the corresponding element out of a field declaration.
@@ -281,9 +219,9 @@ impl<'el> Compiler<'el> {
 
 impl<'el> PackageUtils for Compiler<'el> {}
 
-impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
     type Out = RustFileSpec<'el>;
-    type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
+    type DeclIter = trans::translated::DeclIter<'el, RustFlavor>;
 
     fn ext(&self) -> &str {
         EXT

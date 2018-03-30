@@ -5,6 +5,7 @@ use std::fmt;
 use {Flavor, Translate, Translator};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(bound = "F::Type: ::serde::Serialize")]
 pub enum RpChannel<F: 'static>
 where
     F: Flavor,

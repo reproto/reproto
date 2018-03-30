@@ -6,6 +6,7 @@ use {Flavor, RpEndpointArgument, Translate, Translator};
 
 /// A part of a step.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(bound = "F::Type: ::serde::Serialize")]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpPathPart<F: 'static>
 where
@@ -38,6 +39,7 @@ where
 
 /// A step in a path specification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(bound = "F::Type: ::serde::Serialize")]
 pub struct RpPathStep<F: 'static>
 where
     F: Flavor,
@@ -63,6 +65,7 @@ where
 
 /// A path specification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(bound = "F::Type: ::serde::Serialize")]
 pub struct RpPathSpec<F: 'static>
 where
     F: Flavor,

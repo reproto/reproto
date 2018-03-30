@@ -4,6 +4,7 @@ use errors::Result;
 use {Flavor, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(bound = "F::Type: ::serde::Serialize")]
 pub struct RpField<F: 'static>
 where
     F: Flavor,

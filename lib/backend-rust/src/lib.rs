@@ -4,6 +4,7 @@ extern crate genco;
 extern crate log;
 #[macro_use]
 extern crate reproto_backend as backend;
+#[macro_use]
 extern crate reproto_core as core;
 #[macro_use]
 extern crate reproto_manifest as manifest;
@@ -15,13 +16,14 @@ extern crate serde_derive;
 extern crate toml;
 
 mod compiler;
+mod flavored;
 mod module;
 mod rust_file_spec;
 
 use backend::Initializer;
 use compiler::Compiler;
 use core::errors::*;
-use core::{Context, CoreFlavor};
+use core::{Context, CoreFlavor, Handle};
 use genco::{Rust, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -31,6 +33,8 @@ use trans::Environment;
 
 const MOD: &str = "mod";
 const EXT: &str = "rs";
+const TYPE_SEP: &'static str = "_";
+const SCOPE_SEP: &'static str = "::";
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct RustLang;
@@ -103,6 +107,7 @@ impl Lang for RustLang {
 pub enum RustModule {
     Chrono,
     Grpc,
+    Reqwest,
 }
 
 impl TryFromToml for RustModule {
@@ -112,6 +117,7 @@ impl TryFromToml for RustModule {
         let result = match id {
             "chrono" => Chrono,
             "grpc" => Grpc,
+            "reqwest" => Reqwest,
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -124,6 +130,7 @@ impl TryFromToml for RustModule {
         let result = match id {
             "chrono" => Chrono,
             "grpc" => Grpc,
+            "reqwest" => Reqwest,
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -131,20 +138,31 @@ impl TryFromToml for RustModule {
     }
 }
 
+#[derive(Default)]
 pub struct Options {
-    pub datetime: Option<Tokens<'static, Rust<'static>>>,
+    pub datetime: Option<Rust<'static>>,
+    pub root: Vec<Box<RootCodegen>>,
+    pub service: Vec<Box<ServiceCodegen>>,
 }
 
-impl Options {
-    pub fn new() -> Options {
-        Options { datetime: None }
-    }
+pub trait RootCodegen {
+    /// Generate root code.
+    fn generate(&self, handle: &Handle) -> Result<()>;
 }
 
-pub fn options(modules: Vec<RustModule>) -> Result<Options> {
+pub struct Service<'a, 'el: 'a> {
+    container: &'a mut Tokens<'el, Rust<'el>>,
+}
+
+pub trait ServiceCodegen {
+    /// Generate service code.
+    fn generate(&self, service: Service) -> Result<()>;
+}
+
+fn options(modules: Vec<RustModule>) -> Result<Options> {
     use self::RustModule::*;
 
-    let mut options = Options::new();
+    let mut options = Options::default();
 
     for m in modules {
         debug!("+module: {:?}", m);
@@ -152,6 +170,7 @@ pub fn options(modules: Vec<RustModule>) -> Result<Options> {
         let initializer: Box<Initializer<Options = Options>> = match m {
             Chrono => Box::new(module::Chrono::new()),
             Grpc => Box::new(module::Grpc::new()),
+            Reqwest => Box::new(module::Reqwest::new()),
         };
 
         initializer.initialize(&mut options)?;
@@ -161,9 +180,12 @@ pub fn options(modules: Vec<RustModule>) -> Result<Options> {
 }
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let env = env.translate_default()?;
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
+
+    let translator = env.translator(flavored::RustTypeTranslator::new(options.datetime.clone()));
+    let env = env.translate(translator)?;
+
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
     Compiler::new(&env, options, handle.as_ref()).compile()
 }

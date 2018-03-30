@@ -3,20 +3,13 @@
 use Options;
 use backend::Initializer;
 use core::errors::*;
-use genco::Rust;
 use genco::rust::imported;
 
-pub struct Module {
-    datetime: Rust<'static>,
-    offset_utc: Rust<'static>,
-}
+pub struct Module {}
 
 impl Module {
     pub fn new() -> Module {
-        Module {
-            datetime: imported("chrono", "DateTime"),
-            offset_utc: imported("chrono::offset", "Utc"),
-        }
+        Module {}
     }
 }
 
@@ -24,12 +17,9 @@ impl Initializer for Module {
     type Options = Options;
 
     fn initialize(&self, options: &mut Self::Options) -> Result<()> {
-        options.datetime = Some(toks![
-            self.datetime.clone(),
-            "<",
-            self.offset_utc.clone(),
-            ">",
-        ]);
+        options.datetime = Some(
+            imported("chrono", "DateTime").with_arguments(vec![imported("chrono::offset", "Utc")]),
+        );
 
         Ok(())
     }

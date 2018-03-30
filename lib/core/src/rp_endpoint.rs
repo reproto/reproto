@@ -48,6 +48,7 @@ impl default::Default for RpAccept {
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
+#[serde(bound = "F: ::serde::Serialize, F::Type: ::serde::Serialize")]
 pub struct RpEndpointHttp<F: 'static>
 where
     F: Flavor,
@@ -86,6 +87,7 @@ where
 
 /// An argument to an endpont.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(bound = "F::Type: ::serde::Serialize")]
 pub struct RpEndpointArgument<F: 'static>
 where
     F: Flavor,
@@ -134,6 +136,7 @@ where
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(bound = "F: ::serde::Serialize, F::Type: ::serde::Serialize")]
 pub struct RpEndpoint<F: 'static>
 where
     F: Flavor,
@@ -201,5 +204,29 @@ where
         }
 
         true
+    }
+}
+
+impl<F: 'static, T> Translate<T> for RpEndpoint<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Source = F;
+    type Out = RpEndpoint<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, translator: &T) -> Result<RpEndpoint<T::Target>> {
+        Ok(RpEndpoint {
+            ident: self.ident,
+            safe_ident: self.safe_ident,
+            name: self.name,
+            comment: self.comment,
+            attributes: self.attributes,
+            arguments: self.arguments.translate(translator)?,
+            request: self.request.translate(translator)?,
+            response: self.response.translate(translator)?,
+            http: self.http.translate(translator)?,
+        })
     }
 }

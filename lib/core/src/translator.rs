@@ -135,13 +135,13 @@ impl TypeTranslator for CoreTypeTranslator {
 
     fn translate_field<T>(
         &self,
-        _translator: &T,
+        translator: &T,
         field: RpField<CoreFlavor>,
     ) -> Result<RpField<CoreFlavor>>
     where
         T: Translator<Source = CoreFlavor, Target = CoreFlavor>,
     {
-        Ok(field)
+        field.translate(translator)
     }
 
     fn translate_endpoint<T>(
@@ -152,17 +152,7 @@ impl TypeTranslator for CoreTypeTranslator {
     where
         T: Translator<Source = CoreFlavor, Target = CoreFlavor>,
     {
-        Ok(RpEndpoint {
-            ident: endpoint.ident,
-            safe_ident: endpoint.safe_ident,
-            name: endpoint.name,
-            comment: endpoint.comment,
-            attributes: endpoint.attributes,
-            arguments: endpoint.arguments.translate(translator)?,
-            request: endpoint.request.translate(translator)?,
-            response: endpoint.response.translate(translator)?,
-            http: endpoint.http.translate(translator)?,
-        })
+        endpoint.translate(translator)
     }
 }
 

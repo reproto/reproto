@@ -1,15 +1,14 @@
 use IntoBytes;
 use core::errors::*;
 use core::{Flavor, Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
-           RpName, RpPackage, RpServiceBody, RpTupleBody, RpType, RpTypeBody, RpVersionedPackage,
-           WithPos};
+           RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
 use std::collections::BTreeMap;
 use std::io::Write;
 
 pub trait PackageProcessor<'el, F: 'static>
 where
     Self: 'el + Sized,
-    F: Flavor<Type = RpType>,
+    F: Flavor,
 {
     type Out: Default + IntoBytes<Self>;
     type DeclIter: Iterator<Item = &'el RpDecl<F>>;

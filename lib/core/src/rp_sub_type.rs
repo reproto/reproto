@@ -5,6 +5,8 @@ use translator;
 use {Flavor, Loc, RpCode, RpDecl, RpName, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: \
+                 ::serde::Serialize")]
 pub struct RpSubType<F: 'static>
 where
     F: Flavor,

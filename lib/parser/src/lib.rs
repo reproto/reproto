@@ -103,14 +103,18 @@ mod tests {
     /// Check that a parsed value equals expected.
     macro_rules! assert_value_eq {
         ($expected:expr, $input:expr) => {{
-            let v = parser::parse_Value(&new_context(), parse($input)).unwrap();
+            let v = parser::ValueParser::new()
+                .parse(&new_context(), parse($input))
+                .unwrap();
             assert_eq!($expected, v);
         }};
     }
 
     macro_rules! assert_type_spec_eq {
         ($expected:expr, $input:expr) => {{
-            let v = parser::parse_TypeSpec(&new_context(), parse($input)).unwrap();
+            let v = parser::TypeSpecParser::new()
+                .parse(&new_context(), parse($input))
+                .unwrap();
             assert_eq!($expected, v);
         }};
     }
@@ -125,15 +129,21 @@ mod tests {
     }
 
     fn parse_file(input: &'static str) -> File {
-        parser::parse_File(&new_context(), parse(input)).unwrap()
+        parser::FileParser::new()
+            .parse(&new_context(), parse(input))
+            .unwrap()
     }
 
     fn parse_member(input: &'static str) -> TypeMember {
-        parser::parse_TypeMember(&new_context(), parse(input)).unwrap()
+        parser::TypeMemberParser::new()
+            .parse(&new_context(), parse(input))
+            .unwrap()
     }
 
     fn parse_type_spec(input: &'static str) -> Type {
-        parser::parse_TypeSpec(&new_context(), parse(input)).unwrap()
+        parser::TypeSpecParser::new()
+            .parse(&new_context(), parse(input))
+            .unwrap()
     }
 
     #[test]

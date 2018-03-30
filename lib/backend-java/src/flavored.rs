@@ -96,6 +96,8 @@ impl<'el> JavaField<'el> {
 #[derive(Debug, Clone)]
 pub struct JavaFlavor;
 
+no_serializer!(JavaFlavor);
+
 impl Flavor for JavaFlavor {
     type Type = Java<'static>;
     type Field = JavaField<'static>;
