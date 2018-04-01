@@ -1,6 +1,6 @@
 use reproto;
 use reqwest;
-use reqwest::header::parsing;
+use std::fmt::Write;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {
@@ -30,10 +30,14 @@ impl MyService_Reqwest {
     path_.push_str("/");
     path_.push_str("unknown");
     path_.push_str("/");
-    parsing::http_percent_encode(&mut path_, id.to_string().as_bytes())?;
+    write!(path_, "{}", reproto::PathEncode(id))?;
+
     let url_ = self.url.join(&path_)?;
-    let req_ = self.client.request(reqwest::Method::Get, url_);
+
+    let mut req_ = self.client.request(reqwest::Method::Get, url_);
+
     req_.send()?;
+
     Ok(())
   }
 
@@ -43,11 +47,17 @@ impl MyService_Reqwest {
     path_.push_str("/");
     path_.push_str("unknown-return");
     path_.push_str("/");
-    parsing::http_percent_encode(&mut path_, id.to_string().as_bytes())?;
+    write!(path_, "{}", reproto::PathEncode(id))?;
+
     let url_ = self.url.join(&path_)?;
-    let req_ = self.client.request(reqwest::Method::Get, url_);
-    let res_ = req_.send()?;
-    res_.json()
+
+    let mut req_ = self.client.request(reqwest::Method::Get, url_);
+
+    let mut res_ = req_.send()?;
+
+    let body_ = res_.json()?;
+
+    Ok(body_)
   }
 
   /// UNKNOWN
@@ -56,11 +66,16 @@ impl MyService_Reqwest {
     path_.push_str("/");
     path_.push_str("unknown-argument");
     path_.push_str("/");
-    parsing::http_percent_encode(&mut path_, id.to_string().as_bytes())?;
+    write!(path_, "{}", reproto::PathEncode(id))?;
+
     let url_ = self.url.join(&path_)?;
-    let req_ = self.client.request(reqwest::Method::Get, url_);
-    let req_ = req_.json(&request);
+
+    let mut req_ = self.client.request(reqwest::Method::Get, url_);
+
+    req_.json(&request);
+
     req_.send()?;
+
     Ok(())
   }
 
@@ -70,11 +85,18 @@ impl MyService_Reqwest {
     path_.push_str("/");
     path_.push_str("unary");
     path_.push_str("/");
-    parsing::http_percent_encode(&mut path_, id.to_string().as_bytes())?;
+    write!(path_, "{}", reproto::PathEncode(id))?;
+
     let url_ = self.url.join(&path_)?;
-    let req_ = self.client.request(reqwest::Method::Get, url_);
-    let req_ = req_.json(&request);
-    let res_ = req_.send()?;
-    res_.json()
+
+    let mut req_ = self.client.request(reqwest::Method::Get, url_);
+
+    req_.json(&request);
+
+    let mut res_ = req_.send()?;
+
+    let body_ = res_.json()?;
+
+    Ok(body_)
   }
 }

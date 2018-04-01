@@ -69,7 +69,7 @@ Also make sure to [join our Gitter channel].
 |--------------|------|--------|----------------------------|
 | [Java]       | ✔️    | ✔️      | ✔️  [test][java-http]       |
 | [Python]     | ✔️    | ✖️      | ✔️  [test][python-requests] |
-| [C#]         | ✔️    | ✖️      | ✖️                          |
+| [C#]         | ✔️    | ✖️      | ✔️  [test][rust-reqwest]    |
 | [Rust]       | ✔️    | ✖️      | ✖️                          |
 | [JavaScript] | ✔️    | ✖️      | ✖️                          |
 | [Swift]      | ✔️    | ✖️      | ✖️                          |
@@ -87,6 +87,7 @@ Also make sure to [join our Gitter channel].
 [gRPC]: https://grpc.io
 [java-http]: /it/java_okhttp2/proto/test.reproto
 [python-requests]: /it/python_requests/proto/test.reproto
+[rust-reqwest]: /it/rust_reqwest/proto/test.reproto
 
 ## Generating Documentation
 

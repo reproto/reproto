@@ -6,6 +6,7 @@ use core::{self, Loc};
 use flavored::{RpEndpointHttp1, RpPackage, RpVersionedPackage, RustEndpoint};
 use genco::rust::{imported, local};
 use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
+use std::rc::Rc;
 use utils::Comments;
 use {Options, Root, RootCodegen, RustFileSpec, Service, ServiceCodegen, SCOPE_SEP};
 
@@ -26,10 +27,13 @@ impl Initializer for Module {
         let utils_package = RpPackage::new(vec!["reproto".to_string()]);
         let utils_package = RpVersionedPackage::new(utils_package, None);
 
-        let result = package_utils.package(&utils_package).join(SCOPE_SEP);
-        let result = imported(result, "Result");
+        let utils_pkg = Rc::new(package_utils.package(&utils_package).join(SCOPE_SEP));
+        let result = imported(utils_pkg.clone(), "Result");
+        let path_encode = imported(utils_pkg.clone(), "PathEncode");
 
-        options.service.push(Box::new(ReqwestService::new(result)));
+        options
+            .service
+            .push(Box::new(ReqwestService::new(result, path_encode)));
 
         options
             .root
@@ -51,11 +55,20 @@ impl ReqwestUtils {
     fn reproto<'el>(&self) -> Result<RustFileSpec<'el>> {
         let mut f = RustFileSpec::default();
 
+        let mut errors = Vec::new();
+        errors.push((imported("reqwest", "Error"), "ReqwestError"));
+        errors.push((imported("reqwest", "UrlError"), "UrlError"));
+        errors.push((imported("std::fmt", "Error"), "FormatError"));
+
         f.0.push({
             let mut t = Tokens::new();
 
             push!(t, "pub enum Error {");
-            nested!(t, "Unknown,");
+
+            for &(ref ty, ref variant) in &errors {
+                nested!(t, variant.clone(), "(", ty.clone(), "),");
+            }
+
             push!(t, "}");
 
             t
@@ -70,24 +83,62 @@ impl ReqwestUtils {
             t
         });
 
+        for &(ref ty, ref variant) in &errors {
+            f.0.push({
+                let mut t = Tokens::new();
+
+                push!(t, "impl From<", ty.clone(), "> for Error {");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    push!(t, "fn from(value: ", ty.clone(), ") -> Self {");
+                    nested!(t, "Error::", variant.clone(), "(value)");
+                    push!(t, "}");
+
+                    t
+                });
+
+                push!(t, "}");
+
+                t
+            });
+        }
+
         f.0.push({
             let mut t = Tokens::new();
 
-            push!(t, "impl<T> From<T> for Error {");
+            let display = imported("std::fmt", "Display");
+            let fmt = imported("std::fmt", "Formatter");
+            let result = imported("std::fmt", "Result");
+            let encode = imported("reqwest::header::parsing", "http_percent_encode");
 
-            t.nested({
+            push!(t, "pub struct PathEncode<T>(pub T);");
+
+            t.push({
                 let mut t = Tokens::new();
 
-                push!(t, "fn from(value: T) -> Self {");
-                nested!(t, "Error::Unknown");
+                push!(t, "impl<T> ", display, " for PathEncode<T>");
+                push!(t, "where");
+                nested!(t, "T: ", display);
+                push!(t, "{");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    push!(t, "fn fmt(&self, fmt: &mut ", fmt, ") -> ", result, " {");
+                    nested!(t, encode, "(fmt, self.0.to_string().as_bytes())");
+                    push!(t, "}");
+
+                    t
+                });
+
                 push!(t, "}");
 
                 t
             });
 
-            push!(t, "}");
-
-            t
+            t.join_line_spacing()
         });
 
         Ok(f)
@@ -105,13 +156,15 @@ impl RootCodegen for ReqwestUtils {
 
 struct ReqwestService {
     result: Rust<'static>,
+    path_encode: Rust<'static>,
     client: Rust<'static>,
 }
 
 impl ReqwestService {
-    pub fn new(result: Rust<'static>) -> Self {
+    pub fn new(result: Rust<'static>, path_encode: Rust<'static>) -> Self {
         Self {
             result,
+            path_encode,
             client: imported("reqwest", "Client"),
         }
     }
@@ -220,6 +273,7 @@ impl ServiceCodegen for ReqwestService {
                         t.push_unless_empty(Comments(&e.comment));
                         t.push(Endpoint {
                             result: &self.result,
+                            path_encode: &self.path_encode,
                             e,
                             http,
                         });
@@ -242,15 +296,24 @@ impl ServiceCodegen for ReqwestService {
 
 struct Endpoint<'a, 'el: 'a> {
     result: &'a Rust<'static>,
+    path_encode: &'a Rust<'static>,
     e: &'el RustEndpoint,
     http: &'el RpEndpointHttp1,
 }
 
 impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
     fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
-        let Endpoint { result, e, http } = self;
+        let Endpoint {
+            result,
+            path_encode,
+            e,
+            http,
+        } = self;
 
         let mut t = Tokens::new();
+
+        // import trait
+        t.register(imported("std::fmt", "Write").qualified());
 
         let mut args = Tokens::new();
 
@@ -269,8 +332,6 @@ impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
         }
 
         let args = args.join(", ");
-
-        let encode = imported("reqwest::header::parsing", "http_percent_encode");
 
         let res = if let Some(ref res) = http.response {
             toks![result.clone(), "<", res, ">"]
@@ -296,24 +357,27 @@ impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
             let m = toks![imported("reqwest", "Method"), "::", method];
 
             if let Some(ref http_path) = e.http.path {
-                push!(t, "let mut path_ = String::new();");
+                let mut p = Tokens::new();
+
+                push!(p, "let mut path_ = String::new();");
 
                 for step in &http_path.steps {
-                    for part in &step.parts {
-                        push!(t, "path_.push_str(", "/".quoted(), ");");
+                    push!(p, "path_.push_str(", "/".quoted(), ");");
 
+                    for part in &step.parts {
                         match *part {
                             core::RpPathPart::Variable(ref arg) => {
-                                let var = toks![arg.safe_ident(), ".to_string().as_bytes()"];
-                                push!(t, encode, "(&mut path_, ", var, ")?;");
+                                let var = toks![path_encode.clone(), "(", arg.safe_ident(), ")"];
+                                push!(p, "write!(path_, ", "{}".quoted(), ", ", var, ")?;");
                             }
                             core::RpPathPart::Segment(ref s) => {
-                                push!(t, "path_.push_str(", s.as_str().quoted(), ");");
+                                push!(p, "path_.push_str(", s.as_str().quoted(), ");");
                             }
                         }
                     }
                 }
 
+                t.push(p);
                 push!(t, "let url_ = self.url.join(&path_)?;");
             } else {
                 push!(t, "let url_ = self.url.clone();");
@@ -321,21 +385,22 @@ impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
 
             let req = toks!["self.client.request(", m, ", url_)"];
 
-            push!(t, "let req_ = ", req, ";");
+            push!(t, "let mut req_ = ", req, ";");
 
             if let Some(ref req) = e.request {
-                push!(t, "let req_ = req_.json(&", req.safe_ident(), ");");
+                push!(t, "req_.json(&", req.safe_ident(), ");");
             }
 
             if e.response.is_some() {
-                push!(t, "let res_ = req_.send()?;");
-                push!(t, "res_.json()");
+                push!(t, "let mut res_ = req_.send()?;");
+                push!(t, "let body_ = res_.json()?;");
+                push!(t, "Ok(body_)");
             } else {
                 push!(t, "req_.send()?;");
                 push!(t, "Ok(())");
             }
 
-            t
+            t.join_line_spacing()
         });
 
         push!(t, "}");
