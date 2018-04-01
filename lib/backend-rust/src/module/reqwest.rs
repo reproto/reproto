@@ -3,7 +3,8 @@
 use backend::{Initializer, PackageUtils};
 use core::errors::Result;
 use core::{self, Loc};
-use flavored::{RpEndpointHttp1, RpPackage, RpServiceBody, RpVersionedPackage, RustEndpoint};
+use flavored::{RpEndpointHttp1, RpPackage, RpPathSpec, RpServiceBody, RpVersionedPackage,
+               RustEndpoint};
 use genco::rust::{imported, local};
 use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
 use std::rc::Rc;
@@ -316,6 +317,43 @@ impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Constructor<'a, 'el> {
     }
 }
 
+/// Write full path to a string.
+struct WritePath<'a, 'el: 'a> {
+    var: &'el str,
+    path: &'el RpPathSpec,
+    path_encode: &'a Rust<'el>,
+}
+
+impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for WritePath<'a, 'el> {
+    fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
+        let WritePath {
+            var,
+            path,
+            path_encode,
+        } = self;
+
+        let mut t = Tokens::new();
+
+        for step in &path.steps {
+            push!(t, var, ".push_str(", "/".quoted(), ");");
+
+            for part in &step.parts {
+                match *part {
+                    core::RpPathPart::Variable(ref arg) => {
+                        let expr = toks![path_encode.clone(), "(", arg.safe_ident(), ")"];
+                        push!(t, "write!(", var, ", ", "{}".quoted(), ", ", expr, ")?;");
+                    }
+                    core::RpPathPart::Segment(ref s) => {
+                        push!(t, var, ".push_str(", s.as_str().quoted(), ");");
+                    }
+                }
+            }
+        }
+
+        t
+    }
+}
+
 /// Build an endpoint method for the service struct.
 struct Endpoint<'a, 'el: 'a> {
     result: &'a Rust<'static>,
@@ -326,6 +364,8 @@ struct Endpoint<'a, 'el: 'a> {
 
 impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
     fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
+        use core::RpHttpMethod::*;
+
         let Endpoint {
             result,
             path_encode,
@@ -367,44 +407,34 @@ impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
         t.nested({
             let mut t = Tokens::new();
 
-            let method = match http.method {
-                core::RpHttpMethod::Get => "Get",
-                core::RpHttpMethod::Post => "Post",
-                core::RpHttpMethod::Put => "Put",
-                core::RpHttpMethod::Update => "Update",
-                core::RpHttpMethod::Delete => "Delete",
-                core::RpHttpMethod::Patch => "Patch",
-                core::RpHttpMethod::Head => "Head",
-            };
-
-            let m = toks![imported("reqwest", "Method"), "::", method];
-
-            if let Some(ref http_path) = e.http.path {
+            if let Some(ref path) = e.http.path {
                 let mut p = Tokens::new();
 
                 push!(p, "let mut path_ = String::new();");
 
-                for step in &http_path.steps {
-                    push!(p, "path_.push_str(", "/".quoted(), ");");
-
-                    for part in &step.parts {
-                        match *part {
-                            core::RpPathPart::Variable(ref arg) => {
-                                let var = toks![path_encode.clone(), "(", arg.safe_ident(), ")"];
-                                push!(p, "write!(path_, ", "{}".quoted(), ", ", var, ")?;");
-                            }
-                            core::RpPathPart::Segment(ref s) => {
-                                push!(p, "path_.push_str(", s.as_str().quoted(), ");");
-                            }
-                        }
-                    }
-                }
+                p.push(WritePath {
+                    var: "path_",
+                    path,
+                    path_encode,
+                });
 
                 t.push(p);
                 push!(t, "let url_ = self.url.join(&path_)?;");
             } else {
                 push!(t, "let url_ = self.url.clone();");
             }
+
+            let method = match http.method {
+                Get => "Get",
+                Post => "Post",
+                Put => "Put",
+                Update => "Update",
+                Delete => "Delete",
+                Patch => "Patch",
+                Head => "Head",
+            };
+
+            let m = toks![imported("reqwest", "Method"), "::", method];
 
             let req = toks!["self.client.request(", m, ", url_)"];
 
