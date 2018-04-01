@@ -69,6 +69,11 @@ where
         }
     }
 
+    /// Access a copy of the package prefix.
+    pub fn package_prefix(&self) -> Option<RpPackage> {
+        self.package_prefix.clone()
+    }
+
     /// Configure a new environment on how to use safe packages or not.
     pub fn with_safe_packages(self, safe_packages: bool) -> Self {
         Self {
@@ -135,7 +140,7 @@ impl Environment<CoreFlavor> {
         }
 
         let types = ctx.decls.into_inner();
-        Ok(Translated::new(types, files))
+        Ok(Translated::new(self.package_prefix, types, files))
     }
 
     /// Translate without changing the flavor.
@@ -272,14 +277,10 @@ impl Environment<CoreFlavor> {
     ) -> Result<RpFile<CoreFlavor>> {
         let prefixes = self.process_uses(&file.uses)?;
 
-        // TODO: support through file attributes.
-
-        let package_prefix = self.package_prefix.clone();
         let package = package.clone();
 
         let mut scope = Scope::new(
             self.ctx.clone(),
-            package_prefix,
             package,
             prefixes,
             self.keywords.clone(),
@@ -325,14 +326,6 @@ impl Environment<CoreFlavor> {
         Ok(file.into_model(&scope)?)
     }
 
-    /// Apply global package prefix.
-    fn package_prefix(&self, package: &RpVersionedPackage) -> RpVersionedPackage {
-        self.package_prefix
-            .as_ref()
-            .map(|prefix| prefix.join_versioned(package))
-            .unwrap_or_else(|| package.clone())
-    }
-
     /// Parse the given version requirement.
     fn parse_range(v: &Loc<String>) -> Result<Range> {
         let (value, pos) = Loc::borrow_pair(v);
@@ -365,8 +358,6 @@ impl Environment<CoreFlavor> {
             let use_package = self.import(&required)?;
 
             if let Some(use_package) = use_package {
-                let use_package = self.package_prefix(&use_package);
-
                 if let Some(used) = use_decl.package.parts().last() {
                     let alias = use_decl.alias.as_ref().map(|v| v.as_ref()).unwrap_or(used);
 

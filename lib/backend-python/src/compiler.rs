@@ -14,10 +14,11 @@ use std::collections::BTreeMap;
 use std::iter;
 use std::rc::Rc;
 use trans::{self, Translated};
-use {FileSpec, Options, EXT, INIT_PY, TYPE_SEP};
+use {FileSpec, Options, PythonPackageUtils, EXT, INIT_PY, TYPE_SEP};
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<CoreFlavor>,
+    package_utils: Rc<PythonPackageUtils>,
     variant_field: &'el Loc<RpField>,
     to_lower_snake: naming::ToLowerSnake,
     dict: Element<'static, Python<'static>>,
@@ -29,18 +30,20 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<CoreFlavor>,
+        package_utils: Rc<PythonPackageUtils>,
         variant_field: &'el Loc<RpField>,
         options: Options,
         handle: &'el Handle,
     ) -> Compiler<'el> {
         Compiler {
-            env: env,
-            variant_field: variant_field,
+            env,
+            package_utils,
+            variant_field,
             to_lower_snake: naming::to_lower_snake(),
             dict: "dict".into(),
             enum_enum: imported("enum").name("Enum"),
             service_generators: options.service_generators,
-            handle: handle,
+            handle,
         }
     }
 
@@ -312,7 +315,7 @@ impl<'el> Compiler<'el> {
         let ident = registered.ident(name, |p| p.join(TYPE_SEP), path_syntax);
 
         if let Some(ref used) = name.prefix {
-            let package = self.package(&name.package).join(".");
+            let package = self.package_utils.package(&name.package).join(".");
             return Ok(imported(package).alias(used.to_string()).name(ident).into());
         }
 
@@ -368,8 +371,6 @@ impl<'el> Compiler<'el> {
         class
     }
 }
-
-impl<'el> PackageUtils for Compiler<'el> {}
 
 impl<'el> Converter<'el, CoreFlavor> for Compiler<'el> {
     type Custom = Python<'el>;
@@ -560,6 +561,10 @@ impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
 
+    fn package_utils(&self) -> &PackageUtils {
+        self.package_utils.as_ref()
+    }
+
     fn ext(&self) -> &str {
         EXT
     }
@@ -570,10 +575,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
 
     fn handle(&self) -> &'el Handle {
         self.handle
-    }
-
-    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
-        self.package(package)
     }
 
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {

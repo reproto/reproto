@@ -1,12 +1,12 @@
 //! C# backend for reproto
 
 use Options;
-use backend::Converter;
+use backend::{Converter, PackageUtils};
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded,
               TypeField, TypeFieldAdded};
 use core::errors::*;
-use core::flavored::{RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody,
-                     RpTupleBody, RpTypeBody};
+use core::flavored::{RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage,
+                     RpServiceBody, RpTupleBody, RpTypeBody};
 use core::{self, CoreFlavor, ForEachLoc, Handle, Loc, RpContext, WithPos};
 use csharp_field::CsharpField;
 use csharp_file::CsharpFile;
@@ -33,6 +33,12 @@ pub struct Compiler {
 }
 
 impl Processor for Compiler {}
+
+impl PackageUtils for Compiler {
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.env.package_prefix()
+    }
+}
 
 impl Compiler {
     pub fn new(env: &Rc<Translated<CoreFlavor>>, utils: &Rc<Utils>, options: Options) -> Compiler {
@@ -63,7 +69,7 @@ impl Compiler {
     }
 
     fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
-        let package_name = self.csharp_package(&decl.name().package).join(".");
+        let package_name = self.package(&decl.name().package).join(".");
 
         CsharpFile::new(package_name.as_str(), decl.ident(), |out| {
             self.process_decl(decl, 0usize, out)

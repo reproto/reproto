@@ -2,14 +2,15 @@
 
 use backend::{PackageProcessor, PackageUtils};
 use core::errors::*;
-use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpTupleBody, RpType,
-                     RpTypeBody, RpVersionedPackage};
+use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpTupleBody, RpType,
+                     RpTypeBody};
 use core::{CoreFlavor, Handle, Loc};
 use genco::swift::{self, Swift};
 use genco::{IntoTokens, Tokens};
+use std::rc::Rc;
 use trans::{self, Translated};
 use {EnumAdded, FileSpec, InterfaceAdded, InterfaceModelAdded, Options, PackageAdded,
-     StructModelAdded, TupleAdded, TypeAdded, EXT};
+     StructModelAdded, SwiftPackageUtils, TupleAdded, TypeAdded, EXT};
 
 /// Documentation comments.
 pub struct Comments<'el, S: 'el>(pub &'el [S]);
@@ -30,6 +31,7 @@ const TYPE_SEP: &'static str = "_";
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<CoreFlavor>,
+    package_utils: Rc<SwiftPackageUtils>,
     options: Options,
     handle: &'el Handle,
     data: Swift<'static>,
@@ -40,6 +42,7 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<CoreFlavor>,
+        package_utils: Rc<SwiftPackageUtils>,
         options: Options,
         handle: &'el Handle,
     ) -> Result<Compiler<'el>> {
@@ -61,12 +64,13 @@ impl<'el> Compiler<'el> {
         };
 
         let c = Compiler {
-            env: env,
-            options: options,
-            handle: handle,
+            env,
+            package_utils,
+            options,
+            handle,
             data: swift::imported("Foundation", "Data"),
             date: swift::imported("Foundation", "Date"),
-            any: any,
+            any,
         };
 
         Ok(c)
@@ -79,7 +83,7 @@ impl<'el> Compiler<'el> {
     pub fn convert_name<'a>(&self, name: &'a RpName) -> Result<Swift<'a>> {
         let registered = self.env.lookup(name)?;
         let ident = registered.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
-        let package_name = self.package(&name.package).join("_");
+        let package_name = self.package_utils.package(&name.package).join("_");
         return Ok(swift::local(format!("{}_{}", package_name, ident)));
     }
 
@@ -218,11 +222,13 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageUtils for Compiler<'el> {}
-
 impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
+
+    fn package_utils(&self) -> &PackageUtils {
+        self.package_utils.as_ref()
+    }
 
     fn ext(&self) -> &str {
         EXT
@@ -234,10 +240,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
 
     fn handle(&self) -> &'el Handle {
         self.handle
-    }
-
-    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
-        self.package(package)
     }
 
     fn default_process(&self, _out: &mut Self::Out, _: &RpName) -> Result<()> {

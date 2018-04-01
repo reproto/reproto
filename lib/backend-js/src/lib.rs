@@ -17,7 +17,7 @@ extern crate toml;
 mod utils;
 mod compiler;
 
-use backend::IntoBytes;
+use backend::{IntoBytes, PackageUtils};
 use compiler::Compiler;
 use core::errors::Result;
 use core::{Context, CoreFlavor, Loc, Pos, RpField, RpPackage, RpType};
@@ -157,12 +157,35 @@ impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
     }
 }
 
+pub struct JsPackageUtils {
+    package_prefix: Option<RpPackage>,
+}
+
+impl JsPackageUtils {
+    pub fn new(package_prefix: Option<RpPackage>) -> Self {
+        Self { package_prefix }
+    }
+}
+
+impl PackageUtils for JsPackageUtils {
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.package_prefix.as_ref()
+    }
+}
+
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let package_utils = Rc::new(JsPackageUtils::new(env.package_prefix()));
     let env = env.translate_default()?;
     let _modules: Vec<JsModule> = manifest::checked_modules(manifest.modules)?;
     let options = Options::new();
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
     let variant_field = Loc::new(RpField::new("value", RpType::String), Pos::empty());
 
-    Compiler::new(&env, &variant_field, options, handle.as_ref()).compile()
+    Compiler::new(
+        &env,
+        package_utils,
+        &variant_field,
+        options,
+        handle.as_ref(),
+    ).compile()
 }

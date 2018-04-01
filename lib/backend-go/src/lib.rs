@@ -17,11 +17,11 @@ extern crate toml;
 mod compiler;
 mod module;
 
-use backend::{Initializer, IntoBytes};
+use backend::{Initializer, IntoBytes, PackageUtils};
 use compiler::Compiler;
 use core::errors::Result;
 use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody};
-use core::{Context, CoreFlavor};
+use core::{Context, CoreFlavor, Version};
 use genco::go::{self, Go};
 use genco::{Element, IntoTokens, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -265,10 +265,33 @@ impl<'el> IntoTokens<'el, Go<'el>> for Tags {
     }
 }
 
+pub struct GoPackageUtils {
+    package_prefix: Option<RpPackage>,
+}
+
+impl GoPackageUtils {
+    pub fn new(package_prefix: Option<RpPackage>) -> Self {
+        Self { package_prefix }
+    }
+}
+
+impl PackageUtils for GoPackageUtils {
+    fn version_package(&self, input: &Version) -> String {
+        input
+            .to_string()
+            .replace(|c| self.package_version_unsafe(c), "_")
+    }
+
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.package_prefix.as_ref()
+    }
+}
+
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let package_utils = Rc::new(GoPackageUtils::new(env.package_prefix()));
     let env = env.translate_default()?;
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    Compiler::new(&env, options, handle.as_ref())?.compile()
+    Compiler::new(&env, package_utils, options, handle.as_ref())?.compile()
 }

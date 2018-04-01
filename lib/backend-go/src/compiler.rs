@@ -3,12 +3,14 @@
 use backend::{PackageProcessor, PackageUtils};
 use core::errors::*;
 use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpTupleBody, RpType,
-                     RpTypeBody, RpVersionedPackage};
-use core::{CoreFlavor, Handle, Loc, RelativePathBuf, Version};
+                     RpTypeBody};
+use core::{CoreFlavor, Handle, Loc, RelativePathBuf};
 use genco::go::{imported, local, Go};
 use genco::{IntoTokens, Tokens};
+use std::rc::Rc;
 use trans::{self, Translated};
-use {EnumAdded, FieldAdded, FileSpec, InterfaceAdded, Options, Tags, TupleAdded, EXT};
+use {EnumAdded, FieldAdded, FileSpec, GoPackageUtils, InterfaceAdded, Options, Tags, TupleAdded,
+     EXT};
 
 /// Documentation comments.
 pub struct Comments<'el, S: 'el>(pub &'el [S]);
@@ -29,6 +31,7 @@ const TYPE_SEP: &'static str = "_";
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<CoreFlavor>,
+    package_utils: Rc<GoPackageUtils>,
     options: Options,
     handle: &'el Handle,
 }
@@ -36,13 +39,15 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<CoreFlavor>,
+        package_utils: Rc<GoPackageUtils>,
         options: Options,
         handle: &'el Handle,
     ) -> Result<Compiler<'el>> {
         let c = Compiler {
-            env: env,
-            options: options,
-            handle: handle,
+            env,
+            package_utils,
+            options,
+            handle,
         };
 
         Ok(c)
@@ -58,7 +63,7 @@ impl<'el> Compiler<'el> {
 
         // imported
         if let Some(_) = name.prefix {
-            let module = self.package(&name.package).join("_");
+            let module = self.package_utils.package(&name.package).join("_");
             let module = format!("../{}", module);
             return Ok(imported(module, ident));
         }
@@ -152,15 +157,13 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageUtils for Compiler<'el> {
-    fn version_package(input: &Version) -> String {
-        input.to_string().replace(Self::package_version_unsafe, "_")
-    }
-}
-
 impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
+
+    fn package_utils(&self) -> &PackageUtils {
+        self.package_utils.as_ref()
+    }
 
     fn ext(&self) -> &str {
         EXT
@@ -172,10 +175,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
 
     fn handle(&self) -> &'el Handle {
         self.handle
-    }
-
-    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
-        self.package(package)
     }
 
     fn default_process(&self, _out: &mut Self::Out, _: &RpName) -> Result<()> {

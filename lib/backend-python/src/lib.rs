@@ -19,7 +19,7 @@ mod compiler;
 mod module;
 mod utils;
 
-use backend::{Initializer, IntoBytes};
+use backend::{Initializer, IntoBytes, PackageUtils};
 use codegen::ServiceCodegen;
 use compiler::Compiler;
 use core::RpPackage;
@@ -161,7 +161,24 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     Ok(options)
 }
 
+pub struct PythonPackageUtils {
+    package_prefix: Option<RpPackage>,
+}
+
+impl PythonPackageUtils {
+    pub fn new(package_prefix: Option<RpPackage>) -> Self {
+        Self { package_prefix }
+    }
+}
+
+impl PackageUtils for PythonPackageUtils {
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.package_prefix.as_ref()
+    }
+}
+
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let package_utils = Rc::new(PythonPackageUtils::new(env.package_prefix()));
     let env = env.translate_default()?;
 
     let modules = manifest::checked_modules(manifest.modules)?;
@@ -169,5 +186,11 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
     let variant_field = Loc::new(RpField::new("ordinal", RpType::String), Pos::empty());
 
-    Compiler::new(&env, &variant_field, options, handle.as_ref()).compile()
+    Compiler::new(
+        &env,
+        package_utils.clone(),
+        &variant_field,
+        options,
+        handle.as_ref(),
+    ).compile()
 }

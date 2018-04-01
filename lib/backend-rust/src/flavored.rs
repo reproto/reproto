@@ -2,6 +2,7 @@
 
 #![allow(unused)]
 
+use RustPackageUtils;
 use backend::PackageUtils;
 use core::errors::Result;
 use core::{self, CoreFlavor, Flavor, Loc, Translate, Translator, TypeTranslator};
@@ -36,22 +37,22 @@ impl Flavor for RustFlavor {
 
 /// Responsible for translating RpType -> Rust type.
 pub struct RustTypeTranslator {
+    package_utils: Rc<RustPackageUtils>,
     map: Rust<'static>,
     json_value: Rust<'static>,
     datetime: Option<Rust<'static>>,
 }
 
 impl RustTypeTranslator {
-    pub fn new(datetime: Option<Rust<'static>>) -> Self {
+    pub fn new(package_utils: Rc<RustPackageUtils>, datetime: Option<Rust<'static>>) -> Self {
         Self {
+            package_utils,
             map: imported("std::collections", "HashMap"),
             json_value: imported("serde_json", "Value").alias("json"),
             datetime: datetime,
         }
     }
 }
-
-impl PackageUtils for RustTypeTranslator {}
 
 impl TypeTranslator for RustTypeTranslator {
     type Source = CoreFlavor;
@@ -117,7 +118,7 @@ impl TypeTranslator for RustTypeTranslator {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
 
         if let Some(prefix) = name.prefix {
-            let package_name = self.package(&name.package).join("::");
+            let package_name = self.package_utils.package(&name.package).join("::");
             return Ok(imported(package_name, ident).alias(prefix));
         }
 

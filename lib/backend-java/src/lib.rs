@@ -20,13 +20,14 @@ mod flavored;
 mod java_file;
 mod module;
 mod options;
-mod processor;
 mod utils;
 
+use backend::PackageUtils;
 use codegen::Configure;
 use compiler::Compiler;
 use core::errors::Result;
 use core::{Context, CoreFlavor, Loc, Pos, RpField, RpType, Translator};
+use flavored::RpPackage;
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use naming::Naming;
 use options::Options;
@@ -158,7 +159,7 @@ impl TryFromToml for JavaModule {
     }
 }
 
-fn setup_options<'a>(modules: Vec<JavaModule>) -> Options {
+fn setup_options<'a>(modules: Vec<JavaModule>, package_utils: Rc<JavaPackageUtils>) -> Options {
     use self::JavaModule::*;
 
     let mut options = Options::new();
@@ -171,7 +172,7 @@ fn setup_options<'a>(modules: Vec<JavaModule>) -> Options {
         match module {
             Jackson => module::Jackson.initialize(c),
             Lombok => module::Lombok.initialize(c),
-            Grpc => module::Grpc.initialize(c),
+            Grpc => module::Grpc.initialize(c, package_utils.clone()),
             Builder => module::Builder.initialize(c),
             ConstructorProperties => module::ConstructorProperties.initialize(c),
             Mutable => module::Mutable.initialize(c),
@@ -183,8 +184,26 @@ fn setup_options<'a>(modules: Vec<JavaModule>) -> Options {
     options
 }
 
+pub struct JavaPackageUtils {
+    package_prefix: Option<RpPackage>,
+}
+
+impl JavaPackageUtils {
+    pub fn new(package_prefix: Option<RpPackage>) -> Self {
+        Self { package_prefix }
+    }
+}
+
+impl PackageUtils for JavaPackageUtils {
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.package_prefix.as_ref()
+    }
+}
+
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let translator = env.translator(flavored::JavaTypeTranslator::new());
+    let package_utils = Rc::new(JavaPackageUtils::new(env.package_prefix()));
+
+    let translator = env.translator(flavored::JavaTypeTranslator::new(package_utils.clone()));
 
     let variant_field = Loc::new(
         translator.translate_field(RpField::new("value", RpType::String))?,
@@ -195,9 +214,9 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let env = Rc::new(env);
     let modules = checked_modules(manifest.modules)?;
-    let options = setup_options(modules);
+    let options = setup_options(modules, package_utils.clone());
 
-    let compiler = Compiler::new(&env, &variant_field, options);
+    let compiler = Compiler::new(&env, package_utils.clone(), &variant_field, options);
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 

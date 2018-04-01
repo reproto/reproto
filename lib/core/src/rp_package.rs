@@ -60,6 +60,12 @@ impl RpPackage {
         RpPackage { parts: vec![] }
     }
 
+    /// Join with the other package.
+    pub fn join_package(mut self, other: RpPackage) -> RpPackage {
+        self.parts.extend(other.parts);
+        self
+    }
+
     /// Join this package with another, versioned, package.
     pub fn join_versioned(&self, other: &RpVersionedPackage) -> RpVersionedPackage {
         let mut parts = self.parts.clone();

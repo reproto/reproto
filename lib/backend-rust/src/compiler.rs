@@ -3,15 +3,15 @@
 use backend::{PackageProcessor, PackageUtils};
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, RelativePath, RelativePathBuf};
-use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
-               RpTupleBody, RpTypeBody, RpVersionedPackage, RustFlavor};
+use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody,
+               RpTypeBody, RpVersionedPackage, RustFlavor};
 use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
 use rust_file_spec::RustFileSpec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use trans::{self, Translated};
 use utils::Comments;
-use {Options, Service, EXT, MOD, TYPE_SEP};
+use {Options, RustPackageUtils, Service, EXT, MOD, TYPE_SEP};
 
 /// #[allow(non_camel_case_types)] attribute.
 pub struct AllowNonCamelCaseTypes;
@@ -51,6 +51,7 @@ impl<'a> IntoTokens<'a, Rust<'a>> for Tag<'a> {
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<RustFlavor>,
+    package_utils: Rc<RustPackageUtils>,
     options: Options,
     handle: &'el Handle,
 }
@@ -58,11 +59,13 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<RustFlavor>,
+        package_utils: Rc<RustPackageUtils>,
         options: Options,
         handle: &'el Handle,
     ) -> Compiler<'el> {
         Compiler {
             env,
+            package_utils,
             options,
             handle,
         }
@@ -156,7 +159,7 @@ impl<'el> Compiler<'el> {
         for (key, _) in files {
             let mut current = RelativePathBuf::new();
 
-            let package = self.package(key);
+            let package = self.package_utils.package(key);
             let mut it = package.parts().peekable();
 
             if let Some(root) = it.peek() {
@@ -206,11 +209,13 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageUtils for Compiler<'el> {}
-
 impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
     type Out = RustFileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, RustFlavor>;
+
+    fn package_utils(&self) -> &PackageUtils {
+        self.package_utils.as_ref()
+    }
 
     fn ext(&self) -> &str {
         EXT
@@ -222,10 +227,6 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
 
     fn handle(&self) -> &'el Handle {
         self.handle
-    }
-
-    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
-        self.package(package)
     }
 
     fn default_process(&self, _out: &mut Self::Out, _: &RpName) -> Result<()> {

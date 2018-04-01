@@ -2,6 +2,8 @@
 
 #![allow(unused)]
 
+use JavaPackageUtils;
+use backend::PackageUtils;
 use core::errors::Result;
 use core::{self, CoreFlavor, Flavor, Loc, Translate, Translator, TypeTranslator};
 use genco::java::{imported, optional, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT,
@@ -98,6 +100,7 @@ impl Flavor for JavaFlavor {
 
 /// Responsible for translating RpType -> Java type.
 pub struct JavaTypeTranslator {
+    package_utils: Rc<JavaPackageUtils>,
     list: Java<'static>,
     map: Java<'static>,
     string: Java<'static>,
@@ -110,8 +113,9 @@ pub struct JavaTypeTranslator {
 }
 
 impl JavaTypeTranslator {
-    pub fn new() -> Self {
+    pub fn new(package_utils: Rc<JavaPackageUtils>) -> Self {
         Self {
+            package_utils: package_utils,
             list: imported("java.util", "List"),
             map: imported("java.util", "Map"),
             string: imported("java.lang", "String"),
@@ -182,11 +186,9 @@ impl TypeTranslator for JavaTypeTranslator {
     }
 
     fn translate_name(&self, name: RpName, reg: RpReg) -> Result<Java<'static>> {
-        let pkg = name.package
-            .as_package(|version| format!("_{}", version).replace(".", "_").replace("-", "_"));
-        let package_name = Rc::new(pkg.join("."));
+        let package = self.package_utils.package(&name.package).join(".");
         let name = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
-        Ok(imported(package_name, name))
+        Ok(imported(package, name))
     }
 
     fn translate_field<T>(

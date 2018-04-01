@@ -1,8 +1,7 @@
 use backend::{Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageProcessor,
               PackageUtils};
 use core::errors::*;
-use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpTupleBody, RpType,
-                     RpTypeBody, RpVersionedPackage};
+use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpTupleBody, RpType, RpTypeBody};
 use core::{self, CoreFlavor, ForEachLoc, Handle, Loc};
 use genco::js::imported_alias;
 use genco::{Element, JavaScript, Quoted, Tokens};
@@ -10,10 +9,11 @@ use naming::{self, Naming};
 use std::rc::Rc;
 use trans::{self, Translated};
 use utils::{is_defined, is_not_defined};
-use {FileSpec, Options, EXT, TYPE_SEP};
+use {FileSpec, JsPackageUtils, Options, EXT, TYPE_SEP};
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<CoreFlavor>,
+    package_utils: Rc<JsPackageUtils>,
     variant_field: &'el Loc<RpField>,
     handle: &'el Handle,
     to_lower_snake: naming::ToLowerSnake,
@@ -24,14 +24,16 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<CoreFlavor>,
+        package_utils: Rc<JsPackageUtils>,
         variant_field: &'el Loc<RpField>,
         _: Options,
         handle: &'el Handle,
     ) -> Compiler<'el> {
         Compiler {
-            env: env,
-            variant_field: variant_field,
-            handle: handle,
+            env,
+            package_utils,
+            variant_field,
+            handle,
             to_lower_snake: naming::to_lower_snake(),
             values: "values".into(),
             enum_name: "name".into(),
@@ -320,8 +322,6 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageUtils for Compiler<'el> {}
-
 impl<'el> Converter<'el, CoreFlavor> for Compiler<'el> {
     type Custom = JavaScript<'el>;
 
@@ -331,7 +331,7 @@ impl<'el> Converter<'el, CoreFlavor> for Compiler<'el> {
         let ident = registered.ident(name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(ref used) = name.prefix {
-            let package = self.package(&name.package).join(".");
+            let package = self.package_utils.package(&name.package).join(".");
             return Ok(imported_alias(package, ident, used.to_string()).into());
         }
 
@@ -488,6 +488,10 @@ impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
 
+    fn package_utils(&self) -> &PackageUtils {
+        self.package_utils.as_ref()
+    }
+
     fn ext(&self) -> &str {
         EXT
     }
@@ -498,10 +502,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
 
     fn handle(&self) -> &'el Handle {
         self.handle
-    }
-
-    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage {
-        self.package(package)
     }
 
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {

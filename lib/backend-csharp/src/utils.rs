@@ -1,5 +1,7 @@
+use backend::PackageUtils;
+use core::CoreFlavor;
 use core::errors::*;
-use core::{CoreFlavor, RpName, RpType, RpVersionedPackage};
+use core::flavored::{RpName, RpPackage, RpType};
 use genco::csharp::{self, array, struct_, using};
 use genco::{Cons, Csharp, IntoTokens, Quoted, Tokens};
 use processor::Processor;
@@ -18,6 +20,12 @@ pub struct Utils {
 
 impl Processor for Utils {}
 
+impl PackageUtils for Utils {
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.env.package_prefix()
+    }
+}
+
 impl Utils {
     pub fn new(env: &Rc<Translated<CoreFlavor>>) -> Utils {
         Utils {
@@ -33,7 +41,7 @@ impl Utils {
 
     /// Convert the given type to a java type.
     pub fn into_csharp_type<'el>(&self, ty: &RpType) -> Result<Csharp<'el>> {
-        use self::RpType::*;
+        use core::RpType::*;
 
         let out = match *ty {
             String => self.string.clone().into(),
@@ -66,7 +74,7 @@ impl Utils {
     pub fn convert_type_id<'b, 'el>(&self, name: &'b RpName) -> Result<Csharp<'el>> {
         let registered = self.env.lookup(name)?;
 
-        let package_name = self.csharp_package_name(&name.package);
+        let package_name = Rc::new(self.package(&name.package).join("."));
 
         let name = Rc::new(registered.ident(name, |p| p.join("."), |c| c.join(".")));
 
@@ -77,10 +85,6 @@ impl Utils {
         }
 
         Ok(ty)
-    }
-
-    fn csharp_package_name(&self, pkg: &RpVersionedPackage) -> Rc<String> {
-        Rc::new(self.csharp_package(pkg).join("."))
     }
 }
 

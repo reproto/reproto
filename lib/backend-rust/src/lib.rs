@@ -21,10 +21,11 @@ mod module;
 mod rust_file_spec;
 mod utils;
 
-use backend::Initializer;
+use backend::{Initializer, PackageUtils};
 use compiler::Compiler;
 use core::errors::*;
 use core::{Context, CoreFlavor, Handle};
+use flavored::RpPackage;
 use genco::{Cons, Rust, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -183,13 +184,34 @@ fn options(modules: Vec<RustModule>) -> Result<Options> {
     Ok(options)
 }
 
+pub struct RustPackageUtils {
+    package_prefix: Option<RpPackage>,
+}
+
+impl RustPackageUtils {
+    pub fn new(package_prefix: Option<RpPackage>) -> Self {
+        Self { package_prefix }
+    }
+}
+
+impl PackageUtils for RustPackageUtils {
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.package_prefix.as_ref()
+    }
+}
+
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
 
-    let translator = env.translator(flavored::RustTypeTranslator::new(options.datetime.clone()));
+    let package_utils = Rc::new(RustPackageUtils::new(env.package_prefix()));
+
+    let translator = env.translator(flavored::RustTypeTranslator::new(
+        package_utils.clone(),
+        options.datetime.clone(),
+    ));
     let env = env.translate(translator)?;
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    Compiler::new(&env, options, handle.as_ref()).compile()
+    Compiler::new(&env, package_utils.clone(), options, handle.as_ref()).compile()
 }

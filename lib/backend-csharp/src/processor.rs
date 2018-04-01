@@ -1,16 +1,9 @@
 //! Helper utilities for processors.
 
 use core::errors::Result;
-use core::flavored::{RpChannel, RpEndpoint, RpPackage, RpVersionedPackage};
+use core::flavored::{RpChannel, RpEndpoint};
 
 pub trait Processor {
-    /// Build the java package of a given package.
-    ///
-    /// This includes the prefixed configured in `self.options`, if specified.
-    fn csharp_package(&self, pkg: &RpVersionedPackage) -> RpPackage {
-        pkg.as_package(|version| format!("_{}", version).replace(".", "_").replace("-", "_"))
-    }
-
     /// Extract endpoint request.
     ///
     /// Errors if more than one argument is present.

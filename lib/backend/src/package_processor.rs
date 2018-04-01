@@ -1,9 +1,9 @@
-use IntoBytes;
 use core::errors::*;
 use core::{Flavor, Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
            RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
 use std::collections::BTreeMap;
 use std::io::Write;
+use {IntoBytes, PackageUtils};
 
 pub trait PackageProcessor<'el, F: 'static>
 where
@@ -13,6 +13,10 @@ where
     type Out: Default + IntoBytes<Self>;
     type DeclIter: Iterator<Item = &'el RpDecl<F>>;
 
+    /// Access the package utils.
+    fn package_utils(&self) -> &PackageUtils;
+
+    /// Access the extension for processing.
     fn ext(&self) -> &str;
 
     /// Iterate over all existing declarations.
@@ -24,8 +28,6 @@ where
         warn!("not supported: {}", name);
         Ok(())
     }
-
-    fn processed_package(&self, package: &RpVersionedPackage) -> RpPackage;
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
@@ -111,8 +113,10 @@ where
     fn write_files(&'el self, files: BTreeMap<RpVersionedPackage, Self::Out>) -> Result<()> {
         let handle = self.handle();
 
+        let package_utils = self.package_utils();
+
         for (package, out) in files {
-            let package = self.processed_package(&package);
+            let package = package_utils.package(&package);
             let full_path = self.setup_module_path(&package)?;
 
             debug!("+module: {}", full_path.display());

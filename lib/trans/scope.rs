@@ -1,7 +1,7 @@
 //! Propagates scope-specific information to `into_model` transformations.
 
 use core::errors::{Error, Result};
-use core::{Context, RpName, RpPackage, RpVersionedPackage};
+use core::{Context, RpName, RpVersionedPackage};
 use naming::Naming;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -9,7 +9,6 @@ use std::rc::Rc;
 /// Root of the scope.
 pub struct Root {
     ctx: Rc<Context>,
-    package_prefix: Option<RpPackage>,
     package: RpVersionedPackage,
     prefixes: HashMap<String, RpVersionedPackage>,
     pub endpoint_naming: Option<Box<Naming>>,
@@ -56,7 +55,6 @@ pub struct Scope(Rc<Inner>);
 impl Scope {
     pub fn new(
         ctx: Rc<Context>,
-        package_prefix: Option<RpPackage>,
         package: RpVersionedPackage,
         prefixes: HashMap<String, RpVersionedPackage>,
         keywords: Rc<HashMap<String, String>>,
@@ -67,7 +65,6 @@ impl Scope {
     ) -> Scope {
         let root = Rc::new(Root {
             ctx,
-            package_prefix,
             package,
             prefixes,
             endpoint_naming: None,
@@ -132,12 +129,7 @@ impl Scope {
     /// Get the package that this scope belongs to.
     pub fn package(&self) -> RpVersionedPackage {
         let root = self.root();
-
-        let package = root.package_prefix
-            .as_ref()
-            .map(|prefix| prefix.join_versioned(&root.package))
-            .unwrap_or_else(|| root.package.clone());
-
+        let package = root.package.clone();
         root.package(package)
     }
 
@@ -223,7 +215,7 @@ mod tests {
         let prefixes = HashMap::new();
         let keywords = Rc::new(HashMap::new());
 
-        let s = Scope::new(ctx, None, package, prefixes, keywords, false, None, None);
+        let s = Scope::new(ctx, package, prefixes, keywords, false, None, None, None);
 
         let s2 = s.child("foo");
         let s3 = s2.child("bar");

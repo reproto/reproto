@@ -1,5 +1,5 @@
 use core::errors::Result;
-use core::{Flavor, RpDecl, RpFile, RpName, RpReg, RpVersionedPackage};
+use core::{Flavor, RpDecl, RpFile, RpName, RpPackage, RpReg, RpVersionedPackage};
 use linked_hash_map::LinkedHashMap;
 use std::collections::{btree_map, BTreeMap, LinkedList};
 use std::vec;
@@ -71,6 +71,8 @@ pub struct Translated<F: 'static>
 where
     F: Flavor,
 {
+    /// Package prefix to apply.
+    package_prefix: Option<RpPackage>,
     /// Registered types.
     types: LinkedHashMap<RpName, RpReg>,
     /// Files and associated declarations.
@@ -82,13 +84,20 @@ where
     F: Flavor,
 {
     pub fn new(
+        package_prefix: Option<RpPackage>,
         types: LinkedHashMap<RpName, RpReg>,
         files: BTreeMap<RpVersionedPackage, RpFile<F>>,
     ) -> Self {
         Self {
-            types: types,
-            files: files,
+            package_prefix,
+            types,
+            files,
         }
+    }
+
+    /// Access the package prefix.
+    pub fn package_prefix(&self) -> Option<&RpPackage> {
+        self.package_prefix.as_ref()
     }
 
     /// Lookup the declaration matching the given name.
