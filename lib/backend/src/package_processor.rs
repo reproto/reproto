@@ -86,8 +86,7 @@ where
 
     fn resolve_full_path(&self, package: &RpPackage) -> Result<RelativePathBuf> {
         let mut full_path = package
-            .parts
-            .iter()
+            .parts()
             .fold(RelativePathBuf::new(), |a, b| a.join(b));
         full_path.set_extension(self.ext());
         Ok(full_path)

@@ -25,12 +25,12 @@ impl MyService_Reqwest {
 
   /// UNKNOWN
   pub fn unknown(&self, id: u32) -> reqwest::Result<()> {
-    let mut path_ = String::new()
+    let mut path_ = String::new();
     path_.push_str("/");
     path_.push_str("unknown");
     path_.push_str("/");
     parsing::http_percent_encode(&mut path_, id.to_string().as_bytes())?;
-    let url_ = self.url.join(path_)?;
+    let url_ = self.url.join(&path_)?;
     let req_ = self.client.request(reqwest::Method::Get, url_);
     req_.send()?;
     Ok(())
@@ -38,12 +38,12 @@ impl MyService_Reqwest {
 
   /// UNKNOWN
   pub fn unknown_return(&self, id: u32) -> reqwest::Result<Entry> {
-    let mut path_ = String::new()
+    let mut path_ = String::new();
     path_.push_str("/");
     path_.push_str("unknown-return");
     path_.push_str("/");
     parsing::http_percent_encode(&mut path_, id.to_string().as_bytes())?;
-    let url_ = self.url.join(path_)?;
+    let url_ = self.url.join(&path_)?;
     let req_ = self.client.request(reqwest::Method::Get, url_);
     let res_ = req_.send()?;
     res_.json()
@@ -51,12 +51,12 @@ impl MyService_Reqwest {
 
   /// UNKNOWN
   pub fn unknown_argument(&self, request: Entry, id: u32) -> reqwest::Result<()> {
-    let mut path_ = String::new()
+    let mut path_ = String::new();
     path_.push_str("/");
     path_.push_str("unknown-argument");
     path_.push_str("/");
     parsing::http_percent_encode(&mut path_, id.to_string().as_bytes())?;
-    let url_ = self.url.join(path_)?;
+    let url_ = self.url.join(&path_)?;
     let req_ = self.client.request(reqwest::Method::Get, url_);
     let req_ = req_.json(&request);
     req_.send()?;
@@ -65,12 +65,12 @@ impl MyService_Reqwest {
 
   /// UNARY
   pub fn unary(&self, request: Entry, id: u32) -> reqwest::Result<Entry> {
-    let mut path_ = String::new()
+    let mut path_ = String::new();
     path_.push_str("/");
     path_.push_str("unary");
     path_.push_str("/");
     parsing::http_percent_encode(&mut path_, id.to_string().as_bytes())?;
-    let url_ = self.url.join(path_)?;
+    let url_ = self.url.join(&path_)?;
     let req_ = self.client.request(reqwest::Method::Get, url_);
     let req_ = req_.json(&request);
     let res_ = req_.send()?;

@@ -331,7 +331,7 @@ impl<'el> Converter<'el, CoreFlavor> for Compiler<'el> {
         let ident = registered.ident(name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(ref used) = name.prefix {
-            let package = self.package(&name.package).parts.join(".");
+            let package = self.package(&name.package).join(".");
             return Ok(imported_alias(package, ident, used.to_string()).into());
         }
 

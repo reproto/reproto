@@ -660,7 +660,7 @@ impl ServiceCodegen for GrpcClient {
 
         let service_name = Rc::new(format!(
             "{}.{}",
-            self.java_package(&body.name.package).parts.join("."),
+            self.java_package(&body.name.package).join("."),
             body.name.join(".")
         ));
 

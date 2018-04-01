@@ -156,10 +156,11 @@ impl<'el> Compiler<'el> {
         for (key, _) in files {
             let mut current = RelativePathBuf::new();
 
-            let mut it = self.package(key).parts.into_iter().peekable();
+            let package = self.package(key);
+            let mut it = package.parts().peekable();
 
             if let Some(root) = it.peek() {
-                root_names.insert(root.to_owned());
+                root_names.insert(root.to_string());
             }
 
             while let Some(part) = it.next() {
@@ -172,7 +173,7 @@ impl<'el> Compiler<'el> {
                     packages
                         .entry(full_path)
                         .or_insert_with(BTreeSet::new)
-                        .insert(next.clone());
+                        .insert(next.to_string());
                 }
             }
         }

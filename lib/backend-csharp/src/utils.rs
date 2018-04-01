@@ -80,7 +80,7 @@ impl Utils {
     }
 
     fn csharp_package_name(&self, pkg: &RpVersionedPackage) -> Rc<String> {
-        Rc::new(self.csharp_package(pkg).parts.join("."))
+        Rc::new(self.csharp_package(pkg).join("."))
     }
 }
 

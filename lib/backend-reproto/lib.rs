@@ -110,8 +110,7 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
     for (package, file) in env.for_each_file() {
         let mut path = package
             .package
-            .parts
-            .iter()
+            .parts()
             .fold(root.clone(), |path, part| path.join(part));
 
         let parent = path.parent()

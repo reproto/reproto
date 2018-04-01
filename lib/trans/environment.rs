@@ -367,7 +367,7 @@ impl Environment<CoreFlavor> {
             if let Some(use_package) = use_package {
                 let use_package = self.package_prefix(&use_package);
 
-                if let Some(used) = use_decl.package.parts.iter().last() {
+                if let Some(used) = use_decl.package.parts().last() {
                     let alias = use_decl.alias.as_ref().map(|v| v.as_ref()).unwrap_or(used);
 
                     match prefixes.entry(alias.to_owned()) {

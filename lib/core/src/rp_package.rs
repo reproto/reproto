@@ -3,10 +3,36 @@ use serde;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem;
+use std::slice;
+
+/// Iterator over parts in a package.
+pub struct Parts<'a> {
+    iter: slice::Iter<'a, String>,
+}
+
+impl<'a> Iterator for Parts<'a> {
+    type Item = <slice::Iter<'a, String> as Iterator>::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+impl<'a> DoubleEndedIterator for Parts<'a> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back()
+    }
+}
+
+impl<'a> Parts<'a> {
+    pub fn as_slice(&self) -> &'a [String] {
+        self.iter.as_slice()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpPackage {
-    pub parts: Vec<String>,
+    parts: Vec<String>,
 }
 
 impl RpPackage {
@@ -41,11 +67,9 @@ impl RpPackage {
         RpVersionedPackage::new(RpPackage::new(parts), other.version.clone())
     }
 
-    /// Join this package with another.
-    pub fn join(&self, other: &RpPackage) -> RpPackage {
-        let mut parts = self.parts.clone();
-        parts.extend(other.parts.clone());
-        RpPackage::new(parts)
+    /// Join the parts of this package with the given string.
+    pub fn join(&self, separator: &str) -> String {
+        self.parts.join(separator)
     }
 
     /// Join with the given part.
@@ -88,6 +112,13 @@ impl RpPackage {
         }
 
         self
+    }
+
+    /// Iterate over the parts in the package.
+    pub fn parts(&self) -> Parts {
+        Parts {
+            iter: self.parts.iter(),
+        }
     }
 }
 

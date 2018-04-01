@@ -110,7 +110,7 @@ impl<'el> Compiler<'el> {
     }
 
     fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
-        let package_name = self.java_package(&decl.name().package).parts.join(".");
+        let package_name = self.java_package(&decl.name().package).join(".");
 
         JavaFile::new(package_name.as_str(), decl.ident(), |out| {
             self.process_decl(decl, 0usize, out)

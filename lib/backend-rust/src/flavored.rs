@@ -117,7 +117,7 @@ impl TypeTranslator for RustTypeTranslator {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
 
         if let Some(prefix) = name.prefix {
-            let package_name = self.package(&name.package).parts.join("::");
+            let package_name = self.package(&name.package).join("::");
             return Ok(imported(package_name, ident).alias(prefix));
         }
 

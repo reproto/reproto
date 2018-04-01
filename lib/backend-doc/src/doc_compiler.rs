@@ -66,7 +66,7 @@ impl<'a> DocCompiler<'a> {
         let mut root = Vec::new();
         let mut path = self.out_path.to_owned();
 
-        for part in package.parts {
+        for part in package.parts() {
             root.push("..");
             path = path.join(part.as_str());
 
@@ -154,7 +154,7 @@ impl<'a> DocCompiler<'a> {
 
         let mut root = Vec::new();
 
-        for part in package.as_package(|v| v.to_string()).parts {
+        for part in package.as_package(|v| v.to_string()).parts() {
             root.push("..");
             path = path.join(part);
         }

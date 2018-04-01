@@ -128,15 +128,7 @@ impl<'el> Default for FileSpec<'el> {
 
 impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
     fn into_bytes(self, _: &Compiler<'el>, package: &RpPackage) -> Result<Vec<u8>> {
-        let package = package
-            .parts
-            .iter()
-            .map(|p| p.to_string())
-            .collect::<Vec<_>>()
-            .join("_");
-
-        let extra = go::Extra::from_package(package);
-
+        let extra = go::Extra::from_package(package.join("_"));
         let out = self.0.join_line_spacing().to_file_with(extra)?;
         Ok(out.into_bytes())
     }

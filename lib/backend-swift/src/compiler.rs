@@ -79,7 +79,7 @@ impl<'el> Compiler<'el> {
     pub fn convert_name<'a>(&self, name: &'a RpName) -> Result<Swift<'a>> {
         let registered = self.env.lookup(name)?;
         let ident = registered.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
-        let package_name = self.package(&name.package).parts.join("_");
+        let package_name = self.package(&name.package).join("_");
         return Ok(swift::local(format!("{}_{}", package_name, ident)));
     }
 

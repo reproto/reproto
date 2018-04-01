@@ -184,7 +184,7 @@ impl TypeTranslator for JavaTypeTranslator {
     fn translate_name(&self, name: RpName, reg: RpReg) -> Result<Java<'static>> {
         let pkg = name.package
             .as_package(|version| format!("_{}", version).replace(".", "_").replace("-", "_"));
-        let package_name = Rc::new(pkg.parts.join("."));
+        let package_name = Rc::new(pkg.join("."));
         let name = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
         Ok(imported(package_name, name))
     }

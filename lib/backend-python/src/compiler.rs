@@ -312,8 +312,7 @@ impl<'el> Compiler<'el> {
         let ident = registered.ident(name, |p| p.join(TYPE_SEP), path_syntax);
 
         if let Some(ref used) = name.prefix {
-            let package = self.package(&name.package).parts.join(".");
-
+            let package = self.package(&name.package).join(".");
             return Ok(imported(package).alias(used.to_string()).name(ident).into());
         }
 
@@ -819,7 +818,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
         let handle = self.handle();
 
         let mut full_path = RelativePathBuf::new();
-        let mut iter = package.parts.iter().peekable();
+        let mut iter = package.parts().peekable();
 
         while let Some(part) = iter.next() {
             full_path = full_path.join(part);

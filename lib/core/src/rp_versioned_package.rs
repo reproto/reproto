@@ -26,7 +26,7 @@ impl RpVersionedPackage {
     {
         let mut parts = Vec::new();
 
-        parts.extend(self.package.parts.iter().cloned());
+        parts.extend(self.package.parts().cloned());
 
         if let Some(ref version) = self.version {
             parts.push(version_fn(version));

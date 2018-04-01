@@ -58,7 +58,7 @@ impl<'el> Compiler<'el> {
 
         // imported
         if let Some(_) = name.prefix {
-            let module = self.package(&name.package).parts.join("_");
+            let module = self.package(&name.package).join("_");
             let module = format!("../{}", module);
             return Ok(imported(module, ident));
         }
@@ -183,15 +183,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
     }
 
     fn resolve_full_path(&self, package: &RpPackage) -> Result<RelativePathBuf> {
-        let mut full_path = RelativePathBuf::from(
-            package
-                .parts
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<_>>()
-                .join("_"),
-        ).join("lib");
-
+        let mut full_path = RelativePathBuf::from(package.join("_")).join("lib");
         full_path.set_extension(self.ext());
         Ok(full_path)
     }

@@ -52,7 +52,7 @@ impl Paths {
             return Some(version);
         }
 
-        let mut it = package.parts.iter();
+        let mut it = package.parts();
 
         while let Some(_) = it.next_back() {
             let package = RpPackage::new(it.as_slice().to_vec());
@@ -203,7 +203,7 @@ impl Resolver for Paths {
 
         for path in &self.paths {
             let mut path: PathBuf = path.to_owned();
-            let mut it = package.package.parts.iter().peekable();
+            let mut it = package.package.parts().peekable();
 
             while let Some(step) = it.next() {
                 if it.peek().is_none() {
@@ -230,10 +230,7 @@ impl Resolver for Paths {
         let mut files = Vec::new();
 
         for path in &self.paths {
-            let path = prefix
-                .parts
-                .iter()
-                .fold(path.to_owned(), |p, part| p.join(part));
+            let path = prefix.parts().fold(path.to_owned(), |p, part| p.join(part));
             files.extend(self.find_by_prefix(&path, prefix)?);
         }
 

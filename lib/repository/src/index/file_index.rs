@@ -118,8 +118,7 @@ impl FileIndex {
 
     fn path_for(&self, package: &RpPackage) -> PathBuf {
         package
-            .parts
-            .iter()
+            .parts()
             .fold(self.path.clone(), |path, next| path.join(next))
     }
 }
