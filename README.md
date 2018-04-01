@@ -69,8 +69,8 @@ Also make sure to [join our Gitter channel].
 |--------------|------|--------|----------------------------|
 | [Java]       | ✔️    | ✔️      | ✔️  [test][java-http]       |
 | [Python]     | ✔️    | ✖️      | ✔️  [test][python-requests] |
-| [C#]         | ✔️    | ✖️      | ✔️  [test][rust-reqwest]    |
-| [Rust]       | ✔️    | ✖️      | ✖️                          |
+| [C#]         | ✔️    | ✖️      | ✖️                          |
+| [Rust]       | ✔️    | ✖️      | ✔️  [test][rust-reqwest]    |
 | [JavaScript] | ✔️    | ✖️      | ✖️                          |
 | [Swift]      | ✔️    | ✖️      | ✖️                          |
 | [Go]         | ✔️    | ✖️      | ✖️                          |
