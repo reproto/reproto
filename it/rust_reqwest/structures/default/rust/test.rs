@@ -1,3 +1,4 @@
+use reproto;
 use reqwest;
 use reqwest::header::parsing;
 
@@ -11,7 +12,7 @@ pub struct MyService_Reqwest{
 }
 
 impl MyService_Reqwest {
-  pub fn new(client: reqwest::Client, url: Option<reqwest::Url>) -> reqwest::Result<Self> {
+  pub fn new(client: reqwest::Client, url: Option<reqwest::Url>) -> reproto::Result<Self> {
     let url = match url {
       Some(url) => url,
       None => reqwest::Url::parse("http://example.com")?,
@@ -24,7 +25,7 @@ impl MyService_Reqwest {
   }
 
   /// UNKNOWN
-  pub fn unknown(&self, id: u32) -> reqwest::Result<()> {
+  pub fn unknown(&self, id: u32) -> reproto::Result<()> {
     let mut path_ = String::new();
     path_.push_str("/");
     path_.push_str("unknown");
@@ -37,7 +38,7 @@ impl MyService_Reqwest {
   }
 
   /// UNKNOWN
-  pub fn unknown_return(&self, id: u32) -> reqwest::Result<Entry> {
+  pub fn unknown_return(&self, id: u32) -> reproto::Result<Entry> {
     let mut path_ = String::new();
     path_.push_str("/");
     path_.push_str("unknown-return");
@@ -50,7 +51,7 @@ impl MyService_Reqwest {
   }
 
   /// UNKNOWN
-  pub fn unknown_argument(&self, request: Entry, id: u32) -> reqwest::Result<()> {
+  pub fn unknown_argument(&self, request: Entry, id: u32) -> reproto::Result<()> {
     let mut path_ = String::new();
     path_.push_str("/");
     path_.push_str("unknown-argument");
@@ -64,7 +65,7 @@ impl MyService_Reqwest {
   }
 
   /// UNARY
-  pub fn unary(&self, request: Entry, id: u32) -> reqwest::Result<Entry> {
+  pub fn unary(&self, request: Entry, id: u32) -> reproto::Result<Entry> {
     let mut path_ = String::new();
     path_.push_str("/");
     path_.push_str("unary");

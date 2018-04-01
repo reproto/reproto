@@ -24,11 +24,13 @@ mod utils;
 use backend::{Initializer, PackageUtils};
 use compiler::Compiler;
 use core::errors::*;
-use core::{Context, CoreFlavor, Handle};
-use flavored::RpPackage;
+use core::{Context, CoreFlavor};
+use flavored::{RpPackage, RpVersionedPackage};
 use genco::{Cons, Rust, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use rust_file_spec::RustFileSpec;
 use std::any::Any;
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
@@ -140,16 +142,20 @@ impl TryFromToml for RustModule {
     }
 }
 
-#[derive(Default)]
 pub struct Options {
+    pub package_utils: Rc<RustPackageUtils>,
     pub datetime: Option<Rust<'static>>,
     pub root: Vec<Box<RootCodegen>>,
     pub service: Vec<Box<ServiceCodegen>>,
 }
 
+pub struct Root<'a, 'el: 'a> {
+    files: &'a mut BTreeMap<RpVersionedPackage, RustFileSpec<'el>>,
+}
+
 pub trait RootCodegen {
     /// Generate root code.
-    fn generate(&self, handle: &Handle) -> Result<()>;
+    fn generate(&self, root: Root) -> Result<()>;
 }
 
 pub struct Service<'a, 'el: 'a> {
@@ -164,10 +170,15 @@ pub trait ServiceCodegen {
     fn generate(&self, service: Service) -> Result<()>;
 }
 
-fn options(modules: Vec<RustModule>) -> Result<Options> {
+fn options(package_utils: Rc<RustPackageUtils>, modules: Vec<RustModule>) -> Result<Options> {
     use self::RustModule::*;
 
-    let mut options = Options::default();
+    let mut options = Options {
+        package_utils,
+        datetime: None,
+        root: Vec::new(),
+        service: Vec::new(),
+    };
 
     for m in modules {
         debug!("+module: {:?}", m);
@@ -201,10 +212,10 @@ impl PackageUtils for RustPackageUtils {
 }
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let modules = manifest::checked_modules(manifest.modules)?;
-    let options = options(modules)?;
-
     let package_utils = Rc::new(RustPackageUtils::new(env.package_prefix()));
+
+    let modules = manifest::checked_modules(manifest.modules)?;
+    let options = options(package_utils.clone(), modules)?;
 
     let translator = env.translator(flavored::RustTypeTranslator::new(
         package_utils.clone(),

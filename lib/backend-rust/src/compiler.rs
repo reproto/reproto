@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use trans::{self, Translated};
 use utils::Comments;
-use {Options, RustPackageUtils, Service, EXT, MOD, TYPE_SEP};
+use {Options, Root, RustPackageUtils, Service, EXT, MOD, TYPE_SEP};
 
 /// #[allow(non_camel_case_types)] attribute.
 pub struct AllowNonCamelCaseTypes;
@@ -147,7 +147,12 @@ impl<'el> Compiler<'el> {
     }
 
     pub fn compile(&self) -> Result<()> {
-        let files = self.populate_files()?;
+        let mut files = self.populate_files()?;
+
+        for g in &self.options.root {
+            g.generate(Root { files: &mut files })?;
+        }
+
         self.write_mod_files(&files)?;
         self.write_files(files)
     }

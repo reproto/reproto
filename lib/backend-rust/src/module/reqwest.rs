@@ -1,13 +1,13 @@
 //! gRPC module for Rust.
 
-use backend::Initializer;
+use backend::{Initializer, PackageUtils};
 use core::errors::Result;
 use core::{self, Loc};
-use flavored::{RpEndpointHttp1, RustEndpoint};
+use flavored::{RpEndpointHttp1, RpPackage, RpVersionedPackage, RustEndpoint};
 use genco::rust::{imported, local};
 use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
 use utils::Comments;
-use {Options, Service, ServiceCodegen};
+use {Options, Root, RootCodegen, RustFileSpec, Service, ServiceCodegen, SCOPE_SEP};
 
 pub struct Module {}
 
@@ -21,19 +21,97 @@ impl Initializer for Module {
     type Options = Options;
 
     fn initialize(&self, options: &mut Options) -> Result<()> {
-        options.service.push(Box::new(ReqwestService::new()));
+        let package_utils = options.package_utils.clone();
+
+        let utils_package = RpPackage::new(vec!["reproto".to_string()]);
+        let utils_package = RpVersionedPackage::new(utils_package, None);
+
+        let result = package_utils.package(&utils_package).join(SCOPE_SEP);
+        let result = imported(result, "Result");
+
+        options.service.push(Box::new(ReqwestService::new(result)));
+
+        options
+            .root
+            .push(Box::new(ReqwestUtils::new(utils_package)));
 
         Ok(())
     }
 }
 
+struct ReqwestUtils {
+    utils_package: RpVersionedPackage,
+}
+
+impl ReqwestUtils {
+    pub fn new(utils_package: RpVersionedPackage) -> Self {
+        Self { utils_package }
+    }
+
+    fn reproto<'el>(&self) -> Result<RustFileSpec<'el>> {
+        let mut f = RustFileSpec::default();
+
+        f.0.push({
+            let mut t = Tokens::new();
+
+            push!(t, "pub enum Error {");
+            nested!(t, "Unknown,");
+            push!(t, "}");
+
+            t
+        });
+
+        f.0.push({
+            let mut t = Tokens::new();
+            let result = imported("std::result", "Result");
+
+            push!(t, "pub type Result<T> = ", result, "<T, Error>;");
+
+            t
+        });
+
+        f.0.push({
+            let mut t = Tokens::new();
+
+            push!(t, "impl<T> From<T> for Error {");
+
+            t.nested({
+                let mut t = Tokens::new();
+
+                push!(t, "fn from(value: T) -> Self {");
+                nested!(t, "Error::Unknown");
+                push!(t, "}");
+
+                t
+            });
+
+            push!(t, "}");
+
+            t
+        });
+
+        Ok(f)
+    }
+}
+
+impl RootCodegen for ReqwestUtils {
+    fn generate(&self, root: Root) -> Result<()> {
+        let Root { files, .. } = root;
+        let package = self.utils_package.clone();
+        files.insert(package, self.reproto()?);
+        Ok(())
+    }
+}
+
 struct ReqwestService {
+    result: Rust<'static>,
     client: Rust<'static>,
 }
 
 impl ReqwestService {
-    pub fn new() -> Self {
+    pub fn new(result: Rust<'static>) -> Self {
         Self {
+            result,
             client: imported("reqwest", "Client"),
         }
     }
@@ -93,8 +171,7 @@ impl ServiceCodegen for ReqwestService {
                         }
                     };
 
-                    let result = imported("reqwest", "Result");
-                    let s = result.with_arguments(vec![local("Self")]);
+                    let s = self.result.with_arguments(vec![local("Self")]);
 
                     push!(t, "pub fn new(", args.join(", "), ") -> ", s, " {");
 
@@ -141,7 +218,11 @@ impl ServiceCodegen for ReqwestService {
                         let mut t = Tokens::new();
 
                         t.push_unless_empty(Comments(&e.comment));
-                        t.push(Endpoint { e, http });
+                        t.push(Endpoint {
+                            result: &self.result,
+                            e,
+                            http,
+                        });
 
                         t
                     });
@@ -159,14 +240,15 @@ impl ServiceCodegen for ReqwestService {
     }
 }
 
-struct Endpoint<'el> {
+struct Endpoint<'a, 'el: 'a> {
+    result: &'a Rust<'static>,
     e: &'el RustEndpoint,
     http: &'el RpEndpointHttp1,
 }
 
-impl<'el> IntoTokens<'el, Rust<'el>> for Endpoint<'el> {
+impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
     fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
-        let Endpoint { e, http } = self;
+        let Endpoint { result, e, http } = self;
 
         let mut t = Tokens::new();
 
@@ -188,13 +270,12 @@ impl<'el> IntoTokens<'el, Rust<'el>> for Endpoint<'el> {
 
         let args = args.join(", ");
 
-        let result = imported("reqwest", "Result");
         let encode = imported("reqwest::header::parsing", "http_percent_encode");
 
         let res = if let Some(ref res) = http.response {
-            toks![result, "<", res, ">"]
+            toks![result.clone(), "<", res, ">"]
         } else {
-            toks![result, "<()>"]
+            toks![result.clone(), "<()>"]
         };
 
         push!(t, "pub fn ", e.safe_ident(), "(", args, ") -> ", res, " {");
