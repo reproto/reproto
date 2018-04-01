@@ -1,6 +1,6 @@
-use super::{Object, Pos};
 use std::borrow::Borrow;
 use std::rc::Rc;
+use {Object, Pos};
 
 #[derive(Debug)]
 pub struct ErrorPos {

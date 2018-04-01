@@ -1,11 +1,10 @@
-use error_pos::ErrorPos;
 use std::borrow::Cow;
 use std::env;
 use std::ffi;
 use std::fmt;
 use std::result;
 use std::sync::atomic;
-use with_pos::WithPos;
+use {ErrorPos, WithPos};
 
 const RUST_BACKTRACE: &str = "RUST_BACKTRACE";
 

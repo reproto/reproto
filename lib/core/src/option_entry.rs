@@ -1,4 +1,4 @@
-use super::RpNumber;
+use RpNumber;
 use errors::Result;
 
 pub trait OptionEntry {

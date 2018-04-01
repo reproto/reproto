@@ -1,3 +1,3 @@
-use super::CoreFlavor;
+use CoreFlavor;
 
 decl_flavor!(CoreFlavor, super);

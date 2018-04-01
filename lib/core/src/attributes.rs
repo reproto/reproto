@@ -2,14 +2,12 @@
 //!
 //! These structures are all map-like.
 
-use loc::Loc;
-use pos::Pos;
-use rp_value::RpValue;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::mem;
 use std::vec;
+use {Loc, Pos, RpValue};
 
 /// Iterator over unused positions.
 pub struct Unused<'a> {
