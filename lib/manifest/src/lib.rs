@@ -395,6 +395,7 @@ pub enum Preset {
     Go {},
     Maven {},
     Swift {},
+    Rust {},
 }
 
 impl TryFromToml for Preset {
@@ -403,6 +404,7 @@ impl TryFromToml for Preset {
             "go" => Preset::Go {},
             "maven" => Preset::Maven {},
             "swift" => Preset::Swift {},
+            "rust" => Preset::Rust {},
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -414,6 +416,7 @@ impl TryFromToml for Preset {
             "go" => Preset::Go {},
             "maven" => Preset::Maven {},
             "swift" => Preset::Swift {},
+            "rust" => Preset::Rust {},
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -637,6 +640,7 @@ pub fn load_common_manifest(
             Go { .. } => go_apply_to(manifest, base)?,
             Maven { .. } => maven_apply_to(manifest, base)?,
             Swift { .. } => swift_apply_to(manifest, base)?,
+            Rust { .. } => rust_apply_to(manifest, base)?,
         }
 
         return Ok(());
@@ -674,6 +678,15 @@ pub fn load_common_manifest(
 
             // output directory
             manifest.output = Some(base.join("models"));
+
+            Ok(())
+        }
+
+        fn rust_apply_to(manifest: &mut Manifest, base: &Path) -> Result<()> {
+            // output directory
+            manifest.output = Some(base.join("src"));
+            // package prefix
+            manifest.package_prefix = Some(RpPackage::new(vec!["gen".to_string()]));
 
             Ok(())
         }

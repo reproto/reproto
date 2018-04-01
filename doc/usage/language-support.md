@@ -226,7 +226,8 @@ public class Foo {
 
 language = "rust"
 paths = ["src"]
-output = "target"
+
+[presets.rust]
 
 [packages]
 "io.reproto.example" = "*"

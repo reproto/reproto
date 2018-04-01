@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use trans::{self, Translated};
 use utils::Comments;
-use {Options, Root, RustPackageUtils, Service, EXT, MOD, TYPE_SEP};
+use {Options, Root, RustPackageUtils, Service, EXT, LIB, MOD, TYPE_SEP};
 
 /// #[allow(non_camel_case_types)] attribute.
 pub struct AllowNonCamelCaseTypes;
@@ -127,7 +127,7 @@ impl<'el> Compiler<'el> {
     }
 
     // Build the corresponding element out of a field declaration.
-    fn field_element<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
+    fn field_element<'a>(&self, field: &'a RpField, is_pub: bool) -> Result<Tokens<'a, Rust<'a>>> {
         let mut t = Tokens::new();
 
         let ident = field.safe_ident();
@@ -141,7 +141,13 @@ impl<'el> Compiler<'el> {
             t.push(Rename(field.name()));
         }
 
-        t.push(toks![ident, ": ", type_spec, ","]);
+        t.push_into(|t| {
+            if is_pub {
+                t.append("pub ");
+            }
+
+            t.append(toks![ident, ": ", type_spec, ","]);
+        });
 
         Ok(t.into())
     }
@@ -193,11 +199,23 @@ impl<'el> Compiler<'el> {
         let handle = self.handle();
 
         for (full_path, children) in packages {
+            // skip writing mod if lib file exists.
+            let lib_path = full_path.with_file_name(LIB).with_extension(self.ext());
             let parent = full_path.parent().unwrap_or(RelativePath::new("."));
 
             if !self.handle.is_dir(&parent) {
                 debug!("+dir: {}", parent.display());
                 handle.create_dir_all(&parent)?;
+            }
+
+            // do not create mod file if there is a lib.rs in the root.
+            if lib_path.parent().is_none() && handle.is_file(&lib_path) {
+                debug!(
+                    "+mod: {} (skip due to: {})",
+                    full_path.display(),
+                    lib_path.display()
+                );
+                continue;
             }
 
             if !handle.is_file(&full_path) {
@@ -242,7 +260,7 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         let mut fields = Tokens::new();
 
         for field in &body.fields {
-            fields.push(self.into_type(field)?);
+            fields.push(toks!["pub ", self.into_type(field)?]);
         }
 
         let (name, attributes) = self.convert_type_name(&body.name);
@@ -331,11 +349,15 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
             let mut t = Tokens::new();
 
             for field in &body.fields {
-                t.push_unless_empty(Comments(&field.comment));
-                t.push(self.field_element(field)?);
+                t.push({
+                    let mut t = Tokens::new();
+                    t.push_unless_empty(Comments(&field.comment));
+                    t.push(self.field_element(field, true)?);
+                    t
+                });
             }
 
-            t
+            t.join_line_spacing()
         });
 
         t.push("}");
@@ -384,9 +406,20 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
 
                 t.push(toks![s.ident.as_str(), " {"]);
 
-                for field in body.fields.iter().chain(s.fields.iter()) {
-                    t.nested(self.field_element(field)?);
-                }
+                t.push({
+                    let mut t = Tokens::new();
+
+                    for field in body.fields.iter().chain(s.fields.iter()) {
+                        t.nested({
+                            let mut t = Tokens::new();
+                            t.push_unless_empty(Comments(&field.comment));
+                            t.push(self.field_element(field, false)?);
+                            t
+                        });
+                    }
+
+                    t.join_line_spacing()
+                });
 
                 t.push("},");
 

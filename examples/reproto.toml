@@ -10,3 +10,4 @@ output = "output"
 "io.reproto.toystore" = {version = "^1"}
 "com.github.gists" = {version = "^3"}
 "com.github.pulls" = {version = "^3"}
+"com.github.service" = {version = "^3"}

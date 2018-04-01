@@ -1,11 +1,12 @@
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {
-  name: String,
+  pub name: String,
 }
 
 /// # Error me
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorMessage {
-  message: String,
-  status_code: u32,
+  pub message: String,
+
+  pub status_code: u32,
 }

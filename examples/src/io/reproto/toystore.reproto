@@ -72,7 +72,7 @@ service ToyStore {
   ///
   /// The stream will contain all the toys in the store, it is up to the client to terminate when
   /// done.
-  #[http(path = "/toys", body = request, method = "POST")]
+  #[http(path = "/toys", method = "POST")]
   get_toys(request: ::GetToys) -> stream Toy;
 
   /// Get a single toy by its identifier.

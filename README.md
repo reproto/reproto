@@ -38,7 +38,7 @@ but avoid building large repositories of specifications right now.
 ## Getting Started
 
 * See the [documentation] for an overview of how the reproto language and its build manifest works.
-* See [examples] for some example specifications.
+* See [examples] for some example specifications and projects.
 * See the [integration tests] for even more examples on how protocol specifications can be used.
 * See [release notes] for past and coming changes.
 

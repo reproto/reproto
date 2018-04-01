@@ -1,6 +1,131 @@
 //! Github Gists
 
+use com.github.common as c;
+
 type Gist {
-  /// ID of the gist.
-  id: u64;
+  /// ## Examples
+  ///
+  /// ```json
+  /// "aa5a315d61ae9438b18d"
+  /// ```
+  id: string;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// "https://api.github.com/gists/aa5a315d61ae9438b18d"
+  /// ```
+  url: string;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// "https://api.github.com/gists/aa5a315d61ae9438b18d/forks"
+  /// ```
+  forks_url: string;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// "https://api.github.com/gists/aa5a315d61ae9438b18d/commits"
+  /// ```
+  commits_url: string;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// "description of gist"
+  /// ```
+  description: string;
+
+  public: boolean;
+
+  owner: c::User;
+
+  user?: c::User;
+
+  files: {string: ::File};
+
+  truncated?: boolean;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// 0
+  /// ```
+  comments: u64;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// "https://api.github.com/gists/aa5a315d61ae9438b18d/comments/"
+  /// ```
+  comments_url: string;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// "https://gist.github.com/aa5a315d61ae9438b18d"
+  /// ```
+  html_url: string;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// "https://gist.github.com/aa5a315d61ae9438b18d.git"
+  /// ```
+  git_pull_url: string;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// "https://gist.github.com/aa5a315d61ae9438b18d.git"
+  /// ```
+  git_push_url: string;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// "2010-04-14T02:15:15Z"
+  /// ```
+  created_at: datetime;
+
+  /// ## Examples
+  ///
+  /// ```json
+  /// "2011-06-20T11:34:15Z"
+  /// ```
+  updated_at: datetime;
+
+  type File {
+    /// ## Examples
+    ///
+    /// ```json
+    /// 932
+    /// ```
+    size: u64;
+
+    /// ## Examples
+    ///
+    /// ```json
+    /// "https://gist.githubusercontent.com/raw/365370/8c4d2d43d178df44f4c03a7f2ac0ff512853564e/ring.erl"
+    /// ```
+    raw_url: string;
+
+    /// ## Examples
+    ///
+    /// ```json
+    /// "text/plain"
+    /// ```
+    _type: string;
+
+    truncated?: boolean;
+
+    /// ## Examples
+    ///
+    /// ```json
+    /// "Erlang"
+    /// ```
+    language?: string;
+  }
 }

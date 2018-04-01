@@ -35,6 +35,7 @@ use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
 
+const LIB: &str = "lib";
 const MOD: &str = "mod";
 const EXT: &str = "rs";
 const TYPE_SEP: &'static str = "_";

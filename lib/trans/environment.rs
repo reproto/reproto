@@ -391,7 +391,7 @@ impl Environment<CoreFlavor> {
         let file = match self.files.entry(new_package) {
             btree_map::Entry::Vacant(entry) => entry.insert(file),
             btree_map::Entry::Occupied(_) => {
-                return Err(format!("package already registered: {}", package).into());
+                return Ok(());
             }
         };
 

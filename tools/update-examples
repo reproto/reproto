@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+
+cli=$PWD/cli/Cargo.toml
+
+for d in examples/*-example; do
+    echo "Updating: $d"
+    cd $d && cargo run --manifest-path=$cli -- build
+done

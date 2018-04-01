@@ -33,6 +33,9 @@ suites:
 projects:
 	$(it-cmd) --project $(FILTER)
 
+update-examples:
+	@tools/update-examples
+
 update-suites:
 	$(it-cmd) --update --structure --check $(FILTER)
 

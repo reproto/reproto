@@ -64,6 +64,7 @@ impl ReqwestUtils {
         f.0.push({
             let mut t = Tokens::new();
 
+            push!(t, "#[derive(Debug)]");
             push!(t, "pub enum Error {");
 
             for &(ref ty, ref variant) in &errors {
@@ -105,6 +106,44 @@ impl ReqwestUtils {
                 t
             });
         }
+
+        // fmt::Display implementation for Error
+        f.0.push({
+            let mut t = Tokens::new();
+
+            let display = imported("std::fmt", "Display");
+            let formatter = imported("std::fmt", "Formatter");
+            let result = imported("std::fmt", "Result");
+
+            push!(t, "impl ", display, " for Error {");
+
+            t.nested_into(|t| {
+                push!(
+                    t,
+                    "fn fmt(&self, fmt: &mut ",
+                    formatter,
+                    ") -> ",
+                    result,
+                    " {"
+                );
+
+                t.nested_into(|t| {
+                    push!(t, "match *self {");
+
+                    for &(_, ref variant) in &errors {
+                        nested!(t, "Error::", variant.clone(), "(ref e) => e.fmt(fmt),");
+                    }
+
+                    push!(t, "}");
+                });
+
+                push!(t, "}");
+            });
+
+            push!(t, "}");
+
+            t
+        });
 
         f.0.push({
             let mut t = Tokens::new();
@@ -296,9 +335,7 @@ impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Constructor<'a, 'el> {
                     nested!(t, "None => ", url_ty.clone(), "::parse(", url, ")?,");
                     push!(t, "};");
                 }
-                None => {
-                    push!(t, "let url = Some(url);");
-                }
+                None => {}
             });
 
             t.push_into(|t| {

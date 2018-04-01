@@ -4,157 +4,208 @@ use _trait as t;
 pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "abstract")]
-  _abstract: Option<String>,
+  pub _abstract: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "alignof")]
-  _alignof: Option<String>,
+  pub _alignof: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "as")]
-  _as: Option<String>,
+  pub _as: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "become")]
-  _become: Option<String>,
+  pub _become: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "box")]
-  _box: Option<String>,
+  pub _box: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "break")]
-  _break: Option<String>,
+  pub _break: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "const")]
-  _const: Option<String>,
+  pub _const: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "continue")]
-  _continue: Option<String>,
+  pub _continue: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "crate")]
-  _crate: Option<String>,
+  pub _crate: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "do")]
-  _do: Option<String>,
+  pub _do: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "else")]
-  _else: Option<String>,
+  pub _else: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "enum")]
-  _enum: Option<String>,
+  pub _enum: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "extern")]
-  _extern: Option<String>,
+  pub _extern: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "false")]
-  _false: Option<String>,
+  pub _false: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "final")]
-  _final: Option<String>,
+  pub _final: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "fn")]
-  _fn: Option<String>,
+  pub _fn: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "for")]
-  _for: Option<String>,
+  pub _for: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "if")]
-  _if: Option<String>,
+  pub _if: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "impl")]
-  _impl: Option<String>,
+  pub _impl: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
-  imported: Option<t::Empty>,
+  pub imported: Option<t::Empty>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "in")]
-  _in: Option<String>,
+  pub _in: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "let")]
-  _let: Option<String>,
+  pub _let: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "loop")]
-  _loop: Option<String>,
+  pub _loop: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "macro")]
-  _macro: Option<String>,
+  pub _macro: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "match")]
-  _match: Option<String>,
+  pub _match: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "mod")]
-  _mod: Option<String>,
+  pub _mod: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "move")]
-  _move: Option<String>,
+  pub _move: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "mut")]
-  _mut: Option<String>,
+  pub _mut: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "offsetof")]
-  _offsetof: Option<String>,
+  pub _offsetof: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "override")]
-  _override: Option<String>,
+  pub _override: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "priv")]
-  _priv: Option<String>,
+  pub _priv: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "proc")]
-  _proc: Option<String>,
+  pub _proc: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "pub")]
-  _pub: Option<String>,
+  pub _pub: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "pure")]
-  _pure: Option<String>,
+  pub _pure: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "ref")]
-  _ref: Option<String>,
+  pub _ref: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "return")]
-  _return: Option<String>,
+  pub _return: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "self")]
-  _self: Option<String>,
+  pub _self: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "sizeof")]
-  _sizeof: Option<String>,
+  pub _sizeof: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "static")]
-  _static: Option<String>,
+  pub _static: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "struct")]
-  _struct: Option<String>,
+  pub _struct: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "super")]
-  _super: Option<String>,
+  pub _super: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "trait")]
-  _trait: Option<String>,
+  pub _trait: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "true")]
-  _true: Option<String>,
+  pub _true: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "type")]
-  _type: Option<String>,
+  pub _type: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "typeof")]
-  _typeof: Option<String>,
+  pub _typeof: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "unsafe")]
-  _unsafe: Option<String>,
+  pub _unsafe: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "unsized")]
-  _unsized: Option<String>,
+  pub _unsized: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "use")]
-  _use: Option<String>,
+  pub _use: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "virtual")]
-  _virtual: Option<String>,
+  pub _virtual: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "where")]
-  _where: Option<String>,
+  pub _where: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "while")]
-  _while: Option<String>,
+  pub _while: Option<String>,
+
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "yield")]
-  _yield: Option<String>,
+  pub _yield: Option<String>,
 }

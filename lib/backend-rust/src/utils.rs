@@ -8,7 +8,13 @@ impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Rust<'el>> for Comments<'el, S> {
         let mut t = Tokens::new();
 
         for c in self.0.iter() {
-            t.push(toks!["/// ", c.as_ref()]);
+            let line = c.as_ref();
+
+            if line.is_empty() {
+                t.push("///");
+            } else {
+                t.push(toks!["/// ", line]);
+            }
         }
 
         t

@@ -1,0 +1,13 @@
+paths = ["../src"]
+language = "rust"
+
+[presets.rust]
+
+[publish]
+"com.github" = {version = "3.0.0"}
+
+[packages]
+"com.github.service" = {version = "^3"}
+
+[modules.reqwest]
+[modules.chrono]
