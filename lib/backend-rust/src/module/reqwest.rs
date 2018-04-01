@@ -3,7 +3,7 @@
 use backend::{Initializer, PackageUtils};
 use core::errors::Result;
 use core::{self, Loc};
-use flavored::{RpEndpointHttp1, RpPackage, RpVersionedPackage, RustEndpoint};
+use flavored::{RpEndpointHttp1, RpPackage, RpServiceBody, RpVersionedPackage, RustEndpoint};
 use genco::rust::{imported, local};
 use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
 use std::rc::Rc;
@@ -204,60 +204,11 @@ impl ServiceCodegen for ReqwestService {
                 let mut t = Tokens::new();
 
                 // constructor.
-                t.nested({
-                    let option = local("Option");
-
-                    let mut t = Tokens::new();
-
-                    let mut args = Tokens::new();
-                    args.append(toks!["client: ", self.client.clone()]);
-
-                    match body.http.url {
-                        Some(_) => {
-                            args.append(toks![
-                                "url: ",
-                                option.with_arguments(vec![url_ty.clone()]),
-                            ]);
-                        }
-                        None => {
-                            args.append(toks!["url: ", url_ty.clone()]);
-                        }
-                    };
-
-                    let s = self.result.with_arguments(vec![local("Self")]);
-
-                    push!(t, "pub fn new(", args.join(", "), ") -> ", s, " {");
-
-                    t.nested({
-                        let mut t = Tokens::new();
-
-                        t.push_into(|t| match body.http.url {
-                            Some(ref url) => {
-                                let url = Loc::value(url).clone().quoted();
-
-                                push!(t, "let url = match url {");
-                                nested!(t, "Some(url) => url,");
-                                nested!(t, "None => ", url_ty, "::parse(", url, ")?,");
-                                push!(t, "};");
-                            }
-                            None => {
-                                push!(t, "let url = Some(url);");
-                            }
-                        });
-
-                        t.push_into(|t| {
-                            push!(t, "Ok(Self {");
-                            nested!(t, "client,");
-                            nested!(t, "url,");
-                            push!(t, "})");
-                        });
-
-                        t.join_line_spacing()
-                    });
-
-                    push!(t, "}");
-
-                    t
+                t.nested(Constructor {
+                    result: &self.result,
+                    client: &self.client,
+                    body,
+                    url_ty: &url_ty,
                 });
 
                 // endpoint methods.
@@ -294,6 +245,78 @@ impl ServiceCodegen for ReqwestService {
     }
 }
 
+/// Builds a constructor for the service struct.
+struct Constructor<'a, 'el: 'a> {
+    body: &'el RpServiceBody,
+    result: &'a Rust<'static>,
+    client: &'a Rust<'static>,
+    url_ty: &'a Rust<'static>,
+}
+
+impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Constructor<'a, 'el> {
+    fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
+        let Constructor {
+            body,
+            result,
+            client,
+            url_ty,
+            ..
+        } = self;
+
+        let option = local("Option");
+
+        let mut t = Tokens::new();
+
+        let mut args = Tokens::new();
+        args.append(toks!["client: ", client.clone()]);
+
+        match body.http.url {
+            Some(_) => {
+                args.append(toks!["url: ", option.with_arguments(vec![url_ty.clone()]),]);
+            }
+            None => {
+                args.append(toks!["url: ", url_ty.clone()]);
+            }
+        };
+
+        let s = result.with_arguments(vec![local("Self")]);
+
+        push!(t, "pub fn new(", args.join(", "), ") -> ", s, " {");
+
+        t.nested({
+            let mut t = Tokens::new();
+
+            t.push_into(|t| match body.http.url {
+                Some(ref url) => {
+                    let url = Loc::value(url).clone().quoted();
+
+                    push!(t, "let url = match url {");
+                    nested!(t, "Some(url) => url,");
+                    nested!(t, "None => ", url_ty.clone(), "::parse(", url, ")?,");
+                    push!(t, "};");
+                }
+                None => {
+                    push!(t, "let url = Some(url);");
+                }
+            });
+
+            t.push_into(|t| {
+                push!(t, "Ok(Self {");
+                nested!(t, "client,");
+                nested!(t, "url,");
+                push!(t, "})");
+            });
+
+            t.join_line_spacing()
+        });
+
+        push!(t, "}");
+
+        t
+    }
+}
+
+/// Build an endpoint method for the service struct.
 struct Endpoint<'a, 'el: 'a> {
     result: &'a Rust<'static>,
     path_encode: &'a Rust<'static>,
