@@ -1,0 +1,32 @@
+//! # Example of a service
+
+#[http(url = "http://example.com")]
+service MyService {
+    /// UNKNOWN
+    #[http(path = "/unknown/{id}")]
+    unknown(id: u32);
+
+    /// UNKNOWN
+    #[http(path = "/unknown-return/{id}")]
+    unknown_return(id: u32) -> ::Body;
+
+    /// UNKNOWN
+    #[http(path = "/unknown-argument/{id}")]
+    unknown_argument(request: ::Body, id: u32);
+
+    /// UNARY
+    #[http(path = "/unary/{id}")]
+    unary(request: ::Body, id: u32) -> ::Body;
+
+    /// SERVER_STREMAING (ignored for HTTP/1.1)
+    server_streaming(request: ::Body) -> stream ::Body;
+
+    /// CLIENT_STREAMING (ignored for HTTP/1.1)
+    client_streaming(request: stream ::Body) -> ::Body;
+
+    /// BIDI_STREAMING (ignored for HTTP/1.1)
+    bidi_streaming(request: stream ::Body) -> stream ::Body;
+
+    type Body {
+    }
+}

@@ -30,7 +30,7 @@ reproto-backend-reproto = {path = "../lib/backend-reproto", version = "0.3"}
 reproto-backend-rust = {path = "../lib/backend-rust", version = "0.3"}
 reproto-backend-swift = {path = "../lib/backend-swift", version = "0.3"}
 
-stdweb = "0.3"
+stdweb = "0.4"
 serde = "1"
 serde_json = "1"
 serde_derive = "1"

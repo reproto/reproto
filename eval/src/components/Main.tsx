@@ -64,6 +64,7 @@ const IMPORT_REPROTO: string = require("raw-loader!../static/import.reproto");
 const TYPE_REPROTO: string = require("raw-loader!../static/type.reproto");
 const TUPLE_REPROTO: string = require("raw-loader!../static/tuple.reproto");
 const INTERFACE_REPROTO: string = require("raw-loader!../static/interface.reproto");
+const SERVICE_REPROTO: string = require("raw-loader!../static/service.reproto");
 const DEFAULT_NEW_FILE_REPROTO: string = require("raw-loader!../static/default-new.reproto");
 const logo = require("../static/logo.256.png");
 
@@ -188,6 +189,10 @@ export class Main extends React.Component<MainProps, MainState> {
           content: INTERFACE_REPROTO,
         },
         {
+          package: "example.service",
+          content: SERVICE_REPROTO,
+        },
+        {
           package: "example.tuple",
           content: TUPLE_REPROTO,
         },
@@ -215,6 +220,7 @@ export class Main extends React.Component<MainProps, MainState> {
         },
         rust: {
           chrono: true,
+          reqwest: true,
         },
         csharp: {
           json_net: true,
@@ -797,6 +803,7 @@ export class Main extends React.Component<MainProps, MainState> {
         case "rust":
           settingsForm = <RustSettingsForm settings={settings.rust}
             onChrono={update => this.updateRust(rust => rust.chrono = update)}
+            onReqwest={update => this.updateRust(rust => rust.reqwest = update)}
             />;
           break;
         case "csharp":

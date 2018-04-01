@@ -106,6 +106,10 @@ impl Output {
                     modules.push(Box::new(rust::RustModule::Chrono));
                 }
 
+                if settings.rust.reqwest {
+                    modules.push(Box::new(rust::RustModule::Reqwest));
+                }
+
                 Box::new(rust::RustLang)
             }
             Output::JavaScript => Box::new(js::JsLang),
@@ -151,6 +155,7 @@ js_deserializable!(SwiftSettings);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RustSettings {
     chrono: bool,
+    reqwest: bool,
 }
 
 js_serializable!(RustSettings);
