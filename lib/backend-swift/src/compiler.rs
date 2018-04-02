@@ -2,8 +2,7 @@
 
 use backend::{PackageProcessor, PackageUtils};
 use core::errors::*;
-use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpTupleBody, RpType,
-                     RpTypeBody};
+use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpTupleBody, RpType, RpTypeBody};
 use core::{CoreFlavor, Handle, Loc};
 use genco::swift::{self, Swift};
 use genco::{IntoTokens, Tokens};

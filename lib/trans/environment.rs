@@ -1,8 +1,8 @@
 use ast::{self, UseDecl};
 use core::errors::{Error, Result};
-use core::{translator, Context, CoreFlavor, Flavor, Loc, Object, PathObject, Range, Resolved,
-           Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage, RpVersionedPackage,
-           Translate, Translator, TypeTranslator, WithPos};
+use core::{translator, Context, CoreFlavor, CoreFlavor2, Flavor, Loc, Object, PathObject, Range,
+           Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
+           RpVersionedPackage, Translate, Translator, TypeTranslator, WithPos};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
@@ -117,9 +117,13 @@ where
 
 impl Environment<CoreFlavor> {
     /// Build a new translator.
-    pub fn translator<T: 'static>(&self, type_translator: T) -> Result<translator::Context<T>>
+    pub fn translator<T: 'static, F: 'static>(
+        &self,
+        type_translator: T,
+    ) -> Result<translator::Context<T>>
     where
-        T: TypeTranslator<Source = CoreFlavor>,
+        T: TypeTranslator<Source = CoreFlavor, Target = F>,
+        F: Flavor,
     {
         Ok(translator::Context {
             type_translator: type_translator,
@@ -158,9 +162,23 @@ impl Environment<CoreFlavor> {
         Ok(Translated::new(self.package_prefix, decls, files))
     }
 
+    /// Translation to simplified packages.
+    fn packages(&self) -> HashMap<RpVersionedPackage, RpPackage> {
+        panic!("not implemented yet")
+    }
+
     /// Translate without changing the flavor.
     pub fn translate_default(self) -> Result<Translated<CoreFlavor>> {
-        let ctx = self.translator(translator::CoreTypeTranslator)?;
+        let packages = translator::CorePackageTranslator::new();
+        let ctx = self.translator(translator::CoreTypeTranslator::new(packages))?;
+        self.translate(ctx)
+    }
+
+    /// Translate without changing the flavor.
+    pub fn translate_versioned(self) -> Result<Translated<CoreFlavor2>> {
+        let packages = self.packages();
+        let packages = translator::Core2PackageTranslator::new(packages);
+        let ctx = self.translator(translator::CoreTypeTranslator::new(packages))?;
         self.translate(ctx)
     }
 
