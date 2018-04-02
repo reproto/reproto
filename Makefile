@@ -2,6 +2,10 @@
 .PHONY: suites update-suites
 .PHONY: projects update-projects
 
+ifneq ($(filter all it,$(DEBUG)),)
+IT_ARGS += --debug
+endif
+
 FILTER ?=
 
 all: suites projects
@@ -14,7 +18,7 @@ tests: dumps
 dumps: lib/backend-doc/dumps/syntaxdump lib/backend-doc/dumps/themedump
 
 dumps-cmd := cargo run --bin reproto-pack --manifest-path=$(CURDIR)/tools/pack/Cargo.toml --
-it-cmd := cargo run --manifest-path=$(CURDIR)/tools/it/Cargo.toml -- --root it
+it-cmd := cargo run --manifest-path=$(CURDIR)/tools/it/Cargo.toml -- $(IT_ARGS) --root it
 
 lib/backend-doc/dumps/syntaxdump:
 	$(dumps-cmd) --build-syntax=$(@)

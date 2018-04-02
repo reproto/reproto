@@ -158,10 +158,12 @@ impl<'el> Compiler<'el> {
 }
 
 impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
+    const SHOULD_REPACKAGE: bool = true;
+
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
 
-    fn package_utils(&self) -> &PackageUtils {
+    fn package_utils(&self) -> &PackageUtils<CoreFlavor> {
         self.package_utils.as_ref()
     }
 

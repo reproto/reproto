@@ -2,15 +2,15 @@
 
 #![allow(unused)]
 
-use RustPackageUtils;
 use backend::PackageUtils;
 use core::errors::Result;
-use core::{self, CoreFlavor, Flavor, Loc, Translate, Translator, TypeTranslator};
+use core::{self, Core2PackageTranslator, CoreFlavor, Flavor, Loc, PackageTranslator, Translate,
+           Translator, TypeTranslator};
 use genco::rust::{imported, local};
 use genco::{Cons, Rust};
 use std::ops::Deref;
 use std::rc::Rc;
-use {SCOPE_SEP, TYPE_SEP};
+use {RustPackageUtils, SCOPE_SEP, TYPE_SEP};
 
 #[derive(Debug, Clone)]
 pub struct RustEndpoint {
@@ -33,11 +33,12 @@ impl Flavor for RustFlavor {
     type Type = Rust<'static>;
     type Field = core::RpField<RustFlavor>;
     type Endpoint = RustEndpoint;
-    type Package = core::RpVersionedPackage;
+    type Package = core::RpPackage;
 }
 
 /// Responsible for translating RpType -> Rust type.
 pub struct RustTypeTranslator {
+    package_translator: Core2PackageTranslator,
     package_utils: Rc<RustPackageUtils>,
     map: Rust<'static>,
     json_value: Rust<'static>,
@@ -45,8 +46,13 @@ pub struct RustTypeTranslator {
 }
 
 impl RustTypeTranslator {
-    pub fn new(package_utils: Rc<RustPackageUtils>, datetime: Option<Rust<'static>>) -> Self {
+    pub fn new(
+        package_translator: Core2PackageTranslator,
+        package_utils: Rc<RustPackageUtils>,
+        datetime: Option<Rust<'static>>,
+    ) -> Self {
         Self {
+            package_translator,
             package_utils,
             map: imported("std::collections", "HashMap"),
             json_value: imported("serde_json", "Value").alias("json"),
@@ -119,7 +125,7 @@ impl TypeTranslator for RustTypeTranslator {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
 
         if let Some(prefix) = name.prefix {
-            let package_name = self.package_utils.package(&name.package).join("::");
+            let package_name = name.package.join("::");
             return Ok(imported(package_name, ident).alias(prefix));
         }
 
@@ -151,8 +157,9 @@ impl TypeTranslator for RustTypeTranslator {
         Ok(RustEndpoint { endpoint, http1 })
     }
 
-    fn translate_package(&self, source: RpVersionedPackage) -> Result<RpVersionedPackage> {
-        Ok(source)
+    fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
+        let package = self.package_translator.translate_package(source)?;
+        Ok(self.package_utils.package(&package))
     }
 }
 

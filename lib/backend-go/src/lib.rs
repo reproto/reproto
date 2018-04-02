@@ -275,7 +275,7 @@ impl GoPackageUtils {
     }
 }
 
-impl PackageUtils for GoPackageUtils {
+impl PackageUtils<CoreFlavor> for GoPackageUtils {
     fn version_package(&self, input: &Version) -> String {
         input
             .to_string()

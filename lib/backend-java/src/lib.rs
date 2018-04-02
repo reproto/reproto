@@ -27,7 +27,7 @@ use codegen::Configure;
 use compiler::Compiler;
 use core::errors::Result;
 use core::{Context, CoreFlavor, Loc, Pos, RpField, RpType, Translator};
-use flavored::RpPackage;
+use flavored::{JavaFlavor, RpPackage};
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use naming::Naming;
 use options::Options;
@@ -194,7 +194,7 @@ impl JavaPackageUtils {
     }
 }
 
-impl PackageUtils for JavaPackageUtils {
+impl PackageUtils<JavaFlavor> for JavaPackageUtils {
     fn package_prefix(&self) -> Option<&RpPackage> {
         self.package_prefix.as_ref()
     }

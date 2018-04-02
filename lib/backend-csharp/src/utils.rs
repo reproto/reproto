@@ -20,7 +20,7 @@ pub struct Utils {
 
 impl Processor for Utils {}
 
-impl PackageUtils for Utils {
+impl PackageUtils<CoreFlavor> for Utils {
     fn package_prefix(&self) -> Option<&RpPackage> {
         self.env.package_prefix()
     }

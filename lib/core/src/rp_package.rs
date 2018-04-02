@@ -1,9 +1,9 @@
-use super::RpVersionedPackage;
 use serde;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem;
 use std::slice;
+use {AsPackage, RpVersionedPackage, Version};
 
 /// Iterator over parts in a package.
 pub struct Parts<'a> {
@@ -33,6 +33,15 @@ impl<'a> Parts<'a> {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpPackage {
     parts: Vec<String>,
+}
+
+impl AsPackage for RpPackage {
+    fn as_package<V>(&self, _: V) -> RpPackage
+    where
+        V: FnOnce(&Version) -> String,
+    {
+        return self.clone();
+    }
 }
 
 impl RpPackage {

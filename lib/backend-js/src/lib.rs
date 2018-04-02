@@ -167,7 +167,7 @@ impl JsPackageUtils {
     }
 }
 
-impl PackageUtils for JsPackageUtils {
+impl PackageUtils<CoreFlavor> for JsPackageUtils {
     fn package_prefix(&self) -> Option<&RpPackage> {
         self.package_prefix.as_ref()
     }

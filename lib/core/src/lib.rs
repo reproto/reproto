@@ -65,7 +65,7 @@ mod with_pos;
 pub use self::attributes::{Attributes, Selection};
 pub use self::context::{Context, ContextItem, Reporter};
 pub use self::error_pos::ErrorPos;
-pub use self::flavor::{CoreFlavor, CoreFlavor2, Flavor};
+pub use self::flavor::{AsPackage, CoreFlavor, CoreFlavor2, Flavor};
 pub use self::for_each_loc::ForEachLoc;
 pub use self::fs::{CapturingFilesystem, Filesystem, Handle, RealFilesystem};
 pub use self::loc::Loc;
@@ -102,6 +102,7 @@ pub use self::rp_type_body::RpTypeBody;
 pub use self::rp_value::RpValue;
 pub use self::rp_variant::RpVariant;
 pub use self::rp_versioned_package::RpVersionedPackage;
-pub use self::translator::{Translate, Translator, TypeTranslator};
+pub use self::translator::{Core2PackageTranslator, PackageTranslator, Translate, Translator,
+                           TypeTranslator};
 pub use self::with_pos::WithPos;
 pub use semver::{Range, Version};

@@ -131,10 +131,12 @@ where
 pub struct Reproto {
     /// Path to binary.
     binary: PathBuf,
+    /// Print debug output.
+    debug: bool,
 }
 
 impl Reproto {
-    pub fn from_project(cli: PathBuf) -> Result<Reproto> {
+    pub fn from_project(cli: PathBuf, debug: bool) -> Result<Reproto> {
         let mut cmd = Command::new("cargo");
 
         cmd.arg("build");
@@ -167,7 +169,7 @@ impl Reproto {
                     .ok_or_else(|| format_err!("expected one file name"))?;
 
                 let binary = Path::new(&binary).to_path_buf();
-                return Ok(Self::new(binary));
+                return Ok(Self::new(binary, debug));
             }
         }
 
@@ -193,8 +195,8 @@ impl Reproto {
         }
     }
 
-    pub fn new(binary: PathBuf) -> Self {
-        Self { binary: binary }
+    pub fn new(binary: PathBuf, debug: bool) -> Self {
+        Self { binary, debug }
     }
 
     /// Build a reproto project.
@@ -238,11 +240,20 @@ impl Reproto {
 
         cmd.args(manifest.extra);
 
+        if self.debug {
+            println!("reproto: {:?}", cmd);
+        }
+
         let output = cmd.output()
             .map_err(|e| format_err!("bad exit status: {}", e))?;
 
+        let stdout = str::from_utf8(&output.stdout)?;
+
+        if self.debug && !stdout.is_empty() {
+            println!("reproto (stdout): {}", stdout);
+        }
+
         if !output.status.success() {
-            let stdout = str::from_utf8(&output.stdout)?;
             let stderr = str::from_utf8(&output.stderr)?;
 
             bail!(

@@ -34,7 +34,7 @@ pub struct Compiler {
 
 impl Processor for Compiler {}
 
-impl PackageUtils for Compiler {
+impl PackageUtils<CoreFlavor> for Compiler {
     fn package_prefix(&self) -> Option<&RpPackage> {
         self.env.package_prefix()
     }

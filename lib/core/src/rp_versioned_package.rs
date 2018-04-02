@@ -1,8 +1,8 @@
 //! A versioned package declaration
 
-use super::{RpPackage, RpPackageFormat, Version};
 use std::collections::HashMap;
 use std::fmt;
+use {AsPackage, RpPackage, RpPackageFormat, Version};
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpVersionedPackage {
@@ -11,18 +11,11 @@ pub struct RpVersionedPackage {
     pub version: Option<Version>,
 }
 
-impl RpVersionedPackage {
-    pub fn new(package: RpPackage, version: Option<Version>) -> RpVersionedPackage {
-        RpVersionedPackage {
-            package: package,
-            version: version,
-        }
-    }
-
+impl AsPackage for RpVersionedPackage {
     /// Convert into a package by piping the version through the provided function.
-    pub fn as_package<F>(&self, version_fn: F) -> RpPackage
+    fn as_package<V>(&self, version_fn: V) -> RpPackage
     where
-        F: FnOnce(&Version) -> String,
+        V: FnOnce(&Version) -> String,
     {
         let mut parts = Vec::new();
 
@@ -33,6 +26,15 @@ impl RpVersionedPackage {
         }
 
         RpPackage::new(parts)
+    }
+}
+
+impl RpVersionedPackage {
+    pub fn new(package: RpPackage, version: Option<Version>) -> RpVersionedPackage {
+        RpVersionedPackage {
+            package: package,
+            version: version,
+        }
     }
 
     pub fn without_version(self) -> RpVersionedPackage {

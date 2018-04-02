@@ -3,8 +3,8 @@
 use backend::{PackageProcessor, PackageUtils};
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, RelativePath, RelativePathBuf};
-use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody,
-               RpTypeBody, RpVersionedPackage, RustFlavor};
+use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
+               RpTupleBody, RpTypeBody, RustFlavor};
 use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
 use rust_file_spec::RustFileSpec;
 use std::collections::{BTreeMap, BTreeSet};
@@ -163,14 +163,13 @@ impl<'el> Compiler<'el> {
         self.write_files(files)
     }
 
-    fn write_mod_files(&self, files: &BTreeMap<RpVersionedPackage, RustFileSpec>) -> Result<()> {
+    fn write_mod_files(&self, files: &BTreeMap<RpPackage, RustFileSpec>) -> Result<()> {
         let mut packages: BTreeMap<RelativePathBuf, BTreeSet<String>> = BTreeMap::new();
         let mut root_names = BTreeSet::new();
 
-        for (key, _) in files {
+        for (package, _) in files {
             let mut current = RelativePathBuf::new();
 
-            let package = self.package_utils.package(key);
             let mut it = package.parts().peekable();
 
             if let Some(root) = it.peek() {
@@ -236,7 +235,7 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
     type Out = RustFileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, RustFlavor>;
 
-    fn package_utils(&self) -> &PackageUtils {
+    fn package_utils(&self) -> &PackageUtils<RustFlavor> {
         self.package_utils.as_ref()
     }
 

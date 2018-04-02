@@ -156,6 +156,7 @@ fn try_main() -> Result<()> {
     let mut do_checks = false;
     let mut do_structures = false;
     let mut do_project = false;
+    let mut debug = false;
     let mut action = Action::Verify;
     let mut filters = HashSet::new();
 
@@ -163,6 +164,9 @@ fn try_main() -> Result<()> {
         match opt.as_str() {
             "--update" => {
                 action = Action::Update;
+            }
+            "--debug" => {
+                debug = true;
             }
             "--check" => {
                 do_checks = true;
@@ -189,7 +193,7 @@ fn try_main() -> Result<()> {
 
     let cli = parent.join("cli");
 
-    let reproto = Reproto::from_project(cli)?;
+    let reproto = Reproto::from_project(cli, debug)?;
 
     let project_languages = if do_project { detect() } else { HashSet::new() };
 

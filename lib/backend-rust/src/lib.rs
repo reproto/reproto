@@ -25,7 +25,7 @@ use backend::{Initializer, PackageUtils};
 use compiler::Compiler;
 use core::errors::*;
 use core::{Context, CoreFlavor};
-use flavored::{RpPackage, RpVersionedPackage};
+use flavored::{RpPackage, RustFlavor};
 use genco::{Cons, Rust, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use rust_file_spec::RustFileSpec;
@@ -151,7 +151,7 @@ pub struct Options {
 }
 
 pub struct Root<'a, 'el: 'a> {
-    files: &'a mut BTreeMap<RpVersionedPackage, RustFileSpec<'el>>,
+    files: &'a mut BTreeMap<RpPackage, RustFileSpec<'el>>,
 }
 
 pub trait RootCodegen {
@@ -206,7 +206,7 @@ impl RustPackageUtils {
     }
 }
 
-impl PackageUtils for RustPackageUtils {
+impl PackageUtils<RustFlavor> for RustPackageUtils {
     fn package_prefix(&self) -> Option<&RpPackage> {
         self.package_prefix.as_ref()
     }
@@ -218,7 +218,10 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(package_utils.clone(), modules)?;
 
+    let packages = env.packages()?;
+
     let translator = env.translator(flavored::RustTypeTranslator::new(
+        packages,
         package_utils.clone(),
         options.datetime.clone(),
     ))?;

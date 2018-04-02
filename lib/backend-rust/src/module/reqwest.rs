@@ -3,8 +3,7 @@
 use backend::{Initializer, PackageUtils};
 use core::errors::Result;
 use core::{self, Loc};
-use flavored::{RpEndpointHttp1, RpPackage, RpPathSpec, RpServiceBody, RpVersionedPackage,
-               RustEndpoint};
+use flavored::{RpEndpointHttp1, RpPackage, RpPathSpec, RpServiceBody, RustEndpoint};
 use genco::rust::{imported, local};
 use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
 use std::rc::Rc;
@@ -25,12 +24,11 @@ impl Initializer for Module {
     fn initialize(&self, options: &mut Options) -> Result<()> {
         let package_utils = options.package_utils.clone();
 
-        let utils_package = RpPackage::new(vec!["reproto".to_string()]);
-        let utils_package = RpVersionedPackage::new(utils_package, None);
+        let utils_package = package_utils.package(&RpPackage::new(vec!["reproto".to_string()]));
 
-        let utils_pkg = Rc::new(package_utils.package(&utils_package).join(SCOPE_SEP));
-        let result = imported(utils_pkg.clone(), "Result");
-        let path_encode = imported(utils_pkg.clone(), "PathEncode");
+        let imported_utils_package = Rc::new(utils_package.join(SCOPE_SEP));
+        let result = imported(imported_utils_package.clone(), "Result");
+        let path_encode = imported(imported_utils_package.clone(), "PathEncode");
 
         options
             .service
@@ -45,11 +43,11 @@ impl Initializer for Module {
 }
 
 struct ReqwestUtils {
-    utils_package: RpVersionedPackage,
+    utils_package: RpPackage,
 }
 
 impl ReqwestUtils {
-    pub fn new(utils_package: RpVersionedPackage) -> Self {
+    pub fn new(utils_package: RpPackage) -> Self {
         Self { utils_package }
     }
 
@@ -188,8 +186,7 @@ impl ReqwestUtils {
 impl RootCodegen for ReqwestUtils {
     fn generate(&self, root: Root) -> Result<()> {
         let Root { files, .. } = root;
-        let package = self.utils_package.clone();
-        files.insert(package, self.reproto()?);
+        files.insert(self.utils_package.clone(), self.reproto()?);
         Ok(())
     }
 }

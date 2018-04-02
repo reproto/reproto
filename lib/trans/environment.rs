@@ -1,8 +1,9 @@
 use ast::{self, UseDecl};
 use core::errors::{Error, Result};
-use core::{translator, Context, CoreFlavor, CoreFlavor2, Flavor, Loc, Object, PathObject, Range,
-           Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
-           RpVersionedPackage, Translate, Translator, TypeTranslator, WithPos};
+use core::{translator, AsPackage, Context, CoreFlavor, CoreFlavor2, Flavor, Loc, Object,
+           PathObject, Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
+           RpRequiredPackage, RpVersionedPackage, Translate, Translator, TypeTranslator, Version,
+           WithPos};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
@@ -113,6 +114,66 @@ where
             ..self
         }
     }
+
+    /// Identify if a character is unsafe for use in a package name.
+    fn package_version_unsafe(c: char) -> bool {
+        match c {
+            '.' | '-' | '~' => true,
+            _ => false,
+        }
+    }
+
+    /// Default strategy for building the version package.
+    fn version_package(version: &Version, level: usize, random: &str) -> String {
+        let mut parts = String::new();
+
+        parts.push_str("v");
+        parts.push_str(&version.major.to_string());
+
+        if level > 0 {
+            parts.push_str("_");
+            parts.push_str(&version.minor.to_string());
+        }
+
+        if level > 1 {
+            parts.push_str("_");
+            parts.push_str(&version.patch.to_string());
+        }
+
+        if level > 2 {
+            for p in &version.pre {
+                parts.push_str("_");
+                parts.push_str(&p.to_string().replace(Self::package_version_unsafe, "_"));
+            }
+        }
+
+        if level > 3 {
+            for b in &version.build {
+                parts.push_str("_");
+                parts.push_str(&b.to_string().replace(Self::package_version_unsafe, "_"));
+            }
+        }
+
+        if level > 4 {
+            parts.push_str("_");
+            parts.push_str(random);
+        }
+
+        parts
+    }
+
+    /// Build the full package of a versioned package.
+    ///
+    /// This uses a relatively safe strategy for encoding the version number. This can be adjusted
+    /// by overriding `version_package`.
+    fn package_with_level(
+        &self,
+        package: &RpVersionedPackage,
+        level: usize,
+        random: &str,
+    ) -> RpPackage {
+        package.as_package(|version| Self::version_package(version, level, random))
+    }
 }
 
 impl Environment<CoreFlavor> {
@@ -163,8 +224,46 @@ impl Environment<CoreFlavor> {
     }
 
     /// Translation to simplified packages.
-    fn packages(&self) -> HashMap<RpVersionedPackage, RpPackage> {
-        panic!("not implemented yet")
+    pub fn packages(&self) -> Result<translator::Core2PackageTranslator> {
+        let mut queue = self.files
+            .keys()
+            .cloned()
+            .map(|p| (p, 0))
+            .collect::<Vec<_>>();
+
+        let mut results = HashMap::new();
+
+        while !queue.is_empty() {
+            let mut candidates = HashMap::new();
+
+            for (count, (package, level)) in queue.drain(..).enumerate() {
+                let random = count.to_string();
+                let converted = self.package_with_level(&package, level, &random);
+
+                candidates
+                    .entry(converted)
+                    .or_insert_with(Vec::new)
+                    .push((package, level + 1));
+            }
+
+            for (converted, partial) in candidates {
+                if partial.len() > 1 {
+                    // push back into the queue for another round.
+                    for p in partial {
+                        queue.push(p);
+                    }
+
+                    continue;
+                }
+
+                if let Some((original, _)) = partial.into_iter().next() {
+                    results.insert(original, converted);
+                }
+            }
+        }
+
+        let packages = translator::Core2PackageTranslator::new(results);
+        Ok(packages)
     }
 
     /// Translate without changing the flavor.
@@ -176,8 +275,7 @@ impl Environment<CoreFlavor> {
 
     /// Translate without changing the flavor.
     pub fn translate_versioned(self) -> Result<Translated<CoreFlavor2>> {
-        let packages = self.packages();
-        let packages = translator::Core2PackageTranslator::new(packages);
+        let packages = self.packages()?;
         let ctx = self.translator(translator::CoreTypeTranslator::new(packages))?;
         self.translate(ctx)
     }

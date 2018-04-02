@@ -317,7 +317,7 @@ impl SwiftPackageUtils {
     }
 }
 
-impl PackageUtils for SwiftPackageUtils {
+impl PackageUtils<CoreFlavor> for SwiftPackageUtils {
     fn package_prefix(&self) -> Option<&RpPackage> {
         self.package_prefix.as_ref()
     }

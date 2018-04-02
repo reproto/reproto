@@ -1,6 +1,6 @@
 use core::errors::*;
 use core::{Flavor, Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
-           RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, RpVersionedPackage, WithPos};
+           RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
 use std::collections::BTreeMap;
 use std::io::Write;
 use {IntoBytes, PackageUtils};
@@ -8,13 +8,17 @@ use {IntoBytes, PackageUtils};
 pub trait PackageProcessor<'el, F: 'static>
 where
     Self: 'el + Sized,
-    F: Flavor<Package = RpVersionedPackage>,
+    F: Flavor,
 {
+    /// Support for backwards compatibility, only repackage backends which do not do package
+    /// translation with prefixing.
+    const SHOULD_REPACKAGE: bool = false;
+
     type Out: Default + IntoBytes<Self>;
     type DeclIter: Iterator<Item = &'el RpDecl<F>>;
 
     /// Access the package utils.
-    fn package_utils(&self) -> &PackageUtils;
+    fn package_utils(&self) -> &PackageUtils<F>;
 
     /// Access the extension for processing.
     fn ext(&self) -> &str;
@@ -113,7 +117,11 @@ where
         let package_utils = self.package_utils();
 
         for (package, out) in files {
-            let package = package_utils.package(&package);
+            let package = match Self::SHOULD_REPACKAGE {
+                true => package_utils.package(&package),
+                false => package_utils.translate(&package),
+            };
+
             let full_path = self.setup_module_path(&package)?;
 
             debug!("+module: {}", full_path.display());

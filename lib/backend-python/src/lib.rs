@@ -171,7 +171,7 @@ impl PythonPackageUtils {
     }
 }
 
-impl PackageUtils for PythonPackageUtils {
+impl PackageUtils<CoreFlavor> for PythonPackageUtils {
     fn package_prefix(&self) -> Option<&RpPackage> {
         self.package_prefix.as_ref()
     }
