@@ -1,6 +1,7 @@
 //! Model for declarations
 
 use errors::Result;
+use serde::Serialize;
 use std::fmt;
 use std::vec;
 use {Flavor, Loc, Pos, RpEnumBody, RpInterfaceBody, RpName, RpReg, RpServiceBody, RpSubType,
@@ -26,8 +27,7 @@ where
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
-#[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: \
-                 ::serde::Serialize")]
+#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize")]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpNamed<'a, F: 'static>
 where
@@ -38,7 +38,7 @@ where
     Interface(&'a Loc<RpInterfaceBody<F>>),
     SubType(&'a Loc<RpSubType<F>>),
     Enum(&'a Loc<RpEnumBody<F>>),
-    EnumVariant(&'a Loc<RpVariant>),
+    EnumVariant(&'a Loc<RpVariant<F>>),
     Service(&'a Loc<RpServiceBody<F>>),
 }
 
@@ -47,7 +47,7 @@ where
     F: Flavor,
 {
     /// Get the name of the named element.
-    pub fn name(&self) -> &RpName {
+    pub fn name(&self) -> &RpName<F> {
         use self::RpNamed::*;
 
         match *self {
@@ -78,8 +78,7 @@ where
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: \
-                 ::serde::Serialize")]
+#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize")]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpDecl<F: 'static>
 where
@@ -126,7 +125,7 @@ where
         }
     }
 
-    pub fn name(&self) -> &RpName {
+    pub fn name(&self) -> &RpName<F> {
         use self::RpDecl::*;
 
         match *self {
@@ -151,7 +150,7 @@ where
     }
 
     /// Convert a declaration into its registered types.
-    pub fn to_reg(&self) -> Vec<(&RpName, &Pos, RpReg)> {
+    pub fn to_reg(&self) -> Vec<(&RpName<F>, &Pos, RpReg)> {
         use self::RpDecl::*;
 
         let mut out = Vec::new();

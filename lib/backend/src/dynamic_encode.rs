@@ -6,10 +6,10 @@ use core::{Flavor, RpType};
 use dynamic_converter::DynamicConverter;
 use genco::Tokens;
 
-pub trait DynamicEncode<'el, F>
+pub trait DynamicEncode<'el, F: 'static>
 where
     Self: DynamicConverter<'el, F>,
-    F: Flavor<Type = RpType>,
+    F: Flavor<Type = RpType<F>>,
 {
     fn name_encode(
         &self,
@@ -77,10 +77,10 @@ where
 }
 
 /// Dynamic encode is a valid decoding mechanism
-impl<'el, T, F> BaseEncode<'el, F> for T
+impl<'el, T, F: 'static> BaseEncode<'el, F> for T
 where
     T: DynamicEncode<'el, F>,
-    F: Flavor<Type = RpType>,
+    F: Flavor<Type = RpType<F>>,
 {
     fn base_encode(
         &self,

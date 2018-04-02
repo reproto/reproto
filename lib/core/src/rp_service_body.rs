@@ -27,13 +27,15 @@ where
     fn translate(self, translator: &T) -> Result<RpServiceBody<T::Target>> {
         translator.visit(&self.name)?;
 
+        let name = self.name.translate(translator)?;
+
         let endpoints = self.endpoints
             .into_iter()
             .map(|e| Loc::and_then(e, |e| translator.translate_endpoint(e)))
             .collect::<Result<Vec<_>>>()?;
 
         Ok(RpServiceBody {
-            name: self.name,
+            name: name,
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(translator)?,

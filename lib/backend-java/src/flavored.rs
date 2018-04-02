@@ -89,13 +89,14 @@ impl<'el> JavaField<'el> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct JavaFlavor;
 
 impl Flavor for JavaFlavor {
     type Type = Java<'static>;
     type Field = JavaField<'static>;
     type Endpoint = JavaEndpoint<'static>;
+    type Package = core::RpVersionedPackage;
 }
 
 /// Responsible for translating RpType -> Java type.
@@ -253,6 +254,10 @@ impl TypeTranslator for JavaTypeTranslator {
             arguments: arguments,
             http1: http1,
         });
+    }
+
+    fn translate_package(&self, source: RpVersionedPackage) -> Result<RpVersionedPackage> {
+        Ok(source)
     }
 }
 

@@ -5,10 +5,10 @@ use core::errors::*;
 use core::{Flavor, RpType};
 use genco::Tokens;
 
-pub trait BaseDecode<'el, F>
+pub trait BaseDecode<'el, F: 'static>
 where
     Self: Converter<'el, F>,
-    F: Flavor<Type = RpType>,
+    F: Flavor<Type = RpType<F>>,
 {
     fn base_decode(
         &self,

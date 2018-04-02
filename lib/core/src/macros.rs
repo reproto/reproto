@@ -2,9 +2,9 @@
 macro_rules! decl_body {
     (pub struct $name:ident<$f:ident> { $($rest:tt)* }) => {
         #[derive(Debug, Clone, Serialize)]
-        #[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: ::serde::Serialize")]
+        #[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: ::serde::Serialize, F::Package: ::serde::Serialize")]
         pub struct $name<$f: 'static> where $f: $crate::flavor::Flavor {
-            pub name: $crate::rp_name::RpName,
+            pub name: $crate::rp_name::RpName<$f>,
             pub ident: String,
             pub comment: Vec<String>,
             pub decls: Vec<$crate::rp_decl::RpDecl<$f>>,
@@ -40,16 +40,16 @@ macro_rules! decl_flavor {
         pub type RpChannel = $source::RpChannel<$flavor>;
         pub type RpEnumOrdinal = $source::RpEnumOrdinal;
         pub type RpEnumType = $source::RpEnumType;
-        pub type RpName = $source::RpName;
+        pub type RpName = $source::RpName<$flavor>;
         pub type RpNumber = $source::RpNumber;
         pub type RpPackage = $source::RpPackage;
         pub type RpRequiredPackage = $source::RpRequiredPackage;
         pub type RpServiceBody = $source::RpServiceBody<$flavor>;
         pub type RpServiceBodyHttp = $source::RpServiceBodyHttp;
         pub type RpSubTypeStrategy = $source::RpSubTypeStrategy;
-        pub type RpType = $source::RpType;
+        pub type RpType = $source::RpType<$flavor>;
         pub type RpValue = $source::RpValue;
-        pub type RpVariant = $source::RpVariant;
+        pub type RpVariant = $source::RpVariant<$flavor>;
         pub type RpVersionedPackage = $source::RpVersionedPackage;
     };
 }

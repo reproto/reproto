@@ -1,11 +1,16 @@
 //! Type of a model.
 
-use super::{RpEnumType, RpName};
+use serde::Serialize;
 use std::fmt;
+use {CoreFlavor, Flavor, RpEnumType, RpName};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(bound = "F::Package: Serialize")]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum RpType {
+pub enum RpType<F: 'static>
+where
+    F: Flavor,
+{
     Double,
     Float,
     Signed {
@@ -21,18 +26,21 @@ pub enum RpType {
     Bytes,
     Any,
     Name {
-        name: RpName,
+        name: RpName<F>,
     },
     Array {
-        inner: Box<RpType>,
+        inner: Box<RpType<F>>,
     },
     Map {
-        key: Box<RpType>,
-        value: Box<RpType>,
+        key: Box<RpType<F>>,
+        value: Box<RpType<F>>,
     },
 }
 
-impl RpType {
+impl<F: 'static> RpType<F>
+where
+    F: Flavor,
+{
     /// Convert to an enum variant type.
     pub fn as_enum_type(&self) -> Option<RpEnumType> {
         use self::RpType::*;
@@ -43,22 +51,10 @@ impl RpType {
         }
     }
 
-    /// Localize type.
-    ///
-    /// Strips version of any type which is _not_ imported.
-    pub fn localize(self) -> RpType {
-        self.with_name(RpName::localize)
-    }
-
-    /// Strip version component for any type.
-    pub fn without_version(self) -> RpType {
-        self.with_name(RpName::without_version)
-    }
-
     /// Modify any name components with the given operation.
-    fn with_name<F>(self, f: F) -> RpType
+    fn with_name<M>(self, f: M) -> Self
     where
-        F: Clone + Fn(RpName) -> RpName,
+        M: Clone + Fn(RpName<F>) -> RpName<F>,
     {
         use self::RpType::*;
 
@@ -76,7 +72,24 @@ impl RpType {
     }
 }
 
-impl fmt::Display for RpType {
+impl RpType<CoreFlavor> {
+    /// Localize type.
+    ///
+    /// Strips version of any type which is _not_ imported.
+    pub fn localize(self) -> Self {
+        self.with_name(RpName::localize)
+    }
+
+    /// Strip version component for any type.
+    pub fn without_version(self) -> Self {
+        self.with_name(RpName::without_version)
+    }
+}
+
+impl<F: 'static> fmt::Display for RpType<F>
+where
+    F: Flavor,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::RpType::*;
 

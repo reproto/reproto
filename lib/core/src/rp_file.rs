@@ -1,12 +1,12 @@
 //! File declarations
 
 use errors::Result;
+use serde::Serialize;
 use std::collections::LinkedList;
 use {Flavor, RpDecl, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: \
-                 ::serde::Serialize")]
+#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize")]
 pub struct RpFile<F: 'static>
 where
     F: Flavor,

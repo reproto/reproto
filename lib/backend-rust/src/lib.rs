@@ -221,7 +221,7 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
     let translator = env.translator(flavored::RustTypeTranslator::new(
         package_utils.clone(),
         options.datetime.clone(),
-    ));
+    ))?;
     let env = env.translate(translator)?;
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;

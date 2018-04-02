@@ -1,7 +1,7 @@
 //! Model for registered types.
 
-use RpName;
 use std::fmt;
+use {Flavor, RpName};
 
 /// Marker for the existence of a registered type of the given kind.
 #[derive(Debug, Clone)]
@@ -16,15 +16,16 @@ pub enum RpReg {
 }
 
 impl RpReg {
-    pub fn ident<PackageFn, InnerFn>(
+    pub fn ident<PackageFn, InnerFn, F: 'static>(
         &self,
-        name: &RpName,
+        name: &RpName<F>,
         package_fn: PackageFn,
         inner_fn: InnerFn,
     ) -> String
     where
         PackageFn: Fn(Vec<&str>) -> String,
         InnerFn: Fn(Vec<&str>) -> String,
+        F: Flavor,
     {
         use self::RpReg::*;
 

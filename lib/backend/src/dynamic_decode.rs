@@ -7,11 +7,11 @@ use core::{Flavor, Loc, RpInterfaceBody, RpType, WithPos};
 use dynamic_converter::DynamicConverter;
 use genco::Tokens;
 
-pub trait DynamicDecode<'el, F>
+pub trait DynamicDecode<'el, F: 'static>
 where
     Self: Converter<'el, F>,
     Self: DynamicConverter<'el, F>,
-    F: Flavor<Type = RpType>,
+    F: Flavor<Type = RpType<F>>,
 {
     fn assign_tag_var(
         &self,
@@ -62,7 +62,7 @@ where
 
     fn dynamic_decode(
         &self,
-        ty: &RpType,
+        ty: &F::Type,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         use self::RpType::*;
@@ -124,14 +124,14 @@ where
 }
 
 /// Dynamic decode is a valid decoding mechanism
-impl<'el, T, F> BaseDecode<'el, F> for T
+impl<'el, T, F: 'static> BaseDecode<'el, F> for T
 where
     T: DynamicDecode<'el, F>,
-    F: Flavor<Type = RpType>,
+    F: Flavor<Type = RpType<F>>,
 {
     fn base_decode(
         &self,
-        ty: &RpType,
+        ty: &F::Type,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         self.dynamic_decode(ty, input)

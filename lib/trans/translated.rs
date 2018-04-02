@@ -1,5 +1,5 @@
 use core::errors::Result;
-use core::{Flavor, RpDecl, RpFile, RpName, RpPackage, RpReg, RpVersionedPackage};
+use core::{Flavor, RpDecl, RpFile, RpName, RpPackage, RpReg};
 use linked_hash_map::LinkedHashMap;
 use std::collections::{btree_map, BTreeMap, LinkedList};
 use std::vec;
@@ -9,14 +9,14 @@ pub struct ForEachFile<'a, F: 'static>
 where
     F: Flavor,
 {
-    iter: btree_map::Iter<'a, RpVersionedPackage, RpFile<F>>,
+    iter: btree_map::Iter<'a, F::Package, RpFile<F>>,
 }
 
 impl<'a, F: 'static> Iterator for ForEachFile<'a, F>
 where
     F: Flavor,
 {
-    type Item = (&'a RpVersionedPackage, &'a RpFile<F>);
+    type Item = (&'a F::Package, &'a RpFile<F>);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
@@ -74,9 +74,9 @@ where
     /// Package prefix to apply.
     package_prefix: Option<RpPackage>,
     /// Registered types.
-    types: LinkedHashMap<RpName, RpReg>,
+    decls: LinkedHashMap<RpName<F>, RpReg>,
     /// Files and associated declarations.
-    files: BTreeMap<RpVersionedPackage, RpFile<F>>,
+    files: BTreeMap<F::Package, RpFile<F>>,
 }
 
 impl<F: 'static> Translated<F>
@@ -85,12 +85,12 @@ where
 {
     pub fn new(
         package_prefix: Option<RpPackage>,
-        types: LinkedHashMap<RpName, RpReg>,
-        files: BTreeMap<RpVersionedPackage, RpFile<F>>,
+        decls: LinkedHashMap<RpName<F>, RpReg>,
+        files: BTreeMap<F::Package, RpFile<F>>,
     ) -> Self {
         Self {
             package_prefix,
-            types,
+            decls,
             files,
         }
     }
@@ -103,10 +103,10 @@ where
     /// Lookup the declaration matching the given name.
     ///
     /// Returns the registered reference, if present.
-    pub fn lookup<'a>(&'a self, name: &RpName) -> Result<&'a RpReg> {
+    pub fn lookup<'a>(&'a self, name: &RpName<F>) -> Result<&'a RpReg> {
         let key = name.clone().without_prefix();
 
-        if let Some(registered) = self.types.get(&key) {
+        if let Some(registered) = self.decls.get(&key) {
             return Ok(registered);
         }
 

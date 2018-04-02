@@ -7,7 +7,7 @@ decl_body!(pub struct RpEnumBody<F> {
     /// The type of the variant.
     pub enum_type: RpEnumType,
     /// Variants in the enum.
-    pub variants: Vec<Loc<RpVariant>>,
+    pub variants: Vec<Loc<RpVariant<F>>>,
     /// Custom code blocks in the enum.
     pub codes: Vec<Loc<RpCode>>,
 });
@@ -22,12 +22,12 @@ where
         T: Translator<Source = F>,
     {
         Ok(RpEnumBody {
-            name: self.name,
+            name: self.name.translate(translator)?,
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(translator)?,
             enum_type: self.enum_type,
-            variants: self.variants,
+            variants: self.variants.translate(translator)?,
             codes: self.codes,
         })
     }
@@ -45,8 +45,10 @@ where
     fn translate(self, translator: &T) -> Result<RpEnumBody<T::Target>> {
         translator.visit(&self.name)?;
 
+        let name = self.name.translate(translator)?;
+
         Ok(RpEnumBody {
-            name: self.name,
+            name: name,
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(translator)?,

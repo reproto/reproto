@@ -8,7 +8,7 @@ use {IntoBytes, PackageUtils};
 pub trait PackageProcessor<'el, F: 'static>
 where
     Self: 'el + Sized,
-    F: Flavor,
+    F: Flavor<Package = RpVersionedPackage>,
 {
     type Out: Default + IntoBytes<Self>;
     type DeclIter: Iterator<Item = &'el RpDecl<F>>;
@@ -24,7 +24,7 @@ where
 
     fn handle(&self) -> &'el Handle;
 
-    fn default_process(&self, _: &mut Self::Out, name: &'el RpName) -> Result<()> {
+    fn default_process(&self, _: &mut Self::Out, name: &'el RpName<F>) -> Result<()> {
         warn!("not supported: {}", name);
         Ok(())
     }
@@ -49,14 +49,11 @@ where
         self.default_process(out, &body.name)
     }
 
-    fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, Self::Out>> {
+    fn populate_files(&self) -> Result<BTreeMap<F::Package, Self::Out>> {
         self.do_populate_files(|_| Ok(()))
     }
 
-    fn do_populate_files<C>(
-        &self,
-        mut callback: C,
-    ) -> Result<BTreeMap<RpVersionedPackage, Self::Out>>
+    fn do_populate_files<C>(&self, mut callback: C) -> Result<BTreeMap<F::Package, Self::Out>>
     where
         C: FnMut(&'el RpDecl<F>) -> Result<()>,
     {
@@ -110,7 +107,7 @@ where
         Ok(full_path)
     }
 
-    fn write_files(&'el self, files: BTreeMap<RpVersionedPackage, Self::Out>) -> Result<()> {
+    fn write_files(&'el self, files: BTreeMap<F::Package, Self::Out>) -> Result<()> {
         let handle = self.handle();
 
         let package_utils = self.package_utils();

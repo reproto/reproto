@@ -1,7 +1,7 @@
 //! Propagates scope-specific information to `into_model` transformations.
 
 use core::errors::{Error, Result};
-use core::{Context, RpName, RpVersionedPackage};
+use core::{Context, CoreFlavor, RpName, RpVersionedPackage};
 use naming::Naming;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -134,7 +134,7 @@ impl Scope {
     }
 
     /// Get the current path as a name.
-    pub fn as_name(&self) -> RpName {
+    pub fn as_name(&self) -> RpName<CoreFlavor> {
         let mut parts: Vec<_> = self.walk().collect();
         parts.reverse();
 

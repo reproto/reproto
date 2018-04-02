@@ -26,13 +26,14 @@ impl Deref for RustEndpoint {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RustFlavor;
 
 impl Flavor for RustFlavor {
     type Type = Rust<'static>;
     type Field = core::RpField<RustFlavor>;
     type Endpoint = RustEndpoint;
+    type Package = core::RpVersionedPackage;
 }
 
 /// Responsible for translating RpType -> Rust type.
@@ -148,6 +149,10 @@ impl TypeTranslator for RustTypeTranslator {
         let http1 = RpEndpointHttp1::from_endpoint(&endpoint);
 
         Ok(RustEndpoint { endpoint, http1 })
+    }
+
+    fn translate_package(&self, source: RpVersionedPackage) -> Result<RpVersionedPackage> {
+        Ok(source)
     }
 }
 

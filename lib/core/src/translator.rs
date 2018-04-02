@@ -44,8 +44,18 @@ pub trait TypeTranslator {
 
     fn translate_bytes(&self) -> Result<<Self::Target as Flavor>::Type>;
 
+    /// Translate the given package.
+    fn translate_package(
+        &self,
+        package: <Self::Source as Flavor>::Package,
+    ) -> Result<<Self::Target as Flavor>::Package>;
+
     /// Translate the given name.
-    fn translate_name(&self, name: RpName, reg: RpReg) -> Result<<Self::Target as Flavor>::Type>;
+    fn translate_name(
+        &self,
+        name: RpName<Self::Target>,
+        reg: RpReg,
+    ) -> Result<<Self::Target as Flavor>::Type>;
 
     /// Translate the given field.
     fn translate_field<T>(
@@ -72,64 +82,79 @@ impl TypeTranslator for CoreTypeTranslator {
     type Source = CoreFlavor;
     type Target = CoreFlavor;
 
-    fn translate_i32(&self) -> Result<RpType> {
+    fn translate_i32(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::Signed { size: 32 })
     }
 
-    fn translate_i64(&self) -> Result<RpType> {
+    fn translate_i64(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::Signed { size: 64 })
     }
 
-    fn translate_u32(&self) -> Result<RpType> {
+    fn translate_u32(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::Unsigned { size: 32 })
     }
 
-    fn translate_u64(&self) -> Result<RpType> {
+    fn translate_u64(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::Unsigned { size: 64 })
     }
 
-    fn translate_float(&self) -> Result<RpType> {
+    fn translate_float(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::Float)
     }
 
-    fn translate_double(&self) -> Result<RpType> {
+    fn translate_double(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::Double)
     }
 
-    fn translate_boolean(&self) -> Result<RpType> {
+    fn translate_boolean(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::Boolean)
     }
 
-    fn translate_string(&self) -> Result<RpType> {
+    fn translate_string(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::String)
     }
 
-    fn translate_datetime(&self) -> Result<RpType> {
+    fn translate_datetime(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::DateTime)
     }
 
-    fn translate_array(&self, inner: RpType) -> Result<RpType> {
+    fn translate_array(&self, inner: RpType<Self::Target>) -> Result<RpType<Self::Target>> {
         Ok(RpType::Array {
             inner: Box::new(inner),
         })
     }
 
-    fn translate_map(&self, key: RpType, value: RpType) -> Result<RpType> {
+    fn translate_map(
+        &self,
+        key: RpType<Self::Target>,
+        value: RpType<Self::Target>,
+    ) -> Result<RpType<Self::Target>> {
         Ok(RpType::Map {
             key: Box::new(key),
             value: Box::new(value),
         })
     }
 
-    fn translate_any(&self) -> Result<RpType> {
+    fn translate_any(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::Any)
     }
 
-    fn translate_bytes(&self) -> Result<RpType> {
+    fn translate_bytes(&self) -> Result<RpType<Self::Target>> {
         Ok(RpType::Bytes)
     }
 
-    fn translate_name(&self, name: RpName, _reg: RpReg) -> Result<<Self::Target as Flavor>::Type> {
+    fn translate_package(
+        &self,
+        package: <Self::Source as Flavor>::Package,
+    ) -> Result<<Self::Target as Flavor>::Package> {
+        Ok(package)
+    }
+
+    fn translate_name(
+        &self,
+        name: RpName<Self::Target>,
+        _reg: RpReg,
+    ) -> Result<<Self::Target as Flavor>::Type> {
         Ok(RpType::Name { name })
     }
 
@@ -162,9 +187,15 @@ pub trait Translator {
     type Target: 'static + Clone + Flavor;
 
     /// Indicate that the given name has been visited.
-    fn visit(&self, _: &RpName) -> Result<()> {
+    fn visit(&self, _: &RpName<Self::Source>) -> Result<()> {
         Ok(())
     }
+
+    /// Translate the given package from one flavor to another.
+    fn translate_package(
+        &self,
+        <Self::Source as Flavor>::Package,
+    ) -> Result<<Self::Target as Flavor>::Package>;
 
     /// Translate the given type from one flavor to another.
     fn translate_type(
@@ -268,21 +299,28 @@ where
 }
 
 /// Context used when translating.
-pub struct Context<T> {
+pub struct Context<T>
+where
+    T: TypeTranslator<Source = CoreFlavor>,
+{
     /// Type used to translate types.
     pub type_translator: T,
     /// Registered declarations of the source type.
-    pub types: Rc<LinkedHashMap<RpName, RpReg>>,
+    pub types: Rc<LinkedHashMap<RpName<T::Source>, RpReg>>,
     /// Cached and translated registered declarations.
-    pub decls: RefCell<LinkedHashMap<RpName, RpReg>>,
+    pub decls: Option<RefCell<LinkedHashMap<RpName<T::Source>, RpReg>>>,
 }
 
-impl<T> Context<T> {
+impl<T> Context<T>
+where
+    T: TypeTranslator<Source = CoreFlavor>,
+{
     /// Lookup and cause the given name to be registered.
-    fn lookup(&self, key: &RpName) -> Result<RpReg> {
+    fn lookup(&self, key: &RpName<T::Source>) -> Result<RpReg> {
         let key = key.clone().without_prefix();
 
-        let mut decls = self.decls.try_borrow_mut()?;
+        let decls = self.decls.as_ref().ok_or_else(|| "no declarations")?;
+        let mut decls = decls.try_borrow_mut()?;
 
         match decls.get(&key) {
             Some(reg) => return Ok(reg.clone()),
@@ -309,9 +347,16 @@ where
     type Target = T::Target;
 
     /// Indicate that the given name has been visited.
-    fn visit(&self, name: &RpName) -> Result<()> {
+    fn visit(&self, name: &RpName<Self::Source>) -> Result<()> {
         self.lookup(name)?;
         Ok(())
+    }
+
+    fn translate_package(
+        &self,
+        source: <Self::Source as Flavor>::Package,
+    ) -> Result<<Self::Target as Flavor>::Package> {
+        self.type_translator.translate_package(source)
     }
 
     fn translate_type(
@@ -337,6 +382,7 @@ where
             }
             Name { name } => {
                 let reg = self.lookup(&name)?;
+                let name = name.translate(self)?;
                 self.type_translator.translate_name(name, reg)?
             }
             Map { key, value } => {

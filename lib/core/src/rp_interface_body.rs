@@ -72,8 +72,10 @@ where
     fn translate(self, translator: &T) -> Result<RpInterfaceBody<T::Target>> {
         translator.visit(&self.name)?;
 
+        let name = self.name.translate(translator)?;
+
         Ok(RpInterfaceBody {
-            name: self.name,
+            name: name,
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(translator)?,
