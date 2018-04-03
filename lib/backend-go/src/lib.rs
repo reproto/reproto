@@ -3,6 +3,7 @@ extern crate genco;
 #[macro_use]
 extern crate log;
 extern crate reproto_backend as backend;
+#[macro_use]
 extern crate reproto_core as core;
 #[macro_use]
 extern crate reproto_manifest as manifest;
@@ -15,6 +16,7 @@ extern crate serde_derive;
 extern crate toml;
 
 mod compiler;
+mod flavored;
 mod module;
 
 use backend::{Initializer, IntoBytes, PackageUtils};
@@ -32,6 +34,7 @@ use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
 
+const TYPE_SEP: &str = "_";
 const EXT: &str = "go";
 
 #[derive(Clone, Copy, Default, Debug)]
@@ -50,6 +53,10 @@ impl Lang for GoLang {
 
     fn field_ident_naming(&self) -> Option<Box<Naming>> {
         Some(Box::new(naming::to_upper_camel()))
+    }
+
+    fn safe_packages(&self) -> bool {
+        false
     }
 }
 

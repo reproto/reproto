@@ -5,7 +5,7 @@ use core::errors::*;
 use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpTupleBody, RpType,
                      RpTypeBody};
 use core::{CoreFlavor, Handle, Loc, RelativePathBuf};
-use genco::go::{imported, local, Go};
+use genco::go::{array, imported, interface, local, map, Go};
 use genco::{IntoTokens, Tokens};
 use std::rc::Rc;
 use trans::{self, Translated};
@@ -73,31 +73,31 @@ impl<'el> Compiler<'el> {
     }
 
     /// Convert the given type to a Go type suitable for adding as a field to a struct.
-    pub fn field_type(&self, ty: &'el RpType) -> Result<Tokens<'el, Go<'el>>> {
+    pub fn field_type(&self, ty: &'el RpType) -> Result<Go<'el>> {
         use core::RpType::*;
 
         let ty = match *ty {
-            String => toks!["string"],
-            DateTime => toks!["string"],
-            Bytes => toks!["string"],
-            Signed { size: 32 } => toks!["int32"],
-            Signed { size: 64 } => toks!["int64"],
-            Unsigned { size: 32 } => toks!["uint32"],
-            Unsigned { size: 64 } => toks!["uint64"],
-            Float => toks!["float32"],
-            Double => toks!["float64"],
-            Boolean => toks!["bool"],
+            String => local("string"),
+            DateTime => local("string"),
+            Bytes => local("string"),
+            Signed { size: 32 } => local("int32"),
+            Signed { size: 64 } => local("int64"),
+            Unsigned { size: 32 } => local("uint32"),
+            Unsigned { size: 64 } => local("uint64"),
+            Float => local("float32"),
+            Double => local("float64"),
+            Boolean => local("bool"),
             Array { ref inner } => {
                 let argument = self.field_type(inner)?;
-                toks!["[]", argument]
+                array(argument)
             }
-            Name { ref name } => toks![self.convert_name(name)?],
+            Name { ref name } => self.convert_name(name)?,
             Map { ref key, ref value } => {
                 let key = self.field_type(key)?;
                 let value = self.field_type(value)?;
-                toks!["map[", key, "]", value]
+                map(key, value)
             }
-            Any => toks!["interface{}"],
+            Any => interface(),
             _ => return Err(format!("unsupported type: {}", ty).into()),
         };
 
@@ -124,7 +124,11 @@ impl<'el> Compiler<'el> {
             for f in fields.into_iter() {
                 let ty = self.field_type(&f.ty)?;
 
-                let ty = if f.is_optional() { toks!["*", ty] } else { ty };
+                let ty = if f.is_optional() {
+                    toks!["*", ty]
+                } else {
+                    toks![ty]
+                };
 
                 let mut tags = Tags::new();
 
@@ -211,7 +215,11 @@ impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
                 for f in &body.fields {
                     let ty = self.field_type(&f.ty)?;
 
-                    let ty = if f.is_optional() { toks!["*", ty] } else { ty };
+                    let ty = if f.is_optional() {
+                        toks!["*", ty]
+                    } else {
+                        toks![ty]
+                    };
 
                     let mut tags = Tags::new();
 
