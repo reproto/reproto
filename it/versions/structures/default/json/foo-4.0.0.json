@@ -59,6 +59,24 @@
               ]
             }
           }
+        },
+        {
+          "required": false,
+          "ident": "other21",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "prefix": "bar21",
+              "package": {
+                "package": "bar",
+                "version": "2.1.0"
+              },
+              "parts": [
+                "Other"
+              ]
+            }
+          }
         }
       ],
       "codes": []

@@ -2,24 +2,24 @@ using Newtonsoft.Json;
 using System;
 using System.Text;
 
-namespace Bar._1_0_0 {
+namespace Bar.V20 {
   [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
   public class Other {
-    [JsonProperty("name", Required = Required.DisallowNull)]
-    public String name {
+    [JsonProperty("name2", Required = Required.DisallowNull)]
+    public String name2 {
       get;
     }
 
     [JsonConstructor]
     public Other(
-      [JsonProperty("name", Required = Required.DisallowNull)] String name
+      [JsonProperty("name2", Required = Required.DisallowNull)] String name2
     ) {
-      this.name = name;
+      this.name2 = name2;
     }
 
     public override Int32 GetHashCode() {
       Int32 result = 1;
-      result = result * 31 + this.name.GetHashCode();
+      result = result * 31 + this.name2.GetHashCode();
       return result;
     }
 
@@ -30,7 +30,7 @@ namespace Bar._1_0_0 {
         return false;
       }
 
-      if (!this.name.Equals(o.name)) {
+      if (!this.name2.Equals(o.name2)) {
         return false;
       }
 
@@ -42,8 +42,8 @@ namespace Bar._1_0_0 {
 
       b.Append("Other");
       b.Append("(");
-      b.Append("name=");
-      b.Append(this.name);
+      b.Append("name2=");
+      b.Append(this.name2);
       b.Append(")");
 
       return b.ToString();

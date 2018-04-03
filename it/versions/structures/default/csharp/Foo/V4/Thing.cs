@@ -1,9 +1,9 @@
-using Bar._1_0_0;
+using Bar.V1;
 using Newtonsoft.Json;
 using System;
 using System.Text;
 
-namespace Foo._4_0_0 {
+namespace Foo.V4 {
   [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
   public class Thing {
     [JsonProperty("name")]
@@ -15,7 +15,11 @@ namespace Foo._4_0_0 {
       get;
     }
     [JsonProperty("other2")]
-    public Bar._2_0_0.Other other2 {
+    public Bar.V20.Other other2 {
+      get;
+    }
+    [JsonProperty("other21")]
+    public Bar.V21.Other other21 {
       get;
     }
 
@@ -23,11 +27,13 @@ namespace Foo._4_0_0 {
     public Thing(
       [JsonProperty("name")] String name,
       [JsonProperty("other")] Other other,
-      [JsonProperty("other2")] Bar._2_0_0.Other other2
+      [JsonProperty("other2")] Bar.V20.Other other2,
+      [JsonProperty("other21")] Bar.V21.Other other21
     ) {
       this.name = name;
       this.other = other;
       this.other2 = other2;
+      this.other21 = other21;
     }
 
     public override Int32 GetHashCode() {
@@ -35,6 +41,7 @@ namespace Foo._4_0_0 {
       result = result * 31 + this.name.GetHashCode();
       result = result * 31 + this.other.GetHashCode();
       result = result * 31 + this.other2.GetHashCode();
+      result = result * 31 + this.other21.GetHashCode();
       return result;
     }
 
@@ -75,6 +82,16 @@ namespace Foo._4_0_0 {
         }
       }
 
+      if (this.other21 == null) {
+        if (o.other21 != null) {
+          return false;
+        }
+      } else {
+        if (!this.other21.Equals(o.other21)) {
+          return false;
+        }
+      }
+
       return true;
     }
 
@@ -91,6 +108,9 @@ namespace Foo._4_0_0 {
       b.Append(", ");
       b.Append("other2=");
       b.Append(this.other2);
+      b.Append(", ");
+      b.Append("other21=");
+      b.Append(this.other21);
       b.Append(")");
 
       return b.ToString();

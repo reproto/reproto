@@ -1,44 +1,37 @@
-using Foo.V4;
 using Newtonsoft.Json;
 using System;
 using System.Text;
 
-namespace Test {
+namespace Bar.V21 {
   [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-  public class Entry {
-    [JsonProperty("thing")]
-    public Thing thing {
+  public class Other {
+    [JsonProperty("name21", Required = Required.DisallowNull)]
+    public String name21 {
       get;
     }
 
     [JsonConstructor]
-    public Entry(
-      [JsonProperty("thing")] Thing thing
+    public Other(
+      [JsonProperty("name21", Required = Required.DisallowNull)] String name21
     ) {
-      this.thing = thing;
+      this.name21 = name21;
     }
 
     public override Int32 GetHashCode() {
       Int32 result = 1;
-      result = result * 31 + this.thing.GetHashCode();
+      result = result * 31 + this.name21.GetHashCode();
       return result;
     }
 
     public override Boolean Equals(Object other) {
-      Entry o = other as Entry;
+      Other o = other as Other;
 
       if (o == null) {
         return false;
       }
 
-      if (this.thing == null) {
-        if (o.thing != null) {
-          return false;
-        }
-      } else {
-        if (!this.thing.Equals(o.thing)) {
-          return false;
-        }
+      if (!this.name21.Equals(o.name21)) {
+        return false;
       }
 
       return true;
@@ -47,10 +40,10 @@ namespace Test {
     public override String ToString() {
       StringBuilder b = new StringBuilder();
 
-      b.Append("Entry");
+      b.Append("Other");
       b.Append("(");
-      b.Append("thing=");
-      b.Append(this.thing);
+      b.Append("name21=");
+      b.Append(this.name21);
       b.Append(")");
 
       return b.ToString();

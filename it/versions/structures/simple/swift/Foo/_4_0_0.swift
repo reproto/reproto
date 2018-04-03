@@ -2,6 +2,7 @@ public struct Foo__4_0_0_Thing {
   let name: String?
   let other: Bar__1_0_0_Other?
   let other2: Bar__2_0_0_Other?
+  let other21: Bar__2_1_0_Other?
 }
 
 public extension Foo__4_0_0_Thing {
@@ -26,7 +27,13 @@ public extension Foo__4_0_0_Thing {
       other2 = Optional.some(try Bar__2_0_0_Other.decode(json: value))
     }
 
-    return Foo__4_0_0_Thing(name: name, other: other, other2: other2)
+    var other21: Bar__2_1_0_Other? = Optional.none
+
+    if let value = json["other21"] {
+      other21 = Optional.some(try Bar__2_1_0_Other.decode(json: value))
+    }
+
+    return Foo__4_0_0_Thing(name: name, other: other, other2: other2, other21: other21)
   }
 
   func encode() throws -> [String: Any] {
@@ -40,6 +47,9 @@ public extension Foo__4_0_0_Thing {
     }
     if let value = self.other2 {
       json["other2"] = try value.encode()
+    }
+    if let value = self.other21 {
+      json["other21"] = try value.encode()
     }
 
     return json

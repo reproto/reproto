@@ -13,12 +13,15 @@ public class Thing {
   private final Optional<Other> other;
   @JsonProperty("other2")
   private final Optional<bar._2_0_0.Other> other2;
+  @JsonProperty("other21")
+  private final Optional<bar._2_1_0.Other> other21;
 
   @JsonCreator
   public Thing(
     @JsonProperty("name") final Optional<String> name,
     @JsonProperty("other") final Optional<Other> other,
-    @JsonProperty("other2") final Optional<bar._2_0_0.Other> other2
+    @JsonProperty("other2") final Optional<bar._2_0_0.Other> other2,
+    @JsonProperty("other21") final Optional<bar._2_1_0.Other> other21
   ) {
     Objects.requireNonNull(name, "name");
     this.name = name;
@@ -26,6 +29,8 @@ public class Thing {
     this.other = other;
     Objects.requireNonNull(other2, "other2");
     this.other2 = other2;
+    Objects.requireNonNull(other21, "other21");
+    this.other21 = other21;
   }
 
   @JsonProperty("name")
@@ -43,12 +48,18 @@ public class Thing {
     return this.other2;
   }
 
+  @JsonProperty("other21")
+  public Optional<bar._2_1_0.Other> getOther21() {
+    return this.other21;
+  }
+
   @Override
   public int hashCode() {
     int result = 1;
     result = result * 31 + this.name.hashCode();
     result = result * 31 + this.other.hashCode();
     result = result * 31 + this.other2.hashCode();
+    result = result * 31 + this.other21.hashCode();
     return result;
   }
 
@@ -77,6 +88,10 @@ public class Thing {
       return false;
     }
 
+    if (!this.other21.equals(o.other21)) {
+      return false;
+    }
+
     return true;
   }
 
@@ -94,6 +109,9 @@ public class Thing {
     b.append(", ");
     b.append("other2=");
     b.append(this.other2.toString());
+    b.append(", ");
+    b.append("other21=");
+    b.append(this.other21.toString());
     b.append(")");
 
     return b.toString();
@@ -103,6 +121,7 @@ public class Thing {
     private Optional<String> name = Optional.empty();
     private Optional<Other> other = Optional.empty();
     private Optional<bar._2_0_0.Other> other2 = Optional.empty();
+    private Optional<bar._2_1_0.Other> other21 = Optional.empty();
 
     public Builder name(final String name) {
       this.name = Optional.of(name);
@@ -119,12 +138,18 @@ public class Thing {
       return this;
     }
 
+    public Builder other21(final bar._2_1_0.Other other21) {
+      this.other21 = Optional.of(other21);
+      return this;
+    }
+
     public Thing build() {
       final Optional<String> name = this.name;
       final Optional<Other> other = this.other;
       final Optional<bar._2_0_0.Other> other2 = this.other2;
+      final Optional<bar._2_1_0.Other> other21 = this.other21;
 
-      return new Thing(name, other, other2);
+      return new Thing(name, other, other2, other21);
     }
   }
 }

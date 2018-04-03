@@ -1,4 +1,4 @@
-use foo::_4_0_0 as foo;
+use foo::v4 as foo;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {

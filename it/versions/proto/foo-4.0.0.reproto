@@ -1,8 +1,10 @@
 use bar "1";
-use bar "^2" as bar2;
+use bar "=2.0.0" as bar2;
+use bar "=2.1.0" as bar21;
 
 type Thing {
   name?: string;
   other?: bar::Other;
   other2?: bar2::Other;
+  other21?: bar21::Other;
 }

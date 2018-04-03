@@ -1,11 +1,13 @@
 import * as bar from "bar/_1_0_0.js";
 import * as bar2 from "bar/_2_0_0.js";
+import * as bar21 from "bar/_2_1_0.js";
 
 export class Thing {
-  constructor(name, other, other2) {
+  constructor(name, other, other2, other21) {
     this.name = name;
     this.other = other;
     this.other2 = other2;
+    this.other21 = other21;
   }
 
   static decode(data) {
@@ -33,7 +35,15 @@ export class Thing {
       v_other2 = null;
     }
 
-    return new Thing(v_name, v_other, v_other2);
+    let v_other21 = data["other21"];
+
+    if (v_other21 !== null && v_other21 !== undefined) {
+      v_other21 = bar21.Other.decode(v_other21);
+    } else {
+      v_other21 = null;
+    }
+
+    return new Thing(v_name, v_other, v_other2, v_other21);
   }
 
   encode() {
@@ -49,6 +59,10 @@ export class Thing {
 
     if (this.other2 !== null && this.other2 !== undefined) {
       data["other2"] = this.other2.encode();
+    }
+
+    if (this.other21 !== null && this.other21 !== undefined) {
+      data["other21"] = this.other21.encode();
     }
 
     return data;
