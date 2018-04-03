@@ -4,6 +4,7 @@ extern crate genco;
 extern crate log;
 #[macro_use]
 extern crate reproto_backend as backend;
+#[macro_use]
 extern crate reproto_core as core;
 #[macro_use]
 extern crate reproto_manifest as manifest;
@@ -19,23 +20,24 @@ mod codegen;
 mod compiler;
 mod csharp_field;
 mod csharp_file;
+mod flavored;
 mod module;
 mod options;
 mod processor;
 mod utils;
 
+use backend::PackageUtils;
 use codegen::Configure;
 use compiler::Compiler;
 use core::errors::Result;
 use core::{Context, CoreFlavor};
+use flavored::{CsharpFlavor, RpPackage};
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
-use naming::Naming;
 use options::Options;
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
-use utils::Utils;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct CsharpLang;
@@ -45,10 +47,6 @@ impl Lang for CsharpLang {
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("// {}", input))
-    }
-
-    fn package_naming(&self) -> Option<Box<Naming>> {
-        Some(Box::new(naming::to_upper_camel()))
     }
 
     fn keywords(&self) -> Vec<(&'static str, &'static str)> {
@@ -168,7 +166,7 @@ impl TryFromToml for CsharpModule {
     }
 }
 
-fn setup_options<'a>(modules: Vec<CsharpModule>, utils: &Rc<Utils>) -> Options {
+fn setup_options<'a>(modules: Vec<CsharpModule>) -> Options {
     use self::CsharpModule::*;
 
     let mut options = Options::new();
@@ -176,7 +174,6 @@ fn setup_options<'a>(modules: Vec<CsharpModule>, utils: &Rc<Utils>) -> Options {
     for module in modules {
         let c = Configure {
             options: &mut options,
-            utils: utils,
         };
 
         match module {
@@ -187,13 +184,38 @@ fn setup_options<'a>(modules: Vec<CsharpModule>, utils: &Rc<Utils>) -> Options {
     options
 }
 
+pub struct CsharpPackageUtils {
+    package_prefix: Option<RpPackage>,
+}
+
+impl CsharpPackageUtils {
+    pub fn new(package_prefix: Option<RpPackage>) -> Self {
+        Self { package_prefix }
+    }
+}
+
+impl PackageUtils<CsharpFlavor> for CsharpPackageUtils {
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.package_prefix.as_ref()
+    }
+}
+
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let env = env.translate_default()?;
+    let package_utils = Rc::new(CsharpPackageUtils::new(env.package_prefix()));
+
+    let packages = env.packages()?;
+
+    let translator = env.translator(flavored::CsharpTypeTranslator::new(
+        packages,
+        package_utils.clone(),
+    ))?;
+
+    let env = env.translate(translator)?;
     let env = Rc::new(env);
-    let utils = Rc::new(Utils::new(&env));
+
     let modules = checked_modules(manifest.modules)?;
-    let options = setup_options(modules, &utils);
-    let compiler = Compiler::new(&env, &utils, options);
+    let options = setup_options(modules);
+    let compiler = Compiler::new(env.clone(), options);
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 

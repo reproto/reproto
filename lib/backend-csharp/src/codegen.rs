@@ -2,12 +2,12 @@
 
 use core::Handle;
 use core::errors::Result;
-use core::flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
 use csharp_field::CsharpField;
+use flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
 use genco::csharp::{Argument, Class, Enum, Field};
 use genco::{Cons, Csharp};
 use std::rc::Rc;
-use {Compiler, Options, Utils};
+use {Compiler, Options};
 
 #[derive(Clone)]
 pub struct TypeField<'el> {
@@ -63,7 +63,6 @@ pub struct TypeFieldAdded<'a, 'el: 'a> {
 
 pub struct Configure<'a> {
     pub options: &'a mut Options,
-    pub utils: &'a Rc<Utils>,
 }
 
 pub trait Codegen {

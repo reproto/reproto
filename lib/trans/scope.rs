@@ -24,14 +24,14 @@ pub struct Root {
 impl Root {
     /// Rename the package, if applicable.
     pub fn package(&self, package: RpVersionedPackage) -> RpVersionedPackage {
-        let package = if self.safe_packages {
-            package.with_replacements(&self.keywords)
+        let package = if let Some(ref naming) = self.package_naming {
+            package.with_naming(|p| naming.convert(p))
         } else {
             package
         };
 
-        let package = if let Some(ref naming) = self.package_naming {
-            package.with_naming(|p| naming.convert(p))
+        let package = if self.safe_packages {
+            package.with_replacements(&self.keywords)
         } else {
             package
         };

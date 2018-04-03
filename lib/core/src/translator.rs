@@ -110,6 +110,8 @@ impl PackageTranslator for CorePackageTranslator {
     }
 }
 
+/// Package translator used to translate from versioned `CoreFlavor` to unversioned packages
+/// `CoreFlavor2`.
 pub struct Core2PackageTranslator {
     packages: HashMap<RpVersionedPackage, RpPackage>,
 }

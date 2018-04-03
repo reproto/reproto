@@ -517,7 +517,11 @@ impl Environment<CoreFlavor> {
     ) -> Result<()> {
         use linked_hash_map::Entry::*;
 
-        let new_package = package.clone().with_replacements(&self.keywords);
+        // Are packages keyword-safe or not?
+        let new_package = match self.safe_packages {
+            true => package.clone().with_replacements(&self.keywords),
+            false => package.clone(),
+        };
 
         let file = match self.files.entry(new_package) {
             btree_map::Entry::Vacant(entry) => entry.insert(file),

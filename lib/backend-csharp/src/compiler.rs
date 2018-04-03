@@ -1,15 +1,14 @@
 //! C# backend for reproto
 
 use Options;
-use backend::{Converter, PackageUtils};
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded,
               TypeField, TypeFieldAdded};
 use core::errors::*;
-use core::flavored::{RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage,
-                     RpServiceBody, RpTupleBody, RpTypeBody};
-use core::{self, CoreFlavor, ForEachLoc, Handle, Loc, RpContext, WithPos};
+use core::{self, ForEachLoc, Handle, Loc, RpContext, WithPos};
 use csharp_field::CsharpField;
 use csharp_file::CsharpFile;
+use flavored::{CsharpFlavor, RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody,
+               RpTupleBody, RpTypeBody};
 use genco::csharp::{local, optional, using, Argument, Class, Constructor, Enum, Field, INT32,
                     Method, Modifier, BOOLEAN};
 use genco::{Cons, Csharp, Element, Quoted, Tokens};
@@ -17,11 +16,9 @@ use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
 use trans::Translated;
-use utils::Utils;
 
 pub struct Compiler {
-    env: Rc<Translated<CoreFlavor>>,
-    utils: Rc<Utils>,
+    env: Rc<Translated<CsharpFlavor>>,
     options: Options,
     to_upper_camel: naming::ToUpperCamel,
     to_lower_camel: naming::ToLowerCamel,
@@ -34,18 +31,11 @@ pub struct Compiler {
 
 impl Processor for Compiler {}
 
-impl PackageUtils<CoreFlavor> for Compiler {
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.env.package_prefix()
-    }
-}
-
 impl Compiler {
-    pub fn new(env: &Rc<Translated<CoreFlavor>>, utils: &Rc<Utils>, options: Options) -> Compiler {
+    pub fn new(env: Rc<Translated<CsharpFlavor>>, options: Options) -> Compiler {
         Compiler {
-            env: Rc::clone(env),
-            utils: Rc::clone(utils),
-            options: options,
+            env,
+            options,
             to_upper_camel: naming::to_upper_camel(),
             to_lower_camel: naming::to_lower_camel(),
             variant_naming: naming::to_upper_snake(),
@@ -69,7 +59,7 @@ impl Compiler {
     }
 
     fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
-        let package_name = self.package(&decl.name().package).join(".");
+        let package_name = decl.name().package.join(".");
 
         CsharpFile::new(package_name.as_str(), decl.ident(), |out| {
             self.process_decl(decl, 0usize, out)
@@ -464,8 +454,7 @@ impl Compiler {
             let name = self.to_lower_camel.convert(endpoint.safe_ident());
 
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
-                let ty = self.utils.into_csharp_type(res.ty())?;
-                self.task.with_arguments(vec![ty])
+                self.task.with_arguments(vec![res.ty().clone()])
             } else {
                 Csharp::Void
             };
@@ -473,8 +462,7 @@ impl Compiler {
             let mut arguments = Vec::new();
 
             for arg in &endpoint.arguments {
-                let ty = self.utils.into_csharp_type(arg.channel.ty())?;
-                arguments.push(Argument::new(ty, arg.safe_ident()));
+                arguments.push(Argument::new(arg.channel.ty().clone(), arg.safe_ident()));
             }
 
             extra.push(EndpointExtra {
@@ -526,12 +514,10 @@ impl Compiler {
 
     /// Convert a single field to `CsharpField`, without comments.
     fn field<'el>(&self, field: &RpField) -> Result<CsharpField<'el>> {
-        let value_type = self.utils.into_csharp_type(&field.ty)?;
-
         let csharp_ty = if field.is_optional() {
-            optional(value_type)
+            optional(field.ty.clone())
         } else {
-            value_type.into()
+            field.ty.clone().into()
         };
 
         let ident = Rc::new(self.to_lower_camel.convert(field.safe_ident()));
@@ -631,13 +617,5 @@ impl Compiler {
         }
 
         Ok(())
-    }
-}
-
-impl<'el> Converter<'el, CoreFlavor> for Compiler {
-    type Custom = Csharp<'el>;
-
-    fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {
-        Ok(toks![self.utils.convert_type_id(name)?])
     }
 }
