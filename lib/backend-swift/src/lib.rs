@@ -3,6 +3,7 @@ extern crate genco;
 #[macro_use]
 extern crate log;
 extern crate reproto_backend as backend;
+#[macro_use]
 extern crate reproto_core as core;
 #[macro_use]
 extern crate reproto_manifest as manifest;
@@ -15,6 +16,7 @@ extern crate serde_derive;
 extern crate toml;
 
 mod compiler;
+mod flavored;
 mod module;
 
 use backend::{Initializer, IntoBytes, PackageUtils};
@@ -33,6 +35,7 @@ use std::rc::Rc;
 use trans::Environment;
 
 const EXT: &str = "swift";
+const TYPE_SEP: &'static str = "_";
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct SwiftLang;
@@ -173,7 +176,7 @@ pub struct Options {
     pub interface_model_gens: Vec<Box<InterfaceModelCodegen>>,
     pub package_gens: Vec<Box<PackageCodegen>>,
     /// The provided Any type that should be used in structs.
-    pub any_type: Vec<(&'static str, Tokens<'static, Swift<'static>>)>,
+    pub any_type: Vec<(&'static str, Swift<'static>)>,
 }
 
 impl Options {

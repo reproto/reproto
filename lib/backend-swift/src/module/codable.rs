@@ -4,7 +4,7 @@ use backend::Initializer;
 use core;
 use core::errors::{Error, Result};
 use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpVersionedPackage};
-use genco::swift::Swift;
+use genco::swift::{local, Swift};
 use genco::{Quoted, Tokens};
 use std::rc::Rc;
 use {Compiler, EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen,
@@ -30,7 +30,7 @@ impl Initializer for Module {
         options.enum_gens.push(Box::new(codegen.clone()));
         options.interface_gens.push(Box::new(codegen.clone()));
         options.interface_model_gens.push(Box::new(codegen.clone()));
-        options.any_type.push(("codable", "AnyCodable".into()));
+        options.any_type.push(("codable", local("AnyCodable")));
         options.package_gens.push(Box::new(codegen.clone()));
         Ok(())
     }

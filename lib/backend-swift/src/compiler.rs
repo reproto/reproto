@@ -9,7 +9,7 @@ use genco::{IntoTokens, Tokens};
 use std::rc::Rc;
 use trans::{self, Translated};
 use {EnumAdded, FileSpec, InterfaceAdded, InterfaceModelAdded, Options, PackageAdded,
-     StructModelAdded, SwiftPackageUtils, TupleAdded, TypeAdded, EXT};
+     StructModelAdded, SwiftPackageUtils, TupleAdded, TypeAdded, EXT, TYPE_SEP};
 
 /// Documentation comments.
 pub struct Comments<'el, S: 'el>(pub &'el [S]);
@@ -26,8 +26,6 @@ impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Swift<'el>> for Comments<'el, S> 
     }
 }
 
-const TYPE_SEP: &'static str = "_";
-
 pub struct Compiler<'el> {
     pub env: &'el Translated<CoreFlavor>,
     package_utils: Rc<SwiftPackageUtils>,
@@ -35,7 +33,7 @@ pub struct Compiler<'el> {
     handle: &'el Handle,
     data: Swift<'static>,
     date: Swift<'static>,
-    any: Tokens<'static, Swift<'static>>,
+    any: Swift<'static>,
 }
 
 impl<'el> Compiler<'el> {
@@ -56,9 +54,9 @@ impl<'el> Compiler<'el> {
                     ).into());
                 }
 
-                toks![any_type.clone()]
+                any_type.clone()
             } else {
-                toks!["Any"]
+                swift::local("Any")
             }
         };
 
