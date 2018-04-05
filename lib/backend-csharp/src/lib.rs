@@ -205,7 +205,7 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let packages = env.packages()?;
 
-    let translator = env.translator(flavored::CsharpTypeTranslator::new(
+    let translator = env.translator(flavored::CsharpFlavorTranslator::new(
         packages,
         package_utils.clone(),
     ))?;

@@ -4,11 +4,12 @@
 
 use backend::PackageUtils;
 use core::errors::Result;
-use core::{self, Core2PackageTranslator, CoreFlavor, Flavor, Loc, PackageTranslator, Translate,
-           Translator, TypeTranslator};
+use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
+           Translator};
 use genco::Cons;
 use genco::swift::{self, Swift};
 use naming::{self, Naming};
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use {Options, SwiftPackageUtils, TYPE_SEP};
@@ -24,8 +25,8 @@ impl Flavor for SwiftFlavor {
 }
 
 /// Responsible for translating RpType -> Swift type.
-pub struct SwiftTypeTranslator {
-    package_translator: Core2PackageTranslator,
+pub struct SwiftFlavorTranslator {
+    package_translator: HashMap<RpVersionedPackage, RpPackage>,
     package_utils: Rc<SwiftPackageUtils>,
     data: Swift<'static>,
     date: Swift<'static>,
@@ -33,9 +34,9 @@ pub struct SwiftTypeTranslator {
     to_upper_camel: naming::ToUpperCamel,
 }
 
-impl SwiftTypeTranslator {
+impl SwiftFlavorTranslator {
     pub fn new(
-        package_translator: Core2PackageTranslator,
+        package_translator: HashMap<RpVersionedPackage, RpPackage>,
         package_utils: Rc<SwiftPackageUtils>,
         options: &Options,
     ) -> Result<Self> {
@@ -67,7 +68,7 @@ impl SwiftTypeTranslator {
     }
 }
 
-impl TypeTranslator for SwiftTypeTranslator {
+impl FlavorTranslator for SwiftFlavorTranslator {
     type Source = CoreFlavor;
     type Target = SwiftFlavor;
 

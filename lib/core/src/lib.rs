@@ -102,7 +102,6 @@ pub use self::rp_type_body::RpTypeBody;
 pub use self::rp_value::RpValue;
 pub use self::rp_variant::RpVariant;
 pub use self::rp_versioned_package::RpVersionedPackage;
-pub use self::translator::{Core2PackageTranslator, PackageTranslator, Translate, Translator,
-                           TypeTranslator};
+pub use self::translator::{FlavorTranslator, PackageTranslator, Translate, Translator};
 pub use self::with_pos::WithPos;
 pub use semver::{Range, Version};

@@ -5,11 +5,12 @@
 use CsharpPackageUtils;
 use backend::PackageUtils;
 use core::errors::Result;
-use core::{self, Core2PackageTranslator, CoreFlavor, Flavor, Loc, PackageTranslator, Translate,
-           Translator, TypeTranslator};
+use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
+           Translator};
 use genco::csharp::{self, array, struct_, using};
 use genco::{Cons, Csharp};
 use naming::{self, Naming};
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -24,8 +25,8 @@ impl Flavor for CsharpFlavor {
 }
 
 /// Responsible for translating RpType -> Csharp type.
-pub struct CsharpTypeTranslator {
-    package_translator: Core2PackageTranslator,
+pub struct CsharpFlavorTranslator {
+    package_translator: HashMap<RpVersionedPackage, RpPackage>,
     package_utils: Rc<CsharpPackageUtils>,
     list: Csharp<'static>,
     dictionary: Csharp<'static>,
@@ -36,9 +37,9 @@ pub struct CsharpTypeTranslator {
     to_upper_camel: naming::ToUpperCamel,
 }
 
-impl CsharpTypeTranslator {
+impl CsharpFlavorTranslator {
     pub fn new(
-        package_translator: Core2PackageTranslator,
+        package_translator: HashMap<RpVersionedPackage, RpPackage>,
         package_utils: Rc<CsharpPackageUtils>,
     ) -> Self {
         Self {
@@ -55,7 +56,7 @@ impl CsharpTypeTranslator {
     }
 }
 
-impl TypeTranslator for CsharpTypeTranslator {
+impl FlavorTranslator for CsharpFlavorTranslator {
     type Source = CoreFlavor;
     type Target = CsharpFlavor;
 

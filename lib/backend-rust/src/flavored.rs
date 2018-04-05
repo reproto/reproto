@@ -4,10 +4,11 @@
 
 use backend::PackageUtils;
 use core::errors::Result;
-use core::{self, Core2PackageTranslator, CoreFlavor, Flavor, Loc, PackageTranslator, Translate,
-           Translator, TypeTranslator};
+use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
+           Translator};
 use genco::rust::{imported, local};
 use genco::{Cons, Rust};
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use {RustPackageUtils, SCOPE_SEP, TYPE_SEP};
@@ -37,17 +38,17 @@ impl Flavor for RustFlavor {
 }
 
 /// Responsible for translating RpType -> Rust type.
-pub struct RustTypeTranslator {
-    package_translator: Core2PackageTranslator,
+pub struct RustFlavorTranslator {
+    package_translator: HashMap<RpVersionedPackage, RpPackage>,
     package_utils: Rc<RustPackageUtils>,
     map: Rust<'static>,
     json_value: Rust<'static>,
     datetime: Option<Rust<'static>>,
 }
 
-impl RustTypeTranslator {
+impl RustFlavorTranslator {
     pub fn new(
-        package_translator: Core2PackageTranslator,
+        package_translator: HashMap<RpVersionedPackage, RpPackage>,
         package_utils: Rc<RustPackageUtils>,
         datetime: Option<Rust<'static>>,
     ) -> Self {
@@ -61,7 +62,7 @@ impl RustTypeTranslator {
     }
 }
 
-impl TypeTranslator for RustTypeTranslator {
+impl FlavorTranslator for RustFlavorTranslator {
     type Source = CoreFlavor;
     type Target = RustFlavor;
 

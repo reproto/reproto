@@ -1,9 +1,8 @@
 use ast::{self, UseDecl};
 use core::errors::{Error, Result};
-use core::{translator, AsPackage, Context, CoreFlavor, CoreFlavor2, Flavor, Loc, Object,
-           PathObject, Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
-           RpRequiredPackage, RpVersionedPackage, Translate, Translator, TypeTranslator, Version,
-           WithPos};
+use core::{translator, AsPackage, Context, CoreFlavor, CoreFlavor2, Flavor, FlavorTranslator, Loc,
+           Object, PathObject, Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
+           RpRequiredPackage, RpVersionedPackage, Translate, Translator, Version, WithPos};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
@@ -178,16 +177,13 @@ where
 
 impl Environment<CoreFlavor> {
     /// Build a new translator.
-    pub fn translator<T: 'static, F: 'static>(
-        &self,
-        type_translator: T,
-    ) -> Result<translator::Context<T>>
+    pub fn translator<T: 'static, F: 'static>(&self, flavor: T) -> Result<translator::Context<T>>
     where
-        T: TypeTranslator<Source = CoreFlavor, Target = F>,
+        T: FlavorTranslator<Source = CoreFlavor, Target = F>,
         F: Flavor,
     {
         Ok(translator::Context {
-            type_translator: type_translator,
+            flavor: flavor,
             types: Rc::clone(&self.types),
             decls: Some(RefCell::new(LinkedHashMap::new())),
         })
@@ -199,7 +195,7 @@ impl Environment<CoreFlavor> {
         mut ctx: translator::Context<T>,
     ) -> Result<Translated<T::Target>>
     where
-        T: TypeTranslator<Source = CoreFlavor>,
+        T: FlavorTranslator<Source = CoreFlavor>,
     {
         let mut files = BTreeMap::new();
 
@@ -224,7 +220,7 @@ impl Environment<CoreFlavor> {
     }
 
     /// Translation to simplified packages.
-    pub fn packages(&self) -> Result<translator::Core2PackageTranslator> {
+    pub fn packages(&self) -> Result<HashMap<RpVersionedPackage, RpPackage>> {
         let mut queue = self.files
             .keys()
             .cloned()
@@ -262,21 +258,19 @@ impl Environment<CoreFlavor> {
             }
         }
 
-        let packages = translator::Core2PackageTranslator::new(results);
-        Ok(packages)
+        Ok(results)
     }
 
     /// Translate without changing the flavor.
     pub fn translate_default(self) -> Result<Translated<CoreFlavor>> {
-        let packages = translator::CorePackageTranslator::new();
-        let ctx = self.translator(translator::CoreTypeTranslator::new(packages))?;
+        let ctx = self.translator(translator::CoreFlavorTranslator::new(()))?;
         self.translate(ctx)
     }
 
     /// Translate without changing the flavor.
     pub fn translate_versioned(self) -> Result<Translated<CoreFlavor2>> {
         let packages = self.packages()?;
-        let ctx = self.translator(translator::CoreTypeTranslator::new(packages))?;
+        let ctx = self.translator(translator::CoreFlavorTranslator::new(packages))?;
         self.translate(ctx)
     }
 

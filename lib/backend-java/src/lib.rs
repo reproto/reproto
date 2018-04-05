@@ -203,7 +203,7 @@ impl PackageUtils<JavaFlavor> for JavaPackageUtils {
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let package_utils = Rc::new(JavaPackageUtils::new(env.package_prefix()));
 
-    let translator = env.translator(flavored::JavaTypeTranslator::new(package_utils.clone()))?;
+    let translator = env.translator(flavored::JavaFlavorTranslator::new(package_utils.clone()))?;
 
     let variant_field = Loc::new(
         translator.translate_field(RpField::new("value", RpType::String))?,

@@ -21,7 +21,7 @@ pub trait PackageTranslator {
     ) -> Result<<Self::Target as Flavor>::Package>;
 }
 
-pub trait TypeTranslator {
+pub trait FlavorTranslator {
     type Source: 'static + Clone + Flavor;
     type Target: 'static + Clone + Flavor;
 
@@ -90,15 +90,7 @@ pub trait TypeTranslator {
         T: Translator<Source = Self::Source, Target = Self::Target>;
 }
 
-pub struct CorePackageTranslator {}
-
-impl CorePackageTranslator {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl PackageTranslator for CorePackageTranslator {
+impl PackageTranslator for () {
     type Source = CoreFlavor;
     type Target = CoreFlavor;
 
@@ -110,19 +102,7 @@ impl PackageTranslator for CorePackageTranslator {
     }
 }
 
-/// Package translator used to translate from versioned `CoreFlavor` to unversioned packages
-/// `CoreFlavor2`.
-pub struct Core2PackageTranslator {
-    packages: HashMap<RpVersionedPackage, RpPackage>,
-}
-
-impl Core2PackageTranslator {
-    pub fn new(packages: HashMap<RpVersionedPackage, RpPackage>) -> Self {
-        Self { packages }
-    }
-}
-
-impl PackageTranslator for Core2PackageTranslator {
+impl PackageTranslator for HashMap<RpVersionedPackage, RpPackage> {
     type Source = CoreFlavor;
     type Target = CoreFlavor2;
 
@@ -130,121 +110,44 @@ impl PackageTranslator for Core2PackageTranslator {
         &self,
         package: <Self::Source as Flavor>::Package,
     ) -> Result<<Self::Target as Flavor>::Package> {
-        let package = self.packages
-            .get(&package)
+        let package = self.get(&package)
             .ok_or_else(|| format!("no such package: {}", package))?;
 
         Ok(package.clone())
     }
 }
 
-pub struct CoreTypeTranslator<P: 'static>
-where
-    P: PackageTranslator,
-{
+pub struct CoreFlavorTranslator<P> {
     package_translator: P,
 }
 
-impl<P: 'static> CoreTypeTranslator<P>
-where
-    P: PackageTranslator,
-{
+impl<P> CoreFlavorTranslator<P> {
     pub fn new(package_translator: P) -> Self {
         Self { package_translator }
     }
 }
 
-impl<P: 'static, F: 'static> TypeTranslator for CoreTypeTranslator<P>
+impl<P: 'static, F: 'static> FlavorTranslator for CoreFlavorTranslator<P>
 where
     P: PackageTranslator<Source = CoreFlavor, Target = F>,
     F: Flavor<Type = RpType<F>, Field = RpField<F>, Endpoint = RpEndpoint<F>>,
 {
     type Source = CoreFlavor;
-    type Target = P::Target;
+    type Target = F;
 
-    fn translate_i32(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::Signed { size: 32 })
-    }
-
-    fn translate_i64(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::Signed { size: 64 })
-    }
-
-    fn translate_u32(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::Unsigned { size: 32 })
-    }
-
-    fn translate_u64(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::Unsigned { size: 64 })
-    }
-
-    fn translate_float(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::Float)
-    }
-
-    fn translate_double(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::Double)
-    }
-
-    fn translate_boolean(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::Boolean)
-    }
-
-    fn translate_string(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::String)
-    }
-
-    fn translate_datetime(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::DateTime)
-    }
-
-    fn translate_array(&self, inner: RpType<P::Target>) -> Result<RpType<P::Target>> {
-        Ok(RpType::Array {
-            inner: Box::new(inner),
-        })
-    }
-
-    fn translate_map(
-        &self,
-        key: RpType<P::Target>,
-        value: RpType<P::Target>,
-    ) -> Result<RpType<P::Target>> {
-        Ok(RpType::Map {
-            key: Box::new(key),
-            value: Box::new(value),
-        })
-    }
-
-    fn translate_any(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::Any)
-    }
-
-    fn translate_bytes(&self) -> Result<RpType<P::Target>> {
-        Ok(RpType::Bytes)
-    }
+    translator_core_types!(F);
+    translator_core_names!(F);
 
     fn translate_package(
         &self,
         package: <Self::Source as Flavor>::Package,
-    ) -> Result<<P::Target as Flavor>::Package> {
+    ) -> Result<<F as Flavor>::Package> {
         self.package_translator.translate_package(package)
     }
 
-    fn translate_name(
-        &self,
-        name: RpName<P::Target>,
-        _reg: RpReg,
-    ) -> Result<<P::Target as Flavor>::Type> {
-        Ok(RpType::Name { name })
-    }
-
-    fn translate_field<T>(
-        &self,
-        translator: &T,
-        field: RpField<Self::Source>,
-    ) -> Result<RpField<P::Target>>
+    fn translate_field<T>(&self, translator: &T, field: RpField<Self::Source>) -> Result<RpField<F>>
     where
-        T: Translator<Source = Self::Source, Target = P::Target>,
+        T: Translator<Source = Self::Source, Target = F>,
     {
         field.translate(translator)
     }
@@ -253,9 +156,9 @@ where
         &self,
         translator: &T,
         endpoint: <Self::Source as Flavor>::Endpoint,
-    ) -> Result<<P::Target as Flavor>::Endpoint>
+    ) -> Result<<F as Flavor>::Endpoint>
     where
-        T: Translator<Source = Self::Source, Target = P::Target>,
+        T: Translator<Source = Self::Source, Target = F>,
     {
         endpoint.translate(translator)
     }
@@ -264,7 +167,7 @@ where
 /// Translator trait from one flavor to another.
 pub trait Translator {
     type Source: 'static + Flavor;
-    type Target: 'static + Clone + Flavor;
+    type Target: 'static + Flavor;
 
     /// Indicate that the given name has been visited.
     fn visit(&self, _: &RpName<Self::Source>) -> Result<()> {
@@ -381,10 +284,10 @@ where
 /// Context used when translating.
 pub struct Context<T>
 where
-    T: TypeTranslator<Source = CoreFlavor>,
+    T: FlavorTranslator<Source = CoreFlavor>,
 {
     /// Type used to translate types.
-    pub type_translator: T,
+    pub flavor: T,
     /// Registered declarations of the source type.
     pub types: Rc<LinkedHashMap<RpName<T::Source>, RpReg>>,
     /// Cached and translated registered declarations.
@@ -393,7 +296,7 @@ where
 
 impl<T> Context<T>
 where
-    T: TypeTranslator<Source = CoreFlavor>,
+    T: FlavorTranslator<Source = CoreFlavor>,
 {
     /// Lookup and cause the given name to be registered.
     fn lookup(&self, key: &RpName<T::Source>) -> Result<RpReg> {
@@ -421,9 +324,9 @@ where
 
 impl<T> Translator for Context<T>
 where
-    T: TypeTranslator<Source = CoreFlavor>,
+    T: FlavorTranslator<Source = CoreFlavor>,
 {
-    type Source = CoreFlavor;
+    type Source = T::Source;
     type Target = T::Target;
 
     /// Indicate that the given name has been visited.
@@ -436,7 +339,7 @@ where
         &self,
         source: <Self::Source as Flavor>::Package,
     ) -> Result<<Self::Target as Flavor>::Package> {
-        self.type_translator.translate_package(source)
+        self.flavor.translate_package(source)
     }
 
     fn translate_type(
@@ -446,31 +349,31 @@ where
         use self::RpType::*;
 
         let out = match source {
-            String => self.type_translator.translate_string()?,
-            DateTime => self.type_translator.translate_datetime()?,
-            Bytes => self.type_translator.translate_bytes()?,
-            Signed { size: 32 } => self.type_translator.translate_i32()?,
-            Signed { size: 64 } => self.type_translator.translate_i64()?,
-            Unsigned { size: 32 } => self.type_translator.translate_u32()?,
-            Unsigned { size: 64 } => self.type_translator.translate_u64()?,
-            Float => self.type_translator.translate_float()?,
-            Double => self.type_translator.translate_double()?,
-            Boolean => self.type_translator.translate_boolean()?,
+            String => self.flavor.translate_string()?,
+            DateTime => self.flavor.translate_datetime()?,
+            Bytes => self.flavor.translate_bytes()?,
+            Signed { size: 32 } => self.flavor.translate_i32()?,
+            Signed { size: 64 } => self.flavor.translate_i64()?,
+            Unsigned { size: 32 } => self.flavor.translate_u32()?,
+            Unsigned { size: 64 } => self.flavor.translate_u64()?,
+            Float => self.flavor.translate_float()?,
+            Double => self.flavor.translate_double()?,
+            Boolean => self.flavor.translate_boolean()?,
             Array { inner } => {
                 let inner = self.translate_type(*inner)?;
-                self.type_translator.translate_array(inner)?
+                self.flavor.translate_array(inner)?
             }
             Name { name } => {
                 let reg = self.lookup(&name)?;
                 let name = name.translate(self)?;
-                self.type_translator.translate_name(name, reg)?
+                self.flavor.translate_name(name, reg)?
             }
             Map { key, value } => {
                 let key = self.translate_type(*key)?;
                 let value = self.translate_type(*value)?;
-                self.type_translator.translate_map(key, value)?
+                self.flavor.translate_map(key, value)?
             }
-            Any => self.type_translator.translate_any()?,
+            Any => self.flavor.translate_any()?,
             ty => return Err(format!("unsupported type: {}", ty).into()),
         };
 
@@ -481,13 +384,13 @@ where
         &self,
         source: <Self::Source as Flavor>::Field,
     ) -> Result<<Self::Target as Flavor>::Field> {
-        self.type_translator.translate_field(self, source)
+        self.flavor.translate_field(self, source)
     }
 
     fn translate_endpoint(
         &self,
         source: <Self::Source as Flavor>::Endpoint,
     ) -> Result<<Self::Target as Flavor>::Endpoint> {
-        self.type_translator.translate_endpoint(self, source)
+        self.flavor.translate_endpoint(self, source)
     }
 }

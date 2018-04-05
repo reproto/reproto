@@ -4,10 +4,11 @@
 
 use backend::PackageUtils;
 use core::errors::Result;
-use core::{self, Core2PackageTranslator, CoreFlavor, Flavor, Loc, PackageTranslator, Translate,
-           Translator, TypeTranslator};
+use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
+           Translator};
 use genco::Cons;
 use genco::go::{array, imported, interface, local, map, Go};
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use {GoPackageUtils, TYPE_SEP};
@@ -23,14 +24,14 @@ impl Flavor for GoFlavor {
 }
 
 /// Responsible for translating RpType -> Go type.
-pub struct GoTypeTranslator {
-    package_translator: Core2PackageTranslator,
+pub struct GoFlavorTranslator {
+    package_translator: HashMap<RpVersionedPackage, RpPackage>,
     package_utils: Rc<GoPackageUtils>,
 }
 
-impl GoTypeTranslator {
+impl GoFlavorTranslator {
     pub fn new(
-        package_translator: Core2PackageTranslator,
+        package_translator: HashMap<RpVersionedPackage, RpPackage>,
         package_utils: Rc<GoPackageUtils>,
     ) -> Self {
         Self {
@@ -40,7 +41,7 @@ impl GoTypeTranslator {
     }
 }
 
-impl TypeTranslator for GoTypeTranslator {
+impl FlavorTranslator for GoFlavorTranslator {
     type Source = CoreFlavor;
     type Target = GoFlavor;
 

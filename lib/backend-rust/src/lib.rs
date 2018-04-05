@@ -220,7 +220,7 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let packages = env.packages()?;
 
-    let translator = env.translator(flavored::RustTypeTranslator::new(
+    let translator = env.translator(flavored::RustFlavorTranslator::new(
         packages,
         package_utils.clone(),
         options.datetime.clone(),

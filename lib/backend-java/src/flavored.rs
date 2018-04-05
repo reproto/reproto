@@ -5,7 +5,7 @@
 use JavaPackageUtils;
 use backend::PackageUtils;
 use core::errors::Result;
-use core::{self, CoreFlavor, Flavor, Loc, Translate, Translator, TypeTranslator};
+use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, Translate, Translator};
 use genco::java::{imported, optional, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT,
                   INTEGER, LONG, VOID};
 use genco::{Cons, Java};
@@ -100,7 +100,7 @@ impl Flavor for JavaFlavor {
 }
 
 /// Responsible for translating RpType -> Java type.
-pub struct JavaTypeTranslator {
+pub struct JavaFlavorTranslator {
     package_utils: Rc<JavaPackageUtils>,
     list: Java<'static>,
     map: Java<'static>,
@@ -113,7 +113,7 @@ pub struct JavaTypeTranslator {
     to_lower_camel: naming::ToLowerCamel,
 }
 
-impl JavaTypeTranslator {
+impl JavaFlavorTranslator {
     pub fn new(package_utils: Rc<JavaPackageUtils>) -> Self {
         Self {
             package_utils: package_utils,
@@ -130,7 +130,7 @@ impl JavaTypeTranslator {
     }
 }
 
-impl TypeTranslator for JavaTypeTranslator {
+impl FlavorTranslator for JavaFlavorTranslator {
     type Source = CoreFlavor;
     type Target = JavaFlavor;
 

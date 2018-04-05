@@ -53,3 +53,84 @@ macro_rules! decl_flavor {
         pub type RpVersionedPackage = $source::RpVersionedPackage;
     };
 }
+
+/// Implement core type translation.
+#[macro_export]
+macro_rules! translator_core_types {
+    ($target:path) => {
+        fn translate_i32(&self) -> Result<RpType<$target>> {
+            Ok(RpType::Signed { size: 32 })
+        }
+
+        fn translate_i64(&self) -> Result<RpType<$target>> {
+            Ok(RpType::Signed { size: 64 })
+        }
+
+        fn translate_u32(&self) -> Result<RpType<$target>> {
+            Ok(RpType::Unsigned { size: 32 })
+        }
+
+        fn translate_u64(&self) -> Result<RpType<$target>> {
+            Ok(RpType::Unsigned { size: 64 })
+        }
+
+        fn translate_float(&self) -> Result<RpType<$target>> {
+            Ok(RpType::Float)
+        }
+
+        fn translate_double(&self) -> Result<RpType<$target>> {
+            Ok(RpType::Double)
+        }
+
+        fn translate_boolean(&self) -> Result<RpType<$target>> {
+            Ok(RpType::Boolean)
+        }
+
+        fn translate_string(&self) -> Result<RpType<$target>> {
+            Ok(RpType::String)
+        }
+
+        fn translate_datetime(&self) -> Result<RpType<$target>> {
+            Ok(RpType::DateTime)
+        }
+
+        fn translate_array(&self, inner: RpType<$target>) -> Result<RpType<$target>> {
+            Ok(RpType::Array {
+                inner: Box::new(inner),
+            })
+        }
+
+        fn translate_map(
+            &self,
+            key: RpType<$target>,
+            value: RpType<$target>,
+        ) -> Result<RpType<$target>> {
+            Ok(RpType::Map {
+                key: Box::new(key),
+                value: Box::new(value),
+            })
+        }
+
+        fn translate_any(&self) -> Result<RpType<$target>> {
+            Ok(RpType::Any)
+        }
+
+        fn translate_bytes(&self) -> Result<RpType<$target>> {
+            Ok(RpType::Bytes)
+        }
+    };
+}
+
+/// Implement core naming strategy.
+#[macro_export]
+macro_rules! translator_core_names {
+    ($target:path) => {
+        fn translate_name(
+            &self,
+            name: RpName<$target>,
+            _reg: RpReg,
+        ) -> Result<<$target as Flavor>::Type> {
+            Ok(RpType::Name { name })
+        }
+    };
+}
