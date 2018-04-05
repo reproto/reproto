@@ -63,8 +63,8 @@ pub trait FlavorTranslator {
     /// Translate the given name.
     fn translate_name(
         &self,
-        name: RpName<Self::Target>,
         reg: RpReg,
+        name: RpName<Self::Target>,
     ) -> Result<<Self::Target as Flavor>::Type>;
 
     /// Translate the given field.
@@ -356,7 +356,7 @@ where
             Name { name } => {
                 let reg = self.lookup(&name)?;
                 let name = name.translate(self)?;
-                self.flavor.translate_name(name, reg)?
+                self.flavor.translate_name(reg, name)?
             }
             Map { key, value } => {
                 let key = self.translate_type(*key)?;

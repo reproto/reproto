@@ -100,7 +100,7 @@ impl FlavorTranslator for GoFlavorTranslator {
         Ok(local("string"))
     }
 
-    fn translate_name(&self, name: RpName, reg: RpReg) -> Result<Go<'static>> {
+    fn translate_name(&self, reg: RpReg, name: RpName) -> Result<Go<'static>> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         // imported

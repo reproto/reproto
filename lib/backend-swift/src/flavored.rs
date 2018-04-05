@@ -127,7 +127,7 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         Ok(swift::local("string"))
     }
 
-    fn translate_name(&self, name: RpName, reg: RpReg) -> Result<Swift<'static>> {
+    fn translate_name(&self, reg: RpReg, name: RpName) -> Result<Swift<'static>> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
         let package_name = name.package.join("_");
         return Ok(swift::local(format!("{}_{}", package_name, ident)));

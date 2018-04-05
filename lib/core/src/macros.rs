@@ -170,8 +170,8 @@ macro_rules! translator_defaults {
 
         fn translate_name(
             &self,
-            name: RpName<$slf::Target>,
             _reg: RpReg,
+            name: RpName<$slf::Target>,
         ) -> Result<<$slf::Target as Flavor>::Type> {
             Ok(RpType::Name { name })
         }

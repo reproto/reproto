@@ -125,7 +125,7 @@ impl FlavorTranslator for RustFlavorTranslator {
         Ok(local("String"))
     }
 
-    fn translate_name(&self, name: RpName, reg: RpReg) -> Result<Rust<'static>> {
+    fn translate_name(&self, reg: RpReg, name: RpName) -> Result<Rust<'static>> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
 
         if let Some(prefix) = name.prefix {
