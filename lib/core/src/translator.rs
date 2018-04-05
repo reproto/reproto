@@ -89,6 +89,7 @@ pub trait FlavorTranslator {
     fn translate_local_name<T>(
         &self,
         translator: &T,
+        reg: RpReg,
         name: <Self::Source as Flavor>::Name,
     ) -> Result<<Self::Target as Flavor>::Name>
     where
@@ -183,6 +184,7 @@ pub trait Translator {
     /// Translate a local declaration name.
     fn translate_local_name(
         &self,
+        reg: RpReg,
         name: <Self::Source as Flavor>::Name,
     ) -> Result<<Self::Target as Flavor>::Name>;
 }
@@ -385,8 +387,9 @@ where
     /// Translate a local declaration name.
     fn translate_local_name(
         &self,
+        reg: RpReg,
         name: <Self::Source as Flavor>::Name,
     ) -> Result<<Self::Target as Flavor>::Name> {
-        self.flavor.translate_local_name(self, name)
+        self.flavor.translate_local_name(self, reg, name)
     }
 }

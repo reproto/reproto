@@ -1,7 +1,7 @@
 //! Model for services.
 
-use super::{Flavor, Loc, Translate, Translator};
 use errors::Result;
+use {Flavor, Loc, RpReg, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct RpServiceBodyHttp {
@@ -27,7 +27,7 @@ where
     fn translate(self, translator: &T) -> Result<RpServiceBody<T::Target>> {
         translator.visit(&self.name)?;
 
-        let name = translator.translate_local_name(self.name)?;
+        let name = translator.translate_local_name(RpReg::Service, self.name)?;
 
         let endpoints = self.endpoints
             .into_iter()

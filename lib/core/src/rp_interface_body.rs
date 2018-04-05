@@ -3,7 +3,7 @@
 use errors::Result;
 use std::slice;
 use translator;
-use {Flavor, Loc, RpCode, RpSubType, Translate, Translator};
+use {Flavor, Loc, RpCode, RpReg, RpSubType, Translate, Translator};
 
 /// Default key to use for tagged sub type strategy.
 pub const DEFAULT_TAG: &str = "type";
@@ -72,7 +72,7 @@ where
     fn translate(self, translator: &T) -> Result<RpInterfaceBody<T::Target>> {
         translator.visit(&self.name)?;
 
-        let name = translator.translate_local_name(self.name)?;
+        let name = translator.translate_local_name(RpReg::Interface, self.name)?;
 
         Ok(RpInterfaceBody {
             name: name,

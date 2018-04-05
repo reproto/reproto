@@ -3,7 +3,7 @@
 use errors::Result;
 use std::slice;
 use translator;
-use {Flavor, Loc, RpCode, Translate, Translator};
+use {Flavor, Loc, RpCode, RpReg, Translate, Translator};
 
 decl_body!(pub struct RpTupleBody<F> {
     pub fields: Vec<Loc<F::Field>>,
@@ -52,7 +52,7 @@ where
     fn translate(self, translator: &T) -> Result<RpTupleBody<T::Target>> {
         translator.visit(&self.name)?;
 
-        let name = translator.translate_local_name(self.name)?;
+        let name = translator.translate_local_name(RpReg::Tuple, self.name)?;
 
         Ok(RpTupleBody {
             name: name,

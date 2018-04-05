@@ -64,6 +64,7 @@ macro_rules! translator_defaults {
         fn translate_local_name<T>(
             &self,
             translator: &T,
+            _reg: $crate::RpReg,
             name: $crate::RpName<$slf::Source>,
         ) -> Result<$crate::RpName<$slf::Target>>
         where

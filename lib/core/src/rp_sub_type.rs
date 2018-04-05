@@ -3,7 +3,7 @@
 use errors::Result;
 use serde::Serialize;
 use translator;
-use {Flavor, Loc, RpCode, RpDecl, Translate, Translator};
+use {Flavor, Loc, RpCode, RpDecl, RpReg, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
@@ -47,7 +47,7 @@ where
     fn translate(self, translator: &T) -> Result<RpSubType<T::Target>> {
         translator.visit(&self.name)?;
 
-        let name = translator.translate_local_name(self.name)?;
+        let name = translator.translate_local_name(RpReg::SubType, self.name)?;
 
         Ok(RpSubType {
             name: name,
