@@ -2,9 +2,9 @@
 macro_rules! decl_body {
     (pub struct $name:ident<$f:ident> { $($rest:tt)* }) => {
         #[derive(Debug, Clone, Serialize)]
-        #[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: ::serde::Serialize, F::Package: ::serde::Serialize")]
+        #[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: ::serde::Serialize, F::Package: ::serde::Serialize, F::Name: ::serde::Serialize")]
         pub struct $name<$f: 'static> where $f: $crate::flavor::Flavor {
-            pub name: $crate::rp_name::RpName<$f>,
+            pub name: $f::Name,
             pub ident: String,
             pub comment: Vec<String>,
             pub decls: Vec<$crate::rp_decl::RpDecl<$f>>,
@@ -54,47 +54,95 @@ macro_rules! decl_flavor {
     };
 }
 
-/// Implement core type translation.
 #[macro_export]
-macro_rules! translator_core_types {
-    ($target:path) => {
-        fn translate_i32(&self) -> Result<RpType<$target>> {
+macro_rules! translator_defaults {
+    ($slf:ident $($rest:tt)*) => {
+        translator_defaults!(@internal $slf $($rest)*);
+    };
+
+    (@internal $slf:ident, local_name $($rest:tt)*) => {
+        fn translate_local_name<T>(
+            &self,
+            translator: &T,
+            name: $crate::RpName<$slf::Source>,
+        ) -> Result<$crate::RpName<$slf::Target>>
+        where
+            T: Translator<Source = $slf::Source, Target = $slf::Target>,
+        {
+            name.translate(translator)
+        }
+
+        translator_defaults!(@internal $slf $($rest)*);
+    };
+
+    (@internal $slf:ident, field $($rest:tt)*) => {
+        fn translate_field<T>(
+            &self,
+            translator: &T,
+            field: $crate::RpField<$slf::Source>,
+        ) -> Result<$crate::RpField<$slf::Target>>
+        where
+            T: Translator<Source = $slf::Source, Target = $slf::Target>,
+        {
+            field.translate(translator)
+        }
+
+        translator_defaults!(@internal $slf $($rest)*);
+    };
+
+    (@internal $slf:ident, endpoint $($rest:tt)*) => {
+        fn translate_endpoint<T>(
+            &self,
+            translator: &T,
+            endpoint: $crate::RpEndpoint<$slf::Source>,
+        ) -> Result<$crate::RpEndpoint<$slf::Target>>
+        where
+            T: Translator<Source = $slf::Source, Target = $slf::Target>,
+        {
+            endpoint.translate(translator)
+        }
+
+        translator_defaults!(@internal $slf $($rest)*);
+    };
+
+    (@internal $slf:ident, rp_type $($rest:tt)*) => {
+        fn translate_i32(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Signed { size: 32 })
         }
 
-        fn translate_i64(&self) -> Result<RpType<$target>> {
+        fn translate_i64(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Signed { size: 64 })
         }
 
-        fn translate_u32(&self) -> Result<RpType<$target>> {
+        fn translate_u32(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Unsigned { size: 32 })
         }
 
-        fn translate_u64(&self) -> Result<RpType<$target>> {
+        fn translate_u64(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Unsigned { size: 64 })
         }
 
-        fn translate_float(&self) -> Result<RpType<$target>> {
+        fn translate_float(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Float)
         }
 
-        fn translate_double(&self) -> Result<RpType<$target>> {
+        fn translate_double(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Double)
         }
 
-        fn translate_boolean(&self) -> Result<RpType<$target>> {
+        fn translate_boolean(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Boolean)
         }
 
-        fn translate_string(&self) -> Result<RpType<$target>> {
+        fn translate_string(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::String)
         }
 
-        fn translate_datetime(&self) -> Result<RpType<$target>> {
+        fn translate_datetime(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::DateTime)
         }
 
-        fn translate_array(&self, inner: RpType<$target>) -> Result<RpType<$target>> {
+        fn translate_array(&self, inner: RpType<$slf::Target>) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Array {
                 inner: Box::new(inner),
             })
@@ -102,35 +150,34 @@ macro_rules! translator_core_types {
 
         fn translate_map(
             &self,
-            key: RpType<$target>,
-            value: RpType<$target>,
-        ) -> Result<RpType<$target>> {
+            key: RpType<$slf::Target>,
+            value: RpType<$slf::Target>,
+        ) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Map {
                 key: Box::new(key),
                 value: Box::new(value),
             })
         }
 
-        fn translate_any(&self) -> Result<RpType<$target>> {
+        fn translate_any(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Any)
         }
 
-        fn translate_bytes(&self) -> Result<RpType<$target>> {
+        fn translate_bytes(&self) -> Result<RpType<$slf::Target>> {
             Ok(RpType::Bytes)
         }
-    };
-}
 
-/// Implement core naming strategy.
-#[macro_export]
-macro_rules! translator_core_names {
-    ($target:path) => {
         fn translate_name(
             &self,
-            name: RpName<$target>,
+            name: RpName<$slf::Target>,
             _reg: RpReg,
-        ) -> Result<<$target as Flavor>::Type> {
+        ) -> Result<<$slf::Target as Flavor>::Type> {
             Ok(RpType::Name { name })
         }
+
+        translator_defaults!(@internal $slf $($rest)*);
+    };
+
+    (@internal $slf:ident) => {
     };
 }

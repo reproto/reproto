@@ -21,8 +21,10 @@ where
     where
         T: Translator<Source = F>,
     {
+        let name = translator.translate_local_name(self.name)?;
+
         Ok(RpEnumBody {
-            name: self.name.translate(translator)?,
+            name: name,
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(translator)?,
@@ -45,7 +47,7 @@ where
     fn translate(self, translator: &T) -> Result<RpEnumBody<T::Target>> {
         translator.visit(&self.name)?;
 
-        let name = self.name.translate(translator)?;
+        let name = translator.translate_local_name(self.name)?;
 
         Ok(RpEnumBody {
             name: name,

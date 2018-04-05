@@ -32,6 +32,7 @@ pub struct RustFlavor;
 
 impl Flavor for RustFlavor {
     type Type = Rust<'static>;
+    type Name = RpName;
     type Field = core::RpField<RustFlavor>;
     type Endpoint = RustEndpoint;
     type Package = core::RpPackage;
@@ -65,6 +66,8 @@ impl RustFlavorTranslator {
 impl FlavorTranslator for RustFlavorTranslator {
     type Source = CoreFlavor;
     type Target = RustFlavor;
+
+    translator_defaults!(Self, local_name, field);
 
     fn translate_i32(&self) -> Result<Rust<'static>> {
         Ok(local("i32"))
@@ -131,17 +134,6 @@ impl FlavorTranslator for RustFlavorTranslator {
         }
 
         Ok(local(ident))
-    }
-
-    fn translate_field<T>(
-        &self,
-        translator: &T,
-        field: core::RpField<CoreFlavor>,
-    ) -> Result<core::RpField<RustFlavor>>
-    where
-        T: Translator<Source = CoreFlavor, Target = RustFlavor>,
-    {
-        field.translate(translator)
     }
 
     fn translate_endpoint<T>(

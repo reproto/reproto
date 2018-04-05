@@ -3,7 +3,7 @@
 use base_decode::BaseDecode;
 use converter::Converter;
 use core::errors::*;
-use core::{Flavor, Loc, RpInterfaceBody, RpType, WithPos};
+use core::{Flavor, Loc, RpInterfaceBody, RpName, RpType, WithPos};
 use dynamic_converter::DynamicConverter;
 use genco::Tokens;
 
@@ -11,7 +11,7 @@ pub trait DynamicDecode<'el, F: 'static>
 where
     Self: Converter<'el, F>,
     Self: DynamicConverter<'el, F>,
-    F: Flavor<Type = RpType<F>>,
+    F: Flavor<Type = RpType<F>, Name = RpName<F>>,
 {
     fn assign_tag_var(
         &self,
@@ -127,7 +127,7 @@ where
 impl<'el, T, F: 'static> BaseDecode<'el, F> for T
 where
     T: DynamicDecode<'el, F>,
-    F: Flavor<Type = RpType<F>>,
+    F: Flavor<Type = RpType<F>, Name = RpName<F>>,
 {
     fn base_decode(
         &self,

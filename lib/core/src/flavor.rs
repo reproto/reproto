@@ -3,7 +3,7 @@
 use std::cmp;
 use std::fmt;
 use std::hash;
-use {RpEndpoint, RpField, RpPackage, RpType, RpVersionedPackage, Version};
+use {RpEndpoint, RpField, RpName, RpPackage, RpType, RpVersionedPackage, Version};
 
 pub trait AsPackage
 where
@@ -21,6 +21,8 @@ where
 pub trait Flavor: fmt::Debug + Clone + cmp::Eq + hash::Hash {
     /// The type that this flavor serializes to.
     type Type: fmt::Debug + Clone + cmp::Eq;
+    /// The local field name.
+    type Name: fmt::Display + fmt::Debug + Clone + cmp::Eq;
     /// The field that this flavor serializes to.
     type Field: fmt::Debug + Clone;
     /// The endpoint that this flavor serializes to.
@@ -35,6 +37,7 @@ pub struct CoreFlavor;
 
 impl Flavor for CoreFlavor {
     type Type = RpType<CoreFlavor>;
+    type Name = RpName<CoreFlavor>;
     type Field = RpField<CoreFlavor>;
     type Endpoint = RpEndpoint<CoreFlavor>;
     type Package = RpVersionedPackage;
@@ -47,6 +50,7 @@ pub struct CoreFlavor2;
 
 impl Flavor for CoreFlavor2 {
     type Type = RpType<CoreFlavor2>;
+    type Name = RpName<CoreFlavor2>;
     type Field = RpField<CoreFlavor2>;
     type Endpoint = RpEndpoint<CoreFlavor2>;
     type Package = RpPackage;

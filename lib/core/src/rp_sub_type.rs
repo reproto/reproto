@@ -3,15 +3,16 @@
 use errors::Result;
 use serde::Serialize;
 use translator;
-use {Flavor, Loc, RpCode, RpDecl, RpName, Translate, Translator};
+use {Flavor, Loc, RpCode, RpDecl, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize")]
+#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
+                 Serialize, F::Name: Serialize")]
 pub struct RpSubType<F: 'static>
 where
     F: Flavor,
 {
-    pub name: RpName<F>,
+    pub name: F::Name,
     pub ident: String,
     pub comment: Vec<String>,
     /// Inner declarations.
@@ -46,7 +47,7 @@ where
     fn translate(self, translator: &T) -> Result<RpSubType<T::Target>> {
         translator.visit(&self.name)?;
 
-        let name = self.name.translate(translator)?;
+        let name = translator.translate_local_name(self.name)?;
 
         Ok(RpSubType {
             name: name,

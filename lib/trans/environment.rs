@@ -177,10 +177,9 @@ where
 
 impl Environment<CoreFlavor> {
     /// Build a new translator.
-    pub fn translator<T: 'static, F: 'static>(&self, flavor: T) -> Result<translator::Context<T>>
+    pub fn translator<T: 'static>(&self, flavor: T) -> Result<translator::Context<T>>
     where
-        T: FlavorTranslator<Source = CoreFlavor, Target = F>,
-        F: Flavor,
+        T: FlavorTranslator<Source = CoreFlavor>,
     {
         Ok(translator::Context {
             flavor: flavor,
@@ -263,14 +262,18 @@ impl Environment<CoreFlavor> {
 
     /// Translate without changing the flavor.
     pub fn translate_default(self) -> Result<Translated<CoreFlavor>> {
-        let ctx = self.translator(translator::CoreFlavorTranslator::new(()))?;
+        let ctx = self.translator(translator::CoreFlavorTranslator::<_, CoreFlavor>::new(()))?;
         self.translate(ctx)
     }
 
     /// Translate without changing the flavor.
     pub fn translate_versioned(self) -> Result<Translated<CoreFlavor2>> {
         let packages = self.packages()?;
-        let ctx = self.translator(translator::CoreFlavorTranslator::new(packages))?;
+
+        let ctx = self.translator(translator::CoreFlavorTranslator::<_, CoreFlavor2>::new(
+            packages,
+        ))?;
+
         self.translate(ctx)
     }
 

@@ -4,21 +4,17 @@ use Flavor;
 use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
+use std::cmp;
 use std::collections::HashMap;
+use std::fmt;
+use std::hash;
 use std::rc::Rc;
-use {CoreFlavor, CoreFlavor2, Loc, RpEndpoint, RpField, RpName, RpPackage, RpReg, RpType,
-     RpVersionedPackage};
+use {CoreFlavor, Loc, RpEndpoint, RpField, RpName, RpReg, RpType, RpVersionedPackage};
 
 /// Method for translating package.
-pub trait PackageTranslator {
-    type Source: 'static + Clone + Flavor;
-    type Target: 'static + Clone + Flavor;
-
+pub trait PackageTranslator<K, V> {
     /// Translate the given package.
-    fn translate_package(
-        &self,
-        source: <Self::Source as Flavor>::Package,
-    ) -> Result<<Self::Target as Flavor>::Package>;
+    fn translate_package(&self, source: K) -> Result<V>;
 }
 
 pub trait FlavorTranslator {
@@ -88,28 +84,29 @@ pub trait FlavorTranslator {
     ) -> Result<<Self::Target as Flavor>::Endpoint>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>;
+
+    /// Translate a local declaration name.
+    fn translate_local_name<T>(
+        &self,
+        translator: &T,
+        name: <Self::Source as Flavor>::Name,
+    ) -> Result<<Self::Target as Flavor>::Name>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>;
 }
 
-impl PackageTranslator for () {
-    type Source = CoreFlavor;
-    type Target = CoreFlavor;
-
-    fn translate_package(
-        &self,
-        package: <Self::Source as Flavor>::Package,
-    ) -> Result<<Self::Target as Flavor>::Package> {
+impl PackageTranslator<RpVersionedPackage, RpVersionedPackage> for () {
+    fn translate_package(&self, package: RpVersionedPackage) -> Result<RpVersionedPackage> {
         Ok(package)
     }
 }
 
-impl PackageTranslator for HashMap<RpVersionedPackage, RpPackage> {
-    type Source = CoreFlavor;
-    type Target = CoreFlavor2;
-
-    fn translate_package(
-        &self,
-        package: <Self::Source as Flavor>::Package,
-    ) -> Result<<Self::Target as Flavor>::Package> {
+impl<K, V> PackageTranslator<K, V> for HashMap<K, V>
+where
+    K: fmt::Display + cmp::Eq + hash::Hash,
+    V: Clone,
+{
+    fn translate_package(&self, package: K) -> Result<V> {
         let package = self.get(&package)
             .ok_or_else(|| format!("no such package: {}", package))?;
 
@@ -117,50 +114,35 @@ impl PackageTranslator for HashMap<RpVersionedPackage, RpPackage> {
     }
 }
 
-pub struct CoreFlavorTranslator<P> {
+pub struct CoreFlavorTranslator<P, F> {
     package_translator: P,
+    flavor: ::std::marker::PhantomData<F>,
 }
 
-impl<P> CoreFlavorTranslator<P> {
+impl<P, F> CoreFlavorTranslator<P, F> {
     pub fn new(package_translator: P) -> Self {
-        Self { package_translator }
+        Self {
+            package_translator,
+            flavor: ::std::marker::PhantomData,
+        }
     }
 }
 
-impl<P: 'static, F: 'static> FlavorTranslator for CoreFlavorTranslator<P>
+impl<P: 'static, F: 'static> FlavorTranslator for CoreFlavorTranslator<P, F>
 where
-    P: PackageTranslator<Source = CoreFlavor, Target = F>,
-    F: Flavor<Type = RpType<F>, Field = RpField<F>, Endpoint = RpEndpoint<F>>,
+    P: PackageTranslator<RpVersionedPackage, F::Package>,
+    F: Flavor<Type = RpType<F>, Field = RpField<F>, Endpoint = RpEndpoint<F>, Name = RpName<F>>,
 {
     type Source = CoreFlavor;
     type Target = F;
 
-    translator_core_types!(F);
-    translator_core_names!(F);
+    translator_defaults!(Self, rp_type, local_name, field, endpoint);
 
     fn translate_package(
         &self,
         package: <Self::Source as Flavor>::Package,
     ) -> Result<<F as Flavor>::Package> {
         self.package_translator.translate_package(package)
-    }
-
-    fn translate_field<T>(&self, translator: &T, field: RpField<Self::Source>) -> Result<RpField<F>>
-    where
-        T: Translator<Source = Self::Source, Target = F>,
-    {
-        field.translate(translator)
-    }
-
-    fn translate_endpoint<T>(
-        &self,
-        translator: &T,
-        endpoint: <Self::Source as Flavor>::Endpoint,
-    ) -> Result<<F as Flavor>::Endpoint>
-    where
-        T: Translator<Source = Self::Source, Target = F>,
-    {
-        endpoint.translate(translator)
     }
 }
 
@@ -170,7 +152,7 @@ pub trait Translator {
     type Target: 'static + Flavor;
 
     /// Indicate that the given name has been visited.
-    fn visit(&self, _: &RpName<Self::Source>) -> Result<()> {
+    fn visit(&self, _: &<Self::Source as Flavor>::Name) -> Result<()> {
         Ok(())
     }
 
@@ -197,6 +179,12 @@ pub trait Translator {
         &self,
         <Self::Source as Flavor>::Endpoint,
     ) -> Result<<Self::Target as Flavor>::Endpoint>;
+
+    /// Translate a local declaration name.
+    fn translate_local_name(
+        &self,
+        name: <Self::Source as Flavor>::Name,
+    ) -> Result<<Self::Target as Flavor>::Name>;
 }
 
 /// A translated type.
@@ -392,5 +380,13 @@ where
         source: <Self::Source as Flavor>::Endpoint,
     ) -> Result<<Self::Target as Flavor>::Endpoint> {
         self.flavor.translate_endpoint(self, source)
+    }
+
+    /// Translate a local declaration name.
+    fn translate_local_name(
+        &self,
+        name: <Self::Source as Flavor>::Name,
+    ) -> Result<<Self::Target as Flavor>::Name> {
+        self.flavor.translate_local_name(self, name)
     }
 }

@@ -8,7 +8,7 @@ use {IntoBytes, PackageUtils};
 pub trait PackageProcessor<'el, F: 'static>
 where
     Self: 'el + Sized,
-    F: Flavor,
+    F: Flavor<Name = RpName<F>>,
 {
     /// Support for backwards compatibility, only repackage backends which do not do package
     /// translation with prefixing.
@@ -28,7 +28,7 @@ where
 
     fn handle(&self) -> &'el Handle;
 
-    fn default_process(&self, _: &mut Self::Out, name: &'el RpName<F>) -> Result<()> {
+    fn default_process(&self, _: &mut Self::Out, name: &'el F::Name) -> Result<()> {
         warn!("not supported: {}", name);
         Ok(())
     }

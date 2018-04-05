@@ -52,7 +52,7 @@ where
     fn translate(self, translator: &T) -> Result<RpTypeBody<T::Target>> {
         translator.visit(&self.name)?;
 
-        let name = self.name.translate(translator)?;
+        let name = translator.translate_local_name(self.name)?;
 
         Ok(RpTypeBody {
             name: name,

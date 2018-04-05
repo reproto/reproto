@@ -27,7 +27,7 @@ where
     fn translate(self, translator: &T) -> Result<RpServiceBody<T::Target>> {
         translator.visit(&self.name)?;
 
-        let name = self.name.translate(translator)?;
+        let name = translator.translate_local_name(self.name)?;
 
         let endpoints = self.endpoints
             .into_iter()

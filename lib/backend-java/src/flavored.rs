@@ -94,6 +94,7 @@ pub struct JavaFlavor;
 
 impl Flavor for JavaFlavor {
     type Type = Java<'static>;
+    type Name = RpName;
     type Field = JavaField<'static>;
     type Endpoint = JavaEndpoint<'static>;
     type Package = core::RpVersionedPackage;
@@ -133,6 +134,8 @@ impl JavaFlavorTranslator {
 impl FlavorTranslator for JavaFlavorTranslator {
     type Source = CoreFlavor;
     type Target = JavaFlavor;
+
+    translator_defaults!(Self, local_name);
 
     fn translate_i32(&self) -> Result<Java<'static>> {
         Ok(INTEGER.into())

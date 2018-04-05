@@ -2,15 +2,15 @@
 
 use errors::Result;
 use serde::Serialize;
-use {Flavor, Loc, RpEnumOrdinal, RpName, Translate, Translator};
+use {Flavor, Loc, RpEnumOrdinal, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F::Package: Serialize")]
+#[serde(bound = "F::Package: Serialize, F::Name: Serialize")]
 pub struct RpVariant<F: 'static>
 where
     F: Flavor,
 {
-    pub name: RpName<F>,
+    pub name: F::Name,
     pub ident: Loc<String>,
     pub comment: Vec<String>,
     pub ordinal: RpEnumOrdinal,
@@ -48,7 +48,7 @@ where
     fn translate(self, translator: &T) -> Result<RpVariant<T::Target>> {
         translator.visit(&self.name)?;
 
-        let name = self.name.translate(translator)?;
+        let name = translator.translate_local_name(self.name)?;
 
         Ok(RpVariant {
             name: name,

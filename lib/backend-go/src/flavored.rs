@@ -18,6 +18,7 @@ pub struct GoFlavor;
 
 impl Flavor for GoFlavor {
     type Type = Go<'static>;
+    type Name = RpName;
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
@@ -44,6 +45,8 @@ impl GoFlavorTranslator {
 impl FlavorTranslator for GoFlavorTranslator {
     type Source = CoreFlavor;
     type Target = GoFlavor;
+
+    translator_defaults!(Self, local_name, field, endpoint);
 
     fn translate_i32(&self) -> Result<Go<'static>> {
         Ok(local("int32"))
@@ -109,28 +112,6 @@ impl FlavorTranslator for GoFlavorTranslator {
 
         // same package
         return Ok(local(ident));
-    }
-
-    fn translate_field<T>(
-        &self,
-        translator: &T,
-        field: core::RpField<CoreFlavor>,
-    ) -> Result<core::RpField<GoFlavor>>
-    where
-        T: Translator<Source = CoreFlavor, Target = GoFlavor>,
-    {
-        field.translate(translator)
-    }
-
-    fn translate_endpoint<T>(
-        &self,
-        translator: &T,
-        endpoint: core::RpEndpoint<CoreFlavor>,
-    ) -> Result<RpEndpoint>
-    where
-        T: Translator<Source = CoreFlavor, Target = GoFlavor>,
-    {
-        endpoint.translate(translator)
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {

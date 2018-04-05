@@ -19,6 +19,7 @@ pub struct SwiftFlavor;
 
 impl Flavor for SwiftFlavor {
     type Type = Swift<'static>;
+    type Name = RpName;
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
@@ -71,6 +72,8 @@ impl SwiftFlavorTranslator {
 impl FlavorTranslator for SwiftFlavorTranslator {
     type Source = CoreFlavor;
     type Target = SwiftFlavor;
+
+    translator_defaults!(Self, local_name, field, endpoint);
 
     fn translate_i32(&self) -> Result<Swift<'static>> {
         Ok(swift::local("Int32"))
@@ -128,28 +131,6 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
         let package_name = name.package.join("_");
         return Ok(swift::local(format!("{}_{}", package_name, ident)));
-    }
-
-    fn translate_field<T>(
-        &self,
-        translator: &T,
-        field: core::RpField<CoreFlavor>,
-    ) -> Result<core::RpField<SwiftFlavor>>
-    where
-        T: Translator<Source = CoreFlavor, Target = SwiftFlavor>,
-    {
-        field.translate(translator)
-    }
-
-    fn translate_endpoint<T>(
-        &self,
-        translator: &T,
-        endpoint: core::RpEndpoint<CoreFlavor>,
-    ) -> Result<RpEndpoint>
-    where
-        T: Translator<Source = CoreFlavor, Target = SwiftFlavor>,
-    {
-        endpoint.translate(translator)
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
