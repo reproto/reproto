@@ -231,7 +231,7 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, RustFlavor, RpName> for Compiler<'el> {
     type Out = RustFileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, RustFlavor>;
 

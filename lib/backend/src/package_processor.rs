@@ -1,14 +1,34 @@
 use core::errors::*;
 use core::{Flavor, Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
            RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
+use std::cmp;
 use std::collections::BTreeMap;
+use std::fmt;
 use std::io::Write;
 use {IntoBytes, PackageUtils};
 
-pub trait PackageProcessor<'el, F: 'static>
+pub trait Name<F>: Clone + fmt::Display + fmt::Debug + cmp::Eq
+where
+    F: Flavor,
+{
+    /// Access the package for the name.
+    fn package(&self) -> &F::Package;
+}
+
+impl<F> Name<F> for RpName<F>
+where
+    F: Flavor,
+{
+    fn package(&self) -> &F::Package {
+        &self.package
+    }
+}
+
+pub trait PackageProcessor<'el, F: 'static, N: 'static>
 where
     Self: 'el + Sized,
-    F: Flavor<Name = RpName<F>>,
+    F: Flavor<Name = N>,
+    N: Name<F>,
 {
     /// Support for backwards compatibility, only repackage backends which do not do package
     /// translation with prefixing.
@@ -70,7 +90,7 @@ where
             callback(decl)
                 .and_then(|_| {
                     let mut out = files
-                        .entry(decl.name().package.clone())
+                        .entry(decl.name().package().clone())
                         .or_insert_with(Self::Out::default);
 
                     match *decl {

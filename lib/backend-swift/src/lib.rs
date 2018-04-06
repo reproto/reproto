@@ -22,12 +22,11 @@ mod module;
 use backend::{Initializer, IntoBytes, PackageUtils};
 use compiler::Compiler;
 use core::errors::Result;
-use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpVersionedPackage};
 use core::{Context, CoreFlavor};
+use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftFlavor, SwiftName};
 use genco::Tokens;
 use genco::swift::Swift;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
-use naming::Naming;
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -47,8 +46,8 @@ impl Lang for SwiftLang {
         Some(format!("// {}", input))
     }
 
-    fn package_naming(&self) -> Option<Box<Naming>> {
-        Some(Box::new(naming::to_upper_camel()))
+    fn safe_packages(&self) -> bool {
+        false
     }
 
     fn keywords(&self) -> Vec<(&'static str, &'static str)> {
@@ -252,7 +251,7 @@ macro_rules! codegen {
 pub struct TypeAdded<'a, 'c: 'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
     pub compiler: &'a Compiler<'c>,
-    pub name: &'a Swift<'el>,
+    pub name: &'el SwiftName,
     pub fields: &'a [&'el RpField],
 }
 
@@ -262,7 +261,7 @@ codegen!(TypeCodegen, TypeAdded);
 pub struct TupleAdded<'a, 'c: 'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
     pub compiler: &'a Compiler<'c>,
-    pub name: &'a Swift<'el>,
+    pub name: &'el SwiftName,
     pub fields: &'a [&'el RpField],
 }
 
@@ -279,7 +278,7 @@ codegen!(StructModelCodegen, StructModelAdded);
 /// Event emitted when an enum has been added.
 pub struct EnumAdded<'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
-    pub name: &'a Swift<'el>,
+    pub name: &'el SwiftName,
     pub body: &'el RpEnumBody,
 }
 
@@ -289,7 +288,7 @@ codegen!(EnumCodegen, EnumAdded);
 pub struct InterfaceAdded<'a, 'c: 'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Swift<'el>>,
     pub compiler: &'a Compiler<'c>,
-    pub name: &'a Swift<'el>,
+    pub name: &'el SwiftName,
     pub body: &'el RpInterfaceBody,
 }
 
@@ -305,7 +304,7 @@ codegen!(InterfaceModelCodegen, InterfaceModelAdded);
 
 /// Event emitted when an interface model has been added.
 pub struct PackageAdded<'a, 'el: 'a> {
-    pub files: &'a mut BTreeMap<RpVersionedPackage, FileSpec<'el>>,
+    pub files: &'a mut BTreeMap<RpPackage, FileSpec<'el>>,
 }
 
 codegen!(PackageCodegen, PackageAdded);
@@ -320,7 +319,7 @@ impl SwiftPackageUtils {
     }
 }
 
-impl PackageUtils<CoreFlavor> for SwiftPackageUtils {
+impl PackageUtils<SwiftFlavor> for SwiftPackageUtils {
     fn package_prefix(&self) -> Option<&RpPackage> {
         self.package_prefix.as_ref()
     }
@@ -328,9 +327,19 @@ impl PackageUtils<CoreFlavor> for SwiftPackageUtils {
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let package_utils = Rc::new(SwiftPackageUtils::new(env.package_prefix()));
-    let env = env.translate_default()?;
+
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
+
+    let packages = env.packages()?;
+
+    let translator =
+        flavored::SwiftFlavorTranslator::new(packages, package_utils.clone(), &options)?;
+
+    let translator = env.translator(translator)?;
+
+    let env = env.translate(translator)?;
+
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
     Compiler::new(&env, package_utils, options, handle.as_ref())?.compile()
 }

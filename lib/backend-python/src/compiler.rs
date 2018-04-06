@@ -557,7 +557,7 @@ impl<'el> DynamicEncode<'el, CoreFlavor> for Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, CoreFlavor> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
     const SHOULD_REPACKAGE: bool = true;
 
     type Out = FileSpec<'el>;

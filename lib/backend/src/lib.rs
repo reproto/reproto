@@ -18,7 +18,7 @@ mod dynamic_decode;
 mod dynamic_encode;
 mod initializer;
 mod into_bytes;
-mod package_processor;
+pub mod package_processor;
 mod package_utils;
 
 pub use self::base_decode::BaseDecode;

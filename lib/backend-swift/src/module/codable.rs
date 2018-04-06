@@ -3,13 +3,13 @@
 use backend::Initializer;
 use core;
 use core::errors::{Error, Result};
-use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpVersionedPackage};
+use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
 use genco::swift::{local, Swift};
 use genco::{Quoted, Tokens};
 use std::rc::Rc;
-use {Compiler, EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen,
-     InterfaceModelAdded, InterfaceModelCodegen, Options, PackageAdded, PackageCodegen,
-     StructModelAdded, StructModelCodegen, TupleAdded, TupleCodegen};
+use {EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen, InterfaceModelAdded,
+     InterfaceModelCodegen, Options, PackageAdded, PackageCodegen, StructModelAdded,
+     StructModelCodegen, TupleAdded, TupleCodegen};
 
 pub struct Module {}
 
@@ -39,9 +39,8 @@ impl Initializer for Module {
 struct Codegen;
 
 impl Codegen {
-    fn utils_package(&self) -> RpVersionedPackage {
-        let package = RpPackage::new(vec!["ReprotoCodable_Utils".to_string()]);
-        RpVersionedPackage::new(package, None)
+    fn utils_package(&self) -> RpPackage {
+        RpPackage::new(vec!["ReprotoCodable_Utils".to_string()])
     }
 
     fn utils<'el>(&self) -> Result<FileSpec<'el>> {
@@ -656,32 +655,28 @@ impl TupleCodegen for Codegen {
     fn generate(&self, e: TupleAdded) -> Result<()> {
         let TupleAdded {
             container,
-            compiler,
             name,
             fields,
+            ..
         } = e;
 
-        container.push(decodable(compiler, name.clone(), fields)?);
-        container.push(encodable(name.clone(), fields)?);
+        container.push(decodable(name, fields)?);
+        container.push(encodable(name, fields)?);
 
         return Ok(());
 
         fn decodable<'a>(
-            compiler: &Compiler,
-            name: Swift<'a>,
+            name: &'a SwiftName,
             fields: &[&'a RpField],
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
             t.push(toks!["extension ", name, ": Decodable {"]);
-            t.nested(init(compiler, fields)?);
+            t.nested(init(fields)?);
             t.push("}");
 
             return Ok(t);
 
-            fn init<'a>(
-                compiler: &Compiler,
-                fields: &[&'a RpField],
-            ) -> Result<Tokens<'a, Swift<'a>>> {
+            fn init<'a>(fields: &[&'a RpField]) -> Result<Tokens<'a, Swift<'a>>> {
                 let mut t = Tokens::new();
 
                 t.push("public init(from decoder: Decoder) throws {");
@@ -696,7 +691,7 @@ impl TupleCodegen for Codegen {
 
                         for field in fields {
                             let s = toks!["self.", field.safe_ident()];
-                            let ty = compiler.field_type(&field.ty)?;
+                            let ty = field.ty.ty();
 
                             if field.is_optional() {
                                 t.push(toks![s, " = try values.decodeIfPresent(", ty, ".self)"]);
@@ -717,7 +712,10 @@ impl TupleCodegen for Codegen {
             }
         }
 
-        fn encodable<'a>(name: Swift<'a>, fields: &[&'a RpField]) -> Result<Tokens<'a, Swift<'a>>> {
+        fn encodable<'a>(
+            name: &'a SwiftName,
+            fields: &[&'a RpField],
+        ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
             t.push(toks!["extension ", name, ": Encodable {"]);
 
@@ -787,12 +785,15 @@ impl EnumCodegen for Codegen {
             ..
         } = e;
 
-        container.push(decodable(name.clone(), body)?);
-        container.push(encodable(name.clone(), body)?);
+        container.push(decodable(name, body)?);
+        container.push(encodable(name, body)?);
 
         return Ok(());
 
-        fn decodable<'a>(name: Swift<'a>, body: &'a RpEnumBody) -> Result<Tokens<'a, Swift<'a>>> {
+        fn decodable<'a>(
+            name: &'a SwiftName,
+            body: &'a RpEnumBody,
+        ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
             t.push(toks!["extension ", name, ": Decodable {"]);
             t.nested(init(body)?);
@@ -852,7 +853,10 @@ impl EnumCodegen for Codegen {
             }
         }
 
-        fn encodable<'a>(name: Swift<'a>, body: &'a RpEnumBody) -> Result<Tokens<'a, Swift<'a>>> {
+        fn encodable<'a>(
+            name: &'a SwiftName,
+            body: &'a RpEnumBody,
+        ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
             t.push(toks!["extension ", name, ": Encodable {"]);
 
@@ -947,20 +951,18 @@ impl InterfaceCodegen for Codegen {
     fn generate(&self, e: InterfaceAdded) -> Result<()> {
         let InterfaceAdded {
             container,
-            compiler,
             name,
             body,
             ..
         } = e;
 
-        container.push(decodable(compiler, name.clone(), body)?);
-        container.push(encodable(name.clone(), body)?);
+        container.push(decodable(name, body)?);
+        container.push(encodable(name, body)?);
 
         return Ok(());
 
         fn decodable<'a>(
-            compiler: &Compiler,
-            name: Swift<'a>,
+            name: &'a SwiftName,
             body: &'a RpInterfaceBody,
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
@@ -971,7 +973,7 @@ impl InterfaceCodegen for Codegen {
 
                 match body.sub_type_strategy {
                     core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                        t.nested(init(compiler, body, tag)?);
+                        t.nested(init(body, tag)?);
                     }
                 }
 
@@ -982,11 +984,7 @@ impl InterfaceCodegen for Codegen {
 
             return Ok(t);
 
-            fn init<'a>(
-                compiler: &Compiler,
-                body: &'a RpInterfaceBody,
-                tag: &'a str,
-            ) -> Result<Tokens<'a, Swift<'a>>> {
+            fn init<'a>(body: &'a RpInterfaceBody, tag: &'a str) -> Result<Tokens<'a, Swift<'a>>> {
                 let mut t = Tokens::new();
 
                 t.push("public init(from decoder: Decoder) throws {");
@@ -1005,10 +1003,9 @@ impl InterfaceCodegen for Codegen {
                             t.push({
                                 let mut t = Tokens::new();
 
-                                let name = compiler.convert_name(&sub_type.name)?;
                                 let n = sub_type.ident.as_str();
 
-                                let d = toks![name, "(from: decoder)"];
+                                let d = toks![&sub_type.name, "(from: decoder)"];
                                 let d = toks![".", n, "(", d, ")"];
 
                                 t.push(toks!["case ", sub_type.name().quoted(), ":"]);
@@ -1047,7 +1044,7 @@ impl InterfaceCodegen for Codegen {
         }
 
         fn encodable<'a>(
-            name: Swift<'a>,
+            name: &'a SwiftName,
             body: &'a RpInterfaceBody,
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();

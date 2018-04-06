@@ -3,13 +3,149 @@
 use backend::Initializer;
 use compiler::Comments;
 use core::errors::Result;
-use core::flavored::{RpEnumBody, RpField, RpPackage, RpSubType, RpType, RpVersionedPackage};
 use core::{self, Loc};
+use flavored::{RpEnumBody, RpField, RpPackage, RpSubType, SwiftName};
 use genco::swift::{imported, Swift};
 use genco::{Cons, IntoTokens, Quoted, Tokens};
 use std::rc::Rc;
 use {Compiler, EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen, Options,
      PackageAdded, PackageCodegen, TupleAdded, TupleCodegen, TypeAdded, TypeCodegen};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Simple<'el> {
+    DateTime,
+    Bytes,
+    Array {
+        argument: Box<Simple<'el>>,
+    },
+    Map {
+        key: Box<Simple<'el>>,
+        value: Box<Simple<'el>>,
+    },
+    Name {
+        name: Swift<'el>,
+    },
+    Any {
+        ty: Swift<'el>,
+    },
+    Type {
+        ty: Swift<'el>,
+    },
+}
+
+impl<'el> Simple<'el> {
+    /// Decode the given value.
+    fn decode_value(
+        &self,
+        codegen: &Codegen,
+        name: Cons<'el>,
+        var: Tokens<'el, Swift<'el>>,
+    ) -> Result<Tokens<'el, Swift<'el>>> {
+        use self::Simple::*;
+
+        let unbox = match *self {
+            DateTime => {
+                let string = toks!["try decode_value(", var, " as? String)"];
+                let date = toks![codegen.formatter.clone(), "().date(from: ", string, ")"];
+                toks!["try decode_value(", date, ")"]
+            }
+            Bytes => toks![
+                codegen.data.clone(),
+                "(base64Encoded: try decode_value(",
+                var,
+                " as? String))"
+            ],
+            Array { ref argument } => {
+                let argument = argument.decode_value(codegen, name.clone(), "inner".into())?;
+
+                return Ok(toks![
+                    "try decode_array(",
+                    var,
+                    ", name: ",
+                    name.quoted(),
+                    ", inner: { inner in ",
+                    argument,
+                    " })"
+                ]);
+            }
+            Map { ref value, .. } => {
+                let value = value.decode_value(codegen, name.clone(), "value".into())?;
+                return Ok(toks![
+                    "try decode_map(",
+                    var,
+                    ", name: ",
+                    name.quoted(),
+                    ", value: { value in ",
+                    value,
+                    " })"
+                ]);
+            }
+            Name { ref name } => {
+                return Ok(toks!["try ", name.clone(), ".decode(json: ", var, ")"]);
+            }
+            Any { .. } => toks![var],
+            Type { ref ty } => toks![unbox(var, ty.clone())],
+        };
+
+        return Ok(toks![
+            "try decode_name(",
+            unbox,
+            ", name: ",
+            name.quoted(),
+            ")"
+        ]);
+
+        /// Call the unbox function for the given type.
+        fn unbox<'el>(var: Tokens<'el, Swift<'el>>, ty: Swift<'el>) -> Tokens<'el, Swift<'el>> {
+            toks!["unbox(", var, ", as: ", ty, ".self)"]
+        }
+    }
+
+    /// Decode the given value.
+    fn encode_value(
+        &self,
+        codegen: &Codegen,
+        name: &'el str,
+        var: Tokens<'el, Swift<'el>>,
+    ) -> Result<Tokens<'el, Swift<'el>>> {
+        use self::Simple::*;
+
+        let encode = match *self {
+            DateTime => toks![codegen.formatter.clone(), "().string(from: ", var, ")"],
+            Bytes => toks![var, ".base64EncodedString()"],
+            Array { ref argument } => {
+                let argument = argument.encode_value(codegen, name, "inner".into())?;
+
+                toks![
+                    "try encode_array(",
+                    var,
+                    ", name: ",
+                    name.quoted(),
+                    ", inner: { inner in ",
+                    argument,
+                    " })"
+                ]
+            }
+            Map { ref value, .. } => {
+                let value = value.encode_value(codegen, name, "value".into())?;
+
+                toks![
+                    "try encode_map(",
+                    var,
+                    ", name: ",
+                    name.quoted(),
+                    ", value: { value in ",
+                    value,
+                    " })"
+                ]
+            }
+            Name { .. } => toks!["try ", var, ".encode()"],
+            _ => var,
+        };
+
+        return Ok(encode.into());
+    }
+}
 
 pub struct GuardMissing<'el>(Cons<'el>, Tokens<'el, Swift<'el>>, Cons<'el>);
 
@@ -68,128 +204,6 @@ impl Codegen {
         }
     }
 
-    /// Decode the given value.
-    fn decode_value<'a>(
-        &self,
-        compiler: &Compiler,
-        ty: &'a RpType,
-        name: Cons<'a>,
-        var: Tokens<'a, Swift<'a>>,
-    ) -> Result<Tokens<'a, Swift<'a>>> {
-        use core::RpType::*;
-
-        let unbox = match *ty {
-            String => unbox(var, "String"),
-            DateTime => {
-                let string = toks!["try decode_value(", var, " as? String)"];
-                let date = toks![self.formatter.clone(), "().date(from: ", string, ")"];
-                toks!["try decode_value(", date, ")"]
-            }
-            Bytes => toks![
-                self.data.clone(),
-                "(base64Encoded: try decode_value(",
-                var,
-                " as? String))"
-            ],
-            Signed { size: 32 } => unbox(var, "Int32"),
-            Signed { size: 64 } => unbox(var, "Int64"),
-            Unsigned { size: 32 } => unbox(var, "UInt32"),
-            Unsigned { size: 64 } => unbox(var, "UInt64"),
-            Float => unbox(var, "Float"),
-            Double => unbox(var, "Double"),
-            Boolean => unbox(var, "Bool"),
-            Array { ref inner } => {
-                let inner = self.decode_value(compiler, inner, name.clone(), "inner".into())?;
-                return Ok(toks![
-                    "try decode_array(",
-                    var,
-                    ", name: ",
-                    name.quoted(),
-                    ", inner: { inner in ",
-                    inner,
-                    " })"
-                ]);
-            }
-            Map { ref value, .. } => {
-                let value = self.decode_value(compiler, value, name.clone(), "value".into())?;
-                return Ok(toks![
-                    "try decode_map(",
-                    var,
-                    ", name: ",
-                    name.quoted(),
-                    ", value: { value in ",
-                    value,
-                    " })"
-                ]);
-            }
-            Name {
-                name: ref inner_name,
-            } => {
-                let inner_name = compiler.convert_name(inner_name)?;
-                return Ok(toks!["try ", inner_name, ".decode(json: ", var, ")"]);
-            }
-            Any => toks![var],
-            _ => return Err(format!("unsupported type: {}", ty).into()),
-        };
-
-        return Ok(toks![
-            "try decode_name(",
-            unbox,
-            ", name: ",
-            name.quoted(),
-            ")"
-        ]);
-
-        /// Call the unbox function for the given type.
-        fn unbox<'el>(var: Tokens<'el, Swift<'el>>, ty: &'el str) -> Tokens<'el, Swift<'el>> {
-            toks!["unbox(", var, ", as: ", ty, ".self)"]
-        }
-    }
-
-    /// Decode the given value.
-    fn encode_value<'a>(
-        &self,
-        ty: &'a RpType,
-        name: &'a str,
-        var: Tokens<'a, Swift<'a>>,
-    ) -> Result<Tokens<'a, Swift<'a>>> {
-        use core::RpType::*;
-
-        let encode = match *ty {
-            DateTime => toks![self.formatter.clone(), "().string(from: ", var, ")"],
-            Bytes => toks![var, ".base64EncodedString()"],
-            Array { ref inner } => {
-                let inner = self.encode_value(inner, name, "inner".into())?;
-                toks![
-                    "try encode_array(",
-                    var,
-                    ", name: ",
-                    name.quoted(),
-                    ", inner: { inner in ",
-                    inner,
-                    " })"
-                ]
-            }
-            Map { ref value, .. } => {
-                let value = self.encode_value(value, name, "value".into())?;
-
-                toks![
-                    "try encode_map(",
-                    var,
-                    ", name: ",
-                    name.quoted(),
-                    ", value: { value in ",
-                    value,
-                    " })"
-                ]
-            }
-            Name { .. } => toks!["try ", var, ".encode()"],
-            _ => var,
-        };
-
-        return Ok(encode.into());
-    }
-
     // Setup a field initializer.
     pub fn encode_field<'a, A>(
         &self,
@@ -208,7 +222,7 @@ impl Codegen {
             t.push({
                 let mut t = Tokens::new();
 
-                let value = self.encode_value(&field.ty, name, "value".into())?;
+                let value = field.ty.simple().encode_value(self, name, "value".into())?;
 
                 t.push(toks!["if let value = self.", ident, " {",]);
                 t.nested(append(value));
@@ -217,7 +231,10 @@ impl Codegen {
                 t
             });
         } else {
-            let value = self.encode_value(&field.ty, name, toks!["self.", ident])?;
+            let value = field
+                .ty
+                .simple()
+                .encode_value(self, name, toks!["self.", ident])?;
             t.push(append(value));
         }
 
@@ -256,7 +273,7 @@ impl Codegen {
                     t.nested({
                         let mut t = Tokens::new();
 
-                        let value = self.decode_value(compiler, &field.ty, name, "value".into())?;
+                        let value = field.ty.simple().decode_value(self, name, "value".into())?;
 
                         t.push(toks![ident, " = Optional.some(", value, ")"]);
 
@@ -277,7 +294,7 @@ impl Codegen {
                 name.clone(),
             ));
 
-            let value = self.decode_value(compiler, &field.ty, name, toks![f_ident])?;
+            let value = field.ty.simple().decode_value(self, name, toks![f_ident])?;
             t.push(toks!["let ", ident, " = ", value]);
         }
 
@@ -292,9 +309,8 @@ impl Codegen {
         )
     }
 
-    fn utils_package(&self) -> RpVersionedPackage {
-        let package = RpPackage::new(vec!["ReprotoSimple_Utils".to_string()]);
-        RpVersionedPackage::new(package, None)
+    fn utils_package(&self) -> RpPackage {
+        RpPackage::new(vec!["ReprotoSimple_Utils".to_string()])
     }
 
     fn utils<'el>(&self) -> Result<FileSpec<'el>> {
@@ -565,13 +581,13 @@ impl TypeCodegen for Codegen {
         container.push({
             let mut t = Tokens::new();
 
-            t.push(toks!["public extension ", name.clone(), " {"]);
+            t.push(toks!["public extension ", name, " {"]);
 
             t.push({
                 let mut t = Tokens::new();
 
                 // decode function
-                t.nested(decode(self, compiler, name.clone(), &fields)?);
+                t.nested(decode(self, compiler, name, &fields)?);
                 t.nested(encode(self, &fields)?);
 
                 t.join_line_spacing()
@@ -586,14 +602,14 @@ impl TypeCodegen for Codegen {
         fn decode<'a>(
             codegen: &Codegen,
             compiler: &Compiler,
-            name: Swift<'a>,
+            name: &'a SwiftName,
             fields: &[&'a RpField],
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
 
             t.push(toks![
                 "static func decode(json: Any) throws -> ",
-                name.clone(),
+                name,
                 " {"
             ]);
             t.nested({
@@ -612,7 +628,7 @@ impl TypeCodegen for Codegen {
                     t.push(toks!["let _ = try decode_value(json as? [String: Any])"]);
                 }
 
-                t.push(toks!["return ", name.clone(), "(", args.join(", "), ")"]);
+                t.push(toks!["return ", name, "(", args.join(", "), ")"]);
                 t.join_line_spacing()
             });
 
@@ -667,12 +683,12 @@ impl TupleCodegen for Codegen {
         container.push({
             let mut t = Tokens::new();
 
-            t.push(toks!["public extension ", name.clone(), " {"]);
+            t.push(toks!["public extension ", name, " {"]);
 
             t.push({
                 let mut t = Tokens::new();
 
-                t.nested(decode(self, compiler, name.clone(), &fields)?);
+                t.nested(decode(self, compiler, name, &fields)?);
                 t.nested(encode(self, &fields)?);
 
                 t.join_line_spacing()
@@ -687,7 +703,7 @@ impl TupleCodegen for Codegen {
         fn decode<'a>(
             codegen: &Codegen,
             compiler: &Compiler,
-            name: Swift<'a>,
+            name: &'a SwiftName,
             fields: &[&'a RpField],
         ) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
@@ -695,7 +711,7 @@ impl TupleCodegen for Codegen {
 
             t.push(toks![
                 "static func decode(json: Any) throws -> ",
-                name.clone(),
+                name,
                 " {"
             ]);
             t.nested({
@@ -718,7 +734,7 @@ impl TupleCodegen for Codegen {
                 t.join_line_spacing()
             });
 
-            t.nested(toks!["return ", name.clone(), "(", args.join(", "), ")"]);
+            t.nested(toks!["return ", name, "(", args.join(", "), ")"]);
             t.push("}");
 
             Ok(t)
@@ -767,13 +783,13 @@ impl EnumCodegen for Codegen {
         container.push({
             let mut t = Tokens::new();
 
-            t.push(toks!["public extension ", name.clone(), " {"]);
+            t.push(toks!["public extension ", name, " {"]);
 
             t.push({
                 let mut t = Tokens::new();
 
                 // decode function
-                t.nested(decode(body, name.clone())?);
+                t.nested(decode(body, name)?);
                 t.nested(encode(body)?);
 
                 t.join_line_spacing()
@@ -785,12 +801,12 @@ impl EnumCodegen for Codegen {
 
         return Ok(());
 
-        fn decode<'a>(body: &'a RpEnumBody, name: Swift<'a>) -> Result<Tokens<'a, Swift<'a>>> {
+        fn decode<'a>(body: &'a RpEnumBody, name: &'a SwiftName) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
 
             t.push(toks![
                 "static func decode(json: Any) throws -> ",
-                name.clone(),
+                name,
                 " {"
             ]);
             t.nested({
@@ -807,7 +823,7 @@ impl EnumCodegen for Codegen {
                         t.nested({
                             let mut t = Tokens::new();
                             t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
-                            t.nested(toks!["return ", name.clone(), ".", variant.ident(),]);
+                            t.nested(toks!["return ", name, ".", variant.ident(),]);
                             t
                         });
                     }
@@ -872,7 +888,6 @@ impl InterfaceCodegen for Codegen {
     fn generate(&self, e: InterfaceAdded) -> Result<()> {
         let InterfaceAdded {
             container,
-            compiler,
             name,
             body,
             ..
@@ -882,7 +897,7 @@ impl InterfaceCodegen for Codegen {
             let mut t = Tokens::new();
 
             t.push_unless_empty(Comments(&body.comment));
-            t.push(toks!["public extension ", name.clone(), " {"]);
+            t.push(toks!["public extension ", name, " {"]);
 
             t.push({
                 let mut t = Tokens::new();
@@ -890,12 +905,7 @@ impl InterfaceCodegen for Codegen {
                 match body.sub_type_strategy {
                     core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                         // decode function
-                        t.nested(decode_tag(
-                            compiler,
-                            name.clone(),
-                            tag.as_str(),
-                            &body.sub_types,
-                        )?);
+                        t.nested(decode_tag(name, tag.as_str(), &body.sub_types)?);
                         t.nested(encode_tag(tag.as_str(), &body.sub_types)?);
                     }
                 }
@@ -911,8 +921,7 @@ impl InterfaceCodegen for Codegen {
 
         /// Build a method to decode a tagged interface.
         fn decode_tag<'el, S>(
-            compiler: &Compiler,
-            name: Swift<'el>,
+            name: &'el SwiftName,
             tag: &'el str,
             sub_types: S,
         ) -> Result<Tokens<'el, Swift<'el>>>
@@ -923,7 +932,7 @@ impl InterfaceCodegen for Codegen {
 
             t.push(toks![
                 "static func decode(json: Any) throws -> ",
-                name.clone(),
+                name,
                 " {"
             ]);
             t.nested({
@@ -943,15 +952,13 @@ impl InterfaceCodegen for Codegen {
                     t.push("switch type {");
 
                     for sub_type in sub_types.into_iter() {
-                        let n = compiler.convert_name(&sub_type.name)?;
-
                         let ident = sub_type.ident.as_str();
 
                         t.nested({
                             let mut t = Tokens::new();
                             t.push(toks!["case ", sub_type.name().quoted(), ":"]);
-                            t.nested(toks!["let v = try ", n.clone(), ".decode(json: json)"]);
-                            t.nested(toks!["return ", name.clone(), ".", ident, "(v)"]);
+                            t.nested(toks!["let v = try ", &sub_type.name, ".decode(json: json)"]);
+                            t.nested(toks!["return ", name, ".", ident, "(v)"]);
                             t
                         });
                     }
