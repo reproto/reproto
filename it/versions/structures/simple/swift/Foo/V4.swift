@@ -1,12 +1,12 @@
-public struct Foo__4_0_0_Thing {
+public struct Foo_V4_Thing {
   let name: String?
-  let other: Bar__1_0_0_Other?
-  let other2: Bar__2_0_0_Other?
-  let other21: Bar__2_1_0_Other?
+  let other: Bar_V1_Other?
+  let other2: Bar_V20_Other?
+  let other21: Bar_V21_Other?
 }
 
-public extension Foo__4_0_0_Thing {
-  static func decode(json: Any) throws -> Foo__4_0_0_Thing {
+public extension Foo_V4_Thing {
+  static func decode(json: Any) throws -> Foo_V4_Thing {
     let json = try decode_value(json as? [String: Any])
 
     var name: String? = Optional.none
@@ -15,25 +15,25 @@ public extension Foo__4_0_0_Thing {
       name = Optional.some(try decode_name(unbox(value, as: String.self), name: "name"))
     }
 
-    var other: Bar__1_0_0_Other? = Optional.none
+    var other: Bar_V1_Other? = Optional.none
 
     if let value = json["other"] {
-      other = Optional.some(try Bar__1_0_0_Other.decode(json: value))
+      other = Optional.some(try Bar_V1_Other.decode(json: value))
     }
 
-    var other2: Bar__2_0_0_Other? = Optional.none
+    var other2: Bar_V20_Other? = Optional.none
 
     if let value = json["other2"] {
-      other2 = Optional.some(try Bar__2_0_0_Other.decode(json: value))
+      other2 = Optional.some(try Bar_V20_Other.decode(json: value))
     }
 
-    var other21: Bar__2_1_0_Other? = Optional.none
+    var other21: Bar_V21_Other? = Optional.none
 
     if let value = json["other21"] {
-      other21 = Optional.some(try Bar__2_1_0_Other.decode(json: value))
+      other21 = Optional.some(try Bar_V21_Other.decode(json: value))
     }
 
-    return Foo__4_0_0_Thing(name: name, other: other, other2: other2, other21: other21)
+    return Foo_V4_Thing(name: name, other: other, other2: other2, other21: other21)
   }
 
   func encode() throws -> [String: Any] {

@@ -1,4 +1,4 @@
-public struct Bar__1_0_0_Other: Codable {
+public struct Bar_V1_Other: Codable {
   let name: String
 
   enum CodingKeys: String, CodingKey {

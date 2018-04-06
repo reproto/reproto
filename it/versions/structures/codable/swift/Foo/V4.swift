@@ -1,8 +1,8 @@
-public struct Foo__4_0_0_Thing: Codable {
+public struct Foo_V4_Thing: Codable {
   let name: String?
-  let other: Bar__1_0_0_Other?
-  let other2: Bar__2_0_0_Other?
-  let other21: Bar__2_1_0_Other?
+  let other: Bar_V1_Other?
+  let other2: Bar_V20_Other?
+  let other21: Bar_V21_Other?
 
   enum CodingKeys: String, CodingKey {
     case name = "name"
