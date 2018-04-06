@@ -4,6 +4,7 @@ extern crate genco;
 extern crate log;
 #[macro_use]
 extern crate reproto_backend as backend;
+#[macro_use]
 extern crate reproto_core as core;
 #[macro_use]
 extern crate reproto_manifest as manifest;
@@ -16,6 +17,7 @@ extern crate toml;
 
 mod codegen;
 mod compiler;
+mod flavored;
 mod module;
 mod utils;
 
