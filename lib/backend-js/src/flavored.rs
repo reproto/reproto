@@ -2,7 +2,7 @@
 
 #![allow(unused)]
 
-use backend::{package_processor, PackageUtils};
+use backend::package_processor;
 use core::errors::Result;
 use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
            Translator};
@@ -238,8 +238,7 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
-        let package = self.package_translator.translate_package(source)?;
-        Ok(package)
+        Ok(self.package_translator.translate_package(source)?)
     }
 
     fn translate_local_name<T>(

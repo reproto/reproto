@@ -1,4 +1,4 @@
-use backend::{PackageProcessor, PackageUtils};
+use backend::PackageProcessor;
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, Loc};
 use flavored::{JavaScriptFlavor, JavaScriptName, RpEnumBody, RpField, RpInterfaceBody, RpPackage,

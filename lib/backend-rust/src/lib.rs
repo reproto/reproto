@@ -25,7 +25,7 @@ use backend::Initializer;
 use compiler::Compiler;
 use core::errors::*;
 use core::{Context, CoreFlavor};
-use flavored::{RpPackage, RustFlavor};
+use flavored::RpPackage;
 use genco::{Cons, Rust, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use rust_file_spec::RustFileSpec;

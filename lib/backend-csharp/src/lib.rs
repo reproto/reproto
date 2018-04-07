@@ -26,12 +26,10 @@ mod options;
 mod processor;
 mod utils;
 
-use backend::PackageUtils;
 use codegen::Configure;
 use compiler::Compiler;
 use core::errors::Result;
 use core::{Context, CoreFlavor};
-use flavored::{CsharpFlavor, RpPackage};
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use options::Options;
 use std::any::Any;
@@ -184,31 +182,10 @@ fn setup_options<'a>(modules: Vec<CsharpModule>) -> Options {
     options
 }
 
-pub struct CsharpPackageUtils {
-    package_prefix: Option<RpPackage>,
-}
-
-impl CsharpPackageUtils {
-    pub fn new(package_prefix: Option<RpPackage>) -> Self {
-        Self { package_prefix }
-    }
-}
-
-impl PackageUtils<CsharpFlavor> for CsharpPackageUtils {
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.package_prefix.as_ref()
-    }
-}
-
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let package_utils = Rc::new(CsharpPackageUtils::new(env.package_prefix()));
-
     let packages = env.packages()?;
 
-    let translator = env.translator(flavored::CsharpFlavorTranslator::new(
-        packages,
-        package_utils.clone(),
-    ))?;
+    let translator = env.translator(flavored::CsharpFlavorTranslator::new(packages))?;
 
     let env = env.translate(translator)?;
     let env = Rc::new(env);

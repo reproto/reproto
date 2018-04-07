@@ -1,6 +1,6 @@
 //! Python Compiler
 
-use backend::{PackageProcessor, PackageUtils};
+use backend::PackageProcessor;
 use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, Loc, RelativePathBuf};
@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use std::iter;
 use std::rc::Rc;
 use trans::{self, Translated};
-use {FileSpec, Options, PythonPackageUtils, EXT, INIT_PY};
+use {FileSpec, Options, EXT, INIT_PY};
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<PythonFlavor>,

@@ -19,10 +19,10 @@ mod compiler;
 mod flavored;
 mod module;
 
-use backend::{Initializer, IntoBytes, PackageUtils};
+use backend::{Initializer, IntoBytes};
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor, Version};
+use core::{Context, CoreFlavor};
 use flavored::{GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody};
 use genco::go::{self, Go};
 use genco::{Element, IntoTokens, Tokens};
@@ -267,28 +267,6 @@ impl<'el> IntoTokens<'el, Go<'el>> for Tags {
         t.append("`");
 
         t
-    }
-}
-
-pub struct GoPackageUtils {
-    package_prefix: Option<RpPackage>,
-}
-
-impl GoPackageUtils {
-    pub fn new(package_prefix: Option<RpPackage>) -> Self {
-        Self { package_prefix }
-    }
-}
-
-impl PackageUtils<CoreFlavor> for GoPackageUtils {
-    fn version_package(&self, input: &Version) -> String {
-        input
-            .to_string()
-            .replace(|c| self.package_version_unsafe(c), "_")
-    }
-
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.package_prefix.as_ref()
     }
 }
 

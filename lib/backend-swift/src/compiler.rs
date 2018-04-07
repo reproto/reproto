@@ -7,7 +7,6 @@ use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody, RpT
                SwiftFlavor, SwiftName};
 use genco::swift::Swift;
 use genco::{IntoTokens, Tokens};
-use std::rc::Rc;
 use trans::{self, Translated};
 use {EnumAdded, FileSpec, InterfaceAdded, InterfaceModelAdded, Options, PackageAdded,
      StructModelAdded, TupleAdded, TypeAdded, EXT};

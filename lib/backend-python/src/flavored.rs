@@ -2,7 +2,7 @@
 
 #![allow(unused)]
 
-use backend::{package_processor, PackageUtils};
+use backend::package_processor;
 use core::errors::Result;
 use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
            Translator};
@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
-use {Options, PythonPackageUtils, TYPE_SEP};
+use {Options, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PythonType<'el> {

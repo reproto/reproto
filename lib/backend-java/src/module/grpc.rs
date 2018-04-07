@@ -1,7 +1,5 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use JavaPackageUtils;
-use backend::PackageUtils;
 use codegen::{Configure, ServiceAdded, ServiceCodegen};
 use core::Loc;
 use core::errors::*;
@@ -19,11 +17,11 @@ const SERVER_STUB_NAME: &'static str = "ServerStub";
 pub struct Module;
 
 impl Module {
-    pub fn initialize(self, e: Configure, package_utils: Rc<JavaPackageUtils>) {
+    pub fn initialize(self, e: Configure) {
         e.options.suppress_service_methods = true;
         e.options
             .service_generators
-            .push(Box::new(GrpcClient::new(package_utils.clone())));
+            .push(Box::new(GrpcClient::new()));
     }
 }
 
@@ -186,7 +184,6 @@ impl<'a, 'el> IntoTokens<'el, Java<'el>> for JsonMarshaller<'a> {
 }
 
 pub struct GrpcClient {
-    package_utils: Rc<JavaPackageUtils>,
     to_upper_snake: naming::ToUpperSnake,
     mapper_provider: Java<'static>,
     bais: Java<'static>,
@@ -207,9 +204,8 @@ pub struct GrpcClient {
 }
 
 impl GrpcClient {
-    pub fn new(package_utils: Rc<JavaPackageUtils>) -> GrpcClient {
+    pub fn new() -> GrpcClient {
         GrpcClient {
-            package_utils: package_utils,
             to_upper_snake: naming::to_upper_snake(),
             mapper_provider: imported("io.reproto", "MapperProvider"),
             bais: imported("java.io", "ByteArrayInputStream"),
@@ -661,7 +657,7 @@ impl ServiceCodegen for GrpcClient {
 
         let service_name = Rc::new(format!(
             "{}.{}",
-            self.package_utils.package(&body.name.package).join("."),
+            body.name.package.join("."),
             body.name.join(".")
         ));
 

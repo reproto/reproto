@@ -2,8 +2,6 @@
 
 #![allow(unused)]
 
-use CsharpPackageUtils;
-use backend::PackageUtils;
 use core::errors::Result;
 use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
            Translator};
@@ -28,7 +26,6 @@ impl Flavor for CsharpFlavor {
 /// Responsible for translating RpType -> Csharp type.
 pub struct CsharpFlavorTranslator {
     package_translator: HashMap<RpVersionedPackage, RpPackage>,
-    package_utils: Rc<CsharpPackageUtils>,
     list: Csharp<'static>,
     dictionary: Csharp<'static>,
     string: Csharp<'static>,
@@ -39,13 +36,9 @@ pub struct CsharpFlavorTranslator {
 }
 
 impl CsharpFlavorTranslator {
-    pub fn new(
-        package_translator: HashMap<RpVersionedPackage, RpPackage>,
-        package_utils: Rc<CsharpPackageUtils>,
-    ) -> Self {
+    pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
         Self {
             package_translator,
-            package_utils,
             list: using("System.Collections.Generic", "List"),
             dictionary: using("System.Collections.Generic", "Dictionary"),
             string: using("System", "String"),
@@ -135,7 +128,7 @@ impl FlavorTranslator for CsharpFlavorTranslator {
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
         let package = self.package_translator.translate_package(source)?;
         let package = package.with_naming(|p| self.to_upper_camel.convert(p));
-        Ok(self.package_utils.package(&package))
+        Ok(package)
     }
 }
 

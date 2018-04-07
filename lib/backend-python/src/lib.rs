@@ -21,12 +21,11 @@ mod flavored;
 mod module;
 mod utils;
 
-use backend::{Initializer, IntoBytes, PackageUtils};
+use backend::{Initializer, IntoBytes};
 use codegen::ServiceCodegen;
 use compiler::Compiler;
 use core::errors::Result;
 use core::{Context, CoreFlavor, Loc, Pos, RpField, RpPackage, RpType, Translate};
-use flavored::PythonFlavor;
 use genco::{Python, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -161,22 +160,6 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     }
 
     Ok(options)
-}
-
-pub struct PythonPackageUtils {
-    package_prefix: Option<RpPackage>,
-}
-
-impl PythonPackageUtils {
-    pub fn new(package_prefix: Option<RpPackage>) -> Self {
-        Self { package_prefix }
-    }
-}
-
-impl PackageUtils<PythonFlavor> for PythonPackageUtils {
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.package_prefix.as_ref()
-    }
 }
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {

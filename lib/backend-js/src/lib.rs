@@ -23,7 +23,6 @@ use backend::IntoBytes;
 use compiler::Compiler;
 use core::errors::Result;
 use core::{Context, CoreFlavor, Loc, Pos, RpField, RpPackage, RpType, Translate};
-use flavored::JavaScriptFlavor;
 use genco::{JavaScript, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;

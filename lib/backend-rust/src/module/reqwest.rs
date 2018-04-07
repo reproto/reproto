@@ -1,6 +1,6 @@
 //! gRPC module for Rust.
 
-use backend::{Initializer, PackageUtils};
+use backend::Initializer;
 use core::errors::Result;
 use core::{self, Loc};
 use flavored::{RpEndpointHttp1, RpPackage, RpPathSpec, RpServiceBody, RustEndpoint};

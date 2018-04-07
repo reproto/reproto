@@ -2,14 +2,14 @@
 
 #![allow(unused)]
 
-use JavaPackageUtils;
-use backend::PackageUtils;
 use core::errors::Result;
-use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, Translate, Translator};
+use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
+           Translator};
 use genco::java::{imported, optional, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT,
                   INTEGER, LONG, VOID};
 use genco::{Cons, Java};
 use naming::{self, Naming};
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -97,12 +97,12 @@ impl Flavor for JavaFlavor {
     type Name = RpName;
     type Field = JavaField<'static>;
     type Endpoint = JavaEndpoint<'static>;
-    type Package = core::RpVersionedPackage;
+    type Package = core::RpPackage;
 }
 
 /// Responsible for translating RpType -> Java type.
 pub struct JavaFlavorTranslator {
-    package_utils: Rc<JavaPackageUtils>,
+    package_translator: HashMap<RpVersionedPackage, RpPackage>,
     list: Java<'static>,
     map: Java<'static>,
     string: Java<'static>,
@@ -115,9 +115,9 @@ pub struct JavaFlavorTranslator {
 }
 
 impl JavaFlavorTranslator {
-    pub fn new(package_utils: Rc<JavaPackageUtils>) -> Self {
+    pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
         Self {
-            package_utils: package_utils,
+            package_translator,
             list: imported("java.util", "List"),
             map: imported("java.util", "Map"),
             string: imported("java.lang", "String"),
@@ -190,9 +190,9 @@ impl FlavorTranslator for JavaFlavorTranslator {
     }
 
     fn translate_name(&self, reg: RpReg, name: RpName) -> Result<Java<'static>> {
-        let package = self.package_utils.package(&name.package).join(".");
-        let name = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
-        Ok(imported(package, name))
+        let ident = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
+        let package = name.package.join(".");
+        Ok(imported(package, ident))
     }
 
     fn translate_field<T>(
@@ -259,8 +259,8 @@ impl FlavorTranslator for JavaFlavorTranslator {
         });
     }
 
-    fn translate_package(&self, source: RpVersionedPackage) -> Result<RpVersionedPackage> {
-        Ok(source)
+    fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
+        Ok(self.package_translator.translate_package(source)?)
     }
 }
 

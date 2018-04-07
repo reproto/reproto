@@ -2,7 +2,8 @@
 
 #![allow(unused)]
 
-use backend::{package_processor, PackageUtils};
+use TYPE_SEP;
+use backend::package_processor;
 use core::errors::Result;
 use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
            Translator};
@@ -12,7 +13,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
-use {GoPackageUtils, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GoFlavor;

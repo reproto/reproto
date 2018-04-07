@@ -13,9 +13,7 @@ mod macros;
 mod initializer;
 mod into_bytes;
 pub mod package_processor;
-mod package_utils;
 
 pub use self::initializer::Initializer;
 pub use self::into_bytes::IntoBytes;
 pub use self::package_processor::PackageProcessor;
-pub use self::package_utils::PackageUtils;

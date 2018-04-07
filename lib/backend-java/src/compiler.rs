@@ -1,6 +1,6 @@
 //! Java backend for reproto
 
-use backend::PackageUtils;
+use Options;
 use codegen::{ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, Loc, WithPos};
@@ -14,7 +14,6 @@ use naming::{self, Naming};
 use std::rc::Rc;
 use trans::Translated;
 use utils::{Observer, Override};
-use {JavaPackageUtils, Options};
 
 /// Helper macro to implement listeners opt loop.
 fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {
@@ -55,7 +54,6 @@ macro_rules! call_codegen {
 
 pub struct Compiler<'el> {
     env: &'el Translated<JavaFlavor>,
-    package_utils: Rc<JavaPackageUtils>,
     variant_field: &'el Loc<JavaField<'static>>,
     options: Options,
     variant_naming: naming::ToUpperSnake,
@@ -72,13 +70,11 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<JavaFlavor>,
-        package_utils: Rc<JavaPackageUtils>,
         variant_field: &'el Loc<JavaField<'static>>,
         options: Options,
     ) -> Compiler<'el> {
         Compiler {
             env,
-            package_utils,
             variant_field,
             options,
             variant_naming: naming::to_upper_snake(),
@@ -111,7 +107,7 @@ impl<'el> Compiler<'el> {
     }
 
     fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
-        let package_name = self.package_utils.package(&decl.name().package).join(".");
+        let package_name = decl.name().package.join(".");
 
         JavaFile::new(package_name.as_str(), decl.ident(), |out| {
             self.process_decl(decl, 0usize, out)

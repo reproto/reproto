@@ -2,7 +2,7 @@
 
 #![allow(unused)]
 
-use backend::{package_processor, PackageUtils};
+use backend::package_processor;
 use core::errors::Result;
 use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
            Translator};
