@@ -28,7 +28,7 @@ impl RootEnum {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct RootTuple();
+pub struct RootTuple();
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
@@ -60,7 +60,7 @@ impl RootType_NestedEnum {
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
-struct RootType_NestedTuple();
+pub struct RootType_NestedTuple();
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
@@ -92,7 +92,7 @@ impl RootInterface_Foo_NestedEnum {
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
-struct RootInterface_Foo_NestedTuple();
+pub struct RootInterface_Foo_NestedTuple();
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
@@ -124,7 +124,7 @@ impl RootTuple_NestedEnum {
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
-struct RootTuple_NestedTuple();
+pub struct RootTuple_NestedTuple();
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
@@ -156,7 +156,7 @@ impl RootService_NestedEnum {
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
-struct RootService_NestedTuple();
+pub struct RootService_NestedTuple();
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]

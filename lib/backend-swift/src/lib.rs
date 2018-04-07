@@ -28,7 +28,6 @@ use genco::Tokens;
 use genco::swift::Swift;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
-use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
@@ -304,7 +303,7 @@ codegen!(InterfaceModelCodegen, InterfaceModelAdded);
 
 /// Event emitted when an interface model has been added.
 pub struct PackageAdded<'a, 'el: 'a> {
-    pub files: &'a mut BTreeMap<RpPackage, FileSpec<'el>>,
+    pub files: &'a mut Vec<(RpPackage, FileSpec<'el>)>,
 }
 
 codegen!(PackageCodegen, PackageAdded);

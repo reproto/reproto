@@ -1137,8 +1137,7 @@ impl InterfaceModelCodegen for Codegen {
 
 impl PackageCodegen for Codegen {
     fn generate(&self, e: PackageAdded) -> Result<()> {
-        let PackageAdded { files, .. } = e;
-        files.insert(self.utils_package(), self.utils()?);
+        e.files.push((self.utils_package(), self.utils()?));
         Ok(())
     }
 }

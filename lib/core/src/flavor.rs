@@ -12,6 +12,9 @@ where
 {
     /// Attempt to treat the current object as a package.
     fn try_as_package(&self) -> Result<&RpPackage>;
+
+    /// Attempt to prefix the package.
+    fn prefix_with(self, prefix: RpPackage) -> Self;
 }
 
 /// The flavor of intermediate representation being used.

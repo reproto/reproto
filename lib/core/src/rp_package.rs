@@ -41,6 +41,10 @@ impl AsPackage for RpPackage {
     fn try_as_package(&self) -> Result<&RpPackage> {
         Ok(self)
     }
+
+    fn prefix_with(self, prefix: RpPackage) -> Self {
+        prefix.join_package(self)
+    }
 }
 
 impl RpPackage {
@@ -75,10 +79,10 @@ impl RpPackage {
     }
 
     /// Join this package with another, versioned, package.
-    pub fn join_versioned(&self, other: &RpVersionedPackage) -> RpVersionedPackage {
+    pub fn join_versioned(&self, other: RpVersionedPackage) -> RpVersionedPackage {
         let mut parts = self.parts.clone();
-        parts.extend(other.package.parts.clone());
-        RpVersionedPackage::new(RpPackage::new(parts), other.version.clone())
+        parts.extend(other.package.parts);
+        RpVersionedPackage::new(RpPackage::new(parts), other.version)
     }
 
     /// Join the parts of this package with the given string.

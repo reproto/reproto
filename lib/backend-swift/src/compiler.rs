@@ -3,8 +3,8 @@
 use backend::PackageProcessor;
 use core::errors::*;
 use core::{Handle, Loc};
-use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
-               SwiftFlavor, SwiftName};
+use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody, SwiftFlavor,
+               SwiftName};
 use genco::swift::Swift;
 use genco::{IntoTokens, Tokens};
 use trans::{self, Translated};
@@ -147,7 +147,17 @@ impl<'el> Compiler<'el> {
         let mut files = self.populate_files()?;
 
         for g in &self.options.package_gens {
-            g.generate(PackageAdded { files: &mut files })?;
+            let mut f = Vec::new();
+            g.generate(PackageAdded { files: &mut f })?;
+
+            for (package, out) in f {
+                let package = match self.env.package_prefix() {
+                    Some(package_prefix) => package_prefix.clone().join_package(package),
+                    None => package,
+                };
+
+                files.insert(package, out);
+            }
         }
 
         self.write_files(files)
@@ -157,10 +167,6 @@ impl<'el> Compiler<'el> {
 impl<'el> PackageProcessor<'el, SwiftFlavor, SwiftName> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, SwiftFlavor>;
-
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.env.package_prefix()
-    }
 
     fn ext(&self) -> &str {
         EXT

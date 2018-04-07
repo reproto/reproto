@@ -353,10 +353,6 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, PythonFlavor>;
 
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.env.package_prefix()
-    }
-
     fn ext(&self) -> &str {
         EXT
     }

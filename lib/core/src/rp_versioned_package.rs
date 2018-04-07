@@ -17,6 +17,10 @@ impl AsPackage for RpVersionedPackage {
     fn try_as_package(&self) -> Result<&RpPackage> {
         Err("cannot be converted".into())
     }
+
+    fn prefix_with(self, prefix: RpPackage) -> Self {
+        prefix.join_versioned(self)
+    }
 }
 
 impl RpVersionedPackage {

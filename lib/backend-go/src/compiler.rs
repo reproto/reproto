@@ -105,10 +105,6 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, GoFlavor>;
 
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.env.package_prefix()
-    }
-
     fn ext(&self) -> &str {
         EXT
     }

@@ -36,9 +36,6 @@ where
     /// Access the extension for processing.
     fn ext(&self) -> &str;
 
-    /// Access the package utils.
-    fn package_prefix(&self) -> Option<&RpPackage>;
-
     /// Iterate over all existing declarations.
     fn decl_iter(&self) -> Self::DeclIter;
 
@@ -130,14 +127,7 @@ where
     fn write_files(&'el self, files: BTreeMap<F::Package, Self::Out>) -> Result<()> {
         let handle = self.handle();
 
-        let package_prefix = self.package_prefix();
-
         for (package, out) in files {
-            let package = match package_prefix {
-                Some(package_prefix) => package_prefix.clone().join_package(package),
-                None => package,
-            };
-
             let full_path = self.setup_module_path(&package)?;
 
             debug!("+module: {}", full_path.display());

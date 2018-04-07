@@ -40,4 +40,4 @@ impl Enum {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Tuple();
+pub struct Tuple();

@@ -185,14 +185,12 @@ impl Environment<CoreFlavor> {
             flavor: flavor,
             types: Rc::clone(&self.types),
             decls: Some(RefCell::new(LinkedHashMap::new())),
+            package_prefix: self.package_prefix.clone(),
         })
     }
 
     /// Translate the current environment into another.
-    pub fn translate<T: 'static>(
-        self,
-        mut ctx: translator::Context<T>,
-    ) -> Result<Translated<T::Target>>
+    pub fn translate<T>(self, mut ctx: translator::Context<T>) -> Result<Translated<T::Target>>
     where
         T: FlavorTranslator<Source = CoreFlavor>,
     {

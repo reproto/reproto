@@ -9,7 +9,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::hash;
 use std::rc::Rc;
-use {CoreFlavor, Loc, RpEndpoint, RpField, RpName, RpReg, RpType, RpVersionedPackage};
+use {AsPackage, CoreFlavor, Loc, RpEndpoint, RpField, RpName, RpPackage, RpReg, RpType,
+     RpVersionedPackage};
 
 /// Method for translating package.
 pub trait PackageTranslator<K, V> {
@@ -282,6 +283,8 @@ where
     pub types: Rc<LinkedHashMap<RpName<T::Source>, RpReg>>,
     /// Cached and translated registered declarations.
     pub decls: Option<RefCell<LinkedHashMap<RpName<T::Source>, RpReg>>>,
+    /// Prefix to apply to packages.
+    pub package_prefix: Option<RpPackage>,
 }
 
 impl<T> Context<T>
@@ -329,7 +332,13 @@ where
         &self,
         source: <Self::Source as Flavor>::Package,
     ) -> Result<<Self::Target as Flavor>::Package> {
-        self.flavor.translate_package(source)
+        let out = self.flavor.translate_package(source)?;
+
+        if let Some(ref package_prefix) = self.package_prefix {
+            Ok(out.prefix_with(package_prefix.clone()))
+        } else {
+            Ok(out)
+        }
     }
 
     fn translate_type(

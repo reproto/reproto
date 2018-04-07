@@ -1,7 +1,7 @@
 use backend::PackageProcessor;
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, Loc};
-use flavored::{JavaScriptFlavor, JavaScriptName, RpEnumBody, RpField, RpInterfaceBody, RpPackage,
+use flavored::{JavaScriptFlavor, JavaScriptName, RpEnumBody, RpField, RpInterfaceBody,
                RpTupleBody, RpTypeBody};
 use genco::{Element, JavaScript, Quoted, Tokens};
 use naming::{self, Naming};
@@ -321,10 +321,6 @@ impl<'el> Compiler<'el> {
 impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'el> {
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, JavaScriptFlavor>;
-
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.env.package_prefix()
-    }
 
     fn ext(&self) -> &str {
         EXT

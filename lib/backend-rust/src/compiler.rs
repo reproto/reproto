@@ -232,10 +232,6 @@ impl<'el> PackageProcessor<'el, RustFlavor, RpName> for Compiler<'el> {
     type Out = RustFileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, RustFlavor>;
 
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.env.package_prefix()
-    }
-
     fn ext(&self) -> &str {
         EXT
     }
@@ -256,7 +252,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, RpName> for Compiler<'el> {
         let mut fields = Tokens::new();
 
         for field in &body.fields {
-            fields.push(toks!["pub ", self.into_type(field)?]);
+            fields.append(toks!["pub ", self.into_type(field)?]);
         }
 
         let (name, attributes) = self.convert_type_name(&body.name);
@@ -266,7 +262,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, RpName> for Compiler<'el> {
         t.push_unless_empty(Comments(&body.comment));
         t.push_unless_empty(attributes);
         t.push(Derives);
-        t.push(toks!["struct ", name, "(", fields.join(", "), ");",]);
+        t.push(toks!["pub struct ", name, "(", fields.join(", "), ");",]);
 
         out.0.push(t);
         Ok(())

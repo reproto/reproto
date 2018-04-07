@@ -9,15 +9,11 @@ pub struct Entry {
 
 /// Tuple containing primitive.
 #[derive(Serialize, Deserialize, Debug)]
-struct Tuple1(
-pub String, 
-pub u64);
+pub struct Tuple1(pub String, pub u64);
 
 /// Tuple containing object.
 #[derive(Serialize, Deserialize, Debug)]
-struct Tuple2(
-pub String, 
-pub Other);
+pub struct Tuple2(pub String, pub Other);
 
 /// Complex object.
 #[derive(Serialize, Deserialize, Debug)]
