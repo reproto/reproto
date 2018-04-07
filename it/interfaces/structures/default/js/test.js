@@ -1,4 +1,3 @@
-
 export class Entry {
   static decode(data) {
     const f_tag = data["@type"]

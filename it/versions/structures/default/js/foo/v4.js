@@ -1,6 +1,6 @@
-import * as bar from "bar/_1_0_0.js";
-import * as bar2 from "bar/_2_0_0.js";
-import * as bar21 from "bar/_2_1_0.js";
+import * as bar from "bar/v1.js";
+import * as bar2 from "bar/v2_0.js";
+import * as bar21 from "bar/v2_1.js";
 
 export class Thing {
   constructor(name, other, other2, other21) {

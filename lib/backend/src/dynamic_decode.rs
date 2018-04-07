@@ -33,7 +33,7 @@ where
 
     fn dynamic_decode(
         &self,
-        ty: &F::Type,
+        ty: &'el F::Type,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         use self::RpType::*;

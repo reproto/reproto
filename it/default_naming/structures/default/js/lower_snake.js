@@ -1,4 +1,3 @@
-
 export class Value {
   constructor(foo_bar) {
     this.foo_bar = foo_bar;

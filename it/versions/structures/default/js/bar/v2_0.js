@@ -1,4 +1,3 @@
-
 export class Other {
   constructor(name2) {
     this.name2 = name2;

@@ -1,4 +1,3 @@
-
 export class Entry {
   constructor(tuple1, tuple2) {
     this.tuple1 = tuple1;

@@ -1,18 +1,17 @@
-use backend::{Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageProcessor,
-              PackageUtils};
+use backend::{PackageProcessor, PackageUtils};
 use core::errors::*;
-use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpTupleBody, RpType, RpTypeBody};
-use core::{self, CoreFlavor, ForEachLoc, Handle, Loc, WithPos};
-use genco::js::imported_alias;
+use core::{self, ForEachLoc, Handle, Loc};
+use flavored::{JavaScriptFlavor, JavaScriptName, RpEnumBody, RpField, RpInterfaceBody,
+               RpTupleBody, RpTypeBody};
 use genco::{Element, JavaScript, Quoted, Tokens};
 use naming::{self, Naming};
 use std::rc::Rc;
 use trans::{self, Translated};
 use utils::{is_defined, is_not_defined};
-use {FileSpec, JsPackageUtils, Options, EXT, TYPE_SEP};
+use {FileSpec, JsPackageUtils, Options, EXT};
 
 pub struct Compiler<'el> {
-    pub env: &'el Translated<CoreFlavor>,
+    pub env: &'el Translated<JavaScriptFlavor>,
     package_utils: Rc<JsPackageUtils>,
     variant_field: &'el Loc<RpField>,
     handle: &'el Handle,
@@ -23,7 +22,7 @@ pub struct Compiler<'el> {
 
 impl<'el> Compiler<'el> {
     pub fn new(
-        env: &'el Translated<CoreFlavor>,
+        env: &'el Translated<JavaScriptFlavor>,
         package_utils: Rc<JsPackageUtils>,
         variant_field: &'el Loc<RpField>,
         _: Options,
@@ -77,7 +76,7 @@ impl<'el> Compiler<'el> {
         for field in fields {
             let var_string = field.name().quoted();
             let field_toks = toks!["this.", field.safe_ident()];
-            let value_toks = self.dynamic_encode(&field.ty, field_toks.clone())?;
+            let value_toks = field.ty.encode(field_toks.clone());
 
             if field.is_optional() {
                 let toks = js![if is_defined(field_toks),
@@ -116,7 +115,7 @@ impl<'el> Compiler<'el> {
         for field in fields {
             let toks = toks!["this.", field.safe_ident()];
             body.push(self.throw_if_null(toks.clone(), field));
-            values.push(self.dynamic_encode(&field.ty, toks)?);
+            values.push(field.ty.encode(toks));
         }
 
         body.push(js![@return [ values ]]);
@@ -130,10 +129,10 @@ impl<'el> Compiler<'el> {
 
     fn decode_enum_method(
         &self,
-        type_name: Rc<String>,
+        name: &'el JavaScriptName,
         ident: &'el str,
     ) -> Result<Tokens<'el, JavaScript<'el>>> {
-        let members = toks![type_name, ".", self.values.clone()];
+        let members = toks![name, ".", self.values.clone()];
         let loop_init = toks!["let i = 0, l = ", members.clone(), ".length"];
         let match_member = toks!["member.", ident, " === data"];
 
@@ -158,7 +157,7 @@ impl<'el> Compiler<'el> {
     fn decode_method<F, I>(
         &self,
         fields: I,
-        type_name: Rc<String>,
+        name: &'el JavaScriptName,
         variable_fn: F,
     ) -> Result<Tokens<'el, JavaScript<'el>>>
     where
@@ -174,7 +173,7 @@ impl<'el> Compiler<'el> {
 
             let toks = if field.is_optional() {
                 let var_name = toks![var_name.clone()];
-                let var_toks = self.dynamic_decode(&field.ty, var_name.clone())?;
+                let var_toks = field.ty.decode(var_name.clone());
 
                 let mut check = Tokens::new();
 
@@ -186,7 +185,7 @@ impl<'el> Compiler<'el> {
                 check.join_line_spacing()
             } else {
                 let var_toks = toks!["data[", var.clone(), "]"];
-                let var_toks = self.dynamic_decode(&field.ty, var_toks.into())?;
+                let var_toks = field.ty.decode(var_toks.into());
 
                 let mut check = Tokens::new();
 
@@ -209,7 +208,7 @@ impl<'el> Compiler<'el> {
             body.push(assign.join_line_spacing());
         }
 
-        body.push(js![@return new type_name, arguments]);
+        body.push(js![@return new name, arguments]);
 
         let mut decode = Tokens::new();
         decode.push("static decode(data) {");
@@ -283,7 +282,7 @@ impl<'el> Compiler<'el> {
     fn enum_encode_decode(
         &self,
         field: &'el Loc<RpField>,
-        type_name: Rc<String>,
+        name: &'el JavaScriptName,
     ) -> Result<Tokens<'el, JavaScript<'el>>> {
         let mut elements = Tokens::new();
 
@@ -295,7 +294,7 @@ impl<'el> Compiler<'el> {
             encode
         });
 
-        let decode = self.decode_enum_method(type_name, field.safe_ident())?;
+        let decode = self.decode_enum_method(name, field.safe_ident())?;
         elements.push(decode);
         return Ok(elements.into());
     }
@@ -322,137 +321,13 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> Converter<'el, CoreFlavor> for Compiler<'el> {
-    type Custom = JavaScript<'el>;
-
-    fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, JavaScript<'el>>> {
-        let registered = self.env.lookup(name)?;
-
-        let ident = registered.ident(name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
-
-        if let Some(ref used) = name.prefix {
-            let package = self.package_utils.package(&name.package).join(".");
-            return Ok(imported_alias(package, ident, used.to_string()).into());
-        }
-
-        Ok(ident.into())
-    }
-}
-
-impl<'el> DynamicConverter<'el, CoreFlavor> for Compiler<'el> {
-    fn is_native(&self, ty: &RpType) -> bool {
-        use core::RpType::*;
-
-        match *ty {
-            Signed { size: _ } | Unsigned { size: _ } => true,
-            Float | Double => true,
-            String => true,
-            Any => true,
-            Boolean => true,
-            Array { ref inner } => self.is_native(inner),
-            Map { ref key, ref value } => self.is_native(key) && self.is_native(value),
-            _ => false,
-        }
-    }
-
-    fn map_key_var(&self) -> Tokens<'el, JavaScript<'el>> {
-        toks!["k"]
-    }
-
-    fn map_value_var(&self) -> Tokens<'el, JavaScript<'el>> {
-        toks!["data[k]"]
-    }
-
-    fn array_inner_var(&self) -> Tokens<'el, JavaScript<'el>> {
-        toks!["v"]
-    }
-}
-
-impl<'el> DynamicDecode<'el, CoreFlavor> for Compiler<'el> {
-    fn name_decode(
-        &self,
-        input: Tokens<'el, JavaScript<'el>>,
-        name: Tokens<'el, JavaScript<'el>>,
-    ) -> Tokens<'el, JavaScript<'el>> {
-        toks![name, ".decode(", input, ")"]
-    }
-
-    /// Decoding an Array in JavaScript.
-    ///
-    /// Maps over each decoded value using `Array.map(...)`, decoding each variable.
-    fn array_decode(
-        &self,
-        input: Tokens<'el, JavaScript<'el>>,
-        inner: Tokens<'el, JavaScript<'el>>,
-    ) -> Tokens<'el, JavaScript<'el>> {
-        toks![input, ".map(function(v) { return ", inner, "; })"]
-    }
-
-    /// Decoding a map in JavaScript.
-    fn map_decode(
-        &self,
-        input: Tokens<'el, JavaScript<'el>>,
-        _key: Tokens<'el, JavaScript<'el>>,
-        value: Tokens<'el, JavaScript<'el>>,
-    ) -> Tokens<'el, JavaScript<'el>> {
-        let mut t = Tokens::new();
-
-        t.append("(function(data) {");
-        t.append(" let o = {};");
-        t.append(" for (let k in data) {");
-        t.append(toks![" o[k] = ", value, ";"]);
-        t.append(" };");
-        t.append(" return o;");
-        t.append(toks![" })(", input, ")"]);
-
-        t
-    }
-}
-
-impl<'el> DynamicEncode<'el, CoreFlavor> for Compiler<'el> {
-    fn name_encode(
-        &self,
-        input: Tokens<'el, JavaScript<'el>>,
-        _: Tokens<'el, JavaScript<'el>>,
-    ) -> Tokens<'el, JavaScript<'el>> {
-        toks![input, ".encode()"]
-    }
-
-    fn array_encode(
-        &self,
-        input: Tokens<'el, JavaScript<'el>>,
-        inner: Tokens<'el, JavaScript<'el>>,
-    ) -> Tokens<'el, JavaScript<'el>> {
-        toks![input, ".map(function(v) { return ", inner, "; })"]
-    }
-
-    fn map_encode(
-        &self,
-        input: Tokens<'el, JavaScript<'el>>,
-        _: Tokens<'el, JavaScript<'el>>,
-        value: Tokens<'el, JavaScript<'el>>,
-    ) -> Tokens<'el, JavaScript<'el>> {
-        let mut t = Tokens::new();
-
-        t.append("(function(data) {");
-        t.append(" let o = {};");
-        t.append(" for (let k in data) {");
-        t.append(toks![" o[k] = ", value, ";"]);
-        t.append(" };");
-        t.append(" return o;");
-        t.append(toks![" })(", input, ")"]);
-
-        t
-    }
-}
-
-impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'el> {
     const SHOULD_REPACKAGE: bool = true;
 
     type Out = FileSpec<'el>;
-    type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
+    type DeclIter = trans::translated::DeclIter<'el, JavaScriptFlavor>;
 
-    fn package_utils(&self) -> &PackageUtils<CoreFlavor> {
+    fn package_utils(&self) -> &PackageUtils<JavaScriptFlavor> {
         self.package_utils.as_ref()
     }
 
@@ -469,7 +344,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
     }
 
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
-        let tuple_name = Rc::new(body.name.join(TYPE_SEP));
         let mut class_body = Tokens::new();
 
         class_body.push(self.build_constructor(&body.fields));
@@ -481,18 +355,14 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
             }
         }
 
-        class_body.push(self.decode_method(
-            &body.fields,
-            tuple_name.clone(),
-            Self::field_by_index,
-        )?);
+        class_body.push(self.decode_method(&body.fields, &body.name, Self::field_by_index)?);
 
         class_body.push(self.encode_tuple_method(&body.fields)?);
         class_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
 
         let mut class = Tokens::new();
 
-        class.push(toks!["export class ", tuple_name, " {"]);
+        class.push(toks!["export class ", &body.name, " {"]);
         class.nested(class_body.join_line_spacing());
         class.push("}");
 
@@ -501,26 +371,23 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
     }
 
     fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
-
         let mut class_body = Tokens::new();
 
         let mut members = Tokens::new();
 
         class_body.push(self.build_enum_constructor(self.variant_field));
-        class_body.push(self.enum_encode_decode(self.variant_field, type_name.clone())?);
+        class_body.push(self.enum_encode_decode(self.variant_field, &body.name)?);
 
         let mut values = Tokens::new();
 
         body.variants.iter().for_each_loc(|variant| {
-            let type_id = self.convert_type(&body.name)?;
             let mut arguments = Tokens::new();
 
             arguments.append(variant.ident().quoted());
             arguments.append(variant.ordinal().quoted());
 
-            let arguments = js![new type_id, arguments];
-            let member = toks![type_name.clone(), ".", variant.ident()];
+            let arguments = js![new & body.name, arguments];
+            let member = toks![&body.name, ".", variant.ident()];
 
             values.push(js![= member.clone(), arguments]);
             members.append(member);
@@ -534,7 +401,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
 
         let mut class = Tokens::new();
 
-        class.push(toks!["export class ", type_name.clone(), " {"]);
+        class.push(toks!["export class ", &body.name, " {"]);
         class.nested(class_body.join_line_spacing());
         class.push("}");
 
@@ -545,7 +412,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         elements.push(values);
 
         // push members field
-        let members_key = toks![type_name.clone(), ".", self.values.clone()];
+        let members_key = toks![&body.name, ".", self.values.clone()];
         elements.push(js![= members_key, js!([members])]);
 
         out.0.push(elements.join_line_spacing());
@@ -553,8 +420,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
     }
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
-
         let mut class_body = Tokens::new();
 
         class_body.push(self.build_constructor(&body.fields));
@@ -566,14 +431,14 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
             }
         }
 
-        class_body.push(self.decode_method(&body.fields, type_name.clone(), Self::field_by_name)?);
+        class_body.push(self.decode_method(&body.fields, &body.name, Self::field_by_name)?);
 
         class_body.push(self.encode_method(&body.fields, "{}", None)?);
         class_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
 
         let mut class = Tokens::new();
 
-        class.push(toks!["export class ", type_name, " {"]);
+        class.push(toks!["export class ", &body.name, " {"]);
         class.nested(class_body.join_line_spacing());
         class.push("}");
 
@@ -583,14 +448,13 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
         let mut classes = Tokens::new();
-        let interface_type_name = Rc::new(body.name.join(TYPE_SEP));
 
         let mut interface_body = Tokens::new();
 
         match body.sub_type_strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 let tk = tag.as_str().quoted().into();
-                interface_body.push(decode(self, &body, &tk)?);
+                interface_body.push(decode(&body, &tk)?);
             }
         }
 
@@ -599,7 +463,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         classes.push({
             let mut tokens = Tokens::new();
 
-            tokens.push(toks!["export class ", interface_type_name.clone(), " {"]);
+            tokens.push(toks!["export class ", &body.name, " {"]);
             tokens.nested(interface_body.join_line_spacing());
             tokens.push("}");
 
@@ -609,8 +473,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         let sub_types = body.sub_types.iter().map(|t| Loc::as_ref(t));
 
         sub_types.for_each_loc(|sub_type| {
-            let type_name = Rc::new(sub_type.name.join(TYPE_SEP));
-
             let mut class_body = Tokens::new();
 
             let fields: Vec<&Loc<RpField>> =
@@ -627,7 +489,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
 
             class_body.push(self.decode_method(
                 fields.iter().cloned(),
-                type_name.clone(),
+                &sub_type.name,
                 Self::field_by_name,
             )?);
 
@@ -648,7 +510,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
             classes.push({
                 let mut tokens = Tokens::new();
 
-                tokens.push(toks!["export class ", type_name.clone(), " {"]);
+                tokens.push(toks!["export class ", &sub_type.name, " {"]);
                 tokens.nested(class_body.join_line_spacing());
                 tokens.push("}");
 
@@ -662,7 +524,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         return Ok(());
 
         fn decode<'el>(
-            c: &Compiler<'el>,
             body: &'el RpInterfaceBody,
             tag: &Tokens<'el, JavaScript<'el>>,
         ) -> Result<Tokens<'el, JavaScript<'el>>> {
@@ -674,11 +535,9 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
             push!(t, "const ", f_tag, " = ", data, "[", tag.clone(), "]");
 
             for sub_type in body.sub_types.iter() {
-                let type_name = c.convert_type(&sub_type.name).with_pos(Loc::pos(sub_type))?;
-
                 t.push_into(|t| {
                     let cond = toks![f_tag, " === ", sub_type.name().quoted()];
-                    t.push(js![if cond, js![return type_name, ".decode(", data, ")"]]);
+                    t.push(js![if cond, js![return &sub_type.name, ".decode(", data, ")"]]);
                 });
             }
 

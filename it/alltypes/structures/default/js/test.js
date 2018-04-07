@@ -1,4 +1,3 @@
-
 export class Entry {
   constructor(boolean_type, string_type, datetime_type, unsigned_32, unsigned_64, signed_32, signed_64, float_type, double_type, bytes_type, any_type, array_type, array_of_array_type, map_type) {
     this.boolean_type = boolean_type;

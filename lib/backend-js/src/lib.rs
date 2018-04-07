@@ -2,6 +2,7 @@
 extern crate genco;
 #[macro_use]
 extern crate reproto_backend as backend;
+#[macro_use]
 extern crate reproto_core as core;
 #[macro_use]
 extern crate reproto_manifest as manifest;
@@ -16,11 +17,13 @@ extern crate toml;
 #[macro_use]
 mod utils;
 mod compiler;
+mod flavored;
 
 use backend::{IntoBytes, PackageUtils};
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor, Loc, Pos, RpField, RpPackage, RpType};
+use core::{Context, CoreFlavor, Loc, Pos, RpField, RpPackage, RpType, Translate};
+use flavored::JavaScriptFlavor;
 use genco::{JavaScript, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -167,7 +170,7 @@ impl JsPackageUtils {
     }
 }
 
-impl PackageUtils<CoreFlavor> for JsPackageUtils {
+impl PackageUtils<JavaScriptFlavor> for JsPackageUtils {
     fn package_prefix(&self) -> Option<&RpPackage> {
         self.package_prefix.as_ref()
     }
@@ -175,11 +178,22 @@ impl PackageUtils<CoreFlavor> for JsPackageUtils {
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let package_utils = Rc::new(JsPackageUtils::new(env.package_prefix()));
-    let env = env.translate_default()?;
+
+    let packages = env.packages()?;
+
+    let translator = env.translator(flavored::JavaScriptFlavorTranslator::new(
+        packages,
+        package_utils.clone(),
+    ))?;
+
+    let variant_field =
+        Loc::new(RpField::new("value", RpType::String), Pos::empty()).translate(&translator)?;
+
+    let env = env.translate(translator)?;
+
     let _modules: Vec<JsModule> = manifest::checked_modules(manifest.modules)?;
     let options = Options::new();
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    let variant_field = Loc::new(RpField::new("value", RpType::String), Pos::empty());
 
     Compiler::new(
         &env,

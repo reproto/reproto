@@ -10,9 +10,9 @@ where
 {
     type Custom: 'el + Custom + Clone;
 
-    fn convert_type(&self, name: &RpName<F>) -> Result<Tokens<'el, Self::Custom>>;
+    fn convert_type(&self, name: &'el RpName<F>) -> Result<Tokens<'el, Self::Custom>>;
 
-    fn convert_constant(&self, name: &RpName<F>) -> Result<Tokens<'el, Self::Custom>> {
+    fn convert_constant(&self, name: &'el RpName<F>) -> Result<Tokens<'el, Self::Custom>> {
         self.convert_type(name)
     }
 }

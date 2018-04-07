@@ -1,4 +1,3 @@
-
 export class Empty {
   constructor() {
   }

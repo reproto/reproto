@@ -31,7 +31,7 @@ where
 
     fn dynamic_encode(
         &self,
-        ty: &F::Type,
+        ty: &'el F::Type,
         input: Tokens<'el, Self::Custom>,
     ) -> Result<Tokens<'el, Self::Custom>> {
         use core::RpType::*;
