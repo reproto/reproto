@@ -10,8 +10,6 @@ extern crate reproto_trans as trans;
 
 #[macro_use]
 mod macros;
-mod base_decode;
-mod base_encode;
 mod converter;
 mod dynamic_converter;
 mod dynamic_decode;
@@ -21,8 +19,6 @@ mod into_bytes;
 pub mod package_processor;
 mod package_utils;
 
-pub use self::base_decode::BaseDecode;
-pub use self::base_encode::BaseEncode;
 pub use self::converter::Converter;
 pub use self::dynamic_converter::DynamicConverter;
 pub use self::dynamic_decode::DynamicDecode;

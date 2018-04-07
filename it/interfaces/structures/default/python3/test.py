@@ -15,7 +15,7 @@ class Entry:
     if f_tag == "Baz":
       return Entry_Baz.decode(data)
 
-    raise Exception("bad type" + f_tag)
+    raise Exception("bad type: " + f_tag)
 
 class Entry_A:
   TYPE = "foo"

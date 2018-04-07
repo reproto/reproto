@@ -1,6 +1,5 @@
 //! # Helper trait for building a dynamic-language encode method
 
-use base_encode::BaseEncode;
 use core::errors::*;
 use core::{Flavor, RpType};
 use dynamic_converter::DynamicConverter;
@@ -30,11 +29,6 @@ where
         value: Tokens<'el, Self::Custom>,
     ) -> Tokens<'el, Self::Custom>;
 
-    /// Handle the encoding of a datetime.
-    fn datetime_encode(&self, input: Tokens<'el, Self::Custom>) -> Tokens<'el, Self::Custom> {
-        input
-    }
-
     fn dynamic_encode(
         &self,
         ty: &F::Type,
@@ -50,7 +44,7 @@ where
             Signed { size: _ } | Unsigned { size: _ } => input,
             Float | Double => input,
             String => input,
-            DateTime => self.datetime_encode(input),
+            DateTime => input,
             Any => input,
             Boolean => input,
             Name { ref name } => {
@@ -73,20 +67,5 @@ where
         };
 
         Ok(stmt)
-    }
-}
-
-/// Dynamic encode is a valid decoding mechanism
-impl<'el, T, F: 'static> BaseEncode<'el, F> for T
-where
-    T: DynamicEncode<'el, F>,
-    F: Flavor<Type = RpType<F>>,
-{
-    fn base_encode(
-        &self,
-        ty: &F::Type,
-        input: Tokens<'el, Self::Custom>,
-    ) -> Result<Tokens<'el, Self::Custom>> {
-        self.dynamic_encode(ty, input)
     }
 }

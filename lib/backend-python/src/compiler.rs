@@ -467,46 +467,6 @@ impl<'el> DynamicDecode<'el, CoreFlavor> for Compiler<'el> {
             ".items())",
         ]
     }
-
-    fn assign_tag_var(
-        &self,
-        data: &'el str,
-        tag_var: &'el str,
-        tag: &Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, Self::Custom> {
-        toks![tag_var, " = ", data, "[", tag.clone(), "]"]
-    }
-
-    fn check_tag_var(
-        &self,
-        _data: &'el str,
-        tag_var: &'el str,
-        name: &'el str,
-        type_name: Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, Self::Custom> {
-        let mut check = Tokens::new();
-
-        check.push(toks!["if ", tag_var, " == ", name.quoted(), ":",]);
-
-        check.nested(toks!["return ", type_name, ".decode(data)"]);
-        check
-    }
-
-    fn raise_bad_type(&self, tag_var: &'el str) -> Tokens<'el, Self::Custom> {
-        toks!["raise Exception(", "bad type".quoted(), " + ", tag_var, ")",]
-    }
-
-    fn new_decode_method(
-        &self,
-        data: &'el str,
-        body: Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, Self::Custom> {
-        let mut decode = Tokens::new();
-        decode.push("@staticmethod");
-        decode.push(toks!("def decode(", data, "):"));
-        decode.nested(body);
-        decode
-    }
 }
 
 impl<'el> DynamicEncode<'el, CoreFlavor> for Compiler<'el> {
@@ -698,7 +658,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         match body.sub_type_strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 let tk = tag.as_str().quoted().into();
-                type_body.push(self.interface_decode_method(&body, &tk)?);
+                type_body.push(decode(self, &body, &tk)?);
             }
         }
 
@@ -753,7 +713,45 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
             Ok(()) as Result<()>
         })?;
 
-        Ok(())
+        return Ok(());
+
+        fn decode<'el>(
+            c: &Compiler<'el>,
+            body: &'el RpInterfaceBody,
+            tag: &Tokens<'el, Python<'el>>,
+        ) -> Result<Tokens<'el, Python<'el>>> {
+            let mut t = Tokens::new();
+
+            let data = "data";
+            let f_tag = "f_tag";
+            push!(t, f_tag, " = ", data, "[", tag.clone(), "]");
+
+            for sub_type in body.sub_types.iter() {
+                let type_name = c.convert_type(&sub_type.name).with_pos(Loc::pos(sub_type))?;
+
+                t.push_into(|t| {
+                    push!(t, "if ", f_tag, " == ", sub_type.name().quoted(), ":");
+                    nested!(t, "return ", type_name, ".decode(data)");
+                });
+            }
+
+            push!(
+                t,
+                "raise Exception(",
+                "bad type: ".quoted(),
+                " + ",
+                f_tag,
+                ")"
+            );
+
+            Ok({
+                let mut decode = Tokens::new();
+                decode.push("@staticmethod");
+                decode.push(toks!("def decode(", data, "):"));
+                decode.nested(t.join_line_spacing());
+                decode
+            })
+        }
     }
 
     fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody) -> Result<()> {

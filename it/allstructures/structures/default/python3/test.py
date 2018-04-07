@@ -40,7 +40,7 @@ class RootInterface:
     if f_tag == "Foo":
       return RootInterface_Foo.decode(data)
 
-    raise Exception("bad type" + f_tag)
+    raise Exception("bad type: " + f_tag)
 
 class RootInterface_Foo:
   TYPE = "Foo"
@@ -122,7 +122,7 @@ class RootType_NestedInterface:
     if f_tag == "Foo":
       return RootType_NestedInterface_Foo.decode(data)
 
-    raise Exception("bad type" + f_tag)
+    raise Exception("bad type: " + f_tag)
 
 class RootType_NestedInterface_Foo:
   TYPE = "Foo"
@@ -204,7 +204,7 @@ class RootInterface_Foo_NestedInterface:
     if f_tag == "NestedFoo":
       return RootInterface_Foo_NestedInterface_NestedFoo.decode(data)
 
-    raise Exception("bad type" + f_tag)
+    raise Exception("bad type: " + f_tag)
 
 class RootInterface_Foo_NestedInterface_NestedFoo:
   TYPE = "NestedFoo"
@@ -286,7 +286,7 @@ class RootTuple_NestedInterface:
     if f_tag == "Foo":
       return RootTuple_NestedInterface_Foo.decode(data)
 
-    raise Exception("bad type" + f_tag)
+    raise Exception("bad type: " + f_tag)
 
 class RootTuple_NestedInterface_Foo:
   TYPE = "Foo"
@@ -368,7 +368,7 @@ class RootService_NestedInterface:
     if f_tag == "Foo":
       return RootService_NestedInterface_Foo.decode(data)
 
-    raise Exception("bad type" + f_tag)
+    raise Exception("bad type: " + f_tag)
 
 class RootService_NestedInterface_Foo:
   TYPE = "Foo"

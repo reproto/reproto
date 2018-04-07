@@ -43,7 +43,7 @@ class Interface:
     if f_tag == "SubType":
       return Interface_SubType.decode(data)
 
-    raise Exception("bad type" + f_tag)
+    raise Exception("bad type: " + f_tag)
 
   def interface_method(self):
     pass

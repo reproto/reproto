@@ -2,7 +2,7 @@ use backend::{Converter, DynamicConverter, DynamicDecode, DynamicEncode, Package
               PackageUtils};
 use core::errors::*;
 use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpTupleBody, RpType, RpTypeBody};
-use core::{self, CoreFlavor, ForEachLoc, Handle, Loc};
+use core::{self, CoreFlavor, ForEachLoc, Handle, Loc, WithPos};
 use genco::js::imported_alias;
 use genco::{Element, JavaScript, Quoted, Tokens};
 use naming::{self, Naming};
@@ -407,44 +407,6 @@ impl<'el> DynamicDecode<'el, CoreFlavor> for Compiler<'el> {
 
         t
     }
-
-    fn assign_tag_var(
-        &self,
-        data: &'el str,
-        tag_var: &'el str,
-        tag: &Tokens<'el, JavaScript<'el>>,
-    ) -> Tokens<'el, JavaScript<'el>> {
-        toks!["const ", tag_var, " = ", data, "[", tag.clone(), "]",]
-    }
-
-    fn check_tag_var(
-        &self,
-        data: &'el str,
-        tag_var: &'el str,
-        name: &'el str,
-        type_name: Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, JavaScript<'el>> {
-        let mut body = Tokens::new();
-        let cond = toks![tag_var, " === ", name.quoted()];
-        body.push(js![if cond, js![return type_name, ".decode(", data, ")"]]);
-        body
-    }
-
-    fn raise_bad_type(&self, tag_var: &'el str) -> Tokens<'el, JavaScript<'el>> {
-        js![throw "bad type: ".quoted(), " + ", tag_var]
-    }
-
-    fn new_decode_method(
-        &self,
-        data: &'el str,
-        body: Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, JavaScript<'el>> {
-        let mut decode = Tokens::new();
-        decode.push(toks!["static decode(", data, ") {"]);
-        decode.nested(body);
-        decode.push("}");
-        decode
-    }
 }
 
 impl<'el> DynamicEncode<'el, CoreFlavor> for Compiler<'el> {
@@ -628,7 +590,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         match body.sub_type_strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 let tk = tag.as_str().quoted().into();
-                interface_body.push(self.interface_decode_method(&body, &tk)?);
+                interface_body.push(decode(self, &body, &tk)?);
             }
         }
 
@@ -697,6 +659,38 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         })?;
 
         out.0.push(classes.join_line_spacing());
-        Ok(())
+        return Ok(());
+
+        fn decode<'el>(
+            c: &Compiler<'el>,
+            body: &'el RpInterfaceBody,
+            tag: &Tokens<'el, JavaScript<'el>>,
+        ) -> Result<Tokens<'el, JavaScript<'el>>> {
+            let mut t = Tokens::new();
+
+            let data = "data";
+            let f_tag = "f_tag";
+
+            push!(t, "const ", f_tag, " = ", data, "[", tag.clone(), "]");
+
+            for sub_type in body.sub_types.iter() {
+                let type_name = c.convert_type(&sub_type.name).with_pos(Loc::pos(sub_type))?;
+
+                t.push_into(|t| {
+                    let cond = toks![f_tag, " === ", sub_type.name().quoted()];
+                    t.push(js![if cond, js![return type_name, ".decode(", data, ")"]]);
+                });
+            }
+
+            t.push(js![throw "bad type: ".quoted(), " + ", f_tag]);
+
+            Ok({
+                let mut decode = Tokens::new();
+                push!(decode, "static decode(", data, ") {");
+                decode.nested(t.join_line_spacing());
+                push!(decode, "}");
+                decode
+            })
+        }
     }
 }
