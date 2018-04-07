@@ -1,6 +1,6 @@
 //! Backend for Rust
 
-use backend::{PackageProcessor, PackageUtils};
+use backend::PackageProcessor;
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, RelativePath, RelativePathBuf};
 use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use trans::{self, Translated};
 use utils::Comments;
-use {Options, Root, RustPackageUtils, Service, EXT, LIB, MOD, TYPE_SEP};
+use {Options, Root, Service, EXT, LIB, MOD, TYPE_SEP};
 
 /// #[allow(non_camel_case_types)] attribute.
 pub struct AllowNonCamelCaseTypes;
@@ -51,7 +51,6 @@ impl<'a> IntoTokens<'a, Rust<'a>> for Tag<'a> {
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<RustFlavor>,
-    package_utils: Rc<RustPackageUtils>,
     options: Options,
     handle: &'el Handle,
 }
@@ -59,13 +58,11 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<RustFlavor>,
-        package_utils: Rc<RustPackageUtils>,
         options: Options,
         handle: &'el Handle,
     ) -> Compiler<'el> {
         Compiler {
             env,
-            package_utils,
             options,
             handle,
         }
@@ -235,8 +232,8 @@ impl<'el> PackageProcessor<'el, RustFlavor, RpName> for Compiler<'el> {
     type Out = RustFileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, RustFlavor>;
 
-    fn package_utils(&self) -> &PackageUtils<RustFlavor> {
-        self.package_utils.as_ref()
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.env.package_prefix()
     }
 
     fn ext(&self) -> &str {

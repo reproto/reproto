@@ -22,9 +22,7 @@ impl Initializer for Module {
     type Options = Options;
 
     fn initialize(&self, options: &mut Options) -> Result<()> {
-        let package_utils = options.package_utils.clone();
-
-        let utils_package = package_utils.package(&RpPackage::new(vec!["reproto".to_string()]));
+        let utils_package = RpPackage::new(vec!["reproto".to_string()]);
 
         let imported_utils_package = Rc::new(utils_package.join(SCOPE_SEP));
         let result = imported(imported_utils_package.clone(), "Result");

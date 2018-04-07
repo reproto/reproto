@@ -11,7 +11,7 @@ use genco::{Cons, Rust};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
-use {RustPackageUtils, SCOPE_SEP, TYPE_SEP};
+use {SCOPE_SEP, TYPE_SEP};
 
 #[derive(Debug, Clone)]
 pub struct RustEndpoint {
@@ -41,7 +41,6 @@ impl Flavor for RustFlavor {
 /// Responsible for translating RpType -> Rust type.
 pub struct RustFlavorTranslator {
     package_translator: HashMap<RpVersionedPackage, RpPackage>,
-    package_utils: Rc<RustPackageUtils>,
     map: Rust<'static>,
     json_value: Rust<'static>,
     datetime: Option<Rust<'static>>,
@@ -50,12 +49,10 @@ pub struct RustFlavorTranslator {
 impl RustFlavorTranslator {
     pub fn new(
         package_translator: HashMap<RpVersionedPackage, RpPackage>,
-        package_utils: Rc<RustPackageUtils>,
         datetime: Option<Rust<'static>>,
     ) -> Self {
         Self {
             package_translator,
-            package_utils,
             map: imported("std::collections", "HashMap"),
             json_value: imported("serde_json", "Value").alias("json"),
             datetime: datetime,
@@ -151,8 +148,7 @@ impl FlavorTranslator for RustFlavorTranslator {
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
-        let package = self.package_translator.translate_package(source)?;
-        Ok(self.package_utils.package(&package))
+        Ok(self.package_translator.translate_package(source)?)
     }
 }
 

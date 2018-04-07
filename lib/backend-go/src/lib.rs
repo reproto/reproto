@@ -22,8 +22,8 @@ mod module;
 use backend::{Initializer, IntoBytes, PackageUtils};
 use compiler::Compiler;
 use core::errors::Result;
-use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody};
 use core::{Context, CoreFlavor, Version};
+use flavored::{GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody};
 use genco::go::{self, Go};
 use genco::{Element, IntoTokens, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -170,7 +170,7 @@ codegen!(FieldCodegen, FieldAdded);
 /// Event emitted when an enum has been added
 pub struct EnumAdded<'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Go<'el>>,
-    pub name: Go<'el>,
+    pub name: &'el GoName,
     pub body: &'el RpEnumBody,
 }
 
@@ -179,9 +179,8 @@ codegen!(EnumCodegen, EnumAdded);
 /// Event emitted when a tuple has been added.
 pub struct TupleAdded<'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Go<'el>>,
-    pub name: Go<'el>,
+    pub name: &'el GoName,
     pub body: &'el RpTupleBody,
-    pub compiler: &'a Compiler<'el>,
 }
 
 codegen!(TupleCodegen, TupleAdded);
@@ -189,9 +188,8 @@ codegen!(TupleCodegen, TupleAdded);
 /// Event emitted when an interface has been added.
 pub struct InterfaceAdded<'a, 'el: 'a> {
     pub container: &'a mut Tokens<'el, Go<'el>>,
-    pub name: Go<'el>,
+    pub name: &'el GoName,
     pub body: &'el RpInterfaceBody,
-    pub compiler: &'a Compiler<'el>,
 }
 
 codegen!(InterfaceCodegen, InterfaceAdded);
@@ -295,10 +293,13 @@ impl PackageUtils<CoreFlavor> for GoPackageUtils {
 }
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let package_utils = Rc::new(GoPackageUtils::new(env.package_prefix()));
-    let env = env.translate_default()?;
+    let packages = env.packages()?;
+
+    let translator = env.translator(flavored::GoFlavorTranslator::new(packages))?;
+    let env = env.translate(translator)?;
+
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    Compiler::new(&env, package_utils, options, handle.as_ref())?.compile()
+    Compiler::new(&env, options, handle.as_ref())?.compile()
 }

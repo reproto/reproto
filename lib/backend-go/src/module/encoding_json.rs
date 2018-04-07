@@ -1,10 +1,9 @@
 //! encoding/json module for Go
 
 use backend::Initializer;
-use compiler::Compiler;
 use core;
 use core::errors::{Error, Result};
-use core::flavored::{RpEnumBody, RpInterfaceBody, RpSubType, RpTupleBody};
+use flavored::{GoName, RpEnumBody, RpInterfaceBody, RpSubType, RpTupleBody};
 use genco::go::{imported, Go};
 use genco::{Quoted, Tokens};
 use std::rc::Rc;
@@ -73,14 +72,14 @@ impl EnumCodegen for Codegen {
             ..
         } = e;
 
-        container.push(unmarshal_json(self, name.clone(), body));
-        container.push(marshal_json(self, name.clone(), body));
+        container.push(unmarshal_json(self, name, body));
+        container.push(marshal_json(self, name, body));
 
         return Ok(());
 
         fn unmarshal_json<'el>(
             c: &Codegen,
-            name: Go<'el>,
+            name: &'el GoName,
             body: &'el RpEnumBody,
         ) -> Tokens<'el, Go<'el>> {
             let mut t = Tokens::new();
@@ -128,7 +127,7 @@ impl EnumCodegen for Codegen {
 
         fn marshal_json<'el>(
             c: &Codegen,
-            name: Go<'el>,
+            name: &'el GoName,
             body: &'el RpEnumBody,
         ) -> Tokens<'el, Go<'el>> {
             let mut t = Tokens::new();
@@ -145,7 +144,7 @@ impl EnumCodegen for Codegen {
 
                     for v in &body.variants {
                         t.push_into(|t| {
-                            t.push(toks!["case ", name.clone(), "_", v.ident.as_str(), ":"]);
+                            t.push(toks!["case ", name, "_", v.ident.as_str(), ":"]);
                             t.nested(toks!["s = ", v.ordinal().quoted()]);
                         });
                     }
@@ -183,30 +182,23 @@ impl TupleCodegen for Codegen {
             container,
             name,
             body,
-            compiler,
             ..
         } = e;
 
-        container.push(unmarshal_json(self, name.clone(), body, compiler)?);
-        container.push(marshal_json(self, name.clone(), body)?);
+        container.push(unmarshal_json(self, name, body)?);
+        container.push(marshal_json(self, name, body)?);
 
         return Ok(());
 
         fn unmarshal_json<'el>(
             c: &Codegen,
-            name: Go<'el>,
+            name: &'el GoName,
             body: &'el RpTupleBody,
-            compiler: &Compiler<'el>,
         ) -> Result<Tokens<'el, Go<'el>>> {
             let mut t = Tokens::new();
 
             t.try_push_into::<Error, _>(|t| {
-                push!(
-                    t,
-                    "func (this *",
-                    name.clone(),
-                    ") UnmarshalJSON(b []byte) error {"
-                );
+                push!(t, "func (this *", name, ") UnmarshalJSON(b []byte) error {");
 
                 t.nested({
                     let mut t = Tokens::new();
@@ -229,14 +221,13 @@ impl TupleCodegen for Codegen {
                         for (i, f) in body.fields.iter().enumerate() {
                             let a = toks!["array[", i.to_string(), "]"];
 
-                            let ty = compiler.field_type(&f.ty)?;
                             let var = f.safe_ident();
 
                             t.push({
                                 let mut t = Tokens::new();
 
                                 t.push_into(|t| {
-                                    t.push(toks!["var ", var.clone(), " ", ty]);
+                                    t.push(toks!["var ", var.clone(), " ", f.ty.clone()]);
 
                                     t.push_into(|t| {
                                         t.push(toks![
@@ -277,7 +268,7 @@ impl TupleCodegen for Codegen {
 
         fn marshal_json<'el>(
             c: &Codegen,
-            name: Go<'el>,
+            name: &'el GoName,
             body: &'el RpTupleBody,
         ) -> Result<Tokens<'el, Go<'el>>> {
             let mut t = Tokens::new();
@@ -334,20 +325,18 @@ impl InterfaceCodegen for Codegen {
             container,
             name,
             body,
-            compiler,
             ..
         } = e;
 
-        container.push(unmarshal_json(self, name.clone(), body, compiler)?);
-        container.push(marshal_json(self, name.clone(), body)?);
+        container.push(unmarshal_json(self, name, body)?);
+        container.push(marshal_json(self, name, body)?);
 
         return Ok(());
 
         fn unmarshal_json<'el>(
             c: &Codegen,
-            name: Go<'el>,
+            name: &'el GoName,
             body: &'el RpInterfaceBody,
-            compiler: &Compiler<'el>,
         ) -> Result<Tokens<'el, Go<'el>>> {
             let mut t = Tokens::new();
 
@@ -356,7 +345,7 @@ impl InterfaceCodegen for Codegen {
 
                 match body.sub_type_strategy {
                     core::RpSubTypeStrategy::Tagged { ref tag } => {
-                        t.nested(unmarshal_envelope(c, body, compiler, tag)?);
+                        t.nested(unmarshal_envelope(c, body, tag)?);
                     }
                 }
 
@@ -370,7 +359,6 @@ impl InterfaceCodegen for Codegen {
             fn unmarshal_envelope<'el>(
                 c: &Codegen,
                 body: &'el RpInterfaceBody,
-                compiler: &Compiler<'el>,
                 tag: &'el str,
             ) -> Result<Tokens<'el, Go<'el>>> {
                 let mut t = Tokens::new();
@@ -407,13 +395,12 @@ impl InterfaceCodegen for Codegen {
                     push!(t, "switch (tag) {");
 
                     for sub_type in &body.sub_types {
-                        let name = compiler.convert_name(&sub_type.name)?;
                         push!(t, "case ", sub_type.name().quoted(), ":");
 
                         t.nested({
                             let mut t = Tokens::new();
 
-                            push!(t, "sub := ", name, "{}");
+                            push!(t, "sub := ", &sub_type.name, "{}");
 
                             t.push_into(|t| {
                                 push!(t, "if err = ", c.unmarshal, "(b, &sub); err != nil {");
@@ -443,7 +430,7 @@ impl InterfaceCodegen for Codegen {
 
         fn marshal_json<'el>(
             c: &Codegen,
-            name: Go<'el>,
+            name: &'el GoName,
             body: &'el RpInterfaceBody,
         ) -> Result<Tokens<'el, Go<'el>>> {
             let mut t = Tokens::new();

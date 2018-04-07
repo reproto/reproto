@@ -27,21 +27,17 @@ where
 pub trait PackageProcessor<'el, F: 'static, N: 'static>
 where
     Self: 'el + Sized,
-    F: Flavor<Name = N>,
+    F: Flavor<Name = N, Package = RpPackage>,
     N: Name<F>,
 {
-    /// Support for backwards compatibility, only repackage backends which do not do package
-    /// translation with prefixing.
-    const SHOULD_REPACKAGE: bool = false;
-
     type Out: Default + IntoBytes<Self>;
     type DeclIter: Iterator<Item = &'el RpDecl<F>>;
 
-    /// Access the package utils.
-    fn package_utils(&self) -> &PackageUtils<F>;
-
     /// Access the extension for processing.
     fn ext(&self) -> &str;
+
+    /// Access the package utils.
+    fn package_prefix(&self) -> Option<&RpPackage>;
 
     /// Iterate over all existing declarations.
     fn decl_iter(&self) -> Self::DeclIter;
@@ -134,12 +130,12 @@ where
     fn write_files(&'el self, files: BTreeMap<F::Package, Self::Out>) -> Result<()> {
         let handle = self.handle();
 
-        let package_utils = self.package_utils();
+        let package_prefix = self.package_prefix();
 
         for (package, out) in files {
-            let package = match Self::SHOULD_REPACKAGE {
-                true => package_utils.package(&package),
-                false => package_utils.translate(&package),
+            let package = match package_prefix {
+                Some(package_prefix) => package_prefix.clone().join_package(package),
+                None => package,
             };
 
             let full_path = self.setup_module_path(&package)?;

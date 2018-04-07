@@ -1,18 +1,17 @@
 use backend::{PackageProcessor, PackageUtils};
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, Loc};
-use flavored::{JavaScriptFlavor, JavaScriptName, RpEnumBody, RpField, RpInterfaceBody,
+use flavored::{JavaScriptFlavor, JavaScriptName, RpEnumBody, RpField, RpInterfaceBody, RpPackage,
                RpTupleBody, RpTypeBody};
 use genco::{Element, JavaScript, Quoted, Tokens};
 use naming::{self, Naming};
 use std::rc::Rc;
 use trans::{self, Translated};
 use utils::{is_defined, is_not_defined};
-use {FileSpec, JsPackageUtils, Options, EXT};
+use {FileSpec, Options, EXT};
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<JavaScriptFlavor>,
-    package_utils: Rc<JsPackageUtils>,
     variant_field: &'el Loc<RpField>,
     handle: &'el Handle,
     to_lower_snake: naming::ToLowerSnake,
@@ -23,14 +22,12 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<JavaScriptFlavor>,
-        package_utils: Rc<JsPackageUtils>,
         variant_field: &'el Loc<RpField>,
         _: Options,
         handle: &'el Handle,
     ) -> Compiler<'el> {
         Compiler {
             env,
-            package_utils,
             variant_field,
             handle,
             to_lower_snake: naming::to_lower_snake(),
@@ -322,13 +319,11 @@ impl<'el> Compiler<'el> {
 }
 
 impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'el> {
-    const SHOULD_REPACKAGE: bool = true;
-
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, JavaScriptFlavor>;
 
-    fn package_utils(&self) -> &PackageUtils<JavaScriptFlavor> {
-        self.package_utils.as_ref()
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.env.package_prefix()
     }
 
     fn ext(&self) -> &str {

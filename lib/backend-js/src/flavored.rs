@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
-use {JsPackageUtils, Options, TYPE_SEP};
+use {Options, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JavaScriptType<'el> {
@@ -144,18 +144,11 @@ impl Flavor for JavaScriptFlavor {
 /// Responsible for translating RpType -> JavaScript type.
 pub struct JavaScriptFlavorTranslator {
     package_translator: HashMap<RpVersionedPackage, RpPackage>,
-    package_utils: Rc<JsPackageUtils>,
 }
 
 impl JavaScriptFlavorTranslator {
-    pub fn new(
-        package_translator: HashMap<RpVersionedPackage, RpPackage>,
-        package_utils: Rc<JsPackageUtils>,
-    ) -> Self {
-        Self {
-            package_translator,
-            package_utils,
-        }
+    pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
+        Self { package_translator }
     }
 }
 

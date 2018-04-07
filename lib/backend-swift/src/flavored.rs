@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
-use {Options, SwiftPackageUtils, TYPE_SEP};
+use {Options, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SwiftType<'el> {
@@ -80,7 +80,6 @@ impl Flavor for SwiftFlavor {
 /// Responsible for translating RpType -> Swift type.
 pub struct SwiftFlavorTranslator {
     package_translator: HashMap<RpVersionedPackage, RpPackage>,
-    package_utils: Rc<SwiftPackageUtils>,
     data: Swift<'static>,
     date: Swift<'static>,
     any: Swift<'static>,
@@ -90,7 +89,6 @@ pub struct SwiftFlavorTranslator {
 impl SwiftFlavorTranslator {
     pub fn new(
         package_translator: HashMap<RpVersionedPackage, RpPackage>,
-        package_utils: Rc<SwiftPackageUtils>,
         options: &Options,
     ) -> Result<Self> {
         let any = {
@@ -112,7 +110,6 @@ impl SwiftFlavorTranslator {
 
         Ok(Self {
             package_translator,
-            package_utils,
             data: swift::imported("Foundation", "Data"),
             date: swift::imported("Foundation", "Date"),
             any,

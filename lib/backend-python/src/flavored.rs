@@ -121,18 +121,11 @@ impl Flavor for PythonFlavor {
 /// Responsible for translating RpType -> Python type.
 pub struct PythonFlavorTranslator {
     package_translator: HashMap<RpVersionedPackage, RpPackage>,
-    package_utils: Rc<PythonPackageUtils>,
 }
 
 impl PythonFlavorTranslator {
-    pub fn new(
-        package_translator: HashMap<RpVersionedPackage, RpPackage>,
-        package_utils: Rc<PythonPackageUtils>,
-    ) -> Self {
-        Self {
-            package_translator,
-            package_utils,
-        }
+    pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
+        Self { package_translator }
     }
 }
 

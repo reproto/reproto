@@ -19,11 +19,11 @@ mod compiler;
 mod flavored;
 mod module;
 
-use backend::{Initializer, IntoBytes, PackageUtils};
+use backend::{Initializer, IntoBytes};
 use compiler::Compiler;
 use core::errors::Result;
 use core::{Context, CoreFlavor};
-use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftFlavor, SwiftName};
+use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
 use genco::Tokens;
 use genco::swift::Swift;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -309,37 +309,18 @@ pub struct PackageAdded<'a, 'el: 'a> {
 
 codegen!(PackageCodegen, PackageAdded);
 
-pub struct SwiftPackageUtils {
-    package_prefix: Option<RpPackage>,
-}
-
-impl SwiftPackageUtils {
-    pub fn new(package_prefix: Option<RpPackage>) -> Self {
-        Self { package_prefix }
-    }
-}
-
-impl PackageUtils<SwiftFlavor> for SwiftPackageUtils {
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.package_prefix.as_ref()
-    }
-}
-
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let package_utils = Rc::new(SwiftPackageUtils::new(env.package_prefix()));
-
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
 
     let packages = env.packages()?;
 
-    let translator =
-        flavored::SwiftFlavorTranslator::new(packages, package_utils.clone(), &options)?;
+    let translator = flavored::SwiftFlavorTranslator::new(packages, &options)?;
 
     let translator = env.translator(translator)?;
 
     let env = env.translate(translator)?;
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    Compiler::new(&env, package_utils, options, handle.as_ref())?.compile()
+    Compiler::new(&env, options, handle.as_ref())?.compile()
 }

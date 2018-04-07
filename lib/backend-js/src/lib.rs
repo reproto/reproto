@@ -19,7 +19,7 @@ mod utils;
 mod compiler;
 mod flavored;
 
-use backend::{IntoBytes, PackageUtils};
+use backend::IntoBytes;
 use compiler::Compiler;
 use core::errors::Result;
 use core::{Context, CoreFlavor, Loc, Pos, RpField, RpPackage, RpType, Translate};
@@ -160,31 +160,10 @@ impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
     }
 }
 
-pub struct JsPackageUtils {
-    package_prefix: Option<RpPackage>,
-}
-
-impl JsPackageUtils {
-    pub fn new(package_prefix: Option<RpPackage>) -> Self {
-        Self { package_prefix }
-    }
-}
-
-impl PackageUtils<JavaScriptFlavor> for JsPackageUtils {
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.package_prefix.as_ref()
-    }
-}
-
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let package_utils = Rc::new(JsPackageUtils::new(env.package_prefix()));
-
     let packages = env.packages()?;
 
-    let translator = env.translator(flavored::JavaScriptFlavorTranslator::new(
-        packages,
-        package_utils.clone(),
-    ))?;
+    let translator = env.translator(flavored::JavaScriptFlavorTranslator::new(packages))?;
 
     let variant_field =
         Loc::new(RpField::new("value", RpType::String), Pos::empty()).translate(&translator)?;
@@ -195,11 +174,5 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
     let options = Options::new();
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
-    Compiler::new(
-        &env,
-        package_utils,
-        &variant_field,
-        options,
-        handle.as_ref(),
-    ).compile()
+    Compiler::new(&env, &variant_field, options, handle.as_ref()).compile()
 }

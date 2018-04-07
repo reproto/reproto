@@ -2,13 +2,14 @@
 
 #![allow(unused)]
 
-use backend::PackageUtils;
+use backend::{package_processor, PackageUtils};
 use core::errors::Result;
 use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
            Translator};
-use genco::Cons;
 use genco::go::{array, imported, interface, local, map, Go};
+use genco::{Cons, Element};
 use std::collections::HashMap;
+use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
 use {GoPackageUtils, TYPE_SEP};
@@ -18,27 +19,44 @@ pub struct GoFlavor;
 
 impl Flavor for GoFlavor {
     type Type = Go<'static>;
-    type Name = RpName;
+    type Name = GoName;
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GoName {
+    pub name: Rc<String>,
+    pub package: RpPackage,
+}
+
+impl fmt::Display for GoName {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.name.as_str())
+    }
+}
+
+impl<'el> From<&'el GoName> for Element<'el, Go<'el>> {
+    fn from(value: &'el GoName) -> Element<'el, Go<'el>> {
+        Element::Literal(value.name.clone().to_string().into())
+    }
+}
+
+impl package_processor::Name<GoFlavor> for GoName {
+    fn package(&self) -> &RpPackage {
+        &self.package
+    }
+}
+
 /// Responsible for translating RpType -> Go type.
 pub struct GoFlavorTranslator {
     package_translator: HashMap<RpVersionedPackage, RpPackage>,
-    package_utils: Rc<GoPackageUtils>,
 }
 
 impl GoFlavorTranslator {
-    pub fn new(
-        package_translator: HashMap<RpVersionedPackage, RpPackage>,
-        package_utils: Rc<GoPackageUtils>,
-    ) -> Self {
-        Self {
-            package_translator,
-            package_utils,
-        }
+    pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
+        Self { package_translator }
     }
 }
 
@@ -46,7 +64,7 @@ impl FlavorTranslator for GoFlavorTranslator {
     type Source = CoreFlavor;
     type Target = GoFlavor;
 
-    translator_defaults!(Self, local_name, field, endpoint);
+    translator_defaults!(Self, field, endpoint);
 
     fn translate_i32(&self) -> Result<Go<'static>> {
         Ok(local("int32"))
@@ -107,11 +125,31 @@ impl FlavorTranslator for GoFlavorTranslator {
         if let Some(_) = name.prefix {
             let module = name.package.join(TYPE_SEP);
             let module = format!("../{}", module);
+
             return Ok(imported(module, ident));
         }
 
         // same package
         return Ok(local(ident));
+    }
+
+    fn translate_local_name<T>(
+        &self,
+        translator: &T,
+        reg: RpReg,
+        name: core::RpName<CoreFlavor>,
+    ) -> Result<GoName>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>,
+    {
+        let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
+        let package = self.translate_package(name.package)?;
+
+        // same package
+        return Ok(GoName {
+            name: Rc::new(ident),
+            package: package,
+        });
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {

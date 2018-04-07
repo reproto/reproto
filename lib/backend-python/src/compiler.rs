@@ -17,7 +17,6 @@ use {FileSpec, Options, PythonPackageUtils, EXT, INIT_PY};
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<PythonFlavor>,
-    package_utils: Rc<PythonPackageUtils>,
     variant_field: &'el Loc<RpField>,
     to_lower_snake: naming::ToLowerSnake,
     dict: Element<'static, Python<'static>>,
@@ -29,14 +28,12 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<PythonFlavor>,
-        package_utils: Rc<PythonPackageUtils>,
         variant_field: &'el Loc<RpField>,
         options: Options,
         handle: &'el Handle,
     ) -> Compiler<'el> {
         Compiler {
             env,
-            package_utils,
             variant_field,
             to_lower_snake: naming::to_lower_snake(),
             dict: "dict".into(),
@@ -353,13 +350,11 @@ impl<'el> Compiler<'el> {
 }
 
 impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
-    const SHOULD_REPACKAGE: bool = true;
-
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, PythonFlavor>;
 
-    fn package_utils(&self) -> &PackageUtils<PythonFlavor> {
-        self.package_utils.as_ref()
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.env.package_prefix()
     }
 
     fn ext(&self) -> &str {

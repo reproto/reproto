@@ -1,16 +1,14 @@
 //! Backend for Go
 
-use backend::{PackageProcessor, PackageUtils};
+use backend::PackageProcessor;
 use core::errors::*;
-use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpTupleBody, RpType,
-                     RpTypeBody};
-use core::{CoreFlavor, Handle, Loc, RelativePathBuf};
-use genco::go::{array, imported, interface, local, map, Go};
+use core::{Handle, Loc, RelativePathBuf};
+use flavored::{GoFlavor, GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody,
+               RpTypeBody};
+use genco::go::Go;
 use genco::{IntoTokens, Tokens};
-use std::rc::Rc;
 use trans::{self, Translated};
-use {EnumAdded, FieldAdded, FileSpec, GoPackageUtils, InterfaceAdded, Options, Tags, TupleAdded,
-     EXT};
+use {EnumAdded, FieldAdded, FileSpec, InterfaceAdded, Options, Tags, TupleAdded, EXT};
 
 /// Documentation comments.
 pub struct Comments<'el, S: 'el>(pub &'el [S]);
@@ -27,25 +25,20 @@ impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Go<'el>> for Comments<'el, S> {
     }
 }
 
-const TYPE_SEP: &'static str = "_";
-
 pub struct Compiler<'el> {
-    pub env: &'el Translated<CoreFlavor>,
-    package_utils: Rc<GoPackageUtils>,
+    pub env: &'el Translated<GoFlavor>,
     options: Options,
     handle: &'el Handle,
 }
 
 impl<'el> Compiler<'el> {
     pub fn new(
-        env: &'el Translated<CoreFlavor>,
-        package_utils: Rc<GoPackageUtils>,
+        env: &'el Translated<GoFlavor>,
         options: Options,
         handle: &'el Handle,
     ) -> Result<Compiler<'el>> {
         let c = Compiler {
             env,
-            package_utils,
             options,
             handle,
         };
@@ -53,60 +46,9 @@ impl<'el> Compiler<'el> {
         Ok(c)
     }
 
-    /// Convert the type name
-    ///
-    /// Optionally also emit the necessary attributes to suppress warnings for bad naming
-    /// conventions.
-    pub fn convert_name<'a>(&self, name: &'a RpName) -> Result<Go<'a>> {
-        let registered = self.env.lookup(name)?;
-        let ident = registered.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
-
-        // imported
-        if let Some(_) = name.prefix {
-            let module = self.package_utils.package(&name.package).join("_");
-            let module = format!("../{}", module);
-            return Ok(imported(module, ident));
-        }
-
-        // same package
-        return Ok(local(ident));
-    }
-
-    /// Convert the given type to a Go type suitable for adding as a field to a struct.
-    pub fn field_type(&self, ty: &'el RpType) -> Result<Go<'el>> {
-        use core::RpType::*;
-
-        let ty = match *ty {
-            String => local("string"),
-            DateTime => local("string"),
-            Bytes => local("string"),
-            Signed { size: 32 } => local("int32"),
-            Signed { size: 64 } => local("int64"),
-            Unsigned { size: 32 } => local("uint32"),
-            Unsigned { size: 64 } => local("uint64"),
-            Float => local("float32"),
-            Double => local("float64"),
-            Boolean => local("bool"),
-            Array { ref inner } => {
-                let argument = self.field_type(inner)?;
-                array(argument)
-            }
-            Name { ref name } => self.convert_name(name)?,
-            Map { ref key, ref value } => {
-                let key = self.field_type(key)?;
-                let value = self.field_type(value)?;
-                map(key, value)
-            }
-            Any => interface(),
-            _ => return Err(format!("unsupported type: {}", ty).into()),
-        };
-
-        Ok(ty)
-    }
-
     fn process_struct<'a, I>(
         &self,
-        name: Go<'el>,
+        name: &'el GoName,
         comment: &'el [String],
         fields: I,
     ) -> Result<Tokens<'el, Go<'el>>>
@@ -116,18 +58,16 @@ impl<'el> Compiler<'el> {
         let mut t = Tokens::new();
 
         t.push(Comments(comment));
-        t.push(toks!["type ", name.clone(), " struct {"]);
+        t.push(toks!["type ", name, " struct {"]);
 
         t.nested({
             let mut t = Tokens::new();
 
             for f in fields.into_iter() {
-                let ty = self.field_type(&f.ty)?;
-
                 let ty = if f.is_optional() {
-                    toks!["*", ty]
+                    toks!["*", f.ty.clone()]
                 } else {
-                    toks![ty]
+                    toks![f.ty.clone()]
                 };
 
                 let mut tags = Tags::new();
@@ -161,14 +101,12 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
-    const SHOULD_REPACKAGE: bool = true;
-
+impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
     type Out = FileSpec<'el>;
-    type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
+    type DeclIter = trans::translated::DeclIter<'el, GoFlavor>;
 
-    fn package_utils(&self) -> &PackageUtils<CoreFlavor> {
-        self.package_utils.as_ref()
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.env.package_prefix()
     }
 
     fn ext(&self) -> &str {
@@ -183,7 +121,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         self.handle
     }
 
-    fn default_process(&self, _out: &mut Self::Out, _: &RpName) -> Result<()> {
+    fn default_process(&self, _out: &mut Self::Out, _: &GoName) -> Result<()> {
         Ok(())
     }
 
@@ -194,31 +132,28 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
     }
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        let name = self.convert_name(&body.name)?;
-
-        out.0
-            .push(self.process_struct(name, &body.comment, body.fields.iter().map(Loc::value))?);
+        out.0.push(self.process_struct(
+            &body.name,
+            &body.comment,
+            body.fields.iter().map(Loc::value),
+        )?);
 
         Ok(())
     }
 
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
-        let name = self.convert_name(&body.name)?;
-
         out.0.try_push_into::<Error, _>(|t| {
             t.push(Comments(&body.comment));
-            t.push(toks!["type ", name.clone(), " struct {"]);
+            t.push(toks!["type ", &body.name, " struct {"]);
 
             t.nested({
                 let mut t = Tokens::new();
 
                 for f in &body.fields {
-                    let ty = self.field_type(&f.ty)?;
-
                     let ty = if f.is_optional() {
-                        toks!["*", ty]
+                        toks!["*", f.ty.clone()]
                     } else {
-                        toks![ty]
+                        toks![f.ty.clone()]
                     };
 
                     let mut tags = Tags::new();
@@ -242,9 +177,8 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         for g in &self.options.tuple_gens {
             g.generate(TupleAdded {
                 container: &mut out.0,
-                name: name.clone(),
+                name: &body.name,
                 body: body,
-                compiler: self,
             })?;
         }
 
@@ -252,14 +186,12 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
     }
 
     fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
-        let name = self.convert_name(&body.name)?;
-
         out.0.push({
             let mut t = Tokens::new();
 
             t.push_into(|t| {
                 t.push(Comments(&body.comment));
-                t.push(toks!["type ", name.clone(), " int"])
+                t.push(toks!["type ", &body.name, " int"])
             });
 
             t.push_into(|t| {
@@ -269,17 +201,17 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
 
                     if let Some(v) = it.next() {
                         t.push(toks![
-                            name.clone(),
+                            &body.name,
                             "_",
                             v.ident.as_str(),
                             " ",
-                            name.clone(),
+                            &body.name,
                             " = iota",
                         ]);
                     }
 
                     while let Some(v) = it.next() {
-                        t.push(toks![name.clone(), "_", v.ident.as_str(),]);
+                        t.push(toks![&body.name, "_", v.ident.as_str(),]);
                     }
                 });
                 t.push(")");
@@ -291,7 +223,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         for g in &self.options.enum_gens {
             g.generate(EnumAdded {
                 container: &mut out.0,
-                name: name.clone(),
+                name: &body.name,
                 body: body,
             })?;
         }
@@ -300,18 +232,15 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
     }
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
-        let name = self.convert_name(&body.name)?;
-
         out.0.push({
             let mut t = Tokens::new();
 
             t.try_push_into::<Error, _>(|t| {
                 t.push(Comments(&body.comment));
-                t.push(toks!["type ", name.clone(), " struct {"]);
+                t.push(toks!["type ", &body.name, " struct {"]);
 
                 for sub_type in &body.sub_types {
-                    let sub_name = self.convert_name(&sub_type.name)?;
-                    nested!(t, sub_type.ident, " *", sub_name);
+                    nested!(t, sub_type.ident, " *", &sub_type.name);
                 }
 
                 t.push("}");
@@ -322,10 +251,8 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
                 let mut t = Tokens::new();
 
                 for sub_type in &body.sub_types {
-                    let sub_name = self.convert_name(&sub_type.name)?;
-
                     t.push(self.process_struct(
-                        sub_name.clone(),
+                        &sub_type.name,
                         &sub_type.comment,
                         body.fields
                             .iter()
@@ -343,9 +270,8 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         for g in &self.options.interface_gens {
             g.generate(InterfaceAdded {
                 container: &mut out.0,
-                name: name.clone(),
+                name: &body.name,
                 body: body,
-                compiler: self,
             })?;
         }
 

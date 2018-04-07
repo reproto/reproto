@@ -1,16 +1,16 @@
 //! Backend for Swift
 
-use backend::{PackageProcessor, PackageUtils};
+use backend::PackageProcessor;
 use core::errors::*;
 use core::{Handle, Loc};
-use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody, SwiftFlavor,
-               SwiftName};
+use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
+               SwiftFlavor, SwiftName};
 use genco::swift::Swift;
 use genco::{IntoTokens, Tokens};
 use std::rc::Rc;
 use trans::{self, Translated};
 use {EnumAdded, FileSpec, InterfaceAdded, InterfaceModelAdded, Options, PackageAdded,
-     StructModelAdded, SwiftPackageUtils, TupleAdded, TypeAdded, EXT};
+     StructModelAdded, TupleAdded, TypeAdded, EXT};
 
 /// Documentation comments.
 pub struct Comments<'el, S: 'el>(pub &'el [S]);
@@ -29,7 +29,6 @@ impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Swift<'el>> for Comments<'el, S> 
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<SwiftFlavor>,
-    package_utils: Rc<SwiftPackageUtils>,
     options: Options,
     handle: &'el Handle,
 }
@@ -37,13 +36,11 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<SwiftFlavor>,
-        package_utils: Rc<SwiftPackageUtils>,
         options: Options,
         handle: &'el Handle,
     ) -> Result<Compiler<'el>> {
         let c = Compiler {
             env,
-            package_utils,
             options,
             handle,
         };
@@ -159,13 +156,11 @@ impl<'el> Compiler<'el> {
 }
 
 impl<'el> PackageProcessor<'el, SwiftFlavor, SwiftName> for Compiler<'el> {
-    const SHOULD_REPACKAGE: bool = true;
-
     type Out = FileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, SwiftFlavor>;
 
-    fn package_utils(&self) -> &PackageUtils<SwiftFlavor> {
-        self.package_utils.as_ref()
+    fn package_prefix(&self) -> Option<&RpPackage> {
+        self.env.package_prefix()
     }
 
     fn ext(&self) -> &str {

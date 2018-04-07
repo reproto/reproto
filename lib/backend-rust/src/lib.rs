@@ -21,7 +21,7 @@ mod module;
 mod rust_file_spec;
 mod utils;
 
-use backend::{Initializer, PackageUtils};
+use backend::Initializer;
 use compiler::Compiler;
 use core::errors::*;
 use core::{Context, CoreFlavor};
@@ -144,7 +144,6 @@ impl TryFromToml for RustModule {
 }
 
 pub struct Options {
-    pub package_utils: Rc<RustPackageUtils>,
     pub datetime: Option<Rust<'static>>,
     pub root: Vec<Box<RootCodegen>>,
     pub service: Vec<Box<ServiceCodegen>>,
@@ -171,11 +170,10 @@ pub trait ServiceCodegen {
     fn generate(&self, service: Service) -> Result<()>;
 }
 
-fn options(package_utils: Rc<RustPackageUtils>, modules: Vec<RustModule>) -> Result<Options> {
+fn options(modules: Vec<RustModule>) -> Result<Options> {
     use self::RustModule::*;
 
     let mut options = Options {
-        package_utils,
         datetime: None,
         root: Vec::new(),
         service: Vec::new(),
@@ -196,37 +194,18 @@ fn options(package_utils: Rc<RustPackageUtils>, modules: Vec<RustModule>) -> Res
     Ok(options)
 }
 
-pub struct RustPackageUtils {
-    package_prefix: Option<RpPackage>,
-}
-
-impl RustPackageUtils {
-    pub fn new(package_prefix: Option<RpPackage>) -> Self {
-        Self { package_prefix }
-    }
-}
-
-impl PackageUtils<RustFlavor> for RustPackageUtils {
-    fn package_prefix(&self) -> Option<&RpPackage> {
-        self.package_prefix.as_ref()
-    }
-}
-
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let package_utils = Rc::new(RustPackageUtils::new(env.package_prefix()));
-
     let modules = manifest::checked_modules(manifest.modules)?;
-    let options = options(package_utils.clone(), modules)?;
+    let options = options(modules)?;
 
     let packages = env.packages()?;
 
     let translator = env.translator(flavored::RustFlavorTranslator::new(
         packages,
-        package_utils.clone(),
         options.datetime.clone(),
     ))?;
     let env = env.translate(translator)?;
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    Compiler::new(&env, package_utils.clone(), options, handle.as_ref()).compile()
+    Compiler::new(&env, options, handle.as_ref()).compile()
 }

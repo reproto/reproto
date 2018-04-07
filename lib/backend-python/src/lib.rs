@@ -180,13 +180,9 @@ impl PackageUtils<PythonFlavor> for PythonPackageUtils {
 }
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let package_utils = Rc::new(PythonPackageUtils::new(env.package_prefix()));
     let packages = env.packages()?;
 
-    let translator = env.translator(flavored::PythonFlavorTranslator::new(
-        packages,
-        package_utils.clone(),
-    ))?;
+    let translator = env.translator(flavored::PythonFlavorTranslator::new(packages))?;
 
     let variant_field =
         Loc::new(RpField::new("ordinal", RpType::String), Pos::empty()).translate(&translator)?;
@@ -197,11 +193,5 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
     let options = setup_options(modules)?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
-    Compiler::new(
-        &env,
-        package_utils.clone(),
-        &variant_field,
-        options,
-        handle.as_ref(),
-    ).compile()
+    Compiler::new(&env, &variant_field, options, handle.as_ref()).compile()
 }
