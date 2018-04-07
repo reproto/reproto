@@ -56,13 +56,12 @@ impl ServiceCodegen for RequestsServiceCodegen {
         &self,
         ServiceAdded {
             body,
-            type_name,
             type_body,
             extra,
             ..
         }: ServiceAdded,
     ) -> Result<()> {
-        type_body.push(toks!["class ", type_name, "_Requests:"]);
+        type_body.push(toks!["class ", &body.name, "_Requests:"]);
         type_body.nested({
             let mut t = Tokens::new();
 

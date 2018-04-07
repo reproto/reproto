@@ -1,6 +1,6 @@
-import bar._1_0_0 as bar
-import bar._2_0_0 as bar2
-import bar._2_1_0 as bar21
+import bar.v1 as bar
+import bar.v2_0 as bar2
+import bar.v2_1 as bar21
 
 class Thing:
   def __init__(self, name, other, other2, other21):

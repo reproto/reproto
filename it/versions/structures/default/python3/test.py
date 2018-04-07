@@ -1,4 +1,4 @@
-import foo._4_0_0 as foo
+import foo.v4 as foo
 
 class Entry:
   def __init__(self, thing):

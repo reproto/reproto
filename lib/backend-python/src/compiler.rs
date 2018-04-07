@@ -1,12 +1,11 @@
 //! Python Compiler
 
-use backend::{Converter, DynamicConverter, DynamicDecode, DynamicEncode, PackageProcessor,
-              PackageUtils};
+use backend::{PackageProcessor, PackageUtils};
 use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
 use core::errors::*;
-use core::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
-                     RpTupleBody, RpType, RpTypeBody, RpVersionedPackage};
-use core::{self, CoreFlavor, ForEachLoc, Handle, Loc, RelativePathBuf, WithPos};
+use core::{self, ForEachLoc, Handle, Loc, RelativePathBuf};
+use flavored::{PythonFlavor, PythonName, RpEnumBody, RpField, RpInterfaceBody, RpPackage,
+               RpServiceBody, RpTupleBody, RpTypeBody};
 use genco::python::{imported, Python};
 use genco::{Element, Quoted, Tokens};
 use naming::{self, Naming};
@@ -14,10 +13,10 @@ use std::collections::BTreeMap;
 use std::iter;
 use std::rc::Rc;
 use trans::{self, Translated};
-use {FileSpec, Options, PythonPackageUtils, EXT, INIT_PY, TYPE_SEP};
+use {FileSpec, Options, PythonPackageUtils, EXT, INIT_PY};
 
 pub struct Compiler<'el> {
-    pub env: &'el Translated<CoreFlavor>,
+    pub env: &'el Translated<PythonFlavor>,
     package_utils: Rc<PythonPackageUtils>,
     variant_field: &'el Loc<RpField>,
     to_lower_snake: naming::ToLowerSnake,
@@ -29,7 +28,7 @@ pub struct Compiler<'el> {
 
 impl<'el> Compiler<'el> {
     pub fn new(
-        env: &'el Translated<CoreFlavor>,
+        env: &'el Translated<PythonFlavor>,
         package_utils: Rc<PythonPackageUtils>,
         variant_field: &'el Loc<RpField>,
         options: Options,
@@ -88,7 +87,7 @@ impl<'el> Compiler<'el> {
             let var_string = field.name().quoted();
             let field_toks = toks!["self.", field.safe_ident()];
 
-            let value_toks = self.dynamic_encode(&field.ty, field_toks.clone())?;
+            let value_toks = field.ty.encode(field_toks.clone());
 
             if field.is_optional() {
                 let mut check_if_none = Tokens::new();
@@ -127,7 +126,7 @@ impl<'el> Compiler<'el> {
         for field in fields.into_iter() {
             let toks = toks!["self.", field.safe_ident()];
             encode_body.push(self.raise_if_none(toks.clone(), field));
-            values.append(self.dynamic_encode(&field.ty, toks)?);
+            values.append(field.ty.encode(toks));
         }
 
         encode_body.push(toks!["return (", values.join(", "), ")"]);
@@ -138,7 +137,7 @@ impl<'el> Compiler<'el> {
         Ok(encode)
     }
 
-    fn repr_method<I>(&self, name: Rc<String>, fields: I) -> Tokens<'el, Python<'el>>
+    fn repr_method<I>(&self, name: &'el PythonName, fields: I) -> Tokens<'el, Python<'el>>
     where
         I: IntoIterator<Item = &'el Loc<RpField>>,
     {
@@ -199,7 +198,7 @@ impl<'el> Compiler<'el> {
 
     fn decode_method<F, I>(
         &self,
-        name: &RpName,
+        name: &'el PythonName,
         fields: I,
         variable_fn: F,
     ) -> Result<Tokens<'el, Python<'el>>>
@@ -216,11 +215,11 @@ impl<'el> Compiler<'el> {
 
             let toks = if field.is_optional() {
                 let var_name = toks!(var_name.clone());
-                let var_toks = self.dynamic_decode(&field.ty, var_name.clone())?;
+                let var_toks = field.ty.decode(var_name.clone());
                 self.optional_check(var_name.clone(), var, var_toks)
             } else {
                 let data = toks!["data[", var.clone(), "]"];
-                let var_toks = self.dynamic_decode(&field.ty, data)?;
+                let var_toks = field.ty.decode(data);
                 toks![var_name.clone(), " = ", var_toks]
             };
 
@@ -229,7 +228,6 @@ impl<'el> Compiler<'el> {
         }
 
         let args = args.join(", ");
-        let name = self.convert_type(name)?;
         body.push(toks!["return ", name, "(", args, ")"]);
 
         let mut decode = Tokens::new();
@@ -306,25 +304,7 @@ impl<'el> Compiler<'el> {
         Ok(result)
     }
 
-    fn convert_type_id<F>(&self, name: &RpName, path_syntax: F) -> Result<Tokens<'el, Python<'el>>>
-    where
-        F: Fn(Vec<&str>) -> String,
-    {
-        let registered = self.env.lookup(name)?;
-
-        let ident = registered.ident(name, |p| p.join(TYPE_SEP), path_syntax);
-
-        if let Some(ref used) = name.prefix {
-            let package = self.package_utils.package(&name.package).join(".");
-            return Ok(imported(package).alias(used.to_string()).name(ident).into());
-        }
-
-        Ok(ident.into())
-    }
-
     pub fn enum_variants(&self, body: &'el RpEnumBody) -> Result<Tokens<'el, Python<'el>>> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
-
         let mut args = Tokens::new();
 
         let variants = body.variants.iter().map(|l| Loc::as_ref(l));
@@ -341,22 +321,22 @@ impl<'el> Compiler<'el> {
         })?;
 
         Ok(toks![
-            type_name.clone(),
+            &body.name,
             " = ",
             self.enum_enum.clone(),
             "(",
-            type_name.quoted(),
+            body.name.to_string().quoted(),
             ", [",
             args.join(", "),
             "], type=",
-            self.convert_type(&body.name)?,
+            &body.name,
             ")",
         ])
     }
 
     fn as_class(
         &self,
-        name: Rc<String>,
+        name: &'el PythonName,
         body: Tokens<'el, Python<'el>>,
     ) -> Tokens<'el, Python<'el>> {
         let mut class = Tokens::new();
@@ -372,158 +352,13 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> Converter<'el, CoreFlavor> for Compiler<'el> {
-    type Custom = Python<'el>;
-
-    fn convert_type(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {
-        self.convert_type_id(name, |v| v.join(TYPE_SEP))
-    }
-
-    fn convert_constant(&self, name: &RpName) -> Result<Tokens<'el, Self::Custom>> {
-        // TODO: only last part in a constant lookup should be separated with dots.
-        self.convert_type_id(name, |mut v| {
-            let at = v.len().saturating_sub(2);
-            let last = v.split_off(at).join(".");
-
-            let mut parts = v.clone();
-            parts.push(last.as_str());
-            parts.join(TYPE_SEP)
-        })
-    }
-}
-
-impl<'el> DynamicConverter<'el, CoreFlavor> for Compiler<'el> {
-    fn is_native(&self, ty: &RpType) -> bool {
-        use core::RpType::*;
-
-        match *ty {
-            Signed { size: _ } | Unsigned { size: _ } => true,
-            Float | Double => true,
-            String => true,
-            Any => true,
-            Boolean => true,
-            Array { ref inner } => self.is_native(inner),
-            Map { ref key, ref value } => self.is_native(key) && self.is_native(value),
-            _ => false,
-        }
-    }
-
-    fn map_key_var(&self) -> Tokens<'el, Self::Custom> {
-        toks!["k"]
-    }
-
-    fn map_value_var(&self) -> Tokens<'el, Self::Custom> {
-        toks!["v"]
-    }
-
-    fn array_inner_var(&self) -> Tokens<'el, Self::Custom> {
-        toks!["v"]
-    }
-}
-
-impl<'el> DynamicDecode<'el, CoreFlavor> for Compiler<'el> {
-    fn name_decode(
-        &self,
-        input: Tokens<'el, Self::Custom>,
-        name: Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, Self::Custom> {
-        toks![name, ".decode(", input, ")"]
-    }
-
-    fn array_decode(
-        &self,
-        input: Tokens<'el, Self::Custom>,
-        inner: Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, Self::Custom> {
-        toks![
-            "[",
-            inner,
-            " for ",
-            self.array_inner_var(),
-            " in ",
-            input,
-            "]",
-        ]
-    }
-
-    fn map_decode(
-        &self,
-        input: Tokens<'el, Self::Custom>,
-        key: Tokens<'el, Self::Custom>,
-        value: Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, Self::Custom> {
-        toks![
-            self.dict.clone(),
-            "((",
-            key,
-            ", ",
-            value,
-            ") for (",
-            self.map_key_var(),
-            ", ",
-            self.map_value_var(),
-            ") in ",
-            input,
-            ".items())",
-        ]
-    }
-}
-
-impl<'el> DynamicEncode<'el, CoreFlavor> for Compiler<'el> {
-    fn name_encode(
-        &self,
-        input: Tokens<'el, Self::Custom>,
-        _: Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, Self::Custom> {
-        toks![input, ".encode()"]
-    }
-
-    fn array_encode(
-        &self,
-        input: Tokens<'el, Self::Custom>,
-        inner: Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, Self::Custom> {
-        toks![
-            "[",
-            inner,
-            " for ",
-            self.array_inner_var(),
-            " in ",
-            input,
-            "]",
-        ]
-    }
-
-    fn map_encode(
-        &self,
-        input: Tokens<'el, Self::Custom>,
-        k: Tokens<'el, Self::Custom>,
-        v: Tokens<'el, Self::Custom>,
-    ) -> Tokens<'el, Self::Custom> {
-        toks![
-            self.dict.clone(),
-            "((",
-            k.clone(),
-            ", ",
-            v,
-            ") for (",
-            k,
-            ", ",
-            self.map_value_var(),
-            ") in ",
-            input,
-            ".items())",
-        ]
-    }
-}
-
-impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
     const SHOULD_REPACKAGE: bool = true;
 
     type Out = FileSpec<'el>;
-    type DeclIter = trans::translated::DeclIter<'el, CoreFlavor>;
+    type DeclIter = trans::translated::DeclIter<'el, PythonFlavor>;
 
-    fn package_utils(&self) -> &PackageUtils<CoreFlavor> {
+    fn package_utils(&self) -> &PackageUtils<PythonFlavor> {
         self.package_utils.as_ref()
     }
 
@@ -541,7 +376,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
 
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
         let mut tuple_body = Tokens::new();
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
 
         tuple_body.push(self.build_constructor(&body.fields));
 
@@ -557,17 +391,16 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         let encode = self.encode_tuple_method(&body.fields)?;
         tuple_body.push(encode);
 
-        let repr_method = self.repr_method(type_name.clone(), &body.fields);
+        let repr_method = self.repr_method(&body.name, &body.fields);
         tuple_body.push(repr_method);
 
-        let class = self.as_class(type_name, tuple_body);
+        let class = self.as_class(&body.name, tuple_body);
 
         out.0.push(class);
         Ok(())
     }
 
     fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
         let mut class_body = Tokens::new();
 
         class_body.push(self.build_constructor(iter::once(self.variant_field)));
@@ -581,10 +414,10 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         class_body.push(encode_method(self.variant_field)?);
         class_body.push(decode_method(self.variant_field)?);
 
-        let repr_method = self.repr_method(type_name.clone(), iter::once(self.variant_field));
+        let repr_method = self.repr_method(&body.name, iter::once(self.variant_field));
         class_body.push(repr_method);
 
-        let class = self.as_class(type_name, class_body);
+        let class = self.as_class(&body.name, class_body);
         out.0.push(class);
         return Ok(());
 
@@ -623,7 +456,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
     }
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
         let mut class_body = Tokens::new();
 
         let constructor = self.build_constructor(&body.fields);
@@ -643,34 +475,31 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
 
         class_body.push(encode);
 
-        let repr_method = self.repr_method(type_name.clone(), &body.fields);
+        let repr_method = self.repr_method(&body.name, &body.fields);
         class_body.push(repr_method);
         class_body.push_unless_empty(code!(&body.codes, core::RpContext::Python));
 
-        out.0.push(self.as_class(type_name, class_body));
+        out.0.push(self.as_class(&body.name, class_body));
         Ok(())
     }
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
         let mut type_body = Tokens::new();
 
         match body.sub_type_strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 let tk = tag.as_str().quoted().into();
-                type_body.push(decode(self, &body, &tk)?);
+                type_body.push(decode(&body, &tk)?);
             }
         }
 
         type_body.push_unless_empty(code!(&body.codes, core::RpContext::Python));
 
-        out.0.push(self.as_class(type_name, type_body));
+        out.0.push(self.as_class(&body.name, type_body));
 
         let values = body.sub_types.iter().map(|l| Loc::as_ref(l));
 
         values.for_each_loc(|sub_type| {
-            let sub_type_name = Rc::new(sub_type.name.join(TYPE_SEP));
-
             let mut sub_type_body = Tokens::new();
 
             sub_type_body.push(toks!["TYPE = ", sub_type.name().quoted()]);
@@ -705,18 +534,17 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
                 }
             }
 
-            let repr_method = self.repr_method(sub_type_name.clone(), fields.iter().cloned());
+            let repr_method = self.repr_method(&sub_type.name, fields.iter().cloned());
             sub_type_body.push(repr_method);
             sub_type_body.push_unless_empty(code!(&sub_type.codes, core::RpContext::Python));
 
-            out.0.push(self.as_class(sub_type_name, sub_type_body));
+            out.0.push(self.as_class(&sub_type.name, sub_type_body));
             Ok(()) as Result<()>
         })?;
 
         return Ok(());
 
         fn decode<'el>(
-            c: &Compiler<'el>,
             body: &'el RpInterfaceBody,
             tag: &Tokens<'el, Python<'el>>,
         ) -> Result<Tokens<'el, Python<'el>>> {
@@ -727,11 +555,9 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
             push!(t, f_tag, " = ", data, "[", tag.clone(), "]");
 
             for sub_type in body.sub_types.iter() {
-                let type_name = c.convert_type(&sub_type.name).with_pos(Loc::pos(sub_type))?;
-
                 t.push_into(|t| {
                     push!(t, "if ", f_tag, " == ", sub_type.name().quoted(), ":");
-                    nested!(t, "return ", type_name, ".decode(data)");
+                    nested!(t, "return ", &sub_type.name, ".decode(data)");
                 });
             }
 
@@ -755,18 +581,13 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
     }
 
     fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody) -> Result<()> {
-        let type_name = Rc::new(body.name.join(TYPE_SEP));
         let mut type_body = Tokens::new();
 
         let mut extra: Vec<EndpointExtra> = Vec::new();
 
         for endpoint in &body.endpoints {
             let response_ty = if let Some(res) = endpoint.response.as_ref() {
-                Some((
-                    "data",
-                    self.dynamic_decode(res.ty(), "data".into())
-                        .with_pos(Loc::pos(res))?,
-                ))
+                Some(("data", res.ty().decode("data".into())))
             } else {
                 None
             };
@@ -780,7 +601,6 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         for g in &self.service_generators {
             g.generate(ServiceAdded {
                 body: body,
-                type_name: type_name.clone(),
                 type_body: &mut type_body,
                 extra: &extra,
             })?;
@@ -790,7 +610,7 @@ impl<'el> PackageProcessor<'el, CoreFlavor, RpName> for Compiler<'el> {
         Ok(())
     }
 
-    fn populate_files(&self) -> Result<BTreeMap<RpVersionedPackage, FileSpec<'el>>> {
+    fn populate_files(&self) -> Result<BTreeMap<RpPackage, FileSpec<'el>>> {
         let mut enums = Vec::new();
 
         let mut files = self.do_populate_files(|decl| {

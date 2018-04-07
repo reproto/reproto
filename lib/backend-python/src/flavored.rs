@@ -31,25 +31,61 @@ pub enum PythonType<'el> {
 }
 
 impl<'el> PythonType<'el> {
-    fn decode(&self, var: &'el str) -> Tokens<'el, Python<'el>> {
+    /// Build decode method.
+    pub fn decode(&self, var: Tokens<'el, Python<'el>>) -> Tokens<'el, Python<'el>> {
         use self::PythonType::*;
 
         match *self {
             Native => toks![var],
-            Array { ref argument } => toks!["[", argument.decode("v"), " for v in ", var, "]",],
+            ref v if v.is_native() => toks![var],
+            Array { ref argument } => {
+                toks!["[", argument.decode("v".into()), " for v in ", var, "]",]
+            }
             Map { ref key, ref value } => {
-                let k = key.decode("k");
-                let v = value.decode("v");
+                let k = key.decode("k".into());
+                let v = value.decode("v".into());
                 toks!["dict((", k, ", ", v, ") for (k, v) in ", var, ".items())",]
             }
             Name { ref python } => toks![python.clone(), ".decode(", var, ")"],
+        }
+    }
+
+    /// Build encode method.
+    pub fn encode(&self, var: Tokens<'el, Python<'el>>) -> Tokens<'el, Python<'el>> {
+        use self::PythonType::*;
+
+        match *self {
+            Native => toks![var],
+            ref v if v.is_native() => toks![var],
+            Array { ref argument } => {
+                let v = argument.encode("v".into());
+                toks!["[", v, " for v in ", var, "]"]
+            }
+            Map { ref key, ref value } => {
+                let k = key.encode("k".into());
+                let v = value.encode("v".into());
+                toks!["dict((", k, ", ", v, ") for (k, v) in ", var, ".items())",]
+            }
+            Name { ref python } => toks![var, ".encode()"],
+        }
+    }
+
+    /// Check if the current type is completely native.
+    fn is_native(&self) -> bool {
+        use self::PythonType::*;
+
+        match *self {
+            Native => true,
+            Array { ref argument } => argument.is_native(),
+            Map { ref key, ref value } => key.is_native() && value.is_native(),
+            _ => false,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PythonName {
-    pub name: Rc<String>,
+    pub name: Python<'static>,
     pub package: RpPackage,
 }
 
@@ -61,7 +97,7 @@ impl fmt::Display for PythonName {
 
 impl<'el> From<&'el PythonName> for Element<'el, Python<'el>> {
     fn from(value: &'el PythonName) -> Element<'el, Python<'el>> {
-        Element::Literal(value.name.clone().into())
+        Element::Literal(value.name.clone().to_string().into())
     }
 }
 
@@ -76,7 +112,7 @@ pub struct PythonFlavor;
 
 impl Flavor for PythonFlavor {
     type Type = PythonType<'static>;
-    type Name = Python<'static>;
+    type Name = PythonName;
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
@@ -92,12 +128,11 @@ impl PythonFlavorTranslator {
     pub fn new(
         package_translator: HashMap<RpVersionedPackage, RpPackage>,
         package_utils: Rc<PythonPackageUtils>,
-        options: &Options,
-    ) -> Result<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             package_translator,
             package_utils,
-        })
+        }
     }
 }
 
@@ -197,12 +232,17 @@ impl FlavorTranslator for PythonFlavorTranslator {
         translator: &T,
         reg: RpReg,
         name: core::RpName<CoreFlavor>,
-    ) -> Result<Python<'static>>
+    ) -> Result<PythonName>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |v| v.join(TYPE_SEP));
-        Ok(python::local(ident))
+        let package = self.translate_package(name.package)?;
+
+        Ok(PythonName {
+            name: python::local(ident),
+            package,
+        })
     }
 }
 

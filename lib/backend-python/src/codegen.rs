@@ -1,5 +1,5 @@
 use core::errors::Result;
-use core::flavored::RpServiceBody;
+use flavored::RpServiceBody;
 use genco::{Python, Tokens};
 use std::rc::Rc;
 
@@ -10,7 +10,6 @@ pub struct EndpointExtra<'el> {
 
 pub struct ServiceAdded<'a, 'el: 'a> {
     pub body: &'el RpServiceBody,
-    pub type_name: Rc<String>,
     pub type_body: &'a mut Tokens<'el, Python<'el>>,
     pub extra: &'a [EndpointExtra<'el>],
 }

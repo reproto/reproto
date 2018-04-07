@@ -24,9 +24,9 @@ mod utils;
 use backend::{Initializer, IntoBytes, PackageUtils};
 use codegen::ServiceCodegen;
 use compiler::Compiler;
-use core::RpPackage;
 use core::errors::Result;
-use core::{Context, CoreFlavor, Loc, Pos, RpField, RpType};
+use core::{Context, CoreFlavor, Loc, Pos, RpField, RpPackage, RpType, Translate};
+use flavored::PythonFlavor;
 use genco::{Python, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -173,7 +173,7 @@ impl PythonPackageUtils {
     }
 }
 
-impl PackageUtils<CoreFlavor> for PythonPackageUtils {
+impl PackageUtils<PythonFlavor> for PythonPackageUtils {
     fn package_prefix(&self) -> Option<&RpPackage> {
         self.package_prefix.as_ref()
     }
@@ -181,12 +181,21 @@ impl PackageUtils<CoreFlavor> for PythonPackageUtils {
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let package_utils = Rc::new(PythonPackageUtils::new(env.package_prefix()));
-    let env = env.translate_default()?;
+    let packages = env.packages()?;
+
+    let translator = env.translator(flavored::PythonFlavorTranslator::new(
+        packages,
+        package_utils.clone(),
+    ))?;
+
+    let variant_field =
+        Loc::new(RpField::new("ordinal", RpType::String), Pos::empty()).translate(&translator)?;
+
+    let env = env.translate(translator)?;
 
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = setup_options(modules)?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    let variant_field = Loc::new(RpField::new("ordinal", RpType::String), Pos::empty());
 
     Compiler::new(
         &env,
