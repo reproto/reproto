@@ -1,7 +1,7 @@
 use ast::{self, UseDecl};
 use core::errors::{Error, Result};
-use core::{translator, AsPackage, Context, CoreFlavor, CoreFlavor2, Flavor, FlavorTranslator, Loc,
-           Object, PathObject, Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
+use core::{translator, AsPackage, Context, CoreFlavor, Flavor, FlavorTranslator, Loc, Object,
+           PathObject, Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
            RpRequiredPackage, RpVersionedPackage, Translate, Translator, Version, WithPos};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
@@ -263,17 +263,6 @@ impl Environment<CoreFlavor> {
     /// Translate without changing the flavor.
     pub fn translate_default(self) -> Result<Translated<CoreFlavor>> {
         let ctx = self.translator(translator::CoreFlavorTranslator::<_, CoreFlavor>::new(()))?;
-        self.translate(ctx)
-    }
-
-    /// Translate without changing the flavor.
-    pub fn translate_versioned(self) -> Result<Translated<CoreFlavor2>> {
-        let packages = self.packages()?;
-
-        let ctx = self.translator(translator::CoreFlavorTranslator::<_, CoreFlavor2>::new(
-            packages,
-        ))?;
-
         self.translate(ctx)
     }
 

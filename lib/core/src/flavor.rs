@@ -42,16 +42,3 @@ impl Flavor for CoreFlavor {
     type Endpoint = RpEndpoint<CoreFlavor>;
     type Package = RpVersionedPackage;
 }
-
-/// The second flavor where packages have been translated from a versioned variation, to a minimal
-/// RpPackage variant where the names are identifier-safe.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Hash)]
-pub struct CoreFlavor2;
-
-impl Flavor for CoreFlavor2 {
-    type Type = RpType<CoreFlavor2>;
-    type Name = RpName<CoreFlavor2>;
-    type Field = RpField<CoreFlavor2>;
-    type Endpoint = RpEndpoint<CoreFlavor2>;
-    type Package = RpPackage;
-}
