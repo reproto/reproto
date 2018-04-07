@@ -1,9 +1,11 @@
+use errors::Result;
 use serde;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem;
+use std::result;
 use std::slice;
-use {AsPackage, RpVersionedPackage, Version};
+use {AsPackage, RpVersionedPackage};
 
 /// Iterator over parts in a package.
 pub struct Parts<'a> {
@@ -36,11 +38,8 @@ pub struct RpPackage {
 }
 
 impl AsPackage for RpPackage {
-    fn as_package<V>(&self, _: V) -> RpPackage
-    where
-        V: FnOnce(&Version) -> String,
-    {
-        return self.clone();
+    fn try_as_package(&self) -> Result<&RpPackage> {
+        Ok(self)
     }
 }
 
@@ -144,7 +143,7 @@ impl fmt::Display for RpPackage {
 }
 
 impl serde::Serialize for RpPackage {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -153,7 +152,7 @@ impl serde::Serialize for RpPackage {
 }
 
 impl<'de> serde::Deserialize<'de> for RpPackage {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> result::Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -166,7 +165,7 @@ impl<'de> serde::Deserialize<'de> for RpPackage {
                 formatter.write_str("a SemVer version as a string")
             }
 
-            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            fn visit_str<E>(self, v: &str) -> result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {

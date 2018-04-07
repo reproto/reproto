@@ -1,5 +1,6 @@
 //! A versioned package declaration
 
+use errors::Result;
 use std::collections::HashMap;
 use std::fmt;
 use {AsPackage, RpPackage, RpPackageFormat, Version};
@@ -13,7 +14,21 @@ pub struct RpVersionedPackage {
 
 impl AsPackage for RpVersionedPackage {
     /// Convert into a package by piping the version through the provided function.
-    fn as_package<V>(&self, version_fn: V) -> RpPackage
+    fn try_as_package(&self) -> Result<&RpPackage> {
+        Err("cannot be converted".into())
+    }
+}
+
+impl RpVersionedPackage {
+    pub fn new(package: RpPackage, version: Option<Version>) -> RpVersionedPackage {
+        RpVersionedPackage {
+            package: package,
+            version: version,
+        }
+    }
+
+    /// Convert into a package by piping the version through the provided function.
+    pub fn to_package<V>(&self, version_fn: V) -> RpPackage
     where
         V: FnOnce(&Version) -> String,
     {
@@ -26,15 +41,6 @@ impl AsPackage for RpVersionedPackage {
         }
 
         RpPackage::new(parts)
-    }
-}
-
-impl RpVersionedPackage {
-    pub fn new(package: RpPackage, version: Option<Version>) -> RpVersionedPackage {
-        RpVersionedPackage {
-            package: package,
-            version: version,
-        }
     }
 
     pub fn without_version(self) -> RpVersionedPackage {

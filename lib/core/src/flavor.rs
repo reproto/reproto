@@ -1,20 +1,17 @@
 //! The flavor of RpIR being used.
 
+use errors::Result;
 use std::cmp;
 use std::fmt;
 use std::hash;
-use {RpEndpoint, RpField, RpName, RpPackage, RpType, RpVersionedPackage, Version};
+use {RpEndpoint, RpField, RpName, RpPackage, RpType, RpVersionedPackage};
 
 pub trait AsPackage
 where
     Self: Sized,
 {
-    /// Convert into a simple package.
-    ///
-    /// The closure is called if there is a need to translate a version.
-    fn as_package<V>(&self, V) -> RpPackage
-    where
-        V: FnOnce(&Version) -> String;
+    /// Attempt to treat the current object as a package.
+    fn try_as_package(&self) -> Result<&RpPackage>;
 }
 
 /// The flavor of intermediate representation being used.

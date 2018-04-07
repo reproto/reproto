@@ -1,8 +1,8 @@
 use ast::{self, UseDecl};
 use core::errors::{Error, Result};
-use core::{translator, AsPackage, Context, CoreFlavor, Flavor, FlavorTranslator, Loc, Object,
-           PathObject, Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
-           RpRequiredPackage, RpVersionedPackage, Translate, Translator, Version, WithPos};
+use core::{translator, Context, CoreFlavor, Flavor, FlavorTranslator, Loc, Object, PathObject,
+           Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
+           RpVersionedPackage, Translate, Translator, Version, WithPos};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
@@ -171,7 +171,7 @@ where
         level: usize,
         random: &str,
     ) -> RpPackage {
-        package.as_package(|version| Self::version_package(version, level, random))
+        package.to_package(|v| Self::version_package(v, level, random))
     }
 }
 

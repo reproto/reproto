@@ -60,7 +60,7 @@ impl<'a> DocCompiler<'a> {
     fn process_decl(&self, decl: &RpDecl) -> Result<()> {
         use core::RpDecl::*;
 
-        let package = decl.name().package.clone().as_package(|v| v.to_string());
+        let package = decl.name().package.try_as_package()?;
 
         // maintain to know where to import static resources from.
         let mut root = Vec::new();
@@ -154,7 +154,7 @@ impl<'a> DocCompiler<'a> {
 
         let mut root = Vec::new();
 
-        for part in package.as_package(|v| v.to_string()).parts() {
+        for part in package.to_package(|v| v.to_string()).parts() {
             root.push("..");
             path = path.join(part);
         }
