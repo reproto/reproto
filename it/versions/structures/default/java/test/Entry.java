@@ -2,7 +2,7 @@ package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import foo._4_0_0.Thing;
+import foo.v4.Thing;
 import java.util.Objects;
 import java.util.Optional;
 

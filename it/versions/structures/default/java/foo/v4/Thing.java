@@ -1,6 +1,6 @@
-package foo._4_0_0;
+package foo.v4;
 
-import bar._1_0_0.Other;
+import bar.v1.Other;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
@@ -12,16 +12,16 @@ public class Thing {
   @JsonProperty("other")
   private final Optional<Other> other;
   @JsonProperty("other2")
-  private final Optional<bar._2_0_0.Other> other2;
+  private final Optional<bar.v2_0.Other> other2;
   @JsonProperty("other21")
-  private final Optional<bar._2_1_0.Other> other21;
+  private final Optional<bar.v2_1.Other> other21;
 
   @JsonCreator
   public Thing(
     @JsonProperty("name") final Optional<String> name,
     @JsonProperty("other") final Optional<Other> other,
-    @JsonProperty("other2") final Optional<bar._2_0_0.Other> other2,
-    @JsonProperty("other21") final Optional<bar._2_1_0.Other> other21
+    @JsonProperty("other2") final Optional<bar.v2_0.Other> other2,
+    @JsonProperty("other21") final Optional<bar.v2_1.Other> other21
   ) {
     Objects.requireNonNull(name, "name");
     this.name = name;
@@ -44,12 +44,12 @@ public class Thing {
   }
 
   @JsonProperty("other2")
-  public Optional<bar._2_0_0.Other> getOther2() {
+  public Optional<bar.v2_0.Other> getOther2() {
     return this.other2;
   }
 
   @JsonProperty("other21")
-  public Optional<bar._2_1_0.Other> getOther21() {
+  public Optional<bar.v2_1.Other> getOther21() {
     return this.other21;
   }
 
@@ -120,8 +120,8 @@ public class Thing {
   public static class Builder {
     private Optional<String> name = Optional.empty();
     private Optional<Other> other = Optional.empty();
-    private Optional<bar._2_0_0.Other> other2 = Optional.empty();
-    private Optional<bar._2_1_0.Other> other21 = Optional.empty();
+    private Optional<bar.v2_0.Other> other2 = Optional.empty();
+    private Optional<bar.v2_1.Other> other21 = Optional.empty();
 
     public Builder name(final String name) {
       this.name = Optional.of(name);
@@ -133,12 +133,12 @@ public class Thing {
       return this;
     }
 
-    public Builder other2(final bar._2_0_0.Other other2) {
+    public Builder other2(final bar.v2_0.Other other2) {
       this.other2 = Optional.of(other2);
       return this;
     }
 
-    public Builder other21(final bar._2_1_0.Other other21) {
+    public Builder other21(final bar.v2_1.Other other21) {
       this.other21 = Optional.of(other21);
       return this;
     }
@@ -146,8 +146,8 @@ public class Thing {
     public Thing build() {
       final Optional<String> name = this.name;
       final Optional<Other> other = this.other;
-      final Optional<bar._2_0_0.Other> other2 = this.other2;
-      final Optional<bar._2_1_0.Other> other21 = this.other21;
+      final Optional<bar.v2_0.Other> other2 = this.other2;
+      final Optional<bar.v2_1.Other> other21 = this.other21;
 
       return new Thing(name, other, other2, other21);
     }

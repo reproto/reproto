@@ -1,7 +1,7 @@
 package test
 
-import "../foo_4_0_0"
+import "../foo_v4"
 
 type Entry struct {
-  Thing *foo_4_0_0.Thing `json:"thing,omitempty"`
+  Thing *foo_v4.Thing `json:"thing,omitempty"`
 }

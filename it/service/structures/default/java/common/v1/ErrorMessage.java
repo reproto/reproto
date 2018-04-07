@@ -1,4 +1,4 @@
-package common._1_0_0;
+package common.v1;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

@@ -1,16 +1,16 @@
-package common._1_0_0;
+package bar.v1;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import java.util.Optional;
 
-public class Entry {
+public class Other {
   @JsonProperty("name")
   private final String name;
 
   @JsonCreator
-  public Entry(
+  public Other(
     @JsonProperty("name") final String name
   ) {
     Objects.requireNonNull(name, "name");
@@ -35,12 +35,12 @@ public class Entry {
       return false;
     }
 
-    if (!(other instanceof Entry)) {
+    if (!(other instanceof Other)) {
       return false;
     }
 
     @SuppressWarnings("unchecked")
-    final Entry o = (Entry) other;
+    final Other o = (Other) other;
 
     if (!this.name.equals(o.name)) {
       return false;
@@ -53,7 +53,7 @@ public class Entry {
   public String toString() {
     final StringBuilder b = new StringBuilder();
 
-    b.append("Entry");
+    b.append("Other");
     b.append("(");
     b.append("name=");
     b.append(this.name.toString());
@@ -70,10 +70,10 @@ public class Entry {
       return this;
     }
 
-    public Entry build() {
+    public Other build() {
       final String name = this.name.orElseThrow(() -> new RuntimeException("name: is required"));
 
-      return new Entry(name);
+      return new Other(name);
     }
   }
 }

@@ -1,4 +1,4 @@
-package bar_1_0_0
+package bar_v1
 
 type Other struct {
   Name string `json:"name"`
