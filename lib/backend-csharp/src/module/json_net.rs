@@ -193,7 +193,7 @@ impl TypeFieldCodegen for JsonNet {
 }
 
 impl TupleCodegen for JsonNet {
-    fn generate(&self, TupleAdded { mut spec }: TupleAdded) -> Result<()> {
+    fn generate(&self, TupleAdded { spec }: TupleAdded) -> Result<()> {
         use genco::csharp::{local, Class, Method, Modifier, BOOLEAN};
 
         let converter = Rc::new(format!("{}.Json_Net_Converter", spec.name().as_ref()));
@@ -205,7 +205,7 @@ impl TupleCodegen for JsonNet {
             c.implements = vec![converter];
 
             c.body.push(CanConvert(self, &spec));
-            c.body.push(WriteJson(self, &mut spec));
+            c.body.push(WriteJson(self, &spec));
             c.body.push(ReadJson(self, &spec));
 
             c
