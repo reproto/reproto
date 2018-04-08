@@ -1,8 +1,8 @@
 //! Value of models
 
-use super::{Loc, RpEnumOrdinal, RpNumber};
 use errors::{Error, Result};
 use std::fmt;
+use {Loc, RpEnumOrdinal, RpNumber};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", content = "value", rename_all = "snake_case")]
