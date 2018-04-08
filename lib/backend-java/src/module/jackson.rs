@@ -403,19 +403,19 @@ impl Jackson {
         })
     }
 
-    fn add_class_annotations<'a>(&self, names: &[Cons<'a>], spec: &mut Class<'a>) -> Result<()> {
+    fn add_class_annotations<'el>(&self, names: &[&'el str], spec: &mut Class<'el>) -> Result<()> {
         // Annotate all constructors.
         for c in &mut spec.constructors {
             c.annotation(toks!["@", self.creator.clone()]);
 
-            for (argument, name) in c.arguments.iter_mut().zip(names.iter()) {
-                argument.annotation(JsonProperty(name.clone()));
+            for (argument, name) in c.arguments.iter_mut().zip(names.iter().cloned()) {
+                argument.annotation(JsonProperty(name.into()));
             }
         }
 
         // Also add field annotations, since they are used during serialization!
-        for (field, name) in spec.fields.iter_mut().zip(names.iter()) {
-            field.annotation(JsonProperty(name.clone()));
+        for (field, name) in spec.fields.iter_mut().zip(names.iter().cloned()) {
+            field.annotation(JsonProperty(name.into()));
 
             if field.ty().as_value() == self.instant {
                 field.annotation(JsonFormat);
@@ -468,7 +468,7 @@ impl Jackson {
 
 impl GetterCodegen for Jackson {
     fn generate(&self, e: GetterAdded) -> Result<()> {
-        e.getter.annotation(JsonProperty(e.name.clone()));
+        e.getter.annotation(JsonProperty(e.name.into()));
         Ok(())
     }
 }

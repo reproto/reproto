@@ -39,10 +39,17 @@ impl<'el> Deref for JavaEndpoint<'el> {
 /// A single field.
 #[derive(Debug, Clone)]
 pub struct JavaField<'el> {
-    pub name: Cons<'el>,
-    pub ident: Rc<String>,
+    pub field: RpField,
     pub field_accessor: Rc<String>,
     pub spec: Field<'el>,
+}
+
+impl<'el> ::std::ops::Deref for JavaField<'el> {
+    type Target = RpField;
+
+    fn deref(&self) -> &Self::Target {
+        &self.field
+    }
 }
 
 impl<'el> JavaField<'el> {
@@ -81,11 +88,6 @@ impl<'el> JavaField<'el> {
         let mut m = self.getter_without_body();
         m.body.push(toks!["return this.", self.spec.var(), ";"]);
         m
-    }
-
-    /// The JSON name of the field.
-    pub fn name(&self) -> Cons<'el> {
-        self.name.clone()
     }
 }
 
@@ -203,31 +205,30 @@ impl FlavorTranslator for JavaFlavorTranslator {
     where
         T: Translator<Source = CoreFlavor, Target = JavaFlavor>,
     {
-        let ty = translator.translate_type(field.ty.clone())?;
+        let mut field = field.translate(translator)?;
 
-        let java_type = if field.is_optional() {
-            optional(ty.clone(), self.optional.with_arguments(vec![ty.clone()]))
-        } else {
-            ty
-        };
-
-        let ident = Rc::new(self.to_lower_camel.convert(field.safe_ident()));
         let field_accessor = Rc::new(self.to_upper_camel.convert(field.ident()));
 
-        let name = Cons::from(field.name().to_string());
+        let java_type = if field.is_optional() {
+            optional(
+                field.ty.clone(),
+                self.optional.with_arguments(vec![field.ty.clone()]),
+            )
+        } else {
+            field.ty.clone()
+        };
 
-        let mut spec = Field::new(java_type, ident.clone());
+        let mut spec = Field::new(java_type, field.safe_ident().to_string());
 
         if !field.comment.is_empty() {
             spec.comments.push("<pre>".into());
             spec.comments
-                .extend(field.comment.into_iter().map(Cons::from));
+                .extend(field.comment.drain(..).map(Cons::from));
             spec.comments.push("</pre>".into());
         }
 
         Ok(JavaField {
-            name: name,
-            ident: ident,
+            field,
             field_accessor: field_accessor,
             spec: spec,
         })

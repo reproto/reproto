@@ -44,6 +44,10 @@ impl Lang for JavaLang {
         Some(format!("// {}", input))
     }
 
+    fn field_ident_naming(&self) -> Option<Box<Naming>> {
+        Some(Box::new(naming::to_lower_camel()))
+    }
+
     fn endpoint_ident_naming(&self) -> Option<Box<Naming>> {
         Some(Box::new(naming::to_lower_camel()))
     }

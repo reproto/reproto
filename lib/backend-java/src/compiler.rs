@@ -130,7 +130,10 @@ impl<'el> Compiler<'el> {
         field
     }
 
-    fn build_constructor(&self, fields: &[Loc<JavaField<'el>>]) -> Constructor<'el> {
+    fn build_constructor<F>(&self, fields: F) -> Constructor<'el>
+    where
+        F: IntoIterator<Item = &'el Loc<JavaField<'static>>>,
+    {
         let mut c = Constructor::new();
 
         for field in fields {
@@ -139,16 +142,14 @@ impl<'el> Compiler<'el> {
             let argument = Argument::new(spec.ty(), spec.var());
 
             if !self.options.nullable {
-                if let Some(non_null) = self.require_non_null(spec, &argument, field.name().into())
-                {
+                if let Some(non_null) = self.require_non_null(spec, &argument, field.name()) {
                     c.body.push(non_null);
                 }
             }
 
             c.arguments.push(argument.clone());
 
-            c.body
-                .push(toks!["this.", field.spec.var(), " = ", argument.var(), ";",]);
+            push!(c.body, "this.", spec.var(), " = ", argument.var(), ";");
         }
 
         c
@@ -159,7 +160,7 @@ impl<'el> Compiler<'el> {
         &self,
         field: &Field<'el>,
         argument: &Argument<'el>,
-        name: Cons<'el>,
+        name: &'el str,
     ) -> Option<Tokens<'el, Java<'el>>> {
         use self::Java::*;
 
@@ -173,7 +174,10 @@ impl<'el> Compiler<'el> {
         }
     }
 
-    fn build_hash_code(&self, fields: &[Loc<JavaField<'el>>]) -> Method<'el> {
+    fn build_hash_code<F>(&self, fields: F) -> Method<'el>
+    where
+        F: IntoIterator<Item = &'el Loc<JavaField<'static>>>,
+    {
         let mut hash_code = Method::new("hashCode");
 
         hash_code.annotation(Override);
@@ -215,7 +219,10 @@ impl<'el> Compiler<'el> {
         hash_code
     }
 
-    fn build_equals(&self, name: Cons<'el>, fields: &[Loc<JavaField<'el>>]) -> Method<'el> {
+    fn build_equals<F>(&self, name: Cons<'el>, fields: F) -> Method<'el>
+    where
+        F: IntoIterator<Item = &'el Loc<JavaField<'static>>>,
+    {
         let argument = Argument::new(self.object.clone(), "other");
 
         let mut equals = Method::new("equals");
@@ -319,7 +326,10 @@ impl<'el> Compiler<'el> {
         equals
     }
 
-    fn build_to_string(&self, name: Cons<'el>, fields: &[Loc<JavaField<'el>>]) -> Method<'el> {
+    fn build_to_string<F>(&self, name: Cons<'el>, fields: F) -> Method<'el>
+    where
+        F: IntoIterator<Item = &'el Loc<JavaField<'static>>>,
+    {
         let mut to_string = Method::new("toString");
 
         to_string.annotation(Override);
@@ -359,7 +369,7 @@ impl<'el> Compiler<'el> {
                 }
             };
 
-            let field_key = Rc::new(format!("{}=", field.name().as_ref())).quoted();
+            let field_key = Rc::new(format!("{}=", field.name())).quoted();
 
             body.push({
                 let mut t = Tokens::new();
@@ -386,27 +396,30 @@ impl<'el> Compiler<'el> {
         to_string
     }
 
-    fn add_class(
+    fn add_class<F>(
         &self,
         name: Cons<'el>,
-        fields: &[Loc<JavaField<'el>>],
+        fields: F,
         methods: &mut Vec<Method<'el>>,
         constructors: &mut Vec<Constructor<'el>>,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        F: Clone + IntoIterator<Item = &'el Loc<JavaField<'static>>>,
+    {
         if self.options.build_constructor {
-            constructors.push(self.build_constructor(fields));
+            constructors.push(self.build_constructor(fields.clone()));
         }
 
         if self.options.build_hash_code {
-            methods.push(self.build_hash_code(fields));
+            methods.push(self.build_hash_code(fields.clone()));
         }
 
         if self.options.build_equals {
-            methods.push(self.build_equals(name.clone(), fields));
+            methods.push(self.build_equals(name.clone(), fields.clone()));
         }
 
         if self.options.build_to_string {
-            methods.push(self.build_to_string(name.clone(), fields));
+            methods.push(self.build_to_string(name.clone(), fields.clone()));
         }
 
         Ok(())
@@ -588,7 +601,7 @@ impl<'el> Compiler<'el> {
 
     fn process_type(&self, body: &'el RpTypeBody) -> Result<Class<'el>> {
         let mut spec = Class::new(body.ident.clone());
-        let names: Vec<_> = body.fields.iter().map(|f| f.name.clone()).collect();
+        let names: Vec<_> = body.fields.iter().map(|f| f.name()).collect();
 
         for field in &body.fields {
             spec.fields.push(field.spec.clone());
@@ -704,15 +717,15 @@ impl<'el> Compiler<'el> {
                 }
             }
 
-            let mut fields = body.fields.iter().cloned().collect::<Vec<_>>();
-            fields.extend(sub_type.fields.iter().cloned());
-            let names: Vec<_> = fields.iter().map(|f| f.name.clone()).collect();
+            let mut fields = body.fields.iter().collect::<Vec<_>>();
+            fields.extend(sub_type.fields.iter());
+            let names: Vec<_> = fields.iter().map(|f| f.name()).collect();
 
             class.fields.extend(fields.iter().map(|f| f.spec.clone()));
 
             self.add_class(
                 class.name(),
-                &fields,
+                fields,
                 &mut class.methods,
                 &mut class.constructors,
             )?;

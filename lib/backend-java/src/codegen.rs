@@ -4,7 +4,6 @@ use Options;
 use core::Handle;
 use core::errors::Result;
 use flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
-use genco::Cons;
 use genco::java::{Class, Enum, Interface, Method};
 use std::rc::Rc;
 
@@ -23,12 +22,12 @@ macro_rules! codegen {
 }
 
 pub struct GetterAdded<'a, 'el: 'a> {
-    pub name: Cons<'el>,
+    pub name: &'el str,
     pub getter: &'a mut Method<'el>,
 }
 
 pub struct ClassAdded<'a, 'el: 'a> {
-    pub names: &'a [Cons<'el>],
+    pub names: &'a [&'el str],
     pub spec: &'a mut Class<'el>,
 }
 
