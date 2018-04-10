@@ -49,6 +49,15 @@ impl<'a> IntoTokens<'a, Rust<'a>> for Tag<'a> {
     }
 }
 
+/// Untagged attribute.
+pub struct Untagged;
+
+impl<'el> IntoTokens<'el, Rust<'el>> for Untagged {
+    fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
+        toks!["#[serde(untagged)]"]
+    }
+}
+
 pub struct Compiler<'el> {
     pub env: &'el Translated<RustFlavor>,
     options: Options,
@@ -378,6 +387,9 @@ impl<'el> PackageProcessor<'el, RustFlavor, RpName> for Compiler<'el> {
         match body.sub_type_strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 t.push(Tag(tag.as_str()));
+            }
+            core::RpSubTypeStrategy::RequiredFields => {
+                t.push(Untagged);
             }
         }
 
