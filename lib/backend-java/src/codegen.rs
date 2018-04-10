@@ -29,6 +29,7 @@ pub struct GetterAdded<'a, 'el: 'a> {
 pub struct ClassAdded<'a, 'el: 'a> {
     pub names: &'a [&'el str],
     pub spec: &'a mut Class<'el>,
+    pub interface: Option<&'a RpInterfaceBody>,
 }
 
 pub struct TupleAdded<'a, 'el: 'a> {

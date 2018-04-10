@@ -2,14 +2,16 @@
 
 #![allow(unused)]
 
+use backend::package_processor;
 use core::errors::Result;
 use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
            Translator};
-use genco::java::{imported, optional, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT,
-                  INTEGER, LONG, VOID};
-use genco::{Cons, Java};
+use genco::java::{self, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG,
+                  VOID};
+use genco::{Cons, Element, Java};
 use naming::{self, Naming};
 use std::collections::HashMap;
+use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -91,12 +93,36 @@ impl<'el> JavaField<'el> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JavaName {
+    pub name: Rc<String>,
+    pub package: RpPackage,
+}
+
+impl fmt::Display for JavaName {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.name.fmt(fmt)
+    }
+}
+
+impl<'el> From<&'el JavaName> for Element<'el, Java<'el>> {
+    fn from(value: &'el JavaName) -> Element<'el, Java<'el>> {
+        Element::Literal(value.name.to_string().into())
+    }
+}
+
+impl package_processor::Name<JavaFlavor> for JavaName {
+    fn package(&self) -> &RpPackage {
+        &self.package
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct JavaFlavor;
 
 impl Flavor for JavaFlavor {
     type Type = Java<'static>;
-    type Name = RpName;
+    type Name = JavaName;
     type Field = JavaField<'static>;
     type Endpoint = JavaEndpoint<'static>;
     type Package = core::RpPackage;
@@ -120,13 +146,13 @@ impl JavaFlavorTranslator {
     pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
         Self {
             package_translator,
-            list: imported("java.util", "List"),
-            map: imported("java.util", "Map"),
-            string: imported("java.lang", "String"),
-            instant: imported("java.time", "Instant"),
-            object: imported("java.lang", "Object"),
-            byte_buffer: imported("java.nio", "ByteBuffer"),
-            optional: imported("java.util", "Optional"),
+            list: java::imported("java.util", "List"),
+            map: java::imported("java.util", "Map"),
+            string: java::imported("java.lang", "String"),
+            instant: java::imported("java.time", "Instant"),
+            object: java::imported("java.lang", "Object"),
+            byte_buffer: java::imported("java.nio", "ByteBuffer"),
+            optional: java::imported("java.util", "Optional"),
             to_upper_camel: naming::to_upper_camel(),
             to_lower_camel: naming::to_lower_camel(),
         }
@@ -137,7 +163,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
     type Source = CoreFlavor;
     type Target = JavaFlavor;
 
-    translator_defaults!(Self, local_name);
+    translator_defaults!(Self);
 
     fn translate_i32(&self) -> Result<Java<'static>> {
         Ok(INTEGER.into())
@@ -194,7 +220,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
     fn translate_name(&self, reg: RpReg, name: RpName) -> Result<Java<'static>> {
         let ident = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
         let package = name.package.join(".");
-        Ok(imported(package, ident))
+        Ok(java::imported(package, ident))
     }
 
     fn translate_field<T>(
@@ -210,7 +236,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
         let field_accessor = Rc::new(self.to_upper_camel.convert(field.ident()));
 
         let java_type = if field.is_optional() {
-            optional(
+            java::optional(
                 field.ty.clone(),
                 self.optional.with_arguments(vec![field.ty.clone()]),
             )
@@ -262,6 +288,24 @@ impl FlavorTranslator for JavaFlavorTranslator {
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
         Ok(self.package_translator.translate_package(source)?)
+    }
+
+    fn translate_local_name<T>(
+        &self,
+        translator: &T,
+        reg: RpReg,
+        name: core::RpName<CoreFlavor>,
+    ) -> Result<JavaName>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>,
+    {
+        let ident = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
+        let package = self.translate_package(name.package)?;
+
+        Ok(JavaName {
+            name: ident,
+            package,
+        })
     }
 }
 
