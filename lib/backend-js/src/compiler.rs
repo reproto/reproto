@@ -447,6 +447,9 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
                 let tk = tag.as_str().quoted().into();
                 interface_body.push(decode(&body, &tk)?);
             }
+            core::RpSubTypeStrategy::RequiredFields => {
+                interface_body.push(decode_required_fields(body)?);
+            }
         }
 
         interface_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
@@ -494,6 +497,9 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
                         Some(type_toks),
                     )?);
                 }
+                core::RpSubTypeStrategy::RequiredFields => {
+                    class_body.push(self.encode_method(fields.iter().cloned(), "{}", None)?);
+                }
             }
 
             class_body.push_unless_empty(code!(&sub_type.codes, core::RpContext::Js));
@@ -533,6 +539,50 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
             }
 
             t.push(js![throw "bad type: ".quoted(), " + ", f_tag]);
+
+            Ok({
+                let mut decode = Tokens::new();
+                push!(decode, "static decode(", data, ") {");
+                decode.nested(t.join_line_spacing());
+                push!(decode, "}");
+                decode
+            })
+        }
+
+        fn decode_required_fields<'el>(
+            body: &'el RpInterfaceBody,
+        ) -> Result<Tokens<'el, JavaScript<'el>>> {
+            let mut t = Tokens::new();
+
+            let data = "data";
+
+            push!(t, "var all = true");
+            push!(t, "var keys = {}");
+
+            t.push_into(|t| {
+                push!(t, "for (const k in ", data, ") {");
+                nested!(t, "keys[k] = true");
+                push!(t, "}");
+            });
+
+            for sub_type in body.sub_types.iter() {
+                let mut required = Tokens::new();
+
+                for f in body.fields
+                    .iter()
+                    .chain(sub_type.fields.iter())
+                    .filter(|f| f.is_required())
+                {
+                    required.append(toks!["(", f.name().quoted(), " in keys)"]);
+                }
+
+                t.push_into(|t| {
+                    let cond = required.join(" && ");
+                    t.push(js![if cond, js![return &sub_type.name, ".decode(", data, ")"]]);
+                });
+            }
+
+            t.push(js![throw "no legal field combinations found".quoted()]);
 
             Ok({
                 let mut decode = Tokens::new();
