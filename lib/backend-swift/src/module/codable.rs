@@ -6,6 +6,7 @@ use core::errors::{Error, Result};
 use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
 use genco::swift::{local, Swift};
 use genco::{Quoted, Tokens};
+use std::collections::BTreeSet;
 use std::rc::Rc;
 use {EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen, InterfaceModelAdded,
      InterfaceModelCodegen, Options, PackageAdded, PackageCodegen, StructModelAdded,
@@ -828,13 +829,12 @@ impl EnumCodegen for Codegen {
                         t.push({
                             let mut t = Tokens::new();
 
+                            let mut a = Tokens::new();
+                            a.append("codingPath: decoder.codingPath");
+                            a.append(toks!["debugDescription: ", "enum variant".quoted()]);
+
                             t.push("default:");
-                            t.nested(toks![
-                                "let context = DecodingError.Context(codingPath: [], \
-                                 debugDescription: ",
-                                "enum variant".quoted(),
-                                ")"
-                            ]);
+                            nested!(t, "let context = DecodingError.Context(", a.join(", "), ")");
                             t.nested("throw DecodingError.dataCorrupted(context)");
 
                             t
@@ -973,7 +973,10 @@ impl InterfaceCodegen for Codegen {
 
                 match body.sub_type_strategy {
                     core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                        t.nested(init(body, tag)?);
+                        t.nested(tagged_init(body, tag)?);
+                    }
+                    core::RpSubTypeStrategy::RequiredFields => {
+                        t.nested(required_fields_init(body)?);
                     }
                 }
 
@@ -984,7 +987,10 @@ impl InterfaceCodegen for Codegen {
 
             return Ok(t);
 
-            fn init<'a>(body: &'a RpInterfaceBody, tag: &'a str) -> Result<Tokens<'a, Swift<'a>>> {
+            fn tagged_init<'a>(
+                body: &'a RpInterfaceBody,
+                tag: &'a str,
+            ) -> Result<Tokens<'a, Swift<'a>>> {
                 let mut t = Tokens::new();
 
                 t.push("public init(from decoder: Decoder) throws {");
@@ -1041,6 +1047,72 @@ impl InterfaceCodegen for Codegen {
 
                 Ok(t)
             }
+
+            fn required_fields_init<'a>(
+                body: &'a RpInterfaceBody,
+            ) -> Result<Tokens<'a, Swift<'a>>> {
+                let mut t = Tokens::new();
+
+                t.push("public init(from decoder: Decoder) throws {");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    for sub_type in &body.sub_types {
+                        let k = toks![sub_type.ident.as_str(), "Keys"];
+
+                        let keys = toks![
+                            "try decoder.container(keyedBy: ",
+                            k.clone(),
+                            ".self).allKeys"
+                        ];
+                        let keys = toks!["Set(", keys, ")"];
+
+                        t.push_into(|t| {
+                            let n = sub_type.ident.as_str();
+                            let d = toks![&sub_type.name, "(from: decoder)"];
+                            let d = toks![".", n, "(", d, ")"];
+
+                            let mut expected = Tokens::new();
+
+                            for f in sub_type.fields.iter().filter(|f| f.is_required()) {
+                                expected.append(toks![k.clone(), ".", f.safe_ident()]);
+                            }
+
+                            let expected = toks!["Set([", expected.join(", "), "])"];
+
+                            push!(t, "if ", keys, " == ", expected, " {");
+                            nested!(t, "self = try ", d);
+                            nested!(t, "return");
+                            push!(t, "}");
+                        });
+                    }
+
+                    t.push_into(|t| {
+                        let mut args = Tokens::new();
+                        args.append("codingPath: decoder.codingPath");
+                        args.append(toks![
+                            "debugDescription: ",
+                            "no legal field combination".quoted()
+                        ]);
+
+                        push!(
+                            t,
+                            "let context = DecodingError.Context(",
+                            args.join(", "),
+                            ")"
+                        );
+
+                        t.push("throw DecodingError.dataCorrupted(context)");
+                    });
+
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+
+                Ok(t)
+            }
         }
 
         fn encodable<'a>(
@@ -1052,7 +1124,16 @@ impl InterfaceCodegen for Codegen {
 
             t.push({
                 let mut t = Tokens::new();
-                t.nested(encode(body)?);
+
+                match body.sub_type_strategy {
+                    core::RpSubTypeStrategy::Tagged { .. } => {
+                        t.nested(encode_tagged(body)?);
+                    }
+                    core::RpSubTypeStrategy::RequiredFields => {
+                        t.nested(encode_required_fields(body)?);
+                    }
+                }
+
                 t.join_line_spacing()
             });
 
@@ -1060,7 +1141,7 @@ impl InterfaceCodegen for Codegen {
 
             return Ok(t);
 
-            fn encode<'a>(body: &'a RpInterfaceBody) -> Result<Tokens<'a, Swift<'a>>> {
+            fn encode_tagged<'a>(body: &'a RpInterfaceBody) -> Result<Tokens<'a, Swift<'a>>> {
                 let mut t = Tokens::new();
 
                 t.push("public func encode(to encoder: Encoder) throws {");
@@ -1070,9 +1151,7 @@ impl InterfaceCodegen for Codegen {
 
                     t.push("var values = encoder.container(keyedBy: CodingKeys.self)");
 
-                    t.push({
-                        let mut t = Tokens::new();
-
+                    t.push_into(|t| {
                         t.push("switch self {");
 
                         for sub_type in body.sub_types.iter() {
@@ -1090,8 +1169,41 @@ impl InterfaceCodegen for Codegen {
                         }
 
                         t.push("}");
+                    });
 
-                        t
+                    t.join_line_spacing()
+                });
+
+                t.push("}");
+
+                Ok(t)
+            }
+
+            fn encode_required_fields<'a>(
+                body: &'a RpInterfaceBody,
+            ) -> Result<Tokens<'a, Swift<'a>>> {
+                let mut t = Tokens::new();
+
+                t.push("public func encode(to encoder: Encoder) throws {");
+
+                t.nested({
+                    let mut t = Tokens::new();
+
+                    t.push_into(|t| {
+                        t.push("switch self {");
+
+                        for sub_type in body.sub_types.iter() {
+                            let n = sub_type.ident.as_str();
+
+                            t.push({
+                                let mut t = Tokens::new();
+                                t.push(toks!["case .", n, "(let d):"]);
+                                t.nested(toks!["try d.encode(to: encoder)"]);
+                                t
+                            });
+                        }
+
+                        t.push("}");
                     });
 
                     t.join_line_spacing()
@@ -1113,20 +1225,50 @@ impl InterfaceModelCodegen for Codegen {
 
         match body.sub_type_strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                container.nested_into(|t| {
+                    t.push("enum CodingKeys: String, CodingKey {");
+                    t.nested(toks!["case tag = ", tag.as_str().quoted()]);
+                    t.push("}");
+                });
+            }
+            core::RpSubTypeStrategy::RequiredFields => {
                 container.nested({
                     let mut t = Tokens::new();
 
-                    t.push({
-                        let mut t = Tokens::new();
+                    let all = body.sub_types
+                        .iter()
+                        .flat_map(|s| s.fields.iter())
+                        .filter(|f| f.is_required())
+                        .map(|f| f.name())
+                        .collect::<BTreeSet<_>>();
 
-                        t.push("enum CodingKeys: String, CodingKey {");
-                        t.nested(toks!["case tag = ", tag.as_str().quoted()]);
-                        t.push("}");
+                    for sub_type in &body.sub_types {
+                        let mut current = all.clone();
 
-                        t
-                    });
+                        t.push_into(|t| {
+                            push!(
+                                t,
+                                "enum ",
+                                sub_type.ident.as_str(),
+                                "Keys: String, CodingKey {"
+                            );
 
-                    t
+                            for f in sub_type.fields.iter().filter(|f| f.is_required()) {
+                                current.remove(f.name());
+                                nested!(t, "case ", f.safe_ident(), " = ", f.name().quoted());
+                            }
+
+                            // rest of the fields that need to be declared to throw of the count in
+                            // case of intersections.
+                            for (n, name) in current.into_iter().enumerate() {
+                                nested!(t, "case _k", n.to_string(), " = ", name.quoted());
+                            }
+
+                            t.push("}");
+                        });
+                    }
+
+                    t.join_line_spacing()
                 });
             }
         }
