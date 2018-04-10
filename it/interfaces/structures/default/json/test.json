@@ -2,7 +2,7 @@
   "comment": [],
   "decls": [
     {
-      "type": "interface",
+      "type": "type",
       "name": {
         "package": {
           "package": "test"
@@ -12,6 +12,55 @@
         ]
       },
       "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "required": false,
+          "ident": "tagged",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "Tagged"
+              ]
+            }
+          }
+        },
+        {
+          "required": false,
+          "ident": "required_fields",
+          "comment": [],
+          "type": {
+            "type": "name",
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "RequiredFields"
+              ]
+            }
+          }
+        }
+      ],
+      "codes": []
+    },
+    {
+      "type": "interface",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "Tagged"
+        ]
+      },
+      "ident": "Tagged",
       "comment": [],
       "decls": [],
       "fields": [
@@ -32,7 +81,7 @@
               "package": "test"
             },
             "parts": [
-              "Entry",
+              "Tagged",
               "A"
             ]
           },
@@ -49,7 +98,7 @@
               "package": "test"
             },
             "parts": [
-              "Entry",
+              "Tagged",
               "B"
             ]
           },
@@ -66,7 +115,7 @@
               "package": "test"
             },
             "parts": [
-              "Entry",
+              "Tagged",
               "Bar"
             ]
           },
@@ -82,7 +131,7 @@
               "package": "test"
             },
             "parts": [
-              "Entry",
+              "Tagged",
               "Baz"
             ]
           },
@@ -96,6 +145,154 @@
       "sub_type_strategy": {
         "type": "tagged",
         "tag": "@type"
+      }
+    },
+    {
+      "type": "interface",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "parts": [
+          "RequiredFields"
+        ]
+      },
+      "ident": "RequiredFields",
+      "comment": [],
+      "decls": [],
+      "fields": [
+        {
+          "required": true,
+          "ident": "shared",
+          "comment": [],
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "required": false,
+          "ident": "shared_ignore",
+          "comment": [],
+          "type": {
+            "type": "string"
+          }
+        }
+      ],
+      "codes": [],
+      "sub_types": [
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RequiredFields",
+              "A"
+            ]
+          },
+          "ident": "A",
+          "comment": [
+            "Special case: fields shared with other sub-types.",
+            "NOTE: due to rust support through untagged, the types are matched in-order."
+          ],
+          "decls": [],
+          "fields": [
+            {
+              "required": true,
+              "ident": "a",
+              "comment": [],
+              "type": {
+                "type": "string"
+              }
+            },
+            {
+              "required": true,
+              "ident": "b",
+              "comment": [],
+              "type": {
+                "type": "string"
+              }
+            },
+            {
+              "required": false,
+              "ident": "ignore",
+              "comment": [],
+              "type": {
+                "type": "string"
+              }
+            }
+          ],
+          "codes": []
+        },
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RequiredFields",
+              "B"
+            ]
+          },
+          "ident": "B",
+          "comment": [],
+          "decls": [],
+          "fields": [
+            {
+              "required": true,
+              "ident": "a",
+              "comment": [],
+              "type": {
+                "type": "string"
+              }
+            },
+            {
+              "required": false,
+              "ident": "ignore",
+              "comment": [],
+              "type": {
+                "type": "string"
+              }
+            }
+          ],
+          "codes": []
+        },
+        {
+          "name": {
+            "package": {
+              "package": "test"
+            },
+            "parts": [
+              "RequiredFields",
+              "C"
+            ]
+          },
+          "ident": "C",
+          "comment": [],
+          "decls": [],
+          "fields": [
+            {
+              "required": true,
+              "ident": "b",
+              "comment": [],
+              "type": {
+                "type": "string"
+              }
+            },
+            {
+              "required": false,
+              "ident": "ignore",
+              "comment": [],
+              "type": {
+                "type": "string"
+              }
+            }
+          ],
+          "codes": []
+        }
+      ],
+      "sub_type_strategy": {
+        "type": "required_fields"
       }
     }
   ]
