@@ -1,4 +1,9 @@
-{"@type": "foo", "shared": "string"}
-{"@type": "b", "shared": "string"}
-{"@type": "Bar", "shared": "string"}
-{"@type": "Baz", "shared": "string"}
+# #[type_info(strategy = "tagged", tag="@type")]
+{"tagged": {"@type": "foo", "shared": "string"}}
+{"tagged": {"@type": "b", "shared": "string"}}
+{"tagged": {"@type": "Bar", "shared": "string"}}
+{"tagged": {"@type": "Baz", "shared": "string"}}
+# #[type_info(strategy = "required_fields")]
+{"required_fields": {"a": "a", "shared": "string"}}
+{"required_fields": {"b": "b", "shared": "string"}}
+{"required_fields": {"a": "a", "b": "b", "shared": "string"}}

@@ -1,5 +1,10 @@
+type Entry {
+  tagged?: Tagged;
+  required_fields?: RequiredFields;
+}
+
 #[type_info(strategy = "tagged", tag = "@type")]
-interface Entry {
+interface Tagged {
   shared: string;
 
   A as "foo";
@@ -10,4 +15,28 @@ interface Entry {
   }
 
   Baz;
+}
+
+#[type_info(strategy = "required_fields")]
+interface RequiredFields {
+  shared: string;
+  shared_ignore?: string;
+
+  /// Special case: fields shared with other sub-types.
+  /// NOTE: due to rust support through untagged, the types are matched in-order.
+  A {
+    a: string;
+    b: string;
+    ignore?: string;
+  }
+
+  B {
+    a: string;
+    ignore?: string;
+  }
+
+  C {
+    b: string;
+    ignore?: string;
+  }
 }

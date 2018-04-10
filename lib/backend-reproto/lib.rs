@@ -199,6 +199,14 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
                     ]);
                 }
             }
+            core::RpSubTypeStrategy::RequiredFields => {
+                push!(
+                    t,
+                    "#[type_info(strategy = ",
+                    "required_fields".quoted(),
+                    ")]"
+                );
+            }
         }
 
         t.push_unless_empty(Comments(&body.comment));

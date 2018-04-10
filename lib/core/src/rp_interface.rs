@@ -14,6 +14,10 @@ pub const DEFAULT_TAG: &str = "type";
 pub enum RpSubTypeStrategy {
     /// An object, with a single tag key indicating which sub-type to use.
     Tagged { tag: String },
+    /// An sub-type is distinguished by its set of unique fields.
+    /// This requires a sub-type to actually _have_ a unique set of fields, which is validates
+    /// during translation.
+    RequiredFields,
 }
 
 impl Default for RpSubTypeStrategy {
