@@ -447,8 +447,8 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
                 let tk = tag.as_str().quoted().into();
                 interface_body.push(decode(&body, &tk)?);
             }
-            core::RpSubTypeStrategy::RequiredFields => {
-                interface_body.push(decode_required_fields(body)?);
+            core::RpSubTypeStrategy::Untagged => {
+                interface_body.push(decode_untagged(body)?);
             }
         }
 
@@ -497,7 +497,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
                         Some(type_toks),
                     )?);
                 }
-                core::RpSubTypeStrategy::RequiredFields => {
+                core::RpSubTypeStrategy::Untagged => {
                     class_body.push(self.encode_method(fields.iter().cloned(), "{}", None)?);
                 }
             }
@@ -549,7 +549,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
             })
         }
 
-        fn decode_required_fields<'el>(
+        fn decode_untagged<'el>(
             body: &'el RpInterfaceBody,
         ) -> Result<Tokens<'el, JavaScript<'el>>> {
             let mut t = Tokens::new();

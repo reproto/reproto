@@ -482,8 +482,8 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
                 let tk = tag.as_str().quoted().into();
                 type_body.push(decode_from_tag(&body, &tk)?);
             }
-            core::RpSubTypeStrategy::RequiredFields => {
-                type_body.push(decode_from_required_fields(&body)?);
+            core::RpSubTypeStrategy::Untagged => {
+                type_body.push(decode_from_untagged(&body)?);
             }
         }
 
@@ -526,7 +526,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
 
                     sub_type_body.push(encode);
                 }
-                core::RpSubTypeStrategy::RequiredFields => {
+                core::RpSubTypeStrategy::Untagged => {
                     let encode =
                         self.encode_method(fields.iter().cloned(), self.dict.clone().into(), None)?;
 
@@ -579,7 +579,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
             })
         }
 
-        fn decode_from_required_fields<'el>(
+        fn decode_from_untagged<'el>(
             body: &'el RpInterfaceBody,
         ) -> Result<Tokens<'el, Python<'el>>> {
             let mut t = Tokens::new();

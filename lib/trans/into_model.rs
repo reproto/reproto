@@ -77,7 +77,7 @@ pub struct SubTypeConstraint<'input> {
     reserved: &'input HashMap<String, Pos>,
     field_idents: &'input HashMap<String, Pos>,
     field_names: &'input HashMap<String, Pos>,
-    required_fields: &'input mut HashMap<BTreeSet<String>, Pos>,
+    untagged: &'input mut HashMap<BTreeSet<String>, Pos>,
 }
 
 #[derive(Debug)]
@@ -485,7 +485,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             let mut names = HashMap::new();
             let mut idents = HashMap::new();
             let mut sub_types = Vec::new();
-            let mut required_fields = HashMap::new();
+            let mut untagged = HashMap::new();
 
             for sub_type in item.sub_types {
                 let scope = scope.child(Loc::value(&sub_type.name).to_owned());
@@ -495,7 +495,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                     reserved: &reserved,
                     field_idents: &field_idents,
                     field_names: &field_names,
-                    required_fields: &mut required_fields,
+                    untagged: &mut untagged,
                 };
 
                 let sub_type = (sub_type, constraint).into_model(&scope)?;
@@ -508,8 +508,8 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
             // check that we are not violating any constraints.
             match *&sub_type_strategy {
-                core::RpSubTypeStrategy::RequiredFields => {
-                    check_required_fields(&ctx, &sub_types, &required_fields)?;
+                core::RpSubTypeStrategy::Untagged => {
+                    check_untagged(&ctx, &sub_types, &untagged)?;
                 }
                 _ => {}
             }
@@ -526,10 +526,10 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             });
 
             /// Check invariants that need to be enforced with unique fields
-            fn check_required_fields(
+            fn check_untagged(
                 ctx: &Context,
                 sub_types: &Vec<Loc<RpSubType>>,
-                required_fields: &HashMap<BTreeSet<String>, Pos>,
+                untagged: &HashMap<BTreeSet<String>, Pos>,
             ) -> Result<()> {
                 let mut r = ctx.report();
 
@@ -541,7 +541,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                         .map(|f| f.name().to_string())
                         .collect::<BTreeSet<_>>();
 
-                    for (key, pos) in required_fields {
+                    for (key, pos) in untagged {
                         // skip own
                         if *key == required {
                             continue;
@@ -587,8 +587,8 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                                 });
                             }
                         }
-                        "required_fields" => {
-                            return Ok(core::RpSubTypeStrategy::RequiredFields);
+                        "untagged" => {
+                            return Ok(core::RpSubTypeStrategy::Untagged);
                         }
                         _ => {
                             return Err(ctx.report()
@@ -838,7 +838,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             field_idents,
             field_names,
             sub_type_strategy,
-            required_fields,
+            untagged,
         } = constraint;
 
         return item.map(|comment, attributes, item| {
@@ -887,14 +887,14 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             let sub_type_name = sub_type_name(item.alias, scope)?;
 
             match *sub_type_strategy {
-                core::RpSubTypeStrategy::RequiredFields => {
+                core::RpSubTypeStrategy::Untagged => {
                     let fields = fields
                         .iter()
                         .filter(|f| f.is_required())
                         .map(|f| f.name().to_string())
                         .collect::<BTreeSet<_>>();
 
-                    if let Some(other) = required_fields.insert(fields, pos.clone()) {
+                    if let Some(other) = untagged.insert(fields, pos.clone()) {
                         return Err(ctx.report()
                             .err(pos, "does not have a unique set of fields")
                             .info(other, "previously defined here")

@@ -17,7 +17,7 @@ pub enum RpSubTypeStrategy {
     /// An sub-type is distinguished by its set of unique fields.
     /// This requires a sub-type to actually _have_ a unique set of fields, which is validates
     /// during translation.
-    RequiredFields,
+    Untagged,
 }
 
 impl Default for RpSubTypeStrategy {

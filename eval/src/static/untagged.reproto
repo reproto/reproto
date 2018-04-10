@@ -1,0 +1,25 @@
+//! # Example of an interface in reproto using the untagged strategy
+//!
+//! This is an interface showcasing how the `untagged` strategy works.
+
+#[type_info(strategy = "untagged")]
+interface Untagged {
+  shared: string;
+  optional_shared?: string;
+
+  A {
+    a: string;
+    b: string;
+    optional_a?: string;
+  }
+
+  B {
+    a: string;
+    optional_b?: string;
+  }
+
+  C {
+    b: string;
+    optional_c?: string;
+  }
+}

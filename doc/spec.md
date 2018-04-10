@@ -529,11 +529,11 @@ This attribute controls which strategy is used for determining sub-types in [int
 Valid strategies are:
 
 * [`tagged`], encode as an object with a special `tag` field indicating the sub-type.
-* [`required_fields`], determine sub-type by its unique combination of required fields.
+* [`untagged`], determine sub-type by its unique combination of required fields.
 
 [interfaces]: #interfaces
 [`tagged`]: #type-info-tagged
-[`required_fields`]: #type-info-required-fields
+[`untagged`]: #type-info-untagged
 
 #### <a id="type-info-tagged" />`#[type_info(strategy = "tagged", tag = <string>)]`
 
@@ -574,7 +574,7 @@ interface Example {
 {"@type": "bar", "bar_field": 42}
 ```
 
-#### <a id="type-info-required-fields" />`#[type_info(strategy = "required_fields")]`
+#### <a id="type-info-untagged" />`#[type_info(strategy = "untagged")]`
 
 Sub-types are encoded as objects, where the required fields of each sub-type determined which
 sub-type is being encoded.
@@ -589,7 +589,7 @@ This strategy has the following restrictions:
 The following is an example specification and the JSON it corresponds to:
 
 ```reproto
-#[type_info(strategy = "required_fields")]
+#[type_info(strategy = "untagged")]
 interface Example {
   Foo {
     foo_field: u32;

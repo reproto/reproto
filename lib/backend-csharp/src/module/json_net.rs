@@ -142,7 +142,7 @@ impl EnumCodegen for JsonNet {
 }
 
 impl JsonNet {
-    fn required_fields<'el>(
+    fn untagged<'el>(
         &self,
         spec: &mut csharp::Class<'el>,
         body: &'el RpInterfaceBody,
@@ -324,8 +324,8 @@ impl InterfaceCodegen for JsonNet {
                     spec.attribute(JsonSubType(sub_type.name().into(), v));
                 }
             }
-            RpSubTypeStrategy::RequiredFields => {
-                self.required_fields(&mut spec, body)?;
+            RpSubTypeStrategy::Untagged => {
+                self.untagged(&mut spec, body)?;
             }
         }
 

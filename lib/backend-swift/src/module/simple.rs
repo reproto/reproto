@@ -907,9 +907,9 @@ impl InterfaceCodegen for Codegen {
                         t.nested(decode_tag(name, tag.as_str(), &body.sub_types)?);
                         t.nested(encode_tag(tag.as_str(), &body.sub_types)?);
                     }
-                    core::RpSubTypeStrategy::RequiredFields => {
-                        t.nested(decode_required_fields(name, body)?);
-                        t.nested(encode_required_fields(&body.sub_types)?);
+                    core::RpSubTypeStrategy::Untagged => {
+                        t.nested(decode_untagged(name, body)?);
+                        t.nested(encode_untagged(&body.sub_types)?);
                     }
                 }
 
@@ -1021,7 +1021,7 @@ impl InterfaceCodegen for Codegen {
         }
 
         /// Build a method to decode a tagged interface.
-        fn decode_required_fields<'el>(
+        fn decode_untagged<'el>(
             name: &'el SwiftName,
             body: &'el RpInterfaceBody,
         ) -> Result<Tokens<'el, Swift<'el>>> {
@@ -1100,7 +1100,7 @@ impl InterfaceCodegen for Codegen {
         }
 
         /// Build a method to decode a tagged interface.
-        fn encode_required_fields<'el, S>(sub_types: S) -> Result<Tokens<'el, Swift<'el>>>
+        fn encode_untagged<'el, S>(sub_types: S) -> Result<Tokens<'el, Swift<'el>>>
         where
             S: IntoIterator<Item = &'el Loc<RpSubType>>,
         {

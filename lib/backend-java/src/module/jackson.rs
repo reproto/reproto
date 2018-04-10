@@ -493,7 +493,7 @@ impl ClassCodegen for Jackson {
 
         if let Some(interface) = e.interface {
             match interface.sub_type_strategy {
-                RpSubTypeStrategy::RequiredFields => {
+                RpSubTypeStrategy::Untagged => {
                     // Note: https://stackoverflow.com/questions/40917111/json-custom-deserializer-stuck-in-infinite-recursion
                     let deserializer =
                         java::imported("com.fasterxml.jackson.databind", "JsonDeserializer")
@@ -553,8 +553,8 @@ impl InterfaceCodegen for Jackson {
 
                 spec.annotation(SubTypes(self, args));
             }
-            RpSubTypeStrategy::RequiredFields => {
-                let c = required_fields_deserialize(body)?;
+            RpSubTypeStrategy::Untagged => {
+                let c = untagged_deserialize(body)?;
                 let n = java::local(format!("{}.{}", body.name, c.name()));
                 spec.annotation(Deserialize(n));
                 spec.body.push(c);
@@ -563,8 +563,8 @@ impl InterfaceCodegen for Jackson {
 
         return Ok(());
 
-        /// Build a deserialize implementation for required_fields.
-        fn required_fields_deserialize<'el>(body: &'el RpInterfaceBody) -> Result<Class<'el>> {
+        /// Build a deserialize implementation for untagged.
+        fn untagged_deserialize<'el>(body: &'el RpInterfaceBody) -> Result<Class<'el>> {
             let parser = java::imported("com.fasterxml.jackson.core", "JsonParser");
             let object = java::imported("com.fasterxml.jackson.databind.node", "ObjectNode");
             let context =

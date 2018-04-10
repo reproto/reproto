@@ -1,6 +1,6 @@
 type Entry {
   tagged?: Tagged;
-  required_fields?: RequiredFields;
+  required_fields?: Untagged;
 }
 
 #[type_info(strategy = "tagged", tag = "@type")]
@@ -18,7 +18,7 @@ interface Tagged {
 }
 
 #[type_info(strategy = "required_fields")]
-interface RequiredFields {
+interface Untagged {
   shared: string;
   shared_ignore?: string;
 

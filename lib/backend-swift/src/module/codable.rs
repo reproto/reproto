@@ -975,8 +975,8 @@ impl InterfaceCodegen for Codegen {
                     core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                         t.nested(tagged_init(body, tag)?);
                     }
-                    core::RpSubTypeStrategy::RequiredFields => {
-                        t.nested(required_fields_init(body)?);
+                    core::RpSubTypeStrategy::Untagged => {
+                        t.nested(untagged_init(body)?);
                     }
                 }
 
@@ -1048,9 +1048,7 @@ impl InterfaceCodegen for Codegen {
                 Ok(t)
             }
 
-            fn required_fields_init<'a>(
-                body: &'a RpInterfaceBody,
-            ) -> Result<Tokens<'a, Swift<'a>>> {
+            fn untagged_init<'a>(body: &'a RpInterfaceBody) -> Result<Tokens<'a, Swift<'a>>> {
                 let mut t = Tokens::new();
 
                 t.push("public init(from decoder: Decoder) throws {");
@@ -1129,8 +1127,8 @@ impl InterfaceCodegen for Codegen {
                     core::RpSubTypeStrategy::Tagged { .. } => {
                         t.nested(encode_tagged(body)?);
                     }
-                    core::RpSubTypeStrategy::RequiredFields => {
-                        t.nested(encode_required_fields(body)?);
+                    core::RpSubTypeStrategy::Untagged => {
+                        t.nested(encode_untagged(body)?);
                     }
                 }
 
@@ -1179,9 +1177,7 @@ impl InterfaceCodegen for Codegen {
                 Ok(t)
             }
 
-            fn encode_required_fields<'a>(
-                body: &'a RpInterfaceBody,
-            ) -> Result<Tokens<'a, Swift<'a>>> {
+            fn encode_untagged<'a>(body: &'a RpInterfaceBody) -> Result<Tokens<'a, Swift<'a>>> {
                 let mut t = Tokens::new();
 
                 t.push("public func encode(to encoder: Encoder) throws {");
@@ -1231,7 +1227,7 @@ impl InterfaceModelCodegen for Codegen {
                     t.push("}");
                 });
             }
-            core::RpSubTypeStrategy::RequiredFields => {
+            core::RpSubTypeStrategy::Untagged => {
                 container.nested({
                     let mut t = Tokens::new();
 

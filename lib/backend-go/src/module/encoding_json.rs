@@ -347,8 +347,8 @@ impl InterfaceCodegen for Codegen {
                     core::RpSubTypeStrategy::Tagged { ref tag } => {
                         t.nested(unmarshal_envelope(c, body, tag)?);
                     }
-                    core::RpSubTypeStrategy::RequiredFields => {
-                        t.nested(unmarshal_required_fields(c, body)?);
+                    core::RpSubTypeStrategy::Untagged => {
+                        t.nested(unmarshal_untagged(c, body)?);
                     }
                 }
 
@@ -435,7 +435,7 @@ impl InterfaceCodegen for Codegen {
                 Ok(t.join_line_spacing())
             }
 
-            fn unmarshal_required_fields<'el>(
+            fn unmarshal_untagged<'el>(
                 c: &Codegen,
                 body: &'el RpInterfaceBody,
             ) -> Result<Tokens<'el, Go<'el>>> {
@@ -524,8 +524,8 @@ impl InterfaceCodegen for Codegen {
                     core::RpSubTypeStrategy::Tagged { ref tag } => {
                         t.nested(marshal_envelope(c, body, tag)?);
                     }
-                    core::RpSubTypeStrategy::RequiredFields => {
-                        t.nested(marshal_required_fields(c, body)?);
+                    core::RpSubTypeStrategy::Untagged => {
+                        t.nested(marshal_untagged(c, body)?);
                     }
                 }
 
@@ -568,7 +568,7 @@ impl InterfaceCodegen for Codegen {
             }
 
             /// Marshal the sub-type immediately.
-            fn marshal_required_fields<'el>(
+            fn marshal_untagged<'el>(
                 c: &Codegen,
                 body: &'el RpInterfaceBody,
             ) -> Result<Tokens<'el, Go<'el>>> {

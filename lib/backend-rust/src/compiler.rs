@@ -388,7 +388,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, RpName> for Compiler<'el> {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 t.push(Tag(tag.as_str()));
             }
-            core::RpSubTypeStrategy::RequiredFields => {
+            core::RpSubTypeStrategy::Untagged => {
                 t.push(Untagged);
             }
         }

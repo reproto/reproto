@@ -1,6 +1,6 @@
 public struct Test_Entry: Codable {
   let tagged: Test_Tagged?
-  let required_fields: Test_RequiredFields?
+  let required_fields: Test_Untagged?
 
   enum CodingKeys: String, CodingKey {
     case tagged = "tagged"
