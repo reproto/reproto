@@ -3,37 +3,50 @@
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
 [![Chat on Gitter](https://badges.gitter.im/reproto/reproto.svg)](https://gitter.im/reproto/reproto)
 
-This is the home of `reproto`, an experimental system for managing JSON schemas.
+A better way to define schemas for your JSON.
 
-If you want to take the system for a leasurely spin, please go to <https://reproto.github.io>.
+## Introduction
 
-`reproto` is the following things:
+If you want to take the system for a spin, please go to <https://reproto.github.io>.
 
-* A custom [interface description language] that permits describing the schema of JSON and
-  bidirectional rpc services (like [gRPC]).
-* A [derive command], capable of deriving schemas directly from JSON.
-* A compiler which generates code for [various languages].
-* A [semantic version checker] which verifies that modifications to schemas do not violate
-  [semantic versioning].
-* A build system with a package manager using a [build manifest].
-* A rich, markdown-based [documentation generator].
-* (eventually) A [central repository] of usable schemas.
+Reproto is:
+
+* **A compiler** capable of generating code for [various languages].<br />
+  [try it out][trycompiler] &ndash; [documentation][langsupport].
+* **A custom interface description language** that permits describing the schema of JSON and
+  services in a concise, easy to understand way.<br />
+  [documentation][idl].
+* **Early and extensive soundness checking**, with excellent error handling. We catch schema issues
+  before you know that you have them.
+* **A derive command**, capable of deriving schemas directly from JSON.<br />
+  [try it out][tryderive] &ndash; [documentation][derive].
+* **A semantic version checker** which verifies that modifications to schemas do not violate
+  [semantic versioning].<br />
+  [documentation][semver].
+* **A build system with a package manager using build manifests**, giving you all the control you
+  need to integrate reproto into your project.<br />
+  [documentation][build manifests].
+* **A rich, markdown-based documentation generator**.<br />
+  [documentation][docgen].
 
 These things combined support an ecosystem where schemas can be maintained and shared across
-projects.
+many teams.
 
 **Note:** This project is in an early stage. Things will change a lot. Please take it for a spin,
-but avoid building large repositories of specifications right now.
+but avoid building large repositories of schemas for now.
 
-[interface description language]: /doc/spec.md
-[derive command]: /doc/derive.md
+[idl]: /doc/spec.md
+[derive]: /doc/derive.md
 [various languages]: #language-support
-[semantic version checker]: /doc/semck.md
+[langsupport]: /doc/usage/language-support.md
+[semver]: /doc/semck.md
 [semantic versioning]: https://semver.org
-[documentation generator]: #generating-documentation
+[docgen]: #generating-documentation
 [central repository]: https://github.com/reproto/reproto-index
-[build manifest]: /doc/manifest.md
+[build manifests]: /doc/manifest.md
 [stdweb]: https://github.com/koute/stdweb
+[trycompiler]: https://reproto.github.io/?input=reproto&output=java&package=example.type
+[tryderive]: https://reproto.github.io/?input=json&output=java&package=example.type
 
 ## Getting Started
 
