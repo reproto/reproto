@@ -11,6 +11,7 @@ use naming::{self, Naming};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
+use trans::Packages;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CsharpFlavor;
@@ -25,7 +26,7 @@ impl Flavor for CsharpFlavor {
 
 /// Responsible for translating RpType -> Csharp type.
 pub struct CsharpFlavorTranslator {
-    package_translator: HashMap<RpVersionedPackage, RpPackage>,
+    packages: Rc<Packages>,
     list: Csharp<'static>,
     dictionary: Csharp<'static>,
     string: Csharp<'static>,
@@ -36,9 +37,9 @@ pub struct CsharpFlavorTranslator {
 }
 
 impl CsharpFlavorTranslator {
-    pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
+    pub fn new(packages: Rc<Packages>) -> Self {
         Self {
-            package_translator,
+            packages,
             list: using("System.Collections.Generic", "List"),
             dictionary: using("System.Collections.Generic", "Dictionary"),
             string: using("System", "String"),
@@ -126,9 +127,7 @@ impl FlavorTranslator for CsharpFlavorTranslator {
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
-        let package = self.package_translator.translate_package(source)?;
-        let package = package.with_naming(|p| self.to_upper_camel.convert(p));
-        Ok(package)
+        self.packages.translate_package(source)
     }
 }
 

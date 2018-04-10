@@ -1,8 +1,8 @@
 use ast::{self, UseDecl};
 use core::errors::{Error, Result};
-use core::{translator, Context, CoreFlavor, Flavor, FlavorTranslator, Loc, Object, PathObject,
-           Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
-           RpVersionedPackage, Translate, Translator, Version, WithPos};
+use core::{translator, Context, CoreFlavor, Flavor, FlavorTranslator, Loc, Object,
+           PackageTranslator, PathObject, Range, Resolved, Resolver, RpFile, RpName, RpPackage,
+           RpReg, RpRequiredPackage, RpVersionedPackage, Translate, Translator, Version, WithPos};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
@@ -33,10 +33,10 @@ where
     types: Rc<LinkedHashMap<RpName<F>, RpReg>>,
     /// Keywords that need to be translated.
     keywords: Rc<HashMap<String, String>>,
-    /// Whether to perform package translation or not.
+    /// Whether to use safe packages or not.
     safe_packages: bool,
     /// Package naming to apply.
-    package_naming: Option<Box<Naming>>,
+    package_naming: Option<Rc<Box<Naming>>>,
     /// Field naming to apply.
     field_ident_naming: Option<Box<Naming>>,
     /// Endpoint ident naming to apply.
@@ -56,8 +56,8 @@ where
     ) -> Environment<F> {
         Environment {
             ctx: ctx,
-            package_prefix: package_prefix,
-            resolver: resolver,
+            package_prefix,
+            resolver,
             visited: HashMap::new(),
             files: BTreeMap::new(),
             types: Rc::new(LinkedHashMap::new()),
@@ -72,7 +72,7 @@ where
     /// Configure a new environment on how to use safe packages or not.
     pub fn with_safe_packages(self, safe_packages: bool) -> Self {
         Self {
-            safe_packages: safe_packages,
+            safe_packages,
             ..self
         }
     }
@@ -88,7 +88,7 @@ where
     /// Set package naming policy.
     pub fn with_package_naming(self, package_naming: Box<Naming>) -> Self {
         Self {
-            package_naming: Some(package_naming),
+            package_naming: Some(Rc::new(package_naming)),
             ..self
         }
     }
@@ -180,7 +180,6 @@ impl Environment<CoreFlavor> {
             flavor: flavor,
             types: Rc::clone(&self.types),
             decls: Some(RefCell::new(LinkedHashMap::new())),
-            package_prefix: self.package_prefix.clone(),
         })
     }
 
@@ -208,18 +207,18 @@ impl Environment<CoreFlavor> {
             }
         }
 
-        Ok(Translated::new(self.package_prefix, decls, files))
+        Ok(Translated::new(decls, files))
     }
 
     /// Translation to simplified packages.
-    pub fn packages(&self) -> Result<HashMap<RpVersionedPackage, RpPackage>> {
+    pub fn packages(&self) -> Result<Rc<Packages>> {
         let mut queue = self.files
             .keys()
             .cloned()
             .map(|p| (p, 0))
             .collect::<Vec<_>>();
 
-        let mut results = HashMap::new();
+        let mut files = HashMap::new();
 
         while !queue.is_empty() {
             let mut candidates = HashMap::new();
@@ -245,12 +244,22 @@ impl Environment<CoreFlavor> {
                 }
 
                 if let Some((original, _)) = partial.into_iter().next() {
-                    results.insert(original, converted);
+                    files.insert(original, converted);
                 }
             }
         }
 
-        Ok(results)
+        let package_prefix = self.package_prefix.clone();
+        let keywords = self.keywords.clone();
+        let package_naming = self.package_naming.clone();
+
+        Ok(Rc::new(Packages {
+            files,
+            package_prefix,
+            keywords,
+            safe_packages: self.safe_packages,
+            package_naming,
+        }))
     }
 
     /// Translate without changing the flavor.
@@ -394,8 +403,6 @@ impl Environment<CoreFlavor> {
             package,
             prefixes,
             self.keywords.clone(),
-            self.safe_packages,
-            self.package_naming.as_ref().map(|n| n.copy()),
             self.field_ident_naming.as_ref().map(|n| n.copy()),
             self.endpoint_ident_naming.as_ref().map(|n| n.copy()),
         );
@@ -496,13 +503,7 @@ impl Environment<CoreFlavor> {
     ) -> Result<()> {
         use linked_hash_map::Entry::*;
 
-        // Are packages keyword-safe or not?
-        let new_package = match self.safe_packages {
-            true => package.clone().with_replacements(&self.keywords),
-            false => package.clone(),
-        };
-
-        let file = match self.files.entry(new_package) {
+        let file = match self.files.entry(package) {
             btree_map::Entry::Vacant(entry) => entry.insert(file),
             btree_map::Entry::Occupied(_) => {
                 return Ok(());
@@ -526,5 +527,53 @@ impl Environment<CoreFlavor> {
         }
 
         Ok(())
+    }
+}
+
+/// Package translation to use.
+pub struct Packages {
+    files: HashMap<RpVersionedPackage, RpPackage>,
+    package_prefix: Option<RpPackage>,
+    keywords: Rc<HashMap<String, String>>,
+    safe_packages: bool,
+    package_naming: Option<Rc<Box<Naming>>>,
+}
+
+impl Packages {
+    pub fn new(&self, package: &str) -> Result<RpPackage> {
+        self.package(RpPackage::parse(package))
+    }
+
+    /// Translate the given package.
+    pub fn package(&self, package: RpPackage) -> Result<RpPackage> {
+        let package = if let Some(package_prefix) = self.package_prefix.as_ref() {
+            package_prefix.clone().join_package(package)
+        } else {
+            package
+        };
+
+        let package = if let Some(naming) = self.package_naming.as_ref() {
+            package.with_naming(|part| naming.convert(part))
+        } else {
+            package
+        };
+
+        let package = if !self.safe_packages {
+            package.with_replacements(&self.keywords)
+        } else {
+            package
+        };
+
+        Ok(package)
+    }
+}
+
+impl PackageTranslator<RpVersionedPackage, RpPackage> for Packages {
+    fn translate_package(&self, package: RpVersionedPackage) -> Result<RpPackage> {
+        let package = self.files
+            .get(&package)
+            .ok_or_else(|| format!("no such package: {}", package))?;
+
+        self.package(package.clone())
     }
 }

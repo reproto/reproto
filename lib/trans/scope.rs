@@ -15,29 +15,8 @@ pub struct Root {
     pub field_naming: Option<Box<Naming>>,
     /// Language keywords to avoid.
     keywords: Rc<HashMap<String, String>>,
-    safe_packages: bool,
-    package_naming: Option<Box<Naming>>,
     field_ident_naming: Option<Box<Naming>>,
     endpoint_ident_naming: Option<Box<Naming>>,
-}
-
-impl Root {
-    /// Rename the package, if applicable.
-    pub fn package(&self, package: RpVersionedPackage) -> RpVersionedPackage {
-        let package = if let Some(ref naming) = self.package_naming {
-            package.with_naming(|p| naming.convert(p))
-        } else {
-            package
-        };
-
-        let package = if self.safe_packages {
-            package.with_replacements(&self.keywords)
-        } else {
-            package
-        };
-
-        package
-    }
 }
 
 /// Model of a scope.
@@ -58,8 +37,6 @@ impl Scope {
         package: RpVersionedPackage,
         prefixes: HashMap<String, RpVersionedPackage>,
         keywords: Rc<HashMap<String, String>>,
-        safe_packages: bool,
-        package_naming: Option<Box<Naming>>,
         field_ident_naming: Option<Box<Naming>>,
         endpoint_ident_naming: Option<Box<Naming>>,
     ) -> Scope {
@@ -70,8 +47,6 @@ impl Scope {
             endpoint_naming: None,
             field_naming: None,
             keywords,
-            safe_packages,
-            package_naming,
             field_ident_naming,
             endpoint_ident_naming,
         });
@@ -121,16 +96,12 @@ impl Scope {
 
     /// Lookup what package a given prefix belongs to.
     pub fn lookup_prefix(&self, prefix: &String) -> Option<RpVersionedPackage> {
-        let root = self.root();
-
-        root.prefixes.get(prefix).map(|p| root.package(p.clone()))
+        self.root().prefixes.get(prefix).map(Clone::clone)
     }
 
     /// Get the package that this scope belongs to.
     pub fn package(&self) -> RpVersionedPackage {
-        let root = self.root();
-        let package = root.package.clone();
-        root.package(package)
+        self.root().package.clone()
     }
 
     /// Get the current path as a name.

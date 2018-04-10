@@ -1,5 +1,5 @@
 use core::errors::Result;
-use core::{Flavor, RpDecl, RpFile, RpName, RpPackage, RpReg};
+use core::{Flavor, RpDecl, RpFile, RpName, RpReg};
 use linked_hash_map::LinkedHashMap;
 use std::collections::{btree_map, BTreeMap, LinkedList};
 use std::vec;
@@ -71,8 +71,6 @@ pub struct Translated<F: 'static>
 where
     F: Flavor,
 {
-    /// Package prefix to apply.
-    package_prefix: Option<RpPackage>,
     /// Registered types.
     decls: LinkedHashMap<RpName<F>, RpReg>,
     /// Files and associated declarations.
@@ -84,24 +82,10 @@ where
     F: Flavor,
 {
     pub fn new(
-        package_prefix: Option<RpPackage>,
         decls: LinkedHashMap<RpName<F>, RpReg>,
         files: BTreeMap<F::Package, RpFile<F>>,
     ) -> Self {
-        Self {
-            package_prefix,
-            decls,
-            files,
-        }
-    }
-
-    /// Access the package prefix.
-    pub fn prefix(&self, package: RpPackage) -> RpPackage {
-        if let Some(package_prefix) = self.package_prefix.as_ref() {
-            package_prefix.clone().join_package(package)
-        } else {
-            package
-        }
+        Self { decls, files }
     }
 
     /// Lookup the declaration matching the given name.

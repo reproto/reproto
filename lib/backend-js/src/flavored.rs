@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use trans::Packages;
 use {Options, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -143,12 +144,12 @@ impl Flavor for JavaScriptFlavor {
 
 /// Responsible for translating RpType -> JavaScript type.
 pub struct JavaScriptFlavorTranslator {
-    package_translator: HashMap<RpVersionedPackage, RpPackage>,
+    packages: Rc<Packages>,
 }
 
 impl JavaScriptFlavorTranslator {
-    pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
-        Self { package_translator }
+    pub fn new(packages: Rc<Packages>) -> Self {
+        Self { packages }
     }
 }
 
@@ -238,7 +239,7 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
-        Ok(self.package_translator.translate_package(source)?)
+        Ok(self.packages.translate_package(source)?)
     }
 
     fn translate_local_name<T>(

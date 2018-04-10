@@ -47,16 +47,16 @@ impl Lang for GoLang {
         Some(format!("// {}", input))
     }
 
+    fn safe_packages(&self) -> bool {
+        true
+    }
+
     fn keywords(&self) -> Vec<(&'static str, &'static str)> {
         vec![]
     }
 
     fn field_ident_naming(&self) -> Option<Box<Naming>> {
         Some(Box::new(naming::to_upper_camel()))
-    }
-
-    fn safe_packages(&self) -> bool {
-        false
     }
 }
 

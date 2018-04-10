@@ -188,7 +188,7 @@ fn setup_options<'a>(modules: Vec<JavaModule>) -> Options {
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = env.packages()?;
-    let translator = env.translator(flavored::JavaFlavorTranslator::new(packages))?;
+    let translator = env.translator(flavored::JavaFlavorTranslator::new(packages.clone()))?;
 
     let variant_field = Loc::new(
         translator.translate_field(RpField::new("value", RpType::String))?,
@@ -205,5 +205,5 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
-    compiler.compile(handle.as_ref())
+    compiler.compile(&packages, handle.as_ref())
 }

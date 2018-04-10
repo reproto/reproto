@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use trans::Packages;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GoFlavor;
@@ -51,11 +52,11 @@ impl package_processor::Name<GoFlavor> for GoName {
 
 /// Responsible for translating RpType -> Go type.
 pub struct GoFlavorTranslator {
-    package_translator: HashMap<RpVersionedPackage, RpPackage>,
+    package_translator: Rc<Packages>,
 }
 
 impl GoFlavorTranslator {
-    pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
+    pub fn new(package_translator: Rc<Packages>) -> Self {
         Self { package_translator }
     }
 }
@@ -153,8 +154,7 @@ impl FlavorTranslator for GoFlavorTranslator {
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
-        let package = self.package_translator.translate_package(source)?;
-        Ok(package)
+        self.package_translator.translate_package(source)
     }
 }
 

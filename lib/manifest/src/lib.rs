@@ -92,7 +92,7 @@ pub trait Lang: fmt::Debug {
 
     /// Indicates if the language requires keyword-escaping in the packages.
     fn safe_packages(&self) -> bool {
-        true
+        false
     }
 
     /// Helper to convert into environment.

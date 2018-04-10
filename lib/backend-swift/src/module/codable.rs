@@ -41,7 +41,7 @@ struct Codegen;
 
 impl Codegen {
     fn utils_package(&self) -> RpPackage {
-        RpPackage::new(vec!["ReprotoCodable_Utils".to_string()])
+        RpPackage::parse("reproto_codable")
     }
 
     fn utils<'el>(&self) -> Result<FileSpec<'el>> {

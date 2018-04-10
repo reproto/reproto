@@ -1,7 +1,6 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use codegen::{Codegen, Configure, ServiceAdded, ServiceCodegen};
-use compiler::Compiler;
 use core::errors::*;
 use core::{self, Handle, Loc};
 use flavored::{JavaEndpoint, RpEndpointHttp1, RpPackage, RpPathStep};
@@ -202,8 +201,8 @@ impl OkHttpSerialization {
 }
 
 impl Codegen for OkHttpSerialization {
-    fn generate(&self, compiler: &Compiler, handle: &Handle) -> Result<()> {
-        let package = compiler.env.prefix(RpPackage::parse("io.reproto"));
+    fn generate(&self, handle: &Handle) -> Result<()> {
+        let package = RpPackage::parse("io.reproto");
 
         JavaFile::new(package, "OkHttpSerialization", |out| {
             let mut c = Interface::new("OkHttpSerialization");

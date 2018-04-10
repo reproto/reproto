@@ -4,13 +4,8 @@ use Flavor;
 use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
-use std::cmp;
-use std::collections::HashMap;
-use std::fmt;
-use std::hash;
 use std::rc::Rc;
-use {AsPackage, CoreFlavor, Loc, RpEndpoint, RpField, RpName, RpPackage, RpReg, RpType,
-     RpVersionedPackage};
+use {CoreFlavor, Loc, RpEndpoint, RpField, RpName, RpReg, RpType, RpVersionedPackage};
 
 /// Method for translating package.
 pub trait PackageTranslator<K, V> {
@@ -100,19 +95,6 @@ pub trait FlavorTranslator {
 impl PackageTranslator<RpVersionedPackage, RpVersionedPackage> for () {
     fn translate_package(&self, package: RpVersionedPackage) -> Result<RpVersionedPackage> {
         Ok(package)
-    }
-}
-
-impl<K, V> PackageTranslator<K, V> for HashMap<K, V>
-where
-    K: fmt::Display + cmp::Eq + hash::Hash,
-    V: Clone,
-{
-    fn translate_package(&self, package: K) -> Result<V> {
-        let package = self.get(&package)
-            .ok_or_else(|| format!("no such package: {}", package))?;
-
-        Ok(package.clone())
     }
 }
 
@@ -283,8 +265,6 @@ where
     pub types: Rc<LinkedHashMap<RpName<T::Source>, RpReg>>,
     /// Cached and translated registered declarations.
     pub decls: Option<RefCell<LinkedHashMap<RpName<T::Source>, RpReg>>>,
-    /// Prefix to apply to packages.
-    pub package_prefix: Option<RpPackage>,
 }
 
 impl<T> Context<T>
@@ -332,13 +312,7 @@ where
         &self,
         source: <Self::Source as Flavor>::Package,
     ) -> Result<<Self::Target as Flavor>::Package> {
-        let out = self.flavor.translate_package(source)?;
-
-        if let Some(ref package_prefix) = self.package_prefix {
-            Ok(out.prefix_with(package_prefix.clone()))
-        } else {
-            Ok(out)
-        }
+        self.flavor.translate_package(source)
     }
 
     fn translate_type(

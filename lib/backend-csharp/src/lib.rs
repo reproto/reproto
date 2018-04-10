@@ -47,6 +47,14 @@ impl Lang for CsharpLang {
         Some(format!("// {}", input))
     }
 
+    fn safe_packages(&self) -> bool {
+        true
+    }
+
+    fn package_naming(&self) -> Option<Box<naming::Naming>> {
+        Some(Box::new(naming::to_upper_camel()))
+    }
+
     fn keywords(&self) -> Vec<(&'static str, &'static str)> {
         vec![
             ("abstract", "_abstract"),
@@ -127,11 +135,6 @@ impl Lang for CsharpLang {
             ("volatile", "_volatile"),
             ("while", "_while"),
         ]
-    }
-
-    fn safe_packages(&self) -> bool {
-        // NB: C# packages are upper-camel case, no keyword escaping needed.
-        false
     }
 }
 

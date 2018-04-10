@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use trans::Packages;
 
 #[derive(Debug, Clone)]
 pub struct JavaHttp<'el> {
@@ -130,7 +131,7 @@ impl Flavor for JavaFlavor {
 
 /// Responsible for translating RpType -> Java type.
 pub struct JavaFlavorTranslator {
-    package_translator: HashMap<RpVersionedPackage, RpPackage>,
+    packages: Rc<Packages>,
     list: Java<'static>,
     map: Java<'static>,
     string: Java<'static>,
@@ -143,9 +144,9 @@ pub struct JavaFlavorTranslator {
 }
 
 impl JavaFlavorTranslator {
-    pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
+    pub fn new(packages: Rc<Packages>) -> Self {
         Self {
-            package_translator,
+            packages,
             list: java::imported("java.util", "List"),
             map: java::imported("java.util", "Map"),
             string: java::imported("java.lang", "String"),
@@ -287,7 +288,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
-        Ok(self.package_translator.translate_package(source)?)
+        self.packages.translate_package(source)
     }
 
     fn translate_local_name<T>(

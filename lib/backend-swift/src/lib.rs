@@ -45,8 +45,12 @@ impl Lang for SwiftLang {
         Some(format!("// {}", input))
     }
 
+    fn package_naming(&self) -> Option<Box<naming::Naming>> {
+        Some(Box::new(naming::to_upper_camel()))
+    }
+
     fn safe_packages(&self) -> bool {
-        false
+        true
     }
 
     fn keywords(&self) -> Vec<(&'static str, &'static str)> {
@@ -314,12 +318,12 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let packages = env.packages()?;
 
-    let translator = flavored::SwiftFlavorTranslator::new(packages, &options)?;
+    let translator = flavored::SwiftFlavorTranslator::new(packages.clone(), &options)?;
 
     let translator = env.translator(translator)?;
 
     let env = env.translate(translator)?;
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    Compiler::new(&env, options, handle.as_ref())?.compile()
+    Compiler::new(&env, options, handle.as_ref())?.compile(&packages)
 }

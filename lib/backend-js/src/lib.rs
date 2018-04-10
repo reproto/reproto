@@ -43,6 +43,11 @@ impl Lang for JsLang {
         Some(format!("# {}", input))
     }
 
+    fn safe_packages(&self) -> bool {
+        // NB: JavaScript imports by string literals, no keyword escaping needed.
+        true
+    }
+
     fn keywords(&self) -> Vec<(&'static str, &'static str)> {
         vec![
             ("abstract", "_abstract"),
@@ -108,11 +113,6 @@ impl Lang for JsLang {
             ("with", "_with"),
             ("yield", "_yield"),
         ]
-    }
-
-    fn safe_packages(&self) -> bool {
-        // NB: JavaScript imports by string literals, no keyword escaping needed.
-        false
     }
 }
 

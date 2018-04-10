@@ -43,5 +43,5 @@ mod into_model;
 mod scope;
 pub mod translated;
 
-pub use self::environment::Environment;
+pub use self::environment::{Environment, Packages};
 pub use self::translated::Translated;

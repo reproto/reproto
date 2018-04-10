@@ -310,7 +310,7 @@ impl Codegen {
     }
 
     fn utils_package(&self) -> RpPackage {
-        RpPackage::new(vec!["ReprotoSimple_Utils".to_string()])
+        RpPackage::parse("reproto_simple")
     }
 
     fn utils<'el>(&self) -> Result<FileSpec<'el>> {

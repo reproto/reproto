@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use trans::Packages;
 use {Options, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -120,12 +121,12 @@ impl Flavor for PythonFlavor {
 
 /// Responsible for translating RpType -> Python type.
 pub struct PythonFlavorTranslator {
-    package_translator: HashMap<RpVersionedPackage, RpPackage>,
+    packages: Rc<Packages>,
 }
 
 impl PythonFlavorTranslator {
-    pub fn new(package_translator: HashMap<RpVersionedPackage, RpPackage>) -> Self {
-        Self { package_translator }
+    pub fn new(packages: Rc<Packages>) -> Self {
+        Self { packages }
     }
 }
 
@@ -216,8 +217,7 @@ impl FlavorTranslator for PythonFlavorTranslator {
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
-        let package = self.package_translator.translate_package(source)?;
-        Ok(package)
+        self.packages.translate_package(source)
     }
 
     fn translate_local_name<T>(

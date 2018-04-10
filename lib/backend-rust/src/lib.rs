@@ -33,7 +33,7 @@ use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
-use trans::Environment;
+use trans::{Environment, Packages};
 
 const LIB: &str = "lib";
 const MOD: &str = "mod";
@@ -147,6 +147,7 @@ pub struct Options {
     pub datetime: Option<Rust<'static>>,
     pub root: Vec<Box<RootCodegen>>,
     pub service: Vec<Box<ServiceCodegen>>,
+    pub packages: Rc<Packages>,
 }
 
 pub struct Root<'a, 'el: 'a> {
@@ -170,13 +171,14 @@ pub trait ServiceCodegen {
     fn generate(&self, service: Service) -> Result<()>;
 }
 
-fn options(modules: Vec<RustModule>) -> Result<Options> {
+fn options(modules: Vec<RustModule>, packages: Rc<Packages>) -> Result<Options> {
     use self::RustModule::*;
 
     let mut options = Options {
         datetime: None,
         root: Vec::new(),
         service: Vec::new(),
+        packages: packages,
     };
 
     for m in modules {
@@ -196,12 +198,11 @@ fn options(modules: Vec<RustModule>) -> Result<Options> {
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
-    let options = options(modules)?;
-
     let packages = env.packages()?;
+    let options = options(modules, packages.clone())?;
 
     let translator = env.translator(flavored::RustFlavorTranslator::new(
-        packages,
+        packages.clone(),
         options.datetime.clone(),
     ))?;
     let env = env.translate(translator)?;

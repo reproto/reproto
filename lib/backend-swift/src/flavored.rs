@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use trans::Packages;
 use {Options, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,7 +80,7 @@ impl Flavor for SwiftFlavor {
 
 /// Responsible for translating RpType -> Swift type.
 pub struct SwiftFlavorTranslator {
-    package_translator: HashMap<RpVersionedPackage, RpPackage>,
+    packages: Rc<Packages>,
     data: Swift<'static>,
     date: Swift<'static>,
     any: Swift<'static>,
@@ -87,10 +88,7 @@ pub struct SwiftFlavorTranslator {
 }
 
 impl SwiftFlavorTranslator {
-    pub fn new(
-        package_translator: HashMap<RpVersionedPackage, RpPackage>,
-        options: &Options,
-    ) -> Result<Self> {
+    pub fn new(packages: Rc<Packages>, options: &Options) -> Result<Self> {
         let any = {
             let mut any_types = options.any_type.iter().cloned();
 
@@ -109,7 +107,7 @@ impl SwiftFlavorTranslator {
         };
 
         Ok(Self {
-            package_translator,
+            packages,
             data: swift::imported("Foundation", "Data"),
             date: swift::imported("Foundation", "Date"),
             any,
@@ -214,9 +212,7 @@ impl FlavorTranslator for SwiftFlavorTranslator {
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
-        let package = self.package_translator.translate_package(source)?;
-        let package = package.with_naming(|n| self.to_upper_camel.convert(n));
-        Ok(package)
+        self.packages.translate_package(source)
     }
 
     fn translate_local_name<T>(

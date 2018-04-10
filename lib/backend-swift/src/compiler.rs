@@ -7,7 +7,7 @@ use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody, Sw
                SwiftName};
 use genco::swift::Swift;
 use genco::{IntoTokens, Tokens};
-use trans::{self, Translated};
+use trans::{self, Packages, Translated};
 use {EnumAdded, FileSpec, InterfaceAdded, InterfaceModelAdded, Options, PackageAdded,
      StructModelAdded, TupleAdded, TypeAdded, EXT};
 
@@ -143,7 +143,7 @@ impl<'el> Compiler<'el> {
         return Ok(tokens);
     }
 
-    pub fn compile(&self) -> Result<()> {
+    pub fn compile(&self, packages: &Packages) -> Result<()> {
         let mut files = self.populate_files()?;
 
         for g in &self.options.package_gens {
@@ -151,7 +151,7 @@ impl<'el> Compiler<'el> {
             g.generate(PackageAdded { files: &mut f })?;
 
             for (package, out) in f {
-                files.insert(self.env.prefix(package), out);
+                files.insert(packages.package(package)?, out);
             }
         }
 

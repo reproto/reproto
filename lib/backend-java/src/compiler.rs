@@ -5,14 +5,14 @@ use codegen::{ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, 
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, Loc, WithPos};
 use flavored::{JavaField, JavaFlavor, RpCode, RpDecl, RpEnumBody, RpEnumType, RpInterfaceBody,
-               RpPackage, RpServiceBody, RpTupleBody, RpTypeBody};
+               RpServiceBody, RpTupleBody, RpTypeBody};
 use genco::java::{imported, local, Argument, Class, Constructor, Enum, Field, Interface, Method,
                   Modifier, BOOLEAN, INTEGER};
 use genco::{Cons, Element, Java, Quoted, Tokens};
 use java_file::JavaFile;
 use naming::{self, Naming};
 use std::rc::Rc;
-use trans::Translated;
+use trans::{Packages, Translated};
 use utils::{Observer, Override};
 
 /// Helper macro to implement listeners opt loop.
@@ -89,12 +89,12 @@ impl<'el> Compiler<'el> {
         }
     }
 
-    pub fn compile(&self, handle: &Handle) -> Result<()> {
+    pub fn compile(&self, packages: &Packages, handle: &Handle) -> Result<()> {
         for generator in &self.options.root_generators {
-            generator.generate(self, handle)?;
+            generator.generate(handle)?;
         }
 
-        let package = self.env.prefix(RpPackage::parse("io.reproto"));
+        let package = packages.new("io.reproto")?;
 
         JavaFile::new(package, "Observer", |out| {
             out.push(Observer);
@@ -109,9 +109,7 @@ impl<'el> Compiler<'el> {
     }
 
     fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
-        let package = self.env.prefix(decl.name().package.clone());
-
-        JavaFile::new(package, decl.ident(), |out| {
+        JavaFile::new(decl.name().package.clone(), decl.ident(), |out| {
             self.process_decl(decl, 0usize, out)
         }).process(handle)
     }
