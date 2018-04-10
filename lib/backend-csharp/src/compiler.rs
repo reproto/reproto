@@ -4,7 +4,7 @@ use Options;
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded,
               TypeField, TypeFieldAdded};
 use core::errors::*;
-use core::{self, ForEachLoc, Handle, Loc, RpContext, WithPos};
+use core::{ForEachLoc, Handle, Loc, RpContext, RpSubTypeStrategy, WithPos};
 use csharp_field::CsharpField;
 use csharp_file::CsharpFile;
 use flavored::{CsharpFlavor, RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody,
@@ -350,7 +350,7 @@ impl Compiler {
         let interface_fields = self.fields(&body.fields)?;
 
         let type_field = match body.sub_type_strategy {
-            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
+            RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 let mut f = Field::new(self.string.clone(), Cons::from("TypeField"));
 
                 let mut block = Tokens::new();
@@ -373,6 +373,7 @@ impl Compiler {
                     tag: tag.clone(),
                 })
             }
+            _ => None,
         };
 
         // Setup the constructor that takes the type field.

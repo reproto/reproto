@@ -3,7 +3,8 @@ use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, Inter
               TypeFieldCodegen};
 use core::RpSubTypeStrategy;
 use core::errors::Result;
-use genco::csharp::{using, Argument};
+use flavored::RpInterfaceBody;
+use genco::csharp::{self, using, Argument};
 use genco::{Cons, Csharp, Element, IntoTokens, Quoted, Tokens};
 use std::rc::Rc;
 
@@ -42,6 +43,7 @@ struct JsonNet {
     invalid_operation: Csharp<'static>,
     enumerator: Csharp<'static>,
     j_array: Csharp<'static>,
+    j_object: Csharp<'static>,
     j_token: Csharp<'static>,
     json_reader: Csharp<'static>,
     json_writer: Csharp<'static>,
@@ -56,6 +58,7 @@ impl JsonNet {
             invalid_operation: using("System", "InvalidOperationException"),
             enumerator: using("System.Collections.Generic", "IEnumerator"),
             j_array: using("Newtonsoft.Json.Linq", "JArray"),
+            j_object: using("Newtonsoft.Json.Linq", "JObject"),
             j_token: using("Newtonsoft.Json.Linq", "JToken"),
             json_reader: using("Newtonsoft.Json", "JsonReader"),
             json_writer: using("Newtonsoft.Json", "JsonWriter"),
@@ -138,18 +141,192 @@ impl EnumCodegen for JsonNet {
     }
 }
 
+impl JsonNet {
+    fn required_fields<'el>(
+        &self,
+        spec: &mut csharp::Class<'el>,
+        body: &'el RpInterfaceBody,
+    ) -> Result<()> {
+        use genco::csharp::{local, Class, Field, Method, Modifier, BOOLEAN};
+
+        let converter = Rc::new(format!("{}.Json_Net_Converter", spec.name().as_ref()));
+        spec.attribute(JsonConverter(local(converter)));
+
+        let body = {
+            let mut c = Class::new("Json_Net_Converter");
+            let converter = using("Newtonsoft.Json", "JsonConverter");
+            c.implements = vec![converter];
+
+            // NB: Json.NET there is no way to avoid using the current converter to deserialize
+            // sub-types, so we guard deserialization using a thread-local.
+            c.fields.push({
+                let mut f = Field::new(BOOLEAN, "_isInsideRead");
+                f.attribute("[ThreadStatic]");
+                f.modifiers = vec![Modifier::Private, Modifier::Static];
+                f
+            });
+
+            c.body.push(CanConvert(self, &spec));
+            c.fields.push(can_write());
+            c.fields.push(can_read());
+            c.body.push(WriteJson(self, &spec, body));
+            c.body.push(ReadJson(self, &spec, body));
+
+            c
+        };
+
+        // Converter for this tuple.
+        spec.body.push(body);
+
+        return Ok(());
+
+        struct CanConvert<'a, 'el: 'a>(&'a JsonNet, &'a Class<'el>);
+
+        impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for CanConvert<'a, 'el> {
+            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
+                let mut m = Method::new("CanConvert");
+                m.arguments
+                    .push(Argument::new(self.0.type_.clone(), "objectType"));
+                m.modifiers = vec![Modifier::Public, Modifier::Override];
+                m.returns = BOOLEAN;
+
+                m.body.push({ toks!["return false;"] });
+
+                m.into_tokens()
+            }
+        }
+
+        fn can_write<'el>() -> Field<'el> {
+            let mut t = Field::new(BOOLEAN, "CanWrite");
+            t.modifiers = vec![Modifier::Public, Modifier::Override];
+            t.block = Some(toks!["get { return false; }"]);
+            t
+        }
+
+        fn can_read<'el>() -> Field<'el> {
+            let mut t = Field::new(BOOLEAN, "CanRead");
+
+            t.modifiers = vec![Modifier::Public, Modifier::Override];
+
+            t.block = Some({
+                let mut t = Tokens::new();
+
+                push!(t, "get {");
+                nested!(t, "return !_isInsideRead;");
+                push!(t, "}");
+
+                t
+            });
+
+            t
+        }
+
+        // public override bool WriteJson impl
+        struct WriteJson<'a, 'el: 'a>(&'a JsonNet, &'a Class<'el>, &'a RpInterfaceBody);
+
+        impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for WriteJson<'a, 'el> {
+            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
+                let mut m = Method::new("WriteJson");
+                m.arguments
+                    .push(Argument::new(self.0.json_writer.clone(), "writer"));
+                m.arguments
+                    .push(Argument::new(self.0.object.clone(), "obj"));
+                m.arguments
+                    .push(Argument::new(self.0.json_serializer.clone(), "serializer"));
+                m.modifiers = vec![Modifier::Public, Modifier::Override];
+
+                m.body.push_into(|t| {
+                    let m = "not implemented".quoted();
+                    push!(t, "throw new ", self.0.invalid_operation, "(", m, ");");
+                });
+
+                m.into_tokens()
+            }
+        }
+
+        // public override bool ReadJson impl
+        struct ReadJson<'a, 'el: 'a>(&'a JsonNet, &'a Class<'el>, &'el RpInterfaceBody);
+
+        impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for ReadJson<'a, 'el> {
+            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
+                let j_object = self.0.j_object.clone();
+                let body = self.2;
+
+                let mut m = Method::new("ReadJson");
+                m.arguments
+                    .push(Argument::new(self.0.json_reader.clone(), "reader"));
+                m.arguments
+                    .push(Argument::new(self.0.type_.clone(), "objectType"));
+                m.arguments
+                    .push(Argument::new(self.0.object.clone(), "existingValue"));
+                m.arguments
+                    .push(Argument::new(self.0.json_serializer.clone(), "serializer"));
+                m.modifiers = vec![Modifier::Public, Modifier::Override];
+                m.returns = self.0.object.clone();
+
+                push!(m.body, j_object, " o = ", j_object, ".Load(reader);",);
+
+                for sub_type in &body.sub_types {
+                    let mut checks = Tokens::new();
+
+                    for f in body.fields
+                        .iter()
+                        .chain(sub_type.fields.iter())
+                        .filter(|f| f.is_required())
+                    {
+                        checks.append(toks!["o.ContainsKey(", f.name().quoted(), ")"]);
+                    }
+
+                    m.body.push_into(|t| {
+                        push!(t, "if (", checks.join(" && "), ") {");
+
+                        t.nested_into(|t| {
+                            push!(t, "_isInsideRead = true;");
+                            push!(t, "try {");
+
+                            nested!(
+                                t,
+                                "return serializer.Deserialize(o.CreateReader(), typeof(",
+                                sub_type.ident,
+                                "));"
+                            );
+
+                            push!(t, "} finally {");
+                            nested!(t, "_isInsideRead = false;");
+                            push!(t, "}");
+                        });
+
+                        push!(t, "}");
+                    });
+                }
+
+                m.body.push_into(|t| {
+                    let m = "no legal combination of fields".quoted();
+                    push!(t, "throw new ", self.0.invalid_operation, "(", m, ");");
+                });
+
+                m.body = m.body.join_line_spacing();
+                m.into_tokens()
+            }
+        }
+    }
+}
+
 impl InterfaceCodegen for JsonNet {
-    fn generate(&self, InterfaceAdded { spec, body, .. }: InterfaceAdded) -> Result<()> {
+    fn generate(&self, InterfaceAdded { mut spec, body, .. }: InterfaceAdded) -> Result<()> {
         match body.sub_type_strategy {
             RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 let tag = Rc::new(tag.to_string()).into();
                 spec.attribute(JsonSubTypes(tag));
-            }
-        }
 
-        for sub_type in &body.sub_types {
-            let v = toks![spec.name(), ".", sub_type.ident.as_str()];
-            spec.attribute(JsonSubType(sub_type.name().into(), v));
+                for sub_type in &body.sub_types {
+                    let v = toks![spec.name(), ".", sub_type.ident.as_str()];
+                    spec.attribute(JsonSubType(sub_type.name().into(), v));
+                }
+            }
+            RpSubTypeStrategy::RequiredFields => {
+                self.required_fields(&mut spec, body)?;
+            }
         }
 
         return Ok(());
@@ -216,8 +393,6 @@ impl TupleCodegen for JsonNet {
 
         return Ok(());
 
-        #[allow(unused)]
-        // public override bool CanConvert impl
         struct CanConvert<'a, 'el: 'a>(&'a JsonNet, &'a Class<'el>);
 
         impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for CanConvert<'a, 'el> {
