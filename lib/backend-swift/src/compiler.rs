@@ -151,12 +151,7 @@ impl<'el> Compiler<'el> {
             g.generate(PackageAdded { files: &mut f })?;
 
             for (package, out) in f {
-                let package = match self.env.package_prefix() {
-                    Some(package_prefix) => package_prefix.clone().join_package(package),
-                    None => package,
-                };
-
-                files.insert(package, out);
+                files.insert(self.env.prefix(package), out);
             }
         }
 

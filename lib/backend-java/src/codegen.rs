@@ -1,6 +1,7 @@
 //! Code generator for the given path.
 
 use Options;
+use compiler::Compiler;
 use core::Handle;
 use core::errors::Result;
 use flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
@@ -59,7 +60,7 @@ pub struct Configure<'a> {
 
 pub trait Codegen {
     /// Build the given piece of code in the given handle.
-    fn generate(&self, handle: &Handle) -> Result<()>;
+    fn generate(&self, compiler: &Compiler, handle: &Handle) -> Result<()>;
 }
 
 /// Generate service-based code.

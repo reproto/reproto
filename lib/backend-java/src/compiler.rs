@@ -5,7 +5,7 @@ use codegen::{ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, 
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, Loc, WithPos};
 use flavored::{JavaField, JavaFlavor, RpCode, RpDecl, RpEnumBody, RpEnumType, RpInterfaceBody,
-               RpServiceBody, RpTupleBody, RpTypeBody};
+               RpPackage, RpServiceBody, RpTupleBody, RpTypeBody};
 use genco::java::{imported, local, Argument, Class, Constructor, Enum, Field, Interface, Method,
                   Modifier, BOOLEAN, INTEGER};
 use genco::{Cons, Element, Java, Quoted, Tokens};
@@ -53,7 +53,7 @@ macro_rules! call_codegen {
 }
 
 pub struct Compiler<'el> {
-    env: &'el Translated<JavaFlavor>,
+    pub env: &'el Translated<JavaFlavor>,
     variant_field: &'el Loc<JavaField<'static>>,
     options: Options,
     variant_naming: naming::ToUpperSnake,
@@ -91,10 +91,12 @@ impl<'el> Compiler<'el> {
 
     pub fn compile(&self, handle: &Handle) -> Result<()> {
         for generator in &self.options.root_generators {
-            generator.generate(handle)?;
+            generator.generate(self, handle)?;
         }
 
-        JavaFile::new("io.reproto", "Observer", |out| {
+        let package = self.env.prefix(RpPackage::parse("io.reproto"));
+
+        JavaFile::new(package, "Observer", |out| {
             out.push(Observer);
             Ok(())
         }).process(handle)?;
@@ -107,9 +109,9 @@ impl<'el> Compiler<'el> {
     }
 
     fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
-        let package_name = decl.name().package.join(".");
+        let package = self.env.prefix(decl.name().package.clone());
 
-        JavaFile::new(package_name.as_str(), decl.ident(), |out| {
+        JavaFile::new(package, decl.ident(), |out| {
             self.process_decl(decl, 0usize, out)
         }).process(handle)
     }

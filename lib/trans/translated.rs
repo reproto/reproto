@@ -96,8 +96,12 @@ where
     }
 
     /// Access the package prefix.
-    pub fn package_prefix(&self) -> Option<&RpPackage> {
-        self.package_prefix.as_ref()
+    pub fn prefix(&self, package: RpPackage) -> RpPackage {
+        if let Some(package_prefix) = self.package_prefix.as_ref() {
+            package_prefix.clone().join_package(package)
+        } else {
+            package
+        }
     }
 
     /// Lookup the declaration matching the given name.

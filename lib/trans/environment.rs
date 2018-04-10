@@ -69,11 +69,6 @@ where
         }
     }
 
-    /// Access a copy of the package prefix.
-    pub fn package_prefix(&self) -> Option<RpPackage> {
-        self.package_prefix.clone()
-    }
-
     /// Configure a new environment on how to use safe packages or not.
     pub fn with_safe_packages(self, safe_packages: bool) -> Self {
         Self {
