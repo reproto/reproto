@@ -255,17 +255,31 @@ impl<'el> PackageProcessor<'el, SwiftFlavor, SwiftName> for Compiler<'el> {
             t.push_unless_empty(Comments(&body.comment));
             t.push(toks!["public enum ", body.name.name.clone(), " {"]);
 
-            for sub_type in body.sub_types.iter() {
-                let ident = sub_type.ident.as_str();
-                t.nested(toks!["case ", ident, "(", sub_type.name.name.clone(), ")"]);
-            }
+            t.push({
+                let mut t = Tokens::new();
 
-            for g in &self.options.interface_model_gens {
-                g.generate(InterfaceModelAdded {
-                    container: &mut t,
-                    body: body,
-                })?;
-            }
+                t.push_into(|t| {
+                    for sub_type in body.sub_types.iter() {
+                        let ident = sub_type.ident.as_str();
+                        t.nested(toks!["case ", ident, "(", sub_type.name.name.clone(), ")"]);
+                    }
+                });
+
+                t.push_unless_empty({
+                    let mut t = Tokens::new();
+
+                    for g in &self.options.interface_model_gens {
+                        g.generate(InterfaceModelAdded {
+                            container: &mut t,
+                            body: body,
+                        })?;
+                    }
+
+                    t.join_line_spacing()
+                });
+
+                t.join_line_spacing()
+            });
 
             t.push("}");
             t

@@ -4,7 +4,7 @@ use backend::Initializer;
 use compiler::Comments;
 use core::errors::Result;
 use core::{self, Loc};
-use flavored::{RpEnumBody, RpField, RpPackage, RpSubType, SwiftName};
+use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpSubType, SwiftName};
 use genco::swift::{imported, Swift};
 use genco::{Cons, IntoTokens, Quoted, Tokens};
 use std::rc::Rc;
@@ -904,9 +904,12 @@ impl InterfaceCodegen for Codegen {
 
                 match body.sub_type_strategy {
                     core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                        // decode function
                         t.nested(decode_tag(name, tag.as_str(), &body.sub_types)?);
                         t.nested(encode_tag(tag.as_str(), &body.sub_types)?);
+                    }
+                    core::RpSubTypeStrategy::RequiredFields => {
+                        t.nested(decode_required_fields(name, body)?);
+                        t.nested(encode_required_fields(&body.sub_types)?);
                     }
                 }
 
@@ -1005,6 +1008,116 @@ impl InterfaceCodegen for Codegen {
                         t.nested(toks!["var json = try s.encode()"]);
                         t.nested(toks!["json[", tag.quoted(), "] = ", name.quoted()]);
                         t.nested(toks!["return json"]);
+                        t
+                    });
+                }
+
+                t.push("}");
+                t
+            });
+            t.push("}");
+
+            Ok(t)
+        }
+
+        /// Build a method to decode a tagged interface.
+        fn decode_required_fields<'el>(
+            name: &'el SwiftName,
+            body: &'el RpInterfaceBody,
+        ) -> Result<Tokens<'el, Swift<'el>>> {
+            let mut t = Tokens::new();
+
+            t.push(toks![
+                "static func decode(json: Any) throws -> ",
+                name,
+                " {"
+            ]);
+            t.nested({
+                let mut t = Tokens::new();
+
+                t.push(toks!["let json = try decode_value(json as? [String: Any])"]);
+
+                // shared optional keys
+                let optional = quoted_tags(body.fields.iter().filter(|f| f.is_optional()));
+
+                let keys = "keys";
+                // keys of incoming data
+                push!(
+                    t,
+                    "let ",
+                    keys,
+                    " = Set(json.keys).subtracting(",
+                    optional,
+                    ")"
+                );
+
+                t.push({
+                    let mut t = Tokens::new();
+
+                    for sub_type in &body.sub_types {
+                        let ident = sub_type.ident.as_str();
+                        let tags = quoted_tags(sub_type.fields.iter().filter(|f| f.is_optional()));
+                        let req = quoted_tags(
+                            body.fields
+                                .iter()
+                                .chain(sub_type.fields.iter())
+                                .filter(|f| f.is_required()),
+                        );
+
+                        t.push_into(|t| {
+                            let d = toks!["try ", &sub_type.name, ".decode(json: json)"];
+
+                            push!(t, "if ", keys, ".subtracting(", tags, ") == ", req, " {");
+                            nested!(t, "return ", name, ".", ident, "(", d, ")");
+                            push!(t, "}");
+                        });
+                    }
+
+                    let m = "no legal field combinations".quoted();
+                    push!(t, "throw SerializationError.invalid(", m, ")");
+
+                    t.join_line_spacing()
+                });
+
+                t.join_line_spacing()
+            });
+            t.push("}");
+
+            return Ok(t);
+
+            fn quoted_tags<'el, F>(fields: F) -> Tokens<'el, Swift<'el>>
+            where
+                F: IntoIterator<Item = &'el Loc<RpField>>,
+            {
+                let mut tags = Tokens::new();
+
+                for field in fields {
+                    tags.append(field.name().quoted());
+                }
+
+                toks!["[", tags.join(", "), "]"]
+            }
+        }
+
+        /// Build a method to decode a tagged interface.
+        fn encode_required_fields<'el, S>(sub_types: S) -> Result<Tokens<'el, Swift<'el>>>
+        where
+            S: IntoIterator<Item = &'el Loc<RpSubType>>,
+        {
+            let mut t = Tokens::new();
+
+            t.push(toks!["func encode() throws -> [String: Any] {"]);
+            t.nested({
+                let mut t = Tokens::new();
+                t.push("switch self {");
+
+                for sub_type in sub_types.into_iter() {
+                    let ident = sub_type.ident.as_str();
+
+                    t.nested({
+                        let mut t = Tokens::new();
+                        t.push(toks!["case .", ident, "(let s):"]);
+                        t.nested(toks!["return try s.encode()"]);
                         t
                     });
                 }
