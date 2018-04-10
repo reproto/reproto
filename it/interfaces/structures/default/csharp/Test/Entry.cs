@@ -1,216 +1,78 @@
-using JsonSubTypes;
 using Newtonsoft.Json;
 using System;
 using System.Text;
 
 namespace Test {
-  [JsonConverter(typeof(JsonSubtypes), "@type")]
-  [JsonSubtypes.KnownSubType(typeof(Entry.A), "foo")]
-  [JsonSubtypes.KnownSubType(typeof(Entry.B), "b")]
-  [JsonSubtypes.KnownSubType(typeof(Entry.Bar), "Bar")]
-  [JsonSubtypes.KnownSubType(typeof(Entry.Baz), "Baz")]
-  public abstract class Entry {
-    [JsonProperty("@type", Required = Required.DisallowNull)]
-    private String TypeField {
+  [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
+  public class Entry {
+    [JsonProperty("tagged")]
+    public Tagged tagged {
+      get;
+    }
+    [JsonProperty("required_fields")]
+    public RequiredFields requiredFields {
       get;
     }
 
+    [JsonConstructor]
     public Entry(
-      String TypeField
+      [JsonProperty("tagged")] Tagged tagged,
+      [JsonProperty("required_fields")] RequiredFields requiredFields
     ) {
-      this.TypeField = TypeField;
+      this.tagged = tagged;
+      this.requiredFields = requiredFields;
     }
 
-    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-    public class A : Entry {
-      [JsonProperty("shared", Required = Required.DisallowNull)]
-      public String shared {
-        get;
-      }
-
-      [JsonConstructor]
-      public A(
-        [JsonProperty("@type", Required = Required.DisallowNull)] String TypeField,
-        [JsonProperty("shared", Required = Required.DisallowNull)] String shared
-      ) : base(TypeField) {
-        this.shared = shared;
-      }
-
-      public override Int32 GetHashCode() {
-        Int32 result = 1;
-        result = result * 31 + this.shared.GetHashCode();
-        return result;
-      }
-
-      public override Boolean Equals(Object other) {
-        A o = other as A;
-
-        if (o == null) {
-          return false;
-        }
-
-        if (!this.shared.Equals(o.shared)) {
-          return false;
-        }
-
-        return true;
-      }
-
-      public override String ToString() {
-        StringBuilder b = new StringBuilder();
-
-        b.Append("A");
-        b.Append("(");
-        b.Append("shared=");
-        b.Append(this.shared);
-        b.Append(")");
-
-        return b.ToString();
-      }
+    public override Int32 GetHashCode() {
+      Int32 result = 1;
+      result = result * 31 + this.tagged.GetHashCode();
+      result = result * 31 + this.requiredFields.GetHashCode();
+      return result;
     }
 
-    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-    public class B : Entry {
-      [JsonProperty("shared", Required = Required.DisallowNull)]
-      public String shared {
-        get;
+    public override Boolean Equals(Object other) {
+      Entry o = other as Entry;
+
+      if (o == null) {
+        return false;
       }
 
-      [JsonConstructor]
-      public B(
-        [JsonProperty("@type", Required = Required.DisallowNull)] String TypeField,
-        [JsonProperty("shared", Required = Required.DisallowNull)] String shared
-      ) : base(TypeField) {
-        this.shared = shared;
-      }
-
-      public override Int32 GetHashCode() {
-        Int32 result = 1;
-        result = result * 31 + this.shared.GetHashCode();
-        return result;
-      }
-
-      public override Boolean Equals(Object other) {
-        B o = other as B;
-
-        if (o == null) {
+      if (this.tagged == null) {
+        if (o.tagged != null) {
           return false;
         }
-
-        if (!this.shared.Equals(o.shared)) {
+      } else {
+        if (!this.tagged.Equals(o.tagged)) {
           return false;
         }
-
-        return true;
       }
 
-      public override String ToString() {
-        StringBuilder b = new StringBuilder();
-
-        b.Append("B");
-        b.Append("(");
-        b.Append("shared=");
-        b.Append(this.shared);
-        b.Append(")");
-
-        return b.ToString();
+      if (this.requiredFields == null) {
+        if (o.requiredFields != null) {
+          return false;
+        }
+      } else {
+        if (!this.requiredFields.Equals(o.requiredFields)) {
+          return false;
+        }
       }
+
+      return true;
     }
 
-    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-    public class Bar : Entry {
-      [JsonProperty("shared", Required = Required.DisallowNull)]
-      public String shared {
-        get;
-      }
+    public override String ToString() {
+      StringBuilder b = new StringBuilder();
 
-      [JsonConstructor]
-      public Bar(
-        [JsonProperty("@type", Required = Required.DisallowNull)] String TypeField,
-        [JsonProperty("shared", Required = Required.DisallowNull)] String shared
-      ) : base(TypeField) {
-        this.shared = shared;
-      }
+      b.Append("Entry");
+      b.Append("(");
+      b.Append("tagged=");
+      b.Append(this.tagged);
+      b.Append(", ");
+      b.Append("required_fields=");
+      b.Append(this.requiredFields);
+      b.Append(")");
 
-      public override Int32 GetHashCode() {
-        Int32 result = 1;
-        result = result * 31 + this.shared.GetHashCode();
-        return result;
-      }
-
-      public override Boolean Equals(Object other) {
-        Bar o = other as Bar;
-
-        if (o == null) {
-          return false;
-        }
-
-        if (!this.shared.Equals(o.shared)) {
-          return false;
-        }
-
-        return true;
-      }
-
-      public override String ToString() {
-        StringBuilder b = new StringBuilder();
-
-        b.Append("Bar");
-        b.Append("(");
-        b.Append("shared=");
-        b.Append(this.shared);
-        b.Append(")");
-
-        return b.ToString();
-      }
-    }
-
-    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-    public class Baz : Entry {
-      [JsonProperty("shared", Required = Required.DisallowNull)]
-      public String shared {
-        get;
-      }
-
-      [JsonConstructor]
-      public Baz(
-        [JsonProperty("@type", Required = Required.DisallowNull)] String TypeField,
-        [JsonProperty("shared", Required = Required.DisallowNull)] String shared
-      ) : base(TypeField) {
-        this.shared = shared;
-      }
-
-      public override Int32 GetHashCode() {
-        Int32 result = 1;
-        result = result * 31 + this.shared.GetHashCode();
-        return result;
-      }
-
-      public override Boolean Equals(Object other) {
-        Baz o = other as Baz;
-
-        if (o == null) {
-          return false;
-        }
-
-        if (!this.shared.Equals(o.shared)) {
-          return false;
-        }
-
-        return true;
-      }
-
-      public override String ToString() {
-        StringBuilder b = new StringBuilder();
-
-        b.Append("Baz");
-        b.Append("(");
-        b.Append("shared=");
-        b.Append(this.shared);
-        b.Append(")");
-
-        return b.ToString();
-      }
+      return b.ToString();
     }
   }
 }

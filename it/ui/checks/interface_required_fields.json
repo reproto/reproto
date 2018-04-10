@@ -4,14 +4,14 @@
     "it/ui/proto/interface_required_fields.reproto:8:5-16:",
     "  8:     a?: string;",
     "         ^^^^^^^^^^^ - is a required field of another sub-type",
-    "it/ui/proto/interface_required_fields.reproto:11:3-9:",
-    " 11:   Baz {",
+    "it/ui/proto/interface_required_fields.reproto:3:3-9:",
+    "  3:   Foo {",
     "       ^^^^^^ - sub-type defined here",
     "it/ui/proto/interface_required_fields.reproto:8:5-16:",
     "  8:     a?: string;",
     "         ^^^^^^^^^^^ - is a required field of another sub-type",
-    "it/ui/proto/interface_required_fields.reproto:3:3-9:",
-    "  3:   Foo {",
+    "it/ui/proto/interface_required_fields.reproto:11:3-9:",
+    " 11:   Baz {",
     "       ^^^^^^ - sub-type defined here"
   ],
   "stderr": []

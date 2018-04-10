@@ -6,6 +6,7 @@ public struct Test_Type: Codable {
 
 public enum Test_Interface {
   case SubType(Test_Interface_SubType)
+
   enum CodingKeys: String, CodingKey {
     case tag = "type"
   }
@@ -52,7 +53,7 @@ extension Test_Enum: Decodable {
     case "Variant":
       self = .Variant
     default:
-      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
       throw DecodingError.dataCorrupted(context)
     }
   }

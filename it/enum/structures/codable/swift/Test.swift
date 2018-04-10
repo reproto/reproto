@@ -23,7 +23,7 @@ extension Test_EnumExplicit: Decodable {
     case "bar":
       self = .B
     default:
-      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -57,7 +57,7 @@ extension Test_EnumImplicit: Decodable {
     case "B":
       self = .B
     default:
-      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -91,7 +91,7 @@ extension Test_EnumLongNames: Decodable {
     case "Baz":
       self = .Baz
     default:
-      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
       throw DecodingError.dataCorrupted(context)
     }
   }

@@ -6,6 +6,7 @@ public struct Test_RootType: Codable {
 
 public enum Test_RootInterface {
   case Foo(Test_RootInterface_Foo)
+
   enum CodingKeys: String, CodingKey {
     case tag = "type"
   }
@@ -52,7 +53,7 @@ extension Test_RootEnum: Decodable {
     case "Foo":
       self = .Foo
     default:
-      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -89,6 +90,7 @@ public struct Test_RootType_NestedType: Codable {
 
 public enum Test_RootType_NestedInterface {
   case Foo(Test_RootType_NestedInterface_Foo)
+
   enum CodingKeys: String, CodingKey {
     case tag = "type"
   }
@@ -135,7 +137,7 @@ extension Test_RootType_NestedEnum: Decodable {
     case "Foo":
       self = .Foo
     default:
-      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -172,6 +174,7 @@ public struct Test_RootInterface_Foo_NestedType: Codable {
 
 public enum Test_RootInterface_Foo_NestedInterface {
   case NestedFoo(Test_RootInterface_Foo_NestedInterface_NestedFoo)
+
   enum CodingKeys: String, CodingKey {
     case tag = "type"
   }
@@ -218,7 +221,7 @@ extension Test_RootInterface_Foo_NestedEnum: Decodable {
     case "Foo":
       self = .Foo
     default:
-      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -255,6 +258,7 @@ public struct Test_RootTuple_NestedType: Codable {
 
 public enum Test_RootTuple_NestedInterface {
   case Foo(Test_RootTuple_NestedInterface_Foo)
+
   enum CodingKeys: String, CodingKey {
     case tag = "type"
   }
@@ -301,7 +305,7 @@ extension Test_RootTuple_NestedEnum: Decodable {
     case "Foo":
       self = .Foo
     default:
-      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -338,6 +342,7 @@ public struct Test_RootService_NestedType: Codable {
 
 public enum Test_RootService_NestedInterface {
   case Foo(Test_RootService_NestedInterface_Foo)
+
   enum CodingKeys: String, CodingKey {
     case tag = "type"
   }
@@ -384,7 +389,7 @@ extension Test_RootService_NestedEnum: Decodable {
     case "Foo":
       self = .Foo
     default:
-      let context = DecodingError.Context(codingPath: [], debugDescription: "enum variant")
+      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
       throw DecodingError.dataCorrupted(context)
     }
   }
