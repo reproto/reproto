@@ -12,22 +12,23 @@ If you want to take the system for a spin, please go to <https://reproto.github.
 Reproto is:
 
 * **A compiler** capable of generating code for [various languages].<br />
-  [try it out][trycompiler] &ndash; [documentation][langsupport].
+  [try it out][trycompiler] &ndash; [documentation][langsupport]
 * **A custom interface description language** that permits describing the schema of JSON and
   services in a concise, easy to understand way.<br />
-  [documentation][idl].
+  [documentation][idl]
 * **Early and extensive soundness checking**, with excellent error handling. We catch schema issues
-  before you know that you have them.
+  before you know that you have them.<br />
+  [ui tests](/it/ui/checks)
 * **A derive command**, capable of deriving schemas directly from JSON.<br />
   [try it out][tryderive] &ndash; [documentation][derive].
 * **A semantic version checker** which verifies that modifications to schemas do not violate
   [semantic versioning].<br />
-  [documentation][semver].
+  [documentation][semver]
 * **A build system with a package manager using build manifests**, giving you all the control you
   need to integrate reproto into your project.<br />
-  [documentation][build manifests].
+  [documentation][build manifests]
 * **A rich, markdown-based documentation generator**.<br />
-  [documentation][docgen].
+  [documentation][docgen]
 
 These things combined support an ecosystem where schemas can be maintained and shared across
 many teams.
