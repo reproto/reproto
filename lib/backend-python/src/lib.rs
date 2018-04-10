@@ -18,7 +18,7 @@ extern crate toml;
 mod codegen;
 mod compiler;
 mod flavored;
-mod module;
+pub mod module;
 mod utils;
 
 use backend::{Initializer, IntoBytes};

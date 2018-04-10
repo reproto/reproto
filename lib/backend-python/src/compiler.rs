@@ -480,7 +480,10 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
         match body.sub_type_strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 let tk = tag.as_str().quoted().into();
-                type_body.push(decode(&body, &tk)?);
+                type_body.push(decode_from_tag(&body, &tk)?);
+            }
+            core::RpSubTypeStrategy::RequiredFields => {
+                type_body.push(decode_from_required_fields(&body)?);
             }
         }
 
@@ -523,6 +526,12 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
 
                     sub_type_body.push(encode);
                 }
+                core::RpSubTypeStrategy::RequiredFields => {
+                    let encode =
+                        self.encode_method(fields.iter().cloned(), self.dict.clone().into(), None)?;
+
+                    sub_type_body.push(encode);
+                }
             }
 
             let repr_method = self.repr_method(&sub_type.name, fields.iter().cloned());
@@ -535,7 +544,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
 
         return Ok(());
 
-        fn decode<'el>(
+        fn decode_from_tag<'el>(
             body: &'el RpInterfaceBody,
             tag: &Tokens<'el, Python<'el>>,
         ) -> Result<Tokens<'el, Python<'el>>> {
@@ -568,6 +577,74 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
                 decode.nested(t.join_line_spacing());
                 decode
             })
+        }
+
+        fn decode_from_required_fields<'el>(
+            body: &'el RpInterfaceBody,
+        ) -> Result<Tokens<'el, Python<'el>>> {
+            let mut t = Tokens::new();
+
+            let data = "data";
+
+            // shared optional keys
+            let optional = quoted_tags(body.fields.iter().filter(|f| f.is_optional()));
+
+            let keys = "keys";
+            // keys of incoming data
+            push!(t, keys, " = set(", data, ".keys()) - ", optional);
+
+            for sub_type in body.sub_types.iter() {
+                let tags = quoted_tags(sub_type.fields.iter().filter(|f| f.is_optional()));
+
+                let required = quoted_tags(
+                    body.fields
+                        .iter()
+                        .chain(sub_type.fields.iter())
+                        .filter(|f| f.is_required()),
+                );
+
+                t.push_into(|t| {
+                    push!(t, "if ", keys, " - ", tags, " == ", required, ":");
+                    nested!(t, "return ", &sub_type.name, ".decode(data)");
+                });
+            }
+
+            push!(
+                t,
+                "raise Exception(",
+                "no sub type matching the given fields: ".quoted(),
+                " + repr(",
+                keys,
+                "))"
+            );
+
+            Ok({
+                let mut decode = Tokens::new();
+                decode.push("@staticmethod");
+                decode.push(toks!("def decode(", data, "):"));
+                decode.nested(t.join_line_spacing());
+                decode
+            })
+        }
+
+        /// Return a set of quoted tags.
+        fn quoted_tags<'el, F>(fields: F) -> Tokens<'el, Python<'el>>
+        where
+            F: IntoIterator<Item = &'el Loc<RpField>>,
+        {
+            let mut tags = Tokens::new();
+            let mut c = 0;
+
+            for field in fields {
+                tags.append(field.name().quoted());
+                c += 1;
+            }
+
+            match c {
+                0 => toks!["set()"],
+                1 => toks!["set((", tags.join(", "), ",))"],
+                _ => toks!["set((", tags.join(", "), "))"],
+            }
         }
     }
 
