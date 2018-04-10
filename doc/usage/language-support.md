@@ -18,6 +18,7 @@
   * [`codable` module](#modulescodable)
   * [`simple` module](#modulessimple)
 * [Go](#go)
+  * [Interfaces in Go](#interfaces-in-go)
   * [`encoding/json` module](#modulesencodingjson)
 
 This section details the how each language behaves, and which modules and options are available to
@@ -856,6 +857,66 @@ type Foo_Bar struct {
 ```
 
 [`go` preset]: ../manifest.md#go-preset
+
+### Interfaces in Go
+
+Interfaces deserve a special mention because they are a bit special.
+
+Take the following interface:
+
+```reproto
+interface Foo {
+    shared: string;
+
+    Bar {
+        bar: string;
+    }
+
+    Baz;
+}
+```
+
+Would be translated into (roughly) this Go code:
+
+```go
+struct Foo {
+    Value *interface {
+        IsFoo()
+    }
+}
+
+struct Foo_Bar {
+    Shared string
+    Bar string
+}
+
+func (this Foo_Bar) IsFoo() {
+}
+
+struct Foo_Baz {
+    Shared string
+}
+
+func (this Foo_Baz) IsFoo() {
+}
+```
+
+So when you have the instance of an interface available, you can determine which sub-type is being
+used through a type assertion:
+
+```go
+foo := DeserializeFoo()
+
+switch v := foo.Value.(type) {
+Foo_Bar:
+    fmt.Println(v.Shared)
+    fmt.Println(v.Bar)
+Foo_Baz:
+    fmt.Println(v.Shared)
+default:
+    log.Fatal("oh no")
+}
+```
 
 ### `[modules."encoding/json"]`
 
