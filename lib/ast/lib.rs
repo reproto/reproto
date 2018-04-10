@@ -34,11 +34,12 @@ impl<'input, T> ops::Deref for Item<'input, T> {
 impl<'input, T> Item<'input, T> {
     pub fn map<F, E: WithPos, U>(self, f: F) -> result::Result<Loc<U>, E>
     where
-        F: FnOnce(Vec<Cow<'input, str>>, Vec<Loc<Attribute<'input>>>, T) -> result::Result<U, E>,
+        F: FnOnce(Vec<Cow<'input, str>>, Vec<Loc<Attribute<'input>>>, Loc<T>)
+            -> result::Result<U, E>,
     {
-        let (value, pos) = Loc::take_pair(self.item);
+        let pos = Loc::pos(&self.item).clone();
 
-        match f(self.comment, self.attributes, value) {
+        match f(self.comment, self.attributes, self.item) {
             Ok(o) => Ok(Loc::new(o, pos)),
             Err(e) => Err(e.with_pos(pos)),
         }

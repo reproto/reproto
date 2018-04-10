@@ -6,7 +6,7 @@ use core::{self, Attributes, Context, Loc, Pos, Selection, WithPos};
 use naming::Naming;
 use scope::Scope;
 use std::borrow::Cow;
-use std::collections::{hash_map, HashMap};
+use std::collections::{hash_map, BTreeSet, HashMap};
 use std::option;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -27,7 +27,8 @@ macro_rules! check_conflict {
     };
 }
 
-macro_rules! check_field_sub_type {
+/// Checks if a given field matches a sub-type tag.
+macro_rules! check_field_tag {
     ($ctx:ident, $field:expr, $strategy:expr) => {
         match $strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
@@ -45,6 +46,7 @@ macro_rules! check_field_sub_type {
                     return Err(report);
                 }
             }
+            _ => {}
         }
     };
 }
@@ -75,6 +77,7 @@ pub struct SubTypeConstraint<'input> {
     reserved: &'input HashMap<String, Pos>,
     field_idents: &'input HashMap<String, Pos>,
     field_names: &'input HashMap<String, Pos>,
+    required_fields: &'input mut HashMap<BTreeSet<String>, Pos>,
 }
 
 #[derive(Debug)]
@@ -251,6 +254,8 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
+            let (item, _) = Loc::take_pair(item);
+
             let ctx = scope.ctx();
 
             let mut variants = Vec::new();
@@ -311,6 +316,8 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
         let ctx = scope.ctx();
 
         variant.map(|comment, attributes, item| {
+            let (item, _) = Loc::take_pair(item);
+
             let ordinal = if let Some(argument) = item.argument.into_model(scope)? {
                 match *ty {
                     core::RpEnumType::String if !argument.is_string() => {
@@ -397,6 +404,8 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Loc<RpField>> {
         self.map(|comment, attributes, item| {
+            let (item, _) = Loc::take_pair(item);
+
             let field_as = item.field_as.into_model(scope)?;
 
             let (ident, safe_ident, field_as) = build_item_name(
@@ -440,6 +449,8 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
+            let (item, _) = Loc::take_pair(item);
+
             let ctx = scope.ctx();
 
             let mut attributes = attributes.into_model(scope)?;
@@ -474,6 +485,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             let mut names = HashMap::new();
             let mut idents = HashMap::new();
             let mut sub_types = Vec::new();
+            let mut required_fields = HashMap::new();
 
             for sub_type in item.sub_types {
                 let scope = scope.child(Loc::value(&sub_type.name).to_owned());
@@ -483,6 +495,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                     reserved: &reserved,
                     field_idents: &field_idents,
                     field_names: &field_names,
+                    required_fields: &mut required_fields,
                 };
 
                 let sub_type = (sub_type, constraint).into_model(&scope)?;
@@ -491,6 +504,14 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 check_conflict!(ctx, names, sub_type, sub_type.name(), "sub-type with name");
 
                 sub_types.push(sub_type);
+            }
+
+            // check that we are not violating any constraints.
+            match *&sub_type_strategy {
+                core::RpSubTypeStrategy::RequiredFields => {
+                    check_required_fields(&ctx, &sub_types, &required_fields)?;
+                }
+                _ => {}
             }
 
             return Ok(RpInterfaceBody {
@@ -503,6 +524,50 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 sub_types: sub_types,
                 sub_type_strategy: sub_type_strategy,
             });
+
+            /// Check invariants that need to be enforced with unique fields
+            fn check_required_fields(
+                ctx: &Context,
+                sub_types: &Vec<Loc<RpSubType>>,
+                required_fields: &HashMap<BTreeSet<String>, Pos>,
+            ) -> Result<()> {
+                let mut r = ctx.report();
+
+                for sub_type in sub_types {
+                    let required = sub_type
+                        .fields
+                        .iter()
+                        .filter(|f| f.is_required())
+                        .map(|f| f.name().to_string())
+                        .collect::<BTreeSet<_>>();
+
+                    for (key, pos) in required_fields {
+                        // skip own
+                        if *key == required {
+                            continue;
+                        }
+
+                        let mut any = false;
+
+                        let optional = sub_type.fields.iter().filter(|f| f.is_optional());
+
+                        for f in optional.filter(|f| key.contains(f.name())) {
+                            any = true;
+                            r = r.err(Loc::pos(f), "is a required field of another sub-type");
+                        }
+
+                        if any {
+                            r = r.info(pos.clone(), "sub-type defined here");
+                        }
+                    }
+                }
+
+                if !r.is_empty() {
+                    return Err(r.into());
+                }
+
+                Ok(())
+            }
 
             /// Extract type_info attribute.
             fn push_type_info(
@@ -521,6 +586,9 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                                     tag: tag.to_string(),
                                 });
                             }
+                        }
+                        "required_fields" => {
+                            return Ok(core::RpSubTypeStrategy::RequiredFields);
                         }
                         _ => {
                             return Err(ctx.report()
@@ -580,6 +648,8 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         return self.map(|comment, attributes, item| {
+            let (item, _) = Loc::take_pair(item);
+
             let ctx = scope.ctx();
 
             let mut decl_idents = HashMap::new();
@@ -672,6 +742,8 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         return self.map(|comment, attributes, item| {
+            let (item, _) = Loc::take_pair(item);
+
             let ctx = scope.ctx();
 
             let id = item.id.into_model(scope)?;
@@ -766,9 +838,12 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             field_idents,
             field_names,
             sub_type_strategy,
+            required_fields,
         } = constraint;
 
         return item.map(|comment, attributes, item| {
+            let (item, pos) = Loc::take_pair(item);
+
             let ctx = scope.ctx();
 
             let mut attributes = attributes.into_model(scope)?;
@@ -791,7 +866,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
                         check_conflict!(ctx, field_idents, field, field.ident(), "field");
                         check_conflict!(ctx, field_names, field, field.name(), "field with name");
 
-                        check_field_sub_type!(ctx, field, *sub_type_strategy);
+                        check_field_tag!(ctx, field, *sub_type_strategy);
 
                         check_field_reserved!(ctx, field, interface_reserved);
                         check_field_reserved!(ctx, field, reserved);
@@ -810,6 +885,24 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             }
 
             let sub_type_name = sub_type_name(item.alias, scope)?;
+
+            match *sub_type_strategy {
+                core::RpSubTypeStrategy::RequiredFields => {
+                    let fields = fields
+                        .iter()
+                        .filter(|f| f.is_required())
+                        .map(|f| f.name().to_string())
+                        .collect::<BTreeSet<_>>();
+
+                    if let Some(other) = required_fields.insert(fields, pos.clone()) {
+                        return Err(ctx.report()
+                            .err(pos, "does not have a unique set of fields")
+                            .info(other, "previously defined here")
+                            .into());
+                    }
+                }
+                _ => {}
+            }
 
             Ok(RpSubType {
                 name: scope.as_name(),
@@ -850,6 +943,8 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
+            let (item, _) = Loc::take_pair(item);
+
             let Members {
                 fields,
                 codes,
@@ -877,6 +972,8 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
+            let (item, _) = Loc::take_pair(item);
+
             let mut attributes = attributes.into_model(scope)?;
             let reserved = attributes::reserved(scope, &mut attributes)?;
 
@@ -949,7 +1046,7 @@ impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
                     check_conflict!(ctx, field_names, field, field.name(), "field with name");
 
                     if let Some(sub_type_strategy) = sub_type_strategy {
-                        check_field_sub_type!(ctx, field, *sub_type_strategy);
+                        check_field_tag!(ctx, field, *sub_type_strategy);
                     }
 
                     if let Some(reserved) = reserved {

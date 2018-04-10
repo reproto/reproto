@@ -1,0 +1,15 @@
+#[type_info(strategy = "required_fields")]
+interface Example {
+  Foo {
+    a: string;
+  }
+
+  Bar {
+    a?: string;
+  }
+
+  Baz {
+    a: string;
+    b: string;
+  }
+}

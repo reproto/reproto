@@ -529,17 +529,21 @@ This attribute controls which strategy is used for determining sub-types in [int
 Valid strategies are:
 
 * [`tagged`], encode as an object with a special `tag` field indicating the sub-type.
+* [`required_fields`], determine sub-type by its unique combination of required fields.
 
 [interfaces]: #interfaces
 [`tagged`]: #type-info-tagged
+[`required_fields`]: #type-info-required-fields
 
 #### <a id="type-info-tagged" />`#[type_info(strategy = "tagged", tag = <string>)]`
 
 The default sub-type strategy.
+
 Sub-types are encoded as objects, with a special tag field indicated by the `tag` selector.
 
 By default interfaces are _internally tagged_, in that the field indicating the type lives in the
 same level as the fields.
+
 When interfaces are internally tagged, no field may conflict with the tag field as showcased here:
 
 ```reproto
@@ -568,6 +572,41 @@ interface Example {
 ```json
 {"@type": "foo", "foo_field": 42}
 {"@type": "bar", "bar_field": 42}
+```
+
+#### <a id="type-info-required-fields" />`#[type_info(strategy = "required_fields")]`
+
+Sub-types are encoded as objects, where the required fields of each sub-type determined which
+sub-type is being encoded.
+
+This strategy has the following restrictions:
+
+ * Any given sub-type is not permitted to have an optional field that is a _required_ field in any
+   other sub-type.
+ * Sub-types are matched _in order_, so if two eligible sub-types are available, the first one
+   will be used.
+
+The following is an example specification and the JSON it corresponds to:
+
+```reproto
+#[type_info(strategy = "required_fields")]
+interface Example {
+  Foo {
+    foo_field: u32;
+  }
+
+  Bar {
+    bar_field: u32;
+  }
+
+  Baz;
+}
+```
+
+```json
+{"foo_field": 42}
+{"bar_field": 42}
+{}
 ```
 
 ## Tuples
