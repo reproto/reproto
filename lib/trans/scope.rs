@@ -186,7 +186,7 @@ mod tests {
         let prefixes = HashMap::new();
         let keywords = Rc::new(HashMap::new());
 
-        let s = Scope::new(ctx, package, prefixes, keywords, false, None, None, None);
+        let s = Scope::new(ctx, package, prefixes, keywords, None, None);
 
         let s2 = s.child("foo");
         let s3 = s2.child("bar");
