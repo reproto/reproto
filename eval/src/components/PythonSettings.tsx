@@ -27,7 +27,7 @@ export class PythonSettingsForm extends React.Component<PythonSettingsFormProps,
         <label htmlFor="python-requests" className="lb-sm">Requests Support</label>
 
         <small id="python-requests-help" className="form-text form-text-sm text-muted">
-          Support for <a href="https://github.com/FasterXML/requests">Requests</a>
+          Support for <a href="http://docs.python-requests.org">Requests</a>
         </small>
       </div>
       </form>

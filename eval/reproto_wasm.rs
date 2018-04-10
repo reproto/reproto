@@ -102,11 +102,12 @@ impl Output {
             }
             Output::Python => {
                 if settings.python.requests {
-                    modules.push(Box::new(python::PythonModule::Requests));
+                    let config = python::module::RequestsConfig::default();
+                    modules.push(Box::new(python::PythonModule::Requests(config)));
                 }
 
                 Box::new(python::PythonLang)
-            },
+            }
             Output::Rust => {
                 if settings.rust.chrono {
                     modules.push(Box::new(rust::RustModule::Chrono));
