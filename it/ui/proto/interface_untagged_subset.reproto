@@ -1,0 +1,15 @@
+#[type_info(strategy = "untagged")]
+interface Example {
+  Foo {
+    a: string;
+  }
+
+  Bar {
+    b: string;
+  }
+
+  Baz {
+    a: string;
+    b: string;
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "status": false,
+  "stdout": [
+    "it/ui/proto/interface_untagged_subset.reproto:3:3-9:",
+    "  3:   Foo {",
+    "       ^^^^^^ - untagged key `{\"a\"}` is a sub-set of another sub-type",
+    "it/ui/proto/interface_untagged_subset.reproto:3:3-9:",
+    "  3:   Foo {",
+    "       ^^^^^^ - HINT: re-order your sub-types so that this is avoided",
+    "it/ui/proto/interface_untagged_subset.reproto:11:3-9:",
+    " 11:   Baz {",
+    "       ^^^^^^ - sub-type with key `{\"a\", \"b\"}` defined here",
+    "it/ui/proto/interface_untagged_subset.reproto:7:3-9:",
+    "  7:   Bar {",
+    "       ^^^^^^ - untagged key `{\"b\"}` is a sub-set of another sub-type",
+    "it/ui/proto/interface_untagged_subset.reproto:7:3-9:",
+    "  7:   Bar {",
+    "       ^^^^^^ - HINT: re-order your sub-types so that this is avoided",
+    "it/ui/proto/interface_untagged_subset.reproto:11:3-9:",
+    " 11:   Baz {",
+    "       ^^^^^^ - sub-type with key `{\"a\", \"b\"}` defined here"
+  ],
+  "stderr": []
+}

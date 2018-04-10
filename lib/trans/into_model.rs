@@ -511,6 +511,42 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             match *&sub_type_strategy {
                 core::RpSubTypeStrategy::Untagged => {
                     check_untagged(&ctx, &sub_types, &untagged)?;
+
+                    // Check that - in the order sub-types appear, any the key for any give
+                    // sub-type is not a subset of any sub-sequent sub-types.
+
+                    let mut it = untagged.iter();
+                    let mut report = ctx.report();
+
+                    while let Some((k0, pos0)) = it.next() {
+                        let mut sub = it.clone();
+
+                        while let Some((k1, pos1)) = sub.next() {
+                            if !k0.is_subset(k1) {
+                                continue;
+                            }
+
+                            report = report.err(
+                                pos0,
+                                &format!(
+                                    "untagged key `{:?}` is a sub-set of another sub-type",
+                                    k0
+                                ),
+                            );
+
+                            report = report.info(
+                                pos0,
+                                "HINT: re-order your sub-types so that this is avoided",
+                            );
+
+                            report = report
+                                .info(pos1, &format!("sub-type with key `{:?}` defined here", k1));
+                        }
+                    }
+
+                    if !report.is_empty() {
+                        return Err(report.into());
+                    }
                 }
                 _ => {}
             }
