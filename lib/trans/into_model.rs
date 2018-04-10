@@ -526,21 +526,34 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                                 continue;
                             }
 
+                            let names =
+                                k0.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ");
+
                             report = report.err(
                                 pos0,
                                 &format!(
-                                    "untagged key `{:?}` is a sub-set of another sub-type",
-                                    k0
+                                    "fields with names `{}` are present in another sub-type, this \
+                                     would cause deserialization to be ambiguous for certain \
+                                     cases.",
+                                    names,
                                 ),
                             );
 
                             report = report.info(
                                 pos0,
-                                "HINT: re-order your sub-types so that this is avoided",
+                                "HINT: re-order or change your sub-types to avoid this",
                             );
 
-                            report = report
-                                .info(pos1, &format!("sub-type with key `{:?}` defined here", k1));
+                            let names =
+                                k1.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ");
+
+                            report = report.info(
+                                pos1,
+                                &format!(
+                                    "conflicting sub-type with fields `{}` is defined here",
+                                    names
+                                ),
+                            );
                         }
                     }
 
