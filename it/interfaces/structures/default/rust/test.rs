@@ -4,7 +4,7 @@ pub struct Entry {
   pub tagged: Option<Tagged>,
 
   #[serde(skip_serializing_if="Option::is_none")]
-  pub required_fields: Option<RequiredFields>,
+  pub untagged: Option<Untagged>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -28,7 +28,7 @@ pub enum Tagged {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
-pub enum RequiredFields {
+pub enum Untagged {
   /// Special case: fields shared with other sub-types.
   /// NOTE: due to rust support through untagged, the types are matched in-order.
   A {

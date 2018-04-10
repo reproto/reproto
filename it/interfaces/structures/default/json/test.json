@@ -33,7 +33,7 @@
         },
         {
           "required": false,
-          "ident": "required_fields",
+          "ident": "untagged",
           "comment": [],
           "type": {
             "type": "name",
@@ -42,7 +42,7 @@
                 "package": "test"
               },
               "parts": [
-                "RequiredFields"
+                "Untagged"
               ]
             }
           }
@@ -154,10 +154,10 @@
           "package": "test"
         },
         "parts": [
-          "RequiredFields"
+          "Untagged"
         ]
       },
-      "ident": "RequiredFields",
+      "ident": "Untagged",
       "comment": [],
       "decls": [],
       "fields": [
@@ -186,7 +186,7 @@
               "package": "test"
             },
             "parts": [
-              "RequiredFields",
+              "Untagged",
               "A"
             ]
           },
@@ -230,7 +230,7 @@
               "package": "test"
             },
             "parts": [
-              "RequiredFields",
+              "Untagged",
               "B"
             ]
           },
@@ -263,7 +263,7 @@
               "package": "test"
             },
             "parts": [
-              "RequiredFields",
+              "Untagged",
               "C"
             ]
           },
@@ -292,7 +292,7 @@
         }
       ],
       "sub_type_strategy": {
-        "type": "required_fields"
+        "type": "untagged"
       }
     }
   ]

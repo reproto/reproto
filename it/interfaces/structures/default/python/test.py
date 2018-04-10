@@ -1,13 +1,13 @@
 class Entry:
-  def __init__(self, tagged, required_fields):
+  def __init__(self, tagged, untagged):
     self.tagged = tagged
-    self.required_fields = required_fields
+    self.untagged = untagged
 
   def get_tagged(self):
     return self.tagged
 
-  def get_required_fields(self):
-    return self.required_fields
+  def get_untagged(self):
+    return self.untagged
 
   @staticmethod
   def decode(data):
@@ -19,15 +19,15 @@ class Entry:
     else:
       f_tagged = None
 
-    if "required_fields" in data:
-      f_required_fields = data["required_fields"]
+    if "untagged" in data:
+      f_untagged = data["untagged"]
 
-      if f_required_fields is not None:
-        f_required_fields = RequiredFields.decode(f_required_fields)
+      if f_untagged is not None:
+        f_untagged = Untagged.decode(f_untagged)
     else:
-      f_required_fields = None
+      f_untagged = None
 
-    return Entry(f_tagged, f_required_fields)
+    return Entry(f_tagged, f_untagged)
 
   def encode(self):
     data = dict()
@@ -35,13 +35,13 @@ class Entry:
     if self.tagged is not None:
       data["tagged"] = self.tagged.encode()
 
-    if self.required_fields is not None:
-      data["required_fields"] = self.required_fields.encode()
+    if self.untagged is not None:
+      data["untagged"] = self.untagged.encode()
 
     return data
 
   def __repr__(self):
-    return "<Entry tagged:{!r}, required_fields:{!r}>".format(self.tagged, self.required_fields)
+    return "<Entry tagged:{!r}, untagged:{!r}>".format(self.tagged, self.untagged)
 
 class Tagged:
   @staticmethod
@@ -182,23 +182,23 @@ class Tagged_Baz:
   def __repr__(self):
     return "<Tagged_Baz shared:{!r}>".format(self.shared)
 
-class RequiredFields:
+class Untagged:
   @staticmethod
   def decode(data):
     keys = set(data.keys()) - set(("shared_ignore",))
 
     if keys - set(("ignore",)) == set(("shared", "a", "b")):
-      return RequiredFields_A.decode(data)
+      return Untagged_A.decode(data)
 
     if keys - set(("ignore",)) == set(("shared", "a")):
-      return RequiredFields_B.decode(data)
+      return Untagged_B.decode(data)
 
     if keys - set(("ignore",)) == set(("shared", "b")):
-      return RequiredFields_C.decode(data)
+      return Untagged_C.decode(data)
 
     raise Exception("no sub type matching the given fields: " + repr(keys))
 
-class RequiredFields_A:
+class Untagged_A:
   TYPE = "A"
 
   def __init__(self, shared, shared_ignore, a, b, ignore):
@@ -247,7 +247,7 @@ class RequiredFields_A:
     else:
       f_ignore = None
 
-    return RequiredFields_A(f_shared, f_shared_ignore, f_a, f_b, f_ignore)
+    return Untagged_A(f_shared, f_shared_ignore, f_a, f_b, f_ignore)
 
   def encode(self):
     data = dict()
@@ -276,9 +276,9 @@ class RequiredFields_A:
     return data
 
   def __repr__(self):
-    return "<RequiredFields_A shared:{!r}, shared_ignore:{!r}, a:{!r}, b:{!r}, ignore:{!r}>".format(self.shared, self.shared_ignore, self.a, self.b, self.ignore)
+    return "<Untagged_A shared:{!r}, shared_ignore:{!r}, a:{!r}, b:{!r}, ignore:{!r}>".format(self.shared, self.shared_ignore, self.a, self.b, self.ignore)
 
-class RequiredFields_B:
+class Untagged_B:
   TYPE = "B"
 
   def __init__(self, shared, shared_ignore, a, ignore):
@@ -321,7 +321,7 @@ class RequiredFields_B:
     else:
       f_ignore = None
 
-    return RequiredFields_B(f_shared, f_shared_ignore, f_a, f_ignore)
+    return Untagged_B(f_shared, f_shared_ignore, f_a, f_ignore)
 
   def encode(self):
     data = dict()
@@ -345,9 +345,9 @@ class RequiredFields_B:
     return data
 
   def __repr__(self):
-    return "<RequiredFields_B shared:{!r}, shared_ignore:{!r}, a:{!r}, ignore:{!r}>".format(self.shared, self.shared_ignore, self.a, self.ignore)
+    return "<Untagged_B shared:{!r}, shared_ignore:{!r}, a:{!r}, ignore:{!r}>".format(self.shared, self.shared_ignore, self.a, self.ignore)
 
-class RequiredFields_C:
+class Untagged_C:
   TYPE = "C"
 
   def __init__(self, shared, shared_ignore, b, ignore):
@@ -390,7 +390,7 @@ class RequiredFields_C:
     else:
       f_ignore = None
 
-    return RequiredFields_C(f_shared, f_shared_ignore, f_b, f_ignore)
+    return Untagged_C(f_shared, f_shared_ignore, f_b, f_ignore)
 
   def encode(self):
     data = dict()
@@ -414,4 +414,4 @@ class RequiredFields_C:
     return data
 
   def __repr__(self):
-    return "<RequiredFields_C shared:{!r}, shared_ignore:{!r}, b:{!r}, ignore:{!r}>".format(self.shared, self.shared_ignore, self.b, self.ignore)
+    return "<Untagged_C shared:{!r}, shared_ignore:{!r}, b:{!r}, ignore:{!r}>".format(self.shared, self.shared_ignore, self.b, self.ignore)

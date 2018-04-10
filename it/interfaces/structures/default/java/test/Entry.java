@@ -8,18 +8,18 @@ import java.util.Optional;
 public class Entry {
   @JsonProperty("tagged")
   private final Optional<Tagged> tagged;
-  @JsonProperty("required_fields")
-  private final Optional<RequiredFields> requiredFields;
+  @JsonProperty("untagged")
+  private final Optional<Untagged> untagged;
 
   @JsonCreator
   public Entry(
     @JsonProperty("tagged") final Optional<Tagged> tagged,
-    @JsonProperty("required_fields") final Optional<RequiredFields> requiredFields
+    @JsonProperty("untagged") final Optional<Untagged> untagged
   ) {
     Objects.requireNonNull(tagged, "tagged");
     this.tagged = tagged;
-    Objects.requireNonNull(requiredFields, "required_fields");
-    this.requiredFields = requiredFields;
+    Objects.requireNonNull(untagged, "untagged");
+    this.untagged = untagged;
   }
 
   @JsonProperty("tagged")
@@ -27,16 +27,16 @@ public class Entry {
     return this.tagged;
   }
 
-  @JsonProperty("required_fields")
-  public Optional<RequiredFields> getRequiredFields() {
-    return this.requiredFields;
+  @JsonProperty("untagged")
+  public Optional<Untagged> getUntagged() {
+    return this.untagged;
   }
 
   @Override
   public int hashCode() {
     int result = 1;
     result = result * 31 + this.tagged.hashCode();
-    result = result * 31 + this.requiredFields.hashCode();
+    result = result * 31 + this.untagged.hashCode();
     return result;
   }
 
@@ -57,7 +57,7 @@ public class Entry {
       return false;
     }
 
-    if (!this.requiredFields.equals(o.requiredFields)) {
+    if (!this.untagged.equals(o.untagged)) {
       return false;
     }
 
@@ -73,8 +73,8 @@ public class Entry {
     b.append("tagged=");
     b.append(this.tagged.toString());
     b.append(", ");
-    b.append("required_fields=");
-    b.append(this.requiredFields.toString());
+    b.append("untagged=");
+    b.append(this.untagged.toString());
     b.append(")");
 
     return b.toString();
@@ -82,23 +82,23 @@ public class Entry {
 
   public static class Builder {
     private Optional<Tagged> tagged = Optional.empty();
-    private Optional<RequiredFields> requiredFields = Optional.empty();
+    private Optional<Untagged> untagged = Optional.empty();
 
     public Builder tagged(final Tagged tagged) {
       this.tagged = Optional.of(tagged);
       return this;
     }
 
-    public Builder requiredFields(final RequiredFields requiredFields) {
-      this.requiredFields = Optional.of(requiredFields);
+    public Builder untagged(final Untagged untagged) {
+      this.untagged = Optional.of(untagged);
       return this;
     }
 
     public Entry build() {
       final Optional<Tagged> tagged = this.tagged;
-      final Optional<RequiredFields> requiredFields = this.requiredFields;
+      final Optional<Untagged> untagged = this.untagged;
 
-      return new Entry(tagged, requiredFields);
+      return new Entry(tagged, untagged);
     }
   }
 }

@@ -1,10 +1,10 @@
 public struct Test_Entry: Codable {
   let tagged: Test_Tagged?
-  let required_fields: Test_Untagged?
+  let untagged: Test_Untagged?
 
   enum CodingKeys: String, CodingKey {
     case tagged = "tagged"
-    case required_fields = "required_fields"
+    case untagged = "untagged"
   }
 }
 
@@ -92,10 +92,10 @@ public struct Test_Tagged_Baz: Codable {
   }
 }
 
-public enum Test_RequiredFields {
-  case A(Test_RequiredFields_A)
-  case B(Test_RequiredFields_B)
-  case C(Test_RequiredFields_C)
+public enum Test_Untagged {
+  case A(Test_Untagged_A)
+  case B(Test_Untagged_B)
+  case C(Test_Untagged_C)
 
   enum AKeys: String, CodingKey {
     case a = "a"
@@ -113,20 +113,20 @@ public enum Test_RequiredFields {
   }
 }
 
-extension Test_RequiredFields: Decodable {
+extension Test_Untagged: Decodable {
   public init(from decoder: Decoder) throws {
     if Set(try decoder.container(keyedBy: AKeys.self).allKeys) == Set([AKeys.a, AKeys.b]) {
-      self = try .A(Test_RequiredFields_A(from: decoder))
+      self = try .A(Test_Untagged_A(from: decoder))
       return
     }
 
     if Set(try decoder.container(keyedBy: BKeys.self).allKeys) == Set([BKeys.a]) {
-      self = try .B(Test_RequiredFields_B(from: decoder))
+      self = try .B(Test_Untagged_B(from: decoder))
       return
     }
 
     if Set(try decoder.container(keyedBy: CKeys.self).allKeys) == Set([CKeys.b]) {
-      self = try .C(Test_RequiredFields_C(from: decoder))
+      self = try .C(Test_Untagged_C(from: decoder))
       return
     }
 
@@ -135,7 +135,7 @@ extension Test_RequiredFields: Decodable {
   }
 }
 
-extension Test_RequiredFields: Encodable {
+extension Test_Untagged: Encodable {
   public func encode(to encoder: Encoder) throws {
     switch self {
     case .A(let d):
@@ -150,7 +150,7 @@ extension Test_RequiredFields: Encodable {
 
 // Special case: fields shared with other sub-types.
 // NOTE: due to rust support through untagged, the types are matched in-order.
-public struct Test_RequiredFields_A: Codable {
+public struct Test_Untagged_A: Codable {
   let shared: String
   let shared_ignore: String?
   let a: String
@@ -166,7 +166,7 @@ public struct Test_RequiredFields_A: Codable {
   }
 }
 
-public struct Test_RequiredFields_B: Codable {
+public struct Test_Untagged_B: Codable {
   let shared: String
   let shared_ignore: String?
   let a: String
@@ -180,7 +180,7 @@ public struct Test_RequiredFields_B: Codable {
   }
 }
 
-public struct Test_RequiredFields_C: Codable {
+public struct Test_Untagged_C: Codable {
   let shared: String
   let shared_ignore: String?
   let b: String

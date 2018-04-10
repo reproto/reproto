@@ -6,7 +6,7 @@ import "errors"
 type Entry struct {
   Tagged *Tagged `json:"tagged,omitempty"`
 
-  RequiredFields *RequiredFields `json:"required_fields,omitempty"`
+  Untagged *Untagged `json:"untagged,omitempty"`
 }
 
 type Tagged struct {
@@ -167,15 +167,15 @@ func (this Tagged) MarshalJSON() ([]byte, error) {
   return nil, errors.New("no sub-type set")
 }
 
-type RequiredFields struct {
-  A *RequiredFields_A
-  B *RequiredFields_B
-  C *RequiredFields_C
+type Untagged struct {
+  A *Untagged_A
+  B *Untagged_B
+  C *Untagged_C
 }
 
 // Special case: fields shared with other sub-types.
 // NOTE: due to rust support through untagged, the types are matched in-order.
-type RequiredFields_A struct {
+type Untagged_A struct {
   Shared string `json:"shared"`
 
   SharedIgnore *string `json:"shared_ignore,omitempty"`
@@ -187,7 +187,7 @@ type RequiredFields_A struct {
   Ignore *string `json:"ignore,omitempty"`
 }
 
-type RequiredFields_B struct {
+type Untagged_B struct {
   Shared string `json:"shared"`
 
   SharedIgnore *string `json:"shared_ignore,omitempty"`
@@ -197,7 +197,7 @@ type RequiredFields_B struct {
   Ignore *string `json:"ignore,omitempty"`
 }
 
-type RequiredFields_C struct {
+type Untagged_C struct {
   Shared string `json:"shared"`
 
   SharedIgnore *string `json:"shared_ignore,omitempty"`
@@ -207,7 +207,7 @@ type RequiredFields_C struct {
   Ignore *string `json:"ignore,omitempty"`
 }
 
-func (this *RequiredFields) UnmarshalJSON(b []byte) error {
+func (this *Untagged) UnmarshalJSON(b []byte) error {
   var err error
   env := make(map[string]json.RawMessage)
 
@@ -231,7 +231,7 @@ func (this *RequiredFields) UnmarshalJSON(b []byte) error {
   }
 
   if all {
-    sub := RequiredFields_A{}
+    sub := Untagged_A{}
 
     if err = json.Unmarshal(b, &sub); err != nil {
       return err
@@ -249,7 +249,7 @@ func (this *RequiredFields) UnmarshalJSON(b []byte) error {
   }
 
   if all {
-    sub := RequiredFields_B{}
+    sub := Untagged_B{}
 
     if err = json.Unmarshal(b, &sub); err != nil {
       return err
@@ -267,7 +267,7 @@ func (this *RequiredFields) UnmarshalJSON(b []byte) error {
   }
 
   if all {
-    sub := RequiredFields_C{}
+    sub := Untagged_C{}
 
     if err = json.Unmarshal(b, &sub); err != nil {
       return err
@@ -280,7 +280,7 @@ func (this *RequiredFields) UnmarshalJSON(b []byte) error {
   return errors.New("no combination of fields found")
 }
 
-func (this RequiredFields) MarshalJSON() ([]byte, error) {
+func (this Untagged) MarshalJSON() ([]byte, error) {
   if this.A != nil {
     return json.Marshal(&this.A)
   }

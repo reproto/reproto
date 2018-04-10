@@ -4,13 +4,13 @@ using System;
 using System.Text;
 
 namespace Test {
-  [JsonConverter(typeof(RequiredFields.Json_Net_Converter))]
-  public abstract class RequiredFields {
-    public RequiredFields() {
+  [JsonConverter(typeof(Untagged.Json_Net_Converter))]
+  public abstract class Untagged {
+    public Untagged() {
     }
 
     [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-    public class A : RequiredFields {
+    public class A : Untagged {
       [JsonProperty("shared", Required = Required.DisallowNull)]
       public String shared {
         get;
@@ -125,7 +125,7 @@ namespace Test {
     }
 
     [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-    public class B : RequiredFields {
+    public class B : Untagged {
       [JsonProperty("shared", Required = Required.DisallowNull)]
       public String shared {
         get;
@@ -226,7 +226,7 @@ namespace Test {
     }
 
     [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-    public class C : RequiredFields {
+    public class C : Untagged {
       [JsonProperty("shared", Required = Required.DisallowNull)]
       public String shared {
         get;

@@ -1,6 +1,6 @@
 public struct Test_Entry {
   let tagged: Test_Tagged?
-  let required_fields: Test_RequiredFields?
+  let untagged: Test_Untagged?
 }
 
 public extension Test_Entry {
@@ -13,13 +13,13 @@ public extension Test_Entry {
       tagged = Optional.some(try Test_Tagged.decode(json: value))
     }
 
-    var required_fields: Test_RequiredFields? = Optional.none
+    var untagged: Test_Untagged? = Optional.none
 
-    if let value = json["required_fields"] {
-      required_fields = Optional.some(try Test_RequiredFields.decode(json: value))
+    if let value = json["untagged"] {
+      untagged = Optional.some(try Test_Untagged.decode(json: value))
     }
 
-    return Test_Entry(tagged: tagged, required_fields: required_fields)
+    return Test_Entry(tagged: tagged, untagged: untagged)
   }
 
   func encode() throws -> [String: Any] {
@@ -28,8 +28,8 @@ public extension Test_Entry {
     if let value = self.tagged {
       json["tagged"] = try value.encode()
     }
-    if let value = self.required_fields {
-      json["required_fields"] = try value.encode()
+    if let value = self.untagged {
+      json["untagged"] = try value.encode()
     }
 
     return json
@@ -189,28 +189,28 @@ public extension Test_Tagged_Baz {
   }
 }
 
-public enum Test_RequiredFields {
-  case A(Test_RequiredFields_A)
-  case B(Test_RequiredFields_B)
-  case C(Test_RequiredFields_C)
+public enum Test_Untagged {
+  case A(Test_Untagged_A)
+  case B(Test_Untagged_B)
+  case C(Test_Untagged_C)
 }
 
-public extension Test_RequiredFields {
-  static func decode(json: Any) throws -> Test_RequiredFields {
+public extension Test_Untagged {
+  static func decode(json: Any) throws -> Test_Untagged {
     let json = try decode_value(json as? [String: Any])
 
     let keys = Set(json.keys).subtracting(["shared_ignore"])
 
     if keys.subtracting(["ignore"]) == ["shared", "a", "b"] {
-      return Test_RequiredFields.A(try Test_RequiredFields_A.decode(json: json))
+      return Test_Untagged.A(try Test_Untagged_A.decode(json: json))
     }
 
     if keys.subtracting(["ignore"]) == ["shared", "a"] {
-      return Test_RequiredFields.B(try Test_RequiredFields_B.decode(json: json))
+      return Test_Untagged.B(try Test_Untagged_B.decode(json: json))
     }
 
     if keys.subtracting(["ignore"]) == ["shared", "b"] {
-      return Test_RequiredFields.C(try Test_RequiredFields_C.decode(json: json))
+      return Test_Untagged.C(try Test_Untagged_C.decode(json: json))
     }
 
     throw SerializationError.invalid("no legal field combinations")
@@ -230,15 +230,15 @@ public extension Test_RequiredFields {
 
 // Special case: fields shared with other sub-types.
 // NOTE: due to rust support through untagged, the types are matched in-order.
-public struct Test_RequiredFields_A {
+public struct Test_Untagged_A {
   let shared: String
   let shared_ignore: String?
   let a: String
   let b: String
   let ignore: String?
 }
-public extension Test_RequiredFields_A {
-  static func decode(json: Any) throws -> Test_RequiredFields_A {
+public extension Test_Untagged_A {
+  static func decode(json: Any) throws -> Test_Untagged_A {
     let json = try decode_value(json as? [String: Any])
 
     guard let f_shared = json["shared"] else {
@@ -271,7 +271,7 @@ public extension Test_RequiredFields_A {
       ignore = Optional.some(try decode_name(unbox(value, as: String.self), name: "ignore"))
     }
 
-    return Test_RequiredFields_A(shared: shared, shared_ignore: shared_ignore, a: a, b: b, ignore: ignore)
+    return Test_Untagged_A(shared: shared, shared_ignore: shared_ignore, a: a, b: b, ignore: ignore)
   }
 
   func encode() throws -> [String: Any] {
@@ -291,14 +291,14 @@ public extension Test_RequiredFields_A {
   }
 }
 
-public struct Test_RequiredFields_B {
+public struct Test_Untagged_B {
   let shared: String
   let shared_ignore: String?
   let a: String
   let ignore: String?
 }
-public extension Test_RequiredFields_B {
-  static func decode(json: Any) throws -> Test_RequiredFields_B {
+public extension Test_Untagged_B {
+  static func decode(json: Any) throws -> Test_Untagged_B {
     let json = try decode_value(json as? [String: Any])
 
     guard let f_shared = json["shared"] else {
@@ -325,7 +325,7 @@ public extension Test_RequiredFields_B {
       ignore = Optional.some(try decode_name(unbox(value, as: String.self), name: "ignore"))
     }
 
-    return Test_RequiredFields_B(shared: shared, shared_ignore: shared_ignore, a: a, ignore: ignore)
+    return Test_Untagged_B(shared: shared, shared_ignore: shared_ignore, a: a, ignore: ignore)
   }
 
   func encode() throws -> [String: Any] {
@@ -344,14 +344,14 @@ public extension Test_RequiredFields_B {
   }
 }
 
-public struct Test_RequiredFields_C {
+public struct Test_Untagged_C {
   let shared: String
   let shared_ignore: String?
   let b: String
   let ignore: String?
 }
-public extension Test_RequiredFields_C {
-  static func decode(json: Any) throws -> Test_RequiredFields_C {
+public extension Test_Untagged_C {
+  static func decode(json: Any) throws -> Test_Untagged_C {
     let json = try decode_value(json as? [String: Any])
 
     guard let f_shared = json["shared"] else {
@@ -378,7 +378,7 @@ public extension Test_RequiredFields_C {
       ignore = Optional.some(try decode_name(unbox(value, as: String.self), name: "ignore"))
     }
 
-    return Test_RequiredFields_C(shared: shared, shared_ignore: shared_ignore, b: b, ignore: ignore)
+    return Test_Untagged_C(shared: shared, shared_ignore: shared_ignore, b: b, ignore: ignore)
   }
 
   func encode() throws -> [String: Any] {

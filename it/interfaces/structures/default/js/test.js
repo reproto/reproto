@@ -1,7 +1,7 @@
 export class Entry {
-  constructor(tagged, required_fields) {
+  constructor(tagged, untagged) {
     this.tagged = tagged;
-    this.required_fields = required_fields;
+    this.untagged = untagged;
   }
 
   static decode(data) {
@@ -13,15 +13,15 @@ export class Entry {
       v_tagged = null;
     }
 
-    let v_required_fields = data["required_fields"];
+    let v_untagged = data["untagged"];
 
-    if (v_required_fields !== null && v_required_fields !== undefined) {
-      v_required_fields = RequiredFields.decode(v_required_fields);
+    if (v_untagged !== null && v_untagged !== undefined) {
+      v_untagged = Untagged.decode(v_untagged);
     } else {
-      v_required_fields = null;
+      v_untagged = null;
     }
 
-    return new Entry(v_tagged, v_required_fields);
+    return new Entry(v_tagged, v_untagged);
   }
 
   encode() {
@@ -31,8 +31,8 @@ export class Entry {
       data["tagged"] = this.tagged.encode();
     }
 
-    if (this.required_fields !== null && this.required_fields !== undefined) {
-      data["required_fields"] = this.required_fields.encode();
+    if (this.untagged !== null && this.untagged !== undefined) {
+      data["untagged"] = this.untagged.encode();
     }
 
     return data;
@@ -183,7 +183,7 @@ export class Tagged_Baz {
   }
 }
 
-export class RequiredFields {
+export class Untagged {
   static decode(data) {
     var all = true
 
@@ -194,22 +194,22 @@ export class RequiredFields {
     }
 
     if (("shared" in keys) && ("a" in keys) && ("b" in keys)) {
-      return RequiredFields_A.decode(data);
+      return Untagged_A.decode(data);
     }
 
     if (("shared" in keys) && ("a" in keys)) {
-      return RequiredFields_B.decode(data);
+      return Untagged_B.decode(data);
     }
 
     if (("shared" in keys) && ("b" in keys)) {
-      return RequiredFields_C.decode(data);
+      return Untagged_C.decode(data);
     }
 
     throw new Error("no legal field combinations found");
   }
 }
 
-export class RequiredFields_A {
+export class Untagged_A {
   constructor(shared, shared_ignore, a, b, ignore) {
     this.shared = shared;
     this.shared_ignore = shared_ignore;
@@ -253,7 +253,7 @@ export class RequiredFields_A {
       v_ignore = null;
     }
 
-    return new RequiredFields_A(v_shared, v_shared_ignore, v_a, v_b, v_ignore);
+    return new Untagged_A(v_shared, v_shared_ignore, v_a, v_b, v_ignore);
   }
 
   encode() {
@@ -289,7 +289,7 @@ export class RequiredFields_A {
   }
 }
 
-export class RequiredFields_B {
+export class Untagged_B {
   constructor(shared, shared_ignore, a, ignore) {
     this.shared = shared;
     this.shared_ignore = shared_ignore;
@@ -326,7 +326,7 @@ export class RequiredFields_B {
       v_ignore = null;
     }
 
-    return new RequiredFields_B(v_shared, v_shared_ignore, v_a, v_ignore);
+    return new Untagged_B(v_shared, v_shared_ignore, v_a, v_ignore);
   }
 
   encode() {
@@ -356,7 +356,7 @@ export class RequiredFields_B {
   }
 }
 
-export class RequiredFields_C {
+export class Untagged_C {
   constructor(shared, shared_ignore, b, ignore) {
     this.shared = shared;
     this.shared_ignore = shared_ignore;
@@ -393,7 +393,7 @@ export class RequiredFields_C {
       v_ignore = null;
     }
 
-    return new RequiredFields_C(v_shared, v_shared_ignore, v_b, v_ignore);
+    return new Untagged_C(v_shared, v_shared_ignore, v_b, v_ignore);
   }
 
   encode() {

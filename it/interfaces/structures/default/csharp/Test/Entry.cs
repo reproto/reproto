@@ -9,24 +9,24 @@ namespace Test {
     public Tagged tagged {
       get;
     }
-    [JsonProperty("required_fields")]
-    public RequiredFields requiredFields {
+    [JsonProperty("untagged")]
+    public Untagged untagged {
       get;
     }
 
     [JsonConstructor]
     public Entry(
       [JsonProperty("tagged")] Tagged tagged,
-      [JsonProperty("required_fields")] RequiredFields requiredFields
+      [JsonProperty("untagged")] Untagged untagged
     ) {
       this.tagged = tagged;
-      this.requiredFields = requiredFields;
+      this.untagged = untagged;
     }
 
     public override Int32 GetHashCode() {
       Int32 result = 1;
       result = result * 31 + this.tagged.GetHashCode();
-      result = result * 31 + this.requiredFields.GetHashCode();
+      result = result * 31 + this.untagged.GetHashCode();
       return result;
     }
 
@@ -47,12 +47,12 @@ namespace Test {
         }
       }
 
-      if (this.requiredFields == null) {
-        if (o.requiredFields != null) {
+      if (this.untagged == null) {
+        if (o.untagged != null) {
           return false;
         }
       } else {
-        if (!this.requiredFields.Equals(o.requiredFields)) {
+        if (!this.untagged.Equals(o.untagged)) {
           return false;
         }
       }
@@ -68,8 +68,8 @@ namespace Test {
       b.Append("tagged=");
       b.Append(this.tagged);
       b.Append(", ");
-      b.Append("required_fields=");
-      b.Append(this.requiredFields);
+      b.Append("untagged=");
+      b.Append(this.untagged);
       b.Append(")");
 
       return b.ToString();

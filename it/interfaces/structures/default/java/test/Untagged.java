@@ -15,14 +15,14 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-@JsonDeserialize(using = RequiredFields.Deserializer.class)
-public interface RequiredFields {
+@JsonDeserialize(using = Untagged.Deserializer.class)
+public interface Untagged {
   String getShared();
 
   Optional<String> getSharedIgnore();
 
   @JsonDeserialize(using = JsonDeserializer.None.class)
-  public static class A implements RequiredFields {
+  public static class A implements Untagged {
     @JsonProperty("shared")
     private final String shared;
     @JsonProperty("shared_ignore")
@@ -198,7 +198,7 @@ public interface RequiredFields {
   }
 
   @JsonDeserialize(using = JsonDeserializer.None.class)
-  public static class B implements RequiredFields {
+  public static class B implements Untagged {
     @JsonProperty("shared")
     private final String shared;
     @JsonProperty("shared_ignore")
@@ -349,7 +349,7 @@ public interface RequiredFields {
   }
 
   @JsonDeserialize(using = JsonDeserializer.None.class)
-  public static class C implements RequiredFields {
+  public static class C implements Untagged {
     @JsonProperty("shared")
     private final String shared;
     @JsonProperty("shared_ignore")
@@ -499,9 +499,9 @@ public interface RequiredFields {
     }
   }
 
-  public static class Deserializer extends JsonDeserializer<RequiredFields> {
+  public static class Deserializer extends JsonDeserializer<Untagged> {
     @Override
-    public RequiredFields deserialize(final JsonParser parser, final DeserializationContext context) throws IOException {
+    public Untagged deserialize(final JsonParser parser, final DeserializationContext context) throws IOException {
       final ObjectNode object = parser.readValueAs(ObjectNode.class);
 
       final Set<String> shared = new HashSet<String>();
@@ -521,7 +521,7 @@ public interface RequiredFields {
       compared.add("b");
 
       if (tags.containsAll(compared)) {
-        return new TreeTraversingParser(object, parser.getCodec()).readValueAs(RequiredFields.A.class);
+        return new TreeTraversingParser(object, parser.getCodec()).readValueAs(Untagged.A.class);
       }
 
       compared.clear();
@@ -529,7 +529,7 @@ public interface RequiredFields {
       compared.add("a");
 
       if (tags.containsAll(compared)) {
-        return new TreeTraversingParser(object, parser.getCodec()).readValueAs(RequiredFields.B.class);
+        return new TreeTraversingParser(object, parser.getCodec()).readValueAs(Untagged.B.class);
       }
 
       compared.clear();
@@ -537,7 +537,7 @@ public interface RequiredFields {
       compared.add("b");
 
       if (tags.containsAll(compared)) {
-        return new TreeTraversingParser(object, parser.getCodec()).readValueAs(RequiredFields.C.class);
+        return new TreeTraversingParser(object, parser.getCodec()).readValueAs(Untagged.C.class);
       }
 
       throw context.mappingException("no legal combination of fields available");

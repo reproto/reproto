@@ -3,7 +3,7 @@
 {"tagged": {"@type": "b", "shared": "string"}}
 {"tagged": {"@type": "Bar", "shared": "string"}}
 {"tagged": {"@type": "Baz", "shared": "string"}}
-# #[type_info(strategy = "required_fields")]
-{"required_fields": {"a": "a", "shared": "string"}}
-{"required_fields": {"b": "b", "shared": "string"}}
-{"required_fields": {"a": "a", "b": "b", "shared": "string"}}
+# #[type_info(strategy = "untagged")]
+{"untagged": {"a": "a", "shared": "string"}}
+{"untagged": {"b": "b", "shared": "string"}}
+{"untagged": {"a": "a", "b": "b", "shared": "string"}}

@@ -1,4 +1,4 @@
-#[type_info(strategy = "required_fields")]
+#[type_info(strategy = "untagged")]
 interface Example {
   Foo {
     a: string;
