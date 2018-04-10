@@ -3,6 +3,7 @@ use attributes;
 use core::errors::{Error, Result};
 use core::flavored::*;
 use core::{self, Attributes, Context, Loc, Pos, Selection, WithPos};
+use linked_hash_map::LinkedHashMap;
 use naming::Naming;
 use scope::Scope;
 use std::borrow::Cow;
@@ -77,7 +78,7 @@ pub struct SubTypeConstraint<'input> {
     reserved: &'input HashMap<String, Pos>,
     field_idents: &'input HashMap<String, Pos>,
     field_names: &'input HashMap<String, Pos>,
-    untagged: &'input mut HashMap<BTreeSet<String>, Pos>,
+    untagged: &'input mut LinkedHashMap<BTreeSet<String>, Pos>,
 }
 
 #[derive(Debug)]
@@ -485,7 +486,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             let mut names = HashMap::new();
             let mut idents = HashMap::new();
             let mut sub_types = Vec::new();
-            let mut untagged = HashMap::new();
+            let mut untagged = LinkedHashMap::new();
 
             for sub_type in item.sub_types {
                 let scope = scope.child(Loc::value(&sub_type.name).to_owned());
@@ -526,11 +527,14 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             });
 
             /// Check invariants that need to be enforced with unique fields
-            fn check_untagged(
+            fn check_untagged<'a, I: 'a>(
                 ctx: &Context,
                 sub_types: &Vec<Loc<RpSubType>>,
-                untagged: &HashMap<BTreeSet<String>, Pos>,
-            ) -> Result<()> {
+                untagged: I,
+            ) -> Result<()>
+            where
+                I: Clone + IntoIterator<Item = (&'a BTreeSet<String>, &'a Pos)>,
+            {
                 let mut r = ctx.report();
 
                 for sub_type in sub_types {
@@ -541,7 +545,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                         .map(|f| f.name().to_string())
                         .collect::<BTreeSet<_>>();
 
-                    for (key, pos) in untagged {
+                    for (key, pos) in untagged.clone() {
                         // skip own
                         if *key == required {
                             continue;

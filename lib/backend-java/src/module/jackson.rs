@@ -2,9 +2,9 @@
 
 use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, GetterAdded,
               GetterCodegen, InterfaceAdded, InterfaceCodegen, TupleAdded, TupleCodegen};
+use core::RpSubTypeStrategy;
 use core::errors::*;
-use core::{Loc, RpSubTypeStrategy};
-use flavored::{JavaField, RpInterfaceBody};
+use flavored::RpInterfaceBody;
 use genco::java::{self, Argument, Class, Field, Method, Modifier, DOUBLE, FLOAT, INTEGER, LONG,
                   SHORT};
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
@@ -606,42 +606,37 @@ impl InterfaceCodegen for Jackson {
                     ".class);"
                 );
 
-                t.push(quoted_tags(
-                    "shared",
-                    body.fields.iter().filter(|f| f.is_required()),
-                ));
-
                 let new_set = toks!["new ", hash_set.clone(), "()"];
 
                 // Set up received tags.
                 t.push_into(|t| {
                     push!(t, "final ", set, " tags = ", new_set, ";");
                     push!(t, "final ", it, " it = object.fieldNames();");
+                });
 
+                t.push_into(|t| {
                     push!(t, "while (it.hasNext()) {");
                     nested!(t, "tags.add(it.next());");
                     push!(t, "}");
                 });
 
-                push!(t, "final ", set, " compared = new ", hash_set, "();");
-
                 for sub_type in &body.sub_types {
-                    t.push_into(|t| {
-                        push!(t, "compared.clear();");
+                    let mut checks = Tokens::new();
 
-                        for f in body.fields.iter().filter(|f| f.is_required()) {
-                            push!(t, "compared.add(", f.name().quoted(), ");");
-                        }
+                    for f in body.fields
+                        .iter()
+                        .chain(sub_type.fields.iter())
+                        .filter(|f| f.is_required())
+                    {
+                        checks.append(toks!["tags.contains(", f.name().quoted(), ")"]);
+                    }
 
-                        for f in sub_type.fields.iter().filter(|f| f.is_required()) {
-                            push!(t, "compared.add(", f.name().quoted(), ");");
-                        }
-                    });
+                    let checks = checks.join(" && ");
 
                     t.push_into(|t| {
                         let p = toks!["new ", ttparser.clone(), "(object, parser.getCodec())"];
 
-                        push!(t, "if (tags.containsAll(compared)) {");
+                        push!(t, "if (", checks, ") {");
                         nested!(t, "return ", p, ".readValueAs(", &sub_type.name, ".class);");
                         push!(t, "}");
                     });
@@ -661,27 +656,6 @@ impl InterfaceCodegen for Jackson {
                 c.methods.push(des);
                 c
             });
-
-            /// Return a set of quoted tags.
-            fn quoted_tags<'el, F>(var: &'el str, fields: F) -> Tokens<'el, Java<'el>>
-            where
-                F: IntoIterator<Item = &'el Loc<JavaField<'static>>>,
-            {
-                let set = java::imported("java.util", "Set")
-                    .with_arguments(vec![java::imported("java.lang", "String")]);
-                let hash_set = java::imported("java.util", "HashSet")
-                    .with_arguments(vec![java::imported("java.lang", "String")]);
-
-                let mut t = Tokens::new();
-
-                push!(t, "final ", set, " ", var, " = new ", hash_set, "();");
-
-                for field in fields {
-                    push!(t, var, ".add(", field.name().quoted(), ");");
-                }
-
-                t
-            }
         }
     }
 }
