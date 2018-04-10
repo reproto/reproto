@@ -2,6 +2,7 @@ import * as React from "react";
 import {Input} from "./Input";
 import {OutputEditor} from "./OutputEditor";
 import {JavaSettings, JavaSettingsForm} from "./JavaSettings";
+import {PythonSettings, PythonSettingsForm} from "./PythonSettings";
 import {CsharpSettings, CsharpSettingsForm} from "./CsharpSettings";
 import {GoSettings, GoSettingsForm} from "./GoSettings";
 import {RustSettings, RustSettingsForm} from "./RustSettings";
@@ -139,6 +140,7 @@ interface File {
 
 interface Settings {
   java: JavaSettings;
+  python: PythonSettings;
   csharp: CsharpSettings;
   go: GoSettings;
   rust: RustSettings;
@@ -217,6 +219,9 @@ export class Main extends React.Component<MainProps, MainState> {
         java: {
           jackson: true,
           lombok: true,
+        },
+        python: {
+          requests: true,
         },
         rust: {
           chrono: true,
@@ -551,6 +556,15 @@ export class Main extends React.Component<MainProps, MainState> {
     }, () => this.recompile());
   }
 
+  updatePython(cb: (settings: PythonSettings) => void) {
+    this.setState((state: MainState, props: MainProps) => {
+      let settings = {...state.settings};
+      settings.python = {...settings.python};
+      cb(settings.python);
+      return {settings: settings};
+    }, () => this.recompile());
+  }
+
   updateRust(cb: (settings: RustSettings) => void) {
     this.setState((state: MainState, props: MainProps) => {
       let settings = {...state.settings};
@@ -798,6 +812,11 @@ export class Main extends React.Component<MainProps, MainState> {
           settingsForm = <JavaSettingsForm settings={settings.java}
             onJackson={update => this.updateJava(java => java.jackson = update)}
             onLombok={update => this.updateJava(java => java.lombok = update)}
+            />;
+          break;
+        case "python":
+          settingsForm = <PythonSettingsForm settings={settings.python}
+            onRequests={update => this.updatePython(python => python.requests = update)}
             />;
           break;
         case "rust":

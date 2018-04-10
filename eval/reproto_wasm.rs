@@ -100,7 +100,13 @@ impl Output {
 
                 Box::new(swift::SwiftLang)
             }
-            Output::Python => Box::new(python::PythonLang),
+            Output::Python => {
+                if settings.python.requests {
+                    modules.push(Box::new(python::PythonModule::Requests));
+                }
+
+                Box::new(python::PythonLang)
+            },
             Output::Rust => {
                 if settings.rust.chrono {
                     modules.push(Box::new(rust::RustModule::Chrono));
@@ -126,6 +132,14 @@ struct JavaSettings {
 
 js_serializable!(JavaSettings);
 js_deserializable!(JavaSettings);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct PythonSettings {
+    requests: bool,
+}
+
+js_serializable!(PythonSettings);
+js_deserializable!(PythonSettings);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CsharpSettings {
@@ -164,6 +178,7 @@ js_deserializable!(RustSettings);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Settings {
     java: JavaSettings,
+    python: PythonSettings,
     swift: SwiftSettings,
     rust: RustSettings,
     csharp: CsharpSettings,
