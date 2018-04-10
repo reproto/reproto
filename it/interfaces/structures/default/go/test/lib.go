@@ -10,26 +10,37 @@ type Entry struct {
 }
 
 type Tagged struct {
-  A *Tagged_A
-  B *Tagged_B
-  Bar *Tagged_Bar
-  Baz *Tagged_Baz
+  Value interface {
+    IsTagged()
+  }
 }
 
 type Tagged_A struct {
   Shared string `json:"shared"`
 }
 
+func (this Tagged_A) IsTagged() {
+}
+
 type Tagged_B struct {
   Shared string `json:"shared"`
+}
+
+func (this Tagged_B) IsTagged() {
 }
 
 type Tagged_Bar struct {
   Shared string `json:"shared"`
 }
 
+func (this Tagged_Bar) IsTagged() {
+}
+
 type Tagged_Baz struct {
   Shared string `json:"shared"`
+}
+
+func (this Tagged_Baz) IsTagged() {
 }
 
 func (this *Tagged) UnmarshalJSON(b []byte) error {
@@ -61,7 +72,7 @@ func (this *Tagged) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.A = &sub
+    this.Value = &sub
     return nil
   case "b":
     sub := Tagged_B{}
@@ -70,7 +81,7 @@ func (this *Tagged) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.B = &sub
+    this.Value = &sub
     return nil
   case "Bar":
     sub := Tagged_Bar{}
@@ -79,7 +90,7 @@ func (this *Tagged) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.Bar = &sub
+    this.Value = &sub
     return nil
   case "Baz":
     sub := Tagged_Baz{}
@@ -88,7 +99,7 @@ func (this *Tagged) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.Baz = &sub
+    this.Value = &sub
     return nil
   default:
     return errors.New("bad tag")
@@ -100,8 +111,9 @@ func (this Tagged) MarshalJSON() ([]byte, error) {
   var err error
   env := make(map[string]json.RawMessage)
 
-  if this.A != nil {
-    if b, err = json.Marshal(&this.A); err != nil {
+  switch v := this.Value.(type) {
+  case *Tagged_A:
+    if b, err = json.Marshal(v); err != nil {
       return nil, err
     }
 
@@ -114,10 +126,8 @@ func (this Tagged) MarshalJSON() ([]byte, error) {
     }
 
     return json.Marshal(env)
-  }
-
-  if this.B != nil {
-    if b, err = json.Marshal(&this.B); err != nil {
+  case *Tagged_B:
+    if b, err = json.Marshal(v); err != nil {
       return nil, err
     }
 
@@ -130,10 +140,8 @@ func (this Tagged) MarshalJSON() ([]byte, error) {
     }
 
     return json.Marshal(env)
-  }
-
-  if this.Bar != nil {
-    if b, err = json.Marshal(&this.Bar); err != nil {
+  case *Tagged_Bar:
+    if b, err = json.Marshal(v); err != nil {
       return nil, err
     }
 
@@ -146,10 +154,8 @@ func (this Tagged) MarshalJSON() ([]byte, error) {
     }
 
     return json.Marshal(env)
-  }
-
-  if this.Baz != nil {
-    if b, err = json.Marshal(&this.Baz); err != nil {
+  case *Tagged_Baz:
+    if b, err = json.Marshal(v); err != nil {
       return nil, err
     }
 
@@ -162,15 +168,15 @@ func (this Tagged) MarshalJSON() ([]byte, error) {
     }
 
     return json.Marshal(env)
+  default:
+    return nil, errors.New("Tagged: no sub-type set")
   }
-
-  return nil, errors.New("no sub-type set")
 }
 
 type Untagged struct {
-  A *Untagged_A
-  B *Untagged_B
-  C *Untagged_C
+  Value interface {
+    IsUntagged()
+  }
 }
 
 // Special case: fields shared with other sub-types.
@@ -187,6 +193,9 @@ type Untagged_A struct {
   Ignore *string `json:"ignore,omitempty"`
 }
 
+func (this Untagged_A) IsUntagged() {
+}
+
 type Untagged_B struct {
   Shared string `json:"shared"`
 
@@ -197,6 +206,9 @@ type Untagged_B struct {
   Ignore *string `json:"ignore,omitempty"`
 }
 
+func (this Untagged_B) IsUntagged() {
+}
+
 type Untagged_C struct {
   Shared string `json:"shared"`
 
@@ -205,6 +217,9 @@ type Untagged_C struct {
   B string `json:"b"`
 
   Ignore *string `json:"ignore,omitempty"`
+}
+
+func (this Untagged_C) IsUntagged() {
 }
 
 func (this *Untagged) UnmarshalJSON(b []byte) error {
@@ -237,7 +252,7 @@ func (this *Untagged) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.A = &sub
+    this.Value = &sub
     return nil
   }
 
@@ -255,7 +270,7 @@ func (this *Untagged) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.B = &sub
+    this.Value = &sub
     return nil
   }
 
@@ -273,7 +288,7 @@ func (this *Untagged) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.C = &sub
+    this.Value = &sub
     return nil
   }
 
@@ -281,17 +296,14 @@ func (this *Untagged) UnmarshalJSON(b []byte) error {
 }
 
 func (this Untagged) MarshalJSON() ([]byte, error) {
-  if this.A != nil {
-    return json.Marshal(&this.A)
+  switch v := this.Value.(type) {
+  case *Untagged_A:
+    return json.Marshal(v)
+  case *Untagged_B:
+    return json.Marshal(v)
+  case *Untagged_C:
+    return json.Marshal(v)
+  default:
+    return nil, errors.New("Untagged: no sub-type set")
   }
-
-  if this.B != nil {
-    return json.Marshal(&this.B)
-  }
-
-  if this.C != nil {
-    return json.Marshal(&this.C)
-  }
-
-  return nil, errors.New("no sub-type set")
 }

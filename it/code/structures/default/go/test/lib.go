@@ -10,10 +10,15 @@ type Type struct {
 }
 
 type Interface struct {
-  SubType *Interface_SubType
+  Value interface {
+    IsInterface()
+  }
 }
 
 type Interface_SubType struct {
+}
+
+func (this Interface_SubType) IsInterface() {
 }
 
 func (this *Interface) UnmarshalJSON(b []byte) error {
@@ -45,7 +50,7 @@ func (this *Interface) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.SubType = &sub
+    this.Value = &sub
     return nil
   default:
     return errors.New("bad tag")
@@ -57,8 +62,9 @@ func (this Interface) MarshalJSON() ([]byte, error) {
   var err error
   env := make(map[string]json.RawMessage)
 
-  if this.SubType != nil {
-    if b, err = json.Marshal(&this.SubType); err != nil {
+  switch v := this.Value.(type) {
+  case *Interface_SubType:
+    if b, err = json.Marshal(v); err != nil {
       return nil, err
     }
 
@@ -71,9 +77,9 @@ func (this Interface) MarshalJSON() ([]byte, error) {
     }
 
     return json.Marshal(env)
+  default:
+    return nil, errors.New("Interface: no sub-type set")
   }
-
-  return nil, errors.New("no sub-type set")
 }
 
 type Enum int

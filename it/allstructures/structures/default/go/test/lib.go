@@ -10,10 +10,15 @@ type RootType struct {
 }
 
 type RootInterface struct {
-  Foo *RootInterface_Foo
+  Value interface {
+    IsRootInterface()
+  }
 }
 
 type RootInterface_Foo struct {
+}
+
+func (this RootInterface_Foo) IsRootInterface() {
 }
 
 func (this *RootInterface) UnmarshalJSON(b []byte) error {
@@ -45,7 +50,7 @@ func (this *RootInterface) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.Foo = &sub
+    this.Value = &sub
     return nil
   default:
     return errors.New("bad tag")
@@ -57,8 +62,9 @@ func (this RootInterface) MarshalJSON() ([]byte, error) {
   var err error
   env := make(map[string]json.RawMessage)
 
-  if this.Foo != nil {
-    if b, err = json.Marshal(&this.Foo); err != nil {
+  switch v := this.Value.(type) {
+  case *RootInterface_Foo:
+    if b, err = json.Marshal(v); err != nil {
       return nil, err
     }
 
@@ -71,9 +77,9 @@ func (this RootInterface) MarshalJSON() ([]byte, error) {
     }
 
     return json.Marshal(env)
+  default:
+    return nil, errors.New("RootInterface: no sub-type set")
   }
-
-  return nil, errors.New("no sub-type set")
 }
 
 type RootEnum int
@@ -137,10 +143,15 @@ type RootType_NestedType struct {
 }
 
 type RootType_NestedInterface struct {
-  Foo *RootType_NestedInterface_Foo
+  Value interface {
+    IsRootType_NestedInterface()
+  }
 }
 
 type RootType_NestedInterface_Foo struct {
+}
+
+func (this RootType_NestedInterface_Foo) IsRootType_NestedInterface() {
 }
 
 func (this *RootType_NestedInterface) UnmarshalJSON(b []byte) error {
@@ -172,7 +183,7 @@ func (this *RootType_NestedInterface) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.Foo = &sub
+    this.Value = &sub
     return nil
   default:
     return errors.New("bad tag")
@@ -184,8 +195,9 @@ func (this RootType_NestedInterface) MarshalJSON() ([]byte, error) {
   var err error
   env := make(map[string]json.RawMessage)
 
-  if this.Foo != nil {
-    if b, err = json.Marshal(&this.Foo); err != nil {
+  switch v := this.Value.(type) {
+  case *RootType_NestedInterface_Foo:
+    if b, err = json.Marshal(v); err != nil {
       return nil, err
     }
 
@@ -198,9 +210,9 @@ func (this RootType_NestedInterface) MarshalJSON() ([]byte, error) {
     }
 
     return json.Marshal(env)
+  default:
+    return nil, errors.New("RootType_NestedInterface: no sub-type set")
   }
-
-  return nil, errors.New("no sub-type set")
 }
 
 type RootType_NestedEnum int
@@ -264,10 +276,15 @@ type RootInterface_Foo_NestedType struct {
 }
 
 type RootInterface_Foo_NestedInterface struct {
-  NestedFoo *RootInterface_Foo_NestedInterface_NestedFoo
+  Value interface {
+    IsRootInterface_Foo_NestedInterface()
+  }
 }
 
 type RootInterface_Foo_NestedInterface_NestedFoo struct {
+}
+
+func (this RootInterface_Foo_NestedInterface_NestedFoo) IsRootInterface_Foo_NestedInterface() {
 }
 
 func (this *RootInterface_Foo_NestedInterface) UnmarshalJSON(b []byte) error {
@@ -299,7 +316,7 @@ func (this *RootInterface_Foo_NestedInterface) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.NestedFoo = &sub
+    this.Value = &sub
     return nil
   default:
     return errors.New("bad tag")
@@ -311,8 +328,9 @@ func (this RootInterface_Foo_NestedInterface) MarshalJSON() ([]byte, error) {
   var err error
   env := make(map[string]json.RawMessage)
 
-  if this.NestedFoo != nil {
-    if b, err = json.Marshal(&this.NestedFoo); err != nil {
+  switch v := this.Value.(type) {
+  case *RootInterface_Foo_NestedInterface_NestedFoo:
+    if b, err = json.Marshal(v); err != nil {
       return nil, err
     }
 
@@ -325,9 +343,9 @@ func (this RootInterface_Foo_NestedInterface) MarshalJSON() ([]byte, error) {
     }
 
     return json.Marshal(env)
+  default:
+    return nil, errors.New("RootInterface_Foo_NestedInterface: no sub-type set")
   }
-
-  return nil, errors.New("no sub-type set")
 }
 
 type RootInterface_Foo_NestedEnum int
@@ -391,10 +409,15 @@ type RootTuple_NestedType struct {
 }
 
 type RootTuple_NestedInterface struct {
-  Foo *RootTuple_NestedInterface_Foo
+  Value interface {
+    IsRootTuple_NestedInterface()
+  }
 }
 
 type RootTuple_NestedInterface_Foo struct {
+}
+
+func (this RootTuple_NestedInterface_Foo) IsRootTuple_NestedInterface() {
 }
 
 func (this *RootTuple_NestedInterface) UnmarshalJSON(b []byte) error {
@@ -426,7 +449,7 @@ func (this *RootTuple_NestedInterface) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.Foo = &sub
+    this.Value = &sub
     return nil
   default:
     return errors.New("bad tag")
@@ -438,8 +461,9 @@ func (this RootTuple_NestedInterface) MarshalJSON() ([]byte, error) {
   var err error
   env := make(map[string]json.RawMessage)
 
-  if this.Foo != nil {
-    if b, err = json.Marshal(&this.Foo); err != nil {
+  switch v := this.Value.(type) {
+  case *RootTuple_NestedInterface_Foo:
+    if b, err = json.Marshal(v); err != nil {
       return nil, err
     }
 
@@ -452,9 +476,9 @@ func (this RootTuple_NestedInterface) MarshalJSON() ([]byte, error) {
     }
 
     return json.Marshal(env)
+  default:
+    return nil, errors.New("RootTuple_NestedInterface: no sub-type set")
   }
-
-  return nil, errors.New("no sub-type set")
 }
 
 type RootTuple_NestedEnum int
@@ -518,10 +542,15 @@ type RootService_NestedType struct {
 }
 
 type RootService_NestedInterface struct {
-  Foo *RootService_NestedInterface_Foo
+  Value interface {
+    IsRootService_NestedInterface()
+  }
 }
 
 type RootService_NestedInterface_Foo struct {
+}
+
+func (this RootService_NestedInterface_Foo) IsRootService_NestedInterface() {
 }
 
 func (this *RootService_NestedInterface) UnmarshalJSON(b []byte) error {
@@ -553,7 +582,7 @@ func (this *RootService_NestedInterface) UnmarshalJSON(b []byte) error {
       return err
     }
 
-    this.Foo = &sub
+    this.Value = &sub
     return nil
   default:
     return errors.New("bad tag")
@@ -565,8 +594,9 @@ func (this RootService_NestedInterface) MarshalJSON() ([]byte, error) {
   var err error
   env := make(map[string]json.RawMessage)
 
-  if this.Foo != nil {
-    if b, err = json.Marshal(&this.Foo); err != nil {
+  switch v := this.Value.(type) {
+  case *RootService_NestedInterface_Foo:
+    if b, err = json.Marshal(v); err != nil {
       return nil, err
     }
 
@@ -579,9 +609,9 @@ func (this RootService_NestedInterface) MarshalJSON() ([]byte, error) {
     }
 
     return json.Marshal(env)
+  default:
+    return nil, errors.New("RootService_NestedInterface: no sub-type set")
   }
-
-  return nil, errors.New("no sub-type set")
 }
 
 type RootService_NestedEnum int
