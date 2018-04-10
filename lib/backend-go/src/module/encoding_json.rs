@@ -347,6 +347,9 @@ impl InterfaceCodegen for Codegen {
                     core::RpSubTypeStrategy::Tagged { ref tag } => {
                         t.nested(unmarshal_envelope(c, body, tag)?);
                     }
+                    core::RpSubTypeStrategy::RequiredFields => {
+                        t.nested(unmarshal_required_fields(c, body)?);
+                    }
                 }
 
                 push!(t, "}");
@@ -354,6 +357,28 @@ impl InterfaceCodegen for Codegen {
             })?;
 
             return Ok(t);
+
+            fn unmarshal_sub_type<'el>(
+                c: &Codegen,
+                sub_type: &'el RpSubType,
+            ) -> Tokens<'el, Go<'el>> {
+                let mut t = Tokens::new();
+
+                push!(t, "sub := ", &sub_type.name, "{}");
+
+                t.push_into(|t| {
+                    push!(t, "if err = ", c.unmarshal, "(b, &sub); err != nil {");
+                    nested!(t, "return err");
+                    push!(t, "}");
+                });
+
+                t.push_into(|t| {
+                    push!(t, "this.", sub_type.ident, " = &sub");
+                    push!(t, "return nil");
+                });
+
+                t.join_line_spacing()
+            }
 
             /// Unmarshal the envelope and extract the type field.
             fn unmarshal_envelope<'el>(
@@ -397,24 +422,7 @@ impl InterfaceCodegen for Codegen {
                     for sub_type in &body.sub_types {
                         push!(t, "case ", sub_type.name().quoted(), ":");
 
-                        t.nested({
-                            let mut t = Tokens::new();
-
-                            push!(t, "sub := ", &sub_type.name, "{}");
-
-                            t.push_into(|t| {
-                                push!(t, "if err = ", c.unmarshal, "(b, &sub); err != nil {");
-                                nested!(t, "return err");
-                                push!(t, "}");
-                            });
-
-                            t.push_into(|t| {
-                                push!(t, "this.", sub_type.ident, " = &sub");
-                                push!(t, "return nil");
-                            });
-
-                            t.join_line_spacing()
-                        });
+                        t.nested(unmarshal_sub_type(c, sub_type));
                     }
 
                     push!(t, "default:");
@@ -424,6 +432,78 @@ impl InterfaceCodegen for Codegen {
                     Ok(())
                 })?;
 
+                Ok(t.join_line_spacing())
+            }
+
+            fn unmarshal_required_fields<'el>(
+                c: &Codegen,
+                body: &'el RpInterfaceBody,
+            ) -> Result<Tokens<'el, Go<'el>>> {
+                let mut t = Tokens::new();
+
+                t.push_into(|t| {
+                    push!(t, "var err error");
+                    push!(t, "env := make(map[string]", c.raw_message, ")");
+                });
+
+                t.push_into(|t| {
+                    push!(t, "if err := ", c.unmarshal, "(b, &env); err != nil {");
+                    nested!(t, "return err");
+                    push!(t, "}");
+                });
+
+                push!(t, "keys := make(map[string]bool)");
+
+                t.push_into(|t| {
+                    push!(t, "for k := range env {");
+                    nested!(t, "keys[k] = true");
+                    push!(t, "}");
+                });
+
+                push!(t, "var all bool");
+
+                for sub_type in &body.sub_types {
+                    t.push_into(|t| {
+                        push!(t, "all = true");
+
+                        let mut required = Tokens::new();
+
+                        for f in body.fields
+                            .iter()
+                            .chain(sub_type.fields.iter())
+                            .filter(|f| f.is_required())
+                        {
+                            required.append(f.name().quoted());
+                        }
+
+                        let required = toks!["[]string{", required.join(", "), "}"];
+
+                        push!(t, "for _, k := range(", required, ") {");
+
+                        t.nested_into(|t| {
+                            push!(t, "if _, all = keys[k]; !all {");
+                            nested!(t, "break");
+                            push!(t, "}");
+                        });
+
+                        push!(t, "}");
+                    });
+
+                    t.push_into(|t| {
+                        push!(t, "if all {");
+                        t.nested(unmarshal_sub_type(c, sub_type));
+                        push!(t, "}");
+                    });
+                }
+
+                push!(
+                    t,
+                    "return ",
+                    c.new_error,
+                    "(",
+                    "no combination of fields found".quoted(),
+                    ")"
+                );
                 Ok(t.join_line_spacing())
             }
         }
@@ -443,6 +523,9 @@ impl InterfaceCodegen for Codegen {
                 match body.sub_type_strategy {
                     core::RpSubTypeStrategy::Tagged { ref tag } => {
                         t.nested(marshal_envelope(c, body, tag)?);
+                    }
+                    core::RpSubTypeStrategy::RequiredFields => {
+                        t.nested(marshal_required_fields(c, body)?);
                     }
                 }
 
@@ -473,6 +556,35 @@ impl InterfaceCodegen for Codegen {
                     for sub_type in &body.sub_types {
                         let ident = toks!("this.", sub_type.ident.clone());
                         t.push(sub_type_check(c, ident, sub_type, tag));
+                    }
+
+                    t.join_line_spacing()
+                });
+
+                let error = toks!(c.new_error.clone(), "(", "no sub-type set".quoted(), ")");
+                push!(t, "return nil, ", error);
+
+                return Ok(t.join_line_spacing());
+            }
+
+            /// Marshal the sub-type immediately.
+            fn marshal_required_fields<'el>(
+                c: &Codegen,
+                body: &'el RpInterfaceBody,
+            ) -> Result<Tokens<'el, Go<'el>>> {
+                let mut t = Tokens::new();
+
+                t.push({
+                    let mut t = Tokens::new();
+
+                    for sub_type in &body.sub_types {
+                        let ident = toks!("this.", sub_type.ident.clone());
+
+                        t.push_into(|t| {
+                            push!(t, "if this.", sub_type.ident, " != nil {");
+                            nested!(t, "return ", c.marshal, "(&", ident, ")");
+                            push!(t, "}");
+                        });
                     }
 
                     t.join_line_spacing()
