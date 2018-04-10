@@ -193,15 +193,15 @@ export class Untagged {
       keys[k] = true
     }
 
-    if (("shared" in keys) && ("a" in keys) && ("b" in keys)) {
+    if (("a" in keys) && ("b" in keys)) {
       return Untagged_A.decode(data);
     }
 
-    if (("shared" in keys) && ("a" in keys)) {
+    if (("a" in keys)) {
       return Untagged_B.decode(data);
     }
 
-    if (("shared" in keys) && ("b" in keys)) {
+    if (("b" in keys)) {
       return Untagged_C.decode(data);
     }
 

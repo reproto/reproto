@@ -349,7 +349,7 @@ namespace Test {
       public override Object ReadJson(JsonReader reader, System.Type objectType, Object existingValue, JsonSerializer serializer) {
         JObject o = JObject.Load(reader);
 
-        if (o.ContainsKey("shared") && o.ContainsKey("a") && o.ContainsKey("b")) {
+        if (o.ContainsKey("a") && o.ContainsKey("b")) {
           _isInsideRead = true;
           try {
             return serializer.Deserialize(o.CreateReader(), typeof(A));
@@ -358,7 +358,7 @@ namespace Test {
           }
         }
 
-        if (o.ContainsKey("shared") && o.ContainsKey("a")) {
+        if (o.ContainsKey("a")) {
           _isInsideRead = true;
           try {
             return serializer.Deserialize(o.CreateReader(), typeof(B));
@@ -367,7 +367,7 @@ namespace Test {
           }
         }
 
-        if (o.ContainsKey("shared") && o.ContainsKey("b")) {
+        if (o.ContainsKey("b")) {
           _isInsideRead = true;
           try {
             return serializer.Deserialize(o.CreateReader(), typeof(C));

@@ -6,6 +6,11 @@ use std::fmt;
 use std::hash;
 use {RpEndpoint, RpField, RpName, RpPackage, RpType, RpVersionedPackage};
 
+pub trait FlavorField: fmt::Debug + Clone {
+    /// Indicates if the field is discriminating in an untagged context.
+    fn is_discriminating(&self) -> bool;
+}
+
 pub trait AsPackage
 where
     Self: Sized,
@@ -24,7 +29,7 @@ pub trait Flavor: fmt::Debug + Clone + cmp::Eq + hash::Hash {
     /// The local field name.
     type Name: fmt::Display + fmt::Debug + Clone + cmp::Eq;
     /// The field that this flavor serializes to.
-    type Field: fmt::Debug + Clone;
+    type Field: FlavorField;
     /// The endpoint that this flavor serializes to.
     type Endpoint: fmt::Debug + Clone;
     /// The package type.

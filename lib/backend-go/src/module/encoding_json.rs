@@ -467,11 +467,7 @@ impl InterfaceCodegen for Codegen {
 
                         let mut required = Tokens::new();
 
-                        for f in body.fields
-                            .iter()
-                            .chain(sub_type.fields.iter())
-                            .filter(|f| f.is_required())
-                        {
+                        for f in sub_type.discriminating_fields() {
                             required.append(f.name().quoted());
                         }
 

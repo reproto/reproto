@@ -568,11 +568,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
             for sub_type in body.sub_types.iter() {
                 let mut required = Tokens::new();
 
-                for f in body.fields
-                    .iter()
-                    .chain(sub_type.fields.iter())
-                    .filter(|f| f.is_required())
-                {
+                for f in sub_type.discriminating_fields() {
                     required.append(toks!["(", f.name().quoted(), " in keys)"]);
                 }
 

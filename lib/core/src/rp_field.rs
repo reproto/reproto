@@ -1,7 +1,7 @@
 //! Data Models for fields
 
 use errors::Result;
-use {Flavor, Translate, Translator};
+use {Flavor, FlavorField, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(bound = "F::Type: ::serde::Serialize")]
@@ -23,6 +23,15 @@ where
     /// Alias of field in JSON.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field_as: Option<String>,
+}
+
+impl<F: 'static> FlavorField for RpField<F>
+where
+    F: Flavor,
+{
+    fn is_discriminating(&self) -> bool {
+        self.required
+    }
 }
 
 impl<F: 'static> RpField<F>

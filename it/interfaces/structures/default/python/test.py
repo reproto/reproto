@@ -185,15 +185,15 @@ class Tagged_Baz:
 class Untagged:
   @staticmethod
   def decode(data):
-    keys = set(data.keys()) - set(("shared_ignore",))
+    keys = set(data.keys())
 
-    if keys - set(("ignore",)) == set(("shared", "a", "b")):
+    if keys >= set(("a", "b")):
       return Untagged_A.decode(data)
 
-    if keys - set(("ignore",)) == set(("shared", "a")):
+    if keys >= set(("a",)):
       return Untagged_B.decode(data)
 
-    if keys - set(("ignore",)) == set(("shared", "b")):
+    if keys >= set(("b",)):
       return Untagged_C.decode(data)
 
     raise Exception("no sub type matching the given fields: " + repr(keys))

@@ -586,25 +586,15 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
 
             let data = "data";
 
-            // shared optional keys
-            let optional = quoted_tags(body.fields.iter().filter(|f| f.is_optional()));
-
             let keys = "keys";
             // keys of incoming data
-            push!(t, keys, " = set(", data, ".keys()) - ", optional);
+            push!(t, keys, " = set(", data, ".keys())");
 
             for sub_type in body.sub_types.iter() {
-                let tags = quoted_tags(sub_type.fields.iter().filter(|f| f.is_optional()));
-
-                let required = quoted_tags(
-                    body.fields
-                        .iter()
-                        .chain(sub_type.fields.iter())
-                        .filter(|f| f.is_required()),
-                );
+                let discriminating = quoted_tags(sub_type.discriminating_fields());
 
                 t.push_into(|t| {
-                    push!(t, "if ", keys, " - ", tags, " == ", required, ":");
+                    push!(t, "if ", keys, " >= ", discriminating, ":");
                     nested!(t, "return ", &sub_type.name, ".decode(data)");
                 });
             }

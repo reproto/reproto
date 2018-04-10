@@ -511,15 +511,15 @@ public interface Untagged {
         tags.add(it.next());
       }
 
-      if (tags.contains("shared") && tags.contains("a") && tags.contains("b")) {
+      if (tags.contains("a") && tags.contains("b")) {
         return new TreeTraversingParser(object, parser.getCodec()).readValueAs(Untagged.A.class);
       }
 
-      if (tags.contains("shared") && tags.contains("a")) {
+      if (tags.contains("a")) {
         return new TreeTraversingParser(object, parser.getCodec()).readValueAs(Untagged.B.class);
       }
 
-      if (tags.contains("shared") && tags.contains("b")) {
+      if (tags.contains("b")) {
         return new TreeTraversingParser(object, parser.getCodec()).readValueAs(Untagged.C.class);
       }
 

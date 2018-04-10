@@ -1073,7 +1073,7 @@ impl InterfaceCodegen for Codegen {
 
                             let mut expected = Tokens::new();
 
-                            for f in sub_type.fields.iter().filter(|f| f.is_required()) {
+                            for f in sub_type.discriminating_fields() {
                                 expected.append(toks![k.clone(), ".", f.safe_ident()]);
                             }
 

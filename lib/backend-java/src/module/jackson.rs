@@ -623,11 +623,7 @@ impl InterfaceCodegen for Jackson {
                 for sub_type in &body.sub_types {
                     let mut checks = Tokens::new();
 
-                    for f in body.fields
-                        .iter()
-                        .chain(sub_type.fields.iter())
-                        .filter(|f| f.is_required())
-                    {
+                    for f in sub_type.discriminating_fields() {
                         checks.append(toks!["tags.contains(", f.name().quoted(), ")"]);
                     }
 

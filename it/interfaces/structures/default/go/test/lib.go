@@ -239,7 +239,7 @@ func (this *Untagged) UnmarshalJSON(b []byte) error {
   var all bool
 
   all = true
-  for _, k := range([]string{"shared", "a", "b"}) {
+  for _, k := range([]string{"a", "b"}) {
     if _, all = keys[k]; !all {
       break
     }
@@ -257,7 +257,7 @@ func (this *Untagged) UnmarshalJSON(b []byte) error {
   }
 
   all = true
-  for _, k := range([]string{"shared", "a"}) {
+  for _, k := range([]string{"a"}) {
     if _, all = keys[k]; !all {
       break
     }
@@ -275,7 +275,7 @@ func (this *Untagged) UnmarshalJSON(b []byte) error {
   }
 
   all = true
-  for _, k := range([]string{"shared", "b"}) {
+  for _, k := range([]string{"b"}) {
     if _, all = keys[k]; !all {
       break
     }

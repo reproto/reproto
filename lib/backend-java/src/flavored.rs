@@ -4,8 +4,8 @@
 
 use backend::package_processor;
 use core::errors::Result;
-use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-           Translator};
+use core::{self, CoreFlavor, Flavor, FlavorField, FlavorTranslator, Loc, PackageTranslator,
+           Translate, Translator};
 use genco::java::{self, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG,
                   VOID};
 use genco::{Cons, Element, Java};
@@ -45,6 +45,12 @@ pub struct JavaField<'el> {
     pub field: RpField,
     pub field_accessor: Rc<String>,
     pub spec: Field<'el>,
+}
+
+impl<'el> FlavorField for JavaField<'el> {
+    fn is_discriminating(&self) -> bool {
+        self.field.is_discriminating()
+    }
 }
 
 impl<'el> ::std::ops::Deref for JavaField<'el> {

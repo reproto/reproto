@@ -3,8 +3,9 @@
 use errors::Result;
 use serde::Serialize;
 use std::slice;
+use std::vec;
 use translator;
-use {Flavor, Loc, RpCode, RpDecl, RpReg, Translate, Translator};
+use {Flavor, FlavorField, Loc, RpCode, RpDecl, RpReg, Translate, Translator};
 
 /// Default key to use for tagged sub type strategy.
 pub const DEFAULT_TAG: &str = "type";
@@ -44,6 +45,28 @@ where
 }
 
 impl<'a, F: 'static> Iterator for Fields<'a, F>
+where
+    F: Flavor,
+{
+    type Item = &'a Loc<F::Field>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+/// Iterator over discriminating sub-type fields.
+///
+/// Discriminating fields are ones which makes this sub-type unique, and are used to distinguish
+/// between different untagged sub-types.
+pub struct DiscriminatingFields<'a, F: 'static>
+where
+    F: Flavor,
+{
+    iter: vec::IntoIter<&'a Loc<F::Field>>,
+}
+
+impl<'a, F: 'static> Iterator for DiscriminatingFields<'a, F>
 where
     F: Flavor,
 {
@@ -119,6 +142,18 @@ where
             .as_ref()
             .map(|t| t.as_str())
             .unwrap_or(&self.ident)
+    }
+
+    /// Access the set of fields which are used to make this sub-type unique.
+    pub fn discriminating_fields(&self) -> DiscriminatingFields<F> {
+        let fields = self.fields
+            .iter()
+            .filter(|f| f.is_discriminating())
+            .collect::<Vec<_>>();
+
+        DiscriminatingFields {
+            iter: fields.into_iter(),
+        }
     }
 }
 
