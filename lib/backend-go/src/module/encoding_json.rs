@@ -345,7 +345,7 @@ impl InterfaceCodegen for Codegen {
 
                 match body.sub_type_strategy {
                     core::RpSubTypeStrategy::Tagged { ref tag } => {
-                        t.nested(unmarshal_envelope(c, body, tag)?);
+                        t.nested(unmarshal_tagged(c, body, tag)?);
                     }
                     core::RpSubTypeStrategy::Untagged => {
                         t.nested(unmarshal_untagged(c, body)?);
@@ -373,7 +373,7 @@ impl InterfaceCodegen for Codegen {
                 });
 
                 t.push_into(|t| {
-                    push!(t, "this.", sub_type.ident, " = &sub");
+                    push!(t, "this.Value = &sub");
                     push!(t, "return nil");
                 });
 
@@ -381,7 +381,7 @@ impl InterfaceCodegen for Codegen {
             }
 
             /// Unmarshal the envelope and extract the type field.
-            fn unmarshal_envelope<'el>(
+            fn unmarshal_tagged<'el>(
                 c: &Codegen,
                 body: &'el RpInterfaceBody,
                 tag: &'el str,
@@ -421,7 +421,6 @@ impl InterfaceCodegen for Codegen {
 
                     for sub_type in &body.sub_types {
                         push!(t, "case ", sub_type.name().quoted(), ":");
-
                         t.nested(unmarshal_sub_type(c, sub_type));
                     }
 
@@ -522,7 +521,7 @@ impl InterfaceCodegen for Codegen {
 
                 match body.sub_type_strategy {
                     core::RpSubTypeStrategy::Tagged { ref tag } => {
-                        t.nested(marshal_envelope(c, body, tag)?);
+                        t.nested(marshal_tagged(c, body, tag)?);
                     }
                     core::RpSubTypeStrategy::Untagged => {
                         t.nested(marshal_untagged(c, body)?);
@@ -537,7 +536,7 @@ impl InterfaceCodegen for Codegen {
             return Ok(t);
 
             /// Marshal the envelope and extract the type field.
-            fn marshal_envelope<'el>(
+            fn marshal_tagged<'el>(
                 c: &Codegen,
                 body: &'el RpInterfaceBody,
                 tag: &'el str,
@@ -550,19 +549,22 @@ impl InterfaceCodegen for Codegen {
                     push!(t, "env := make(map[string]", c.raw_message, ")");
                 });
 
-                t.push({
-                    let mut t = Tokens::new();
+                t.push_into(|t| {
+                    push!(t, "switch v := this.Value.(type) {");
 
                     for sub_type in &body.sub_types {
-                        let ident = toks!("this.", sub_type.ident.clone());
-                        t.push(sub_type_check(c, ident, sub_type, tag));
+                        t.push(marshal_tagged_sub_type(c, sub_type, tag));
                     }
 
-                    t.join_line_spacing()
-                });
+                    t.push_into(|t| {
+                        let m = format!("{}: no sub-type set", body.name);
+                        let error = toks!(c.new_error.clone(), "(", m.quoted(), ")");
+                        push!(t, "default:");
+                        nested!(t, "return nil, ", error);
+                    });
 
-                let error = toks!(c.new_error.clone(), "(", "no sub-type set".quoted(), ")");
-                push!(t, "return nil, ", error);
+                    push!(t, "}");
+                });
 
                 return Ok(t.join_line_spacing());
             }
@@ -577,40 +579,45 @@ impl InterfaceCodegen for Codegen {
                 t.push({
                     let mut t = Tokens::new();
 
-                    for sub_type in &body.sub_types {
-                        let ident = toks!("this.", sub_type.ident.clone());
+                    t.push_into(|t| {
+                        push!(t, "switch v := this.Value.(type) {");
+
+                        for sub_type in &body.sub_types {
+                            push!(t, "case *", &sub_type.name, ":");
+                            nested!(t, "return ", c.marshal, "(v)");
+                        }
 
                         t.push_into(|t| {
-                            push!(t, "if this.", sub_type.ident, " != nil {");
-                            nested!(t, "return ", c.marshal, "(&", ident, ")");
-                            push!(t, "}");
+                            let m = format!("{}: no sub-type set", body.name);
+                            let error = toks!(c.new_error.clone(), "(", m.quoted(), ")");
+
+                            push!(t, "default:");
+                            nested!(t, "return nil, ", error);
                         });
-                    }
+
+                        push!(t, "}");
+                    });
 
                     t.join_line_spacing()
                 });
 
-                let error = toks!(c.new_error.clone(), "(", "no sub-type set".quoted(), ")");
-                push!(t, "return nil, ", error);
-
                 return Ok(t.join_line_spacing());
             }
 
-            fn sub_type_check<'el>(
+            fn marshal_tagged_sub_type<'el>(
                 c: &Codegen,
-                ident: Tokens<'el, Go<'el>>,
                 sub_type: &'el RpSubType,
                 tag: &'el str,
             ) -> Tokens<'el, Go<'el>> {
                 let mut t = Tokens::new();
 
-                push!(t, "if this.", sub_type.ident, " != nil {");
+                push!(t, "case *", &sub_type.name, ":");
 
                 t.nested({
                     let mut t = Tokens::new();
 
                     t.push_into(|t| {
-                        push!(t, "if b, err = ", c.marshal, "(&", ident, "); err != nil {");
+                        push!(t, "if b, err = ", c.marshal, "(v); err != nil {");
                         nested!(t, "return nil, err");
                         push!(t, "}");
                     });
@@ -635,8 +642,6 @@ impl InterfaceCodegen for Codegen {
 
                     t.join_line_spacing()
                 });
-
-                push!(t, "}");
 
                 t
             }

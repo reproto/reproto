@@ -232,14 +232,16 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
             let mut t = Tokens::new();
 
             t.try_push_into::<Error, _>(|t| {
-                t.push(Comments(&body.comment));
-                t.push(toks!["type ", &body.name, " struct {"]);
+                t.push_unless_empty(Comments(&body.comment));
+                push!(t, "type ", &body.name, " struct {");
 
-                for sub_type in &body.sub_types {
-                    nested!(t, sub_type.ident, " *", &sub_type.name);
-                }
+                t.nested_into(|t| {
+                    push!(t, "Value interface {");
+                    nested!(t, "Is", &body.name, "()");
+                    push!(t, "}");
+                });
 
-                t.push("}");
+                push!(t, "}");
                 Ok(())
             })?;
 
@@ -255,6 +257,11 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
                             .chain(sub_type.fields.iter())
                             .map(Loc::value),
                     )?);
+
+                    t.push_into(|t| {
+                        push!(t, "func (this ", &sub_type.name, ") Is", &body.name, "() {");
+                        push!(t, "}");
+                    });
                 }
 
                 t.join_line_spacing()
