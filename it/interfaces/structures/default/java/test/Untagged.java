@@ -504,39 +504,22 @@ public interface Untagged {
     public Untagged deserialize(final JsonParser parser, final DeserializationContext context) throws IOException {
       final ObjectNode object = parser.readValueAs(ObjectNode.class);
 
-      final Set<String> shared = new HashSet<String>();
-      shared.add("shared");
-
       final Set<String> tags = new HashSet<String>();
       final Iterator<String> it = object.fieldNames();
+
       while (it.hasNext()) {
         tags.add(it.next());
       }
 
-      final Set<String> compared = new HashSet<String>();
-
-      compared.clear();
-      compared.add("shared");
-      compared.add("a");
-      compared.add("b");
-
-      if (tags.containsAll(compared)) {
+      if (tags.contains("shared") && tags.contains("a") && tags.contains("b")) {
         return new TreeTraversingParser(object, parser.getCodec()).readValueAs(Untagged.A.class);
       }
 
-      compared.clear();
-      compared.add("shared");
-      compared.add("a");
-
-      if (tags.containsAll(compared)) {
+      if (tags.contains("shared") && tags.contains("a")) {
         return new TreeTraversingParser(object, parser.getCodec()).readValueAs(Untagged.B.class);
       }
 
-      compared.clear();
-      compared.add("shared");
-      compared.add("b");
-
-      if (tags.containsAll(compared)) {
+      if (tags.contains("shared") && tags.contains("b")) {
         return new TreeTraversingParser(object, parser.getCodec()).readValueAs(Untagged.C.class);
       }
 
