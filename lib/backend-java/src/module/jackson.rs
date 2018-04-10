@@ -2,12 +2,14 @@
 
 use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, GetterAdded,
               GetterCodegen, InterfaceAdded, InterfaceCodegen, TupleAdded, TupleCodegen};
-use core::RpSubTypeStrategy;
 use core::errors::*;
-use genco::java::{imported, local, Argument, Class, Field, Modifier, DOUBLE, FLOAT, INTEGER, LONG,
+use core::{Loc, RpSubTypeStrategy};
+use flavored::{JavaField, RpInterfaceBody};
+use genco::java::{self, Argument, Class, Field, Method, Modifier, DOUBLE, FLOAT, INTEGER, LONG,
                   SHORT};
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
 use std::rc::Rc;
+use utils::Override;
 
 pub struct Module;
 
@@ -21,6 +23,19 @@ impl Module {
             .interface_generators
             .push(Box::new(jackson.clone()));
         e.options.enum_generators.push(Box::new(jackson.clone()));
+    }
+}
+
+struct Deserialize<'el>(Java<'el>);
+
+impl<'el> IntoTokens<'el, Java<'el>> for Deserialize<'el> {
+    fn into_tokens(self) -> Tokens<'el, Java<'el>> {
+        let deserialize = java::imported(
+            "com.fasterxml.jackson.databind.annotation",
+            "JsonDeserialize",
+        );
+
+        toks!["@", deserialize, "(using = ", self.0, ".class)"]
     }
 }
 
@@ -64,7 +79,7 @@ struct JsonFormat;
 
 impl<'el> IntoTokens<'el, Java<'el>> for JsonFormat {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
-        let json_format = imported("com.fasterxml.jackson.annotation", "JsonFormat");
+        let json_format = java::imported("com.fasterxml.jackson.annotation", "JsonFormat");
 
         let mut args = Tokens::new();
         args.append(toks!["shape = ", json_format.clone(), ".Shape.STRING"]);
@@ -77,13 +92,30 @@ struct JsonProperty<'el>(Cons<'el>);
 
 impl<'el> IntoTokens<'el, Java<'el>> for JsonProperty<'el> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
-        let json_property = imported("com.fasterxml.jackson.annotation", "JsonProperty");
+        let json_property = java::imported("com.fasterxml.jackson.annotation", "JsonProperty");
         toks!["@", json_property, "(", self.0.quoted(), ")"]
     }
 }
 
+/// Throws a wrongTokenException.
+fn wrong_token<'el, C, P, T>(ctx: C, parser: P, token: T) -> Tokens<'el, Java<'el>>
+where
+    C: Into<Tokens<'el, Java<'el>>>,
+    P: Into<Tokens<'el, Java<'el>>>,
+    T: Into<Tokens<'el, Java<'el>>>,
+{
+    let ctx = ctx.into();
+    let token_ty = java::imported("com.fasterxml.jackson.core", "JsonToken");
+
+    let mut a = Tokens::new();
+    a.append(parser.into());
+    a.append(toks![token_ty, ".", token.into()]);
+    a.append("null");
+
+    toks!["throw ", ctx, ".wrongTokenException(", a.join(", "), ");"]
+}
+
 pub struct Jackson {
-    override_: Java<'static>,
     creator: Java<'static>,
     value: Java<'static>,
     sub_types: Java<'static>,
@@ -107,35 +139,38 @@ pub struct Jackson {
 impl Jackson {
     pub fn new() -> Jackson {
         Jackson {
-            override_: imported("java.lang", "Override"),
-            creator: imported("com.fasterxml.jackson.annotation", "JsonCreator"),
-            value: imported("com.fasterxml.jackson.annotation", "JsonValue"),
-            sub_types: imported("com.fasterxml.jackson.annotation", "JsonSubTypes"),
-            sub_type: imported("com.fasterxml.jackson.annotation", "JsonSubTypes").path("Type"),
-            type_info: imported("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
-            serialize: imported("com.fasterxml.jackson.databind.annotation", "JsonSerialize"),
-            deserialize: imported(
+            creator: java::imported("com.fasterxml.jackson.annotation", "JsonCreator"),
+            value: java::imported("com.fasterxml.jackson.annotation", "JsonValue"),
+            sub_types: java::imported("com.fasterxml.jackson.annotation", "JsonSubTypes"),
+            sub_type: java::imported("com.fasterxml.jackson.annotation", "JsonSubTypes")
+                .path("Type"),
+            type_info: java::imported("com.fasterxml.jackson.annotation", "JsonTypeInfo"),
+            serialize: java::imported("com.fasterxml.jackson.databind.annotation", "JsonSerialize"),
+            deserialize: java::imported(
                 "com.fasterxml.jackson.databind.annotation",
                 "JsonDeserialize",
             ),
-            serializer: imported("com.fasterxml.jackson.databind", "JsonSerializer"),
-            deserializer: imported("com.fasterxml.jackson.databind", "JsonDeserializer"),
-            generator: imported("com.fasterxml.jackson.core", "JsonGenerator"),
-            serializer_provider: imported("com.fasterxml.jackson.databind", "SerializerProvider"),
-            parser: imported("com.fasterxml.jackson.core", "JsonParser"),
-            deserialization_context: imported(
+            serializer: java::imported("com.fasterxml.jackson.databind", "JsonSerializer"),
+            deserializer: java::imported("com.fasterxml.jackson.databind", "JsonDeserializer"),
+            generator: java::imported("com.fasterxml.jackson.core", "JsonGenerator"),
+            serializer_provider: java::imported(
+                "com.fasterxml.jackson.databind",
+                "SerializerProvider",
+            ),
+            parser: java::imported("com.fasterxml.jackson.core", "JsonParser"),
+            deserialization_context: java::imported(
                 "com.fasterxml.jackson.databind",
                 "DeserializationContext",
             ),
-            type_reference: imported("com.fasterxml.jackson.core.type", "TypeReference"),
-            token: imported("com.fasterxml.jackson.core", "JsonToken"),
-            string: imported("java.lang", "String"),
-            instant: imported("java.time", "Instant"),
-            io_exception: imported("java.io", "IOException"),
+            type_reference: java::imported("com.fasterxml.jackson.core.type", "TypeReference"),
+            token: java::imported("com.fasterxml.jackson.core", "JsonToken"),
+            string: java::imported("java.lang", "String"),
+            instant: java::imported("java.time", "Instant"),
+            io_exception: java::imported("java.io", "IOException"),
         }
     }
 
-    /// RpName serialize implementation for tuples.
+    /// Serializer for tuples.
     fn tuple_serializer<'el>(
         &self,
         name: Cons<'el>,
@@ -143,7 +178,7 @@ impl Jackson {
     ) -> Result<Class<'el>> {
         use self::Modifier::*;
 
-        let ty = local(name.clone());
+        let ty = java::local(name.clone());
 
         let value = Argument::new(ty.clone(), "value");
         let jgen = Argument::new(self.generator.clone(), "jgen");
@@ -151,7 +186,7 @@ impl Jackson {
 
         let mut serialize = Tokens::new();
 
-        serialize.push(toks!("@", self.override_.clone()));
+        serialize.push(Override);
         serialize.push(toks![
             "public void serialize(",
             toks![
@@ -279,28 +314,7 @@ impl Jackson {
         Ok((token, reader))
     }
 
-    fn wrong_token<'el, C, P, T>(&self, ctxt: C, parser: P, token: T) -> Tokens<'el, Java<'el>>
-    where
-        C: Into<Tokens<'el, Java<'el>>>,
-        P: Into<Tokens<'el, Java<'el>>>,
-        T: Into<Tokens<'el, Java<'el>>>,
-    {
-        let mut arguments = Tokens::new();
-
-        arguments.append(parser.into());
-        arguments.append(toks![self.token.clone(), ".", token.into()]);
-        arguments.append("null");
-
-        toks![
-            "throw ",
-            ctxt.into(),
-            ".wrongTokenException(",
-            arguments.join(", "),
-            ");",
-        ]
-    }
-
-    /// RpName deserialize implementation for tuples.
+    /// Deserialize implementation for tuples.
     fn tuple_deserializer<'el>(
         &self,
         name: Cons<'el>,
@@ -308,14 +322,14 @@ impl Jackson {
     ) -> Result<Class<'el>> {
         use self::Modifier::*;
 
-        let ty = local(name.clone());
+        let ty = java::local(name.clone());
 
         let parser = toks!("final ", self.parser.clone(), " parser");
         let ctxt = toks!("final ", self.deserialization_context.clone(), " ctxt");
 
         let mut deserialize = Tokens::new();
 
-        deserialize.push(toks!("@", self.override_.clone()));
+        deserialize.push(Override);
         deserialize.push(toks![
             "public ",
             ty.clone(),
@@ -338,7 +352,7 @@ impl Jackson {
                 self.token.clone(),
                 ".START_ARRAY) {",
             ]);
-            start_array.nested(self.wrong_token("ctxt", "parser", "START_ARRAY"));
+            start_array.nested(wrong_token("ctxt", "parser", "START_ARRAY"));
             start_array.push("}");
             body.push(start_array);
 
@@ -350,7 +364,7 @@ impl Jackson {
                 if let Some((test, expected)) = token {
                     let mut field_check = Tokens::new();
                     field_check.push(toks!["if (", test, ") {"]);
-                    field_check.nested(self.wrong_token("ctxt", "parser", expected));
+                    field_check.nested(wrong_token("ctxt", "parser", expected));
                     field_check.push("}");
                     body.push(field_check);
                 } else {
@@ -377,7 +391,7 @@ impl Jackson {
                 self.token.clone(),
                 ".END_ARRAY) {",
             ]);
-            end_array.nested(self.wrong_token("ctxt", "parser", "END_ARRAY"));
+            end_array.nested(wrong_token("ctxt", "parser", "END_ARRAY"));
             end_array.push("}");
             body.push(end_array);
 
@@ -475,7 +489,23 @@ impl GetterCodegen for Jackson {
 
 impl ClassCodegen for Jackson {
     fn generate(&self, e: ClassAdded) -> Result<()> {
-        self.add_class_annotations(&e.names, e.spec)
+        self.add_class_annotations(&e.names, e.spec)?;
+
+        if let Some(interface) = e.interface {
+            match interface.sub_type_strategy {
+                RpSubTypeStrategy::RequiredFields => {
+                    // Note: https://stackoverflow.com/questions/40917111/json-custom-deserializer-stuck-in-infinite-recursion
+                    let deserializer =
+                        java::imported("com.fasterxml.jackson.databind", "JsonDeserializer")
+                            .path("None");
+
+                    e.spec.annotation(Deserialize(deserializer));
+                }
+                _ => {}
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -502,31 +532,156 @@ impl InterfaceCodegen for Jackson {
                 args.append(toks!["include=", self.type_info.clone(), ".As.PROPERTY"]);
                 args.append(toks!["property=", tag.as_str().quoted()]);
                 spec.annotation(TypeInfo(self, args));
+
+                let mut args = Tokens::new();
+
+                for sub_type in &body.sub_types {
+                    let mut a = Tokens::new();
+
+                    a.append(toks!["name=", sub_type.name().quoted()]);
+                    a.append(toks![
+                        "value=",
+                        spec.name(),
+                        ".",
+                        sub_type.ident.as_str(),
+                        ".class",
+                    ]);
+
+                    let arg = SubTypesType(self, a).into_tokens();
+                    args.append(arg);
+                }
+
+                spec.annotation(SubTypes(self, args));
+            }
+            RpSubTypeStrategy::RequiredFields => {
+                let c = required_fields_deserialize(body)?;
+                let n = java::local(format!("{}.{}", body.name, c.name()));
+                spec.annotation(Deserialize(n));
+                spec.body.push(c);
             }
         }
 
-        {
-            let mut args = Tokens::new();
+        return Ok(());
 
-            for sub_type in &body.sub_types {
-                let mut a = Tokens::new();
+        /// Build a deserialize implementation for required_fields.
+        fn required_fields_deserialize<'el>(body: &'el RpInterfaceBody) -> Result<Class<'el>> {
+            let parser = java::imported("com.fasterxml.jackson.core", "JsonParser");
+            let object = java::imported("com.fasterxml.jackson.databind.node", "ObjectNode");
+            let context =
+                java::imported("com.fasterxml.jackson.databind", "DeserializationContext");
+            let deserializer = java::imported("com.fasterxml.jackson.databind", "JsonDeserializer");
+            let ttparser = java::imported(
+                "com.fasterxml.jackson.databind.node",
+                "TreeTraversingParser",
+            );
 
-                a.append(toks!["name=", sub_type.name().quoted()]);
-                a.append(toks![
-                    "value=",
-                    spec.name(),
-                    ".",
-                    sub_type.ident.as_str(),
-                    ".class",
-                ]);
+            let parser = Argument::new(parser, "parser");
+            let context = Argument::new(context, "context");
 
-                let arg = SubTypesType(self, a).into_tokens();
-                args.append(arg);
+            let mut des = Method::new("deserialize");
+            des.annotation(Override);
+            des.arguments.push(parser.clone());
+            des.arguments.push(context.clone());
+            des.throws = Some(java::imported("java.io", "IOException").into());
+            des.returns = java::local(body.name.to_string());
+
+            let it = java::imported("java.util", "Iterator")
+                .with_arguments(vec![java::imported("java.lang", "String")]);
+            let set = java::imported("java.util", "Set")
+                .with_arguments(vec![java::imported("java.lang", "String")]);
+            let hash_set = java::imported("java.util", "HashSet")
+                .with_arguments(vec![java::imported("java.lang", "String")]);
+
+            des.body.push({
+                let mut t = Tokens::new();
+
+                push!(
+                    t,
+                    "final ",
+                    object,
+                    " object = ",
+                    parser.var(),
+                    ".readValueAs(",
+                    object,
+                    ".class);"
+                );
+
+                t.push(quoted_tags(
+                    "shared",
+                    body.fields.iter().filter(|f| f.is_required()),
+                ));
+
+                let new_set = toks!["new ", hash_set.clone(), "()"];
+
+                // Set up received tags.
+                t.push_into(|t| {
+                    push!(t, "final ", set, " tags = ", new_set, ";");
+                    push!(t, "final ", it, " it = object.fieldNames();");
+
+                    push!(t, "while (it.hasNext()) {");
+                    nested!(t, "tags.add(it.next());");
+                    push!(t, "}");
+                });
+
+                push!(t, "final ", set, " compared = new ", hash_set, "();");
+
+                for sub_type in &body.sub_types {
+                    t.push_into(|t| {
+                        push!(t, "compared.clear();");
+
+                        for f in body.fields.iter().filter(|f| f.is_required()) {
+                            push!(t, "compared.add(", f.name().quoted(), ");");
+                        }
+
+                        for f in sub_type.fields.iter().filter(|f| f.is_required()) {
+                            push!(t, "compared.add(", f.name().quoted(), ");");
+                        }
+                    });
+
+                    t.push_into(|t| {
+                        let p = toks!["new ", ttparser.clone(), "(object, parser.getCodec())"];
+
+                        push!(t, "if (tags.containsAll(compared)) {");
+                        nested!(t, "return ", p, ".readValueAs(", &sub_type.name, ".class);");
+                        push!(t, "}");
+                    });
+                }
+
+                let m = "no legal combination of fields available".quoted();
+                push!(t, "throw ", context.var(), ".mappingException(", m, ");");
+
+                t.join_line_spacing()
+            });
+
+            return Ok({
+                let mut c = Class::new("Deserializer");
+                c.modifiers.push(Modifier::Static);
+                c.extends =
+                    Some(deserializer.with_arguments(vec![java::local(body.name.name.clone())]));
+                c.methods.push(des);
+                c
+            });
+
+            /// Return a set of quoted tags.
+            fn quoted_tags<'el, F>(var: &'el str, fields: F) -> Tokens<'el, Java<'el>>
+            where
+                F: IntoIterator<Item = &'el Loc<JavaField<'static>>>,
+            {
+                let set = java::imported("java.util", "Set")
+                    .with_arguments(vec![java::imported("java.lang", "String")]);
+                let hash_set = java::imported("java.util", "HashSet")
+                    .with_arguments(vec![java::imported("java.lang", "String")]);
+
+                let mut t = Tokens::new();
+
+                push!(t, "final ", set, " ", var, " = new ", hash_set, "();");
+
+                for field in fields {
+                    push!(t, var, ".add(", field.name().quoted(), ");");
+                }
+
+                t
             }
-
-            spec.annotation(SubTypes(self, args));
         }
-
-        Ok(())
     }
 }

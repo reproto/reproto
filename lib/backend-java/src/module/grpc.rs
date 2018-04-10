@@ -655,11 +655,7 @@ impl ServiceCodegen for GrpcClient {
             .body
             .push(toks!["return ", self.server_service_definition.clone(),]);
 
-        let service_name = Rc::new(format!(
-            "{}.{}",
-            body.name.package.join("."),
-            body.name.join(".")
-        ));
+        let service_name = Rc::new(format!("{}.{}", body.name.package.join("."), body.name));
 
         bind_service
             .body

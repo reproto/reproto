@@ -640,6 +640,7 @@ impl<'el> Compiler<'el> {
             generator.generate(ClassAdded {
                 names: &names,
                 spec: &mut spec,
+                interface: None,
             })?;
         }
 
@@ -734,6 +735,7 @@ impl<'el> Compiler<'el> {
                 generator.generate(ClassAdded {
                     names: &names,
                     spec: &mut class,
+                    interface: Some(body),
                 })?;
             }
 
