@@ -65,6 +65,7 @@ const IMPORT_REPROTO: string = require("raw-loader!../static/import.reproto");
 const TYPE_REPROTO: string = require("raw-loader!../static/type.reproto");
 const TUPLE_REPROTO: string = require("raw-loader!../static/tuple.reproto");
 const INTERFACE_REPROTO: string = require("raw-loader!../static/interface.reproto");
+const REQUIRED_FIELDS_REPROTO: string = require("raw-loader!../static/required_fields.reproto");
 const SERVICE_REPROTO: string = require("raw-loader!../static/service.reproto");
 const DEFAULT_NEW_FILE_REPROTO: string = require("raw-loader!../static/default-new.reproto");
 const logo = require("../static/logo.256.png");
@@ -189,6 +190,10 @@ export class Main extends React.Component<MainProps, MainState> {
         {
           package: "example.interface",
           content: INTERFACE_REPROTO,
+        },
+        {
+          package: "example.required_fields",
+          content: REQUIRED_FIELDS_REPROTO,
         },
         {
           package: "example.service",
