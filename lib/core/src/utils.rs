@@ -49,3 +49,50 @@ pub fn find_line<'a, R: AsMut<Read + 'a>>(
 
     Err("bad file position".into())
 }
+
+/// Find the range corresponding to the given position.
+pub fn find_range<'a, R: AsMut<Read + 'a>>(
+    mut reader: R,
+    pos: (usize, usize),
+) -> Result<(usize, usize, usize, usize)> {
+    let r = reader.as_mut();
+
+    let mut line_start = 0usize;
+    let mut line_end = 0usize;
+
+    let mut col_start = 0usize;
+    let mut col_end = 0usize;
+
+    let mut line = 0usize;
+    let mut col = 0usize;
+
+    let mut it = r.bytes().enumerate();
+
+    while let Some((c, b)) = it.next() {
+        let b = b?;
+
+        let mut new_line = b == NL;
+
+        if new_line {
+            line += 1;
+            col = 0;
+        }
+
+        if c == pos.0 {
+            line_start = line;
+            col_start = col;
+        }
+
+        if c == pos.1 {
+            line_end = line;
+            col_end = col;
+            break;
+        }
+
+        if !new_line {
+            col += 1;
+        }
+    }
+
+    Ok((line_start, line_end, col_start, col_end))
+}

@@ -1,12 +1,22 @@
 mod colored;
+mod json;
 mod non_colored;
 
 pub use self::colored::Colored;
+pub use self::json::Json;
 pub use self::non_colored::NonColored;
 use core::errors::*;
 use core::{self, ContextItem};
 use log;
 use std::io::{self, Write};
+
+/// Output format to print stuff using.
+pub enum OutputFormat {
+    /// All output must be printed as JSON, one message per line.
+    Json,
+    /// All output must be printed in a human-readable format.
+    Human,
+}
 
 pub trait LockableWrite
 where
@@ -63,12 +73,10 @@ pub trait Output {
     }
 
     fn error(&self, e: &Error) -> Result<()> {
-        let mut o = self.lock();
-
         if let Some(p) = e.pos() {
             self.print_error(e.message(), p)?;
         } else {
-            writeln!(o, "{}", self.error_message(e.message())?)?;
+            self.print(&e.message())?;
         }
 
         for e in e.causes().skip(1) {
@@ -77,12 +85,12 @@ pub trait Output {
             if let Some(p) = e.pos() {
                 self.print_error(msg.as_str(), p)?;
             } else {
-                writeln!(o, "{}", msg.as_str())?;
+                self.print(msg.as_str())?;
             }
         }
 
         if let Some(backtrace) = e.backtrace() {
-            writeln!(o, "{:?}", backtrace)?;
+            self.print(&format!("{:?}", backtrace))?;
         }
 
         Ok(())

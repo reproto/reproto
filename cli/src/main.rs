@@ -18,17 +18,23 @@ fn setup_opts<'a, 'b>() -> App<'a, 'b> {
             Arg::with_name("debug")
                 .long("debug")
                 .short("D")
-                .help("Enable debug output"),
+                .help("Enable debug output."),
         )
         .arg(
             Arg::with_name("color")
                 .long("color")
-                .help("Force colored output"),
+                .help("Force colored output."),
         )
         .arg(
             Arg::with_name("no-color")
                 .long("no-color")
-                .help("Disable colored output"),
+                .help("Disable colored output."),
+        )
+        .arg(
+            Arg::with_name("output-format")
+                .long("output-format")
+                .takes_value(true)
+                .help("Select a different output format (json, human) (default: human)."),
         )
 }
 
@@ -82,10 +88,15 @@ fn main() {
     let colored = matches.is_present("color")
         || !matches.is_present("no-color") && atty::is(atty::Stream::Stdout);
 
-    let mut output: Box<output::Output> = if colored {
-        Box::new(output::Colored::new(io::stdout()))
-    } else {
-        Box::new(output::NonColored::new(io::stdout()))
+    let output_format = match matches.value_of("output-format") {
+        Some("json") => output::OutputFormat::Json,
+        _ => output::OutputFormat::Human,
+    };
+
+    let mut output: Box<output::Output> = match output_format {
+        output::OutputFormat::Json => Box::new(output::Json::new(io::stdout())),
+        _ if colored => Box::new(output::Colored::new(io::stdout())),
+        _ => Box::new(output::NonColored::new(io::stdout())),
     };
 
     if let Err(e) = entry(&matches, output.as_mut()) {

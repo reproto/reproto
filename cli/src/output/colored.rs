@@ -67,7 +67,7 @@ where
 
     fn print(&self, m: &str) -> Result<()> {
         let mut o = self.out.lock();
-        writeln!(o, "ERROR: {}", Red.paint(m.as_ref()))?;
+        writeln!(o, "{}", Red.paint(m.as_ref()))?;
         Ok(())
     }
 
