@@ -5,6 +5,7 @@ mod doc;
 mod init;
 mod publish;
 mod repo;
+mod self_update;
 mod update;
 mod watch;
 
@@ -122,6 +123,7 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.subcommand(base_args(check::options()));
     let out = out.subcommand(base_args(publish::options()));
     let out = out.subcommand(base_args(update::options()));
+    let out = out.subcommand(base_args(self_update::options()));
     let out = out.subcommand(base_args(repo::options()));
     let out = out.subcommand(derive::options());
     let out = out.subcommand(init::options());
@@ -140,6 +142,7 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<
         "init" => return init::entry(ctx, matches),
         "publish" => return publish::entry(ctx, matches),
         "repo" => return repo::entry(ctx, matches),
+        "self-update" => return self_update::entry(ctx, matches),
         "update" => return update::entry(ctx, matches),
         "watch" => return watch::entry(ctx, matches, output),
         _ => {}

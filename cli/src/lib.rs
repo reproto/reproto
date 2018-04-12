@@ -39,3 +39,5 @@ pub mod config;
 mod config_env;
 pub mod ops;
 pub mod output;
+
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");

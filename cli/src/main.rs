@@ -7,12 +7,9 @@ extern crate reproto_core as core;
 use clap::{App, Arg, ArgMatches};
 use core::errors::Result;
 use core::{Context, RealFilesystem};
-use reproto::ops;
-use reproto::output;
+use reproto::{ops, output, VERSION};
 use std::io;
 use std::rc::Rc;
-
-const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn setup_opts<'a, 'b>() -> App<'a, 'b> {
     App::new("reproto")

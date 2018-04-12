@@ -9,6 +9,8 @@ pub struct ConfigEnv {
     pub config: PathBuf,
     pub repo_dir: PathBuf,
     pub cache_dir: PathBuf,
+    pub releases_dir: PathBuf,
+    pub bin_dir: PathBuf,
     pub index: Option<String>,
     pub objects: Option<String>,
 }
@@ -21,6 +23,10 @@ impl ConfigEnv {
 
             let mut repo_dir = reproto_dir.join("git");
             let mut cache_dir = reproto_dir.join("cache");
+
+            let releases_dir = reproto_dir.join("releases");
+            let bin_dir = reproto_dir.join("bin");
+
             let mut index = None;
             let mut objects = None;
 
@@ -43,11 +49,13 @@ impl ConfigEnv {
             }
 
             return Ok(Some(ConfigEnv {
-                config: config,
-                repo_dir: repo_dir,
-                cache_dir: cache_dir,
-                index: index,
-                objects: objects,
+                config,
+                repo_dir,
+                cache_dir,
+                releases_dir,
+                bin_dir,
+                index,
+                objects,
             }));
         }
 
