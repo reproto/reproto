@@ -2,7 +2,7 @@
 
 use Options;
 use backend::Initializer;
-use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
+use codegen::{ServiceAdded, ServiceCodegen};
 use core;
 use core::errors::Result;
 use genco::python::imported;
@@ -55,10 +55,7 @@ impl ServiceCodegen for RequestsServiceCodegen {
     fn generate(
         &self,
         ServiceAdded {
-            body,
-            type_body,
-            extra,
-            ..
+            body, type_body, ..
         }: ServiceAdded,
     ) -> Result<()> {
         type_body.push(toks!["class ", &body.name, "_Requests:"]);
@@ -109,23 +106,17 @@ impl ServiceCodegen for RequestsServiceCodegen {
                 t
             });
 
-            for (endpoint, extra) in body.endpoints.iter().zip(extra.iter()) {
-                if !endpoint.has_http_support() {
+            for e in &body.endpoints {
+                if !e.has_http_support() {
                     continue;
                 }
-
-                let EndpointExtra {
-                    ref name,
-                    ref response_ty,
-                    ..
-                } = *extra;
 
                 t.push({
                     let mut t = Tokens::new();
 
                     let mut path = Tokens::new();
 
-                    if let Some(ref http_path) = endpoint.http.path {
+                    if let Some(ref http_path) = e.http.path {
                         for step in &http_path.steps {
                             path.push(toks!["path.append(\"/\")"]);
 
@@ -156,8 +147,7 @@ impl ServiceCodegen for RequestsServiceCodegen {
                         }
                     };
 
-                    let method = endpoint
-                        .http
+                    let method = e.http
                         .method
                         .as_ref()
                         .unwrap_or(&core::RpHttpMethod::Get)
@@ -165,10 +155,10 @@ impl ServiceCodegen for RequestsServiceCodegen {
 
                     let mut args = Tokens::new();
                     args.append("self");
-                    args.extend(endpoint.arguments.iter().map(|a| a.safe_ident().into()));
+                    args.extend(e.arguments.iter().map(|a| a.safe_ident().into()));
 
-                    t.push(toks!["def ", name.clone(), "(", args.join(", "), "):"]);
-                    t.nested(BlockComment(&endpoint.comment));
+                    t.push(toks!["def ", e.safe_ident(), "(", args.join(", "), "):"]);
+                    t.nested(BlockComment(&e.comment));
 
                     t.nested({
                         let mut t = Tokens::new();
@@ -185,18 +175,23 @@ impl ServiceCodegen for RequestsServiceCodegen {
                             args.append("url");
                         };
 
-                        if let Some(ref body) = endpoint.http.body {
+                        if let Some(ref body) = e.http.body {
                             args.append(toks!["json=", body.safe_ident(), ".encode()"]);
                         }
 
                         t.push(toks!["r = self.session.request(", args.join(", "), ")"]);
                         t.push(toks!["r.raise_for_status()"]);
 
-                        if let Some(&(name, ref response)) = response_ty.as_ref() {
-                            match endpoint.http.accept {
+                        if let Some(res) = e.response.as_ref() {
+                            match e.http.accept {
                                 core::RpAccept::Json => {
-                                    t.push(toks![name, " = r.json()"]);
-                                    t.push(toks!["return ", response.clone()]);
+                                    push!(t, "data = r.json()");
+
+                                    if let Some(d) = res.ty().decode("data", 0) {
+                                        t.push(d);
+                                    }
+
+                                    push!(t, "return data");
                                 }
                                 core::RpAccept::Text => {
                                     t.push("return r.text");

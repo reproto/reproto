@@ -210,6 +210,7 @@ fn try_main() -> Result<()> {
     project.arg(Language::Go, &["-m", "encoding/json"]);
     project.arg(Language::Java, &["-m", "builder", "-m", "jackson"]);
     project.arg(Language::Csharp, &["-m", "Json.NET"]);
+    project.arg(Language::Python, &["-m", "python2"]);
 
     project.add(Language::Swift, {
         let mut i = Instance::new("simple");

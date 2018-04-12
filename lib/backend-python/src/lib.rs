@@ -26,12 +26,13 @@ use codegen::ServiceCodegen;
 use compiler::Compiler;
 use core::errors::Result;
 use core::{Context, CoreFlavor, Loc, Pos, RpField, RpPackage, RpType, Translate};
-use genco::{Python, Tokens};
+use genco::{Cons, Python, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
 use trans::Environment;
+use utils::VersionHelper;
 
 const TYPE_SEP: &str = "_";
 const INIT_PY: &str = "__init__.py";
@@ -89,6 +90,7 @@ impl Lang for PythonLang {
 #[derive(Debug)]
 pub enum PythonModule {
     Requests(module::RequestsConfig),
+    Python2(module::Python2Config),
 }
 
 impl TryFromToml for PythonModule {
@@ -97,6 +99,7 @@ impl TryFromToml for PythonModule {
 
         let result = match id {
             "requests" => Requests(module::RequestsConfig::default()),
+            "python2" => Python2(module::Python2Config::default()),
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -108,6 +111,7 @@ impl TryFromToml for PythonModule {
 
         let result = match id {
             "requests" => Requests(value.try_into()?),
+            "python2" => Python2(value.try_into()?),
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -119,6 +123,16 @@ pub struct Options {
     pub build_getters: bool,
     pub build_constructor: bool,
     pub service_generators: Vec<Box<ServiceCodegen>>,
+    pub version_helper: Rc<Box<VersionHelper>>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct Python3VersionHelper {}
+
+impl VersionHelper for Python3VersionHelper {
+    fn is_string<'el>(&self, var: Cons<'el>) -> Tokens<'el, Python<'el>> {
+        toks!["isinstance(", var, ", str)"]
+    }
 }
 
 impl Options {
@@ -127,6 +141,7 @@ impl Options {
             build_getters: true,
             build_constructor: true,
             service_generators: Vec::new(),
+            version_helper: Rc::new(Box::new(Python3VersionHelper {})),
         }
     }
 }
@@ -154,6 +169,7 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     for module in modules {
         let initializer: Box<Initializer<Options = Options>> = match module {
             Requests(config) => Box::new(module::Requests::new(config)),
+            Python2(config) => Box::new(module::Python2::new(config)),
         };
 
         initializer.initialize(&mut options)?;
@@ -163,17 +179,19 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
 }
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let modules = manifest::checked_modules(manifest.modules)?;
+    let options = setup_options(modules)?;
+
     let packages = env.packages()?;
 
-    let translator = env.translator(flavored::PythonFlavorTranslator::new(packages))?;
+    let helper = options.version_helper.clone();
+    let translator = env.translator(flavored::PythonFlavorTranslator::new(packages, helper))?;
 
     let variant_field =
         Loc::new(RpField::new("ordinal", RpType::String), Pos::empty()).translate(&translator)?;
 
     let env = env.translate(translator)?;
 
-    let modules = manifest::checked_modules(manifest.modules)?;
-    let options = setup_options(modules)?;
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
     Compiler::new(&env, &variant_field, options, handle.as_ref()).compile()

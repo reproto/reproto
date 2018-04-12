@@ -3,15 +3,9 @@ use flavored::RpServiceBody;
 use genco::{Python, Tokens};
 use std::rc::Rc;
 
-pub struct EndpointExtra<'el> {
-    pub name: &'el str,
-    pub response_ty: Option<(&'el str, Tokens<'el, Python<'el>>)>,
-}
-
 pub struct ServiceAdded<'a, 'el: 'a> {
     pub body: &'el RpServiceBody,
     pub type_body: &'a mut Tokens<'el, Python<'el>>,
-    pub extra: &'a [EndpointExtra<'el>],
 }
 
 /// Generate service-based code.

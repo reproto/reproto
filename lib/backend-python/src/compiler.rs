@@ -1,7 +1,7 @@
 //! Python Compiler
 
 use backend::PackageProcessor;
-use codegen::{EndpointExtra, ServiceAdded, ServiceCodegen};
+use codegen::{ServiceAdded, ServiceCodegen};
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, Loc, RelativePathBuf};
 use flavored::{PythonFlavor, PythonName, RpEnumBody, RpField, RpInterfaceBody, RpPackage,
@@ -164,35 +164,6 @@ impl<'el> Compiler<'el> {
         repr
     }
 
-    fn optional_check(
-        &self,
-        var: Tokens<'el, Python<'el>>,
-        index: Tokens<'el, Python<'el>>,
-        toks: Tokens<'el, Python<'el>>,
-    ) -> Tokens<'el, Python<'el>> {
-        let mut check = Tokens::new();
-
-        let mut none_check = Tokens::new();
-        none_check.push(toks![var.clone(), " = data[", index.clone(), "]"]);
-
-        let mut none_check_if = Tokens::new();
-
-        let assign_var = toks![var.clone(), " = ", toks];
-
-        none_check_if.push(toks!["if ", var.clone(), " is not None:"]);
-        none_check_if.nested(assign_var);
-
-        none_check.push(none_check_if);
-
-        check.push(toks!["if ", index.clone(), " in data:"]);
-        check.nested(none_check.join_line_spacing());
-
-        check.push(toks!["else:"]);
-        check.nested(toks![var.clone(), " = None"]);
-
-        check.into()
-    }
-
     fn decode_method<F, I>(
         &self,
         name: &'el PythonName,
@@ -203,36 +174,61 @@ impl<'el> Compiler<'el> {
         F: Fn(usize, &'el RpField) -> Tokens<'el, Python<'el>>,
         I: IntoIterator<Item = &'el Loc<RpField>>,
     {
-        let mut body = Tokens::new();
+        let mut t = Tokens::new();
         let mut args = Tokens::new();
 
         for (i, field) in fields.into_iter().enumerate() {
-            let var_name = Rc::new(format!("f_{}", field.ident));
+            let n = Rc::new(format!("f_{}", field.safe_ident()));
             let var = variable_fn(i, field);
 
-            let toks = if field.is_optional() {
-                let var_name = toks!(var_name.clone());
-                let var_toks = field.ty.decode(var_name.clone());
-                self.optional_check(var_name.clone(), var, var_toks)
-            } else {
-                let data = toks!["data[", var.clone(), "]"];
-                let var_toks = field.ty.decode(data);
-                toks![var_name.clone(), " = ", var_toks]
-            };
+            if field.is_optional() {
+                t.push({
+                    let mut t = Tokens::new();
 
-            body.push(toks);
-            args.append(toks!(var_name));
+                    push!(t, n, " = None");
+
+                    t.push_into(|t| {
+                        push!(t, "if ", var, " in data:");
+
+                        t.nested({
+                            let mut t = Tokens::new();
+
+                            push!(t, n.clone(), " = data[", var, "]");
+
+                            if let Some(d) = field.ty.decode(n.clone(), 0) {
+                                t.push_into(|t| {
+                                    push!(t, "if ", n.clone(), " is not None:");
+                                    t.nested(d);
+                                });
+                            }
+
+                            t.join_line_spacing()
+                        });
+                    });
+
+                    t.join_line_spacing()
+                });
+            } else {
+                push!(t, n.clone(), " = data[", var.clone(), "]");
+
+                if let Some(d) = field.ty.decode(n.clone(), 0) {
+                    t.push(d);
+                }
+            }
+
+            args.append(toks!(n));
         }
 
         let args = args.join(", ");
-        body.push(toks!["return ", name, "(", args, ")"]);
+        push!(t, "return ", name, "(", args, ")");
 
-        let mut decode = Tokens::new();
-        decode.push("@staticmethod");
-        decode.push("def decode(data):");
-        decode.nested(body.join_line_spacing());
-
-        Ok(decode)
+        Ok({
+            let mut m = Tokens::new();
+            m.push("@staticmethod");
+            m.push("def decode(data):");
+            m.nested(t.join_line_spacing());
+            m
+        })
     }
 
     fn build_constructor<I>(&self, fields: I) -> Tokens<'el, Python<'el>>
@@ -641,26 +637,10 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
     fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody) -> Result<()> {
         let mut type_body = Tokens::new();
 
-        let mut extra: Vec<EndpointExtra> = Vec::new();
-
-        for endpoint in &body.endpoints {
-            let response_ty = if let Some(res) = endpoint.response.as_ref() {
-                Some(("data", res.ty().decode("data".into())))
-            } else {
-                None
-            };
-
-            extra.push(EndpointExtra {
-                name: endpoint.ident(),
-                response_ty: response_ty,
-            });
-        }
-
         for g in &self.service_generators {
             g.generate(ServiceAdded {
                 body: body,
                 type_body: &mut type_body,
-                extra: &extra,
             })?;
         }
 
