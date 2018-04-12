@@ -248,32 +248,34 @@ mod internal {
             Ok(Self { client, url })
         }
 
-        fn request(&mut self, request: Request) -> impl Future<Item = Vec<u8>, Error = Error> {
-            self.client
-                .request(request)
-                .map_err(|e| Error::from(e))
-                .and_then(|res| {
-                    let status = res.status().clone();
+        fn request(&mut self, request: Request) -> Box<Future<Item = Vec<u8>, Error = Error>> {
+            Box::new(
+                self.client
+                    .request(request)
+                    .map_err(|e| Error::from(e))
+                    .and_then(|res| {
+                        let status = res.status().clone();
 
-                    res.body()
-                        .map_err(|e| Error::from(e))
-                        .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
-                            out.extend(chunk.as_ref());
-                            ok::<_, Error>(out)
-                        })
-                        .map(move |body| (body, status))
-                })
-                .and_then(|(body, status)| {
-                    if !status.is_success() {
-                        if let Ok(body) = String::from_utf8(body) {
-                            return err(format!("bad response: {}: {}", status, body).into());
+                        res.body()
+                            .map_err(|e| Error::from(e))
+                            .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
+                                out.extend(chunk.as_ref());
+                                ok::<_, Error>(out)
+                            })
+                            .map(move |body| (body, status))
+                    })
+                    .and_then(|(body, status)| {
+                        if !status.is_success() {
+                            if let Ok(body) = String::from_utf8(body) {
+                                return err(format!("bad response: {}: {}", status, body).into());
+                            }
+
+                            return err(format!("bad response: {}", status).into());
                         }
 
-                        return err(format!("bad response: {}", status).into());
-                    }
-
-                    ok(body)
-                })
+                        ok(body)
+                    }),
+            )
         }
 
         pub fn get_releases(&mut self) -> Box<Future<Item = Vec<Version>, Error = Error>> {
