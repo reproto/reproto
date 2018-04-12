@@ -139,15 +139,15 @@ cargo install --path $PWD/cli reproto
 
 [rust-get-started]: https://rustup.rs
 
-## Language support
+## Tools
 
 * [reproto-vim], a VIM plugin that provides syntax highlighting.
 * [reproto-maven], Maven plugin that integrates reproto into the build lifecycle of a maven project.
-* [reproto-vscode], a visual studio code plugin providing syntax highlighting.
+* [reproto-vscode], a visual studio code extension providing syntax highlighting and in-editor error diagnostics.
 
 [reproto-vim]: https://github.com/reproto/reproto-vim
 [reproto-maven]: https://github.com/reproto/reproto-maven-plugin
-[reproto-vscode]: https://github.com/reproto/reproto-maven-plugin
+[reproto-vscode]: https://github.com/reproto/reproto-vscode
 
 ## Testing
 
