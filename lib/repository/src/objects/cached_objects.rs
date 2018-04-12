@@ -82,7 +82,7 @@ impl<T: Objects> CachedObjects<T> {
 }
 
 impl<T: Objects> Objects for CachedObjects<T> {
-    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, force: bool) -> Result<()> {
+    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, force: bool) -> Result<bool> {
         self.inner.put_object(checksum, source, force)
     }
 

@@ -262,6 +262,13 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<
 
         let preamble = manifest_preamble(matches)?;
 
+        if let Some(path) = preamble.path.as_ref() {
+            let path = path.to_owned()
+                .canonicalize()
+                .map_err(|e| format!("{}: {}", path.display(), e))?;
+            paths.try_borrow_mut()?.insert(path);
+        }
+
         let language = preamble
             .language
             .as_ref()
@@ -276,9 +283,10 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<
         let local_paths = paths.clone();
 
         let env = environment_with_hook(lang.as_ref(), ctx.clone(), &manifest, move |p| {
-            let mut paths = local_paths.try_borrow_mut()?;
-            let p = p.to_owned().canonicalize()?;
-            paths.insert(p);
+            let p = p.to_owned()
+                .canonicalize()
+                .map_err(|e| format!("{}: {}", p.display(), e))?;
+            local_paths.try_borrow_mut()?.insert(p);
             Ok(())
         })?;
 

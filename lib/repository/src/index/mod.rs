@@ -100,15 +100,36 @@ impl Index for NoIndex {
 }
 
 /// Setup an index for the given path.
-pub fn index_from_path(path: &Path) -> Result<file_index::FileIndex> {
+pub fn index_from_path(path: &Path) -> Result<Box<Index>> {
     if !path.is_dir() {
         return Err(format!("index: no such directory: {}", path.display()).into());
     }
 
-    file_index::FileIndex::new(&path)
+    // looks like a git repo
+    if path.join(".git").is_dir() {
+        let git_repo = git::open_git_repo(path)?;
+        let url = Url::from_file_path(path).map_err(|_| "failed to construct url")?;
+        return open_git_index(&url, git_repo, true);
+    }
+
+    Ok(Box::new(file_index::FileIndex::new(&path)?))
 }
 
-pub fn index_from_git<'a, I>(config: IndexConfig, scheme: I, url: &'a Url) -> Result<Box<Index>>
+fn open_git_index(url: &Url, git_repo: git::GitRepo, publishing: bool) -> Result<Box<Index>> {
+    let git_repo = Rc::new(git_repo);
+
+    let file_objects = file_index::FileIndex::new(git_repo.path())?;
+    let index = GitIndex::new(url.clone(), git_repo, file_objects, publishing);
+
+    Ok(Box::new(index))
+}
+
+pub fn index_from_git<'a, I>(
+    config: IndexConfig,
+    scheme: I,
+    url: &'a Url,
+    publishing: bool,
+) -> Result<Box<Index>>
 where
     I: IntoIterator<Item = &'a str>,
 {
@@ -118,26 +139,33 @@ where
         .next()
         .ok_or_else(|| format!("bad scheme ({}), expected git+scheme", url.scheme()))?;
 
-    let git_repo = git::setup_git_repo(&config.repo_dir, sub_scheme, url)?;
-    let file_objects = file_index::FileIndex::new(git_repo.path())?;
+    let git_repo = if sub_scheme == "file" {
+        let mut url = url.clone();
 
-    let git_repo = Rc::new(git_repo);
-    let index = GitIndex::new(url.clone(), git_repo, file_objects);
+        url.set_scheme("file")
+            .map_err(|_| "failed to set scheme to `file`")?;
 
-    Ok(Box::new(index))
+        let path = url.to_file_path()
+            .map_err(|_| format!("url is not a file path: {}", url))?;
+
+        git::open_git_repo(path)?
+    } else {
+        git::setup_git_repo(&config.repo_dir, sub_scheme, url)?
+    };
+
+    open_git_index(url, git_repo, publishing)
 }
 
-pub fn index_from_url(config: IndexConfig, url: &Url) -> Result<Box<Index>> {
+pub fn index_from_url(config: IndexConfig, url: &Url, publishing: bool) -> Result<Box<Index>> {
     let mut scheme = url.scheme().split("+");
 
     let first = scheme.next().ok_or_else(|| format!("bad scheme: {}", url))?;
 
     match first {
         "file" => url.to_file_path()
-            .map_err(|_| format!("Bad file path for URL: {}", url).into())
-            .and_then(|path| index_from_path(&path))
-            .map(|i| Box::new(i) as Box<Index>),
-        "git" => index_from_git(config, scheme, url),
+            .map_err(|_| format!("url is not a file path: {}", url).into())
+            .and_then(|path| index_from_path(&path)),
+        "git" => index_from_git(config, scheme, url, publishing),
         scheme => Err(format!("bad scheme: {}", scheme).into()),
     }.chain_err(|| format!("loading index from URL: {}", url))
 }

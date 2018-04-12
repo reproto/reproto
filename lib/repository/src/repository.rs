@@ -26,6 +26,7 @@ impl Repository {
         Ok(updates)
     }
 
+    /// Publish the given package and version.
     pub fn publish<O>(
         &mut self,
         object: O,

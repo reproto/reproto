@@ -12,14 +12,21 @@ pub struct GitIndex {
     url: Url,
     git_repo: Rc<GitRepo>,
     file_index: file_index::FileIndex,
+    publishing: bool,
 }
 
 impl GitIndex {
-    pub fn new(url: Url, git_repo: Rc<GitRepo>, file_index: file_index::FileIndex) -> GitIndex {
+    pub fn new(
+        url: Url,
+        git_repo: Rc<GitRepo>,
+        file_index: file_index::FileIndex,
+        publishing: bool,
+    ) -> GitIndex {
         GitIndex {
-            url: url,
-            git_repo: git_repo,
-            file_index: file_index,
+            url,
+            git_repo,
+            file_index,
+            publishing,
         }
     }
 }
@@ -33,11 +40,29 @@ impl Index for GitIndex {
         self.file_index.all(package)
     }
 
-    fn put_version(&self, _: &Checksum, _: &RpPackage, _: &Version, _: bool) -> Result<()> {
-        Err(format!(
-            "Index does not support publishing: {}",
-            self.url.to_string()
-        ).into())
+    fn put_version(
+        &self,
+        checksum: &Checksum,
+        package: &RpPackage,
+        version: &Version,
+        force: bool,
+    ) -> Result<()> {
+        if !self.publishing {
+            return Err(format!(
+                "index does not support publishing: {}",
+                self.url.to_string()
+            ).into());
+        }
+
+        self.file_index
+            .put_version(checksum, package, version, force)?;
+
+        let path = self.file_index.metadata_path(package);
+        self.git_repo.add(path)?;
+        self.git_repo
+            .commit(&format!("publish: {} {}", package, version))?;
+
+        Ok(())
     }
 
     fn get_deployments(&self, package: &RpPackage, version: &Version) -> Result<Vec<Deployment>> {
@@ -62,6 +87,7 @@ impl Index for GitIndex {
             url,
             self.git_repo.clone(),
             file_objects,
+            self.publishing,
         )))
     }
 

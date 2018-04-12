@@ -8,6 +8,11 @@ use url::Url;
 
 const DEFAULT_REMOTE_REF: &'static str = "refs/heads/master";
 
+pub fn open_git_repo<P: AsRef<Path>>(path: P) -> Result<GitRepo> {
+    GitRepo::open(path)
+}
+
+/// Open an already existing git repo.
 pub fn setup_git_repo<'a, P: AsRef<Path>>(
     repos: &P,
     scheme: &str,
@@ -20,12 +25,6 @@ pub fn setup_git_repo<'a, P: AsRef<Path>>(
         .map_err(|_| format!("cannot set scheme for url: {}", url))?;
 
     let path = repos.as_ref().to_owned();
-
-    let path = if scheme == "file" {
-        path.join("local")
-    } else {
-        path
-    };
 
     let tail = {
         let mut tail = sha256::Sha256::new();

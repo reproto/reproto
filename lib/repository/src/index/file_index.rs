@@ -86,11 +86,16 @@ impl FileIndex {
         Ok((out, non_match))
     }
 
+    /// Path to metadata file.
+    pub fn metadata_path(&self, package: &RpPackage) -> PathBuf {
+        self.path_for(package).join(METADATA_JSON)
+    }
+
     fn write_package<I>(&self, package: &RpPackage, deployments: I) -> Result<()>
     where
         I: IntoIterator<Item = Deployment>,
     {
-        let target = self.path_for(package).join(METADATA_JSON);
+        let target = self.metadata_path(package);
         debug!("writing: {}", target.display());
 
         let mut tmp_target = target.clone();

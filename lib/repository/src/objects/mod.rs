@@ -28,7 +28,9 @@ pub trait Objects {
     /// Put the given object into the database.
     /// This will cause the object denoted by the given checksum to be uploaded to the objects
     /// store.
-    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, force: bool) -> Result<()>;
+    ///
+    /// Returns a boolean indicating if the repo was updated or not.
+    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, force: bool) -> Result<bool>;
 
     /// Get a path to the object with the given checksum.
     /// This might cause the object to be downloaded if it's not already present in the local
@@ -44,7 +46,7 @@ pub trait Objects {
 pub struct NoObjects;
 
 impl Objects for NoObjects {
-    fn put_object(&mut self, _: &Checksum, _: &mut Read, _: bool) -> Result<()> {
+    fn put_object(&mut self, _: &Checksum, _: &mut Read, _: bool) -> Result<bool> {
         Err("no objects".into())
     }
 
@@ -71,6 +73,7 @@ pub fn objects_from_git<'a, I>(
     config: ObjectsConfig,
     scheme: I,
     url: &'a Url,
+    publishing: bool,
 ) -> Result<Box<Objects>>
 where
     I: IntoIterator<Item = &'a str>,
@@ -86,13 +89,18 @@ where
     let file_objects = FileObjects::new(git_repo.path());
 
     let git_repo = Rc::new(git_repo);
-    let objects = GitObjects::new(url.clone(), git_repo, file_objects);
+    let objects = GitObjects::new(url.clone(), git_repo, file_objects, publishing);
 
     Ok(Box::new(objects))
 }
 
 /// Load objects from an URL.
-pub fn objects_from_url<F>(config: ObjectsConfig, url: &Url, fallback: F) -> Result<Box<Objects>>
+pub fn objects_from_url<F>(
+    config: ObjectsConfig,
+    url: &Url,
+    fallback: F,
+    publishing: bool,
+) -> Result<Box<Objects>>
 where
     F: Fn(ObjectsConfig, &str, &Url) -> Result<Option<Box<Objects>>>,
 {
@@ -104,7 +112,7 @@ where
 
     match first {
         "file" => objects_from_path(Path::new(url.path())).map(|o| Box::new(o) as Box<Objects>),
-        "git" => objects_from_git(config, scheme, url),
+        "git" => objects_from_git(config, scheme, url, publishing),
         scheme => match fallback(config, scheme, url)? {
             Some(objects) => Ok(objects),
             None => return Err(format!("bad scheme: {}", scheme).into()),

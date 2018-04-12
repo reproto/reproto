@@ -74,7 +74,7 @@ impl HttpObjects {
 }
 
 impl Objects for HttpObjects {
-    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, _force: bool) -> Result<()> {
+    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, _force: bool) -> Result<bool> {
         let mut buffer = Vec::new();
         source.read_to_end(&mut buffer)?;
 
@@ -99,7 +99,9 @@ impl Objects for HttpObjects {
         });
 
         self.core.run(work)?;
-        Ok(())
+
+        // TODO: use status code to determine if the upload resulted in changes or not.
+        Ok(true)
     }
 
     fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>> {

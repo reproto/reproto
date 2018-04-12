@@ -28,8 +28,8 @@ pub struct GitRepo {
     git_command: String,
     work_tree: PathBuf,
     git_dir: PathBuf,
-    remote: Url,
-    revspec: String,
+    remote: Option<Url>,
+    revspec: Option<String>,
 }
 
 impl GitRepo {
@@ -42,8 +42,8 @@ impl GitRepo {
             git_command: git_command,
             work_tree: path.to_owned(),
             git_dir: path.join(".git"),
-            remote: remote,
-            revspec: revspec,
+            remote: Some(remote),
+            revspec: Some(revspec),
         };
 
         if !path.is_dir() {
@@ -54,6 +54,21 @@ impl GitRepo {
         }
 
         Ok(git_repo)
+    }
+
+    /// Open the given path as an already existing git repository.
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<GitRepo> {
+        let path = path.as_ref();
+
+        let git_command = find_git_command()?;
+
+        Ok(GitRepo {
+            git_command: git_command,
+            work_tree: path.to_owned(),
+            git_dir: path.join(".git"),
+            remote: None,
+            revspec: None,
+        })
     }
 
     pub fn path(&self) -> &Path {
@@ -80,16 +95,45 @@ impl GitRepo {
         Ok(())
     }
 
+    /// Reset to the given revspec.
     pub fn reset(&self, revspec: &str) -> Result<()> {
         self.git(&["reset", "--hard", revspec])?;
         Ok(())
     }
 
+    /// Commit the current staged changed to the repo with the given message.
+    pub fn commit(&self, message: &str) -> Result<()> {
+        self.git(&["commit", "-m", message])?;
+        Ok(())
+    }
+
+    /// Add the give file.
+    pub fn add<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let path = path.as_ref();
+        let path_str = path.to_str()
+            .ok_or_else(|| format!("{}: could not convert to string", path.display()))?;
+
+        self.git(&["add", path_str])?;
+        Ok(())
+    }
+
     /// Update the repository.
     pub fn update(&self) -> Result<()> {
-        info!("Updating {}", self.remote);
-        self.git(&["fetch", self.remote.as_ref(), &self.revspec])?;
-        self.reset(FETCH_HEAD)
+        let remote = match self.remote.as_ref() {
+            None => return Ok(()),
+            Some(remote) => remote,
+        };
+
+        let revspec = match self.revspec.as_ref().map(|s| s.as_str()) {
+            None => return Ok(()),
+            Some(revspec) => revspec,
+        };
+
+        info!("Updating {}", remote);
+        self.git(&["fetch", remote.as_ref(), revspec])?;
+        self.reset(FETCH_HEAD)?;
+
+        Ok(())
     }
 }
 

@@ -1,5 +1,6 @@
 * [Getting started](#getting-started)
 * [Rebuilding project on changes](#rebuilding-project-on-changes)
+* [Publishing packages](#publishing-packages)
 
 # Getting started
 
@@ -59,3 +60,19 @@ projects.
 
 You can keep reproto running in the background as you are editing your manifests, and the IDE
 should automatically pick up any updated files.
+
+# Publishing packages
+
+First you need to fork and clone the central index from:
+<https://github.com/reproto/reproto-index>
+
+After this, you can publish packages using `reproto publish`:
+
+```bash
+git clone git@github.com:$USER/reproto-index
+reproto publish --index reproto-index
+```
+
+This will setup the commits necessary which you can then push to your fork.
+
+After you have done this, set up a PR and it will be reviewed.
