@@ -56,7 +56,7 @@ but avoid building large repositories of schemas for now.
 * See the [integration tests] for even more examples on how protocol specifications can be used.
 * See [release notes] for past and coming changes.
 
-[documentation]: /doc/
+[documentation]: /doc/README.md
 [examples]: /examples
 [integration tests]: /it
 [release notes]: /RELEASES.md
