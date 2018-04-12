@@ -1,8 +1,0 @@
-use com.github.gists;
-
-#[http(url="https://api.github.com/")]
-service Github {
-  /// Get the gists for the given user.
-  #[http(path="/users/{username}/gists")]
-  get_user_gists(username: string) -> [gists::Gist];
-}

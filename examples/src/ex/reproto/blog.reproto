@@ -1,0 +1,83 @@
+//! Blog-related abstractions.
+//!
+//! # Examples
+//!
+//! Rust Example:
+//!
+//! ```rust
+//! fn main() {
+//!     let hello = "world";
+//! }
+//! ```
+//!
+//! Java Example:
+//!
+//! ```java
+//! public static class Foo {
+//!     public void hello() {
+//!         System.out.println("Hello World");
+//!     }
+//! }
+//! ```
+
+/// A blog post with comments.
+type Post {
+  /// Identifier of the post.
+  id: string;
+  /// Title of the post.
+  title: string;
+  /// Content of the post.
+  content: string;
+  /// Author of the post.
+  author: User;
+  /// Length of the post.
+  length: ::Length;
+
+  enum Length as string {
+    SHORT as "short";
+    LONG as "long";
+  }
+}
+
+/// A simplified post entry.
+type PostEntry {
+  /// Identifier of the post.
+  id: string;
+  /// Title of the post.
+  title: string;
+  /// Author of the post.
+  author: User;
+}
+
+/// A comment by a user.
+type Comment {
+  /// Author of the comment.
+  author: User;
+  /// The content of the comment.
+  content: string;
+}
+
+/// Information about a user.
+interface User {
+  /// Identifier of the user.
+  id: string;
+  /// Display name of the user.
+  display_name: string;
+
+  Regular as "regular" {
+  }
+
+  Admin as "admin" {
+  }
+}
+
+/// The blog service.
+service Blob {
+  /// Get information about all posts
+  ///
+  /// Streams all posts until the client disconnects.
+  get_posts() -> stream PostEntry as "GetPosts";
+
+  /// Get the post with the given `id`.
+  get_post(request: string) -> Post;
+}

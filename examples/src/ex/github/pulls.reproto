@@ -4,7 +4,7 @@
 
 #![field_naming(lower_camel)]
 
-use com.github.common "^3" as c;
+use ex.github.common "^3" as c;
 
 /// Milestone related to a project.
 type Milestone {

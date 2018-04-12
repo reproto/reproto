@@ -1,0 +1,97 @@
+//! A fun and exciting toystore service
+
+use ex.reproto.common "1" as c;
+
+/// A toy in a toy store.
+///
+/// # Examples
+///
+/// ```json
+/// {
+///   "id": 4122,
+///   "name": "LEGO Pirates of the Caribbean",
+///   "category": {
+///     "id": 10010,
+///     "name": "Lego"
+///   },
+///   "tags": ["plastic", "expensive"],
+///   "status": "available"
+/// }
+/// ```
+type Toy {
+  /// Identifier of the toy.
+  id: u64;
+  /// Name of the toy.
+  name: string;
+  /// Category of the toy.
+  category: Category;
+  /// Tags of the toy.
+  tags: [Tag];
+  /// The status of the toy in the store.
+  status: Status;
+}
+
+/// The status of the toy in the store.
+enum Status as string {
+  /// The toy is available for purchasing at the store.
+  Available as "available";
+  /// The toy is currently in the process of being sold.
+  ///
+  /// This is a temporary state and it will eventually transition to `Available` or `Sold`.
+  Pending as "pending";
+  /// The toy is sold.
+  Sold as "sold";
+}
+
+/// The category of the toy.
+type Category {
+  /// The unique identifier of the category.
+  id: u64;
+  /// The name of the category.
+  ///
+  /// This category should be human readable, like `Lego`.
+  name: string;
+}
+
+/// A tag that can be associated to a toy.
+type Tag {
+  /// The unique identifier of the tag.
+  id: u64;
+  /// The name of the tag.
+  ///
+  /// This name should be human readable, like `Fluffy`.
+  name: string;
+}
+
+/// Sample Toystore Service
+///
+/// A sample API that uses a toystore as an example to demonstrate features in the reproto
+/// specification
+service ToyStore {
+  /// Get a stream of all available toys.
+  ///
+  /// The stream will contain all the toys in the store, it is up to the client to terminate when
+  /// done.
+  #[http(path = "/toys", method = "POST")]
+  get_toys(request: ::GetToys) -> stream Toy;
+
+  /// Get a single toy by its identifier.
+  #[http(path = "/toy/{request}")]
+  get_toy(request: u64) -> Toy;
+
+  /// Gets a greeting for the given `name`.
+  #[http(path = "/greeting/{request}")]
+  get_greeting(request: string) -> c::Greeting;
+
+  /// The get_toys request body.
+  ///
+  /// # Examples
+  ///
+  /// ```json
+  /// {"start_id": 4122}
+  /// ```
+  type GetToys {
+    /// An optional starting ID at which we will start streaming.
+    start_id?: u64;
+  }
+}

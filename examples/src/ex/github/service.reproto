@@ -1,0 +1,23 @@
+use ex.github.gists;
+use ex.github.common;
+
+#[http(url="https://api.github.com")]
+service Github {
+  /// Get the gists for the given user.
+  #[http(path="/users/{username}/gists")]
+  get_user_gists(username: string) -> [gists::Gist];
+
+  /// Get a single gist.
+  #[http(path="/gists/{id}")]
+  get_gist(id: string) -> gists::Gist;
+
+  /// Get a single gist revision.
+  #[http(path="/gists/{id}/{sha}")]
+  get_gist_revision(id: string, sha: string) -> gists::Revision;
+
+  #[http(path="/gists/{id}/commits")]
+  get_gist_commits(id: string) -> [common::Commit];
+
+  #[http(path="/rate_limit")]
+  get_rate_limit() -> any;
+}

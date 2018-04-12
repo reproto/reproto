@@ -1,6 +1,6 @@
 //! Github Gists
 
-use com.github.common as c;
+use ex.github.common as c;
 
 type Gist {
   /// ## Examples
@@ -128,4 +128,12 @@ type Gist {
     /// ```
     language?: string;
   }
+}
+
+type Revision {
+  /// The id of the revision.
+  id: string;
+
+  /// The URL of the revision.
+  url: string;
 }

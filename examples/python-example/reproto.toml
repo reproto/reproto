@@ -1,0 +1,14 @@
+paths = ["proto"]
+language = "python"
+package_prefix = "example.gen"
+output = "."
+
+# packages to build
+[packages]
+github = "*"
+
+[modules]
+python2 = {}
+
+[modules.requests]
+version = "1"

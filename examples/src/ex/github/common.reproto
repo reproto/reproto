@@ -57,3 +57,17 @@ type User {
     USER as "User";
   }
 }
+
+type Commit {
+  /// The url of the commit.
+  url: string;
+
+  /// Version of the commit.
+  version: string;
+
+  /// The user that created the commit.
+  user: User;
+
+  /// Time when the commit was created.
+  committed_at: datetime;
+}

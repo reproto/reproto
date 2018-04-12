@@ -1,0 +1,25 @@
+use ex.github.gists as g;
+
+/// Talk with the Github V3 service.
+#[http(url="https://api.github.com")]
+service Github {
+    #[http(path = "/rate_limit")]
+    get_rate_limit() -> ::RateLimit;
+
+    #[http(path = "/users/{username}/gists")]
+    get_gists_for_user(username: string) -> [g::Gist];
+
+    type RateLimit {
+        resources: ::Resources;
+
+        type Resources {
+            core: ::Core;
+
+            type Core {
+                limit: u32;
+                remaining: u32;
+                reset: u64;
+            }
+        }
+    }
+}
