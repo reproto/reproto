@@ -24,37 +24,37 @@ class Entry:
 
   @staticmethod
   def decode(data):
+    f_lower_camel = None
+
     if "lower_camel" in data:
       f_lower_camel = data["lower_camel"]
 
       if f_lower_camel is not None:
         f_lower_camel = lower_camel.Value.decode(f_lower_camel)
-    else:
-      f_lower_camel = None
+
+    f_lower_snake = None
 
     if "lower_snake" in data:
       f_lower_snake = data["lower_snake"]
 
       if f_lower_snake is not None:
         f_lower_snake = lower_snake.Value.decode(f_lower_snake)
-    else:
-      f_lower_snake = None
+
+    f_upper_camel = None
 
     if "upper_camel" in data:
       f_upper_camel = data["upper_camel"]
 
       if f_upper_camel is not None:
         f_upper_camel = upper_camel.Value.decode(f_upper_camel)
-    else:
-      f_upper_camel = None
+
+    f_upper_snake = None
 
     if "upper_snake" in data:
       f_upper_snake = data["upper_snake"]
 
       if f_upper_snake is not None:
         f_upper_snake = upper_snake.Value.decode(f_upper_snake)
-    else:
-      f_upper_snake = None
 
     return Entry(f_lower_camel, f_lower_snake, f_upper_camel, f_upper_snake)
 

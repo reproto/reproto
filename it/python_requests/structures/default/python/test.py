@@ -67,7 +67,9 @@ class MyService_Requests:
 
     data = r.json()
 
-    return Entry.decode(data)
+    data = Entry.decode(data)
+
+    return data
 
   def unknown_argument(self, request, id):
     """
@@ -105,4 +107,6 @@ class MyService_Requests:
 
     data = r.json()
 
-    return Entry.decode(data)
+    data = Entry.decode(data)
+
+    return data

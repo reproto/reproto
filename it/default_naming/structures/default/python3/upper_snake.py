@@ -9,6 +9,9 @@ class Value:
   def decode(data):
     f_foo_bar = data["FOO_BAR"]
 
+    if not isinstance(f_foo_bar, str):
+      raise Exception("not a string")
+
     return Value(f_foo_bar)
 
   def encode(self):

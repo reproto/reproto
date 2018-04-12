@@ -10,13 +10,13 @@ class Entry:
 
   @staticmethod
   def decode(data):
+    f_foo = None
+
     if "foo" in data:
       f_foo = data["foo"]
 
       if f_foo is not None:
         f_foo = Foo.decode(f_foo)
-    else:
-      f_foo = None
 
     return Entry(f_foo)
 
@@ -45,6 +45,9 @@ class Foo:
   def decode(data):
     f_field = data["field"]
 
+    if not isinstance(f_field, unicode):
+      raise Exception("not a string")
+
     return Foo(f_field)
 
   def encode(self):
@@ -72,7 +75,9 @@ class Bar:
 
   @staticmethod
   def decode(data):
-    f_field = Bar_Inner.decode(data["field"])
+    f_field = data["field"]
+
+    f_field = Bar_Inner.decode(f_field)
 
     return Bar(f_field)
 
@@ -102,6 +107,9 @@ class Bar_Inner:
   @staticmethod
   def decode(data):
     f_field = data["field"]
+
+    if not isinstance(f_field, unicode):
+      raise Exception("not a string")
 
     return Bar_Inner(f_field)
 

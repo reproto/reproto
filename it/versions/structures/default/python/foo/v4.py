@@ -23,37 +23,38 @@ class Thing:
 
   @staticmethod
   def decode(data):
+    f_name = None
+
     if "name" in data:
       f_name = data["name"]
 
       if f_name is not None:
-        f_name = f_name
-    else:
-      f_name = None
+        if not isinstance(f_name, unicode):
+          raise Exception("not a string")
+
+    f_other = None
 
     if "other" in data:
       f_other = data["other"]
 
       if f_other is not None:
         f_other = bar.Other.decode(f_other)
-    else:
-      f_other = None
+
+    f_other2 = None
 
     if "other2" in data:
       f_other2 = data["other2"]
 
       if f_other2 is not None:
         f_other2 = bar2.Other.decode(f_other2)
-    else:
-      f_other2 = None
+
+    f_other21 = None
 
     if "other21" in data:
       f_other21 = data["other21"]
 
       if f_other21 is not None:
         f_other21 = bar21.Other.decode(f_other21)
-    else:
-      f_other21 = None
 
     return Thing(f_name, f_other, f_other2, f_other21)
 

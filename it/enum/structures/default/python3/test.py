@@ -13,21 +13,21 @@ class Entry:
 
   @staticmethod
   def decode(data):
+    f_explicit = None
+
     if "explicit" in data:
       f_explicit = data["explicit"]
 
       if f_explicit is not None:
         f_explicit = EnumExplicit.decode(f_explicit)
-    else:
-      f_explicit = None
+
+    f_implicit = None
 
     if "implicit" in data:
       f_implicit = data["implicit"]
 
       if f_implicit is not None:
         f_implicit = EnumImplicit.decode(f_implicit)
-    else:
-      f_implicit = None
 
     return Entry(f_explicit, f_implicit)
 

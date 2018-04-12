@@ -11,21 +11,21 @@ class Entry:
 
   @staticmethod
   def decode(data):
+    f_tagged = None
+
     if "tagged" in data:
       f_tagged = data["tagged"]
 
       if f_tagged is not None:
         f_tagged = Tagged.decode(f_tagged)
-    else:
-      f_tagged = None
+
+    f_untagged = None
 
     if "untagged" in data:
       f_untagged = data["untagged"]
 
       if f_untagged is not None:
         f_untagged = Untagged.decode(f_untagged)
-    else:
-      f_untagged = None
 
     return Entry(f_tagged, f_untagged)
 
@@ -75,6 +75,9 @@ class Tagged_A:
   def decode(data):
     f_shared = data["shared"]
 
+    if not isinstance(f_shared, unicode):
+      raise Exception("not a string")
+
     return Tagged_A(f_shared)
 
   def encode(self):
@@ -104,6 +107,9 @@ class Tagged_B:
   @staticmethod
   def decode(data):
     f_shared = data["shared"]
+
+    if not isinstance(f_shared, unicode):
+      raise Exception("not a string")
 
     return Tagged_B(f_shared)
 
@@ -135,6 +141,9 @@ class Tagged_Bar:
   def decode(data):
     f_shared = data["shared"]
 
+    if not isinstance(f_shared, unicode):
+      raise Exception("not a string")
+
     return Tagged_Bar(f_shared)
 
   def encode(self):
@@ -164,6 +173,9 @@ class Tagged_Baz:
   @staticmethod
   def decode(data):
     f_shared = data["shared"]
+
+    if not isinstance(f_shared, unicode):
+      raise Exception("not a string")
 
     return Tagged_Baz(f_shared)
 
@@ -227,25 +239,36 @@ class Untagged_A:
   def decode(data):
     f_shared = data["shared"]
 
+    if not isinstance(f_shared, unicode):
+      raise Exception("not a string")
+
+    f_shared_ignore = None
+
     if "shared_ignore" in data:
       f_shared_ignore = data["shared_ignore"]
 
       if f_shared_ignore is not None:
-        f_shared_ignore = f_shared_ignore
-    else:
-      f_shared_ignore = None
+        if not isinstance(f_shared_ignore, unicode):
+          raise Exception("not a string")
 
     f_a = data["a"]
 
+    if not isinstance(f_a, unicode):
+      raise Exception("not a string")
+
     f_b = data["b"]
+
+    if not isinstance(f_b, unicode):
+      raise Exception("not a string")
+
+    f_ignore = None
 
     if "ignore" in data:
       f_ignore = data["ignore"]
 
       if f_ignore is not None:
-        f_ignore = f_ignore
-    else:
-      f_ignore = None
+        if not isinstance(f_ignore, unicode):
+          raise Exception("not a string")
 
     return Untagged_A(f_shared, f_shared_ignore, f_a, f_b, f_ignore)
 
@@ -303,23 +326,31 @@ class Untagged_B:
   def decode(data):
     f_shared = data["shared"]
 
+    if not isinstance(f_shared, unicode):
+      raise Exception("not a string")
+
+    f_shared_ignore = None
+
     if "shared_ignore" in data:
       f_shared_ignore = data["shared_ignore"]
 
       if f_shared_ignore is not None:
-        f_shared_ignore = f_shared_ignore
-    else:
-      f_shared_ignore = None
+        if not isinstance(f_shared_ignore, unicode):
+          raise Exception("not a string")
 
     f_a = data["a"]
+
+    if not isinstance(f_a, unicode):
+      raise Exception("not a string")
+
+    f_ignore = None
 
     if "ignore" in data:
       f_ignore = data["ignore"]
 
       if f_ignore is not None:
-        f_ignore = f_ignore
-    else:
-      f_ignore = None
+        if not isinstance(f_ignore, unicode):
+          raise Exception("not a string")
 
     return Untagged_B(f_shared, f_shared_ignore, f_a, f_ignore)
 
@@ -372,23 +403,31 @@ class Untagged_C:
   def decode(data):
     f_shared = data["shared"]
 
+    if not isinstance(f_shared, unicode):
+      raise Exception("not a string")
+
+    f_shared_ignore = None
+
     if "shared_ignore" in data:
       f_shared_ignore = data["shared_ignore"]
 
       if f_shared_ignore is not None:
-        f_shared_ignore = f_shared_ignore
-    else:
-      f_shared_ignore = None
+        if not isinstance(f_shared_ignore, unicode):
+          raise Exception("not a string")
 
     f_b = data["b"]
+
+    if not isinstance(f_b, unicode):
+      raise Exception("not a string")
+
+    f_ignore = None
 
     if "ignore" in data:
       f_ignore = data["ignore"]
 
       if f_ignore is not None:
-        f_ignore = f_ignore
-    else:
-      f_ignore = None
+        if not isinstance(f_ignore, unicode):
+          raise Exception("not a string")
 
     return Untagged_C(f_shared, f_shared_ignore, f_b, f_ignore)
 

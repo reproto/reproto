@@ -9,13 +9,13 @@ class Entry:
 
   @staticmethod
   def decode(data):
+    f_thing = None
+
     if "thing" in data:
       f_thing = data["thing"]
 
       if f_thing is not None:
         f_thing = foo.Thing.decode(f_thing)
-    else:
-      f_thing = None
 
     return Entry(f_thing)
 

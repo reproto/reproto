@@ -137,271 +137,303 @@ class Entry:
 
   @staticmethod
   def decode(data):
-    if "and" in data:
-      f_and = data["and"]
+    f__and = None
 
-      if f_and is not None:
-        f_and = f_and
-    else:
-      f_and = None
+    if "and" in data:
+      f__and = data["and"]
+
+      if f__and is not None:
+        if not isinstance(f__and, unicode):
+          raise Exception("not a string")
+
+    f__as = None
 
     if "as" in data:
-      f_as = data["as"]
+      f__as = data["as"]
 
-      if f_as is not None:
-        f_as = f_as
-    else:
-      f_as = None
+      if f__as is not None:
+        if not isinstance(f__as, unicode):
+          raise Exception("not a string")
+
+    f__assert = None
 
     if "assert" in data:
-      f_assert = data["assert"]
+      f__assert = data["assert"]
 
-      if f_assert is not None:
-        f_assert = f_assert
-    else:
-      f_assert = None
+      if f__assert is not None:
+        if not isinstance(f__assert, unicode):
+          raise Exception("not a string")
+
+    f__break = None
 
     if "break" in data:
-      f_break = data["break"]
+      f__break = data["break"]
 
-      if f_break is not None:
-        f_break = f_break
-    else:
-      f_break = None
+      if f__break is not None:
+        if not isinstance(f__break, unicode):
+          raise Exception("not a string")
+
+    f__class = None
 
     if "class" in data:
-      f_class = data["class"]
+      f__class = data["class"]
 
-      if f_class is not None:
-        f_class = f_class
-    else:
-      f_class = None
+      if f__class is not None:
+        if not isinstance(f__class, unicode):
+          raise Exception("not a string")
+
+    f__continue = None
 
     if "continue" in data:
-      f_continue = data["continue"]
+      f__continue = data["continue"]
 
-      if f_continue is not None:
-        f_continue = f_continue
-    else:
-      f_continue = None
+      if f__continue is not None:
+        if not isinstance(f__continue, unicode):
+          raise Exception("not a string")
+
+    f__def = None
 
     if "def" in data:
-      f_def = data["def"]
+      f__def = data["def"]
 
-      if f_def is not None:
-        f_def = f_def
-    else:
-      f_def = None
+      if f__def is not None:
+        if not isinstance(f__def, unicode):
+          raise Exception("not a string")
+
+    f__del = None
 
     if "del" in data:
-      f_del = data["del"]
+      f__del = data["del"]
 
-      if f_del is not None:
-        f_del = f_del
-    else:
-      f_del = None
+      if f__del is not None:
+        if not isinstance(f__del, unicode):
+          raise Exception("not a string")
+
+    f__elif = None
 
     if "elif" in data:
-      f_elif = data["elif"]
+      f__elif = data["elif"]
 
-      if f_elif is not None:
-        f_elif = f_elif
-    else:
-      f_elif = None
+      if f__elif is not None:
+        if not isinstance(f__elif, unicode):
+          raise Exception("not a string")
+
+    f__else = None
 
     if "else" in data:
-      f_else = data["else"]
+      f__else = data["else"]
 
-      if f_else is not None:
-        f_else = f_else
-    else:
-      f_else = None
+      if f__else is not None:
+        if not isinstance(f__else, unicode):
+          raise Exception("not a string")
+
+    f__except = None
 
     if "except" in data:
-      f_except = data["except"]
+      f__except = data["except"]
 
-      if f_except is not None:
-        f_except = f_except
-    else:
-      f_except = None
+      if f__except is not None:
+        if not isinstance(f__except, unicode):
+          raise Exception("not a string")
+
+    f__exec = None
 
     if "exec" in data:
-      f_exec = data["exec"]
+      f__exec = data["exec"]
 
-      if f_exec is not None:
-        f_exec = f_exec
-    else:
-      f_exec = None
+      if f__exec is not None:
+        if not isinstance(f__exec, unicode):
+          raise Exception("not a string")
+
+    f__finally = None
 
     if "finally" in data:
-      f_finally = data["finally"]
+      f__finally = data["finally"]
 
-      if f_finally is not None:
-        f_finally = f_finally
-    else:
-      f_finally = None
+      if f__finally is not None:
+        if not isinstance(f__finally, unicode):
+          raise Exception("not a string")
+
+    f__for = None
 
     if "for" in data:
-      f_for = data["for"]
+      f__for = data["for"]
 
-      if f_for is not None:
-        f_for = f_for
-    else:
-      f_for = None
+      if f__for is not None:
+        if not isinstance(f__for, unicode):
+          raise Exception("not a string")
+
+    f__from = None
 
     if "from" in data:
-      f_from = data["from"]
+      f__from = data["from"]
 
-      if f_from is not None:
-        f_from = f_from
-    else:
-      f_from = None
+      if f__from is not None:
+        if not isinstance(f__from, unicode):
+          raise Exception("not a string")
+
+    f__global = None
 
     if "global" in data:
-      f_global = data["global"]
+      f__global = data["global"]
 
-      if f_global is not None:
-        f_global = f_global
-    else:
-      f_global = None
+      if f__global is not None:
+        if not isinstance(f__global, unicode):
+          raise Exception("not a string")
+
+    f__if = None
 
     if "if" in data:
-      f_if = data["if"]
+      f__if = data["if"]
 
-      if f_if is not None:
-        f_if = f_if
-    else:
-      f_if = None
+      if f__if is not None:
+        if not isinstance(f__if, unicode):
+          raise Exception("not a string")
+
+    f__import = None
 
     if "import" in data:
-      f_import = data["import"]
+      f__import = data["import"]
 
-      if f_import is not None:
-        f_import = f_import
-    else:
-      f_import = None
+      if f__import is not None:
+        if not isinstance(f__import, unicode):
+          raise Exception("not a string")
+
+    f_imported = None
 
     if "imported" in data:
       f_imported = data["imported"]
 
       if f_imported is not None:
         f_imported = t.Empty.decode(f_imported)
-    else:
-      f_imported = None
+
+    f__in = None
 
     if "in" in data:
-      f_in = data["in"]
+      f__in = data["in"]
 
-      if f_in is not None:
-        f_in = f_in
-    else:
-      f_in = None
+      if f__in is not None:
+        if not isinstance(f__in, unicode):
+          raise Exception("not a string")
+
+    f__is = None
 
     if "is" in data:
-      f_is = data["is"]
+      f__is = data["is"]
 
-      if f_is is not None:
-        f_is = f_is
-    else:
-      f_is = None
+      if f__is is not None:
+        if not isinstance(f__is, unicode):
+          raise Exception("not a string")
+
+    f__lambda = None
 
     if "lambda" in data:
-      f_lambda = data["lambda"]
+      f__lambda = data["lambda"]
 
-      if f_lambda is not None:
-        f_lambda = f_lambda
-    else:
-      f_lambda = None
+      if f__lambda is not None:
+        if not isinstance(f__lambda, unicode):
+          raise Exception("not a string")
+
+    f__nonlocal = None
 
     if "nonlocal" in data:
-      f_nonlocal = data["nonlocal"]
+      f__nonlocal = data["nonlocal"]
 
-      if f_nonlocal is not None:
-        f_nonlocal = f_nonlocal
-    else:
-      f_nonlocal = None
+      if f__nonlocal is not None:
+        if not isinstance(f__nonlocal, unicode):
+          raise Exception("not a string")
+
+    f__not = None
 
     if "not" in data:
-      f_not = data["not"]
+      f__not = data["not"]
 
-      if f_not is not None:
-        f_not = f_not
-    else:
-      f_not = None
+      if f__not is not None:
+        if not isinstance(f__not, unicode):
+          raise Exception("not a string")
+
+    f__or = None
 
     if "or" in data:
-      f_or = data["or"]
+      f__or = data["or"]
 
-      if f_or is not None:
-        f_or = f_or
-    else:
-      f_or = None
+      if f__or is not None:
+        if not isinstance(f__or, unicode):
+          raise Exception("not a string")
+
+    f__pass = None
 
     if "pass" in data:
-      f_pass = data["pass"]
+      f__pass = data["pass"]
 
-      if f_pass is not None:
-        f_pass = f_pass
-    else:
-      f_pass = None
+      if f__pass is not None:
+        if not isinstance(f__pass, unicode):
+          raise Exception("not a string")
+
+    f__print = None
 
     if "print" in data:
-      f_print = data["print"]
+      f__print = data["print"]
 
-      if f_print is not None:
-        f_print = f_print
-    else:
-      f_print = None
+      if f__print is not None:
+        if not isinstance(f__print, unicode):
+          raise Exception("not a string")
+
+    f__raise = None
 
     if "raise" in data:
-      f_raise = data["raise"]
+      f__raise = data["raise"]
 
-      if f_raise is not None:
-        f_raise = f_raise
-    else:
-      f_raise = None
+      if f__raise is not None:
+        if not isinstance(f__raise, unicode):
+          raise Exception("not a string")
+
+    f__return = None
 
     if "return" in data:
-      f_return = data["return"]
+      f__return = data["return"]
 
-      if f_return is not None:
-        f_return = f_return
-    else:
-      f_return = None
+      if f__return is not None:
+        if not isinstance(f__return, unicode):
+          raise Exception("not a string")
+
+    f__try = None
 
     if "try" in data:
-      f_try = data["try"]
+      f__try = data["try"]
 
-      if f_try is not None:
-        f_try = f_try
-    else:
-      f_try = None
+      if f__try is not None:
+        if not isinstance(f__try, unicode):
+          raise Exception("not a string")
+
+    f__while = None
 
     if "while" in data:
-      f_while = data["while"]
+      f__while = data["while"]
 
-      if f_while is not None:
-        f_while = f_while
-    else:
-      f_while = None
+      if f__while is not None:
+        if not isinstance(f__while, unicode):
+          raise Exception("not a string")
+
+    f__with = None
 
     if "with" in data:
-      f_with = data["with"]
+      f__with = data["with"]
 
-      if f_with is not None:
-        f_with = f_with
-    else:
-      f_with = None
+      if f__with is not None:
+        if not isinstance(f__with, unicode):
+          raise Exception("not a string")
+
+    f__yield = None
 
     if "yield" in data:
-      f_yield = data["yield"]
+      f__yield = data["yield"]
 
-      if f_yield is not None:
-        f_yield = f_yield
-    else:
-      f_yield = None
+      if f__yield is not None:
+        if not isinstance(f__yield, unicode):
+          raise Exception("not a string")
 
-    return Entry(f_and, f_as, f_assert, f_break, f_class, f_continue, f_def, f_del, f_elif, f_else, f_except, f_exec, f_finally, f_for, f_from, f_global, f_if, f_import, f_imported, f_in, f_is, f_lambda, f_nonlocal, f_not, f_or, f_pass, f_print, f_raise, f_return, f_try, f_while, f_with, f_yield)
+    return Entry(f__and, f__as, f__assert, f__break, f__class, f__continue, f__def, f__del, f__elif, f__else, f__except, f__exec, f__finally, f__for, f__from, f__global, f__if, f__import, f_imported, f__in, f__is, f__lambda, f__nonlocal, f__not, f__or, f__pass, f__print, f__raise, f__return, f__try, f__while, f__with, f__yield)
 
   def encode(self):
     data = dict()

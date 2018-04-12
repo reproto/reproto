@@ -11,21 +11,21 @@ class Entry:
 
   @staticmethod
   def decode(data):
+    f_a = None
+
     if "a" in data:
       f_a = data["a"]
 
       if f_a is not None:
         f_a = A.decode(f_a)
-    else:
-      f_a = None
+
+    f_b = None
 
     if "b" in data:
       f_b = data["b"]
 
       if f_b is not None:
         f_b = A_B.decode(f_b)
-    else:
-      f_b = None
 
     return Entry(f_a, f_b)
 
@@ -52,7 +52,9 @@ class A:
 
   @staticmethod
   def decode(data):
-    f_b = A_B.decode(data["b"])
+    f_b = data["b"]
+
+    f_b = A_B.decode(f_b)
 
     return A(f_b)
 
@@ -79,6 +81,9 @@ class A_B:
   @staticmethod
   def decode(data):
     f_field = data["field"]
+
+    if not isinstance(f_field, str):
+      raise Exception("not a string")
 
     return A_B(f_field)
 

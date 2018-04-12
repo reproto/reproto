@@ -9,6 +9,9 @@ class Other:
   def decode(data):
     f_name21 = data["name21"]
 
+    if not isinstance(f_name21, unicode):
+      raise Exception("not a string")
+
     return Other(f_name21)
 
   def encode(self):
