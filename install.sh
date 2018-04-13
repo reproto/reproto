@@ -166,11 +166,13 @@ if [[ -L $l ]]; then
 fi
 
 download "$archive" "$a"
-tar -xvf $a
+tar -C "$REPROTO_HOME/releases" -xf $a
 
-mv $a $b
+mv "$REPROTO_HOME/releases/reproto" "$b"
+chmod +x $b
 ln -s $d $l
 
 echo ""
 echo "All done!"
+echo ""
 echo "Please make sure that $REPROTO_HOME/bin is in your PATH, or that REPROTO_HOME is set and points to $REPROTO_HOME"
