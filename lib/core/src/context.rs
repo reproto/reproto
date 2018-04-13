@@ -60,21 +60,20 @@ pub struct Reporter<'a> {
 }
 
 impl<'a> Reporter<'a> {
-    pub fn err<P: Into<ErrorPos>, E: fmt::Display>(mut self, pos: P, error: E) -> Self {
+    pub fn err<P: Into<ErrorPos>, E: fmt::Display>(&mut self, pos: P, error: E) {
         self.items
             .push(ContextItem::ErrorPos(pos.into(), error.to_string()));
-
-        self
     }
 
-    pub fn info<P: Into<ErrorPos>, I: fmt::Display>(mut self, pos: P, info: I) -> Self {
+    pub fn info<P: Into<ErrorPos>, I: fmt::Display>(&mut self, pos: P, info: I) {
         self.items
             .push(ContextItem::InfoPos(pos.into(), info.to_string()));
-
-        self
     }
 
     /// Close this reporter and return an error if it has errors.
+    ///
+    /// This will cause the reporter to be dropped, which will report all sub-items to the parent
+    /// context.
     pub fn close(self) -> Option<Error> {
         if !self.has_errors() {
             return None;
@@ -83,8 +82,8 @@ impl<'a> Reporter<'a> {
         Some(Error::new("Error in Context"))
     }
 
-    /// Check if reporter is empty.
-    pub fn has_errors(&self) -> bool {
+    /// Check if reporter has any errors as sub-items.
+    fn has_errors(&self) -> bool {
         self.items.iter().any(|item| match *item {
             ContextItem::ErrorPos(_, _) => true,
             _ => false,
@@ -192,10 +191,10 @@ mod tests {
         let result: result::Result<(), &str> = Err("nope");
 
         let a: Result<()> = result.map_err(|e| {
-            ctx.report()
-                .err(pos, e)
-                .err(other_pos, "previously reported here")
-                .into()
+            let mut r = ctx.report();
+            r.err(pos, e);
+            r.err(other_pos, "previously reported here");
+            r.into()
         });
 
         let e = a.unwrap_err();
@@ -205,6 +204,6 @@ mod tests {
             ref other => panic!("unexpected: {:?}", other),
         }
 
-        assert_eq!(2, ctx.errors().unwrap().len());
+        assert_eq!(2, ctx.items().unwrap().len());
     }
 }

@@ -13,7 +13,7 @@ macro_rules! check_attributes {
         let mut __a_r = $ctx.report();
 
         for unused in $attr.unused() {
-            __a_r = __a_r.err(unused, "unknown attribute");
+            __a_r.err(unused, "unknown attribute");
         }
 
         if let Some(e) = __a_r.close() {
@@ -28,7 +28,7 @@ macro_rules! check_selection {
         let mut __a_r = $ctx.report();
 
         for unused in $sel.unused() {
-            __a_r = __a_r.err(unused, "unknown attribute");
+            __a_r.err(unused, "unknown attribute");
         }
 
         if let Some(e) = __a_r.close() {

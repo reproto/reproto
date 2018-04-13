@@ -17,13 +17,16 @@ macro_rules! check_conflict {
     ($ctx:expr, $existing:expr, $item:expr, $accessor:expr, $what:expr) => {
         if let Some(other) = $existing.insert($accessor.to_string(), Pos::from(&$item).clone())
         {
-            return Err($ctx.report()
-                .err(
-                    Pos::from(&$item),
-                    format!(concat!($what, " `{}` is already defined"), $accessor),
-                )
-                .info(other, "previously defined here")
-                .into());
+            let mut report = $ctx.report();
+
+            report.err(
+                Pos::from(&$item),
+                format!(concat!($what, " `{}` is already defined"), $accessor),
+            );
+
+            report.info(other, "previously defined here");
+
+            return Err(report.into());
         }
     };
 }
@@ -34,17 +37,17 @@ macro_rules! check_field_tag {
         match $strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 if $field.name() == tag {
-                    let report = $ctx.report()
-                        .err(
-                            Loc::pos(&$field),
-                            format!(
-                                "field with name `{}` is the same as tag used in type_info",
-                                tag
-                            ),
-                        )
-                        .into();
+                    let mut report = $ctx.report();
 
-                    return Err(report);
+                    report.err(
+                        Loc::pos(&$field),
+                        format!(
+                            "field with name `{}` is the same as tag used in type_info",
+                            tag
+                        ),
+                    );
+
+                    return Err(report.into());
                 }
             }
             _ => {}
@@ -55,13 +58,16 @@ macro_rules! check_field_tag {
 macro_rules! check_field_reserved {
     ($ctx:ident, $field:expr, $reserved:expr) => {
         if let Some(reserved) = $reserved.get($field.name()) {
-            return Err($ctx.report()
-                .err(
-                    Loc::pos(&$field),
-                    format!("field with name `{}` is reserved", $field.name()),
-                )
-                .info(reserved, "reserved here")
-                .into());
+            let mut report = $ctx.report();
+
+            report.err(
+                Loc::pos(&$field),
+                format!("field with name `{}` is reserved", $field.name()),
+            );
+
+            report.info(reserved, "reserved here");
+
+            return Err(report.into());
         }
     };
 }
@@ -325,12 +331,14 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
             let ordinal = if let Some(argument) = item.argument.into_model(scope)? {
                 match *ty {
                     core::RpEnumType::String if !argument.is_string() => {
-                        return Err(ctx.report()
-                            .err(
-                                Loc::pos(&argument),
-                                format!("expected `{}`, did you mean \"{}\"?", ty, argument),
-                            )
-                            .into());
+                        let mut report = ctx.report();
+
+                        report.err(
+                            Loc::pos(&argument),
+                            format!("expected `{}`, did you mean \"{}\"?", ty, argument),
+                        );
+
+                        return Err(report.into());
                     }
                     _ => {}
                 }
@@ -527,7 +535,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                             let names =
                                 k0.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ");
 
-                            report = report.err(
+                            report.err(
                                 pos0,
                                 &format!(
                                     "fields with names `{}` are present in another sub-type, this \
@@ -537,7 +545,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                                 ),
                             );
 
-                            report = report.info(
+                            report.info(
                                 pos0,
                                 "HINT: re-order or change your sub-types to avoid this",
                             );
@@ -545,7 +553,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                             let names =
                                 k1.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ");
 
-                            report = report.info(
+                            report.info(
                                 pos1,
                                 &format!(
                                     "conflicting sub-type with fields `{}` is defined here",
@@ -555,8 +563,8 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                         }
                     }
 
-                    if !report.has_errors() {
-                        return Err(report.into());
+                    if let Some(e) = report.close() {
+                        return Err(e);
                     }
                 }
                 _ => {}
@@ -604,17 +612,17 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
                         for f in optional.filter(|f| key.contains(f.name())) {
                             any = true;
-                            r = r.err(Loc::pos(f), "is a required field of another sub-type");
+                            r.err(Loc::pos(f), "is a required field of another sub-type");
                         }
 
                         if any {
-                            r = r.info(pos.clone(), "sub-type defined here");
+                            r.info(pos.clone(), "sub-type defined here");
                         }
                     }
                 }
 
-                if !r.has_errors() {
-                    return Err(r.into());
+                if let Some(e) = r.close() {
+                    return Err(e);
                 }
 
                 Ok(())
@@ -642,9 +650,9 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                             return Ok(core::RpSubTypeStrategy::Untagged);
                         }
                         _ => {
-                            return Err(ctx.report()
-                                .err(Loc::pos(&strategy), "bad strategy")
-                                .into());
+                            let mut r = ctx.report();
+                            r.err(Loc::pos(&strategy), "bad strategy");
+                            return Err(r.into());
                         }
                     }
                 }
@@ -816,10 +824,10 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
                     argument.ident.to_string(),
                     Loc::pos(&argument.ident).clone(),
                 ) {
-                    return Err(ctx.report()
-                        .err(Loc::pos(&argument.ident), "argument already present")
-                        .info(other, "argument present here")
-                        .into());
+                    let mut r = ctx.report();
+                    r.err(Loc::pos(&argument.ident), "argument already present");
+                    r.info(other, "argument present here");
+                    return Err(r.into());
                 }
 
                 arguments.push(argument);
@@ -945,10 +953,10 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
                         .collect::<BTreeSet<_>>();
 
                     if let Some(other) = untagged.insert(fields, pos.clone()) {
-                        return Err(ctx.report()
-                            .err(pos, "does not have a unique set of fields")
-                            .info(other, "previously defined here")
-                            .into());
+                        let mut r = ctx.report();
+                        r.err(pos, "does not have a unique set of fields");
+                        r.info(other, "previously defined here");
+                        return Err(r.into());
                     }
                 }
                 _ => {}
@@ -1141,6 +1149,8 @@ impl<'input> IntoModel for Code<'input> {
         let mut attributes = self.attributes.into_model(scope)?;
         let context = self.context.into_model(scope)?;
 
+        let ctx = scope.ctx();
+
         // Context-specific settings.
         let context = {
             let (context, pos) = Loc::take_pair(context);
@@ -1158,16 +1168,14 @@ impl<'input> IntoModel for Code<'input> {
                 "rust" => core::RpContext::Rust {},
                 "swift" => core::RpContext::Swift {},
                 context => {
-                    return Err(scope
-                        .ctx()
-                        .report()
-                        .err(pos, format!("context `{}` not recognized", context))
-                        .into())
+                    let mut r = ctx.report();
+                    r.err(pos, format!("context `{}` not recognized", context));
+                    return Err(r.into());
                 }
             }
         };
 
-        check_attributes!(scope.ctx(), attributes);
+        check_attributes!(ctx, attributes);
 
         Ok(RpCode {
             context: context,
@@ -1212,10 +1220,10 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                     let (word, pos) = Loc::take_pair(word.into_model(scope)?);
 
                     if let Some(old) = words.insert(word, pos.clone()) {
-                        return Err(ctx.report()
-                            .err(pos, "word already present")
-                            .info(old, "old attribute here")
-                            .into());
+                        let mut r = ctx.report();
+                        r.err(pos, "word already present");
+                        r.info(old, "old attribute here");
+                        return Err(r.into());
                     }
                 }
                 List(key, name_values) => {
@@ -1243,10 +1251,10 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                             entry.insert(Loc::new(selection, attr_pos));
                         }
                         hash_map::Entry::Occupied(entry) => {
-                            return Err(ctx.report()
-                                .err(attr_pos, "attribute already present")
-                                .info(Loc::pos(entry.get()), "attribute here")
-                                .into());
+                            let mut r = ctx.report();
+                            r.err(attr_pos, "attribute already present");
+                            r.info(Loc::pos(entry.get()), "attribute here");
+                            return Err(r.into());
                         }
                     }
                 }

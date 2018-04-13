@@ -95,7 +95,7 @@ pub fn endpoint_http(
                 }
             }
 
-            report = report.err(
+            report.err(
                 Loc::pos(&arg.ident),
                 "Argument not used in #[http(...)] attribute",
             );
@@ -161,13 +161,16 @@ pub fn endpoint_http(
                     return Ok(());
                 }
 
-                return Err(ctx.report()
-                    .err(
-                        Loc::pos(response),
-                        "Only `string` responses are supported for the given `accept`",
-                    )
-                    .info(pos, "Specified here")
-                    .into());
+                let mut report = ctx.report();
+
+                report.err(
+                    Loc::pos(response),
+                    "Only `string` responses are supported for the given `accept`",
+                );
+
+                report.info(pos, "Specified here");
+
+                return Err(report.into());
             }
         }
     }

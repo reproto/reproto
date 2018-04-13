@@ -1,7 +1,7 @@
 use clap::ArgMatches;
 use config_env::ConfigEnv;
 use core::errors::{Error, Result, ResultExt};
-use core::{BytesObject, Context, CoreFlavor, Flavor, Object, RelativePath, Resolved,
+use core::{BytesObject, Context, CoreFlavor, Flavor, Object, RelativePath, Reporter, Resolved,
            ResolvedByPrefix, Resolver, RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage,
            RpVersionedPackage, Version};
 use manifest::{self as m, read_manifest, read_manifest_preamble, Lang, Language, Manifest,
@@ -485,136 +485,106 @@ pub fn semck_check(
                 violations.len()
             )));
 
+            let mut report = ctx.report();
+
             for v in violations {
-                handle_violation(ctx, v)?;
+                handle_violation(&mut report, v)?;
             }
         }
     }
 
     return Ok(());
 
-    fn handle_violation(ctx: &Context, violation: semck::Violation) -> Result<()> {
+    fn handle_violation(report: &mut Reporter, violation: semck::Violation) -> Result<()> {
         use semck::Violation::*;
 
         match violation {
             DeclRemoved(c, reg) => {
-                ctx.report()
-                    .err(reg, format!("{}: declaration removed", c.describe()))
-                    .close();
+                report.err(reg, format!("{}: declaration removed", c.describe()));
             }
             DeclAdded(c, reg) => {
-                ctx.report()
-                    .err(reg, format!("{}: declaration added", c.describe()))
-                    .close();
+                report.err(reg, format!("{}: declaration added", c.describe()));
             }
             RemoveField(c, field) => {
-                ctx.report()
-                    .err(field, format!("{}: field removed", c.describe()))
-                    .close();
+                report.err(field, format!("{}: field removed", c.describe()));
             }
             RemoveVariant(c, field) => {
-                ctx.report()
-                    .err(field, format!("{}: variant removed", c.describe()))
-                    .close();
+                report.err(field, format!("{}: variant removed", c.describe()));
             }
             AddField(c, field) => {
-                ctx.report()
-                    .err(field, format!("{}: field added", c.describe()))
-                    .close();
+                report.err(field, format!("{}: field added", c.describe()));
             }
             AddVariant(c, field) => {
-                ctx.report()
-                    .err(field, format!("{}: variant added", c.describe()))
-                    .close();
+                report.err(field, format!("{}: variant added", c.describe()));
             }
             FieldTypeChange(c, from_type, from, to_type, to) => {
-                ctx.report()
-                    .err(
-                        to,
-                        format!("{}: type changed to `{}`", c.describe(), to_type),
-                    )
-                    .err(from, format!("from `{}`", from_type))
-                    .close();
+                report.err(
+                    to,
+                    format!("{}: type changed to `{}`", c.describe(), to_type),
+                );
+                report.err(from, format!("from `{}`", from_type));
             }
             FieldNameChange(c, from_name, from, to_name, to) => {
-                ctx.report()
-                    .err(
-                        to,
-                        format!("{}: name changed to `{}`", c.describe(), to_name),
-                    )
-                    .err(from, format!("from `{}`", from_name))
-                    .close();
+                report.err(
+                    to,
+                    format!("{}: name changed to `{}`", c.describe(), to_name),
+                );
+                report.err(from, format!("from `{}`", from_name));
             }
             VariantOrdinalChange(c, from_ordinal, from, to_ordinal, to) => {
-                ctx.report()
-                    .err(
-                        to,
-                        format!("{}: ordinal changed to `{}`", c.describe(), to_ordinal),
-                    )
-                    .err(from, format!("from `{}`", from_ordinal))
-                    .close();
+                report.err(
+                    to,
+                    format!("{}: ordinal changed to `{}`", c.describe(), to_ordinal),
+                );
+                report.err(from, format!("from `{}`", from_ordinal));
             }
             FieldRequiredChange(c, from, to) => {
-                ctx.report()
-                    .err(
-                        to,
-                        format!("{}: field changed to be required`", c.describe(),),
-                    )
-                    .err(from, "from here")
-                    .close();
+                report.err(
+                    to,
+                    format!("{}: field changed to be required`", c.describe(),),
+                );
+                report.err(from, "from here");
             }
             AddRequiredField(c, field) => {
-                ctx.report()
-                    .err(field, format!("{}: required field added", c.describe(),))
-                    .close();
+                report.err(field, format!("{}: required field added", c.describe()));
             }
             FieldModifierChange(c, from, to) => {
-                ctx.report()
-                    .err(to, format!("{}: field modifier changed", c.describe(),))
-                    .err(from, "from here")
-                    .close();
+                report.err(to, format!("{}: field modifier changed", c.describe()));
+                report.err(from, "from here");
             }
             AddEndpoint(c, pos) => {
-                ctx.report()
-                    .err(pos, format!("{}: endpoint added", c.describe()))
-                    .close();
+                report.err(pos, format!("{}: endpoint added", c.describe()));
             }
             RemoveEndpoint(c, pos) => {
-                ctx.report()
-                    .err(pos, format!("{}: endpoint removed", c.describe()))
-                    .close();
+                report.err(pos, format!("{}: endpoint removed", c.describe()));
             }
             EndpointRequestChange(c, from_channel, from, to_channel, to) => {
-                ctx.report()
-                    .err(
-                        to,
-                        format!(
-                            "{}: request type changed to `{}`",
-                            c.describe(),
-                            FmtChannel(to_channel.as_ref())
-                        ),
-                    )
-                    .err(
-                        from,
-                        format!("from `{}`", FmtChannel(from_channel.as_ref())),
-                    )
-                    .close();
+                report.err(
+                    to,
+                    format!(
+                        "{}: request type changed to `{}`",
+                        c.describe(),
+                        FmtChannel(to_channel.as_ref())
+                    ),
+                );
+                report.err(
+                    from,
+                    format!("from `{}`", FmtChannel(from_channel.as_ref())),
+                );
             }
             EndpointResponseChange(c, from_channel, from, to_channel, to) => {
-                ctx.report()
-                    .err(
-                        to,
-                        format!(
-                            "{}: response type changed to `{}`",
-                            c.describe(),
-                            FmtChannel(to_channel.as_ref())
-                        ),
-                    )
-                    .err(
-                        from,
-                        format!("from `{}`", FmtChannel(from_channel.as_ref())),
-                    )
-                    .close();
+                report.err(
+                    to,
+                    format!(
+                        "{}: response type changed to `{}`",
+                        c.describe(),
+                        FmtChannel(to_channel.as_ref())
+                    ),
+                );
+                report.err(
+                    from,
+                    format!("from `{}`", FmtChannel(from_channel.as_ref())),
+                );
             }
         }
 

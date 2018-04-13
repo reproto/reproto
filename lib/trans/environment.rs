@@ -542,7 +542,9 @@ impl Environment<CoreFlavor> {
             match types.entry(key) {
                 Vacant(entry) => entry.insert(t),
                 Occupied(_) => {
-                    return Err(self.ctx.report().err(pos, "conflicting declaration").into());
+                    let mut r = self.ctx.report();
+                    r.err(pos, "conflicting declaration");
+                    return Err(r.into());
                 }
             };
         }
