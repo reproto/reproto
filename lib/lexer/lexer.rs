@@ -254,6 +254,8 @@ impl<'input> Lexer<'input> {
             'n' => '\n',
             'r' => '\r',
             't' => '\t',
+            '\\' => '\\',
+            '\"' => '\"',
             'u' => {
                 let seq_start = self.step_n(1);
 
@@ -267,7 +269,8 @@ impl<'input> Lexer<'input> {
             }
             _ => {
                 return Err(Error::InvalidEscape {
-                    message: "unrecognized escape, should be one of: \\n, \\r, \\t, or \\uXXXX",
+                    message: "unrecognized escape, should be one of: \\\", \\n, \\r, \\t, \\\\, \
+                              or \\uXXXX",
                     pos: pos,
                 }.into());
             }
