@@ -1,6 +1,6 @@
 use clap::ArgMatches;
 use config_env::ConfigEnv;
-use core::errors::*;
+use core::errors::{Error, Result, ResultExt};
 use core::{BytesObject, Context, CoreFlavor, Flavor, Object, RelativePath, Resolved,
            ResolvedByPrefix, Resolver, RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage,
            RpVersionedPackage, Version};
@@ -240,7 +240,7 @@ where
     let mut env = lang.into_env(ctx, package_prefix, resolvers)
         .with_path_hook(path_hook);
 
-    let mut errors = Vec::new();
+    let mut errors: Vec<Error> = Vec::new();
 
     let mut stdin = manifest.stdin;
 

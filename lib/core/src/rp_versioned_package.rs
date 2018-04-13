@@ -15,7 +15,7 @@ pub struct RpVersionedPackage {
 impl AsPackage for RpVersionedPackage {
     /// Convert into a package by piping the version through the provided function.
     fn try_as_package(&self) -> Result<&RpPackage> {
-        Err("cannot be converted".into())
+        Err(format!("{}: cannot be converted to regular package", self).into())
     }
 
     fn prefix_with(self, prefix: RpPackage) -> Self {

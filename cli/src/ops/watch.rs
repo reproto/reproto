@@ -66,12 +66,12 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<
         let update = match try_compile(ctx.clone(), matches, &paths, &written_files, &written_dirs)
         {
             Err(e) => {
-                let ctx_errors = ctx.errors()?;
+                let ctx_items = ctx.items()?;
 
-                if ctx_errors.is_empty() {
+                if ctx_items.is_empty() {
                     output.handle_error(&e)?;
                 } else {
-                    output.handle_context(ctx_errors.as_ref())?;
+                    output.handle_context(ctx_items.as_ref())?;
                 }
 
                 false

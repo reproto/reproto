@@ -1,6 +1,7 @@
 use super::{LockableWrite, Output};
 use core::errors::*;
-use core::{self, ErrorPos};
+use core::flavored::RpName;
+use core::{self, ErrorPos, SymbolKind};
 use log;
 use serde_json;
 use std::io;
@@ -16,6 +17,14 @@ pub enum Message {
     #[serde(rename = "diagnostics")]
     Diagnostics {
         message: String,
+        path: PathBuf,
+        range: Range,
+    },
+    #[serde(rename = "symbol")]
+    Symbol {
+        kind: SymbolKind,
+        name: String,
+        package: String,
         path: PathBuf,
         range: Range,
     },
@@ -47,7 +56,7 @@ where
         Json { out: out }
     }
 
-    fn print_positional(&self, m: &str, p: &ErrorPos) -> Result<()> {
+    fn print_diagnostics(&self, m: &str, p: &ErrorPos) -> Result<()> {
         if let Some(path) = p.object.path() {
             let (line_start, line_end, col_start, col_end) =
                 core::utils::find_range(p.object.read()?, (p.start, p.end))?;
@@ -120,10 +129,45 @@ where
     }
 
     fn print_info(&self, m: &str, p: &ErrorPos) -> Result<()> {
-        self.print_positional(m, p)
+        self.print_diagnostics(m, p)
     }
 
     fn print_error(&self, m: &str, p: &ErrorPos) -> Result<()> {
-        self.print_positional(m, p)
+        self.print_diagnostics(m, p)
+    }
+
+    fn print_symbol(&self, kind: SymbolKind, p: &ErrorPos, name: &RpName) -> Result<()> {
+        let path = match p.object.path() {
+            Some(path) => path,
+            None => return Ok(()),
+        };
+
+        let path = if !path.is_absolute() {
+            path.canonicalize()?
+        } else {
+            path.to_owned()
+        };
+
+        let (line_start, line_end, col_start, col_end) =
+            core::utils::find_range(p.object.read()?, (p.start, p.end))?;
+
+        let m = Message::Symbol {
+            kind,
+            name: name.parts.join("::"),
+            package: name.package.to_string(),
+            path: path.to_owned(),
+            range: Range {
+                line_start,
+                col_start,
+                line_end,
+                col_end,
+            },
+        };
+
+        let mut out = self.out.lock();
+        serde_json::to_writer(&mut out, &m)?;
+        out.write(&[NL])?;
+
+        Ok(())
     }
 }

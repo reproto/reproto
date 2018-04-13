@@ -22,7 +22,7 @@ pub struct SimpleCompile<'input> {
     pub input: Input<'input>,
     pub package_prefix: Option<RpPackage>,
     pub resolver: Option<Box<Resolver>>,
-    pub errors: Option<Rc<RefCell<Vec<ContextItem>>>>,
+    pub items: Option<Rc<RefCell<Vec<ContextItem>>>>,
 }
 
 impl<'input> SimpleCompile<'input> {
@@ -32,7 +32,7 @@ impl<'input> SimpleCompile<'input> {
             input: input,
             package_prefix: None,
             resolver: None,
-            errors: None,
+            items: None,
         }
     }
 
@@ -52,10 +52,10 @@ impl<'input> SimpleCompile<'input> {
         }
     }
 
-    /// Set a reference to collect errors.
-    pub fn with_errors(self, errors: Rc<RefCell<Vec<ContextItem>>>) -> Self {
+    /// Set a reference to collect items.
+    pub fn with_items(self, items: Rc<RefCell<Vec<ContextItem>>>) -> Self {
         Self {
-            errors: Some(errors),
+            items: Some(items),
             ..self
         }
     }
@@ -76,7 +76,7 @@ where
         input,
         package_prefix,
         resolver,
-        errors,
+        items,
     } = config;
 
     let resolver = resolver.unwrap_or_else(|| Box::new(core::EmptyResolver));
@@ -85,9 +85,9 @@ where
 
     let ctx = core::Context::new(capturing.filesystem());
 
-    // Set errors reference, if configured.
-    let ctx = if let Some(errors) = errors {
-        ctx.with_errors(errors)
+    // Set items reference, if configured.
+    let ctx = if let Some(items) = items {
+        ctx.with_items(items)
     } else {
         ctx
     };

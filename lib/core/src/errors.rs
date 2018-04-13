@@ -90,11 +90,11 @@ impl<'a> Iterator for Causes<'a> {
 /// Error display type.
 ///
 /// Since Error can't implement fmt::Display, this acts as a proxy.
-pub struct Display {
-    message: Cow<'static, str>,
+pub struct Display<'a> {
+    message: Cow<'a, str>,
 }
 
-impl fmt::Display for Display {
+impl<'a> fmt::Display for Display<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(self.message.as_ref())
     }
@@ -169,9 +169,9 @@ impl Error {
     /// Convert errro into a type that is `fmt::Display`.
     ///
     /// WARNING: drops error information. Only use if absolutely necessary!
-    pub fn display(self) -> Display {
+    pub fn display(&self) -> Display {
         Display {
-            message: self.message,
+            message: Cow::from(self.message.as_ref()),
         }
     }
 

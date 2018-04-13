@@ -101,8 +101,8 @@ pub fn endpoint_http(
             );
         }
 
-        if !report.is_empty() {
-            return Err(report.into());
+        if let Some(e) = report.close() {
+            return Err(e);
         }
     }
 

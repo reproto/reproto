@@ -58,7 +58,7 @@ pub mod utils;
 mod with_pos;
 
 pub use self::attributes::{Attributes, Selection};
-pub use self::context::{Context, ContextItem, Reporter};
+pub use self::context::{Context, ContextItem, Reporter, SymbolKind};
 pub use self::error_pos::ErrorPos;
 pub use self::flavor::{AsPackage, CoreFlavor, Flavor, FlavorField};
 pub use self::for_each_loc::ForEachLoc;

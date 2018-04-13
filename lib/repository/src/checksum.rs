@@ -81,7 +81,7 @@ impl<'de> de::Visitor<'de> for ChecksumVisitor {
         E: de::Error,
     {
         Checksum::from_str(value)
-            .map_err(|e| e.display())
+            .map_err(|e| e.display().to_string())
             .map_err(de::Error::custom)
     }
 

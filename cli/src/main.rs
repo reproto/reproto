@@ -65,16 +65,21 @@ fn guarded_entry(ctx: Rc<Context>, matches: &ArgMatches, output: &output::Output
 fn entry(matches: &ArgMatches, output: &output::Output) -> Result<()> {
     let ctx = Rc::new(Context::new(Box::new(RealFilesystem::new())));
 
-    if let Err(e) = guarded_entry(Rc::clone(&ctx), matches, output) {
-        let ctx_errors = ctx.errors()?;
+    match guarded_entry(Rc::clone(&ctx), matches, output) {
+        Err(e) => {
+            // NB: get rid of dual reporting.
+            // We only want positional errors reported through the context.
+            if !ctx.has_errors()? {
+                output.handle_error(&e)?;
+            }
 
-        if ctx_errors.is_empty() {
-            output.handle_error(&e)?;
-        } else {
-            output.handle_context(ctx_errors.as_ref())?;
+            output.handle_context(ctx.items()?.as_ref())?;
+            ::std::process::exit(1);
         }
-
-        ::std::process::exit(1);
+        Ok(()) => {
+            let ctx_items = ctx.items()?;
+            output.handle_context(ctx_items.as_ref())?;
+        }
     }
 
     Ok(())

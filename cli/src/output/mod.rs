@@ -6,6 +6,7 @@ pub use self::colored::Colored;
 pub use self::json::Json;
 pub use self::non_colored::NonColored;
 use core::errors::*;
+use core::flavored::RpName;
 use core::{self, ContextItem};
 use log;
 use std::io::{self, Write};
@@ -43,11 +44,18 @@ pub trait Output {
     fn handle_context(&self, errors: &[ContextItem]) -> Result<()> {
         for e in errors.iter() {
             match *e {
+                ContextItem::InfoPos(ref pos, ref message) => {
+                    self.print_info(message.as_str(), pos)?;
+                }
                 ContextItem::ErrorPos(ref pos, ref message) => {
                     self.print_error(message.as_str(), pos)?;
                 }
-                ContextItem::InfoPos(ref pos, ref message) => {
-                    self.print_info(message.as_str(), pos)?;
+                ContextItem::Symbol {
+                    ref kind,
+                    ref pos,
+                    ref name,
+                } => {
+                    self.print_symbol(*kind, pos, name)?;
                 }
             }
         }
@@ -66,6 +74,10 @@ pub trait Output {
 
             for e in e.suppressed() {
                 self.handle_error(e)?;
+            }
+
+            if let Some(backtrace) = e.backtrace() {
+                self.print(&format!("{:?}", backtrace))?;
             }
         }
 
@@ -89,10 +101,6 @@ pub trait Output {
             }
         }
 
-        if let Some(backtrace) = e.backtrace() {
-            self.print(&format!("{:?}", backtrace))?;
-        }
-
         Ok(())
     }
 
@@ -107,4 +115,13 @@ pub trait Output {
     fn print_info(&self, m: &str, p: &core::ErrorPos) -> Result<()>;
 
     fn print_error(&self, m: &str, p: &core::ErrorPos) -> Result<()>;
+
+    fn print_symbol(
+        &self,
+        _kind: core::SymbolKind,
+        _pos: &core::ErrorPos,
+        _name: &RpName,
+    ) -> Result<()> {
+        Ok(())
+    }
 }

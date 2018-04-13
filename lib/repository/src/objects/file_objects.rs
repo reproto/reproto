@@ -25,7 +25,7 @@ impl FileObjects {
         let path = self.path
             .join(format!("{}", HexSlice::new(&checksum[0..1])));
         let path = path.join(format!("{}", HexSlice::new(&checksum[1..2])));
-        Ok(path.join(format!("{}", HexSlice::new(&checksum))))
+        Ok(path.join(format!("{}.reproto", HexSlice::new(&checksum))))
     }
 }
 

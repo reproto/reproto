@@ -2,7 +2,7 @@ use ast::*;
 use attributes;
 use core::errors::{Error, Result};
 use core::flavored::*;
-use core::{self, Attributes, Context, Loc, Pos, Selection, WithPos};
+use core::{self, Attributes, Context, Loc, Pos, Selection, SymbolKind, WithPos};
 use linked_hash_map::LinkedHashMap;
 use naming::Naming;
 use scope::Scope;
@@ -255,9 +255,12 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (item, _) = Loc::take_pair(item);
+            let (item, pos) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
+            let name = scope.as_name();
+
+            ctx.symbol(SymbolKind::Enum, &pos, &name)?;
 
             let mut variants = Vec::new();
 
@@ -295,7 +298,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             check_attributes!(scope.ctx(), attributes);
 
             Ok(RpEnumBody {
-                name: scope.as_name(),
+                name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: vec![],
@@ -442,9 +445,12 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (item, _) = Loc::take_pair(item);
+            let (item, pos) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
+            let name = scope.as_name();
+
+            ctx.symbol(SymbolKind::Interface, &pos, &name)?;
 
             let mut attributes = attributes.into_model(scope)?;
 
@@ -549,7 +555,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                         }
                     }
 
-                    if !report.is_empty() {
+                    if !report.has_errors() {
                         return Err(report.into());
                     }
                 }
@@ -557,7 +563,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             }
 
             return Ok(RpInterfaceBody {
-                name: scope.as_name(),
+                name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
@@ -607,7 +613,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                     }
                 }
 
-                if !r.is_empty() {
+                if !r.has_errors() {
                     return Err(r.into());
                 }
 
@@ -693,9 +699,12 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         return self.map(|comment, attributes, item| {
-            let (item, _) = Loc::take_pair(item);
+            let (item, pos) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
+            let name = scope.as_name();
+
+            ctx.symbol(SymbolKind::Service, &pos, &name)?;
 
             let mut decl_idents = HashMap::new();
             let mut endpoint_names = HashMap::new();
@@ -735,7 +744,7 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
             check_attributes!(scope.ctx(), attributes);
 
             Ok(RpServiceBody {
-                name: scope.as_name(),
+                name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
@@ -885,6 +894,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             let (item, pos) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
+            let name = scope.as_name();
 
             let mut attributes = attributes.into_model(scope)?;
             let reserved = attributes::reserved(scope, &mut attributes)?;
@@ -945,7 +955,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             }
 
             Ok(RpSubType {
-                name: scope.as_name(),
+                name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
@@ -983,7 +993,12 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (item, _) = Loc::take_pair(item);
+            let (item, pos) = Loc::take_pair(item);
+
+            let ctx = scope.ctx();
+            let name = scope.as_name();
+
+            ctx.symbol(SymbolKind::Tuple, &pos, &name)?;
 
             let Members {
                 fields,
@@ -993,10 +1008,10 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
             } = item.members.into_model(scope)?;
 
             let attributes = attributes.into_model(scope)?;
-            check_attributes!(scope.ctx(), attributes);
+            check_attributes!(ctx, attributes);
 
             Ok(RpTupleBody {
-                name: scope.as_name(),
+                name: name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
@@ -1012,12 +1027,17 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (item, _) = Loc::take_pair(item);
+            let (item, pos) = Loc::take_pair(item);
+
+            let ctx = scope.ctx();
+            let name = scope.as_name();
+
+            ctx.symbol(SymbolKind::Type, &pos, &name)?;
 
             let mut attributes = attributes.into_model(scope)?;
             let reserved = attributes::reserved(scope, &mut attributes)?;
 
-            check_attributes!(scope.ctx(), attributes);
+            check_attributes!(ctx, attributes);
 
             let Members {
                 fields,
@@ -1034,7 +1054,7 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
             };
 
             Ok(RpTypeBody {
-                name: scope.as_name(),
+                name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
                 decls: decls,
