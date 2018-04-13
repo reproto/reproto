@@ -4,22 +4,25 @@ use ex.github.gists as g;
 #[http(url="https://api.github.com")]
 service Github {
     #[http(path = "/rate_limit")]
-    get_rate_limit() -> ::RateLimit;
+    get_rate_limit() -> RateLimit;
 
     #[http(path = "/users/{username}/gists")]
     get_gists_for_user(username: string) -> [g::Gist];
+}
 
-    type RateLimit {
-        resources: ::Resources;
+type RateLimit {
+    resources: ::Resources::Bar;
 
-        type Resources {
-            core: ::Core;
+    type Resources {
+        core: ::Core;
 
-            type Core {
-                limit: u32;
-                remaining: u32;
-                reset: u64;
-            }
+        type Core {
+            limit: u32;
+            remaining: u32;
+            reset: u64;
+        }
+
+        type Bar {
         }
     }
 }

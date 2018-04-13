@@ -53,6 +53,11 @@ impl RpPackage {
         RpPackage { parts: parts }
     }
 
+    /// Get length of package.
+    pub fn len(&self) -> usize {
+        self.parts.len()
+    }
+
     /// Parse a package from a string.
     ///
     /// Warning: This does not perform any validation that the given package only contains

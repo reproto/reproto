@@ -1,9 +1,12 @@
 {
   "status": false,
   "stdout": [
-    "it/ui/proto/conflicting_declaration.reproto:4:1-16:",
+    "it/ui/proto/conflicting_declaration.reproto:4:6-13:",
     "  4: type Example {",
-    "     ^^^^^^^^^^^^^^^ - conflicting declaration"
+    "          ^^^^^^^ - `Example` conflicts with existing declaration",
+    "it/ui/proto/conflicting_declaration.reproto:1:6-13:",
+    "  1: enum Example as u32 {",
+    "          ^^^^^^^ - existing declaration here"
   ],
   "stderr": []
 }

@@ -10,10 +10,10 @@ extern crate reproto_lexer as lexer;
 mod parser;
 mod utils;
 
-use core::errors::*;
-use core::Source;
+use core::Diagnostics;
+use core::errors::Result;
 use std::io::Read;
-use std::sync::Arc;
+use std::result;
 
 /// Read the full contents of the given reader as a string.
 pub fn read_to_string<'a, R>(mut reader: R) -> Result<String>
@@ -26,61 +26,74 @@ where
 }
 
 /// Parse the given object.
-pub fn parse<'input>(object: Arc<Source>, input: &'input str) -> Result<ast::File<'input>> {
+pub fn parse<'input>(
+    diag: &mut Diagnostics,
+    input: &'input str
+) -> result::Result<ast::File<'input>, ()> {
     use self::lexer::errors::Error::*;
     use lalrpop_util::ParseError::*;
 
     let lexer = lexer::lex(input);
     let parser = parser::FileParser::new();
 
-    match parser.parse(&object, lexer) {
+    match parser.parse(lexer) {
         Ok(file) => Ok(file),
         Err(e) => match e {
             InvalidToken { location } => {
-                let span = (object.clone(), location, location);
-                Err(Error::new("syntax error").with_span(span))
+                let span = (location, location);
+                diag.err(span, "syntax error");
+                Err(())
+            }
+            ExtraToken { token: (start, token, end) } => {
+                diag.err((start, end), format!("extra token: {:?}", token));
+                Err(())
             }
             UnrecognizedToken { token, expected } => {
-                let e = if let Some((start, token, end)) = token {
-                    let span = (object.clone(), start, end);
-                    Error::new(format!(
-                        "syntax error, got token {:?}, expected: {}",
-                        token,
-                        expected.join(", ")
-                    )).with_span(span)
-                } else {
-                    Error::new(format!("syntax error, expected: {}", expected.join(", ")))
+                match token {
+                    Some((start, token, end)) => {
+                        diag.err(
+                            (start, end),
+                            format!(
+                                "syntax error, got token {:?}, expected: {}",
+                                token,
+                                expected.join(", ")
+                            ),
+                        );
+                    }
+                    None => {
+                        let m = format!("syntax error, expected: {}", expected.join(", "));
+                        diag.err((0, 0), m);
+                    }
                 };
 
-                Err(e)
+                return Err(());
             }
             User { error } => match error {
                 UnterminatedString { start } => {
-                    let span = (object.clone(), start, start);
-                    return Err(Error::new("unterminated string").with_span(span));
+                    diag.err((start, start), "unterminated string");
+                    return Err(());
                 }
                 UnterminatedEscape { start } => {
-                    let span = (object.clone(), start, start);
-                    return Err(Error::new("unterminated escape sequence").with_span(span));
+                    diag.err((start, start), "unterminated escape sequence");
+                    return Err(());
                 }
                 InvalidEscape { pos, message } => {
-                    let span = (object.clone(), pos, pos);
-                    return Err(Error::new(message).with_span(span));
+                    diag.err((pos, pos), message);
+                    return Err(());
                 }
                 UnterminatedCodeBlock { start } => {
-                    let span = (object.clone(), start, start);
-                    return Err(Error::new("unterminated code block").with_span(span));
+                    diag.err((start, start), "unterminated code block");
+                    return Err(());
                 }
                 InvalidNumber { pos, message } => {
-                    let span = (object.clone(), pos, pos);
-                    return Err(Error::new(message).with_span(span));
+                    diag.err((pos, pos), message);
+                    return Err(());
                 }
                 Unexpected { pos } => {
-                    let span = (object.clone(), pos, pos);
-                    return Err(Error::new("unexpected input").with_span(span));
+                    diag.err((pos, pos), "unexpected input");
+                    return Err(());
                 }
             },
-            _ => Err("Parse error".into()),
         },
     }
 }
@@ -90,27 +103,18 @@ mod tests {
     use super::ast::*;
     use super::*;
     use core::*;
-    use std::sync::Arc;
-
-    fn new_context() -> Arc<Source> {
-        Arc::new(Source::bytes("test", vec![]))
-    }
 
     /// Check that a parsed value equals expected.
     macro_rules! assert_value_eq {
         ($expected:expr, $input:expr) => {{
-            let v = parser::ValueParser::new()
-                .parse(&new_context(), parse($input))
-                .unwrap();
+            let v = parser::ValueParser::new().parse(parse($input)).unwrap();
             assert_eq!($expected, v);
         }};
     }
 
-    macro_rules! assert_type_spec_eq {
+    macro_rules! assert_type {
         ($expected:expr, $input:expr) => {{
-            let v = parser::TypeSpecParser::new()
-                .parse(&new_context(), parse($input))
-                .unwrap();
+            let v = parser::TypeParser::new().parse(parse($input)).unwrap();
             assert_eq!($expected, v);
         }};
     }
@@ -125,21 +129,15 @@ mod tests {
     }
 
     fn parse_file(input: &'static str) -> File {
-        parser::FileParser::new()
-            .parse(&new_context(), parse(input))
-            .unwrap()
+        parser::FileParser::new().parse(parse(input)).expect("bad file")
     }
 
     fn parse_member(input: &'static str) -> TypeMember {
-        parser::TypeMemberParser::new()
-            .parse(&new_context(), parse(input))
-            .unwrap()
+        parser::TypeMemberParser::new().parse(parse(input)).expect("bad type member")
     }
 
-    fn parse_type_spec(input: &'static str) -> Type {
-        parser::TypeSpecParser::new()
-            .parse(&new_context(), parse(input))
-            .unwrap()
+    fn parse_type(input: &'static str) -> Type {
+        parser::TypeParser::new().parse(parse(input)).expect("bad type")
     }
 
     #[test]
@@ -150,10 +148,10 @@ mod tests {
 
     #[test]
     fn test_array() {
-        let ty = parse_type_spec("[string]");
+        let ty = parse_type("[string]");
 
         if let Type::Array { inner } = ty {
-            if let Type::String = *inner {
+            if let Type::String = *Loc::borrow(inner.as_ref()) {
                 return;
             }
         }
@@ -163,15 +161,15 @@ mod tests {
 
     #[test]
     fn test_map() {
-        let ty = parse_type_spec("{string: u32}");
+        let ty = parse_type("{string: u32}");
 
         // TODO: use #![feature(box_patterns)]:
         // if let Type::Map(box Type::String, box Type::Unsigned(size)) = ty {
         // }
         if let Type::Map { key, value } = ty {
-            if let Type::String = *key {
-                if let Type::Unsigned { size } = *value {
-                    assert_eq!(32, size);
+            if let Type::String = *Loc::borrow(key.as_ref()) {
+                if let Type::Unsigned { ref size } = *Loc::borrow(value.as_ref()) {
+                    assert_eq!(32, *size);
                     return;
                 }
             }
@@ -248,13 +246,13 @@ mod tests {
     fn test_type_spec() {
         let c = Name::Absolute {
             prefix: None,
-            parts: Loc::new(
-                vec!["Hello".to_string(), "World".to_string()].into(),
-                Span::empty(),
-            ),
+            parts: vec![
+                Loc::new("Hello".into(), Span::empty()),
+                Loc::new("World".into(), Span::empty())
+            ],
         };
 
-        assert_type_spec_eq!(Type::String, "string");
-        assert_type_spec_eq!(Type::Name { name: c }, "Hello::World");
+        assert_type!(Type::String, "string");
+        assert_type!(Type::Name { name: Loc::new(c, Span::empty()) }, "Hello::World");
     }
 }

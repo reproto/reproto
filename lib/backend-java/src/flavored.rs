@@ -4,8 +4,8 @@
 
 use backend::package_processor;
 use core::errors::Result;
-use core::{self, CoreFlavor, Flavor, FlavorField, FlavorTranslator, Loc, PackageTranslator,
-           Translate, Translator};
+use core::{self, CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, Loc,
+           PackageTranslator, Translate, Translator};
 use genco::java::{self, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG,
                   VOID};
 use genco::{Cons, Element, Java};
@@ -225,7 +225,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
         Ok(self.byte_buffer.clone())
     }
 
-    fn translate_name(&self, reg: RpReg, name: RpName) -> Result<Java<'static>> {
+    fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<Java<'static>> {
         let ident = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
         let package = name.package.join(".");
         Ok(java::imported(package, ident))
@@ -234,12 +234,13 @@ impl FlavorTranslator for JavaFlavorTranslator {
     fn translate_field<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         field: core::RpField<CoreFlavor>,
     ) -> Result<JavaField<'static>>
     where
         T: Translator<Source = CoreFlavor, Target = JavaFlavor>,
     {
-        let mut field = field.translate(translator)?;
+        let mut field = field.translate(diag, translator)?;
 
         let field_accessor = Rc::new(self.to_upper_camel.convert(field.ident()));
 
@@ -271,12 +272,13 @@ impl FlavorTranslator for JavaFlavorTranslator {
     fn translate_endpoint<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         endpoint: core::RpEndpoint<CoreFlavor>,
     ) -> Result<JavaEndpoint<'static>>
     where
         T: Translator<Source = CoreFlavor, Target = JavaFlavor>,
     {
-        let mut endpoint = endpoint.translate(translator)?;
+        let mut endpoint = endpoint.translate(diag, translator)?;
 
         let mut arguments = Vec::new();
 
@@ -309,12 +311,15 @@ impl FlavorTranslator for JavaFlavorTranslator {
     fn translate_local_name<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         reg: RpReg,
-        name: core::RpName<CoreFlavor>,
+        name: Loc<core::RpName<CoreFlavor>>,
     ) -> Result<JavaName>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
+        let (name, span) = Loc::take_pair(name);
+
         let ident = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
         let package = self.translate_package(name.package)?;
 
@@ -327,6 +332,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
     fn translate_enum_type<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         enum_type: core::RpEnumType,
     ) -> Result<Java<'static>>
     where
@@ -340,7 +346,6 @@ impl FlavorTranslator for JavaFlavorTranslator {
             U64 => self.translate_u64(),
             I32 => self.translate_i32(),
             I64 => self.translate_i64(),
-            enum_type => return Err(format!("bad enum type: {}", enum_type).into()),
         }
     }
 }

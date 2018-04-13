@@ -3,6 +3,7 @@ mod check;
 mod derive;
 mod doc;
 mod init;
+mod language_server;
 mod publish;
 mod repo;
 mod self_update;
@@ -10,12 +11,20 @@ mod update;
 mod watch;
 
 use clap::{App, Arg, ArgMatches};
-use core::errors::*;
 use core::Context;
+use core::errors::*;
+use log;
 use output::Output;
 use std::rc::Rc;
 
 pub fn base_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+    let out = out.arg(
+        Arg::with_name("debug")
+            .long("debug")
+            .short("D")
+            .help("Enable debug output"),
+    );
+
     let out = out.arg(
         Arg::with_name("index")
             .long("index")
@@ -118,6 +127,7 @@ pub fn build_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 
 pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.subcommand(build_args(build::options()));
+    let out = out.subcommand(build_args(language_server::options()));
     let out = out.subcommand(build_args(doc::options()));
     let out = out.subcommand(build_args(watch::options()));
     let out = out.subcommand(base_args(check::options()));
@@ -130,9 +140,35 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out
 }
 
+/// Configure default logging.
+///
+/// If debug (--debug) is specified, logging should be configured with `LogLevelFilter::Debug`.
+fn default_logging(matches: &ArgMatches, output: &Output) -> Result<()> {
+    let level = if matches.is_present("debug") {
+        log::LogLevelFilter::Debug
+    } else {
+        log::LogLevelFilter::Info
+    };
+
+    log::set_logger(|max_level| {
+        max_level.set(level);
+        output.logger()
+    })?;
+
+    Ok(())
+}
+
 pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<()> {
     let (name, matches) = matches.subcommand();
     let matches = matches.ok_or_else(|| "no subcommand")?;
+
+    // has custom log setup.
+    if name == "language-server" {
+        return language_server::entry(ctx, matches);
+    }
+
+    // setup default logger.
+    default_logging(matches, output)?;
 
     match name {
         "build" => return build::entry(ctx, matches),

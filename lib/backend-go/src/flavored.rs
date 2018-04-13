@@ -2,10 +2,11 @@
 
 #![allow(unused)]
 
+use TYPE_SEP;
 use backend::package_processor;
 use core::errors::Result;
-use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-           Translator};
+use core::{self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator,
+           Translate, Translator};
 use genco::go::{array, imported, interface, local, map, Go};
 use genco::{Cons, Element};
 use std::collections::HashMap;
@@ -13,7 +14,6 @@ use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
 use trans::Packages;
-use TYPE_SEP;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GoFlavor;
@@ -120,7 +120,7 @@ impl FlavorTranslator for GoFlavorTranslator {
         Ok(local("string"))
     }
 
-    fn translate_name(&self, reg: RpReg, name: RpName) -> Result<Go<'static>> {
+    fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<Go<'static>> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         // imported
@@ -138,12 +138,15 @@ impl FlavorTranslator for GoFlavorTranslator {
     fn translate_local_name<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         reg: RpReg,
-        name: core::RpName<CoreFlavor>,
+        name: Loc<core::RpName<CoreFlavor>>,
     ) -> Result<GoName>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
+        let (name, _) = Loc::take_pair(name);
+
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
         let package = self.translate_package(name.package)?;
 
@@ -161,6 +164,7 @@ impl FlavorTranslator for GoFlavorTranslator {
     fn translate_enum_type<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         enum_type: core::RpEnumType,
     ) -> Result<Go<'static>>
     where
@@ -174,7 +178,6 @@ impl FlavorTranslator for GoFlavorTranslator {
             U64 => self.translate_u64(),
             I32 => self.translate_i32(),
             I64 => self.translate_i64(),
-            enum_type => return Err(format!("bad enum type: {}", enum_type).into()),
         }
     }
 }

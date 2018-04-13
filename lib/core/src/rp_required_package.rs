@@ -38,6 +38,10 @@ impl RpRequiredPackage {
 
 impl fmt::Display for RpRequiredPackage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}@{}", self.package, self.range)
+        if self.range.matches_any() {
+            write!(f, "{}", self.package)
+        } else {
+            write!(f, "{} {}", self.package, self.range)
+        }
     }
 }

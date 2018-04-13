@@ -25,7 +25,8 @@ use backend::{Initializer, IntoBytes};
 use codegen::ServiceCodegen;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor, Loc, RpField, RpPackage, RpType, Span, Translate};
+use core::{Context, CoreFlavor, Diagnostics, Loc, RpField, RpPackage, RpType, Source, Span,
+           Translate};
 use genco::{Cons, Python, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -187,8 +188,10 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
     let helper = options.version_helper.clone();
     let translator = env.translator(flavored::PythonFlavorTranslator::new(packages, helper))?;
 
-    let variant_field =
-        Loc::new(RpField::new("ordinal", RpType::String), Span::empty()).translate(&translator)?;
+    // NOTE: avoid doing translation.
+    let mut diag = Diagnostics::new(Source::empty("no diagnostics"));
+    let variant_field = Loc::new(RpField::new("ordinal", RpType::String), Span::empty())
+        .translate(&mut diag, &translator)?;
 
     let env = env.translate(translator)?;
 

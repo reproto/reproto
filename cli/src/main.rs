@@ -1,6 +1,5 @@
 extern crate atty;
 extern crate clap;
-extern crate log;
 extern crate reproto;
 extern crate reproto_core as core;
 
@@ -14,12 +13,6 @@ use std::rc::Rc;
 fn setup_opts<'a, 'b>() -> App<'a, 'b> {
     App::new("reproto")
         .version(VERSION)
-        .arg(
-            Arg::with_name("debug")
-                .long("debug")
-                .short("D")
-                .help("Enable debug output."),
-        )
         .arg(
             Arg::with_name("color")
                 .long("color")
@@ -38,26 +31,7 @@ fn setup_opts<'a, 'b>() -> App<'a, 'b> {
         )
 }
 
-/// Configure logging
-///
-/// If debug (--debug) is specified, logging should be configured with `LogLevelFilter::Debug`.
-fn setup_logger(matches: &clap::ArgMatches, output: &output::Output) -> Result<()> {
-    let level = if matches.is_present("debug") {
-        log::LogLevelFilter::Debug
-    } else {
-        log::LogLevelFilter::Info
-    };
-
-    log::set_logger(|max_level| {
-        max_level.set(level);
-        output.logger()
-    })?;
-
-    Ok(())
-}
-
 fn guarded_entry(ctx: Rc<Context>, matches: &ArgMatches, output: &output::Output) -> Result<()> {
-    setup_logger(matches, output)?;
     ops::entry(ctx, matches, output)?;
     Ok(())
 }
@@ -69,7 +43,7 @@ fn entry(matches: &ArgMatches, output: &output::Output) -> Result<()> {
         Err(e) => {
             // NB: get rid of dual reporting.
             // We only want positional errors reported through the context.
-            if !ctx.has_errors()? {
+            if !ctx.has_diagnostics()? {
                 output.handle_error(&e)?;
             }
 

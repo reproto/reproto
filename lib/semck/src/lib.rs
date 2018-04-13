@@ -103,7 +103,7 @@ where
                 continue;
             }
 
-            storage.insert(named.name().clone().localize(), named);
+            storage.insert(Loc::borrow(named.name()).clone().localize(), named);
         }
     }
 
@@ -117,7 +117,7 @@ where
     let mut storage = HashMap::new();
 
     for variant in variants {
-        storage.insert(variant.name.clone().localize(), variant);
+        storage.insert(Loc::borrow(&variant.name).clone().localize(), variant);
     }
 
     storage
@@ -172,12 +172,12 @@ where
             component,
             accessor(from_endpoint)
                 .as_ref()
-                .map(Loc::value)
+                .map(Loc::borrow)
                 .map(Clone::clone),
             from_pos.into(),
             accessor(to_endpoint)
                 .as_ref()
-                .map(Loc::value)
+                .map(Loc::borrow)
                 .map(Clone::clone),
             to_pos.into(),
         ));

@@ -3,7 +3,7 @@
 use errors::Result;
 use serde::Serialize;
 use std::fmt;
-use {CoreFlavor, Flavor, Translate, Translator};
+use {CoreFlavor, Diagnostics, Flavor, Loc, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(bound = "F::Package: Serialize")]
@@ -13,7 +13,7 @@ where
 {
     /// Alias used if the name was imported from another package.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub prefix: Option<String>,
+    pub prefix: Option<Loc<String>>,
     /// Package that name belongs to.
     pub package: F::Package,
     /// Absolute parts of the name, from the root of the package.
@@ -24,7 +24,7 @@ impl<F: 'static> RpName<F>
 where
     F: Flavor,
 {
-    pub fn new(prefix: Option<String>, package: F::Package, parts: Vec<String>) -> Self {
+    pub fn new(prefix: Option<Loc<String>>, package: F::Package, parts: Vec<String>) -> Self {
         Self {
             prefix: prefix,
             package: package,
@@ -136,7 +136,7 @@ where
     type Out = RpName<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpName<T::Target>> {
+    fn translate(self, _: &mut Diagnostics, translator: &T) -> Result<RpName<T::Target>> {
         Ok(RpName {
             prefix: self.prefix,
             package: translator.translate_package(self.package)?,

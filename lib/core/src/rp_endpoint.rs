@@ -3,7 +3,7 @@
 use errors::Result;
 use std::default;
 use std::rc::Rc;
-use {Attributes, Flavor, Loc, RpChannel, RpPathSpec, Translate, Translator};
+use {Attributes, Diagnostics, Flavor, Loc, RpChannel, RpPathSpec, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
 pub enum RpHttpMethod {
@@ -75,10 +75,14 @@ where
     type Out = RpEndpointHttp<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpEndpointHttp<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> Result<RpEndpointHttp<T::Target>> {
         Ok(RpEndpointHttp {
-            path: self.path.translate(translator)?,
-            body: self.body.translate(translator)?,
+            path: self.path.translate(diag, translator)?,
+            body: self.body.translate(diag, translator)?,
             method: self.method,
             accept: self.accept,
         })
@@ -109,11 +113,15 @@ where
     type Out = RpEndpointArgument<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpEndpointArgument<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> Result<RpEndpointArgument<T::Target>> {
         Ok(RpEndpointArgument {
             ident: self.ident,
             safe_ident: self.safe_ident,
-            channel: self.channel.translate(translator)?,
+            channel: self.channel.translate(diag, translator)?,
         })
     }
 }
@@ -216,17 +224,17 @@ where
     type Out = RpEndpoint<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpEndpoint<T::Target>> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpEndpoint<T::Target>> {
         Ok(RpEndpoint {
             ident: self.ident,
             safe_ident: self.safe_ident,
             name: self.name,
             comment: self.comment,
             attributes: self.attributes,
-            arguments: self.arguments.translate(translator)?,
-            request: self.request.translate(translator)?,
-            response: self.response.translate(translator)?,
-            http: self.http.translate(translator)?,
+            arguments: self.arguments.translate(diag, translator)?,
+            request: self.request.translate(diag, translator)?,
+            response: self.response.translate(diag, translator)?,
+            http: self.http.translate(diag, translator)?,
         })
     }
 }
@@ -257,8 +265,8 @@ where
             None => return None,
         };
 
-        let request_ty = endpoint.request.as_ref().map(|r| Loc::value(&r.channel));
-        let response_ty = endpoint.response.as_ref().map(|r| Loc::value(r));
+        let request_ty = endpoint.request.as_ref().map(|r| Loc::borrow(&r.channel));
+        let response_ty = endpoint.response.as_ref().map(|r| Loc::borrow(r));
 
         let (request, response) = match (request_ty, response_ty) {
             (Some(&Unary { ty: ref request }), Some(&Unary { ty: ref response })) => {

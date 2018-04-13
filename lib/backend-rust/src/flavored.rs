@@ -3,8 +3,8 @@
 #![allow(unused)]
 
 use core::errors::Result;
-use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-           Translator};
+use core::{self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator,
+           Translate, Translator};
 use genco::rust;
 use genco::{Cons, Rust};
 use std::collections::HashMap;
@@ -32,7 +32,7 @@ pub struct RustFlavor;
 
 impl Flavor for RustFlavor {
     type Type = Rust<'static>;
-    type Name = RpName;
+    type Name = Loc<RpName>;
     type Field = core::RpField<RustFlavor>;
     type Endpoint = RustEndpoint;
     type Package = core::RpPackage;
@@ -120,12 +120,12 @@ impl FlavorTranslator for RustFlavorTranslator {
         Ok(rust::local("String"))
     }
 
-    fn translate_name(&self, reg: RpReg, name: RpName) -> Result<Rust<'static>> {
+    fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<Rust<'static>> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
 
-        if let Some(prefix) = name.prefix {
+        if let Some(ref prefix) = name.prefix {
             let package_name = name.package.join("::");
-            return Ok(rust::imported(package_name, ident).alias(prefix));
+            return Ok(rust::imported(package_name, ident).alias(prefix.to_string()));
         }
 
         Ok(rust::local(ident))
@@ -134,12 +134,13 @@ impl FlavorTranslator for RustFlavorTranslator {
     fn translate_endpoint<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         endpoint: core::RpEndpoint<CoreFlavor>,
     ) -> Result<RustEndpoint>
     where
         T: Translator<Source = CoreFlavor, Target = RustFlavor>,
     {
-        let endpoint = endpoint.translate(translator)?;
+        let endpoint = endpoint.translate(diag, translator)?;
         let http1 = RpEndpointHttp1::from_endpoint(&endpoint);
 
         Ok(RustEndpoint { endpoint, http1 })
@@ -152,6 +153,7 @@ impl FlavorTranslator for RustFlavorTranslator {
     fn translate_enum_type<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         enum_type: core::RpEnumType,
     ) -> Result<Rust<'static>>
     where
@@ -165,7 +167,6 @@ impl FlavorTranslator for RustFlavorTranslator {
             U64 => self.translate_u64(),
             I32 => self.translate_i32(),
             I64 => self.translate_i64(),
-            enum_type => return Err(format!("bad enum type: {}", enum_type).into()),
         }
     }
 }

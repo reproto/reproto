@@ -5,7 +5,7 @@ use serde::Serialize;
 use std::slice;
 use std::vec;
 use translator;
-use {Flavor, FlavorField, Loc, RpCode, RpDecl, RpReg, Translate, Translator};
+use {Diagnostics, Flavor, FlavorField, Loc, RpCode, RpDecl, RpReg, Translate, Translator};
 
 /// Default key to use for tagged sub type strategy.
 pub const DEFAULT_TAG: &str = "type";
@@ -97,29 +97,31 @@ where
     type Out = RpInterfaceBody<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpInterfaceBody<T::Target>> {
-        translator.visit(&self.name)?;
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> Result<RpInterfaceBody<T::Target>> {
+        translator.visit(diag, &self.name)?;
 
-        let name = translator.translate_local_name(RpReg::Interface, self.name)?;
+        let name = translator.translate_local_name(diag, RpReg::Interface, self.name)?;
 
         Ok(RpInterfaceBody {
             name: name,
             ident: self.ident,
             comment: self.comment,
-            decls: self.decls.translate(translator)?,
-            fields: translator::Fields(self.fields).translate(translator)?,
+            decls: self.decls.translate(diag, translator)?,
+            fields: translator::Fields(self.fields).translate(diag, translator)?,
             codes: self.codes,
-            sub_types: self.sub_types.translate(translator)?,
+            sub_types: self.sub_types.translate(diag, translator)?,
             sub_type_strategy: self.sub_type_strategy,
         })
     }
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(
-    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
-             Serialize, F::Name: Serialize, F::EnumType: Serialize"
-)]
+#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
+                 Serialize, F::Name: Serialize, F::EnumType: Serialize")]
 pub struct RpSubType<F: 'static>
 where
     F: Flavor,
@@ -168,17 +170,17 @@ where
     type Out = RpSubType<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpSubType<T::Target>> {
-        translator.visit(&self.name)?;
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpSubType<T::Target>> {
+        translator.visit(diag, &self.name)?;
 
-        let name = translator.translate_local_name(RpReg::SubType, self.name)?;
+        let name = translator.translate_local_name(diag, RpReg::SubType, self.name)?;
 
         Ok(RpSubType {
             name: name,
             ident: self.ident,
             comment: self.comment,
-            decls: self.decls.translate(translator)?,
-            fields: translator::Fields(self.fields).translate(translator)?,
+            decls: self.decls.translate(diag, translator)?,
+            fields: translator::Fields(self.fields).translate(diag, translator)?,
             codes: self.codes,
             sub_type_name: self.sub_type_name,
         })

@@ -14,6 +14,8 @@ Reproto is:
 
 * **A compiler** capable of generating code for [various languages].<br />
   [try it out][trycompiler] &ndash; [documentation][langsupport]
+* **A language server** providing first-class integration with a large number of editors.<br />
+  [documentation][langserver]
 * **A custom interface description language** that permits describing the schema of JSON and
   services in a concise, easy to understand way.<br />
   [documentation][idl]
@@ -54,6 +56,7 @@ but avoid building large repositories of schemas for now.
 [build manifests]: /doc/manifest.md
 [stdweb]: https://github.com/koute/stdweb
 [trycompiler]: https://reproto.github.io/?input=reproto&output=java&package=example.type
+[langserver]: /doc/usage/language-server.md
 [tryderive]: https://reproto.github.io/?input=json&output=java&package=example.type
 
 ## Getting Started

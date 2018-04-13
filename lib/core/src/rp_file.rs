@@ -3,13 +3,11 @@
 use errors::Result;
 use serde::Serialize;
 use std::collections::LinkedList;
-use {Flavor, RpDecl, Translate, Translator};
+use {Diagnostics, Flavor, RpDecl, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(
-    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
-             Serialize, F::Name: Serialize, F::EnumType: Serialize"
-)]
+#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
+                 Serialize, F::Name: Serialize, F::EnumType: Serialize")]
 pub struct RpFile<F: 'static>
 where
     F: Flavor,
@@ -64,10 +62,10 @@ where
     type Out = RpFile<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpFile<T::Target>> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpFile<T::Target>> {
         Ok(RpFile {
             comment: self.comment,
-            decls: self.decls.translate(translator)?,
+            decls: self.decls.translate(diag, translator)?,
         })
     }
 }
