@@ -117,6 +117,28 @@ where
     }
 }
 
+/// Error recovery.
+impl<T> IntoModel for (&'static str, Loc<ErrorRecovery<T>>)
+where
+    T: IntoModel,
+{
+    type Output = T::Output;
+
+    fn into_model(self, scope: &Scope) -> Result<Self::Output> {
+        let (message, recovery) = self;
+        let (recovery, pos) = Loc::take_pair(recovery);
+
+        match recovery {
+            ErrorRecovery::Error => {
+                let mut report = scope.ctx().report();
+                report.err(pos, message);
+                Err(report.into())
+            }
+            ErrorRecovery::Value(value) => value.into_model(scope),
+        }
+    }
+}
+
 /// Generic implementation for vectors.
 impl<T> IntoModel for Vec<T>
 where
@@ -428,7 +450,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
                 safe_ident: safe_ident,
                 ident: ident,
                 comment: Comment(&comment).into_model(scope)?,
-                ty: item.ty.into_model(scope)?,
+                ty: ("Expected field type", item.ty).into_model(scope)?,
                 field_as: field_as,
             })
         })
@@ -685,7 +707,7 @@ impl IntoModel for Name {
                 RpName {
                     prefix: prefix,
                     package: package,
-                    parts: parts,
+                    parts: ("Expected type identifier", parts).into_model(scope)?,
                 }
             }
         };

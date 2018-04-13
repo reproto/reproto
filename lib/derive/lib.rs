@@ -69,7 +69,7 @@ impl<'a> Context<'a> {
     fn name(&self) -> Name {
         Name::Absolute {
             prefix: None,
-            parts: self.path.clone(),
+            parts: Loc::new(self.path.clone().into(), Pos::empty()),
         }
     }
 }
@@ -187,7 +187,7 @@ impl<'a> FieldInit<'a> {
                 )?;
 
                 Type::Array {
-                    inner: Box::new(f.item.ty.clone()),
+                    inner: Box::new(Loc::value(&f.item.ty).clone().recover()?),
                 }
             }
             ref sir => {
@@ -224,7 +224,7 @@ impl<'a> FieldInit<'a> {
         let field = Field {
             required: !sir.optional,
             name: name.clone().into(),
-            ty: ty,
+            ty: Loc::new(ty.into(), self.pos.clone()),
             field_as: field_as,
         };
 

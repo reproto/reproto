@@ -1,9 +1,35 @@
 extern crate reproto_core as core;
 
+use core::errors::Result;
 use core::{Loc, RpNumber, RpPackage, WithPos};
 use std::borrow::Cow;
 use std::ops;
 use std::result;
+
+/// A value that can be error-recovered.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ErrorRecovery<T> {
+    Error,
+    Value(T),
+}
+
+impl<T> ErrorRecovery<T> {
+    /// Return the value or an error.
+    pub fn recover(self) -> Result<T> {
+        use self::ErrorRecovery::*;
+
+        match self {
+            Error => Err("value not available".into()),
+            Value(value) => Ok(value),
+        }
+    }
+}
+
+impl<T> From<T> for ErrorRecovery<T> {
+    fn from(value: T) -> ErrorRecovery<T> {
+        ErrorRecovery::Value(value)
+    }
+}
 
 /// Items can be commented and have attributes.
 ///
@@ -176,7 +202,7 @@ pub enum EnumMember<'input> {
 pub struct Field<'input> {
     pub required: bool,
     pub name: Cow<'input, str>,
-    pub ty: Type,
+    pub ty: Loc<ErrorRecovery<Type>>,
     pub field_as: Option<String>,
 }
 
@@ -225,7 +251,7 @@ pub enum Name {
     },
     Absolute {
         prefix: Option<String>,
-        parts: Vec<String>,
+        parts: Loc<ErrorRecovery<Vec<String>>>,
     },
 }
 

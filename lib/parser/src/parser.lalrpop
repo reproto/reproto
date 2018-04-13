@@ -198,14 +198,23 @@ Code: Code<'input> =
         content: strip_code_block(content),
     };
 
-Field: Field<'input> =
-    <name:Ident> <optional:Optional> ":" <ty:TypeSpec> <alias:FieldAlias?> ";" =>
+Field: Field<'input> = {
+    <name:Ident> <optional:Optional> ":" <ty:Loc<TypeSpec>> <alias:FieldAlias?> ";" =>
     Field {
         required: !optional,
         name: name,
-        ty: ty,
+        ty: Loc::map(ty, ErrorRecovery::Value),
         field_as: alias,
-    };
+    },
+
+    <name:Ident> <optional:Optional> ":" <ty:Loc<!>> <alias:FieldAlias?> ";" =>
+    Field {
+        required: !optional,
+        name: name,
+        ty: Loc::map(ty, |_| ErrorRecovery::Error),
+        field_as: alias,
+    },
+};
 
 SubType: SubType<'input> = {
     <name:Loc<TypeIdent>> <alias:("as" Loc<Value>)?> "{"
@@ -257,9 +266,14 @@ pub TypeSpec: Type = {
 };
 
 Name: Name = {
-    <prefix:(ident "::")?> <parts:OneOrMore<"::", TypeIdent>> => Name::Absolute {
+    <prefix:(ident "::")?> <parts:Loc<OneOrMore<"::", TypeIdent>>> => Name::Absolute {
         prefix: prefix.map(|p| p.0.to_string()),
-        parts: parts.into_iter().map(|s| s.to_string()).collect(),
+        parts: Loc::map(parts, |p| p.into_iter().map(|s| s.to_string()).collect::<Vec<_>>().into()),
+    },
+
+    <prefix:ident> "::" <parts:Loc<!>> => Name::Absolute {
+        prefix: Some(prefix.to_string()),
+        parts: Loc::map(parts, |_| ErrorRecovery::Error),
     },
 
     "::" <parts:OneOrMore<"::", TypeIdent>> => Name::Relative {
