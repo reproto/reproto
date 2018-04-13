@@ -33,6 +33,12 @@ Reproto is:
 These things combined support an ecosystem where schemas can be maintained and shared across
 many teams.
 
+You can install a binary version of reproto by running:
+
+```
+curl https://raw.githubusercontent.com/reproto/reproto/master/install.sh -sSf | bash
+```
+
 **Note:** This project is in an early stage. Things will change a lot. Please take it for a spin,
 but avoid building large repositories of schemas for now.
 
@@ -114,7 +120,7 @@ These have been generated from the [examples project] using [tools/update-doc-ex
 [examples project]: /examples/
 [tools/update-doc-examples]: /tools/update-doc-examples
 
-## Building and Installing
+## Installing from Source
 
 Make sure you have [gotten started with Rust][rust-get-started].
 
