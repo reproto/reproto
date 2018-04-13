@@ -135,42 +135,54 @@ l="$REPROTO_HOME/bin/reproto"
 # link destination
 d="../releases/$versioned"
 
-if [[ -f $a ]]; then
-    if [[ $force != "y" ]]; then
-        echo "Archive already exist: $a"
-        exit 1
-    fi
+do_download=y
+do_unpack=y
+do_link=y
 
-    echo "Removing old archive (-f): $a"
-    rm -f $a
+if [[ -f $a ]]; then
+    if [[ $force == "y" ]]; then
+        echo "Removing old archive (-f): $a"
+        rm -f $a
+    else
+        do_download=n
+    fi
 fi
 
 if [[ -f $b ]]; then
-    if [[ $force != "y" ]]; then
-        echo "Binary already exist: $b"
-        exit 1
+    if [[ $force == "y" ]]; then
+        echo "Removing old binary (-f): $b"
+        rm -f $b
+    else
+        # no need to download since binary already exists
+        do_unpack=n
     fi
-
-    echo "Removing old binary (-f): $b"
-    rm -f $b
 fi
 
 if [[ -L $l ]]; then
-    if [[ $force != "y" ]]; then
-        echo "Link already exist: $l"
-        exit 1
+    if [[ $force == "y" ]]; then
+        echo "Removing old link (-f): $l"
+        rm -f $l
+    else
+        do_link=n
     fi
-
-    echo "Removing old link (-f): $l"
-    rm -f $l
 fi
 
-download "$archive" "$a"
-tar -C "$REPROTO_HOME/releases" -xf $a
+if [[ $do_download == "y" ]]; then
+    echo "Downloading archive: $archive"
+    download "$archive" "$a"
+fi
 
-mv "$REPROTO_HOME/releases/reproto" "$b"
-chmod +x $b
-ln -s $d $l
+if [[ $do_unpack == "y" ]]; then
+    echo "Unpacking archive: $archive"
+    tar -C "$REPROTO_HOME/releases" -xf $a
+    mv "$REPROTO_HOME/releases/reproto" "$b"
+    chmod +x $b
+fi
+
+if [[ $do_link == "y" ]]; then
+    echo "Creating link: $l -> $d"
+    ln -s $d $l
+fi
 
 echo ""
 echo "All done!"
