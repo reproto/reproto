@@ -26,6 +26,7 @@ members = [
   "lib/derive",
   "lib/semver",
   "lib/trans",
+  "lib/languageserver",
   "tools/pack",
   "tools/it",
 ]

@@ -12,13 +12,15 @@ reproto compiler
 """
 
 [features]
-default = ["notify", "self-updates"]
+default = ["notify", "self-updates", "languageserver"]
 # Enable to emit very detailed tracing, potentially performance sensitive.
 tracing = []
 self-updates = ["same-file", "ring", "hyper", "hyper-rustls", "tokio-core", "futures", "flate2", "tar"]
+languageserver = ["reproto-languageserver"]
 
 [dependencies]
 reproto-core = {path = "../lib/core", version = "0.3"}
+reproto-languageserver = {path = "../lib/languageserver", version = "0.3", optional = true}
 reproto-trans = {path = "../lib/trans", version = "0.3"}
 reproto-ast = {path = "../lib/ast", version = "0.3"}
 reproto-semck = {path = "../lib/semck", version = "0.3"}
