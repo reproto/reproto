@@ -1,11 +1,12 @@
 //! Translates one IR in-place into another.
 
+use Flavor;
 use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
-use Flavor;
-use {CoreFlavor, Loc, RpEndpoint, RpEnumType, RpField, RpName, RpReg, RpType, RpVersionedPackage};
+use {CoreFlavor, Diagnostics, Loc, RpEndpoint, RpEnumType, RpField, RpName, RpReg, RpType,
+     RpVersionedPackage};
 
 /// Method for translating package.
 pub trait PackageTranslator<K, V> {
@@ -60,13 +61,14 @@ pub trait FlavorTranslator {
     fn translate_name(
         &self,
         reg: RpReg,
-        name: RpName<Self::Target>,
+        name: Loc<RpName<Self::Target>>,
     ) -> Result<<Self::Target as Flavor>::Type>;
 
     /// Translate the given field.
     fn translate_field<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         field: <Self::Source as Flavor>::Field,
     ) -> Result<<Self::Target as Flavor>::Field>
     where
@@ -76,6 +78,7 @@ pub trait FlavorTranslator {
     fn translate_endpoint<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         endpoint: <Self::Source as Flavor>::Endpoint,
     ) -> Result<<Self::Target as Flavor>::Endpoint>
     where
@@ -85,6 +88,7 @@ pub trait FlavorTranslator {
     fn translate_local_name<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         reg: RpReg,
         name: <Self::Source as Flavor>::Name,
     ) -> Result<<Self::Target as Flavor>::Name>
@@ -95,6 +99,7 @@ pub trait FlavorTranslator {
     fn translate_enum_type<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         enum_type: <Self::Source as Flavor>::EnumType,
     ) -> Result<<Self::Target as Flavor>::EnumType>
     where
@@ -128,7 +133,7 @@ where
         Type = RpType<F>,
         Field = RpField<F>,
         Endpoint = RpEndpoint<F>,
-        Name = RpName<F>,
+        Name = Loc<RpName<F>>,
         EnumType = RpEnumType,
     >,
 {
@@ -151,7 +156,7 @@ pub trait Translator {
     type Target: 'static + Flavor;
 
     /// Indicate that the given name has been visited.
-    fn visit(&self, _: &<Self::Source as Flavor>::Name) -> Result<()> {
+    fn visit(&self, _: &mut Diagnostics, _: &<Self::Source as Flavor>::Name) -> Result<()> {
         Ok(())
     }
 
@@ -164,24 +169,28 @@ pub trait Translator {
     /// Translate the given type from one flavor to another.
     fn translate_type(
         &self,
+        diag: &mut Diagnostics,
         <Self::Source as Flavor>::Type,
     ) -> Result<<Self::Target as Flavor>::Type>;
 
     /// Translate the given field from one flavor to another.
     fn translate_field(
         &self,
+        diag: &mut Diagnostics,
         <Self::Source as Flavor>::Field,
     ) -> Result<<Self::Target as Flavor>::Field>;
 
     /// Translate the given endpoint from one flavor to another.
     fn translate_endpoint(
         &self,
+        diag: &mut Diagnostics,
         <Self::Source as Flavor>::Endpoint,
     ) -> Result<<Self::Target as Flavor>::Endpoint>;
 
     /// Translate a local declaration name.
     fn translate_local_name(
         &self,
+        diag: &mut Diagnostics,
         reg: RpReg,
         name: <Self::Source as Flavor>::Name,
     ) -> Result<<Self::Target as Flavor>::Name>;
@@ -189,6 +198,7 @@ pub trait Translator {
     /// Enum type to translate.
     fn translate_enum_type(
         &self,
+        diag: &mut Diagnostics,
         enum_type: <Self::Source as Flavor>::EnumType,
     ) -> Result<<Self::Target as Flavor>::EnumType>;
 }
@@ -202,7 +212,7 @@ where
     type Out;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<Self::Out>;
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Self::Out>;
 }
 
 impl<T, I> Translate<T> for Loc<I>
@@ -214,8 +224,8 @@ where
     type Out = Loc<I::Out>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<Loc<I::Out>> {
-        Loc::and_then(self, |s| s.translate(translator))
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Loc<I::Out>> {
+        Loc::and_then(self, |s| s.translate(diag, translator))
     }
 }
 
@@ -228,9 +238,9 @@ where
     type Out = Vec<I::Out>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<Vec<I::Out>> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Vec<I::Out>> {
         self.into_iter()
-            .map(|v| v.translate(translator))
+            .map(|v| v.translate(diag, translator))
             .collect::<Result<Vec<_>>>()
     }
 }
@@ -244,9 +254,9 @@ where
     type Out = Option<I::Out>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<Option<I::Out>> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Option<I::Out>> {
         let out = match self {
-            Some(inner) => Some(inner.translate(translator)?),
+            Some(inner) => Some(inner.translate(diag, translator)?),
             None => None,
         };
 
@@ -265,10 +275,10 @@ where
     type Out = Vec<Loc<<T::Target as Flavor>::Field>>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<Self::Out> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Self::Out> {
         let out = self.0
             .into_iter()
-            .map(|f| Loc::and_then(f, |f| translator.translate_field(f)))
+            .map(|f| Loc::and_then(f, |f| translator.translate_field(diag, f)))
             .collect::<Result<Vec<_>>>()?;
 
         Ok(out)
@@ -283,7 +293,7 @@ where
     /// Type used to translate types.
     pub flavor: T,
     /// Registered declarations of the source type.
-    pub types: Rc<LinkedHashMap<RpName<T::Source>, RpReg>>,
+    pub types: Rc<LinkedHashMap<RpName<T::Source>, Loc<RpReg>>>,
     /// Cached and translated registered declarations.
     pub decls: Option<RefCell<LinkedHashMap<RpName<T::Source>, RpReg>>>,
 }
@@ -293,7 +303,8 @@ where
     T: FlavorTranslator<Source = CoreFlavor>,
 {
     /// Lookup and cause the given name to be registered.
-    fn lookup(&self, key: &RpName<T::Source>) -> Result<RpReg> {
+    fn lookup(&self, diag: &mut Diagnostics, key: &Loc<RpName<T::Source>>) -> Result<RpReg> {
+        let (key, span) = Loc::borrow_pair(key);
         let key = key.clone().without_prefix();
 
         let decls = self.decls.as_ref().ok_or_else(|| "no declarations")?;
@@ -305,8 +316,9 @@ where
         }
 
         let reg = match self.types.get(&key) {
-            Some(reg) => reg.clone(),
+            Some(reg) => Loc::borrow(reg).clone(),
             None => {
+                diag.err(span, format!("`{}` does not exist", key));
                 return Err(format!("no such type: {}", key).into());
             }
         };
@@ -324,8 +336,8 @@ where
     type Target = T::Target;
 
     /// Indicate that the given name has been visited.
-    fn visit(&self, name: &RpName<Self::Source>) -> Result<()> {
-        self.lookup(name)?;
+    fn visit(&self, diag: &mut Diagnostics, name: &Loc<RpName<Self::Source>>) -> Result<()> {
+        self.lookup(diag, name)?;
         Ok(())
     }
 
@@ -338,6 +350,7 @@ where
 
     fn translate_type(
         &self,
+        diag: &mut Diagnostics,
         source: <Self::Source as Flavor>::Type,
     ) -> Result<<Self::Target as Flavor>::Type> {
         use self::RpType::*;
@@ -354,17 +367,17 @@ where
             Double => self.flavor.translate_double()?,
             Boolean => self.flavor.translate_boolean()?,
             Array { inner } => {
-                let inner = self.translate_type(*inner)?;
+                let inner = self.translate_type(diag, *inner)?;
                 self.flavor.translate_array(inner)?
             }
             Name { name } => {
-                let reg = self.lookup(&name)?;
-                let name = name.translate(self)?;
+                let reg = self.lookup(diag, &name)?;
+                let name = name.translate(diag, self)?;
                 self.flavor.translate_name(reg, name)?
             }
             Map { key, value } => {
-                let key = self.translate_type(*key)?;
-                let value = self.translate_type(*value)?;
+                let key = self.translate_type(diag, *key)?;
+                let value = self.translate_type(diag, *value)?;
                 self.flavor.translate_map(key, value)?
             }
             Any => self.flavor.translate_any()?,
@@ -376,32 +389,36 @@ where
 
     fn translate_field(
         &self,
+        diag: &mut Diagnostics,
         source: <Self::Source as Flavor>::Field,
     ) -> Result<<Self::Target as Flavor>::Field> {
-        self.flavor.translate_field(self, source)
+        self.flavor.translate_field(self, diag, source)
     }
 
     fn translate_endpoint(
         &self,
+        diag: &mut Diagnostics,
         source: <Self::Source as Flavor>::Endpoint,
     ) -> Result<<Self::Target as Flavor>::Endpoint> {
-        self.flavor.translate_endpoint(self, source)
+        self.flavor.translate_endpoint(self, diag, source)
     }
 
     /// Translate a local declaration name.
     fn translate_local_name(
         &self,
+        diag: &mut Diagnostics,
         reg: RpReg,
         name: <Self::Source as Flavor>::Name,
     ) -> Result<<Self::Target as Flavor>::Name> {
-        self.flavor.translate_local_name(self, reg, name)
+        self.flavor.translate_local_name(self, diag, reg, name)
     }
 
     /// Translate enum type.
     fn translate_enum_type(
         &self,
+        diag: &mut Diagnostics,
         enum_type: <Self::Source as Flavor>::EnumType,
     ) -> Result<<Self::Target as Flavor>::EnumType> {
-        self.flavor.translate_enum_type(self, enum_type)
+        self.flavor.translate_enum_type(self, diag, enum_type)
     }
 }

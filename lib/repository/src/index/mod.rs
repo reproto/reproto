@@ -38,6 +38,9 @@ pub trait Index {
     /// Resolve the given version of a package.
     fn resolve(&self, package: &RpPackage, range: &Range) -> Result<Vec<Deployment>>;
 
+    /// Resolve the given packages by prefix.
+    fn resolve_by_prefix(&self, package: &RpPackage) -> Result<Vec<(Deployment, RpPackage)>>;
+
     /// Get all versions available of a given package.
     ///
     /// The returned versions are sorted.
@@ -71,6 +74,10 @@ pub struct NoIndex;
 
 impl Index for NoIndex {
     fn resolve(&self, _: &RpPackage, _: &Range) -> Result<Vec<Deployment>> {
+        Ok(vec![])
+    }
+
+    fn resolve_by_prefix(&self, _: &RpPackage) -> Result<Vec<(Deployment, RpPackage)>> {
         Ok(vec![])
     }
 

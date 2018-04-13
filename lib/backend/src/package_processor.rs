@@ -1,11 +1,11 @@
+use IntoBytes;
 use core::errors::*;
-use core::{Flavor, Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
-           RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, WithSpan};
+use core::{Flavor, Handle, Loc, RelativePath, RelativePathBuf, RpDecl, RpEnumBody,
+           RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody};
 use std::cmp;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::io::Write;
-use IntoBytes;
 
 pub trait Name<F>: Clone + fmt::Display + fmt::Debug + cmp::Eq
 where
@@ -15,7 +15,8 @@ where
     fn package(&self) -> &F::Package;
 }
 
-impl<F> Name<F> for RpName<F>
+/// Implementation for default name translation.
+impl<F> Name<F> for Loc<RpName<F>>
 where
     F: Flavor,
 {
@@ -80,21 +81,19 @@ where
 
         // Process all types discovered so far.
         for decl in self.decl_iter() {
-            callback(decl)
-                .and_then(|_| {
-                    let mut out = files
-                        .entry(decl.name().package().clone())
-                        .or_insert_with(Self::Out::default);
+            callback(decl).and_then(|_| {
+                let mut out = files
+                    .entry(decl.name().package().clone())
+                    .or_insert_with(Self::Out::default);
 
-                    match *decl {
-                        Interface(ref b) => self.process_interface(&mut out, b),
-                        Type(ref b) => self.process_type(&mut out, b),
-                        Tuple(ref b) => self.process_tuple(&mut out, b),
-                        Enum(ref b) => self.process_enum(&mut out, b),
-                        Service(ref b) => self.process_service(&mut out, b),
-                    }
-                })
-                .with_span(decl.span())?;
+                match *decl {
+                    Interface(ref b) => self.process_interface(&mut out, b),
+                    Type(ref b) => self.process_type(&mut out, b),
+                    Tuple(ref b) => self.process_tuple(&mut out, b),
+                    Enum(ref b) => self.process_enum(&mut out, b),
+                    Service(ref b) => self.process_service(&mut out, b),
+                }
+            })?;
         }
 
         Ok(files)

@@ -22,7 +22,8 @@ mod flavored;
 use backend::IntoBytes;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor, Loc, RpField, RpPackage, RpType, Span, Translate};
+use core::{Context, CoreFlavor, Diagnostics, Loc, RpField, RpPackage, RpType, Source, Span,
+           Translate};
 use genco::{JavaScript, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -164,8 +165,10 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let translator = env.translator(flavored::JavaScriptFlavorTranslator::new(packages))?;
 
-    let variant_field =
-        Loc::new(RpField::new("value", RpType::String), Span::empty()).translate(&translator)?;
+    // TODO: remove this
+    let mut diag = Diagnostics::new(Source::empty("bad diagnostics"));
+    let variant_field = Loc::new(RpField::new("value", RpType::String), Span::empty())
+        .translate(&mut diag, &translator)?;
 
     let env = env.translate(translator)?;
 

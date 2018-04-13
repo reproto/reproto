@@ -1,14 +1,3 @@
-#[macro_export]
-macro_rules! try_loop {
-    ($e:expr) => {
-        match $e {
-            Err(ref e) if e.is_context() => continue,
-            Err(e) => return Err(e),
-            Ok(ok) => ok,
-        }
-    }
-}
-
 /// Build a declaration body including common fields.
 macro_rules! decl_body {
     (pub struct $name:ident<$f:ident> { $($rest:tt)* }) => {
@@ -75,13 +64,14 @@ macro_rules! translator_defaults {
         fn translate_local_name<T>(
             &self,
             translator: &T,
+            diag: &mut $crate::Diagnostics,
             _reg: $crate::RpReg,
-            name: $crate::RpName<$slf::Source>,
-        ) -> Result<$crate::RpName<$slf::Target>>
+            name: $crate::Loc<$crate::RpName<$slf::Source>>,
+        ) -> Result<$crate::Loc<$crate::RpName<$slf::Target>>>
         where
             T: Translator<Source = $slf::Source, Target = $slf::Target>,
         {
-            name.translate(translator)
+            name.translate(diag, translator)
         }
 
         translator_defaults!(@internal $slf $($rest)*);
@@ -91,12 +81,13 @@ macro_rules! translator_defaults {
         fn translate_field<T>(
             &self,
             translator: &T,
+            diag: &mut $crate::Diagnostics,
             field: $crate::RpField<$slf::Source>,
         ) -> Result<$crate::RpField<$slf::Target>>
         where
             T: Translator<Source = $slf::Source, Target = $slf::Target>,
         {
-            field.translate(translator)
+            field.translate(diag, translator)
         }
 
         translator_defaults!(@internal $slf $($rest)*);
@@ -106,12 +97,13 @@ macro_rules! translator_defaults {
         fn translate_endpoint<T>(
             &self,
             translator: &T,
+            diag: &mut $crate::Diagnostics,
             endpoint: $crate::RpEndpoint<$slf::Source>,
         ) -> Result<$crate::RpEndpoint<$slf::Target>>
         where
             T: Translator<Source = $slf::Source, Target = $slf::Target>,
         {
-            endpoint.translate(translator)
+            endpoint.translate(diag, translator)
         }
 
         translator_defaults!(@internal $slf $($rest)*);
@@ -182,7 +174,7 @@ macro_rules! translator_defaults {
         fn translate_name(
             &self,
             _reg: RpReg,
-            name: RpName<$slf::Target>,
+            name: Loc<RpName<$slf::Target>>,
         ) -> Result<<$slf::Target as Flavor>::Type> {
             Ok(RpType::Name { name })
         }
@@ -194,6 +186,7 @@ macro_rules! translator_defaults {
         fn translate_enum_type<T>(
             &self,
             _: &T,
+            _: &mut $crate::Diagnostics,
             enum_type: $crate::RpEnumType,
         ) -> Result<<$slf::Target as Flavor>::EnumType>
         where

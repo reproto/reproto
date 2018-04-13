@@ -1,7 +1,7 @@
 //! Data Models for fields
 
 use errors::Result;
-use {Flavor, FlavorField, Translate, Translator};
+use {Diagnostics, Flavor, FlavorField, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(bound = "F::Type: ::serde::Serialize")]
@@ -104,13 +104,13 @@ where
     type Out = RpField<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpField<T::Target>> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpField<T::Target>> {
         Ok(RpField {
             required: self.required,
             safe_ident: self.safe_ident,
             ident: self.ident,
             comment: self.comment,
-            ty: translator.translate_type(self.ty)?,
+            ty: translator.translate_type(diag, self.ty)?,
             field_as: self.field_as,
         })
     }

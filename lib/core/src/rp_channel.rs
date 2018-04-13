@@ -2,7 +2,7 @@
 
 use errors::Result;
 use std::fmt;
-use {Flavor, Translate, Translator};
+use {Diagnostics, Flavor, Translate, Translator};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(bound = "F::Type: ::serde::Serialize")]
@@ -62,15 +62,15 @@ where
     type Out = RpChannel<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpChannel<T::Target>> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpChannel<T::Target>> {
         use self::RpChannel::*;
 
         let out = match self {
             Unary { ty } => Unary {
-                ty: translator.translate_type(ty)?,
+                ty: translator.translate_type(diag, ty)?,
             },
             Streaming { ty } => Streaming {
-                ty: translator.translate_type(ty)?,
+                ty: translator.translate_type(diag, ty)?,
             },
         };
 

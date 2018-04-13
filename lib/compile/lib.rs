@@ -18,16 +18,16 @@ pub enum Input<'input> {
 }
 
 /// A simple compilation stage.
-pub struct SimpleCompile<'input> {
+pub struct SimpleCompile<'a, 'input> {
     pub input: Input<'input>,
     pub package_prefix: Option<RpPackage>,
-    pub resolver: Option<Box<Resolver>>,
+    pub resolver: Option<&'a mut Resolver>,
     pub items: Option<Rc<RefCell<Vec<ContextItem>>>>,
 }
 
-impl<'input> SimpleCompile<'input> {
+impl<'a, 'input> SimpleCompile<'a, 'input> {
     /// Build a new compilation stage.
-    pub fn new(input: Input<'input>) -> SimpleCompile {
+    pub fn new(input: Input<'input>) -> SimpleCompile<'a, 'input> {
         Self {
             input: input,
             package_prefix: None,
@@ -45,7 +45,7 @@ impl<'input> SimpleCompile<'input> {
     }
 
     /// Set resolver.
-    pub fn resolver(self, resolver: Box<Resolver>) -> Self {
+    pub fn resolver(self, resolver: &'a mut Resolver) -> Self {
         Self {
             resolver: Some(resolver),
             ..self
@@ -63,9 +63,9 @@ impl<'input> SimpleCompile<'input> {
 
 /// Perform a simplified compilation that outputs the result into the provided Write
 /// implementation.
-pub fn simple_compile<O>(
+pub fn simple_compile<'a, 'input, O>(
     mut out: O,
-    config: SimpleCompile,
+    config: SimpleCompile<'a, 'input>,
     modules: Vec<Box<Any>>,
     lang: &Lang,
 ) -> core::errors::Result<()>
@@ -79,7 +79,8 @@ where
         items,
     } = config;
 
-    let resolver = resolver.unwrap_or_else(|| Box::new(core::EmptyResolver));
+    let mut empty_resolver = core::EmptyResolver;
+    let resolver = resolver.unwrap_or_else(|| &mut empty_resolver);
 
     let capturing = core::CapturingFilesystem::new();
 
@@ -101,12 +102,12 @@ where
             env.import_file(file, package)?;
         }
         Input::Source(source, package) => {
-            env.import_source(&source, package)?;
+            env.import_source(source, package)?;
         }
     }
 
-    let preamble = manifest::ManifestPreamble::new(Some(manifest::Language::Java), None);
-    let mut manifest = manifest::read_manifest(lang, preamble)?;
+    let mut manifest = manifest::Manifest::default();
+    manifest.lang = Some(lang.copy());
     manifest.modules = modules;
     manifest.package_prefix = package_prefix;
 

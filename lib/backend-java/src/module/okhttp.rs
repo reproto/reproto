@@ -9,24 +9,8 @@ use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
 use serialization::Serialization;
 use utils::Override;
 
-#[derive(Debug, Deserialize)]
-pub enum Version {
-    #[serde(rename = "1")]
-    Version1,
-    #[serde(rename = "2")]
-    Version2,
-}
-
-impl Default for Version {
-    fn default() -> Self {
-        Version::Version1
-    }
-}
-
 #[derive(Debug, Default, Deserialize)]
-pub struct Config {
-    version: Version,
-}
+pub struct Config {}
 
 pub struct Module {
     #[allow(dead_code)]

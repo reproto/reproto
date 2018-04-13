@@ -4,6 +4,7 @@ use core::{Range, RelativePath, RpPackage, Version};
 use index::{Deployment, Index};
 use objects::{FileObjects, Objects};
 use serde_json;
+use std::collections::VecDeque;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -132,6 +133,50 @@ impl Index for FileIndex {
     fn resolve(&self, package: &RpPackage, range: &Range) -> Result<Vec<Deployment>> {
         self.read_package(package, |d| range.matches(&d.version))
             .map(|r| r.0)
+    }
+
+    fn resolve_by_prefix(&self, package: &RpPackage) -> Result<Vec<(Deployment, RpPackage)>> {
+        let root = package.parts().fold(self.path.to_owned(), |p, f| p.join(f));
+        let parts = package.parts().map(|p| p.to_string()).collect::<Vec<_>>();
+
+        let mut queue = VecDeque::new();
+        queue.push_back((root, parts));
+
+        let mut out = Vec::new();
+
+        while let Some((p, parts)) = queue.pop_front() {
+            if p.join(METADATA_JSON).is_file() {
+                let package = RpPackage::new(parts.clone());
+
+                let res = self.read_package(&package, |_| true)?;
+
+                if let Some(d) = res.0.into_iter().next_back() {
+                    out.push((d, package));
+                }
+
+                continue;
+            }
+
+            for s in fs::read_dir(&p)? {
+                let s = s?;
+
+                let path = s.path();
+
+                if !path.is_dir() {
+                    continue;
+                }
+
+                let name = s.file_name()
+                    .into_string()
+                    .map_err(|_| format!("path not a valid string: {}", path.display()))?;
+
+                let mut parts = parts.clone();
+                parts.push(name);
+                queue.push_back((path, parts));
+            }
+        }
+
+        Ok(out)
     }
 
     fn all(&self, package: &RpPackage) -> Result<Vec<Deployment>> {

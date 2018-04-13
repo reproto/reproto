@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 use std::fmt;
-use {CoreFlavor, Flavor, RpEnumType, RpName};
+use {CoreFlavor, Flavor, Loc, RpEnumType, RpName};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(bound = "F::Package: Serialize")]
@@ -26,7 +26,7 @@ where
     Bytes,
     Any,
     Name {
-        name: RpName<F>,
+        name: Loc<RpName<F>>,
     },
     Array {
         inner: Box<RpType<F>>,
@@ -63,7 +63,9 @@ where
         use self::RpType::*;
 
         match self {
-            Name { name } => Name { name: f(name) },
+            Name { name } => Name {
+                name: Loc::map(name, f),
+            },
             Array { inner } => Array {
                 inner: Box::new(inner.with_name(f)),
             },

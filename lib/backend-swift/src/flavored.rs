@@ -4,8 +4,8 @@
 
 use backend::package_processor;
 use core::errors::Result;
-use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-           Translator};
+use core::{self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator,
+           Translate, Translator};
 use genco::swift::{self, Swift};
 use genco::{Cons, Element, IntoTokens, Tokens};
 use module::simple::Simple;
@@ -201,7 +201,7 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         })
     }
 
-    fn translate_name(&self, reg: RpReg, name: RpName) -> Result<SwiftType<'static>> {
+    fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<SwiftType<'static>> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
         let package_name = name.package.join("_");
         let ty = swift::local(format!("{}_{}", package_name, ident));
@@ -219,13 +219,15 @@ impl FlavorTranslator for SwiftFlavorTranslator {
     fn translate_local_name<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         reg: RpReg,
-        name: core::RpName<CoreFlavor>,
+        name: Loc<core::RpName<CoreFlavor>>,
     ) -> Result<SwiftName>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        let name = name.translate(translator)?;
+        let name = name.translate(diag, translator)?;
+        let (name, _) = Loc::take_pair(name);
 
         let package_name = name.package.join("_");
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
@@ -240,6 +242,7 @@ impl FlavorTranslator for SwiftFlavorTranslator {
     fn translate_enum_type<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         enum_type: core::RpEnumType,
     ) -> Result<SwiftType<'static>>
     where

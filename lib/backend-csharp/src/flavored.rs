@@ -3,8 +3,8 @@
 #![allow(unused)]
 
 use core::errors::Result;
-use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-           Translator};
+use core::{self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator,
+           Translate, Translator};
 use genco::csharp::{self, array, struct_, using};
 use genco::{Cons, Csharp};
 use naming::{self, Naming};
@@ -18,7 +18,7 @@ pub struct CsharpFlavor;
 
 impl Flavor for CsharpFlavor {
     type Type = Csharp<'static>;
-    type Name = RpName;
+    type Name = Loc<RpName>;
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = core::RpPackage;
@@ -114,7 +114,7 @@ impl FlavorTranslator for CsharpFlavorTranslator {
         Ok(array(csharp::BYTE))
     }
 
-    fn translate_name(&self, reg: RpReg, name: RpName) -> Result<Csharp<'static>> {
+    fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<Csharp<'static>> {
         let package_name = Rc::new(name.package.join("."));
         let name = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
 
@@ -134,6 +134,7 @@ impl FlavorTranslator for CsharpFlavorTranslator {
     fn translate_enum_type<T>(
         &self,
         translator: &T,
+        diag: &mut Diagnostics,
         enum_type: core::RpEnumType,
     ) -> Result<Csharp<'static>>
     where
@@ -147,7 +148,6 @@ impl FlavorTranslator for CsharpFlavorTranslator {
             U64 => self.translate_u64(),
             I32 => self.translate_i32(),
             I64 => self.translate_i64(),
-            enum_type => return Err(format!("bad enum type: {}", enum_type).into()),
         }
     }
 }

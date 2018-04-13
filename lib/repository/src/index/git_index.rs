@@ -36,6 +36,10 @@ impl Index for GitIndex {
         self.file_index.resolve(package, range)
     }
 
+    fn resolve_by_prefix(&self, package: &RpPackage) -> Result<Vec<(Deployment, RpPackage)>> {
+        self.file_index.resolve_by_prefix(package)
+    }
+
     fn all(&self, package: &RpPackage) -> Result<Vec<Deployment>> {
         self.file_index.all(package)
     }

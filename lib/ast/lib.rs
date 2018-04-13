@@ -1,35 +1,10 @@
 extern crate reproto_core as core;
+extern crate reproto_lexer as lexer;
 
-use core::errors::Result;
-use core::{Loc, RpNumber, RpPackage, WithSpan};
+use core::{Loc, RpNumber, RpPackage};
 use std::borrow::Cow;
 use std::ops;
-use std::result;
-
-/// A value that can be error-recovered.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ErrorRecovery<T> {
-    Error,
-    Value(T),
-}
-
-impl<T> ErrorRecovery<T> {
-    /// Return the value or an error.
-    pub fn recover(self) -> Result<T> {
-        use self::ErrorRecovery::*;
-
-        match self {
-            Error => Err("value not available".into()),
-            Value(value) => Ok(value),
-        }
-    }
-}
-
-impl<T> From<T> for ErrorRecovery<T> {
-    fn from(value: T) -> ErrorRecovery<T> {
-        ErrorRecovery::Value(value)
-    }
-}
+use std::vec;
 
 /// Items can be commented and have attributes.
 ///
@@ -53,22 +28,7 @@ impl<'input, T> ops::Deref for Item<'input, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        Loc::value(&self.item)
-    }
-}
-
-impl<'input, T> Item<'input, T> {
-    pub fn map<F, E: WithSpan, U>(self, f: F) -> result::Result<Loc<U>, E>
-    where
-        F: FnOnce(Vec<Cow<'input, str>>, Vec<Loc<Attribute<'input>>>, Loc<T>)
-            -> result::Result<U, E>,
-    {
-        let span = Loc::span(&self.item).clone();
-
-        match f(self.comment, self.attributes, self.item) {
-            Ok(o) => Ok(Loc::new(o, span)),
-            Err(e) => Err(e.with_span(span)),
-        }
+        Loc::borrow(&self.item)
     }
 }
 
@@ -111,7 +71,7 @@ pub enum Attribute<'input> {
 ///
 /// For example: `u32`, `::Relative::Name`, or `bytes`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Type {
+pub enum Type<'input> {
     Double,
     Float,
     Signed {
@@ -127,15 +87,17 @@ pub enum Type {
     /// ISO-8601 for date and time.
     DateTime,
     Name {
-        name: Name,
+        name: Loc<Name<'input>>,
     },
     Array {
-        inner: Box<Type>,
+        inner: Box<Loc<Type<'input>>>,
     },
     Map {
-        key: Box<Type>,
-        value: Box<Type>,
+        key: Box<Loc<Type<'input>>>,
+        value: Box<Loc<Type<'input>>>,
     },
+    /// A complete error.
+    Error,
 }
 
 /// Any kind of declaration.
@@ -149,16 +111,61 @@ pub enum Decl<'input> {
 }
 
 impl<'input> Decl<'input> {
-    pub fn name(&self) -> &str {
+    /// Get the local name for the declaration.
+    pub fn name(&self) -> Loc<&str> {
         use self::Decl::*;
 
-        match *self {
+        let name: &Loc<Cow<str>> = match *self {
             Type(ref body) => &body.name,
             Tuple(ref body) => &body.name,
             Interface(ref body) => &body.name,
             Enum(ref body) => &body.name,
             Service(ref body) => &body.name,
+        };
+
+        Loc::map(Loc::as_ref(name), |n| n.as_ref())
+    }
+
+    /// Get all the sub-declarations of this declaraiton.
+    pub fn decls(&self) -> Decls {
+        use self::Decl::*;
+
+        let decls = match *self {
+            Type(ref body) => body.decls(),
+            Tuple(ref body) => body.decls(),
+            Interface(ref body) => body.decls(),
+            Enum(ref body) => body.decls(),
+            Service(ref body) => body.decls(),
+        };
+
+        Decls {
+            iter: decls.into_iter(),
         }
+    }
+
+    /// Comment.
+    pub fn comment(&self) -> &Vec<Cow<'input, str>> {
+        use self::Decl::*;
+
+        match *self {
+            Type(ref body) => &body.comment,
+            Tuple(ref body) => &body.comment,
+            Interface(ref body) => &body.comment,
+            Enum(ref body) => &body.comment,
+            Service(ref body) => &body.comment,
+        }
+    }
+}
+
+pub struct Decls<'a, 'input: 'a> {
+    iter: vec::IntoIter<&'a Decl<'input>>,
+}
+
+impl<'a, 'input: 'a> Iterator for Decls<'a, 'input> {
+    type Item = &'a Decl<'input>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
     }
 }
 
@@ -175,10 +182,17 @@ impl<'input> Decl<'input> {
 /// Note: members must only be options.
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumBody<'input> {
-    pub name: Cow<'input, str>,
-    pub ty: Loc<Type>,
+    pub name: Loc<Cow<'input, str>>,
+    pub ty: Loc<Type<'input>>,
     pub variants: Vec<Item<'input, EnumVariant<'input>>>,
     pub members: Vec<EnumMember<'input>>,
+}
+
+impl<'input> EnumBody<'input> {
+    /// Access all inner declarations.
+    fn decls(&self) -> Vec<&Decl<'input>> {
+        Vec::new()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -202,7 +216,7 @@ pub enum EnumMember<'input> {
 pub struct Field<'input> {
     pub required: bool,
     pub name: Cow<'input, str>,
-    pub ty: Loc<ErrorRecovery<Type>>,
+    pub ty: Loc<Type<'input>>,
     pub field_as: Option<String>,
 }
 
@@ -245,13 +259,13 @@ impl<'input> Field<'input> {
 ///
 /// Note: prefixes names are _always_ imported with `UseDecl`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Name {
+pub enum Name<'input> {
     Relative {
-        parts: Vec<String>,
+        parts: Vec<Loc<Cow<'input, str>>>,
     },
     Absolute {
-        prefix: Option<String>,
-        parts: Loc<ErrorRecovery<Vec<String>>>,
+        prefix: Option<Loc<Cow<'input, str>>>,
+        parts: Vec<Loc<Cow<'input, str>>>,
     },
 }
 
@@ -265,9 +279,37 @@ pub enum Name {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterfaceBody<'input> {
-    pub name: Cow<'input, str>,
+    pub name: Loc<Cow<'input, str>>,
     pub members: Vec<TypeMember<'input>>,
     pub sub_types: Vec<Item<'input, SubType<'input>>>,
+}
+
+impl<'input> InterfaceBody<'input> {
+    /// Access all inner declarations.
+    fn decls(&self) -> Vec<&Decl<'input>> {
+        let mut out = Vec::new();
+
+        for m in &self.members {
+            if let TypeMember::InnerDecl(ref decl) = *m {
+                out.push(decl);
+            }
+        }
+
+        out
+    }
+
+    /// Access all fields.
+    pub fn fields(&self) -> Vec<&Field<'input>> {
+        let mut out = Vec::new();
+
+        for m in &self.members {
+            if let TypeMember::Field(ref field) = *m {
+                out.push(Loc::borrow(&field.item));
+            }
+        }
+
+        out
+    }
 }
 
 /// A contextual code-block.
@@ -295,8 +337,36 @@ pub enum TypeMember<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct ServiceBody<'input> {
-    pub name: Cow<'input, str>,
+    pub name: Loc<Cow<'input, str>>,
     pub members: Vec<ServiceMember<'input>>,
+}
+
+impl<'input> ServiceBody<'input> {
+    /// Access all inner declarations.
+    fn decls(&self) -> Vec<&Decl<'input>> {
+        let mut out = Vec::new();
+
+        for m in &self.members {
+            if let ServiceMember::InnerDecl(ref decl) = *m {
+                out.push(decl);
+            }
+        }
+
+        out
+    }
+
+    /// Access all endpoints.
+    pub fn endpoints(&self) -> Vec<&Endpoint<'input>> {
+        let mut out = Vec::new();
+
+        for m in &self.members {
+            if let ServiceMember::Endpoint(ref endpoint) = *m {
+                out.push(Loc::borrow(&endpoint.item));
+            }
+        }
+
+        out
+    }
 }
 
 /// A member of a service declaration.
@@ -310,7 +380,7 @@ pub enum ServiceMember<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct EndpointArgument<'input> {
     pub ident: Loc<Cow<'input, str>>,
-    pub channel: Loc<Channel>,
+    pub channel: Loc<Channel<'input>>,
 }
 
 /// An endpoint
@@ -325,7 +395,7 @@ pub struct Endpoint<'input> {
     pub id: Loc<Cow<'input, str>>,
     pub alias: Option<String>,
     pub arguments: Vec<EndpointArgument<'input>>,
-    pub response: Option<Loc<Channel>>,
+    pub response: Option<Loc<Channel<'input>>>,
 }
 
 /// Describes how data is transferred over a channel.
@@ -335,11 +405,23 @@ pub struct Endpoint<'input> {
 /// Streaming(<ty>)
 /// ```
 #[derive(Debug, PartialEq, Eq)]
-pub enum Channel {
+pub enum Channel<'input> {
     /// Single send.
-    Unary { ty: Type },
+    Unary { ty: Loc<Type<'input>> },
     /// Multiple sends.
-    Streaming { ty: Type },
+    Streaming { ty: Loc<Type<'input>> },
+}
+
+impl<'input> Channel<'input> {
+    /// Access the type of the channel.
+    pub fn ty(&self) -> &Loc<Type<'input>> {
+        use self::Channel::*;
+
+        match *self {
+            Unary { ref ty } => ty,
+            Streaming { ref ty } => ty,
+        }
+    }
 }
 
 /// The body of a sub-type
@@ -366,8 +448,36 @@ pub struct SubType<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct TupleBody<'input> {
-    pub name: Cow<'input, str>,
+    pub name: Loc<Cow<'input, str>>,
     pub members: Vec<TypeMember<'input>>,
+}
+
+impl<'input> TupleBody<'input> {
+    /// Access all inner declarations.
+    fn decls(&self) -> Vec<&Decl<'input>> {
+        let mut out = Vec::new();
+
+        for m in &self.members {
+            if let TypeMember::InnerDecl(ref decl) = *m {
+                out.push(decl);
+            }
+        }
+
+        out
+    }
+
+    /// Access all fields.
+    pub fn fields(&self) -> Vec<&Field<'input>> {
+        let mut out = Vec::new();
+
+        for m in &self.members {
+            if let TypeMember::Field(ref field) = *m {
+                out.push(Loc::borrow(&field.item));
+            }
+        }
+
+        out
+    }
 }
 
 /// The body of a type
@@ -379,8 +489,45 @@ pub struct TupleBody<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct TypeBody<'input> {
-    pub name: Cow<'input, str>,
+    pub name: Loc<Cow<'input, str>>,
     pub members: Vec<TypeMember<'input>>,
+}
+
+impl<'input> TypeBody<'input> {
+    /// Access all inner declarations.
+    fn decls(&self) -> Vec<&Decl<'input>> {
+        let mut out = Vec::new();
+
+        for m in &self.members {
+            if let TypeMember::InnerDecl(ref decl) = *m {
+                out.push(decl);
+            }
+        }
+
+        out
+    }
+
+    /// Access all fields.
+    pub fn fields(&self) -> Vec<&Field<'input>> {
+        let mut out = Vec::new();
+
+        for m in &self.members {
+            if let TypeMember::Field(ref field) = *m {
+                out.push(Loc::borrow(&field.item));
+            }
+        }
+
+        out
+    }
+}
+
+/// A package declaration.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Package {
+    /// A parsed package.
+    Package { package: RpPackage },
+    /// A recovered error.
+    Error,
 }
 
 /// A use declaration
@@ -390,7 +537,7 @@ pub struct TypeBody<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct UseDecl<'input> {
-    pub package: Loc<RpPackage>,
+    pub package: Loc<Package>,
     pub range: Option<Loc<String>>,
     pub alias: Option<Loc<Cow<'input, str>>>,
 }

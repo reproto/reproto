@@ -1,7 +1,7 @@
 //! Model for services.
 
 use errors::Result;
-use {Flavor, Loc, RpReg, Translate, Translator};
+use {Diagnostics, Flavor, Loc, RpReg, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct RpServiceBodyHttp {
@@ -24,21 +24,21 @@ where
     type Out = RpServiceBody<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpServiceBody<T::Target>> {
-        translator.visit(&self.name)?;
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpServiceBody<T::Target>> {
+        translator.visit(diag, &self.name)?;
 
-        let name = translator.translate_local_name(RpReg::Service, self.name)?;
+        let name = translator.translate_local_name(diag, RpReg::Service, self.name)?;
 
         let endpoints = self.endpoints
             .into_iter()
-            .map(|e| Loc::and_then(e, |e| translator.translate_endpoint(e)))
+            .map(|e| Loc::and_then(e, |e| translator.translate_endpoint(diag, e)))
             .collect::<Result<Vec<_>>>()?;
 
         Ok(RpServiceBody {
             name: name,
             ident: self.ident,
             comment: self.comment,
-            decls: self.decls.translate(translator)?,
+            decls: self.decls.translate(diag, translator)?,
             http: self.http,
             endpoints: endpoints,
         })

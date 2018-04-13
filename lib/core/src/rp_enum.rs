@@ -4,7 +4,8 @@ use errors::Result;
 use serde::Serialize;
 use std::fmt;
 use std::vec;
-use {BigInt, Flavor, Loc, RpCode, RpNumber, RpReg, RpValue, Span, Translate, Translator};
+use {BigInt, Diagnostics, Flavor, Loc, RpCode, RpNumber, RpReg, RpValue, Span, Translate,
+     Translator};
 
 decl_body!(pub struct RpEnumBody<F> {
     /// The type of the variant.
@@ -24,19 +25,19 @@ where
     type Out = RpEnumBody<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpEnumBody<T::Target>> {
-        translator.visit(&self.name)?;
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpEnumBody<T::Target>> {
+        translator.visit(diag, &self.name)?;
 
-        let name = translator.translate_local_name(RpReg::Enum, self.name)?;
-        let enum_type = translator.translate_enum_type(self.enum_type)?;
+        let name = translator.translate_local_name(diag, RpReg::Enum, self.name)?;
+        let enum_type = translator.translate_enum_type(diag, self.enum_type)?;
 
         Ok(RpEnumBody {
             name: name,
             ident: self.ident,
             comment: self.comment,
-            decls: self.decls.translate(translator)?,
+            decls: self.decls.translate(diag, translator)?,
             enum_type,
-            variants: self.variants.translate(translator)?,
+            variants: self.variants.translate(diag, translator)?,
             codes: self.codes,
         })
     }
@@ -79,7 +80,7 @@ pub struct RpVariantRef<'a, F: 'static>
 where
     F: Flavor,
 {
-    pub span: &'a Span,
+    pub span: Span,
     pub name: &'a F::Name,
     pub ident: &'a Loc<String>,
     pub comment: &'a Vec<String>,
@@ -148,10 +149,10 @@ where
     type Out = RpVariant<T::Target, V>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpVariant<T::Target, V>> {
-        translator.visit(&self.name)?;
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpVariant<T::Target, V>> {
+        translator.visit(diag, &self.name)?;
 
-        let name = translator.translate_local_name(RpReg::EnumVariant, self.name)?;
+        let name = translator.translate_local_name(diag, RpReg::EnumVariant, self.name)?;
 
         Ok(RpVariant {
             name: name,
@@ -311,15 +312,15 @@ where
     type Out = RpVariants<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, translator: &T) -> Result<RpVariants<T::Target>> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpVariants<T::Target>> {
         use self::RpVariants::*;
 
         let out = match self {
             String { variants } => String {
-                variants: variants.translate(translator)?,
+                variants: variants.translate(diag, translator)?,
             },
             Number { variants } => Number {
-                variants: variants.translate(translator)?,
+                variants: variants.translate(diag, translator)?,
             },
         };
 

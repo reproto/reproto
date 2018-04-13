@@ -30,6 +30,9 @@ The documentation is composed of the following sections:
  * [Getting started](usage/getting-started.md).
  * [Language support](usage/language-support.md), language-specific options and considerations
    when using reproto.
+ * [Using the language server](usage/language-server.md).
+   * [Visual Studio Code](usage/language-server.md#visual-studio-code).
+   * [Neovim](usage/language-server.md#neovim).
  * [The specification language](spec.md), detailing how the `.reproto` specification language works.
  * [Build manifests](manifest.md), detailing how to use the `reproto.toml` build manifest to configure how
    specifications are built for your project.

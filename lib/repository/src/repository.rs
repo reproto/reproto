@@ -82,7 +82,22 @@ impl Resolver for Repository {
         Ok(out)
     }
 
-    fn resolve_by_prefix(&mut self, _: &RpPackage) -> core::errors::Result<Vec<ResolvedByPrefix>> {
-        Err("repository does not support resolve by prefix".into())
+    fn resolve_by_prefix(
+        &mut self,
+        package: &RpPackage,
+    ) -> core::errors::Result<Vec<ResolvedByPrefix>> {
+        let mut out = Vec::new();
+
+        let deployments = self.index.resolve_by_prefix(&package)?;
+
+        for (deployment, package) in deployments {
+            if let Some(source) = self.get_object(&deployment)? {
+                out.push(ResolvedByPrefix { package, source });
+            } else {
+                return Err(format!("missing object: {}", deployment.object).into());
+            }
+        }
+
+        Ok(out)
     }
 }

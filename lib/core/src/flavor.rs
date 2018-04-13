@@ -5,7 +5,7 @@ use std::borrow::Cow;
 use std::cmp;
 use std::fmt;
 use std::hash;
-use {RpEndpoint, RpEnumType, RpField, RpName, RpPackage, RpType, RpVersionedPackage};
+use {Loc, RpEndpoint, RpEnumType, RpField, RpName, RpPackage, RpType, RpVersionedPackage};
 
 pub trait FlavorField: fmt::Debug + Clone {
     /// Indicates if the field is discriminating in an untagged context.
@@ -45,7 +45,7 @@ pub struct CoreFlavor;
 
 impl Flavor for CoreFlavor {
     type Type = RpType<CoreFlavor>;
-    type Name = RpName<CoreFlavor>;
+    type Name = Loc<RpName<CoreFlavor>>;
     type Field = RpField<CoreFlavor>;
     type Endpoint = RpEndpoint<CoreFlavor>;
     type Package = RpVersionedPackage;
