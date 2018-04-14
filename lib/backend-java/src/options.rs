@@ -2,7 +2,10 @@
 
 use codegen::{ClassCodegen, Codegen, EnumCodegen, GetterCodegen, InterfaceCodegen, ServiceCodegen,
               TupleCodegen};
+use core::errors::Result;
 use genco::Java;
+use serialization::Serialization;
+use std::mem;
 
 pub struct Options {
     /// Should fields be nullable?
@@ -23,6 +26,8 @@ pub struct Options {
     pub build_to_string: bool,
     /// Indicates that a module requires that io.reproto.Observer is present.
     pub uses_observer: bool,
+    /// Serialization helpers to build for services.
+    pub serialization: Option<Serialization>,
     /// Container to use for asynchronous operations.
     pub async_container: Option<Java<'static>>,
     /// Do not generate methods in service interface.
@@ -55,6 +60,7 @@ impl Options {
             build_equals: true,
             build_to_string: true,
             uses_observer: false,
+            serialization: None,
             async_container: None,
             suppress_service_methods: false,
             root_generators: Vec::new(),
@@ -64,6 +70,25 @@ impl Options {
             tuple_generators: Vec::new(),
             interface_generators: Vec::new(),
             enum_generators: Vec::new(),
+        }
+    }
+
+    /// Set serialization strategy.
+    pub fn serialization(&mut self, s: Serialization) -> Result<()> {
+        if let Some(old) = mem::replace(&mut self.serialization, Some(s)) {
+            return Err(format!(
+                "tried to set multiple serializaiton strategies: {} and {}",
+                old, s
+            ).into());
+        }
+
+        Ok(())
+    }
+
+    pub fn get_serialization(&self) -> Result<Serialization> {
+        match self.serialization {
+            Some(s) => Ok(s),
+            None => return Err("no serialization method set".into()),
         }
     }
 }

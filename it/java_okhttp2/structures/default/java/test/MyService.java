@@ -1,6 +1,8 @@
 package test;
 
-import io.reproto.OkHttpSerialization;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.reproto.JacksonSupport;
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -12,19 +14,19 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 public interface MyService {
-  public class OkHttp implements MyService {
+  public class OkHttp implements Closeable {
     private final OkHttpClient client;
     private final HttpUrl baseUrl;
-    private final OkHttpSerialization serialization;
+    private final ObjectMapper mapper;
 
     public OkHttp(
       final OkHttpClient client,
       final HttpUrl baseUrl,
-      final OkHttpSerialization serialization
+      final ObjectMapper mapper
     ) {
       this.client = client;
       this.baseUrl = baseUrl;
-      this.serialization = serialization;
+      this.mapper = mapper;
     }
 
     public CompletableFuture<Void> unknown(final int id) {
@@ -50,9 +52,10 @@ public interface MyService {
         public void onResponse(final Call call, final Response response) {
           if (!response.isSuccessful()) {
             future_.completeExceptionally(new IOException("bad response: " + response));
-          } else {
-            future_.complete(null);
+            return;
           }
+
+          future_.complete(null);
         }
       });
 
@@ -82,9 +85,19 @@ public interface MyService {
         public void onResponse(final Call call, final Response response) {
           if (!response.isSuccessful()) {
             future_.completeExceptionally(new IOException("bad response: " + response));
-          } else {
-            future_.complete(OkHttp.this.serialization.decode(response.body(), Entry.class));
+            return;
           }
+
+          final Entry body;
+
+          try {
+            body = mapper.readValue(response.body().byteStream(), Entry.class);
+          } catch(final Exception e) {
+            future_.completeExceptionally(e);
+            return;
+          }
+
+          future_.complete(body);
         }
       });
 
@@ -99,7 +112,7 @@ public interface MyService {
 
       final Request req_ = new Request.Builder()
         .url(url_)
-        .method("GET", OkHttp.this.serialization.encode(request))
+        .method("GET", private final ObjectMapper mapper.encode(request))
         .build();
 
       final CompletableFuture<Void> future_ = new CompletableFuture<Void>();
@@ -114,9 +127,10 @@ public interface MyService {
         public void onResponse(final Call call, final Response response) {
           if (!response.isSuccessful()) {
             future_.completeExceptionally(new IOException("bad response: " + response));
-          } else {
-            future_.complete(null);
+            return;
           }
+
+          future_.complete(null);
         }
       });
 
@@ -131,7 +145,7 @@ public interface MyService {
 
       final Request req_ = new Request.Builder()
         .url(url_)
-        .method("GET", OkHttp.this.serialization.encode(request))
+        .method("GET", private final ObjectMapper mapper.encode(request))
         .build();
 
       final CompletableFuture<Entry> future_ = new CompletableFuture<Entry>();
@@ -146,19 +160,40 @@ public interface MyService {
         public void onResponse(final Call call, final Response response) {
           if (!response.isSuccessful()) {
             future_.completeExceptionally(new IOException("bad response: " + response));
-          } else {
-            future_.complete(OkHttp.this.serialization.decode(response.body(), Entry.class));
+            return;
           }
+
+          final Entry body;
+
+          try {
+            body = mapper.readValue(response.body().byteStream(), Entry.class);
+          } catch(final Exception e) {
+            future_.completeExceptionally(e);
+            return;
+          }
+
+          future_.complete(body);
         }
       });
 
       return future_;
     }
+
+    @Override
+    public void close() throws IOException {
+      client.dispatcher().executorService().shutdown();
+
+      client.connectionPool().evictAll();
+
+      if (client.cache() != null) {
+        client.cache().close();
+      }
+    }
   }
 
   public static class OkHttpBuilder {
     private Optional<HttpUrl> baseUrl = Optional.empty();
-    private Optional<OkHttpSerialization> serialization = Optional.empty();
+    private Optional<ObjectMapper> mapper = Optional.empty();
     private final OkHttpClient client;
 
     public OkHttpBuilder(
@@ -172,15 +207,15 @@ public interface MyService {
       return this;
     }
 
-    public OkHttpBuilder serialization(final OkHttpSerialization serialization) {
-      this.serialization = Optional.of(serialization);
+    public OkHttpBuilder mapper(final ObjectMapper mapper) {
+      this.mapper = Optional.of(mapper);
       return this;
     }
 
     public OkHttp build() {
-      final HttpUrl baseUrl = this.baseUrl.orElseThrow(() -> new RuntimeException("baseUrl: is a required field"));
-      final OkHttpSerialization serialization = this.serialization.orElseThrow(() -> new RuntimeException("serialization: is a required field"));
-      return new OkHttp(client, baseUrl, serialization);
+      final HttpUrl baseUrl = this.baseUrl.orElseGet(() -> HttpUrl.parse("http://example.com"));
+      final ObjectMapper mapper = this.mapper.orElseGet(() -> JacksonSupport.objectMapper());
+      return new OkHttp(client, baseUrl, mapper);
     }
   }
 }

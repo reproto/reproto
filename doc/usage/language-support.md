@@ -112,29 +112,20 @@ Due to the rather sparse default behavior provided by Jackson, there are a numbe
 options that should be set on the `ObjectMapper` to provide the correct implementation.
 These are shown in the example below.
 
+This can be simplified by using the generated `JacksonSupport` class (see below).
+
 The following is a complete example using Jackson:
 
 ```java
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.reproto.JacksonSupport;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import test.Entry;
 
 public class Test {
   public static void main(String[] argv) throws Exception {
-    final ObjectMapper m = new ObjectMapper();
-    // We explicitly support empty "beans"
-    m.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
-    // Do not serialize absent values at all.
-    m.setSerializationInclusion(Include.NON_ABSENT);
-    // Include support for Optional.
-    m.registerModule(new Jdk8Module());
-    // Include support for Instant.
-    m.registerModule(new JavaTimeModule());
+    final ObjectMapper m = JacksonSupport.objectMapper();
 
     final BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
@@ -153,6 +144,17 @@ public class Test {
 ```
 
 [jackson]: https://github.com/FasterXML/jackson
+
+#### `io.reproto.JacksonSupport` support class
+
+This is a generated support class that simplifies setting up a correctly configured ObjectMapper.
+
+It has a single method `objectMapper()`.
+
+You are strongly encouraged to _store_ this instance and re-used instead of creating one for every
+json document to [improve performance].
+
+[improve performance]: https://github.com/FasterXML/jackson-docs/wiki/Presentation:-Jackson-Performance
 
 ### `[modules.lombok]`
 

@@ -1,0 +1,10 @@
+language = "java"
+
+[presets.maven]
+
+[modules]
+okhttp = {version = "1"}
+jackson = {}
+
+[packages]
+"ex.github.service" = "*"

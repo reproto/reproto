@@ -1,13 +1,12 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::{Codegen, Configure, ServiceAdded, ServiceCodegen};
+use codegen::{Configure, ServiceAdded, ServiceCodegen};
 use core::errors::*;
-use core::{self, Handle, Loc};
-use flavored::{JavaEndpoint, RpEndpointHttp1, RpPackage, RpPathStep};
-use genco::java::{imported, local, Argument, Class, Constructor, Field, Interface, Method,
-                  Modifier, VOID};
+use core::{self, Loc};
+use flavored::{JavaEndpoint, RpEndpointHttp1, RpPathStep};
+use genco::java::{self, Argument, Class, Constructor, Field, Method, Modifier, VOID};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
-use java_file::JavaFile;
+use serialization::Serialization;
 use utils::Override;
 
 #[derive(Debug, Deserialize)]
@@ -41,27 +40,25 @@ impl Module {
 }
 
 impl Module {
-    pub fn initialize(self, e: Configure) {
+    pub fn initialize(self, e: Configure, serialization: Serialization) {
         e.options
             .service_generators
-            .push(Box::new(OkHttpServiceCodegen::new()));
-
-        e.options
-            .root_generators
-            .push(Box::new(OkHttpSerialization::new()));
+            .push(Box::new(OkHttpServiceCodegen::new(serialization)));
     }
 }
 
 /// Model for a nested `Builder` class.
-pub struct Builder<'el> {
+pub struct Builder<'a, 'el> {
     ty: Java<'el>,
     optional: Java<'el>,
     client: Field<'el>,
     base_url: Field<'el>,
+    default_base_url: Option<&'el str>,
     ser: Field<'el>,
+    serialization: &'a Serialization,
 }
 
-impl<'el> Builder<'el> {
+impl<'a, 'el> Builder<'a, 'el> {
     fn build(&self) -> Method<'el> {
         macro_rules! opt_check {
             ($d:expr, $v:expr) => {
@@ -78,6 +75,21 @@ impl<'el> Builder<'el> {
             };
         }
 
+        macro_rules! opt_default {
+            ($d:expr, $v:expr, $default:expr) => {
+                push!(
+                    $d,
+                    "final ",
+                    $v.ty().as_value(),
+                    " ",
+                    $v.var(),
+                    " = ",
+                    default(&$v, $default),
+                    ";"
+                )
+            };
+        }
+
         let mut args = Tokens::new();
 
         args.append(self.client.var());
@@ -88,8 +100,24 @@ impl<'el> Builder<'el> {
 
         build.returns = self.ty.clone();
 
-        opt_check!(build.body, self.base_url);
-        opt_check!(build.body, self.ser);
+        if let Some(default_base_url) = self.default_base_url {
+            let default = toks![
+                self.base_url.ty(),
+                ".parse(",
+                default_base_url.quoted(),
+                ")"
+            ];
+
+            opt_default!(build.body, self.base_url, default);
+        } else {
+            opt_check!(build.body, self.base_url);
+        }
+
+        if let Some(default_builder) = self.serialization.default_builder() {
+            opt_default!(build.body, self.ser, default_builder);
+        } else {
+            opt_check!(build.body, self.ser);
+        }
 
         push!(
             build.body,
@@ -103,11 +131,24 @@ impl<'el> Builder<'el> {
         return build;
 
         fn required<'el>(field: &Field<'el>) -> Tokens<'el, Java<'el>> {
-            let exc = imported("java.lang", "RuntimeException");
+            let exc = java::imported("java.lang", "RuntimeException");
             let msg = format!("{}: is a required field", field.var());
             let exc = toks![exc, "(", msg.quoted(), ")"];
 
             toks!["this.", field.var(), ".orElseThrow(() -> new ", exc, ")"]
+        }
+
+        fn default<'el, T: Into<Tokens<'el, Java<'el>>>>(
+            field: &Field<'el>,
+            default: T,
+        ) -> Tokens<'el, Java<'el>> {
+            toks![
+                "this.",
+                field.var(),
+                ".orElseGet(() -> ",
+                default.into(),
+                ")"
+            ]
         }
     }
 
@@ -136,14 +177,14 @@ impl<'el> Builder<'el> {
         );
         push!(f.body, "return this;");
 
-        f.returns = local("OkHttpBuilder");
+        f.returns = java::local("OkHttpBuilder");
         f.arguments.push(arg);
 
         f
     }
 }
 
-impl<'el> IntoTokens<'el, Java<'el>> for Builder<'el> {
+impl<'a, 'el> IntoTokens<'el, Java<'el>> for Builder<'a, 'el> {
     fn into_tokens(self) -> Tokens<'el, Java<'el>> {
         let mut builder = Class::new("OkHttpBuilder");
         builder.modifiers = vec![Modifier::Static, Modifier::Public];
@@ -184,197 +225,8 @@ impl<'el> IntoTokens<'el, Java<'el>> for Builder<'el> {
     }
 }
 
-pub struct OkHttpSerialization {
-    request_body: Java<'static>,
-    response_body: Java<'static>,
-    cls: Java<'static>,
-}
-
-impl OkHttpSerialization {
-    pub fn new() -> Self {
-        Self {
-            request_body: imported("okhttp3", "RequestBody"),
-            response_body: imported("okhttp3", "ResponseBody"),
-            cls: imported("java.lang", "Class"),
-        }
-    }
-}
-
-impl Codegen for OkHttpSerialization {
-    fn generate(&self, handle: &Handle) -> Result<()> {
-        let package = RpPackage::parse("io.reproto");
-
-        JavaFile::new(package, "OkHttpSerialization", |out| {
-            let mut c = Interface::new("OkHttpSerialization");
-
-            let t = local("T");
-
-            let entity = Argument::new(t.clone(), "entity");
-
-            let encode = {
-                let mut m = Method::new("encode");
-                m.comments.push("Encode the request body.".into());
-                m.parameters.append(t.clone());
-                m.arguments.push(entity.clone());
-                m.returns = self.request_body.clone();
-                m.modifiers = vec![];
-                m
-            };
-
-            let body = Argument::new(self.response_body.clone(), "body");
-            let cls = Argument::new(self.cls.with_arguments(vec![t.clone()]), "cls");
-
-            let decode = {
-                let mut m = Method::new("decode");
-                m.comments.push("Decode the response body.".into());
-                m.parameters.append(t.clone());
-                m.arguments.push(body.clone());
-                m.arguments.push(cls.clone());
-                m.returns = t.clone();
-                m.modifiers = vec![];
-                m
-            };
-
-            c.methods.push(encode.clone());
-            c.methods.push(decode.clone());
-
-            c.body.push(Jackson::new(encode, decode, body, cls, entity));
-
-            out.push(c);
-            Ok(())
-        }).process(handle)?;
-
-        return Ok(());
-
-        pub struct Jackson<'el> {
-            encode: Method<'el>,
-            decode: Method<'el>,
-            body: Argument<'el>,
-            cls: Argument<'el>,
-            entity: Argument<'el>,
-            request_body: Java<'static>,
-            object_mapper: Java<'static>,
-            runtime_exc: Java<'static>,
-            io_exc: Java<'static>,
-            media_type: Java<'static>,
-        }
-
-        impl<'el> Jackson<'el> {
-            pub fn new(
-                encode: Method<'el>,
-                decode: Method<'el>,
-                body: Argument<'el>,
-                cls: Argument<'el>,
-                entity: Argument<'el>,
-            ) -> Jackson<'el> {
-                Jackson {
-                    encode,
-                    decode,
-                    body,
-                    cls,
-                    entity,
-                    request_body: imported("okhttp3", "RequestBody"),
-                    object_mapper: imported("com.fasterxml.jackson.databind", "ObjectMapper"),
-                    runtime_exc: imported("java.lang", "RuntimeException"),
-                    io_exc: imported("java.io", "IOException"),
-                    media_type: imported("okhttp3", "MediaType"),
-                }
-            }
-        }
-
-        impl<'el> IntoTokens<'el, Java<'el>> for Jackson<'el> {
-            fn into_tokens(self) -> Tokens<'el, Java<'el>> {
-                let mut c = Class::new("Jackson");
-
-                let mut json = Field::new(self.media_type.clone(), "JSON");
-                json.modifiers = vec![Modifier::Private, Modifier::Static, Modifier::Final];
-                json.initializer(toks![
-                    self.media_type.clone(),
-                    ".parse(",
-                    "application/json; charset=utf-8".quoted(),
-                    ")"
-                ]);
-
-                let f = Field::new(self.object_mapper.clone(), "m");
-                let m = Argument::new(self.object_mapper.clone(), "m");
-
-                c.implements = vec![local("OkHttpSerialization")];
-                c.fields.push(json.clone());
-                c.fields.push(f.clone());
-
-                c.constructors.push({
-                    let mut c = Constructor::new();
-
-                    c.arguments.push(m.clone());
-                    push!(c.body, "this.", f.var(), " = ", m.var(), ";");
-
-                    c
-                });
-
-                c.methods.push({
-                    let mut m = self.decode.clone();
-                    m.annotation(Override);
-                    m.modifiers = vec![Modifier::Public];
-
-                    let read = toks![
-                        "m.readValue(",
-                        self.body.var(),
-                        ".bytes(), ",
-                        self.cls.var(),
-                        ")"
-                    ];
-
-                    push!(m.body, "try {");
-                    nested!(m.body, "return ", read, ";");
-                    push!(m.body, "} catch (final ", self.io_exc, " e) {");
-                    nested!(m.body, "throw new ", self.runtime_exc, "(e);");
-                    push!(m.body, "}");
-
-                    m
-                });
-
-                c.methods.push({
-                    let mut m = self.encode.clone();
-                    m.annotation(Override);
-                    m.modifiers = vec![Modifier::Public];
-
-                    let write = toks!["m.writeValueAsBytes(", self.entity.var(), ")"];
-
-                    push!(m.body, "final byte[] buffer;");
-
-                    m.body.push({
-                        let mut t = Tokens::new();
-
-                        push!(t, "try {");
-                        nested!(t, "buffer = ", write, ";");
-                        push!(t, "} catch (final ", self.io_exc, " e) {");
-                        nested!(t, "throw new ", self.runtime_exc, "(e);");
-                        push!(t, "}");
-
-                        t
-                    });
-
-                    push!(
-                        m.body,
-                        "return ",
-                        self.request_body,
-                        ".create(",
-                        json.var(),
-                        ", buffer);"
-                    );
-
-                    m.body = m.body.join_line_spacing();
-
-                    m
-                });
-
-                c.into_tokens()
-            }
-        }
-    }
-}
-
 pub struct OkHttpServiceCodegen {
+    serialization: Serialization,
     client: Java<'static>,
     request: Java<'static>,
     http_url: Java<'static>,
@@ -384,22 +236,21 @@ pub struct OkHttpServiceCodegen {
     io_exc: Java<'static>,
     optional: Java<'static>,
     completable_future: Java<'static>,
-    serialization: Java<'static>,
 }
 
 impl OkHttpServiceCodegen {
-    pub fn new() -> Self {
+    pub fn new(serialization: Serialization) -> Self {
         Self {
-            client: imported("okhttp3", "OkHttpClient"),
-            request: imported("okhttp3", "Request"),
-            http_url: imported("okhttp3", "HttpUrl"),
-            callback: imported("okhttp3", "Callback"),
-            call: imported("okhttp3", "Call"),
-            response: imported("okhttp3", "Response"),
-            io_exc: imported("java.io", "IOException"),
-            optional: imported("java.util", "Optional"),
-            completable_future: imported("java.util.concurrent", "CompletableFuture"),
-            serialization: imported("io.reproto", "OkHttpSerialization"),
+            serialization,
+            client: java::imported("okhttp3", "OkHttpClient"),
+            request: java::imported("okhttp3", "Request"),
+            http_url: java::imported("okhttp3", "HttpUrl"),
+            callback: java::imported("okhttp3", "Callback"),
+            call: java::imported("okhttp3", "Call"),
+            response: java::imported("okhttp3", "Response"),
+            io_exc: java::imported("java.io", "IOException"),
+            optional: java::imported("java.util", "Optional"),
+            completable_future: java::imported("java.util.concurrent", "CompletableFuture"),
         }
     }
 }
@@ -412,17 +263,11 @@ impl OkHttpServiceCodegen {
         http: &'el RpEndpointHttp1,
         client: Field<'el>,
         base_url: Field<'el>,
+        ser: &Field<'el>,
     ) -> Result<Method<'el>> {
-        let ser = "OkHttp.this.serialization";
-
         let request_var = e.request
             .as_ref()
             .map(|r| toks![ser.clone(), ".encode(", r.safe_ident(), ")"])
-            .unwrap_or_else(|| toks!["null"]);
-
-        let response_var = e.response
-            .as_ref()
-            .map(|r| toks![ser.clone(), ".decode(response.body(), ", r.ty(), ".class)"])
             .unwrap_or_else(|| toks!["null"]);
 
         method.body.push({
@@ -510,19 +355,52 @@ impl OkHttpServiceCodegen {
 
                     // push!(m.body, "future.fail(", e.var(), ");");
 
-                    m.body.push_into(|t| {
+                    m.body.push({
+                        let mut t = Tokens::new();
+
                         let exc = toks![
                             "new IOException(",
                             "bad response: ".quoted(),
                             " + response)",
                         ];
 
-                        t.push("if (!response.isSuccessful()) {");
-                        nested!(t, "future_.completeExceptionally(", exc, ");");
-                        t.push("} else {");
-                        // TODO: complete with the response
-                        nested!(t, "future_.complete(", response_var, ");");
-                        t.push("}");
+                        t.push_into(|t| {
+                            t.push("if (!response.isSuccessful()) {");
+                            nested!(t, "future_.completeExceptionally(", exc, ");");
+                            nested!(t, "return;");
+                            t.push("}");
+                        });
+
+                        t.push({
+                            let mut t = Tokens::new();
+
+                            let input = "response.body().byteStream()";
+
+                            let var = if let Some(r) = e.response.as_ref() {
+                                t.push(self.serialization.decode(
+                                    ser,
+                                    r.ty(),
+                                    input,
+                                    "body",
+                                    |e| {
+                                        let mut t = Tokens::new();
+                                        push!(t, "future_.completeExceptionally(", e, ");");
+                                        push!(t, "return;");
+                                        Ok(t)
+                                    },
+                                )?);
+
+                                "body"
+                            } else {
+                                "null"
+                            };
+
+                            push!(t, "future_.complete(", var, ");");
+
+                            t.join_line_spacing()
+                        });
+
+                        t.join_line_spacing()
                     });
 
                     m
@@ -570,13 +448,15 @@ impl ServiceCodegen for OkHttpServiceCodegen {
     fn generate(&self, e: ServiceAdded) -> Result<()> {
         let ServiceAdded { body, spec, .. } = e;
 
+        let closable = java::imported("java.io", "Closeable");
+
         let client = Field::new(self.client.clone(), "client");
         let base_url = Field::new(self.http_url.clone(), "baseUrl");
-        let ser = Field::new(self.serialization.clone(), "serialization");
+        let ser = self.serialization.field();
 
         let ok_http = {
             let mut c = Class::new("OkHttp");
-            c.implements = vec![local(spec.name().to_string())];
+            c.implements = vec![closable];
 
             for e in &body.endpoints {
                 if let Some(http) = e.http1.as_ref() {
@@ -585,8 +465,14 @@ impl ServiceCodegen for OkHttpServiceCodegen {
                         .with_arguments(vec![http.response.as_ref().unwrap_or(&VOID).clone()]);
                     m.arguments.extend(e.arguments.iter().cloned());
 
-                    c.methods
-                        .push(self.request(m, e, http, client.clone(), base_url.clone())?);
+                    c.methods.push(self.request(
+                        m,
+                        e,
+                        http,
+                        client.clone(),
+                        base_url.clone(),
+                        &ser,
+                    )?);
                 }
             }
 
@@ -609,17 +495,47 @@ impl ServiceCodegen for OkHttpServiceCodegen {
             c.fields.push(client.clone());
             c.fields.push(base_url.clone());
             c.fields.push(ser.clone());
+
+            c.methods.push({
+                let io_exc = java::imported("java.io", "IOException");
+                let mut m = Method::new("close");
+                m.annotation(Override);
+                m.throws = Some(toks![io_exc]);
+
+                push!(
+                    m.body,
+                    client.var(),
+                    ".dispatcher().executorService().shutdown();"
+                );
+
+                push!(m.body, client.var(), ".connectionPool().evictAll();");
+
+                m.body.push_into(|t| {
+                    push!(t, "if (", client.var(), ".cache() != null) {");
+                    nested!(t, client.var(), ".cache().close();");
+                    push!(t, "}");
+                });
+
+                m.body = m.body.join_line_spacing();
+
+                m
+            });
+
             c
         };
+
+        let default_base_url = body.http.url.as_ref().map(|s| s.as_str());
 
         spec.body.push(ok_http);
 
         spec.body.push(Builder {
-            ty: local("OkHttp"),
+            ty: java::local("OkHttp"),
             optional: self.optional.clone(),
             client: client,
             base_url: base_url,
+            default_base_url: default_base_url,
             ser: ser,
+            serialization: &self.serialization,
         });
 
         Ok(())

@@ -275,7 +275,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
     where
         T: Translator<Source = CoreFlavor, Target = JavaFlavor>,
     {
-        let endpoint = endpoint.translate(translator)?;
+        let mut endpoint = endpoint.translate(translator)?;
 
         let mut arguments = Vec::new();
 
@@ -285,6 +285,14 @@ impl FlavorTranslator for JavaFlavorTranslator {
         }
 
         let http1 = RpEndpointHttp1::from_endpoint(&endpoint);
+
+        // Used by Closeable implementations.
+        match endpoint.safe_ident() {
+            "close" => {
+                endpoint.safe_ident = Some("close_".to_string());
+            }
+            _ => {}
+        }
 
         return Ok(JavaEndpoint {
             endpoint: endpoint,

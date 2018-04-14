@@ -20,6 +20,7 @@ mod flavored;
 mod java_file;
 mod module;
 mod options;
+mod serialization;
 mod utils;
 
 use codegen::Configure;
@@ -161,10 +162,24 @@ impl TryFromToml for JavaModule {
     }
 }
 
-fn setup_options<'a>(modules: Vec<JavaModule>) -> Options {
+fn setup_options<'a>(modules: Vec<JavaModule>) -> Result<Options> {
     use self::JavaModule::*;
 
     let mut options = Options::new();
+
+    // prepare options
+    for module in &modules {
+        let c = Configure {
+            options: &mut options,
+        };
+
+        match *module {
+            Jackson => {
+                module::Jackson::prepare(c)?;
+            }
+            _ => {}
+        }
+    }
 
     for module in modules {
         let c = Configure {
@@ -179,11 +194,14 @@ fn setup_options<'a>(modules: Vec<JavaModule>) -> Options {
             ConstructorProperties => module::ConstructorProperties.initialize(c),
             Mutable => module::Mutable.initialize(c),
             Nullable => module::Nullable.initialize(c),
-            OkHttp(config) => module::OkHttp::new(config).initialize(c),
+            OkHttp(config) => {
+                let serialization = c.options.get_serialization()?;
+                module::OkHttp::new(config).initialize(c, serialization);
+            }
         };
     }
 
-    options
+    Ok(options)
 }
 
 fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
@@ -199,7 +217,7 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let env = Rc::new(env);
     let modules = checked_modules(manifest.modules)?;
-    let options = setup_options(modules);
+    let options = setup_options(modules)?;
 
     let compiler = Compiler::new(&env, &variant_field, options);
 

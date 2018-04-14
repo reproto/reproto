@@ -1,19 +1,26 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, GetterAdded,
+use codegen::{ClassAdded, ClassCodegen, Codegen, Configure, EnumAdded, EnumCodegen, GetterAdded,
               GetterCodegen, InterfaceAdded, InterfaceCodegen, TupleAdded, TupleCodegen};
-use core::RpSubTypeStrategy;
-use core::errors::*;
-use flavored::RpInterfaceBody;
-use genco::java::{self, Argument, Class, Field, Method, Modifier, DOUBLE, FLOAT, INTEGER, LONG,
-                  SHORT};
+use core::errors::Result;
+use core::{Handle, RpSubTypeStrategy};
+use flavored::{RpInterfaceBody, RpPackage};
+use genco::java::{self, Argument, Class, Field, Interface, Method, Modifier, DOUBLE, FLOAT,
+                  INTEGER, LONG, SHORT};
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
+use java_file::JavaFile;
+use serialization::Serialization;
 use std::rc::Rc;
 use utils::Override;
 
 pub struct Module;
 
 impl Module {
+    pub fn prepare(e: Configure) -> Result<()> {
+        e.options.serialization(Serialization::Jackson)?;
+        Ok(())
+    }
+
     pub fn initialize(self, e: Configure) {
         let jackson = Rc::new(Jackson::new());
         e.options.getter_generators.push(Box::new(jackson.clone()));
@@ -23,6 +30,9 @@ impl Module {
             .interface_generators
             .push(Box::new(jackson.clone()));
         e.options.enum_generators.push(Box::new(jackson.clone()));
+        e.options
+            .root_generators
+            .push(Box::new(JacksonSupport::new()));
     }
 }
 
@@ -653,5 +663,66 @@ impl InterfaceCodegen for Jackson {
                 c
             });
         }
+    }
+}
+
+struct JacksonSupport {}
+
+impl JacksonSupport {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Codegen for JacksonSupport {
+    fn generate(&self, handle: &Handle) -> Result<()> {
+        let package = RpPackage::parse("io.reproto");
+
+        JavaFile::new(package, "JacksonSupport", |out| {
+            let mut c = Interface::new("JacksonSupport");
+
+            let mapper = java::imported("com.fasterxml.jackson.databind", "ObjectMapper");
+            let jdk8 = java::imported("com.fasterxml.jackson.datatype.jdk8", "Jdk8Module");
+            let java_time =
+                java::imported("com.fasterxml.jackson.datatype.jsr310", "JavaTimeModule");
+            let include = java::imported("com.fasterxml.jackson.annotation", "JsonInclude");
+            let ser = java::imported("com.fasterxml.jackson.databind", "SerializationFeature");
+            let des = java::imported("com.fasterxml.jackson.databind", "DeserializationFeature");
+
+            let object_mapper = {
+                let mut m = Method::new("objectMapper");
+                m.comments.push(
+                    "Build an object mapper which has the required configuration and modules \
+                     installed."
+                        .into(),
+                );
+                m.returns = mapper.clone();
+                m.modifiers = vec![Modifier::Public, Modifier::Static];
+
+                m.body.push_into(|t| {
+                    push!(t, "final ", mapper, " m = new ", mapper, "();");
+                    push!(t, "m.disable(", ser, ".FAIL_ON_EMPTY_BEANS);");
+                    push!(t, "m.disable(", des, ".FAIL_ON_UNKNOWN_PROPERTIES);");
+                    push!(
+                        t,
+                        "m.setSerializationInclusion(",
+                        include,
+                        ".Include.NON_ABSENT);"
+                    );
+                    push!(t, "m.registerModule(new ", jdk8, "());");
+                    push!(t, "m.registerModule(new ", java_time, "());");
+                    push!(t, "return m;");
+                });
+
+                m
+            };
+
+            c.methods.push(object_mapper.clone());
+
+            out.push(c);
+            Ok(())
+        }).process(handle)?;
+
+        return Ok(());
     }
 }
