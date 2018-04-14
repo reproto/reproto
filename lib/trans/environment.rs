@@ -1,8 +1,8 @@
 use ast::{self, UseDecl};
 use core::errors::{Error, Result};
-use core::{translator, Context, CoreFlavor, Flavor, FlavorTranslator, Loc, Object,
-           PackageTranslator, PathObject, Range, Resolved, Resolver, RpFile, RpName, RpPackage,
-           RpReg, RpRequiredPackage, RpVersionedPackage, Translate, Translator, Version, WithPos};
+use core::{translator, Context, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator,
+           Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
+           RpVersionedPackage, Source, Translate, Translator, Version, WithPos};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
@@ -12,6 +12,7 @@ use std::cell::RefCell;
 use std::collections::{btree_map, BTreeMap, HashMap};
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::Arc;
 use translated::Translated;
 
 /// Scoped environment for evaluating reproto IDLs.
@@ -288,13 +289,13 @@ impl Environment<CoreFlavor> {
         path: P,
         package: Option<RpVersionedPackage>,
     ) -> Result<RpVersionedPackage> {
-        self.import_object(&PathObject::new(None, path), package)
+        self.import_source(&Source::from_path(path), package)
     }
 
     /// Import an object into the environment.
-    pub fn import_object(
+    pub fn import_source(
         &mut self,
-        object: &Object,
+        object: &Source,
         package: Option<RpVersionedPackage>,
     ) -> Result<RpVersionedPackage> {
         let package = package.unwrap_or_else(|| RpVersionedPackage::new(RpPackage::empty(), None));
@@ -341,11 +342,11 @@ impl Environment<CoreFlavor> {
         // find all matching objects from the resolver.
         let files = self.resolver.resolve(required)?;
 
-        if let Some(Resolved { version, object }) = files.into_iter().last() {
-            debug!("loading: {}", object);
+        if let Some(Resolved { version, source }) = files.into_iter().last() {
+            debug!("loading: {}", source);
 
             let package = RpVersionedPackage::new(required.package.clone(), version);
-            let file = self.load_object(object.as_ref(), &package)?;
+            let file = self.load_object(&source, &package)?;
 
             candidates
                 .entry(package)
@@ -389,11 +390,11 @@ impl Environment<CoreFlavor> {
         Ok(result)
     }
 
-    /// Load the provided Object into an `RpFile` without registering it to the set of visited
+    /// Load the provided Source into an `RpFile` without registering it to the set of visited
     /// files.
     pub fn load_object(
         &mut self,
-        object: &Object,
+        object: &Source,
         package: &RpVersionedPackage,
     ) -> Result<RpFile<CoreFlavor>> {
         // Notify hook that we loaded a path.
@@ -403,7 +404,7 @@ impl Environment<CoreFlavor> {
             }
         }
 
-        let object = Rc::new(object.clone_object());
+        let object = Arc::new(object.clone());
         let input = parser::read_to_string(object.read()?)?;
         let file = parser::parse(object, input.as_str())?;
         self.load_file(file, package)

@@ -1,10 +1,10 @@
-use std::rc::Rc;
-use {EmptyObject, Object};
+use Source;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Pos {
     #[serde(skip)]
-    pub object: Rc<Box<Object>>,
+    pub source: Arc<Source>,
     pub start: usize,
     pub end: usize,
 }
@@ -12,17 +12,27 @@ pub struct Pos {
 impl Pos {
     pub fn empty() -> Pos {
         Pos {
-            object: Rc::new(Box::new(EmptyObject::new("empty"))),
+            source: Arc::new(Source::empty("empty")),
             start: 0,
             end: 0,
         }
     }
 }
 
-impl From<(Rc<Box<Object>>, usize, usize)> for Pos {
-    fn from(value: (Rc<Box<Object>>, usize, usize)) -> Self {
+impl<'a> From<&'a Pos> for Pos {
+    fn from(value: &'a Pos) -> Pos {
         Pos {
-            object: value.0,
+            source: Arc::clone(&value.source),
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
+
+impl From<(Arc<Source>, usize, usize)> for Pos {
+    fn from(value: (Arc<Source>, usize, usize)) -> Self {
+        Pos {
+            source: value.0,
             start: value.1,
             end: value.2,
         }

@@ -1,7 +1,7 @@
 //! ## Load objects through a local git repo
 
 use checksum::Checksum;
-use core::Object;
+use core::Source;
 use core::errors::*;
 use git::GitRepo;
 use objects::{FileObjects, Objects};
@@ -50,7 +50,7 @@ impl Objects for GitObjects {
         Ok(added)
     }
 
-    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>> {
+    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Source>> {
         self.file_objects.get_object(checksum)
     }
 

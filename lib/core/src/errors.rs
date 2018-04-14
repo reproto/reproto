@@ -4,7 +4,7 @@ use std::ffi;
 use std::fmt;
 use std::result;
 use std::sync::atomic;
-use {ErrorPos, WithPos};
+use {Pos, WithPos};
 
 const RUST_BACKTRACE: &str = "RUST_BACKTRACE";
 
@@ -109,7 +109,7 @@ fn is_backtrace_enabled<F: Fn(&str) -> Option<ffi::OsString>>(get_var: F) -> boo
 
 pub struct Error {
     message: Cow<'static, str>,
-    pos: Option<ErrorPos>,
+    pos: Option<Pos>,
     cause: Option<Box<Error>>,
     suppressed: Vec<Error>,
     backtrace: Option<Backtrace>,
@@ -151,7 +151,7 @@ impl Error {
     }
 
     /// Set the position for this error.
-    pub fn with_pos<P: Into<ErrorPos>>(self, pos: P) -> Error {
+    pub fn with_pos<P: Into<Pos>>(self, pos: P) -> Error {
         Error {
             pos: Some(pos.into()),
             ..self
@@ -186,7 +186,7 @@ impl Error {
     }
 
     /// Extract the error position, if available.
-    pub fn pos(&self) -> Option<&ErrorPos> {
+    pub fn pos(&self) -> Option<&Pos> {
         self.pos.as_ref()
     }
 
@@ -226,7 +226,7 @@ impl fmt::Debug for Error {
 }
 
 impl WithPos for Error {
-    fn with_pos<E: Into<ErrorPos>>(self, pos: E) -> Self {
+    fn with_pos<E: Into<Pos>>(self, pos: E) -> Self {
         if self.pos.is_some() {
             return self;
         }

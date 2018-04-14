@@ -12,7 +12,7 @@ use std::fmt;
 use std::path::Path;
 use std::rc::Rc;
 use std::result;
-use {ErrorPos, Filesystem, Handle};
+use {Filesystem, Handle, Pos};
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub enum SymbolKind {
@@ -31,13 +31,13 @@ pub enum SymbolKind {
 #[derive(Debug)]
 pub enum ContextItem {
     /// A positional error.
-    ErrorPos(ErrorPos, String),
+    Error(Pos, String),
     /// A positional information string.
-    InfoPos(ErrorPos, String),
+    Info(Pos, String),
     /// A symbol that was encountered, and its location.
     Symbol {
         kind: SymbolKind,
-        pos: ErrorPos,
+        pos: Pos,
         name: RpName,
     },
 }
@@ -60,14 +60,14 @@ pub struct Reporter<'a> {
 }
 
 impl<'a> Reporter<'a> {
-    pub fn err<P: Into<ErrorPos>, E: fmt::Display>(&mut self, pos: P, error: E) {
+    pub fn err<P: Into<Pos>, E: fmt::Display>(&mut self, pos: P, error: E) {
         self.items
-            .push(ContextItem::ErrorPos(pos.into(), error.to_string()));
+            .push(ContextItem::Error(pos.into(), error.to_string()));
     }
 
-    pub fn info<P: Into<ErrorPos>, I: fmt::Display>(&mut self, pos: P, info: I) {
+    pub fn info<P: Into<Pos>, I: fmt::Display>(&mut self, pos: P, info: I) {
         self.items
-            .push(ContextItem::InfoPos(pos.into(), info.to_string()));
+            .push(ContextItem::Info(pos.into(), info.to_string()));
     }
 
     /// Close this reporter and return an error if it has errors.
@@ -85,7 +85,7 @@ impl<'a> Reporter<'a> {
     /// Check if reporter has any errors as sub-items.
     fn has_errors(&self) -> bool {
         self.items.iter().any(|item| match *item {
-            ContextItem::ErrorPos(_, _) => true,
+            ContextItem::Error(_, _) => true,
             _ => false,
         })
     }
@@ -146,7 +146,7 @@ impl Context {
     }
 
     /// Register a symbol.
-    pub fn symbol<P: Into<ErrorPos>>(&self, kind: SymbolKind, pos: P, name: &RpName) -> Result<()> {
+    pub fn symbol<P: Into<Pos>>(&self, kind: SymbolKind, pos: P, name: &RpName) -> Result<()> {
         self.items.try_borrow_mut()?.push(ContextItem::Symbol {
             kind,
             pos: pos.into(),
@@ -163,7 +163,7 @@ impl Context {
     /// Check if reporter is empty.
     pub fn has_errors(&self) -> Result<bool> {
         Ok(self.items.try_borrow()?.iter().any(|item| match *item {
-            ContextItem::ErrorPos(_, _) => true,
+            ContextItem::Error(_, _) => true,
             _ => false,
         }))
     }
@@ -173,18 +173,17 @@ impl Context {
 mod tests {
     use super::*;
     use fs::CapturingFilesystem;
-    use object::{BytesObject, Object};
     use pos::Pos;
-    use std::rc::Rc;
+    use source::Source;
     use std::result;
     use std::sync::Arc;
 
     #[test]
     fn test_handle() {
-        let object = BytesObject::new("test".to_string(), Arc::new(Vec::new()));
+        let source = Source::bytes("test", Vec::new());
 
-        let pos: Pos = (Rc::new(object.clone_object()), 0usize, 0usize).into();
-        let other_pos: Pos = (Rc::new(object.clone_object()), 0usize, 0usize).into();
+        let pos: Pos = (Arc::new(source.clone()), 0usize, 0usize).into();
+        let other_pos: Pos = (Arc::new(source.clone()), 0usize, 0usize).into();
 
         let ctx = Context::new(Box::new(CapturingFilesystem::new()));
 

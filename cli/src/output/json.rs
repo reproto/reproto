@@ -1,7 +1,7 @@
 use super::{LockableWrite, Output};
 use core::errors::*;
 use core::flavored::RpName;
-use core::{self, ErrorPos, SymbolKind};
+use core::{self, Pos, SymbolKind};
 use log;
 use serde_json;
 use std::io;
@@ -56,10 +56,10 @@ where
         Json { out: out }
     }
 
-    fn print_diagnostics(&self, m: &str, p: &ErrorPos) -> Result<()> {
-        if let Some(path) = p.object.path() {
+    fn print_diagnostics(&self, m: &str, p: &Pos) -> Result<()> {
+        if let Some(path) = p.source.path() {
             let (line_start, line_end, col_start, col_end) =
-                core::utils::find_range(p.object.read()?, (p.start, p.end))?;
+                core::utils::find_range(p.source.read()?, (p.start, p.end))?;
 
             let m = Message::Diagnostics {
                 message: m.to_string(),
@@ -128,16 +128,16 @@ where
         Ok(())
     }
 
-    fn print_info(&self, m: &str, p: &ErrorPos) -> Result<()> {
+    fn print_info(&self, m: &str, p: &Pos) -> Result<()> {
         self.print_diagnostics(m, p)
     }
 
-    fn print_error(&self, m: &str, p: &ErrorPos) -> Result<()> {
+    fn print_error(&self, m: &str, p: &Pos) -> Result<()> {
         self.print_diagnostics(m, p)
     }
 
-    fn print_symbol(&self, kind: SymbolKind, p: &ErrorPos, name: &RpName) -> Result<()> {
-        let path = match p.object.path() {
+    fn print_symbol(&self, kind: SymbolKind, p: &Pos, name: &RpName) -> Result<()> {
+        let path = match p.source.path() {
             Some(path) => path,
             None => return Ok(()),
         };
@@ -149,7 +149,7 @@ where
         };
 
         let (line_start, line_end, col_start, col_end) =
-            core::utils::find_range(p.object.read()?, (p.start, p.end))?;
+            core::utils::find_range(p.source.read()?, (p.start, p.end))?;
 
         let m = Message::Symbol {
             kind,

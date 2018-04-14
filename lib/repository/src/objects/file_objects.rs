@@ -2,8 +2,8 @@
 
 use super::Objects;
 use checksum::Checksum;
+use core::Source;
 use core::errors::*;
-use core::{Object, PathObject};
 use hex_slice::HexSlice;
 use std::fs::{self, File};
 use std::io::{self, Read};
@@ -54,11 +54,11 @@ impl Objects for FileObjects {
         return Ok(true);
     }
 
-    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>> {
+    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Source>> {
         let target = self.checksum_path(checksum)?;
 
         if target.is_file() {
-            return Ok(Some(Box::new(PathObject::new(None, target))));
+            return Ok(Some(Source::from_path(target)));
         }
 
         Ok(None)

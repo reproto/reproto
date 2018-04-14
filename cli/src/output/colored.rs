@@ -1,7 +1,7 @@
 use super::{LockableWrite, Output};
 use ansi_term::Colour::{self, Blue, Red};
 use core::errors::*;
-use core::{self, ErrorPos};
+use core::{self, Pos};
 use log;
 use std::io;
 
@@ -17,13 +17,13 @@ where
         Colored { out: out }
     }
 
-    fn print_positional(&self, m: &str, p: &ErrorPos, color: Colour) -> Result<()> {
+    fn print_positional(&self, m: &str, p: &Pos, color: Colour) -> Result<()> {
         use std::cmp::max;
         use std::iter::repeat;
 
         let mut o = self.out.lock();
 
-        let (line_str, line, (s, e)) = core::utils::find_line(p.object.read()?, (p.start, p.end))?;
+        let (line_str, line, (s, e)) = core::utils::find_line(p.source.read()?, (p.start, p.end))?;
 
         let line_no = format!("{:>3}:", line + 1);
 
@@ -32,7 +32,7 @@ where
         indicator.extend(repeat(' ').take(line_no.len() + s + 1));
         indicator.extend(repeat('^').take(max(1, e - s)));
 
-        writeln!(o, "{}:{}:{}-{}:", p.object, line + 1, s + 1, e + 1)?;
+        writeln!(o, "{}:{}:{}-{}:", p.source, line + 1, s + 1, e + 1)?;
         writeln!(o, "{} {}", Blue.paint(line_no), line_str)?;
         writeln!(
             o,
@@ -71,11 +71,11 @@ where
         Ok(())
     }
 
-    fn print_info(&self, m: &str, p: &ErrorPos) -> Result<()> {
+    fn print_info(&self, m: &str, p: &Pos) -> Result<()> {
         self.print_positional(m, p, Colour::Yellow)
     }
 
-    fn print_error(&self, m: &str, p: &ErrorPos) -> Result<()> {
+    fn print_error(&self, m: &str, p: &Pos) -> Result<()> {
         self.print_positional(m, p, Colour::Red)
     }
 }

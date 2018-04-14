@@ -5,7 +5,7 @@ use self::Violation::*;
 use core::errors::*;
 use core::flavored::{RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpNamed, RpType,
                      RpVariant};
-use core::{ErrorPos, Loc, Version};
+use core::{Loc, Pos, Version};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -27,49 +27,37 @@ impl Component {
 #[derive(Debug)]
 pub enum Violation {
     /// An entire declaration has been removed.
-    DeclRemoved(Component, ErrorPos),
+    DeclRemoved(Component, Pos),
     /// An entire declaration has been added.
-    DeclAdded(Component, ErrorPos),
+    DeclAdded(Component, Pos),
     /// Field was removed.
-    RemoveField(Component, ErrorPos),
+    RemoveField(Component, Pos),
     /// Variant was removed.
-    RemoveVariant(Component, ErrorPos),
+    RemoveVariant(Component, Pos),
     /// Field added.
-    AddField(Component, ErrorPos),
+    AddField(Component, Pos),
     /// Variant added.
-    AddVariant(Component, ErrorPos),
+    AddVariant(Component, Pos),
     /// Field type was changed from one to another.
-    FieldTypeChange(Component, RpType, ErrorPos, RpType, ErrorPos),
+    FieldTypeChange(Component, RpType, Pos, RpType, Pos),
     /// Field name was changed from one to another.
-    FieldNameChange(Component, String, ErrorPos, String, ErrorPos),
+    FieldNameChange(Component, String, Pos, String, Pos),
     /// Variant identifier was changed from one to another.
-    VariantOrdinalChange(Component, String, ErrorPos, String, ErrorPos),
+    VariantOrdinalChange(Component, String, Pos, String, Pos),
     /// Field made required.
-    FieldRequiredChange(Component, ErrorPos, ErrorPos),
+    FieldRequiredChange(Component, Pos, Pos),
     /// Required field added.
-    AddRequiredField(Component, ErrorPos),
+    AddRequiredField(Component, Pos),
     /// Field modifier changed.
-    FieldModifierChange(Component, ErrorPos, ErrorPos),
+    FieldModifierChange(Component, Pos, Pos),
     /// Endpoint added.
-    AddEndpoint(Component, ErrorPos),
+    AddEndpoint(Component, Pos),
     /// Endpoint removed.
-    RemoveEndpoint(Component, ErrorPos),
+    RemoveEndpoint(Component, Pos),
     /// Endpoint request type changed.
-    EndpointRequestChange(
-        Component,
-        Option<RpChannel>,
-        ErrorPos,
-        Option<RpChannel>,
-        ErrorPos,
-    ),
+    EndpointRequestChange(Component, Option<RpChannel>, Pos, Option<RpChannel>, Pos),
     /// Endpoint response type changed.
-    EndpointResponseChange(
-        Component,
-        Option<RpChannel>,
-        ErrorPos,
-        Option<RpChannel>,
-        ErrorPos,
-    ),
+    EndpointResponseChange(Component, Option<RpChannel>, Pos, Option<RpChannel>, Pos),
 }
 
 fn fields<'a>(named: &RpNamed<'a>) -> Vec<&'a Loc<RpField>> {
@@ -159,7 +147,7 @@ fn check_endpoint_channel<F, E>(
 ) -> Result<()>
 where
     F: Fn(&RpEndpoint) -> &Option<Loc<RpChannel>>,
-    E: Fn(Component, Option<RpChannel>, ErrorPos, Option<RpChannel>, ErrorPos) -> Violation,
+    E: Fn(Component, Option<RpChannel>, Pos, Option<RpChannel>, Pos) -> Violation,
 {
     let from_ty = accessor(from_endpoint)
         .as_ref()

@@ -2,7 +2,7 @@ extern crate reproto_ast as ast;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 
-use core::{ContextItem, Object, RelativePath, Resolver, RpPackage, RpVersionedPackage};
+use core::{ContextItem, RelativePath, Resolver, RpPackage, RpVersionedPackage, Source};
 use manifest::Lang;
 use std::any::Any;
 use std::cell::RefCell;
@@ -13,8 +13,8 @@ use std::str;
 pub enum Input<'input> {
     /// Already derive file.
     File(ast::File<'input>, Option<RpVersionedPackage>),
-    /// Object that should be parsed.
-    Object(Box<Object>, Option<RpVersionedPackage>),
+    /// Source that should be parsed.
+    Source(Source, Option<RpVersionedPackage>),
 }
 
 /// A simple compilation stage.
@@ -100,8 +100,8 @@ where
         Input::File(file, package) => {
             env.import_file(file, package)?;
         }
-        Input::Object(object, package) => {
-            env.import_object(object.as_ref(), package)?;
+        Input::Source(source, package) => {
+            env.import_source(&source, package)?;
         }
     }
 

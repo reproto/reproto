@@ -1,9 +1,9 @@
 use clap::ArgMatches;
 use config_env::ConfigEnv;
 use core::errors::{Error, Result, ResultExt};
-use core::{BytesObject, Context, CoreFlavor, Flavor, Object, RelativePath, Reporter, Resolved,
-           ResolvedByPrefix, Resolver, RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage,
-           RpVersionedPackage, Version};
+use core::{Context, CoreFlavor, Flavor, RelativePath, Reporter, Resolved, ResolvedByPrefix,
+           Resolver, RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage,
+           Source, Version};
 use manifest::{self as m, read_manifest, read_manifest_preamble, Lang, Language, Manifest,
                ManifestFile, ManifestPreamble, NoLang, Publish};
 use repository::{index_from_path, index_from_url, objects_from_path, objects_from_url, Index,
@@ -14,10 +14,8 @@ use semck;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
-use std::io::{self, Read};
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::Arc;
 use std::time::Duration;
 use trans::Environment;
 use url;
@@ -270,18 +268,9 @@ where
     if stdin {
         debug!("Reading file to build from stdin");
 
-        let mut buffer = Vec::new();
+        let source = Source::stdin();
 
-        let stdin = io::stdin();
-
-        stdin
-            .lock()
-            .read_to_end(&mut buffer)
-            .map_err(|e| format!("failed to read <stdin>: {}", e))?;
-
-        let object = BytesObject::new("<stdin>".to_string(), Arc::new(buffer));
-
-        if let Err(e) = env.import_object(&object, None) {
+        if let Err(e) = env.import_source(&source, None) {
             errors.push(e.into());
         }
     }
@@ -373,7 +362,7 @@ fn manifest_from_matches(lang: &Lang, manifest: &mut Manifest, matches: &ArgMatc
 }
 
 /// Argument match.
-pub struct Match(pub Version, pub Box<Object>, pub RpPackage);
+pub struct Match(pub Version, pub Source, pub RpPackage);
 
 /// Setup matches from a publish manifest.
 pub fn publish_matches<'a, I>(
@@ -393,9 +382,9 @@ where
             return Err(format!("no matching packages found for: {}", publish.package).into());
         }
 
-        for ResolvedByPrefix { package, object } in resolved {
+        for ResolvedByPrefix { package, source } in resolved {
             let version = version_override.unwrap_or(&publish.version).clone();
-            results.push(Match(version, object, package.clone()));
+            results.push(Match(version, source, package.clone()));
         }
     }
 
@@ -434,13 +423,13 @@ where
             return Err("more than one matching package found".into());
         }
 
-        let Resolved { version, object } = first;
+        let Resolved { version, source } = first;
         let version = version_override.cloned().or(version);
 
         let version =
             version.ok_or_else(|| format!("No version for package: {}", package.package))?;
 
-        results.push(Match(version, object, package.package.clone()));
+        results.push(Match(version, source, package.package.clone()));
     }
 
     Ok(results)
@@ -453,7 +442,7 @@ pub fn semck_check(
     env: &mut Environment<CoreFlavor>,
     m: &Match,
 ) -> Result<()> {
-    let Match(ref version, ref object, ref package) = *m;
+    let Match(ref version, ref source, ref package) = *m;
 
     // perform semck verification
     if let Some(d) = repository
@@ -472,10 +461,10 @@ pub fn semck_check(
         let previous = previous.with_name(name);
 
         let package_from = RpVersionedPackage::new(package.clone(), Some(d.version.clone()));
-        let file_from = env.load_object(previous.as_ref(), &package_from)?;
+        let file_from = env.load_object(&previous, &package_from)?;
 
         let package_to = RpVersionedPackage::new(package.clone(), Some(version.clone()));
-        let file_to = env.load_object(object.as_ref(), &package_to)?;
+        let file_to = env.load_object(&source, &package_to)?;
 
         let violations = semck::check((&d.version, &file_from), (&version, &file_to))?;
 

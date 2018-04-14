@@ -25,7 +25,6 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::str;
-use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum Format {
@@ -236,8 +235,8 @@ struct Marker {
 
 impl Marker {
     /// Convert an error into a marker.
-    fn try_from_error(p: &core::ErrorPos, message: &str) -> core::errors::Result<Marker> {
-        let (_, line, (s, e)) = core::utils::find_line(p.object.read()?, (p.start, p.end))?;
+    fn try_from_error(p: &core::Pos, message: &str) -> core::errors::Result<Marker> {
+        let (_, line, (s, e)) = core::utils::find_line(p.source.read()?, (p.start, p.end))?;
 
         let marker = Marker {
             message: message.to_string(),
@@ -251,7 +250,7 @@ impl Marker {
     }
 
     /// Safe building of markers with fallback.
-    fn try_from_error_fb(p: &core::ErrorPos, message: &str) -> Marker {
+    fn try_from_error_fb(p: &core::Pos, message: &str) -> Marker {
         if let Ok(m) = Self::try_from_error(p, message) {
             return m;
         }
@@ -325,11 +324,11 @@ impl core::Resolver for MapResolver {
                 .unwrap_or_else(|| required.range.matches_any())
             {
                 let bytes = file.content.as_bytes().to_vec();
-                let object = Box::new(core::BytesObject::new(package.to_string(), Arc::new(bytes)));
+                let source = core::Source::bytes(package.to_string(), bytes);
 
                 out.push(core::Resolved {
                     version: file.version.clone(),
-                    object: object,
+                    source,
                 })
             }
         }
@@ -347,14 +346,11 @@ impl core::Resolver for MapResolver {
             if file.package.starts_with(prefix) {
                 let bytes = file.content.as_bytes().to_vec();
 
-                let object = Box::new(core::BytesObject::new(
-                    file.package.to_string(),
-                    Arc::new(bytes),
-                ));
+                let source = core::Source::bytes(file.package.to_string(), bytes);
 
                 out.push(core::ResolvedByPrefix {
                     package: file.package.clone(),
-                    object: object,
+                    source,
                 })
             }
         }
@@ -364,9 +360,9 @@ impl core::Resolver for MapResolver {
 }
 
 fn derive(derive: Derive) -> DeriveResult {
-    let errors = Rc::new(RefCell::new(Vec::new()));
+    let items = Rc::new(RefCell::new(Vec::new()));
 
-    return match try_derive(derive, errors.clone()) {
+    return match try_derive(derive, items.clone()) {
         Ok(result) => DeriveResult {
             files: result,
             error: None,
@@ -381,14 +377,15 @@ fn derive(derive: Derive) -> DeriveResult {
                 error_markers.push(Marker::try_from_error_fb(p, e.message()));
             }
 
-            for e in errors.borrow().iter() {
+            for e in items.borrow().iter() {
                 match *e {
-                    core::ContextItem::ErrorPos(ref p, ref message) => {
+                    core::ContextItem::Error(ref p, ref message) => {
                         error_markers.push(Marker::try_from_error_fb(p, message.as_str()));
                     }
-                    core::ContextItem::InfoPos(ref p, ref message) => {
+                    core::ContextItem::Info(ref p, ref message) => {
                         info_markers.push(Marker::try_from_error_fb(p, message.as_str()));
                     }
+                    _ => {}
                 }
             }
 
@@ -403,14 +400,14 @@ fn derive(derive: Derive) -> DeriveResult {
 
     fn try_derive(
         derive: Derive,
-        errors: Rc<RefCell<Vec<core::ContextItem>>>,
+        items: Rc<RefCell<Vec<core::ContextItem>>>,
     ) -> core::errors::Result<Vec<DeriveFile>> {
-        let (object, package) = match derive.content {
+        let (source, package) = match derive.content {
             Content::Content { ref content } => {
                 let bytes = content.as_bytes().to_vec();
-                let object = core::BytesObject::new("web".to_string(), Arc::new(bytes));
+                let source = core::Source::bytes("web", bytes);
 
-                (object, None)
+                (source, None)
             }
             Content::FileIndex { index } => {
                 let file = derive
@@ -419,11 +416,11 @@ fn derive(derive: Derive) -> DeriveResult {
                     .ok_or_else(|| format!("No file for index: {}", index))?;
 
                 let bytes = file.content.as_bytes().to_vec();
-                let object = core::BytesObject::new(file.package.to_string(), Arc::new(bytes));
+                let source = core::Source::bytes(file.package.to_string(), bytes);
 
                 let package = parse_package(&file)?;
 
-                (object, Some(package))
+                (source, Some(package))
             }
         };
 
@@ -434,9 +431,9 @@ fn derive(derive: Derive) -> DeriveResult {
             .unwrap_or_else(|| core::RpPackage::parse("io.reproto.github"));
 
         let input = match derive.format {
-            Format::Json => derive_file(&derive, &package_prefix, &object, Box::new(derive::Json))?,
-            Format::Yaml => derive_file(&derive, &package_prefix, &object, Box::new(derive::Yaml))?,
-            Format::Reproto => compile::Input::Object(Box::new(object), package),
+            Format::Json => derive_file(&derive, &package_prefix, &source, Box::new(derive::Json))?,
+            Format::Yaml => derive_file(&derive, &package_prefix, &source, Box::new(derive::Yaml))?,
+            Format::Reproto => compile::Input::Source(source, package),
         };
 
         let files = parse_files(derive.files)?;
@@ -444,7 +441,7 @@ fn derive(derive: Derive) -> DeriveResult {
         let resolver = Box::new(MapResolver(files));
 
         let simple_compile = compile::SimpleCompile::new(input)
-            .with_errors(errors)
+            .with_items(items)
             .resolver(resolver)
             .package_prefix(package_prefix);
 
@@ -504,7 +501,7 @@ fn derive(derive: Derive) -> DeriveResult {
     fn derive_file<'input>(
         derive: &Derive,
         package_prefix: &core::RpPackage,
-        object: &'input core::Object,
+        source: &'input core::Source,
         format: Box<derive::Format>,
     ) -> core::errors::Result<compile::Input<'input>> {
         let decl = derive::derive(
@@ -513,7 +510,7 @@ fn derive(derive: Derive) -> DeriveResult {
                 format,
                 Some(package_prefix.clone()),
             ),
-            object,
+            source,
         )?;
 
         let file = ast::File {

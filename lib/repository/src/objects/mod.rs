@@ -6,7 +6,7 @@ pub use self::cached_objects::CachedObjects;
 pub use self::file_objects::FileObjects;
 pub use self::git_objects::GitObjects;
 use checksum::Checksum;
-use core::Object;
+use core::Source;
 use core::errors::*;
 use git;
 use std::io::Read;
@@ -35,7 +35,7 @@ pub trait Objects {
     /// Get a path to the object with the given checksum.
     /// This might cause the object to be downloaded if it's not already present in the local
     /// filesystem.
-    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>>;
+    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Source>>;
 
     /// Update local caches related to the object store.
     fn update(&self) -> Result<Vec<Update>> {
@@ -50,7 +50,7 @@ impl Objects for NoObjects {
         Err("no objects".into())
     }
 
-    fn get_object(&mut self, _: &Checksum) -> Result<Option<Box<Object>>> {
+    fn get_object(&mut self, _: &Checksum) -> Result<Option<Source>> {
         Err("no objects".into())
     }
 }

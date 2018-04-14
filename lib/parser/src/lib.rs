@@ -10,10 +10,10 @@ extern crate reproto_lexer as lexer;
 mod parser;
 mod utils;
 
-use core::Object;
+use core::Source;
 use core::errors::*;
 use std::io::Read;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// Read the full contents of the given reader as a string.
 pub fn read_to_string<'a, R>(mut reader: R) -> Result<String>
@@ -26,7 +26,7 @@ where
 }
 
 /// Parse the given object.
-pub fn parse<'input>(object: Rc<Box<Object>>, input: &'input str) -> Result<ast::File<'input>> {
+pub fn parse<'input>(object: Arc<Source>, input: &'input str) -> Result<ast::File<'input>> {
     use self::lexer::errors::Error::*;
     use lalrpop_util::ParseError::*;
 
@@ -90,14 +90,10 @@ mod tests {
     use super::ast::*;
     use super::*;
     use core::*;
-    use std::rc::Rc;
     use std::sync::Arc;
 
-    fn new_context() -> Rc<Box<Object>> {
-        Rc::new(Box::new(BytesObject::new(
-            String::from(""),
-            Arc::new(vec![]),
-        )))
+    fn new_context() -> Arc<Source> {
+        Arc::new(Source::bytes("test", vec![]))
     }
 
     /// Check that a parsed value equals expected.
@@ -252,7 +248,7 @@ mod tests {
     fn test_type_spec() {
         let c = Name::Absolute {
             prefix: None,
-            parts: vec!["Hello".to_owned(), "World".to_owned()],
+            parts: Loc::new(vec!["Hello".to_string(), "World".to_string()].into(), Pos::empty()),
         };
 
         assert_type_spec_eq!(Type::String, "string");

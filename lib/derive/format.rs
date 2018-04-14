@@ -6,7 +6,7 @@ use std::fmt;
 ///
 /// Decoder to use.
 pub trait Format: fmt::Debug {
-    fn decode(&self, object: &core::Object) -> Result<Sir>;
+    fn decode(&self, object: &core::Source) -> Result<Sir>;
 }
 
 /// Object accessor

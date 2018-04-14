@@ -5,7 +5,7 @@ use build_spec::convert_lang;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use compile;
 use core::errors::Result;
-use core::{Context, Object, PathObject, RpPackage, RpVersionedPackage, StdinObject};
+use core::{Context, RpPackage, RpVersionedPackage, Source};
 use derive;
 use genco::IoFmt;
 use manifest::{Lang, Language};
@@ -83,14 +83,14 @@ pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
         Some(value) => return Err(format!("Unsupported format: {}", value).into()),
     };
 
-    let object: Box<Object> = match matches.value_of("file") {
-        Some(file) => Box::new(PathObject::new(None, Path::new(file))),
-        None => Box::new(StdinObject::new()),
+    let source = match matches.value_of("file") {
+        Some(file) => Source::from_path(file),
+        None => Source::stdin(),
     };
 
     let derive = derive::Derive::new(root_name, format, Some(package_prefix.clone()));
 
-    let decl = derive::derive(derive, object.as_ref())?;
+    let decl = derive::derive(derive, &source)?;
 
     let file = ast::File {
         comment: vec!["Generated from reproto derive CLI".to_string().into()],

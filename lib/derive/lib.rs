@@ -18,7 +18,7 @@ pub use self::yaml::Yaml;
 use ast::{Attribute, AttributeItem, Decl, Field, InterfaceBody, Item, Name, SubType, TupleBody,
           Type, TypeBody, TypeMember, Value};
 use core::errors::Result;
-use core::{Loc, Object, Pos, RpPackage, DEFAULT_TAG};
+use core::{Loc, Pos, RpPackage, Source, DEFAULT_TAG};
 use inflector::cases::pascalcase::to_pascal_case;
 use inflector::cases::snakecase::to_snake_case;
 use linked_hash_map::LinkedHashMap;
@@ -29,7 +29,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::hash;
 use std::ops;
-use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Derive {
@@ -506,7 +506,7 @@ impl<'a> TupleRefiner<'a> {
 }
 
 /// Derive a declaration from the given input.
-pub fn derive<'input>(derive: Derive, object: &'input Object) -> Result<Decl<'input>> {
+pub fn derive<'input>(derive: Derive, object: &'input Source) -> Result<Decl<'input>> {
     let Derive {
         root_name,
         format,
@@ -515,7 +515,7 @@ pub fn derive<'input>(derive: Derive, object: &'input Object) -> Result<Decl<'in
 
     let sir = format.decode(object)?;
 
-    let pos: Pos = (Rc::new(object.clone_object()), 0, 0).into();
+    let pos: Pos = (Arc::new(object.clone()), 0, 0).into();
 
     let mut types = HashMap::new();
 
@@ -537,17 +537,13 @@ pub fn derive<'input>(derive: Derive, object: &'input Object) -> Result<Decl<'in
 mod tests {
     use super::{derive, Derive, Json};
     use ast::Decl;
-    use core::BytesObject;
-    use std::sync::Arc;
+    use core::Source;
 
     fn input<T>(input: &str, test: T)
     where
         T: Fn(Decl) -> (),
     {
-        let object = BytesObject::new(
-            "test".to_string(),
-            Arc::new(input.as_bytes().iter().cloned().collect()),
-        );
+        let source = Source::bytes("test", input.as_bytes().iter().cloned().collect());
 
         let derive_config = Derive {
             root_name: "Generator".to_string(),
@@ -555,7 +551,7 @@ mod tests {
             package_prefix: None,
         };
 
-        test(derive(derive_config, &object).expect("bad derive"))
+        test(derive(derive_config, &source).expect("bad derive"))
     }
 
     #[test]

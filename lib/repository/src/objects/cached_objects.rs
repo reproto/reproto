@@ -1,9 +1,9 @@
 //! ## Load objects through a local cache directory
 
-use super::Objects;
+use Objects;
 use checksum::Checksum;
+use core::Source;
 use core::errors::*;
-use core::{Object, PathObject};
 use hex_slice::HexSlice;
 use std::fs::{self, File};
 use std::io::{self, Read};
@@ -86,11 +86,11 @@ impl<T: Objects> Objects for CachedObjects<T> {
         self.inner.put_object(checksum, source, force)
     }
 
-    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>> {
+    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Source>> {
         let cache_path = self.cache_path(checksum)?;
 
         if cache_path.is_file() {
-            return Ok(Some(Box::new(PathObject::new(None, cache_path))));
+            return Ok(Some(Source::from_path(cache_path)));
         }
 
         let (missing, missing_path) = self.check_missing(checksum)?;

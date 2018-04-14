@@ -1,6 +1,6 @@
 use super::Objects;
 use core::errors::*;
-use core::{self, Object, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
+use core::{self, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, Source,
            Version};
 use index::{Deployment, Index};
 use sha256::to_sha256;
@@ -27,16 +27,13 @@ impl Repository {
     }
 
     /// Publish the given package and version.
-    pub fn publish<O>(
+    pub fn publish(
         &mut self,
-        object: O,
+        object: &Source,
         package: &RpPackage,
         version: &Version,
         force: bool,
-    ) -> Result<()>
-    where
-        O: AsRef<Object>,
-    {
+    ) -> Result<()> {
         if !self.index.get_deployments(package, version)?.is_empty() {
             if !force {
                 return Err(format!("{}@{}: already published", package, version).into());
@@ -45,7 +42,6 @@ impl Repository {
             }
         }
 
-        let object = object.as_ref();
         let checksum = to_sha256(object.read()?)?;
 
         self.objects
@@ -61,7 +57,7 @@ impl Repository {
     }
 
     /// Get the object for the specific deployment.
-    pub fn get_object(&mut self, deployment: &Deployment) -> Result<Option<Box<Object>>> {
+    pub fn get_object(&mut self, deployment: &Deployment) -> Result<Option<Source>> {
         self.objects.get_object(&deployment.object)
     }
 }
@@ -73,10 +69,10 @@ impl Resolver for Repository {
         let deployments = self.index.resolve(&package.package, &package.range)?;
 
         for deployment in deployments {
-            if let Some(path) = self.get_object(&deployment)? {
+            if let Some(source) = self.get_object(&deployment)? {
                 out.push(Resolved {
                     version: Some(deployment.version),
-                    object: path,
+                    source,
                 });
             } else {
                 return Err(format!("missing object: {}", deployment.object).into());

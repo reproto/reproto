@@ -11,7 +11,7 @@ use utils::is_datetime;
 pub struct Yaml;
 
 impl format::Format for Yaml {
-    fn decode(&self, object: &core::Object) -> Result<Sir> {
+    fn decode(&self, object: &core::Source) -> Result<Sir> {
         let value = yaml::from_reader(object.read()?).map_err(|e| format!("Bad YAML: {}", e))?;
         Ok(from_yaml(&value)?)
     }

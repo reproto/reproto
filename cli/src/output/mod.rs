@@ -44,10 +44,10 @@ pub trait Output {
     fn handle_context(&self, errors: &[ContextItem]) -> Result<()> {
         for e in errors.iter() {
             match *e {
-                ContextItem::InfoPos(ref pos, ref message) => {
+                ContextItem::Info(ref pos, ref message) => {
                     self.print_info(message.as_str(), pos)?;
                 }
-                ContextItem::ErrorPos(ref pos, ref message) => {
+                ContextItem::Error(ref pos, ref message) => {
                     self.print_error(message.as_str(), pos)?;
                 }
                 ContextItem::Symbol {
@@ -112,14 +112,14 @@ pub trait Output {
 
     fn print(&self, m: &str) -> Result<()>;
 
-    fn print_info(&self, m: &str, p: &core::ErrorPos) -> Result<()>;
+    fn print_info(&self, m: &str, p: &core::Pos) -> Result<()>;
 
-    fn print_error(&self, m: &str, p: &core::ErrorPos) -> Result<()>;
+    fn print_error(&self, m: &str, p: &core::Pos) -> Result<()>;
 
     fn print_symbol(
         &self,
         _kind: core::SymbolKind,
-        _pos: &core::ErrorPos,
+        _pos: &core::Pos,
         _name: &RpName,
     ) -> Result<()> {
         Ok(())

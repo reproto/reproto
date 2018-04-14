@@ -1,12 +1,12 @@
 // vim: ft=rust
-use core::{RpNumber, Loc, RpPackage, Object};
-use std::rc::Rc;
+use core::{RpNumber, Loc, RpPackage, Source};
+use std::sync::Arc;
 use ast::*;
 use lexer::{self, Token};
 use super::utils::strip_code_block;
 use std::borrow::Cow;
 
-grammar<'input, 'object>(input_object: &'object Rc<Box<Object>>);
+grammar<'input, 'object>(input_object: &'object Arc<Source>);
 
 pub File: File<'input> =
     <comment:"//!"?>

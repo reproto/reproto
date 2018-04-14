@@ -10,8 +10,8 @@
 //! The second form is only used when a version requirement is present.
 
 use core::errors::{Result, ResultExt};
-use core::{Object, PathObject, Range, Resolved, ResolvedByPrefix, Resolver, RpPackage,
-           RpRequiredPackage, Version};
+use core::{Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, Source,
+           Version};
 use std::collections::{BTreeMap, HashMap, LinkedList};
 use std::ffi::OsStr;
 use std::fs;
@@ -73,7 +73,7 @@ impl Paths {
         package: &RpPackage,
         range: &Range,
     ) -> Result<Vec<Resolved>> {
-        let mut files: BTreeMap<Option<Version>, Box<Object>> = BTreeMap::new();
+        let mut files: BTreeMap<Option<Version>, Source> = BTreeMap::new();
 
         for e in fs::read_dir(path)? {
             let p = e?.path();
@@ -100,7 +100,7 @@ impl Paths {
                 // versioned matches by requirement.
                 if let Some(version) = version {
                     if range.matches(&version) {
-                        files.insert(Some(version), Box::new(PathObject::new(None, &p)));
+                        files.insert(Some(version), Source::from_path(&p));
                     }
 
                     continue;
@@ -108,7 +108,7 @@ impl Paths {
 
                 // unversioned only matches by wildcard.
                 if range.matches_any() {
-                    files.insert(None, Box::new(PathObject::new(None, &p)));
+                    files.insert(None, Source::from_path(&p));
                 }
             }
         }
@@ -124,7 +124,7 @@ impl Paths {
         if file.is_file() {
             Some(ResolvedByPrefix {
                 package: prefix.clone(),
-                object: Box::new(PathObject::new(None, &file)),
+                source: Source::from_path(&file),
             })
         } else {
             None
@@ -153,7 +153,7 @@ impl Paths {
 
         Ok(Some(ResolvedByPrefix {
             package: package,
-            object: Box::new(PathObject::new(None, &path)),
+            source: Source::from_path(&path),
         }))
     }
 

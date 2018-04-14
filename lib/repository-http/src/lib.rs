@@ -8,15 +8,14 @@ extern crate reproto_repository as repository;
 extern crate tokio_core;
 extern crate url;
 
+use core::Source;
 use core::errors::{Error, Result};
-use core::{BytesObject, Object};
 use futures::future::{err, ok};
 use futures::{Future, Stream};
 use hyper::header::ContentLength;
 use hyper::{Client, Method, Request, StatusCode};
 use repository::{CachedObjects, Checksum, HexSlice, Objects, ObjectsConfig};
 use std::io::Read;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio_core::reactor::Core;
 use url::Url;
@@ -104,7 +103,7 @@ impl Objects for HttpObjects {
         Ok(true)
     }
 
-    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Box<Object>>> {
+    fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Source>> {
         let url = self.checksum_url(checksum)?;
         let name = url.to_string();
 
@@ -127,8 +126,7 @@ impl Objects for HttpObjects {
         });
 
         let out = self.core.run(work)?;
-        let out = out.map(Arc::new);
-        Ok(out.map(|out| Box::new(BytesObject::new(name, out)) as Box<Object>))
+        Ok(out.map(|out| Source::bytes(name, out)))
     }
 }
 

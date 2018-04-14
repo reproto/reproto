@@ -11,7 +11,7 @@ use utils::is_datetime;
 pub struct Json;
 
 impl format::Format for Json {
-    fn decode(&self, object: &core::Object) -> Result<Sir> {
+    fn decode(&self, object: &core::Source) -> Result<Sir> {
         let mut der = json::Deserializer::from_reader(object.read()?).into_iter::<json::Value>();
 
         let value: Result<json::Value> = der.next()

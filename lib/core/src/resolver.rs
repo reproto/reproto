@@ -1,14 +1,14 @@
 use errors::Result;
 use std::fmt;
-use {Object, RpPackage, RpRequiredPackage, Version};
+use {RpPackage, RpRequiredPackage, Source, Version};
 
 /// A resolved package.
 #[derive(Debug)]
 pub struct Resolved {
     /// Version of object found.
     pub version: Option<Version>,
-    /// Object found.
-    pub object: Box<Object>,
+    /// Source found.
+    pub source: Source,
 }
 
 /// A resolved package.
@@ -16,28 +16,25 @@ pub struct Resolved {
 pub struct ResolvedByPrefix {
     /// Package object belongs to.
     pub package: RpPackage,
-    /// Object found.
-    pub object: Box<Object>,
+    /// Source found.
+    pub source: Source,
 }
 
 impl Resolved {
     /// Build a resolved object from a tuple pair.
-    pub fn from_pair(pair: (Option<Version>, Box<Object>)) -> Resolved {
-        let (version, object) = pair;
+    pub fn from_pair(pair: (Option<Version>, Source)) -> Resolved {
+        let (version, source) = pair;
 
-        Resolved {
-            version: version,
-            object: object,
-        }
+        Resolved { version, source }
     }
 }
 
 impl fmt::Display for Resolved {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref version) = self.version {
-            write!(fmt, "{}-{}", self.object, version)
+            write!(fmt, "{}-{}", self.source, version)
         } else {
-            self.object.fmt(fmt)
+            self.source.fmt(fmt)
         }
     }
 }
