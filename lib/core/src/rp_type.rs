@@ -47,6 +47,10 @@ where
 
         match *self {
             String => Some(RpEnumType::String),
+            Unsigned { size: 32 } => Some(RpEnumType::U32),
+            Unsigned { size: 64 } => Some(RpEnumType::U64),
+            Signed { size: 32 } => Some(RpEnumType::I32),
+            Signed { size: 64 } => Some(RpEnumType::I64),
             _ => None,
         }
     }

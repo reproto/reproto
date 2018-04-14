@@ -2,7 +2,7 @@ use ast::*;
 use attributes;
 use core::errors::{Error, Result};
 use core::flavored::*;
-use core::{self, Attributes, Context, Loc, Selection, Span, SymbolKind, WithSpan};
+use core::{self, Attributes, BigInt, Context, Loc, Selection, Span, SymbolKind, WithSpan};
 use linked_hash_map::LinkedHashMap;
 use naming::Naming;
 use scope::Scope;
@@ -282,15 +282,43 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
     type Output = Loc<RpEnumBody>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        self.map(|comment, attributes, item| {
+        macro_rules! variants {
+            (
+                $ctx:expr, $enum_type:expr, $variants:expr,
+                $(($ty:ident, $out:ident, $default:expr)),*
+            ) => {
+            match $enum_type {
+                $(
+                core::RpEnumType::$ty => {
+                    let mut out = Vec::new();
+
+                    let mut idents = HashMap::new();
+                    let mut values = HashMap::new();
+                    let mut default = $default;
+
+                    for v in $variants {
+                        let v = (v, &mut default).into_model(scope)?;
+
+                        check_conflict!($ctx, idents, v, v.ident, "variant");
+                        check_conflict!($ctx, values, v, v.value(), "variant value");
+
+                        out.push(v);
+                    }
+
+                    core::RpVariants::$out { variants: out }
+                }
+                )*
+            }
+            };
+        }
+
+        return self.map(|comment, attributes, item| {
             let (item, span) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
             let name = scope.as_name();
 
             ctx.symbol(SymbolKind::Enum, &span, &name)?;
-
-            let mut variants = Vec::new();
 
             let mut codes = Vec::new();
 
@@ -305,27 +333,42 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             let ty = item.ty.into_model(scope)?;
 
             let enum_type = Loc::take(Loc::and_then(ty, |ty| {
-                ty.as_enum_type()
-                    .ok_or_else(|| "illegal enum type, expected `string`".into())
-                    as Result<RpEnumType>
+                ty.as_enum_type().ok_or_else(|| {
+                    "illegal enum type, expected `string`, `u32`, `u64`, `i32`, or `i64`".into()
+                }) as Result<RpEnumType>
             })?);
 
-            let mut idents = HashMap::new();
-            let mut ordinals = HashMap::new();
-
-            for variant in item.variants {
-                let variant = (variant, &enum_type).into_model(scope)?;
-
-                check_conflict!(ctx, idents, variant, variant.ident, "variant");
-                check_conflict!(ctx, ordinals, variant, variant.ordinal(), "variant ordinal");
-
-                variants.push(variant);
-            }
+            let variants = variants!(
+                ctx,
+                enum_type,
+                item.variants,
+                (String, String, StringDefaultVariant),
+                (
+                    U32,
+                    Number,
+                    NumberDefaultVariant::new(core::RpEnumType::U32)
+                ),
+                (
+                    U64,
+                    Number,
+                    NumberDefaultVariant::new(core::RpEnumType::U64)
+                ),
+                (
+                    I32,
+                    Number,
+                    NumberDefaultVariant::new(core::RpEnumType::I32)
+                ),
+                (
+                    I64,
+                    Number,
+                    NumberDefaultVariant::new(core::RpEnumType::I64)
+                )
+            );
 
             let attributes = attributes.into_model(scope)?;
             check_attributes!(scope.ctx(), attributes);
 
-            Ok(RpEnumBody {
+            return Ok(RpEnumBody {
                 name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(scope)?,
@@ -333,41 +376,100 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 enum_type: enum_type,
                 variants: variants,
                 codes: codes,
-            })
-        })
+            });
+        });
+
+        struct NumberDefaultVariant {
+            state: BigInt,
+            enum_type: core::RpEnumType,
+        }
+
+        impl NumberDefaultVariant {
+            fn new(enum_type: core::RpEnumType) -> Self {
+                Self {
+                    state: 0.into(),
+                    enum_type,
+                }
+            }
+        }
+
+        impl DefaultVariant for NumberDefaultVariant {
+            type Type = RpNumber;
+
+            fn next<'input>(&mut self, _: &EnumVariant<'input>) -> Result<RpNumber> {
+                let next = self.state.clone();
+                self.state = self.state.clone() + BigInt::from(1);
+                let number = RpNumber::from(next);
+                self.enum_type.validate_number(&number)?;
+                Ok(number)
+            }
+
+            fn process(&mut self, value: RpValue) -> Result<RpNumber> {
+                let number = value.into_number()?;
+
+                {
+                    let value = number
+                        .to_bigint()
+                        .ok_or_else(|| "value can't be used with generator")?;
+
+                    self.state = value.clone();
+                }
+
+                self.enum_type.validate_number(&number)?;
+                Ok(number)
+            }
+        }
+
+        struct StringDefaultVariant;
+
+        impl DefaultVariant for StringDefaultVariant {
+            type Type = String;
+
+            fn next<'input>(&mut self, variant: &EnumVariant<'input>) -> Result<String> {
+                Ok(variant.name.to_string())
+            }
+
+            fn process(&mut self, value: RpValue) -> Result<String> {
+                value
+                    .as_string()
+                    .map(|s| s.to_string())
+                    .map_err(|_| format!("expected `string`, did you mean \"{}\"?", value).into())
+            }
+        }
     }
 }
 
+/// Type that generates a variant value.
+pub trait DefaultVariant {
+    type Type;
+
+    /// Get the next default variant value.
+    fn next<'input>(&mut self, variant: &EnumVariant<'input>) -> Result<Self::Type>;
+
+    /// Process the value, attempting to convert it to the destination type.
+    fn process(&mut self, value: RpValue) -> Result<Self::Type>;
+}
+
 /// enum value with assigned ordinal
-impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumType) {
-    type Output = Loc<RpVariant>;
+impl<'input, 'a, D> IntoModel for (Item<'input, EnumVariant<'input>>, &'a mut D)
+where
+    D: DefaultVariant,
+{
+    type Output = Loc<RpVariant<D::Type>>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (variant, ty) = self;
+        let (variant, default) = self;
 
         let ctx = scope.ctx();
 
         variant.map(|comment, attributes, item| {
             let (item, _) = Loc::take_pair(item);
 
-            let ordinal = if let Some(argument) = item.argument.into_model(scope)? {
-                match *ty {
-                    core::RpEnumType::String if !argument.is_string() => {
-                        let mut report = ctx.report();
-
-                        report.err(
-                            Loc::span(&argument),
-                            format!("expected `{}`, did you mean \"{}\"?", ty, argument),
-                        );
-
-                        return Err(report.into());
-                    }
-                    _ => {}
-                }
-
-                Loc::take(Loc::and_then(argument, |value| value.into_ordinal())?)
+            let value = if let Some(argument) = item.argument {
+                let (value, span) = Loc::take_pair(argument.into_model(scope)?);
+                default.process(value).with_span(span)?
             } else {
-                core::RpEnumOrdinal::Generated
+                default.next(&item)?
             };
 
             let attributes = attributes.into_model(scope)?;
@@ -377,7 +479,7 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
                 name: scope.as_name().push(item.name.to_string()),
                 ident: Loc::map(item.name.clone(), |s| s.to_string()),
                 comment: Comment(&comment).into_model(scope)?,
-                ordinal: ordinal,
+                value: value,
             })
         })
     }
@@ -450,7 +552,10 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
                 safe_ident: safe_ident,
                 ident: ident,
                 comment: Comment(&comment).into_model(scope)?,
-                ty: ("Expected field type", item.ty).into_model(scope)?,
+                ty: (
+                    "expected type, like: `string`, `u32`, or `MyType`.",
+                    item.ty,
+                ).into_model(scope)?,
                 field_as: field_as,
             })
         })

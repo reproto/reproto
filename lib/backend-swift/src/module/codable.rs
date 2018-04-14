@@ -815,15 +815,30 @@ impl EnumCodegen for Codegen {
                     t.push({
                         let mut t = Tokens::new();
 
-                        t.push("switch try value.decode(String.self) {");
+                        push!(
+                            t,
+                            "switch try value.decode(",
+                            body.enum_type.ty(),
+                            ".self) {"
+                        );
 
-                        for variant in &body.variants {
-                            t.push({
-                                let mut t = Tokens::new();
-                                t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
-                                t.nested(toks!["self = .", variant.ident()]);
-                                t
-                            });
+                        match body.variants {
+                            core::RpVariants::String { ref variants } => {
+                                for v in variants {
+                                    t.push_into(|t| {
+                                        push!(t, "case ", v.value.to_string().quoted(), ":");
+                                        nested!(t, "self = .", v.ident());
+                                    });
+                                }
+                            }
+                            core::RpVariants::Number { ref variants } => {
+                                for v in variants {
+                                    t.push_into(|t| {
+                                        push!(t, "case ", v.value.to_string(), ":");
+                                        nested!(t, "self = .", v.ident());
+                                    });
+                                }
+                            }
                         }
 
                         t.push({
@@ -880,27 +895,33 @@ impl EnumCodegen for Codegen {
 
                     t.push("var value = encoder.singleValueContainer()");
 
-                    t.push({
-                        let mut t = Tokens::new();
-
+                    t.push_into(|t| {
                         t.push("switch self {");
 
-                        for variant in &body.variants {
-                            t.push({
-                                let mut t = Tokens::new();
-                                t.push(toks!["case .", variant.ident(), ":"]);
-                                t.nested(toks![
-                                    "try value.encode(",
-                                    variant.ordinal().quoted(),
-                                    ")"
-                                ]);
-                                t
-                            });
+                        match body.variants {
+                            core::RpVariants::String { ref variants } => {
+                                for v in variants {
+                                    let value = v.value.to_string().quoted();
+
+                                    t.push_into(|t| {
+                                        push!(t, "case .", v.ident(), ":");
+                                        nested!(t, "try value.encode(", value, ")");
+                                    });
+                                }
+                            }
+                            core::RpVariants::Number { ref variants } => {
+                                for v in variants {
+                                    let value = v.value.to_string();
+
+                                    t.push_into(|t| {
+                                        push!(t, "case .", v.ident(), ":");
+                                        nested!(t, "try value.encode(", value, ")");
+                                    });
+                                }
+                            }
                         }
 
                         t.push("}");
-
-                        t
                     });
 
                     t.join_line_spacing()

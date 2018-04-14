@@ -223,8 +223,8 @@ impl<'el> PackageProcessor<'el, SwiftFlavor, SwiftName> for Compiler<'el> {
 
             t.push(toks!["public enum ", body.name.name.clone(), " {"]);
 
-            for variant in &body.variants {
-                t.nested(toks!["case ", variant.ident()]);
+            for v in &body.variants {
+                nested!(t, "case ", v.ident());
             }
 
             t.push("}");

@@ -224,7 +224,7 @@ impl Codegen {
 
                 let value = field.ty.simple().encode_value(self, name, "value".into())?;
 
-                t.push(toks!["if let value = self.", ident, " {",]);
+                t.push(toks!["if let value = self.", ident, " {"]);
                 t.nested(append(value));
                 t.push("}");
 
@@ -812,20 +812,32 @@ impl EnumCodegen for Codegen {
             t.nested({
                 let mut t = Tokens::new();
 
-                t.push(toks!["let json = try decode_value(json as? String)"]);
+                push!(t, "let json = try decode_value(json)");
+                let unbox = toks!["unbox(json, as: ", body.enum_type.ty(), ")"];
+                push!(t, "let value = try decode_value(", unbox, ")");
 
                 t.push({
                     let mut t = Tokens::new();
 
-                    t.push("switch json {");
+                    t.push("switch value {");
 
-                    for variant in &body.variants {
-                        t.nested({
-                            let mut t = Tokens::new();
-                            t.push(toks!["case ", variant.ordinal().quoted(), ":"]);
-                            t.nested(toks!["return ", name, ".", variant.ident(),]);
-                            t
-                        });
+                    match body.variants {
+                        core::RpVariants::String { ref variants } => {
+                            for v in variants {
+                                t.nested_into(|t| {
+                                    push!(t, "case ", v.value.to_string().quoted(), ":");
+                                    nested!(t, "return ", name, ".", v.ident());
+                                });
+                            }
+                        }
+                        core::RpVariants::Number { ref variants } => {
+                            for v in variants {
+                                t.nested_into(|t| {
+                                    push!(t, "case ", v.value.to_string(), ":");
+                                    nested!(t, "return ", name, ".", v.ident());
+                                });
+                            }
+                        }
                     }
 
                     t.nested({
@@ -851,27 +863,30 @@ impl EnumCodegen for Codegen {
         fn encode<'a>(body: &'a RpEnumBody) -> Result<Tokens<'a, Swift<'a>>> {
             let mut t = Tokens::new();
 
-            t.push("func encode() throws -> String {");
+            push!(t, "func encode() throws -> ", body.enum_type.ty(), " {");
             t.nested({
                 let mut t = Tokens::new();
 
                 t.push("switch self {");
 
-                for variant in &body.variants {
-                    t.nested({
-                        let mut t = Tokens::new();
-                        t.push(toks!["case .", variant.ident(), ":"]);
-                        t.nested(toks!["return ", variant.ordinal().quoted()]);
-                        t
-                    });
+                match body.variants {
+                    core::RpVariants::String { ref variants } => {
+                        for v in variants {
+                            t.nested_into(|t| {
+                                push!(t, "case .", v.ident(), ":");
+                                nested!(t, "return ", v.value.to_string().quoted());
+                            });
+                        }
+                    }
+                    core::RpVariants::Number { ref variants } => {
+                        for v in variants {
+                            t.nested_into(|t| {
+                                push!(t, "case .", v.ident(), ":");
+                                nested!(t, "return ", v.value.to_string());
+                            });
+                        }
+                    }
                 }
-
-                t.nested({
-                    let mut t = Tokens::new();
-                    t.push("default:");
-                    t.nested("throw SerializationError.bad_value()");
-                    t
-                });
 
                 t.push("}");
 

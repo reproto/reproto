@@ -1,8 +1,8 @@
 //! Processor for service declarations.
 
+use core;
 use core::errors::*;
-use core::flavored::{RpEnumBody, RpVariant};
-use core::Loc;
+use core::flavored::{RpEnumBody, RpVariantRef};
 use doc_builder::DocBuilder;
 use escape::Escape;
 use macros::FormatAttribute;
@@ -30,7 +30,7 @@ define_processor!(EnumProcessor, RpEnumBody, self,
 impl<'p> EnumProcessor<'p> {
     fn variants<'b, I>(&self, variants: I) -> Result<()>
     where
-        I: IntoIterator<Item = &'b Loc<RpVariant>>,
+        I: IntoIterator<Item = RpVariantRef<'b>>,
     {
         let mut it = variants.into_iter().peekable();
 
@@ -45,11 +45,20 @@ impl<'p> EnumProcessor<'p> {
                 html!(self, span {class => "kind"} ~ "variant");
                 self.full_name_without_package(&variant.name)?;
                 html!(self, span {class => "keyword"} ~ "as");
-                html!(self, span {class => "variant-ordinal"} ~
-                      Escape(format!("\"{}\"", variant.ordinal()).as_str()));
+
+                match variant.value {
+                    core::RpVariantValue::String(string) => {
+                        html!(self, span {class => "variant-ordinal"} ~
+                            Escape(format!("\"{}\"", string).as_str()));
+                    }
+                    core::RpVariantValue::Number(number) => {
+                        html!(self, span {class => "variant-ordinal"} ~
+                            Escape(number.to_string().as_str()));
+                    }
+                }
             });
 
-            self.doc(&variant.comment)?;
+            self.doc(variant.comment)?;
         }
 
         Ok(())

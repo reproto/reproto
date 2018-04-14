@@ -2,7 +2,7 @@
 macro_rules! decl_body {
     (pub struct $name:ident<$f:ident> { $($rest:tt)* }) => {
         #[derive(Debug, Clone, Serialize)]
-        #[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: ::serde::Serialize, F::Package: ::serde::Serialize, F::Name: ::serde::Serialize")]
+        #[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: ::serde::Serialize, F::Package: ::serde::Serialize, F::Name: ::serde::Serialize, F::EnumType: ::serde::Serialize")]
         pub struct $name<$f: 'static> where $f: $crate::flavor::Flavor {
             pub name: $f::Name,
             pub ident: String,
@@ -38,7 +38,6 @@ macro_rules! decl_flavor {
         pub type RpTupleBody = $source::RpTupleBody<$flavor>;
         pub type RpTypeBody = $source::RpTypeBody<$flavor>;
         pub type RpChannel = $source::RpChannel<$flavor>;
-        pub type RpEnumOrdinal = $source::RpEnumOrdinal;
         pub type RpEnumType = $source::RpEnumType;
         pub type RpName = $source::RpName<$flavor>;
         pub type RpNumber = $source::RpNumber;
@@ -49,7 +48,8 @@ macro_rules! decl_flavor {
         pub type RpSubTypeStrategy = $source::RpSubTypeStrategy;
         pub type RpType = $source::RpType<$flavor>;
         pub type RpValue = $source::RpValue;
-        pub type RpVariant = $source::RpVariant<$flavor>;
+        pub type RpVariant<V> = $source::RpVariant<$flavor, V>;
+        pub type RpVariantRef<'a> = $source::RpVariantRef<'a, $flavor>;
         pub type RpVersionedPackage = $source::RpVersionedPackage;
     };
 }
@@ -174,6 +174,21 @@ macro_rules! translator_defaults {
             name: RpName<$slf::Target>,
         ) -> Result<<$slf::Target as Flavor>::Type> {
             Ok(RpType::Name { name })
+        }
+
+        translator_defaults!(@internal $slf $($rest)*);
+    };
+
+    (@internal $slf:ident, enum_type $($rest:tt)*) => {
+        fn translate_enum_type<T>(
+            &self,
+            _: &T,
+            enum_type: $crate::RpEnumType,
+        ) -> Result<<$slf::Target as Flavor>::EnumType>
+        where
+            T: Translator<Source = $slf::Source, Target = $slf::Target>,
+        {
+            Ok(enum_type)
         }
 
         translator_defaults!(@internal $slf $($rest)*);

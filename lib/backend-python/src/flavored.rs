@@ -234,6 +234,7 @@ impl Flavor for PythonFlavor {
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
+    type EnumType = RpEnumType;
 }
 
 /// Responsible for translating RpType -> Python type.
@@ -259,7 +260,7 @@ impl FlavorTranslator for PythonFlavorTranslator {
     type Source = CoreFlavor;
     type Target = PythonFlavor;
 
-    translator_defaults!(Self, field, endpoint);
+    translator_defaults!(Self, field, endpoint, enum_type);
 
     fn translate_i32(&self) -> Result<PythonType<'static>> {
         Ok(self.ty(PythonKind::Integer))

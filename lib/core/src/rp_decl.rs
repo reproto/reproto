@@ -5,7 +5,7 @@ use serde::Serialize;
 use std::fmt;
 use std::vec;
 use {Flavor, Loc, RpEnumBody, RpInterfaceBody, RpReg, RpServiceBody, RpSubType, RpTupleBody,
-     RpTypeBody, RpVariant, Span, Translate, Translator};
+     RpTypeBody, RpVariantRef, Span, Translate, Translator};
 
 /// Iterator over declarations.
 pub struct Decls<'a, F: 'static>
@@ -26,12 +26,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(
-    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize, \
-             F::Name: Serialize"
-)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[derive(Debug, Clone)]
 pub enum RpNamed<'a, F: 'static>
 where
     F: Flavor,
@@ -41,7 +36,7 @@ where
     Interface(&'a Loc<RpInterfaceBody<F>>),
     SubType(&'a Loc<RpSubType<F>>),
     Enum(&'a Loc<RpEnumBody<F>>),
-    EnumVariant(&'a Loc<RpVariant<F>>),
+    EnumVariant(RpVariantRef<'a, F>),
     Service(&'a Loc<RpServiceBody<F>>),
 }
 
@@ -54,13 +49,13 @@ where
         use self::RpNamed::*;
 
         match *self {
-            Type(body) => &body.name,
-            Tuple(tuple) => &tuple.name,
-            Interface(interface) => &interface.name,
-            SubType(sub_type) => &sub_type.name,
-            Enum(en) => &en.name,
-            EnumVariant(variant) => &variant.name,
-            Service(service) => &service.name,
+            Type(ref body) => &body.name,
+            Tuple(ref tuple) => &tuple.name,
+            Interface(ref interface) => &interface.name,
+            SubType(ref sub_type) => &sub_type.name,
+            Enum(ref en) => &en.name,
+            EnumVariant(ref variant) => variant.name,
+            Service(ref service) => &service.name,
         }
     }
 
@@ -69,21 +64,21 @@ where
         use self::RpNamed::*;
 
         match *self {
-            Type(body) => Loc::span(body),
-            Tuple(tuple) => Loc::span(tuple),
-            Interface(interface) => Loc::span(interface),
-            SubType(sub_type) => Loc::span(sub_type),
-            Enum(en) => Loc::span(en),
-            EnumVariant(variant) => Loc::span(variant),
-            Service(service) => Loc::span(service),
+            Type(ref body) => Loc::span(body),
+            Tuple(ref tuple) => Loc::span(tuple),
+            Interface(ref interface) => Loc::span(interface),
+            SubType(ref sub_type) => Loc::span(sub_type),
+            Enum(ref en) => Loc::span(en),
+            EnumVariant(ref variant) => variant.span,
+            Service(ref service) => Loc::span(service),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(
-    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize, \
-             F::Name: Serialize"
+    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
+             Serialize, F::Name: Serialize, F::EnumType: Serialize"
 )]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpDecl<F: 'static>
@@ -174,7 +169,7 @@ where
             }
             Enum(ref en) => {
                 for variant in &en.variants {
-                    out.push((&variant.name, Loc::span(variant), RpReg::EnumVariant));
+                    out.push((variant.name, variant.span, RpReg::EnumVariant));
                 }
 
                 out.push((&en.name, Loc::span(en), RpReg::Enum));

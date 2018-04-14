@@ -5,7 +5,7 @@ use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
 use Flavor;
-use {CoreFlavor, Loc, RpEndpoint, RpField, RpName, RpReg, RpType, RpVersionedPackage};
+use {CoreFlavor, Loc, RpEndpoint, RpEnumType, RpField, RpName, RpReg, RpType, RpVersionedPackage};
 
 /// Method for translating package.
 pub trait PackageTranslator<K, V> {
@@ -90,6 +90,15 @@ pub trait FlavorTranslator {
     ) -> Result<<Self::Target as Flavor>::Name>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>;
+
+    /// Enum type to translate.
+    fn translate_enum_type<T>(
+        &self,
+        translator: &T,
+        enum_type: <Self::Source as Flavor>::EnumType,
+    ) -> Result<<Self::Target as Flavor>::EnumType>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>;
 }
 
 impl PackageTranslator<RpVersionedPackage, RpVersionedPackage> for () {
@@ -115,12 +124,18 @@ impl<P, F> CoreFlavorTranslator<P, F> {
 impl<P: 'static, F: 'static> FlavorTranslator for CoreFlavorTranslator<P, F>
 where
     P: PackageTranslator<RpVersionedPackage, F::Package>,
-    F: Flavor<Type = RpType<F>, Field = RpField<F>, Endpoint = RpEndpoint<F>, Name = RpName<F>>,
+    F: Flavor<
+        Type = RpType<F>,
+        Field = RpField<F>,
+        Endpoint = RpEndpoint<F>,
+        Name = RpName<F>,
+        EnumType = RpEnumType,
+    >,
 {
     type Source = CoreFlavor;
     type Target = F;
 
-    translator_defaults!(Self, rp_type, local_name, field, endpoint);
+    translator_defaults!(Self, rp_type, local_name, field, endpoint, enum_type);
 
     fn translate_package(
         &self,
@@ -170,6 +185,12 @@ pub trait Translator {
         reg: RpReg,
         name: <Self::Source as Flavor>::Name,
     ) -> Result<<Self::Target as Flavor>::Name>;
+
+    /// Enum type to translate.
+    fn translate_enum_type(
+        &self,
+        enum_type: <Self::Source as Flavor>::EnumType,
+    ) -> Result<<Self::Target as Flavor>::EnumType>;
 }
 
 /// A translated type.
@@ -374,5 +395,13 @@ where
         name: <Self::Source as Flavor>::Name,
     ) -> Result<<Self::Target as Flavor>::Name> {
         self.flavor.translate_local_name(self, reg, name)
+    }
+
+    /// Translate enum type.
+    fn translate_enum_type(
+        &self,
+        enum_type: <Self::Source as Flavor>::EnumType,
+    ) -> Result<<Self::Target as Flavor>::EnumType> {
+        self.flavor.translate_enum_type(self, enum_type)
     }
 }

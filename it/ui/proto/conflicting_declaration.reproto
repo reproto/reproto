@@ -1,0 +1,5 @@
+enum Example as u32 {
+}
+
+type Example {
+}

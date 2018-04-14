@@ -76,6 +76,7 @@ impl Flavor for SwiftFlavor {
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
+    type EnumType = SwiftType<'static>;
 }
 
 /// Responsible for translating RpType -> Swift type.
@@ -234,6 +235,25 @@ impl FlavorTranslator for SwiftFlavorTranslator {
             name: Rc::new(ident),
             package: name.package,
         })
+    }
+
+    fn translate_enum_type<T>(
+        &self,
+        translator: &T,
+        enum_type: core::RpEnumType,
+    ) -> Result<SwiftType<'static>>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>,
+    {
+        use core::RpEnumType::*;
+
+        match enum_type {
+            String => self.translate_string(),
+            U32 => self.translate_u32(),
+            U64 => self.translate_u64(),
+            I32 => self.translate_i32(),
+            I64 => self.translate_i64(),
+        }
     }
 }
 
