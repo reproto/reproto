@@ -2,16 +2,16 @@ use Source;
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Serialize)]
-pub struct Pos {
+pub struct Span {
     #[serde(skip)]
     pub source: Arc<Source>,
     pub start: usize,
     pub end: usize,
 }
 
-impl Pos {
-    pub fn empty() -> Pos {
-        Pos {
+impl Span {
+    pub fn empty() -> Span {
+        Span {
             source: Arc::new(Source::empty("empty")),
             start: 0,
             end: 0,
@@ -19,9 +19,9 @@ impl Pos {
     }
 }
 
-impl<'a> From<&'a Pos> for Pos {
-    fn from(value: &'a Pos) -> Pos {
-        Pos {
+impl<'a> From<&'a Span> for Span {
+    fn from(value: &'a Span) -> Span {
+        Span {
             source: Arc::clone(&value.source),
             start: value.start,
             end: value.end,
@@ -29,9 +29,9 @@ impl<'a> From<&'a Pos> for Pos {
     }
 }
 
-impl From<(Arc<Source>, usize, usize)> for Pos {
+impl From<(Arc<Source>, usize, usize)> for Span {
     fn from(value: (Arc<Source>, usize, usize)) -> Self {
-        Pos {
+        Span {
             source: value.0,
             start: value.1,
             end: value.2,

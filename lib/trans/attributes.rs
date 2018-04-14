@@ -3,15 +3,15 @@
 use core::errors::Result;
 use core::flavored::{RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp, RpHttpMethod,
                      RpPathSpec, RpValue};
-use core::{self, Attributes, Context, Loc, Pos, WithPos};
+use core::{self, Attributes, Context, Loc, Span, WithSpan};
 use into_model::IntoModel;
 use path_parser;
 use scope::Scope;
 use std::collections::HashMap;
 
 /// `#[reserved(..)]` attribute.
-pub fn reserved(scope: &Scope, attributes: &mut Attributes) -> Result<HashMap<String, Pos>> {
-    let mut reserved: HashMap<String, Pos> = HashMap::new();
+pub fn reserved(scope: &Scope, attributes: &mut Attributes) -> Result<HashMap<String, Span>> {
+    let mut reserved: HashMap<String, Span> = HashMap::new();
 
     let selection = match attributes.take_selection("reserved") {
         None => return Ok(reserved),
@@ -21,9 +21,9 @@ pub fn reserved(scope: &Scope, attributes: &mut Attributes) -> Result<HashMap<St
     let (mut selection, _pos) = Loc::take_pair(selection);
 
     for word in selection.take_words() {
-        let (field, pos) = Loc::take_pair(word);
-        let field = field.as_string().map(|id| id.to_string()).with_pos(&pos)?;
-        reserved.insert(field, pos);
+        let (field, span) = Loc::take_pair(word);
+        let field = field.as_string().map(|id| id.to_string()).with_span(&span)?;
+        reserved.insert(field, span);
     }
 
     check_selection!(scope.ctx(), selection);
@@ -57,13 +57,13 @@ pub fn endpoint_http(
         .collect::<HashMap<_, _>>();
 
     if let Some(path) = selection.take("path") {
-        let (path, pos) = Loc::take_pair(path);
-        http.path = Some(parse_path(scope, path, &mut args).with_pos(pos)?);
+        let (path, span) = Loc::take_pair(path);
+        http.path = Some(parse_path(scope, path, &mut args).with_span(span)?);
     }
 
     if let Some(method) = selection.take("method") {
-        let (method, pos) = Loc::take_pair(method);
-        http.method = Some(parse_method(method).with_pos(pos)?);
+        let (method, span) = Loc::take_pair(method);
+        http.method = Some(parse_method(method).with_span(span)?);
     }
 
     if let Some(accept) = selection.take("accept") {
@@ -96,7 +96,7 @@ pub fn endpoint_http(
             }
 
             report.err(
-                Loc::pos(&arg.ident),
+                Loc::span(&arg.ident),
                 "Argument not used in #[http(...)] attribute",
             );
         }
@@ -151,7 +151,7 @@ pub fn endpoint_http(
             None => return Ok(()),
         };
 
-        let (accept, pos) = Loc::borrow_pair(&accept);
+        let (accept, span) = Loc::borrow_pair(&accept);
 
         match *accept {
             // Can handle complex data types.
@@ -164,11 +164,11 @@ pub fn endpoint_http(
                 let mut report = ctx.report();
 
                 report.err(
-                    Loc::pos(response),
+                    Loc::span(response),
                     "Only `string` responses are supported for the given `accept`",
                 );
 
-                report.info(pos, "Specified here");
+                report.info(span, "Specified here");
 
                 return Err(report.into());
             }

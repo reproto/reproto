@@ -2,7 +2,7 @@ use ast::*;
 use attributes;
 use core::errors::{Error, Result};
 use core::flavored::*;
-use core::{self, Attributes, Context, Loc, Pos, Selection, SymbolKind, WithPos};
+use core::{self, Attributes, Context, Loc, Selection, Span, SymbolKind, WithSpan};
 use linked_hash_map::LinkedHashMap;
 use naming::Naming;
 use scope::Scope;
@@ -15,12 +15,12 @@ use std::rc::Rc;
 /// Check for conflicting items and generate appropriate error messages if they are.
 macro_rules! check_conflict {
     ($ctx:expr, $existing:expr, $item:expr, $accessor:expr, $what:expr) => {
-        if let Some(other) = $existing.insert($accessor.to_string(), Pos::from(&$item).clone())
+        if let Some(other) = $existing.insert($accessor.to_string(), Span::from(&$item).clone())
         {
             let mut report = $ctx.report();
 
             report.err(
-                Pos::from(&$item),
+                Span::from(&$item),
                 format!(concat!($what, " `{}` is already defined"), $accessor),
             );
 
@@ -40,7 +40,7 @@ macro_rules! check_field_tag {
                     let mut report = $ctx.report();
 
                     report.err(
-                        Loc::pos(&$field),
+                        Loc::span(&$field),
                         format!(
                             "field with name `{}` is the same as tag used in type_info",
                             tag
@@ -61,7 +61,7 @@ macro_rules! check_field_reserved {
             let mut report = $ctx.report();
 
             report.err(
-                Loc::pos(&$field),
+                Loc::span(&$field),
                 format!("field with name `{}` is reserved", $field.name()),
             );
 
@@ -75,16 +75,16 @@ macro_rules! check_field_reserved {
 #[derive(Debug, Default)]
 pub struct MemberConstraint<'input> {
     sub_type_strategy: Option<&'input RpSubTypeStrategy>,
-    reserved: Option<&'input HashMap<String, Pos>>,
+    reserved: Option<&'input HashMap<String, Span>>,
 }
 
 #[derive(Debug)]
 pub struct SubTypeConstraint<'input> {
     sub_type_strategy: &'input RpSubTypeStrategy,
-    reserved: &'input HashMap<String, Pos>,
-    field_idents: &'input HashMap<String, Pos>,
-    field_names: &'input HashMap<String, Pos>,
-    untagged: &'input mut LinkedHashMap<BTreeSet<String>, Pos>,
+    reserved: &'input HashMap<String, Span>,
+    field_idents: &'input HashMap<String, Span>,
+    field_names: &'input HashMap<String, Span>,
+    untagged: &'input mut LinkedHashMap<BTreeSet<String>, Span>,
 }
 
 #[derive(Debug)]
@@ -92,8 +92,8 @@ pub struct Members {
     fields: Vec<Loc<RpField>>,
     codes: Vec<Loc<RpCode>>,
     decls: Vec<RpDecl>,
-    field_names: HashMap<String, Pos>,
-    field_idents: HashMap<String, Pos>,
+    field_names: HashMap<String, Span>,
+    field_idents: HashMap<String, Span>,
 }
 
 /// Adds a method for all types that supports conversion into core types.
@@ -112,8 +112,8 @@ where
     type Output = Loc<T::Output>;
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
-        let (value, pos) = Loc::take_pair(self);
-        Ok(Loc::new(value.into_model(scope)?, pos))
+        let (value, span) = Loc::take_pair(self);
+        Ok(Loc::new(value.into_model(scope)?, span))
     }
 }
 
@@ -126,12 +126,12 @@ where
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         let (message, recovery) = self;
-        let (recovery, pos) = Loc::take_pair(recovery);
+        let (recovery, span) = Loc::take_pair(recovery);
 
         match recovery {
             ErrorRecovery::Error => {
                 let mut report = scope.ctx().report();
-                report.err(pos, message);
+                report.err(span, message);
                 Err(report.into())
             }
             ErrorRecovery::Value(value) => value.into_model(scope),
@@ -283,12 +283,12 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (item, pos) = Loc::take_pair(item);
+            let (item, span) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
             let name = scope.as_name();
 
-            ctx.symbol(SymbolKind::Enum, &pos, &name)?;
+            ctx.symbol(SymbolKind::Enum, &span, &name)?;
 
             let mut variants = Vec::new();
 
@@ -356,7 +356,7 @@ impl<'input, 'a> IntoModel for (Item<'input, EnumVariant<'input>>, &'a RpEnumTyp
                         let mut report = ctx.report();
 
                         report.err(
-                            Loc::pos(&argument),
+                            Loc::span(&argument),
                             format!("expected `{}`, did you mean \"{}\"?", ty, argument),
                         );
 
@@ -475,12 +475,12 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (item, pos) = Loc::take_pair(item);
+            let (item, span) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
             let name = scope.as_name();
 
-            ctx.symbol(SymbolKind::Interface, &pos, &name)?;
+            ctx.symbol(SymbolKind::Interface, &span, &name)?;
 
             let mut attributes = attributes.into_model(scope)?;
 
@@ -546,10 +546,10 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                     let mut it = untagged.iter();
                     let mut report = ctx.report();
 
-                    while let Some((k0, pos0)) = it.next() {
+                    while let Some((k0, span0)) = it.next() {
                         let mut sub = it.clone();
 
-                        while let Some((k1, pos1)) = sub.next() {
+                        while let Some((k1, span1)) = sub.next() {
                             if !k0.is_subset(k1) {
                                 continue;
                             }
@@ -558,7 +558,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                                 k0.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ");
 
                             report.err(
-                                pos0,
+                                span0,
                                 &format!(
                                     "fields with names `{}` are present in another sub-type, this \
                                      would cause deserialization to be ambiguous for certain \
@@ -568,7 +568,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                             );
 
                             report.info(
-                                pos0,
+                                span0,
                                 "HINT: re-order or change your sub-types to avoid this",
                             );
 
@@ -576,7 +576,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                                 k1.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ");
 
                             report.info(
-                                pos1,
+                                span1,
                                 &format!(
                                     "conflicting sub-type with fields `{}` is defined here",
                                     names
@@ -610,7 +610,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 untagged: I,
             ) -> Result<()>
             where
-                I: Clone + IntoIterator<Item = (&'a BTreeSet<String>, &'a Pos)>,
+                I: Clone + IntoIterator<Item = (&'a BTreeSet<String>, &'a Span)>,
             {
                 let mut r = ctx.report();
 
@@ -622,7 +622,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                         .map(|f| f.name().to_string())
                         .collect::<BTreeSet<_>>();
 
-                    for (key, pos) in untagged.clone() {
+                    for (key, span) in untagged.clone() {
                         // skip own
                         if *key == required {
                             continue;
@@ -634,11 +634,11 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
                         for f in optional.filter(|f| key.contains(f.name())) {
                             any = true;
-                            r.err(Loc::pos(f), "is a required field of another sub-type");
+                            r.err(Loc::span(f), "is a required field of another sub-type");
                         }
 
                         if any {
-                            r.info(pos.clone(), "sub-type defined here");
+                            r.info(span.clone(), "sub-type defined here");
                         }
                     }
                 }
@@ -673,7 +673,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                         }
                         _ => {
                             let mut r = ctx.report();
-                            r.err(Loc::pos(&strategy), "bad strategy");
+                            r.err(Loc::span(&strategy), "bad strategy");
                             return Err(r.into());
                         }
                     }
@@ -729,12 +729,12 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         return self.map(|comment, attributes, item| {
-            let (item, pos) = Loc::take_pair(item);
+            let (item, span) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
             let name = scope.as_name();
 
-            ctx.symbol(SymbolKind::Service, &pos, &name)?;
+            ctx.symbol(SymbolKind::Service, &span, &name)?;
 
             let mut decl_idents = HashMap::new();
             let mut endpoint_names = HashMap::new();
@@ -766,8 +766,8 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
             let mut http = RpServiceBodyHttp::default();
 
             if let Some(selection) = attributes.take_selection("http") {
-                let (mut selection, pos) = Loc::take_pair(selection);
-                push_http(ctx, scope, &mut selection, &mut http).with_pos(pos)?;
+                let (mut selection, span) = Loc::take_pair(selection);
+                push_http(ctx, scope, &mut selection, &mut http).with_span(span)?;
                 check_selection!(scope.ctx(), selection);
             }
 
@@ -844,10 +844,10 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
 
                 if let Some(other) = seen.insert(
                     argument.ident.to_string(),
-                    Loc::pos(&argument.ident).clone(),
+                    Loc::span(&argument.ident).clone(),
                 ) {
                     let mut r = ctx.report();
-                    r.err(Loc::pos(&argument.ident), "argument already present");
+                    r.err(Loc::span(&argument.ident), "argument already present");
                     r.info(other, "argument present here");
                     return Err(r.into());
                 }
@@ -921,7 +921,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
         } = constraint;
 
         return item.map(|comment, attributes, item| {
-            let (item, pos) = Loc::take_pair(item);
+            let (item, span) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
             let name = scope.as_name();
@@ -974,9 +974,9 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
                         .map(|f| f.name().to_string())
                         .collect::<BTreeSet<_>>();
 
-                    if let Some(other) = untagged.insert(fields, pos.clone()) {
+                    if let Some(other) = untagged.insert(fields, span.clone()) {
                         let mut r = ctx.report();
-                        r.err(pos, "does not have a unique set of fields");
+                        r.err(span, "does not have a unique set of fields");
                         r.info(other, "previously defined here");
                         return Err(r.into());
                     }
@@ -997,11 +997,11 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
 
         /// Extract all names provided.
         fn alias_name<'input>(alias: Loc<Value<'input>>, scope: &Scope) -> Result<Loc<String>> {
-            let (alias, pos) = Loc::take_pair(alias.into_model(scope)?);
+            let (alias, span) = Loc::take_pair(alias.into_model(scope)?);
 
             match alias {
-                core::RpValue::String(string) => Ok(Loc::new(string, pos)),
-                _ => Err("expected string".into()).with_pos(pos),
+                core::RpValue::String(string) => Ok(Loc::new(string, span)),
+                _ => Err("expected string".into()).with_span(span),
             }
         }
 
@@ -1023,12 +1023,12 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (item, pos) = Loc::take_pair(item);
+            let (item, span) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
             let name = scope.as_name();
 
-            ctx.symbol(SymbolKind::Tuple, &pos, &name)?;
+            ctx.symbol(SymbolKind::Tuple, &span, &name)?;
 
             let Members {
                 fields,
@@ -1057,12 +1057,12 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
 
     fn into_model(self, scope: &Scope) -> Result<Self::Output> {
         self.map(|comment, attributes, item| {
-            let (item, pos) = Loc::take_pair(item);
+            let (item, span) = Loc::take_pair(item);
 
             let ctx = scope.ctx();
             let name = scope.as_name();
 
-            ctx.symbol(SymbolKind::Type, &pos, &name)?;
+            ctx.symbol(SymbolKind::Type, &span, &name)?;
 
             let mut attributes = attributes.into_model(scope)?;
             let reserved = attributes::reserved(scope, &mut attributes)?;
@@ -1175,7 +1175,7 @@ impl<'input> IntoModel for Code<'input> {
 
         // Context-specific settings.
         let context = {
-            let (context, pos) = Loc::take_pair(context);
+            let (context, span) = Loc::take_pair(context);
 
             match context.as_str() {
                 "csharp" => core::RpContext::Csharp {},
@@ -1191,7 +1191,7 @@ impl<'input> IntoModel for Code<'input> {
                 "swift" => core::RpContext::Swift {},
                 context => {
                     let mut r = ctx.report();
-                    r.err(pos, format!("context `{}` not recognized", context));
+                    r.err(span, format!("context `{}` not recognized", context));
                     return Err(r.into());
                 }
             }
@@ -1239,11 +1239,11 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
 
             match attr {
                 Word(word) => {
-                    let (word, pos) = Loc::take_pair(word.into_model(scope)?);
+                    let (word, span) = Loc::take_pair(word.into_model(scope)?);
 
-                    if let Some(old) = words.insert(word, pos.clone()) {
+                    if let Some(old) = words.insert(word, span.clone()) {
                         let mut r = ctx.report();
-                        r.err(pos, "word already present");
+                        r.err(span, "word already present");
                         r.info(old, "old attribute here");
                         return Err(r.into());
                     }
@@ -1275,7 +1275,7 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                         hash_map::Entry::Occupied(entry) => {
                             let mut r = ctx.report();
                             r.err(attr_pos, "attribute already present");
-                            r.info(Loc::pos(entry.get()), "attribute here");
+                            r.info(Loc::span(entry.get()), "attribute here");
                             return Err(r.into());
                         }
                     }

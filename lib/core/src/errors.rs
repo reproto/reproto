@@ -4,7 +4,7 @@ use std::ffi;
 use std::fmt;
 use std::result;
 use std::sync::atomic;
-use {Pos, WithPos};
+use {Span, WithSpan};
 
 const RUST_BACKTRACE: &str = "RUST_BACKTRACE";
 
@@ -109,7 +109,7 @@ fn is_backtrace_enabled<F: Fn(&str) -> Option<ffi::OsString>>(get_var: F) -> boo
 
 pub struct Error {
     message: Cow<'static, str>,
-    pos: Option<Pos>,
+    span: Option<Span>,
     cause: Option<Box<Error>>,
     suppressed: Vec<Error>,
     backtrace: Option<Backtrace>,
@@ -119,7 +119,7 @@ impl Error {
     pub fn new<M: Into<Cow<'static, str>>>(message: M) -> Self {
         Self {
             message: message.into(),
-            pos: None,
+            span: None,
             cause: None,
             suppressed: Vec::new(),
             backtrace: Self::new_backtrace(),
@@ -151,9 +151,9 @@ impl Error {
     }
 
     /// Set the position for this error.
-    pub fn with_pos<P: Into<Pos>>(self, pos: P) -> Error {
+    pub fn with_span<P: Into<Span>>(self, span: P) -> Error {
         Error {
-            pos: Some(pos.into()),
+            span: Some(span.into()),
             ..self
         }
     }
@@ -186,8 +186,8 @@ impl Error {
     }
 
     /// Extract the error position, if available.
-    pub fn pos(&self) -> Option<&Pos> {
-        self.pos.as_ref()
+    pub fn span(&self) -> Option<&Span> {
+        self.span.as_ref()
     }
 
     /// Get the cause of this error.
@@ -225,14 +225,14 @@ impl fmt::Debug for Error {
     }
 }
 
-impl WithPos for Error {
-    fn with_pos<E: Into<Pos>>(self, pos: E) -> Self {
-        if self.pos.is_some() {
+impl WithSpan for Error {
+    fn with_span<E: Into<Span>>(self, span: E) -> Self {
+        if self.span.is_some() {
             return self;
         }
 
         Self {
-            pos: Some(pos.into()),
+            span: Some(span.into()),
             ..self
         }
     }

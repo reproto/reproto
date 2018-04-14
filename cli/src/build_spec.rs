@@ -541,11 +541,11 @@ pub fn semck_check(
                 report.err(to, format!("{}: field modifier changed", c.describe()));
                 report.err(from, "from here");
             }
-            AddEndpoint(c, pos) => {
-                report.err(pos, format!("{}: endpoint added", c.describe()));
+            AddEndpoint(c, span) => {
+                report.err(span, format!("{}: endpoint added", c.describe()));
             }
-            RemoveEndpoint(c, pos) => {
-                report.err(pos, format!("{}: endpoint removed", c.describe()));
+            RemoveEndpoint(c, span) => {
+                report.err(span, format!("{}: endpoint removed", c.describe()));
             }
             EndpointRequestChange(c, from_channel, from, to_channel, to) => {
                 report.err(

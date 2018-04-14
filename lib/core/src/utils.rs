@@ -6,7 +6,7 @@ const NL: u8 = '\n' as u8;
 /// Find the line corresponding to the given position.
 pub fn find_line<'a, R: AsMut<Read + 'a>>(
     mut reader: R,
-    pos: (usize, usize),
+    span: (usize, usize),
 ) -> Result<(String, usize, (usize, usize))> {
     let r = reader.as_mut();
 
@@ -14,8 +14,8 @@ pub fn find_line<'a, R: AsMut<Read + 'a>>(
     let mut current = 0usize;
     let mut buffer: Vec<u8> = Vec::new();
 
-    let start = pos.0;
-    let end = pos.1;
+    let start = span.0;
+    let end = span.1;
 
     let mut it = r.bytes().peekable();
     let mut read = 0usize;
@@ -53,7 +53,7 @@ pub fn find_line<'a, R: AsMut<Read + 'a>>(
 /// Find the range corresponding to the given position.
 pub fn find_range<'a, R: AsMut<Read + 'a>>(
     mut reader: R,
-    pos: (usize, usize),
+    span: (usize, usize),
 ) -> Result<(usize, usize, usize, usize)> {
     let r = reader.as_mut();
 
@@ -78,12 +78,12 @@ pub fn find_range<'a, R: AsMut<Read + 'a>>(
             col = 0;
         }
 
-        if c == pos.0 {
+        if c == span.0 {
             line_start = line;
             col_start = col;
         }
 
-        if c == pos.1 {
+        if c == span.1 {
             line_end = line;
             col_end = col;
             break;

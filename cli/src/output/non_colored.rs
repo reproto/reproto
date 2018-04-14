@@ -1,6 +1,6 @@
 use super::{LockableWrite, Output};
 use core::errors::*;
-use core::{self, Pos};
+use core::{self, Span};
 use log;
 use std::io;
 
@@ -20,7 +20,7 @@ where
         NonColored { out: out }
     }
 
-    fn print_positional(&self, m: &str, p: &Pos) -> Result<()> {
+    fn print_positional(&self, m: &str, p: &Span) -> Result<()> {
         use std::cmp::max;
         use std::iter::repeat;
 
@@ -79,11 +79,11 @@ where
         Ok(())
     }
 
-    fn print_info(&self, m: &str, p: &Pos) -> Result<()> {
+    fn print_info(&self, m: &str, p: &Span) -> Result<()> {
         self.print_positional(m, p)
     }
 
-    fn print_error(&self, m: &str, p: &Pos) -> Result<()> {
+    fn print_error(&self, m: &str, p: &Span) -> Result<()> {
         self.print_positional(m, p)
     }
 }

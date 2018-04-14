@@ -1,7 +1,7 @@
 use IntoBytes;
 use core::errors::*;
 use core::{Flavor, Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
-           RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, WithPos};
+           RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, WithSpan};
 use std::cmp;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -94,7 +94,7 @@ where
                         Service(ref b) => self.process_service(&mut out, b),
                     }
                 })
-                .with_pos(decl.pos())?;
+                .with_span(decl.span())?;
         }
 
         Ok(files)

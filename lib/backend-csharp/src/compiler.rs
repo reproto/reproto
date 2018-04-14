@@ -4,7 +4,7 @@ use Options;
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded,
               TypeField, TypeFieldAdded};
 use core::errors::*;
-use core::{ForEachLoc, Handle, Loc, RpContext, RpSubTypeStrategy, WithPos};
+use core::{ForEachLoc, Handle, Loc, RpContext, RpSubTypeStrategy, WithSpan};
 use csharp_field::CsharpField;
 use csharp_file::CsharpFile;
 use flavored::{CsharpFlavor, RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody,
@@ -52,7 +52,7 @@ impl Compiler {
         }
 
         for decl in self.env.toplevel_decl_iter() {
-            self.compile_decl(handle, decl).with_pos(decl.pos())?;
+            self.compile_decl(handle, decl).with_span(decl.span())?;
         }
 
         Ok(())

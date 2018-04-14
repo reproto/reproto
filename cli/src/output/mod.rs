@@ -44,18 +44,18 @@ pub trait Output {
     fn handle_context(&self, errors: &[ContextItem]) -> Result<()> {
         for e in errors.iter() {
             match *e {
-                ContextItem::Info(ref pos, ref message) => {
-                    self.print_info(message.as_str(), pos)?;
+                ContextItem::Info(ref span, ref message) => {
+                    self.print_info(message.as_str(), span)?;
                 }
-                ContextItem::Error(ref pos, ref message) => {
-                    self.print_error(message.as_str(), pos)?;
+                ContextItem::Error(ref span, ref message) => {
+                    self.print_error(message.as_str(), span)?;
                 }
                 ContextItem::Symbol {
                     ref kind,
-                    ref pos,
+                    ref span,
                     ref name,
                 } => {
-                    self.print_symbol(*kind, pos, name)?;
+                    self.print_symbol(*kind, span, name)?;
                 }
             }
         }
@@ -66,8 +66,8 @@ pub trait Output {
     /// Handle any errors.
     fn handle_error(&self, e: &Error) -> Result<()> {
         for e in e.causes() {
-            if let Some(pos) = e.pos() {
-                self.print_error(e.message(), pos)?;
+            if let Some(span) = e.span() {
+                self.print_error(e.message(), span)?;
             } else {
                 self.error(e)?;
             }
@@ -85,7 +85,7 @@ pub trait Output {
     }
 
     fn error(&self, e: &Error) -> Result<()> {
-        if let Some(p) = e.pos() {
+        if let Some(p) = e.span() {
             self.print_error(e.message(), p)?;
         } else {
             self.print(&e.message())?;
@@ -94,7 +94,7 @@ pub trait Output {
         for e in e.causes().skip(1) {
             let msg = self.error_message(format!("  caused by: {}", e.message()).as_str())?;
 
-            if let Some(p) = e.pos() {
+            if let Some(p) = e.span() {
                 self.print_error(msg.as_str(), p)?;
             } else {
                 self.print(msg.as_str())?;
@@ -112,14 +112,14 @@ pub trait Output {
 
     fn print(&self, m: &str) -> Result<()>;
 
-    fn print_info(&self, m: &str, p: &core::Pos) -> Result<()>;
+    fn print_info(&self, m: &str, p: &core::Span) -> Result<()>;
 
-    fn print_error(&self, m: &str, p: &core::Pos) -> Result<()>;
+    fn print_error(&self, m: &str, p: &core::Span) -> Result<()>;
 
     fn print_symbol(
         &self,
         _kind: core::SymbolKind,
-        _pos: &core::Pos,
+        _pos: &core::Span,
         _name: &RpName,
     ) -> Result<()> {
         Ok(())

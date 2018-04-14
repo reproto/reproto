@@ -3,7 +3,7 @@
 use Options;
 use codegen::{ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use core::errors::*;
-use core::{self, ForEachLoc, Handle, Loc, WithPos};
+use core::{self, ForEachLoc, Handle, Loc, WithSpan};
 use flavored::{JavaField, JavaFlavor, RpCode, RpDecl, RpEnumBody, RpEnumType, RpInterfaceBody,
                RpServiceBody, RpTupleBody, RpTypeBody};
 use genco::java::{imported, local, Argument, Class, Constructor, Enum, Field, Interface, Method,
@@ -104,7 +104,7 @@ impl<'el> Compiler<'el> {
         }
 
         for decl in self.env.toplevel_decl_iter() {
-            self.compile_decl(handle, decl).with_pos(decl.pos())?;
+            self.compile_decl(handle, decl).with_span(decl.span())?;
         }
 
         Ok(())

@@ -12,7 +12,7 @@ use std::fmt;
 use std::path::Path;
 use std::rc::Rc;
 use std::result;
-use {Filesystem, Handle, Pos};
+use {Filesystem, Handle, Span};
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub enum SymbolKind {
@@ -31,13 +31,13 @@ pub enum SymbolKind {
 #[derive(Debug)]
 pub enum ContextItem {
     /// A positional error.
-    Error(Pos, String),
+    Error(Span, String),
     /// A positional information string.
-    Info(Pos, String),
+    Info(Span, String),
     /// A symbol that was encountered, and its location.
     Symbol {
         kind: SymbolKind,
-        pos: Pos,
+        span: Span,
         name: RpName,
     },
 }
@@ -60,14 +60,14 @@ pub struct Reporter<'a> {
 }
 
 impl<'a> Reporter<'a> {
-    pub fn err<P: Into<Pos>, E: fmt::Display>(&mut self, pos: P, error: E) {
+    pub fn err<P: Into<Span>, E: fmt::Display>(&mut self, span: P, error: E) {
         self.items
-            .push(ContextItem::Error(pos.into(), error.to_string()));
+            .push(ContextItem::Error(span.into(), error.to_string()));
     }
 
-    pub fn info<P: Into<Pos>, I: fmt::Display>(&mut self, pos: P, info: I) {
+    pub fn info<P: Into<Span>, I: fmt::Display>(&mut self, span: P, info: I) {
         self.items
-            .push(ContextItem::Info(pos.into(), info.to_string()));
+            .push(ContextItem::Info(span.into(), info.to_string()));
     }
 
     /// Close this reporter and return an error if it has errors.
@@ -146,10 +146,10 @@ impl Context {
     }
 
     /// Register a symbol.
-    pub fn symbol<P: Into<Pos>>(&self, kind: SymbolKind, pos: P, name: &RpName) -> Result<()> {
+    pub fn symbol<P: Into<Span>>(&self, kind: SymbolKind, span: P, name: &RpName) -> Result<()> {
         self.items.try_borrow_mut()?.push(ContextItem::Symbol {
             kind,
-            pos: pos.into(),
+            span: span.into(),
             name: name.clone(),
         });
         Ok(())
@@ -173,8 +173,8 @@ impl Context {
 mod tests {
     use super::*;
     use fs::CapturingFilesystem;
-    use pos::Pos;
     use source::Source;
+    use span::Span;
     use std::result;
     use std::sync::Arc;
 
@@ -182,8 +182,8 @@ mod tests {
     fn test_handle() {
         let source = Source::bytes("test", Vec::new());
 
-        let pos: Pos = (Arc::new(source.clone()), 0usize, 0usize).into();
-        let other_pos: Pos = (Arc::new(source.clone()), 0usize, 0usize).into();
+        let span: Span = (Arc::new(source.clone()), 0usize, 0usize).into();
+        let other_pos: Span = (Arc::new(source.clone()), 0usize, 0usize).into();
 
         let ctx = Context::new(Box::new(CapturingFilesystem::new()));
 
@@ -191,7 +191,7 @@ mod tests {
 
         let a: Result<()> = result.map_err(|e| {
             let mut r = ctx.report();
-            r.err(pos, e);
+            r.err(span, e);
             r.err(other_pos, "previously reported here");
             r.into()
         });

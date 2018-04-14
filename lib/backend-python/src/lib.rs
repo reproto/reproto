@@ -25,7 +25,7 @@ use backend::{Initializer, IntoBytes};
 use codegen::ServiceCodegen;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor, Loc, Pos, RpField, RpPackage, RpType, Translate};
+use core::{Context, CoreFlavor, Loc, RpField, RpPackage, RpType, Span, Translate};
 use genco::{Cons, Python, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -188,7 +188,7 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
     let translator = env.translator(flavored::PythonFlavorTranslator::new(packages, helper))?;
 
     let variant_field =
-        Loc::new(RpField::new("ordinal", RpType::String), Pos::empty()).translate(&translator)?;
+        Loc::new(RpField::new("ordinal", RpType::String), Span::empty()).translate(&translator)?;
 
     let env = env.translate(translator)?;
 

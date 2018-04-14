@@ -5,7 +5,7 @@ use self::Violation::*;
 use core::errors::*;
 use core::flavored::{RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpNamed, RpType,
                      RpVariant};
-use core::{Loc, Pos, Version};
+use core::{Loc, Span, Version};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -27,37 +27,37 @@ impl Component {
 #[derive(Debug)]
 pub enum Violation {
     /// An entire declaration has been removed.
-    DeclRemoved(Component, Pos),
+    DeclRemoved(Component, Span),
     /// An entire declaration has been added.
-    DeclAdded(Component, Pos),
+    DeclAdded(Component, Span),
     /// Field was removed.
-    RemoveField(Component, Pos),
+    RemoveField(Component, Span),
     /// Variant was removed.
-    RemoveVariant(Component, Pos),
+    RemoveVariant(Component, Span),
     /// Field added.
-    AddField(Component, Pos),
+    AddField(Component, Span),
     /// Variant added.
-    AddVariant(Component, Pos),
+    AddVariant(Component, Span),
     /// Field type was changed from one to another.
-    FieldTypeChange(Component, RpType, Pos, RpType, Pos),
+    FieldTypeChange(Component, RpType, Span, RpType, Span),
     /// Field name was changed from one to another.
-    FieldNameChange(Component, String, Pos, String, Pos),
+    FieldNameChange(Component, String, Span, String, Span),
     /// Variant identifier was changed from one to another.
-    VariantOrdinalChange(Component, String, Pos, String, Pos),
+    VariantOrdinalChange(Component, String, Span, String, Span),
     /// Field made required.
-    FieldRequiredChange(Component, Pos, Pos),
+    FieldRequiredChange(Component, Span, Span),
     /// Required field added.
-    AddRequiredField(Component, Pos),
+    AddRequiredField(Component, Span),
     /// Field modifier changed.
-    FieldModifierChange(Component, Pos, Pos),
+    FieldModifierChange(Component, Span, Span),
     /// Endpoint added.
-    AddEndpoint(Component, Pos),
+    AddEndpoint(Component, Span),
     /// Endpoint removed.
-    RemoveEndpoint(Component, Pos),
+    RemoveEndpoint(Component, Span),
     /// Endpoint request type changed.
-    EndpointRequestChange(Component, Option<RpChannel>, Pos, Option<RpChannel>, Pos),
+    EndpointRequestChange(Component, Option<RpChannel>, Span, Option<RpChannel>, Span),
     /// Endpoint response type changed.
-    EndpointResponseChange(Component, Option<RpChannel>, Pos, Option<RpChannel>, Pos),
+    EndpointResponseChange(Component, Option<RpChannel>, Span, Option<RpChannel>, Span),
 }
 
 fn fields<'a>(named: &RpNamed<'a>) -> Vec<&'a Loc<RpField>> {
@@ -147,7 +147,7 @@ fn check_endpoint_channel<F, E>(
 ) -> Result<()>
 where
     F: Fn(&RpEndpoint) -> &Option<Loc<RpChannel>>,
-    E: Fn(Component, Option<RpChannel>, Pos, Option<RpChannel>, Pos) -> Violation,
+    E: Fn(Component, Option<RpChannel>, Span, Option<RpChannel>, Span) -> Violation,
 {
     let from_ty = accessor(from_endpoint)
         .as_ref()
@@ -160,13 +160,13 @@ where
     if from_ty != to_ty {
         let from_pos = accessor(from_endpoint)
             .as_ref()
-            .map(|r| Loc::pos(r))
-            .unwrap_or(Loc::pos(from_endpoint));
+            .map(|r| Loc::span(r))
+            .unwrap_or(Loc::span(from_endpoint));
 
         let to_pos = accessor(to_endpoint)
             .as_ref()
-            .map(|r| Loc::pos(r))
-            .unwrap_or(Loc::pos(to_endpoint));
+            .map(|r| Loc::span(r))
+            .unwrap_or(Loc::span(to_endpoint));
 
         violations.push(error(
             component,
@@ -224,9 +224,9 @@ fn common_check_variant(
         violations.push(VariantOrdinalChange(
             component.clone(),
             from_variant.ordinal().to_string(),
-            Loc::pos(from_variant).into(),
+            Loc::span(from_variant).into(),
             to_variant.ordinal().to_string(),
-            Loc::pos(to_variant).into(),
+            Loc::span(to_variant).into(),
         ));
     }
 
@@ -243,9 +243,9 @@ fn common_check_field(
         violations.push(FieldTypeChange(
             component.clone(),
             from_field.ty.clone(),
-            Loc::pos(from_field).into(),
+            Loc::span(from_field).into(),
             to_field.ty.clone(),
-            Loc::pos(to_field).into(),
+            Loc::span(to_field).into(),
         ));
     }
 
@@ -254,9 +254,9 @@ fn common_check_field(
         violations.push(FieldNameChange(
             component.clone(),
             from_field.name().to_string(),
-            Loc::pos(from_field).into(),
+            Loc::span(from_field).into(),
             to_field.name().to_string(),
-            Loc::pos(to_field).into(),
+            Loc::span(to_field).into(),
         ));
     }
 
@@ -279,14 +279,14 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_field) = to_fields.remove(&name) {
                     check_field(&mut violations, from_field, to_field)?;
                 } else {
-                    violations.push(RemoveField(Minor, Loc::pos(from_field).into()));
+                    violations.push(RemoveField(Minor, Loc::span(from_field).into()));
                 }
             }
 
             // check that added fields are not required.
             for (_, to_field) in to_fields.into_iter() {
                 if to_field.is_required() {
-                    violations.push(AddRequiredField(Minor, Loc::pos(to_field).into()));
+                    violations.push(AddRequiredField(Minor, Loc::span(to_field).into()));
                 }
             }
 
@@ -297,7 +297,7 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_variant) = to_variants.remove(&name) {
                     check_variant(&mut violations, from_variant, to_variant)?;
                 } else {
-                    violations.push(RemoveVariant(Minor, Loc::pos(from_variant).into()));
+                    violations.push(RemoveVariant(Minor, Loc::span(from_variant).into()));
                 }
             }
 
@@ -308,11 +308,11 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_endpoint) = to_endpoints.remove(&name) {
                     check_endpoint(&mut violations, from_endpoint, to_endpoint)?;
                 } else {
-                    violations.push(RemoveEndpoint(Minor, Loc::pos(from_endpoint).into()));
+                    violations.push(RemoveEndpoint(Minor, Loc::span(from_endpoint).into()));
                 }
             }
         } else {
-            violations.push(DeclRemoved(Minor, from_named.pos().into()));
+            violations.push(DeclRemoved(Minor, from_named.span().into()));
         }
     }
 
@@ -329,8 +329,8 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
         if from_field.is_optional() && to_field.is_required() {
             violations.push(FieldRequiredChange(
                 Minor,
-                Loc::pos(from_field).into(),
-                Loc::pos(to_field).into(),
+                Loc::span(from_field).into(),
+                Loc::span(to_field).into(),
             ));
         }
 
@@ -371,13 +371,13 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_field) = to_fields.remove(&name) {
                     check_field(&mut violations, from_field, to_field)?;
                 } else {
-                    violations.push(RemoveField(Patch, Loc::pos(from_field).into()));
+                    violations.push(RemoveField(Patch, Loc::span(from_field).into()));
                 }
             }
 
             // added fields are not permitted
             for (_, to_field) in to_fields.into_iter() {
-                violations.push(AddField(Patch, Loc::pos(to_field).into()));
+                violations.push(AddField(Patch, Loc::span(to_field).into()));
             }
 
             let from_variants = variants_to_map(enum_variants(&from_named));
@@ -387,13 +387,13 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_variant) = to_variants.remove(&name) {
                     check_variant(&mut violations, from_variant, to_variant)?;
                 } else {
-                    violations.push(RemoveVariant(Patch, Loc::pos(from_variant).into()));
+                    violations.push(RemoveVariant(Patch, Loc::span(from_variant).into()));
                 }
             }
 
             // added variants are not permitted
             for (_, to_variant) in to_variants.into_iter() {
-                violations.push(AddVariant(Patch, Loc::pos(to_variant).into()));
+                violations.push(AddVariant(Patch, Loc::span(to_variant).into()));
             }
 
             let from_endpoints = endpoints_to_map(&from_named);
@@ -403,21 +403,21 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_endpoint) = to_endpoints.remove(&name) {
                     check_endpoint(&mut violations, from_endpoint, to_endpoint)?;
                 } else {
-                    violations.push(RemoveEndpoint(Patch, Loc::pos(from_endpoint).into()));
+                    violations.push(RemoveEndpoint(Patch, Loc::span(from_endpoint).into()));
                 }
             }
 
             // added endpoints are not permitted
             for (_, to_endpoint) in to_endpoints.into_iter() {
-                violations.push(AddEndpoint(Patch, Loc::pos(to_endpoint).into()));
+                violations.push(AddEndpoint(Patch, Loc::span(to_endpoint).into()));
             }
         } else {
-            violations.push(DeclRemoved(Patch, from_named.pos().into()));
+            violations.push(DeclRemoved(Patch, from_named.span().into()));
         }
     }
 
     for (_, to_named) in to_storage.into_iter() {
-        violations.push(DeclAdded(Patch, to_named.pos().into()));
+        violations.push(DeclAdded(Patch, to_named.span().into()));
     }
 
     return Ok(violations);
@@ -432,8 +432,8 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
         if to_field.required != from_field.required {
             violations.push(FieldModifierChange(
                 Patch,
-                Loc::pos(from_field).into(),
-                Loc::pos(to_field).into(),
+                Loc::span(from_field).into(),
+                Loc::span(to_field).into(),
             ));
         }
 

@@ -37,17 +37,17 @@ pub fn parse<'input>(object: Arc<Source>, input: &'input str) -> Result<ast::Fil
         Ok(file) => Ok(file),
         Err(e) => match e {
             InvalidToken { location } => {
-                let pos = (object.clone(), location, location);
-                Err(Error::new("syntax error").with_pos(pos))
+                let span = (object.clone(), location, location);
+                Err(Error::new("syntax error").with_span(span))
             }
             UnrecognizedToken { token, expected } => {
                 let e = if let Some((start, token, end)) = token {
-                    let pos = (object.clone(), start, end);
+                    let span = (object.clone(), start, end);
                     Error::new(format!(
                         "syntax error, got token {:?}, expected: {}",
                         token,
                         expected.join(", ")
-                    )).with_pos(pos)
+                    )).with_span(span)
                 } else {
                     Error::new(format!("syntax error, expected: {}", expected.join(", ")))
                 };
@@ -56,28 +56,28 @@ pub fn parse<'input>(object: Arc<Source>, input: &'input str) -> Result<ast::Fil
             }
             User { error } => match error {
                 UnterminatedString { start } => {
-                    let pos = (object.clone(), start, start);
-                    return Err(Error::new("unterminated string").with_pos(pos));
+                    let span = (object.clone(), start, start);
+                    return Err(Error::new("unterminated string").with_span(span));
                 }
                 UnterminatedEscape { start } => {
-                    let pos = (object.clone(), start, start);
-                    return Err(Error::new("unterminated escape sequence").with_pos(pos));
+                    let span = (object.clone(), start, start);
+                    return Err(Error::new("unterminated escape sequence").with_span(span));
                 }
                 InvalidEscape { pos, message } => {
-                    let pos = (object.clone(), pos, pos);
-                    return Err(Error::new(message).with_pos(pos));
+                    let span = (object.clone(), pos, pos);
+                    return Err(Error::new(message).with_span(span));
                 }
                 UnterminatedCodeBlock { start } => {
-                    let pos = (object.clone(), start, start);
-                    return Err(Error::new("unterminated code block").with_pos(pos));
+                    let span = (object.clone(), start, start);
+                    return Err(Error::new("unterminated code block").with_span(span));
                 }
                 InvalidNumber { pos, message } => {
-                    let pos = (object.clone(), pos, pos);
-                    return Err(Error::new(message).with_pos(pos));
+                    let span = (object.clone(), pos, pos);
+                    return Err(Error::new(message).with_span(span));
                 }
                 Unexpected { pos } => {
-                    let pos = (object.clone(), pos, pos);
-                    return Err(Error::new("unexpected input").with_pos(pos));
+                    let span = (object.clone(), pos, pos);
+                    return Err(Error::new("unexpected input").with_span(span));
                 }
             },
             _ => Err("Parse error".into()),
@@ -248,7 +248,10 @@ mod tests {
     fn test_type_spec() {
         let c = Name::Absolute {
             prefix: None,
-            parts: Loc::new(vec!["Hello".to_string(), "World".to_string()].into(), Pos::empty()),
+            parts: Loc::new(
+                vec!["Hello".to_string(), "World".to_string()].into(),
+                Span::empty(),
+            ),
         };
 
         assert_type_spec_eq!(Type::String, "string");

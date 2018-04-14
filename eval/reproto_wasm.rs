@@ -235,7 +235,7 @@ struct Marker {
 
 impl Marker {
     /// Convert an error into a marker.
-    fn try_from_error(p: &core::Pos, message: &str) -> core::errors::Result<Marker> {
+    fn try_from_error(p: &core::Span, message: &str) -> core::errors::Result<Marker> {
         let (_, line, (s, e)) = core::utils::find_line(p.source.read()?, (p.start, p.end))?;
 
         let marker = Marker {
@@ -250,7 +250,7 @@ impl Marker {
     }
 
     /// Safe building of markers with fallback.
-    fn try_from_error_fb(p: &core::Pos, message: &str) -> Marker {
+    fn try_from_error_fb(p: &core::Span, message: &str) -> Marker {
         if let Ok(m) = Self::try_from_error(p, message) {
             return m;
         }
@@ -373,7 +373,7 @@ fn derive(derive: Derive) -> DeriveResult {
             let mut error_markers = Vec::new();
             let mut info_markers = Vec::new();
 
-            if let Some(p) = e.pos() {
+            if let Some(p) = e.span() {
                 error_markers.push(Marker::try_from_error_fb(p, e.message()));
             }
 

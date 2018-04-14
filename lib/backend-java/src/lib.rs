@@ -25,7 +25,7 @@ mod utils;
 use codegen::Configure;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor, Loc, Pos, RpField, RpType, Translator};
+use core::{Context, CoreFlavor, Loc, RpField, RpType, Span, Translator};
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use naming::Naming;
 use options::Options;
@@ -192,7 +192,7 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let variant_field = Loc::new(
         translator.translate_field(RpField::new("value", RpType::String))?,
-        Pos::empty(),
+        Span::empty(),
     );
 
     let env = env.translate(translator)?;

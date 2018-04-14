@@ -1,7 +1,7 @@
 extern crate reproto_core as core;
 
 use core::errors::Result;
-use core::{Loc, RpNumber, RpPackage, WithPos};
+use core::{Loc, RpNumber, RpPackage, WithSpan};
 use std::borrow::Cow;
 use std::ops;
 use std::result;
@@ -58,16 +58,16 @@ impl<'input, T> ops::Deref for Item<'input, T> {
 }
 
 impl<'input, T> Item<'input, T> {
-    pub fn map<F, E: WithPos, U>(self, f: F) -> result::Result<Loc<U>, E>
+    pub fn map<F, E: WithSpan, U>(self, f: F) -> result::Result<Loc<U>, E>
     where
         F: FnOnce(Vec<Cow<'input, str>>, Vec<Loc<Attribute<'input>>>, Loc<T>)
             -> result::Result<U, E>,
     {
-        let pos = Loc::pos(&self.item).clone();
+        let span = Loc::span(&self.item).clone();
 
         match f(self.comment, self.attributes, self.item) {
-            Ok(o) => Ok(Loc::new(o, pos)),
-            Err(e) => Err(e.with_pos(pos)),
+            Ok(o) => Ok(Loc::new(o, span)),
+            Err(e) => Err(e.with_span(span)),
         }
     }
 }

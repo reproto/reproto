@@ -18,7 +18,7 @@ pub use self::yaml::Yaml;
 use ast::{Attribute, AttributeItem, Decl, Field, InterfaceBody, Item, Name, SubType, TupleBody,
           Type, TypeBody, TypeMember, Value};
 use core::errors::Result;
-use core::{Loc, Pos, RpPackage, Source, DEFAULT_TAG};
+use core::{Loc, RpPackage, Source, Span, DEFAULT_TAG};
 use inflector::cases::pascalcase::to_pascal_case;
 use inflector::cases::snakecase::to_snake_case;
 use linked_hash_map::LinkedHashMap;
@@ -69,7 +69,7 @@ impl<'a> Context<'a> {
     fn name(&self) -> Name {
         Name::Absolute {
             prefix: None,
-            parts: Loc::new(self.path.clone().into(), Pos::empty()),
+            parts: Loc::new(self.path.clone().into(), Span::empty()),
         }
     }
 }
@@ -129,18 +129,14 @@ impl<T> ops::DerefMut for Opaque<T> {
 }
 
 struct FieldInit<'a> {
-    pos: &'a Pos,
+    span: &'a Span,
     ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
 
 impl<'a> FieldInit<'a> {
-    fn new(pos: &'a Pos, ctx: Context<'a>, types: &'a mut TypesCache) -> FieldInit<'a> {
-        FieldInit {
-            pos: pos,
-            ctx: ctx,
-            types: types,
-        }
+    fn new(span: &'a Span, ctx: Context<'a>, types: &'a mut TypesCache) -> FieldInit<'a> {
+        FieldInit { span, ctx, types }
     }
 
     fn init<'input>(
@@ -180,7 +176,7 @@ impl<'a> FieldInit<'a> {
                     field: (**inner).clone(),
                 };
 
-                let f = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
+                let f = FieldInit::new(&self.span, self.ctx.clone(), self.types).init(
                     name.clone(),
                     &field,
                     members,
@@ -201,7 +197,7 @@ impl<'a> FieldInit<'a> {
                     self.types.insert(sir.clone(), name.clone());
 
                     let decl = DeclDeriver {
-                        pos: &self.pos,
+                        span: &self.span,
                         ctx: ctx.clone(),
                         types: self.types,
                     }.derive(sir)?;
@@ -224,7 +220,7 @@ impl<'a> FieldInit<'a> {
         let field = Field {
             required: !sir.optional,
             name: name.clone().into(),
-            ty: Loc::new(ty.into(), self.pos.clone()),
+            ty: Loc::new(ty.into(), self.span.clone()),
             field_as: field_as,
         };
 
@@ -232,7 +228,7 @@ impl<'a> FieldInit<'a> {
         return Ok(Item {
             comment: comment,
             attributes: Vec::new(),
-            item: Loc::new(field, self.pos.clone()),
+            item: Loc::new(field, self.span.clone()),
         });
 
         /// Format comments and attach examples.
@@ -265,7 +261,7 @@ impl<'a> FieldInit<'a> {
 }
 
 struct DeclDeriver<'a> {
-    pos: &'a Pos,
+    span: &'a Span,
     ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
@@ -276,7 +272,7 @@ impl<'a> DeclDeriver<'a> {
         let decl = match *sir {
             Sir::Tuple(ref array) => {
                 let tuple = TupleRefiner {
-                    pos: &self.pos,
+                    span: &self.span,
                     ctx: self.ctx,
                     types: self.types,
                 }.derive(array)?;
@@ -285,7 +281,7 @@ impl<'a> DeclDeriver<'a> {
             }
             Sir::Object(ref object) => {
                 let type_ = TypeRefiner {
-                    pos: &self.pos,
+                    span: &self.span,
                     ctx: self.ctx,
                     types: self.types,
                 }.derive(object)?;
@@ -294,7 +290,7 @@ impl<'a> DeclDeriver<'a> {
             }
             Sir::Interface(ref type_field, ref sub_types) => {
                 let interface = InterfaceRefiner {
-                    pos: &self.pos,
+                    span: &self.span,
                     ctx: self.ctx,
                     types: self.types,
                 }.derive(type_field, sub_types)?;
@@ -311,7 +307,7 @@ impl<'a> DeclDeriver<'a> {
 }
 
 struct TypeRefiner<'a> {
-    pos: &'a Pos,
+    span: &'a Span,
     ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
@@ -332,7 +328,7 @@ impl<'a> TypeRefiner<'a> {
         Ok(Item {
             comment: Vec::new(),
             attributes: Vec::new(),
-            item: Loc::new(body, self.pos.clone()),
+            item: Loc::new(body, self.span.clone()),
         })
     }
 
@@ -342,7 +338,7 @@ impl<'a> TypeRefiner<'a> {
         object: &LinkedHashMap<String, FieldSir>,
     ) -> Result<()> {
         for (name, added) in object.iter() {
-            let field = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
+            let field = FieldInit::new(&self.span, self.ctx.clone(), self.types).init(
                 name.to_string(),
                 added,
                 &mut base.members,
@@ -356,7 +352,7 @@ impl<'a> TypeRefiner<'a> {
 }
 
 struct SubTypeRefiner<'a> {
-    pos: &'a Pos,
+    span: &'a Span,
     ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
@@ -365,7 +361,7 @@ impl<'a> SubTypeRefiner<'a> {
     /// Derive an struct body from the given input array.
     fn derive<'input>(&mut self, sub_type: &SubTypeSir) -> Result<Item<'input, SubType<'input>>> {
         let mut body = SubType {
-            name: Loc::new(self.ctx.ident()?.to_string().into(), self.pos.clone()),
+            name: Loc::new(self.ctx.ident()?.to_string().into(), self.span.clone()),
             members: vec![],
             alias: None,
         };
@@ -375,7 +371,7 @@ impl<'a> SubTypeRefiner<'a> {
         Ok(Item {
             comment: Vec::new(),
             attributes: Vec::new(),
-            item: Loc::new(body, self.pos.clone()),
+            item: Loc::new(body, self.span.clone()),
         })
     }
 
@@ -383,12 +379,12 @@ impl<'a> SubTypeRefiner<'a> {
         if sub_type.name.as_str() != base.name.as_ref() {
             base.alias = Some(Loc::new(
                 Value::String(sub_type.name.to_string()),
-                self.pos.clone(),
+                self.span.clone(),
             ));
         }
 
         for (field_name, field_value) in &sub_type.structure {
-            let field = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
+            let field = FieldInit::new(&self.span, self.ctx.clone(), self.types).init(
                 field_name.to_string(),
                 field_value,
                 &mut base.members,
@@ -402,7 +398,7 @@ impl<'a> SubTypeRefiner<'a> {
 }
 
 struct InterfaceRefiner<'a> {
-    pos: &'a Pos,
+    span: &'a Span,
     ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
@@ -417,17 +413,17 @@ impl<'a> InterfaceRefiner<'a> {
         let mut attributes = Vec::new();
 
         if tag != DEFAULT_TAG {
-            let name = Loc::new("type_info".into(), self.pos.clone());
+            let name = Loc::new("type_info".into(), self.span.clone());
             let mut values = Vec::new();
 
             values.push(AttributeItem::NameValue {
-                name: Loc::new("type".into(), self.pos.clone()),
-                value: Loc::new(Value::String("type".to_string()), self.pos.clone()),
+                name: Loc::new("type".into(), self.span.clone()),
+                value: Loc::new(Value::String("type".to_string()), self.span.clone()),
             });
 
             let a = Attribute::List(name, values);
 
-            attributes.push(Loc::new(a, self.pos.clone()));
+            attributes.push(Loc::new(a, self.span.clone()));
         };
 
         let mut body = InterfaceBody {
@@ -441,7 +437,7 @@ impl<'a> InterfaceRefiner<'a> {
         Ok(Item {
             comment: Vec::new(),
             attributes: attributes,
-            item: Loc::new(body, self.pos.clone()),
+            item: Loc::new(body, self.span.clone()),
         })
     }
 
@@ -455,7 +451,7 @@ impl<'a> InterfaceRefiner<'a> {
             let ctx = self.ctx.join(ident.clone());
 
             let sub_type = SubTypeRefiner {
-                pos: self.pos,
+                span: self.span,
                 ctx: ctx,
                 types: self.types,
             }.derive(st)?;
@@ -468,7 +464,7 @@ impl<'a> InterfaceRefiner<'a> {
 }
 
 struct TupleRefiner<'a> {
-    pos: &'a Pos,
+    span: &'a Span,
     ctx: Context<'a>,
     types: &'a mut TypesCache,
 }
@@ -486,13 +482,13 @@ impl<'a> TupleRefiner<'a> {
         Ok(Item {
             comment: Vec::new(),
             attributes: Vec::new(),
-            item: Loc::new(body, self.pos.clone()),
+            item: Loc::new(body, self.span.clone()),
         })
     }
 
     fn init<'input>(&mut self, base: &mut TupleBody<'input>, array: &[FieldSir]) -> Result<()> {
         for (index, added) in array.iter().enumerate() {
-            let field = FieldInit::new(&self.pos, self.ctx.clone(), self.types).init(
+            let field = FieldInit::new(&self.span, self.ctx.clone(), self.types).init(
                 format!("field_{}", index),
                 added,
                 &mut base.members,
@@ -515,7 +511,7 @@ pub fn derive<'input>(derive: Derive, object: &'input Source) -> Result<Decl<'in
 
     let sir = format.decode(object)?;
 
-    let pos: Pos = (Arc::new(object.clone()), 0, 0).into();
+    let span: Span = (Arc::new(object.clone()), 0, 0).into();
 
     let mut types = HashMap::new();
 
@@ -525,7 +521,7 @@ pub fn derive<'input>(derive: Derive, object: &'input Source) -> Result<Decl<'in
     };
 
     let decl = DeclDeriver {
-        pos: &pos,
+        span: &span,
         ctx: ctx,
         types: &mut types,
     }.derive(&sir)?;

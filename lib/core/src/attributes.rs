@@ -7,15 +7,15 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::mem;
 use std::vec;
-use {Loc, Pos, RpValue};
+use {Loc, RpValue, Span};
 
 /// Iterator over unused positions.
 pub struct Unused<'a> {
-    iter: vec::IntoIter<&'a Pos>,
+    iter: vec::IntoIter<&'a Span>,
 }
 
 impl<'a> Iterator for Unused<'a> {
-    type Item = &'a Pos;
+    type Item = &'a Span;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
@@ -63,8 +63,8 @@ impl Selection {
     /// Get an iterator over unused positions.
     pub fn unused(&self) -> Unused {
         let mut positions = Vec::new();
-        positions.extend(self.words.iter().map(|v| Loc::pos(v)));
-        positions.extend(self.values.values().map(|v| Loc::pos(&v.0)));
+        positions.extend(self.words.iter().map(|v| Loc::span(v)));
+        positions.extend(self.values.values().map(|v| Loc::span(&v.0)));
         Unused {
             iter: positions.into_iter(),
         }
@@ -73,13 +73,13 @@ impl Selection {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Attributes {
-    words: HashMap<String, Pos>,
+    words: HashMap<String, Span>,
     selections: HashMap<String, Loc<Selection>>,
 }
 
 impl Attributes {
     pub fn new(
-        words: HashMap<String, Pos>,
+        words: HashMap<String, Span>,
         selections: HashMap<String, Loc<Selection>>,
     ) -> Attributes {
         Attributes {
@@ -110,7 +110,7 @@ impl Attributes {
     pub fn unused(&self) -> Unused {
         let mut positions = Vec::new();
         positions.extend(self.words.values());
-        positions.extend(self.selections.values().map(Loc::pos));
+        positions.extend(self.selections.values().map(Loc::span));
         Unused {
             iter: positions.into_iter(),
         }

@@ -1,7 +1,7 @@
 //! # Helper data structure do handle option lookups
 
 use errors::Result;
-use {Loc, OptionEntry, RpNumber, WithPos};
+use {Loc, OptionEntry, RpNumber, WithSpan};
 
 /// Helper for looking up and dealing with options.
 pub trait Options {
@@ -24,9 +24,9 @@ pub trait Options {
         let mut out = Vec::new();
 
         for s in self.lookup(name) {
-            let (value, pos) = Loc::take_pair(s);
-            let string = value.as_string().with_pos(&pos)?;
-            out.push(Loc::new(string, pos));
+            let (value, span) = Loc::take_pair(s);
+            let string = value.as_string().with_span(&span)?;
+            out.push(Loc::new(string, span));
         }
 
         Ok(out)
@@ -36,9 +36,9 @@ pub trait Options {
         let mut out = Vec::new();
 
         for s in self.lookup(name) {
-            let (value, pos) = Loc::take_pair(s);
-            let number = value.as_number().with_pos(&pos)?;
-            out.push(Loc::new(number, pos));
+            let (value, span) = Loc::take_pair(s);
+            let number = value.as_number().with_span(&span)?;
+            out.push(Loc::new(number, span));
         }
 
         Ok(out)
@@ -52,9 +52,9 @@ pub trait Options {
         let mut out = Vec::new();
 
         for s in self.lookup(name) {
-            let (value, pos) = Loc::take_pair(s);
-            let identifier = value.as_identifier().with_pos(&pos)?;
-            out.push(Loc::new(identifier, pos));
+            let (value, span) = Loc::take_pair(s);
+            let identifier = value.as_identifier().with_span(&span)?;
+            out.push(Loc::new(identifier, span));
         }
 
         Ok(out)

@@ -4,8 +4,8 @@ use errors::Result;
 use serde::Serialize;
 use std::fmt;
 use std::vec;
-use {Flavor, Loc, Pos, RpEnumBody, RpInterfaceBody, RpReg, RpServiceBody, RpSubType, RpTupleBody,
-     RpTypeBody, RpVariant, Translate, Translator};
+use {Flavor, Loc, RpEnumBody, RpInterfaceBody, RpReg, RpServiceBody, RpSubType, RpTupleBody,
+     RpTypeBody, RpVariant, Span, Translate, Translator};
 
 /// Iterator over declarations.
 pub struct Decls<'a, F: 'static>
@@ -63,17 +63,17 @@ where
     }
 
     /// Get the position of the named element.
-    pub fn pos(&self) -> &Pos {
+    pub fn span(&self) -> &Span {
         use self::RpNamed::*;
 
         match *self {
-            Type(body) => Loc::pos(body),
-            Tuple(tuple) => Loc::pos(tuple),
-            Interface(interface) => Loc::pos(interface),
-            SubType(sub_type) => Loc::pos(sub_type),
-            Enum(en) => Loc::pos(en),
-            EnumVariant(variant) => Loc::pos(variant),
-            Service(service) => Loc::pos(service),
+            Type(body) => Loc::span(body),
+            Tuple(tuple) => Loc::span(tuple),
+            Interface(interface) => Loc::span(interface),
+            SubType(sub_type) => Loc::span(sub_type),
+            Enum(en) => Loc::span(en),
+            EnumVariant(variant) => Loc::span(variant),
+            Service(service) => Loc::span(service),
         }
     }
 }
@@ -152,34 +152,34 @@ where
     }
 
     /// Convert a declaration into its registered types.
-    pub fn to_reg(&self) -> Vec<(&F::Name, &Pos, RpReg)> {
+    pub fn to_reg(&self) -> Vec<(&F::Name, &Span, RpReg)> {
         use self::RpDecl::*;
 
         let mut out = Vec::new();
 
         match *self {
             Type(ref ty) => {
-                out.push((&ty.name, Loc::pos(ty), RpReg::Type));
+                out.push((&ty.name, Loc::span(ty), RpReg::Type));
             }
             Interface(ref interface) => {
                 for sub_type in interface.sub_types.iter() {
-                    out.push((&sub_type.name, Loc::pos(sub_type), RpReg::SubType));
+                    out.push((&sub_type.name, Loc::span(sub_type), RpReg::SubType));
                 }
 
-                out.push((&interface.name, Loc::pos(interface), RpReg::Interface));
+                out.push((&interface.name, Loc::span(interface), RpReg::Interface));
             }
             Enum(ref en) => {
                 for variant in &en.variants {
-                    out.push((&variant.name, Loc::pos(variant), RpReg::EnumVariant));
+                    out.push((&variant.name, Loc::span(variant), RpReg::EnumVariant));
                 }
 
-                out.push((&en.name, Loc::pos(en), RpReg::Enum));
+                out.push((&en.name, Loc::span(en), RpReg::Enum));
             }
             Tuple(ref tuple) => {
-                out.push((&tuple.name, Loc::pos(tuple), RpReg::Tuple));
+                out.push((&tuple.name, Loc::span(tuple), RpReg::Tuple));
             }
             Service(ref service) => {
-                out.push((&service.name, Loc::pos(service), RpReg::Service));
+                out.push((&service.name, Loc::span(service), RpReg::Service));
             }
         }
 
@@ -237,15 +237,15 @@ where
     }
 
     /// Get the position of the declaration.
-    pub fn pos(&self) -> &Pos {
+    pub fn span(&self) -> &Span {
         use self::RpDecl::*;
 
         match *self {
-            Type(ref body) => Loc::pos(body),
-            Interface(ref body) => Loc::pos(body),
-            Enum(ref body) => Loc::pos(body),
-            Tuple(ref body) => Loc::pos(body),
-            Service(ref body) => Loc::pos(body),
+            Type(ref body) => Loc::span(body),
+            Interface(ref body) => Loc::span(body),
+            Enum(ref body) => Loc::span(body),
+            Tuple(ref body) => Loc::span(body),
+            Service(ref body) => Loc::span(body),
         }
     }
 }
@@ -291,11 +291,11 @@ where
     }
 }
 
-impl<'a, F: 'static> From<&'a RpDecl<F>> for Pos
+impl<'a, F: 'static> From<&'a RpDecl<F>> for Span
 where
     F: Flavor,
 {
     fn from(value: &'a RpDecl<F>) -> Self {
-        value.pos().clone()
+        value.span().clone()
     }
 }

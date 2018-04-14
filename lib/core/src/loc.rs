@@ -3,12 +3,12 @@ use std::borrow;
 use std::cmp;
 use std::hash;
 use std::result;
-use {Pos, WithPos};
+use {Span, WithSpan};
 
 #[derive(Clone)]
 pub struct Loc<T> {
     inner: T,
-    pos: Pos,
+    span: Span,
 }
 
 impl<T: serde::Serialize> serde::Serialize for Loc<T> {
@@ -21,10 +21,10 @@ impl<T: serde::Serialize> serde::Serialize for Loc<T> {
 }
 
 impl<T> Loc<T> {
-    pub fn new<P: Into<Pos>>(inner: T, pos: P) -> Loc<T> {
+    pub fn new<P: Into<Span>>(inner: T, span: P) -> Loc<T> {
         Loc {
             inner: inner,
-            pos: pos.into(),
+            span: span.into(),
         }
     }
 
@@ -32,43 +32,43 @@ impl<T> Loc<T> {
         &loc.inner
     }
 
-    pub fn pos(loc: &Loc<T>) -> &Pos {
-        &loc.pos
+    pub fn span(loc: &Loc<T>) -> &Span {
+        &loc.span
     }
 
     pub fn take(loc: Loc<T>) -> T {
         loc.inner
     }
 
-    pub fn take_pair(loc: Loc<T>) -> (T, Pos) {
-        (loc.inner, loc.pos)
+    pub fn take_pair(loc: Loc<T>) -> (T, Span) {
+        (loc.inner, loc.span)
     }
 
-    pub fn borrow_pair(loc: &Loc<T>) -> (&T, &Pos) {
-        (&loc.inner, &loc.pos)
+    pub fn borrow_pair(loc: &Loc<T>) -> (&T, &Span) {
+        (&loc.inner, &loc.span)
     }
 
     pub fn map<U, O>(loc: Loc<T>, op: O) -> Loc<U>
     where
         O: FnOnce(T) -> U,
     {
-        Loc::new(op(loc.inner), loc.pos.clone())
+        Loc::new(op(loc.inner), loc.span.clone())
     }
 
-    pub fn and_then<U, O, E: WithPos>(
-        Loc { inner, pos }: Loc<T>,
+    pub fn and_then<U, O, E: WithSpan>(
+        Loc { inner, span }: Loc<T>,
         op: O,
     ) -> result::Result<Loc<U>, E>
     where
         O: FnOnce(T) -> result::Result<U, E>,
     {
         op(inner)
-            .map(|value| Loc::new(value, pos.clone()))
-            .with_pos(&pos)
+            .map(|value| Loc::new(value, span.clone()))
+            .with_span(&span)
     }
 
     pub fn as_ref(loc: &Loc<T>) -> Loc<&T> {
-        Loc::new(&loc.inner, loc.pos.clone())
+        Loc::new(&loc.inner, loc.span.clone())
     }
 }
 
@@ -158,12 +158,12 @@ where
     T: ::std::fmt::Debug,
 {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "<{:?}@{:?}>", self.inner, self.pos)
+        write!(f, "<{:?}@{:?}>", self.inner, self.span)
     }
 }
 
-impl<'a, T> From<&'a Loc<T>> for Pos {
+impl<'a, T> From<&'a Loc<T>> for Span {
     fn from(value: &'a Loc<T>) -> Self {
-        Loc::pos(value).clone()
+        Loc::span(value).clone()
     }
 }

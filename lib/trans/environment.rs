@@ -2,7 +2,7 @@ use ast::{self, UseDecl};
 use core::errors::{Error, Result};
 use core::{translator, Context, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator,
            Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
-           RpVersionedPackage, Source, Translate, Translator, Version, WithPos};
+           RpVersionedPackage, Source, Translate, Translator, Version, WithSpan};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
@@ -436,25 +436,25 @@ impl Environment<CoreFlavor> {
             let root = scope.mut_root()?;
 
             if let Some(endpoint_naming) = attributes.take_selection("endpoint_naming") {
-                let (mut endpoint_naming, pos) = Loc::take_pair(endpoint_naming);
+                let (mut endpoint_naming, span) = Loc::take_pair(endpoint_naming);
 
                 root.endpoint_naming = endpoint_naming
                     .take_word()
                     .ok_or_else(|| Error::from("expected argument"))
                     .and_then(|n| n.as_identifier().and_then(|n| self.parse_naming(n)))
-                    .with_pos(&pos)?;
+                    .with_span(&span)?;
 
                 check_selection!(&self.ctx, endpoint_naming);
             }
 
             if let Some(field_naming) = attributes.take_selection("field_naming") {
-                let (mut field_naming, pos) = Loc::take_pair(field_naming);
+                let (mut field_naming, span) = Loc::take_pair(field_naming);
 
                 root.field_naming = field_naming
                     .take_word()
                     .ok_or_else(|| Error::from("expected argument"))
                     .and_then(|n| n.as_identifier().and_then(|n| self.parse_naming(n)))
-                    .with_pos(&pos)?;
+                    .with_span(&span)?;
 
                 check_selection!(&self.ctx, field_naming);
             }
@@ -467,11 +467,11 @@ impl Environment<CoreFlavor> {
 
     /// Parse the given version requirement.
     fn parse_range(v: &Loc<String>) -> Result<Range> {
-        let (value, pos) = Loc::borrow_pair(v);
+        let (value, span) = Loc::borrow_pair(v);
 
         Range::parse(value)
             .map_err(|e| format!("bad version requirement: {}", e).into())
-            .with_pos(pos)
+            .with_span(span)
     }
 
     /// Process use declarations found at the top of each object.
@@ -511,7 +511,8 @@ impl Environment<CoreFlavor> {
                 continue;
             }
 
-            return Err(Error::new(format!("no package found: {}", required)).with_pos(Loc::pos(use_decl)));
+            return Err(Error::new(format!("no package found: {}", required))
+                .with_span(Loc::span(use_decl)));
         }
 
         Ok(prefixes)
@@ -532,7 +533,7 @@ impl Environment<CoreFlavor> {
             }
         };
 
-        for (key, pos, t) in file.decls.iter().flat_map(|d| d.to_reg()) {
+        for (key, span, t) in file.decls.iter().flat_map(|d| d.to_reg()) {
             let key = key.clone().without_prefix();
 
             debug!("new reg ty: {}", key);
@@ -544,7 +545,7 @@ impl Environment<CoreFlavor> {
                 Vacant(entry) => entry.insert(t),
                 Occupied(_) => {
                     let mut r = self.ctx.report();
-                    r.err(pos, "conflicting declaration");
+                    r.err(span, "conflicting declaration");
                     return Err(r.into());
                 }
             };
