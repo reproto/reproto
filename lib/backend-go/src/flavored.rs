@@ -24,6 +24,7 @@ impl Flavor for GoFlavor {
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
+    type EnumType = Go<'static>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -155,6 +156,26 @@ impl FlavorTranslator for GoFlavorTranslator {
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
         self.package_translator.translate_package(source)
+    }
+
+    fn translate_enum_type<T>(
+        &self,
+        translator: &T,
+        enum_type: core::RpEnumType,
+    ) -> Result<Go<'static>>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>,
+    {
+        use core::RpEnumType::*;
+
+        match enum_type {
+            String => self.translate_string(),
+            U32 => self.translate_u32(),
+            U64 => self.translate_u64(),
+            I32 => self.translate_i32(),
+            I64 => self.translate_i64(),
+            enum_type => return Err(format!("bad enum type: {}", enum_type).into()),
+        }
     }
 }
 

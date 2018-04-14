@@ -1,11 +1,11 @@
 //! Code generator for the given path.
 
-use core::errors::Result;
+use Options;
 use core::Handle;
+use core::errors::Result;
 use flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
 use genco::java::{Class, Enum, Interface, Method};
 use std::rc::Rc;
-use Options;
 
 /// Generate helper implementations for codegen traits.
 macro_rules! codegen {

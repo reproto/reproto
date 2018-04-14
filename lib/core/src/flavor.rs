@@ -4,7 +4,7 @@ use errors::Result;
 use std::cmp;
 use std::fmt;
 use std::hash;
-use {RpEndpoint, RpField, RpName, RpPackage, RpType, RpVersionedPackage};
+use {RpEndpoint, RpEnumType, RpField, RpName, RpPackage, RpType, RpVersionedPackage};
 
 pub trait FlavorField: fmt::Debug + Clone {
     /// Indicates if the field is discriminating in an untagged context.
@@ -34,6 +34,8 @@ pub trait Flavor: fmt::Debug + Clone + cmp::Eq + hash::Hash {
     type Endpoint: fmt::Debug + Clone;
     /// The package type.
     type Package: fmt::Debug + Clone + cmp::Eq + cmp::Ord + hash::Hash + AsPackage;
+    /// Enum type.
+    type EnumType: fmt::Debug + Clone + cmp::Eq;
 }
 
 /// The first flavor where packages are fully qualified.
@@ -46,4 +48,5 @@ impl Flavor for CoreFlavor {
     type Field = RpField<CoreFlavor>;
     type Endpoint = RpEndpoint<CoreFlavor>;
     type Package = RpVersionedPackage;
+    type EnumType = RpEnumType;
 }

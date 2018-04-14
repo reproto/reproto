@@ -1,0 +1,19 @@
+enum U32 as u32 {
+    Field as -1;
+    Field as 2147483648;
+}
+
+enum U64 as u64 {
+    Field as -1;
+    Field as 9007199254740992;
+}
+
+enum I32 as i32 {
+    Field as -2147483649;
+    Field as 2147483648;
+}
+
+enum I64 as i64 {
+    Field as -9007199254740992;
+    Field as 9007199254740992;
+}

@@ -1,21 +1,21 @@
 //! C# backend for reproto
 
+use Options;
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded,
               TypeField, TypeFieldAdded};
 use core::errors::*;
-use core::{ForEachLoc, Handle, Loc, RpContext, RpSubTypeStrategy, WithSpan};
+use core::{self, ForEachLoc, Handle, Loc, RpContext, RpSubTypeStrategy, WithSpan};
 use csharp_field::CsharpField;
 use csharp_file::CsharpFile;
 use flavored::{CsharpFlavor, RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody,
                RpTupleBody, RpTypeBody};
-use genco::csharp::{local, optional, using, Argument, Class, Constructor, Enum, Field, INT32,
-                    Method, Modifier, BOOLEAN};
+use genco::csharp::{self, local, optional, using, Argument, Class, Constructor, Enum, Field,
+                    INT32, Method, Modifier, BOOLEAN};
 use genco::{Cons, Csharp, Element, Quoted, Tokens};
 use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
 use trans::Translated;
-use Options;
 
 pub struct Compiler {
     env: Rc<Translated<CsharpFlavor>>,
@@ -262,19 +262,46 @@ impl Compiler {
     fn process_enum<'el>(&self, body: &'el RpEnumBody) -> Result<Enum<'el>> {
         let mut spec = Enum::new(body.ident.clone());
 
-        let mut names = Vec::new();
+        let mut names = None;
 
-        for variant in &body.variants {
-            let name = Rc::new(self.variant_naming.convert(variant.ident()));
-            names.push(variant.ordinal().into());
-            spec.variants.append(toks![name]);
+        let value = match body.enum_type {
+            csharp::INT64 | csharp::UINT64 => {
+                spec.implements.push(csharp::local("long"));
+            }
+            _ => {}
+        };
+
+        match body.variants {
+            core::RpVariants::String { ref variants } => {
+                let mut local_names = Vec::new();
+
+                for v in variants {
+                    let name = Rc::new(self.variant_naming.convert(v.ident()));
+                    local_names.push(v.value.to_string().into());
+                    spec.variants.append(toks![name]);
+                }
+
+                names = Some(local_names);
+            }
+            core::RpVariants::Number { ref variants } => {
+                for v in variants {
+                    let name = Rc::new(self.variant_naming.convert(v.ident()));
+
+                    let value = match body.enum_type {
+                        csharp::INT64 | csharp::UINT64 => format!("{}L", v.value),
+                        _ => v.value.to_string(),
+                    };
+
+                    spec.variants.append(toks![name, " = ", value]);
+                }
+            }
         }
 
         for generator in &self.options.enum_generators {
             generator.generate(EnumAdded {
                 body: body,
                 spec: &mut spec,
-                names: &names,
+                names: names.as_ref(),
             })?;
         }
 

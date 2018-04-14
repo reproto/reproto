@@ -1,19 +1,19 @@
 //! Java backend for reproto
 
+use Options;
 use codegen::{ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, Loc, WithSpan};
-use flavored::{JavaField, JavaFlavor, RpCode, RpDecl, RpEnumBody, RpEnumType, RpInterfaceBody,
-               RpServiceBody, RpTupleBody, RpTypeBody};
-use genco::java::{imported, local, Argument, Class, Constructor, Enum, Field, Interface, Method,
-                  Modifier, BOOLEAN, INTEGER};
+use flavored::{JavaField, JavaFlavor, RpCode, RpDecl, RpEnumBody, RpInterfaceBody, RpServiceBody,
+               RpTupleBody, RpTypeBody};
+use genco::java::{self, imported, local, Argument, Class, Constructor, Enum, Field, Interface,
+                  Method, Modifier, BOOLEAN, INTEGER};
 use genco::{Cons, Element, Java, Quoted, Tokens};
 use java_file::JavaFile;
 use naming::{self, Naming};
 use std::rc::Rc;
 use trans::{Packages, Translated};
 use utils::{Observer, Override};
-use Options;
 
 /// Helper macro to implement listeners opt loop.
 fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {
@@ -54,7 +54,6 @@ macro_rules! call_codegen {
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<JavaFlavor>,
-    variant_field: &'el Loc<JavaField<'static>>,
     options: Options,
     variant_naming: naming::ToUpperSnake,
     null_string: Element<'static, Java<'static>>,
@@ -68,14 +67,9 @@ pub struct Compiler<'el> {
 }
 
 impl<'el> Compiler<'el> {
-    pub fn new(
-        env: &'el Translated<JavaFlavor>,
-        variant_field: &'el Loc<JavaField<'static>>,
-        options: Options,
-    ) -> Compiler<'el> {
+    pub fn new(env: &'el Translated<JavaFlavor>, options: Options) -> Compiler<'el> {
         Compiler {
             env,
-            variant_field,
             options,
             variant_naming: naming::to_upper_snake(),
             null_string: "null".quoted(),
@@ -452,7 +446,7 @@ impl<'el> Compiler<'el> {
         c
     }
 
-    fn enum_from_value_method(&self, name: Cons<'el>, field: &Field<'el>) -> Method<'el> {
+    fn enum_from_value_method(&self, name: Cons<'el>, field: &Field<'static>) -> Method<'el> {
         use self::Modifier::*;
 
         let argument = Argument::new(field.ty(), field.var());
@@ -510,35 +504,46 @@ impl<'el> Compiler<'el> {
         to_value
     }
 
-    fn enum_type_to_java(&self, ty: &'el RpEnumType) -> Result<Java<'el>> {
-        use core::RpEnumType::*;
-
-        match *ty {
-            String => Ok(self.string.clone().into()),
-        }
-    }
-
     fn process_enum(&self, body: &'el RpEnumBody) -> Result<Enum<'el>> {
         let mut spec = Enum::new(body.ident.clone());
 
-        let enum_type = self.enum_type_to_java(&body.enum_type)?;
-        spec.fields.push(self.new_field_spec(&enum_type, "value"));
+        spec.fields
+            .push(self.new_field_spec(&body.enum_type, "value"));
 
-        for variant in &body.variants {
-            let mut t = Tokens::new();
+        match body.variants {
+            core::RpVariants::String { ref variants } => {
+                for variant in variants {
+                    let name = self.variant_naming.convert(variant.ident());
+                    push!(
+                        spec.variants,
+                        name,
+                        "(",
+                        variant.value.clone().quoted(),
+                        ")"
+                    );
+                }
+            }
+            core::RpVariants::Number { ref variants } => {
+                for variant in variants {
+                    let name = self.variant_naming.convert(variant.ident());
 
-            // convert .reproto (upper-camel) convertion to Java
-            let name = self.variant_naming.convert(variant.ident());
-            push!(t, name, "(", variant.ordinal().quoted(), ")");
+                    let value = match body.enum_type {
+                        java::LONG => format!("{}L", variant.value),
+                        _ => variant.value.to_string(),
+                    };
 
-            spec.variants.append(t);
+                    push!(spec.variants, name, "(", value, ")");
+                }
+            }
         }
 
         spec.constructors
             .push(self.build_enum_constructor(&spec.fields));
 
-        let mut from_value = self.enum_from_value_method(spec.name(), &self.variant_field.spec);
-        let mut to_value = self.enum_to_value_method(&self.variant_field.spec);
+        let variant_field = java::Field::new(body.enum_type.clone(), "value");
+
+        let mut from_value = self.enum_from_value_method(spec.name(), &variant_field);
+        let mut to_value = self.enum_to_value_method(&variant_field);
 
         call_codegen!(
             &self.options.enum_generators,

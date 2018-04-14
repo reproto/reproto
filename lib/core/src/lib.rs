@@ -72,7 +72,8 @@ pub use self::rp_code::{RpCode, RpContext};
 pub use self::rp_decl::{RpDecl, RpNamed};
 pub use self::rp_endpoint::{RpAccept, RpEndpoint, RpEndpointArgument, RpEndpointHttp,
                             RpEndpointHttp1, RpHttpMethod};
-pub use self::rp_enum::{RpEnumBody, RpEnumOrdinal, RpEnumType, RpVariant};
+pub use self::rp_enum::{RpEnumBody, RpEnumType, RpVariant, RpVariantRef, RpVariantValue,
+                        RpVariants};
 pub use self::rp_field::RpField;
 pub use self::rp_file::RpFile;
 pub use self::rp_interface::{RpInterfaceBody, RpSubType, RpSubTypeStrategy, DEFAULT_TAG};
@@ -93,4 +94,5 @@ pub use self::source::Source;
 pub use self::span::Span;
 pub use self::translator::{FlavorTranslator, PackageTranslator, Translate, Translator};
 pub use self::with_span::WithSpan;
+pub use num_bigint::BigInt;
 pub use semver::{Range, Version};

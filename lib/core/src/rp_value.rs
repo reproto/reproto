@@ -1,8 +1,8 @@
 //! Value of models
 
-use errors::{Error, Result};
+use errors::Result;
 use std::fmt;
-use {Loc, RpEnumOrdinal, RpNumber};
+use {Loc, RpNumber};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", content = "value", rename_all = "snake_case")]
@@ -14,6 +14,7 @@ pub enum RpValue {
 }
 
 impl RpValue {
+    /// Treat as a string.
     pub fn as_str(&self) -> Result<&str> {
         use self::RpValue::*;
 
@@ -23,6 +24,17 @@ impl RpValue {
         }
     }
 
+    /// Treat as a string.
+    pub fn as_number(&self) -> Result<&RpNumber> {
+        use self::RpValue::*;
+
+        match *self {
+            Number(ref number) => Ok(number),
+            _ => Err("not a number".into()),
+        }
+    }
+
+    /// Treat as a string.
     pub fn as_identifier(&self) -> Result<&str> {
         use self::RpValue::*;
 
@@ -41,6 +53,25 @@ impl RpValue {
         }
     }
 
+    /// Treat into a string.
+    pub fn into_number(self) -> Result<RpNumber> {
+        use self::RpValue::*;
+
+        match self {
+            Number(number) => Ok(number),
+            _ => Err("not a number".into()),
+        }
+    }
+
+    pub fn into_string(self) -> Result<String> {
+        use self::RpValue::*;
+
+        match self {
+            String(string) => Ok(string),
+            _ => Err("expected string".into()),
+        }
+    }
+
     /// Is this value a string.
     pub fn is_string(&self) -> bool {
         use self::RpValue::*;
@@ -49,15 +80,6 @@ impl RpValue {
             String(_) => true,
             _ => false,
         }
-    }
-
-    pub fn into_ordinal(self) -> Result<RpEnumOrdinal> {
-        let ordinal = match self {
-            RpValue::String(value) => RpEnumOrdinal::String(value),
-            _ => return Err(Error::new("Not an ordinal")),
-        };
-
-        Ok(ordinal)
     }
 }
 

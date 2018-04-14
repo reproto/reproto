@@ -1,6 +1,10 @@
 type Entry {
     explicit?: EnumExplicit;
     implicit?: EnumImplicit;
+    enum_u32?: EnumU32;
+    enum_u64?: EnumU64;
+    enum_i32?: EnumI32;
+    enum_i64?: EnumI64;
 }
 
 /// Explicitly assigned strings
@@ -19,4 +23,35 @@ enum EnumImplicit as string {
 enum EnumLongNames as string {
     FooBar;
     Baz;
+}
+
+enum EnumU32 as u32 {
+    Min as 0;
+    // Note: to fit within the "common" 32-bit types on platforms like Java.
+    Max as 2147483647;
+    // Max as 4294967295;
+}
+
+enum EnumU64 as u64 {
+    Min as 0;
+    // Actual note: to fit within doubles (numbers in JavaScript):
+    Max as 9007199254740991;
+    // Otherwise, we would have to fit within the "common" signed 64-bit types on Java:
+    // Max as 9223372036854775807;
+    // Optimal, but sadly no:
+    // Max as 18446744073709551615;
+}
+
+enum EnumI32 as i32 {
+    Min as -2147483648;
+    NegativeOne as -1;
+    Zero as 0;
+    Max as 2147483647;
+}
+
+enum EnumI64 as i64 {
+    Min as -9007199254740991;
+    NegativeOne as -1;
+    Zero as 0;
+    Max as 9007199254740991;
 }

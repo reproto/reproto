@@ -2,8 +2,8 @@
 
 use codegen::{ClassAdded, ClassCodegen, Configure};
 use core::errors::*;
-use genco::java::imported;
 use genco::Java;
+use genco::java::imported;
 
 pub struct Module;
 

@@ -371,20 +371,26 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
 
         let mut values = Tokens::new();
 
-        body.variants.iter().for_each_loc(|variant| {
-            let mut arguments = Tokens::new();
+        for v in body.variants.iter() {
+            let mut args = Tokens::new();
 
-            arguments.append(variant.ident().quoted());
-            arguments.append(variant.ordinal().quoted());
+            args.append(v.ident().quoted());
 
-            let arguments = js![new & body.name, arguments];
-            let member = toks![&body.name, ".", variant.ident()];
+            match v.value {
+                core::RpVariantValue::String(string) => {
+                    args.append(string.quoted());
+                }
+                core::RpVariantValue::Number(number) => {
+                    args.append(number.to_string());
+                }
+            }
 
-            values.push(js![= member.clone(), arguments]);
+            let args = js![new & body.name, args];
+            let member = toks![&body.name, ".", v.ident()];
+
+            values.push(js![= member.clone(), args]);
             members.append(member);
-
-            Ok(()) as Result<()>
-        })?;
+        }
 
         class_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
 

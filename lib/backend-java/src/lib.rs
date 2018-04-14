@@ -26,7 +26,7 @@ mod utils;
 use codegen::Configure;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor, Loc, RpField, RpType, Span, Translator};
+use core::{Context, CoreFlavor};
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use naming::Naming;
 use options::Options;
@@ -208,18 +208,13 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
     let packages = env.packages()?;
     let translator = env.translator(flavored::JavaFlavorTranslator::new(packages.clone()))?;
 
-    let variant_field = Loc::new(
-        translator.translate_field(RpField::new("value", RpType::String))?,
-        Span::empty(),
-    );
-
     let env = env.translate(translator)?;
 
     let env = Rc::new(env);
     let modules = checked_modules(manifest.modules)?;
     let options = setup_options(modules)?;
 
-    let compiler = Compiler::new(&env, &variant_field, options);
+    let compiler = Compiler::new(&env, options);
 
     let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 

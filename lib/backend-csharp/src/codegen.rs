@@ -1,7 +1,7 @@
 //! Code generator for the given path.
 
-use core::errors::Result;
 use core::Handle;
+use core::errors::Result;
 use csharp_field::CsharpField;
 use flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
 use genco::csharp::{Argument, Class, Enum, Field};
@@ -33,7 +33,7 @@ pub struct TupleAdded<'a, 'el: 'a> {
 pub struct EnumAdded<'a, 'el: 'a> {
     pub body: &'el RpEnumBody,
     pub spec: &'a mut Enum<'el>,
-    pub names: &'a [Cons<'el>],
+    pub names: Option<&'a Vec<Cons<'el>>>,
 }
 
 pub struct InterfaceAdded<'a, 'el: 'a> {

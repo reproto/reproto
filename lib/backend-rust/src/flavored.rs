@@ -5,7 +5,7 @@
 use core::errors::Result;
 use core::{self, CoreFlavor, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
            Translator};
-use genco::rust::{imported, local};
+use genco::rust;
 use genco::{Cons, Rust};
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -36,6 +36,7 @@ impl Flavor for RustFlavor {
     type Field = core::RpField<RustFlavor>;
     type Endpoint = RustEndpoint;
     type Package = core::RpPackage;
+    type EnumType = Rust<'static>;
 }
 
 /// Responsible for translating RpType -> Rust type.
@@ -50,8 +51,8 @@ impl RustFlavorTranslator {
     pub fn new(packages: Rc<Packages>, datetime: Option<Rust<'static>>) -> Self {
         Self {
             packages,
-            map: imported("std::collections", "HashMap"),
-            json_value: imported("serde_json", "Value").alias("json"),
+            map: rust::imported("std::collections", "HashMap"),
+            json_value: rust::imported("serde_json", "Value").alias("json"),
             datetime: datetime,
         }
     }
@@ -64,35 +65,35 @@ impl FlavorTranslator for RustFlavorTranslator {
     translator_defaults!(Self, local_name, field);
 
     fn translate_i32(&self) -> Result<Rust<'static>> {
-        Ok(local("i32"))
+        Ok(rust::local("i32"))
     }
 
     fn translate_i64(&self) -> Result<Rust<'static>> {
-        Ok(local("i64"))
+        Ok(rust::local("i64"))
     }
 
     fn translate_u32(&self) -> Result<Rust<'static>> {
-        Ok(local("u32"))
+        Ok(rust::local("u32"))
     }
 
     fn translate_u64(&self) -> Result<Rust<'static>> {
-        Ok(local("u64"))
+        Ok(rust::local("u64"))
     }
 
     fn translate_float(&self) -> Result<Rust<'static>> {
-        Ok(local("f32"))
+        Ok(rust::local("f32"))
     }
 
     fn translate_double(&self) -> Result<Rust<'static>> {
-        Ok(local("f64"))
+        Ok(rust::local("f64"))
     }
 
     fn translate_boolean(&self) -> Result<Rust<'static>> {
-        Ok(local("bool"))
+        Ok(rust::local("bool"))
     }
 
     fn translate_string(&self) -> Result<Rust<'static>> {
-        Ok(local("String"))
+        Ok(rust::local("String"))
     }
 
     fn translate_datetime(&self) -> Result<Rust<'static>> {
@@ -104,7 +105,7 @@ impl FlavorTranslator for RustFlavorTranslator {
     }
 
     fn translate_array(&self, argument: Rust<'static>) -> Result<Rust<'static>> {
-        Ok(local("Vec").with_arguments(vec![argument]))
+        Ok(rust::local("Vec").with_arguments(vec![argument]))
     }
 
     fn translate_map(&self, key: Rust<'static>, value: Rust<'static>) -> Result<Rust<'static>> {
@@ -116,7 +117,7 @@ impl FlavorTranslator for RustFlavorTranslator {
     }
 
     fn translate_bytes(&self) -> Result<Rust<'static>> {
-        Ok(local("String"))
+        Ok(rust::local("String"))
     }
 
     fn translate_name(&self, reg: RpReg, name: RpName) -> Result<Rust<'static>> {
@@ -124,10 +125,10 @@ impl FlavorTranslator for RustFlavorTranslator {
 
         if let Some(prefix) = name.prefix {
             let package_name = name.package.join("::");
-            return Ok(imported(package_name, ident).alias(prefix));
+            return Ok(rust::imported(package_name, ident).alias(prefix));
         }
 
-        Ok(local(ident))
+        Ok(rust::local(ident))
     }
 
     fn translate_endpoint<T>(
@@ -146,6 +147,26 @@ impl FlavorTranslator for RustFlavorTranslator {
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
         self.packages.translate_package(source)
+    }
+
+    fn translate_enum_type<T>(
+        &self,
+        translator: &T,
+        enum_type: core::RpEnumType,
+    ) -> Result<Rust<'static>>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>,
+    {
+        use core::RpEnumType::*;
+
+        match enum_type {
+            String => Ok(rust::local("str").reference(rust::StaticRef)),
+            U32 => self.translate_u32(),
+            U64 => self.translate_u64(),
+            I32 => self.translate_i32(),
+            I64 => self.translate_i64(),
+            enum_type => return Err(format!("bad enum type: {}", enum_type).into()),
+        }
     }
 }
 

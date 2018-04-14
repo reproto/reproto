@@ -22,6 +22,7 @@ impl Flavor for CsharpFlavor {
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = core::RpPackage;
+    type EnumType = Csharp<'static>;
 }
 
 /// Responsible for translating RpType -> Csharp type.
@@ -128,6 +129,26 @@ impl FlavorTranslator for CsharpFlavorTranslator {
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
         self.packages.translate_package(source)
+    }
+
+    fn translate_enum_type<T>(
+        &self,
+        translator: &T,
+        enum_type: core::RpEnumType,
+    ) -> Result<Csharp<'static>>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>,
+    {
+        use core::RpEnumType::*;
+
+        match enum_type {
+            String => self.translate_string(),
+            U32 => self.translate_u32(),
+            U64 => self.translate_u64(),
+            I32 => self.translate_i32(),
+            I64 => self.translate_i64(),
+            enum_type => return Err(format!("bad enum type: {}", enum_type).into()),
+        }
     }
 }
 

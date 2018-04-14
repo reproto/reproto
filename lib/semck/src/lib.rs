@@ -4,7 +4,7 @@ use self::Component::*;
 use self::Violation::*;
 use core::errors::*;
 use core::flavored::{RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpNamed, RpType,
-                     RpVariant};
+                     RpVariantRef};
 use core::{Loc, Span, Version};
 use std::collections::HashMap;
 
@@ -72,7 +72,7 @@ fn fields<'a>(named: &RpNamed<'a>) -> Vec<&'a Loc<RpField>> {
     }
 }
 
-fn enum_variants<'a>(named: &'a RpNamed) -> Vec<&'a Loc<RpVariant>> {
+fn enum_variants<'a>(named: &'a RpNamed) -> Vec<RpVariantRef<'a>> {
     use core::RpNamed::*;
 
     match *named {
@@ -110,9 +110,9 @@ where
     storage
 }
 
-fn variants_to_map<'a, I: 'a>(variants: I) -> HashMap<RpName, &'a Loc<RpVariant>>
+fn variants_to_map<'a, I: 'a>(variants: I) -> HashMap<RpName, RpVariantRef<'a>>
 where
-    I: IntoIterator<Item = &'a Loc<RpVariant>>,
+    I: IntoIterator<Item = RpVariantRef<'a>>,
 {
     let mut storage = HashMap::new();
 
@@ -217,16 +217,16 @@ fn check_endpoint_type(
 fn common_check_variant(
     component: Component,
     violations: &mut Vec<Violation>,
-    from_variant: &Loc<RpVariant>,
-    to_variant: &Loc<RpVariant>,
+    from_variant: RpVariantRef,
+    to_variant: RpVariantRef,
 ) -> Result<()> {
-    if from_variant.ordinal() != to_variant.ordinal() {
+    if from_variant.value != to_variant.value {
         violations.push(VariantOrdinalChange(
             component.clone(),
-            from_variant.ordinal().to_string(),
-            Loc::span(from_variant).into(),
-            to_variant.ordinal().to_string(),
-            Loc::span(to_variant).into(),
+            from_variant.to_string(),
+            from_variant.span.into(),
+            to_variant.to_string(),
+            to_variant.span.into(),
         ));
     }
 
@@ -297,7 +297,7 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_variant) = to_variants.remove(&name) {
                     check_variant(&mut violations, from_variant, to_variant)?;
                 } else {
-                    violations.push(RemoveVariant(Minor, Loc::span(from_variant).into()));
+                    violations.push(RemoveVariant(Minor, from_variant.span.into()));
                 }
             }
 
@@ -339,8 +339,8 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
     fn check_variant(
         violations: &mut Vec<Violation>,
-        from_variant: &Loc<RpVariant>,
-        to_variant: &Loc<RpVariant>,
+        from_variant: RpVariantRef,
+        to_variant: RpVariantRef,
     ) -> Result<()> {
         common_check_variant(Minor, violations, from_variant, to_variant)?;
         Ok(())
@@ -387,13 +387,13 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_variant) = to_variants.remove(&name) {
                     check_variant(&mut violations, from_variant, to_variant)?;
                 } else {
-                    violations.push(RemoveVariant(Patch, Loc::span(from_variant).into()));
+                    violations.push(RemoveVariant(Patch, from_variant.span.into()));
                 }
             }
 
             // added variants are not permitted
             for (_, to_variant) in to_variants.into_iter() {
-                violations.push(AddVariant(Patch, Loc::span(to_variant).into()));
+                violations.push(AddVariant(Patch, to_variant.span.into()));
             }
 
             let from_endpoints = endpoints_to_map(&from_named);
@@ -442,8 +442,8 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
     fn check_variant(
         violations: &mut Vec<Violation>,
-        from_variant: &Loc<RpVariant>,
-        to_variant: &Loc<RpVariant>,
+        from_variant: RpVariantRef,
+        to_variant: RpVariantRef,
     ) -> Result<()> {
         common_check_variant(Patch, violations, from_variant, to_variant)?;
         Ok(())

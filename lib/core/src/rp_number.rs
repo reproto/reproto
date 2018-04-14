@@ -6,6 +6,15 @@ use serde;
 use std::fmt;
 use std::result;
 
+macro_rules! convert_method {
+    ($ty:ty, $method:ident) => {
+        pub fn $method(&self) -> Option<$ty> {
+            let m = self.multiple();
+            self.digits.checked_div(&m).and_then(|r| r.$method())
+        }
+    };
+}
+
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpNumber {
     // base digits
@@ -15,6 +24,13 @@ pub struct RpNumber {
 }
 
 impl RpNumber {
+    convert_method!(i32, to_i32);
+    convert_method!(i64, to_i64);
+    convert_method!(u32, to_u32);
+    convert_method!(u64, to_u64);
+    convert_method!(usize, to_usize);
+
+    /// Get the decimal multiple.
     fn multiple(&self) -> BigInt {
         let mut multiple: BigInt = 1.into();
 
@@ -26,18 +42,13 @@ impl RpNumber {
         multiple
     }
 
-    pub fn to_u64(&self) -> Option<u64> {
-        let m = self.multiple();
+    /// Try to convert to bigint.
+    pub fn to_bigint(&self) -> Option<&BigInt> {
+        if self.decimal != 0 {
+            return None;
+        }
 
-        self.digits.checked_div(&m).and_then(|r| r.to_u64())
-    }
-
-    pub fn to_u32(&self) -> Option<u32> {
-        self.to_u64().map(|v| v as u32)
-    }
-
-    pub fn to_usize(&self) -> Option<usize> {
-        self.to_u64().map(|v| v as usize)
+        Some(&self.digits)
     }
 
     pub fn to_f64(&self) -> Option<f64> {
@@ -63,10 +74,37 @@ impl From<u32> for RpNumber {
     }
 }
 
+impl From<u64> for RpNumber {
+    fn from(value: u64) -> RpNumber {
+        RpNumber {
+            digits: value.into(),
+            decimal: 0usize,
+        }
+    }
+}
+
 impl From<i32> for RpNumber {
     fn from(value: i32) -> RpNumber {
         RpNumber {
             digits: value.into(),
+            decimal: 0usize,
+        }
+    }
+}
+
+impl From<i64> for RpNumber {
+    fn from(value: i64) -> RpNumber {
+        RpNumber {
+            digits: value.into(),
+            decimal: 0usize,
+        }
+    }
+}
+
+impl From<BigInt> for RpNumber {
+    fn from(value: BigInt) -> RpNumber {
+        RpNumber {
+            digits: value,
             decimal: 0usize,
         }
     }
@@ -132,8 +170,11 @@ mod test_numbers {
             decimal: 2,
         };
 
-        assert_eq!(Some(1043), n.to_u64());
         assert_eq!(Some(1043.21), n.to_f64());
+        assert_eq!(Some(1043), n.to_u32());
+        assert_eq!(Some(1043), n.to_u64());
+        assert_eq!(Some(1043), n.to_i32());
+        assert_eq!(Some(1043), n.to_i64());
     }
 
     #[test]
@@ -145,6 +186,10 @@ mod test_numbers {
 
         assert_eq!(None, n.to_u64());
         assert_eq!(Some(-1043.21), n.to_f64());
+        assert_eq!(Some(-1043), n.to_i32());
+        assert_eq!(Some(-1043), n.to_i64());
+        assert_eq!(None, n.to_u32());
+        assert_eq!(None, n.to_u64());
     }
 
     #[test]

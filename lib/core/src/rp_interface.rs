@@ -117,8 +117,8 @@ where
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(
-    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize, \
-             F::Name: Serialize"
+    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
+             Serialize, F::Name: Serialize, F::EnumType: Serialize"
 )]
 pub struct RpSubType<F: 'static>
 where

@@ -2,7 +2,7 @@ use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, Inter
               InterfaceCodegen, TupleAdded, TupleCodegen, TypeField, TypeFieldAdded,
               TypeFieldCodegen};
 use core::errors::Result;
-use core::RpSubTypeStrategy;
+use core::{self, RpSubTypeStrategy};
 use flavored::RpInterfaceBody;
 use genco::csharp::{self, using, Argument};
 use genco::{Cons, Csharp, Element, IntoTokens, Quoted, Tokens};
@@ -122,21 +122,30 @@ impl ClassCodegen for JsonNet {
 
 impl EnumCodegen for JsonNet {
     fn generate(&self, e: EnumAdded) -> Result<()> {
-        let spec = e.spec;
-        let names = e.names;
+        let EnumAdded {
+            body, spec, names, ..
+        } = e;
 
-        spec.attribute(StringEnumConverter);
-
-        let mut variants = Tokens::new();
-
-        for (v, name) in spec.variants.clone().into_iter().zip(names.iter().cloned()) {
-            let mut annotated = Tokens::new();
-            annotated.push(EnumMember(name));
-            annotated.push(v);
-            variants.push(annotated);
+        match body.variants {
+            core::RpVariants::String { .. } => {
+                spec.attribute(StringEnumConverter);
+            }
+            _ => {}
         }
 
-        spec.variants = variants;
+        if let Some(names) = names {
+            let mut variants = Tokens::new();
+
+            for (v, name) in spec.variants.clone().into_iter().zip(names.iter().cloned()) {
+                let mut annotated = Tokens::new();
+                annotated.push(EnumMember(name));
+                annotated.push(v);
+                variants.push(annotated);
+            }
+
+            spec.variants = variants;
+        }
+
         Ok(())
     }
 }

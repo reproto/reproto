@@ -1,8 +1,8 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use codegen::{Configure, ServiceAdded, ServiceCodegen};
-use core::errors::*;
 use core::Loc;
+use core::errors::*;
 use flavored::JavaEndpoint;
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier, VOID};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};

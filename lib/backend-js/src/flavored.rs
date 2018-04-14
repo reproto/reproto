@@ -140,6 +140,7 @@ impl Flavor for JavaScriptFlavor {
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
+    type EnumType = RpEnumType;
 }
 
 /// Responsible for translating RpType -> JavaScript type.
@@ -157,7 +158,7 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
     type Source = CoreFlavor;
     type Target = JavaScriptFlavor;
 
-    translator_defaults!(Self, field, endpoint);
+    translator_defaults!(Self, field, endpoint, enum_type);
 
     fn translate_i32(&self) -> Result<JavaScriptType<'static>> {
         Ok(JavaScriptType::Native)

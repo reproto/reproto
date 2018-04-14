@@ -12,7 +12,7 @@ extern crate toml;
 
 use core::errors::Result;
 use core::flavored::{RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody,
-                     RpTupleBody, RpTypeBody, RpVariant};
+                     RpTupleBody, RpTypeBody, RpVariantRef};
 use core::{Context, CoreFlavor, RelativePathBuf, DEFAULT_TAG};
 use genco::{Custom, Formatter, IntoTokens, IoFmt, Quoted, Tokens, WriteTokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -287,11 +287,13 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
 
         t.push_unless_empty(Comments(&body.comment));
 
-        match body.enum_type {
-            core::RpEnumType::String => {
-                t.push(toks!["enum ", body.ident.as_str(), " as string {"]);
-            }
-        }
+        t.push(toks![
+            "enum ",
+            body.ident.as_str(),
+            " as ",
+            body.enum_type.to_string(),
+            " {"
+        ]);
 
         t.nested({
             let mut t = Tokens::new();
@@ -385,7 +387,7 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         Ok(t)
     }
 
-    fn format_variant<'el>(variant: &'el RpVariant) -> Result<Tokens<'el, Reproto>> {
+    fn format_variant<'el>(variant: RpVariantRef<'el>) -> Result<Tokens<'el, Reproto>> {
         let mut t = Tokens::new();
 
         t.push_unless_empty(Comments(&variant.comment));
@@ -393,11 +395,14 @@ pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
         t.push_into(|t| {
             t.append(variant.ident());
 
-            match variant.ordinal {
-                core::RpEnumOrdinal::Generated => {}
-                core::RpEnumOrdinal::String(ref string) => {
+            match variant.value {
+                core::RpVariantValue::String(string) => {
                     t.append(" as ");
-                    t.append(string.as_str().quoted());
+                    t.append(string.quoted());
+                }
+                core::RpVariantValue::Number(number) => {
+                    t.append(" as ");
+                    t.append(number.to_string());
                 }
             }
 

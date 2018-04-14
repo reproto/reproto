@@ -300,18 +300,22 @@ impl<'el> Compiler<'el> {
     pub fn enum_variants(&self, body: &'el RpEnumBody) -> Result<Tokens<'el, Python<'el>>> {
         let mut args = Tokens::new();
 
-        let variants = body.variants.iter().map(|l| Loc::as_ref(l));
+        for v in &body.variants {
+            let mut a = Tokens::new();
 
-        variants.for_each_loc(|variant| {
-            let mut enum_arguments = Tokens::new();
+            a.append(v.ident().quoted());
 
-            enum_arguments.append(variant.ident().quoted());
-            enum_arguments.append(variant.ordinal().quoted());
+            match v.value {
+                core::RpVariantValue::String(ref string) => {
+                    a.append(string.quoted());
+                }
+                core::RpVariantValue::Number(ref number) => {
+                    a.append(number.to_string());
+                }
+            }
 
-            args.append(toks!["(", enum_arguments.join(", "), ")"]);
-
-            Ok(()) as Result<()>
-        })?;
+            args.append(toks!["(", a.join(", "), ")"]);
+        }
 
         Ok(toks![
             &body.name,
