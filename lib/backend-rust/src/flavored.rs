@@ -108,7 +108,7 @@ impl FlavorTranslator for RustFlavorTranslator {
     }
 
     fn translate_map(&self, key: Rust<'static>, value: Rust<'static>) -> Result<Rust<'static>> {
-        Ok(self.map.with_arguments(vec![key, value]))
+        Ok(self.map.clone().with_arguments(vec![key, value]))
     }
 
     fn translate_any(&self) -> Result<Rust<'static>> {

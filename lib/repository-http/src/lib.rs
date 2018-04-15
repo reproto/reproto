@@ -136,13 +136,13 @@ pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>
 
     let http_objects = HttpObjects::new(url.clone(), core);
 
-    if let Some(cache_dir) = config.cache_dir {
+    if let Some(cache_home) = config.cache_home {
         let missing_cache_time = config
             .missing_cache_time
             .unwrap_or_else(|| Duration::new(60, 0));
 
         return Ok(Box::new(CachedObjects::new(
-            cache_dir,
+            cache_home,
             missing_cache_time,
             http_objects,
         )));

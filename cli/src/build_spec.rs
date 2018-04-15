@@ -106,13 +106,13 @@ pub fn repository(manifest: &Manifest) -> Result<Repository> {
         .ok_or_else(|| "no parent path to manifest")?;
 
     let mut repo_dir = None;
-    let mut cache_dir = None;
+    let mut cache_home = None;
     let mut index = repository.index.clone();
     let mut objects = repository.objects.clone();
 
     if let Some(config_env) = ConfigEnv::new()? {
         repo_dir = Some(config_env.repo_dir);
-        cache_dir = Some(config_env.cache_dir);
+        cache_home = Some(config_env.cache_home);
         index = index.or(config_env.index.clone());
         objects = objects.or(config_env.objects.clone());
     }
@@ -131,8 +131,8 @@ pub fn repository(manifest: &Manifest) -> Result<Repository> {
     let index = load_index(base, index_url.as_str(), index_publishing, index_config)?;
 
     let objects_config = ObjectsConfig {
-        repo_dir: repo_dir,
-        cache_dir: cache_dir,
+        repo_dir,
+        cache_home,
         missing_cache_time: Some(Duration::new(60, 0)),
     };
 

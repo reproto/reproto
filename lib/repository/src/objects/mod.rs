@@ -20,7 +20,7 @@ use url::Url;
 pub struct ObjectsConfig {
     /// Root path when checking out local repositories.
     pub repo_dir: PathBuf,
-    pub cache_dir: Option<PathBuf>,
+    pub cache_home: Option<PathBuf>,
     pub missing_cache_time: Option<Duration>,
 }
 

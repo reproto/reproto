@@ -32,7 +32,7 @@ pub struct Config {
     /// Where to store local checkouts of repos.
     pub repo_dir: Option<PathBuf>,
     /// Objects cache location.
-    pub cache_dir: Option<PathBuf>,
+    pub cache_home: Option<PathBuf>,
 }
 
 pub fn read_config<P: AsRef<Path>>(path: P) -> Result<Config> {

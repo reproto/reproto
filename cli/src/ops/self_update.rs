@@ -116,7 +116,7 @@ mod internal {
             })?;
         }
 
-        let bin = config.bin_dir.join("reproto");
+        let bin = config.bin_home.join("reproto");
 
         setup_symlink(&archived, &bin).map_err(|e| {
             format!(
@@ -128,13 +128,13 @@ mod internal {
 
         return Ok(());
 
-        /// Checks that bin_dir is in PATH, or warns otherwise.
+        /// Checks that bin_home is in PATH, or warns otherwise.
         fn check_path(config: &ConfigEnv) -> Result<()> {
             let mut bin_in_path = false;
 
             if let Some(paths) = env::var_os("PATH") {
                 for path in env::split_paths(&paths) {
-                    if same_file::is_same_file(path, &config.bin_dir)? {
+                    if same_file::is_same_file(path, &config.bin_home)? {
                         bin_in_path = true;
                     }
                 }
@@ -143,7 +143,7 @@ mod internal {
             if !bin_in_path {
                 warn!(
                     "{}: is not in your PATH. This is required for reproto to work!",
-                    config.bin_dir.display()
+                    config.bin_home.display()
                 );
             }
 

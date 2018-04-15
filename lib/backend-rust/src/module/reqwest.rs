@@ -314,7 +314,7 @@ impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Constructor<'a, 'el> {
             }
         };
 
-        let s = result.with_arguments(vec![local("Self")]);
+        let s = result.clone().with_arguments(vec![local("Self")]);
 
         push!(t, "pub fn new(", args.join(", "), ") -> ", s, " {");
 

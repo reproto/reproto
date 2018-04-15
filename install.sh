@@ -3,7 +3,8 @@
 set -e
 
 BASE_URL=${BASE_URL:-"https://storage.googleapis.com/reproto-releases"}
-REPROTO_HOME=${REPROTO_HOME:-"$HOME/.reproto"}
+DATA_HOME=${XDG_DATA_HOME:-"$HOME/.local/share"}
+BIN_HOME="$HOME/.local/bin"
 
 releases=$BASE_URL/releases
 noninteractive=n
@@ -105,7 +106,7 @@ if ! version=$(get_version); then
     exit 1
 fi
 
-echo "NOTICE: This will install reproto into $REPROTO_HOME"
+echo "NOTICE: This will install reproto into $BIN_HOME"
 
 while true; do
     read -p "Are you sure? [Yn]" -n 1 -r
@@ -120,24 +121,24 @@ while true; do
     fi
 done
 
-mkdir -p $REPROTO_HOME/bin
-mkdir -p $REPROTO_HOME/releases
+mkdir -p $BIN_HOME
+mkdir -p $DATA_HOME/releases
 
 versioned=reproto-$version-$platform-$arch
 archive="$BASE_URL/$versioned.tar.gz"
 
 # archive
-a="$REPROTO_HOME/releases/$versioned.tar.gz"
+a="$DATA_HOME/releases/$versioned.tar.gz"
 # unpacked binary
-b="$REPROTO_HOME/releases/$versioned"
+b="$DATA_HOME/releases/$versioned"
 # link
-l="$REPROTO_HOME/bin/reproto"
+l="$BIN_HOME/reproto"
 # link destination
-d="../releases/$versioned"
+d="$DATA_HOME/releases/$versioned"
 
 do_download=y
 do_unpack=y
-do_link=y
+do_copy=y
 
 if [[ -f $a ]]; then
     if [[ $force == "y" ]]; then
@@ -163,7 +164,7 @@ if [[ -L $l ]]; then
         echo "Removing old link (-f): $l"
         rm -f $l
     else
-        do_link=n
+        do_copy=n
     fi
 fi
 
@@ -174,17 +175,17 @@ fi
 
 if [[ $do_unpack == "y" ]]; then
     echo "Unpacking archive: $archive"
-    tar -C "$REPROTO_HOME/releases" -xf $a
-    mv "$REPROTO_HOME/releases/reproto" "$b"
+    tar -C "$DATA_HOME/releases" -xf $a
+    mv "$DATA_HOME/releases/reproto" "$b"
     chmod +x $b
 fi
 
-if [[ $do_link == "y" ]]; then
+if [[ $do_copy == "y" ]]; then
     echo "Creating link: $l -> $d"
-    ln -s $d $l
+    cp -f $d $l
 fi
 
 echo ""
 echo "All done!"
 echo ""
-echo "Please make sure that $REPROTO_HOME/bin is in your PATH, or that REPROTO_HOME is set and points to $REPROTO_HOME"
+echo "Please make sure that $BIN_HOME is in your PATH, or that REPROTO_HOME is set and points to $BIN_HOME"
