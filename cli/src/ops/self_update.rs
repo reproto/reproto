@@ -17,7 +17,6 @@ mod internal {
     use self::hyper::{Client, Method, Request, Uri};
     use self::tar::Archive;
     use self::tokio_core::reactor::{Core, Handle};
-    use VERSION;
     use clap::ArgMatches;
     use config_env::ConfigEnv;
     use core::errors::{Error, Result};
@@ -28,6 +27,31 @@ mod internal {
     use std::path::Path;
     use std::rc::Rc;
     use url::Url;
+    use VERSION;
+    
+    #[cfg(target_os = "macos")]
+    mod os {
+        pub const PLATFORM: Option<&str> = Some("osx");
+        pub const EXT: Option<&str> = Some("");
+    }
+    
+    #[cfg(target_os = "linux")]
+    mod os {
+        pub const PLATFORM: Option<&str> = Some("linux");
+        pub const EXT: Option<&str> = Some("");
+    }
+
+    #[cfg(target_os = "windows")]
+    mod os {
+        pub const PLATFORM: Option<&str> = Some("windows");
+        pub const EXT: Option<&str> = Some(".exe");
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    mod os {
+        pub const PLATFORM: Option<&str> = None;
+        pub const EXT: Option<&str> = None;
+    }
 
     #[cfg(target_arch = "x86_64")]
     const ARCH: Option<&str> = Some("x86_64");
@@ -35,14 +59,8 @@ mod internal {
     #[cfg(not(target_arch = "x86_64"))]
     const ARCH: Option<&str> = None;
 
-    #[cfg(target_os = "macos")]
-    const PLATFORM: Option<&str> = Some("osx");
-
-    #[cfg(target_os = "linux")]
-    const PLATFORM: Option<&str> = Some("linux");
-
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-    const PLATFORM: Option<&str> = None;
+    use self::os::PLATFORM;
+    use self::os::EXT;
 
     const DEFAULT_URL: &str = "https://storage.googleapis.com/reproto-releases/";
 
@@ -60,7 +78,14 @@ mod internal {
         })?;
 
         let platform = PLATFORM.clone().or(m.value_of("platform")).ok_or_else(|| {
-            format!("Architecture could not be detected, and is not specified with `--platform`")
+            format!("Platform could not be detected, and is not specified with `--platform`")
+        })?;
+
+        let ext = EXT.clone().or(m.value_of("ext")).ok_or_else(|| {
+            format!(
+                "Binary could not be detected, and is not specified with `--ext`. Should be \
+                 something like `reproto` or `reproto.exe`"
+            )
         })?;
 
         let current = Version::parse(VERSION)?;
@@ -99,24 +124,29 @@ mod internal {
             }
         };
 
+        let tuple = format!("{}-{}-{}", version, platform, arch);
+
         let archived = config
             .releases_dir
-            .join(format!("reproto-{}-{}-{}", version, platform, arch));
+            .join(format!("reproto-{}{}", tuple, ext));
+        let binary = format!("reproto{}", ext);
 
         if !archived.is_file() || force {
             let release = core.run(client.get_release(&version, platform, arch))
-                .map_err(|e| format!("failed to download archive: {}", e.display()))?;
+                .map_err(|e| format!("{}: failed to download archive: {}", tuple, e.display()))?;
 
-            download_archive(release, &archived).map_err(|e| {
+            download_archive(release, &archived, &binary).map_err(|e| {
                 format!(
                     "failed to download archive to: {}: {}",
                     archived.display(),
                     e.display()
                 )
             })?;
+
+            info!("wrote: {}", archived.display());
         }
 
-        let bin = config.bin_home.join("reproto");
+        let bin = config.bin_home.join(binary);
 
         setup_symlink(&archived, &bin).map_err(|e| {
             format!(
@@ -132,10 +162,16 @@ mod internal {
         fn check_path(config: &ConfigEnv) -> Result<()> {
             let mut bin_in_path = false;
 
-            if let Some(paths) = env::var_os("PATH") {
-                for path in env::split_paths(&paths) {
-                    if same_file::is_same_file(path, &config.bin_home)? {
-                        bin_in_path = true;
+            if config.bin_home.is_dir() {
+                if let Some(paths) = env::var_os("PATH") {
+                    for path in env::split_paths(&paths) {
+                        if !path.is_dir() {
+                            continue;
+                        }
+
+                        if same_file::is_same_file(path, &config.bin_home)? {
+                            bin_in_path = true;
+                        }
                     }
                 }
             }
@@ -150,7 +186,7 @@ mod internal {
             Ok(())
         }
 
-        fn download_archive(release: Vec<u8>, out: &Path) -> Result<()> {
+        fn download_archive(release: Vec<u8>, out: &Path, binary: &str) -> Result<()> {
             let mut archive = Archive::new(Cursor::new(release).gz_decode()?);
 
             for file in archive.entries()? {
@@ -160,12 +196,9 @@ mod internal {
                     let path_bytes = file.header().path_bytes();
                     let path = ::std::str::from_utf8(path_bytes.as_ref())?;
 
-                    match path {
-                        "reproto" => {}
-                        path => {
-                            warn!("got unexpected file in archive: {}", path);
-                            continue;
-                        }
+                    if path != binary {
+                        warn!("got unexpected file in archive: {}", path);
+                        continue;
                     }
                 }
 
@@ -195,8 +228,13 @@ mod internal {
                 p.set_mode(0755);
             }
 
-            #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-            fn set_executable(p: &mut fs::Permissions) {
+            #[cfg(target_os = "windows")]
+            fn set_executable(_p: &mut fs::Permissions) {
+                // nothing to do on windows.
+            }
+
+            #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+            fn set_executable(_p: &mut fs::Permissions) {
                 warn!("cannot update permissions on this platform");
             }
         }
@@ -357,8 +395,8 @@ mod internal {
 #[cfg(not(feature = "self-updates"))]
 mod internal {
     use clap::ArgMatches;
-    use core::Context;
     use core::errors::Result;
+    use core::Context;
     use std::rc::Rc;
 
     pub fn entry(_: Rc<Context>, _: &ArgMatches) -> Result<()> {
@@ -391,6 +429,11 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
             .takes_value(true)
             .help("Architecture to update for"),
     );
+
+    let out =
+        out.arg(Arg::with_name("ext").long("ext").takes_value(true).help(
+            "File extension of binary to expect, should be something like `.exe` on windows.",
+        ));
 
     let out = out.arg(
         Arg::with_name("force")

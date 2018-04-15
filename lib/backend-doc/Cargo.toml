@@ -22,8 +22,7 @@ log = "0.3"
 pulldown-cmark = "0.0.14"
 genco = {version = "0.3"}
 clap = "2.24"
-
-syntect = { version = "1", features = ["static-onig"] }
+syntect = "2"
 
 [build-dependencies]
 toml = "0.4"
