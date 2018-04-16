@@ -2,15 +2,8 @@ environment:
   global:
     PROJECT_NAME: reproto
   matrix:
-    # Stable channel
     - TARGET: x86_64-pc-windows-msvc
       CHANNEL: stable
-    # Beta channel
-    - TARGET: x86_64-pc-windows-msvc
-      CHANNEL: beta
-    # Nightly channel
-    - TARGET: x86_64-pc-windows-msvc
-      CHANNEL: nightly
 
 install:
   - '"C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64'
