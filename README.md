@@ -1,6 +1,7 @@
 # [![reproto](/gfx/logo.128.png?raw=true "reproto")](https://github.com/reproto)
 
 [![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
+[![Build status](https://ci.appveyor.com/api/projects/status/9vgjwv3kfhwwt155/branch/master?svg=true)](https://ci.appveyor.com/project/udoprog/reproto/branch/master)
 [![Chat on Gitter](https://badges.gitter.im/reproto/reproto.svg)](https://gitter.im/reproto/reproto)
 
 A better way to define schemas for your JSON.
