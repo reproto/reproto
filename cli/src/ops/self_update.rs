@@ -14,7 +14,8 @@ mod internal {
     use self::flate2::FlateReadExt;
     use self::futures::future::{err, ok};
     use self::futures::{Future, Stream};
-    use self::hyper::{Client, Method, Request, Uri};
+    use self::hyper::header::Location;
+    use self::hyper::{Client, Method, Request, Response, StatusCode, Uri};
     use self::tar::Archive;
     use self::tokio_core::reactor::{Core, Handle};
     use clap::ArgMatches;
@@ -26,15 +27,16 @@ mod internal {
     use std::io::{self, Cursor};
     use std::path::Path;
     use std::rc::Rc;
+    use std::sync::Arc;
     use url::Url;
     use VERSION;
-    
+
     #[cfg(target_os = "macos")]
     mod os {
         pub const PLATFORM: Option<&str> = Some("osx");
         pub const EXT: Option<&str> = Some("");
     }
-    
+
     #[cfg(target_os = "linux")]
     mod os {
         pub const PLATFORM: Option<&str> = Some("linux");
@@ -59,8 +61,8 @@ mod internal {
     #[cfg(not(target_arch = "x86_64"))]
     const ARCH: Option<&str> = None;
 
-    use self::os::PLATFORM;
     use self::os::EXT;
+    use self::os::PLATFORM;
 
     const DEFAULT_URL: &str = "https://storage.googleapis.com/reproto-releases/";
 
@@ -273,7 +275,7 @@ mod internal {
     }
 
     struct UpdateClient {
-        client: Client<hyper_rustls::HttpsConnector>,
+        client: Arc<Client<hyper_rustls::HttpsConnector>>,
         url: Url,
     }
 
@@ -283,35 +285,84 @@ mod internal {
                 .connector(hyper_rustls::HttpsConnector::new(4, &handle))
                 .build(&handle);
 
-            Ok(Self { client, url })
+            Ok(Self {
+                client: Arc::new(client),
+                url,
+            })
         }
 
-        fn request(&mut self, request: Request) -> Box<Future<Item = Vec<u8>, Error = Error>> {
+        /// Handle redirects for request.
+        fn handle_redirect(
+            client: Arc<Client<hyper_rustls::HttpsConnector>>,
+            res: &Response,
+        ) -> Option<Box<Future<Item = Vec<u8>, Error = Error>>> {
+            let should_redirect = match res.status() {
+                StatusCode::MovedPermanently
+                | StatusCode::Found
+                | StatusCode::SeeOther
+                | StatusCode::TemporaryRedirect
+                | StatusCode::PermanentRedirect => true,
+                _ => false,
+            };
+
+            if should_redirect {
+                let uri = if let Some(loc) = res.headers().get::<Location>() {
+                    match ::std::str::from_utf8(loc.as_bytes())
+                        .map_err(Error::from)
+                        .and_then(|s| s.parse::<Uri>().map_err(Error::from))
+                    {
+                        Ok(uri) => uri,
+                        Err(e) => return Some(Box::new(err(e))),
+                    }
+                } else {
+                    return None;
+                };
+
+                let req = Request::new(Method::Get, uri);
+                return Some(Box::new(Self::request(client, req)));
+            }
+
+            return None;
+        }
+
+        /// Perform the given request.
+        fn request(
+            client: Arc<Client<hyper_rustls::HttpsConnector>>,
+            req: Request,
+        ) -> Box<Future<Item = Vec<u8>, Error = Error>> {
+            let inner_client = Arc::clone(&client);
+
             Box::new(
-                self.client
-                    .request(request)
+                client
+                    .request(req)
                     .map_err(|e| Error::from(e))
-                    .and_then(|res| {
+                    .and_then(move |res| {
+                        if let Some(future) = Self::handle_redirect(inner_client, &res) {
+                            return future;
+                        }
+
                         let status = res.status().clone();
 
-                        res.body()
+                        let fut = res.body()
                             .map_err(|e| Error::from(e))
                             .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
                                 out.extend(chunk.as_ref());
                                 ok::<_, Error>(out)
                             })
                             .map(move |body| (body, status))
-                    })
-                    .and_then(|(body, status)| {
-                        if !status.is_success() {
-                            if let Ok(body) = String::from_utf8(body) {
-                                return err(format!("bad response: {}: {}", status, body).into());
-                            }
+                            .and_then(|(body, status)| {
+                                if !status.is_success() {
+                                    if let Ok(body) = String::from_utf8(body) {
+                                        return err(format!("bad response: {}: {}", status, body).into());
+                                    }
 
-                            return err(format!("bad response: {}", status).into());
-                        }
+                                    return err(format!("bad response: {}", status).into());
+                                }
 
-                        ok(body)
+                                ok(body)
+                            });
+
+                        Box::new(fut)
                     }),
             )
         }
@@ -331,7 +382,7 @@ mod internal {
 
             let url = url.clone();
 
-            let future = self.request(request)
+            let future = Self::request(Arc::clone(&self.client), request)
                 .and_then(|body| {
                     let body = match String::from_utf8(body) {
                         Err(e) => return err(format!("body is not utf-8: {}", e).into()),
@@ -384,7 +435,7 @@ mod internal {
 
             let url = url.clone();
 
-            let future = self.request(request)
+            let future = Self::request(Arc::clone(&self.client), request)
                 .map_err(move |e| format!("request to `{}` failed: {}", url, e.display()).into());
 
             Box::new(future)
