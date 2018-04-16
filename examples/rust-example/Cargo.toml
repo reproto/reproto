@@ -1,6 +1,6 @@
 [package]
 name = "rust"
-version = "0.3.32"
+version = "0.3.33"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 
 [dependencies]
