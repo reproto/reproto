@@ -1,8 +1,8 @@
 use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, InterfaceAdded,
               InterfaceCodegen, TupleAdded, TupleCodegen, TypeField, TypeFieldAdded,
               TypeFieldCodegen};
-use core::RpSubTypeStrategy;
 use core::errors::Result;
+use core::RpSubTypeStrategy;
 use flavored::RpInterfaceBody;
 use genco::csharp::{self, using, Argument};
 use genco::{Cons, Csharp, Element, IntoTokens, Quoted, Tokens};

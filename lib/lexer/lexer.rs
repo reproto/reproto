@@ -543,16 +543,14 @@ pub mod tests {
 
     #[test]
     pub fn test_complex_number() {
-        let expected = vec![
-            (
-                0,
-                Number(RpNumber {
-                    digits: (-1242).into(),
-                    decimal: 6,
-                }),
-                9,
-            ),
-        ];
+        let expected = vec![(
+            0,
+            Number(RpNumber {
+                digits: (-1242).into(),
+                decimal: 6,
+            }),
+            9,
+        )];
 
         assert_eq!(expected, tokenize("-12.42e-4").unwrap());
     }
@@ -630,13 +628,11 @@ pub mod tests {
     #[test]
     pub fn test_doc_comment() {
         let tokens = tokenize("/// foo\n\r      /// bar \r\n     /// baz ").unwrap();
-        let reference = [
-            (
-                0,
-                DocComment(vec![" foo".into(), " bar ".into(), " baz ".into()]),
-                38,
-            ),
-        ];
+        let reference = [(
+            0,
+            DocComment(vec![" foo".into(), " bar ".into(), " baz ".into()]),
+            38,
+        )];
         assert_eq!(reference, &tokens[..]);
     }
 }

@@ -1,6 +1,5 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use Options;
 use backend::Initializer;
 use codegen::{ServiceAdded, ServiceCodegen};
 use core;
@@ -8,6 +7,7 @@ use core::errors::Result;
 use genco::python::imported;
 use genco::{Python, Quoted, Tokens};
 use utils::{BlockComment, IfNoneRaise, IfNoneThen};
+use Options;
 
 #[derive(Debug, Deserialize)]
 pub enum Version {

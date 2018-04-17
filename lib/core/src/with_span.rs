@@ -1,5 +1,5 @@
-use Span;
 use std::result;
+use Span;
 
 pub trait WithSpan {
     /// Add additional position information, if it's not already present.

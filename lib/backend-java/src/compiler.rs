@@ -1,6 +1,5 @@
 //! Java backend for reproto
 
-use Options;
 use codegen::{ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use core::errors::*;
 use core::{self, ForEachLoc, Handle, Loc, WithSpan};
@@ -14,6 +13,7 @@ use naming::{self, Naming};
 use std::rc::Rc;
 use trans::{Packages, Translated};
 use utils::{Observer, Override};
+use Options;
 
 /// Helper macro to implement listeners opt loop.
 fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {

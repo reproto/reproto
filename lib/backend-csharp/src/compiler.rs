@@ -1,6 +1,5 @@
 //! C# backend for reproto
 
-use Options;
 use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded,
               TypeField, TypeFieldAdded};
 use core::errors::*;
@@ -16,6 +15,7 @@ use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
 use trans::Translated;
+use Options;
 
 pub struct Compiler {
     env: Rc<Translated<CsharpFlavor>>,

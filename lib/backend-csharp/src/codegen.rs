@@ -1,7 +1,7 @@
 //! Code generator for the given path.
 
-use core::Handle;
 use core::errors::Result;
+use core::Handle;
 use csharp_field::CsharpField;
 use flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
 use genco::csharp::{Argument, Class, Enum, Field};
