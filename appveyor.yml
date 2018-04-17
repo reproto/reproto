@@ -17,3 +17,8 @@ build: false
 
 test_script:
   - cargo test
+# NB: Currently has a strange error on appveyor:
+#   https://ci.appveyor.com/project/udoprog/reproto/build/1.0.17
+# We already run these tests on Travis, so not a huge deal,
+# but it would help to guarantee consistency across platforms.
+#  - cargo run --manifest-path=tools/it/Cargo.toml -- --root it --structure
