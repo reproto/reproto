@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{self, Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use RelativePathBuf;
 
 #[derive(Debug, Clone)]
 pub enum Readable {
@@ -117,7 +118,15 @@ impl Source {
 impl fmt::Display for Source {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         if let Readable::Path(ref path) = self.readable {
-            return path.display().fmt(fmt);
+            if path.is_absolute() {
+                return path.display().fmt(fmt);
+            }
+
+            // platform-neutral formatting
+            return RelativePathBuf::from_path(path.as_ref())
+                .map_err(|_| fmt::Error)?
+                .display()
+                .fmt(fmt);
         }
 
         match self.name {
