@@ -6,8 +6,10 @@ use std::collections::LinkedList;
 use {Flavor, RpDecl, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
-                 Serialize, F::Name: Serialize")]
+#[serde(
+    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize, \
+             F::Name: Serialize"
+)]
 pub struct RpFile<F: 'static>
 where
     F: Flavor,

@@ -10,8 +10,8 @@ mod update;
 mod watch;
 
 use clap::{App, Arg, ArgMatches};
-use core::Context;
 use core::errors::*;
+use core::Context;
 use output::Output;
 use std::rc::Rc;
 

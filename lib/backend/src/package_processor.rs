@@ -1,4 +1,3 @@
-use IntoBytes;
 use core::errors::*;
 use core::{Flavor, Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
            RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, WithSpan};
@@ -6,6 +5,7 @@ use std::cmp;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::io::Write;
+use IntoBytes;
 
 pub trait Name<F>: Clone + fmt::Display + fmt::Debug + cmp::Eq
 where

@@ -2,8 +2,8 @@
 
 use build_spec::{convert_lang, manifest, manifest_preamble, repository};
 use clap::{App, ArgMatches, SubCommand};
-use core::Context;
 use core::errors::*;
+use core::Context;
 use manifest::NoLang;
 use repository::Update;
 use std::collections::HashSet;

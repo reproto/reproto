@@ -2,8 +2,8 @@
 
 use build_spec::{convert_lang, environment, manifest, manifest_preamble};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::Context;
 use core::errors::Result;
+use core::Context;
 use manifest::Language;
 use std::rc::Rc;
 

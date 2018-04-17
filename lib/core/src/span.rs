@@ -1,5 +1,5 @@
-use Source;
 use std::sync::Arc;
+use Source;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Span {

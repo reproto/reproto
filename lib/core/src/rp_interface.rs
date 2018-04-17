@@ -116,8 +116,10 @@ where
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
-                 Serialize, F::Name: Serialize")]
+#[serde(
+    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize, \
+             F::Name: Serialize"
+)]
 pub struct RpSubType<F: 'static>
 where
     F: Flavor,
