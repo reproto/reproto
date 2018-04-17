@@ -8,8 +8,6 @@ os:
 
 rust:
   - stable
-  - beta
-  - nightly
 
 script:
   - make --version
