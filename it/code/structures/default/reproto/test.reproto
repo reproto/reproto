@@ -10,7 +10,7 @@ interface Interface {
 }
 
 enum Enum as string {
-  Variant;
+  Variant as "Variant";
 }
 
 tuple Tuple {

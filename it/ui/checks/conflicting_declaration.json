@@ -1,0 +1,9 @@
+{
+  "status": false,
+  "stdout": [
+    "it/ui/proto/conflicting_declaration.reproto:4:1-16:",
+    "  4: type Example {",
+    "     ^^^^^^^^^^^^^^^ - conflicting declaration"
+  ],
+  "stderr": []
+}

@@ -204,22 +204,25 @@
       "comment": [],
       "decls": [],
       "enum_type": "String",
-      "variants": [
-        {
-          "name": {
-            "package": {
-              "package": "test"
+      "variants": {
+        "type": "string",
+        "variants": [
+          {
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "Enum",
+                "Variant"
+              ]
             },
-            "parts": [
-              "Enum",
-              "Variant"
-            ]
-          },
-          "ident": "Variant",
-          "comment": [],
-          "ordinal": "Generated"
-        }
-      ],
+            "ident": "Variant",
+            "comment": [],
+            "value": "Variant"
+          }
+        ]
+      },
       "codes": [
         {
           "context": {

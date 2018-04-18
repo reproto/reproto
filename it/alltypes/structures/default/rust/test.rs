@@ -3,7 +3,7 @@ use chrono::offset;
 use serde_json as json;
 use std::collections;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
   pub boolean_type: Option<bool>,

@@ -1,4 +1,4 @@
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
   pub tagged: Option<Tagged>,
@@ -7,7 +7,7 @@ pub struct Entry {
   pub untagged: Option<Untagged>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "@type")]
 pub enum Tagged {
   #[serde(rename = "foo")]
@@ -26,7 +26,7 @@ pub enum Tagged {
   },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Untagged {
   /// Special case: fields shared with other sub-types.

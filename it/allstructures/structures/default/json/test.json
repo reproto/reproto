@@ -122,23 +122,26 @@
           "comment": [],
           "decls": [],
           "enum_type": "String",
-          "variants": [
-            {
-              "name": {
-                "package": {
-                  "package": "test"
+          "variants": {
+            "type": "string",
+            "variants": [
+              {
+                "name": {
+                  "package": {
+                    "package": "test"
+                  },
+                  "parts": [
+                    "RootType",
+                    "NestedEnum",
+                    "Foo"
+                  ]
                 },
-                "parts": [
-                  "RootType",
-                  "NestedEnum",
-                  "Foo"
-                ]
-              },
-              "ident": "Foo",
-              "comment": [],
-              "ordinal": "Generated"
-            }
-          ],
+                "ident": "Foo",
+                "comment": [],
+                "value": "Foo"
+              }
+            ]
+          },
           "codes": []
         },
         {
@@ -343,24 +346,27 @@
               "comment": [],
               "decls": [],
               "enum_type": "String",
-              "variants": [
-                {
-                  "name": {
-                    "package": {
-                      "package": "test"
+              "variants": {
+                "type": "string",
+                "variants": [
+                  {
+                    "name": {
+                      "package": {
+                        "package": "test"
+                      },
+                      "parts": [
+                        "RootInterface",
+                        "Foo",
+                        "NestedEnum",
+                        "Foo"
+                      ]
                     },
-                    "parts": [
-                      "RootInterface",
-                      "Foo",
-                      "NestedEnum",
-                      "Foo"
-                    ]
-                  },
-                  "ident": "Foo",
-                  "comment": [],
-                  "ordinal": "Generated"
-                }
-              ],
+                    "ident": "Foo",
+                    "comment": [],
+                    "value": "Foo"
+                  }
+                ]
+              },
               "codes": []
             },
             {
@@ -463,22 +469,25 @@
       "comment": [],
       "decls": [],
       "enum_type": "String",
-      "variants": [
-        {
-          "name": {
-            "package": {
-              "package": "test"
+      "variants": {
+        "type": "string",
+        "variants": [
+          {
+            "name": {
+              "package": {
+                "package": "test"
+              },
+              "parts": [
+                "RootEnum",
+                "Foo"
+              ]
             },
-            "parts": [
-              "RootEnum",
-              "Foo"
-            ]
-          },
-          "ident": "Foo",
-          "comment": [],
-          "ordinal": "Generated"
-        }
-      ],
+            "ident": "Foo",
+            "comment": [],
+            "value": "Foo"
+          }
+        ]
+      },
       "codes": []
     },
     {
@@ -586,23 +595,26 @@
           "comment": [],
           "decls": [],
           "enum_type": "String",
-          "variants": [
-            {
-              "name": {
-                "package": {
-                  "package": "test"
+          "variants": {
+            "type": "string",
+            "variants": [
+              {
+                "name": {
+                  "package": {
+                    "package": "test"
+                  },
+                  "parts": [
+                    "RootTuple",
+                    "NestedEnum",
+                    "Foo"
+                  ]
                 },
-                "parts": [
-                  "RootTuple",
-                  "NestedEnum",
-                  "Foo"
-                ]
-              },
-              "ident": "Foo",
-              "comment": [],
-              "ordinal": "Generated"
-            }
-          ],
+                "ident": "Foo",
+                "comment": [],
+                "value": "Foo"
+              }
+            ]
+          },
           "codes": []
         },
         {
@@ -786,23 +798,26 @@
           "comment": [],
           "decls": [],
           "enum_type": "String",
-          "variants": [
-            {
-              "name": {
-                "package": {
-                  "package": "test"
+          "variants": {
+            "type": "string",
+            "variants": [
+              {
+                "name": {
+                  "package": {
+                    "package": "test"
+                  },
+                  "parts": [
+                    "RootService",
+                    "NestedEnum",
+                    "Foo"
+                  ]
                 },
-                "parts": [
-                  "RootService",
-                  "NestedEnum",
-                  "Foo"
-                ]
-              },
-              "ident": "Foo",
-              "comment": [],
-              "ordinal": "Generated"
-            }
-          ],
+                "ident": "Foo",
+                "comment": [],
+                "value": "Foo"
+              }
+            ]
+          },
           "codes": []
         },
         {
