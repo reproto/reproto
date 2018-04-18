@@ -634,7 +634,7 @@ Enums are types that can take on of a given set of constant values.
 They convert loosely typed data like `"strings"` into something that can be checked by the
 compiler or a decoder implementation.
 
-Only `string` is currently supported as an enum type.
+Enums are declared like this:
 
 ```reproto
 enum Si as string {
@@ -652,7 +652,47 @@ Using this, `Si.Nano` would be serialized as:
 "nano"
 ```
 
-Enum values do not have to be explicitly specified, but can be generated from the variant name:
+We support the following types as enums:
+
+| Type               | Description |
+|--------------------|-------------|
+| `u32`, `u64`       | Unsigned integer values which can store a given number of bits |
+| `i32`, `i64`       | Signed integer values which can store a given number of bits |
+| `string`           | UTF-8 encoded strings |
+
+So the following are all legal enums:
+
+```reproto
+enum ErrorCode as u32 {
+  BadUser as 400;
+  BadServer as 500;
+  NotSure as 1000;
+}
+```
+
+```reproto
+enum Adjustment as i32 {
+  TakeTen as -10;
+  GiveTen as 10;
+}
+```
+
+Numeric types are constrained to the following ranges:
+
+| Type  | Min               | Max                          |
+|-------|-------------------|------------------------------|
+| `u32` | 0                 | 2147483647<sup>1</sup>       |
+| `i32` | -2147483648       | 2147483647                   |
+| `u64` | 0                 | 9007199254740991<sup>2</sup> |
+| `i64` | -9007199254740991 | 9007199254740991<sup>2</sup> |
+
+<sup>1</sup>: This limit is in place to allow Java to model `u32` as an `int`, which is a signed
+32-bit value.
+<sup>2</sup>: This limit exists because [Number.MAX_SAFE_INTEGER] is the largest contiguous whole
+number that can be represented in JavaScript numbers.
+
+Enum values do not have to be explicitly specified when we have `string` enums, but can be
+generated from the variant name:
 
 ```reproto
 enum CarModel as string {
@@ -666,6 +706,8 @@ enum CarModel as string {
     Volvo;
 }
 ```
+
+[Number.MAX_SAFE_INTEGER]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 
 ## Services
 
