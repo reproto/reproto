@@ -79,7 +79,7 @@ impl<'a> Reporter<'a> {
             return None;
         }
 
-        Some(Error::new("Error in Context"))
+        Some(Error::new_context("Error in Context"))
     }
 
     /// Check if reporter has any errors as sub-items.
@@ -103,7 +103,7 @@ impl<'a> Drop for Reporter<'a> {
 
 impl<'a> From<Reporter<'a>> for Error {
     fn from(_: Reporter<'a>) -> Error {
-        Error::new("Error in Context")
+        Error::new_context("Error in Context")
     }
 }
 

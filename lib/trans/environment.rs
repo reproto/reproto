@@ -199,10 +199,17 @@ impl Environment<CoreFlavor> {
     }
 
     /// Translate the current environment into another.
+    ///
+    /// This is the final step of the compilation, the environment is consumed by this.
     pub fn translate<T>(self, mut ctx: translator::Context<T>) -> Result<Translated<T::Target>>
     where
         T: FlavorTranslator<Source = CoreFlavor>,
     {
+        // Report all collected errors.
+        if self.ctx.has_errors()? {
+            return Err(Error::new("Error in Context"));
+        }
+
         let mut files = BTreeMap::new();
 
         for (package, file) in self.files {
