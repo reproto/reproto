@@ -107,8 +107,18 @@ fn is_backtrace_enabled<F: Fn(&str) -> Option<ffi::OsString>>(get_var: F) -> boo
     }
 }
 
+/// The kind of error that has been raised.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ErrorKind {
+    /// Regular error that must not be ignored.
+    Regular,
+    /// Error has been reported to context and can be ignored.
+    Context,
+}
+
 pub struct Error {
     message: Cow<'static, str>,
+    kind: ErrorKind,
     span: Option<Span>,
     cause: Option<Box<Error>>,
     suppressed: Vec<Error>,
@@ -119,11 +129,34 @@ impl Error {
     pub fn new<M: Into<Cow<'static, str>>>(message: M) -> Self {
         Self {
             message: message.into(),
+            kind: ErrorKind::Regular,
             span: None,
             cause: None,
             suppressed: Vec::new(),
             backtrace: Self::new_backtrace(),
         }
+    }
+
+    /// Build a new error that has been constructed from a context.
+    /// 
+    /// These errors can safely be ignored, and will be removed as soon as we no longer
+    /// have spans in errors.
+    /// 
+    /// All spanned issues should be reported through the context.
+    pub fn new_context<M: Into<Cow<'static, str>>>(message: M) -> Self {
+        Self {
+            message: message.into(),
+            kind: ErrorKind::Context,
+            span: None,
+            cause: None,
+            suppressed: Vec::new(),
+            backtrace: Self::new_backtrace(),
+        }
+    }
+
+    /// Check if this is a context error.
+    pub fn is_context(&self) -> bool {
+        self.kind == ErrorKind::Context
     }
 
     fn new_backtrace() -> Option<Backtrace> {

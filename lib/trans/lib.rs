@@ -2,6 +2,7 @@ extern crate linked_hash_map;
 #[macro_use]
 extern crate log;
 extern crate reproto_ast as ast;
+#[macro_use]
 extern crate reproto_core as core;
 extern crate reproto_naming as naming;
 extern crate reproto_parser as parser;

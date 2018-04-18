@@ -297,7 +297,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                     let mut default = $default;
 
                     for v in $variants {
-                        let v = (v, &mut default).into_model(scope)?;
+                        let v = try_loop!((v, &mut default).into_model(scope));
 
                         check_conflict!($ctx, idents, v, v.ident, "variant");
                         check_conflict!($ctx, values, v, v.value(), "variant value");
@@ -467,7 +467,15 @@ where
 
             let value = if let Some(argument) = item.argument {
                 let (value, span) = Loc::take_pair(argument.into_model(scope)?);
-                default.process(value).with_span(span)?
+
+                match default.process(value) {
+                    Err(e) => {
+                        let mut report = ctx.report();
+                        report.err(span, e.display());
+                        return Err(report.into());
+                    }
+                    Ok(value) => value,
+                }
             } else {
                 default.next(&item)?
             };
@@ -566,7 +574,11 @@ impl<'input> IntoModel for File<'input> {
     type Output = RpFile;
 
     fn into_model(self, scope: &Scope) -> Result<RpFile> {
-        let decls = self.decls.into_model(scope)?;
+        let mut decls = Vec::new();
+
+        for d in self.decls {
+            decls.push(try_loop!(d.into_model(scope)));
+        }
 
         Ok(RpFile {
             comment: Comment(&self.comment).into_model(scope)?,
