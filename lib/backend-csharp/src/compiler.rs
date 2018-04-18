@@ -264,12 +264,12 @@ impl Compiler {
 
         let mut names = None;
 
-        let value = match body.enum_type {
+        match body.enum_type {
             csharp::INT64 | csharp::UINT64 => {
                 spec.implements.push(csharp::local("long"));
             }
             _ => {}
-        };
+        }
 
         match body.variants {
             core::RpVariants::String { ref variants } => {
