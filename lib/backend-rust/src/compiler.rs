@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::rc::Rc;
 use trans::{self, Translated};
-use utils::{Comments, Repr};
+use utils::Comments;
 use {Options, Root, Service, EXT, LIB, MOD, TYPE_SEP};
 
 /// #[allow(non_camel_case_types)] attribute.

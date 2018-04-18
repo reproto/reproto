@@ -1,5 +1,6 @@
 use errors::Result;
 use serde;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem;
@@ -38,8 +39,8 @@ pub struct RpPackage {
 }
 
 impl AsPackage for RpPackage {
-    fn try_as_package(&self) -> Result<&RpPackage> {
-        Ok(self)
+    fn try_as_package<'a>(&'a self) -> Result<Cow<'a, RpPackage>> {
+        Ok(Cow::Borrowed(self))
     }
 
     fn prefix_with(self, prefix: RpPackage) -> Self {

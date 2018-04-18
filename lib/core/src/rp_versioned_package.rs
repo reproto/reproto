@@ -1,6 +1,7 @@
 //! A versioned package declaration
 
 use errors::Result;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 use {AsPackage, RpPackage, RpPackageFormat, Version};
@@ -14,8 +15,10 @@ pub struct RpVersionedPackage {
 
 impl AsPackage for RpVersionedPackage {
     /// Convert into a package by piping the version through the provided function.
-    fn try_as_package(&self) -> Result<&RpPackage> {
-        Err(format!("{}: cannot be converted to regular package", self).into())
+    fn try_as_package<'a>(&'a self) -> Result<Cow<'a, RpPackage>> {
+        Ok(Cow::Owned(self.to_package(|v| {
+            v.to_string()
+        })))
     }
 
     fn prefix_with(self, prefix: RpPackage) -> Self {

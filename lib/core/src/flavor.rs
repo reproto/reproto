@@ -1,6 +1,7 @@
 //! The flavor of RpIR being used.
 
 use errors::Result;
+use std::borrow::Cow;
 use std::cmp;
 use std::fmt;
 use std::hash;
@@ -16,7 +17,7 @@ where
     Self: Sized,
 {
     /// Attempt to treat the current object as a package.
-    fn try_as_package(&self) -> Result<&RpPackage>;
+    fn try_as_package<'a>(&'a self) -> Result<Cow<'a, RpPackage>>;
 
     /// Attempt to prefix the package.
     fn prefix_with(self, prefix: RpPackage) -> Self;

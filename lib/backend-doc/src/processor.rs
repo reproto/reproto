@@ -93,7 +93,7 @@ pub trait Processor<'env> {
                 self.markdown(comment.as_str())?;
             });
         } else {
-            html!(self, div { class => "missing-doc" } ~ Escape("no documentation :("));
+            html!(self, div { class => "missing-doc" } ~ Escape(""));
         }
 
         Ok(())
