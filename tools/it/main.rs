@@ -276,6 +276,14 @@ fn try_main() -> Result<()> {
                     } => {
                         print_differences(source, target, errors);
                     }
+                    it::Error::JsonMismatches { ref mismatches } => {
+                        for mismatch in mismatches {
+                            println!(
+                                "#{}: {} (expected) is not same as {} (actual)",
+                                mismatch.index, mismatch.expected, mismatch.actual
+                            );
+                        }
+                    }
                 }
 
                 continue;

@@ -32,6 +32,13 @@ impl fmt::Display for Test {
     }
 }
 
+#[derive(Debug)]
+pub struct JsonMismatch {
+    pub index: usize,
+    pub expected: json::Value,
+    pub actual: json::Value,
+}
+
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "check failed")]
@@ -45,6 +52,11 @@ pub enum Error {
         source: PathBuf,
         target: PathBuf,
         errors: Vec<utils::Diff>,
+    },
+
+    #[fail(display = "mismatches in json documents")]
+    JsonMismatches {
+        mismatches: Vec<JsonMismatch>,
     },
 }
 
@@ -722,21 +734,22 @@ impl<'a> ProjectRunner<'a> {
             );
         }
 
-        let mut errors = Vec::new();
+        let mut mismatches = Vec::new();
 
         for (i, (actual, expected)) in actual.into_iter().zip(expected).enumerate() {
             if similar(&actual, &expected) {
                 continue;
             }
 
-            errors.push(format!(
-                "#{} JSON mismatch: {} (actual) != {} (expected)",
-                i, actual, expected
-            ));
+            mismatches.push(JsonMismatch {
+                index: i,
+                actual,
+                expected,
+            });
         }
 
-        if !errors.is_empty() {
-            bail!("test failed: {}", errors.join(", "));
+        if !mismatches.is_empty() {
+            return Err(Error::JsonMismatches { mismatches }.into());
         }
 
         return Ok(());
