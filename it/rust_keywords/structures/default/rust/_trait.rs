@@ -1,3 +1,3 @@
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Empty {
 }

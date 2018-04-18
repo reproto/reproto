@@ -1,4 +1,4 @@
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
   pub tuple1: Option<Tuple1>,
@@ -8,15 +8,15 @@ pub struct Entry {
 }
 
 /// Tuple containing primitive.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Tuple1(pub String, pub u64);
 
 /// Tuple containing object.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Tuple2(pub String, pub Other);
 
 /// Complex object.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Other {
   pub a: String,
 }

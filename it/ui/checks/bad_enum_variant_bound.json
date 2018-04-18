@@ -1,0 +1,30 @@
+{
+  "status": false,
+  "stdout": [
+    "it/ui/proto/bad_enum_variant_bound.reproto:2:14-16:",
+    "  2:     Field as -1;",
+    "                  ^^ - number is not within 0 to 2147483647 (inclusive)",
+    "it/ui/proto/bad_enum_variant_bound.reproto:3:14-24:",
+    "  3:     Field as 2147483648;",
+    "                  ^^^^^^^^^^ - number is not within 0 to 2147483647 (inclusive)",
+    "it/ui/proto/bad_enum_variant_bound.reproto:7:14-16:",
+    "  7:     Field as -1;",
+    "                  ^^ - number is not within 0 to 9007199254740991 (inclusive)",
+    "it/ui/proto/bad_enum_variant_bound.reproto:8:14-30:",
+    "  8:     Field as 9007199254740992;",
+    "                  ^^^^^^^^^^^^^^^^ - number is not within 0 to 9007199254740991 (inclusive)",
+    "it/ui/proto/bad_enum_variant_bound.reproto:12:14-25:",
+    " 12:     Field as -2147483649;",
+    "                  ^^^^^^^^^^^ - number is not within -2147483648 to 2147483647 (inclusive)",
+    "it/ui/proto/bad_enum_variant_bound.reproto:13:14-24:",
+    " 13:     Field as 2147483648;",
+    "                  ^^^^^^^^^^ - number is not within -2147483648 to 2147483647 (inclusive)",
+    "it/ui/proto/bad_enum_variant_bound.reproto:17:14-31:",
+    " 17:     Field as -9007199254740992;",
+    "                  ^^^^^^^^^^^^^^^^^ - number is not within -9007199254740991 to 9007199254740991 (inclusive)",
+    "it/ui/proto/bad_enum_variant_bound.reproto:18:14-30:",
+    " 18:     Field as 9007199254740992;",
+    "                  ^^^^^^^^^^^^^^^^ - number is not within -9007199254740991 to 9007199254740991 (inclusive)"
+  ],
+  "stderr": []
+}

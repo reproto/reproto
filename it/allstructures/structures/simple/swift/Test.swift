@@ -77,9 +77,11 @@ public enum Test_RootEnum {
 
 public extension Test_RootEnum {
   static func decode(json: Any) throws -> Test_RootEnum {
-    let json = try decode_value(json as? String)
+    let json = try decode_value(json)
 
-    switch json {
+    let value = try decode_value(unbox(json, as: String))
+
+    switch value {
       case "Foo":
         return Test_RootEnum.Foo
       default:
@@ -91,8 +93,6 @@ public extension Test_RootEnum {
     switch self {
       case .Foo:
         return "Foo"
-      default:
-        throw SerializationError.bad_value()
     }
   }
 }
@@ -176,9 +176,11 @@ public enum Test_RootType_NestedEnum {
 
 public extension Test_RootType_NestedEnum {
   static func decode(json: Any) throws -> Test_RootType_NestedEnum {
-    let json = try decode_value(json as? String)
+    let json = try decode_value(json)
 
-    switch json {
+    let value = try decode_value(unbox(json, as: String))
+
+    switch value {
       case "Foo":
         return Test_RootType_NestedEnum.Foo
       default:
@@ -190,8 +192,6 @@ public extension Test_RootType_NestedEnum {
     switch self {
       case .Foo:
         return "Foo"
-      default:
-        throw SerializationError.bad_value()
     }
   }
 }
@@ -275,9 +275,11 @@ public enum Test_RootInterface_Foo_NestedEnum {
 
 public extension Test_RootInterface_Foo_NestedEnum {
   static func decode(json: Any) throws -> Test_RootInterface_Foo_NestedEnum {
-    let json = try decode_value(json as? String)
+    let json = try decode_value(json)
 
-    switch json {
+    let value = try decode_value(unbox(json, as: String))
+
+    switch value {
       case "Foo":
         return Test_RootInterface_Foo_NestedEnum.Foo
       default:
@@ -289,8 +291,6 @@ public extension Test_RootInterface_Foo_NestedEnum {
     switch self {
       case .Foo:
         return "Foo"
-      default:
-        throw SerializationError.bad_value()
     }
   }
 }
@@ -374,9 +374,11 @@ public enum Test_RootTuple_NestedEnum {
 
 public extension Test_RootTuple_NestedEnum {
   static func decode(json: Any) throws -> Test_RootTuple_NestedEnum {
-    let json = try decode_value(json as? String)
+    let json = try decode_value(json)
 
-    switch json {
+    let value = try decode_value(unbox(json, as: String))
+
+    switch value {
       case "Foo":
         return Test_RootTuple_NestedEnum.Foo
       default:
@@ -388,8 +390,6 @@ public extension Test_RootTuple_NestedEnum {
     switch self {
       case .Foo:
         return "Foo"
-      default:
-        throw SerializationError.bad_value()
     }
   }
 }
@@ -473,9 +473,11 @@ public enum Test_RootService_NestedEnum {
 
 public extension Test_RootService_NestedEnum {
   static func decode(json: Any) throws -> Test_RootService_NestedEnum {
-    let json = try decode_value(json as? String)
+    let json = try decode_value(json)
 
-    switch json {
+    let value = try decode_value(unbox(json, as: String))
+
+    switch value {
       case "Foo":
         return Test_RootService_NestedEnum.Foo
       default:
@@ -487,8 +489,6 @@ public extension Test_RootService_NestedEnum {
     switch self {
       case .Foo:
         return "Foo"
-      default:
-        throw SerializationError.bad_value()
     }
   }
 }

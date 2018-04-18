@@ -3,7 +3,7 @@ use lower_snake as lower_snake;
 use upper_camel as upper_camel;
 use upper_snake as upper_snake;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
   pub lower_camel: Option<lower_camel::Value>,

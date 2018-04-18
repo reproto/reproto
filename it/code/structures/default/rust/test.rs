@@ -1,8 +1,8 @@
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Type {
 }
 
@@ -11,7 +11,7 @@ impl Type {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Interface {
   SubType {
@@ -23,7 +23,7 @@ impl Interface {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Enum {
   Variant,
 }
@@ -39,5 +39,5 @@ impl Enum {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Tuple();

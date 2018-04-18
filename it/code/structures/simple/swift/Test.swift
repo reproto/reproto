@@ -77,9 +77,11 @@ public enum Test_Enum {
 
 public extension Test_Enum {
   static func decode(json: Any) throws -> Test_Enum {
-    let json = try decode_value(json as? String)
+    let json = try decode_value(json)
 
-    switch json {
+    let value = try decode_value(unbox(json, as: String))
+
+    switch value {
       case "Variant":
         return Test_Enum.Variant
       default:
@@ -91,8 +93,6 @@ public extension Test_Enum {
     switch self {
       case .Variant:
         return "Variant"
-      default:
-        throw SerializationError.bad_value()
     }
   }
 }
