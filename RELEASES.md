@@ -1,7 +1,5 @@
-# next
+## 0.3.34
 
-## Language Support
-
-* [Go support](https://github.com/reproto/reproto/issues/21)
-* [C# support](https://github.com/reproto/reproto/issues/1)
-* [Swift supprt](https://github.com/reproto/reproto/issues/19)
+- Support numeric enums (#35)
+- Self-updates now follow redirects (#37)
+- Distribution for Windows has been mostly automated (#36)
