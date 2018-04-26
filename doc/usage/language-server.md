@@ -6,6 +6,7 @@ This currently supports:
 
  * Contextual completions for types and packages.
  * Jump to definitions.
+ * Helpful diagnostics when project is not configured.
 
 [language server]: https://langserver.org/
 

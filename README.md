@@ -64,12 +64,12 @@ but avoid building large repositories of schemas for now.
 * See the [documentation] for an overview of how the reproto language and its build manifest works.
 * See [examples] for some example specifications and projects.
 * See the [integration tests] for even more examples on how protocol specifications can be used.
-* See [release notes] for past and coming changes.
+* See [CHANGELOG.md] for past and coming changes.
 
 [documentation]: /doc/README.md
 [examples]: /examples
 [integration tests]: /it
-[release notes]: /RELEASES.md
+[CHANGELOG.md]: /CHANGELOG.md
 
 ## Helping Out
 
