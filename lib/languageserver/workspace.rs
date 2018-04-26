@@ -2,13 +2,13 @@
 
 use ast;
 use core::errors::Result;
-use core::{self, Context, Diagnostics, Encoding, Import, Loc, Position, Resolved,
+use core::{self, Context, Diagnostics, Encoding, Handle, Import, Loc, Position, Resolved,
            ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Span};
 use env;
 use manifest;
 use parser;
 use std::collections::Bound;
-use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -126,10 +126,14 @@ impl LoadedFile {
 pub struct Workspace {
     /// Path of the workspace.
     pub root_path: PathBuf,
+    /// Path to manifest.
+    pub manifest_path: PathBuf,
     /// Packages which have been loaded through project.
     pub packages: HashMap<RpVersionedPackage, Url>,
-    /// Files which have been loaded through project.
-    files: HashMap<Url, LoadedFile>,
+    /// The URL of files which have been loaded through project.
+    pub loaded_files: HashSet<Url>,
+    /// Files which have been loaded through project, including their files.
+    pub files: HashMap<Url, LoadedFile>,
     /// Versioned packages that have been looked up.
     lookup: HashMap<RpRequiredPackage, RpVersionedPackage>,
     /// Files which are currently being edited.
@@ -143,7 +147,9 @@ impl Workspace {
     pub fn new<P: AsRef<Path>>(root_path: P, ctx: Rc<Context>) -> Self {
         Self {
             root_path: root_path.as_ref().to_owned(),
+            manifest_path: root_path.as_ref().join(env::MANIFEST_NAME),
             packages: HashMap::new(),
+            loaded_files: HashSet::new(),
             files: HashMap::new(),
             lookup: HashMap::new(),
             edited_files: HashMap::new(),
@@ -172,26 +178,31 @@ impl Workspace {
         None
     }
 
-    /// Reload the workspace.
-    pub fn reload(&mut self) -> Result<()> {
-        self.packages.clear();
-        self.files.clear();
-        self.lookup.clear();
-        let manifest = self.try_reload()?;
-        self.try_compile(manifest)?;
+    /// Initialize the current project.
+    pub fn initialize(&mut self, handle: &Handle) -> Result<()> {
+        env::initialize(handle)?;
         Ok(())
     }
 
     /// Reload the workspace.
-    pub fn try_reload(&mut self) -> Result<manifest::Manifest> {
-        let path = self.root_path.join(env::MANIFEST_NAME);
+    pub fn reload(&mut self) -> Result<()> {
+        self.packages.clear();
+        self.files.clear();
+        self.loaded_files.clear();
+        self.lookup.clear();
 
         let mut manifest = manifest::Manifest::default();
 
-        if path.is_file() {
-            manifest.path = Some(path.to_owned());
-            manifest.from_yaml(File::open(path)?, env::convert_lang)?;
+        if !self.manifest_path.is_file() {
+            error!(
+                "no manifest in root of workspace: {}",
+                self.manifest_path.display()
+            );
+            return Ok(());
         }
+
+        manifest.path = Some(self.manifest_path.to_owned());
+        manifest.from_yaml(File::open(&self.manifest_path)?, env::convert_lang)?;
 
         let mut resolver = env::resolver(&manifest)?;
 
@@ -199,7 +210,8 @@ impl Workspace {
             self.process(resolver.as_mut(), package)?;
         }
 
-        return Ok(manifest);
+        self.try_compile(manifest)?;
+        Ok(())
     }
 
     /// Try to compile the current environment.
@@ -269,6 +281,8 @@ impl Workspace {
 
             (url, source, versioned)
         };
+
+        self.loaded_files.insert(url.clone());
 
         if let Some(mut loaded) = self.edited_files.remove(&url) {
             loaded.symbols.clear();
@@ -728,6 +742,14 @@ impl Workspace {
         }
 
         Ok(Some((file, value)))
+    }
+
+    /// Get URL to the manifest.
+    pub fn manifest_url(&self) -> Result<Url> {
+        let url = Url::from_file_path(&self.manifest_path)
+            .map_err(|_| format!("cannot convert to url: {}", self.manifest_path.display()))?;
+
+        Ok(url)
     }
 }
 

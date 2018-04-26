@@ -19,8 +19,8 @@ extern crate url_serde;
 mod envelope;
 mod workspace;
 
-use self::workspace::{Completion, Jump, LoadedFile, Workspace};
 use self::ContentType::*;
+use self::workspace::{Completion, Jump, LoadedFile, Workspace};
 use core::errors::Result;
 use core::{Context, ContextItem, Diagnostics, Encoding, Loc, RealFilesystem, Source};
 use ropey::Rope;
@@ -35,6 +35,10 @@ use std::rc::Rc;
 use std::result;
 use std::sync::{Arc, Mutex};
 use url::Url;
+
+/// newtype to serialize URLs
+#[derive(Debug, Serialize)]
+struct SerdeUrl(#[serde(with = "url_serde")] Url);
 
 #[derive(Debug)]
 enum ContentType {
@@ -101,6 +105,8 @@ where
 
 /// A language server channel, taking care of locking and sending notifications.
 struct Channel<W> {
+    /// Request id allocation.
+    next_id: Arc<Mutex<u64>>,
     /// A writer and buffer pair.
     output: Arc<Mutex<(Vec<u8>, W)>>,
 }
@@ -108,6 +114,7 @@ struct Channel<W> {
 impl<W> ::std::clone::Clone for Channel<W> {
     fn clone(&self) -> Self {
         Channel {
+            next_id: Arc::clone(&self.next_id),
             output: Arc::clone(&self.output),
         }
     }
@@ -116,6 +123,7 @@ impl<W> ::std::clone::Clone for Channel<W> {
 impl<W> Channel<W> {
     pub fn new(writer: W) -> Self {
         Self {
+            next_id: Arc::new(Mutex::new(0u64)),
             output: Arc::new(Mutex::new((Vec::new(), writer))),
         }
     }
@@ -126,19 +134,22 @@ where
     W: Write,
 {
     /// Send a complete frame.
-    fn send_frame<T>(&self, response: T) -> Result<()>
+    fn send_frame<T>(&self, frame: T) -> Result<()>
     where
         T: fmt::Debug + serde::Serialize,
     {
+        debug!("send frame: {:#?}", frame);
+
         let mut guard = self.output.lock().map_err(|_| "lock poisoned")?;
         let &mut (ref mut buffer, ref mut writer) = guard.deref_mut();
 
         buffer.clear();
-        json::to_writer(&mut *buffer, &response)?;
+        json::to_writer(&mut *buffer, &frame)?;
 
         write!(writer, "Content-Length: {}\r\n\r\n", buffer.len())?;
         writer.write_all(buffer)?;
         writer.flush()?;
+
         Ok(())
     }
 
@@ -148,12 +159,35 @@ where
         T: fmt::Debug + serde::Serialize,
     {
         let envelope = envelope::NotificationMessage::<T> {
-            jsonrpc: "2.0",
+            jsonrpc: envelope::V2,
             method: method.as_ref().to_string(),
             params: Some(params),
         };
 
         self.send_frame(envelope)
+    }
+
+    /// Send a request.
+    fn send_request<S: AsRef<str>, T>(&self, method: S, params: T) -> Result<envelope::RequestId>
+    where
+        T: fmt::Debug + serde::Serialize,
+    {
+        let id = {
+            let mut next_id = self.next_id.lock().map_err(|_| "id allocation poisoned")?;
+            let id = *next_id;
+            *next_id = id + 1;
+            envelope::RequestId::Number(id)
+        };
+
+        let envelope = envelope::RequestMessage::<T> {
+            jsonrpc: envelope::V2,
+            id: Some(id.clone()),
+            method: method.as_ref().to_string(),
+            params: params,
+        };
+
+        self.send_frame(envelope)?;
+        Ok(id)
     }
 
     /// Send a response message.
@@ -162,7 +196,7 @@ where
         T: fmt::Debug + serde::Serialize,
     {
         let envelope = envelope::ResponseMessage::<T, ()> {
-            jsonrpc: "2.0",
+            jsonrpc: envelope::V2,
             id: request_id,
             result: Some(message),
             error: None,
@@ -181,7 +215,7 @@ where
         D: fmt::Debug + serde::Serialize,
     {
         let envelope = envelope::ResponseMessage::<(), D> {
-            jsonrpc: "2.0",
+            jsonrpc: envelope::V2,
             id: request_id,
             result: None,
             error: Some(error),
@@ -353,6 +387,8 @@ struct Server<R, W> {
     reader: InputReader<BufReader<R>>,
     channel: Channel<W>,
     ctx: Rc<Context>,
+    /// Expected responses.
+    expected: HashMap<envelope::RequestId, &'static str>,
 }
 
 impl<R, W> Server<R, W>
@@ -367,6 +403,7 @@ where
             reader: InputReader::new(BufReader::new(reader)),
             channel,
             ctx,
+            expected: HashMap::new(),
         }
     }
 
@@ -435,82 +472,217 @@ where
 
             match self.headers.content_type {
                 JsonRPC => {
-                    let request: envelope::RequestMessage = {
+                    let message: json::Value = {
                         let reader = (&mut self.reader).take(self.headers.content_length as u64);
-                        json::from_reader(reader)?
+                        json::from_reader(reader)
+                            .map_err(|e| format!("failed to deserialize message: {}", e))?
                     };
 
-                    debug!("received: {:#?}", request);
-
-                    match request.method.as_str() {
-                        "initialize" => {
-                            let params = ty::InitializeParams::deserialize(request.params)?;
-                            self.initialize(request.id, params)?;
-                        }
-                        "initialized" => {
-                            let params = ty::InitializedParams::deserialize(request.params)?;
-                            self.initialized(params)?;
-                        }
-                        "shutdown" => {
-                            self.shutdown()?;
-                        }
-                        "textDocument/didChange" => {
-                            let params =
-                                ty::DidChangeTextDocumentParams::deserialize(request.params)?;
-                            self.text_document_did_change(params)?;
-                        }
-                        "textDocument/didOpen" => {
-                            let params =
-                                ty::DidOpenTextDocumentParams::deserialize(request.params)?;
-                            self.text_document_did_open(params)?;
-                        }
-                        "textDocument/didClose" => {
-                            let params =
-                                ty::DidCloseTextDocumentParams::deserialize(request.params)?;
-                            self.text_document_did_close(params)?;
-                        }
-                        "textDocument/didSave" => {
-                            let params =
-                                ty::DidSaveTextDocumentParams::deserialize(request.params)?;
-                            self.text_document_did_save(params)?;
-                        }
-                        "textDocument/completion" => {
-                            let params = ty::CompletionParams::deserialize(request.params)?;
-                            self.text_document_completion(request.id, params)?;
-                        }
-                        "textDocument/definition" => {
-                            let params =
-                                ty::TextDocumentPositionParams::deserialize(request.params)?;
-                            self.text_document_definition(request.id, params)?;
-                        }
-                        "workspace/didChangeConfiguration" => {
-                            let params =
-                                ty::DidChangeConfigurationParams::deserialize(request.params)?;
-                            self.workspace_did_change_configuration(request.id, params)?;
-                        }
-                        "completionItem/resolve" => {
-                            let params = ty::CompletionItem::deserialize(request.params)?;
-                            self.completion_item_resolve(params)?;
-                        }
-                        "$/cancelRequest" => {
-                            // ignore
-                        }
-                        method => {
-                            error!("unsupported method: {}", method);
-
-                            self.channel.send_error(
-                                request.id,
-                                envelope::ResponseError {
-                                    code: envelope::Code::MethodNotFound,
-                                    message: "No such method".to_string(),
-                                    data: Some(()),
-                                },
-                            )?;
-
-                            continue;
-                        }
+                    // requests
+                    if message.get("method").is_some() {
+                        self.handle_request(message)?;
+                    } else {
+                        self.handle_response(message)?;
                     }
                 }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handle a request.
+    fn handle_request(&mut self, message: json::Value) -> Result<()> {
+        let request = envelope::RequestMessage::<json::Value>::deserialize(message)
+            .map_err(|e| format!("failed to deserialize request: {}", e))?;
+
+        // in case we need it to report errors.
+        let id = request.id.clone();
+
+        debug!("received: {:#?}", request);
+
+        if let Err(e) = self.try_handle_request(request) {
+            self.channel.send_error(
+                id,
+                envelope::ResponseError {
+                    code: envelope::Code::InternalError,
+                    message: e.display().to_string(),
+                    data: Some(()),
+                },
+            )?;
+        }
+
+        Ok(())
+    }
+
+    /// Inner handler which is guarded against errors.
+    ///
+    /// Any error returned here will result in an error being sent _back_ to the language client as
+    /// a ResponseError.
+    fn try_handle_request(&mut self, request: envelope::RequestMessage<json::Value>) -> Result<()> {
+        match request.method.as_str() {
+            "initialize" => {
+                let params = ty::InitializeParams::deserialize(request.params)?;
+                self.initialize(request.id, params)?;
+            }
+            "initialized" => {
+                let params = ty::InitializedParams::deserialize(request.params)?;
+                self.initialized(params)?;
+            }
+            "shutdown" => {
+                self.shutdown()?;
+            }
+            "textDocument/didChange" => {
+                let params = ty::DidChangeTextDocumentParams::deserialize(request.params)?;
+                self.text_document_did_change(params)?;
+            }
+            "textDocument/didOpen" => {
+                let params = ty::DidOpenTextDocumentParams::deserialize(request.params)?;
+                self.text_document_did_open(params)?;
+            }
+            "textDocument/didClose" => {
+                let params = ty::DidCloseTextDocumentParams::deserialize(request.params)?;
+                self.text_document_did_close(params)?;
+            }
+            "textDocument/didSave" => {
+                let params = ty::DidSaveTextDocumentParams::deserialize(request.params)?;
+                self.text_document_did_save(params)?;
+            }
+            "textDocument/completion" => {
+                let params = ty::CompletionParams::deserialize(request.params)?;
+                self.text_document_completion(request.id, params)?;
+            }
+            "textDocument/definition" => {
+                let params = ty::TextDocumentPositionParams::deserialize(request.params)?;
+                self.text_document_definition(request.id, params)?;
+            }
+            "workspace/didChangeConfiguration" => {
+                let params = ty::DidChangeConfigurationParams::deserialize(request.params)?;
+                self.workspace_did_change_configuration(request.id, params)?;
+            }
+            "completionItem/resolve" => {
+                let params = ty::CompletionItem::deserialize(request.params)?;
+                self.completion_item_resolve(params)?;
+            }
+            "$/cancelRequest" => {
+                // ignore
+            }
+            method => {
+                error!("unsupported method: {}", method);
+
+                self.channel.send_error(
+                    request.id,
+                    envelope::ResponseError {
+                        code: envelope::Code::MethodNotFound,
+                        message: "No such method".to_string(),
+                        data: Some(()),
+                    },
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handle a response.
+    fn handle_response(&mut self, message: json::Value) -> Result<()> {
+        // responses
+        let response = envelope::ResponseMessage::<json::Value, json::Value>::deserialize(message)
+            .map_err(|e| format!("failed to deserialize request: {}", e))?;
+
+        if let Some(_) = response.error {
+            // TODO: handle error
+            return Ok(());
+        }
+
+        let id = match response.id {
+            Some(ref id) => id,
+            None => return Ok(()),
+        };
+
+        let method = match self.expected.remove(&id) {
+            Some(method) => method,
+            None => {
+                debug!("no handle for id: {:?}", id);
+                return Ok(());
+            }
+        };
+
+        debug!("response: {:?} {:#?}", method, response);
+
+        match method {
+            "reproto/projectInit" => {
+                let result = match response.result {
+                    Some(result) => result,
+                    None => return Ok(()),
+                };
+
+                let response = Option::<ty::MessageActionItem>::deserialize(result)?;
+                self.handle_project_init(response)?;
+            }
+            "reproto/projectAddMissing" => {
+                let result = match response.result {
+                    Some(result) => result,
+                    None => return Ok(()),
+                };
+
+                let response = Option::<ty::MessageActionItem>::deserialize(result)?;
+                self.handle_project_add_missing(response)?;
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    /// Handle the response of `reproto/projectInit`.
+    fn handle_project_init(&mut self, response: Option<ty::MessageActionItem>) -> Result<()> {
+        let response = match response {
+            Some(response) => response,
+            None => return Ok(()),
+        };
+
+        if let Some(workspace) = self.workspace.as_ref() {
+            let mut workspace = workspace
+                .try_borrow_mut()
+                .map_err(|_| "failed to access mutable workspace")?;
+
+            let handle = self.ctx.filesystem(Some(&workspace.root_path))?;
+
+            if response.title == "Initialize project" {
+                info!("Initializing Project!");
+                workspace.initialize(handle.as_ref())?;
+
+                let manifest_url = workspace.manifest_url()?;
+
+                self.channel
+                    .send_notification("$/openUrl", SerdeUrl(manifest_url))?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handle the response of `reproto/projectAddMissing`.
+    fn handle_project_add_missing(
+        &mut self,
+        response: Option<ty::MessageActionItem>,
+    ) -> Result<()> {
+        let response = match response {
+            Some(response) => response,
+            None => return Ok(()),
+        };
+
+        if let Some(workspace) = self.workspace.as_ref() {
+            let mut workspace = workspace
+                .try_borrow()
+                .map_err(|_| "failed to access mutable workspace")?;
+
+            if response.title == "Open project manifest" {
+                let manifest_url = workspace.manifest_url()?;
+
+                self.channel
+                    .send_notification("$/openUrl", SerdeUrl(manifest_url))?;
             }
         }
 
@@ -530,17 +702,12 @@ where
         if let Some(path) = params.root_path.as_ref() {
             let path = Path::new(path.as_str());
 
-            debug!("loading project: {}", path.display());
-
             let path = path.canonicalize()
                 .map_err(|_| format!("could not canonicalize root path: {}", path.display()))?;
 
             let mut workspace = Workspace::new(path, self.ctx.clone());
-            workspace.reload()?;
             self.workspace = Some(RefCell::new(workspace));
         }
-
-        self.send_workspace_diagnostics()?;
 
         let result = ty::InitializeResult {
             capabilities: ty::ServerCapabilities {
@@ -562,6 +729,16 @@ where
 
     /// Handler for `initialized`.
     fn initialized(&mut self, _params: ty::InitializedParams) -> Result<()> {
+        if let Some(workspace) = self.workspace.as_ref() {
+            let mut workspace = workspace
+                .try_borrow_mut()
+                .map_err(|_| "failed to access mutable workspace")?;
+
+            debug!("loading project: {}", workspace.root_path.display());
+            workspace.reload()?;
+        }
+
+        self.send_workspace_diagnostics()?;
         Ok(())
     }
 
@@ -629,8 +806,6 @@ where
                     diagnostics.push(d);
                 }
                 core::Diagnostic::Info(ref span, ref m) => {
-                    info!("info: {:?}: {}", span, m);
-
                     let (start, end) = file.diag.source.span_to_range(*span, Encoding::Utf16)?;
                     let range = convert_range(start, end);
 
@@ -736,13 +911,12 @@ where
     }
 
     /// Handler for `textDocument/didOpen`.
-    fn text_document_did_open(&self, params: ty::DidOpenTextDocumentParams) -> Result<()> {
+    fn text_document_did_open(&mut self, params: ty::DidOpenTextDocumentParams) -> Result<()> {
         let text_document = params.text_document;
+        let url = text_document.uri;
+        let text = text_document.text;
 
         if let Some(workspace) = self.workspace.as_ref() {
-            let url = text_document.uri;
-            let text = text_document.text;
-
             let rope = Rope::from_str(&text);
             let source = Source::rope(url.clone(), rope);
 
@@ -760,8 +934,66 @@ where
                 .try_borrow_mut()
                 .map_err(|_| "failed to access mutable workspace")?;
 
-            workspace.edited_files.insert(url, loaded);
+            workspace.edited_files.insert(url.clone(), loaded);
             workspace.reload()?;
+
+            // warn if the currently opened file is not part of workspace.
+            if !workspace.loaded_files.contains(&url) {
+                let manifest_url = workspace.manifest_url()?;
+
+                if workspace.manifest_path.is_file() {
+                    let mut actions = Vec::new();
+
+                    actions.push(ty::MessageActionItem {
+                        title: "Ignore".to_string(),
+                    });
+
+                    actions.push(ty::MessageActionItem {
+                        title: "Open project manifest".to_string(),
+                    });
+
+                    let message = format!(
+                        "This file is not part of project, consider updating the [packages] \
+                         section in reproto.toml"
+                    );
+
+                    let id = self.channel.send_request(
+                        "window/showMessageRequest",
+                        ty::ShowMessageRequestParams {
+                            typ: ty::MessageType::Warning,
+                            message: message,
+                            actions: Some(actions),
+                        },
+                    )?;
+
+                    self.expected.insert(id, "reproto/projectAddMissing");
+                } else {
+                    let mut actions = Vec::new();
+
+                    warn!("missing reproto manifest: {}", manifest_url);
+
+                    actions.push(ty::MessageActionItem {
+                        title: "Ignore".to_string(),
+                    });
+
+                    actions.push(ty::MessageActionItem {
+                        title: "Initialize project".to_string(),
+                    });
+
+                    let message = format!("Workspace does not have a reproto manifest!");
+
+                    let id = self.channel.send_request(
+                        "window/showMessageRequest",
+                        ty::ShowMessageRequestParams {
+                            typ: ty::MessageType::Warning,
+                            message: message,
+                            actions: Some(actions),
+                        },
+                    )?;
+
+                    self.expected.insert(id, "reproto/projectInit");
+                }
+            }
         }
 
         self.send_workspace_diagnostics()?;

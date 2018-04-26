@@ -1,8 +1,8 @@
 use clap::ArgMatches;
 use core::errors::{Error, Result, ResultExt};
-use core::{Context, CoreFlavor, Diagnostics, Flavor, Resolved, ResolvedByPrefix, Resolver,
+use core::{Context, CoreFlavor, Diagnostics, Flavor, Import, Resolved, ResolvedByPrefix, Resolver,
            RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source,
-           Version, Import};
+           Version};
 use env;
 use manifest::{self, Lang, Language, Manifest, ManifestFile, Publish};
 use repository::Repository;

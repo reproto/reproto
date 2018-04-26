@@ -22,8 +22,10 @@ extern crate serde;
 
 mod config;
 mod config_env;
+mod initialize;
 
 pub use self::config_env::ConfigEnv;
+pub use self::initialize::initialize;
 use core::errors::Result;
 use core::{RelativePath, Resolver};
 use manifest::{Lang, Language, Manifest};

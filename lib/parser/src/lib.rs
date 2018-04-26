@@ -28,7 +28,7 @@ where
 /// Parse the given object.
 pub fn parse<'input>(
     diag: &mut Diagnostics,
-    input: &'input str
+    input: &'input str,
 ) -> result::Result<ast::File<'input>, ()> {
     use self::lexer::errors::Error::*;
     use lalrpop_util::ParseError::*;
@@ -44,7 +44,9 @@ pub fn parse<'input>(
                 diag.err(span, "syntax error");
                 Err(())
             }
-            ExtraToken { token: (start, token, end) } => {
+            ExtraToken {
+                token: (start, token, end),
+            } => {
                 diag.err((start, end), format!("extra token: {:?}", token));
                 Err(())
             }
@@ -129,15 +131,21 @@ mod tests {
     }
 
     fn parse_file(input: &'static str) -> File {
-        parser::FileParser::new().parse(parse(input)).expect("bad file")
+        parser::FileParser::new()
+            .parse(parse(input))
+            .expect("bad file")
     }
 
     fn parse_member(input: &'static str) -> TypeMember {
-        parser::TypeMemberParser::new().parse(parse(input)).expect("bad type member")
+        parser::TypeMemberParser::new()
+            .parse(parse(input))
+            .expect("bad type member")
     }
 
     fn parse_type(input: &'static str) -> Type {
-        parser::TypeParser::new().parse(parse(input)).expect("bad type")
+        parser::TypeParser::new()
+            .parse(parse(input))
+            .expect("bad type")
     }
 
     #[test]
@@ -248,11 +256,16 @@ mod tests {
             prefix: None,
             parts: vec![
                 Loc::new("Hello".into(), Span::empty()),
-                Loc::new("World".into(), Span::empty())
+                Loc::new("World".into(), Span::empty()),
             ],
         };
 
         assert_type!(Type::String, "string");
-        assert_type!(Type::Name { name: Loc::new(c, Span::empty()) }, "Hello::World");
+        assert_type!(
+            Type::Name {
+                name: Loc::new(c, Span::empty())
+            },
+            "Hello::World"
+        );
     }
 }

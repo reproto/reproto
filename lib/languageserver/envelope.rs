@@ -1,6 +1,7 @@
 //! Types to deserialize.
 
-use json;
+use serde;
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -10,23 +11,23 @@ pub enum RequestId {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RequestMessage {
-    pub jsonrpc: String,
+pub struct RequestMessage<T> {
+    pub jsonrpc: V2,
     pub id: Option<RequestId>,
     pub method: String,
-    pub params: json::Value,
+    pub params: T,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotificationMessage<T> {
-    pub jsonrpc: &'static str,
+    pub jsonrpc: V2,
     pub method: String,
     pub params: Option<T>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResponseMessage<T, D> {
-    pub jsonrpc: &'static str,
+    pub jsonrpc: V2,
     pub id: Option<RequestId>,
     pub result: Option<T>,
     pub error: Option<ResponseError<D>>,
@@ -51,4 +52,45 @@ pub struct ResponseError<D> {
     pub code: Code,
     pub message: String,
     pub data: Option<D>,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
+pub struct V2;
+
+impl serde::Serialize for V2 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str("2.0")
+    }
+}
+
+impl<'a> serde::Deserialize<'a> for V2 {
+    fn deserialize<D>(deserializer: D) -> Result<V2, D::Error>
+    where
+        D: serde::Deserializer<'a>,
+    {
+        return deserializer.deserialize_identifier(Visitor);
+
+        struct Visitor;
+
+        impl<'a> serde::de::Visitor<'a> for Visitor {
+            type Value = V2;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a string")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match value {
+                    "2.0" => Ok(V2),
+                    _ => Err(serde::de::Error::custom("invalid version")),
+                }
+            }
+        }
+    }
 }
