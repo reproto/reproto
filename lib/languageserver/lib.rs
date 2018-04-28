@@ -22,11 +22,11 @@ mod workspace;
 use self::ContentType::*;
 use self::workspace::{Completion, Jump, LoadedFile, Range, RenameResult, Workspace};
 use core::errors::Result;
-use core::{Context, ContextItem, Diagnostics, Encoding, Loc, RealFilesystem, Source};
+use core::{Context, ContextItem, Diagnostics, Encoding, RealFilesystem, Source};
 use ropey::Rope;
 use serde::Deserialize;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, Bound, HashMap};
 use std::fmt;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::ops::DerefMut;
@@ -389,6 +389,8 @@ struct Server<R, W> {
     ctx: Rc<Context>,
     /// Expected responses.
     expected: HashMap<envelope::RequestId, &'static str>,
+    /// Built-in types.
+    built_ins: Vec<&'static str>,
 }
 
 impl<R, W> Server<R, W>
@@ -404,6 +406,9 @@ where
             channel,
             ctx,
             expected: HashMap::new(),
+            built_ins: vec![
+                "string", "bytes", "u32", "u64", "i32", "i64", "float", "double", "datetime", "any"
+            ],
         }
     }
 
@@ -559,6 +564,14 @@ where
             "textDocument/rename" => {
                 let params = ty::RenameParams::deserialize(request.params)?;
                 self.text_document_rename(request.id, params)?;
+            }
+            "textDocument/documentSymbol" => {
+                let params = ty::DocumentSymbolParams::deserialize(request.params)?;
+                self.text_document_document_symbol(request.id, params)?;
+            }
+            "workspace/symbol" => {
+                let params = ty::WorkspaceSymbolParams::deserialize(request.params)?;
+                self.workspace_symbol(request.id, params)?;
             }
             "workspace/didChangeConfiguration" => {
                 let params = ty::DidChangeConfigurationParams::deserialize(request.params)?;
@@ -724,6 +737,8 @@ where
                 }),
                 definition_provider: Some(true),
                 rename_provider: Some(true),
+                document_symbol_provider: Some(true),
+                workspace_symbol_provider: Some(true),
                 ..ty::ServerCapabilities::default()
             },
         };
@@ -744,6 +759,113 @@ where
         }
 
         self.send_workspace_diagnostics()?;
+        Ok(())
+    }
+
+    /// Handler for `workspace/symbol`.
+    fn workspace_symbol(
+        &mut self,
+        request_id: Option<envelope::RequestId>,
+        params: ty::WorkspaceSymbolParams,
+    ) -> Result<()> {
+        let query = params.query;
+
+        let mut symbols = Vec::new();
+
+        if let Some(workspace) = self.workspace.as_ref() {
+            let workspace = workspace
+                .try_borrow()
+                .map_err(|_| "failed to access workspace immutably")?;
+
+            for file in workspace.files() {
+                self.populate_symbols(&mut symbols, file, Some(query.as_str()))?;
+            }
+        }
+
+        self.channel.send(request_id, Some(symbols))?;
+        Ok(())
+    }
+
+    /// Populate symbol information from file.
+    fn populate_symbols(
+        &self,
+        symbols: &mut Vec<ty::SymbolInformation>,
+        file: &LoadedFile,
+        query: Option<&str>,
+    ) -> Result<()> {
+        let query = query.map(|q| {
+            q.split(|c: char| c.is_whitespace() || !c.is_alphanumeric())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_lowercase())
+                .collect::<Vec<_>>()
+        });
+
+        for (key, syms) in &file.symbols {
+            for s in syms {
+                if let Some(query) = query.as_ref() {
+                    let mut k = key.iter()
+                        .map(|p| p.to_lowercase())
+                        .collect::<BTreeSet<_>>();
+
+                    k.insert(s.name.to_lowercase());
+
+                    let matches = query.iter().all(|q| {
+                        let range = (Bound::Included(q.to_string()), Bound::Unbounded);
+
+                        k.range(range)
+                            .next()
+                            .map(|r| r.starts_with(q))
+                            .unwrap_or(false)
+                    });
+
+                    if !matches {
+                        continue;
+                    }
+                }
+
+                let mut path = key.clone();
+                path.push(s.name.to_string());
+
+                let range = convert_range(s.range.start, s.range.end);
+
+                let location = ty::Location {
+                    uri: s.url.clone(),
+                    range,
+                };
+
+                symbols.push(ty::SymbolInformation {
+                    name: path.join("::"),
+                    kind: ty::SymbolKind::Class,
+                    location: location,
+                    container_name: Some(file.package.to_string()),
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handler for `textDocument/documentSymbol`.
+    fn text_document_document_symbol(
+        &mut self,
+        request_id: Option<envelope::RequestId>,
+        params: ty::DocumentSymbolParams,
+    ) -> Result<()> {
+        let url = params.text_document.uri;
+
+        let mut symbols = Vec::new();
+
+        if let Some(workspace) = self.workspace.as_ref() {
+            let workspace = workspace
+                .try_borrow()
+                .map_err(|_| "failed to access workspace immutably")?;
+
+            if let Some(file) = workspace.file(&url) {
+                self.populate_symbols(&mut symbols, file, None)?;
+            }
+        }
+
+        self.channel.send(request_id, Some(symbols))?;
         Ok(())
     }
 
@@ -775,8 +897,8 @@ where
                 .try_borrow()
                 .map_err(|_| "failed to access workspace immutably")?;
 
-            for (url, file) in workspace.files() {
-                self.send_diagnostics(url, &file, &diagnostics_by_url)?;
+            for file in workspace.files() {
+                self.send_diagnostics(&file, &diagnostics_by_url)?;
             }
         }
 
@@ -786,13 +908,12 @@ where
     /// Send diagnostics for a single file.
     fn send_diagnostics(
         &self,
-        url: &Url,
         file: &LoadedFile,
         diagnostics_by_url: &HashMap<Url, Diagnostics>,
     ) -> Result<()> {
         let mut diagnostics = Vec::new();
 
-        let by_url = diagnostics_by_url.get(url);
+        let by_url = diagnostics_by_url.get(&file.url);
         let by_url_chain = by_url.iter().flat_map(|d| d.items());
 
         for d in file.diag.items().chain(by_url_chain) {
@@ -830,7 +951,7 @@ where
         self.channel.send_notification(
             "textDocument/publishDiagnostics",
             ty::PublishDiagnosticsParams {
-                uri: url.clone(),
+                uri: file.url.clone(),
                 diagnostics: diagnostics,
             },
         )?;
@@ -1079,12 +1200,7 @@ where
                     });
                 }
             }
-            Completion::Any => {
-                let candidates = vec![
-                    "string", "bytes", "u32", "u64", "i32", "i64", "float", "double", "datetime",
-                    "any",
-                ];
-
+            Completion::Any { ref suffix } => {
                 for (prefix, value) in &file.prefixes {
                     list.items.push(ty::CompletionItem {
                         label: format!("{}::", prefix),
@@ -1094,7 +1210,7 @@ where
                     });
                 }
 
-                for c in candidates {
+                for c in &self.built_ins {
                     list.items.push(ty::CompletionItem {
                         label: c.to_string(),
                         kind: Some(ty::CompletionItemKind::Keyword),
@@ -1102,19 +1218,8 @@ where
                     });
                 }
 
-                for symbol in file.symbols.keys() {
-                    if symbol.len() != 1 {
-                        continue;
-                    }
-
-                    let symbol = symbol.join("::");
-
-                    list.items.push(ty::CompletionItem {
-                        label: symbol,
-                        kind: Some(ty::CompletionItemKind::Class),
-                        ..ty::CompletionItem::default()
-                    });
-                }
+                let mut path = vec![];
+                push_items(&mut list.items, &file, &path, suffix)?;
             }
             Completion::Absolute {
                 ref prefix,
@@ -1134,34 +1239,48 @@ where
                     file
                 };
 
-                if let Some(symbols) = file.symbols.get(path) {
-                    if let Some(ref suffix) = *suffix {
-                        for s in symbols.iter().filter(|s| {
-                            s.name.to_lowercase().starts_with(&suffix.to_lowercase())
-                                && Loc::borrow(&s.name) != suffix
-                        }) {
-                            list.items.push(ty::CompletionItem {
-                                label: s.name.to_string(),
-                                kind: Some(ty::CompletionItemKind::Class),
-                                documentation: s.to_documentation(),
-                                ..ty::CompletionItem::default()
-                            });
-                        }
-                    } else {
-                        for s in symbols {
-                            list.items.push(ty::CompletionItem {
-                                label: s.name.to_string(),
-                                kind: Some(ty::CompletionItemKind::Class),
-                                documentation: s.to_documentation(),
-                                ..ty::CompletionItem::default()
-                            });
-                        }
-                    }
-                };
+                push_items(&mut list.items, &file, path, suffix)?;
             }
         }
 
-        Ok(())
+        return Ok(());
+
+        fn push_items(
+            items: &mut Vec<ty::CompletionItem>,
+            file: &LoadedFile,
+            path: &Vec<String>,
+            suffix: &Option<String>,
+        ) -> Result<()> {
+            // access all symbols for exact matching symbol.
+            if let Some(ref suffix) = *suffix {
+                let mut path = path.clone();
+                path.push(suffix.to_string());
+
+                if let Some(symbols) = file.symbols.get(&path) {
+                    for s in symbols {
+                        items.push(ty::CompletionItem {
+                            label: format!("{}::{}", suffix.to_string(), s.name),
+                            kind: Some(ty::CompletionItemKind::Class),
+                            documentation: s.to_documentation(),
+                            ..ty::CompletionItem::default()
+                        });
+                    }
+                };
+            }
+
+            if let Some(symbols) = file.symbols.get(path) {
+                for s in symbols {
+                    items.push(ty::CompletionItem {
+                        label: s.name.to_string(),
+                        kind: Some(ty::CompletionItemKind::Class),
+                        documentation: s.to_documentation(),
+                        ..ty::CompletionItem::default()
+                    });
+                }
+            };
+
+            Ok(())
+        }
     }
 
     fn completion_item_resolve(&self, _: ty::CompletionItem) -> Result<()> {

@@ -68,7 +68,7 @@ pub enum Completion {
     /// Completions for a given package.
     Package { results: BTreeSet<String> },
     /// Any type, including primitive types.
-    Any,
+    Any { suffix: Option<String> },
 }
 
 /// Specifies a jump
@@ -113,8 +113,12 @@ pub struct Prefix {
 /// Information about a single symbol.
 #[derive(Debug, Clone)]
 pub struct Symbol {
+    /// Url where the symbol is located.
+    pub url: Url,
+    /// Range where the symbol is located.
+    pub range: Range,
     /// The name of the symbol.
-    pub name: Loc<String>,
+    pub name: String,
     /// Markdown documentation comment.
     pub comment: Option<String>,
 }
@@ -337,11 +341,11 @@ impl Workspace {
     }
 
     /// Access all files in the workspace.
-    pub fn files(&self) -> Vec<(&Url, &LoadedFile)> {
-        let mut files = Vec::new();
-        files.extend(self.files.iter());
-        files.extend(self.edited_files.iter());
-        files
+    pub fn files<'a>(&'a self) -> Files<'a> {
+        Files {
+            files: self.files.values(),
+            edited_files: self.edited_files.values(),
+        }
     }
 
     /// Access the loaded file with the given Url.
@@ -605,15 +609,7 @@ impl Workspace {
                 None
             };
 
-            loaded
-                .symbols
-                .entry(path.clone())
-                .or_insert_with(Vec::default)
-                .push(Symbol {
-                    name: Loc::map(decl.name(), |n| n.to_string()),
-                    comment,
-                });
-
+            let symbol_path = path.clone();
             path.push(decl.name().to_string());
 
             loaded.symbol.insert(path.clone(), Loc::span(&decl.name()));
@@ -621,6 +617,22 @@ impl Workspace {
             self.process_decl(&path, loaded, content.as_str(), decl)?;
 
             queue.extend(decl.decls().map(|decl| (path.clone(), decl)));
+
+            let (name, span) = Loc::take_pair(decl.name());
+
+            let (start, end) = loaded.diag.source.span_to_range(span, Encoding::Utf16)?;
+            let range = Range { start, end };
+
+            loaded
+                .symbols
+                .entry(symbol_path.clone())
+                .or_insert_with(Vec::default)
+                .push(Symbol {
+                    url: loaded.url.clone(),
+                    range,
+                    name: name.to_string(),
+                    comment,
+                });
         }
 
         Ok(())
@@ -920,67 +932,52 @@ impl Workspace {
 
     /// Figure out the kind of completion to support.
     fn type_completion(&self, current: &Vec<String>, content: &str) -> Result<Completion> {
-        if content.chars().all(|c| c.is_whitespace()) {
-            return Ok(Completion::Any);
-        }
+        let mut it = content.split("::").peekable();
 
-        if content.starts_with("::") {
-            let content = &content[2..];
+        let mut prefix = None;
+        let mut suffix = None;
+        let mut path = Vec::new();
+        let mut first = true;
 
-            let mut path = current.clone();
-            path.extend(content.split("::").map(|p| p.to_string()));
+        while let Some(step) = it.next() {
+            let step = step.trim();
 
-            let suffix = path.pop().and_then(|s| {
-                if !s.chars().all(|c| c.is_whitespace()) {
-                    Some(s.to_string())
-                } else {
-                    None
-                }
-            });
-
-            return Ok(Completion::Absolute {
-                prefix: None,
-                path,
-                suffix,
-            });
-        }
-
-        let mut path = content
-            .split("::")
-            .map(|p| p.to_string())
-            .collect::<Vec<_>>();
-
-        if !path.is_empty() {
-            let prefix = if let Some(first) = path.first() {
-                if first.chars().all(|c| c.is_lowercase()) {
-                    Some(first.to_string())
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            if prefix.is_some() {
-                path.remove(0);
+            if it.peek().is_none() {
+                suffix = Some(step.to_string());
+                continue;
             }
 
-            let suffix = path.pop().and_then(|s| {
-                if !s.chars().all(|c| c.is_whitespace()) {
-                    Some(s.to_string())
-                } else {
-                    None
-                }
-            });
+            if !first {
+                path.push(step.to_string());
+                continue;
+            }
 
-            return Ok(Completion::Absolute {
-                prefix,
-                path,
-                suffix,
-            });
+            first = false;
+
+            // relative
+            if step.is_empty() {
+                path.extend(current.iter().cloned());
+                continue;
+            }
+
+            if step.chars().all(|c| c.is_lowercase() || c.is_numeric()) {
+                prefix = Some(step.to_string());
+                continue;
+            }
+
+            path.push(step.to_string());
+            continue;
         }
 
-        Ok(Completion::Any)
+        if prefix.is_none() && path.is_empty() {
+            return Ok(Completion::Any { suffix });
+        }
+
+        return Ok(Completion::Absolute {
+            prefix,
+            path,
+            suffix,
+        });
     }
 
     /// Find the type completion associated with the given position.
@@ -1147,5 +1144,23 @@ impl Resolver for Workspace {
     /// Not supported for workspace.
     fn resolve_by_prefix(&mut self, _: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
         Ok(vec![])
+    }
+}
+
+/// Iterator over all files.
+pub struct Files<'a> {
+    files: hash_map::Values<'a, Url, LoadedFile>,
+    edited_files: hash_map::Values<'a, Url, LoadedFile>,
+}
+
+impl<'a> Iterator for Files<'a> {
+    type Item = &'a LoadedFile;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(f) = self.files.next() {
+            return Some(f);
+        }
+
+        self.edited_files.next()
     }
 }
