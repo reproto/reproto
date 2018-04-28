@@ -24,6 +24,7 @@ for manifest in $root/lib/backend-*/Cargo.toml; do
 done
 
 candidates+=(lib/env)
+candidates+=(lib/languageserver)
 candidates+=(server cli)
 
 targets=()
