@@ -1,7 +1,7 @@
 extern crate reproto_core as core;
 extern crate reproto_lexer as lexer;
 
-use core::{Loc, RpNumber, RpPackage, Span};
+use core::{Loc, RpNumber, Span};
 use std::borrow::Cow;
 use std::ops;
 use std::vec;
@@ -526,9 +526,9 @@ impl<'input> TypeBody<'input> {
 
 /// A package declaration.
 #[derive(Debug, PartialEq, Eq)]
-pub enum Package {
+pub enum Package<'input> {
     /// A parsed package.
-    Package { package: RpPackage },
+    Package { parts: Vec<Loc<Cow<'input, str>>> },
     /// A recovered error.
     Error,
 }
@@ -540,7 +540,7 @@ pub enum Package {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct UseDecl<'input> {
-    pub package: Loc<Package>,
+    pub package: Loc<Package<'input>>,
     pub range: Option<Loc<String>>,
     pub alias: Option<Loc<Cow<'input, str>>>,
     /// If the end-of-line indicator present.

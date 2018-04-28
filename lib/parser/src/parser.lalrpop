@@ -35,10 +35,8 @@ Use: UseDecl<'input> = {
 
 UseAlias: Loc<Cow<'input, str>> = "as" <value:Loc<ident>> => value;
 
-Package: Package = {
-    <parts:OneOrMore<".", Ident>> => Package::Package {
-        package: RpPackage::new(parts.into_iter().map(|s| s.to_string()).collect())
-    },
+Package: Package<'input> = {
+    <parts:OneOrMore<".", Loc<Ident>>> => Package::Package { parts },
     ! => Package::Error,
 };
 

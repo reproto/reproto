@@ -700,7 +700,9 @@ impl<'input> IntoModel for Vec<Loc<UseDecl<'input>>> {
 
             // Handle Error.
             let package = match package {
-                Package::Package { ref package } => package,
+                Package::Package { parts } => {
+                    RpPackage::new(parts.into_iter().map(|p| p.to_string()).collect())
+                }
                 Package::Error => {
                     diag.err(span, format!("not a valid package"));
                     continue;

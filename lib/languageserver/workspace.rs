@@ -183,6 +183,21 @@ impl LoadedFile {
         Ok(())
     }
 
+    /// Register a location that is only used to trigger a rename action, but should not be locally
+    /// replaced itself.
+    pub fn register_rename_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
+        let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
+        let range = Range { start, end };
+
+        // replace the explicit rename.
+        let rename = Rename::Prefix {
+            prefix: prefix.to_string(),
+        };
+
+        self.renames.insert(start, (range, rename));
+        Ok(())
+    }
+
     /// Register the location of a prefix.
     ///
     /// This sets the span up as a location that can be renamed for the given prefix.
@@ -421,18 +436,11 @@ impl Workspace {
                 package
             };
 
-            let package = match *package {
-                ast::Package::Package { ref package } => package,
+            let parts = match *package {
+                ast::Package::Package { ref parts } => parts,
                 ast::Package::Error => {
                     continue;
                 }
-            };
-
-            let package = RpRequiredPackage::new(package.clone(), range);
-
-            let looked_up = match self.process(resolver, &package)? {
-                Some(package) => package,
-                None => continue,
             };
 
             let endl = match u.endl {
@@ -447,35 +455,37 @@ impl Workspace {
                 Some(alias.as_ref())
             } else {
                 // note: _cannot_ be renamed since they are implicit.
-                match package.package.parts().last().map(|p| p.as_str()) {
+                match parts.last() {
                     Some(suffix) => {
+                        let (suffix, span) = Loc::borrow_pair(suffix);
+
                         // implicit prefixes cannot be renamed directly.
-                        loaded.implicit_prefix(suffix, endl)?;
-                        Some(suffix)
+                        loaded.implicit_prefix(suffix.as_ref(), endl)?;
+                        loaded.register_rename_prefix(suffix.as_ref(), span)?;
+                        Some(suffix.as_ref())
                     }
                     None => None,
                 }
             };
 
-            let prefix = match prefix {
-                Some(prefix) => prefix.to_string(),
-                None => continue,
-            };
+            let package = RpPackage::new(parts.iter().map(|p| p.to_string()).collect());
+            let package = RpRequiredPackage::new(package.clone(), range);
+            let package = self.process(resolver, &package)?;
 
-            loaded.insert_jump(
-                span,
-                Jump::Package {
-                    prefix: prefix.clone(),
-                },
-            )?;
+            if let Some(prefix) = prefix {
+                let prefix = prefix.to_string();
 
-            loaded.prefixes.insert(
-                prefix,
-                Prefix {
-                    span: span,
-                    package: looked_up,
-                },
-            );
+                loaded.insert_jump(
+                    span,
+                    Jump::Package {
+                        prefix: prefix.clone(),
+                    },
+                )?;
+
+                if let Some(package) = package {
+                    loaded.prefixes.insert(prefix, Prefix { span, package });
+                };
+            }
         }
 
         let mut queue = VecDeque::new();
