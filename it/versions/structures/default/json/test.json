@@ -7,7 +7,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Entry"
         ]
       },
@@ -27,7 +27,7 @@
                 "package": "foo",
                 "version": "4.0.0"
               },
-              "parts": [
+              "path": [
                 "Thing"
               ]
             }

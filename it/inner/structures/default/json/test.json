@@ -7,7 +7,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Entry"
         ]
       },
@@ -25,7 +25,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "A"
               ]
             }
@@ -41,7 +41,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "A",
                 "B"
               ]
@@ -57,7 +57,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "A"
         ]
       },
@@ -70,7 +70,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "A",
               "B"
             ]
@@ -102,7 +102,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "A",
                 "B"
               ]

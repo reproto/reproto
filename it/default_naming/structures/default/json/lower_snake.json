@@ -7,7 +7,7 @@
         "package": {
           "package": "lower_snake"
         },
-        "parts": [
+        "path": [
           "Value"
         ]
       },
@@ -32,7 +32,7 @@
         "package": {
           "package": "lower_snake"
         },
-        "parts": [
+        "path": [
           "Service"
         ]
       },

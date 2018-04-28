@@ -7,7 +7,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Entry"
         ]
       },
@@ -26,7 +26,7 @@
               "package": {
                 "package": "lower_camel"
               },
-              "parts": [
+              "path": [
                 "Value"
               ]
             }
@@ -43,7 +43,7 @@
               "package": {
                 "package": "lower_snake"
               },
-              "parts": [
+              "path": [
                 "Value"
               ]
             }
@@ -60,7 +60,7 @@
               "package": {
                 "package": "upper_camel"
               },
-              "parts": [
+              "path": [
                 "Value"
               ]
             }
@@ -77,7 +77,7 @@
               "package": {
                 "package": "upper_snake"
               },
-              "parts": [
+              "path": [
                 "Value"
               ]
             }

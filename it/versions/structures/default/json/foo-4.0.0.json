@@ -8,7 +8,7 @@
           "package": "foo",
           "version": "4.0.0"
         },
-        "parts": [
+        "path": [
           "Thing"
         ]
       },
@@ -36,7 +36,7 @@
                 "package": "bar",
                 "version": "1.0.0"
               },
-              "parts": [
+              "path": [
                 "Other"
               ]
             }
@@ -54,7 +54,7 @@
                 "package": "bar",
                 "version": "2.0.0"
               },
-              "parts": [
+              "path": [
                 "Other"
               ]
             }
@@ -72,7 +72,7 @@
                 "package": "bar",
                 "version": "2.1.0"
               },
-              "parts": [
+              "path": [
                 "Other"
               ]
             }
