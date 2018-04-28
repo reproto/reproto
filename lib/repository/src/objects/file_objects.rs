@@ -9,11 +9,19 @@ use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
+/// Load objects from the filesystem.
 pub struct FileObjects {
+    /// The root path of the filesystem storage.
+    ///
+    /// Objects will be fetched according to their checksum, like this using the example checksum
+    /// `deadbeef`: `<path>/de/adbeef.reproto`
     path: PathBuf,
 }
 
 impl FileObjects {
+    /// Create a new filesystem-based objects provider.
+    ///
+    /// `path` is the path to the objects storage.
     pub fn new<P: AsRef<Path> + ?Sized>(path: &P) -> FileObjects {
         FileObjects {
             path: path.as_ref().to_owned(),

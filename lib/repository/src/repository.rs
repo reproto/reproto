@@ -58,7 +58,10 @@ impl Repository {
 
     /// Get the object for the specific deployment.
     pub fn get_object(&mut self, deployment: &Deployment) -> Result<Option<Source>> {
-        self.objects.get_object(&deployment.object)
+        // NOTE: objects from repositories are _always_ read-only.
+        self.objects
+            .get_object(&deployment.object)
+            .map(|s| s.map(|s| s.with_read_only(true)))
     }
 }
 

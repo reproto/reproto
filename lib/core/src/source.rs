@@ -1,3 +1,9 @@
+//! The primary abstraction to indicate a "source" of data.
+//!
+//! Sources are primarily available to be read through `Source::read`, but also support auxiliary
+//! functions like finding the line of a given span `Source::find_range` or printing pretty
+//! diagnostics.
+
 use errors::Result;
 use ropey::Rope;
 use std::fmt;
@@ -11,15 +17,24 @@ use {Encoding, RelativePathBuf, Span};
 
 #[derive(Debug, Clone)]
 pub enum Readable {
+    /// No source, typically used for tests.
+    ///
+    /// When read will successfully return an empty Read.
     Empty,
+    /// Bytes in-memory containing the source.
     Bytes(Arc<Vec<u8>>),
+    /// Path to a file containing the source.
     Path(Arc<PathBuf>),
+    /// In-memory data structure that supports non-linear editing efficiently.
     Rope(Url, Rope),
+    /// Read from Stdin, typically can only be read once (so make it count!).
     Stdin,
 }
 
 impl Readable {
     /// Open a reader for this readable.
+    ///
+    /// Note: It is not guaranteed that it is possible to open the same source multiple times.
     fn read(&self) -> Result<Box<Read>> {
         use self::Readable::*;
 
@@ -53,8 +68,21 @@ impl fmt::Display for Readable {
 
 #[derive(Debug, Clone)]
 pub struct Source {
+    /// The name of the source.
     name: Option<Arc<String>>,
+    /// A filesystem path to the source, if the source has one.
+    ///
+    /// This path might be used to modify the source, or to print where a specific error originated
+    /// from for diagnostics.
     path: Option<Arc<PathBuf>>,
+    /// If this source is read-only.
+    ///
+    /// If this is set, a source may _not_ be modified.
+    ///
+    /// This is commonly set for objects from a repository to avoid modifying the files in the
+    /// repository.
+    pub read_only: bool,
+    /// The readable accessor to the source.
     readable: Readable,
 }
 
@@ -64,44 +92,60 @@ impl Source {
         Self {
             name: Some(Arc::new(name.as_ref().to_string())),
             path: None,
+            read_only: true,
             readable: Readable::Empty,
         }
     }
 
     /// Create a new empty source.
+    ///
+    /// These are _not_ read-only by default. It is expected that ropes are in-memory
+    /// representations of files in the filesystem.
     pub fn rope<U: Into<Url>>(url: U, rope: Rope) -> Self {
         let url = url.into();
 
         Self {
             name: Some(Arc::new(url.to_string())),
             path: None,
+            read_only: false,
             readable: Readable::Rope(url, rope),
         }
     }
 
     /// Create a new bytes source.
+    ///
+    /// Byte sources are read-only by default.
+    /// This can be turned off if this is an in-memory representation of something in the
+    /// filesystem, in which case `path` should also be set to indicate where.
     pub fn bytes<S: AsRef<str>>(name: S, bytes: Vec<u8>) -> Self {
         Self {
             name: Some(Arc::new(name.as_ref().to_string())),
             path: None,
+            read_only: true,
             readable: Readable::Bytes(Arc::new(bytes)),
         }
     }
 
     /// Create a new path source.
+    ///
+    /// Path sources are _not_ read-only by default.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Self {
         Self {
             name: None,
             path: None,
+            read_only: false,
             readable: Readable::Path(Arc::new(path.as_ref().to_owned())),
         }
     }
 
     /// Create an source from stdin.
+    ///
+    /// Stdin sources are _always_ read-only.
     pub fn stdin() -> Self {
         Self {
             name: None,
             path: None,
+            read_only: true,
             readable: Readable::Stdin,
         }
     }
@@ -119,7 +163,7 @@ impl Source {
         None
     }
 
-    /// Access the URL for this source if it is a rope.
+    /// Access the URL for this source, but only if it is a rope.
     pub fn rope_url(&self) -> Option<&Url> {
         if let Readable::Rope(ref url, _) = self.readable {
             return Some(url);
@@ -177,25 +221,17 @@ impl Source {
         Self {
             name: Some(Arc::new(name)),
             path: self.path.as_ref().map(Arc::clone),
+            read_only: self.read_only,
             readable: self.readable.clone(),
         }
     }
 
+    /// Modify the source to set if it is read only or not.
+    pub fn with_read_only(self, read_only: bool) -> Self {
+        Self { read_only, ..self }
+    }
+
     pub fn span_to_range(&self, span: Span, encoding: Encoding) -> Result<(Position, Position)> {
-        // ropes are stored in-memory and has custom facilities for solving this.
-        /*if let Some(rope) = self.as_rope() {
-            let mut start = Position::default();
-            let mut end = Position::default();
-
-            let start.line = rope.char_to_line(span.start);
-            let end.line = rope.char_to_line(span.end);
-
-            let start_line = rope.line(start.line).bytes().collect::<Vec<_>>();
-            let end_line = rope.line(end.line).bytes().collect::<Vec<_>>();
-
-            return Ok((start, end));
-        }*/
-
         find_range(self.read()?, span, encoding)
     }
 }
