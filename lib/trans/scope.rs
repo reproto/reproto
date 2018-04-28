@@ -123,13 +123,11 @@ mod tests {
         let package = RpVersionedPackage::new(RpPackage::empty(), None);
         let keywords = Rc::new(HashMap::new());
 
-        let s = Scope::new(package, keywords, None, None);
+        let mut s = Scope::new(package, keywords, None, None, ());
 
-        let s2 = s.child("foo");
-        let s3 = s2.child("bar");
+        s.push("foo");
+        s.push("bar");
 
-        let parts: Vec<_> = s3.walk().collect();
-
-        assert_eq!(vec!["bar".to_owned(), "foo".to_owned()], parts);
+        assert_eq!(vec!["foo".to_owned(), "bar".to_owned()], s.path);
     }
 }
