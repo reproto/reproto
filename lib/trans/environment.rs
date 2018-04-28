@@ -376,8 +376,13 @@ impl<'a> Environment<'a, CoreFlavor> {
             let mut diag = Diagnostics::new(Source::empty("generated"));
 
             try_with_diag!(self.ctx, diag, {
-                self.load_file(&mut diag, file, &package)
-                    .and_then(|file| self.process_file(&mut diag, package.clone(), file))
+                let step = self.load_file(&mut diag, file, &package);
+
+                let step = step.and_then(|file| {
+                    self.process_file(&mut diag, package.clone(), file)
+                });
+
+                step
             });
 
             self.visited.insert(required, Some(package.clone()));
@@ -543,27 +548,34 @@ impl<'e> Import for Environment<'e, CoreFlavor> {
         // find all matching objects from the resolver.
         let files = self.resolver.resolve(required)?;
 
-        let result = if let Some(Resolved { version, source }) = files.into_iter().last() {
-            debug!("loading: {}", source);
-
-            let package = RpVersionedPackage::new(required.package.clone(), version);
-
-            debug!("found: {} ({})", package, required);
-
-            let mut diag = Diagnostics::new(source.clone());
-
-            try_with_diag!(self.ctx, diag, {
-                self.load_source_diag(&mut diag, &package)
-                    .and_then(|file| self.process_file(&mut diag, package.clone(), file))
-            });
-
-            Some(package)
-        } else {
-            None
+        let Resolved { version, source } = match files.into_iter().last() {
+            None => {
+                self.visited.insert(required.clone(), None);
+                return Ok(None);
+            },
+            Some(resolved) => resolved,
         };
 
-        self.visited.insert(required.clone(), result.clone());
-        Ok(result)
+        let package = RpVersionedPackage::new(required.package.clone(), version);
+
+        debug!("found `{}` in {} as package `{}`", required, source, package);
+
+        let mut diag = Diagnostics::new(source.clone());
+
+        // NOTE: import to insert before recursing (happens in process_file).
+        self.visited.insert(required.clone(), Some(package.clone()));
+
+        try_with_diag!(self.ctx, diag, {
+            let step = self.load_source_diag(&mut diag, &package);
+
+            let step = step.and_then(|file| {
+                self.process_file(&mut diag, package.clone(), file)
+            });
+
+            step
+        });
+
+        Ok(Some(package))
     }
 }
 
