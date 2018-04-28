@@ -1,25 +1,66 @@
 # Using the language server
 
-reproto comes with a [language server] to improve your developer experience.
+reproto comes with a built-in [language server] that greatly enhances your developer experience.
 
-This currently supports:
+*This is work in progress!*, you can follow the progress of this in [issue #34].
+Feel free to voice your opinions there, or pitch in if you want to give a hand!
 
- * Contextual completions for types and packages.
- * Jump to definitions.
- * Helpful diagnostics when project is not configured.
+The following editors are officially supported:
+
+ * [Visual Studio Code](#visual-studio-code)
+ * [Neovim](#neovim)
+
+Next up we will go through the features which are available in the language server through
+[Visual Studio Code](#visual-studio-code).
+
+Since a picture is worth a thousand words, gifs should be priceless ;)
+
+[issue #34]: https://github.com/reproto/reproto/issues/34
+
+## Realtime diagnostics and feedback
+
+The language server is capable of integrating any error message that is emitted by the compiler
+directly into the editor - while you are typing.
+
+![diagnostics](ls-diagnostics.gif?raw=true "diagnostics in vscode")
+
+## Jump to definitions
+
+We can jump to any definitions, to files _anywhere_ in your path.
+
+![jump to definitions](ls-jump-to-definitions.gif?raw=true "jump to definitions in vscode")
+
+## Contextual completions
+
+The language server uses the same compiler infrastructure as the command line tool, so it can
+inxpect the full context of the language to provide a rich set of completions.
+
+![completions](ls-completions.gif?raw=true "completions in vscode")
+
+## Rename package prefixes
+
+We can rename package prefixes.
+
+If you attempt to rename an implicitly prefix import like `ex.github.gists`, a new alias will be
+introduced.
+
+![renaming package prefixes](ls-rename-package.gif?raw=true "renaming package in vscode")
 
 [language server]: https://langserver.org/
 
-## Visual Studio Code
+# Visual Studio Code
 
-It is recommended that you use the [`reproto` extension], which will use the language server if it
-can locate a reproto installation that is recent enough.
+It is recommended that you use the [`reproto` extension].
 
-![completion in vscode](ls-completion.png?raw=true "completion in vscode")
+The extension is capable of installing reproto automatically if it's not already installed.
+
+You can kick this off by doing `CTRL+SHIFT+P`, and running `Reproto: initialize new project`.
+
+![initialize in vscode](ls-initialize.png?raw=true "initialize in vscode")
 
 [`reproto` extension]: https://marketplace.visualstudio.com/items?itemName=udoprog.reproto
 
-## Neovim
+# Neovim
 
 You can plug the language server into [LanguageClient-neovim] using the following configuration:
 
