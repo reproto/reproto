@@ -675,7 +675,7 @@ impl<'input> IntoModel for Vec<Loc<UseDecl<'input>>> {
         for use_decl in self {
             let (use_decl, span) = Loc::take_pair(use_decl);
 
-            if !use_decl.endl {
+            if use_decl.endl.is_none() {
                 diag.err(span.end(), "missing `;`");
             }
 

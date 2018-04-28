@@ -3,7 +3,8 @@
 use ast;
 use core::errors::Result;
 use core::{self, Context, Diagnostics, Encoding, Handle, Import, Loc, Position, Resolved,
-           ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Span};
+           ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Source,
+           Span};
 use env;
 use manifest;
 use parser;
@@ -14,6 +15,25 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use ty;
 use url::Url;
+
+/// Specifies a rename.
+#[derive(Debug, Clone)]
+pub enum Rename {
+    Prefix { prefix: String },
+}
+
+/// The result of a find_rename call.
+#[derive(Debug, Clone)]
+pub enum RenameResult<'a> {
+    /// All renames are in the same file as where the rename was requested.
+    Local { ranges: &'a Vec<Range> },
+    /// A package was renamed, and the range indicates the endl of the import that should be
+    /// replaced.
+    ImplicitPackage {
+        ranges: &'a Vec<Range>,
+        position: Position,
+    },
+}
 
 /// Specifies a type completion.
 #[derive(Debug, Clone)]
@@ -101,6 +121,12 @@ pub struct LoadedFile {
     pub jumps: BTreeMap<Position, (Range, Jump)>,
     /// Corresponding locations that have available type completions.
     pub completions: BTreeMap<Position, (Range, Completion)>,
+    /// Rename locations.
+    pub renames: BTreeMap<Position, (Range, Rename)>,
+    /// All the locations that a given prefix is present at.
+    pub prefix_ranges: HashMap<String, Vec<Range>>,
+    /// Implicit prefixes which _cannot_ be renamed.
+    pub implicit_prefixes: HashMap<String, Position>,
     /// package prefixes.
     pub prefixes: HashMap<String, Prefix>,
     /// Symbols present in the file.
@@ -113,11 +139,69 @@ pub struct LoadedFile {
 }
 
 impl LoadedFile {
+    pub fn new(url: Url, source: Source) -> Self {
+        Self {
+            url: url.clone(),
+            jumps: BTreeMap::new(),
+            completions: BTreeMap::new(),
+            renames: BTreeMap::new(),
+            prefix_ranges: HashMap::new(),
+            implicit_prefixes: HashMap::new(),
+            prefixes: HashMap::new(),
+            symbols: HashMap::new(),
+            symbol: HashMap::new(),
+            diag: Diagnostics::new(source.clone()),
+        }
+    }
+
+    /// Reset all state in the loaded file.
+    pub fn clear(&mut self) {
+        self.symbols.clear();
+        self.symbol.clear();
+        self.prefixes.clear();
+        self.jumps.clear();
+        self.completions.clear();
+        self.renames.clear();
+        self.prefix_ranges.clear();
+        self.diag.clear();
+    }
+
     /// Insert the specified jump.
     pub fn insert_jump(&mut self, span: Span, jump: Jump) -> Result<()> {
         let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
         let range = Range { start, end };
         self.jumps.insert(start, (range, jump));
+        Ok(())
+    }
+
+    /// Set an implicit prefix.
+    ///
+    /// These prefixes _can not_ be renamed since they are the last part of the package.
+    pub fn implicit_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
+        let (start, _) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
+        self.implicit_prefixes.insert(prefix.to_string(), start);
+        Ok(())
+    }
+
+    /// Register the location of a prefix.
+    ///
+    /// This sets the span up as a location that can be renamed for the given prefix.
+    pub fn register_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
+        let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
+        let range = Range { start, end };
+
+        // replace the explicit rename.
+        let rename = Rename::Prefix {
+            prefix: prefix.to_string(),
+        };
+
+        self.renames.insert(start, (range, rename));
+
+        self.prefix_ranges
+            .entry(prefix.to_string())
+            .or_insert_with(Vec::new)
+            .push(range);
+
         Ok(())
     }
 }
@@ -285,25 +369,11 @@ impl Workspace {
         self.loaded_files.insert(url.clone());
 
         if let Some(mut loaded) = self.edited_files.remove(&url) {
-            loaded.symbols.clear();
-            loaded.symbol.clear();
-            loaded.prefixes.clear();
-            loaded.jumps.clear();
-            loaded.completions.clear();
-            loaded.diag.clear();
-
+            loaded.clear();
             self.inner_process(resolver, &mut loaded)?;
             self.edited_files.insert(url.clone(), loaded);
         } else {
-            let mut loaded = LoadedFile {
-                url: url.clone(),
-                jumps: BTreeMap::new(),
-                completions: BTreeMap::new(),
-                prefixes: HashMap::new(),
-                symbols: HashMap::new(),
-                symbol: HashMap::new(),
-                diag: Diagnostics::new(source),
-            };
+            let mut loaded = LoadedFile::new(url.clone(), source);
 
             self.inner_process(resolver, &mut loaded)?;
             self.files.insert(url.clone(), loaded);
@@ -365,10 +435,27 @@ impl Workspace {
                 None => continue,
             };
 
-            let prefix = u.alias
-                .as_ref()
-                .map(|a| a.as_ref())
-                .or_else(|| package.package.parts().last().map(|p| p.as_str()));
+            let endl = match u.endl {
+                Some(endl) => endl,
+                None => continue,
+            };
+
+            let prefix = if let Some(ref alias) = u.alias {
+                // note: can be renamed!
+                let (alias, span) = Loc::borrow_pair(alias);
+                loaded.register_prefix(alias.as_ref(), span)?;
+                Some(alias.as_ref())
+            } else {
+                // note: _cannot_ be renamed since they are implicit.
+                match package.package.parts().last().map(|p| p.as_str()) {
+                    Some(suffix) => {
+                        // implicit prefixes cannot be renamed directly.
+                        loaded.implicit_prefix(suffix, endl)?;
+                        Some(suffix)
+                    }
+                    None => None,
+                }
+            };
 
             let prefix = match prefix {
                 Some(prefix) => prefix.to_string(),
@@ -488,11 +575,18 @@ impl Workspace {
                 self.process_ty(current, loaded, content, value.as_ref())?;
             }
             ref ty => {
-                if let ast::Type::Error = *ty {
-                    // NOTE: catch these diagnostics in the compile phase.
-                    /*loaded
-                        .diag
-                        .err(span, "expected type, like: `u32`, `string` or `Foo`");*/
+                match *ty {
+                    ast::Type::Name { ref name } => {
+                        let (name, _) = Loc::borrow_pair(name);
+
+                        if let ast::Name::Absolute { ref prefix, .. } = *name {
+                            if let Some(ref prefix) = *prefix {
+                                let (prefix, span) = Loc::borrow_pair(prefix);
+                                loaded.register_prefix(prefix, span)?;
+                            }
+                        }
+                    }
+                    _ => {}
                 }
 
                 // load jump-to definitions
@@ -688,10 +782,10 @@ impl Workspace {
         &self,
         url: &Url,
         position: ty::Position,
-    ) -> Result<Option<(&LoadedFile, &Completion)>> {
+    ) -> Option<(&LoadedFile, &Completion)> {
         let file = match self.file(url) {
             Some(file) => file,
-            None => return Ok(None),
+            None => return None,
         };
 
         let end = Position {
@@ -704,25 +798,21 @@ impl Workspace {
 
         let (range, value) = match range.next_back() {
             Some((_, &(ref range, ref value))) => (range, value),
-            None => return Ok(None),
+            None => return None,
         };
 
         if !range.contains(&end) {
-            return Ok(None);
+            return None;
         }
 
-        Ok(Some((file, value)))
+        Some((file, value))
     }
 
     /// Find the associated jump.
-    pub fn find_jump(
-        &self,
-        url: &Url,
-        position: ty::Position,
-    ) -> Result<Option<(&LoadedFile, &Jump)>> {
+    pub fn find_jump(&self, url: &Url, position: ty::Position) -> Option<(&LoadedFile, &Jump)> {
         let file = match self.file(url) {
             Some(file) => file,
-            None => return Ok(None),
+            None => return None,
         };
 
         let end = Position {
@@ -734,14 +824,62 @@ impl Workspace {
 
         let (range, value) = match range.next_back() {
             Some((_, &(ref range, ref value))) => (range, value),
-            None => return Ok(None),
+            None => return None,
         };
 
         if !range.contains(&end) {
-            return Ok(None);
+            return None;
         }
 
-        Ok(Some((file, value)))
+        Some((file, value))
+    }
+
+    /// Find the specified rename.
+    pub fn find_rename<'a>(
+        &'a self,
+        url: &Url,
+        position: ty::Position,
+    ) -> Option<RenameResult<'a>> {
+        let file = match self.file(url) {
+            Some(file) => file,
+            None => return None,
+        };
+
+        let end = Position {
+            line: position.line as usize,
+            col: position.character as usize,
+        };
+
+        let mut range = file.renames
+            .range((Bound::Unbounded, Bound::Included(&end)));
+
+        let (range, value) = match range.next_back() {
+            Some((_, &(ref range, ref value))) => (range, value),
+            None => return None,
+        };
+
+        if !range.contains(&end) {
+            return None;
+        }
+
+        match *value {
+            Rename::Prefix { ref prefix } => {
+                let ranges = match file.prefix_ranges.get(prefix) {
+                    Some(ranges) => ranges,
+                    None => return None,
+                };
+
+                // implicit prefixes cannot be renamed.
+                if let Some(position) = file.implicit_prefixes.get(prefix) {
+                    return Some(RenameResult::ImplicitPackage {
+                        ranges,
+                        position: *position,
+                    });
+                }
+
+                return Some(RenameResult::Local { ranges });
+            }
+        }
     }
 
     /// Get URL to the manifest.

@@ -8,5 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support custom notification `$/openUrl` to permit vscode to jump to helpful locations when
   needed.
 - Generic initializer logic moved into `env::initialize` and implemented in language server.
+- language-server: Support for renaming package prefixes ([#34]).
+- language-server: Support for introducing package prefixes from implicit prefixes ([#34]).
 
 [Unreleased]: https://github.com/reproto/reproto-vscode/compare/0.3.35...master
+[#34]: https://github.com/reproto/reproto/issues/34

@@ -20,13 +20,13 @@ mod envelope;
 mod workspace;
 
 use self::ContentType::*;
-use self::workspace::{Completion, Jump, LoadedFile, Workspace};
+use self::workspace::{Completion, Jump, LoadedFile, Range, RenameResult, Workspace};
 use core::errors::Result;
 use core::{Context, ContextItem, Diagnostics, Encoding, Loc, RealFilesystem, Source};
 use ropey::Rope;
 use serde::Deserialize;
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::ops::DerefMut;
@@ -556,6 +556,10 @@ where
                 let params = ty::TextDocumentPositionParams::deserialize(request.params)?;
                 self.text_document_definition(request.id, params)?;
             }
+            "textDocument/rename" => {
+                let params = ty::RenameParams::deserialize(request.params)?;
+                self.text_document_rename(request.id, params)?;
+            }
             "workspace/didChangeConfiguration" => {
                 let params = ty::DidChangeConfigurationParams::deserialize(request.params)?;
                 self.workspace_did_change_configuration(request.id, params)?;
@@ -719,6 +723,7 @@ where
                     ..ty::CompletionOptions::default()
                 }),
                 definition_provider: Some(true),
+                rename_provider: Some(true),
                 ..ty::ServerCapabilities::default()
             },
         };
@@ -920,15 +925,7 @@ where
             let rope = Rope::from_str(&text);
             let source = Source::rope(url.clone(), rope);
 
-            let mut loaded = LoadedFile {
-                url: url.clone(),
-                jumps: BTreeMap::new(),
-                completions: BTreeMap::new(),
-                prefixes: HashMap::new(),
-                symbols: HashMap::new(),
-                symbol: HashMap::new(),
-                diag: Diagnostics::new(source.clone()),
-            };
+            let mut loaded = LoadedFile::new(url.clone(), source.clone());
 
             let mut workspace = workspace
                 .try_borrow_mut()
@@ -1051,7 +1048,7 @@ where
             .try_borrow()
             .map_err(|_| "failed to access immutable workspace")?;
 
-        let (file, value) = match workspace.find_completion(&url, params.position)? {
+        let (file, value) = match workspace.find_completion(&url, params.position) {
             Some(v) => v,
             None => return Ok(()),
         };
@@ -1169,6 +1166,78 @@ where
         Ok(())
     }
 
+    /// Handler for renaming
+    fn text_document_rename(
+        &self,
+        request_id: Option<envelope::RequestId>,
+        params: ty::RenameParams,
+    ) -> Result<()> {
+        let workspace = match self.workspace.as_ref() {
+            Some(workspace) => workspace,
+            None => return Err("no workspace".into()),
+        };
+
+        let workspace = workspace
+            .try_borrow()
+            .map_err(|_| "failed to access immutable workspace")?;
+
+        let url = params.text_document.uri;
+        let new_name = params.new_name;
+
+        let mut edit: Option<ty::WorkspaceEdit> = None;
+
+        if let Some(rename) = workspace.find_rename(&url, params.position) {
+            let edits = match rename {
+                // all edits in the same file as where the rename was requested.
+                RenameResult::Local { ranges } => setup_edits(ranges, new_name.as_str()),
+                // same as Local, but we also want to refactor the package position to include the
+                // new alias.
+                RenameResult::ImplicitPackage { ranges, position } => {
+                    let mut edits = setup_edits(ranges, new_name.as_str());
+
+                    edits.push(ty::TextEdit {
+                        range: convert_range(position, position),
+                        new_text: format!(" as {}", new_name),
+                    });
+
+                    edits
+                }
+            };
+
+            let changes = vec![
+                ty::TextDocumentEdit {
+                    text_document: ty::VersionedTextDocumentIdentifier {
+                        uri: url.clone(),
+                        version: None,
+                    },
+                    edits: edits,
+                },
+            ];
+
+            edit = Some(ty::WorkspaceEdit {
+                document_changes: Some(changes),
+                ..ty::WorkspaceEdit::default()
+            });
+        }
+
+        self.channel.send(request_id, edit)?;
+
+        return Ok(());
+
+        fn setup_edits(ranges: &Vec<Range>, new_text: &str) -> Vec<ty::TextEdit> {
+            let mut edits = Vec::new();
+
+            for range in ranges {
+                edits.push(ty::TextEdit {
+                    range: convert_range(range.start, range.end),
+                    new_text: new_text.to_string(),
+                });
+            }
+
+            edits
+        }
+    }
+
     /// Populate the goto definition response.
     fn definition(
         &self,
@@ -1186,7 +1255,7 @@ where
             .try_borrow()
             .map_err(|_| "failed to access immutable workspace")?;
 
-        let (file, value) = match workspace.find_jump(&url, params.position)? {
+        let (file, value) = match workspace.find_jump(&url, params.position) {
             Some(v) => v,
             None => return Ok(()),
         };

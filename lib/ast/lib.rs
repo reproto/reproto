@@ -1,7 +1,7 @@
 extern crate reproto_core as core;
 extern crate reproto_lexer as lexer;
 
-use core::{Loc, RpNumber, RpPackage};
+use core::{Loc, RpNumber, RpPackage, Span};
 use std::borrow::Cow;
 use std::ops;
 use std::vec;
@@ -536,7 +536,7 @@ pub enum Package {
 /// A use declaration
 ///
 /// ```ignore
-/// use <package> "<version req> as <alias>;
+/// use <package> "<range>" as <alias>;
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct UseDecl<'input> {
@@ -544,8 +544,8 @@ pub struct UseDecl<'input> {
     pub range: Option<Loc<String>>,
     pub alias: Option<Loc<Cow<'input, str>>>,
     /// If the end-of-line indicator present.
-    /// A `false` value should indicate an error.
-    pub endl: bool,
+    /// A empty value should indicate an error.
+    pub endl: Option<Span>,
 }
 
 /// A literal value

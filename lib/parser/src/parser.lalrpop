@@ -1,5 +1,5 @@
 // vim: ft=rust
-use core::{RpNumber, Loc, RpPackage, Source};
+use core::{RpNumber, Loc, RpPackage, Source, Span};
 use std::sync::Arc;
 use ast::*;
 use lexer::{self, Token};
@@ -24,16 +24,16 @@ pub File: File<'input> =
 Use: UseDecl<'input> = {
     "use" <package:Loc<Package>>
         <range:Loc<"string">?>
-        <alias:Loc<UseAlias>?>
-    <endl:";"?> => UseDecl {
+        <alias:UseAlias?>
+    <endl:(@L ";" @R)?> => UseDecl {
         package: package,
         range: range,
         alias: alias,
-        endl: endl.is_some(),
+        endl: endl.map(|(s, _, e)| Span::from((s, e))),
     },
 };
 
-UseAlias: Cow<'input, str> = "as" <value:ident> => value;
+UseAlias: Loc<Cow<'input, str>> = "as" <value:Loc<ident>> => value;
 
 Package: Package = {
     <parts:OneOrMore<".", Ident>> => Package::Package {
