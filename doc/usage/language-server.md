@@ -58,6 +58,28 @@ introduced.
 [imports]: ../spec.md#imports
 [language server]: https://langserver.org/
 
+## Rename types (`F2`)
+
+You can rename types locally, or even across packages.
+
+Packages imported from the repository are marked read-only, and cannot be modified through
+refactoring.
+
+![renaming types](ls-rename-types.gif?raw=true "renaming types in vscode")
+
+## Go to workspace symbols (`CTRL+T`)
+
+You can use the built-in search functionality to quickly jump to any symbol in the workspace.
+
+![go to workspace symbols](ls-workspace-symbols.gif?raw=true "go to workspace symbols in vscode")
+
+## Go to file symbol (`CTRL+SHIFT+O`)
+
+Similarly you can use the built-in go to file symbols to quickly jump back and forth between
+symbols in a single file.
+
+![go to file symbols](ls-file-symbols.gif?raw=true "go to file symbols in vscode")
+
 # Visual Studio Code
 
 It is recommended that you use the [`reproto` extension].

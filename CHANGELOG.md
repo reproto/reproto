@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+- language-server: Support type renaming and symbol lookups ([#43])
+
 [Unreleased]: https://github.com/reproto/reproto/compare/0.3.36...master
+[#43]: https://github.com/reproto/reproto/issues/43
 
 ## [0.3.36]
 - Support custom notification `$/openUrl` to permit vscode to jump to helpful locations when
