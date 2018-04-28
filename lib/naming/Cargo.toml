@@ -1,6 +1,6 @@
 [package]
 name = "reproto-naming"
-version = "0.3.36"
+version = "0.3.37"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
