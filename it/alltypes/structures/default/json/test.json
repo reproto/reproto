@@ -7,7 +7,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Entry"
         ]
       },
@@ -119,7 +119,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "Entry"
                 ]
               }
@@ -140,7 +140,7 @@
                   "package": {
                     "package": "test"
                   },
-                  "parts": [
+                  "path": [
                     "Entry"
                   ]
                 }
@@ -163,7 +163,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "Entry"
                 ]
               }

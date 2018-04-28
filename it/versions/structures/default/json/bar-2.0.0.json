@@ -8,7 +8,7 @@
           "package": "bar",
           "version": "2.0.0"
         },
-        "parts": [
+        "path": [
           "Other"
         ]
       },

@@ -7,7 +7,7 @@
         "package": {
           "package": "lower_camel"
         },
-        "parts": [
+        "path": [
           "Value"
         ]
       },
@@ -33,7 +33,7 @@
         "package": {
           "package": "lower_camel"
         },
-        "parts": [
+        "path": [
           "Service"
         ]
       },

@@ -7,7 +7,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Entry"
         ]
       },
@@ -25,7 +25,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumExplicit"
               ]
             }
@@ -41,7 +41,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumImplicit"
               ]
             }
@@ -57,7 +57,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumU32"
               ]
             }
@@ -73,7 +73,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumU64"
               ]
             }
@@ -89,7 +89,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumI32"
               ]
             }
@@ -105,7 +105,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumI64"
               ]
             }
@@ -120,7 +120,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "EnumExplicit"
         ]
       },
@@ -138,7 +138,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumExplicit",
                 "A"
               ]
@@ -152,7 +152,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumExplicit",
                 "B"
               ]
@@ -171,7 +171,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "EnumImplicit"
         ]
       },
@@ -189,7 +189,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumImplicit",
                 "A"
               ]
@@ -203,7 +203,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumImplicit",
                 "B"
               ]
@@ -222,7 +222,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "EnumLongNames"
         ]
       },
@@ -240,7 +240,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumLongNames",
                 "FooBar"
               ]
@@ -254,7 +254,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumLongNames",
                 "Baz"
               ]
@@ -273,7 +273,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "EnumU32"
         ]
       },
@@ -289,7 +289,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumU32",
                 "Min"
               ]
@@ -303,7 +303,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumU32",
                 "Max"
               ]
@@ -322,7 +322,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "EnumU64"
         ]
       },
@@ -338,7 +338,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumU64",
                 "Min"
               ]
@@ -352,7 +352,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumU64",
                 "Max"
               ]
@@ -371,7 +371,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "EnumI32"
         ]
       },
@@ -387,7 +387,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumI32",
                 "Min"
               ]
@@ -401,7 +401,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumI32",
                 "NegativeOne"
               ]
@@ -415,7 +415,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumI32",
                 "Zero"
               ]
@@ -429,7 +429,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumI32",
                 "Max"
               ]
@@ -448,7 +448,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "EnumI64"
         ]
       },
@@ -464,7 +464,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumI64",
                 "Min"
               ]
@@ -478,7 +478,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumI64",
                 "NegativeOne"
               ]
@@ -492,7 +492,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumI64",
                 "Zero"
               ]
@@ -506,7 +506,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "EnumI64",
                 "Max"
               ]

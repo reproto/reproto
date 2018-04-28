@@ -7,7 +7,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Entry"
         ]
       },
@@ -23,7 +23,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Type"
         ]
       },
@@ -82,7 +82,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Interface"
         ]
       },
@@ -134,7 +134,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "Interface",
               "SubType"
             ]
@@ -196,7 +196,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Enum"
         ]
       },
@@ -212,7 +212,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "Enum",
                 "Variant"
               ]
@@ -269,7 +269,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Tuple"
         ]
       },

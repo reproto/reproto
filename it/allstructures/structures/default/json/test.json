@@ -7,7 +7,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "Entry"
         ]
       },
@@ -23,7 +23,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "RootType"
         ]
       },
@@ -36,7 +36,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootType",
               "NestedType"
             ]
@@ -53,7 +53,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootType",
               "NestedInterface"
             ]
@@ -69,7 +69,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootType",
                   "NestedInterface",
                   "Foo"
@@ -84,7 +84,7 @@
                     "package": {
                       "package": "test"
                     },
-                    "parts": [
+                    "path": [
                       "RootType",
                       "NestedInterface",
                       "Foo",
@@ -113,7 +113,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootType",
               "NestedEnum"
             ]
@@ -130,7 +130,7 @@
                   "package": {
                     "package": "test"
                   },
-                  "parts": [
+                  "path": [
                     "RootType",
                     "NestedEnum",
                     "Foo"
@@ -150,7 +150,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootType",
               "NestedTuple"
             ]
@@ -164,7 +164,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootType",
                   "NestedTuple",
                   "Nested"
@@ -186,7 +186,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootType",
               "NestedService"
             ]
@@ -200,7 +200,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootType",
                   "NestedService",
                   "Nested"
@@ -226,7 +226,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "RootInterface"
         ]
       },
@@ -241,7 +241,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootInterface",
               "Foo"
             ]
@@ -255,7 +255,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootInterface",
                   "Foo",
                   "NestedType"
@@ -273,7 +273,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootInterface",
                   "Foo",
                   "NestedInterface"
@@ -290,7 +290,7 @@
                     "package": {
                       "package": "test"
                     },
-                    "parts": [
+                    "path": [
                       "RootInterface",
                       "Foo",
                       "NestedInterface",
@@ -306,7 +306,7 @@
                         "package": {
                           "package": "test"
                         },
-                        "parts": [
+                        "path": [
                           "RootInterface",
                           "Foo",
                           "NestedInterface",
@@ -336,7 +336,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootInterface",
                   "Foo",
                   "NestedEnum"
@@ -354,7 +354,7 @@
                       "package": {
                         "package": "test"
                       },
-                      "parts": [
+                      "path": [
                         "RootInterface",
                         "Foo",
                         "NestedEnum",
@@ -375,7 +375,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootInterface",
                   "Foo",
                   "NestedTuple"
@@ -390,7 +390,7 @@
                     "package": {
                       "package": "test"
                     },
-                    "parts": [
+                    "path": [
                       "RootInterface",
                       "Foo",
                       "NestedTuple",
@@ -413,7 +413,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootInterface",
                   "Foo",
                   "NestedService"
@@ -428,7 +428,7 @@
                     "package": {
                       "package": "test"
                     },
-                    "parts": [
+                    "path": [
                       "RootInterface",
                       "Foo",
                       "NestedService",
@@ -461,7 +461,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "RootEnum"
         ]
       },
@@ -477,7 +477,7 @@
               "package": {
                 "package": "test"
               },
-              "parts": [
+              "path": [
                 "RootEnum",
                 "Foo"
               ]
@@ -496,7 +496,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "RootTuple"
         ]
       },
@@ -509,7 +509,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootTuple",
               "NestedType"
             ]
@@ -526,7 +526,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootTuple",
               "NestedInterface"
             ]
@@ -542,7 +542,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootTuple",
                   "NestedInterface",
                   "Foo"
@@ -557,7 +557,7 @@
                     "package": {
                       "package": "test"
                     },
-                    "parts": [
+                    "path": [
                       "RootTuple",
                       "NestedInterface",
                       "Foo",
@@ -586,7 +586,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootTuple",
               "NestedEnum"
             ]
@@ -603,7 +603,7 @@
                   "package": {
                     "package": "test"
                   },
-                  "parts": [
+                  "path": [
                     "RootTuple",
                     "NestedEnum",
                     "Foo"
@@ -623,7 +623,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootTuple",
               "NestedTuple"
             ]
@@ -637,7 +637,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootTuple",
                   "NestedTuple",
                   "Nested"
@@ -659,7 +659,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootTuple",
               "NestedService"
             ]
@@ -673,7 +673,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootTuple",
                   "NestedService",
                   "Nested"
@@ -699,7 +699,7 @@
         "package": {
           "package": "test"
         },
-        "parts": [
+        "path": [
           "RootService"
         ]
       },
@@ -712,7 +712,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootService",
               "NestedType"
             ]
@@ -729,7 +729,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootService",
               "NestedInterface"
             ]
@@ -745,7 +745,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootService",
                   "NestedInterface",
                   "Foo"
@@ -760,7 +760,7 @@
                     "package": {
                       "package": "test"
                     },
-                    "parts": [
+                    "path": [
                       "RootService",
                       "NestedInterface",
                       "Foo",
@@ -789,7 +789,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootService",
               "NestedEnum"
             ]
@@ -806,7 +806,7 @@
                   "package": {
                     "package": "test"
                   },
-                  "parts": [
+                  "path": [
                     "RootService",
                     "NestedEnum",
                     "Foo"
@@ -826,7 +826,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootService",
               "NestedTuple"
             ]
@@ -840,7 +840,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootService",
                   "NestedTuple",
                   "Nested"
@@ -862,7 +862,7 @@
             "package": {
               "package": "test"
             },
-            "parts": [
+            "path": [
               "RootService",
               "NestedService"
             ]
@@ -876,7 +876,7 @@
                 "package": {
                   "package": "test"
                 },
-                "parts": [
+                "path": [
                   "RootService",
                   "NestedService",
                   "Nested"
