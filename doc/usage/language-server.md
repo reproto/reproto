@@ -17,35 +17,45 @@ Since a picture is worth a thousand words, gifs should be priceless ;)
 
 [issue #34]: https://github.com/reproto/reproto/issues/34
 
-## Realtime diagnostics and feedback
+## As-you-type diagnostics and feedback
 
-The language server is capable of integrating any error message that is emitted by the compiler
-directly into the editor - while you are typing.
+The reproto compiler is _fast_.
+This allows us to provide diagnostics at the speed that you are typing.
+Well, maybe unless you are [one of these people].
+
+This gives us error messages highligting the location responsible for the error and hints at how
+you can fix them.
 
 ![diagnostics](ls-diagnostics.gif?raw=true "diagnostics in vscode")
 
-## Jump to definitions
+[one of these]: https://www.youtube.com/watch?v=m9EXEpjSDEw
+
+## Jump to definitions (`CTRL+Click`)
 
 We can jump to any definitions, to files _anywhere_ in your path.
 
 ![jump to definitions](ls-jump-to-definitions.gif?raw=true "jump to definitions in vscode")
 
-## Contextual completions
+## Contextual completions (`CTRL+ENTER`)
 
 The language server uses the same compiler infrastructure as the command line tool, so it can
 inxpect the full context of the language to provide a rich set of completions.
 
 ![completions](ls-completions.gif?raw=true "completions in vscode")
 
-## Rename package prefixes
+## Rename package prefixes (`F2`)
 
-We can rename package prefixes.
+We can rename package prefixes for [imports].
+This will replace the prefix on any location where it is used.
+
+Since package prefixes are isolated to a file, this change will only affect the current file.
 
 If you attempt to rename an implicitly prefix import like `ex.github.gists`, a new alias will be
 introduced.
 
 ![renaming package prefixes](ls-rename-package.gif?raw=true "renaming package in vscode")
 
+[imports]: ../spec.md#imports
 [language server]: https://langserver.org/
 
 # Visual Studio Code
