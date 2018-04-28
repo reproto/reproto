@@ -254,7 +254,7 @@ mod tests {
     fn test_type_spec() {
         let c = Name::Absolute {
             prefix: None,
-            parts: vec![
+            path: vec![
                 Loc::new("Hello".into(), Span::empty()),
                 Loc::new("World".into(), Span::empty()),
             ],

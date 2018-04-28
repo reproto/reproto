@@ -37,38 +37,38 @@ pub trait Processor<'env> {
     fn type_url(&self, name: &RpName) -> Result<String> {
         let reg = self.env().lookup(name)?;
 
-        let (fragment, parts) = match *reg {
+        let (fragment, path) = match *reg {
             core::RpReg::EnumVariant | core::RpReg::SubType => {
-                let fragment = format!("#{}", name.parts.clone().join("_"));
+                let fragment = format!("#{}", name.path.clone().join("_"));
 
-                let parts: Vec<_> = name.parts
+                let path: Vec<_> = name.path
                     .iter()
                     .cloned()
-                    .take(name.parts.len() - 1)
+                    .take(name.path.len() - 1)
                     .collect();
 
-                (fragment, parts)
+                (fragment, path)
             }
             _ => {
                 let fragment = "".to_string();
-                (fragment, name.parts.clone())
+                (fragment, name.path.clone())
             }
         };
 
         if let Some(_) = name.prefix {
-            let path = name.package.try_as_package()?.join("/");
+            let package_path = name.package.try_as_package()?.join("/");
 
             return Ok(format!(
                 "{}/{}/{}.{}.html{}",
                 self.root(),
-                path,
+                package_path,
                 reg,
-                parts.join("."),
+                path.join("."),
                 fragment,
             ));
         }
 
-        Ok(format!("{}.{}.html{}", reg, parts.join("."), fragment))
+        Ok(format!("{}.{}.html{}", reg, path.join("."), fragment))
     }
 
     fn markdown(&self, comment: &str) -> Result<()> {
@@ -320,14 +320,14 @@ pub trait Processor<'env> {
         html!(self, a {class => "name-package", href => package_url} ~ name.package.to_string());
         html!(self, span {class => "name-sep"} ~ "::");*/
 
-        let mut it = name.parts.iter();
+        let mut it = name.path.iter();
         let local = it.next_back().ok_or_else(|| "local part of name required")?;
 
-        let mut parts = Vec::new();
+        let mut path = Vec::new();
 
         for part in it {
-            parts.push(part.clone());
-            let name = name.clone().with_parts(parts.clone());
+            path.push(part.clone());
+            let name = name.clone().with_parts(path.clone());
 
             if Some(&name) == current {
                 html!(self, span {class => "name-part"} ~ part);
@@ -346,10 +346,10 @@ pub trait Processor<'env> {
 
     /// Local name fully linked.
     fn full_name_without_package(&self, name: &RpName) -> Result<()> {
-        let mut it = name.parts.iter();
+        let mut it = name.path.iter();
         let local = it.next_back().ok_or_else(|| "local part of name required")?;
 
-        let mut parts = Vec::new();
+        let mut path = Vec::new();
 
         if let Some(ref prefix) = name.prefix {
             let package_url = self.package_url(&name.package);
@@ -358,8 +358,8 @@ pub trait Processor<'env> {
         }
 
         for part in it {
-            parts.push(part.clone());
-            let name = name.clone().with_parts(parts.clone());
+            path.push(part.clone());
+            let name = name.clone().with_parts(path.clone());
             let url = self.type_url(&name)?;
             html!(self, a {class => "name-part", href => url} ~ part);
             html!(self, span {class => "name-sep"} ~ "::");
@@ -372,7 +372,7 @@ pub trait Processor<'env> {
 
     /// Write the name, but without a local part.
     fn name_until(&self, name: &RpName) -> Result<()> {
-        for part in &name.parts {
+        for part in &name.path {
             html!(self, span {class => "name-part"} ~ part);
             html!(self, span {class => "name-sep"} ~ "::");
         }

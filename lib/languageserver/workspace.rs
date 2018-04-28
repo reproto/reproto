@@ -9,7 +9,7 @@ use env;
 use manifest;
 use parser;
 use std::collections::Bound;
-use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -19,7 +19,21 @@ use url::Url;
 /// Specifies a rename.
 #[derive(Debug, Clone)]
 pub enum Rename {
+    /// A prefix that should be name.
     Prefix { prefix: String },
+    /// Rename a local type.
+    LocalType {
+        /// The path to the type.
+        path: Vec<String>,
+    },
+    /// A type that was requested to be renamed.
+    Type {
+        /// The prefix at which the type should be looked up from, indicating that it is in
+        /// a separate package.
+        prefix: Option<String>,
+        /// The path to the type.
+        path: Vec<String>,
+    },
 }
 
 /// The result of a find_rename call.
@@ -33,6 +47,13 @@ pub enum RenameResult<'a> {
         ranges: &'a Vec<Range>,
         position: Position,
     },
+    /// Multiple different URLs.
+    Collections {
+        ranges: Option<&'a HashMap<Url, Vec<Range>>>,
+    },
+    /// Not supported, only used during development.
+    #[allow(unused)]
+    NotSupported,
 }
 
 /// Specifies a type completion.
@@ -83,8 +104,10 @@ impl Range {
 pub struct Prefix {
     /// The span of the prefix.
     pub span: Span,
-    /// The package the prefix referes to.
+    /// The package the prefix refers to.
     pub package: RpVersionedPackage,
+    /// Is this package read-only?
+    pub read_only: bool,
 }
 
 /// Information about a single symbol.
@@ -117,17 +140,20 @@ impl Symbol {
 pub struct LoadedFile {
     /// Url of the loaded file.
     pub url: Url,
+    /// The package of a loaded file.
+    pub package: RpVersionedPackage,
     /// Jumps available in the file.
-    pub jumps: BTreeMap<Position, (Range, Jump)>,
+    pub jump_triggers: BTreeMap<Position, (Range, Jump)>,
     /// Corresponding locations that have available type completions.
-    pub completions: BTreeMap<Position, (Range, Completion)>,
+    pub completion_triggers: BTreeMap<Position, (Range, Completion)>,
     /// Rename locations.
-    pub renames: BTreeMap<Position, (Range, Rename)>,
+    pub rename_triggers: BTreeMap<Position, (Range, Rename)>,
     /// All the locations that a given prefix is present at.
     pub prefix_ranges: HashMap<String, Vec<Range>>,
     /// Implicit prefixes which _cannot_ be renamed.
     pub implicit_prefixes: HashMap<String, Position>,
-    /// package prefixes.
+    /// All prefixes that are in-scope for the file.
+    /// These are defined in the use-declarations at the top of the file.
     pub prefixes: HashMap<String, Prefix>,
     /// Symbols present in the file.
     /// The key is the path that the symbol is located in.
@@ -139,12 +165,13 @@ pub struct LoadedFile {
 }
 
 impl LoadedFile {
-    pub fn new(url: Url, source: Source) -> Self {
+    pub fn new(url: Url, source: Source, package: RpVersionedPackage) -> Self {
         Self {
             url: url.clone(),
-            jumps: BTreeMap::new(),
-            completions: BTreeMap::new(),
-            renames: BTreeMap::new(),
+            package: package,
+            jump_triggers: BTreeMap::new(),
+            completion_triggers: BTreeMap::new(),
+            rename_triggers: BTreeMap::new(),
             prefix_ranges: HashMap::new(),
             implicit_prefixes: HashMap::new(),
             prefixes: HashMap::new(),
@@ -159,18 +186,18 @@ impl LoadedFile {
         self.symbols.clear();
         self.symbol.clear();
         self.prefixes.clear();
-        self.jumps.clear();
-        self.completions.clear();
-        self.renames.clear();
+        self.jump_triggers.clear();
+        self.completion_triggers.clear();
+        self.rename_triggers.clear();
         self.prefix_ranges.clear();
         self.diag.clear();
     }
 
     /// Insert the specified jump.
-    pub fn insert_jump(&mut self, span: Span, jump: Jump) -> Result<()> {
+    pub fn register_jump(&mut self, span: Span, jump: Jump) -> Result<()> {
         let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
         let range = Range { start, end };
-        self.jumps.insert(start, (range, jump));
+        self.jump_triggers.insert(start, (range, jump));
         Ok(())
     }
 
@@ -178,30 +205,62 @@ impl LoadedFile {
     ///
     /// These prefixes _can not_ be renamed since they are the last part of the package.
     pub fn implicit_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
+        if self.diag.source.read_only {
+            return Ok(());
+        }
+
         let (start, _) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
         self.implicit_prefixes.insert(prefix.to_string(), start);
         Ok(())
     }
 
-    /// Register a location that is only used to trigger a rename action, but should not be locally
-    /// replaced itself.
-    pub fn register_rename_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
+    /// Register a rename hook for a local type-declaration with the given path.
+    ///
+    /// This function does nothing if the loaded file is read-only.
+    pub fn register_rename_decl(&mut self, span: Span, path: Vec<String>) -> Result<()> {
+        if self.diag.source.read_only {
+            return Ok(());
+        }
+
         let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
         let range = Range { start, end };
 
-        // replace the explicit rename.
-        let rename = Rename::Prefix {
-            prefix: prefix.to_string(),
-        };
-
-        self.renames.insert(start, (range, rename));
+        let rename = Rename::LocalType { path };
+        self.rename_triggers.insert(start, (range, rename));
         Ok(())
     }
 
-    /// Register the location of a prefix.
+    /// Register a type rename.
     ///
-    /// This sets the span up as a location that can be renamed for the given prefix.
-    pub fn register_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
+    /// This function does nothing if the loaded file is read-only.
+    pub fn register_rename_type(
+        &mut self,
+        span: Span,
+        prefix: Option<String>,
+        path: Vec<String>,
+    ) -> Result<()> {
+        if self.diag.source.read_only {
+            return Ok(());
+        }
+
+        let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
+        let range = Range { start, end };
+
+        let rename = Rename::Type { prefix, path };
+
+        self.rename_triggers.insert(start, (range, rename));
+        Ok(())
+    }
+
+    /// Register a location that is only used to trigger a rename action, but should not be locally
+    /// replaced itself.
+    ///
+    /// This function does nothing if the loaded file is read-only.
+    pub fn register_rename_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
+        if self.diag.source.read_only {
+            return Ok(());
+        }
+
         let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
         let range = Range { start, end };
 
@@ -210,7 +269,28 @@ impl LoadedFile {
             prefix: prefix.to_string(),
         };
 
-        self.renames.insert(start, (range, rename));
+        self.rename_triggers.insert(start, (range, rename));
+        Ok(())
+    }
+
+    /// Register a location that is only used to trigger a rename action.
+    /// The specified span should also be replaced itself.
+    ///
+    /// This function does nothing if the loaded file is read-only.
+    pub fn register_rename_immediate_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
+        if self.diag.source.read_only {
+            return Ok(());
+        }
+
+        let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
+        let range = Range { start, end };
+
+        // replace the explicit rename.
+        let rename = Rename::Prefix {
+            prefix: prefix.to_string(),
+        };
+
+        self.rename_triggers.insert(start, (range, rename));
 
         self.prefix_ranges
             .entry(prefix.to_string())
@@ -229,14 +309,14 @@ pub struct Workspace {
     pub manifest_path: PathBuf,
     /// Packages which have been loaded through project.
     pub packages: HashMap<RpVersionedPackage, Url>,
-    /// The URL of files which have been loaded through project.
-    pub loaded_files: HashSet<Url>,
     /// Files which have been loaded through project, including their files.
     pub files: HashMap<Url, LoadedFile>,
     /// Versioned packages that have been looked up.
-    lookup: HashMap<RpRequiredPackage, RpVersionedPackage>,
+    lookup: HashMap<RpRequiredPackage, (RpVersionedPackage, bool)>,
     /// Files which are currently being edited.
     pub edited_files: HashMap<Url, LoadedFile>,
+    /// Type ranges to be modified when changing the name of a given type.
+    pub type_ranges: HashMap<(RpVersionedPackage, Vec<String>), HashMap<Url, Vec<Range>>>,
     /// Context where to populate compiler errors.
     ctx: Rc<Context>,
 }
@@ -248,10 +328,10 @@ impl Workspace {
             root_path: root_path.as_ref().to_owned(),
             manifest_path: root_path.as_ref().join(env::MANIFEST_NAME),
             packages: HashMap::new(),
-            loaded_files: HashSet::new(),
             files: HashMap::new(),
             lookup: HashMap::new(),
             edited_files: HashMap::new(),
+            type_ranges: HashMap::new(),
             ctx,
         }
     }
@@ -287,8 +367,8 @@ impl Workspace {
     pub fn reload(&mut self) -> Result<()> {
         self.packages.clear();
         self.files.clear();
-        self.loaded_files.clear();
         self.lookup.clear();
+        self.type_ranges.clear();
 
         let mut manifest = manifest::Manifest::default();
 
@@ -306,7 +386,9 @@ impl Workspace {
         let mut resolver = env::resolver(&manifest)?;
 
         for package in &manifest.packages {
-            self.process(resolver.as_mut(), package)?;
+            if let Err(e) = self.process(resolver.as_mut(), package) {
+                error!("failed to process: {}: {}", package, e.display());
+            }
         }
 
         self.try_compile(manifest)?;
@@ -336,11 +418,16 @@ impl Workspace {
         return Ok(());
     }
 
+    /// Process the given required package request.
+    ///
+    /// If package has been found, returns a `(package, bool)` tuple.
+    /// The `package` is the exact package that was imported, and the `bool` indicates if it is
+    /// read-only or not.
     fn process(
         &mut self,
         resolver: &mut Resolver,
         package: &RpRequiredPackage,
-    ) -> Result<Option<RpVersionedPackage>> {
+    ) -> Result<Option<(RpVersionedPackage, bool)>> {
         // need method to report errors in this stage.
         let (url, source, versioned) = {
             let entry = match self.lookup.entry(package.clone()) {
@@ -348,10 +435,7 @@ impl Workspace {
                 hash_map::Entry::Vacant(e) => e,
             };
 
-            let resolved = match resolver.resolve(package) {
-                Ok(resolved) => resolved,
-                Err(_) => return Ok(None),
-            };
+            let resolved = resolver.resolve(package)?;
 
             let Resolved { version, source } = match resolved.into_iter().last() {
                 Some(resolved) => resolved,
@@ -364,7 +448,7 @@ impl Workspace {
             };
 
             let versioned = RpVersionedPackage::new(package.package.clone(), version);
-            entry.insert(versioned.clone());
+            entry.insert((versioned.clone(), source.read_only));
 
             // TODO: report error through diagnostics.
             let path = match path.canonicalize() {
@@ -381,21 +465,28 @@ impl Workspace {
             (url, source, versioned)
         };
 
-        self.loaded_files.insert(url.clone());
-
-        if let Some(mut loaded) = self.edited_files.remove(&url) {
+        let read_only = if let Some(mut loaded) = self.edited_files.remove(&url) {
             loaded.clear();
             self.inner_process(resolver, &mut loaded)?;
+
+            let read_only = loaded.diag.source.read_only;
+
             self.edited_files.insert(url.clone(), loaded);
+
+            read_only
         } else {
-            let mut loaded = LoadedFile::new(url.clone(), source);
+            let mut loaded = LoadedFile::new(url.clone(), source, versioned.clone());
+
+            let read_only = loaded.diag.source.read_only;
 
             self.inner_process(resolver, &mut loaded)?;
             self.files.insert(url.clone(), loaded);
+
+            read_only
         };
 
         self.packages.insert(versioned.clone(), url);
-        Ok(Some(versioned))
+        Ok(Some((versioned, read_only)))
     }
 
     fn inner_process(&mut self, resolver: &mut Resolver, loaded: &mut LoadedFile) -> Result<()> {
@@ -432,7 +523,9 @@ impl Workspace {
 
                 let content = &content[span.start..span.end];
                 let completion = self.package_completion(content, resolver)?;
-                loaded.completions.insert(start, (range, completion));
+                loaded
+                    .completion_triggers
+                    .insert(start, (range, completion));
                 package
             };
 
@@ -451,15 +544,13 @@ impl Workspace {
             let prefix = if let Some(ref alias) = u.alias {
                 // note: can be renamed!
                 let (alias, span) = Loc::borrow_pair(alias);
-                loaded.register_prefix(alias.as_ref(), span)?;
+                loaded.register_rename_immediate_prefix(alias.as_ref(), span)?;
                 Some(alias.as_ref())
             } else {
-                // note: _cannot_ be renamed since they are implicit.
                 match parts.last() {
                     Some(suffix) => {
                         let (suffix, span) = Loc::borrow_pair(suffix);
 
-                        // implicit prefixes cannot be renamed directly.
                         loaded.implicit_prefix(suffix.as_ref(), endl)?;
                         loaded.register_rename_prefix(suffix.as_ref(), span)?;
                         Some(suffix.as_ref())
@@ -475,15 +566,22 @@ impl Workspace {
             if let Some(prefix) = prefix {
                 let prefix = prefix.to_string();
 
-                loaded.insert_jump(
+                loaded.register_jump(
                     span,
                     Jump::Package {
                         prefix: prefix.clone(),
                     },
                 )?;
 
-                if let Some(package) = package {
-                    loaded.prefixes.insert(prefix, Prefix { span, package });
+                if let Some((package, read_only)) = package {
+                    loaded.prefixes.insert(
+                        prefix,
+                        Prefix {
+                            span,
+                            package,
+                            read_only,
+                        },
+                    );
                 };
             }
         }
@@ -540,6 +638,18 @@ impl Workspace {
     ) -> Result<()> {
         use ast::Decl::*;
 
+        let (_, span) = Loc::take_pair(decl.name());
+
+        // we don't support refactoring from read-only sources.
+        if !loaded.diag.source.read_only {
+            // mark the name declaration as a location that can issue a rename.
+            loaded.register_rename_decl(span, current.clone())?;
+
+            // mark the name declaration as a range that should changed when refactoring.
+            let package = loaded.package.clone();
+            self.register_type_range(loaded, span, package, current.clone())?;
+        }
+
         match *decl {
             Type(ref ty) => for f in ty.fields() {
                 self.process_ty(current, loaded, content, &f.ty)?;
@@ -585,23 +695,9 @@ impl Workspace {
                 self.process_ty(current, loaded, content, value.as_ref())?;
             }
             ref ty => {
-                match *ty {
-                    ast::Type::Name { ref name } => {
-                        let (name, _) = Loc::borrow_pair(name);
-
-                        if let ast::Name::Absolute { ref prefix, .. } = *name {
-                            if let Some(ref prefix) = *prefix {
-                                let (prefix, span) = Loc::borrow_pair(prefix);
-                                loaded.register_prefix(prefix, span)?;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-
                 // load jump-to definitions
                 if let ast::Type::Name { ref name } = *ty {
-                    self.jumps(name, current, loaded)?;
+                    self.process_name(name, current, loaded)?;
                 }
 
                 let (start, end) = loaded.diag.source.span_to_range(span, Encoding::Utf16)?;
@@ -610,16 +706,21 @@ impl Workspace {
                 let content = &content[span.start..span.end];
                 let completion = self.type_completion(current, content)?;
 
-                loaded.completions.insert(start, (range, completion));
+                loaded
+                    .completion_triggers
+                    .insert(start, (range, completion));
             }
         }
 
         Ok(())
     }
 
-    /// Register all available jumps.
-    fn jumps<'input>(
-        &self,
+    /// Process the name by:
+    ///
+    ///  * Register all available jumps.
+    ///  * Register prefix renames.
+    fn process_name<'input>(
+        &mut self,
         name: &Loc<ast::Name<'input>>,
         current: &Vec<String>,
         loaded: &mut LoadedFile,
@@ -627,33 +728,44 @@ impl Workspace {
         let (name, _) = Loc::borrow_pair(name);
 
         match *name {
-            ast::Name::Relative { ref parts } => {
-                let mut path = current.clone();
+            ast::Name::Relative { ref path } => {
+                // path that has been traversed so far.
+                let mut full_path = current.clone();
 
-                for p in parts {
+                for p in path {
                     let (p, span) = Loc::borrow_pair(p);
 
-                    path.push(p.to_string());
+                    full_path.push(p.to_string());
 
-                    loaded.insert_jump(
+                    // register a type range to be modified if the given name is changed.
+                    let package = loaded.package.clone();
+                    self.register_type_range(loaded, span, package, full_path.clone())?;
+
+                    loaded.register_rename_type(span, None, full_path.clone())?;
+
+                    loaded.register_jump(
                         span,
                         Jump::Absolute {
                             prefix: None,
-                            path: path.clone(),
+                            path: full_path.clone(),
                         },
                     )?;
                 }
             }
             ast::Name::Absolute {
                 ref prefix,
-                ref parts,
+                ref path,
             } => {
-                let mut path = Vec::new();
+                // path that has been traversed so far.
+                let mut full_path = Vec::new();
 
                 if let Some(ref prefix) = *prefix {
                     let (prefix, span) = Loc::borrow_pair(prefix);
 
-                    loaded.insert_jump(
+                    // register prefix rename.
+                    loaded.register_rename_immediate_prefix(prefix, span)?;
+
+                    loaded.register_jump(
                         span,
                         Jump::Prefix {
                             prefix: prefix.to_string(),
@@ -663,21 +775,105 @@ impl Workspace {
 
                 let prefix = prefix.as_ref().map(|p| p.to_string());
 
-                for p in parts {
+                for p in path {
                     let (p, span) = Loc::borrow_pair(p);
 
-                    path.push(p.to_string());
+                    full_path.push(p.to_string());
 
-                    loaded.insert_jump(
+                    self.register_type_rename(loaded, &prefix, &full_path, span)?;
+
+                    loaded.register_jump(
                         span,
                         Jump::Absolute {
                             prefix: prefix.clone(),
-                            path: path.clone(),
+                            path: full_path.clone(),
                         },
                     )?;
                 }
             }
         }
+
+        Ok(())
+    }
+
+    /// Handle type rename.
+    fn register_type_rename(
+        &mut self,
+        loaded: &mut LoadedFile,
+        prefix: &Option<String>,
+        full_path: &Vec<String>,
+        span: Span,
+    ) -> Result<()> {
+        // we don't support refactoring in read-only contexts
+        if loaded.diag.source.read_only {
+            return Ok(());
+        }
+
+        // block evaluates to a boolean indicating whether this is a legal rename
+        // position or not.
+        // it might be illegal if for example the prefix being referenced does not
+        // exist, in which case it would be irresponsible to kick-off a rename.
+        let rename_span = if let Some(ref prefix) = *prefix {
+            // NOTE: uh oh, we _must_ guarantee that prefixes are loaded _before_ this
+            // point. they should, but just take care that use declarations are loaded before
+            // all other declarations!
+
+            let package = if let Some(&Prefix {
+                ref package,
+                ref read_only,
+                ..
+            }) = loaded.prefixes.get(prefix)
+            {
+                // we don't register refactoring for read-only packages.
+                if !*read_only {
+                    Some(package.clone())
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            // package found!
+            if let Some(package) = package {
+                self.register_type_range(loaded, span, package, full_path.clone())?;
+                true
+            } else {
+                false
+            }
+        } else {
+            let package = loaded.package.clone();
+            self.register_type_range(loaded, span, package, full_path.clone())?;
+            true
+        };
+
+        if rename_span {
+            // register as a location that can kick off a rename
+            loaded.register_rename_type(span, prefix.clone(), full_path.clone())?;
+        }
+
+        Ok(())
+    }
+
+    /// Register a type range that should be replaced when the given type is being renamed.
+    fn register_type_range(
+        &mut self,
+        loaded: &mut LoadedFile,
+        span: Span,
+        package: RpVersionedPackage,
+        path: Vec<String>,
+    ) -> Result<()> {
+        let (start, end) = loaded.diag.source.span_to_range(span, Encoding::Utf16)?;
+        let range = Range { start, end };
+
+        let key = (package, path);
+
+        self.type_ranges
+            .entry(key)
+            .or_insert_with(HashMap::new)
+            .entry(loaded.url.clone())
+            .or_insert_with(Vec::new)
+            .push(range);
 
         Ok(())
     }
@@ -803,7 +999,7 @@ impl Workspace {
             col: position.character as usize,
         };
 
-        let mut range = file.completions
+        let mut range = file.completion_triggers
             .range((Bound::Unbounded, Bound::Included(&end)));
 
         let (range, value) = match range.next_back() {
@@ -830,7 +1026,8 @@ impl Workspace {
             col: position.character as usize,
         };
 
-        let mut range = file.jumps.range((Bound::Unbounded, Bound::Included(&end)));
+        let mut range = file.jump_triggers
+            .range((Bound::Unbounded, Bound::Included(&end)));
 
         let (range, value) = match range.next_back() {
             Some((_, &(ref range, ref value))) => (range, value),
@@ -860,7 +1057,7 @@ impl Workspace {
             col: position.character as usize,
         };
 
-        let mut range = file.renames
+        let mut range = file.rename_triggers
             .range((Bound::Unbounded, Bound::Included(&end)));
 
         let (range, value) = match range.next_back() {
@@ -889,6 +1086,33 @@ impl Workspace {
 
                 return Some(RenameResult::Local { ranges });
             }
+            Rename::LocalType { ref path } => {
+                let ranges = self.type_ranges.get(&(file.package.clone(), path.clone()));
+
+                // look up _all_ ranges that should be replaced for the given type.
+                return Some(RenameResult::Collections { ranges });
+            }
+            // We are referencing an imported type, so we need to resolve the prefix during lookup.
+            Rename::Type {
+                ref prefix,
+                ref path,
+            } => {
+                let package = if let Some(ref prefix) = *prefix {
+                    let &Prefix { ref package, .. } = match file.prefixes.get(prefix) {
+                        Some(prefix) => prefix,
+                        None => return None,
+                    };
+
+                    package
+                } else {
+                    &file.package
+                };
+
+                let ranges = self.type_ranges.get(&(package.clone(), path.clone()));
+
+                // look up _all_ ranges that should be replaced for the given type.
+                return Some(RenameResult::Collections { ranges });
+            }
         }
     }
 
@@ -906,7 +1130,7 @@ impl Resolver for Workspace {
     fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
         let mut result = Vec::new();
 
-        if let Some(looked_up) = self.lookup.get(package) {
+        if let Some((looked_up, _)) = self.lookup.get(package) {
             if let Some(url) = self.packages.get(looked_up) {
                 if let Some(loaded) = self.file(url) {
                     result.push(Resolved {

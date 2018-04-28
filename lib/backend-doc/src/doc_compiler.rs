@@ -76,7 +76,7 @@ impl<'a> DocCompiler<'a> {
             }
         }
 
-        let name = decl.name().parts.join(".");
+        let name = decl.name().path.join(".");
 
         // complete path to root and static resources
         let root = root.join("/");

@@ -67,7 +67,7 @@ impl<I> Scope<I> {
             RpName {
                 prefix: None,
                 package: self.package(),
-                parts: self.path.clone(),
+                path: self.path.clone(),
             },
             span,
         )

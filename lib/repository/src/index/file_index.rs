@@ -157,6 +157,10 @@ impl Index for FileIndex {
                 continue;
             }
 
+            if !p.is_dir() {
+                continue;
+            }
+
             for s in fs::read_dir(&p)? {
                 let s = s?;
 

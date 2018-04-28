@@ -264,11 +264,11 @@ impl<'input> Field<'input> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Name<'input> {
     Relative {
-        parts: Vec<Loc<Cow<'input, str>>>,
+        path: Vec<Loc<Cow<'input, str>>>,
     },
     Absolute {
         prefix: Option<Loc<Cow<'input, str>>>,
-        parts: Vec<Loc<Cow<'input, str>>>,
+        path: Vec<Loc<Cow<'input, str>>>,
     },
 }
 
