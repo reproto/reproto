@@ -1127,7 +1127,7 @@ impl Resolver for Workspace {
     fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
         let mut result = Vec::new();
 
-        if let Some((looked_up, _)) = self.lookup.get(package) {
+        if let Some(&(ref looked_up, _)) = self.lookup.get(package) {
             if let Some(url) = self.packages.get(looked_up) {
                 if let Some(loaded) = self.file(url) {
                     result.push(Resolved {
