@@ -1063,16 +1063,15 @@ impl<'input> IntoModel for Loc<Name<'input>> {
         let (name, span) = Loc::take_pair(self);
 
         let out = match name {
-            Relative { parts } => {
-                let parts = parts.into_model(diag, scope)?;
+            Relative { path } => {
+                let path = path.into_model(diag, scope)?;
 
                 scope
                     .as_name(span)
-                    .extend(parts.into_iter().map(|p| Loc::take(p)))
+                    .extend(path.into_iter().map(|p| Loc::take(p)))
             }
-            Absolute { prefix, parts } => {
-                let parts = parts
-                    .into_model(diag, scope)?
+            Absolute { prefix, path } => {
+                let path = path.into_model(diag, scope)?
                     .into_iter()
                     .map(|s| Loc::take(s))
                     .collect();
@@ -1098,7 +1097,7 @@ impl<'input> IntoModel for Loc<Name<'input>> {
                 RpName {
                     prefix,
                     package,
-                    parts,
+                    path,
                 }
             }
         };

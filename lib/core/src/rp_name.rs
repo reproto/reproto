@@ -16,79 +16,76 @@ where
     pub prefix: Option<Loc<String>>,
     /// Package that name belongs to.
     pub package: F::Package,
-    /// Absolute parts of the name, from the root of the package.
-    pub parts: Vec<String>,
+    /// Absolute path of the name, from the root of the package.
+    pub path: Vec<String>,
 }
 
 impl<F: 'static> RpName<F>
 where
     F: Flavor,
 {
-    pub fn new(prefix: Option<Loc<String>>, package: F::Package, parts: Vec<String>) -> Self {
+    pub fn new(prefix: Option<Loc<String>>, package: F::Package, path: Vec<String>) -> Self {
         Self {
-            prefix: prefix,
-            package: package,
-            parts: parts,
+            prefix,
+            package,
+            path,
         }
     }
 
+    /// Extend the path with an iterator.
     pub fn extend<I>(&self, it: I) -> Self
     where
         I: IntoIterator<Item = String>,
     {
-        let mut parts = self.parts.clone();
-        parts.extend(it);
+        let mut path = self.path.clone();
+        path.extend(it);
 
         Self {
             prefix: self.prefix.clone(),
             package: self.package.clone(),
-            parts: parts,
+            path,
         }
     }
 
+    /// Push another part to the path.
     pub fn push(&self, part: String) -> Self {
-        let mut parts = self.parts.clone();
-        parts.push(part);
+        let mut path = self.path.clone();
+        path.push(part);
 
         Self {
             prefix: self.prefix.clone(),
             package: self.package.clone(),
-            parts: parts,
+            path,
         }
     }
 
     pub fn join<S: AsRef<str>>(&self, joiner: S) -> String {
-        self.parts.join(joiner.as_ref())
+        self.path.join(joiner.as_ref())
     }
 
     /// Convert to a name without a prefix component.
     pub fn without_prefix(self) -> Self {
         Self {
             prefix: None,
-            package: self.package,
-            parts: self.parts,
+            ..self
         }
     }
 
     pub fn with_package(self, package: F::Package) -> Self {
         Self {
-            prefix: self.prefix,
             package: package,
-            parts: self.parts,
+            ..self
         }
     }
 
     /// Build a new name out if the given paths.
-    pub fn with_parts(self, parts: Vec<String>) -> Self {
-        Self {
-            prefix: self.prefix,
-            package: self.package,
-            parts: parts,
-        }
+    pub fn with_parts(self, path: Vec<String>) -> Self {
+        Self { path: path, ..self }
     }
 
+    /// Check that two names are the same, by comparing the fully qualified location.
     pub fn is_same(&self, other: &Self) -> bool {
-        self.package == other.package && self.parts == other.parts
+        self.package == other.package && self.path == other.path
     }
 }
 
@@ -98,7 +95,7 @@ impl RpName<CoreFlavor> {
         Self {
             prefix: self.prefix,
             package: self.package.without_version(),
-            parts: self.parts,
+            path: self.path,
         }
     }
 
@@ -120,9 +117,9 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref prefix) = self.prefix {
-            write!(f, "{}::{}", prefix, self.parts.join("::"))
+            write!(f, "{}::{}", prefix, self.path.join("::"))
         } else {
-            write!(f, "{}", self.parts.join("::"))
+            write!(f, "{}", self.path.join("::"))
         }
     }
 }
@@ -140,7 +137,7 @@ where
         Ok(RpName {
             prefix: self.prefix,
             package: translator.translate_package(self.package)?,
-            parts: self.parts,
+            path: self.path,
         })
     }
 }

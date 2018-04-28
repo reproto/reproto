@@ -157,7 +157,7 @@ where
 
         let m = Message::Symbol {
             kind,
-            name: name.parts.join("::"),
+            name: name.path.join("::"),
             package: name.package.to_string(),
             path: path.to_owned(),
             range: Range {

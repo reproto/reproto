@@ -69,7 +69,7 @@ impl Context {
     fn name(&self) -> Name<'static> {
         Name::Absolute {
             prefix: None,
-            parts: self.path
+            path: self.path
                 .clone()
                 .into_iter()
                 .map(|p| Loc::new(Cow::from(p), Span::empty()))

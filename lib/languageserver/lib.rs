@@ -922,74 +922,88 @@ where
         let text = text_document.text;
 
         if let Some(workspace) = self.workspace.as_ref() {
-            let rope = Rope::from_str(&text);
-            let source = Source::rope(url.clone(), rope);
-
-            let mut loaded = LoadedFile::new(url.clone(), source.clone());
-
             let mut workspace = workspace
                 .try_borrow_mut()
                 .map_err(|_| "failed to access mutable workspace")?;
 
-            workspace.edited_files.insert(url.clone(), loaded);
-            workspace.reload()?;
+            let loaded = match workspace.files.get(&url) {
+                Some(file) => {
+                    let rope = Rope::from_str(&text);
+                    // NOTE: must inherit read-onlyness from the source file.
+                    let source =
+                        Source::rope(url.clone(), rope).with_read_only(file.diag.source.read_only);
 
-            // warn if the currently opened file is not part of workspace.
-            if !workspace.loaded_files.contains(&url) {
-                let manifest_url = workspace.manifest_url()?;
-
-                if workspace.manifest_path.is_file() {
-                    let mut actions = Vec::new();
-
-                    actions.push(ty::MessageActionItem {
-                        title: "Ignore".to_string(),
-                    });
-
-                    actions.push(ty::MessageActionItem {
-                        title: "Open project manifest".to_string(),
-                    });
-
-                    let message = format!(
-                        "This file is not part of project, consider updating the [packages] \
-                         section in reproto.toml"
-                    );
-
-                    let id = self.channel.send_request(
-                        "window/showMessageRequest",
-                        ty::ShowMessageRequestParams {
-                            typ: ty::MessageType::Warning,
-                            message: message,
-                            actions: Some(actions),
-                        },
-                    )?;
-
-                    self.expected.insert(id, "reproto/projectAddMissing");
-                } else {
-                    let mut actions = Vec::new();
-
-                    warn!("missing reproto manifest: {}", manifest_url);
-
-                    actions.push(ty::MessageActionItem {
-                        title: "Ignore".to_string(),
-                    });
-
-                    actions.push(ty::MessageActionItem {
-                        title: "Initialize project".to_string(),
-                    });
-
-                    let message = format!("Workspace does not have a reproto manifest!");
-
-                    let id = self.channel.send_request(
-                        "window/showMessageRequest",
-                        ty::ShowMessageRequestParams {
-                            typ: ty::MessageType::Warning,
-                            message: message,
-                            actions: Some(actions),
-                        },
-                    )?;
-
-                    self.expected.insert(id, "reproto/projectInit");
+                    Some(LoadedFile::new(
+                        url.clone(),
+                        source.clone(),
+                        file.package.clone(),
+                    ))
                 }
+                None => {
+                    // warn if the currently opened file is not part of workspace.
+                    let manifest_url = workspace.manifest_url()?;
+
+                    if workspace.manifest_path.is_file() {
+                        let mut actions = Vec::new();
+
+                        actions.push(ty::MessageActionItem {
+                            title: "Ignore".to_string(),
+                        });
+
+                        actions.push(ty::MessageActionItem {
+                            title: "Open project manifest".to_string(),
+                        });
+
+                        let message = format!(
+                            "This file is not part of project, consider updating the [packages] \
+                             section in reproto.toml"
+                        );
+
+                        let id = self.channel.send_request(
+                            "window/showMessageRequest",
+                            ty::ShowMessageRequestParams {
+                                typ: ty::MessageType::Warning,
+                                message: message,
+                                actions: Some(actions),
+                            },
+                        )?;
+
+                        self.expected.insert(id, "reproto/projectAddMissing");
+                    } else {
+                        let mut actions = Vec::new();
+
+                        warn!("missing reproto manifest: {}", manifest_url);
+
+                        actions.push(ty::MessageActionItem {
+                            title: "Ignore".to_string(),
+                        });
+
+                        actions.push(ty::MessageActionItem {
+                            title: "Initialize project".to_string(),
+                        });
+
+                        let message = format!("Workspace does not have a reproto manifest!");
+
+                        let id = self.channel.send_request(
+                            "window/showMessageRequest",
+                            ty::ShowMessageRequestParams {
+                                typ: ty::MessageType::Warning,
+                                message: message,
+                                actions: Some(actions),
+                            },
+                        )?;
+
+                        self.expected.insert(id, "reproto/projectInit");
+                    }
+
+                    None
+                }
+            };
+
+            // file successfully loaded
+            if let Some(loaded) = loaded {
+                workspace.edited_files.insert(url.clone(), loaded);
+                workspace.reload()?;
             }
         }
 
@@ -1187,11 +1201,37 @@ where
         let mut edit: Option<ty::WorkspaceEdit> = None;
 
         if let Some(rename) = workspace.find_rename(&url, params.position) {
-            let edits = match rename {
+            match rename {
                 // all edits in the same file as where the rename was requested.
-                RenameResult::Local { ranges } => setup_edits(ranges, new_name.as_str()),
-                // same as Local, but we also want to refactor the package position to include the
-                // new alias.
+                RenameResult::Local { ranges } => {
+                    let edits = setup_edits(ranges, new_name.as_str());
+                    edit = Some(local_edits(&url, edits));
+                }
+                // A collection of ranges from different URLs that should be changed.
+                RenameResult::Collections { ranges } => {
+                    if let Some(ranges) = ranges {
+                        let mut changes = Vec::new();
+
+                        for (url, ranges) in ranges {
+                            let edits = setup_edits(ranges, new_name.as_str());
+
+                            changes.push(ty::TextDocumentEdit {
+                                text_document: ty::VersionedTextDocumentIdentifier {
+                                    uri: url.clone(),
+                                    version: None,
+                                },
+                                edits: edits,
+                            });
+                        }
+
+                        edit = Some(ty::WorkspaceEdit {
+                            document_changes: Some(changes),
+                            ..ty::WorkspaceEdit::default()
+                        });
+                    }
+                }
+                // Special case: identical to Local, but we also want to refactor the package
+                // position to include the new alias.
                 RenameResult::ImplicitPackage { ranges, position } => {
                     let mut edits = setup_edits(ranges, new_name.as_str());
 
@@ -1200,28 +1240,17 @@ where
                         new_text: format!(" as {}", new_name),
                     });
 
-                    edits
+                    edit = Some(local_edits(&url, edits));
+                }
+                RenameResult::NotSupported => {
+                    info!("not supported");
                 }
             };
-
-            let changes = vec![
-                ty::TextDocumentEdit {
-                    text_document: ty::VersionedTextDocumentIdentifier {
-                        uri: url.clone(),
-                        version: None,
-                    },
-                    edits: edits,
-                },
-            ];
-
-            edit = Some(ty::WorkspaceEdit {
-                document_changes: Some(changes),
-                ..ty::WorkspaceEdit::default()
-            });
+        } else {
+            info!("no editing");
         }
 
         self.channel.send(request_id, edit)?;
-
         return Ok(());
 
         fn setup_edits(ranges: &Vec<Range>, new_text: &str) -> Vec<ty::TextEdit> {
@@ -1235,6 +1264,24 @@ where
             }
 
             edits
+        }
+
+        // Setup a workspace edit which is only local to the specified URL.
+        fn local_edits(url: &Url, edits: Vec<ty::TextEdit>) -> ty::WorkspaceEdit {
+            let changes = vec![
+                ty::TextDocumentEdit {
+                    text_document: ty::VersionedTextDocumentIdentifier {
+                        uri: url.clone(),
+                        version: None,
+                    },
+                    edits: edits,
+                },
+            ];
+
+            ty::WorkspaceEdit {
+                document_changes: Some(changes),
+                ..ty::WorkspaceEdit::default()
+            }
         }
     }
 

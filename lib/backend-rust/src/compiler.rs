@@ -103,7 +103,7 @@ impl<'el> Compiler<'el> {
     /// Optionally also emit the necessary attributes to suppress warnings for bad naming
     /// conventions.
     fn convert_type_name(&self, name: &RpName) -> (Rc<String>, Tokens<'static, Rust<'static>>) {
-        let attributes = if name.parts.len() > 1 {
+        let attributes = if name.path.len() > 1 {
             AllowNonCamelCaseTypes.into_tokens()
         } else {
             Tokens::new()

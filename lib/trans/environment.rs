@@ -378,9 +378,8 @@ impl<'a> Environment<'a, CoreFlavor> {
             try_with_diag!(self.ctx, diag, {
                 let step = self.load_file(&mut diag, file, &package);
 
-                let step = step.and_then(|file| {
-                    self.process_file(&mut diag, package.clone(), file)
-                });
+                let step =
+                    step.and_then(|file| self.process_file(&mut diag, package.clone(), file));
 
                 step
             });
@@ -552,13 +551,16 @@ impl<'e> Import for Environment<'e, CoreFlavor> {
             None => {
                 self.visited.insert(required.clone(), None);
                 return Ok(None);
-            },
+            }
             Some(resolved) => resolved,
         };
 
         let package = RpVersionedPackage::new(required.package.clone(), version);
 
-        debug!("found `{}` in {} as package `{}`", required, source, package);
+        debug!(
+            "found `{}` in {} as package `{}`",
+            required, source, package
+        );
 
         let mut diag = Diagnostics::new(source.clone());
 
@@ -568,9 +570,7 @@ impl<'e> Import for Environment<'e, CoreFlavor> {
         try_with_diag!(self.ctx, diag, {
             let step = self.load_source_diag(&mut diag, &package);
 
-            let step = step.and_then(|file| {
-                self.process_file(&mut diag, package.clone(), file)
-            });
+            let step = step.and_then(|file| self.process_file(&mut diag, package.clone(), file));
 
             step
         });

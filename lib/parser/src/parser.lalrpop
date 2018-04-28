@@ -242,13 +242,13 @@ pub Type: Type<'input> = {
 };
 
 Name: Name<'input> = {
-    <prefix:(Loc<ident> "::")?> <parts:OneOrMore<"::", Loc<TypeIdent>>> => Name::Absolute {
+    <prefix:(Loc<ident> "::")?> <path:OneOrMore<"::", Loc<TypeIdent>>> => Name::Absolute {
         prefix: prefix.map(|p| p.0),
-        parts,
+        path,
     },
 
-    "::" <parts:OneOrMore<"::", Loc<TypeIdent>>> => Name::Relative {
-        parts,
+    "::" <path:OneOrMore<"::", Loc<TypeIdent>>> => Name::Relative {
+        path,
     },
 };
 
