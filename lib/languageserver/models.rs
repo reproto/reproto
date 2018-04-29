@@ -1,6 +1,6 @@
 //! Data models that are shared for the language server.
 
-use core::{Position, RpVersionedPackage, Span};
+use core::{Position, RpVersionedPackage};
 use std::collections::BTreeSet;
 use ty;
 use url::Url;
@@ -96,11 +96,27 @@ impl Range {
     }
 }
 
+impl From<(Position, Position)> for Range {
+    fn from(value: (Position, Position)) -> Self {
+        Self {
+            start: value.0,
+            end: value.1,
+        }
+    }
+}
+
+/// Range is Copy.
+impl<'a> From<&'a Range> for Range {
+    fn from(range: &'a Range) -> Self {
+        *range
+    }
+}
+
 /// Information about a single prefix.
 #[derive(Debug, Clone)]
 pub struct Prefix {
-    /// The span of the prefix.
-    pub span: Span,
+    /// The range of the prefix.
+    pub range: Range,
     /// The package the prefix refers to.
     pub package: RpVersionedPackage,
     /// URL that the prefix references.

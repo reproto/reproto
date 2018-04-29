@@ -217,8 +217,6 @@ impl Workspace {
         };
 
         for u in &file.uses {
-            let (u, span) = Loc::borrow_pair(u);
-
             let range = match u.range {
                 Some(ref range) => match core::Range::parse(range.as_str()) {
                     Ok(range) => range,
@@ -279,7 +277,7 @@ impl Workspace {
             if let Some(prefix) = prefix {
                 let prefix = prefix.to_string();
 
-                let range = loaded.range(span)?;
+                let range = loaded.range(Loc::span(&u.package))?;
 
                 loaded.register_jump(
                     range,
@@ -292,7 +290,7 @@ impl Workspace {
                     loaded.prefixes.insert(
                         prefix,
                         Prefix {
-                            span,
+                            range,
                             package,
                             url,
                             read_only,
