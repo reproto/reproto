@@ -1,7 +1,7 @@
 //! Data models that are shared for the language server.
 
 use core::{Position, RpVersionedPackage, Span};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 use ty;
 use url::Url;
 
@@ -38,7 +38,7 @@ pub enum RenameResult<'a> {
     },
     /// Multiple different URLs.
     Collections {
-        ranges: Option<&'a HashMap<Url, Vec<Range>>>,
+        ranges: Vec<(&'a Url, &'a Vec<Range>)>,
     },
     /// Not supported, only used during development.
     #[allow(unused)]
@@ -103,6 +103,8 @@ pub struct Prefix {
     pub span: Span,
     /// The package the prefix refers to.
     pub package: RpVersionedPackage,
+    /// URL that the prefix references.
+    pub url: Url,
     /// Is this package read-only?
     pub read_only: bool,
 }
