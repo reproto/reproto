@@ -3,7 +3,7 @@
 use ast;
 use core::errors::Result;
 use core::{self, Context, Encoding, Handle, Import, Loc, Position, Resolved, ResolvedByPrefix,
-           Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Span};
+           Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage};
 use env;
 use loaded_file::LoadedFile;
 use manifest;
@@ -525,7 +525,7 @@ impl Workspace {
 
                     full_path.push(p.to_string());
 
-                    self.register_type_rename(loaded, &prefix, &full_path, span)?;
+                    loaded.register_type_rename(&prefix, &full_path, span)?;
 
                     let range = loaded.range(span)?;
 
@@ -543,47 +543,6 @@ impl Workspace {
                     }
                 }
             }
-        }
-
-        Ok(())
-    }
-
-    /// Handle type rename.
-    fn register_type_rename(
-        &mut self,
-        loaded: &mut LoadedFile,
-        prefix: &Option<String>,
-        full_path: &Vec<String>,
-        span: Span,
-    ) -> Result<()> {
-        // we don't support refactoring in read-only contexts
-        if loaded.diag.source.read_only {
-            return Ok(());
-        }
-
-        // block evaluates to an optional range indicating whether this is a legal rename
-        // position or not.
-        // it might be illegal if for example the prefix being referenced does not
-        // exist, in which case it would be irresponsible to kick-off a rename.
-        if let Some(ref p) = *prefix {
-            // NOTE: uh oh, we _must_ guarantee that prefixes are loaded _before_ this
-            // point. they should, but just take care that use declarations are loaded before
-            // all other declarations!
-            if let Some(p) = loaded.prefixes.get(p).cloned() {
-                let range = loaded.range(span)?;
-
-                if !p.read_only {
-                    loaded.register_rename_trigger(range, prefix.clone(), full_path.clone())?;
-                    loaded.register_type_range(range, p.package.clone(), full_path.clone())?;
-                }
-
-                loaded.register_reference(range, p.package, full_path.clone())?;
-            }
-        } else {
-            let package = loaded.package.clone();
-            let range = loaded.range(span)?;
-            loaded.register_rename_trigger(range, prefix.clone(), full_path.clone())?;
-            loaded.register_type_range(range, package, full_path.clone())?;
         }
 
         Ok(())
