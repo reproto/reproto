@@ -835,7 +835,7 @@ where
                 let mut path = key.clone();
                 path.push(s.name.to_string());
 
-                let range = convert_range(s.range.start, s.range.end);
+                let range = convert_range(s.range);
 
                 let location = ty::Location {
                     uri: s.url.clone(),
@@ -896,11 +896,9 @@ where
             if let Some(references) = workspace.find_reference(&url, params.position) {
                 for (url, ranges) in references {
                     for r in ranges {
-                        let range = convert_range(r.start, r.end);
-
                         locations.push(ty::Location {
                             uri: url.clone(),
-                            range: range,
+                            range: convert_range(r),
                         });
                     }
                 }
@@ -962,7 +960,7 @@ where
             match *d {
                 core::Diagnostic::Error(ref span, ref m) => {
                     let (start, end) = file.diag.source.span_to_range(*span, Encoding::Utf16)?;
-                    let range = convert_range(start, end);
+                    let range = convert_range((start, end));
 
                     let d = ty::Diagnostic {
                         range: range,
@@ -975,7 +973,7 @@ where
                 }
                 core::Diagnostic::Info(ref span, ref m) => {
                     let (start, end) = file.diag.source.span_to_range(*span, Encoding::Utf16)?;
-                    let range = convert_range(start, end);
+                    let range = convert_range((start, end));
 
                     let d = ty::Diagnostic {
                         range: range,
@@ -1395,7 +1393,7 @@ where
                     let mut edits = setup_edits(ranges, new_name.as_str());
 
                     edits.push(ty::TextEdit {
-                        range: convert_range(position, position),
+                        range: convert_range((position, position)),
                         new_text: format!(" as {}", new_name),
                     });
 
@@ -1417,7 +1415,7 @@ where
 
             for range in ranges {
                 edits.push(ty::TextEdit {
-                    range: convert_range(range.start, range.end),
+                    range: convert_range(range),
                     new_text: new_text.to_string(),
                 });
             }
@@ -1498,7 +1496,7 @@ where
                 };
 
                 let (start, end) = file.diag.source.span_to_range(span, Encoding::Utf16)?;
-                let range = convert_range(start, end);
+                let range = convert_range((start, end));
                 let location = ty::Location { uri, range };
 
                 *response = Some(ty::request::GotoDefinitionResponse::Scalar(location));
@@ -1524,10 +1522,7 @@ where
                     None => return Ok(()),
                 };
 
-                let (start, end) = file.diag
-                    .source
-                    .span_to_range(prefix.span, Encoding::Utf16)?;
-                let range = convert_range(start, end);
+                let range = convert_range(prefix.range);
 
                 let location = ty::Location {
                     uri: url.clone(),
@@ -1543,7 +1538,12 @@ where
 }
 
 /// Convert an internal range into a language-server range.
-fn convert_range(start: core::Position, end: core::Position) -> ty::Range {
+fn convert_range<R: Into<Range>>(range: R) -> ty::Range {
+    let range = range.into();
+
+    let start = range.start;
+    let end = range.end;
+
     let start = ty::Position {
         line: start.line as u64,
         character: start.col as u64,
