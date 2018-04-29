@@ -31,7 +31,7 @@ macro_rules! lang_base {
         }
 
         /// Module specs.
-        fn module_specs(&self, path: &Path, input: Option<toml::Value>) -> Result<Vec<Box<Any>>> {
+        fn module_specs(&self, path: &Path, input: Option<toml::Value>) -> Result<Option<Vec<Box<Any>>>> {
             $crate::parse_section_any::<$module>(path, input)
         }
 
@@ -63,7 +63,11 @@ pub trait Lang: fmt::Debug {
     /// Parse a complex set of module configurations.
     ///
     /// Implemented through `lang_base!` macro.
-    fn module_specs(&self, path: &Path, input: Option<toml::Value>) -> Result<Vec<Box<Any>>>;
+    fn module_specs(
+        &self,
+        path: &Path,
+        input: Option<toml::Value>,
+    ) -> Result<Option<Vec<Box<Any>>>>;
 
     /// Parse a module configuration consisting of _only_ a string.
     ///
@@ -331,40 +335,53 @@ where
 }
 
 /// Parse multiple speicifcations where the keys are packages.
-pub fn parse_specs<T: 'static>(base: &Path, value: toml::Value) -> Result<Vec<T>>
+pub fn parse_specs<T: 'static>(base: &Path, value: toml::Value) -> Result<Option<Vec<T>>>
 where
     T: TryFromToml,
 {
-    let mut packages = Vec::new();
-    let values = value.try_into::<HashMap<String, toml::Value>>()?;
+    if let Some(values) = value.try_into::<Option<HashMap<String, toml::Value>>>()? {
+        let mut packages = Vec::new();
 
-    for (name, value) in values.into_iter() {
-        packages.push(parse_spec(base, name.as_str(), value)?);
+        for (name, value) in values.into_iter() {
+            packages.push(parse_spec(base, name.as_str(), value)?);
+        }
+
+        return Ok(Some(packages));
     }
 
-    Ok(packages)
+    Ok(None)
 }
 
 /// Parse optional specs.
-fn parse_section<T: 'static>(base: &Path, value: Option<toml::Value>) -> Result<Vec<T>>
+fn parse_section<T: 'static>(base: &Path, value: Option<toml::Value>) -> Result<Option<Vec<T>>>
 where
     T: TryFromToml,
 {
-    value.map(|v| parse_specs(base, v)).unwrap_or(Ok(vec![]))
+    if let Some(value) = value {
+        return parse_specs(base, value);
+    }
+
+    Ok(None)
 }
 
 /// Parsing modules into Any.
 pub fn parse_section_any<T: 'static>(
     base: &Path,
     value: Option<toml::Value>,
-) -> Result<Vec<Box<Any>>>
+) -> Result<Option<Vec<Box<Any>>>>
 where
     T: TryFromToml,
 {
-    Ok(parse_section::<T>(base, value)?
-        .into_iter()
-        .map(|b| Box::new(b) as Box<Any>)
-        .collect())
+    if let Some(values) = parse_section::<T>(base, value)? {
+        Ok(Some(
+            values
+                .into_iter()
+                .map(|b| Box::new(b) as Box<Any>)
+                .collect(),
+        ))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Parse the given string as a module.
@@ -377,12 +394,14 @@ where
 }
 
 /// Attempt to perform a checked conversion of the given vector of modules.
-pub fn checked_modules<M: Any>(modules: Vec<Box<Any>>) -> Result<Vec<M>> {
+pub fn checked_modules<M: Any>(modules: Option<Vec<Box<Any>>>) -> Result<Vec<M>> {
     let mut out = Vec::new();
 
-    for m in modules {
-        out.push(*m.downcast::<M>()
-            .map_err(|m| format!("Failed to downcast module: {:?}", m))?);
+    if let Some(modules) = modules {
+        for m in modules {
+            out.push(*m.downcast::<M>()
+                .map_err(|m| format!("Failed to downcast module: {:?}", m))?);
+        }
     }
 
     Ok(out)
@@ -473,17 +492,17 @@ pub struct Manifest {
     /// Path where manifest was loaded from.
     pub path: Option<PathBuf>,
     /// Packages to build.
-    pub packages: Vec<RpRequiredPackage>,
+    pub packages: Option<Vec<RpRequiredPackage>>,
     /// Files to build.
-    pub files: Vec<ManifestFile>,
+    pub files: Option<Vec<ManifestFile>>,
     /// Read files from stdin.
     ///
     /// This is not part of the manifest.
     pub stdin: bool,
     /// Packages to publish.
-    pub publish: Vec<Publish>,
+    pub publish: Option<Vec<Publish>>,
     /// Modules to enable.
-    pub modules: Vec<Box<Any>>,
+    pub modules: Option<Vec<Box<Any>>>,
     /// Additional paths specified.
     pub paths: Vec<PathBuf>,
     /// Output directory.
@@ -526,7 +545,7 @@ impl Manifest {
                 .ok_or_else(|| format!("path does not have a parent: {}", path.display()))?;
 
             if let Some(lang) = self.lang.as_ref() {
-                self.modules.extend(lang.module_specs(parent, modules)?);
+                self.modules = lang.module_specs(parent, modules)?;
             }
 
             load_common_manifest(self, parent, &mut value)?;
@@ -544,6 +563,19 @@ impl Manifest {
     /// Access language to build for, or fall back to `NoLang` which is a no-operation language.
     pub fn lang_or_nolang(&self) -> Box<Lang> {
         self.lang().unwrap_or_else(|| Box::new(NoLang))
+    }
+
+    /// Check if manifest has nothing to build.
+    pub fn is_build_empty(&self) -> bool {
+        if !self.files.as_ref().map(Vec::is_empty).unwrap_or(true) {
+            return false;
+        }
+
+        if !self.packages.as_ref().map(Vec::is_empty).unwrap_or(true) {
+            return false;
+        }
+
+        self.path.is_none()
     }
 }
 
@@ -589,15 +621,9 @@ pub fn load_common_manifest(
     base: &Path,
     value: &mut toml::value::Table,
 ) -> Result<()> {
-    manifest
-        .packages
-        .extend(parse_section(base, take_field(value, "packages")?)?);
-    manifest
-        .files
-        .extend(parse_section(base, take_field(value, "files")?)?);
-    manifest
-        .publish
-        .extend(parse_section(base, take_field(value, "publish")?)?);
+    manifest.packages = parse_section(base, take_field(value, "packages")?)?;
+    manifest.files = parse_section(base, take_field(value, "files")?)?;
+    manifest.publish = parse_section(base, take_field(value, "publish")?)?;
 
     manifest.paths.extend(
         take_field::<Vec<RelativePathBuf>>(value, "paths")?
@@ -609,8 +635,10 @@ pub fn load_common_manifest(
         manifest.output = Some(output.to_path(base));
     }
 
-    for preset in parse_section(base, take_field(value, "presets")?)? {
-        apply_preset_to(preset, manifest, &base)?;
+    if let Some(presets) = parse_section(base, take_field(value, "presets")?)? {
+        for preset in presets {
+            apply_preset_to(preset, manifest, &base)?;
+        }
     }
 
     if let Some(package_prefix) = take_field::<Option<RpPackage>>(value, "package_prefix")? {

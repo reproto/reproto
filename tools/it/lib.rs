@@ -760,7 +760,8 @@ impl<'a> ProjectRunner<'a> {
             let mut expected = Vec::new();
 
             for input in inputs {
-                let f = File::open(&input).map_err(|e| format_err!("{}: {}", input.display(), e))?;
+                let f = File::open(&input)
+                    .map_err(|e| format_err!("failed to open: {}: {}", input.display(), e))?;
 
                 for line in BufReader::new(f).lines() {
                     let line = line?;

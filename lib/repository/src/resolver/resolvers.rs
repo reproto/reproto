@@ -1,3 +1,5 @@
+//! Multiple resolvers with combined result.
+
 use core::errors::Result;
 use core::{Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage};
 
@@ -29,6 +31,16 @@ impl Resolver for Resolvers {
 
         for resolver in &mut self.resolvers.iter_mut() {
             out.extend(resolver.resolve_by_prefix(package)?);
+        }
+
+        Ok(out)
+    }
+
+    fn resolve_packages(&mut self) -> Result<Vec<ResolvedByPrefix>> {
+        let mut out = Vec::new();
+
+        for resolver in &mut self.resolvers.iter_mut() {
+            out.extend(resolver.resolve_packages()?);
         }
 
         Ok(out)

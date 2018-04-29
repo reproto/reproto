@@ -95,12 +95,20 @@ impl Resolver for Repository {
 
         for (deployment, package) in deployments {
             if let Some(source) = self.get_object(&deployment)? {
-                out.push(ResolvedByPrefix { package, source });
+                out.push(ResolvedByPrefix {
+                    package,
+                    version: Some(deployment.version),
+                    source,
+                });
             } else {
                 return Err(format!("missing object: {}", deployment.object).into());
             }
         }
 
         Ok(out)
+    }
+
+    fn resolve_packages(&mut self) -> Result<Vec<ResolvedByPrefix>> {
+        Ok(vec![])
     }
 }

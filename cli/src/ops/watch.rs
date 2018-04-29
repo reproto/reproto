@@ -269,8 +269,8 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<
 
         let local_paths = paths.clone();
 
-        let manifest = load_manifest(matches)?;
-        let mut resolver = env::resolver(&manifest)?;
+        let mut manifest = load_manifest(matches)?;
+        let mut resolver = env::resolver(&mut manifest)?;
 
         let env = environment_with_hook(
             ctx.clone(),

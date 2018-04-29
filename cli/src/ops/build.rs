@@ -21,11 +21,11 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 }
 
 pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
-    let manifest = load_manifest(matches)?;
+    let mut manifest = load_manifest(matches)?;
     let lang = manifest.lang().ok_or_else(|| {
         "no language to build for, either specify in manifest under `language` or `--lang`"
     })?;
-    let mut resolver = env::resolver(&manifest)?;
+    let mut resolver = env::resolver(&mut manifest)?;
     let env = environment(ctx.clone(), lang.copy(), &manifest, resolver.as_mut())?;
 
     lang.compile(ctx, env, manifest)?;

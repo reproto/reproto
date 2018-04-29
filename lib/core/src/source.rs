@@ -41,7 +41,8 @@ impl Readable {
         let out: Box<Read> = match *self {
             Empty => Box::new(Cursor::new(&[])),
             Bytes(ref bytes) => Box::new(Cursor::new(ArcCursor(Arc::clone(&bytes)))),
-            Path(ref path) => Box::new(File::open(path.as_ref())?),
+            Path(ref path) => Box::new(File::open(path.as_ref())
+                .map_err(|e| format!("failed to open path: {}: {}", path.display(), e))?),
             Rope(_, ref rope) => Box::new(Cursor::new(ArcCursor(Arc::new(
                 rope.to_string().into_bytes(),
             )))),

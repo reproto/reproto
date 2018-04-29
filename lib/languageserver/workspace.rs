@@ -92,14 +92,28 @@ impl Workspace {
             return Ok(());
         }
 
+        let manifest_file = File::open(&self.manifest_path).map_err(|e| {
+            format!(
+                "failed to open manifest: {}: {}",
+                self.manifest_path.display(),
+                e
+            )
+        })?;
+
         manifest.path = Some(self.manifest_path.to_owned());
-        manifest.from_yaml(File::open(&self.manifest_path)?, env::convert_lang)?;
+        manifest.from_yaml(manifest_file, env::convert_lang)?;
 
-        let mut resolver = env::resolver(&manifest)?;
+        let mut resolver = env::resolver(&mut manifest)?;
 
-        for package in &manifest.packages {
-            if let Err(e) = self.process(resolver.as_mut(), package) {
-                error!("failed to process: {}: {}", package, e.display());
+        if let Some(packages) = manifest.packages.as_ref() {
+            for package in packages {
+                if let Err(e) = self.process(resolver.as_mut(), package) {
+                    error!("failed to process: {}: {}", package, e.display());
+
+                    if let Some(backtrace) = e.backtrace() {
+                        error!("{:?}", backtrace);
+                    }
+                }
             }
         }
 
@@ -116,15 +130,25 @@ impl Workspace {
         let package_prefix = manifest.package_prefix.clone();
         let mut env = lang.into_env(ctx.clone(), package_prefix, self);
 
-        for package in &manifest.packages {
-            if let Err(e) = env.import(package) {
-                debug!("failed to import: {}: {}", package, e.display());
+        if let Some(packages) = manifest.packages.as_ref() {
+            for package in packages {
+                if let Err(e) = env.import(package) {
+                    debug!("failed to import: {}: {}", package, e.display());
+
+                    if let Some(backtrace) = e.backtrace() {
+                        debug!("{:?}", backtrace);
+                    }
+                }
             }
         }
 
         if let Err(e) = lang.compile(ctx.clone(), env, manifest) {
             // ignore and just go off diagnostics?
             debug!("compile error: {}", e.display());
+
+            if let Some(backtrace) = e.backtrace() {
+                debug!("{:?}", backtrace);
+            }
         }
 
         return Ok(());
@@ -576,7 +600,7 @@ impl Workspace {
         let mut results = BTreeSet::new();
 
         for r in resolved {
-            if let Some(value) = r.package.parts().skip(package.len()).next() {
+            if let Some(value) = r.package.parts().skip(r.package.len()).next() {
                 if let Some(suffix) = suffix.as_ref() {
                     let suffix = suffix.to_lowercase();
 
@@ -828,6 +852,11 @@ impl Resolver for Workspace {
 
     /// Not supported for workspace.
     fn resolve_by_prefix(&mut self, _: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
+        Ok(vec![])
+    }
+
+    /// Resolve available packages.
+    fn resolve_packages(&mut self) -> Result<Vec<ResolvedByPrefix>> {
         Ok(vec![])
     }
 }

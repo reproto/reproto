@@ -21,8 +21,8 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 }
 
 pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
-    let manifest = build::load_manifest(matches)?;
-    let mut resolver = env::resolver(&manifest)?;
+    let mut manifest = build::load_manifest(matches)?;
+    let mut resolver = env::resolver(&mut manifest)?;
     let mut env = build::simple_config(&ctx, &manifest, resolver.as_mut())?;
 
     let mut manifest_resolver =
@@ -46,7 +46,7 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
     results.extend(build::publish_matches(
         manifest_resolver.as_mut(),
         version_override.as_ref(),
-        &manifest.publish,
+        manifest.publish.as_ref().iter().flat_map(|p| p.iter()),
     )?);
 
     results.extend(build::matches(

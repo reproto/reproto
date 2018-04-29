@@ -16,6 +16,8 @@ pub struct Resolved {
 pub struct ResolvedByPrefix {
     /// Package object belongs to.
     pub package: RpPackage,
+    /// Version of package.
+    pub version: Option<Version>,
     /// Source found.
     pub source: Source,
 }
@@ -46,6 +48,11 @@ pub trait Resolver {
 
     /// Resolve by prefix.
     fn resolve_by_prefix(&mut self, package: &RpPackage) -> Result<Vec<ResolvedByPrefix>>;
+
+    /// Find packages to build.
+    /// This will internally use the `resolve_by_prefix` function, but is conditional on if a given
+    /// resolver can be used to automatically locate buildable packages.
+    fn resolve_packages(&mut self) -> Result<Vec<ResolvedByPrefix>>;
 }
 
 pub struct EmptyResolver;
@@ -56,6 +63,10 @@ impl Resolver for EmptyResolver {
     }
 
     fn resolve_by_prefix(&mut self, _package: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
+        Ok(vec![])
+    }
+
+    fn resolve_packages(&mut self) -> Result<Vec<ResolvedByPrefix>> {
         Ok(vec![])
     }
 }
