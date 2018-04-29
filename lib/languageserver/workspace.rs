@@ -256,7 +256,7 @@ impl Workspace {
                 let (alias, span) = Loc::borrow_pair(alias);
                 let range = loaded.range(span)?;
                 loaded.register_rename_immediate_prefix(range, alias.as_ref())?;
-                Some(alias.as_ref())
+                Some((alias.as_ref(), span))
             } else {
                 match parts.last() {
                     Some(suffix) => {
@@ -264,7 +264,7 @@ impl Workspace {
 
                         loaded.implicit_prefix(suffix.as_ref(), endl)?;
                         loaded.register_rename_prefix_trigger(suffix.as_ref(), span)?;
-                        Some(suffix.as_ref())
+                        Some((suffix.as_ref(), span))
                     }
                     None => None,
                 }
@@ -274,19 +274,25 @@ impl Workspace {
             let package = RpRequiredPackage::new(package.clone(), range);
             let package = self.process(resolver, &package)?;
 
-            if let Some(prefix) = prefix {
+            if let Some((prefix, prefix_span)) = prefix {
                 let prefix = prefix.to_string();
 
-                let range = loaded.range(Loc::span(&u.package))?;
-
-                loaded.register_jump(
-                    range,
-                    Jump::Package {
-                        prefix: prefix.clone(),
-                    },
-                )?;
-
                 if let Some((package, url, read_only)) = package {
+                    // register a jump for the last part of the package, if it is present.
+                    if let Some(last) = parts.last() {
+                        let (_, span) = Loc::borrow_pair(last);
+                        let range = loaded.range(span)?;
+
+                        loaded.register_jump(
+                            range,
+                            Jump::Package {
+                                package: package.clone(),
+                            },
+                        );
+                    }
+
+                    let range = loaded.range(prefix_span)?;
+
                     loaded.prefixes.insert(
                         prefix,
                         Prefix {
@@ -476,10 +482,10 @@ impl Workspace {
                     loaded.register_jump(
                         range,
                         Jump::Absolute {
-                            prefix: None,
+                            package: None,
                             path: full_path.clone(),
                         },
-                    )?;
+                    );
                 }
             }
             ast::Name::Absolute {
@@ -502,7 +508,7 @@ impl Workspace {
                         Jump::Prefix {
                             prefix: prefix.to_string(),
                         },
-                    )?;
+                    );
                 }
 
                 // Package, if available
@@ -530,10 +536,10 @@ impl Workspace {
                     loaded.register_jump(
                         range,
                         Jump::Absolute {
-                            prefix: prefix.clone(),
+                            package: package.clone(),
                             path: full_path.clone(),
                         },
-                    )?;
+                    );
 
                     // register reference if available
                     if let Some(package) = package.as_ref() {
