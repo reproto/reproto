@@ -80,6 +80,13 @@ symbols in a single file.
 
 ![go to file symbols](ls-file-symbols.gif?raw=true "go to file symbols in vscode")
 
+## Find all references (`SHIFT+F12`)
+
+We can find all references to a type, allowing us insights into how and where it is used in a given
+project.
+
+![find references](ls-references.gif?raw=true "find references in vscode")
+
 # Visual Studio Code
 
 It is recommended that you use the [`reproto` extension].

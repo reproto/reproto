@@ -569,6 +569,10 @@ where
                 let params = ty::DocumentSymbolParams::deserialize(request.params)?;
                 self.text_document_document_symbol(request.id, params)?;
             }
+            "textDocument/references" => {
+                let params = ty::ReferenceParams::deserialize(request.params)?;
+                self.text_document_references(request.id, params)?;
+            }
             "workspace/symbol" => {
                 let params = ty::WorkspaceSymbolParams::deserialize(request.params)?;
                 self.workspace_symbol(request.id, params)?;
@@ -739,6 +743,7 @@ where
                 rename_provider: Some(true),
                 document_symbol_provider: Some(true),
                 workspace_symbol_provider: Some(true),
+                references_provider: Some(true),
                 ..ty::ServerCapabilities::default()
             },
         };
@@ -866,6 +871,39 @@ where
         }
 
         self.channel.send(request_id, Some(symbols))?;
+        Ok(())
+    }
+
+    /// Handler for `textDocument/references`.
+    fn text_document_references(
+        &mut self,
+        request_id: Option<envelope::RequestId>,
+        params: ty::ReferenceParams,
+    ) -> Result<()> {
+        let url = params.text_document.uri;
+
+        let mut locations: Vec<ty::Location> = Vec::new();
+
+        if let Some(workspace) = self.workspace.as_ref() {
+            let workspace = workspace
+                .try_borrow()
+                .map_err(|_| "failed to access workspace immutably")?;
+
+            if let Some(references) = workspace.find_reference(&url, params.position) {
+                for (url, ranges) in references {
+                    for r in ranges {
+                        let range = convert_range(r.start, r.end);
+
+                        locations.push(ty::Location {
+                            uri: url.clone(),
+                            range: range,
+                        });
+                    }
+                }
+            }
+        }
+
+        self.channel.send(request_id, Some(locations))?;
         Ok(())
     }
 
