@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 - language-server: Support to find references ([#34]).
+- language-server: clean up and fix bugs ([#47]).
 
 [Unreleased]: https://github.com/reproto/reproto/compare/0.3.37...master
 
