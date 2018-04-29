@@ -514,8 +514,8 @@ impl Workspace {
                 // Package, if available
                 // Note that it might not be available during compilation errors, so we want to be
                 // tolerable towards that.
-                let package = match prefix {
-                    Some(prefix) => loaded
+                let package = match *prefix {
+                    Some(ref prefix) => loaded
                         .prefixes
                         .get(prefix.as_ref())
                         .map(|p| p.package.clone()),
