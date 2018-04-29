@@ -85,6 +85,14 @@ pub enum Jump {
     Prefix { prefix: String },
 }
 
+/// Specifies a reference to some type.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Reference {
+    package: RpVersionedPackage,
+    path: Vec<String>,
+}
+
+/// The range of something.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Range {
     /// Start position.
@@ -152,6 +160,8 @@ pub struct LoadedFile {
     pub completion_triggers: BTreeMap<Position, (Range, Completion)>,
     /// Rename locations.
     pub rename_triggers: BTreeMap<Position, (Range, Rename)>,
+    /// Local reference triggers.
+    pub reference_triggers: BTreeMap<Position, (Range, Reference)>,
     /// All the locations that a given prefix is present at.
     pub prefix_ranges: HashMap<String, Vec<Range>>,
     /// Implicit prefixes which _cannot_ be renamed.
@@ -176,6 +186,7 @@ impl LoadedFile {
             jump_triggers: BTreeMap::new(),
             completion_triggers: BTreeMap::new(),
             rename_triggers: BTreeMap::new(),
+            reference_triggers: BTreeMap::new(),
             prefix_ranges: HashMap::new(),
             implicit_prefixes: HashMap::new(),
             prefixes: HashMap::new(),
@@ -193,15 +204,20 @@ impl LoadedFile {
         self.jump_triggers.clear();
         self.completion_triggers.clear();
         self.rename_triggers.clear();
+        self.reference_triggers.clear();
         self.prefix_ranges.clear();
         self.diag.clear();
     }
 
-    /// Insert the specified jump.
-    pub fn register_jump(&mut self, span: Span, jump: Jump) -> Result<()> {
+    /// Compute a range from a span.
+    pub fn range(&self, span: Span) -> Result<Range> {
         let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
-        let range = Range { start, end };
-        self.jump_triggers.insert(start, (range, jump));
+        Ok(Range { start, end })
+    }
+
+    /// Insert the specified jump.
+    pub fn register_jump(&mut self, range: Range, jump: Jump) -> Result<()> {
+        self.jump_triggers.insert(range.start, (range, jump));
         Ok(())
     }
 
@@ -237,9 +253,9 @@ impl LoadedFile {
     /// Register a type rename.
     ///
     /// This function does nothing if the loaded file is read-only.
-    pub fn register_rename_type(
+    pub fn register_rename_trigger(
         &mut self,
-        span: Span,
+        range: Range,
         prefix: Option<String>,
         path: Vec<String>,
     ) -> Result<()> {
@@ -247,12 +263,9 @@ impl LoadedFile {
             return Ok(());
         }
 
-        let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
-        let range = Range { start, end };
-
         let rename = Rename::Type { prefix, path };
 
-        self.rename_triggers.insert(start, (range, rename));
+        self.rename_triggers.insert(range.start, (range, rename));
         Ok(())
     }
 
@@ -260,7 +273,7 @@ impl LoadedFile {
     /// replaced itself.
     ///
     /// This function does nothing if the loaded file is read-only.
-    pub fn register_rename_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
+    pub fn register_rename_prefix_trigger(&mut self, prefix: &str, span: Span) -> Result<()> {
         if self.diag.source.read_only {
             return Ok(());
         }
@@ -281,26 +294,35 @@ impl LoadedFile {
     /// The specified span should also be replaced itself.
     ///
     /// This function does nothing if the loaded file is read-only.
-    pub fn register_rename_immediate_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
+    pub fn register_rename_immediate_prefix(&mut self, range: Range, prefix: &str) -> Result<()> {
         if self.diag.source.read_only {
             return Ok(());
         }
-
-        let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
-        let range = Range { start, end };
 
         // replace the explicit rename.
         let rename = Rename::Prefix {
             prefix: prefix.to_string(),
         };
 
-        self.rename_triggers.insert(start, (range, rename));
+        self.rename_triggers.insert(range.start, (range, rename));
 
         self.prefix_ranges
             .entry(prefix.to_string())
             .or_insert_with(Vec::new)
             .push(range);
 
+        Ok(())
+    }
+
+    /// Register a reference.
+    fn register_reference_trigger(
+        &mut self,
+        range: Range,
+        package: RpVersionedPackage,
+        path: Vec<String>,
+    ) -> Result<()> {
+        self.reference_triggers
+            .insert(range.start, (range, Reference { package, path }));
         Ok(())
     }
 }
@@ -321,6 +343,8 @@ pub struct Workspace {
     pub edited_files: HashMap<Url, LoadedFile>,
     /// Type ranges to be modified when changing the name of a given type.
     pub type_ranges: HashMap<(RpVersionedPackage, Vec<String>), HashMap<Url, Vec<Range>>>,
+    /// All references for a given type.
+    pub references: HashMap<Reference, HashMap<Url, Vec<Range>>>,
     /// Context where to populate compiler errors.
     ctx: Rc<Context>,
 }
@@ -336,6 +360,7 @@ impl Workspace {
             lookup: HashMap::new(),
             edited_files: HashMap::new(),
             type_ranges: HashMap::new(),
+            references: HashMap::new(),
             ctx,
         }
     }
@@ -373,6 +398,7 @@ impl Workspace {
         self.files.clear();
         self.lookup.clear();
         self.type_ranges.clear();
+        self.references.clear();
 
         let mut manifest = manifest::Manifest::default();
 
@@ -548,7 +574,8 @@ impl Workspace {
             let prefix = if let Some(ref alias) = u.alias {
                 // note: can be renamed!
                 let (alias, span) = Loc::borrow_pair(alias);
-                loaded.register_rename_immediate_prefix(alias.as_ref(), span)?;
+                let range = loaded.range(span)?;
+                loaded.register_rename_immediate_prefix(range, alias.as_ref())?;
                 Some(alias.as_ref())
             } else {
                 match parts.last() {
@@ -556,7 +583,7 @@ impl Workspace {
                         let (suffix, span) = Loc::borrow_pair(suffix);
 
                         loaded.implicit_prefix(suffix.as_ref(), endl)?;
-                        loaded.register_rename_prefix(suffix.as_ref(), span)?;
+                        loaded.register_rename_prefix_trigger(suffix.as_ref(), span)?;
                         Some(suffix.as_ref())
                     }
                     None => None,
@@ -570,8 +597,10 @@ impl Workspace {
             if let Some(prefix) = prefix {
                 let prefix = prefix.to_string();
 
+                let range = loaded.range(span)?;
+
                 loaded.register_jump(
-                    span,
+                    range,
                     Jump::Package {
                         prefix: prefix.clone(),
                     },
@@ -652,15 +681,20 @@ impl Workspace {
 
         let (_, span) = Loc::take_pair(decl.name());
 
+        let range = loaded.range(span)?;
+        let package = loaded.package.clone();
+
         // we don't support refactoring from read-only sources.
         if !loaded.diag.source.read_only {
             // mark the name declaration as a location that can issue a rename.
             loaded.register_rename_decl(span, current.clone())?;
 
             // mark the name declaration as a range that should changed when refactoring.
-            let package = loaded.package.clone();
-            self.register_type_range(loaded, span, package, current.clone())?;
+            self.register_type_range(loaded, range, package.clone(), current.clone())?;
         }
+
+        // reference triggers are unconditionally set for names.
+        loaded.register_reference_trigger(range, package, current.clone())?;
 
         match *decl {
             Type(ref ty) => for f in ty.fields() {
@@ -751,12 +785,15 @@ impl Workspace {
 
                     // register a type range to be modified if the given name is changed.
                     let package = loaded.package.clone();
-                    self.register_type_range(loaded, span, package, full_path.clone())?;
 
-                    loaded.register_rename_type(span, None, full_path.clone())?;
+                    let range = loaded.range(span)?;
+
+                    self.register_type_range(loaded, range, package.clone(), full_path.clone())?;
+                    loaded.register_rename_trigger(range, None, full_path.clone())?;
+                    self.register_reference(loaded, range, package, full_path.clone())?;
 
                     loaded.register_jump(
-                        span,
+                        range,
                         Jump::Absolute {
                             prefix: None,
                             path: full_path.clone(),
@@ -774,11 +811,13 @@ impl Workspace {
                 if let Some(ref prefix) = *prefix {
                     let (prefix, span) = Loc::borrow_pair(prefix);
 
+                    let range = loaded.range(span)?;
+
                     // register prefix rename.
-                    loaded.register_rename_immediate_prefix(prefix, span)?;
+                    loaded.register_rename_immediate_prefix(range, prefix)?;
 
                     loaded.register_jump(
-                        span,
+                        range,
                         Jump::Prefix {
                             prefix: prefix.to_string(),
                         },
@@ -794,8 +833,10 @@ impl Workspace {
 
                     self.register_type_rename(loaded, &prefix, &full_path, span)?;
 
+                    let range = loaded.range(span)?;
+
                     loaded.register_jump(
-                        span,
+                        range,
                         Jump::Absolute {
                             prefix: prefix.clone(),
                             path: full_path.clone(),
@@ -821,47 +862,29 @@ impl Workspace {
             return Ok(());
         }
 
-        // block evaluates to a boolean indicating whether this is a legal rename
+        // block evaluates to an optional range indicating whether this is a legal rename
         // position or not.
         // it might be illegal if for example the prefix being referenced does not
         // exist, in which case it would be irresponsible to kick-off a rename.
-        let rename_span = if let Some(ref prefix) = *prefix {
+        if let Some(ref p) = *prefix {
             // NOTE: uh oh, we _must_ guarantee that prefixes are loaded _before_ this
             // point. they should, but just take care that use declarations are loaded before
             // all other declarations!
+            if let Some(p) = loaded.prefixes.get(p).cloned() {
+                let range = loaded.range(span)?;
 
-            let package = if let Some(&Prefix {
-                ref package,
-                ref read_only,
-                ..
-            }) = loaded.prefixes.get(prefix)
-            {
-                // we don't register refactoring for read-only packages.
-                if !*read_only {
-                    Some(package.clone())
-                } else {
-                    None
+                if !p.read_only {
+                    self.register_type_range(loaded, range, p.package.clone(), full_path.clone())?;
+                    loaded.register_rename_trigger(range, prefix.clone(), full_path.clone())?;
                 }
-            } else {
-                None
-            };
 
-            // package found!
-            if let Some(package) = package {
-                self.register_type_range(loaded, span, package, full_path.clone())?;
-                true
-            } else {
-                false
+                self.register_reference(loaded, range, p.package, full_path.clone())?;
             }
         } else {
             let package = loaded.package.clone();
-            self.register_type_range(loaded, span, package, full_path.clone())?;
-            true
-        };
-
-        if rename_span {
-            // register as a location that can kick off a rename
-            loaded.register_rename_type(span, prefix.clone(), full_path.clone())?;
+            let range = loaded.range(span)?;
+            self.register_type_range(loaded, range, package, full_path.clone())?;
+            loaded.register_rename_trigger(range, prefix.clone(), full_path.clone())?;
         }
 
         Ok(())
@@ -871,13 +894,10 @@ impl Workspace {
     fn register_type_range(
         &mut self,
         loaded: &mut LoadedFile,
-        span: Span,
+        range: Range,
         package: RpVersionedPackage,
         path: Vec<String>,
     ) -> Result<()> {
-        let (start, end) = loaded.diag.source.span_to_range(span, Encoding::Utf16)?;
-        let range = Range { start, end };
-
         let key = (package, path);
 
         self.type_ranges
@@ -887,6 +907,30 @@ impl Workspace {
             .or_insert_with(Vec::new)
             .push(range);
 
+        Ok(())
+    }
+
+    /// Register a reference.
+    fn register_reference(
+        &mut self,
+        loaded: &mut LoadedFile,
+        range: Range,
+        package: RpVersionedPackage,
+        path: Vec<String>,
+    ) -> Result<()> {
+        let key = Reference {
+            package: package.clone(),
+            path: path.clone(),
+        };
+
+        self.references
+            .entry(key)
+            .or_insert_with(HashMap::new)
+            .entry(loaded.url.clone())
+            .or_insert_with(Vec::new)
+            .push(range);
+
+        loaded.register_reference_trigger(range, package, path)?;
         Ok(())
     }
 
@@ -991,24 +1035,11 @@ impl Workspace {
             None => return None,
         };
 
-        let end = Position {
-            line: position.line as usize,
-            col: position.character as usize,
-        };
-
-        let mut range = file.completion_triggers
-            .range((Bound::Unbounded, Bound::Included(&end)));
-
-        let (range, value) = match range.next_back() {
-            Some((_, &(ref range, ref value))) => (range, value),
-            None => return None,
-        };
-
-        if !range.contains(&end) {
-            return None;
+        if let Some(value) = self.test_trigger(&file.completion_triggers, position) {
+            return Some((file, value));
         }
 
-        Some((file, value))
+        None
     }
 
     /// Find the associated jump.
@@ -1018,24 +1049,11 @@ impl Workspace {
             None => return None,
         };
 
-        let end = Position {
-            line: position.line as usize,
-            col: position.character as usize,
-        };
-
-        let mut range = file.jump_triggers
-            .range((Bound::Unbounded, Bound::Included(&end)));
-
-        let (range, value) = match range.next_back() {
-            Some((_, &(ref range, ref value))) => (range, value),
-            None => return None,
-        };
-
-        if !range.contains(&end) {
-            return None;
+        if let Some(value) = self.test_trigger(&file.jump_triggers, position) {
+            return Some((file, value));
         }
 
-        Some((file, value))
+        None
     }
 
     /// Find the specified rename.
@@ -1049,22 +1067,10 @@ impl Workspace {
             None => return None,
         };
 
-        let end = Position {
-            line: position.line as usize,
-            col: position.character as usize,
-        };
-
-        let mut range = file.rename_triggers
-            .range((Bound::Unbounded, Bound::Included(&end)));
-
-        let (range, value) = match range.next_back() {
-            Some((_, &(ref range, ref value))) => (range, value),
+        let value = match self.test_trigger(&file.rename_triggers, position) {
+            Some(value) => value,
             None => return None,
         };
-
-        if !range.contains(&end) {
-            return None;
-        }
 
         match *value {
             Rename::Prefix { ref prefix } => {
@@ -1113,12 +1119,55 @@ impl Workspace {
         }
     }
 
+    /// Find out if there is a reference in the given location.
+    pub fn find_reference<'a>(
+        &'a self,
+        url: &Url,
+        position: ty::Position,
+    ) -> Option<&'a HashMap<Url, Vec<Range>>> {
+        let file = match self.file(url) {
+            Some(file) => file,
+            None => return None,
+        };
+
+        if let Some(reference) = self.test_trigger(&file.reference_triggers, position) {
+            return self.references.get(reference);
+        }
+
+        return None;
+    }
+
     /// Get URL to the manifest.
     pub fn manifest_url(&self) -> Result<Url> {
         let url = Url::from_file_path(&self.manifest_path)
             .map_err(|_| format!("cannot convert to url: {}", self.manifest_path.display()))?;
 
         Ok(url)
+    }
+
+    /// Test if the given position matches a trigger from the source.
+    fn test_trigger<'a, V>(
+        &self,
+        source: &'a BTreeMap<Position, (Range, V)>,
+        position: ty::Position,
+    ) -> Option<&'a V> {
+        let end = Position {
+            line: position.line as usize,
+            col: position.character as usize,
+        };
+
+        let mut range = source.range((Bound::Unbounded, Bound::Included(&end)));
+
+        let (range, value) = match range.next_back() {
+            Some((_, &(ref range, ref value))) => (range, value),
+            None => return None,
+        };
+
+        if !range.contains(&end) {
+            return None;
+        }
+
+        Some(value)
     }
 }
 

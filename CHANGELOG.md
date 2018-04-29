@@ -6,9 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+- language-server: Support to find references ([#34]).
+
+[Unreleased]: https://github.com/reproto/reproto/compare/0.3.37...master
+
+## [0.3.37]
+
 - language-server: Support type renaming and symbol lookups ([#43])
 
-[Unreleased]: https://github.com/reproto/reproto/compare/0.3.36...master
+[Unreleased]: https://github.com/reproto/reproto/compare/0.3.36...0.3.37
 [#43]: https://github.com/reproto/reproto/issues/43
 
 ## [0.3.36]
