@@ -34,6 +34,8 @@ pub struct LoadedFile {
     pub symbol: HashMap<Vec<String>, Span>,
     /// All references for a given type.
     pub references: HashMap<Reference, Vec<Range>>,
+    /// Type ranges to be modified when changing the name of a given type.
+    pub type_ranges: HashMap<(RpVersionedPackage, Vec<String>), Vec<Range>>,
     /// Diagnostics for this file.
     pub diag: Diagnostics,
 }
@@ -52,6 +54,7 @@ impl LoadedFile {
             prefixes: HashMap::new(),
             symbols: HashMap::new(),
             references: HashMap::new(),
+            type_ranges: HashMap::new(),
             symbol: HashMap::new(),
             diag: Diagnostics::new(source.clone()),
         }
@@ -69,6 +72,7 @@ impl LoadedFile {
         self.symbols.clear();
         self.symbol.clear();
         self.references.clear();
+        self.type_ranges.clear();
         self.diag.clear();
     }
 
@@ -196,6 +200,23 @@ impl LoadedFile {
             .entry(key)
             .or_insert_with(Vec::new)
             .push(range);
+        Ok(())
+    }
+
+    /// Register a type range that should be replaced when the given type is being renamed.
+    pub fn register_type_range(
+        &mut self,
+        range: Range,
+        package: RpVersionedPackage,
+        path: Vec<String>,
+    ) -> Result<()> {
+        let key = (package, path);
+
+        self.type_ranges
+            .entry(key)
+            .or_insert_with(Vec::new)
+            .push(range);
+
         Ok(())
     }
 }

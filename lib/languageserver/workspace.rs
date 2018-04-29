@@ -28,11 +28,9 @@ pub struct Workspace {
     /// Files which have been loaded through project, including their files.
     pub files: HashMap<Url, LoadedFile>,
     /// Versioned packages that have been looked up.
-    lookup: HashMap<RpRequiredPackage, (RpVersionedPackage, bool)>,
+    lookup: HashMap<RpRequiredPackage, (RpVersionedPackage, Url, bool)>,
     /// Files which are currently being edited.
     pub edited_files: HashMap<Url, LoadedFile>,
-    /// Type ranges to be modified when changing the name of a given type.
-    pub type_ranges: HashMap<(RpVersionedPackage, Vec<String>), HashMap<Url, Vec<Range>>>,
     /// Context where to populate compiler errors.
     ctx: Rc<Context>,
 }
@@ -47,7 +45,6 @@ impl Workspace {
             files: HashMap::new(),
             lookup: HashMap::new(),
             edited_files: HashMap::new(),
-            type_ranges: HashMap::new(),
             ctx,
         }
     }
@@ -84,7 +81,6 @@ impl Workspace {
         self.packages.clear();
         self.files.clear();
         self.lookup.clear();
-        self.type_ranges.clear();
 
         let mut manifest = manifest::Manifest::default();
 
@@ -143,9 +139,9 @@ impl Workspace {
         &mut self,
         resolver: &mut Resolver,
         package: &RpRequiredPackage,
-    ) -> Result<Option<(RpVersionedPackage, bool)>> {
+    ) -> Result<Option<(RpVersionedPackage, Url, bool)>> {
         // need method to report errors in this stage.
-        let (url, source, versioned) = {
+        let (versioned, url, source) = {
             let entry = match self.lookup.entry(package.clone()) {
                 hash_map::Entry::Occupied(e) => return Ok(Some(e.get().clone())),
                 hash_map::Entry::Vacant(e) => e,
@@ -164,7 +160,6 @@ impl Workspace {
             };
 
             let versioned = RpVersionedPackage::new(package.package.clone(), version);
-            entry.insert((versioned.clone(), source.read_only));
 
             // TODO: report error through diagnostics.
             let path = match path.canonicalize() {
@@ -178,7 +173,8 @@ impl Workspace {
             let url = Url::from_file_path(&path)
                 .map_err(|_| format!("cannot build url from path: {}", path.display()))?;
 
-            (url, source, versioned)
+            entry.insert((versioned.clone(), url.clone(), source.read_only));
+            (versioned, url, source)
         };
 
         let read_only = if let Some(mut loaded) = self.edited_files.remove(&url) {
@@ -201,8 +197,8 @@ impl Workspace {
             read_only
         };
 
-        self.packages.insert(versioned.clone(), url);
-        Ok(Some((versioned, read_only)))
+        self.packages.insert(versioned.clone(), url.clone());
+        Ok(Some((versioned, url, read_only)))
     }
 
     fn inner_process(&mut self, resolver: &mut Resolver, loaded: &mut LoadedFile) -> Result<()> {
@@ -292,12 +288,13 @@ impl Workspace {
                     },
                 )?;
 
-                if let Some((package, read_only)) = package {
+                if let Some((package, url, read_only)) = package {
                     loaded.prefixes.insert(
                         prefix,
                         Prefix {
                             span,
                             package,
+                            url,
                             read_only,
                         },
                     );
@@ -376,7 +373,7 @@ impl Workspace {
             loaded.register_rename_decl(span, current.clone())?;
 
             // mark the name declaration as a range that should changed when refactoring.
-            self.register_type_range(loaded, range, package.clone(), current.clone())?;
+            loaded.register_type_range(range, package.clone(), current.clone())?;
         }
 
         // reference triggers are unconditionally set for names.
@@ -474,8 +471,8 @@ impl Workspace {
 
                     let range = loaded.range(span)?;
 
-                    self.register_type_range(loaded, range, package.clone(), full_path.clone())?;
                     loaded.register_rename_trigger(range, None, full_path.clone())?;
+                    loaded.register_type_range(range, package.clone(), full_path.clone())?;
                     loaded.register_reference(range, package, full_path.clone())?;
 
                     loaded.register_jump(
@@ -576,8 +573,8 @@ impl Workspace {
                 let range = loaded.range(span)?;
 
                 if !p.read_only {
-                    self.register_type_range(loaded, range, p.package.clone(), full_path.clone())?;
                     loaded.register_rename_trigger(range, prefix.clone(), full_path.clone())?;
+                    loaded.register_type_range(range, p.package.clone(), full_path.clone())?;
                 }
 
                 loaded.register_reference(range, p.package, full_path.clone())?;
@@ -585,29 +582,9 @@ impl Workspace {
         } else {
             let package = loaded.package.clone();
             let range = loaded.range(span)?;
-            self.register_type_range(loaded, range, package, full_path.clone())?;
             loaded.register_rename_trigger(range, prefix.clone(), full_path.clone())?;
+            loaded.register_type_range(range, package, full_path.clone())?;
         }
-
-        Ok(())
-    }
-
-    /// Register a type range that should be replaced when the given type is being renamed.
-    fn register_type_range(
-        &mut self,
-        loaded: &mut LoadedFile,
-        range: Range,
-        package: RpVersionedPackage,
-        path: Vec<String>,
-    ) -> Result<()> {
-        let key = (package, path);
-
-        self.type_ranges
-            .entry(key)
-            .or_insert_with(HashMap::new)
-            .entry(loaded.url.clone())
-            .or_insert_with(Vec::new)
-            .push(range);
 
         Ok(())
     }
@@ -768,10 +745,17 @@ impl Workspace {
                 return Some(RenameResult::Local { ranges });
             }
             Rename::LocalType { ref path } => {
-                let ranges = self.type_ranges.get(&(file.package.clone(), path.clone()));
+                let mut out = Vec::new();
+                let key = (file.package.clone(), path.clone());
+
+                for file in self.files() {
+                    if let Some(ranges) = file.type_ranges.get(&key) {
+                        out.push((&file.url, ranges));
+                    }
+                }
 
                 // look up _all_ ranges that should be replaced for the given type.
-                return Some(RenameResult::Collections { ranges });
+                return Some(RenameResult::Collections { ranges: out });
             }
             // We are referencing an imported type, so we need to resolve the prefix during lookup.
             Rename::Type {
@@ -779,20 +763,25 @@ impl Workspace {
                 ref path,
             } => {
                 let package = if let Some(ref prefix) = *prefix {
-                    let &Prefix { ref package, .. } = match file.prefixes.get(prefix) {
-                        Some(prefix) => prefix,
+                    match file.prefixes.get(prefix) {
+                        Some(&Prefix { ref package, .. }) => package,
                         None => return None,
-                    };
-
-                    package
+                    }
                 } else {
                     &file.package
                 };
 
-                let ranges = self.type_ranges.get(&(package.clone(), path.clone()));
+                let mut out = Vec::new();
+                let key = (package.clone(), path.clone());
+
+                for file in self.files() {
+                    if let Some(ranges) = file.type_ranges.get(&key) {
+                        out.push((&file.url, ranges));
+                    }
+                }
 
                 // look up _all_ ranges that should be replaced for the given type.
-                return Some(RenameResult::Collections { ranges });
+                return Some(RenameResult::Collections { ranges: out });
             }
         }
     }
@@ -860,7 +849,7 @@ impl Resolver for Workspace {
     fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
         let mut result = Vec::new();
 
-        if let Some(&(ref looked_up, _)) = self.lookup.get(package) {
+        if let Some(&(ref looked_up, _, _)) = self.lookup.get(package) {
             if let Some(url) = self.packages.get(looked_up) {
                 if let Some(loaded) = self.file(url) {
                     result.push(Resolved {

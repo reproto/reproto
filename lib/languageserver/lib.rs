@@ -1370,26 +1370,24 @@ where
                 }
                 // A collection of ranges from different URLs that should be changed.
                 RenameResult::Collections { ranges } => {
-                    if let Some(ranges) = ranges {
-                        let mut changes = Vec::new();
+                    let mut changes = Vec::new();
 
-                        for (url, ranges) in ranges {
-                            let edits = setup_edits(ranges, new_name.as_str());
+                    for (url, ranges) in ranges {
+                        let edits = setup_edits(ranges, new_name.as_str());
 
-                            changes.push(ty::TextDocumentEdit {
-                                text_document: ty::VersionedTextDocumentIdentifier {
-                                    uri: url.clone(),
-                                    version: None,
-                                },
-                                edits: edits,
-                            });
-                        }
-
-                        edit = Some(ty::WorkspaceEdit {
-                            document_changes: Some(changes),
-                            ..ty::WorkspaceEdit::default()
+                        changes.push(ty::TextDocumentEdit {
+                            text_document: ty::VersionedTextDocumentIdentifier {
+                                uri: url.clone(),
+                                version: None,
+                            },
+                            edits: edits,
                         });
                     }
+
+                    edit = Some(ty::WorkspaceEdit {
+                        document_changes: Some(changes),
+                        ..ty::WorkspaceEdit::default()
+                    });
                 }
                 // Special case: identical to Local, but we also want to refactor the package
                 // position to include the new alias.
