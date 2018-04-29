@@ -2,11 +2,12 @@
 
 use ast;
 use core::errors::Result;
-use core::{self, Context, Diagnostics, Encoding, Handle, Import, Loc, Position, Resolved,
-           ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Source,
-           Span};
+use core::{self, Context, Encoding, Handle, Import, Loc, Position, Resolved, ResolvedByPrefix,
+           Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Span};
 use env;
+use loaded_file::LoadedFile;
 use manifest;
+use models::{Completion, Jump, Prefix, Range, Rename, RenameResult, Symbol};
 use parser;
 use std::collections::Bound;
 use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, VecDeque};
@@ -15,317 +16,6 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use ty;
 use url::Url;
-
-/// Specifies a rename.
-#[derive(Debug, Clone)]
-pub enum Rename {
-    /// A prefix that should be name.
-    Prefix { prefix: String },
-    /// Rename a local type.
-    LocalType {
-        /// The path to the type.
-        path: Vec<String>,
-    },
-    /// A type that was requested to be renamed.
-    Type {
-        /// The prefix at which the type should be looked up from, indicating that it is in
-        /// a separate package.
-        prefix: Option<String>,
-        /// The path to the type.
-        path: Vec<String>,
-    },
-}
-
-/// The result of a find_rename call.
-#[derive(Debug, Clone)]
-pub enum RenameResult<'a> {
-    /// All renames are in the same file as where the rename was requested.
-    Local { ranges: &'a Vec<Range> },
-    /// A package was renamed, and the range indicates the endl of the import that should be
-    /// replaced.
-    ImplicitPackage {
-        ranges: &'a Vec<Range>,
-        position: Position,
-    },
-    /// Multiple different URLs.
-    Collections {
-        ranges: Option<&'a HashMap<Url, Vec<Range>>>,
-    },
-    /// Not supported, only used during development.
-    #[allow(unused)]
-    NotSupported,
-}
-
-/// Specifies a type completion.
-#[derive(Debug, Clone)]
-pub enum Completion {
-    /// Completions for type from a different package.
-    Absolute {
-        prefix: Option<String>,
-        path: Vec<String>,
-        suffix: Option<String>,
-    },
-    /// Completions for a given package.
-    Package { results: BTreeSet<String> },
-    /// Any type, including primitive types.
-    Any { suffix: Option<String> },
-}
-
-/// Specifies a jump
-#[derive(Debug, Clone)]
-pub enum Jump {
-    /// Perform an absolute jump.
-    Absolute {
-        prefix: Option<String>,
-        path: Vec<String>,
-    },
-    /// Jump to the specified package prefix.
-    Package { prefix: String },
-    /// Jump to where the prefix is declared.
-    Prefix { prefix: String },
-}
-
-/// Specifies a reference to some type.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Reference {
-    package: RpVersionedPackage,
-    path: Vec<String>,
-}
-
-/// The range of something.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Range {
-    /// Start position.
-    pub start: Position,
-    /// End position.
-    pub end: Position,
-}
-
-impl Range {
-    pub fn contains(&self, p: &Position) -> bool {
-        self.start <= *p && *p <= self.end
-    }
-}
-
-/// Information about a single prefix.
-#[derive(Debug, Clone)]
-pub struct Prefix {
-    /// The span of the prefix.
-    pub span: Span,
-    /// The package the prefix refers to.
-    pub package: RpVersionedPackage,
-    /// Is this package read-only?
-    pub read_only: bool,
-}
-
-/// Information about a single symbol.
-#[derive(Debug, Clone)]
-pub struct Symbol {
-    /// Url where the symbol is located.
-    pub url: Url,
-    /// Range where the symbol is located.
-    pub range: Range,
-    /// The name of the symbol.
-    pub name: String,
-    /// Markdown documentation comment.
-    pub comment: Option<String>,
-}
-
-impl Symbol {
-    /// Convert symbol into documentation.
-    pub fn to_documentation(&self) -> Option<ty::Documentation> {
-        let comment = match self.comment.as_ref() {
-            Some(comment) => comment,
-            None => return None,
-        };
-
-        let doc = ty::MarkupContent {
-            kind: ty::MarkupKind::Markdown,
-            value: comment.to_string(),
-        };
-
-        Some(ty::Documentation::MarkupContent(doc))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LoadedFile {
-    /// Url of the loaded file.
-    pub url: Url,
-    /// The package of a loaded file.
-    pub package: RpVersionedPackage,
-    /// Jumps available in the file.
-    pub jump_triggers: BTreeMap<Position, (Range, Jump)>,
-    /// Corresponding locations that have available type completions.
-    pub completion_triggers: BTreeMap<Position, (Range, Completion)>,
-    /// Rename locations.
-    pub rename_triggers: BTreeMap<Position, (Range, Rename)>,
-    /// Local reference triggers.
-    pub reference_triggers: BTreeMap<Position, (Range, Reference)>,
-    /// All the locations that a given prefix is present at.
-    pub prefix_ranges: HashMap<String, Vec<Range>>,
-    /// Implicit prefixes which _cannot_ be renamed.
-    pub implicit_prefixes: HashMap<String, Position>,
-    /// All prefixes that are in-scope for the file.
-    /// These are defined in the use-declarations at the top of the file.
-    pub prefixes: HashMap<String, Prefix>,
-    /// Symbols present in the file.
-    /// The key is the path that the symbol is located in.
-    pub symbols: HashMap<Vec<String>, Vec<Symbol>>,
-    /// Exact symbol lookup.
-    pub symbol: HashMap<Vec<String>, Span>,
-    /// Diagnostics for this file.
-    pub diag: Diagnostics,
-}
-
-impl LoadedFile {
-    pub fn new(url: Url, source: Source, package: RpVersionedPackage) -> Self {
-        Self {
-            url: url.clone(),
-            package: package,
-            jump_triggers: BTreeMap::new(),
-            completion_triggers: BTreeMap::new(),
-            rename_triggers: BTreeMap::new(),
-            reference_triggers: BTreeMap::new(),
-            prefix_ranges: HashMap::new(),
-            implicit_prefixes: HashMap::new(),
-            prefixes: HashMap::new(),
-            symbols: HashMap::new(),
-            symbol: HashMap::new(),
-            diag: Diagnostics::new(source.clone()),
-        }
-    }
-
-    /// Reset all state in the loaded file.
-    pub fn clear(&mut self) {
-        self.symbols.clear();
-        self.symbol.clear();
-        self.prefixes.clear();
-        self.jump_triggers.clear();
-        self.completion_triggers.clear();
-        self.rename_triggers.clear();
-        self.reference_triggers.clear();
-        self.prefix_ranges.clear();
-        self.diag.clear();
-    }
-
-    /// Compute a range from a span.
-    pub fn range(&self, span: Span) -> Result<Range> {
-        let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
-        Ok(Range { start, end })
-    }
-
-    /// Insert the specified jump.
-    pub fn register_jump(&mut self, range: Range, jump: Jump) -> Result<()> {
-        self.jump_triggers.insert(range.start, (range, jump));
-        Ok(())
-    }
-
-    /// Set an implicit prefix.
-    ///
-    /// These prefixes _can not_ be renamed since they are the last part of the package.
-    pub fn implicit_prefix(&mut self, prefix: &str, span: Span) -> Result<()> {
-        if self.diag.source.read_only {
-            return Ok(());
-        }
-
-        let (start, _) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
-        self.implicit_prefixes.insert(prefix.to_string(), start);
-        Ok(())
-    }
-
-    /// Register a rename hook for a local type-declaration with the given path.
-    ///
-    /// This function does nothing if the loaded file is read-only.
-    pub fn register_rename_decl(&mut self, span: Span, path: Vec<String>) -> Result<()> {
-        if self.diag.source.read_only {
-            return Ok(());
-        }
-
-        let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
-        let range = Range { start, end };
-
-        let rename = Rename::LocalType { path };
-        self.rename_triggers.insert(start, (range, rename));
-        Ok(())
-    }
-
-    /// Register a type rename.
-    ///
-    /// This function does nothing if the loaded file is read-only.
-    pub fn register_rename_trigger(
-        &mut self,
-        range: Range,
-        prefix: Option<String>,
-        path: Vec<String>,
-    ) -> Result<()> {
-        if self.diag.source.read_only {
-            return Ok(());
-        }
-
-        let rename = Rename::Type { prefix, path };
-
-        self.rename_triggers.insert(range.start, (range, rename));
-        Ok(())
-    }
-
-    /// Register a location that is only used to trigger a rename action, but should not be locally
-    /// replaced itself.
-    ///
-    /// This function does nothing if the loaded file is read-only.
-    pub fn register_rename_prefix_trigger(&mut self, prefix: &str, span: Span) -> Result<()> {
-        if self.diag.source.read_only {
-            return Ok(());
-        }
-
-        let (start, end) = self.diag.source.span_to_range(span, Encoding::Utf16)?;
-        let range = Range { start, end };
-
-        // replace the explicit rename.
-        let rename = Rename::Prefix {
-            prefix: prefix.to_string(),
-        };
-
-        self.rename_triggers.insert(start, (range, rename));
-        Ok(())
-    }
-
-    /// Register a location that is only used to trigger a rename action.
-    /// The specified span should also be replaced itself.
-    ///
-    /// This function does nothing if the loaded file is read-only.
-    pub fn register_rename_immediate_prefix(&mut self, range: Range, prefix: &str) -> Result<()> {
-        if self.diag.source.read_only {
-            return Ok(());
-        }
-
-        // replace the explicit rename.
-        let rename = Rename::Prefix {
-            prefix: prefix.to_string(),
-        };
-
-        self.rename_triggers.insert(range.start, (range, rename));
-
-        self.prefix_ranges
-            .entry(prefix.to_string())
-            .or_insert_with(Vec::new)
-            .push(range);
-
-        Ok(())
-    }
-
-    /// Register a reference.
-    fn register_reference_trigger(
-        &mut self,
-        range: Range,
-        package: RpVersionedPackage,
-        path: Vec<String>,
-    ) -> Result<()> {
-        self.reference_triggers
-            .insert(range.start, (range, Reference { package, path }));
-        Ok(())
-    }
-}
 
 #[derive(Clone)]
 pub struct Workspace {
@@ -343,8 +33,6 @@ pub struct Workspace {
     pub edited_files: HashMap<Url, LoadedFile>,
     /// Type ranges to be modified when changing the name of a given type.
     pub type_ranges: HashMap<(RpVersionedPackage, Vec<String>), HashMap<Url, Vec<Range>>>,
-    /// All references for a given type.
-    pub references: HashMap<Reference, HashMap<Url, Vec<Range>>>,
     /// Context where to populate compiler errors.
     ctx: Rc<Context>,
 }
@@ -360,7 +48,6 @@ impl Workspace {
             lookup: HashMap::new(),
             edited_files: HashMap::new(),
             type_ranges: HashMap::new(),
-            references: HashMap::new(),
             ctx,
         }
     }
@@ -398,7 +85,6 @@ impl Workspace {
         self.files.clear();
         self.lookup.clear();
         self.type_ranges.clear();
-        self.references.clear();
 
         let mut manifest = manifest::Manifest::default();
 
@@ -694,7 +380,7 @@ impl Workspace {
         }
 
         // reference triggers are unconditionally set for names.
-        loaded.register_reference_trigger(range, package, current.clone())?;
+        loaded.register_reference(range, package, current.clone())?;
 
         match *decl {
             Type(ref ty) => for f in ty.fields() {
@@ -790,7 +476,7 @@ impl Workspace {
 
                     self.register_type_range(loaded, range, package.clone(), full_path.clone())?;
                     loaded.register_rename_trigger(range, None, full_path.clone())?;
-                    self.register_reference(loaded, range, package, full_path.clone())?;
+                    loaded.register_reference(range, package, full_path.clone())?;
 
                     loaded.register_jump(
                         range,
@@ -878,7 +564,7 @@ impl Workspace {
                     loaded.register_rename_trigger(range, prefix.clone(), full_path.clone())?;
                 }
 
-                self.register_reference(loaded, range, p.package, full_path.clone())?;
+                loaded.register_reference(range, p.package, full_path.clone())?;
             }
         } else {
             let package = loaded.package.clone();
@@ -907,30 +593,6 @@ impl Workspace {
             .or_insert_with(Vec::new)
             .push(range);
 
-        Ok(())
-    }
-
-    /// Register a reference.
-    fn register_reference(
-        &mut self,
-        loaded: &mut LoadedFile,
-        range: Range,
-        package: RpVersionedPackage,
-        path: Vec<String>,
-    ) -> Result<()> {
-        let key = Reference {
-            package: package.clone(),
-            path: path.clone(),
-        };
-
-        self.references
-            .entry(key)
-            .or_insert_with(HashMap::new)
-            .entry(loaded.url.clone())
-            .or_insert_with(Vec::new)
-            .push(range);
-
-        loaded.register_reference_trigger(range, package, path)?;
         Ok(())
     }
 
@@ -1124,17 +786,23 @@ impl Workspace {
         &'a self,
         url: &Url,
         position: ty::Position,
-    ) -> Option<&'a HashMap<Url, Vec<Range>>> {
+    ) -> Option<Vec<(&'a Url, &'a Vec<Range>)>> {
         let file = match self.file(url) {
             Some(file) => file,
             None => return None,
         };
 
+        let mut out = Vec::new();
+
         if let Some(reference) = self.test_trigger(&file.reference_triggers, position) {
-            return self.references.get(reference);
+            for file in self.files() {
+                if let Some(ranges) = file.references.get(reference) {
+                    out.push((&file.url, ranges));
+                }
+            }
         }
 
-        return None;
+        Some(out)
     }
 
     /// Get URL to the manifest.

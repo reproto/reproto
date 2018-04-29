@@ -17,10 +17,14 @@ extern crate url;
 extern crate url_serde;
 
 mod envelope;
+mod loaded_file;
+mod models;
 mod workspace;
 
 use self::ContentType::*;
-use self::workspace::{Completion, Jump, LoadedFile, Range, RenameResult, Workspace};
+use self::loaded_file::LoadedFile;
+use self::models::{Completion, Jump, Range, RenameResult};
+use self::workspace::Workspace;
 use core::errors::Result;
 use core::{Context, ContextItem, Diagnostics, Encoding, RealFilesystem, Source};
 use ropey::Rope;
