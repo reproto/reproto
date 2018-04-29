@@ -219,4 +219,42 @@ impl LoadedFile {
 
         Ok(())
     }
+
+    /// Handle type rename.
+    pub fn register_type_rename(
+        &mut self,
+        prefix: &Option<String>,
+        full_path: &Vec<String>,
+        span: Span,
+    ) -> Result<()> {
+        // we don't support refactoring in read-only contexts
+        if self.diag.source.read_only {
+            return Ok(());
+        }
+
+        // block evaluates to an optional range indicating whether this is a legal rename
+        // position or not.
+        // it might be illegal if for example the prefix being referenced does not
+        // exist, in which case it would be irresponsible to kick-off a rename.
+        if let Some(ref p) = *prefix {
+            // NOTE: uh oh, we _must_ guarantee that prefixes are loaded _before_ this
+            // point. they should, but just take care that use declarations are loaded before
+            // all other declarations!
+            if let Some(p) = self.prefixes.get(p).cloned() {
+                let range = self.range(span)?;
+
+                if !p.read_only {
+                    self.register_rename_trigger(range, prefix.clone(), full_path.clone())?;
+                    self.register_type_range(range, p.package.clone(), full_path.clone())?;
+                }
+            }
+        } else {
+            let package = self.package.clone();
+            let range = self.range(span)?;
+            self.register_rename_trigger(range, prefix.clone(), full_path.clone())?;
+            self.register_type_range(range, package, full_path.clone())?;
+        }
+
+        Ok(())
+    }
 }
