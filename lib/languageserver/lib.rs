@@ -1468,16 +1468,11 @@ where
 
         match *value {
             Jump::Absolute {
-                ref prefix,
+                ref package,
                 ref path,
             } => {
-                let (uri, file) = if let Some(ref prefix) = *prefix {
-                    let prefix = match file.prefixes.get(prefix) {
-                        Some(prefix) => prefix,
-                        None => return Ok(()),
-                    };
-
-                    let url = match workspace.packages.get(&prefix.package) {
+                let (uri, file) = if let Some(ref package) = *package {
+                    let url = match workspace.packages.get(package) {
                         Some(url) => url,
                         None => return Ok(()),
                     };
@@ -1501,13 +1496,8 @@ where
 
                 *response = Some(ty::request::GotoDefinitionResponse::Scalar(location));
             }
-            Jump::Package { ref prefix } => {
-                let prefix = match file.prefixes.get(prefix) {
-                    Some(prefix) => prefix,
-                    None => return Ok(()),
-                };
-
-                let uri = match workspace.packages.get(&prefix.package) {
+            Jump::Package { ref package } => {
+                let uri = match workspace.packages.get(package) {
                     Some(url) => url.clone(),
                     None => return Ok(()),
                 };

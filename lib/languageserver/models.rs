@@ -65,11 +65,11 @@ pub enum Completion {
 pub enum Jump {
     /// Perform an absolute jump.
     Absolute {
-        prefix: Option<String>,
+        package: Option<RpVersionedPackage>,
         path: Vec<String>,
     },
     /// Jump to the specified package prefix.
-    Package { prefix: String },
+    Package { package: RpVersionedPackage },
     /// Jump to where the prefix is declared.
     Prefix { prefix: String },
 }

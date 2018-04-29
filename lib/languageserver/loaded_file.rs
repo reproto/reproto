@@ -83,9 +83,8 @@ impl LoadedFile {
     }
 
     /// Insert the specified jump.
-    pub fn register_jump(&mut self, range: Range, jump: Jump) -> Result<()> {
+    pub fn register_jump(&mut self, range: Range, jump: Jump) {
         self.jump_triggers.insert(range.start, (range, jump));
-        Ok(())
     }
 
     /// Set an implicit prefix.
