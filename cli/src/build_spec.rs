@@ -57,6 +57,7 @@ pub fn load_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
                     file => {
                         manifest
                             .files
+                            .get_or_insert_with(Vec::new)
                             .push(ManifestFile::from_path(Path::new(file)));
                     }
                 }
@@ -68,7 +69,7 @@ pub fn load_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
             if let Some(lang) = manifest.lang.as_ref() {
                 for module in matches.values_of("module").into_iter().flat_map(|it| it) {
                     let module = lang.string_spec(path, module)?;
-                    manifest.modules.push(module);
+                    manifest.modules.get_or_insert_with(Vec::new).push(module);
                 }
             }
         }
@@ -79,7 +80,7 @@ pub fn load_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
             let parsed =
                 parsed.chain_err(|| format!("failed to parse --package argument: {}", package))?;
 
-            manifest.packages.push(parsed);
+            manifest.packages.get_or_insert_with(Vec::new).push(parsed);
         }
 
         if let Some(package_prefix) = matches.value_of("package-prefix").map(RpPackage::parse) {
@@ -150,12 +151,12 @@ where
 
     let mut stdin = manifest.stdin;
 
-    if manifest.files.is_empty() && manifest.packages.is_empty() && manifest.path.is_none() {
+    if manifest.is_build_empty() {
         stdin = true;
     }
 
     // TODO: use version and package from the provided file.
-    for file in &manifest.files {
+    for file in manifest.files.as_ref().iter().flat_map(|f| f.iter()) {
         let package = file.package
             .as_ref()
             .map(|p| RpVersionedPackage::new(p.clone(), file.version.clone()));
@@ -165,7 +166,7 @@ where
         }
     }
 
-    for package in manifest.packages.iter().cloned() {
+    for package in manifest.packages.iter().flat_map(|p| p.iter()).cloned() {
         match env.import(&package) {
             Err(e) => errors.push(e.into()),
             Ok(None) => errors.push(format!("no matching package: {}", package).into()),
@@ -215,9 +216,23 @@ where
             return Err(format!("no matching packages found for: {}", publish.package).into());
         }
 
-        for ResolvedByPrefix { package, source } in resolved {
+        for ResolvedByPrefix {
+            package,
+            source,
+            version,
+        } in resolved
+        {
+            // only publish un-versioned.
+            if version.is_some() {
+                warn!(
+                    "not publishing versioned package `{}` from {}",
+                    package, source
+                );
+                continue;
+            }
+
             let version = version_override.unwrap_or(&publish.version).clone();
-            results.push(Match(version, source, package.clone()));
+            results.push(Match(version, source, package));
         }
     }
 

@@ -108,7 +108,7 @@ where
 
     let mut manifest = manifest::Manifest::default();
     manifest.lang = Some(lang.copy());
-    manifest.modules = modules;
+    manifest.modules = Some(modules);
     manifest.package_prefix = package_prefix;
 
     lang.compile(ctx, env, manifest)?;

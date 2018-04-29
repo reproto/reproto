@@ -144,6 +144,11 @@ impl RpPackage {
             iter: self.parts.iter(),
         }
     }
+
+    /// Get the last part, if package has one.
+    pub fn last(&self) -> Option<&str> {
+        self.parts.last().map(|s| s.as_str())
+    }
 }
 
 impl fmt::Display for RpPackage {

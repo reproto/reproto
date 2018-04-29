@@ -41,7 +41,8 @@ impl Default for Config {
 
 pub fn read_config<P: AsRef<Path>>(path: P) -> Result<Config> {
     let path = path.as_ref();
-    let mut f = File::open(path)?;
+    let mut f =
+        File::open(path).map_err(|e| format!("failed to open config: {}: {}", path.display(), e))?;
     let mut content = String::new();
     f.read_to_string(&mut content)?;
 

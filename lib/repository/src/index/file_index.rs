@@ -60,7 +60,9 @@ impl FileIndex {
             return Ok((vec![], false));
         }
 
-        let f = File::open(&path)?;
+        let f =
+            File::open(&path).map_err(|e| format!("failed to open: {}: {}", path.display(), e))?;
+
         let reader = BufReader::new(f);
         let mut out = Vec::new();
         let mut non_match = false;
@@ -264,7 +266,7 @@ fn read_config<P: AsRef<Path> + ?Sized>(path: &P) -> Result<Config> {
     }
 
     let mut f = File::open(&config_path)
-        .map_err(|e| format!("failed to open {}: {}", config_path.display(), e))?;
+        .map_err(|e| format!("failed to config: {}: {}", config_path.display(), e))?;
 
     let mut content = String::new();
     f.read_to_string(&mut content)?;

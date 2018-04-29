@@ -27,7 +27,7 @@ mod initialize;
 pub use self::config_env::ConfigEnv;
 pub use self::initialize::initialize;
 use core::errors::Result;
-use core::{RelativePath, Resolver};
+use core::{Range, RelativePath, ResolvedByPrefix, Resolver, RpRequiredPackage};
 use manifest::{Lang, Language, Manifest};
 use repository::{index_from_path, index_from_url, objects_from_path, objects_from_url, Index,
                  IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository,
@@ -174,23 +174,41 @@ pub fn path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>> {
 
     let mut published = HashMap::new();
 
-    for publish in &manifest.publish {
-        published.insert(publish.package.clone(), publish.version.clone());
+    if let Some(publish) = manifest.publish.as_ref() {
+        for p in publish {
+            published.insert(p.package.clone(), p.version.clone());
+        }
     }
 
     Ok(Some(Box::new(Paths::new(
         manifest.paths.clone(),
         published,
+        true,
     ))))
 }
 
 /// Set up the all resolvers based on this manifest.
-pub fn resolver(manifest: &Manifest) -> Result<Box<Resolver>> {
+pub fn resolver(manifest: &mut Manifest) -> Result<Box<Resolver>> {
     let mut resolvers: Vec<Box<Resolver>> = Vec::new();
 
     resolvers.push(Box::new(repository(manifest)?));
 
-    if let Some(resolver) = path_resolver(manifest)? {
+    if let Some(mut resolver) = path_resolver(manifest)? {
+        // if there are no packages, load from path resolver.
+        if manifest.packages.is_none() {
+            let mut packages = Vec::new();
+
+            for ResolvedByPrefix {
+                package, version, ..
+            } in resolver.resolve_packages()?
+            {
+                let range = version.map(|v| Range::exact(&v)).unwrap_or_else(Range::any);
+                packages.push(RpRequiredPackage::new(package, range));
+            }
+
+            manifest.packages = Some(packages);
+        }
+
         resolvers.push(resolver);
     }
 

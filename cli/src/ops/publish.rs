@@ -39,8 +39,8 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 }
 
 pub fn entry(ctx: Rc<Context>, m: &ArgMatches) -> Result<()> {
-    let manifest = load_manifest(m)?;
-    let mut resolver = env::resolver(&manifest)?;
+    let mut manifest = load_manifest(m)?;
+    let mut resolver = env::resolver(&mut manifest)?;
     let mut env = simple_config(&ctx, &manifest, resolver.as_mut())?;
 
     let mut manifest_resolver =
@@ -58,7 +58,7 @@ pub fn entry(ctx: Rc<Context>, m: &ArgMatches) -> Result<()> {
     results.extend(publish_matches(
         manifest_resolver.as_mut(),
         version_override.as_ref(),
-        &manifest.publish,
+        manifest.publish.as_ref().iter().flat_map(|p| p.iter()),
     )?);
 
     // packages to publish from the commandline
