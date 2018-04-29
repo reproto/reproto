@@ -510,6 +510,17 @@ impl Workspace {
                     )?;
                 }
 
+                // Package, if available
+                // Note that it might not be available during compilation errors, so we want to be
+                // tolerable towards that.
+                let package = match prefix {
+                    Some(prefix) => loaded
+                        .prefixes
+                        .get(prefix.as_ref())
+                        .map(|p| p.package.clone()),
+                    None => Some(loaded.package.clone()),
+                };
+
                 let prefix = prefix.as_ref().map(|p| p.to_string());
 
                 for p in path {
@@ -528,6 +539,11 @@ impl Workspace {
                             path: full_path.clone(),
                         },
                     )?;
+
+                    // register reference if available
+                    if let Some(package) = package.as_ref() {
+                        loaded.register_reference(range, package.clone(), full_path.clone())?;
+                    }
                 }
             }
         }
