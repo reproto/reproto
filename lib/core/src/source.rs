@@ -233,7 +233,7 @@ impl Source {
     }
 
     pub fn span_to_range(&self, span: Span, encoding: Encoding) -> Result<(Position, Position)> {
-        find_range(self.read()?, span, encoding)
+        return find_range(self.read()?, span, encoding);
     }
 }
 
