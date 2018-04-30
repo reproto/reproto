@@ -145,9 +145,31 @@ impl RpPackage {
         }
     }
 
+    /// Split at the last part, returning the package prefix and an optional last part if present.
+    pub fn split_last(mut self) -> (RpPackage, Option<String>) {
+        if self.parts.is_empty() {
+            return (self, None);
+        }
+
+        let len = self.parts.len();
+        let parts = self.parts.split_off(len - 1);
+        let last = parts.into_iter().next();
+        (RpPackage::new(self.parts), last)
+    }
+
     /// Get the last part, if package has one.
     pub fn last(&self) -> Option<&str> {
         self.parts.last().map(|s| s.as_str())
+    }
+}
+
+/// Convenience conversion, mostly used for tests.
+impl<S> From<Vec<S>> for RpPackage
+where
+    String: From<S>,
+{
+    fn from(value: Vec<S>) -> Self {
+        RpPackage::new(value.into_iter().map(String::from).collect())
     }
 }
 
@@ -189,5 +211,29 @@ impl<'de> serde::Deserialize<'de> for RpPackage {
         }
 
         deserializer.deserialize_str(RpPackageVisitor)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RpPackage;
+
+    #[test]
+    fn test_split_last() {
+        assert_eq!((RpPackage::empty(), None), RpPackage::empty().split_last());
+
+        let package = RpPackage::from(vec!["foo"]);
+
+        assert_eq!(
+            (RpPackage::empty(), Some("foo".to_string())),
+            package.split_last()
+        );
+
+        let package = RpPackage::from(vec!["foo", "bar"]);
+
+        assert_eq!(
+            (RpPackage::from(vec!["foo"]), Some("bar".to_string())),
+            package.split_last()
+        );
     }
 }

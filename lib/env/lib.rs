@@ -32,7 +32,7 @@ use manifest::{Lang, Language, Manifest};
 use repository::{index_from_path, index_from_url, objects_from_path, objects_from_url, Index,
                  IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository,
                  Resolvers};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::time::Duration;
 
@@ -183,28 +183,43 @@ pub fn path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>> {
     Ok(Some(Box::new(Paths::new(
         manifest.paths.clone(),
         published,
-        true,
     ))))
 }
 
 /// Set up the all resolvers based on this manifest.
 pub fn resolver(manifest: &mut Manifest) -> Result<Box<Resolver>> {
-    let mut resolvers: Vec<Box<Resolver>> = Vec::new();
+    resolver_with_extra(manifest, None)
+}
 
+/// Resolver with an extra resolver prepended to it.
+pub fn resolver_with_extra(
+    manifest: &mut Manifest,
+    extra: Option<Box<Resolver>>,
+) -> Result<Box<Resolver>> {
+    let mut resolvers = Vec::<Box<Resolver>>::new();
+
+    resolvers.extend(extra);
+    resolvers.extend(path_resolver(manifest)?);
     resolvers.push(Box::new(repository(manifest)?));
 
-    if let Some(mut resolver) = path_resolver(manifest)? {
-        // if there are no packages, load from path resolver.
-        if manifest.packages.is_none() {
-            for ResolvedByPrefix { package, source } in resolver.resolve_packages()? {
-                manifest.sources.push(manifest::Source { package, source });
-            }
-        }
+    let mut resolvers = Resolvers::new(resolvers);
 
-        resolvers.push(resolver);
+    // if there are no packages, load from path resolver.
+    if manifest.packages.is_none() {
+        // only build unique packages, some resolvers will resolve the same version.
+        let mut seen = HashSet::new();
+
+        for ResolvedByPrefix { package, source } in resolvers.resolve_packages()? {
+            if !seen.insert(package.clone()) {
+                continue;
+            }
+
+            trace!("resolved package `{}` to build", package);
+            manifest.sources.push(manifest::Source { package, source });
+        }
     }
 
-    Ok(Box::new(Resolvers::new(resolvers)))
+    Ok(Box::new(resolvers))
 }
 
 /// Convert the manifest language to an actual language implementation.

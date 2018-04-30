@@ -66,23 +66,21 @@ impl Repository {
 }
 
 impl Resolver for Repository {
-    fn resolve(&mut self, package: &RpRequiredPackage) -> core::errors::Result<Vec<Resolved>> {
-        let mut out = Vec::new();
-
+    fn resolve(&mut self, package: &RpRequiredPackage) -> core::errors::Result<Option<Resolved>> {
         let deployments = self.index.resolve(&package.package, &package.range)?;
 
-        for deployment in deployments {
+        if let Some(deployment) = deployments.into_iter().next_back() {
             if let Some(source) = self.get_object(&deployment)? {
-                out.push(Resolved {
+                return Ok(Some(Resolved {
                     version: Some(deployment.version),
                     source,
-                });
+                }));
             } else {
                 return Err(format!("missing object: {}", deployment.object).into());
             }
         }
 
-        Ok(out)
+        Ok(None)
     }
 
     fn resolve_by_prefix(

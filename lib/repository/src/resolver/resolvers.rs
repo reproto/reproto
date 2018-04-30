@@ -16,14 +16,14 @@ impl Resolvers {
 }
 
 impl Resolver for Resolvers {
-    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
-        let mut out = Vec::new();
-
+    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Option<Resolved>> {
         for resolver in &mut self.resolvers.iter_mut() {
-            out.extend(resolver.resolve(package)?);
+            if let Some(resolved) = resolver.resolve(package)? {
+                return Ok(Some(resolved));
+            }
         }
 
-        Ok(out)
+        Ok(None)
     }
 
     fn resolve_by_prefix(&mut self, package: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {

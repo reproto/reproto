@@ -57,24 +57,8 @@ impl LoadedFile {
             references: HashMap::new(),
             type_ranges: HashMap::new(),
             symbol: HashMap::new(),
-            diag: Diagnostics::new(source.clone()),
+            diag: Diagnostics::new(source),
         }
-    }
-
-    /// Reset all state in the loaded file.
-    pub fn clear(&mut self) {
-        self.jump_triggers.clear();
-        self.completion_triggers.clear();
-        self.rename_triggers.clear();
-        self.reference_triggers.clear();
-        self.prefix_ranges.clear();
-        self.implicit_prefixes.clear();
-        self.prefixes.clear();
-        self.symbols.clear();
-        self.symbol.clear();
-        self.references.clear();
-        self.type_ranges.clear();
-        self.diag.clear();
     }
 
     /// Compute a range from a span.

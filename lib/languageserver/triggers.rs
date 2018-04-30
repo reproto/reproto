@@ -17,11 +17,6 @@ impl<T> Triggers<T> {
         }
     }
 
-    /// Clear the given set of triggers.
-    pub fn clear(&mut self) {
-        self.triggers.clear();
-    }
-
     /// Insert the given trigger.
     pub fn insert(&mut self, range: Range, value: T) {
         self.triggers.insert(range.start, (range, value));
