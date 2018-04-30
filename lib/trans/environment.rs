@@ -1,7 +1,7 @@
 use ast;
 use core::errors::{Error, Result};
 use core::{translator, Context, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, Loc,
-           PackageTranslator, Range, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
+           PackageTranslator, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
            RpRequiredPackage, RpVersionedPackage, Source, Translate, Translator, Version};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
@@ -9,7 +9,7 @@ use naming::Naming;
 use parser;
 use scope::Scope;
 use std::cell::RefCell;
-use std::collections::{btree_map, BTreeMap, HashMap};
+use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 use std::result;
@@ -56,7 +56,9 @@ where
     /// Index resolver to use.
     resolver: &'a mut Resolver,
     /// Store required packages, to avoid unnecessary lookups.
-    visited: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
+    lookup_required: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
+    /// Loaded versioned packages.
+    lookup_versioned: HashSet<RpVersionedPackage>,
     /// Files and associated declarations.
     files: BTreeMap<RpVersionedPackage, File<F>>,
     /// Registered types.
@@ -90,7 +92,8 @@ where
             ctx: ctx,
             package_prefix,
             resolver,
-            visited: HashMap::new(),
+            lookup_required: HashMap::new(),
+            lookup_versioned: HashSet::new(),
             files: BTreeMap::new(),
             types: Rc::new(LinkedHashMap::new()),
             keywords: Rc::new(HashMap::new()),
@@ -346,19 +349,19 @@ impl<'a> Environment<'a, CoreFlavor> {
         source: Source,
         package: Option<RpVersionedPackage>,
     ) -> Result<RpVersionedPackage> {
-        let package = package.unwrap_or_else(|| RpVersionedPackage::new(RpPackage::empty(), None));
-        let required = RpRequiredPackage::new(package.package.clone(), Range::any());
+        let package = package.unwrap_or_else(RpVersionedPackage::empty);
 
-        if !self.visited.contains_key(&required) {
-            let mut diag = Diagnostics::new(source.clone());
-
-            try_with_diag!(self.ctx, diag, {
-                self.load_source_diag(&mut diag, &package)
-                    .and_then(|file| self.process_file(&mut diag, package.clone(), file))
-            });
-
-            self.visited.insert(required, Some(package.clone()));
+        if !self.lookup_versioned.insert(package.clone()) {
+            return Err(format!("package `{}` already loaded", package).into());
         }
+
+        let mut diag = Diagnostics::new(source.clone());
+
+        try_with_diag!(self.ctx, diag, {
+            let step = self.load_source_diag(&mut diag, &package);
+            let step = step.and_then(|file| self.process_file(&mut diag, package.clone(), file));
+            step
+        });
 
         Ok(package)
     }
@@ -369,23 +372,19 @@ impl<'a> Environment<'a, CoreFlavor> {
         file: ast::File,
         package: Option<RpVersionedPackage>,
     ) -> Result<RpVersionedPackage> {
-        let package = package.unwrap_or_else(|| RpVersionedPackage::new(RpPackage::empty(), None));
-        let required = RpRequiredPackage::new(package.package.clone(), Range::any());
+        let package = package.unwrap_or_else(RpVersionedPackage::empty);
 
-        if !self.visited.contains_key(&required) {
-            let mut diag = Diagnostics::new(Source::empty("generated"));
-
-            try_with_diag!(self.ctx, diag, {
-                let step = self.load_file(&mut diag, file, &package);
-
-                let step =
-                    step.and_then(|file| self.process_file(&mut diag, package.clone(), file));
-
-                step
-            });
-
-            self.visited.insert(required, Some(package.clone()));
+        if !self.lookup_versioned.insert(package.clone()) {
+            return Err(format!("package `{}` already loaded", package).into());
         }
+
+        let mut diag = Diagnostics::new(Source::empty("generated"));
+
+        try_with_diag!(self.ctx, diag, {
+            let step = self.load_file(&mut diag, file, &package);
+            let step = step.and_then(|file| self.process_file(&mut diag, package.clone(), file));
+            step
+        });
 
         Ok(package)
     }
@@ -539,7 +538,7 @@ impl<'e> Import for Environment<'e, CoreFlavor> {
     fn import(&mut self, required: &RpRequiredPackage) -> Result<Option<RpVersionedPackage>> {
         debug!("import: {}", required);
 
-        if let Some(existing) = self.visited.get(required) {
+        if let Some(existing) = self.lookup_required.get(required) {
             debug!("already loaded: {:?} ({})", existing, required);
             return Ok(existing.clone());
         }
@@ -549,7 +548,7 @@ impl<'e> Import for Environment<'e, CoreFlavor> {
 
         let Resolved { version, source } = match files.into_iter().last() {
             None => {
-                self.visited.insert(required.clone(), None);
+                self.lookup_required.insert(required.clone(), None);
                 return Ok(None);
             }
             Some(resolved) => resolved,
@@ -565,13 +564,12 @@ impl<'e> Import for Environment<'e, CoreFlavor> {
         let mut diag = Diagnostics::new(source.clone());
 
         // NOTE: import to insert before recursing (happens in process_file).
-        self.visited.insert(required.clone(), Some(package.clone()));
+        self.lookup_required
+            .insert(required.clone(), Some(package.clone()));
 
         try_with_diag!(self.ctx, diag, {
             let step = self.load_source_diag(&mut diag, &package);
-
             let step = step.and_then(|file| self.process_file(&mut diag, package.clone(), file));
-
             step
         });
 

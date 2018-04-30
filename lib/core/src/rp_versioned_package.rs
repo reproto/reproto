@@ -28,10 +28,18 @@ impl AsPackage for RpVersionedPackage {
 }
 
 impl RpVersionedPackage {
-    pub fn new(package: RpPackage, version: Option<Version>) -> RpVersionedPackage {
-        RpVersionedPackage {
+    pub fn new(package: RpPackage, version: Option<Version>) -> Self {
+        Self {
             package: package,
             version: version,
+        }
+    }
+
+    /// Create an empty versioned package.
+    pub fn empty() -> Self {
+        Self {
+            package: RpPackage::empty(),
+            version: None,
         }
     }
 
@@ -51,8 +59,12 @@ impl RpVersionedPackage {
         RpPackage::new(parts)
     }
 
-    pub fn without_version(self) -> RpVersionedPackage {
-        RpVersionedPackage::new(self.package, None)
+    /// Convert to a package without a version.
+    pub fn without_version(self) -> Self {
+        Self {
+            package: self.package,
+            version: None,
+        }
     }
 
     /// Replace all keyword components in this package.
