@@ -127,7 +127,7 @@ pub fn find_range<'a, R: AsMut<Read + 'a>, S: Into<Span>>(
 #[derive(Debug, Clone, Copy)]
 pub enum Encoding {
     /// Emit the raw byte offset for the column.
-    Bytes,
+    Raw,
     /// Emit the UTF-8 offset for the column.
     Utf8,
     /// Emit the UTF-16 offset for the column.
@@ -140,11 +140,26 @@ impl Encoding {
         use self::Encoding::*;
 
         match *self {
-            Bytes => Ok(col),
+            Raw => Ok(col),
             Utf8 => Ok(::std::str::from_utf8(&buffer[..col])?.chars().count()),
             Utf16 => Ok(::std::str::from_utf8(&buffer[..col])?
                 .encode_utf16()
                 .count()),
+        }
+    }
+
+    /// Calculate the column in either number of characters (`Raw`), number of bytes (`Utf8`), or
+    /// number of code units (`Utf16`) from an iterator.
+    pub fn column_iter<I>(&self, iter: I, col: usize) -> usize
+    where
+        I: IntoIterator<Item = char>,
+    {
+        use self::Encoding::*;
+
+        match *self {
+            Raw => iter.into_iter().take(col).count(),
+            Utf8 => iter.into_iter().take(col).map(|c| c.len_utf8()).sum(),
+            Utf16 => iter.into_iter().take(col).map(|c| c.len_utf16()).sum(),
         }
     }
 }

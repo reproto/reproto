@@ -1046,13 +1046,11 @@ where
                         let start = match content_change.range {
                             // replace range
                             Some(ref range) => {
-                                let start = &range.start;
-                                let end = &range.end;
+                                // need to fetch the row, re-encode it as UTF-16 to translate it to
+                                // UTF-8 ranges.
 
-                                let start = rope.line_to_char(start.line as usize)
-                                    + start.character as usize;
-                                let end =
-                                    rope.line_to_char(end.line as usize) + end.character as usize;
+                                let start = translate_rope_position(&rope, range.start)?;
+                                let end = translate_rope_position(&rope, range.end)?;
 
                                 rope.remove(start..end);
                                 start
@@ -1076,7 +1074,33 @@ where
         }
 
         self.send_workspace_diagnostics()?;
-        Ok(())
+        return Ok(());
+
+        /// translate the incoming position.
+        fn translate_rope_position(rope: &Rope, position: ty::Position) -> Result<usize> {
+            let line = rope.line(position.line as usize);
+
+            // encoding target.
+            let character = position.character as usize;
+
+            let mut utf16_offset = 0usize;
+            let mut char_offset = 0usize;
+
+            for c in line.chars() {
+                if utf16_offset == character {
+                    break;
+                }
+
+                if utf16_offset > character {
+                    return Err("character is not on an offset boundary".into());
+                }
+
+                utf16_offset += c.len_utf16();
+                char_offset += 1;
+            }
+
+            Ok(rope.line_to_char(position.line as usize) + char_offset)
+        }
     }
 
     /// Handler for `textDocument/didOpen`.
