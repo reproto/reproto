@@ -543,15 +543,13 @@ impl<'e> Import for Environment<'e, CoreFlavor> {
             return Ok(existing.clone());
         }
 
-        // find all matching objects from the resolver.
-        let files = self.resolver.resolve(required)?;
-
-        let Resolved { version, source } = match files.into_iter().last() {
+        // find matching object from the resolver.
+        let Resolved { version, source } = match self.resolver.resolve(required)? {
+            Some(resolved) => resolved,
             None => {
                 self.lookup_required.insert(required.clone(), None);
                 return Ok(None);
             }
-            Some(resolved) => resolved,
         };
 
         let package = RpVersionedPackage::new(required.package.clone(), version);

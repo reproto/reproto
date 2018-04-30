@@ -2,14 +2,15 @@
 
 use ast;
 use core::errors::Result;
-use core::{self, Context, Encoding, Handle, Import, Loc, Resolved, ResolvedByPrefix, Resolver,
-           RpPackage, RpRequiredPackage, RpVersionedPackage, Source};
+use core::{self, Context, Encoding, Handle, Import, Loc, Resolved, Resolver, RpPackage,
+           RpRequiredPackage, RpVersionedPackage, Source};
 use env;
 use loaded_file::LoadedFile;
 use manifest;
 use models::{Completion, Jump, Prefix, Range, Rename, RenameResult, Symbol};
 use parser;
-use std::collections::{hash_map, BTreeSet, HashMap, HashSet, VecDeque};
+use repository::{path_to_package, Packages};
+use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -30,7 +31,7 @@ pub struct Workspace {
     /// Files which have been loaded through project, including their files.
     pub files: HashMap<Url, LoadedFile>,
     /// Files which are currently being edited.
-    pub edited_files: HashMap<Url, LoadedFile>,
+    pub open_files: HashMap<Url, Source>,
     /// Context where to populate compiler errors.
     ctx: Rc<Context>,
 }
@@ -45,7 +46,7 @@ impl Workspace {
             lookup_required: HashMap::new(),
             lookup_versioned: HashSet::new(),
             files: HashMap::new(),
-            edited_files: HashMap::new(),
+            open_files: HashMap::new(),
             ctx,
         }
     }
@@ -54,16 +55,11 @@ impl Workspace {
     pub fn files<'a>(&'a self) -> Files<'a> {
         Files {
             files: self.files.values(),
-            edited_files: self.edited_files.values(),
         }
     }
 
     /// Access the loaded file with the given Url.
     pub fn file(&self, url: &Url) -> Option<&LoadedFile> {
-        if let Some(file) = self.edited_files.get(url) {
-            return Some(file);
-        }
-
         if let Some(file) = self.files.get(url) {
             return Some(file);
         }
@@ -75,6 +71,50 @@ impl Workspace {
     pub fn initialize(&mut self, handle: &Handle) -> Result<()> {
         env::initialize(handle)?;
         Ok(())
+    }
+
+    fn open_files_resolver(&self, manifest: &manifest::Manifest) -> Result<Option<Box<Resolver>>> {
+        // layer edited files to resolver
+        if self.open_files.is_empty() {
+            return Ok(None);
+        }
+
+        let mut packages = BTreeMap::new();
+
+        for p in &manifest.paths {
+            if !p.is_dir() {
+                continue;
+            }
+
+            let p = p.canonicalize()?;
+
+            for (url, source) in &self.open_files {
+                let edited_path = url.to_file_path()
+                    .map_err(|_| format!("URL is not a file: {}", url))?;
+
+                let edited_path = match relative(&p, &edited_path) {
+                    Some(edited_path) => edited_path,
+                    // opened file is not in one of our paths, skip it.
+                    None => continue,
+                };
+
+                let package = match path_to_package(edited_path) {
+                    Ok(package) => package,
+                    Err(e) => {
+                        warn!(
+                            "opened file `{}` does not correspond to a reproto package: {}",
+                            url,
+                            e.display()
+                        );
+                        continue;
+                    }
+                };
+
+                packages.insert(package, source.clone());
+            }
+        }
+
+        Ok(Some(Box::new(Packages::new(packages))))
     }
 
     /// Reload the workspace.
@@ -105,7 +145,9 @@ impl Workspace {
         manifest.path = Some(self.manifest_path.to_owned());
         manifest.from_yaml(manifest_file, env::convert_lang)?;
 
-        let mut resolver = env::resolver(&mut manifest)?;
+        let open_resolver = self.open_files_resolver(&manifest)?;
+
+        let mut resolver = env::resolver_with_extra(&mut manifest, open_resolver)?;
 
         if let Some(packages) = manifest.packages.as_ref() {
             for package in packages {
@@ -125,7 +167,7 @@ impl Workspace {
                 ref source,
             } = *s;
 
-            debug!("loading {} from source {}", package, source);
+            debug!("loading `{}` from source {}", package, source);
 
             if let Err(e) = self.process_package(resolver.as_mut(), &package, source.clone()) {
                 error!("failed to process: {}: {}", package, e.display());
@@ -136,46 +178,19 @@ impl Workspace {
             }
         }
 
-        self.try_compile(manifest)?;
+        self.try_compile(resolver.as_mut(), manifest)?;
         Ok(())
     }
 
     /// Try to compile the current environment.
-    fn try_compile(&mut self, manifest: manifest::Manifest) -> Result<()> {
+    fn try_compile(&mut self, resolver: &mut Resolver, manifest: manifest::Manifest) -> Result<()> {
         let ctx = self.ctx.clone();
         ctx.clear()?;
 
         let lang = manifest.lang_or_nolang();
         let package_prefix = manifest.package_prefix.clone();
 
-        // sources to build, need to do it before using self as a resolver.
-        // TODO: allow us to use this later.
-        let sources = {
-            let mut out = Vec::new();
-
-            for s in &manifest.sources {
-                let manifest::Source {
-                    ref package,
-                    ref source,
-                } = *s;
-
-                let url = match self.source_url(&source)? {
-                    Some(url) => url,
-                    None => continue,
-                };
-
-                let source = match self.edited_files.get(&url) {
-                    Some(loaded) => loaded.diag.source.clone(),
-                    None => source.clone(),
-                };
-
-                out.push((package.clone(), source));
-            }
-
-            out
-        };
-
-        let mut env = lang.into_env(ctx.clone(), package_prefix, self);
+        let mut env = lang.into_env(ctx.clone(), package_prefix, resolver);
 
         if let Some(packages) = manifest.packages.as_ref() {
             for package in packages {
@@ -189,7 +204,12 @@ impl Workspace {
             }
         }
 
-        for (package, source) in sources {
+        for s in &manifest.sources {
+            let manifest::Source {
+                ref package,
+                ref source,
+            } = *s;
+
             if let Err(e) = env.import_source(source.clone(), Some(package.clone())) {
                 debug!(
                     "failed to import: {} from {}: {}",
@@ -266,24 +286,21 @@ impl Workspace {
             return Ok(());
         };
 
-        let url = match self.source_url(&source)? {
+        let url = match source.url() {
             Some(url) => url,
-            None => return Ok(()),
+            None => {
+                warn!("no url for source `{}`", source);
+                return Ok(());
+            }
         };
 
-        match self.edited_files.remove(&url) {
-            Some(mut loaded) => {
-                loaded.clear();
-                self.process_file(resolver, &mut loaded)?;
-                self.edited_files.insert(url.clone(), loaded);
-            }
-            None => {
-                let mut loaded = LoadedFile::new(url.clone(), source, versioned.clone());
-                self.process_file(resolver, &mut loaded)?;
-                self.files.insert(url.clone(), loaded);
-            }
+        let mut loaded = LoadedFile::new(url.clone(), source, versioned.clone());
+
+        if let Err(e) = self.process_file(resolver, &mut loaded) {
+            error!("{}: {}", url, e.display());
         }
 
+        self.files.insert(url.clone(), loaded);
         self.packages.insert(versioned.clone(), url.clone());
         Ok(())
     }
@@ -863,75 +880,48 @@ impl Workspace {
 
         Ok(url)
     }
-
-    /// Compute the source URL.
-    fn source_url(&self, source: &Source) -> Result<Option<Url>> {
-        let path = match source.path().map(|p| p.to_owned()) {
-            Some(path) => path,
-            None => return Ok(None),
-        };
-
-        let path = match path.canonicalize() {
-            Ok(path) => path,
-            Err(_) => return Ok(None),
-        };
-
-        let path = path.canonicalize()
-            .map_err(|e| format!("cannot canonicalize path: {}: {}", path.display(), e))?;
-
-        let url = Url::from_file_path(&path)
-            .map_err(|_| format!("cannot build url from path: {}", path.display()))?;
-
-        Ok(Some(url))
-    }
-}
-
-impl Resolver for Workspace {
-    /// Resolve a single package.
-    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
-        let mut result = Vec::new();
-
-        if let Some(entry) = self.lookup_required.get(package) {
-            if let Some((ref looked_up, _)) = *entry {
-                if let Some(url) = self.packages.get(looked_up) {
-                    if let Some(loaded) = self.file(url) {
-                        result.push(Resolved {
-                            version: looked_up.version.clone(),
-                            source: loaded.diag.source.clone(),
-                        });
-                    }
-                }
-            }
-        }
-
-        Ok(result)
-    }
-
-    /// Not supported for workspace.
-    fn resolve_by_prefix(&mut self, _: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
-        Ok(vec![])
-    }
-
-    /// Resolve available packages.
-    fn resolve_packages(&mut self) -> Result<Vec<ResolvedByPrefix>> {
-        Ok(vec![])
-    }
 }
 
 /// Iterator over all files.
 pub struct Files<'a> {
     files: hash_map::Values<'a, Url, LoadedFile>,
-    edited_files: hash_map::Values<'a, Url, LoadedFile>,
 }
 
 impl<'a> Iterator for Files<'a> {
     type Item = &'a LoadedFile;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(f) = self.files.next() {
-            return Some(f);
-        }
+        self.files.next()
+    }
+}
 
-        self.edited_files.next()
+fn relative<'a>(from: &Path, to: &'a Path) -> Option<&'a Path> {
+    let mut f = from.components();
+    let mut t = to.components();
+
+    while let Some(n) = f.next() {
+        if t.next() != Some(n) {
+            return None;
+        }
+    }
+
+    if f.next().is_some() {
+        return None;
+    }
+
+    Some(t.as_path())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::relative;
+    use std::path::Path;
+
+    #[test]
+    fn test_relative() {
+        let a = Path::new("a/b/c");
+        let b = Path::new("a/b/c/d/e/f");
+
+        assert_eq!(Some(Path::new("d/e/f")), relative(a, b));
     }
 }

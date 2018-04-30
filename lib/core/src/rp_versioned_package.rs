@@ -43,6 +43,11 @@ impl RpVersionedPackage {
         }
     }
 
+    /// Check if this package starts with another package.
+    pub fn starts_with(&self, other: &RpPackage) -> bool {
+        self.package.starts_with(other)
+    }
+
     /// Convert into a package by piping the version through the provided function.
     pub fn to_package<V>(&self, version_fn: V) -> RpPackage
     where

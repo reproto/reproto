@@ -42,7 +42,7 @@ impl fmt::Display for Resolved {
 /// Trait that translates a required package into a set of versions and objects.
 pub trait Resolver {
     /// Resolve the specified request.
-    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>>;
+    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Option<Resolved>>;
 
     /// Resolve by prefix.
     fn resolve_by_prefix(&mut self, package: &RpPackage) -> Result<Vec<ResolvedByPrefix>>;
@@ -56,8 +56,8 @@ pub trait Resolver {
 pub struct EmptyResolver;
 
 impl Resolver for EmptyResolver {
-    fn resolve(&mut self, _package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
-        Ok(vec![])
+    fn resolve(&mut self, _package: &RpRequiredPackage) -> Result<Option<Resolved>> {
+        Ok(None)
     }
 
     fn resolve_by_prefix(&mut self, _package: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {

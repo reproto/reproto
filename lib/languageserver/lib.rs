@@ -8,6 +8,7 @@ extern crate reproto_env as env;
 extern crate reproto_lexer as lexer;
 extern crate reproto_manifest as manifest;
 extern crate reproto_parser as parser;
+extern crate reproto_repository as repository;
 extern crate serde;
 extern crate serde_json as json;
 #[macro_use]
@@ -509,7 +510,8 @@ where
         // in case we need it to report errors.
         let id = request.id.clone();
 
-        debug!("received: {:#?}", request);
+        trace!("received: {:#?}", request);
+        debug!("received: {}", request.method);
 
         if let Err(e) = self.try_handle_request(request) {
             self.channel.send_error(
@@ -1033,9 +1035,9 @@ where
                 return Ok(());
             }
 
-            match workspace.edited_files.get_mut(&url) {
-                Some(file) => {
-                    let rope = match file.diag.source.as_mut_rope() {
+            match workspace.open_files.get_mut(&url) {
+                Some(source) => {
+                    let rope = match source.as_mut_rope() {
                         Some(rope) => rope,
                         None => return Ok(()),
                     };
@@ -1090,7 +1092,7 @@ where
 
             // NOTE: access workspace.files is intentional to only access files which are not
             // already open.
-            let loaded = match workspace.files.get(&url) {
+            let open = match workspace.files.get(&url) {
                 Some(file) => {
                     let rope = Rope::from_str(&text);
 
@@ -1098,11 +1100,7 @@ where
                     let source =
                         Source::rope(url.clone(), rope).with_read_only(file.diag.source.read_only);
 
-                    Some(LoadedFile::new(
-                        url.clone(),
-                        source.clone(),
-                        file.package.clone(),
-                    ))
+                    Some(source.clone())
                 }
                 None => {
                     // warn if the currently opened file is not part of workspace.
@@ -1165,9 +1163,9 @@ where
                 }
             };
 
-            // file successfully loaded
-            if let Some(loaded) = loaded {
-                workspace.edited_files.insert(url.clone(), loaded);
+            // file successfully opened
+            if let Some(source) = open {
+                workspace.open_files.insert(url.clone(), source);
                 workspace.reload()?;
             }
         }
@@ -1187,7 +1185,7 @@ where
                 .try_borrow_mut()
                 .map_err(|_| "failed to access mutable workspace")?;
 
-            workspace.edited_files.remove(&url);
+            workspace.open_files.remove(&url);
             workspace.reload()?;
         }
 

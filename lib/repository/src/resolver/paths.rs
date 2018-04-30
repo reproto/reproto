@@ -9,47 +9,27 @@
 //!
 //! The second form is only used when a version requirement is present.
 
-use core::errors::Result;
+use core::errors::{Error, Result};
 use core::{Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
            RpVersionedPackage, Source, Version};
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::ffi::OsStr;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 const EXT: &str = "reproto";
+const DOT_EXT: &str = ".reproto";
 
 pub struct Paths {
     /// Paths to perform lookups in.
     paths: Vec<PathBuf>,
     /// Entries which are locally published.
     published: HashMap<RpPackage, Version>,
-    /// Do we support automatic packages?
-    automatic_packages: bool,
 }
 
 impl Paths {
-    pub fn new(
-        paths: Vec<PathBuf>,
-        published: HashMap<RpPackage, Version>,
-        automatic_packages: bool,
-    ) -> Paths {
-        Paths {
-            paths,
-            published,
-            automatic_packages,
-        }
-    }
-
-    fn parse_stem<'a>(&self, stem: &'a str) -> Result<(&'a str, Option<Version>)> {
-        let mut it = stem.splitn(2, '-');
-
-        if let (Some(name_base), Some(name_version)) = (it.next(), it.next()) {
-            let version = Version::parse(name_version).map_err(|e| format!("bad version: {}", e))?;
-
-            return Ok((name_base, Some(version)));
-        }
-
-        Ok((stem, None))
+    pub fn new(paths: Vec<PathBuf>, published: HashMap<RpPackage, Version>) -> Paths {
+        Paths { paths, published }
     }
 
     /// Finds the published version from most to least specific package.
@@ -102,7 +82,7 @@ impl Paths {
                 None => continue,
             };
 
-            let (name_base, version) = self.parse_stem(stem)
+            let (name_base, version) = parse_stem(stem)
                 .map_err(|e| format!("bad file: {}: {}", path.display(), e.display()))?;
 
             if name_base != base {
@@ -131,7 +111,7 @@ impl Paths {
 }
 
 impl Resolver for Paths {
-    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
+    fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Option<Resolved>> {
         let mut files = Vec::new();
 
         for path in &self.paths {
@@ -156,75 +136,54 @@ impl Resolver for Paths {
             }
         }
 
-        Ok(files)
+        if files.len() > 1 {
+            let names = files
+                .iter()
+                .map(|f| {
+                    f.version
+                        .as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| String::from("*"))
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            return Err(format!("more than one file matched `{}`: {}", package, names).into());
+        }
+
+        Ok(files.into_iter().next())
     }
 
     fn resolve_by_prefix(&mut self, package: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {
         let mut out = Vec::new();
+        // contains a tuple: (package, path, search)
+        // search is an optional value which designates that we are searching for a specific
+        // package.
         let mut queue = VecDeque::new();
 
         for path in &self.paths {
-            if !path.is_dir() {
-                continue;
-            }
+            // last component needs special treatment.
+            // if present, crack open parent directory and list it - it might contain both
+            // leaf packages and additional sub-packages.
+            let (package, last) = match package.clone().split_last() {
+                (package, Some(last)) => (package, last),
+                (package, None) => {
+                    let path = package
+                        .parts()
+                        .fold(path.to_owned(), |p, part| p.join(part));
 
-            let path = package
-                .parts()
-                .fold(path.to_owned(), |p, part| p.join(part));
-
-            let last = match package.last() {
-                Some(last) => last,
-                None => {
-                    queue.push_back((package.clone(), path.to_owned()));
+                    queue.push_back((package, path.to_owned(), None));
                     continue;
                 }
             };
 
-            let path = path.parent()
-                .ok_or_else(|| format!("path does not have a parent: {}", path.display()))?;
-
-            // definitely not here.
-            if !path.is_dir() {
-                continue;
-            }
-
-            let entries = fs::read_dir(path)
-                .map_err(|e| format!("failed to read directory: {}: {}", path.display(), e))?;
-
-            for entry in entries {
-                let entry = entry?;
-                let path = entry.path();
-
-                if !path.is_file() {
-                    continue;
-                }
-
-                if path.extension().map(|ext| ext != EXT).unwrap_or(true) {
-                    debug!("skipping wrong file extension: {}", path.display());
-                    continue;
-                }
-
-                let stem = match path.file_stem() {
-                    Some(stem) => stem.to_str()
-                        .ok_or_else(|| format!("non-utf8 file name: {}", path.display()))?,
-                    None => continue,
-                };
-
-                let (name, version) = self.parse_stem(&stem)
-                    .map_err(|e| format!("bad file: {}: {}", path.display(), e.display()))?;
-
-                if name != last {
-                    continue;
-                }
-
-                let package = RpVersionedPackage::new(package.clone(), version);
-                let source = Source::from_path(&path);
-
-                out.push(ResolvedByPrefix { package, source });
-            }
+            let path = package
+                .parts()
+                .fold(path.to_owned(), |p, part| p.join(part));
+            queue.push_back((package, path.to_owned(), Some(last)));
         }
 
-        while let Some((package, path)) = queue.pop_front() {
+        while let Some((package, path, search)) = queue.pop_front() {
             if !path.is_dir() {
                 continue;
             }
@@ -249,8 +208,15 @@ impl Resolver for Paths {
                         None => continue,
                     };
 
-                    let (name, version) = self.parse_stem(stem)
+                    let (name, version) = parse_stem(stem)
                         .map_err(|e| format!("bad file: {}: {}", path.display(), e.display()))?;
+
+                    if let Some(search) = search.as_ref() {
+                        if name != *search {
+                            continue;
+                        }
+                    }
+
                     let package = RpVersionedPackage::new(package.clone().join_part(name), version);
                     let source = Source::from_path(&path);
 
@@ -258,14 +224,21 @@ impl Resolver for Paths {
                     continue;
                 }
 
-                let base = entry
-                    .file_name()
-                    .into_string()
-                    .map_err(|_| format!("non-utf8 file name: {}", path.display()))?;
-
                 if path.is_dir() {
+                    let base = entry
+                        .file_name()
+                        .into_string()
+                        .map_err(|_| format!("non-utf8 file name: {}", path.display()))?;
+
+                    if let Some(search) = search.as_ref() {
+                        if base != *search {
+                            continue;
+                        }
+                    }
+
                     let package = package.clone().join_part(base);
-                    queue.push_back((package, path));
+                    queue.push_back((package, path, None));
+                    continue;
                 }
             }
         }
@@ -274,10 +247,161 @@ impl Resolver for Paths {
     }
 
     fn resolve_packages(&mut self) -> Result<Vec<ResolvedByPrefix>> {
-        if !self.automatic_packages {
-            return Ok(vec![]);
-        }
-
         self.resolve_by_prefix(&RpPackage::empty())
+    }
+}
+
+/// Parse a relative path into a package.
+pub fn path_to_package<P: AsRef<Path>>(path: P) -> Result<RpVersionedPackage> {
+    let path = path.as_ref();
+
+    let mut c = path.components();
+    let mut last = None;
+
+    while let Some(c) = c.next_back() {
+        last = Some(match c {
+            Component::Normal(last) => last,
+            Component::CurDir => continue,
+            part => return Err(path_part_error(path, part)),
+        });
+
+        break;
+    }
+
+    let (base, version) = match last {
+        Some(last) => parse_file_name(path, last)?,
+        None => return Ok(RpVersionedPackage::empty()),
+    };
+
+    let mut parts = Vec::new();
+
+    while let Some(part) = c.next() {
+        let part = match part {
+            Component::Normal(part) => part,
+            Component::CurDir => continue,
+            part => return Err(path_part_error(path, part)),
+        };
+
+        let part = part.to_str()
+            .ok_or_else(|| format!("non-utf8 file name: {}", path.display()))?;
+
+        parts.push(part.to_string());
+    }
+
+    parts.push(base.to_string());
+
+    let package = RpPackage::new(parts);
+    Ok(RpVersionedPackage::new(package, version))
+}
+
+/// Construct a helpful component error.
+fn path_part_error<'a>(path: &'a Path, part: Component<'a>) -> Error {
+    let part = part.as_os_str();
+
+    let part = match part.to_str() {
+        Some(part) => part,
+        None => {
+            return Error::from(format!(
+                "non-utf8 component `{}` of path `{}`",
+                part.to_string_lossy(),
+                path.display()
+            ));
+        }
+    };
+
+    Error::from(format!(
+        "not a valid package component `{}` of path `{}`",
+        part,
+        path.display()
+    ))
+}
+
+fn parse_file_name<'a>(path: &Path, name: &'a OsStr) -> Result<(&'a str, Option<Version>)> {
+    let base = name.to_str().ok_or_else(|| {
+        format!(
+            "non-utf8 component `{}` of path `{}`",
+            name.to_string_lossy(),
+            path.display()
+        )
+    })?;
+
+    let stem = match base.rfind('.') {
+        Some(dot) => {
+            let (stem, ext) = base.split_at(dot);
+
+            if ext != DOT_EXT {
+                None
+            } else {
+                Some(stem)
+            }
+        }
+        None => None,
+    };
+
+    let stem = match stem {
+        Some(stem) => stem,
+        None => {
+            return Err(format!(
+                "`{}` is not a package, `{}` does not have .reproto extension",
+                path.display(),
+                base
+            ).into())
+        }
+    };
+
+    let (name_base, version) =
+        parse_stem(stem).map_err(|e| format!("bad file: {}: {}", path.display(), e.display()))?;
+
+    Ok((name_base, version))
+}
+
+/// Parse a stem into a base name and a version.
+pub fn parse_stem<'a>(stem: &'a str) -> Result<(&'a str, Option<Version>)> {
+    let mut it = stem.splitn(2, '-');
+
+    if let (Some(name_base), Some(name_version)) = (it.next(), it.next()) {
+        let version = Version::parse(name_version).map_err(|e| format!("bad version: {}", e))?;
+
+        return Ok((name_base, Some(version)));
+    }
+
+    Ok((stem, None))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::path_to_package;
+    use core::{RpPackage, RpVersionedPackage, Version};
+
+    fn version(version: &str) -> Version {
+        Version::parse(version).expect("bad version")
+    }
+
+    #[test]
+    fn test_path_to_package() {
+        let package = RpVersionedPackage::new(
+            RpPackage::new(vec!["foo".to_string(), "bar".to_string()]),
+            Some(version("2.0.0")),
+        );
+
+        assert_eq!(
+            package,
+            path_to_package("foo/bar-2.0.0.reproto").expect("bad path")
+        );
+
+        let package = RpVersionedPackage::new(
+            RpPackage::new(vec!["bar".to_string()]),
+            Some(version("2.0.0")),
+        );
+
+        assert_eq!(
+            package,
+            path_to_package("bar-2.0.0.reproto").expect("bad path")
+        );
+
+        let package = RpVersionedPackage::empty();
+        assert_eq!(package, path_to_package(".").expect("bad path"));
+
+        assert!(path_to_package("./foo.txt").is_err());
     }
 }

@@ -1,5 +1,7 @@
+mod packages;
 mod paths;
 mod resolvers;
 
-pub use self::paths::Paths;
+pub use self::packages::Packages;
+pub use self::paths::{path_to_package, Paths};
 pub use self::resolvers::Resolvers;
