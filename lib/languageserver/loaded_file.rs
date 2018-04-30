@@ -39,6 +39,8 @@ pub struct LoadedFile {
     pub type_ranges: HashMap<(RpVersionedPackage, Vec<String>), Vec<Range>>,
     /// Diagnostics for this file.
     pub diag: Diagnostics,
+    /// If the file is dirty, and needs to be reloaded.
+    pub dirty: bool,
 }
 
 impl LoadedFile {
@@ -58,6 +60,7 @@ impl LoadedFile {
             type_ranges: HashMap::new(),
             symbol: HashMap::new(),
             diag: Diagnostics::new(source),
+            dirty: false,
         }
     }
 

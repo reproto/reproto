@@ -39,8 +39,8 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 }
 
 pub fn entry(ctx: Rc<Context>, m: &ArgMatches) -> Result<()> {
-    let mut manifest = load_manifest(m)?;
-    let mut resolver = env::resolver(&mut manifest)?;
+    let manifest = load_manifest(m)?;
+    let mut resolver = env::resolver(&manifest)?;
     let mut env = simple_config(&ctx, &manifest, resolver.as_mut())?;
 
     let mut manifest_resolver =

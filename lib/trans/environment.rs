@@ -54,7 +54,7 @@ where
     /// Global package prefix.
     package_prefix: Option<RpPackage>,
     /// Index resolver to use.
-    resolver: &'a mut Resolver,
+    pub resolver: &'a mut Resolver,
     /// Store required packages, to avoid unnecessary lookups.
     lookup_required: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
     /// Loaded versioned packages.

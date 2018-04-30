@@ -27,12 +27,12 @@ mod initialize;
 pub use self::config_env::ConfigEnv;
 pub use self::initialize::initialize;
 use core::errors::Result;
-use core::{RelativePath, ResolvedByPrefix, Resolver};
+use core::{RelativePath, Resolver};
 use manifest::{Lang, Language, Manifest};
 use repository::{index_from_path, index_from_url, objects_from_path, objects_from_url, Index,
                  IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository,
                  Resolvers};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
 
@@ -187,13 +187,13 @@ pub fn path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>> {
 }
 
 /// Set up the all resolvers based on this manifest.
-pub fn resolver(manifest: &mut Manifest) -> Result<Box<Resolver>> {
+pub fn resolver(manifest: &manifest::Manifest) -> Result<Box<Resolver>> {
     resolver_with_extra(manifest, None)
 }
 
 /// Resolver with an extra resolver prepended to it.
 pub fn resolver_with_extra(
-    manifest: &mut Manifest,
+    manifest: &manifest::Manifest,
     extra: Option<Box<Resolver>>,
 ) -> Result<Box<Resolver>> {
     let mut resolvers = Vec::<Box<Resolver>>::new();
@@ -202,24 +202,7 @@ pub fn resolver_with_extra(
     resolvers.extend(path_resolver(manifest)?);
     resolvers.push(Box::new(repository(manifest)?));
 
-    let mut resolvers = Resolvers::new(resolvers);
-
-    // if there are no packages, load from path resolver.
-    if manifest.packages.is_none() {
-        // only build unique packages, some resolvers will resolve the same version.
-        let mut seen = HashSet::new();
-
-        for ResolvedByPrefix { package, source } in resolvers.resolve_packages()? {
-            if !seen.insert(package.clone()) {
-                continue;
-            }
-
-            trace!("resolved package `{}` to build", package);
-            manifest.sources.push(manifest::Source { package, source });
-        }
-    }
-
-    Ok(Box::new(resolvers))
+    Ok(Box::new(Resolvers::new(resolvers)))
 }
 
 /// Convert the manifest language to an actual language implementation.

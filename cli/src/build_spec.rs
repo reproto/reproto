@@ -1,6 +1,6 @@
 use clap::ArgMatches;
 use core::errors::{Error, Result, ResultExt};
-use core::{Context, CoreFlavor, Diagnostics, Flavor, Import, Resolved, ResolvedByPrefix, Resolver,
+use core::{Context, CoreFlavor, Diagnostics, Flavor, Resolved, ResolvedByPrefix, Resolver,
            RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source,
            Version};
 use env;
@@ -153,30 +153,8 @@ where
         stdin = true;
     }
 
-    // TODO: use version and package from the provided file.
-    for file in manifest.files.as_ref().iter().flat_map(|f| f.iter()) {
-        let package = file.package
-            .as_ref()
-            .map(|p| RpVersionedPackage::new(p.clone(), file.version.clone()));
-
-        if let Err(e) = env.import_path(&file.path, package) {
-            errors.push(e.into());
-        }
-    }
-
-    for package in manifest.packages.iter().flat_map(|p| p.iter()).cloned() {
-        match env.import(&package) {
-            Err(e) => errors.push(e.into()),
-            Ok(None) => errors.push(format!("no matching package: {}", package).into()),
-            _ => {}
-        }
-    }
-
-    for s in &manifest.sources {
-        let manifest::Source {
-            ref package,
-            ref source,
-        } = *s;
+    for s in manifest.resolve(env.resolver)? {
+        let manifest::Source { package, source } = s;
 
         match env.import_source(source.clone(), Some(package.clone())) {
             Err(e) => errors.push(e.into()),
