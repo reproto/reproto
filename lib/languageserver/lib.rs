@@ -1087,9 +1087,12 @@ where
                 .try_borrow_mut()
                 .map_err(|_| "failed to access mutable workspace")?;
 
+            // NOTE: access workspace.files is intentional to only access files which are not
+            // already open.
             let loaded = match workspace.files.get(&url) {
                 Some(file) => {
                     let rope = Rope::from_str(&text);
+
                     // NOTE: must inherit read-onlyness from the source file.
                     let source =
                         Source::rope(url.clone(), rope).with_read_only(file.diag.source.read_only);
@@ -1403,8 +1406,6 @@ where
                     info!("not supported");
                 }
             };
-        } else {
-            info!("no editing");
         }
 
         self.channel.send(request_id, edit)?;
@@ -1464,7 +1465,7 @@ where
             None => return Ok(()),
         };
 
-        debug!("definition: {}: {:?}", file.url, value);
+        debug!("jump: {}: {:?}", file.url, value);
 
         match *value {
             Jump::Absolute {

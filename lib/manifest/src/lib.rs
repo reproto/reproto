@@ -13,7 +13,7 @@ extern crate serde_derive;
 extern crate toml;
 
 use core::errors::Result;
-use core::{CoreFlavor, Range, RpPackage, RpRequiredPackage, Version};
+use core::{CoreFlavor, Range, RpPackage, RpRequiredPackage, RpVersionedPackage, Version};
 use naming::Naming;
 use relative_path::{RelativePath, RelativePathBuf};
 use std::any::Any;
@@ -200,12 +200,12 @@ where
     fn try_from_value(base: &Path, id: &str, value: toml::Value) -> Result<Self>;
 }
 
-impl TryFromToml for ManifestFile {
+impl TryFromToml for File {
     fn try_from_string(base: &Path, id: &str, value: String) -> Result<Self> {
         let package = RpPackage::parse(id);
         let path = RelativePath::new(value.as_str()).to_path(base);
 
-        Ok(ManifestFile {
+        Ok(File {
             path: path,
             package: Some(package),
             version: None,
@@ -214,16 +214,16 @@ impl TryFromToml for ManifestFile {
 
     fn try_from_value(base: &Path, id: &str, value: toml::Value) -> Result<Self> {
         let package = RpPackage::parse(id);
-        let body: ImManifestFile = value.try_into()?;
+        let body: ImFile = value.try_into()?;
 
-        return Ok(ManifestFile {
+        return Ok(File {
             path: body.path.to_path(base),
             package: Some(package),
             version: body.version,
         });
 
         #[derive(Debug, Clone, Deserialize)]
-        pub struct ImManifestFile {
+        pub struct ImFile {
             pub path: RelativePathBuf,
             pub version: Option<Version>,
         }
@@ -456,15 +456,15 @@ pub struct Publish {
 }
 
 #[derive(Debug, Clone)]
-pub struct ManifestFile {
+pub struct File {
     pub path: PathBuf,
     pub package: Option<RpPackage>,
     pub version: Option<Version>,
 }
 
-impl ManifestFile {
-    pub fn from_path(path: &Path) -> ManifestFile {
-        ManifestFile {
+impl File {
+    pub fn from_path(path: &Path) -> File {
+        File {
             path: path.to_owned(),
             package: None,
             version: None,
@@ -482,6 +482,12 @@ pub struct Repository {
     pub objects: Option<String>,
 }
 
+#[derive(Debug)]
+pub struct Source {
+    pub package: RpVersionedPackage,
+    pub source: core::Source,
+}
+
 /// The realized project manifest.
 ///
 /// * All paths are absolute.
@@ -494,7 +500,11 @@ pub struct Manifest {
     /// Packages to build.
     pub packages: Option<Vec<RpRequiredPackage>>,
     /// Files to build.
-    pub files: Option<Vec<ManifestFile>>,
+    pub files: Option<Vec<File>>,
+    /// Sources to build.
+    ///
+    /// These are added programmatically from internal processes.
+    pub sources: Vec<Source>,
     /// Read files from stdin.
     ///
     /// This is not part of the manifest.
@@ -572,6 +582,10 @@ impl Manifest {
         }
 
         if !self.packages.as_ref().map(Vec::is_empty).unwrap_or(true) {
+            return false;
+        }
+
+        if !self.sources.is_empty() {
             return false;
         }
 
@@ -778,64 +792,64 @@ mod tests {
     #[test]
     pub fn test_packages_string() {
         let manifest = include_manifest!("tests/packages_string.reproto");
-        assert_eq!(1, manifest.packages.len());
+        assert_eq!(Some(1), manifest.packages.map(|p| p.len()));
     }
 
     #[test]
     pub fn test_packages_table() {
         let manifest = include_manifest!("tests/packages_table.reproto");
-        assert_eq!(1, manifest.packages.len());
+        assert_eq!(Some(1), manifest.packages.map(|p| p.len()));
     }
 
     #[test]
     pub fn test_packages_table2() {
         let manifest = include_manifest!("tests/packages_table2.reproto");
-        assert_eq!(1, manifest.packages.len());
+        assert_eq!(Some(1), manifest.packages.map(|p| p.len()));
     }
 
     #[test]
     pub fn test_publish_string() {
         let manifest = include_manifest!("tests/publish_string.reproto");
-        assert_eq!(1, manifest.publish.len());
+        assert_eq!(Some(1), manifest.publish.map(|p| p.len()));
     }
 
     #[test]
     pub fn test_publish_table() {
         let manifest = include_manifest!("tests/publish_table.reproto");
-        assert_eq!(1, manifest.publish.len());
+        assert_eq!(Some(1), manifest.publish.map(|p| p.len()));
     }
 
     #[test]
     pub fn test_publish_table2() {
         let manifest = include_manifest!("tests/publish_table2.reproto");
-        assert_eq!(1, manifest.publish.len());
+        assert_eq!(Some(1), manifest.publish.map(|p| p.len()));
     }
 
     #[test]
     pub fn test_files_string() {
         let manifest = include_manifest!("tests/files_string.reproto");
-        assert_eq!(1, manifest.files.len());
+        assert_eq!(Some(1), manifest.files.map(|p| p.len()));
     }
 
     #[test]
     pub fn test_files_table() {
         let manifest = include_manifest!("tests/files_table.reproto");
-        assert_eq!(1, manifest.files.len());
+        assert_eq!(Some(1), manifest.files.map(|p| p.len()));
     }
 
     #[test]
     pub fn test_files_table2() {
         let manifest = include_manifest!("tests/files_table2.reproto");
-        assert_eq!(1, manifest.files.len());
+        assert_eq!(Some(1), manifest.files.map(|p| p.len()));
     }
 
     #[test]
     pub fn test_empty() {
         let manifest = include_manifest!("tests/empty.reproto");
 
-        assert_eq!(0, manifest.publish.len());
-        assert_eq!(0, manifest.packages.len());
-        assert_eq!(0, manifest.files.len());
+        assert_eq!(None, manifest.publish.map(|p| p.len()));
+        assert_eq!(None, manifest.packages.map(|p| p.len()));
+        assert_eq!(None, manifest.files.map(|f| f.len()));
     }
 
     #[test]

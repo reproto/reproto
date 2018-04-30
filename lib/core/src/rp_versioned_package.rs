@@ -1,6 +1,7 @@
 //! A versioned package declaration
 
 use errors::Result;
+use rp_package::Parts;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
@@ -71,6 +72,11 @@ impl RpVersionedPackage {
             package: self.package.with_naming(naming),
             ..self
         }
+    }
+
+    /// Iterate over the parts of the package.
+    pub fn parts(&self) -> Parts {
+        self.package.parts()
     }
 }
 

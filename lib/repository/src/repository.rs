@@ -1,7 +1,7 @@
 use super::Objects;
 use core::errors::*;
-use core::{self, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, Source,
-           Version};
+use core::{self, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
+           RpVersionedPackage, Source, Version};
 use index::{Deployment, Index};
 use sha256::to_sha256;
 use update::Update;
@@ -95,11 +95,8 @@ impl Resolver for Repository {
 
         for (deployment, package) in deployments {
             if let Some(source) = self.get_object(&deployment)? {
-                out.push(ResolvedByPrefix {
-                    package,
-                    version: Some(deployment.version),
-                    source,
-                });
+                let package = RpVersionedPackage::new(package, Some(deployment.version));
+                out.push(ResolvedByPrefix { package, source });
             } else {
                 return Err(format!("missing object: {}", deployment.object).into());
             }

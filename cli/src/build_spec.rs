@@ -4,7 +4,7 @@ use core::{Context, CoreFlavor, Diagnostics, Flavor, Import, Resolved, ResolvedB
            RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source,
            Version};
 use env;
-use manifest::{self, Lang, Language, Manifest, ManifestFile, Publish};
+use manifest::{self, Lang, Language, Manifest, Publish};
 use repository::Repository;
 use semck;
 use std::fmt;
@@ -55,10 +55,8 @@ pub fn load_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
                     "-" => manifest.stdin = true,
                     // read from file
                     file => {
-                        manifest
-                            .files
-                            .get_or_insert_with(Vec::new)
-                            .push(ManifestFile::from_path(Path::new(file)));
+                        let file = manifest::File::from_path(Path::new(file));
+                        manifest.files.get_or_insert_with(Vec::new).push(file);
                     }
                 }
             }
@@ -174,6 +172,18 @@ where
         }
     }
 
+    for s in &manifest.sources {
+        let manifest::Source {
+            ref package,
+            ref source,
+        } = *s;
+
+        match env.import_source(source.clone(), Some(package.clone())) {
+            Err(e) => errors.push(e.into()),
+            _ => {}
+        }
+    }
+
     if stdin {
         debug!("Reading file to build from stdin");
 
@@ -216,14 +226,9 @@ where
             return Err(format!("no matching packages found for: {}", publish.package).into());
         }
 
-        for ResolvedByPrefix {
-            package,
-            source,
-            version,
-        } in resolved
-        {
+        for ResolvedByPrefix { package, source } in resolved {
             // only publish un-versioned.
-            if version.is_some() {
+            if package.version.is_some() {
                 warn!(
                     "not publishing versioned package `{}` from {}",
                     package, source
@@ -232,7 +237,7 @@ where
             }
 
             let version = version_override.unwrap_or(&publish.version).clone();
-            results.push(Match(version, source, package));
+            results.push(Match(version, source, package.package));
         }
     }
 

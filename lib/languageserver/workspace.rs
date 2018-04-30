@@ -3,14 +3,15 @@
 use ast;
 use core::errors::Result;
 use core::{self, Context, Encoding, Handle, Import, Loc, Position, Resolved, ResolvedByPrefix,
-           Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage};
+           Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Source};
 use env;
 use loaded_file::LoadedFile;
 use manifest;
 use models::{Completion, Jump, Prefix, Range, Rename, RenameResult, Symbol};
 use parser;
 use std::collections::Bound;
-use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::fmt;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -25,10 +26,11 @@ pub struct Workspace {
     pub manifest_path: PathBuf,
     /// Packages which have been loaded through project.
     pub packages: HashMap<RpVersionedPackage, Url>,
+    /// Versioned packages that have been looked up.
+    lookup_required: HashMap<RpRequiredPackage, Option<(RpVersionedPackage, bool)>>,
+    lookup_versioned: HashSet<RpVersionedPackage>,
     /// Files which have been loaded through project, including their files.
     pub files: HashMap<Url, LoadedFile>,
-    /// Versioned packages that have been looked up.
-    lookup: HashMap<RpRequiredPackage, (RpVersionedPackage, Url, bool)>,
     /// Files which are currently being edited.
     pub edited_files: HashMap<Url, LoadedFile>,
     /// Context where to populate compiler errors.
@@ -42,8 +44,9 @@ impl Workspace {
             root_path: root_path.as_ref().to_owned(),
             manifest_path: root_path.as_ref().join(env::MANIFEST_NAME),
             packages: HashMap::new(),
+            lookup_required: HashMap::new(),
+            lookup_versioned: HashSet::new(),
             files: HashMap::new(),
-            lookup: HashMap::new(),
             edited_files: HashMap::new(),
             ctx,
         }
@@ -79,8 +82,9 @@ impl Workspace {
     /// Reload the workspace.
     pub fn reload(&mut self) -> Result<()> {
         self.packages.clear();
+        self.lookup_required.clear();
+        self.lookup_versioned.clear();
         self.files.clear();
-        self.lookup.clear();
 
         let mut manifest = manifest::Manifest::default();
 
@@ -107,12 +111,29 @@ impl Workspace {
 
         if let Some(packages) = manifest.packages.as_ref() {
             for package in packages {
-                if let Err(e) = self.process(resolver.as_mut(), package) {
+                if let Err(e) = self.process_required(resolver.as_mut(), package) {
                     error!("failed to process: {}: {}", package, e.display());
 
                     if let Some(backtrace) = e.backtrace() {
                         error!("{:?}", backtrace);
                     }
+                }
+            }
+        }
+
+        for s in &manifest.sources {
+            let manifest::Source {
+                ref package,
+                ref source,
+            } = *s;
+
+            debug!("loading {} from source {}", package, source);
+
+            if let Err(e) = self.process_package(resolver.as_mut(), &package, source.clone()) {
+                error!("failed to process: {}: {}", package, e.display());
+
+                if let Some(backtrace) = e.backtrace() {
+                    error!("{:?}", backtrace);
                 }
             }
         }
@@ -128,6 +149,34 @@ impl Workspace {
 
         let lang = manifest.lang_or_nolang();
         let package_prefix = manifest.package_prefix.clone();
+
+        // sources to build, need to do it before using self as a resolver.
+        // TODO: allow us to use this later.
+        let sources = {
+            let mut out = Vec::new();
+
+            for s in &manifest.sources {
+                let manifest::Source {
+                    ref package,
+                    ref source,
+                } = *s;
+
+                let url = match self.source_url(&source)? {
+                    Some(url) => url,
+                    None => continue,
+                };
+
+                let source = match self.edited_files.get(&url) {
+                    Some(loaded) => loaded.diag.source.clone(),
+                    None => source.clone(),
+                };
+
+                out.push((package.clone(), source));
+            }
+
+            out
+        };
+
         let mut env = lang.into_env(ctx.clone(), package_prefix, self);
 
         if let Some(packages) = manifest.packages.as_ref() {
@@ -138,6 +187,21 @@ impl Workspace {
                     if let Some(backtrace) = e.backtrace() {
                         debug!("{:?}", backtrace);
                     }
+                }
+            }
+        }
+
+        for (package, source) in sources {
+            if let Err(e) = env.import_source(source.clone(), Some(package.clone())) {
+                debug!(
+                    "failed to import: {} from {}: {}",
+                    package,
+                    source,
+                    e.display()
+                );
+
+                if let Some(backtrace) = e.backtrace() {
+                    debug!("{:?}", backtrace);
                 }
             }
         }
@@ -154,20 +218,17 @@ impl Workspace {
         return Ok(());
     }
 
-    /// Process the given required package request.
+    /// Process a required package.
     ///
-    /// If package has been found, returns a `(package, bool)` tuple.
-    /// The `package` is the exact package that was imported, and the `bool` indicates if it is
-    /// read-only or not.
-    fn process(
+    /// Will be resolved if needed, and cached in `lookup_required`.
+    fn process_required(
         &mut self,
         resolver: &mut Resolver,
         package: &RpRequiredPackage,
-    ) -> Result<Option<(RpVersionedPackage, Url, bool)>> {
-        // need method to report errors in this stage.
-        let (versioned, url, source) = {
-            let entry = match self.lookup.entry(package.clone()) {
-                hash_map::Entry::Occupied(e) => return Ok(Some(e.get().clone())),
+    ) -> Result<Option<(RpVersionedPackage, bool)>> {
+        let (versioned, source) = {
+            let entry = match self.lookup_required.entry(package.clone()) {
+                hash_map::Entry::Occupied(e) => return Ok(e.get().clone()),
                 hash_map::Entry::Vacant(e) => e,
             };
 
@@ -175,57 +236,62 @@ impl Workspace {
 
             let Resolved { version, source } = match resolved.into_iter().last() {
                 Some(resolved) => resolved,
-                None => return Ok(None),
-            };
-
-            let path = match source.path().map(|p| p.to_owned()) {
-                Some(path) => path,
-                None => return Ok(None),
+                None => {
+                    entry.insert(None);
+                    return Ok(None);
+                }
             };
 
             let versioned = RpVersionedPackage::new(package.package.clone(), version);
 
-            // TODO: report error through diagnostics.
-            let path = match path.canonicalize() {
-                Ok(path) => path,
-                Err(_) => return Ok(None),
-            };
-
-            let path = path.canonicalize()
-                .map_err(|e| format!("cannot canonicalize path: {}: {}", path.display(), e))?;
-
-            let url = Url::from_file_path(&path)
-                .map_err(|_| format!("cannot build url from path: {}", path.display()))?;
-
-            entry.insert((versioned.clone(), url.clone(), source.read_only));
-            (versioned, url, source)
+            entry.insert(Some((versioned.clone(), source.read_only)));
+            (versioned, source)
         };
 
-        let read_only = if let Some(mut loaded) = self.edited_files.remove(&url) {
-            loaded.clear();
-            self.inner_process(resolver, &mut loaded)?;
-
-            let read_only = loaded.diag.source.read_only;
-
-            self.edited_files.insert(url.clone(), loaded);
-
-            read_only
-        } else {
-            let mut loaded = LoadedFile::new(url.clone(), source, versioned.clone());
-
-            let read_only = loaded.diag.source.read_only;
-
-            self.inner_process(resolver, &mut loaded)?;
-            self.files.insert(url.clone(), loaded);
-
-            read_only
-        };
-
-        self.packages.insert(versioned.clone(), url.clone());
-        Ok(Some((versioned, url, read_only)))
+        let read_only = source.read_only;
+        self.process_package(resolver, &versioned, source)?;
+        Ok(Some((versioned, read_only)))
     }
 
-    fn inner_process(&mut self, resolver: &mut Resolver, loaded: &mut LoadedFile) -> Result<()> {
+    /// Process the given required package request.
+    ///
+    /// If package has been found, returns a `(package, bool)` tuple.
+    /// The `package` is the exact package that was imported, and the `bool` indicates if it is
+    /// read-only or not.
+    fn process_package(
+        &mut self,
+        resolver: &mut Resolver,
+        versioned: &RpVersionedPackage,
+        source: Source,
+    ) -> Result<()> {
+        if !self.lookup_versioned.insert(versioned.clone()) {
+            return Ok(());
+        };
+
+        let url = match self.source_url(&source)? {
+            Some(url) => url,
+            None => return Ok(()),
+        };
+
+        match self.edited_files.remove(&url) {
+            Some(mut loaded) => {
+                loaded.clear();
+                self.process_file(resolver, &mut loaded)?;
+                self.edited_files.insert(url.clone(), loaded);
+            }
+            None => {
+                let mut loaded = LoadedFile::new(url.clone(), source, versioned.clone());
+                self.process_file(resolver, &mut loaded)?;
+                self.files.insert(url.clone(), loaded);
+            }
+        }
+
+        self.packages.insert(versioned.clone(), url.clone());
+        Ok(())
+    }
+
+    /// Inner process of a file.
+    fn process_file(&mut self, resolver: &mut Resolver, loaded: &mut LoadedFile) -> Result<()> {
         let content = {
             let mut content = String::new();
             let mut reader = loaded.diag.source.read()?;
@@ -296,12 +362,12 @@ impl Workspace {
 
             let package = RpPackage::new(parts.iter().map(|p| p.to_string()).collect());
             let package = RpRequiredPackage::new(package.clone(), range);
-            let package = self.process(resolver, &package)?;
+            let package = self.process_required(resolver, &package)?;
 
             if let Some((prefix, prefix_span)) = prefix {
                 let prefix = prefix.to_string();
 
-                if let Some((package, url, read_only)) = package {
+                if let Some((package, read_only)) = package {
                     // register a jump for the last part of the package, if it is present.
                     if let Some(last) = parts.last() {
                         let (_, span) = Loc::borrow_pair(last);
@@ -322,7 +388,6 @@ impl Workspace {
                         Prefix {
                             range,
                             package,
-                            url,
                             read_only,
                         },
                     );
@@ -600,7 +665,7 @@ impl Workspace {
         let mut results = BTreeSet::new();
 
         for r in resolved {
-            if let Some(value) = r.package.parts().skip(r.package.len()).next() {
+            if let Some(value) = r.package.parts().skip(package.len()).next() {
                 if let Some(suffix) = suffix.as_ref() {
                     let suffix = suffix.to_lowercase();
 
@@ -810,7 +875,10 @@ impl Workspace {
         &self,
         source: &'a BTreeMap<Position, (Range, V)>,
         position: ty::Position,
-    ) -> Option<&'a V> {
+    ) -> Option<&'a V>
+    where
+        V: fmt::Debug,
+    {
         let end = Position {
             line: position.line as usize,
             col: position.character as usize,
@@ -829,6 +897,27 @@ impl Workspace {
 
         Some(value)
     }
+
+    /// Compute the source URL.
+    fn source_url(&self, source: &Source) -> Result<Option<Url>> {
+        let path = match source.path().map(|p| p.to_owned()) {
+            Some(path) => path,
+            None => return Ok(None),
+        };
+
+        let path = match path.canonicalize() {
+            Ok(path) => path,
+            Err(_) => return Ok(None),
+        };
+
+        let path = path.canonicalize()
+            .map_err(|e| format!("cannot canonicalize path: {}: {}", path.display(), e))?;
+
+        let url = Url::from_file_path(&path)
+            .map_err(|_| format!("cannot build url from path: {}", path.display()))?;
+
+        Ok(Some(url))
+    }
 }
 
 impl Resolver for Workspace {
@@ -836,13 +925,15 @@ impl Resolver for Workspace {
     fn resolve(&mut self, package: &RpRequiredPackage) -> Result<Vec<Resolved>> {
         let mut result = Vec::new();
 
-        if let Some(&(ref looked_up, _, _)) = self.lookup.get(package) {
-            if let Some(url) = self.packages.get(looked_up) {
-                if let Some(loaded) = self.file(url) {
-                    result.push(Resolved {
-                        version: looked_up.version.clone(),
-                        source: loaded.diag.source.clone(),
-                    });
+        if let Some(entry) = self.lookup_required.get(package) {
+            if let Some((ref looked_up, _)) = *entry {
+                if let Some(url) = self.packages.get(looked_up) {
+                    if let Some(loaded) = self.file(url) {
+                        result.push(Resolved {
+                            version: looked_up.version.clone(),
+                            source: loaded.diag.source.clone(),
+                        });
+                    }
                 }
             }
         }

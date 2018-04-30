@@ -27,7 +27,7 @@ mod initialize;
 pub use self::config_env::ConfigEnv;
 pub use self::initialize::initialize;
 use core::errors::Result;
-use core::{Range, RelativePath, ResolvedByPrefix, Resolver, RpRequiredPackage};
+use core::{RelativePath, ResolvedByPrefix, Resolver};
 use manifest::{Lang, Language, Manifest};
 use repository::{index_from_path, index_from_url, objects_from_path, objects_from_url, Index,
                  IndexConfig, NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository,
@@ -196,17 +196,9 @@ pub fn resolver(manifest: &mut Manifest) -> Result<Box<Resolver>> {
     if let Some(mut resolver) = path_resolver(manifest)? {
         // if there are no packages, load from path resolver.
         if manifest.packages.is_none() {
-            let mut packages = Vec::new();
-
-            for ResolvedByPrefix {
-                package, version, ..
-            } in resolver.resolve_packages()?
-            {
-                let range = version.map(|v| Range::exact(&v)).unwrap_or_else(Range::any);
-                packages.push(RpRequiredPackage::new(package, range));
+            for ResolvedByPrefix { package, source } in resolver.resolve_packages()? {
+                manifest.sources.push(manifest::Source { package, source });
             }
-
-            manifest.packages = Some(packages);
         }
 
         resolvers.push(resolver);
