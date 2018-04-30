@@ -2,16 +2,14 @@
 
 use ast;
 use core::errors::Result;
-use core::{self, Context, Encoding, Handle, Import, Loc, Position, Resolved, ResolvedByPrefix,
-           Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Source};
+use core::{self, Context, Encoding, Handle, Import, Loc, Resolved, ResolvedByPrefix, Resolver,
+           RpPackage, RpRequiredPackage, RpVersionedPackage, Source};
 use env;
 use loaded_file::LoadedFile;
 use manifest;
 use models::{Completion, Jump, Prefix, Range, Rename, RenameResult, Symbol};
 use parser;
-use std::collections::Bound;
-use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
-use std::fmt;
+use std::collections::{hash_map, BTreeSet, HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -323,9 +321,7 @@ impl Workspace {
 
                 let content = &content[span.start..span.end];
                 let completion = self.package_completion(content, resolver)?;
-                loaded
-                    .completion_triggers
-                    .insert(start, (range, completion));
+                loaded.completion_triggers.insert(range, completion);
                 package
             };
 
@@ -528,9 +524,7 @@ impl Workspace {
                 let content = &content[span.start..span.end];
                 let completion = self.type_completion(current, content)?;
 
-                loaded
-                    .completion_triggers
-                    .insert(start, (range, completion));
+                loaded.completion_triggers.insert(range, completion);
             }
         }
 
@@ -742,7 +736,7 @@ impl Workspace {
             None => return None,
         };
 
-        if let Some(value) = self.test_trigger(&file.completion_triggers, position) {
+        if let Some(value) = file.completion_triggers.find(position) {
             return Some((file, value));
         }
 
@@ -756,7 +750,7 @@ impl Workspace {
             None => return None,
         };
 
-        if let Some(value) = self.test_trigger(&file.jump_triggers, position) {
+        if let Some(value) = file.jump_triggers.find(position) {
             return Some((file, value));
         }
 
@@ -774,7 +768,7 @@ impl Workspace {
             None => return None,
         };
 
-        let value = match self.test_trigger(&file.rename_triggers, position) {
+        let value = match file.rename_triggers.find(position) {
             Some(value) => value,
             None => return None,
         };
@@ -851,7 +845,7 @@ impl Workspace {
 
         let mut out = Vec::new();
 
-        if let Some(reference) = self.test_trigger(&file.reference_triggers, position) {
+        if let Some(reference) = file.reference_triggers.find(position) {
             for file in self.files() {
                 if let Some(ranges) = file.references.get(reference) {
                     out.push((&file.url, ranges));
@@ -868,34 +862,6 @@ impl Workspace {
             .map_err(|_| format!("cannot convert to url: {}", self.manifest_path.display()))?;
 
         Ok(url)
-    }
-
-    /// Test if the given position matches a trigger from the source.
-    fn test_trigger<'a, V>(
-        &self,
-        source: &'a BTreeMap<Position, (Range, V)>,
-        position: ty::Position,
-    ) -> Option<&'a V>
-    where
-        V: fmt::Debug,
-    {
-        let end = Position {
-            line: position.line as usize,
-            col: position.character as usize,
-        };
-
-        let mut range = source.range((Bound::Unbounded, Bound::Included(&end)));
-
-        let (range, value) = match range.next_back() {
-            Some((_, &(ref range, ref value))) => (range, value),
-            None => return None,
-        };
-
-        if !range.contains(&end) {
-            return None;
-        }
-
-        Some(value)
     }
 
     /// Compute the source URL.

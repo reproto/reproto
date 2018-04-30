@@ -3,7 +3,8 @@
 use core::errors::Result;
 use core::{Diagnostics, Encoding, Position, RpVersionedPackage, Source, Span};
 use models::{Completion, Jump, Prefix, Range, Reference, Rename, Symbol};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
+use triggers::Triggers;
 use url::Url;
 
 #[derive(Debug, Clone)]
@@ -13,13 +14,13 @@ pub struct LoadedFile {
     /// The package of a loaded file.
     pub package: RpVersionedPackage,
     /// Jumps available in the file.
-    pub jump_triggers: BTreeMap<Position, (Range, Jump)>,
+    pub jump_triggers: Triggers<Jump>,
     /// Corresponding locations that have available type completions.
-    pub completion_triggers: BTreeMap<Position, (Range, Completion)>,
+    pub completion_triggers: Triggers<Completion>,
     /// Rename locations.
-    pub rename_triggers: BTreeMap<Position, (Range, Rename)>,
+    pub rename_triggers: Triggers<Rename>,
     /// Local reference triggers.
-    pub reference_triggers: BTreeMap<Position, (Range, Reference)>,
+    pub reference_triggers: Triggers<Reference>,
     /// All the locations that a given prefix is present at.
     pub prefix_ranges: HashMap<String, Vec<Range>>,
     /// Implicit prefixes which _cannot_ be renamed.
@@ -45,10 +46,10 @@ impl LoadedFile {
         Self {
             url: url.clone(),
             package: package,
-            jump_triggers: BTreeMap::new(),
-            completion_triggers: BTreeMap::new(),
-            rename_triggers: BTreeMap::new(),
-            reference_triggers: BTreeMap::new(),
+            jump_triggers: Triggers::new(),
+            completion_triggers: Triggers::new(),
+            rename_triggers: Triggers::new(),
+            reference_triggers: Triggers::new(),
             prefix_ranges: HashMap::new(),
             implicit_prefixes: HashMap::new(),
             prefixes: HashMap::new(),
@@ -84,7 +85,7 @@ impl LoadedFile {
 
     /// Insert the specified jump.
     pub fn register_jump(&mut self, range: Range, jump: Jump) {
-        self.jump_triggers.insert(range.start, (range, jump));
+        self.jump_triggers.insert(range, jump);
     }
 
     /// Set an implicit prefix.
@@ -112,7 +113,7 @@ impl LoadedFile {
         let range = Range { start, end };
 
         let rename = Rename::LocalType { path };
-        self.rename_triggers.insert(start, (range, rename));
+        self.rename_triggers.insert(range, rename);
         Ok(())
     }
 
@@ -131,7 +132,7 @@ impl LoadedFile {
 
         let rename = Rename::Type { prefix, path };
 
-        self.rename_triggers.insert(range.start, (range, rename));
+        self.rename_triggers.insert(range, rename);
         Ok(())
     }
 
@@ -152,7 +153,7 @@ impl LoadedFile {
             prefix: prefix.to_string(),
         };
 
-        self.rename_triggers.insert(start, (range, rename));
+        self.rename_triggers.insert(range, rename);
         Ok(())
     }
 
@@ -170,7 +171,7 @@ impl LoadedFile {
             prefix: prefix.to_string(),
         };
 
-        self.rename_triggers.insert(range.start, (range, rename));
+        self.rename_triggers.insert(range, rename);
 
         self.prefix_ranges
             .entry(prefix.to_string())
@@ -192,8 +193,7 @@ impl LoadedFile {
             path: path.clone(),
         };
 
-        self.reference_triggers
-            .insert(range.start, (range, key.clone()));
+        self.reference_triggers.insert(range, key.clone());
 
         self.references
             .entry(key)
