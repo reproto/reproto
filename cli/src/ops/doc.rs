@@ -12,8 +12,8 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 }
 
 pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
-    let mut manifest = load_manifest(matches)?;
-    let mut resolver = env::resolver(&mut manifest)?;
+    let manifest = load_manifest(matches)?;
+    let mut resolver = env::resolver(&manifest)?;
     let env = simple_config(&ctx, &manifest, resolver.as_mut())?;
     ::doc::compile(env, matches, manifest).map_err(Into::into)
 }

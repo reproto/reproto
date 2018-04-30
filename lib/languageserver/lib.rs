@@ -1070,6 +1070,7 @@ where
                 None => return Ok(()),
             }
 
+            workspace.dirty(&url)?;
             workspace.reload()?;
         }
 

@@ -11,13 +11,16 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate toml;
+#[macro_use]
+extern crate log;
 
 use core::errors::Result;
-use core::{CoreFlavor, Range, RpPackage, RpRequiredPackage, RpVersionedPackage, Version};
+use core::{CoreFlavor, Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
+           RpVersionedPackage, Version};
 use naming::Naming;
 use relative_path::{RelativePath, RelativePathBuf};
 use std::any::Any;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -443,19 +446,19 @@ impl TryFromToml for Preset {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 pub struct Doc {
     /// Syntax theme to use.
     pub syntax_theme: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Publish {
     pub package: RpPackage,
     pub version: Version,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct File {
     pub path: PathBuf,
     pub package: Option<RpPackage>,
@@ -472,7 +475,7 @@ impl File {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Repository {
     /// Skip using local repository.
     pub no_repository: bool,
@@ -501,10 +504,6 @@ pub struct Manifest {
     pub packages: Option<Vec<RpRequiredPackage>>,
     /// Files to build.
     pub files: Option<Vec<File>>,
-    /// Sources to build.
-    ///
-    /// These are added programmatically from internal processes.
-    pub sources: Vec<Source>,
     /// Read files from stdin.
     ///
     /// This is not part of the manifest.
@@ -585,11 +584,49 @@ impl Manifest {
             return false;
         }
 
-        if !self.sources.is_empty() {
-            return false;
+        self.path.is_none()
+    }
+
+    /// Resolve all sources for this manifest.
+    pub fn resolve(&self, resolver: &mut Resolver) -> Result<Vec<Source>> {
+        let mut sources = Vec::new();
+
+        // if there are no packages, load from path resolver.
+        if self.packages.is_none() {
+            // only build unique packages, some resolvers will resolve the same version.
+            let mut seen = HashSet::new();
+
+            for ResolvedByPrefix { package, source } in resolver.resolve_packages()? {
+                if !seen.insert(package.clone()) {
+                    continue;
+                }
+
+                trace!("resolved package `{}` to build", package);
+                sources.push(Source { package, source });
+            }
         }
 
-        self.path.is_none()
+        for file in self.files.as_ref().iter().flat_map(|f| f.iter()) {
+            let package = file.package.clone().unwrap_or_else(RpPackage::empty);
+            let package = RpVersionedPackage::new(package, file.version.clone());
+            let source = core::Source::from_path(&file.path);
+            sources.push(Source { package, source });
+        }
+
+        for required in self.packages.iter().flat_map(|p| p.iter()).cloned() {
+            // find matching object from the resolver.
+            let Resolved { version, source } = match resolver.resolve(&required)? {
+                Some(resolved) => resolved,
+                None => {
+                    return Err(format!("no package found for {}", required).into());
+                }
+            };
+
+            let package = RpVersionedPackage::new(required.package.clone(), version);
+            sources.push(Source { package, source });
+        }
+
+        Ok(sources)
     }
 }
 

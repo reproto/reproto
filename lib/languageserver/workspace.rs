@@ -2,8 +2,8 @@
 
 use ast;
 use core::errors::Result;
-use core::{self, Context, Encoding, Handle, Import, Loc, Resolved, Resolver, RpPackage,
-           RpRequiredPackage, RpVersionedPackage, Source};
+use core::{self, Context, Encoding, Handle, Loc, Resolved, Resolver, RpPackage, RpRequiredPackage,
+           RpVersionedPackage, Source};
 use env;
 use loaded_file::LoadedFile;
 use manifest;
@@ -17,7 +17,6 @@ use std::rc::Rc;
 use ty;
 use url::Url;
 
-#[derive(Clone)]
 pub struct Workspace {
     /// Path of the workspace.
     pub root_path: PathBuf,
@@ -27,6 +26,7 @@ pub struct Workspace {
     pub packages: HashMap<RpVersionedPackage, Url>,
     /// Versioned packages that have been looked up.
     lookup_required: HashMap<RpRequiredPackage, Option<(RpVersionedPackage, bool)>>,
+    /// Versioned packaged that have been loaded.
     lookup_versioned: HashSet<RpVersionedPackage>,
     /// Files which have been loaded through project, including their files.
     pub files: HashMap<Url, LoadedFile>,
@@ -34,6 +34,12 @@ pub struct Workspace {
     pub open_files: HashMap<Url, Source>,
     /// Context where to populate compiler errors.
     ctx: Rc<Context>,
+    /// All reverse dependencies, which packages that depends on _this_ package.
+    pub rev_dep: HashMap<RpVersionedPackage, HashSet<RpVersionedPackage>>,
+    /// Sources queued up to build.
+    pub sources: Vec<manifest::Source>,
+    /// Currently loaded manifest.
+    pub manifest: Option<manifest::Manifest>,
 }
 
 impl Workspace {
@@ -48,6 +54,9 @@ impl Workspace {
             files: HashMap::new(),
             open_files: HashMap::new(),
             ctx,
+            rev_dep: HashMap::new(),
+            sources: Vec::new(),
+            manifest: None,
         }
     }
 
@@ -73,6 +82,7 @@ impl Workspace {
         Ok(())
     }
 
+    /// Open a new path resolver.
     fn open_files_resolver(&self, manifest: &manifest::Manifest) -> Result<Option<Box<Resolver>>> {
         // layer edited files to resolver
         if self.open_files.is_empty() {
@@ -117,21 +127,16 @@ impl Workspace {
         Ok(Some(Box::new(Packages::new(packages))))
     }
 
-    /// Reload the workspace.
-    pub fn reload(&mut self) -> Result<()> {
-        self.packages.clear();
-        self.lookup_required.clear();
-        self.lookup_versioned.clear();
-        self.files.clear();
-
+    /// Open the manifest.
+    fn open_manifest(&self) -> Result<Option<manifest::Manifest>> {
         let mut manifest = manifest::Manifest::default();
 
         if !self.manifest_path.is_file() {
-            error!(
+            format!(
                 "no manifest in root of workspace: {}",
                 self.manifest_path.display()
             );
-            return Ok(());
+            return Ok(None);
         }
 
         let manifest_file = File::open(&self.manifest_path).map_err(|e| {
@@ -144,32 +149,84 @@ impl Workspace {
 
         manifest.path = Some(self.manifest_path.to_owned());
         manifest.from_yaml(manifest_file, env::convert_lang)?;
+        Ok(Some(manifest))
+    }
 
-        let open_resolver = self.open_files_resolver(&manifest)?;
+    fn dirty_package(&mut self, package: RpVersionedPackage) -> Result<()> {
+        debug!("dirty: {}", package);
 
-        let mut resolver = env::resolver_with_extra(&mut manifest, open_resolver)?;
+        let url = match self.packages.remove(&package) {
+            Some(url) => url,
+            None => return Ok(()),
+        };
 
-        if let Some(packages) = manifest.packages.as_ref() {
+        let file = match self.files.remove(&url) {
+            Some(file) => file,
+            None => return Ok(()),
+        };
+
+        self.lookup_versioned.remove(&package);
+
+        self.sources.push(manifest::Source {
+            package,
+            source: file.diag.source,
+        });
+
+        Ok(())
+    }
+
+    /// Mark the given URL as dirty.
+    pub fn dirty(&mut self, url: &Url) -> Result<()> {
+        // TODO: enable dirty tracking when ready!
+        if true {
+            return Ok(());
+        }
+
+        let package = match self.files.get(url) {
+            Some(file) => file.package.clone(),
+            None => return Ok(()),
+        };
+
+        // by virtue of the language, we only care about 1 degree of separation.
+        if let Some(packages) = self.rev_dep.remove(&package) {
             for package in packages {
-                if let Err(e) = self.process_required(resolver.as_mut(), package) {
-                    error!("failed to process: {}: {}", package, e.display());
-
-                    if let Some(backtrace) = e.backtrace() {
-                        error!("{:?}", backtrace);
-                    }
-                }
+                self.dirty_package(package)?;
             }
         }
 
-        for s in &manifest.sources {
+        self.dirty_package(package)?;
+        Ok(())
+    }
+
+    /// Reload the workspace.
+    pub fn reload(&mut self) -> Result<()> {
+        let manifest = match self.open_manifest()? {
+            Some(manifest) => manifest,
+            None => return Ok(()),
+        };
+
+        let open_resolver = self.open_files_resolver(&manifest)?;
+        let mut resolver = env::resolver_with_extra(&manifest, open_resolver)?;
+
+        // TODO: conditionally when reloading
+        let sources = {
+            self.packages.clear();
+            self.lookup_required.clear();
+            self.lookup_versioned.clear();
+            self.files.clear();
+            manifest.resolve(resolver.as_mut())?
+        };
+
+        for s in &sources {
             let manifest::Source {
                 ref package,
                 ref source,
             } = *s;
 
-            debug!("loading `{}` from source {}", package, source);
+            debug!("building `{}` from source {}", package, source);
 
-            if let Err(e) = self.process_package(resolver.as_mut(), &package, source.clone()) {
+            if let Err(e) = self.process_package(resolver.as_mut(), &package, None, source.clone())
+            {
                 error!("failed to process: {}: {}", package, e.display());
 
                 if let Some(backtrace) = e.backtrace() {
@@ -178,12 +235,24 @@ impl Workspace {
             }
         }
 
-        self.try_compile(resolver.as_mut(), manifest)?;
+        if let Err(e) = self.try_compile(resolver.as_mut(), manifest, sources) {
+            error!("failed to compile: {}", e.display());
+
+            if let Some(backtrace) = e.backtrace() {
+                error!("{:?}", backtrace);
+            }
+        }
+
         Ok(())
     }
 
     /// Try to compile the current environment.
-    fn try_compile(&mut self, resolver: &mut Resolver, manifest: manifest::Manifest) -> Result<()> {
+    fn try_compile(
+        &mut self,
+        resolver: &mut Resolver,
+        manifest: manifest::Manifest,
+        sources: Vec<manifest::Source>,
+    ) -> Result<()> {
         let ctx = self.ctx.clone();
         ctx.clear()?;
 
@@ -192,19 +261,7 @@ impl Workspace {
 
         let mut env = lang.into_env(ctx.clone(), package_prefix, resolver);
 
-        if let Some(packages) = manifest.packages.as_ref() {
-            for package in packages {
-                if let Err(e) = env.import(package) {
-                    debug!("failed to import: {}: {}", package, e.display());
-
-                    if let Some(backtrace) = e.backtrace() {
-                        debug!("{:?}", backtrace);
-                    }
-                }
-            }
-        }
-
-        for s in &manifest.sources {
+        for s in &sources {
             let manifest::Source {
                 ref package,
                 ref source,
@@ -242,6 +299,7 @@ impl Workspace {
     fn process_required(
         &mut self,
         resolver: &mut Resolver,
+        imported_from: Option<&RpVersionedPackage>,
         package: &RpRequiredPackage,
     ) -> Result<Option<(RpVersionedPackage, bool)>> {
         let (versioned, source) = {
@@ -267,7 +325,7 @@ impl Workspace {
         };
 
         let read_only = source.read_only;
-        self.process_package(resolver, &versioned, source)?;
+        self.process_package(resolver, &versioned, imported_from, source)?;
         Ok(Some((versioned, read_only)))
     }
 
@@ -280,11 +338,28 @@ impl Workspace {
         &mut self,
         resolver: &mut Resolver,
         versioned: &RpVersionedPackage,
+        imported_from: Option<&RpVersionedPackage>,
         source: Source,
     ) -> Result<()> {
         if !self.lookup_versioned.insert(versioned.clone()) {
             return Ok(());
         };
+
+        debug!(
+            "import `{}` from {}",
+            versioned,
+            imported_from
+                .as_ref()
+                .map(|p| p.to_string())
+                .unwrap_or_else(|| String::from("*root*"))
+        );
+
+        if let Some(imported_from) = imported_from.cloned() {
+            self.rev_dep
+                .entry(versioned.clone())
+                .or_insert_with(HashSet::new)
+                .insert(imported_from);
+        }
 
         let url = match source.url() {
             Some(url) => url,
@@ -296,7 +371,7 @@ impl Workspace {
 
         let mut loaded = LoadedFile::new(url.clone(), source, versioned.clone());
 
-        if let Err(e) = self.process_file(resolver, &mut loaded) {
+        if let Err(e) = self.process_file(resolver, versioned, &mut loaded) {
             error!("{}: {}", url, e.display());
         }
 
@@ -306,7 +381,12 @@ impl Workspace {
     }
 
     /// Inner process of a file.
-    fn process_file(&mut self, resolver: &mut Resolver, loaded: &mut LoadedFile) -> Result<()> {
+    fn process_file(
+        &mut self,
+        resolver: &mut Resolver,
+        versioned: &RpVersionedPackage,
+        loaded: &mut LoadedFile,
+    ) -> Result<()> {
         let content = {
             let mut content = String::new();
             let mut reader = loaded.diag.source.read()?;
@@ -375,7 +455,7 @@ impl Workspace {
 
             let package = RpPackage::new(parts.iter().map(|p| p.to_string()).collect());
             let package = RpRequiredPackage::new(package.clone(), range);
-            let package = self.process_required(resolver, &package)?;
+            let package = self.process_required(resolver, Some(versioned), &package)?;
 
             if let Some((prefix, prefix_span)) = prefix {
                 let prefix = prefix.to_string();
