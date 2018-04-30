@@ -19,6 +19,7 @@ extern crate url_serde;
 mod envelope;
 mod loaded_file;
 mod models;
+mod triggers;
 mod workspace;
 
 use self::ContentType::*;
