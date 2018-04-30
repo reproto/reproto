@@ -10,8 +10,8 @@
 //! The second form is only used when a version requirement is present.
 
 use core::errors::Result;
-use core::{Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, Source,
-           Version};
+use core::{Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
+           RpVersionedPackage, Source, Version};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -217,13 +217,10 @@ impl Resolver for Paths {
                     continue;
                 }
 
+                let package = RpVersionedPackage::new(package.clone(), version);
                 let source = Source::from_path(&path);
 
-                out.push(ResolvedByPrefix {
-                    package: package.clone(),
-                    version,
-                    source,
-                });
+                out.push(ResolvedByPrefix { package, source });
             }
         }
 
@@ -254,15 +251,10 @@ impl Resolver for Paths {
 
                     let (name, version) = self.parse_stem(stem)
                         .map_err(|e| format!("bad file: {}: {}", path.display(), e.display()))?;
-                    let package = package.clone().join_part(name);
+                    let package = RpVersionedPackage::new(package.clone().join_part(name), version);
                     let source = Source::from_path(&path);
 
-                    out.push(ResolvedByPrefix {
-                        package,
-                        version,
-                        source,
-                    });
-
+                    out.push(ResolvedByPrefix { package, source });
                     continue;
                 }
 

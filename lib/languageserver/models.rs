@@ -119,8 +119,6 @@ pub struct Prefix {
     pub range: Range,
     /// The package the prefix refers to.
     pub package: RpVersionedPackage,
-    /// URL that the prefix references.
-    pub url: Url,
     /// Is this package read-only?
     pub read_only: bool,
 }

@@ -1,6 +1,6 @@
 use errors::Result;
 use std::fmt;
-use {RpPackage, RpRequiredPackage, Source, Version};
+use {RpPackage, RpRequiredPackage, RpVersionedPackage, Source, Version};
 
 /// A resolved package.
 #[derive(Debug)]
@@ -15,9 +15,7 @@ pub struct Resolved {
 #[derive(Debug)]
 pub struct ResolvedByPrefix {
     /// Package object belongs to.
-    pub package: RpPackage,
-    /// Version of package.
-    pub version: Option<Version>,
+    pub package: RpVersionedPackage,
     /// Source found.
     pub source: Source,
 }
