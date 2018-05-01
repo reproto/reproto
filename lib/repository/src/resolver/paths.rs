@@ -17,7 +17,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
-const EXT: &str = "reproto";
+pub const EXT: &str = "reproto";
 const DOT_EXT: &str = ".reproto";
 
 pub struct Paths {

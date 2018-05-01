@@ -1,7 +1,7 @@
 //! A dynamically compiled and updated environment.
 
 use ast;
-use core::errors::Result;
+use core::errors::{Error, Result};
 use core::{self, Context, Encoding, Handle, Loc, Resolved, Resolver, RpPackage, RpRequiredPackage,
            RpVersionedPackage, Source};
 use env;
@@ -9,9 +9,10 @@ use loaded_file::LoadedFile;
 use manifest;
 use models::{Completion, Jump, Prefix, Range, Rename, RenameResult, Symbol};
 use parser;
-use repository::{path_to_package, Packages};
+use repository::{path_to_package, Packages, EXT};
 use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use ty;
@@ -22,6 +23,8 @@ pub struct Workspace {
     pub root_path: PathBuf,
     /// Path to manifest.
     pub manifest_path: PathBuf,
+    /// Error encountered when loading manifest.
+    pub manifest_error: Option<Error>,
     /// Packages which have been loaded through project.
     pub packages: HashMap<RpVersionedPackage, Url>,
     /// Versioned packages that have been looked up.
@@ -48,6 +51,7 @@ impl Workspace {
         Self {
             root_path: root_path.as_ref().to_owned(),
             manifest_path: root_path.as_ref().join(env::MANIFEST_NAME),
+            manifest_error: None,
             packages: HashMap::new(),
             lookup_required: HashMap::new(),
             lookup_versioned: HashSet::new(),
@@ -102,6 +106,18 @@ impl Workspace {
                 let edited_path = url.to_file_path()
                     .map_err(|_| format!("URL is not a file: {}", url))?;
 
+                let ext = match edited_path.extension() {
+                    Some(ext) => match ext.to_str() {
+                        Some(ext) => ext,
+                        None => continue,
+                    },
+                    None => continue,
+                };
+
+                if ext != EXT {
+                    continue;
+                }
+
                 let edited_path = match relative(&p, &edited_path) {
                     Some(edited_path) => edited_path,
                     // opened file is not in one of our paths, skip it.
@@ -128,27 +144,49 @@ impl Workspace {
     }
 
     /// Open the manifest.
-    fn open_manifest(&self) -> Result<Option<manifest::Manifest>> {
+    fn open_manifest(&mut self) -> Result<Option<manifest::Manifest>> {
         let mut manifest = manifest::Manifest::default();
+        let url = self.manifest_url()?;
 
-        if !self.manifest_path.is_file() {
-            format!(
-                "no manifest in root of workspace: {}",
-                self.manifest_path.display()
-            );
-            return Ok(None);
-        }
+        let reader: Box<Read> = {
+            match self.open_files.get(&url) {
+                // use the rope.
+                Some(source) => source.read()?,
+                // open the underlying file.
+                None => {
+                    if !self.manifest_path.is_file() {
+                        format!(
+                            "no manifest in root of workspace: {}",
+                            self.manifest_path.display()
+                        );
+                        return Ok(None);
+                    }
 
-        let manifest_file = File::open(&self.manifest_path).map_err(|e| {
-            format!(
-                "failed to open manifest: {}: {}",
-                self.manifest_path.display(),
-                e
-            )
-        })?;
+                    let file = File::open(&self.manifest_path).map_err(|e| {
+                        format!(
+                            "failed to open manifest: {}: {}",
+                            self.manifest_path.display(),
+                            e
+                        )
+                    })?;
+
+                    Box::new(file)
+                }
+            }
+        };
 
         manifest.path = Some(self.manifest_path.to_owned());
-        manifest.from_yaml(manifest_file, env::convert_lang)?;
+
+        match manifest.from_yaml(reader, env::convert_lang) {
+            Err(e) => {
+                self.manifest_error = Some(e);
+                return Ok(None);
+            }
+            Ok(()) => {
+                self.manifest_error = None;
+            }
+        }
+
         Ok(Some(manifest))
     }
 
@@ -210,11 +248,19 @@ impl Workspace {
 
         // TODO: conditionally when reloading
         let sources = {
+            let sources = match manifest.resolve(resolver.as_mut()) {
+                Ok(sources) => sources,
+                Err(e) => {
+                    self.manifest_error = Some(e);
+                    return Ok(());
+                }
+            };
+
             self.packages.clear();
             self.lookup_required.clear();
             self.lookup_versioned.clear();
             self.files.clear();
-            manifest.resolve(resolver.as_mut())?
+            sources
         };
 
         for s in &sources {

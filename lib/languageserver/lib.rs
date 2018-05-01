@@ -13,7 +13,6 @@ extern crate serde;
 extern crate serde_json as json;
 #[macro_use]
 extern crate serde_derive;
-extern crate ropey;
 extern crate url;
 extern crate url_serde;
 
@@ -28,8 +27,7 @@ use self::loaded_file::LoadedFile;
 use self::models::{Completion, Jump, Range, RenameResult};
 use self::workspace::Workspace;
 use core::errors::Result;
-use core::{Context, ContextItem, Diagnostics, Encoding, RealFilesystem, Source};
-use ropey::Rope;
+use core::{Context, ContextItem, Diagnostics, Encoding, RealFilesystem, Rope, Source};
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, Bound, HashMap};
@@ -940,10 +938,39 @@ where
                 .try_borrow()
                 .map_err(|_| "failed to access workspace immutably")?;
 
+            self.send_manifest_diagnostics(&workspace)?;
+
             for file in workspace.files() {
                 self.send_diagnostics(&file, &diagnostics_by_url)?;
             }
         }
+
+        Ok(())
+    }
+
+    /// Send manifest diagnostics.
+    fn send_manifest_diagnostics(&self, workspace: &Workspace) -> Result<()> {
+        let mut diagnostics = Vec::new();
+
+        if let Some(e) = workspace.manifest_error.as_ref() {
+            let d = ty::Diagnostic {
+                message: e.display().to_string(),
+                severity: Some(ty::DiagnosticSeverity::Error),
+                ..ty::Diagnostic::default()
+            };
+
+            diagnostics.push(d);
+        }
+
+        let url = workspace.manifest_url()?;
+
+        self.channel.send_notification(
+            "textDocument/publishDiagnostics",
+            ty::PublishDiagnosticsParams {
+                uri: url,
+                diagnostics: diagnostics,
+            },
+        )?;
 
         Ok(())
     }
@@ -1042,30 +1069,7 @@ where
                         None => return Ok(()),
                     };
 
-                    for content_change in &params.content_changes {
-                        let start = match content_change.range {
-                            // replace range
-                            Some(ref range) => {
-                                // need to fetch the row, re-encode it as UTF-16 to translate it to
-                                // UTF-8 ranges.
-
-                                let start = translate_rope_position(&rope, range.start)?;
-                                let end = translate_rope_position(&rope, range.end)?;
-
-                                rope.remove(start..end);
-                                start
-                            }
-                            // replace all
-                            None => {
-                                rope.remove(..);
-                                0
-                            }
-                        };
-
-                        if content_change.text != "" {
-                            rope.insert(start, &content_change.text);
-                        }
-                    }
+                    apply_content_changes(rope, &params.content_changes)?;
                 }
                 None => return Ok(()),
             }
@@ -1076,6 +1080,38 @@ where
 
         self.send_workspace_diagnostics()?;
         return Ok(());
+
+        /// Apply a set of content changes to a rope.
+        fn apply_content_changes(
+            rope: &mut Rope,
+            content_changes: &Vec<ty::TextDocumentContentChangeEvent>,
+        ) -> Result<()> {
+            for content_change in content_changes {
+                let start = match content_change.range {
+                    // replace range
+                    Some(ref range) => {
+                        // need to fetch the row, re-encode it as UTF-16 to translate it to
+                        // UTF-8 ranges.
+                        let start = translate_rope_position(&rope, range.start)?;
+                        let end = translate_rope_position(&rope, range.end)?;
+
+                        rope.remove(start..end);
+                        start
+                    }
+                    // replace all
+                    None => {
+                        rope.remove(..);
+                        0
+                    }
+                };
+
+                if content_change.text != "" {
+                    rope.insert(start, &content_change.text);
+                }
+            }
+
+            Ok(())
+        }
 
         /// translate the incoming position.
         fn translate_rope_position(rope: &Rope, position: ty::Position) -> Result<usize> {
@@ -1106,6 +1142,68 @@ where
 
     /// Handler for `textDocument/didOpen`.
     fn text_document_did_open(&mut self, params: ty::DidOpenTextDocumentParams) -> Result<()> {
+        /// Raise an error indicating that the current file does not belong to a manifest, or that
+        /// a manifest _does not_ exist.
+        macro_rules! handle_manifest_error {
+            ($workspace:expr) => {
+                // warn if the currently opened file is not part of workspace.
+                let manifest_url = $workspace.manifest_url()?;
+
+                if $workspace.manifest_path.is_file() {
+                    let mut actions = Vec::new();
+
+                    actions.push(ty::MessageActionItem {
+                        title: "Ignore".to_string(),
+                    });
+
+                    actions.push(ty::MessageActionItem {
+                        title: "Open project manifest".to_string(),
+                    });
+
+                    let message = format!(
+                        "This file is not part of project, consider updating the [packages] \
+                         section in reproto.toml"
+                    );
+
+                    let id = self.channel.send_request(
+                        "window/showMessageRequest",
+                        ty::ShowMessageRequestParams {
+                            typ: ty::MessageType::Warning,
+                            message: message,
+                            actions: Some(actions),
+                        },
+                    )?;
+
+                    self.expected.insert(id, "reproto/projectAddMissing");
+                } else {
+                    let mut actions = Vec::new();
+
+                    warn!("missing reproto manifest: {}", manifest_url);
+
+                    actions.push(ty::MessageActionItem {
+                        title: "Ignore".to_string(),
+                    });
+
+                    actions.push(ty::MessageActionItem {
+                        title: "Initialize project".to_string(),
+                    });
+
+                    let message = format!("Workspace does not have a reproto manifest!");
+
+                    let id = self.channel.send_request(
+                        "window/showMessageRequest",
+                        ty::ShowMessageRequestParams {
+                            typ: ty::MessageType::Warning,
+                            message: message,
+                            actions: Some(actions),
+                        },
+                    )?;
+
+                    self.expected.insert(id, "reproto/projectInit");
+                }
+            };
+        }
+
         let text_document = params.text_document;
         let url = text_document.uri;
         let text = text_document.text;
@@ -1117,7 +1215,7 @@ where
 
             // NOTE: access workspace.files is intentional to only access files which are not
             // already open.
-            let open = match workspace.files.get(&url) {
+            let (source, built) = match workspace.files.get(&url) {
                 Some(file) => {
                     let rope = Rope::from_str(&text);
 
@@ -1125,78 +1223,26 @@ where
                     let source =
                         Source::rope(url.clone(), rope).with_read_only(file.diag.source.read_only);
 
-                    Some(source.clone())
+                    (source.clone(), true)
                 }
                 None => {
-                    // warn if the currently opened file is not part of workspace.
-                    let manifest_url = workspace.manifest_url()?;
-
-                    if workspace.manifest_path.is_file() {
-                        let mut actions = Vec::new();
-
-                        actions.push(ty::MessageActionItem {
-                            title: "Ignore".to_string(),
-                        });
-
-                        actions.push(ty::MessageActionItem {
-                            title: "Open project manifest".to_string(),
-                        });
-
-                        let message = format!(
-                            "This file is not part of project, consider updating the [packages] \
-                             section in reproto.toml"
-                        );
-
-                        let id = self.channel.send_request(
-                            "window/showMessageRequest",
-                            ty::ShowMessageRequestParams {
-                                typ: ty::MessageType::Warning,
-                                message: message,
-                                actions: Some(actions),
-                            },
-                        )?;
-
-                        self.expected.insert(id, "reproto/projectAddMissing");
-                    } else {
-                        let mut actions = Vec::new();
-
-                        warn!("missing reproto manifest: {}", manifest_url);
-
-                        actions.push(ty::MessageActionItem {
-                            title: "Ignore".to_string(),
-                        });
-
-                        actions.push(ty::MessageActionItem {
-                            title: "Initialize project".to_string(),
-                        });
-
-                        let message = format!("Workspace does not have a reproto manifest!");
-
-                        let id = self.channel.send_request(
-                            "window/showMessageRequest",
-                            ty::ShowMessageRequestParams {
-                                typ: ty::MessageType::Warning,
-                                message: message,
-                                actions: Some(actions),
-                            },
-                        )?;
-
-                        self.expected.insert(id, "reproto/projectInit");
-                    }
-
-                    None
+                    let rope = Rope::from_str(&text);
+                    (Source::rope(url.clone(), rope), false)
                 }
             };
 
-            // file successfully opened
-            if let Some(source) = open {
-                workspace.open_files.insert(url.clone(), source);
-                workspace.reload()?;
+            if !built {
+                if url != workspace.manifest_url()? {
+                    handle_manifest_error!(workspace);
+                }
             }
+
+            workspace.open_files.insert(url.clone(), source);
+            workspace.reload()?;
         }
 
         self.send_workspace_diagnostics()?;
-        Ok(())
+        return Ok(());
     }
 
     /// Handler for `textDocument/didClose`.
