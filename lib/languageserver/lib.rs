@@ -42,7 +42,7 @@ use url::Url;
 
 /// newtype to serialize URLs
 #[derive(Debug, Serialize)]
-struct SerdeUrl(#[serde(with = "url_serde")] Url);
+pub struct SerdeUrl(#[serde(with = "url_serde")] Url);
 
 #[derive(Debug)]
 enum ContentType {
@@ -158,13 +158,14 @@ where
     }
 
     /// Send a notification.
-    fn send_notification<S: AsRef<str>, T>(&self, method: S, params: T) -> Result<()>
+    fn notification<N>(&self, params: N::Params) -> Result<()>
     where
-        T: fmt::Debug + serde::Serialize,
+        N: ty::notification::Notification,
+        N::Params: fmt::Debug + serde::Serialize,
     {
-        let envelope = envelope::NotificationMessage::<T> {
+        let envelope = envelope::NotificationMessage::<N::Params> {
             jsonrpc: envelope::V2,
-            method: method.as_ref().to_string(),
+            method: N::METHOD.to_string(),
             params: Some(params),
         };
 
@@ -172,9 +173,10 @@ where
     }
 
     /// Send a request.
-    fn send_request<S: AsRef<str>, T>(&self, method: S, params: T) -> Result<envelope::RequestId>
+    fn request<R>(&self, params: R::Params) -> Result<envelope::RequestId>
     where
-        T: fmt::Debug + serde::Serialize,
+        R: ty::request::Request,
+        R::Params: fmt::Debug + serde::Serialize,
     {
         let id = {
             let mut next_id = self.next_id.lock().map_err(|_| "id allocation poisoned")?;
@@ -183,10 +185,10 @@ where
             envelope::RequestId::Number(id)
         };
 
-        let envelope = envelope::RequestMessage::<T> {
+        let envelope = envelope::RequestMessage::<R::Params> {
             jsonrpc: envelope::V2,
             id: Some(id.clone()),
-            method: method.as_ref().to_string(),
+            method: R::METHOD.to_string(),
             params: params,
         };
 
@@ -308,7 +310,7 @@ where
         };
 
         self.channel
-            .send_notification("window/logMessage", notification)
+            .notification::<ty::notification::LogMessage>(notification)
             .expect("failed to send notification");
     }
 }
@@ -392,7 +394,7 @@ struct Server<R, W> {
     channel: Channel<W>,
     ctx: Rc<Context>,
     /// Expected responses.
-    expected: HashMap<envelope::RequestId, &'static str>,
+    expected: HashMap<envelope::RequestId, Expected>,
     /// Built-in types.
     built_ins: Vec<&'static str>,
 }
@@ -626,18 +628,18 @@ where
             None => return Ok(()),
         };
 
-        let method = match self.expected.remove(&id) {
-            Some(method) => method,
+        let expected = match self.expected.remove(&id) {
+            Some(expected) => expected,
             None => {
                 debug!("no handle for id: {:?}", id);
                 return Ok(());
             }
         };
 
-        debug!("response: {:?} {:#?}", method, response);
+        debug!("response: {:?} {:#?}", expected, response);
 
-        match method {
-            "reproto/projectInit" => {
+        match expected {
+            Expected::ProjectInit => {
                 let result = match response.result {
                     Some(result) => result,
                     None => return Ok(()),
@@ -646,7 +648,7 @@ where
                 let response = Option::<ty::MessageActionItem>::deserialize(result)?;
                 self.handle_project_init(response)?;
             }
-            "reproto/projectAddMissing" => {
+            Expected::ProjectAddMissing => {
                 let result = match response.result {
                     Some(result) => result,
                     None => return Ok(()),
@@ -655,7 +657,6 @@ where
                 let response = Option::<ty::MessageActionItem>::deserialize(result)?;
                 self.handle_project_add_missing(response)?;
             }
-            _ => {}
         }
 
         Ok(())
@@ -682,7 +683,7 @@ where
                 let manifest_url = workspace.manifest_url()?;
 
                 self.channel
-                    .send_notification("$/openUrl", SerdeUrl(manifest_url))?;
+                    .notification::<OpenUrl>(SerdeUrl(manifest_url))?;
             }
         }
 
@@ -708,7 +709,7 @@ where
                 let manifest_url = workspace.manifest_url()?;
 
                 self.channel
-                    .send_notification("$/openUrl", SerdeUrl(manifest_url))?;
+                    .notification::<OpenUrl>(SerdeUrl(manifest_url))?;
             }
         }
 
@@ -976,13 +977,11 @@ where
 
         let url = workspace.manifest_url()?;
 
-        self.channel.send_notification(
-            "textDocument/publishDiagnostics",
-            ty::PublishDiagnosticsParams {
+        self.channel
+            .notification::<ty::notification::PublishDiagnostics>(ty::PublishDiagnosticsParams {
                 uri: url,
                 diagnostics: diagnostics,
-            },
-        )?;
+            })?;
 
         Ok(())
     }
@@ -1026,13 +1025,11 @@ where
             }
         }
 
-        self.channel.send_notification(
-            "textDocument/publishDiagnostics",
-            ty::PublishDiagnosticsParams {
+        self.channel
+            .notification::<ty::notification::PublishDiagnostics>(ty::PublishDiagnosticsParams {
                 uri: url.clone(),
                 diagnostics: out,
-            },
-        )?;
+            })?;
 
         Ok(())
     }
@@ -1173,8 +1170,7 @@ where
                          section in reproto.toml"
                     );
 
-                    let id = self.channel.send_request(
-                        "window/showMessageRequest",
+                    let id = self.channel.request::<ty::request::ShowMessageRequest>(
                         ty::ShowMessageRequestParams {
                             typ: ty::MessageType::Warning,
                             message: message,
@@ -1182,7 +1178,7 @@ where
                         },
                     )?;
 
-                    self.expected.insert(id, "reproto/projectAddMissing");
+                    self.expected.insert(id, Expected::ProjectAddMissing);
                 } else {
                     let mut actions = Vec::new();
 
@@ -1198,8 +1194,7 @@ where
 
                     let message = format!("Workspace does not have a reproto manifest!");
 
-                    let id = self.channel.send_request(
-                        "window/showMessageRequest",
+                    let id = self.channel.request::<ty::request::ShowMessageRequest>(
                         ty::ShowMessageRequestParams {
                             typ: ty::MessageType::Warning,
                             message: message,
@@ -1207,7 +1202,7 @@ where
                         },
                     )?;
 
-                    self.expected.insert(id, "reproto/projectInit");
+                    self.expected.insert(id, Expected::ProjectInit);
                 }
             };
         }
@@ -1624,4 +1619,21 @@ fn convert_range<R: Into<Range>>(range: R) -> ty::Range {
     };
 
     ty::Range { start, end }
+}
+
+#[derive(Debug, Clone)]
+pub enum Expected {
+    /// Feedback from project init.
+    ProjectInit,
+    /// Feedback from project add missing.
+    ProjectAddMissing,
+}
+
+/// $/openUrl custom notification.
+pub enum OpenUrl {}
+
+impl ty::notification::Notification for OpenUrl {
+    type Params = SerdeUrl;
+
+    const METHOD: &'static str = "$/openUrl";
 }
