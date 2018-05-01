@@ -27,7 +27,7 @@ use self::loaded_file::LoadedFile;
 use self::models::{Completion, Jump, Range, RenameResult};
 use self::workspace::Workspace;
 use core::errors::Result;
-use core::{Context, ContextItem, Diagnostics, Encoding, RealFilesystem, Rope, Source};
+use core::{Context, ContextItem, Diagnostic, Encoding, RealFilesystem, Rope, Source};
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, Bound, HashMap};
@@ -921,13 +921,13 @@ where
 
     /// Send all diagnostics for a workspace.
     fn send_workspace_diagnostics(&self) -> Result<()> {
-        let mut diagnostics_by_url = HashMap::new();
+        let mut by_url = HashMap::new();
 
         for item in self.ctx.items()?.iter() {
             match *item {
                 ContextItem::Diagnostics { ref diagnostics } => {
                     if let Some(url) = diagnostics.source.url() {
-                        diagnostics_by_url.insert(url, diagnostics.clone());
+                        by_url.insert(url, diagnostics.clone());
                     }
                 }
             }
@@ -941,8 +941,20 @@ where
             self.send_manifest_diagnostics(&workspace)?;
 
             for file in workspace.files() {
-                self.send_diagnostics(&file, &diagnostics_by_url)?;
+                let by_url = by_url.remove(&file.url);
+                let by_url_chain = by_url.iter().flat_map(|d| d.items());
+
+                self.send_diagnostics(
+                    file.url.clone(),
+                    &file.diag.source,
+                    file.diag.items().chain(by_url_chain),
+                )?;
             }
+        }
+
+        // diagnostics about other random files
+        for (url, diag) in by_url {
+            self.send_diagnostics(url, &diag.source, diag.items())?;
         }
 
         Ok(())
@@ -975,21 +987,17 @@ where
         Ok(())
     }
 
-    /// Send diagnostics for a single file.
-    fn send_diagnostics(
-        &self,
-        file: &LoadedFile,
-        diagnostics_by_url: &HashMap<Url, Diagnostics>,
-    ) -> Result<()> {
-        let mut diagnostics = Vec::new();
+    /// Send diagnostics for a single URL.
+    fn send_diagnostics<'a, I>(&self, url: Url, source: &Source, diagnostics: I) -> Result<()>
+    where
+        I: IntoIterator<Item = &'a Diagnostic>,
+    {
+        let mut out = Vec::new();
 
-        let by_url = diagnostics_by_url.get(&file.url);
-        let by_url_chain = by_url.iter().flat_map(|d| d.items());
-
-        for d in file.diag.items().chain(by_url_chain) {
+        for d in diagnostics.into_iter() {
             match *d {
                 core::Diagnostic::Error(ref span, ref m) => {
-                    let (start, end) = file.diag.source.span_to_range(*span, Encoding::Utf16)?;
+                    let (start, end) = source.span_to_range(*span, Encoding::Utf16)?;
                     let range = convert_range((start, end));
 
                     let d = ty::Diagnostic {
@@ -999,10 +1007,10 @@ where
                         ..ty::Diagnostic::default()
                     };
 
-                    diagnostics.push(d);
+                    out.push(d);
                 }
                 core::Diagnostic::Info(ref span, ref m) => {
-                    let (start, end) = file.diag.source.span_to_range(*span, Encoding::Utf16)?;
+                    let (start, end) = source.span_to_range(*span, Encoding::Utf16)?;
                     let range = convert_range((start, end));
 
                     let d = ty::Diagnostic {
@@ -1012,7 +1020,7 @@ where
                         ..ty::Diagnostic::default()
                     };
 
-                    diagnostics.push(d);
+                    out.push(d);
                 }
                 _ => {}
             }
@@ -1021,8 +1029,8 @@ where
         self.channel.send_notification(
             "textDocument/publishDiagnostics",
             ty::PublishDiagnosticsParams {
-                uri: file.url.clone(),
-                diagnostics: diagnostics,
+                uri: url.clone(),
+                diagnostics: out,
             },
         )?;
 
