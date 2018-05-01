@@ -618,7 +618,7 @@ impl Manifest {
             let Resolved { version, source } = match resolver.resolve(&required)? {
                 Some(resolved) => resolved,
                 None => {
-                    return Err(format!("no package found for {}", required).into());
+                    return Err(format!("required package `{}` not found", required).into());
                 }
             };
 

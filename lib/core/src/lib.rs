@@ -71,6 +71,7 @@ pub use self::option_entry::OptionEntry;
 pub use self::options::Options;
 pub use self::relative_path::{RelativePath, RelativePathBuf};
 pub use self::resolver::{EmptyResolver, Resolved, ResolvedByPrefix, Resolver};
+pub use self::ropey::Rope;
 pub use self::rp_channel::RpChannel;
 pub use self::rp_code::{RpCode, RpContext};
 pub use self::rp_decl::{RpDecl, RpNamed};

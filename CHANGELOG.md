@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - [automatic discovery of packages]. ([#49]).
+- language-server: manifest is now reloaded when edited.
 
 ### Fixed
 - language-server: fix range translations to handle surrogate pairs correctly ([#51]).
