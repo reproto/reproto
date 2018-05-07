@@ -1,10 +1,8 @@
 //! Repository management commands.
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::Context;
 use core::errors::*;
 use repository::init_file_index;
-use std::rc::Rc;
 
 fn init(matches: &ArgMatches) -> Result<()> {
     for path in matches.values_of("path").into_iter().flat_map(|it| it) {
@@ -33,7 +31,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
+pub fn entry(matches: &ArgMatches) -> Result<()> {
     let (name, matches) = matches.subcommand();
     let matches = matches.ok_or_else(|| "no subcommand")?;
 

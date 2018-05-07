@@ -11,11 +11,10 @@ mod update;
 mod watch;
 
 use clap::{App, Arg, ArgMatches};
-use core::Context;
+use core::{Filesystem, Reporter};
 use core::errors::*;
 use log;
 use output::Output;
-use std::rc::Rc;
 
 pub fn base_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.arg(
@@ -158,29 +157,34 @@ fn default_logging(matches: &ArgMatches, output: &Output) -> Result<()> {
     Ok(())
 }
 
-pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<()> {
+pub fn entry(
+    fs: &Filesystem,
+    reporter: &mut Reporter,
+    matches: &ArgMatches,
+    output: &Output,
+) -> Result<()> {
     let (name, matches) = matches.subcommand();
     let matches = matches.ok_or_else(|| "no subcommand")?;
 
     // has custom log setup.
     if name == "language-server" {
-        return language_server::entry(ctx, matches);
+        return language_server::entry(matches);
     }
 
     // setup default logger.
     default_logging(matches, output)?;
 
     match name {
-        "build" => return build::entry(ctx, matches),
-        "check" => return check::entry(ctx, matches),
-        "derive" => return derive::entry(ctx, matches),
-        "doc" => return doc::entry(ctx, matches),
-        "init" => return init::entry(ctx, matches),
-        "publish" => return publish::entry(ctx, matches),
-        "repo" => return repo::entry(ctx, matches),
-        "self-update" => return self_update::entry(ctx, matches),
-        "update" => return update::entry(ctx, matches),
-        "watch" => return watch::entry(ctx, matches, output),
+        "build" => return build::entry(fs, reporter, matches),
+        "check" => return check::entry(reporter, matches),
+        "derive" => return derive::entry(reporter, matches),
+        "doc" => return doc::entry(reporter, matches),
+        "init" => return init::entry(fs, matches),
+        "publish" => return publish::entry(reporter, matches),
+        "repo" => return repo::entry(matches),
+        "self-update" => return self_update::entry(matches),
+        "update" => return update::entry(matches),
+        "watch" => return watch::entry(fs, matches, output),
         _ => {}
     }
 

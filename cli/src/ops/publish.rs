@@ -1,9 +1,8 @@
 use build_spec::{load_manifest, matches, publish_matches, semck_check, simple_config, Match};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::errors::*;
-use core::{Context, RpRequiredPackage, Version};
+use core::{Reporter, RpRequiredPackage, Version};
 use env;
-use std::rc::Rc;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("publish").about("Publish specifications");
@@ -38,10 +37,10 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(ctx: Rc<Context>, m: &ArgMatches) -> Result<()> {
+pub fn entry(reporter: &mut Reporter, m: &ArgMatches) -> Result<()> {
     let manifest = load_manifest(m)?;
     let mut resolver = env::resolver(&manifest)?;
-    let mut env = simple_config(&ctx, &manifest, resolver.as_mut())?;
+    let mut env = simple_config(&manifest, reporter, resolver.as_mut())?;
 
     let mut manifest_resolver =
         env::path_resolver(&manifest)?.ok_or_else(|| "could not setup manifest resolver")?;
@@ -84,7 +83,7 @@ pub fn entry(ctx: Rc<Context>, m: &ArgMatches) -> Result<()> {
     let mut semck_errors = Vec::new();
 
     for m in &results {
-        semck_check(&ctx, &mut semck_errors, &mut repository, &mut env, &m)?;
+        semck_check(&mut semck_errors, &mut repository, &mut env, &m)?;
     }
 
     if semck_errors.len() > 0 {

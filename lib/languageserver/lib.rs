@@ -10,9 +10,9 @@ extern crate reproto_manifest as manifest;
 extern crate reproto_parser as parser;
 extern crate reproto_repository as repository;
 extern crate serde;
-extern crate serde_json as json;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json as json;
 extern crate url;
 extern crate url_serde;
 
@@ -27,7 +27,7 @@ use self::loaded_file::LoadedFile;
 use self::models::{Completion, Jump, Range, RenameResult};
 use self::workspace::Workspace;
 use core::errors::Result;
-use core::{Context, ContextItem, Diagnostic, Encoding, RealFilesystem, Rope, Source};
+use core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Rope, Source};
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, Bound, HashMap};
@@ -35,7 +35,6 @@ use std::fmt;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::ops::DerefMut;
 use std::path::Path;
-use std::rc::Rc;
 use std::result;
 use std::sync::{Arc, Mutex};
 use url::Url;
@@ -363,8 +362,7 @@ where
     R: Read,
     W: Send + Write,
 {
-    let ctx = Context::new(Box::new(RealFilesystem::new()));
-    let mut server = Server::new(reader, channel, Rc::new(ctx));
+    let mut server = Server::new(reader, channel);
     server.run()?;
     Ok(())
 }
@@ -392,7 +390,8 @@ struct Server<R, W> {
     headers: Headers,
     reader: InputReader<BufReader<R>>,
     channel: Channel<W>,
-    ctx: Rc<Context>,
+    /// Filesystem abstraction.
+    fs: RealFilesystem,
     /// Expected responses.
     expected: HashMap<envelope::RequestId, Expected>,
     /// Built-in types.
@@ -404,13 +403,13 @@ where
     R: Read,
     W: Write,
 {
-    pub fn new(reader: R, channel: Channel<W>, ctx: Rc<Context>) -> Self {
+    pub fn new(reader: R, channel: Channel<W>) -> Self {
         Self {
             workspace: None,
             headers: Headers::new(),
             reader: InputReader::new(BufReader::new(reader)),
             channel,
-            ctx,
+            fs: RealFilesystem::new(),
             expected: HashMap::new(),
             built_ins: vec![
                 "string", "bytes", "u32", "u64", "i32", "i64", "float", "double", "datetime", "any"
@@ -674,7 +673,7 @@ where
                 .try_borrow_mut()
                 .map_err(|_| "failed to access mutable workspace")?;
 
-            let handle = self.ctx.filesystem(Some(&workspace.root_path))?;
+            let handle = self.fs.open_root(Some(&workspace.root_path))?;
 
             if response.title == "Initialize project" {
                 info!("Initializing Project!");
@@ -732,7 +731,7 @@ where
             let path = path.canonicalize()
                 .map_err(|_| format!("could not canonicalize root path: {}", path.display()))?;
 
-            let mut workspace = Workspace::new(path, self.ctx.clone());
+            let workspace = Workspace::new(Box::new(self.fs.clone()), path);
             self.workspace = Some(RefCell::new(workspace));
         }
 
@@ -922,24 +921,20 @@ where
 
     /// Send all diagnostics for a workspace.
     fn send_workspace_diagnostics(&self) -> Result<()> {
-        let mut by_url = HashMap::new();
-
-        for item in self.ctx.items()?.iter() {
-            match *item {
-                ContextItem::Diagnostics { ref diagnostics } => {
-                    if let Some(url) = diagnostics.source.url() {
-                        by_url.insert(url, diagnostics.clone());
-                    }
-                }
-            }
-        }
-
         if let Some(workspace) = self.workspace.as_ref() {
             let workspace = workspace
                 .try_borrow()
                 .map_err(|_| "failed to access workspace immutably")?;
 
             self.send_manifest_diagnostics(&workspace)?;
+
+            let mut by_url = HashMap::new();
+
+            for diagnostics in &workspace.reporter {
+                if let Some(url) = diagnostics.source.url() {
+                    by_url.insert(url, diagnostics.clone());
+                }
+            }
 
             for file in workspace.files() {
                 let by_url = by_url.remove(&file.url);
@@ -951,11 +946,11 @@ where
                     file.diag.items().chain(by_url_chain),
                 )?;
             }
-        }
 
-        // diagnostics about other random files
-        for (url, diag) in by_url {
-            self.send_diagnostics(url, &diag.source, diag.items())?;
+            // diagnostics about other random files
+            for (url, diag) in by_url {
+                self.send_diagnostics(url, &diag.source, diag.items())?;
+            }
         }
 
         Ok(())
@@ -1307,15 +1302,13 @@ where
         debug!("type completion: {:?}", value);
 
         match *value {
-            Completion::Package { ref results, .. } => {
-                for r in results {
-                    list.items.push(ty::CompletionItem {
-                        label: r.to_string(),
-                        kind: Some(ty::CompletionItemKind::Module),
-                        ..ty::CompletionItem::default()
-                    });
-                }
-            }
+            Completion::Package { ref results, .. } => for r in results {
+                list.items.push(ty::CompletionItem {
+                    label: r.to_string(),
+                    kind: Some(ty::CompletionItemKind::Module),
+                    ..ty::CompletionItem::default()
+                });
+            },
             Completion::Any { ref suffix } => {
                 for (prefix, value) in &file.prefixes {
                     list.items.push(ty::CompletionItem {

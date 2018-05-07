@@ -4,7 +4,7 @@ use ast;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use compile;
 use core::errors::Result;
-use core::{Context, RpPackage, RpVersionedPackage, Source};
+use core::{Reporter, RpPackage, RpVersionedPackage, Source};
 use derive;
 use env;
 use genco::IoFmt;
@@ -13,7 +13,6 @@ use std::any::Any;
 use std::fmt::Write;
 use std::io;
 use std::path::Path;
-use std::rc::Rc;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("derive").about("Derive a schema from the given input");
@@ -66,7 +65,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
+pub fn entry(reporter: &mut Reporter, matches: &ArgMatches) -> Result<()> {
     let root_name = match matches.value_of("root-name") {
         None => "Generated".to_string(),
         Some(name) => name.to_string(),
@@ -106,7 +105,8 @@ pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
 
     let stdout = io::stdout();
 
-    let simple_compile = compile::SimpleCompile::new(input).package_prefix(package_prefix);
+    let simple_compile =
+        compile::SimpleCompile::new(input, reporter).package_prefix(package_prefix);
 
     let modules: Vec<String> = matches
         .values_of("module")

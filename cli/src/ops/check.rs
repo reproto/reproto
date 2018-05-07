@@ -1,9 +1,8 @@
 use build_spec as build;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::errors::*;
-use core::{Context, RpRequiredPackage, Version};
+use core::{Reporter, RpRequiredPackage, Version};
 use env;
-use std::rc::Rc;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("check").about("Check specifications");
@@ -20,10 +19,10 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
+pub fn entry(reporter: &mut Reporter, matches: &ArgMatches) -> Result<()> {
     let manifest = build::load_manifest(matches)?;
     let mut resolver = env::resolver(&manifest)?;
-    let mut env = build::simple_config(&ctx, &manifest, resolver.as_mut())?;
+    let mut env = build::simple_config(&manifest, reporter, resolver.as_mut())?;
 
     let mut manifest_resolver =
         env::path_resolver(&manifest)?.ok_or_else(|| "could not setup manifest resolver")?;
@@ -60,7 +59,7 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
     let mut errors = Vec::new();
 
     for m in results {
-        build::semck_check(&ctx, &mut errors, &mut repository, &mut env, &m)?;
+        build::semck_check(&mut errors, &mut repository, &mut env, &m)?;
     }
 
     if errors.len() > 0 {

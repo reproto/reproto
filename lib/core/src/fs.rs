@@ -30,11 +30,12 @@ pub trait Filesystem {
 }
 
 /// Real filesystem implementation.
-pub struct RealFilesystem {}
+#[derive(Clone)]
+pub struct RealFilesystem;
 
 impl RealFilesystem {
     pub fn new() -> RealFilesystem {
-        Self {}
+        RealFilesystem
     }
 }
 

@@ -22,7 +22,7 @@ mod module;
 use backend::{Initializer, IntoBytes};
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor};
+use core::{CoreFlavor, Handle};
 use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
 use genco::Tokens;
 use genco::swift::Swift;
@@ -312,7 +312,7 @@ pub struct PackageAdded<'a, 'el: 'a> {
 
 codegen!(PackageCodegen, PackageAdded);
 
-fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
 
@@ -324,6 +324,5 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let env = env.translate(translator)?;
 
-    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    Compiler::new(&env, options, handle.as_ref())?.compile(&packages)
+    Compiler::new(&env, options, handle)?.compile(&packages)
 }

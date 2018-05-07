@@ -18,7 +18,8 @@ impl<T> Triggers<T> {
     }
 
     /// Insert the given trigger.
-    pub fn insert(&mut self, range: Range, value: T) {
+    pub fn insert<R: Into<Range>>(&mut self, range: R, value: T) {
+        let range = range.into();
         self.triggers.insert(range.start, (range, value));
     }
 
@@ -43,5 +44,22 @@ impl<T> Triggers<T> {
         }
 
         Some(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Triggers;
+    use core::Position;
+
+    #[test]
+    fn test_trigger() {
+        let mut t = Triggers::new();
+
+        let a = Position { line: 0, col: 4 };
+
+        let b = Position { line: 1, col: 0 };
+
+        t.insert((a, b), 0);
     }
 }

@@ -2,11 +2,9 @@ extern crate reproto_ast as ast;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 
-use core::{ContextItem, RelativePath, Resolver, RpPackage, RpVersionedPackage, Source};
+use core::{RelativePath, Reporter, Resolver, RpPackage, RpVersionedPackage, Source};
 use manifest::Lang;
 use std::any::Any;
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::str;
 
 /// Input to the compiler.
@@ -20,19 +18,19 @@ pub enum Input<'input> {
 /// A simple compilation stage.
 pub struct SimpleCompile<'a, 'input> {
     pub input: Input<'input>,
+    pub reporter: &'a mut Reporter,
     pub package_prefix: Option<RpPackage>,
     pub resolver: Option<&'a mut Resolver>,
-    pub items: Option<Rc<RefCell<Vec<ContextItem>>>>,
 }
 
 impl<'a, 'input> SimpleCompile<'a, 'input> {
     /// Build a new compilation stage.
-    pub fn new(input: Input<'input>) -> SimpleCompile<'a, 'input> {
+    pub fn new(input: Input<'input>, reporter: &'a mut Reporter) -> SimpleCompile<'a, 'input> {
         Self {
             input: input,
+            reporter: reporter,
             package_prefix: None,
             resolver: None,
-            items: None,
         }
     }
 
@@ -48,14 +46,6 @@ impl<'a, 'input> SimpleCompile<'a, 'input> {
     pub fn resolver(self, resolver: &'a mut Resolver) -> Self {
         Self {
             resolver: Some(resolver),
-            ..self
-        }
-    }
-
-    /// Set a reference to collect items.
-    pub fn with_items(self, items: Rc<RefCell<Vec<ContextItem>>>) -> Self {
-        Self {
-            items: Some(items),
             ..self
         }
     }
@@ -75,27 +65,24 @@ where
     let SimpleCompile {
         input,
         package_prefix,
+        reporter,
         resolver,
-        items,
     } = config;
 
     let mut empty_resolver = core::EmptyResolver;
     let resolver = resolver.unwrap_or_else(|| &mut empty_resolver);
 
     let capturing = core::CapturingFilesystem::new();
+    let fs = capturing.filesystem();
 
-    let ctx = core::Context::new(capturing.filesystem());
+    let mut manifest = manifest::Manifest::default();
+    manifest.lang = Some(lang.copy());
+    manifest.modules = Some(modules);
+    manifest.package_prefix = package_prefix.clone();
 
-    // Set items reference, if configured.
-    let ctx = if let Some(items) = items {
-        ctx.with_items(items)
-    } else {
-        ctx
-    };
+    let handle = fs.open_root(manifest.output.as_ref().map(AsRef::as_ref))?;
 
-    let ctx = Rc::new(ctx);
-
-    let mut env = lang.into_env(ctx.clone(), package_prefix.clone(), resolver);
+    let mut env = lang.into_env(package_prefix, reporter, resolver);
 
     match input {
         Input::File(file, package) => {
@@ -106,12 +93,7 @@ where
         }
     }
 
-    let mut manifest = manifest::Manifest::default();
-    manifest.lang = Some(lang.copy());
-    manifest.modules = Some(modules);
-    manifest.package_prefix = package_prefix;
-
-    lang.compile(ctx, env, manifest)?;
+    lang.compile(handle.as_ref(), env, manifest)?;
 
     let borrowed = capturing.files().try_borrow()?;
 

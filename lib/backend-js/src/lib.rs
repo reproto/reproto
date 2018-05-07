@@ -22,13 +22,12 @@ mod flavored;
 use backend::IntoBytes;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor, Diagnostics, Loc, RpField, RpPackage, RpType, Source, Span,
+use core::{CoreFlavor, Diagnostics, Handle, Loc, RpField, RpPackage, RpType, Source, Span,
            Translate};
 use genco::{JavaScript, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
-use std::rc::Rc;
 use trans::Environment;
 
 const TYPE_SEP: &str = "_";
@@ -160,7 +159,7 @@ impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
     }
 }
 
-fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = env.packages()?;
 
     let translator = env.translator(flavored::JavaScriptFlavorTranslator::new(packages))?;
@@ -174,7 +173,6 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let _modules: Vec<JsModule> = manifest::checked_modules(manifest.modules)?;
     let options = Options::new();
-    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
-    Compiler::new(&env, &variant_field, options, handle.as_ref()).compile()
+    Compiler::new(&env, &variant_field, options, handle).compile()
 }

@@ -4,12 +4,10 @@
 extern crate reproto_languageserver as ls;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::Context;
 use core::errors::Result;
 use log;
 use std::fs;
 use std::io;
-use std::rc::Rc;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("language-server").about("Run the language server for reproto");
@@ -31,7 +29,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(_ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
+pub fn entry(matches: &ArgMatches) -> Result<()> {
     #[cfg(feature = "languageserver")]
     {
         let input = io::stdin();

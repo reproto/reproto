@@ -360,9 +360,9 @@ impl core::Resolver for MapResolver {
 }
 
 fn derive(derive: Derive) -> DeriveResult {
-    let items = Rc::new(RefCell::new(Vec::new()));
+    let mut reporter = Vec::new();
 
-    return match try_derive(derive, items.clone()) {
+    return match try_derive(derive, &mut reporter) {
         Ok(result) => DeriveResult {
             files: result,
             error: None,
@@ -440,7 +440,7 @@ fn derive(derive: Derive) -> DeriveResult {
 
         let resolver = Box::new(MapResolver(files));
 
-        let simple_compile = compile::SimpleCompile::new(input)
+        let simple_compile = compile::SimpleCompile::new(input, reporter)
             .with_items(items)
             .resolver(resolver)
             .package_prefix(package_prefix);

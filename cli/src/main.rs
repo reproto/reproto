@@ -5,10 +5,9 @@ extern crate reproto_core as core;
 
 use clap::{App, Arg, ArgMatches};
 use core::errors::Result;
-use core::{Context, RealFilesystem};
+use core::{RealFilesystem, Reporter};
 use reproto::{ops, output, VERSION};
 use std::io;
-use std::rc::Rc;
 
 fn setup_opts<'a, 'b>() -> App<'a, 'b> {
     App::new("reproto")
@@ -31,28 +30,23 @@ fn setup_opts<'a, 'b>() -> App<'a, 'b> {
         )
 }
 
-fn guarded_entry(ctx: Rc<Context>, matches: &ArgMatches, output: &output::Output) -> Result<()> {
-    ops::entry(ctx, matches, output)?;
-    Ok(())
-}
-
 fn entry(matches: &ArgMatches, output: &output::Output) -> Result<()> {
-    let ctx = Rc::new(Context::new(Box::new(RealFilesystem::new())));
+    let fs = RealFilesystem::new();
+    let mut reporter = Vec::new();
 
-    match guarded_entry(Rc::clone(&ctx), matches, output) {
+    match ops::entry(&fs, &mut reporter, matches, output) {
         Err(e) => {
             // NB: get rid of dual reporting.
             // We only want positional errors reported through the context.
-            if !ctx.has_diagnostics()? {
+            if !reporter.has_diagnostics() {
                 output.handle_error(&e)?;
             }
 
-            output.handle_context(ctx.items()?.as_ref())?;
+            output.handle_context(&reporter)?;
             ::std::process::exit(1);
         }
         Ok(()) => {
-            let ctx_items = ctx.items()?;
-            output.handle_context(ctx_items.as_ref())?;
+            output.handle_context(&reporter)?;
         }
     }
 

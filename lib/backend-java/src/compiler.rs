@@ -511,30 +511,26 @@ impl<'el> Compiler<'el> {
             .push(self.new_field_spec(&body.enum_type, "value"));
 
         match body.variants {
-            core::RpVariants::String { ref variants } => {
-                for variant in variants {
-                    let name = self.variant_naming.convert(variant.ident());
-                    push!(
-                        spec.variants,
-                        name,
-                        "(",
-                        variant.value.clone().quoted(),
-                        ")"
-                    );
-                }
-            }
-            core::RpVariants::Number { ref variants } => {
-                for variant in variants {
-                    let name = self.variant_naming.convert(variant.ident());
+            core::RpVariants::String { ref variants } => for variant in variants {
+                let name = self.variant_naming.convert(variant.ident());
+                push!(
+                    spec.variants,
+                    name,
+                    "(",
+                    variant.value.clone().quoted(),
+                    ")"
+                );
+            },
+            core::RpVariants::Number { ref variants } => for variant in variants {
+                let name = self.variant_naming.convert(variant.ident());
 
-                    let value = match body.enum_type {
-                        java::LONG => format!("{}L", variant.value),
-                        _ => variant.value.to_string(),
-                    };
+                let value = match body.enum_type {
+                    java::LONG => format!("{}L", variant.value),
+                    _ => variant.value.to_string(),
+                };
 
-                    push!(spec.variants, name, "(", value, ")");
-                }
-            }
+                push!(spec.variants, name, "(", value, ")");
+            },
         }
 
         spec.constructors
