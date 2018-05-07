@@ -3,6 +3,8 @@
 //! Project manifests can be loaded as a convenient method for setting up language or
 //! project-specific configuration for reproto.
 
+#[macro_use]
+extern crate log;
 extern crate relative_path;
 pub extern crate reproto_core as core;
 extern crate reproto_naming as naming;
@@ -11,8 +13,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate toml;
-#[macro_use]
-extern crate log;
 
 use core::errors::Result;
 use core::{CoreFlavor, Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
@@ -24,7 +24,6 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
 #[macro_export]
 macro_rules! lang_base {
@@ -44,11 +43,11 @@ macro_rules! lang_base {
 
         fn compile(
             &self,
-            ctx: ::std::rc::Rc<core::Context>,
+            handle: &core::Handle,
             env: $crate::trans::Environment<$crate::core::CoreFlavor>,
             manifest: $crate::Manifest
         ) -> Result<()> {
-            $compile(ctx, env, manifest)
+            $compile(handle, env, manifest)
         }
     }
 }
@@ -82,7 +81,7 @@ pub trait Lang: fmt::Debug {
     /// Implemented through `lang_base!` macro.
     fn compile(
         &self,
-        ctx: Rc<core::Context>,
+        handle: &core::Handle,
         env: trans::Environment<CoreFlavor>,
         manifest: Manifest,
     ) -> Result<()>;
@@ -105,8 +104,8 @@ pub trait Lang: fmt::Debug {
     /// Helper to convert into environment.
     fn into_env<'a>(
         &self,
-        ctx: Rc<core::Context>,
         package_prefix: Option<core::RpPackage>,
+        reporter: &'a mut core::Reporter,
         resolver: &'a mut core::Resolver,
     ) -> trans::Environment<'a, CoreFlavor> {
         let keywords = self.keywords()
@@ -114,7 +113,7 @@ pub trait Lang: fmt::Debug {
             .map(|(f, t)| (f.to_string(), t.to_string()))
             .collect();
 
-        let e = trans::Environment::new(ctx.clone(), package_prefix.clone(), resolver)
+        let e = trans::Environment::new(package_prefix.clone(), reporter, resolver)
             .with_keywords(keywords)
             .with_safe_packages(self.safe_packages());
 
@@ -184,7 +183,7 @@ impl Lang for NoLang {
 }
 
 fn no_compile(
-    _ctx: Rc<core::Context>,
+    _handle: &core::Handle,
     _env: trans::Environment<CoreFlavor>,
     _manifest: Manifest,
 ) -> Result<()> {

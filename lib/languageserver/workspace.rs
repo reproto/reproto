@@ -2,8 +2,8 @@
 
 use ast;
 use core::errors::{Error, Result};
-use core::{self, Context, Encoding, Handle, Loc, Resolved, Resolver, RpPackage, RpRequiredPackage,
-           RpVersionedPackage, Source};
+use core::{self, Diagnostics, Encoding, Filesystem, Handle, Loc, Resolved, Resolver, RpPackage,
+           RpRequiredPackage, RpVersionedPackage, Source};
 use env;
 use loaded_file::LoadedFile;
 use manifest;
@@ -14,11 +14,11 @@ use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque}
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use ty;
 use url::Url;
 
 pub struct Workspace {
+    pub filesystem: Box<Filesystem>,
     /// Path of the workspace.
     pub root_path: PathBuf,
     /// Path to manifest.
@@ -36,7 +36,7 @@ pub struct Workspace {
     /// Files which are currently being edited.
     pub open_files: HashMap<Url, Source>,
     /// Context where to populate compiler errors.
-    ctx: Rc<Context>,
+    pub reporter: Vec<Diagnostics>,
     /// All reverse dependencies, which packages that depends on _this_ package.
     pub rev_dep: HashMap<RpVersionedPackage, HashSet<RpVersionedPackage>>,
     /// Sources queued up to build.
@@ -47,8 +47,9 @@ pub struct Workspace {
 
 impl Workspace {
     /// Create a new workspace from the given path.
-    pub fn new<P: AsRef<Path>>(root_path: P, ctx: Rc<Context>) -> Self {
+    pub fn new<P: AsRef<Path>>(filesystem: Box<Filesystem>, root_path: P) -> Self {
         Self {
+            filesystem,
             root_path: root_path.as_ref().to_owned(),
             manifest_path: root_path.as_ref().join(env::MANIFEST_NAME),
             manifest_error: None,
@@ -57,7 +58,7 @@ impl Workspace {
             lookup_versioned: HashSet::new(),
             files: HashMap::new(),
             open_files: HashMap::new(),
-            ctx,
+            reporter: Vec::new(),
             rev_dep: HashMap::new(),
             sources: Vec::new(),
             manifest: None,
@@ -299,13 +300,11 @@ impl Workspace {
         manifest: manifest::Manifest,
         sources: Vec<manifest::Source>,
     ) -> Result<()> {
-        let ctx = self.ctx.clone();
-        ctx.clear()?;
-
         let lang = manifest.lang_or_nolang();
         let package_prefix = manifest.package_prefix.clone();
 
-        let mut env = lang.into_env(ctx.clone(), package_prefix, resolver);
+        self.reporter.clear();
+        let mut env = lang.into_env(package_prefix, &mut self.reporter, resolver);
 
         for s in &sources {
             let manifest::Source {
@@ -327,7 +326,10 @@ impl Workspace {
             }
         }
 
-        if let Err(e) = lang.compile(ctx.clone(), env, manifest) {
+        let handle = self.filesystem
+            .open_root(manifest.output.as_ref().map(AsRef::as_ref))?;
+
+        if let Err(e) = lang.compile(handle.as_ref(), env, manifest) {
             // ignore and just go off diagnostics?
             debug!("compile error: {}", e.display());
 
@@ -622,17 +624,15 @@ impl Workspace {
                 self.process_ty(current, loaded, content, &f.ty)?;
             },
             Enum(ref _en) => {}
-            Service(ref service) => {
-                for e in service.endpoints() {
-                    for a in &e.arguments {
-                        self.process_ty(current, loaded, content, a.channel.ty())?;
-                    }
-
-                    if let Some(response) = e.response.as_ref() {
-                        self.process_ty(current, loaded, content, response.ty())?;
-                    }
+            Service(ref service) => for e in service.endpoints() {
+                for a in &e.arguments {
+                    self.process_ty(current, loaded, content, a.channel.ty())?;
                 }
-            }
+
+                if let Some(response) = e.response.as_ref() {
+                    self.process_ty(current, loaded, content, response.ty())?;
+                }
+            },
         }
 
         Ok(())

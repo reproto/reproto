@@ -283,18 +283,16 @@ impl Compiler {
 
                 names = Some(local_names);
             }
-            core::RpVariants::Number { ref variants } => {
-                for v in variants {
-                    let name = Rc::new(self.variant_naming.convert(v.ident()));
+            core::RpVariants::Number { ref variants } => for v in variants {
+                let name = Rc::new(self.variant_naming.convert(v.ident()));
 
-                    let value = match body.enum_type {
-                        csharp::INT64 | csharp::UINT64 => format!("{}L", v.value),
-                        _ => v.value.to_string(),
-                    };
+                let value = match body.enum_type {
+                    csharp::INT64 | csharp::UINT64 => format!("{}L", v.value),
+                    _ => v.value.to_string(),
+                };
 
-                    spec.variants.append(toks![name, " = ", value]);
-                }
-            }
+                spec.variants.append(toks![name, " = ", value]);
+            },
         }
 
         for generator in &self.options.enum_generators {

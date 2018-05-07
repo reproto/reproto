@@ -1,7 +1,7 @@
 use ast;
 use core::errors::{Error, Result};
-use core::{translator, Context, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, Loc,
-           PackageTranslator, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
+use core::{translator, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, Loc,
+           PackageTranslator, Reporter, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
            RpRequiredPackage, RpVersionedPackage, Source, Translate, Translator, Version};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
@@ -17,15 +17,15 @@ use translated::Translated;
 
 /// Try the given expression, and associated diagnostics with context if an error occurred.
 macro_rules! try_with_diag {
-    ($ctx:expr, $diag:expr, $block:block) => {
+    ($reporter:expr, $diag:expr, $block:block) => {
         match $block {
             Err(()) => {
-                $ctx.diagnostics($diag)?;
+                $reporter.diagnostics($diag);
                 return Err("error in environment".into());
             }
             Ok(ok) => {
                 if $diag.has_errors() {
-                    $ctx.diagnostics($diag)?;
+                    $reporter.diagnostics($diag);
                     return Err("error in environment".into());
                 }
 
@@ -49,10 +49,10 @@ pub struct Environment<'a, F: 'static>
 where
     F: Flavor,
 {
-    /// Global context for collecting errors.
-    pub ctx: Rc<Context>,
     /// Global package prefix.
     package_prefix: Option<RpPackage>,
+    /// Global reporter for collecting diagnostics.
+    pub reporter: &'a mut Reporter,
     /// Index resolver to use.
     pub resolver: &'a mut Resolver,
     /// Store required packages, to avoid unnecessary lookups.
@@ -84,13 +84,13 @@ where
 {
     /// Construct a new, language-neutral environment.
     pub fn new(
-        ctx: Rc<Context>,
         package_prefix: Option<RpPackage>,
+        reporter: &'a mut Reporter,
         resolver: &'a mut Resolver,
     ) -> Environment<'a, F> {
         Environment {
-            ctx: ctx,
             package_prefix,
+            reporter,
             resolver,
             lookup_required: HashMap::new(),
             lookup_versioned: HashSet::new(),
@@ -238,7 +238,7 @@ impl<'a> Environment<'a, CoreFlavor> {
         T: FlavorTranslator<Source = CoreFlavor>,
     {
         // Report all collected errors.
-        if self.ctx.has_diagnostics()? {
+        if self.reporter.has_diagnostics() {
             return Err(Error::new("error in context"));
         }
 
@@ -251,7 +251,7 @@ impl<'a> Environment<'a, CoreFlavor> {
             let file = match file.file.translate(&mut diag, &ctx) {
                 Ok(file) => file,
                 Err(e) => {
-                    self.ctx.diagnostics(diag)?;
+                    self.reporter.diagnostics(diag);
                     return Err(e);
                 }
             };
@@ -357,7 +357,7 @@ impl<'a> Environment<'a, CoreFlavor> {
 
         let mut diag = Diagnostics::new(source.clone());
 
-        try_with_diag!(self.ctx, diag, {
+        try_with_diag!(self.reporter, diag, {
             let step = self.load_source_diag(&mut diag, &package);
             let step = step.and_then(|file| self.process_file(&mut diag, package.clone(), file));
             step
@@ -380,7 +380,7 @@ impl<'a> Environment<'a, CoreFlavor> {
 
         let mut diag = Diagnostics::new(Source::empty("generated"));
 
-        try_with_diag!(self.ctx, diag, {
+        try_with_diag!(self.reporter, diag, {
             let step = self.load_file(&mut diag, file, &package);
             let step = step.and_then(|file| self.process_file(&mut diag, package.clone(), file));
             step
@@ -403,7 +403,7 @@ impl<'a> Environment<'a, CoreFlavor> {
     ) -> Result<RpFile<CoreFlavor>> {
         let mut diag = Diagnostics::new(source.clone());
 
-        Ok(try_with_diag!(self.ctx, diag, {
+        Ok(try_with_diag!(self.reporter, diag, {
             self.load_source_diag(&mut diag, &package)
         }))
     }
@@ -565,7 +565,7 @@ impl<'e> Import for Environment<'e, CoreFlavor> {
         self.lookup_required
             .insert(required.clone(), Some(package.clone()));
 
-        try_with_diag!(self.ctx, diag, {
+        try_with_diag!(self.reporter, diag, {
             let step = self.load_source_diag(&mut diag, &package);
             let step = step.and_then(|file| self.process_file(&mut diag, package.clone(), file));
             step

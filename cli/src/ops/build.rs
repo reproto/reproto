@@ -2,10 +2,9 @@
 
 use build_spec::{environment, load_manifest};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::Context;
+use core::{Filesystem, Reporter};
 use core::errors::Result;
 use env;
-use std::rc::Rc;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("build").about("Build specifications");
@@ -20,14 +19,15 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(ctx: Rc<Context>, matches: &ArgMatches) -> Result<()> {
+pub fn entry(fs: &Filesystem, reporter: &mut Reporter, matches: &ArgMatches) -> Result<()> {
     let manifest = load_manifest(matches)?;
     let lang = manifest.lang().ok_or_else(|| {
         "no language to build for, either specify in manifest under `language` or `--lang`"
     })?;
 
     let mut resolver = env::resolver(&manifest)?;
-    let env = environment(ctx.clone(), lang.copy(), &manifest, resolver.as_mut())?;
-    lang.compile(ctx, env, manifest)?;
+    let handle = fs.open_root(manifest.output.as_ref().map(AsRef::as_ref))?;
+    let env = environment(lang.copy(), &manifest, reporter, resolver.as_mut())?;
+    lang.compile(handle.as_ref(), env, manifest)?;
     Ok(())
 }

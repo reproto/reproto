@@ -21,12 +21,11 @@ mod internal {
     use VERSION;
     use clap::ArgMatches;
     use core::errors::{Error, Result};
-    use core::{Context, Version};
+    use core::Version;
     use env;
     use std::fs::{self, File};
     use std::io::{self, Cursor};
     use std::path::Path;
-    use std::rc::Rc;
     use std::sync::Arc;
     use url::Url;
 
@@ -65,7 +64,7 @@ mod internal {
 
     const DEFAULT_URL: &str = "https://storage.googleapis.com/reproto-releases/";
 
-    pub fn entry(_: Rc<Context>, m: &ArgMatches) -> Result<()> {
+    pub fn entry(m: &ArgMatches) -> Result<()> {
         let config = env::ConfigEnv::new()?
             .ok_or_else(|| format!("could not setup the reproto environment"))?;
 
@@ -445,11 +444,9 @@ mod internal {
 #[cfg(not(feature = "self-updates"))]
 mod internal {
     use clap::ArgMatches;
-    use core::Context;
     use core::errors::Result;
-    use std::rc::Rc;
 
-    pub fn entry(_: Rc<Context>, _: &ArgMatches) -> Result<()> {
+    pub fn entry(_: &ArgMatches) -> Result<()> {
         return Err("support for self-updates is not enabled".into());
     }
 }

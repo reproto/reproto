@@ -13,13 +13,12 @@ extern crate toml;
 use core::errors::Result;
 use core::flavored::{RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody,
                      RpTupleBody, RpTypeBody, RpVariantRef};
-use core::{Context, CoreFlavor, RelativePathBuf, DEFAULT_TAG};
+use core::{CoreFlavor, Handle, RelativePathBuf, DEFAULT_TAG};
 use genco::{Custom, Formatter, IntoTokens, IoFmt, Quoted, Tokens, WriteTokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::fmt::{self, Write};
 use std::path::Path;
-use std::rc::Rc;
 use trans::Environment;
 
 pub struct Comments<'el, S: 'el>(&'el [S]);
@@ -101,9 +100,8 @@ impl Custom for Reproto {
 }
 
 /// Compile to a reproto manifest.
-fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, env: Environment<CoreFlavor>, _manifest: Manifest) -> Result<()> {
     let env = env.translate_default()?;
-    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
 
     let root = RelativePathBuf::from(".");
 

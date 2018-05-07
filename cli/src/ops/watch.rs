@@ -1,7 +1,7 @@
 //! build command
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::Context;
+use core::{Filesystem, Reporter};
 use core::errors::Result;
 use env;
 use output::Output;
@@ -28,12 +28,12 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 }
 
 #[cfg(not(feature = "notify"))]
-pub fn entry(_: Rc<Context>, _: &ArgMatches, _: &Output) -> Result<()> {
+pub fn entry(_: Rc<Context>, _: &mut Reporter, _: &ArgMatches, _: &Output) -> Result<()> {
     Err("`watch` command is not supported: `notify` feature is disabled".into())
 }
 
 #[cfg(feature = "notify")]
-pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<()> {
+pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<()> {
     use build_spec::{environment_with_hook, load_manifest};
     use notify::{RecommendedWatcher, RecursiveMode, Watcher};
     use std::cell::RefCell;
@@ -60,18 +60,26 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<
 
     let delete = matches.is_present("delete");
 
+    let mut reporter = Vec::new();
+
     loop {
         info!("updating project");
 
-        let update = match try_compile(ctx.clone(), matches, &paths, &written_files, &written_dirs)
-        {
-            Err(e) => {
-                let ctx_items = ctx.items()?;
+        reporter.clear();
 
-                if ctx_items.is_empty() {
+        let update = match try_compile(
+            fs,
+            &mut reporter,
+            matches,
+            &paths,
+            &written_files,
+            &written_dirs,
+        ) {
+            Err(e) => {
+                if reporter.is_empty() {
                     output.handle_error(&e)?;
                 } else {
-                    output.handle_context(ctx_items.as_ref())?;
+                    output.handle_context(&reporter)?;
                 }
 
                 false
@@ -242,20 +250,14 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<
     }
 
     fn try_compile(
-        ctx: Rc<Context>,
+        fs: &Filesystem,
+        reporter: &mut Reporter,
         matches: &ArgMatches,
         paths: &Rc<RefCell<HashSet<PathBuf>>>,
         added_files: &Rc<RefCell<HashSet<PathBuf>>>,
         added_dirs: &Rc<RefCell<HashSet<PathBuf>>>,
     ) -> Result<()> {
-        // Access a fresh context.
-        let ctx = Rc::new(ctx.as_ref().clone().map_filesystem(|fs| {
-            Box::new(stalker::StalkerFilesystem::new(
-                fs,
-                added_files.clone(),
-                added_dirs.clone(),
-            ))
-        }));
+        let fs = stalker::StalkerFilesystem::new(fs, added_files.clone(), added_dirs.clone());
 
         let manifest = load_manifest(matches)?;
         let lang = manifest.lang().ok_or_else(|| "no language to build for")?;
@@ -273,9 +275,9 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<
         let mut resolver = env::resolver(&manifest)?;
 
         let env = environment_with_hook(
-            ctx.clone(),
             lang.copy(),
             &manifest,
+            reporter,
             resolver.as_mut(),
             move |p| {
                 let p = p.to_owned()
@@ -286,7 +288,8 @@ pub fn entry(ctx: Rc<Context>, matches: &ArgMatches, output: &Output) -> Result<
             },
         )?;
 
-        lang.compile(ctx.clone(), env, manifest)?;
+        let handle = fs.open_root(manifest.output.as_ref().map(AsRef::as_ref))?;
+        lang.compile(handle.as_ref(), env, manifest)?;
         Ok(())
     }
 }
@@ -302,15 +305,15 @@ mod stalker {
     use std::rc::Rc;
 
     /// A filesystem implementation that keeps track of files which have been opened for writing.
-    pub struct StalkerFilesystem {
-        delegate: Rc<Box<Filesystem>>,
+    pub struct StalkerFilesystem<'a> {
+        delegate: &'a Filesystem,
         files: Rc<RefCell<HashSet<PathBuf>>>,
         dirs: Rc<RefCell<HashSet<PathBuf>>>,
     }
 
-    impl StalkerFilesystem {
+    impl<'a> StalkerFilesystem<'a> {
         pub fn new(
-            delegate: Rc<Box<Filesystem>>,
+            delegate: &'a Filesystem,
             files: Rc<RefCell<HashSet<PathBuf>>>,
             dirs: Rc<RefCell<HashSet<PathBuf>>>,
         ) -> StalkerFilesystem {
@@ -322,7 +325,7 @@ mod stalker {
         }
     }
 
-    impl Filesystem for StalkerFilesystem {
+    impl<'a> Filesystem for StalkerFilesystem<'a> {
         fn open_root(&self, root: Option<&Path>) -> Result<Box<Handle>> {
             let delegate = self.delegate.open_root(root.clone())?;
 

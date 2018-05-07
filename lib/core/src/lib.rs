@@ -12,15 +12,14 @@ extern crate relative_path;
 pub extern crate reproto_semver as semver;
 extern crate ropey;
 pub extern crate serde;
-extern crate url;
 #[macro_use]
 extern crate serde_derive;
+extern crate url;
 
 #[macro_use]
 mod macros;
 mod as_loc;
 mod attributes;
-mod context;
 mod diagnostics;
 pub mod errors;
 mod flavor;
@@ -58,9 +57,9 @@ mod span;
 pub mod translator;
 pub mod utils;
 mod with_span;
+mod reporter;
 
 pub use self::attributes::{Attributes, Selection};
-pub use self::context::{Context, ContextItem};
 pub use self::diagnostics::{Diagnostic, Diagnostics, SymbolKind};
 pub use self::flavor::{AsPackage, CoreFlavor, Flavor, FlavorField};
 pub use self::fs::{CapturingFilesystem, Filesystem, Handle, RealFilesystem};
@@ -102,3 +101,4 @@ pub use self::utils::{Encoding, Position};
 pub use self::with_span::WithSpan;
 pub use num_bigint::BigInt;
 pub use semver::{Range, Version};
+pub use self::reporter::Reporter;

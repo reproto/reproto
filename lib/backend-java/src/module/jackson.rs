@@ -254,10 +254,12 @@ impl Jackson {
         &self,
         ty: Java<'el>,
         parser: A,
-    ) -> Result<(
-        Option<(Tokens<'el, Java<'el>>, &'el str)>,
-        Tokens<'el, Java<'el>>,
-    )>
+    ) -> Result<
+        (
+            Option<(Tokens<'el, Java<'el>>, &'el str)>,
+            Tokens<'el, Java<'el>>,
+        ),
+    >
     where
         A: Into<Tokens<'el, Java<'el>>>,
     {

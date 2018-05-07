@@ -29,7 +29,7 @@ mod utils;
 use codegen::Configure;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor};
+use core::{CoreFlavor, Handle};
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use options::Options;
 use std::any::Any;
@@ -185,7 +185,7 @@ fn setup_options<'a>(modules: Vec<CsharpModule>) -> Options {
     options
 }
 
-fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = env.packages()?;
 
     let translator = env.translator(flavored::CsharpFlavorTranslator::new(packages))?;
@@ -197,7 +197,5 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
     let options = setup_options(modules);
     let compiler = Compiler::new(env.clone(), options);
 
-    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-
-    compiler.compile(handle.as_ref())
+    compiler.compile(handle)
 }

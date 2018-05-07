@@ -22,7 +22,7 @@ mod module;
 use backend::{Initializer, IntoBytes};
 use compiler::Compiler;
 use core::errors::Result;
-use core::{Context, CoreFlavor};
+use core::{CoreFlavor, Handle};
 use flavored::{GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody};
 use genco::go::{self, Go};
 use genco::{Element, IntoTokens, Tokens};
@@ -270,7 +270,7 @@ impl<'el> IntoTokens<'el, Go<'el>> for Tags {
     }
 }
 
-fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = env.packages()?;
 
     let translator = env.translator(flavored::GoFlavorTranslator::new(packages))?;
@@ -278,6 +278,5 @@ fn compile(ctx: Rc<Context>, env: Environment<CoreFlavor>, manifest: Manifest) -
 
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
-    let handle = ctx.filesystem(manifest.output.as_ref().map(AsRef::as_ref))?;
-    Compiler::new(&env, options, handle.as_ref())?.compile()
+    Compiler::new(&env, options, handle)?.compile()
 }

@@ -1,6 +1,6 @@
 use clap::ArgMatches;
 use core::errors::{Error, Result, ResultExt};
-use core::{Context, CoreFlavor, Diagnostics, Flavor, Resolved, ResolvedByPrefix, Resolver,
+use core::{CoreFlavor, Diagnostics, Flavor, Reporter, Resolved, ResolvedByPrefix, Resolver,
            RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source,
            Version};
 use env;
@@ -10,7 +10,6 @@ use semck;
 use std::fmt;
 use std::fs::File;
 use std::path::Path;
-use std::rc::Rc;
 use trans::Environment;
 
 /// Load the manifest based on commandline arguments.
@@ -121,19 +120,19 @@ pub fn load_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
 }
 
 pub fn environment<'a>(
-    ctx: Rc<Context>,
     lang: Box<Lang>,
     manifest: &Manifest,
+    reporter: &'a mut Reporter,
     resolver: &'a mut Resolver,
 ) -> Result<Environment<'a, CoreFlavor>> {
-    environment_with_hook(ctx, lang, manifest, resolver, |_| Ok(()))
+    environment_with_hook(lang, manifest, reporter, resolver, |_| Ok(()))
 }
 
 /// Setup environment.
 pub fn environment_with_hook<'a, F: 'static>(
-    ctx: Rc<Context>,
     lang: Box<Lang>,
     manifest: &Manifest,
+    reporter: &'a mut Reporter,
     resolver: &'a mut Resolver,
     path_hook: F,
 ) -> Result<Environment<'a, CoreFlavor>>
@@ -142,7 +141,7 @@ where
 {
     let package_prefix = manifest.package_prefix.clone();
 
-    let mut env = lang.into_env(ctx, package_prefix, resolver)
+    let mut env = lang.into_env(package_prefix, reporter, resolver)
         .with_path_hook(path_hook);
 
     let mut errors: Vec<Error> = Vec::new();
@@ -264,7 +263,6 @@ where
 }
 
 pub fn semck_check(
-    ctx: &Context,
     errors: &mut Vec<Error>,
     repository: &mut Repository,
     env: &mut Environment<CoreFlavor>,
@@ -309,8 +307,8 @@ pub fn semck_check(
                 handle_violation(&mut current, &mut next, v)?;
             }
 
-            ctx.diagnostics(current)?;
-            ctx.diagnostics(next)?;
+            env.reporter.diagnostics(current);
+            env.reporter.diagnostics(next);
         }
     }
 
@@ -436,11 +434,11 @@ pub fn semck_check(
 
 /// Setup a basic environment falling back to `NoLang` unless one is specified.
 pub fn simple_config<'a>(
-    ctx: &Rc<Context>,
     manifest: &Manifest,
+    reporter: &'a mut Reporter,
     resolver: &'a mut Resolver,
 ) -> Result<Environment<'a, CoreFlavor>> {
     let lang = manifest.lang_or_nolang();
-    let env = environment(ctx.clone(), lang, &manifest, resolver)?;
+    let env = environment(lang, &manifest, reporter, resolver)?;
     Ok(env)
 }
