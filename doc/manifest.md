@@ -58,7 +58,7 @@ Manifest:
 
 ```toml
 paths = [
-  "src/main/reproto"
+  "src/main/reproto",
   "reproto"
 ]
 ```
