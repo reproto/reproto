@@ -1,3 +1,4 @@
+.DS_Store
 !.gitkeep
 target/
 **/*.rs.bk
