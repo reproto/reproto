@@ -1,15 +1,21 @@
+extern crate failure;
 extern crate reqwest;
 extern crate rust;
 
-use rust::gen::com::github::service::_3_0_0::Github_Reqwest;
+use rust::gen::github::v3;
 
-fn main() {
+fn main() -> Result<(), rust::gen::reproto::Error> {
     let client = reqwest::Client::new();
-    let github = Github_Reqwest::new(client, None).expect("failed to setup client");
-    let gists = github.get_user_gists("udoprog".to_string()).expect("bad response");
+    let github = v3::Github_Reqwest::new(client, None)?;
 
-    for gist in gists {
-        println!("Gist ID: {}", gist.id);
-        println!("Gist URL: {:?}", gist.url);
+    let rate_limit = github.get_rate_limit()?;
+    println!("{:?}", rate_limit);
+
+    let gists = github.get_user_gists("udoprog".to_string())?;
+    
+    for g in gists {
+        println!("{:?}", g);
     }
+
+    Ok(())
 }

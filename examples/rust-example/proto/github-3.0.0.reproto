@@ -1,0 +1,30 @@
+/// The example API.
+#[http(url="https://api.github.com")]
+service Github {
+    #[http(path = "/rate_limit")]
+    get_rate_limit() -> RateLimit;
+
+    #[http(path = "/users/{username}/gists")]
+    get_user_gists(username: string) -> [Gist];
+}
+
+type Gist {
+    url: string;
+    id: string;
+}
+
+type RateLimit {
+    rate: Quota;
+    resources: ::Resources;
+
+    type Resources {
+        core: Quota;
+        graphql: Quota;
+    }
+}
+
+type Quota {
+    limit: u64;
+    remaining: u64;
+    reset: u64;
+}

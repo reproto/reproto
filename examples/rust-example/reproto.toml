@@ -1,13 +1,10 @@
-paths = ["../src"]
+paths = ["proto"]
 language = "rust"
 
 [presets.rust]
 
-[publish]
-"com.github" = {version = "3.0.0"}
-
 [packages]
-"com.github.service" = {version = "^3"}
+github = "*"
 
 [modules.reqwest]
 [modules.chrono]
