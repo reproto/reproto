@@ -1,6 +1,7 @@
 //! Path specifications
 
 use errors::Result;
+use std::fmt;
 use std::vec;
 use {Diagnostics, Flavor, RpEndpointArgument, Translate, Translator};
 
@@ -14,6 +15,23 @@ where
 {
     Variable(RpEndpointArgument<F>),
     Segment(String),
+}
+
+impl<F: 'static> fmt::Display for RpPathPart<F> where F: Flavor {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            RpPathPart::Segment(ref segment) => {
+                fmt.write_str(segment)?;
+            }
+            RpPathPart::Variable(ref var) => {
+                fmt.write_str("{")?;
+                fmt.write_str(var.safe_ident())?;
+                fmt.write_str("}")?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl<F: 'static, T> Translate<T> for RpPathPart<F>
@@ -45,6 +63,18 @@ where
     F: Flavor,
 {
     pub parts: Vec<RpPathPart<F>>,
+}
+
+impl<F: 'static> fmt::Display for RpPathStep<F> where F: Flavor {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str("/")?;
+
+        for p in &self.parts {
+            p.fmt(fmt)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl<F: 'static, T> Translate<T> for RpPathStep<F>
@@ -111,6 +141,19 @@ where
         Vars {
             iter: vars.into_iter(),
         }
+    }
+}
+
+impl<F: 'static> fmt::Display for RpPathSpec<F>
+where
+    F: Flavor,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        for s in &self.steps {
+            s.fmt(fmt)?;
+        }
+
+        Ok(())
     }
 }
 

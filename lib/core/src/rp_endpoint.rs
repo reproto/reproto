@@ -5,7 +5,7 @@ use std::default;
 use std::rc::Rc;
 use {Attributes, Diagnostics, Flavor, Loc, RpChannel, RpPathSpec, Translate, Translator};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub enum RpHttpMethod {
     Get,
     Post,

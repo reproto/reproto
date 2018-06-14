@@ -24,6 +24,7 @@ reproto-backend-go = {path = "../backend-go", version = "0.3"}
 reproto-backend-java = {path = "../backend-java", version = "0.3"}
 reproto-backend-js = {path = "../backend-js", version = "0.3"}
 reproto-backend-json = {path = "../backend-json", version = "0.3"}
+reproto-backend-openapi = {path = "../backend-openapi", version = "0.3"}
 reproto-backend-python = {path = "../backend-python", version = "0.3"}
 reproto-backend-reproto = {path = "../backend-reproto", version = "0.3"}
 reproto-backend-rust = {path = "../backend-rust", version = "0.3"}

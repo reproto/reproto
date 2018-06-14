@@ -8,6 +8,7 @@ members = [
   "lib/backend-java",
   "lib/backend-js",
   "lib/backend-json",
+  "lib/backend-openapi",
   "lib/backend-python",
   "lib/backend-reproto",
   "lib/backend-rust",

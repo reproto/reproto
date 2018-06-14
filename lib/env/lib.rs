@@ -4,6 +4,7 @@ extern crate reproto_backend_go as go;
 extern crate reproto_backend_java as java;
 extern crate reproto_backend_js as js;
 extern crate reproto_backend_json as json;
+extern crate reproto_backend_openapi as openapi;
 extern crate reproto_backend_python as python;
 extern crate reproto_backend_reproto as reproto;
 extern crate reproto_backend_rust as rust;
@@ -219,5 +220,6 @@ pub fn convert_lang(input: Language) -> Box<Lang> {
         Reproto => Box::new(::reproto::ReprotoLang),
         Rust => Box::new(::rust::RustLang),
         Swift => Box::new(::swift::SwiftLang),
+        OpenApi => Box::new(::openapi::OpenApiLang),
     }
 }

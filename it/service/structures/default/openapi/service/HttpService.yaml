@@ -1,0 +1,11 @@
+---
+openapi: 3.0.0
+info: {}
+servers:
+  - "http://example.com"
+paths:
+  /simple:
+    get:
+      operationId: get_simple
+    post:
+      operationId: post_simple

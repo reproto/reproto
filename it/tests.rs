@@ -49,6 +49,7 @@ define!{
         service.arg(Java, &["-m", "grpc"]);
         service.include(Java);
         service.include(Rust);
+        service.include(OpenApi);
     },
     rust_keywords => {
         rust_keywords.include(Rust);

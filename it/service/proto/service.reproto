@@ -22,3 +22,12 @@ service MyService {
     /// BIDI_STREAMING
     bidi_streaming(request: stream c::Entry) -> stream c::Entry;
 }
+
+#[http(url = "http://example.com")]
+service HttpService {
+    #[http(path = "/simple")]
+    get_simple();
+
+    #[http(path = "/simple", method = "POST")]
+    post_simple();
+}

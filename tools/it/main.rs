@@ -142,6 +142,7 @@ fn try_main() -> Result<()> {
         it::Language::Java,
         it::Language::JavaScript,
         it::Language::Json,
+        it::Language::OpenApi,
         it::Language::Python,
         it::Language::Python3,
         it::Language::Reproto,

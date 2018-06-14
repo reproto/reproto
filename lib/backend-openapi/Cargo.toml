@@ -1,0 +1,24 @@
+[package]
+name = "reproto-backend-openapi"
+version = "0.3.39"
+authors = ["John-John Tedro <udoprog@tedro.se>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/reproto/reproto"
+homepage = "https://github.com/reproto/reproto"
+documentation = "https://docs.rs/reproto-backend-openapi"
+description = """
+Rethinking Protocol Generators OpenAPI Backend
+"""
+
+[dependencies]
+reproto-backend = {path = "../backend", version = "0.3"}
+reproto-core = {path = "../core", version = "0.3"}
+reproto-trans = {path = "../trans", version = "0.3"}
+reproto-manifest = {path = "../manifest", version = "0.3"}
+
+log = "0.3"
+serde = "1.0"
+serde_derive = "1.0"
+serde_yaml = "0.7"
+toml = "0.4"
