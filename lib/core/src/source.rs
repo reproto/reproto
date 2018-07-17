@@ -233,7 +233,22 @@ impl Source {
     }
 
     pub fn span_to_range(&self, span: Span, encoding: Encoding) -> Result<(Position, Position)> {
+        // optimized access
+        if let Readable::Rope(_, ref rope) = self.readable {
+            let start = translate_position(rope, span.start, encoding);
+            let end = translate_position(rope, span.end, encoding);
+            return Ok((start, end));
+        }
+
         return find_range(self.read()?, span, encoding);
+
+        fn translate_position(rope: &Rope, offset: usize, encoding: Encoding) -> Position {
+            let line = rope.byte_to_line(offset);
+            let col_char = rope.byte_to_char(offset);
+            let col_char = col_char - rope.line_to_char(line);
+            let col = encoding.column_iter(rope.line(line).chars(), col_char);
+            Position { line, col }
+        }
     }
 }
 
