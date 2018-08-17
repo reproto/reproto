@@ -30,11 +30,12 @@ reproto-backend-reproto = {path = "../lib/backend-reproto", version = "0.3"}
 reproto-backend-rust = {path = "../lib/backend-rust", version = "0.3"}
 reproto-backend-swift = {path = "../lib/backend-swift", version = "0.3"}
 
-stdweb = "0.4"
+wasm-bindgen = {version = "0.2", features = ["serde-serialize"]}
 serde = "1"
-serde_json = "1"
 serde_derive = "1"
 
-[[bin]]
-name = "reproto-wasm"
+[lib]
+crate-type = ["cdylib"]
+
+name = "reproto_wasm"
 path = "reproto_wasm.rs"

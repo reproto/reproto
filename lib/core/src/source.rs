@@ -185,7 +185,7 @@ impl Source {
                 Err(_) => return None,
             };
 
-            match Url::from_file_path(path) {
+            match Url::parse(&format!("file://{}", path.display())) {
                 Ok(url) => return Some(url),
                 Err(_) => {}
             }

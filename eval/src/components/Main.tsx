@@ -11,7 +11,7 @@ import * as WebAssembly from "webassembly";
 import {Annotation, Marker as AceMarker} from 'react-ace';
 import AceEditor from 'react-ace';
 
-const wasm = require("rust/reproto-wasm.js");
+import * as wasm from '../wasm';
 
 const deepEqual = require("deep-equal");
 
@@ -57,7 +57,7 @@ themes.forEach((theme) => {
   require(`brace/theme/${theme}`)
 })
 
-const DEFAULT_JSON = require("raw-loader!../static/default.json");
+const DEFAULT_JSON = require("../static/default.json");
 const DEFAULT_YAML = require("raw-loader!../static/default.yaml");
 const COMMON_REPROTO: string = require("raw-loader!../static/common.reproto");
 const COMMON2_REPROTO: string = require("raw-loader!../static/common2.reproto");
@@ -179,7 +179,7 @@ export class Main extends React.Component<MainProps, MainState> {
 
     this.state = {
       contentSet: {
-        json: DEFAULT_JSON,
+        json: JSON.stringify(DEFAULT_JSON, null, 4),
         yaml: DEFAULT_YAML,
       },
       files: [
@@ -293,11 +293,7 @@ export class Main extends React.Component<MainProps, MainState> {
     this.setFormat(input);
     this.setOutput(output);
 
-    fetch("reproto-wasm.wasm")
-      .then(response => response.arrayBuffer())
-      .then(buffer => WebAssembly.compile(buffer))
-      .then(mod => wasm(mod, true))
-      .then(mod => {
+    wasm.load.then(mod => {
       this.setState({derive: mod.derive}, () => this.recompile());
     });
   }

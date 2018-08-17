@@ -1,8 +1,8 @@
-const path = require("path");
-
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const ExtractTextPlugin = require("extract-text-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
+const UglifyJsPlugin = require("uglifyjs-webpack-plugin");
 
 module.exports = {
   entry: [
@@ -15,14 +15,9 @@ module.exports = {
     path: __dirname + "/dist"
   },
 
-  devtool: "source-map",
-
   resolve: {
-    extensions: [".ts", ".tsx", ".js", ".json"],
+    extensions: [".ts", ".tsx", ".js", ".wasm"],
     modules: ["node_modules", "local_modules"],
-    alias: {
-      "rust": path.resolve("./target/wasm32-unknown-unknown/release/")
-    }
   },
 
   module: {
@@ -41,40 +36,56 @@ module.exports = {
         test: /\.js?$/,
         loader: "babel-loader",
         exclude: /(node_modules|bower_components)/,
-        options: { presets: ['@babel/preset-env'] }
+        options: {
+          presets: ['@babel/preset-env'],
+          plugins: ['@babel/plugin-syntax-dynamic-import']
+        }
       },
-      { enforce: "pre", test: /\.js$/, loader: "source-map-loader" },
-      { test: /\-wasm\.js$/, loader: "exports-loader?__initialize" },
-      { test: /\.scss$/, loader: ExtractTextPlugin.extract("css-loader!sass-loader") },
+      {
+        test: /\.scss$/,
+        use: [
+          MiniCssExtractPlugin.loader,
+          "css-loader",
+          "sass-loader"
+        ]
+      },
       { test: /\.(jpe?g|gif|png)$/, loader: "file-loader" },
       { test: /.(ttf|otf|eot|svg|woff(2)?)(\?[a-z0-9]+)?$/,
         use: [{
           loader: 'file-loader',
           options: {
             name: '[name].[ext]',
-            outputPath: 'fonts/',    // where the fonts will go
-            publicPath: '/fonts/'       // override the default path
+            outputPath: 'fonts/',
+            publicPath: '/fonts/'
           }
         }]
       }
     ]
   },
 
-  /// External react components permitting them to be loaded through CDN.
-  externals: {
-    "webassembly": "WebAssembly",
-  },
-
   plugins: [
     new HtmlWebpackPlugin({
-      template: "index.html"
-    }),
-    new ExtractTextPlugin("dist/style.css", {
-      allChunks: true
+      template: 'index.html'
     }),
     new CopyWebpackPlugin([
-      "target/wasm32-unknown-unknown/release/reproto-wasm.wasm",
-      "src/static/favicon.ico",
-    ])
+      'src/static/favicon.ico',
+    ]),
+    new MiniCssExtractPlugin({
+      filename: "[name].css",
+      chunkFilename: "[id].css"
+    })
   ],
+
+  optimization: {
+    minimizer: [
+      new UglifyJsPlugin({
+        cache: true,
+        parallel: true,
+        sourceMap: true
+      }),
+      new OptimizeCSSAssetsPlugin({})
+    ]
+  },
+
+  mode: 'development',
 };

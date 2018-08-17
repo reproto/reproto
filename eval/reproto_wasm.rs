@@ -1,9 +1,9 @@
+#![feature(use_extern_macros)]
+
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
-#[macro_use]
-extern crate stdweb;
+extern crate wasm_bindgen;
 
 extern crate reproto_ast as ast;
 extern crate reproto_backend_csharp as csharp;
@@ -22,12 +22,12 @@ extern crate reproto_manifest as manifest;
 extern crate reproto_parser as parser;
 
 use std::any::Any;
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::str;
+use std::ops::DerefMut;
+use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-enum Format {
+pub enum Format {
     #[serde(rename = "json")]
     Json,
     #[serde(rename = "yaml")]
@@ -37,7 +37,7 @@ enum Format {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-enum Output {
+pub enum Output {
     #[serde(rename = "reproto")]
     Reproto,
     #[serde(rename = "java")]
@@ -125,58 +125,40 @@ impl Output {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct JavaSettings {
+pub struct JavaSettings {
     jackson: bool,
     lombok: bool,
 }
 
-js_serializable!(JavaSettings);
-js_deserializable!(JavaSettings);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct PythonSettings {
+pub struct PythonSettings {
     requests: bool,
 }
 
-js_serializable!(PythonSettings);
-js_deserializable!(PythonSettings);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct CsharpSettings {
+pub struct CsharpSettings {
     json_net: bool,
 }
 
-js_serializable!(CsharpSettings);
-js_deserializable!(CsharpSettings);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct GoSettings {
+pub struct GoSettings {
     encoding_json: bool,
 }
 
-js_serializable!(GoSettings);
-js_deserializable!(GoSettings);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct SwiftSettings {
+pub struct SwiftSettings {
     codable: bool,
     simple: bool,
 }
 
-js_serializable!(SwiftSettings);
-js_deserializable!(SwiftSettings);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct RustSettings {
+pub struct RustSettings {
     chrono: bool,
     reqwest: bool,
 }
 
-js_serializable!(RustSettings);
-js_deserializable!(RustSettings);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Settings {
+pub struct Settings {
     java: JavaSettings,
     python: PythonSettings,
     swift: SwiftSettings,
@@ -185,33 +167,24 @@ struct Settings {
     go: GoSettings,
 }
 
-js_serializable!(Settings);
-js_deserializable!(Settings);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct File {
+pub struct File {
     package: String,
     version: Option<String>,
     content: String,
 }
 
-js_serializable!(File);
-js_deserializable!(File);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
-enum Content {
+pub enum Content {
     #[serde(rename = "content")]
     Content { content: String },
     #[serde(rename = "file_index")]
     FileIndex { index: usize },
 }
 
-js_serializable!(Content);
-js_deserializable!(Content);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Derive {
+pub struct Derive {
     content: Content,
     files: Vec<File>,
     root_name: String,
@@ -221,11 +194,8 @@ struct Derive {
     settings: Settings,
 }
 
-js_serializable!(Derive);
-js_deserializable!(Derive);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Marker {
+pub struct Marker {
     message: String,
     row_start: u32,
     row_end: u32,
@@ -235,8 +205,8 @@ struct Marker {
 
 impl Marker {
     /// Convert an error into a marker.
-    fn try_from_error(p: &core::Span, message: &str) -> core::errors::Result<Marker> {
-        let (_, line, (s, e)) = core::utils::find_line(p.source.read()?, (p.start, p.end))?;
+    fn try_from_error(source: &core::Source, p: &core::Span, message: &str) -> core::errors::Result<Marker> {
+        let (_, line, (s, e)) = core::utils::find_line(source.read()?, (p.start, p.end))?;
 
         let marker = Marker {
             message: message.to_string(),
@@ -250,8 +220,8 @@ impl Marker {
     }
 
     /// Safe building of markers with fallback.
-    fn try_from_error_fb(p: &core::Span, message: &str) -> Marker {
-        if let Ok(m) = Self::try_from_error(p, message) {
+    fn try_from_error_fb(source: &core::Source, p: &core::Span, message: &str) -> Marker {
+        if let Ok(m) = Self::try_from_error(source, p, message) {
             return m;
         }
 
@@ -271,138 +241,83 @@ impl Marker {
     }
 }
 
-js_serializable!(Marker);
-js_deserializable!(Marker);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct DeriveFile {
+pub struct DeriveFile {
     path: String,
     content: String,
 }
 
-js_serializable!(DeriveFile);
-js_deserializable!(DeriveFile);
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct DeriveResult {
+pub struct DeriveResult {
     files: Vec<DeriveFile>,
     error: Option<String>,
     error_markers: Vec<Marker>,
     info_markers: Vec<Marker>,
 }
 
-js_serializable!(DeriveResult);
-js_deserializable!(DeriveResult);
-
 #[derive(Debug, Clone)]
-struct ParsedFile {
+pub struct ParsedFile {
     package: core::RpPackage,
     version: Option<core::Version>,
     content: String,
 }
 
-/// Resolver using provided files.
-struct MapResolver(Vec<ParsedFile>);
+#[wasm_bindgen]
+pub fn derive(derive: &JsValue) -> JsValue {
+    let out = try_derive(derive).unwrap_or_else(|e| DeriveResult {
+        files: vec![],
+        error: Some(e.to_string()),
+        error_markers: vec![],
+        info_markers: vec![],
+    });
 
-impl core::Resolver for MapResolver {
-    fn resolve(
-        &mut self,
-        required: &core::RpRequiredPackage,
-    ) -> core::errors::Result<Vec<core::Resolved>> {
-        let mut out = Vec::new();
+    return JsValue::from_serde(&out).expect("bad output");
 
-        let package = &required.package;
+    fn try_derive(derive: &JsValue) -> Result<DeriveResult, String> {
+        let derive: Derive = derive.into_serde().map_err(|e| e.to_string())?;
 
-        for file in self.0.iter() {
-            if file.package != required.package {
-                continue;
-            }
+        let mut reporter: Vec<core::Diagnostics> = Vec::new();
 
-            if file.version
-                .as_ref()
-                .map(|v| required.range.matches(v))
-                .unwrap_or_else(|| required.range.matches_any())
-            {
-                let bytes = file.content.as_bytes().to_vec();
-                let source = core::Source::bytes(package.to_string(), bytes);
+        let (source, package) = content_source(&derive).map_err(|e| e.display().to_string())?;
 
-                out.push(core::Resolved {
-                    version: file.version.clone(),
-                    source,
-                })
-            }
-        }
+        let out = match inner_derive(derive, &source, package, &mut reporter) {
+            Ok(result) => DeriveResult {
+                files: result,
+                error: None,
+                error_markers: vec![],
+                info_markers: vec![],
+            },
+            Err(e) => {
+                let mut error_markers = Vec::new();
+                let mut info_markers = Vec::new();
 
-        Ok(out)
-    }
-
-    fn resolve_by_prefix(
-        &mut self,
-        prefix: &core::RpPackage,
-    ) -> core::errors::Result<Vec<core::ResolvedByPrefix>> {
-        let mut out = Vec::new();
-
-        for file in self.0.iter() {
-            if file.package.starts_with(prefix) {
-                let bytes = file.content.as_bytes().to_vec();
-
-                let source = core::Source::bytes(file.package.to_string(), bytes);
-
-                out.push(core::ResolvedByPrefix {
-                    package: file.package.clone(),
-                    source,
-                })
-            }
-        }
-
-        Ok(out)
-    }
-}
-
-fn derive(derive: Derive) -> DeriveResult {
-    let mut reporter = Vec::new();
-
-    return match try_derive(derive, &mut reporter) {
-        Ok(result) => DeriveResult {
-            files: result,
-            error: None,
-            error_markers: vec![],
-            info_markers: vec![],
-        },
-        Err(e) => {
-            let mut error_markers = Vec::new();
-            let mut info_markers = Vec::new();
-
-            if let Some(p) = e.span() {
-                error_markers.push(Marker::try_from_error_fb(p, e.message()));
-            }
-
-            for e in items.borrow().iter() {
-                match *e {
-                    core::ContextItem::Error(ref p, ref message) => {
-                        error_markers.push(Marker::try_from_error_fb(p, message.as_str()));
+                for d in reporter.iter().flat_map(|d| d.items()) {
+                    match *d {
+                        core::Diagnostic::Error(ref p, ref message) => {
+                            error_markers.push(Marker::try_from_error_fb(&source, p, message.as_str()));
+                        }
+                        core::Diagnostic::Info(ref p, ref message) => {
+                            info_markers.push(Marker::try_from_error_fb(&source, p, message.as_str()));
+                        }
+                        _ => {}
                     }
-                    core::ContextItem::Info(ref p, ref message) => {
-                        info_markers.push(Marker::try_from_error_fb(p, message.as_str()));
-                    }
-                    _ => {}
+                }
+
+                DeriveResult {
+                    files: vec![],
+                    error: Some(e.display().to_string()),
+                    error_markers: error_markers,
+                    info_markers: info_markers,
                 }
             }
+        };
 
-            DeriveResult {
-                files: vec![],
-                error: Some(e.display().to_string()),
-                error_markers: error_markers,
-                info_markers: info_markers,
-            }
-        }
-    };
+        Ok(out)
+    }
 
-    fn try_derive(
-        derive: Derive,
-        items: Rc<RefCell<Vec<core::ContextItem>>>,
-    ) -> core::errors::Result<Vec<DeriveFile>> {
-        let (source, package) = match derive.content {
+    /// Construct content source information.
+    fn content_source(derive: &Derive) -> core::errors::Result<(core::Source, Option<core::RpVersionedPackage>)> {
+        let out = match derive.content {
             Content::Content { ref content } => {
                 let bytes = content.as_bytes().to_vec();
                 let source = core::Source::bytes("web", bytes);
@@ -424,6 +339,15 @@ fn derive(derive: Derive) -> DeriveResult {
             }
         };
 
+        Ok(out)
+    }
+
+    fn inner_derive(
+        derive: Derive,
+        source: &core::Source,
+        package: Option<core::RpVersionedPackage>,
+        reporter: &mut dyn core::Reporter,
+    ) -> core::errors::Result<Vec<DeriveFile>> {
         let package_prefix = derive
             .package_prefix
             .as_ref()
@@ -431,18 +355,17 @@ fn derive(derive: Derive) -> DeriveResult {
             .unwrap_or_else(|| core::RpPackage::parse("io.reproto.github"));
 
         let input = match derive.format {
-            Format::Json => derive_file(&derive, &package_prefix, &source, Box::new(derive::Json))?,
-            Format::Yaml => derive_file(&derive, &package_prefix, &source, Box::new(derive::Yaml))?,
-            Format::Reproto => compile::Input::Source(source, package),
+            Format::Json => derive_file(&derive, &package_prefix, source, Box::new(derive::Json))?,
+            Format::Yaml => derive_file(&derive, &package_prefix, source, Box::new(derive::Yaml))?,
+            Format::Reproto => compile::Input::Source(source.clone(), package),
         };
 
         let files = parse_files(derive.files)?;
 
-        let resolver = Box::new(MapResolver(files));
+        let mut resolver: Box<core::Resolver> = Box::new(MapResolver(files));
 
         let simple_compile = compile::SimpleCompile::new(input, reporter)
-            .with_items(items)
-            .resolver(resolver)
+            .resolver(resolver.deref_mut())
             .package_prefix(package_prefix);
 
         let mut modules = Vec::new();
@@ -529,10 +452,62 @@ fn derive(derive: Derive) -> DeriveResult {
     }
 }
 
-fn main() {
-    stdweb::initialize();
+/// Resolver using provided files.
+struct MapResolver(Vec<ParsedFile>);
 
-    js! {
-        Module.exports.derive = @{derive};
+impl core::Resolver for MapResolver {
+    fn resolve(
+        &mut self,
+        required: &core::RpRequiredPackage,
+    ) -> core::errors::Result<Option<core::Resolved>> {
+        let package = &required.package;
+
+        for file in self.0.iter() {
+            if file.package != required.package {
+                continue;
+            }
+
+            if file.version
+                .as_ref()
+                .map(|v| required.range.matches(v))
+                .unwrap_or_else(|| required.range.matches_any())
+            {
+                let bytes = file.content.as_bytes().to_vec();
+                let source = core::Source::bytes(package.to_string(), bytes);
+
+                return Ok(Some(core::Resolved {
+                    version: file.version.clone(),
+                    source,
+                }))
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn resolve_by_prefix(
+        &mut self,
+        prefix: &core::RpPackage,
+    ) -> core::errors::Result<Vec<core::ResolvedByPrefix>> {
+        let mut out = Vec::new();
+
+        for file in self.0.iter() {
+            if file.package.starts_with(prefix) {
+                let bytes = file.content.as_bytes().to_vec();
+                let source = core::Source::bytes(file.package.to_string(), bytes);
+                let package = core::RpVersionedPackage::new(file.package.clone(), file.version.clone());
+
+                out.push(core::ResolvedByPrefix {
+                    package,
+                    source,
+                })
+            }
+        }
+
+        Ok(out)
+    }
+
+    fn resolve_packages(&mut self) -> core::errors::Result<Vec<core::ResolvedByPrefix>> {
+        self.resolve_by_prefix(&core::RpPackage::empty())
     }
 }
