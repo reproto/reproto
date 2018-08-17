@@ -8,8 +8,8 @@ extern crate reproto_repository as repository;
 extern crate tokio_core;
 extern crate url;
 
-use core::Source;
 use core::errors::{Error, Result};
+use core::Source;
 use futures::future::{err, ok};
 use futures::{Future, Stream};
 use hyper::header::ContentLength;
@@ -34,9 +34,12 @@ impl HttpObjects {
     }
 
     fn checksum_url(&self, checksum: &Checksum) -> Result<hyper::Uri> {
-        let url = self.url.join(HexSlice::new(checksum).to_string().as_ref())?;
+        let url = self
+            .url
+            .join(HexSlice::new(checksum).to_string().as_ref())?;
 
-        let url = url.to_string()
+        let url = url
+            .to_string()
             .parse::<hyper::Uri>()
             .map_err(|e| format!("Failed to parse URL: {}: {}", e, url))?;
 
@@ -64,8 +67,7 @@ impl HttpObjects {
                     .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
                         out.extend(chunk.as_ref());
                         ok::<_, Error>(out)
-                    })
-                    .map(move |body| (body, status))
+                    }).map(move |body| (body, status))
             });
 
         Box::new(body_and_status)

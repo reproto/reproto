@@ -1,8 +1,9 @@
 use backend::PackageProcessor;
 use core::errors::*;
 use core::{self, Handle, Loc};
-use flavored::{JavaScriptFlavor, JavaScriptName, RpEnumBody, RpField, RpInterfaceBody,
-               RpTupleBody, RpTypeBody};
+use flavored::{
+    JavaScriptFlavor, JavaScriptName, RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody,
+};
 use genco::{Element, JavaScript, Quoted, Tokens};
 use naming::{self, Naming};
 use std::rc::Rc;

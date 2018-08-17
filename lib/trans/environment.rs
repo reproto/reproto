@@ -1,8 +1,10 @@
 use ast;
 use core::errors::{Error, Result};
-use core::{translator, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, Loc,
-           PackageTranslator, Reporter, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg,
-           RpRequiredPackage, RpVersionedPackage, Source, Translate, Translator, Version};
+use core::{
+    translator, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, Loc, PackageTranslator,
+    Reporter, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
+    RpVersionedPackage, Source, Translate, Translator, Version,
+};
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
 use naming::Naming;
@@ -278,7 +280,8 @@ impl<'a> Environment<'a, CoreFlavor> {
 
     /// Translation to simplified packages.
     pub fn packages(&self) -> Result<Rc<Packages>> {
-        let mut queue = self.files
+        let mut queue = self
+            .files
             .keys()
             .cloned()
             .map(|p| (p, 0))
@@ -622,7 +625,8 @@ impl Packages {
 
 impl PackageTranslator<RpVersionedPackage, RpPackage> for Packages {
     fn translate_package(&self, package: RpVersionedPackage) -> Result<RpPackage> {
-        let package = self.files
+        let package = self
+            .files
             .get(&package)
             .ok_or_else(|| format!("no such package: {}", package))?;
 

@@ -46,8 +46,10 @@ pub fn entry(reporter: &mut Reporter, m: &ArgMatches) -> Result<()> {
         env::path_resolver(&manifest)?.ok_or_else(|| "could not setup manifest resolver")?;
 
     let version_override = if let Some(version) = m.value_of("version") {
-        Some(Version::parse(version)
-            .map_err(|e| format!("not a valid version: {}: {}", version, e))?)
+        Some(
+            Version::parse(version)
+                .map_err(|e| format!("not a valid version: {}: {}", version, e))?,
+        )
     } else {
         None
     };
@@ -61,7 +63,8 @@ pub fn entry(reporter: &mut Reporter, m: &ArgMatches) -> Result<()> {
     )?);
 
     // packages to publish from the commandline
-    let packages: Vec<RpRequiredPackage> = m.values_of("package")
+    let packages: Vec<RpRequiredPackage> = m
+        .values_of("package")
         .into_iter()
         .flat_map(|it| it)
         .map(|p| RpRequiredPackage::parse(p).map_err(Into::into))

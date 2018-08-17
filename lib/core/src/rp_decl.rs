@@ -4,8 +4,10 @@ use errors::Result;
 use serde::Serialize;
 use std::fmt;
 use std::vec;
-use {Diagnostics, Flavor, Loc, RpEnumBody, RpInterfaceBody, RpReg, RpServiceBody, RpSubType,
-     RpTupleBody, RpTypeBody, RpVariantRef, Span, Translate, Translator};
+use {
+    Diagnostics, Flavor, Loc, RpEnumBody, RpInterfaceBody, RpReg, RpServiceBody, RpSubType,
+    RpTupleBody, RpTypeBody, RpVariantRef, Span, Translate, Translator,
+};
 
 /// Iterator over declarations.
 pub struct Decls<'a, F: 'static>
@@ -76,8 +78,10 @@ where
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
-                 Serialize, F::Name: Serialize, F::EnumType: Serialize")]
+#[serde(
+    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize, \
+             F::Name: Serialize, F::EnumType: Serialize"
+)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpDecl<F: 'static>
 where

@@ -110,7 +110,8 @@ where
 
     /// Iterate over top level declarations of all registered objects.
     pub fn toplevel_decl_iter(&self) -> ToplevelDeclIter<F> {
-        let values = self.files
+        let values = self
+            .files
             .values()
             .flat_map(|f| f.decls.iter())
             .collect::<Vec<_>>();

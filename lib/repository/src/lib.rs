@@ -27,11 +27,14 @@ mod update;
 pub use self::checksum::Checksum;
 pub use self::git::GitRepo;
 pub use self::hex_slice::HexSlice;
-pub use self::index::{index_from_path, index_from_url, init_file_index, Index, IndexConfig,
-                      NoIndex};
-pub use self::objects::{objects_from_path, objects_from_url, CachedObjects, FileObjects,
-                        NoObjects, Objects, ObjectsConfig};
+pub use self::index::{
+    index_from_path, index_from_url, init_file_index, Index, IndexConfig, NoIndex,
+};
+pub use self::objects::{
+    objects_from_path, objects_from_url, CachedObjects, FileObjects, NoObjects, Objects,
+    ObjectsConfig,
+};
 pub use self::repository::Repository;
 pub use self::resolver::{path_to_package, Packages, Paths, Resolvers, EXT};
-pub use self::sha256::{Sha256 as Digest, to_sha256 as to_checksum};
+pub use self::sha256::{to_sha256 as to_checksum, Sha256 as Digest};
 pub use self::update::Update;

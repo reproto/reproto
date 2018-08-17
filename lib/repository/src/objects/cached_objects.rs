@@ -1,14 +1,14 @@
 //! ## Load objects through a local cache directory
 
-use Objects;
 use checksum::Checksum;
-use core::Source;
 use core::errors::*;
+use core::Source;
 use hex_slice::HexSlice;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::PathBuf;
 use std::time::{self, Duration};
+use Objects;
 
 pub struct CachedObjects<T> {
     objects_cache: PathBuf,
@@ -26,7 +26,8 @@ impl<T: Objects> CachedObjects<T> {
     }
 
     fn cache_path(&self, checksum: &Checksum) -> Result<PathBuf> {
-        let path = self.objects_cache
+        let path = self
+            .objects_cache
             .join(format!("{}", HexSlice::new(&checksum[0..1])));
         let path = path.join(format!("{}", HexSlice::new(&checksum[1..2])));
         Ok(path.join(format!("{}", HexSlice::new(&checksum))))
@@ -34,7 +35,8 @@ impl<T: Objects> CachedObjects<T> {
 
     /// Get the path to the missing file cache.
     fn missing_path(&self, checksum: &Checksum) -> Result<PathBuf> {
-        Ok(self.objects_cache
+        Ok(self
+            .objects_cache
             .join("missing")
             .join(format!("{}", HexSlice::new(checksum))))
     }
@@ -56,7 +58,8 @@ impl<T: Objects> CachedObjects<T> {
                 let now = time::SystemTime::now();
                 let age = now.duration_since(m.modified()?)?;
 
-                let expires = self.missing_cache_time
+                let expires = self
+                    .missing_cache_time
                     .checked_sub(age)
                     .unwrap_or_else(|| Duration::new(0, 0));
 

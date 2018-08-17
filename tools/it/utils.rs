@@ -1,4 +1,3 @@
-use Result;
 use diff;
 use relative_path::RelativePathBuf;
 use std::collections::{HashSet, VecDeque};
@@ -7,6 +6,7 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+use Result;
 
 /// Extract relative parts from the given path.
 fn relative_parts<'a>(path: &'a Path, depth: usize) -> Result<Vec<&'a str>> {
@@ -16,7 +16,8 @@ fn relative_parts<'a>(path: &'a Path, depth: usize) -> Result<Vec<&'a str>> {
     let mut out = Vec::new();
 
     for c in parts {
-        let c = c.as_os_str()
+        let c = c
+            .as_os_str()
             .to_str()
             .ok_or_else(|| format_err!("not a string"))?;
 

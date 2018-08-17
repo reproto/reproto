@@ -1,4 +1,3 @@
-use Opaque;
 use core;
 use core::errors::Result;
 use format;
@@ -6,6 +5,7 @@ use linked_hash_map::LinkedHashMap;
 use serde_json as json;
 use sir::{FieldSir, Sir};
 use utils::is_datetime;
+use Opaque;
 
 #[derive(Debug)]
 pub struct Json;
@@ -14,7 +14,8 @@ impl format::Format for Json {
     fn decode(&self, object: &core::Source) -> Result<Sir> {
         let mut der = json::Deserializer::from_reader(object.read()?).into_iter::<json::Value>();
 
-        let value: Result<json::Value> = der.next()
+        let value: Result<json::Value> = der
+            .next()
             .ok_or_else(|| format!("Expected at least one JSON value").into())
             .and_then(|v| v.map_err(|e| format!("Bad JSON: {}", e).into()));
 

@@ -110,7 +110,8 @@ impl GitRepo {
     /// Add the give file.
     pub fn add<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let path = path.as_ref();
-        let path_str = path.to_str()
+        let path_str = path
+            .to_str()
             .ok_or_else(|| format!("{}: could not convert to string", path.display()))?;
 
         self.git(&["add", path_str])?;

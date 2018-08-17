@@ -11,8 +11,10 @@ extern crate reproto_trans as trans;
 extern crate toml;
 
 use core::errors::Result;
-use core::flavored::{RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody,
-                     RpTupleBody, RpTypeBody, RpVariantRef};
+use core::flavored::{
+    RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody, RpTupleBody,
+    RpTypeBody, RpVariantRef,
+};
 use core::{CoreFlavor, Handle, RelativePathBuf, DEFAULT_TAG};
 use genco::{Custom, Formatter, IntoTokens, IoFmt, Quoted, Tokens, WriteTokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -56,8 +58,7 @@ impl Lang for ReprotoLang {
 }
 
 #[derive(Debug)]
-pub enum ReprotoModule {
-}
+pub enum ReprotoModule {}
 
 impl TryFromToml for ReprotoModule {
     fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
@@ -70,8 +71,7 @@ impl TryFromToml for ReprotoModule {
 }
 
 #[derive(Clone)]
-pub enum Reproto {
-}
+pub enum Reproto {}
 
 impl Custom for Reproto {
     type Extra = ();
@@ -111,7 +111,8 @@ fn compile(handle: &Handle, env: Environment<CoreFlavor>, _manifest: Manifest) -
             .parts()
             .fold(root.clone(), |path, part| path.join(part));
 
-        let parent = path.parent()
+        let parent = path
+            .parent()
             .map(ToOwned::to_owned)
             .unwrap_or_else(|| root.clone());
 
@@ -121,7 +122,8 @@ fn compile(handle: &Handle, env: Environment<CoreFlavor>, _manifest: Manifest) -
         }
 
         let path = if let Some(version) = package.version.as_ref() {
-            let stem = path.file_stem()
+            let stem = path
+                .file_stem()
                 .ok_or_else(|| format!("Missing file stem: {}", path.display()))?;
 
             let file_name = format!("{}-{}.reproto", stem, version);

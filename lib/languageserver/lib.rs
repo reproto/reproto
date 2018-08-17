@@ -22,10 +22,10 @@ mod models;
 mod triggers;
 mod workspace;
 
-use self::ContentType::*;
 use self::loaded_file::LoadedFile;
 use self::models::{Completion, Jump, Range, RenameResult};
 use self::workspace::Workspace;
+use self::ContentType::*;
 use core::errors::Result;
 use core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Rope, Source};
 use serde::Deserialize;
@@ -369,13 +369,15 @@ where
 
 /// Trim the string from whitespace.
 fn trim(data: &[u8]) -> &[u8] {
-    let s = data.iter()
+    let s = data
+        .iter()
         .position(|b| *b != b'\n' && *b != b'\r' && *b != b' ')
         .unwrap_or(data.len());
 
     let data = &data[s..];
 
-    let e = data.iter()
+    let e = data
+        .iter()
         .rev()
         .position(|b| *b != b'\n' && *b != b'\r' && *b != b' ')
         .map(|p| data.len() - p)
@@ -412,7 +414,7 @@ where
             fs: RealFilesystem::new(),
             expected: HashMap::new(),
             built_ins: vec![
-                "string", "bytes", "u32", "u64", "i32", "i64", "float", "double", "datetime", "any"
+                "string", "bytes", "u32", "u64", "i32", "i64", "float", "double", "datetime", "any",
             ],
         }
     }
@@ -728,7 +730,8 @@ where
         if let Some(path) = params.root_path.as_ref() {
             let path = Path::new(path.as_str());
 
-            let path = path.canonicalize()
+            let path = path
+                .canonicalize()
                 .map_err(|_| format!("could not canonicalize root path: {}", path.display()))?;
 
             let workspace = Workspace::new(Box::new(self.fs.clone()), path);
@@ -813,7 +816,8 @@ where
         for (key, syms) in &file.symbols {
             for s in syms {
                 if let Some(query) = query.as_ref() {
-                    let mut k = key.iter()
+                    let mut k = key
+                        .iter()
                         .map(|p| p.to_lowercase())
                         .collect::<BTreeSet<_>>();
 
@@ -1336,7 +1340,8 @@ where
                 ref suffix,
             } => {
                 let file = if let Some(ref prefix) = *prefix {
-                    match file.prefixes
+                    match file
+                        .prefixes
                         .get(prefix)
                         .and_then(|p| workspace.packages.get(&p.package))
                         .and_then(|url| workspace.file(url))
@@ -1492,15 +1497,13 @@ where
 
         // Setup a workspace edit which is only local to the specified URL.
         fn local_edits(url: &Url, edits: Vec<ty::TextEdit>) -> ty::WorkspaceEdit {
-            let changes = vec![
-                ty::TextDocumentEdit {
-                    text_document: ty::VersionedTextDocumentIdentifier {
-                        uri: url.clone(),
-                        version: None,
-                    },
-                    edits: edits,
+            let changes = vec![ty::TextDocumentEdit {
+                text_document: ty::VersionedTextDocumentIdentifier {
+                    uri: url.clone(),
+                    version: None,
                 },
-            ];
+                edits: edits,
+            }];
 
             ty::WorkspaceEdit {
                 document_changes: Some(changes),

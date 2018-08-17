@@ -1,12 +1,15 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::{ClassAdded, ClassCodegen, Codegen, Configure, EnumAdded, EnumCodegen, GetterAdded,
-              GetterCodegen, InterfaceAdded, InterfaceCodegen, TupleAdded, TupleCodegen};
+use codegen::{
+    ClassAdded, ClassCodegen, Codegen, Configure, EnumAdded, EnumCodegen, GetterAdded,
+    GetterCodegen, InterfaceAdded, InterfaceCodegen, TupleAdded, TupleCodegen,
+};
 use core::errors::Result;
 use core::{Handle, RpSubTypeStrategy};
 use flavored::{RpInterfaceBody, RpPackage};
-use genco::java::{self, Argument, Class, Field, Interface, Method, Modifier, DOUBLE, FLOAT,
-                  INTEGER, LONG, SHORT};
+use genco::java::{
+    self, Argument, Class, Field, Interface, Method, Modifier, DOUBLE, FLOAT, INTEGER, LONG, SHORT,
+};
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
 use java_file::JavaFile;
 use serialization::Serialization;
@@ -254,12 +257,10 @@ impl Jackson {
         &self,
         ty: Java<'el>,
         parser: A,
-    ) -> Result<
-        (
-            Option<(Tokens<'el, Java<'el>>, &'el str)>,
-            Tokens<'el, Java<'el>>,
-        ),
-    >
+    ) -> Result<(
+        Option<(Tokens<'el, Java<'el>>, &'el str)>,
+        Tokens<'el, Java<'el>>,
+    )>
     where
         A: Into<Tokens<'el, Java<'el>>>,
     {

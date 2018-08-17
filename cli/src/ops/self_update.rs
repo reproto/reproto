@@ -18,7 +18,6 @@ mod internal {
     use self::hyper::{Client, Method, Request, Response, StatusCode, Uri};
     use self::tar::Archive;
     use self::tokio_core::reactor::{Core, Handle};
-    use VERSION;
     use clap::ArgMatches;
     use core::errors::{Error, Result};
     use core::Version;
@@ -28,6 +27,7 @@ mod internal {
     use std::path::Path;
     use std::sync::Arc;
     use url::Url;
+    use VERSION;
 
     #[cfg(target_os = "macos")]
     mod os {
@@ -47,7 +47,11 @@ mod internal {
         pub const EXT: Option<&str> = Some(".exe");
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "windows"
+    )))]
     mod os {
         pub const PLATFORM: Option<&str> = None;
         pub const EXT: Option<&str> = None;
@@ -132,7 +136,8 @@ mod internal {
         let binary = format!("reproto{}", ext);
 
         if !archived.is_file() || force {
-            let release = core.run(client.get_release(&version, platform, arch))
+            let release = core
+                .run(client.get_release(&version, platform, arch))
                 .map_err(|e| format!("{}: failed to download archive: {}", tuple, e.display()))?;
 
             download_archive(release, &archived, &binary).map_err(|e| {
@@ -233,7 +238,11 @@ mod internal {
                 // nothing to do on windows.
             }
 
-            #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+            #[cfg(not(any(
+                target_os = "linux",
+                target_os = "macos",
+                target_os = "windows"
+            )))]
             fn set_executable(_p: &mut fs::Permissions) {
                 warn!("cannot update permissions on this platform");
             }
@@ -341,17 +350,19 @@ mod internal {
 
                         let status = res.status().clone();
 
-                        let fut = res.body()
+                        let fut = res
+                            .body()
                             .map_err(|e| Error::from(e))
                             .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
                                 out.extend(chunk.as_ref());
                                 ok::<_, Error>(out)
-                            })
-                            .map(move |body| (body, status))
+                            }).map(move |body| (body, status))
                             .and_then(|(body, status)| {
                                 if !status.is_success() {
                                     if let Ok(body) = String::from_utf8(body) {
-                                        return err(format!("bad response: {}: {}", status, body).into());
+                                        return err(
+                                            format!("bad response: {}: {}", status, body).into()
+                                        );
                                     }
 
                                     return err(format!("bad response: {}", status).into());
@@ -405,8 +416,7 @@ mod internal {
                     }
 
                     ok(out)
-                })
-                .map_err(move |e| format!("request to `{}` failed: {}", url, e.display()).into());
+                }).map_err(move |e| format!("request to `{}` failed: {}", url, e.display()).into());
 
             Box::new(future)
         }
@@ -417,7 +427,8 @@ mod internal {
             platform: &str,
             arch: &str,
         ) -> Box<Future<Item = Vec<u8>, Error = Error>> {
-            let url = match self.url
+            let url = match self
+                .url
                 .join(&format!("reproto-{}-{}-{}.tar.gz", version, platform, arch))
             {
                 Err(e) => return Box::new(err(e.into())),

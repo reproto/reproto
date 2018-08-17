@@ -31,8 +31,7 @@ impl Lang for OpenApiLang {
 }
 
 #[derive(Debug)]
-pub enum OpenApiModule {
-}
+pub enum OpenApiModule {}
 
 impl TryFromToml for OpenApiModule {
     fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
@@ -130,7 +129,8 @@ fn compile(handle: &Handle, env: Environment<CoreFlavor>, _manifest: Manifest) -
                         None => RpHttpMethod::Get,
                     };
 
-                    let mut p = spec.paths
+                    let mut p = spec
+                        .paths
                         .entry(path.to_string())
                         .or_insert_with(SpecPath::default);
 

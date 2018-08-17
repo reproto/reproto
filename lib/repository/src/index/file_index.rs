@@ -172,7 +172,8 @@ impl Index for FileIndex {
                     continue;
                 }
 
-                let name = s.file_name()
+                let name = s
+                    .file_name()
                     .into_string()
                     .map_err(|_| format!("path not a valid string: {}", path.display()))?;
 
@@ -201,7 +202,8 @@ impl Index for FileIndex {
         version: &Version,
         force: bool,
     ) -> Result<()> {
-        let (mut deployments, other_match) = self.read_package(package, |d| d.version != *version)?;
+        let (mut deployments, other_match) =
+            self.read_package(package, |d| d.version != *version)?;
 
         if other_match {
             if !force {

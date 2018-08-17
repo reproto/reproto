@@ -2,8 +2,8 @@
 
 use build_spec::{load_manifest, simple_config};
 use clap::{App, ArgMatches, SubCommand};
-use core::Reporter;
 use core::errors::*;
+use core::Reporter;
 use env;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {

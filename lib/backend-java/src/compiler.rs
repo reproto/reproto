@@ -1,19 +1,23 @@
 //! Java backend for reproto
 
-use Options;
 use codegen::{ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, TupleAdded};
 use core::errors::*;
 use core::{self, Handle, Loc};
-use flavored::{JavaField, JavaFlavor, RpCode, RpDecl, RpEnumBody, RpInterfaceBody, RpServiceBody,
-               RpTupleBody, RpTypeBody};
-use genco::java::{self, imported, local, Argument, Class, Constructor, Enum, Field, Interface,
-                  Method, Modifier, BOOLEAN, INTEGER};
+use flavored::{
+    JavaField, JavaFlavor, RpCode, RpDecl, RpEnumBody, RpInterfaceBody, RpServiceBody, RpTupleBody,
+    RpTypeBody,
+};
+use genco::java::{
+    self, imported, local, Argument, Class, Constructor, Enum, Field, Interface, Method, Modifier,
+    BOOLEAN, INTEGER,
+};
 use genco::{Cons, Element, Java, Quoted, Tokens};
 use java_file::JavaFile;
 use naming::{self, Naming};
 use std::rc::Rc;
 use trans::{Packages, Translated};
 use utils::{Observer, Override};
+use Options;
 
 /// Helper macro to implement listeners opt loop.
 fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {

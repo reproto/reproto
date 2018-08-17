@@ -15,8 +15,10 @@ mod yaml;
 pub use self::format::Format;
 pub use self::json::Json;
 pub use self::yaml::Yaml;
-use ast::{Attribute, AttributeItem, Decl, Field, InterfaceBody, Item, Name, SubType, TupleBody,
-          Type, TypeBody, TypeMember, Value};
+use ast::{
+    Attribute, AttributeItem, Decl, Field, InterfaceBody, Item, Name, SubType, TupleBody, Type,
+    TypeBody, TypeMember, Value,
+};
 use core::errors::Result;
 use core::{Loc, RpPackage, Source, Span, DEFAULT_TAG};
 use inflector::cases::pascalcase::to_pascal_case;
@@ -69,7 +71,8 @@ impl Context {
     fn name(&self) -> Name<'static> {
         Name::Absolute {
             prefix: None,
-            path: self.path
+            path: self
+                .path
                 .clone()
                 .into_iter()
                 .map(|p| Loc::new(Cow::from(p), Span::empty()))

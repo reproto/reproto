@@ -1,7 +1,9 @@
 use super::Objects;
 use core::errors::*;
-use core::{self, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
-           RpVersionedPackage, Source, Version};
+use core::{
+    self, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage,
+    Source, Version,
+};
 use index::{Deployment, Index};
 use sha256::to_sha256;
 use update::Update;

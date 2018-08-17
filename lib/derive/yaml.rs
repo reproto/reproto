@@ -1,4 +1,3 @@
-use Opaque;
 use core;
 use core::errors::Result;
 use format;
@@ -6,6 +5,7 @@ use linked_hash_map::LinkedHashMap;
 use serde_yaml as yaml;
 use sir::{FieldSir, Sir};
 use utils::is_datetime;
+use Opaque;
 
 #[derive(Debug)]
 pub struct Yaml;
@@ -87,7 +87,8 @@ fn from_yaml(value: &yaml::Value) -> Result<Sir> {
             let mut entries = LinkedHashMap::new();
 
             for (key, value) in mapping {
-                let key = key.as_str()
+                let key = key
+                    .as_str()
                     .ok_or_else(|| format!("Expected string key: {:?}", key))?;
 
                 let value = from_yaml(value)?;

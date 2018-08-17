@@ -1,12 +1,14 @@
 //! Translates one IR in-place into another.
 
-use Flavor;
 use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
-use {CoreFlavor, Diagnostics, Loc, RpEndpoint, RpEnumType, RpField, RpName, RpReg, RpType,
-     RpVersionedPackage};
+use Flavor;
+use {
+    CoreFlavor, Diagnostics, Loc, RpEndpoint, RpEnumType, RpField, RpName, RpReg, RpType,
+    RpVersionedPackage,
+};
 
 /// Method for translating package.
 pub trait PackageTranslator<K, V> {
@@ -276,7 +278,8 @@ where
 
     /// Translate into different flavor.
     fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Self::Out> {
-        let out = self.0
+        let out = self
+            .0
             .into_iter()
             .map(|f| Loc::and_then(f, |f| translator.translate_field(diag, f)))
             .collect::<Result<Vec<_>>>()?;

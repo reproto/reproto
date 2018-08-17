@@ -17,7 +17,10 @@ where
     Segment(String),
 }
 
-impl<F: 'static> fmt::Display for RpPathPart<F> where F: Flavor {
+impl<F: 'static> fmt::Display for RpPathPart<F>
+where
+    F: Flavor,
+{
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             RpPathPart::Segment(ref segment) => {
@@ -65,7 +68,10 @@ where
     pub parts: Vec<RpPathPart<F>>,
 }
 
-impl<F: 'static> fmt::Display for RpPathStep<F> where F: Flavor {
+impl<F: 'static> fmt::Display for RpPathStep<F>
+where
+    F: Flavor,
+{
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str("/")?;
 

@@ -120,8 +120,10 @@ where
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: \
-                 Serialize, F::Name: Serialize, F::EnumType: Serialize")]
+#[serde(
+    bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize, \
+             F::Name: Serialize, F::EnumType: Serialize"
+)]
 pub struct RpSubType<F: 'static>
 where
     F: Flavor,
@@ -150,7 +152,8 @@ where
 
     /// Access the set of fields which are used to make this sub-type unique.
     pub fn discriminating_fields(&self) -> DiscriminatingFields<F> {
-        let fields = self.fields
+        let fields = self
+            .fields
             .iter()
             .filter(|f| f.is_discriminating())
             .collect::<Vec<_>>();

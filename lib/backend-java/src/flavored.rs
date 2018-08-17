@@ -4,10 +4,13 @@
 
 use backend::package_processor;
 use core::errors::Result;
-use core::{self, CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, Loc,
-           PackageTranslator, Translate, Translator};
-use genco::java::{self, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG,
-                  VOID};
+use core::{
+    self, CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, Loc, PackageTranslator,
+    Translate, Translator,
+};
+use genco::java::{
+    self, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG, VOID,
+};
 use genco::{Cons, Element, Java};
 use naming::{self, Naming};
 use std::collections::HashMap;

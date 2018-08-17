@@ -27,7 +27,8 @@ where
     pub fn process(self, handle: &Handle) -> Result<()> {
         let package = self.package.join(".");
 
-        let path = self.package
+        let path = self
+            .package
             .parts()
             .cloned()
             .fold(RelativePathBuf::new(), |p, part| p.join(part));

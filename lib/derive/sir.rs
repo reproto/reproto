@@ -1,9 +1,9 @@
-use Opaque;
 use core::errors::Result;
 use format;
 use linked_hash_map::LinkedHashMap;
 use std::collections::HashSet;
 use std::mem;
+use Opaque;
 
 /// Results from calling `Sir::test_interface`.
 struct InterfaceTestResult {
@@ -195,8 +195,7 @@ impl Sir {
                     .map(|f| FieldSir {
                         optional: false,
                         field: f,
-                    })
-                    .collect();
+                    }).collect();
 
                 return Ok(Sir::Tuple(children));
             }
@@ -335,7 +334,8 @@ impl SubTypeSir {
     fn hash(&self) -> SubTypeHashSir {
         SubTypeHashSir {
             name: self.name.clone(),
-            structure: self.structure
+            structure: self
+                .structure
                 .iter()
                 .map(|(k, v)| (k.clone(), v.hash()))
                 .collect(),

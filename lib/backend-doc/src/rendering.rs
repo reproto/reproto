@@ -31,7 +31,8 @@ pub fn markdown_to_html(
             Event::Text(text)
         }
         Event::Start(Tag::CodeBlock(ref info)) => {
-            let syntax = info.split(' ')
+            let syntax = info
+                .split(' ')
                 .next()
                 .and_then(|lang| syntax_set.find_syntax_by_token(lang))
                 .unwrap_or_else(|| syntax_set.find_syntax_plain_text());

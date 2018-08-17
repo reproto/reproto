@@ -30,6 +30,7 @@ mod loc;
 mod mime;
 mod option_entry;
 mod options;
+mod reporter;
 mod resolver;
 mod rp_channel;
 mod rp_code;
@@ -57,7 +58,6 @@ mod span;
 pub mod translator;
 pub mod utils;
 mod with_span;
-mod reporter;
 
 pub use self::attributes::{Attributes, Selection};
 pub use self::diagnostics::{Diagnostic, Diagnostics, SymbolKind};
@@ -69,15 +69,18 @@ pub use self::mime::Mime;
 pub use self::option_entry::OptionEntry;
 pub use self::options::Options;
 pub use self::relative_path::{RelativePath, RelativePathBuf};
+pub use self::reporter::Reporter;
 pub use self::resolver::{EmptyResolver, Resolved, ResolvedByPrefix, Resolver};
 pub use self::ropey::Rope;
 pub use self::rp_channel::RpChannel;
 pub use self::rp_code::{RpCode, RpContext};
 pub use self::rp_decl::{RpDecl, RpNamed};
-pub use self::rp_endpoint::{RpAccept, RpEndpoint, RpEndpointArgument, RpEndpointHttp,
-                            RpEndpointHttp1, RpHttpMethod};
-pub use self::rp_enum::{RpEnumBody, RpEnumType, RpVariant, RpVariantRef, RpVariantValue,
-                        RpVariants};
+pub use self::rp_endpoint::{
+    RpAccept, RpEndpoint, RpEndpointArgument, RpEndpointHttp, RpEndpointHttp1, RpHttpMethod,
+};
+pub use self::rp_enum::{
+    RpEnumBody, RpEnumType, RpVariant, RpVariantRef, RpVariantValue, RpVariants,
+};
 pub use self::rp_field::RpField;
 pub use self::rp_file::RpFile;
 pub use self::rp_interface::{RpInterfaceBody, RpSubType, RpSubTypeStrategy, DEFAULT_TAG};
@@ -101,4 +104,3 @@ pub use self::utils::{Encoding, Position};
 pub use self::with_span::WithSpan;
 pub use num_bigint::BigInt;
 pub use semver::{Range, Version};
-pub use self::reporter::Reporter;

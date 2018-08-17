@@ -10,8 +10,8 @@ extern crate reproto_lexer as lexer;
 mod parser;
 mod utils;
 
-use core::Diagnostics;
 use core::errors::Result;
+use core::Diagnostics;
 use std::io::Read;
 use std::result;
 

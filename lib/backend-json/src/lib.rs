@@ -26,8 +26,7 @@ impl Lang for JsonLang {
 }
 
 #[derive(Debug)]
-pub enum JsonModule {
-}
+pub enum JsonModule {}
 
 impl TryFromToml for JsonModule {
     fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
@@ -50,7 +49,8 @@ fn compile(handle: &Handle, env: Environment<CoreFlavor>, _manifest: Manifest) -
             .parts()
             .fold(root.clone(), |path, part| path.join(part));
 
-        let parent = path.parent()
+        let parent = path
+            .parent()
             .map(ToOwned::to_owned)
             .unwrap_or_else(|| root.clone());
 
@@ -60,7 +60,8 @@ fn compile(handle: &Handle, env: Environment<CoreFlavor>, _manifest: Manifest) -
         }
 
         let path = if let Some(version) = package.version.as_ref() {
-            let stem = path.file_stem()
+            let stem = path
+                .file_stem()
                 .ok_or_else(|| format!("Missing file stem: {}", path.display()))?;
 
             let file_name = format!("{}-{}.json", stem, version);

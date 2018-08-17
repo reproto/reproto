@@ -74,7 +74,8 @@ impl ReprotoService {
     fn get_objects(&self, id: &str) -> Result<Box<Future<Item = Response, Error = Error>>> {
         let objects = self.objects.clone();
 
-        let checksum = Checksum::from_str(id).map_err(|_| Error::BadRequest(BAD_OBJECT_ID.into()))?;
+        let checksum =
+            Checksum::from_str(id).map_err(|_| Error::BadRequest(BAD_OBJECT_ID.into()))?;
 
         // No async I/O, use pool
         Ok(Box::new(self.pool.spawn_fn(move || {
@@ -130,11 +131,10 @@ impl ReprotoService {
                 tmp.seek(SeekFrom::Start(0))?;
                 let mut read = encoding(&tmp)?;
 
-                objects.lock().map_err(|_| "lock poisoned")?.put_object(
-                    &checksum,
-                    &mut read,
-                    false,
-                )?;
+                objects
+                    .lock()
+                    .map_err(|_| "lock poisoned")?
+                    .put_object(&checksum, &mut read, false)?;
 
                 Ok(Response::new().with_status(StatusCode::Ok))
             })
@@ -148,7 +148,8 @@ impl ReprotoService {
         id: &str,
         req: Request,
     ) -> Result<Box<Future<Item = Response, Error = Error>>> {
-        let checksum = Checksum::from_str(id).map_err(|_| Error::BadRequest(BAD_OBJECT_ID.into()))?;
+        let checksum =
+            Checksum::from_str(id).map_err(|_| Error::BadRequest(BAD_OBJECT_ID.into()))?;
 
         if let Some(len) = req.headers().get::<ContentLength>() {
             if len.0 > self.max_file_size {

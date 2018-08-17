@@ -1,7 +1,8 @@
 //! Handle parsing of attributes.
 
-use core::flavored::{RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp, RpHttpMethod,
-                     RpPathSpec, RpValue};
+use core::flavored::{
+    RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp, RpHttpMethod, RpPathSpec, RpValue,
+};
 use core::{self, Attributes, Diagnostics, Import, Loc, Span, WithSpan};
 use into_model::IntoModel;
 use path_parser;

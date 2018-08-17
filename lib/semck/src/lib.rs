@@ -3,8 +3,9 @@ extern crate reproto_core as core;
 use self::Component::*;
 use self::Violation::*;
 use core::errors::*;
-use core::flavored::{RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpNamed, RpType,
-                     RpVariantRef};
+use core::flavored::{
+    RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpNamed, RpType, RpVariantRef,
+};
 use core::{Loc, Span, Version};
 use std::collections::HashMap;
 

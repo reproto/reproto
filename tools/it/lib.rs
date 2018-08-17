@@ -155,7 +155,8 @@ impl Reproto {
         cmd.arg("--message-format");
         cmd.arg("json");
 
-        let mut child = cmd.stdout(Stdio::piped())
+        let mut child = cmd
+            .stdout(Stdio::piped())
             .spawn()
             .map_err(|e| format_err!("bad exit status: {}", e))?;
 
@@ -173,7 +174,8 @@ impl Reproto {
             };
 
             if doc.target.kind.contains(&CargoKind::Bin) {
-                let binary = doc.filenames
+                let binary = doc
+                    .filenames
                     .into_iter()
                     .next()
                     .ok_or_else(|| format_err!("expected one file name"))?;
@@ -254,7 +256,8 @@ impl Reproto {
             println!("reproto: {:?}", cmd);
         }
 
-        let output = cmd.output()
+        let output = cmd
+            .output()
             .map_err(|e| format_err!("bad exit status: {}", e))?;
 
         let stdout = str::from_utf8(&output.stdout)?;
@@ -308,7 +311,8 @@ impl Reproto {
 
         cmd.args(&[check.package.as_str()]);
 
-        let output = cmd.output()
+        let output = cmd
+            .output()
             .map_err(|e| format_err!("failed to spawn reproto: {}", e))?;
 
         let stdout = str::from_utf8(&output.stdout)?;
@@ -705,7 +709,10 @@ impl<'a> ProjectRunner<'a> {
             let stdin = child.stdin.take().ok_or_else(|| format_err!("no stdin"))?;
             expected.extend(write_json_inputs(&self.inputs, stdin)?);
 
-            let stdout = child.stdout.take().ok_or_else(|| format_err!("no stdout"))?;
+            let stdout = child
+                .stdout
+                .take()
+                .ok_or_else(|| format_err!("no stdout"))?;
 
             for line in BufReader::new(stdout).lines() {
                 let line = line?;
@@ -1162,7 +1169,8 @@ impl<'a> Project<'a> {
                     let e = e?;
                     let p = e.path();
 
-                    let has_reproto_ext = p.extension()
+                    let has_reproto_ext = p
+                        .extension()
                         .and_then(|s| s.to_str())
                         .map(|e| e == "reproto")
                         .unwrap_or(false);
@@ -1228,7 +1236,8 @@ impl<'a> Project<'a> {
                         continue;
                     }
 
-                    if self.do_project && language.supports_project()
+                    if self.do_project
+                        && language.supports_project()
                         && self.project_languages.contains(language)
                     {
                         let source_workdir = language.source_workdir(root);

@@ -1,21 +1,27 @@
 //! C# backend for reproto
 
-use Options;
-use codegen::{ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded,
-              TypeField, TypeFieldAdded};
+use codegen::{
+    ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded, TypeField,
+    TypeFieldAdded,
+};
 use core::errors::*;
 use core::{self, Handle, Loc, RpContext, RpSubTypeStrategy};
 use csharp_field::CsharpField;
 use csharp_file::CsharpFile;
-use flavored::{CsharpFlavor, RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody,
-               RpTupleBody, RpTypeBody};
-use genco::csharp::{self, local, optional, using, Argument, Class, Constructor, Enum, Field,
-                    INT32, Method, Modifier, BOOLEAN};
+use flavored::{
+    CsharpFlavor, RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody, RpTupleBody,
+    RpTypeBody,
+};
+use genco::csharp::{
+    self, local, optional, using, Argument, Class, Constructor, Enum, Field, Method, Modifier,
+    BOOLEAN, INT32,
+};
 use genco::{Cons, Csharp, Element, Quoted, Tokens};
 use naming::{self, Naming};
 use processor::Processor;
 use std::rc::Rc;
 use trans::Translated;
+use Options;
 
 pub struct Compiler {
     env: Rc<Translated<CsharpFlavor>>,

@@ -7,8 +7,10 @@ use flavored::{GoName, RpEnumBody, RpInterfaceBody, RpSubType, RpTupleBody};
 use genco::go::{imported, Go};
 use genco::{Quoted, Tokens};
 use std::rc::Rc;
-use {EnumAdded, EnumCodegen, FieldAdded, FieldCodegen, InterfaceAdded, InterfaceCodegen, Options,
-     TupleAdded, TupleCodegen};
+use {
+    EnumAdded, EnumCodegen, FieldAdded, FieldCodegen, InterfaceAdded, InterfaceCodegen, Options,
+    TupleAdded, TupleCodegen,
+};
 
 pub struct Module {}
 

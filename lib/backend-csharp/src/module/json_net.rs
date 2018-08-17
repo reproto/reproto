@@ -1,6 +1,7 @@
-use codegen::{ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, InterfaceAdded,
-              InterfaceCodegen, TupleAdded, TupleCodegen, TypeField, TypeFieldAdded,
-              TypeFieldCodegen};
+use codegen::{
+    ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, InterfaceAdded, InterfaceCodegen,
+    TupleAdded, TupleCodegen, TypeField, TypeFieldAdded, TypeFieldCodegen,
+};
 use core::errors::Result;
 use core::{self, RpSubTypeStrategy};
 use flavored::RpInterfaceBody;

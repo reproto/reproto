@@ -1,8 +1,9 @@
 //! # Resolver where we know an exact set of packages to resolve.
 
 use core::errors::Result;
-use core::{Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage,
-           Source};
+use core::{
+    Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Source,
+};
 use std::collections::BTreeMap;
 
 pub struct Packages {

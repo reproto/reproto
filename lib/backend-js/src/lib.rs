@@ -22,8 +22,9 @@ mod flavored;
 use backend::IntoBytes;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{CoreFlavor, Diagnostics, Handle, Loc, RpField, RpPackage, RpType, Source, Span,
-           Translate};
+use core::{
+    CoreFlavor, Diagnostics, Handle, Loc, RpField, RpPackage, RpType, Source, Span, Translate,
+};
 use genco::{JavaScript, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -117,8 +118,7 @@ impl Lang for JsLang {
 }
 
 #[derive(Debug)]
-pub enum JsModule {
-}
+pub enum JsModule {}
 
 impl TryFromToml for JsModule {
     fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {

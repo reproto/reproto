@@ -4,8 +4,10 @@
 
 use backend::package_processor;
 use core::errors::Result;
-use core::{self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator,
-           Translate, Translator};
+use core::{
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
+    Translator,
+};
 use genco::js::{self, JavaScript};
 use genco::{Cons, Element, IntoTokens, Tokens};
 use naming::{self, Naming};

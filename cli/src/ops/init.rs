@@ -1,8 +1,8 @@
 //! Initialize a new project.
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::Filesystem;
 use core::errors::*;
+use core::Filesystem;
 use env;
 use std::path::Path;
 

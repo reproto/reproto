@@ -22,7 +22,8 @@ impl RpRequiredPackage {
     pub fn parse(input: &str) -> Result<RpRequiredPackage> {
         let mut it = input.splitn(2, '@').into_iter();
 
-        let package = it.next()
+        let package = it
+            .next()
             .map(RpPackage::parse)
             .unwrap_or_else(RpPackage::empty);
 

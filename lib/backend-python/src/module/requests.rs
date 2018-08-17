@@ -1,6 +1,5 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use Options;
 use backend::Initializer;
 use codegen::{ServiceAdded, ServiceCodegen};
 use core;
@@ -8,6 +7,7 @@ use core::errors::Result;
 use genco::python::imported;
 use genco::{Python, Quoted, Tokens};
 use utils::{BlockComment, IfNoneRaise, IfNoneThen};
+use Options;
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Config {}
@@ -131,7 +131,8 @@ impl ServiceCodegen for RequestsServiceCodegen {
                         }
                     };
 
-                    let method = e.http
+                    let method = e
+                        .http
                         .method
                         .as_ref()
                         .unwrap_or(&core::RpHttpMethod::Get)

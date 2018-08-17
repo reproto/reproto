@@ -5,7 +5,8 @@ pub struct BlockComment<'el>(pub &'el [String]);
 
 impl<'el> IntoTokens<'el, Python<'el>> for BlockComment<'el> {
     fn into_tokens(self) -> Tokens<'el, Python<'el>> {
-        let c: Tokens<'el, Python<'el>> = self.0
+        let c: Tokens<'el, Python<'el>> = self
+            .0
             .iter()
             .map(|c| Element::Literal(c.as_str().into()))
             .collect();

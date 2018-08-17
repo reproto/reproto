@@ -2,8 +2,8 @@
 
 use super::Objects;
 use checksum::Checksum;
-use core::Source;
 use core::errors::*;
+use core::Source;
 use hex_slice::HexSlice;
 use std::fs::{self, File};
 use std::io::{self, Read};
@@ -30,7 +30,8 @@ impl FileObjects {
 
     /// Calculate the path to the given checksum.
     pub fn checksum_path(&self, checksum: &Checksum) -> Result<PathBuf> {
-        let path = self.path
+        let path = self
+            .path
             .join(format!("{}", HexSlice::new(&checksum[0..1])));
         let path = path.join(format!("{}", HexSlice::new(&checksum[1..2])));
         Ok(path.join(format!("{}.reproto", HexSlice::new(&checksum))))

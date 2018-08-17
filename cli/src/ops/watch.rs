@@ -1,8 +1,8 @@
 //! build command
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::{Filesystem, Reporter};
 use core::errors::Result;
+use core::{Filesystem, Reporter};
 use env;
 use output::Output;
 use std::rc::Rc;
@@ -188,7 +188,9 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
                     }
                     Error(e, p) => {
                         if let Some(p) = p {
-                            return Err(format!("error watching path: {}: {}", p.display(), e).into());
+                            return Err(
+                                format!("error watching path: {}: {}", p.display(), e).into()
+                            );
                         }
 
                         return Err(e.into());
@@ -263,7 +265,8 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
         let lang = manifest.lang().ok_or_else(|| "no language to build for")?;
 
         if let Some(path) = manifest.path.as_ref() {
-            let path = path.to_owned()
+            let path = path
+                .to_owned()
                 .canonicalize()
                 .map_err(|e| format!("{}: {}", path.display(), e))?;
             paths.try_borrow_mut()?.insert(path);
@@ -280,7 +283,8 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
             reporter,
             resolver.as_mut(),
             move |p| {
-                let p = p.to_owned()
+                let p = p
+                    .to_owned()
                     .canonicalize()
                     .map_err(|e| format!("{}: {}", p.display(), e))?;
                 local_paths.try_borrow_mut()?.insert(p);

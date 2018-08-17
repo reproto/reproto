@@ -3,8 +3,9 @@
 use backend::PackageProcessor;
 use core::errors::*;
 use core::{Handle, Loc, RelativePathBuf};
-use flavored::{GoFlavor, GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody,
-               RpTypeBody};
+use flavored::{
+    GoFlavor, GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
+};
 use genco::go::Go;
 use genco::{IntoTokens, Tokens};
 use trans::{self, Translated};
@@ -249,14 +250,16 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
                 let mut t = Tokens::new();
 
                 for sub_type in &body.sub_types {
-                    t.push(self.process_struct(
-                        &sub_type.name,
-                        &sub_type.comment,
-                        body.fields
-                            .iter()
-                            .chain(sub_type.fields.iter())
-                            .map(Loc::borrow),
-                    )?);
+                    t.push(
+                        self.process_struct(
+                            &sub_type.name,
+                            &sub_type.comment,
+                            body.fields
+                                .iter()
+                                .chain(sub_type.fields.iter())
+                                .map(Loc::borrow),
+                        )?,
+                    );
 
                     t.push_into(|t| {
                         push!(t, "func (this ", &sub_type.name, ") Is", &body.name, "() {");

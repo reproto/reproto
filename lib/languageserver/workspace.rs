@@ -2,8 +2,10 @@
 
 use ast;
 use core::errors::{Error, Result};
-use core::{self, Diagnostics, Encoding, Filesystem, Handle, Loc, Resolved, Resolver, RpPackage,
-           RpRequiredPackage, RpVersionedPackage, Source};
+use core::{
+    self, Diagnostics, Encoding, Filesystem, Handle, Loc, Resolved, Resolver, RpPackage,
+    RpRequiredPackage, RpVersionedPackage, Source,
+};
 use env;
 use loaded_file::LoadedFile;
 use manifest;
@@ -104,7 +106,8 @@ impl Workspace {
             let p = p.canonicalize()?;
 
             for (url, source) in &self.open_files {
-                let edited_path = url.to_file_path()
+                let edited_path = url
+                    .to_file_path()
                     .map_err(|_| format!("URL is not a file: {}", url))?;
 
                 let ext = match edited_path.extension() {
@@ -326,7 +329,8 @@ impl Workspace {
             }
         }
 
-        let handle = self.filesystem
+        let handle = self
+            .filesystem
             .open_root(manifest.output.as_ref().map(AsRef::as_ref))?;
 
         if let Err(e) = lang.compile(handle.as_ref(), env, manifest) {

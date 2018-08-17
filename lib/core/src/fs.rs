@@ -41,10 +41,10 @@ impl RealFilesystem {
 
 impl Filesystem for RealFilesystem {
     fn open_root(&self, root: Option<&Path>) -> Result<Box<Handle>> {
-        let root = root.ok_or_else(|| {
-            "Missing root directory, specify using `--out`, or `output` key in manifest"
-        })?
-            .to_owned();
+        let root = root
+            .ok_or_else(|| {
+                "Missing root directory, specify using `--out`, or `output` key in manifest"
+            })?.to_owned();
 
         return Ok(Box::new(RealHandle { root: root }));
 

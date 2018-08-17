@@ -29,7 +29,8 @@ where
 
         let name = translator.translate_local_name(diag, RpReg::Service, self.name)?;
 
-        let endpoints = self.endpoints
+        let endpoints = self
+            .endpoints
             .into_iter()
             .map(|e| Loc::and_then(e, |e| translator.translate_endpoint(diag, e)))
             .collect::<Result<Vec<_>>>()?;

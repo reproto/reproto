@@ -4,8 +4,10 @@ use ast::*;
 use attributes;
 use core::errors::Error;
 use core::flavored::*;
-use core::{self, Attributes, BigInt, Diagnostics, Import, Loc, Range, Selection, Span, SymbolKind,
-           WithSpan};
+use core::{
+    self, Attributes, BigInt, Diagnostics, Import, Loc, Range, Selection, Span, SymbolKind,
+    WithSpan,
+};
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
 use scope::Scope;
@@ -240,8 +242,7 @@ impl<C: IntoIterator<Item = S>, S: AsRef<str>> IntoModel for Comment<C> {
             .map(|s| {
                 let s = s.as_ref();
                 s[usize::min(s.len(), pfx)..].to_string()
-            })
-            .collect();
+            }).collect();
 
         Ok(comment)
     }
@@ -598,7 +599,8 @@ where
     let safe_ident = build_safe_ident(scope, ident, default_ident_naming);
 
     // Apply specification-wide naming convention unless field name explicitly specified.
-    let name = name.map(|s| s.to_string())
+    let name = name
+        .map(|s| s.to_string())
         .or_else(|| default_naming(scope).map(|n| n.convert(ident)));
 
     // Don't include field alias if same as name.
@@ -770,8 +772,7 @@ impl<'input> IntoModel for File<'input> {
                     n.as_identifier()
                         .map_err(|_| Error::from("expected identifier"))
                         .and_then(parse_naming)
-                })
-                .with_span(diag, &span)?;
+                }).with_span(diag, &span)?;
 
             check_selection!(diag, endpoint_naming);
         }
@@ -786,8 +787,7 @@ impl<'input> IntoModel for File<'input> {
                     n.as_identifier()
                         .map_err(|_| Error::from("expected identifier"))
                         .and_then(parse_naming)
-                })
-                .with_span(diag, &span)?;
+                }).with_span(diag, &span)?;
 
             check_selection!(diag, field_naming);
         }
@@ -1071,7 +1071,8 @@ impl<'input> IntoModel for Loc<Name<'input>> {
                     .extend(path.into_iter().map(|p| Loc::take(p)))
             }
             Absolute { prefix, path } => {
-                let path = path.into_model(diag, scope)?
+                let path = path
+                    .into_model(diag, scope)?
                     .into_iter()
                     .map(|s| Loc::take(s))
                     .collect();

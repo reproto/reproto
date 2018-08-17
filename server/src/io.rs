@@ -28,8 +28,7 @@ where
                 Ok(_) => Ok(file),
                 Err(e) => Err(e),
             }).map(move |file| (pool, file))
-        })
-        .map(|(_, file)| file)
+        }).map(|(_, file)| file)
         .map_err(Into::into);
 
     Box::new(out)

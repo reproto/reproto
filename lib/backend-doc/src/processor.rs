@@ -41,7 +41,8 @@ pub trait Processor<'env> {
             core::RpReg::EnumVariant | core::RpReg::SubType => {
                 let fragment = format!("#{}", name.path.clone().join("_"));
 
-                let path: Vec<_> = name.path
+                let path: Vec<_> = name
+                    .path
                     .iter()
                     .cloned()
                     .take(name.path.len() - 1)
@@ -321,7 +322,9 @@ pub trait Processor<'env> {
         html!(self, span {class => "name-sep"} ~ "::");*/
 
         let mut it = name.path.iter();
-        let local = it.next_back().ok_or_else(|| "local part of name required")?;
+        let local = it
+            .next_back()
+            .ok_or_else(|| "local part of name required")?;
 
         let mut path = Vec::new();
 
@@ -347,7 +350,9 @@ pub trait Processor<'env> {
     /// Local name fully linked.
     fn full_name_without_package(&self, name: &RpName) -> Result<()> {
         let mut it = name.path.iter();
-        let local = it.next_back().ok_or_else(|| "local part of name required")?;
+        let local = it
+            .next_back()
+            .ok_or_else(|| "local part of name required")?;
 
         let mut path = Vec::new();
 

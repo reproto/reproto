@@ -249,7 +249,8 @@ impl OkHttpServiceCodegen {
         base_url: Field<'el>,
         ser: &Field<'el>,
     ) -> Result<Method<'el>> {
-        let request_var = e.request
+        let request_var = e
+            .request
             .as_ref()
             .map(|r| toks![ser.clone(), ".encode(", r.safe_ident(), ")"])
             .unwrap_or_else(|| toks!["null"]);
@@ -445,7 +446,8 @@ impl ServiceCodegen for OkHttpServiceCodegen {
             for e in &body.endpoints {
                 if let Some(http) = e.http1.as_ref() {
                     let mut m = Method::new(e.safe_ident());
-                    m.returns = self.completable_future
+                    m.returns = self
+                        .completable_future
                         .with_arguments(vec![http.response.as_ref().unwrap_or(&VOID).clone()]);
                     m.arguments.extend(e.arguments.iter().cloned());
 

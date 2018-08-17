@@ -1,8 +1,9 @@
 use clap::ArgMatches;
 use core::errors::{Error, Result, ResultExt};
-use core::{CoreFlavor, Diagnostics, Flavor, Reporter, Resolved, ResolvedByPrefix, Resolver,
-           RpChannel, RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source,
-           Version};
+use core::{
+    CoreFlavor, Diagnostics, Flavor, Reporter, Resolved, ResolvedByPrefix, Resolver, RpChannel,
+    RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source, Version,
+};
 use env;
 use manifest::{self, Lang, Language, Manifest, Publish};
 use repository::Repository;
@@ -24,7 +25,8 @@ pub fn load_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
     manifest.path = Some(path.to_owned());
 
     if let Some(lang) = matches.value_of("lang") {
-        let lang = Language::parse(lang).ok_or_else(|| format!("not a valid language: {}", lang))?;
+        let lang =
+            Language::parse(lang).ok_or_else(|| format!("not a valid language: {}", lang))?;
         manifest.lang = Some(env::convert_lang(lang));
     }
 
@@ -141,7 +143,8 @@ where
 {
     let package_prefix = manifest.package_prefix.clone();
 
-    let mut env = lang.into_env(package_prefix, reporter, resolver)
+    let mut env = lang
+        .into_env(package_prefix, reporter, resolver)
         .with_path_hook(path_hook);
 
     let mut errors: Vec<Error> = Vec::new();

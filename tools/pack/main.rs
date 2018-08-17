@@ -18,8 +18,7 @@ fn main() {
                 .long("build-syntax")
                 .help("build syntax")
                 .takes_value(true),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("build-themes")
                 .long("build-themes")
                 .help("build themes")
@@ -28,15 +27,15 @@ fn main() {
 
     let mut args = env::args();
 
-    let root = args.next()
+    let root = args
+        .next()
         .and_then(|arg| Path::new(arg.as_str()).canonicalize().ok())
         .and_then(|p| {
             p.parent()
                 .and_then(Path::parent)
                 .and_then(Path::parent)
                 .map(Path::to_owned)
-        })
-        .expect("locating root directory");
+        }).expect("locating root directory");
 
     let matches = app.get_matches();
 

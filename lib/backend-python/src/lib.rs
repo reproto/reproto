@@ -25,8 +25,9 @@ use backend::{Initializer, IntoBytes};
 use codegen::ServiceCodegen;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{CoreFlavor, Diagnostics, Handle, Loc, RpField, RpPackage, RpType, Source, Span,
-           Translate};
+use core::{
+    CoreFlavor, Diagnostics, Handle, Loc, RpField, RpPackage, RpType, Source, Span, Translate,
+};
 use genco::{Cons, Python, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;

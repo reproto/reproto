@@ -167,12 +167,12 @@ impl<'input> Lexer<'input> {
     }
 
     fn number(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
-        let (end, number) = self.parse_number(start).map_err(|(message, offset)| {
-            Error::InvalidNumber {
-                message: message,
-                pos: start + offset,
-            }
-        })?;
+        let (end, number) =
+            self.parse_number(start)
+                .map_err(|(message, offset)| Error::InvalidNumber {
+                    message: message,
+                    pos: start + offset,
+                })?;
 
         Ok((start, Token::Number(number), end))
     }
@@ -234,7 +234,8 @@ impl<'input> Lexer<'input> {
         let mut res = 0u32;
 
         for x in 0..4u32 {
-            let c = self.one()
+            let c = self
+                .one()
                 .ok_or_else(|| ("expected digit", x as usize))?
                 .1
                 .to_string();
@@ -249,7 +250,8 @@ impl<'input> Lexer<'input> {
     fn escape(&mut self, pos: usize) -> Result<char> {
         self.step();
 
-        let (_, escape) = self.one()
+        let (_, escape) = self
+            .one()
             .ok_or_else(|| Error::UnterminatedEscape { start: self.pos() })?;
 
         let escaped = match escape {
@@ -261,11 +263,12 @@ impl<'input> Lexer<'input> {
             'u' => {
                 let seq_start = self.step_n(1);
 
-                let c = self.decode_unicode4()
-                    .map_err(|(message, offset)| Error::InvalidEscape {
-                        message: message,
-                        pos: seq_start + offset,
-                    })?;
+                let c =
+                    self.decode_unicode4()
+                        .map_err(|(message, offset)| Error::InvalidEscape {
+                            message: message,
+                            pos: seq_start + offset,
+                        })?;
 
                 return Ok(c);
             }
@@ -545,16 +548,14 @@ pub mod tests {
 
     #[test]
     pub fn test_complex_number() {
-        let expected = vec![
-            (
-                0,
-                Number(RpNumber {
-                    digits: (-1242).into(),
-                    decimal: 6,
-                }),
-                9,
-            ),
-        ];
+        let expected = vec![(
+            0,
+            Number(RpNumber {
+                digits: (-1242).into(),
+                decimal: 6,
+            }),
+            9,
+        )];
 
         assert_eq!(expected, tokenize("-12.42e-4").unwrap());
     }
@@ -632,13 +633,11 @@ pub mod tests {
     #[test]
     pub fn test_doc_comment() {
         let tokens = tokenize("/// foo\n\r      /// bar \r\n     /// baz ").unwrap();
-        let reference = [
-            (
-                0,
-                DocComment(vec![" foo".into(), " bar ".into(), " baz ".into()]),
-                38,
-            ),
-        ];
+        let reference = [(
+            0,
+            DocComment(vec![" foo".into(), " bar ".into(), " baz ".into()]),
+            38,
+        )];
         assert_eq!(reference, &tokens[..]);
     }
 }

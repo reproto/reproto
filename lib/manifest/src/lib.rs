@@ -15,8 +15,10 @@ extern crate serde_derive;
 extern crate toml;
 
 use core::errors::Result;
-use core::{CoreFlavor, Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
-           RpVersionedPackage, Version};
+use core::{
+    CoreFlavor, Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
+    RpVersionedPackage, Version,
+};
 use naming::Naming;
 use relative_path::{RelativePath, RelativePathBuf};
 use std::any::Any;
@@ -108,7 +110,8 @@ pub trait Lang: fmt::Debug {
         reporter: &'a mut core::Reporter,
         resolver: &'a mut core::Resolver,
     ) -> trans::Environment<'a, CoreFlavor> {
-        let keywords = self.keywords()
+        let keywords = self
+            .keywords()
             .into_iter()
             .map(|(f, t)| (f.to_string(), t.to_string()))
             .collect();
@@ -158,8 +161,7 @@ pub trait Lang: fmt::Debug {
 #[derive(Clone, Copy, Debug)]
 pub struct NoLang;
 
-pub enum NoModule {
-}
+pub enum NoModule {}
 
 impl NoModule {
     /// Indicate that the provided values are not legal through an error.
@@ -403,8 +405,10 @@ pub fn checked_modules<M: Any>(modules: Option<Vec<Box<Any>>>) -> Result<Vec<M>>
 
     if let Some(modules) = modules {
         for m in modules {
-            out.push(*m.downcast::<M>()
-                .map_err(|m| format!("Failed to downcast module: {:?}", m))?);
+            out.push(
+                *m.downcast::<M>()
+                    .map_err(|m| format!("Failed to downcast module: {:?}", m))?,
+            );
         }
     }
 
@@ -551,7 +555,8 @@ impl Manifest {
 
         // Only load components if we have a parent path.
         if let Some(path) = self.path.clone() {
-            let parent = path.parent()
+            let parent = path
+                .parent()
                 .ok_or_else(|| format!("path does not have a parent: {}", path.display()))?;
 
             if let Some(lang) = self.lang.as_ref() {

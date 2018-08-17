@@ -17,9 +17,7 @@ pub struct RpVersionedPackage {
 impl AsPackage for RpVersionedPackage {
     /// Convert into a package by piping the version through the provided function.
     fn try_as_package<'a>(&'a self) -> Result<Cow<'a, RpPackage>> {
-        Ok(Cow::Owned(self.to_package(|v| {
-            v.to_string()
-        })))
+        Ok(Cow::Owned(self.to_package(|v| v.to_string())))
     }
 
     fn prefix_with(self, prefix: RpPackage) -> Self {

@@ -8,9 +8,11 @@ use genco::swift::{local, Swift};
 use genco::{Quoted, Tokens};
 use std::collections::BTreeSet;
 use std::rc::Rc;
-use {EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen, InterfaceModelAdded,
-     InterfaceModelCodegen, Options, PackageAdded, PackageCodegen, StructModelAdded,
-     StructModelCodegen, TupleAdded, TupleCodegen};
+use {
+    EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen, InterfaceModelAdded,
+    InterfaceModelCodegen, Options, PackageAdded, PackageCodegen, StructModelAdded,
+    StructModelCodegen, TupleAdded, TupleCodegen,
+};
 
 pub struct Module {}
 
@@ -1244,7 +1246,8 @@ impl InterfaceModelCodegen for Codegen {
                 container.nested({
                     let mut t = Tokens::new();
 
-                    let all = body.sub_types
+                    let all = body
+                        .sub_types
                         .iter()
                         .flat_map(|s| s.fields.iter())
                         .filter(|f| f.is_required())

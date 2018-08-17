@@ -186,10 +186,10 @@ impl Range {
             return true;
         }
 
-        self.predicates.iter().all(|p| p.matches(version))
-            && self.predicates
-                .iter()
-                .any(|p| p.pre_tag_is_compatible(version))
+        self.predicates.iter().all(|p| p.matches(version)) && self
+            .predicates
+            .iter()
+            .any(|p| p.pre_tag_is_compatible(version))
     }
 
     /// Check if range matches any.
@@ -261,8 +261,10 @@ impl Predicate {
         // [major,
         // minor, patch] tuple also has a prerelease tag.
         !ver.is_prerelease()
-            || (self.major == ver.major && self.minor == Some(ver.minor)
-                && self.patch == Some(ver.patch) && !self.pre.is_empty())
+            || (self.major == ver.major
+                && self.minor == Some(ver.minor)
+                && self.patch == Some(ver.patch)
+                && !self.pre.is_empty())
     }
 
     fn is_greater(&self, ver: &Version) -> bool {
@@ -304,7 +306,8 @@ impl Predicate {
 
         match self.patch {
             Some(patch) => {
-                self.major == ver.major && minor == ver.minor
+                self.major == ver.major
+                    && minor == ver.minor
                     && (ver.patch > patch || (ver.patch == patch && self.pre_is_compatible(ver)))
             }
             None => self.major == ver.major && minor == ver.minor,

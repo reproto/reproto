@@ -1,7 +1,9 @@
 //! Options for java code generation.
 
-use codegen::{ClassCodegen, Codegen, EnumCodegen, GetterCodegen, InterfaceCodegen, ServiceCodegen,
-              TupleCodegen};
+use codegen::{
+    ClassCodegen, Codegen, EnumCodegen, GetterCodegen, InterfaceCodegen, ServiceCodegen,
+    TupleCodegen,
+};
 use core::errors::Result;
 use genco::Java;
 use serialization::Serialization;

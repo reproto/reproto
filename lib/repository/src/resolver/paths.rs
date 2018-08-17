@@ -10,8 +10,10 @@
 //! The second form is only used when a version requirement is present.
 
 use core::errors::{Error, Result};
-use core::{Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
-           RpVersionedPackage, Source, Version};
+use core::{
+    Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage,
+    Source, Version,
+};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::ffi::OsStr;
 use std::fs;
@@ -77,7 +79,8 @@ impl Paths {
             }
 
             let stem = match path.file_stem() {
-                Some(stem) => stem.to_str()
+                Some(stem) => stem
+                    .to_str()
                     .ok_or_else(|| format!("non-utf8 file name: {}", path.display()))?,
                 None => continue,
             };
@@ -144,8 +147,7 @@ impl Resolver for Paths {
                         .as_ref()
                         .map(|v| v.to_string())
                         .unwrap_or_else(|| String::from("*"))
-                })
-                .collect::<Vec<_>>()
+                }).collect::<Vec<_>>()
                 .join(", ");
 
             return Err(format!("more than one file matched `{}`: {}", package, names).into());
@@ -203,7 +205,8 @@ impl Resolver for Paths {
                     }
 
                     let stem = match path.file_stem() {
-                        Some(stem) => stem.to_str()
+                        Some(stem) => stem
+                            .to_str()
                             .ok_or_else(|| format!("non-utf8 file name: {}", path.display()))?,
                         None => continue,
                     };
@@ -282,7 +285,8 @@ pub fn path_to_package<P: AsRef<Path>>(path: P) -> Result<RpVersionedPackage> {
             part => return Err(path_part_error(path, part)),
         };
 
-        let part = part.to_str()
+        let part = part
+            .to_str()
             .ok_or_else(|| format!("non-utf8 file name: {}", path.display()))?;
 
         parts.push(part.to_string());

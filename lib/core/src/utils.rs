@@ -1,6 +1,6 @@
-use Span;
 use errors::Result;
 use std::io::Read;
+use Span;
 
 const NL: u8 = '\n' as u8;
 const CR: u8 = '\r' as u8;

@@ -3,8 +3,10 @@
 use backend::PackageProcessor;
 use core::errors::*;
 use core::{self, Handle, Loc, RelativePath, RelativePathBuf};
-use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody,
-               RpTupleBody, RpTypeBody, RpVariant, RustFlavor};
+use flavored::{
+    RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
+    RpTypeBody, RpVariant, RustFlavor,
+};
 use genco::rust;
 use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
 use rust_file_spec::RustFileSpec;

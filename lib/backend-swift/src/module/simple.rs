@@ -8,8 +8,10 @@ use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpSubType, Swift
 use genco::swift::{imported, Swift};
 use genco::{Cons, IntoTokens, Quoted, Tokens};
 use std::rc::Rc;
-use {Compiler, EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen, Options,
-     PackageAdded, PackageCodegen, TupleAdded, TupleCodegen, TypeAdded, TypeCodegen};
+use {
+    Compiler, EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen, Options,
+    PackageAdded, PackageCodegen, TupleAdded, TupleCodegen, TypeAdded, TypeCodegen,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Simple<'el> {
@@ -755,7 +757,10 @@ impl TupleCodegen for Codegen {
                     let mut t = Tokens::new();
 
                     for field in fields.iter().cloned() {
-                        t.push(codegen.encode_field(field, |value| toks!["json.append(", value, ")"])?);
+                        t.push(
+                            codegen
+                                .encode_field(field, |value| toks!["json.append(", value, ")"])?,
+                        );
                     }
 
                     t

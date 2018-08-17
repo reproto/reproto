@@ -152,7 +152,8 @@ where
         url.set_scheme("file")
             .map_err(|_| "failed to set scheme to `file`")?;
 
-        let path = url.to_file_path()
+        let path = url
+            .to_file_path()
             .map_err(|_| format!("url is not a file path: {}", url))?;
 
         git::open_git_repo(path)?
@@ -166,10 +167,13 @@ where
 pub fn index_from_url(config: IndexConfig, url: &Url, publishing: bool) -> Result<Box<Index>> {
     let mut scheme = url.scheme().split("+");
 
-    let first = scheme.next().ok_or_else(|| format!("bad scheme: {}", url))?;
+    let first = scheme
+        .next()
+        .ok_or_else(|| format!("bad scheme: {}", url))?;
 
     match first {
-        "file" => url.to_file_path()
+        "file" => url
+            .to_file_path()
             .map_err(|_| format!("url is not a file path: {}", url).into())
             .and_then(|path| index_from_path(&path)),
         "git" => index_from_git(config, scheme, url, publishing),

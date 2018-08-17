@@ -1,8 +1,8 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use codegen::{Configure, ServiceAdded, ServiceCodegen};
-use core::Loc;
 use core::errors::*;
+use core::Loc;
 use flavored::JavaEndpoint;
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier, VOID};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
@@ -260,7 +260,8 @@ impl GrpcClient {
             self.to_upper_snake.convert(e.safe_ident())
         ));
 
-        let descriptor_ty = self.method_descriptor
+        let descriptor_ty = self
+            .method_descriptor
             .with_arguments(vec![request_ty.clone(), response_ty.clone()]);
 
         let mut field = Field::new(descriptor_ty, method_name.clone());
@@ -380,10 +381,12 @@ impl GrpcClient {
 
         Self::javadoc_comments(&mut method.comments, &e.comment);
 
-        let request_observer_ty = self.stream_observer
+        let request_observer_ty = self
+            .stream_observer
             .with_arguments(vec![request_ty.clone()]);
 
-        let observer_ty = self.stream_observer
+        let observer_ty = self
+            .stream_observer
             .with_arguments(vec![response_ty.clone()]);
 
         let request_arg = Argument::new(request_ty.clone(), "request");
@@ -473,10 +476,12 @@ impl GrpcClient {
 
         Self::javadoc_comments(&mut method.comments, &e.comment);
 
-        let request_observer_ty = self.stream_observer
+        let request_observer_ty = self
+            .stream_observer
             .with_arguments(vec![request_ty.clone()]);
 
-        let observer_ty = self.stream_observer
+        let observer_ty = self
+            .stream_observer
             .with_arguments(vec![response_ty.clone()]);
 
         let request_arg = Argument::new(request_ty.clone(), "request");
@@ -667,7 +672,8 @@ impl ServiceCodegen for GrpcClient {
         for e in &body.endpoints {
             let method_type = self.method_type(e)?;
 
-            let request_ty = e.request
+            let request_ty = e
+                .request
                 .as_ref()
                 .map(|r| r.channel.ty())
                 .unwrap_or(&VOID)

@@ -110,16 +110,14 @@ fn print_differences(source: &Path, target: &Path, errors: &[it::utils::Diff]) {
                     .map(|m| match m {
                         &diff::Result::Right(_) => 1,
                         _ => 0,
-                    })
-                    .sum::<u32>();
+                    }).sum::<u32>();
 
                 let removed = mismatch
                     .iter()
                     .map(|m| match m {
                         &diff::Result::Left(_) => 1,
                         _ => 0,
-                    })
-                    .sum::<u32>();
+                    }).sum::<u32>();
 
                 println!("{}: +{}, -{}", src.display(), added, removed);
 
@@ -179,7 +177,8 @@ fn try_main() -> Result<()> {
                 do_project = true;
             }
             "--root" => {
-                let arg = args.next()
+                let arg = args
+                    .next()
                     .ok_or_else(|| format_err!("expected argument to `--root`"))?;
                 root = PathBuf::from(arg);
             }
@@ -189,7 +188,8 @@ fn try_main() -> Result<()> {
         }
     }
 
-    let parent = root.parent()
+    let parent = root
+        .parent()
         .ok_or_else(|| format_err!("no parent directory"))?;
 
     let cli = parent.join("cli");
@@ -236,16 +236,15 @@ fn try_main() -> Result<()> {
             filters
                 .iter()
                 .all(|term| s.keywords().into_iter().any(|k| k.contains(term)))
-        })
-        .map(|s| s.run())
+        }).map(|s| s.run())
         .collect::<Vec<_>>();
 
-    let res = res.into_iter()
+    let res = res
+        .into_iter()
         .flat_map(|res| match res {
             Ok(_) => None.into_iter(),
             Err(e) => Some(e).into_iter(),
-        })
-        .collect::<Vec<_>>();
+        }).collect::<Vec<_>>();
 
     let duration = Instant::now() - before;
     println!("Finished in {}", it::DurationFmt(duration));

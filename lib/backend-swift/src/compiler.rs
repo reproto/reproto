@@ -3,13 +3,16 @@
 use backend::PackageProcessor;
 use core::errors::*;
 use core::{Handle, Loc};
-use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody, SwiftFlavor,
-               SwiftName};
+use flavored::{
+    RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody, SwiftFlavor, SwiftName,
+};
 use genco::swift::Swift;
 use genco::{IntoTokens, Tokens};
 use trans::{self, Packages, Translated};
-use {EnumAdded, FileSpec, InterfaceAdded, InterfaceModelAdded, Options, PackageAdded,
-     StructModelAdded, TupleAdded, TypeAdded, EXT};
+use {
+    EnumAdded, FileSpec, InterfaceAdded, InterfaceModelAdded, Options, PackageAdded,
+    StructModelAdded, TupleAdded, TypeAdded, EXT,
+};
 
 /// Documentation comments.
 pub struct Comments<'el, S: 'el>(pub &'el [S]);
@@ -290,7 +293,8 @@ impl<'el> PackageProcessor<'el, SwiftFlavor, SwiftName> for Compiler<'el> {
         }
 
         for sub_type in body.sub_types.iter() {
-            let fields = body.fields
+            let fields = body
+                .fields
                 .iter()
                 .chain(sub_type.fields.iter())
                 .map(Loc::borrow);

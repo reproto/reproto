@@ -264,7 +264,9 @@ impl cmp::PartialEq for Version {
         // We should ignore build metadata here, otherwise versions v1 and v2
         // can exist such that !(v1 < v2) && !(v1 > v2) && v1 != v2, which
         // violate strict total ordering rules.
-        self.major == other.major && self.minor == other.minor && self.patch == other.patch
+        self.major == other.major
+            && self.minor == other.minor
+            && self.patch == other.patch
             && self.pre == other.pre
     }
 }

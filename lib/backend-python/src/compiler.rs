@@ -4,8 +4,10 @@ use backend::PackageProcessor;
 use codegen::{ServiceAdded, ServiceCodegen};
 use core::errors::*;
 use core::{self, Handle, Loc, RelativePathBuf};
-use flavored::{PythonFlavor, PythonName, RpEnumBody, RpField, RpInterfaceBody, RpPackage,
-               RpServiceBody, RpTupleBody, RpTypeBody};
+use flavored::{
+    PythonFlavor, PythonName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpServiceBody,
+    RpTupleBody, RpTypeBody,
+};
 use genco::python::{imported, Python};
 use genco::{Element, Quoted, Tokens};
 use naming::{self, Naming};
@@ -506,9 +508,10 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
                 sub_type_body.push(getter);
             }
 
-            let decode = self.decode_method(&sub_type.name, fields.iter().cloned(), |_, field| {
-                toks!(field.ident.clone().quoted())
-            })?;
+            let decode =
+                self.decode_method(&sub_type.name, fields.iter().cloned(), |_, field| {
+                    toks!(field.ident.clone().quoted())
+                })?;
 
             sub_type_body.push(decode);
 

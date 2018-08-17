@@ -1,9 +1,9 @@
-use Span;
 use serde;
 use std::borrow;
 use std::cmp;
 use std::hash;
 use std::result;
+use Span;
 
 #[derive(Clone)]
 pub struct Loc<T> {
@@ -77,11 +77,7 @@ where
     }
 }
 
-impl<T> cmp::Eq for Loc<T>
-where
-    T: cmp::Eq,
-{
-}
+impl<T> cmp::Eq for Loc<T> where T: cmp::Eq {}
 
 impl<T> cmp::PartialOrd for Loc<T>
 where

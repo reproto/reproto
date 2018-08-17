@@ -3,8 +3,10 @@
 #![allow(unused)]
 
 use core::errors::Result;
-use core::{self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator,
-           Translate, Translator};
+use core::{
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
+    Translator,
+};
 use genco::rust;
 use genco::{Cons, Rust};
 use std::collections::HashMap;

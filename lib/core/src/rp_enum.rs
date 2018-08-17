@@ -4,8 +4,9 @@ use errors::Result;
 use serde::Serialize;
 use std::fmt;
 use std::vec;
-use {BigInt, Diagnostics, Flavor, Loc, RpCode, RpNumber, RpReg, RpValue, Span, Translate,
-     Translator};
+use {
+    BigInt, Diagnostics, Flavor, Loc, RpCode, RpNumber, RpReg, RpValue, Span, Translate, Translator,
+};
 
 decl_body!(pub struct RpEnumBody<F> {
     /// The type of the variant.

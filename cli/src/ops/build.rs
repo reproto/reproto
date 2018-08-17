@@ -2,8 +2,8 @@
 
 use build_spec::{environment, load_manifest};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::{Filesystem, Reporter};
 use core::errors::Result;
+use core::{Filesystem, Reporter};
 use env;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {

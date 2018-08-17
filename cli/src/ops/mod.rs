@@ -11,8 +11,8 @@ mod update;
 mod watch;
 
 use clap::{App, Arg, ArgMatches};
-use core::{Filesystem, Reporter};
 use core::errors::*;
+use core::{Filesystem, Reporter};
 use log;
 use output::Output;
 

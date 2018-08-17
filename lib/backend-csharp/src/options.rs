@@ -1,7 +1,9 @@
 //! Options for java code generation.
 
-use codegen::{ClassCodegen, Codegen, EnumCodegen, InterfaceCodegen, ServiceCodegen, TupleCodegen,
-              TypeFieldCodegen};
+use codegen::{
+    ClassCodegen, Codegen, EnumCodegen, InterfaceCodegen, ServiceCodegen, TupleCodegen,
+    TypeFieldCodegen,
+};
 
 pub struct Options {
     /// Build setters?

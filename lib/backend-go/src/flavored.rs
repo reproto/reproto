@@ -2,11 +2,12 @@
 
 #![allow(unused)]
 
-use TYPE_SEP;
 use backend::package_processor;
 use core::errors::Result;
-use core::{self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator,
-           Translate, Translator};
+use core::{
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
+    Translator,
+};
 use genco::go::{array, imported, interface, local, map, Go};
 use genco::{Cons, Element};
 use std::collections::HashMap;
@@ -14,6 +15,7 @@ use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
 use trans::Packages;
+use TYPE_SEP;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GoFlavor;

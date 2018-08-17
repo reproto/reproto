@@ -3,8 +3,10 @@
 #![allow(unused)]
 
 use core::errors::Result;
-use core::{self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator,
-           Translate, Translator};
+use core::{
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
+    Translator,
+};
 use genco::csharp::{self, array, struct_, using};
 use genco::{Cons, Csharp};
 use naming::{self, Naming};
