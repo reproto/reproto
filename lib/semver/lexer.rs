@@ -288,7 +288,7 @@ mod tests {
     pub fn simple_tokens() {
         assert_eq!(
             lex("=><<=>=^~*.,-+||"),
-            vec![Eq, Gt, Lt, LtEq, GtEq, Caret, Tilde, Star, Dot, Comma, Hyphen, Plus, Or]
+            vec![Eq, Gt, Lt, LtEq, GtEq, Caret, Tilde, Star, Dot, Comma, Hyphen, Plus, Or,]
         );
     }
 

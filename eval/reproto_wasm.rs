@@ -22,8 +22,8 @@ extern crate reproto_manifest as manifest;
 extern crate reproto_parser as parser;
 
 use std::any::Any;
+use std::collections::BTreeMap;
 use std::str;
-use std::ops::DerefMut;
 use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -205,7 +205,11 @@ pub struct Marker {
 
 impl Marker {
     /// Convert an error into a marker.
-    fn try_from_error(source: &core::Source, p: &core::Span, message: &str) -> core::errors::Result<Marker> {
+    fn try_from_error(
+        source: &core::Source,
+        p: &core::Span,
+        message: &str,
+    ) -> core::errors::Result<Marker> {
         let (_, line, (s, e)) = core::utils::find_line(source.read()?, (p.start, p.end))?;
 
         let marker = Marker {
@@ -294,10 +298,18 @@ pub fn derive(derive: &JsValue) -> JsValue {
                 for d in reporter.iter().flat_map(|d| d.items()) {
                     match *d {
                         core::Diagnostic::Error(ref p, ref message) => {
-                            error_markers.push(Marker::try_from_error_fb(&source, p, message.as_str()));
+                            error_markers.push(Marker::try_from_error_fb(
+                                &source,
+                                p,
+                                message.as_str(),
+                            ));
                         }
                         core::Diagnostic::Info(ref p, ref message) => {
-                            info_markers.push(Marker::try_from_error_fb(&source, p, message.as_str()));
+                            info_markers.push(Marker::try_from_error_fb(
+                                &source,
+                                p,
+                                message.as_str(),
+                            ));
                         }
                         _ => {}
                     }
@@ -316,7 +328,9 @@ pub fn derive(derive: &JsValue) -> JsValue {
     }
 
     /// Construct content source information.
-    fn content_source(derive: &Derive) -> core::errors::Result<(core::Source, Option<core::RpVersionedPackage>)> {
+    fn content_source(
+        derive: &Derive,
+    ) -> core::errors::Result<(core::Source, Option<core::RpVersionedPackage>)> {
         let out = match derive.content {
             Content::Content { ref content } => {
                 let bytes = content.as_bytes().to_vec();
@@ -362,10 +376,10 @@ pub fn derive(derive: &JsValue) -> JsValue {
 
         let files = parse_files(derive.files)?;
 
-        let mut resolver: Box<core::Resolver> = Box::new(MapResolver(files));
+        let mut resolver = MapResolver(files);
 
         let simple_compile = compile::SimpleCompile::new(input, reporter)
-            .resolver(resolver.deref_mut())
+            .resolver(&mut resolver)
             .package_prefix(package_prefix);
 
         let mut modules = Vec::new();
@@ -411,12 +425,14 @@ pub fn derive(derive: &JsValue) -> JsValue {
     fn parse_package(file: &File) -> core::errors::Result<core::RpVersionedPackage> {
         let package = core::RpPackage::parse(file.package.as_str());
 
-        let version = if let Some(ref version) = file.version {
-            Some(core::Version::parse(version.as_str())
-                .map_err(|e| format!("{}: failed to parse version `{}`: {}", package, version, e))?)
-        } else {
-            None
-        };
+        let version =
+            if let Some(ref version) = file.version {
+                Some(core::Version::parse(version.as_str()).map_err(|e| {
+                    format!("{}: failed to parse version `{}`: {}", package, version, e)
+                })?)
+            } else {
+                None
+            };
 
         Ok(core::RpVersionedPackage::new(package, version))
     }
@@ -460,6 +476,8 @@ impl core::Resolver for MapResolver {
         &mut self,
         required: &core::RpRequiredPackage,
     ) -> core::errors::Result<Option<core::Resolved>> {
+        let mut matches = BTreeMap::new();
+
         let package = &required.package;
 
         for file in self.0.iter() {
@@ -467,7 +485,8 @@ impl core::Resolver for MapResolver {
                 continue;
             }
 
-            if file.version
+            if file
+                .version
                 .as_ref()
                 .map(|v| required.range.matches(v))
                 .unwrap_or_else(|| required.range.matches_any())
@@ -475,14 +494,17 @@ impl core::Resolver for MapResolver {
                 let bytes = file.content.as_bytes().to_vec();
                 let source = core::Source::bytes(package.to_string(), bytes);
 
-                return Ok(Some(core::Resolved {
-                    version: file.version.clone(),
-                    source,
-                }))
+                matches.insert(
+                    file.version.clone(),
+                    core::Resolved {
+                        version: file.version.clone(),
+                        source,
+                    },
+                );
             }
         }
 
-        Ok(None)
+        Ok(matches.into_iter().next_back().map(|v| v.1))
     }
 
     fn resolve_by_prefix(
@@ -495,12 +517,10 @@ impl core::Resolver for MapResolver {
             if file.package.starts_with(prefix) {
                 let bytes = file.content.as_bytes().to_vec();
                 let source = core::Source::bytes(file.package.to_string(), bytes);
-                let package = core::RpVersionedPackage::new(file.package.clone(), file.version.clone());
+                let package =
+                    core::RpVersionedPackage::new(file.package.clone(), file.version.clone());
 
-                out.push(core::ResolvedByPrefix {
-                    package,
-                    source,
-                })
+                out.push(core::ResolvedByPrefix { package, source })
             }
         }
 

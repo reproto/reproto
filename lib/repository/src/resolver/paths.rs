@@ -139,21 +139,7 @@ impl Resolver for Paths {
             }
         }
 
-        if files.len() > 1 {
-            let names = files
-                .iter()
-                .map(|f| {
-                    f.version
-                        .as_ref()
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| String::from("*"))
-                }).collect::<Vec<_>>()
-                .join(", ");
-
-            return Err(format!("more than one file matched `{}`: {}", package, names).into());
-        }
-
-        Ok(files.into_iter().next())
+        Ok(files.into_iter().next_back())
     }
 
     fn resolve_by_prefix(&mut self, package: &RpPackage) -> Result<Vec<ResolvedByPrefix>> {

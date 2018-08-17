@@ -7,6 +7,7 @@ __pycache__
 *.pyc
 *.class
 .*.un~
+.*.rustfmt
 # generated
 /src/backend/doc/static/doc.*.css
 /src/backend/doc/themes.rs
