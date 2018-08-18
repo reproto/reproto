@@ -40,7 +40,7 @@ where
             "{}{}{}",
             color.paint(indicator),
             color.paint(" - "),
-            color.paint(m.as_ref())
+            color.paint(m)
         )?;
 
         Ok(())
@@ -68,7 +68,7 @@ where
 
     fn print(&self, m: &str) -> Result<()> {
         let mut o = self.out.lock();
-        writeln!(o, "{}", Red.paint(m.as_ref()))?;
+        writeln!(o, "{}", Red.paint(m))?;
         Ok(())
     }
 

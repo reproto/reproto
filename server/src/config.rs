@@ -26,7 +26,7 @@ fn default_objects() -> PathBuf {
 }
 
 fn default_max_file_size() -> u64 {
-    10000000u64
+    1_000_000u64
 }
 
 impl Default for Config {

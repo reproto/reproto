@@ -1,3 +1,4 @@
+extern crate futures;
 extern crate futures_cpupool;
 extern crate hyper;
 #[macro_use]
@@ -9,13 +10,14 @@ extern crate reproto_server as server;
 
 use core::errors::Result;
 use futures_cpupool::CpuPool;
-use hyper::server::Http;
+use hyper::rt::{self, Future};
+use hyper::server::Server;
 use repository::objects_from_path;
 use server::reproto_service;
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Get the configuration path to load.
 fn config_path() -> Result<Option<PathBuf>> {
@@ -29,7 +31,7 @@ fn config_path() -> Result<Option<PathBuf>> {
 }
 
 fn entry() -> Result<()> {
-    pretty_env_logger::init()?;
+    pretty_env_logger::init();
 
     let config = if let Some(path) = config_path()? {
         server::config::read_config(path)?
@@ -42,21 +44,22 @@ fn entry() -> Result<()> {
     let max_file_size = config.max_file_size;
 
     let pool = Arc::new(CpuPool::new_num_cpus());
-    let setup_pool = pool.clone();
-    let objects = Arc::new(Mutex::new(objects_from_path(objects)?));
+    let objects = objects_from_path(objects)?;
 
     let setup = move || {
-        Ok(reproto_service::ReprotoService {
-            max_file_size: max_file_size,
-            pool: setup_pool.clone(),
+        futures::future::ok::<_, hyper::Error>(reproto_service::ReprotoService {
+            max_file_size,
+            pool: pool.clone(),
             objects: objects.clone(),
         })
     };
 
-    let server = Http::new().bind(&listen_address, setup)?;
+    let server = Server::bind(&listen_address).serve(setup).map_err(|e| {
+        error!("server error: {}", e);
+    });
 
-    info!("Listening on http://{}", server.local_addr()?);
-    server.run()?;
+    info!("listening on http://{}", listen_address);
+    rt::run(server);
     Ok(())
 }
 

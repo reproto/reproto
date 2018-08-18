@@ -32,27 +32,27 @@ reproto-env = {path = "../lib/env", version = "0.3"}
 reproto-backend = {path = "../lib/backend", version = "0.3"}
 reproto-backend-doc = {path = "../lib/backend-doc", version = "0.3"}
 reproto-repository = {path = "../lib/repository", version = "0.3"}
-url = "1.6"
+url = "1.7.1"
 
-ansi_term = "0.9"
-atty = "0.2"
-clap = "2.24"
-linked-hash-map = {version = "0.5", features = ["serde"]}
-log = "0.3"
-pulldown-cmark = "0.0.14"
-serde = "1.0"
-serde_json = "1.0"
-serde_derive = "1.0"
-toml = "0.4"
-genco = {version = "0.3"}
-notify = {version = "4", optional = true}
+ansi_term = "0.11.0"
+atty = "0.2.11"
+clap = "2.32.0"
+linked-hash-map = { version = "0.5.1", features = ["serde"] }
+log = "0.4.4"
+pulldown-cmark = "0.1.2"
+serde = "1.0.71"
+serde_json = "1.0.26"
+serde_derive = "1.0.71"
+toml = "0.4.6"
+genco = "0.3.27"
+notify = { version = "4.0.4", optional = true }
 
 # for self-updates
-same-file = {version = "1", optional = true}
-ring = {version = "0.13.0-alpha", optional = true}
-hyper = {version = "0.11", optional = true}
-hyper-rustls = {version = "0.12", optional = true}
-tokio-core = {version = "0.1", optional = true}
-futures = {version = "0.1", optional = true}
-flate2 = {version = "0.2", optional = true}
-tar = {version = "0.4", optional = true}
+same-file = { version = "1.0.2", optional = true }
+ring = { version = "0.13.2", optional = true }
+hyper = { version = "0.12.8", optional = true }
+hyper-rustls = { version = "0.14.0", optional = true }
+tokio-core = { version = "0.1.17", optional = true }
+futures = { version = "0.1.23", optional = true }
+flate2 = { version = "1.0.2", optional = true }
+tar = { version = "0.4.16", optional = true }

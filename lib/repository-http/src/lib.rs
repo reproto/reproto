@@ -12,8 +12,7 @@ use core::errors::{Error, Result};
 use core::Source;
 use futures::future::{err, ok};
 use futures::{Future, Stream};
-use hyper::header::ContentLength;
-use hyper::{Client, Method, Request, StatusCode};
+use hyper::{Client, Method, Request, StatusCode, Body};
 use repository::{CachedObjects, Checksum, HexSlice, Objects, ObjectsConfig};
 use std::io::Read;
 use std::time::Duration;
@@ -48,7 +47,7 @@ impl HttpObjects {
 
     fn handle_request(
         &mut self,
-        request: Request,
+        request: Request<Body>,
     ) -> Box<Future<Item = (Vec<u8>, StatusCode), Error = Error>> {
         let handle = self.core.handle();
 
@@ -82,9 +81,6 @@ impl Objects for HttpObjects {
         let url = self.checksum_url(checksum)?;
 
         let mut request = Request::new(Method::Put, url);
-        request
-            .headers_mut()
-            .set(ContentLength(buffer.len() as u64));
         request.set_body(buffer);
 
         let work = self.handle_request(request).and_then(|(body, status)| {

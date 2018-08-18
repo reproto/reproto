@@ -43,7 +43,7 @@ impl Objects for GitObjects {
 
         if added {
             // add the newly added file.
-            let path = self.file_objects.checksum_path(checksum)?;
+            let path = self.file_objects.get_path(checksum)?;
             self.git_repo.add(path)?;
         }
 
