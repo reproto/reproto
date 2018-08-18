@@ -17,8 +17,8 @@ reproto-core = {path = "../core", version = "0.3"}
 reproto-trans = {path = "../trans", version = "0.3"}
 reproto-manifest = {path = "../manifest", version = "0.3"}
 
-log = "0.3"
-serde = "1.0"
-serde_derive = "1.0"
-serde_yaml = "0.7"
-toml = "0.4"
+log = "0.4.4"
+serde = "1.0.71"
+serde_derive = "1.0.71"
+serde_yaml = "0.7.5"
+toml = "0.4.6"

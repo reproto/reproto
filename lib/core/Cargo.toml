@@ -14,17 +14,17 @@ Rethinking Protocol Generators
 [dependencies]
 reproto-semver = {path = "../semver", version = "0.3", features = ["serde"]}
 
-num-bigint = {version = "0.1", default_features = false}
-num-traits = {version = "0.1", default_features = false}
-num-integer = {version = "0.1", default_features = false}
-mime = "0.3"
-serde = {version = "1.0", features = ["rc"]}
-serde_derive = "1.0"
-relative-path = {version = "0.3", features = ["serde"]}
-linked-hash-map = {version = "0.5", features = ["serde_impl"]}
-backtrace = {version = "0.3", optional = true}
-ropey = "0.6"
-url = "1.7"
+num-bigint = { version = "0.2.0", default_features = false, features = ["std"] }
+num-traits = { version = "0.2.5", default_features = false, features = ["std"] }
+num-integer = { version = "0.1.39", default_features = false, features = ["std"] }
+mime = "0.3.9"
+serde = { version = "1.0.71", features = ["rc"] }
+serde_derive = "1.0.71"
+relative-path = { version = "0.3.7", features = ["serde"] }
+linked-hash-map = { version = "0.5.1", features = ["serde_impl"] }
+backtrace = { version = "0.3.9", optional = true }
+ropey = "0.8.4"
+url = "1.7.1"
 
 [features]
 default = ["std"]

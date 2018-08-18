@@ -9,6 +9,7 @@ use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone)]
 /// Load objects from the filesystem.
 pub struct FileObjects {
     /// The root path of the filesystem storage.
@@ -29,7 +30,7 @@ impl FileObjects {
     }
 
     /// Calculate the path to the given checksum.
-    pub fn checksum_path(&self, checksum: &Checksum) -> Result<PathBuf> {
+    pub fn get_path(&self, checksum: &Checksum) -> Result<PathBuf> {
         let path = self
             .path
             .join(format!("{}", HexSlice::new(&checksum[0..1])));
@@ -40,7 +41,7 @@ impl FileObjects {
 
 impl Objects for FileObjects {
     fn put_object(&mut self, checksum: &Checksum, source: &mut Read, force: bool) -> Result<bool> {
-        let target = self.checksum_path(checksum)?;
+        let target = self.get_path(checksum)?;
 
         // no need to write same file again
         if target.is_file() && !force {
@@ -64,7 +65,7 @@ impl Objects for FileObjects {
     }
 
     fn get_object(&mut self, checksum: &Checksum) -> Result<Option<Source>> {
-        let target = self.checksum_path(checksum)?;
+        let target = self.get_path(checksum)?;
 
         if target.is_file() {
             return Ok(Some(Source::from_path(target)));

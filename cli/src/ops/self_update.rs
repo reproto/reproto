@@ -9,15 +9,15 @@ mod internal {
     extern crate hyper_rustls;
     extern crate same_file;
     extern crate tar;
-    extern crate tokio_core;
 
-    use self::flate2::FlateReadExt;
+    use self::flate2::read::GzDecoder;
     use self::futures::future::{err, ok};
     use self::futures::{Future, Stream};
-    use self::hyper::header::Location;
-    use self::hyper::{Client, Method, Request, Response, StatusCode, Uri};
+    use self::hyper::client::HttpConnector;
+    use self::hyper::header;
+    use self::hyper::{Body, Client, Method, Request, Response, StatusCode, Uri};
+    use self::hyper_rustls::HttpsConnector;
     use self::tar::Archive;
-    use self::tokio_core::reactor::{Core, Handle};
     use clap::ArgMatches;
     use core::errors::{Error, Result};
     use core::Version;
@@ -97,12 +97,9 @@ mod internal {
         let url = m.value_of("url").unwrap_or(DEFAULT_URL);
         let url = Url::parse(url)?;
 
-        let mut core = Core::new()?;
-        let handle = core.handle();
+        let mut client = UpdateClient::new(url)?;
 
-        let mut client = UpdateClient::new(handle, url)?;
-
-        let mut releases = core.run(client.get_releases())?;
+        let mut releases = client.get_releases().wait()?;
 
         releases.sort();
 
@@ -136,8 +133,9 @@ mod internal {
         let binary = format!("reproto{}", ext);
 
         if !archived.is_file() || force {
-            let release = core
-                .run(client.get_release(&version, platform, arch))
+            let release = client
+                .get_release(&version, platform, arch)
+                .wait()
                 .map_err(|e| format!("{}: failed to download archive: {}", tuple, e.display()))?;
 
             download_archive(release, &archived, &binary).map_err(|e| {
@@ -192,7 +190,7 @@ mod internal {
         }
 
         fn download_archive(release: Vec<u8>, out: &Path, binary: &str) -> Result<()> {
-            let mut archive = Archive::new(Cursor::new(release).gz_decode()?);
+            let mut archive = Archive::new(GzDecoder::new(Cursor::new(release)));
 
             for file in archive.entries()? {
                 let mut file = file?;
@@ -282,15 +280,13 @@ mod internal {
     }
 
     struct UpdateClient {
-        client: Arc<Client<hyper_rustls::HttpsConnector>>,
+        client: Arc<Client<HttpsConnector<HttpConnector>>>,
         url: Url,
     }
 
     impl UpdateClient {
-        pub fn new(handle: Handle, url: Url) -> Result<Self> {
-            let client = Client::configure()
-                .connector(hyper_rustls::HttpsConnector::new(4, &handle))
-                .build(&handle);
+        pub fn new(url: Url) -> Result<Self> {
+            let client = Client::builder().build(HttpsConnector::new(4));
 
             Ok(Self {
                 client: Arc::new(client),
@@ -300,20 +296,20 @@ mod internal {
 
         /// Handle redirects for request.
         fn handle_redirect(
-            client: Arc<Client<hyper_rustls::HttpsConnector>>,
-            res: &Response,
+            client: Arc<Client<HttpsConnector<HttpConnector>>>,
+            res: &Response<Body>,
         ) -> Option<Box<Future<Item = Vec<u8>, Error = Error>>> {
             let should_redirect = match res.status() {
-                StatusCode::MovedPermanently
-                | StatusCode::Found
-                | StatusCode::SeeOther
-                | StatusCode::TemporaryRedirect
-                | StatusCode::PermanentRedirect => true,
+                StatusCode::MOVED_PERMANENTLY
+                | StatusCode::FOUND
+                | StatusCode::SEE_OTHER
+                | StatusCode::TEMPORARY_REDIRECT
+                | StatusCode::PERMANENT_REDIRECT => true,
                 _ => false,
             };
 
             if should_redirect {
-                let uri = if let Some(loc) = res.headers().get::<Location>() {
+                let uri = if let Some(loc) = res.headers().get(header::LOCATION) {
                     match ::std::str::from_utf8(loc.as_bytes())
                         .map_err(Error::from)
                         .and_then(|s| s.parse::<Uri>().map_err(Error::from))
@@ -325,7 +321,15 @@ mod internal {
                     return None;
                 };
 
-                let req = Request::new(Method::Get, uri);
+                let req = match Request::builder()
+                    .method(Method::GET)
+                    .uri(uri)
+                    .body(Body::empty())
+                {
+                    Ok(req) => req,
+                    Err(e) => return Some(Box::new(err(e.into()))),
+                };
+
                 return Some(Box::new(Self::request(client, req)));
             }
 
@@ -334,24 +338,23 @@ mod internal {
 
         /// Perform the given request.
         fn request(
-            client: Arc<Client<hyper_rustls::HttpsConnector>>,
-            req: Request,
-        ) -> Box<Future<Item = Vec<u8>, Error = Error>> {
+            client: Arc<Client<HttpsConnector<HttpConnector>>>,
+            req: Request<Body>,
+        ) -> impl Future<Item = Vec<u8>, Error = Error> {
             let inner_client = Arc::clone(&client);
 
-            Box::new(
-                client
-                    .request(req)
-                    .map_err(|e| Error::from(e))
-                    .and_then(move |res| {
-                        if let Some(future) = Self::handle_redirect(inner_client, &res) {
-                            return future;
-                        }
+            client
+                .request(req)
+                .map_err(|e| Error::from(e))
+                .and_then(move |res| {
+                    if let Some(future) = Self::handle_redirect(inner_client, &res) {
+                        return future;
+                    }
 
-                        let status = res.status().clone();
+                    let status = res.status().clone();
 
-                        let fut = res
-                            .body()
+                    let fut =
+                        res.into_body()
                             .map_err(|e| Error::from(e))
                             .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
                                 out.extend(chunk.as_ref());
@@ -371,23 +374,25 @@ mod internal {
                                 ok(body)
                             });
 
-                        Box::new(fut)
-                    }),
-            )
+                    Box::new(fut)
+                })
         }
 
         pub fn get_releases(&mut self) -> Box<Future<Item = Vec<Version>, Error = Error>> {
             let url = match self.url.join("releases") {
-                Err(e) => return Box::new(err(e.into())),
                 Ok(url) => url,
+                Err(e) => return Box::new(err(e.into())),
             };
 
             let uri = match url.as_ref().parse::<Uri>() {
-                Err(e) => return Box::new(err(e.into())),
                 Ok(uri) => uri,
+                Err(e) => return Box::new(err(e.into())),
             };
 
-            let request = Request::new(Method::Get, uri);
+            let request = match Request::get(uri).body(Body::empty()) {
+                Ok(request) => request,
+                Err(e) => return Box::new(err(e.into())),
+            };
 
             let url = url.clone();
 
@@ -431,16 +436,23 @@ mod internal {
                 .url
                 .join(&format!("reproto-{}-{}-{}.tar.gz", version, platform, arch))
             {
-                Err(e) => return Box::new(err(e.into())),
                 Ok(url) => url,
+                Err(e) => return Box::new(err(e.into())),
             };
 
             let uri = match url.as_ref().parse::<Uri>() {
-                Err(e) => return Box::new(err(e.into())),
                 Ok(uri) => uri,
+                Err(e) => return Box::new(err(e.into())),
             };
 
-            let request = Request::new(Method::Get, uri);
+            let request = match Request::builder()
+                .method(Method::GET)
+                .uri(uri)
+                .body(Body::empty())
+            {
+                Ok(request) => request,
+                Err(e) => return Box::new(err(e.into())),
+            };
 
             let url = url.clone();
 

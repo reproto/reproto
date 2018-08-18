@@ -144,15 +144,13 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 /// If debug (--debug) is specified, logging should be configured with `LogLevelFilter::Debug`.
 fn default_logging(matches: &ArgMatches, output: &Output) -> Result<()> {
     let level = if matches.is_present("debug") {
-        log::LogLevelFilter::Debug
+        log::LevelFilter::Debug
     } else {
-        log::LogLevelFilter::Info
+        log::LevelFilter::Info
     };
 
-    log::set_logger(|max_level| {
-        max_level.set(level);
-        output.logger()
-    })?;
+    log::set_boxed_logger(output.logger())?;
+    log::set_max_level(level);
 
     Ok(())
 }

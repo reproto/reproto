@@ -5,34 +5,26 @@ extern crate hyper;
 extern crate hyper_rustls;
 extern crate reproto_core as core;
 extern crate reproto_repository as repository;
-extern crate tokio_core;
 extern crate url;
 
 use core::errors::{Error, Result};
 use core::Source;
 use futures::future::{err, ok};
 use futures::{Future, Stream};
-use hyper::header::ContentLength;
-use hyper::{Client, Method, Request, StatusCode};
+use hyper::client::HttpConnector;
+use hyper::{Body, Client, Method, Request, StatusCode};
+use hyper_rustls::HttpsConnector;
 use repository::{CachedObjects, Checksum, HexSlice, Objects, ObjectsConfig};
 use std::io::Read;
 use std::time::Duration;
-use tokio_core::reactor::Core;
 use url::Url;
 
 pub struct HttpObjects {
     url: Url,
-    core: Core,
+    client: Client<HttpsConnector<HttpConnector>, Body>,
 }
 
 impl HttpObjects {
-    pub fn new(url: Url, core: Core) -> HttpObjects {
-        HttpObjects {
-            url: url,
-            core: core,
-        }
-    }
-
     fn checksum_url(&self, checksum: &Checksum) -> Result<hyper::Uri> {
         let url = self
             .url
@@ -48,21 +40,16 @@ impl HttpObjects {
 
     fn handle_request(
         &mut self,
-        request: Request,
-    ) -> Box<Future<Item = (Vec<u8>, StatusCode), Error = Error>> {
-        let handle = self.core.handle();
-
-        let client = Client::configure()
-            .connector(hyper_rustls::HttpsConnector::new(4, &handle))
-            .build(&handle);
-
-        let body_and_status = client
+        request: Request<Body>,
+    ) -> impl Future<Item = (Vec<u8>, StatusCode), Error = Error> {
+        let body_and_status = self
+            .client
             .request(request)
             .map_err::<_, Error>(|e| format!("Request to repository failed: {}", e).into())
             .and_then(|res| {
                 let status = res.status().clone();
 
-                res.body()
+                res.into_body()
                     .map_err::<Error, _>(|e| format!("Failed to perform request: {}", e).into())
                     .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
                         out.extend(chunk.as_ref());
@@ -81,11 +68,10 @@ impl Objects for HttpObjects {
 
         let url = self.checksum_url(checksum)?;
 
-        let mut request = Request::new(Method::Put, url);
-        request
-            .headers_mut()
-            .set(ContentLength(buffer.len() as u64));
-        request.set_body(buffer);
+        let request = Request::builder()
+            .method(Method::PUT)
+            .uri(url)
+            .body(Body::from(buffer))?;
 
         let work = self.handle_request(request).and_then(|(body, status)| {
             if !status.is_success() {
@@ -99,7 +85,7 @@ impl Objects for HttpObjects {
             ok(())
         });
 
-        self.core.run(work)?;
+        work.wait()?;
 
         // TODO: use status code to determine if the upload resulted in changes or not.
         Ok(true)
@@ -109,14 +95,17 @@ impl Objects for HttpObjects {
         let url = self.checksum_url(checksum)?;
         let name = url.to_string();
 
-        let request = Request::new(Method::Get, url);
+        let request = Request::builder()
+            .method(Method::GET)
+            .uri(url)
+            .body(Body::empty())?;
 
         let work = self.handle_request(request).and_then(|(body, status)| {
             if status.is_success() {
                 return ok(Some(body));
             }
 
-            if status == StatusCode::NotFound {
+            if status == StatusCode::NOT_FOUND {
                 return ok(None);
             }
 
@@ -127,16 +116,19 @@ impl Objects for HttpObjects {
             return err(format!("bad response: {}", status).into());
         });
 
-        let out = self.core.run(work)?;
+        let out = work.wait()?;
         Ok(out.map(|out| Source::bytes(name, out)))
     }
 }
 
 /// Load objects from an HTTP url.
 pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
-    let core = Core::new()?;
+    let client = Client::builder().build(HttpsConnector::new(4));
 
-    let http_objects = HttpObjects::new(url.clone(), core);
+    let http_objects = HttpObjects {
+        url: url.clone(),
+        client,
+    };
 
     if let Some(cache_home) = config.cache_home {
         let missing_cache_time = config

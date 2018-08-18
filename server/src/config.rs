@@ -12,6 +12,9 @@ pub struct Config {
     /// Objects path.
     #[serde(default = "default_objects")]
     pub objects: PathBuf,
+    /// Index path.
+    #[serde(default = "default_index")]
+    pub index: PathBuf,
     /// Max file size permitted during upload.
     #[serde(default = "default_max_file_size")]
     pub max_file_size: u64,
@@ -25,8 +28,12 @@ fn default_objects() -> PathBuf {
     Path::new("./objects").to_owned()
 }
 
+fn default_index() -> PathBuf {
+    Path::new("./index").to_owned()
+}
+
 fn default_max_file_size() -> u64 {
-    10000000u64
+    1_000_000u64
 }
 
 impl Default for Config {
@@ -34,6 +41,7 @@ impl Default for Config {
         Config {
             listen_address: default_listen_address(),
             objects: default_objects(),
+            index: default_index(),
             max_file_size: default_max_file_size(),
         }
     }

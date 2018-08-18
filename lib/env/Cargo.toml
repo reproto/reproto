@@ -30,12 +30,12 @@ reproto-backend-reproto = {path = "../backend-reproto", version = "0.3"}
 reproto-backend-rust = {path = "../backend-rust", version = "0.3"}
 reproto-backend-swift = {path = "../backend-swift", version = "0.3"}
 
-toml = "0.4"
-log = "0.3"
-url = "1.6"
-url_serde = "0.2"
-serde = "1.0"
-serde_derive = "1.0"
+toml = "0.4.6"
+log = "0.4.4"
+url = "1.7.1"
+url_serde = "0.2.0"
+serde = "1.0.71"
+serde_derive = "1.0.71"
 
 [lib]
 path = "lib.rs"

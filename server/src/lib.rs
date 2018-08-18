@@ -9,10 +9,10 @@ extern crate futures_cpupool;
 extern crate hyper;
 extern crate reproto_core as core;
 extern crate reproto_repository;
-extern crate tempfile;
+extern crate tokio_fs;
+extern crate tokio_io;
 extern crate toml;
 
 pub mod config;
 mod errors;
-mod io;
 pub mod reproto_service;

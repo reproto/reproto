@@ -40,7 +40,7 @@ where
             "{}{}{}",
             color.paint(indicator),
             color.paint(" - "),
-            color.paint(m.as_ref())
+            color.paint(m)
         )?;
 
         Ok(())
@@ -68,7 +68,7 @@ where
 
     fn print(&self, m: &str) -> Result<()> {
         let mut o = self.out.lock();
-        writeln!(o, "{}", Red.paint(m.as_ref()))?;
+        writeln!(o, "{}", Red.paint(m))?;
         Ok(())
     }
 
@@ -89,12 +89,12 @@ impl<T> log::Log for ColoredLogger<T>
 where
     T: LockableWrite,
 {
-    fn enabled(&self, metadata: &log::LogMetadata) -> bool {
-        metadata.level() <= log::LogLevel::Debug
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::Level::Debug
     }
 
-    fn log(&self, record: &log::LogRecord) {
-        use log::LogLevel::*;
+    fn log(&self, record: &log::Record) {
+        use log::Level::*;
 
         if self.enabled(record.metadata()) {
             let mut out = self.out.lock();
@@ -108,4 +108,6 @@ where
             result.unwrap();
         }
     }
+
+    fn flush(&self) {}
 }

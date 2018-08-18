@@ -84,11 +84,11 @@ impl<T> log::Log for JsonLogger<T>
 where
     T: LockableWrite,
 {
-    fn enabled(&self, metadata: &log::LogMetadata) -> bool {
-        metadata.level() <= log::LogLevel::Debug
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::Level::Debug
     }
 
-    fn log(&self, record: &log::LogRecord) {
+    fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
             let m = Message::Log {
                 level: record.level().to_string(),
@@ -100,6 +100,8 @@ where
             out.write(&[NL]).expect("failed to serializer");
         }
     }
+
+    fn flush(&self) {}
 }
 
 impl<T> Output for Json<T>

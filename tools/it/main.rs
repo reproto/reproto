@@ -253,7 +253,7 @@ fn try_main() -> Result<()> {
         for (i, e) in res.iter().enumerate() {
             eprintln!("error #{}: {}", i, e);
 
-            if let Some(error) = e.root_cause().downcast_ref::<it::Error>() {
+            if let Some(error) = e.find_root_cause().downcast_ref::<it::Error>() {
                 match *error {
                     it::Error::CheckFailed {
                         ref expected,
@@ -289,7 +289,7 @@ fn try_main() -> Result<()> {
                 continue;
             }
 
-            for cause in e.causes() {
+            for cause in e.iter_chain() {
                 println!("Caused by: {}", cause);
             }
 

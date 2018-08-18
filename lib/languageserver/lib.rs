@@ -252,16 +252,18 @@ impl<L> log::Log for Logger<L>
 where
     L: Send + Write,
 {
-    fn enabled(&self, metadata: &log::LogMetadata) -> bool {
-        metadata.level() <= log::LogLevel::Debug
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::Level::Debug
     }
 
-    fn log(&self, record: &log::LogRecord) {
+    fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
             let mut lock = self.log.lock().expect("poisoned lock");
             writeln!(lock, "{}: {}", record.level(), record.args()).unwrap();
         }
     }
+
+    fn flush(&self) {}
 }
 
 /// Logger that sends logs as notifications to client.
@@ -285,12 +287,12 @@ impl<W> log::Log for NotificationLogger<W>
 where
     W: Send + Write,
 {
-    fn enabled(&self, metadata: &log::LogMetadata) -> bool {
-        metadata.level() <= log::LogLevel::Debug
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::Level::Debug
     }
 
-    fn log(&self, record: &log::LogRecord) {
-        use log::LogLevel::*;
+    fn log(&self, record: &log::Record) {
+        use log::Level::*;
 
         if !self.enabled(record.metadata()) {
             return;
@@ -312,13 +314,15 @@ where
             .notification::<ty::notification::LogMessage>(notification)
             .expect("failed to send notification");
     }
+
+    fn flush(&self) {}
 }
 
 pub fn server<L: 'static, R, W: 'static>(
     log: Option<L>,
     reader: R,
     writer: W,
-    level: log::LogLevelFilter,
+    level: log::LevelFilter,
 ) -> Result<()>
 where
     L: Send + Write,
@@ -330,15 +334,11 @@ where
     if let Some(log) = log {
         let logger = Logger::new(log);
 
-        log::set_logger(|max_level| {
-            max_level.set(level);
-            Box::new(logger)
-        })?;
+        log::set_boxed_logger(Box::new(logger))?;
+        log::set_max_level(level);
     } else {
-        log::set_logger(|max_level| {
-            max_level.set(level);
-            Box::new(NotificationLogger::new(channel.clone()))
-        })?;
+        log::set_boxed_logger(Box::new(NotificationLogger::new(channel.clone())))?;
+        log::set_max_level(level);
     }
 
     match try_server(reader, channel) {

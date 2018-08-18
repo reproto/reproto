@@ -14,8 +14,8 @@ lexer used with the reproto parser
 [dependencies]
 reproto-core = {path = "../core", version = "0.3"}
 
-num-bigint = {version = "0.1", default_features = false}
-num-traits = {version = "0.1", default_features = false}
+num-bigint = { version = "0.2.0", default_features = false, features = ["std"] }
+num-traits = { version = "0.2.5", default_features = false, features = ["std"] }
 
 [lib]
 path = "lib.rs"

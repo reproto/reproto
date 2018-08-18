@@ -11,7 +11,7 @@ use core::Source;
 use git;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 use update::Update;
 use url::Url;
@@ -24,7 +24,7 @@ pub struct ObjectsConfig {
     pub missing_cache_time: Option<Duration>,
 }
 
-pub trait Objects {
+pub trait Objects: Send {
     /// Put the given object into the database.
     /// This will cause the object denoted by the given checksum to be uploaded to the objects
     /// store.
@@ -56,14 +56,14 @@ impl Objects for NoObjects {
 }
 
 /// Load objects from a path.
-pub fn objects_from_path<P: AsRef<Path>>(path: P) -> Result<FileObjects> {
+pub fn objects_from_path<P: AsRef<Path>>(path: P) -> Result<Box<Objects>> {
     let path = path.as_ref();
 
     if !path.is_dir() {
         return Err(format!("no such directory: {}", path.display()).into());
     }
 
-    Ok(FileObjects::new(path))
+    Ok(Box::new(FileObjects::new(path)))
 }
 
 /// Load objects from a git+<scheme> URL.
@@ -88,7 +88,7 @@ where
 
     let file_objects = FileObjects::new(git_repo.path());
 
-    let git_repo = Rc::new(git_repo);
+    let git_repo = Arc::new(git_repo);
     let objects = GitObjects::new(url.clone(), git_repo, file_objects, publishing);
 
     Ok(Box::new(objects))
@@ -111,7 +111,7 @@ where
         .ok_or_else(|| format!("Bad scheme in: {}", url))?;
 
     match first {
-        "file" => objects_from_path(Path::new(url.path())).map(|o| Box::new(o) as Box<Objects>),
+        "file" => objects_from_path(Path::new(url.path())),
         "git" => objects_from_git(config, scheme, url, publishing),
         scheme => match fallback(config, scheme, url)? {
             Some(objects) => Ok(objects),

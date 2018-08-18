@@ -18,8 +18,8 @@ reproto-naming = {path = "../naming", version = "0.3"}
 reproto-core = {path = "../core", version = "0.3"}
 reproto-manifest = {path = "../manifest", version = "0.3"}
 
-genco = {version = "0.3"}
-log = "0.3"
-serde = "1.0"
-serde_derive = "1.0"
-toml = "0.4"
+genco = "0.3.27"
+log = "0.4.4"
+serde = "1.0.71"
+serde_derive = "1.0.71"
+toml = "0.4.6"

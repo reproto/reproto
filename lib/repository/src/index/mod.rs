@@ -9,7 +9,7 @@ use core::{Range, RelativePath, RpPackage, Version};
 use git;
 use objects::Objects;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::Arc;
 use update::Update;
 use url::Url;
 
@@ -34,7 +34,7 @@ impl Deployment {
     }
 }
 
-pub trait Index {
+pub trait Index: Send {
     /// Resolve the given version of a package.
     fn resolve(&self, package: &RpPackage, range: &Range) -> Result<Vec<Deployment>>;
 
@@ -107,7 +107,9 @@ impl Index for NoIndex {
 }
 
 /// Setup an index for the given path.
-pub fn index_from_path(path: &Path) -> Result<Box<Index>> {
+pub fn index_from_path<P: AsRef<Path>>(path: P) -> Result<Box<Index>> {
+    let path = path.as_ref();
+
     if !path.is_dir() {
         return Err(format!("index: no such directory: {}", path.display()).into());
     }
@@ -123,7 +125,7 @@ pub fn index_from_path(path: &Path) -> Result<Box<Index>> {
 }
 
 fn open_git_index(url: &Url, git_repo: git::GitRepo, publishing: bool) -> Result<Box<Index>> {
-    let git_repo = Rc::new(git_repo);
+    let git_repo = Arc::new(git_repo);
 
     let file_objects = file_index::FileIndex::new(git_repo.path())?;
     let index = GitIndex::new(url.clone(), git_repo, file_objects, publishing);

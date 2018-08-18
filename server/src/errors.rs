@@ -1,13 +1,12 @@
 use core::errors as core;
 use std::borrow::Cow;
-use std::result;
-
-pub type Result<T> = result::Result<T, Error>;
 
 /// Service errors.
 pub enum Error {
+    NotFound,
     BadRequest(Cow<'static, str>),
-    Other(core::Error),
+    InternalServerError(Cow<'static, str>),
+    Core(core::Error),
 }
 
 impl<T> From<T> for Error
@@ -15,6 +14,6 @@ where
     T: Into<core::Error>,
 {
     fn from(value: T) -> Error {
-        Error::Other(value.into())
+        Error::Core(value.into())
     }
 }

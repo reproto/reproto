@@ -1,54 +1,42 @@
-use errors::{Error, Result};
-use flate2::FlateReadExt;
-use futures::future::{ok, Future};
+use errors::Error;
+use flate2::read::GzDecoder;
+use futures::future::{err, ok};
 use futures_cpupool::CpuPool;
-use hyper::header::{ContentEncoding, ContentLength, ContentType, Encoding, Headers};
-use hyper::mime;
-use hyper::server::{Request, Response, Service};
-use hyper::{self, Method, StatusCode};
-use io;
-use reproto_repository::{to_checksum, Checksum, FileObjects, Objects};
-use std::fs::File;
-use std::io::Read;
-use std::io::{Seek, SeekFrom};
+use hyper::header::{self, HeaderMap, HeaderValue};
+use hyper::rt::{Future, Stream};
+use hyper::service::Service;
+use hyper::{self, Body, Method, Request, Response, StatusCode};
+use reproto_repository::{to_checksum, Checksum, Index, Objects};
+use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::sync::{Arc, Mutex};
-use tempfile;
+use tokio_fs;
+use tokio_io;
 
 const CHECKSUM_MISMATCH: &'static str = "checksum mismatch";
-const BAD_OBJECT_ID: &'static str = "bad object id";
 
-/// ## Read the contents of the file into a byte-vector
-fn read_contents<'a, R: AsMut<Read + 'a>>(mut reader: R) -> Result<Vec<u8>> {
-    let mut content = Vec::new();
-    reader.as_mut().read_to_end(&mut content)?;
-    Ok(content)
-}
+type BoxFut = Box<Future<Item = Response<Body>, Error = Error> + Send>;
 
 pub struct ReprotoService {
     pub max_file_size: u64,
     pub pool: Arc<CpuPool>,
-    pub objects: Arc<Mutex<FileObjects>>,
+    pub objects: Arc<Mutex<Box<Objects>>>,
+    pub index: Arc<Mutex<Box<Index>>>,
 }
 
-type EncodingFn = fn(&File) -> Result<Box<Read>>;
+type EncodingFn = fn(&Cursor<Vec<u8>>) -> Box<Read>;
 
 impl ReprotoService {
-    fn no_encoding(input: &File) -> Result<Box<Read>> {
-        Ok(Box::new(input.try_clone()?))
+    fn no_encoding(input: &Cursor<Vec<u8>>) -> Box<Read> {
+        Box::new(input.clone())
     }
 
-    fn gzip_encoding(input: &File) -> Result<Box<Read>> {
-        Ok(Box::new(input.try_clone()?.gz_decode()?))
+    fn gzip_encoding(input: &Cursor<Vec<u8>>) -> Box<Read> {
+        Box::new(GzDecoder::new(input.clone()))
     }
 
-    fn pick_encoding(headers: &Headers) -> fn(&File) -> Result<Box<Read>> {
-        if let Some(h) = headers.get::<ContentEncoding>() {
-            // client encoded as gzip
-            if h.0
-                .iter()
-                .find(|encoding| **encoding == Encoding::Gzip)
-                .is_some()
-            {
+    fn pick_encoding(headers: &HeaderMap<HeaderValue>) -> EncodingFn {
+        if let Some(value) = headers.get(header::CONTENT_ENCODING) {
+            if value == "gzip" {
                 return Self::gzip_encoding;
             }
         }
@@ -56,125 +44,186 @@ impl ReprotoService {
         Self::no_encoding
     }
 
-    fn not_found() -> Response {
-        Response::new().with_status(StatusCode::NotFound)
+    fn build_index(&self, m: &mut String) -> Result<(), Error> {
+        use std::fmt::Write;
+
+        writeln!(m, "<html>")?;
+        writeln!(m, "<head>")?;
+        writeln!(m, "<title>Reproto Repository</title>")?;
+        writeln!(m, "</head>")?;
+        writeln!(m, "<body>")?;
+        writeln!(m, "</body>")?;
+        writeln!(m, "</html>")?;
+
+        Ok(())
     }
 
-    fn get_index(&self) -> Result<Box<Future<Item = Response, Error = Error>>> {
-        let m = "<html></html>";
+    fn get_index(&self) -> BoxFut {
+        let mut m = String::new();
 
-        let res = ok(Response::new()
-            .with_status(StatusCode::Ok)
-            .with_header(ContentLength(m.len() as u64))
-            .with_body(m));
+        if let Err(e) = self.build_index(&mut m) {
+            return Box::new(err(e.into()));
+        }
 
-        Ok(Box::new(res))
+        let response = Response::new(Body::from(m));
+        Box::new(ok(response))
     }
 
-    fn get_objects(&self, id: &str) -> Result<Box<Future<Item = Response, Error = Error>>> {
-        let objects = self.objects.clone();
+    /// Get an object from an object repository.
+    fn get_objects(&self, id: &str) -> BoxFut {
+        let checksum = match Checksum::from_str(id) {
+            Ok(checksum) => checksum,
+            Err(_) => {
+                return Box::new(err(Error::BadRequest(
+                    format!("bad object id: {}", id).into(),
+                )))
+            }
+        };
 
-        let checksum =
-            Checksum::from_str(id).map_err(|_| Error::BadRequest(BAD_OBJECT_ID.into()))?;
+        let mut objects = match self.objects.lock() {
+            Ok(objects) => objects,
+            Err(_) => return Box::new(err(Error::InternalServerError("lock poisoned".into()))),
+        };
 
-        // No async I/O, use pool
-        Ok(Box::new(self.pool.spawn_fn(move || {
-            let result = objects
-                .lock()
-                .map_err(|_| "lock poisoned")?
-                .get_object(&checksum)?;
+        let object = match objects.get_object(&checksum) {
+            Ok(object) => object,
+            Err(e) => return Box::new(err(e.into())),
+        };
 
-            let object = match result {
-                Some(object) => object,
-                None => return Ok(Self::not_found()),
-            };
+        let path = match object {
+            Some(object) => match object.path() {
+                Some(path) => path.to_owned(),
+                None => {
+                    return Box::new(err(Error::InternalServerError(
+                        "object does not have a path".into(),
+                    )))
+                }
+            },
+            None => return Box::new(err(Error::NotFound)),
+        };
 
-            let bytes = read_contents(object.read()?)?;
+        let fut = tokio_fs::file::File::open(path).or_else(|_| Box::new(err(Error::NotFound)));
 
-            Ok(Response::new()
-                .with_status(StatusCode::Ok)
-                .with_header(ContentLength(bytes.len() as u64))
-                .with_body(bytes))
-        })))
+        let fut = fut.and_then(|file| {
+            let buf: Vec<u8> = Vec::new();
+
+            let fut = tokio_io::io::read_to_end(file, buf)
+                .and_then(|item| Ok(Response::new(item.1.into())))
+                .or_else(|_| Err(Error::InternalServerError("error sending file".into())));
+
+            Box::new(fut)
+        });
+
+        Box::new(fut)
     }
 
     /// Put the uploaded object into the object repository.
-    fn put_uploaded_object<F>(
+    fn put_uploaded_object(
         &self,
-        body: F,
+        body: impl 'static + Future<Item = Cursor<Vec<u8>>, Error = Error> + Send,
         checksum: Checksum,
         encoding: EncodingFn,
-    ) -> Box<Future<Item = Response, Error = Error>>
-    where
-        F: 'static + Future<Item = File, Error = Error>,
-    {
+    ) -> BoxFut {
         let pool = self.pool.clone();
         let objects = self.objects.clone();
 
         let upload = body.and_then(move |mut tmp| {
             pool.spawn_fn(move || {
-                tmp.seek(SeekFrom::Start(0))?;
-                let mut checksum_read = encoding(&tmp)?;
+                if let Err(e) = tmp.seek(SeekFrom::Start(0)) {
+                    return Box::new(err(e.into()));
+                }
 
-                let actual = to_checksum(&mut checksum_read)?;
+                let mut checksum_read = encoding(&tmp);
+
+                let actual = match to_checksum(&mut checksum_read) {
+                    Ok(actual) => actual,
+                    Err(e) => return Box::new(err(e.into())),
+                };
 
                 if actual != checksum {
                     info!("{} != {}", actual, checksum);
-
-                    return Ok(Response::new()
-                        .with_body(CHECKSUM_MISMATCH)
-                        .with_status(StatusCode::BadRequest));
+                    return Box::new(err(Error::BadRequest(CHECKSUM_MISMATCH.into())));
                 }
 
                 info!("Uploading object: {}", checksum);
 
-                tmp.seek(SeekFrom::Start(0))?;
-                let mut read = encoding(&tmp)?;
+                if let Err(e) = tmp.seek(SeekFrom::Start(0)) {
+                    return Box::new(err(e.into()));
+                }
 
-                objects
-                    .lock()
-                    .map_err(|_| "lock poisoned")?
-                    .put_object(&checksum, &mut read, false)?;
+                let mut read = encoding(&tmp);
 
-                Ok(Response::new().with_status(StatusCode::Ok))
+                let mut objects = match objects.lock() {
+                    Ok(objects) => objects,
+                    Err(_) => {
+                        return Box::new(err(Error::InternalServerError("lock poisoned".into())))
+                    }
+                };
+
+                if let Err(e) = objects.put_object(&checksum, &mut read, false) {
+                    return Box::new(err(e.into()));
+                }
+
+                Box::new(ok(Response::new(Body::empty())))
             })
         });
 
         Box::new(upload)
     }
 
-    fn put_objects(
-        &self,
-        id: &str,
-        req: Request,
-    ) -> Result<Box<Future<Item = Response, Error = Error>>> {
-        let checksum =
-            Checksum::from_str(id).map_err(|_| Error::BadRequest(BAD_OBJECT_ID.into()))?;
+    fn put_objects(&self, id: &str, req: Request<Body>) -> BoxFut {
+        let checksum = match Checksum::from_str(id) {
+            Ok(checksum) => checksum,
+            Err(e) => return Box::new(err(e.into())),
+        };
 
-        if let Some(len) = req.headers().get::<ContentLength>() {
-            if len.0 > self.max_file_size {
-                return Err(Error::BadRequest("file too large".into()).into());
+        {
+            let len = match req.headers().get(header::CONTENT_LENGTH) {
+                Some(len) => len,
+                None => return Box::new(err(Error::BadRequest("missing content-length".into()))),
+            };
+
+            let len = match len
+                .to_str()
+                .map_err(|_| "not a string")
+                .and_then(|s| s.parse::<u64>().map_err(|_| "not a number"))
+            {
+                Ok(len) => len,
+                Err(e) => {
+                    return Box::new(err(Error::BadRequest(
+                        format!("bad content-length: {}", e).into(),
+                    )))
+                }
+            };
+
+            if len > self.max_file_size {
+                return Box::new(err(Error::BadRequest("file too large".into())));
             }
-        } else {
-            return Err(Error::BadRequest("missing content-length".into()).into());
         }
 
         let encoding = Self::pick_encoding(req.headers());
 
         info!("Creating temporary file");
-        let body = io::stream_to_file(tempfile::tempfile()?, self.pool.clone(), req.body())
-            .map_err(|e| format!("Failed to stream file: {}", e.display()).into());
-        Ok(self.put_uploaded_object(body, checksum, encoding))
+
+        let out = Vec::<u8>::new();
+
+        let body = req.into_body().fold(out, |mut out, chunk| {
+            out.extend(chunk.as_ref());
+            ok::<_, hyper::Error>(out)
+        });
+
+        let body = body
+            .map(Cursor::new)
+            .map_err(|e| Error::InternalServerError(format!("error receiving body: {}", e).into()));
+
+        self.put_uploaded_object(body, checksum, encoding)
     }
 
-    fn inner_call<'a, I>(
+    fn inner_call<'a>(
         &self,
-        req: Request,
-        path: I,
-    ) -> Result<Box<Future<Item = Response, Error = Error>>>
-    where
-        I: IntoIterator<Item = &'a str>,
-    {
+        req: Request<Body>,
+        path: impl IntoIterator<Item = &'a str>,
+    ) -> BoxFut {
         let mut it = path.into_iter();
 
         let a = it.next();
@@ -182,32 +231,48 @@ impl ReprotoService {
         let c = it.next();
 
         match (req.method(), a, b, c) {
-            (&Method::Get, Some(""), None, None) => {
+            (&Method::GET, Some(""), None, None) => {
                 return self.get_index();
             }
-            (&Method::Get, Some("objects"), Some(id), None) => {
+            (&Method::GET, Some("objects"), Some(id), None) => {
                 return self.get_objects(id);
             }
-            (&Method::Put, Some("objects"), Some(id), None) => {
+            (&Method::PUT, Some("objects"), Some(id), None) => {
                 return self.put_objects(id, req);
             }
             _ => {}
         }
 
-        Ok(Box::new(ok(Self::not_found())))
+        Box::new(err(Error::NotFound))
     }
 
-    fn handle_error(e: Error) -> Response {
+    fn handle_error(e: Error) -> Box<Future<Item = Response<Body>, Error = hyper::Error> + Send> {
+        let mut response = Response::new(Body::empty());
+
+        response
+            .headers_mut()
+            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"));
+
         match e {
-            Error::BadRequest(message) => {
-                return Response::new()
-                    .with_status(StatusCode::BadRequest)
-                    .with_header(ContentLength(message.len() as u64))
-                    .with_header(ContentType(mime::TEXT_PLAIN))
-                    .with_body(message)
+            Error::NotFound => {
+                *response.body_mut() = Body::from("not found");
+                *response.status_mut() = StatusCode::NOT_FOUND;
             }
-            Error::Other(error) => {
-                error!("{}", error.message());
+            Error::BadRequest(message) => {
+                *response.body_mut() = Body::from(message);
+                *response.status_mut() = StatusCode::BAD_REQUEST;
+            }
+            Error::InternalServerError(message) => {
+                *response.body_mut() = Body::from("internal server error");
+                *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+
+                error!("internal server error: {}", message);
+            }
+            Error::Core(error) => {
+                *response.body_mut() = Body::from("internal server error");
+                *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+
+                error!("internal server error: {}", error.message());
 
                 for e in error.causes().skip(1) {
                     error!("caused by: {}", e.message());
@@ -216,28 +281,28 @@ impl ReprotoService {
                 if let Some(backtrace) = error.backtrace() {
                     error!("{:?}", backtrace);
                 }
-
-                return Response::new().with_status(StatusCode::InternalServerError);
             }
         }
+
+        return Box::new(ok(response));
     }
 }
 
 impl Service for ReprotoService {
-    type Request = Request;
-    type Response = Response;
+    type ReqBody = Body;
+    type ResBody = Body;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Response, Error = hyper::Error>>;
+    type Future = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
-    fn call(&self, req: Request) -> Self::Future {
-        let full_path = String::from(req.path());
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        let full_path = String::from(req.uri().path());
 
         let path = full_path.split('/').skip(1);
 
-        Box::new(
-            self.inner_call(req, path)
-                .unwrap_or_else(|e| Box::new(ok(Self::handle_error(e))))
-                .or_else(|e| ok(Self::handle_error(e))),
-        )
+        let fut = self
+            .inner_call(req, path)
+            .or_else(|e| Self::handle_error(e));
+
+        Box::new(fut)
     }
 }

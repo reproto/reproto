@@ -36,9 +36,9 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         let output = io::stdout();
 
         let level = if matches.is_present("debug") {
-            log::LogLevelFilter::Debug
+            log::LevelFilter::Debug
         } else {
-            log::LogLevelFilter::Info
+            log::LevelFilter::Info
         };
 
         let log = match matches.value_of("log") {

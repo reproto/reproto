@@ -48,16 +48,18 @@ impl<T> log::Log for NonColoredLogger<T>
 where
     T: LockableWrite,
 {
-    fn enabled(&self, metadata: &log::LogMetadata) -> bool {
-        metadata.level() <= log::LogLevel::Debug
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::Level::Debug
     }
 
-    fn log(&self, record: &log::LogRecord) {
+    fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
             let mut out = self.out.lock();
             writeln!(out, "{}: {}", record.level(), record.args()).unwrap();
         }
     }
+
+    fn flush(&self) {}
 }
 
 impl<T> Output for NonColored<T>
