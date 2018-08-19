@@ -40,7 +40,7 @@ pub trait Flavor: fmt::Debug + Clone + cmp::Eq + hash::Hash {
 }
 
 /// The first flavor where packages are fully qualified.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Hash)]
 pub struct CoreFlavor;
 
 impl Flavor for CoreFlavor {

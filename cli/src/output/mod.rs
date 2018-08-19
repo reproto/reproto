@@ -68,12 +68,12 @@ pub trait Output {
     }
 
     /// Handle any errors.
-    fn handle_error(&self, e: &Error) -> Result<()> {
+    fn handle_error(&self, e: &Error, reason: Option<&str>) -> Result<()> {
         for e in e.causes() {
-            self.error(e)?;
+            self.error(e, reason)?;
 
             for e in e.suppressed() {
-                self.handle_error(e)?;
+                self.handle_error(e, Some("suppressed"))?;
             }
 
             if let Some(backtrace) = e.backtrace() {
@@ -84,8 +84,13 @@ pub trait Output {
         Ok(())
     }
 
-    fn error(&self, e: &Error) -> Result<()> {
-        self.print(&e.message())?;
+    fn error(&self, e: &Error, reason: Option<&str>) -> Result<()> {
+        let message = match reason {
+            Some(reason) => format!("{}: {}", reason, e.message()),
+            None => e.message().to_string(),
+        };
+
+        self.print(&message)?;
 
         for e in e.causes().skip(1) {
             let msg = self.error_message(format!("  caused by: {}", e.message()).as_str())?;

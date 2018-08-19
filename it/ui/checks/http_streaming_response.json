@@ -1,6 +1,8 @@
 {
   "status": false,
   "stdout": [
+    "error when building",
+    "suppressed: error in environment",
     "it/ui/proto/http_streaming_response.reproto:2:12-16:",
     "  2:     #[http(body = request)]",
     "                ^^^^ - unknown attribute"

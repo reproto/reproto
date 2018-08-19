@@ -115,6 +115,7 @@ pub struct Members {
     fields: Vec<Loc<RpField>>,
     codes: Vec<Loc<RpCode>>,
     decls: Vec<RpDecl>,
+    decl_idents: LinkedHashMap<String, usize>,
     field_names: HashMap<String, Span>,
     field_idents: HashMap<String, Span>,
 }
@@ -429,6 +430,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(diag, scope)?,
                 decls: vec![],
+                decl_idents: LinkedHashMap::new(),
                 enum_type: enum_type,
                 variants: variants,
                 codes: codes,
@@ -795,9 +797,12 @@ impl<'input> IntoModel for File<'input> {
         check_attributes!(diag, attributes);
 
         let mut decls = Vec::new();
+        let mut decl_idents = LinkedHashMap::new();
 
-        for d in self.decls {
-            decls.push(try_loop!(d.into_model(diag, scope)));
+        for (index, d) in self.decls.into_iter().enumerate() {
+            let d = try_loop!(d.into_model(diag, scope));
+            decl_idents.insert(d.ident().to_string(), index);
+            decls.push(d);
         }
 
         if diag.has_errors() {
@@ -806,7 +811,8 @@ impl<'input> IntoModel for File<'input> {
 
         return Ok(RpFile {
             comment: Comment(&self.comment).into_model(diag, scope)?,
-            decls: decls,
+            decls,
+            decl_idents,
         });
 
         /// Parse a naming option.
@@ -862,6 +868,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             fields,
             codes,
             decls,
+            decl_idents,
             field_idents,
             field_names,
             ..
@@ -962,11 +969,12 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(diag, scope)?,
-                decls: decls,
-                fields: fields,
-                codes: codes,
-                sub_types: sub_types,
-                sub_type_strategy: sub_type_strategy,
+                decls,
+                decl_idents,
+                fields,
+                codes,
+                sub_types,
+                sub_type_strategy,
             },
             span,
         ));
@@ -1137,7 +1145,8 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
 
         diag.symbol(SymbolKind::Service, &span, &name);
 
-        let mut decl_idents = HashMap::new();
+        let mut decl_idents = LinkedHashMap::new();
+        let mut idents = HashMap::new();
         let mut endpoint_names = HashMap::new();
         let mut endpoint_idents = HashMap::new();
 
@@ -1156,7 +1165,8 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
                 }
                 ServiceMember::InnerDecl(d) => {
                     let d = d.into_model(diag, scope)?;
-                    check_conflict!(diag, decl_idents, d, d.ident(), "inner declaration");
+                    check_conflict!(diag, idents, d, d.ident(), "inner declaration");
+                    decl_idents.insert(d.ident().to_string(), decls.len());
                     decls.push(d);
                 }
             };
@@ -1183,9 +1193,10 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
                 name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(diag, scope)?,
-                decls: decls,
-                http: http,
-                endpoints: endpoints,
+                decls,
+                decl_idents,
+                http,
+                endpoints,
             },
             span,
         ));
@@ -1362,7 +1373,9 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
         let mut codes = Vec::new();
         let mut decls = Vec::new();
 
-        let mut decl_idents = HashMap::new();
+        let mut decl_idents = LinkedHashMap::new();
+
+        let mut idents = HashMap::new();
         let mut field_idents = field_idents.clone();
         let mut field_names = field_names.clone();
 
@@ -1386,7 +1399,8 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
                 }
                 InnerDecl(d) => {
                     let d = try_loop!(d.into_model(diag, scope));
-                    check_conflict!(diag, decl_idents, d, d.ident(), "inner declaration");
+                    check_conflict!(diag, idents, d, d.ident(), "inner declaration");
+                    decl_idents.insert(d.ident().to_string(), decls.len());
                     decls.push(d);
                 }
             }
@@ -1420,10 +1434,11 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
                 name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(diag, scope)?,
-                decls: decls,
-                fields: fields,
-                codes: codes,
-                sub_type_name: sub_type_name,
+                decls,
+                decl_idents,
+                fields,
+                codes,
+                sub_type_name,
             },
             span,
         ));
@@ -1488,6 +1503,7 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
             fields,
             codes,
             decls,
+            decl_idents,
             ..
         } = item.members.into_model(diag, scope)?;
 
@@ -1496,12 +1512,13 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
 
         Ok(Loc::new(
             RpTupleBody {
-                name: name,
+                name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(diag, scope)?,
-                decls: decls,
-                fields: fields,
-                codes: codes,
+                decls,
+                decl_idents,
+                fields,
+                codes,
             },
             span,
         ))
@@ -1536,6 +1553,7 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
             fields,
             codes,
             decls,
+            decl_idents,
             ..
         } = {
             let constraint = MemberConstraint {
@@ -1551,9 +1569,10 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
                 name,
                 ident: item.name.to_string(),
                 comment: Comment(&comment).into_model(diag, scope)?,
-                decls: decls,
-                fields: fields,
-                codes: codes,
+                decls,
+                decl_idents,
+                fields,
+                codes,
             },
             span,
         ))
@@ -1591,10 +1610,11 @@ impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
         let mut fields: Vec<Loc<RpField>> = Vec::new();
         let mut codes = Vec::new();
         let mut decls = Vec::new();
+        let mut decl_idents = LinkedHashMap::new();
 
         let mut field_idents = HashMap::new();
         let mut field_names = HashMap::new();
-        let mut decl_idents = HashMap::new();
+        let mut idents = HashMap::new();
 
         for member in members {
             match member {
@@ -1617,7 +1637,8 @@ impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
                 Code(code) => codes.push(try_loop!(code.into_model(diag, scope))),
                 InnerDecl(d) => {
                     let d = try_loop!(d.into_model(diag, scope));
-                    check_conflict!(diag, decl_idents, d, d.ident(), "inner declaration");
+                    check_conflict!(diag, idents, d, d.ident(), "inner declaration");
+                    decl_idents.insert(d.ident().to_string(), decls.len());
                     decls.push(d);
                 }
             }
@@ -1628,11 +1649,12 @@ impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
         }
 
         Ok(Members {
-            fields: fields,
-            codes: codes,
-            decls: decls,
-            field_names: field_names,
-            field_idents: field_idents,
+            fields,
+            codes,
+            decls,
+            decl_idents,
+            field_names,
+            field_idents,
         })
     }
 }

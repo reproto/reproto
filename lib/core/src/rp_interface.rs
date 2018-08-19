@@ -1,6 +1,7 @@
 //! Model for tuples.
 
 use errors::Result;
+use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
 use std::slice;
 use std::vec;
@@ -111,6 +112,7 @@ where
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(diag, translator)?,
+            decl_idents: self.decl_idents,
             fields: translator::Fields(self.fields).translate(diag, translator)?,
             codes: self.codes,
             sub_types: self.sub_types.translate(diag, translator)?,
@@ -133,6 +135,7 @@ where
     pub comment: Vec<String>,
     /// Inner declarations.
     pub decls: Vec<RpDecl<F>>,
+    pub decl_idents: LinkedHashMap<String, usize>,
     pub fields: Vec<Loc<F::Field>>,
     pub codes: Vec<Loc<RpCode>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -148,6 +151,13 @@ where
             .as_ref()
             .map(|t| t.as_str())
             .unwrap_or(&self.ident)
+    }
+
+    /// Access all fields of the sub type.
+    pub fn fields(&self) -> Fields<F> {
+        Fields {
+            iter: self.fields.iter(),
+        }
     }
 
     /// Access the set of fields which are used to make this sub-type unique.
@@ -183,6 +193,7 @@ where
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(diag, translator)?,
+            decl_idents: self.decl_idents,
             fields: translator::Fields(self.fields).translate(diag, translator)?,
             codes: self.codes,
             sub_type_name: self.sub_type_name,

@@ -1,6 +1,8 @@
 {
   "status": false,
   "stdout": [
+    "error when building",
+    "suppressed: error in environment",
     "it/ui/proto/http_argument_not_used.reproto:2:7-11:",
     "  2:     #[http]",
     "           ^^^^ - unknown attribute"

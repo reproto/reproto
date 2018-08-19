@@ -5,7 +5,7 @@ extern crate reproto_core as core;
 
 use clap::{App, Arg, ArgMatches};
 use core::errors::Result;
-use core::{RealFilesystem, Reporter};
+use core::RealFilesystem;
 use reproto::{ops, output, VERSION};
 use std::io;
 
@@ -33,13 +33,8 @@ fn entry(matches: &ArgMatches, output: &output::Output) -> Result<()> {
     let mut reporter = Vec::new();
 
     match ops::entry(&fs, &mut reporter, matches, output) {
-        Err(e) => {
-            // NB: get rid of dual reporting.
-            // We only want positional errors reported through the context.
-            if !reporter.has_diagnostics() {
-                output.handle_error(&e)?;
-            }
-
+        Err(error) => {
+            output.handle_error(&error, None)?;
             output.handle_context(&reporter)?;
             ::std::process::exit(1);
         }
@@ -70,8 +65,16 @@ fn main() {
         _ => Box::new(output::NonColored::new(io::stdout())),
     };
 
-    if let Err(e) = entry(&matches, output.as_mut()) {
-        output.error(&e).unwrap();
+    if let Err(error) = entry(&matches, output.as_mut()) {
+        if let Err(report_error) = output.handle_error(&error, None) {
+            eprintln!("Failed to report error: {}", report_error.display());
+            eprintln!("Original error: {}", error.display());
+
+            if let Some(bt) = error.backtrace() {
+                eprintln!("Backtrace: {:?}", bt);
+            }
+        }
+
         ::std::process::exit(1);
     }
 

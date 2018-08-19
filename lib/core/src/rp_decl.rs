@@ -98,6 +98,7 @@ impl<F: 'static> RpDecl<F>
 where
     F: Flavor,
 {
+    /// Access all declarations as an iterator.
     pub fn decls(&self) -> Decls<F> {
         use self::RpDecl::*;
 
@@ -116,6 +117,7 @@ where
         Decls { iter: iter }
     }
 
+    /// Get the identifier of the declaration.
     pub fn ident(&self) -> &str {
         use self::RpDecl::*;
 
@@ -128,6 +130,7 @@ where
         }
     }
 
+    /// Get the name of the declaration.
     pub fn name(&self) -> &F::Name {
         use self::RpDecl::*;
 
@@ -140,6 +143,7 @@ where
         }
     }
 
+    /// Get the comment for the declaration.
     pub fn comment(&self) -> &[String] {
         use self::RpDecl::*;
 
@@ -247,6 +251,24 @@ where
             Enum(ref body) => Loc::span(body),
             Tuple(ref body) => Loc::span(body),
             Service(ref body) => Loc::span(body),
+        }
+    }
+
+    /// Get the sub-declaration matching the identifier.
+    pub fn decl_by_ident<'a>(&'a self, ident: &str) -> Option<&'a RpDecl<F>> {
+        use self::RpDecl::*;
+
+        let (decls, decl_idents) = match *self {
+            Type(ref body) => (&body.decls, &body.decl_idents),
+            Interface(ref body) => (&body.decls, &body.decl_idents),
+            Enum(ref body) => (&body.decls, &body.decl_idents),
+            Tuple(ref body) => (&body.decls, &body.decl_idents),
+            Service(ref body) => (&body.decls, &body.decl_idents),
+        };
+
+        match decl_idents.get(ident) {
+            Some(index) => decls.get(*index),
+            None => None,
         }
     }
 }

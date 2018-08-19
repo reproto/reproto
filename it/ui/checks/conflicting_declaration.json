@@ -1,6 +1,8 @@
 {
   "status": false,
   "stdout": [
+    "error when building",
+    "suppressed: error in environment",
     "it/ui/proto/conflicting_declaration.reproto:4:6-13:",
     "  4: type Example {",
     "          ^^^^^^^ - `Example` conflicts with existing declaration",

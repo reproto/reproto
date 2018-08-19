@@ -14,6 +14,7 @@
       "ident": "Entry",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [
         {
           "required": false,
@@ -173,5 +174,8 @@
       ],
       "codes": []
     }
-  ]
+  ],
+  "decl_idents": {
+    "Entry": 0
+  }
 }

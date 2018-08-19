@@ -14,6 +14,7 @@
       "ident": "Entry",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [
         {
           "required": false,
@@ -129,6 +130,7 @@
         "Explicitly assigned strings"
       ],
       "decls": [],
+      "decl_idents": {},
       "enum_type": "String",
       "variants": {
         "type": "string",
@@ -180,6 +182,7 @@
         "Implicit naming depending on the variant"
       ],
       "decls": [],
+      "decl_idents": {},
       "enum_type": "String",
       "variants": {
         "type": "string",
@@ -231,6 +234,7 @@
         "Variants with long names."
       ],
       "decls": [],
+      "decl_idents": {},
       "enum_type": "String",
       "variants": {
         "type": "string",
@@ -280,6 +284,7 @@
       "ident": "EnumU32",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "enum_type": "U32",
       "variants": {
         "type": "number",
@@ -329,6 +334,7 @@
       "ident": "EnumU64",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "enum_type": "U64",
       "variants": {
         "type": "number",
@@ -378,6 +384,7 @@
       "ident": "EnumI32",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "enum_type": "I32",
       "variants": {
         "type": "number",
@@ -455,6 +462,7 @@
       "ident": "EnumI64",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "enum_type": "I64",
       "variants": {
         "type": "number",
@@ -519,5 +527,15 @@
       },
       "codes": []
     }
-  ]
+  ],
+  "decl_idents": {
+    "Entry": 0,
+    "EnumExplicit": 1,
+    "EnumImplicit": 2,
+    "EnumLongNames": 3,
+    "EnumU32": 4,
+    "EnumU64": 5,
+    "EnumI32": 6,
+    "EnumI64": 7
+  }
 }

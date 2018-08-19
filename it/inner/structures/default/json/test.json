@@ -14,6 +14,7 @@
       "ident": "Entry",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [
         {
           "required": false,
@@ -78,6 +79,7 @@
           "ident": "B",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "fields": [
             {
               "required": true,
@@ -91,6 +93,9 @@
           "codes": []
         }
       ],
+      "decl_idents": {
+        "B": 0
+      },
       "fields": [
         {
           "required": true,
@@ -112,5 +117,9 @@
       ],
       "codes": []
     }
-  ]
+  ],
+  "decl_idents": {
+    "Entry": 0,
+    "A": 1
+  }
 }

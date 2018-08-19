@@ -14,6 +14,7 @@
       "ident": "Value",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [
         {
           "required": true,
@@ -40,6 +41,7 @@
       "ident": "Service",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "http": {},
       "endpoints": [
         {
@@ -57,5 +59,9 @@
         }
       ]
     }
-  ]
+  ],
+  "decl_idents": {
+    "Value": 0,
+    "Service": 1
+  }
 }

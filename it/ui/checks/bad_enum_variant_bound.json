@@ -1,6 +1,8 @@
 {
   "status": false,
   "stdout": [
+    "error when building",
+    "suppressed: error in environment",
     "it/ui/proto/bad_enum_variant_bound.reproto:2:14-16:",
     "  2:     Field as -1;",
     "                  ^^ - number is not within 0 to 2147483647 (inclusive)",

@@ -14,6 +14,7 @@
       "ident": "Entry",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [],
       "codes": []
     },
@@ -30,6 +31,7 @@
       "ident": "Type",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [],
       "codes": [
         {
@@ -89,6 +91,7 @@
       "ident": "Interface",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [],
       "codes": [
         {
@@ -142,6 +145,7 @@
           "ident": "SubType",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "fields": [],
           "codes": [
             {
@@ -203,6 +207,7 @@
       "ident": "Enum",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "enum_type": "String",
       "variants": {
         "type": "string",
@@ -276,6 +281,7 @@
       "ident": "Tuple",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [],
       "codes": [
         {
@@ -317,5 +323,12 @@
         }
       ]
     }
-  ]
+  ],
+  "decl_idents": {
+    "Entry": 0,
+    "Type": 1,
+    "Interface": 2,
+    "Enum": 3,
+    "Tuple": 4
+  }
 }

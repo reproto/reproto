@@ -59,6 +59,7 @@ where
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(diag, translator)?,
+            decl_idents: self.decl_idents,
             fields: translator::Fields(self.fields).translate(diag, translator)?,
             codes: self.codes,
         })

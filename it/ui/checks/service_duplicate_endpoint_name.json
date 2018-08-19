@@ -1,6 +1,8 @@
 {
   "status": false,
   "stdout": [
+    "error when building",
+    "suppressed: error in environment",
     "it/ui/proto/service_duplicate_endpoint_name.reproto:4:3-18:",
     "  4:   bar() as \"foo\";",
     "       ^^^^^^^^^^^^^^^ - endpoint with name `foo` is already defined",

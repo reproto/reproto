@@ -1,6 +1,7 @@
 //! File declarations
 
 use errors::Result;
+use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
 use std::collections::LinkedList;
 use {Diagnostics, Flavor, RpDecl, Translate, Translator};
@@ -15,7 +16,10 @@ where
     F: Flavor,
 {
     pub comment: Vec<String>,
+    /// All nested declarations.
     pub decls: Vec<RpDecl<F>>,
+    /// references to the local idents of the declarations.
+    pub decl_idents: LinkedHashMap<String, usize>,
 }
 
 /// Iterator over all declarations in a file.
@@ -53,6 +57,33 @@ where
         queue.extend(self.decls.iter());
         ForEachDecl { queue: queue }
     }
+
+    /// Lookup a single declaration from its path.
+    pub fn decl_by_path<'a, 's>(
+        &'a self,
+        mut path: impl Iterator<Item = &'s str>,
+    ) -> Option<&'a RpDecl<F>> {
+        let first = match path.next() {
+            Some(first) => first,
+            None => return None,
+        };
+
+        let mut decl = match self.decl_idents.get(first) {
+            Some(index) => self.decls.get(*index),
+            None => None,
+        };
+
+        while let Some(step) = path.next() {
+            let next = match decl.as_ref() {
+                Some(decl) => decl.decl_by_ident(step),
+                None => return None,
+            };
+
+            decl = next;
+        }
+
+        decl
+    }
 }
 
 impl<F: 'static, T> Translate<T> for RpFile<F>
@@ -68,6 +99,7 @@ where
         Ok(RpFile {
             comment: self.comment,
             decls: self.decls.translate(diag, translator)?,
+            decl_idents: self.decl_idents,
         })
     }
 }

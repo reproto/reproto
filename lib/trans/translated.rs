@@ -101,6 +101,19 @@ where
         return Err(format!("no such type: {}", name).into());
     }
 
+    /// Lookup the declaration matching the given name.
+    pub fn lookup_decl<'a>(&'a self, name: &RpName<F>) -> Result<&'a RpDecl<F>> {
+        let file = match self.files.get(&name.package) {
+            Some(file) => file,
+            None => return Err(format!("no such type: {}", name).into()),
+        };
+
+        match file.decl_by_path(name.path.iter().map(|s| s.as_str())) {
+            Some(decl) => Ok(decl),
+            None => Err(format!("no such type: {}", name).into()),
+        }
+    }
+
     /// Iterate over all files.
     pub fn for_each_file(&self) -> ForEachFile<F> {
         ForEachFile {

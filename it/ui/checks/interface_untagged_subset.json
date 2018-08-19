@@ -1,6 +1,8 @@
 {
   "status": false,
   "stdout": [
+    "error when building",
+    "suppressed: error in environment",
     "it/ui/proto/interface_untagged_subset.reproto:3:3-9:",
     "  3:   Foo {",
     "       ^^^^^^ - fields with names `a` are present in another sub-type, this would cause deserialization to be ambiguous for certain cases.",

@@ -26,8 +26,103 @@ service MyService {
 #[http(url = "http://example.com")]
 service HttpService {
     #[http(path = "/simple")]
-    get_simple();
+    get_simple() -> c::Entry;
 
     #[http(path = "/simple", method = "POST")]
     post_simple();
+
+    /// Endpoint to get a really complicated entity called `Entry` for some reason.
+    ///
+    /// The entity has a ton of optional fields.
+    #[http(path = "/entry")]
+    get_entry() -> Entry;
+
+    /// Endpoint to get the state of the service.
+    #[http(path = "/state")]
+    get_state() -> State;
+
+    /// Endpoint to retrieve a single point.
+    #[http(path = "/point")]
+    get_point() -> Point;
+
+    // /// Endpoint to retrieve a single tagged interface.
+    // #[http(path = "/tagged")]
+    // get_tagged() -> Tagged;
+
+    /// Endpoint to retrieve a single untagged interface.
+    #[http(path = "/untagged")]
+    get_untagged() -> Untagged;
+}
+
+/// A bizarre entry with many different optional fields.
+type Entry {
+    boolean_type?: boolean;
+    string_type?: string;
+    datetime_type?: datetime;
+    unsigned_32?: u32;
+    unsigned_64?: u64;
+    signed_32?: i32;
+    signed_64?: i64;
+    float_type?: float;
+    double_type?: double;
+    bytes_type?: bytes;
+    any_type?: any;
+    // array_type?: [Entry];
+    // array_of_array_type?: [[Entry]];
+    // map_type?: {string: Entry};
+}
+
+/// The state of a thing.
+enum State as string {
+  /// The open state.
+  Open as "open";
+
+  /// The closed state.
+  Closed as "closed";
+}
+
+/// A single point in time with a value associated with it.
+tuple Point {
+  /// When the thing was measured.
+  timestamp: u64;
+  /// The value that was measured.
+  value: double;
+}
+
+#[type_info(strategy = "tagged", tag = "@type")]
+interface Tagged {
+  shared: string;
+
+  A as "foo";
+
+  B as "b";
+
+  Bar {
+  }
+
+  Baz;
+}
+
+#[type_info(strategy = "untagged")]
+interface Untagged {
+  shared: string;
+  shared_ignore?: string;
+
+  /// Special case: fields shared with other sub-types.
+  /// NOTE: due to rust support through untagged, the types are matched in-order.
+  A {
+    a: string;
+    b: string;
+    ignore?: string;
+  }
+
+  B {
+    a: string;
+    ignore?: string;
+  }
+
+  C {
+    b: string;
+    ignore?: string;
+  }
 }

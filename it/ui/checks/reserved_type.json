@@ -1,6 +1,8 @@
 {
   "status": false,
   "stdout": [
+    "error when building",
+    "suppressed: error in environment",
     "it/ui/proto/reserved_type.reproto:3:3-15:",
     "  3:   foo: string;",
     "       ^^^^^^^^^^^^ - field with name `foo` is reserved",

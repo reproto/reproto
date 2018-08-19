@@ -1,6 +1,8 @@
 {
   "status": false,
   "stdout": [
+    "error when building",
+    "suppressed: error in environment",
     "it/ui/proto/interface_untagged.reproto:8:5-16:",
     "  8:     a?: string;",
     "         ^^^^^^^^^^^ - is a required field of another sub-type",

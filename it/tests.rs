@@ -47,6 +47,7 @@ define!{
     service => {
         service.package("service");
         service.arg(Java, &["-m", "grpc"]);
+        service.arg(Rust, &["-m", "chrono"]);
         service.include(Java);
         service.include(Rust);
         service.include(OpenApi);

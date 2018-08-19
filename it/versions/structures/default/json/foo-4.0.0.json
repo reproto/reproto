@@ -15,6 +15,7 @@
       "ident": "Thing",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [
         {
           "required": false,
@@ -81,5 +82,8 @@
       ],
       "codes": []
     }
-  ]
+  ],
+  "decl_idents": {
+    "Thing": 0
+  }
 }

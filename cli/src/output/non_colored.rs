@@ -78,7 +78,7 @@ where
 
     fn print(&self, m: &str) -> Result<()> {
         let mut o = self.out.lock();
-        writeln!(o, "ERROR: {}", m)?;
+        writeln!(o, "{}", m)?;
         Ok(())
     }
 

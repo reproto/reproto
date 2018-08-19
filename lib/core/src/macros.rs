@@ -8,6 +8,7 @@ macro_rules! decl_body {
             pub ident: String,
             pub comment: Vec<String>,
             pub decls: Vec<$crate::rp_decl::RpDecl<$f>>,
+            pub decl_idents: ::linked_hash_map::LinkedHashMap<String, usize>,
             $($rest)*
         }
     };

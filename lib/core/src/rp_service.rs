@@ -40,6 +40,7 @@ where
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(diag, translator)?,
+            decl_idents: self.decl_idents,
             http: self.http,
             endpoints: endpoints,
         })

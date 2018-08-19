@@ -1,6 +1,8 @@
 {
   "status": false,
   "stdout": [
+    "error when building",
+    "suppressed: error in environment",
     "it/ui/proto/interface_sub_type_field_ident.reproto:5:5-17:",
     "  5:     foo: string;",
     "         ^^^^^^^^^^^^ - field `foo` is already defined",

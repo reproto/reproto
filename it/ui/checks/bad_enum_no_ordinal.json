@@ -1,6 +1,8 @@
 {
   "status": false,
   "stdout": [
+    "error when building",
+    "suppressed: error in environment",
     "it/ui/proto/bad_enum_no_ordinal.reproto:1:14-15:",
     "  1: enum Example {",
     "                  ^ - syntax error, got token LeftCurly, expected: \"as\""

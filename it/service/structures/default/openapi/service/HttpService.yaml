@@ -7,5 +7,158 @@ paths:
   /simple:
     get:
       operationId: get_simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
     post:
       operationId: post_simple
+      responses:
+        "200": {}
+  /entry:
+    get:
+      description: "Endpoint to get a really complicated entity called `Entry` for some reason.\n\nThe entity has a ton of optional fields."
+      operationId: get_entry
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceEntry"
+  /state:
+    get:
+      description: Endpoint to get the state of the service.
+      operationId: get_state
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/State"
+  /point:
+    get:
+      description: Endpoint to retrieve a single point.
+      operationId: get_point
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Point"
+  /untagged:
+    get:
+      description: Endpoint to retrieve a single untagged interface.
+      operationId: get_untagged
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Untagged"
+components:
+  schemas:
+    Entry:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+    ServiceEntry:
+      type: object
+      properties:
+        boolean_type:
+          type: boolean
+        string_type:
+          type: string
+        datetime_type:
+          type: string
+          format: "date-time"
+        unsigned_32:
+          type: integer
+          format: int32
+        unsigned_64:
+          type: integer
+          format: int64
+        signed_32:
+          type: integer
+          format: int32
+        signed_64:
+          type: integer
+          format: int64
+        float_type:
+          type: integer
+          format: float
+        double_type:
+          type: integer
+          format: double
+        bytes_type:
+          type: string
+          format: byte
+        any_type:
+          $ref: "#/components/schemas/Any"
+    State:
+      type: string
+      enum:
+        - open
+        - closed
+    Point:
+      type: array
+      format: tuple
+      required:
+        - 0
+        - 1
+      properties:
+        0:
+          type: integer
+          format: int64
+        1:
+          type: integer
+          format: double
+    Untagged:
+      oneOf:
+        - type: object
+          required:
+            - shared
+            - a
+            - b
+          properties:
+            shared:
+              type: string
+            shared_ignore:
+              type: string
+            a:
+              type: string
+            b:
+              type: string
+            ignore:
+              type: string
+        - type: object
+          required:
+            - shared
+            - a
+          properties:
+            shared:
+              type: string
+            shared_ignore:
+              type: string
+            a:
+              type: string
+            ignore:
+              type: string
+        - type: object
+          required:
+            - shared
+            - b
+          properties:
+            shared:
+              type: string
+            shared_ignore:
+              type: string
+            b:
+              type: string
+            ignore:
+              type: string
+    Any: {}

@@ -14,6 +14,7 @@
       "ident": "Entry",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [],
       "codes": []
     },
@@ -44,6 +45,7 @@
           "ident": "NestedType",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "fields": [],
           "codes": []
         },
@@ -61,6 +63,7 @@
           "ident": "NestedInterface",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "fields": [],
           "codes": [],
           "sub_types": [
@@ -94,10 +97,14 @@
                   "ident": "Nested",
                   "comment": [],
                   "decls": [],
+                  "decl_idents": {},
                   "fields": [],
                   "codes": []
                 }
               ],
+              "decl_idents": {
+                "Nested": 0
+              },
               "fields": [],
               "codes": []
             }
@@ -121,6 +128,7 @@
           "ident": "NestedEnum",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "enum_type": "String",
           "variants": {
             "type": "string",
@@ -173,10 +181,14 @@
               "ident": "Nested",
               "comment": [],
               "decls": [],
+              "decl_idents": {},
               "fields": [],
               "codes": []
             }
           ],
+          "decl_idents": {
+            "Nested": 0
+          },
           "fields": [],
           "codes": []
         },
@@ -209,14 +221,25 @@
               "ident": "Nested",
               "comment": [],
               "decls": [],
+              "decl_idents": {},
               "fields": [],
               "codes": []
             }
           ],
+          "decl_idents": {
+            "Nested": 0
+          },
           "http": {},
           "endpoints": []
         }
       ],
+      "decl_idents": {
+        "NestedType": 0,
+        "NestedInterface": 1,
+        "NestedEnum": 2,
+        "NestedTuple": 3,
+        "NestedService": 4
+      },
       "fields": [],
       "codes": []
     },
@@ -233,6 +256,7 @@
       "ident": "RootInterface",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [],
       "codes": [],
       "sub_types": [
@@ -264,6 +288,7 @@
               "ident": "NestedType",
               "comment": [],
               "decls": [],
+              "decl_idents": {},
               "fields": [],
               "codes": []
             },
@@ -282,6 +307,7 @@
               "ident": "NestedInterface",
               "comment": [],
               "decls": [],
+              "decl_idents": {},
               "fields": [],
               "codes": [],
               "sub_types": [
@@ -317,10 +343,14 @@
                       "ident": "Nested",
                       "comment": [],
                       "decls": [],
+                      "decl_idents": {},
                       "fields": [],
                       "codes": []
                     }
                   ],
+                  "decl_idents": {
+                    "Nested": 0
+                  },
                   "fields": [],
                   "codes": []
                 }
@@ -345,6 +375,7 @@
               "ident": "NestedEnum",
               "comment": [],
               "decls": [],
+              "decl_idents": {},
               "enum_type": "String",
               "variants": {
                 "type": "string",
@@ -400,10 +431,14 @@
                   "ident": "Nested",
                   "comment": [],
                   "decls": [],
+                  "decl_idents": {},
                   "fields": [],
                   "codes": []
                 }
               ],
+              "decl_idents": {
+                "Nested": 0
+              },
               "fields": [],
               "codes": []
             },
@@ -438,14 +473,25 @@
                   "ident": "Nested",
                   "comment": [],
                   "decls": [],
+                  "decl_idents": {},
                   "fields": [],
                   "codes": []
                 }
               ],
+              "decl_idents": {
+                "Nested": 0
+              },
               "http": {},
               "endpoints": []
             }
           ],
+          "decl_idents": {
+            "NestedType": 0,
+            "NestedInterface": 1,
+            "NestedEnum": 2,
+            "NestedTuple": 3,
+            "NestedService": 4
+          },
           "fields": [],
           "codes": []
         }
@@ -468,6 +514,7 @@
       "ident": "RootEnum",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "enum_type": "String",
       "variants": {
         "type": "string",
@@ -517,6 +564,7 @@
           "ident": "NestedType",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "fields": [],
           "codes": []
         },
@@ -534,6 +582,7 @@
           "ident": "NestedInterface",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "fields": [],
           "codes": [],
           "sub_types": [
@@ -567,10 +616,14 @@
                   "ident": "Nested",
                   "comment": [],
                   "decls": [],
+                  "decl_idents": {},
                   "fields": [],
                   "codes": []
                 }
               ],
+              "decl_idents": {
+                "Nested": 0
+              },
               "fields": [],
               "codes": []
             }
@@ -594,6 +647,7 @@
           "ident": "NestedEnum",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "enum_type": "String",
           "variants": {
             "type": "string",
@@ -646,10 +700,14 @@
               "ident": "Nested",
               "comment": [],
               "decls": [],
+              "decl_idents": {},
               "fields": [],
               "codes": []
             }
           ],
+          "decl_idents": {
+            "Nested": 0
+          },
           "fields": [],
           "codes": []
         },
@@ -682,14 +740,25 @@
               "ident": "Nested",
               "comment": [],
               "decls": [],
+              "decl_idents": {},
               "fields": [],
               "codes": []
             }
           ],
+          "decl_idents": {
+            "Nested": 0
+          },
           "http": {},
           "endpoints": []
         }
       ],
+      "decl_idents": {
+        "NestedType": 0,
+        "NestedInterface": 1,
+        "NestedEnum": 2,
+        "NestedTuple": 3,
+        "NestedService": 4
+      },
       "fields": [],
       "codes": []
     },
@@ -720,6 +789,7 @@
           "ident": "NestedType",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "fields": [],
           "codes": []
         },
@@ -737,6 +807,7 @@
           "ident": "NestedInterface",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "fields": [],
           "codes": [],
           "sub_types": [
@@ -770,10 +841,14 @@
                   "ident": "Nested",
                   "comment": [],
                   "decls": [],
+                  "decl_idents": {},
                   "fields": [],
                   "codes": []
                 }
               ],
+              "decl_idents": {
+                "Nested": 0
+              },
               "fields": [],
               "codes": []
             }
@@ -797,6 +872,7 @@
           "ident": "NestedEnum",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "enum_type": "String",
           "variants": {
             "type": "string",
@@ -849,10 +925,14 @@
               "ident": "Nested",
               "comment": [],
               "decls": [],
+              "decl_idents": {},
               "fields": [],
               "codes": []
             }
           ],
+          "decl_idents": {
+            "Nested": 0
+          },
           "fields": [],
           "codes": []
         },
@@ -885,16 +965,35 @@
               "ident": "Nested",
               "comment": [],
               "decls": [],
+              "decl_idents": {},
               "fields": [],
               "codes": []
             }
           ],
+          "decl_idents": {
+            "Nested": 0
+          },
           "http": {},
           "endpoints": []
         }
       ],
+      "decl_idents": {
+        "NestedType": 0,
+        "NestedInterface": 1,
+        "NestedEnum": 2,
+        "NestedTuple": 3,
+        "NestedService": 4
+      },
       "http": {},
       "endpoints": []
     }
-  ]
+  ],
+  "decl_idents": {
+    "Entry": 0,
+    "RootType": 1,
+    "RootInterface": 2,
+    "RootEnum": 3,
+    "RootTuple": 4,
+    "RootService": 5
+  }
 }

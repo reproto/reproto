@@ -1,7 +1,9 @@
 use serde;
 use std::borrow;
 use std::cmp;
+use std::fmt;
 use std::hash;
+use std::ops;
 use std::result;
 use Span;
 
@@ -73,7 +75,7 @@ where
     T: cmp::PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.eq(other)
+        self.inner.eq(&other.inner)
     }
 }
 
@@ -84,17 +86,16 @@ where
     T: cmp::PartialOrd,
 {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        self.inner.partial_cmp(other)
+        self.inner.partial_cmp(&other.inner)
     }
 }
 
 impl<T> cmp::Ord for Loc<T>
 where
     T: cmp::Ord,
-    Self: cmp::PartialOrd + cmp::Eq,
 {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.inner.cmp(other)
+        self.inner.cmp(&other.inner)
     }
 }
 
@@ -110,7 +111,7 @@ where
     }
 }
 
-impl<T> ::std::ops::Deref for Loc<T> {
+impl<T> ops::Deref for Loc<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -118,7 +119,7 @@ impl<T> ::std::ops::Deref for Loc<T> {
     }
 }
 
-impl<T> ::std::ops::DerefMut for Loc<T> {
+impl<T> ops::DerefMut for Loc<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.inner
     }
@@ -136,20 +137,20 @@ impl<T> borrow::Borrow<T> for Loc<T> {
     }
 }
 
-impl<T> ::std::fmt::Display for Loc<T>
+impl<T> fmt::Display for Loc<T>
 where
-    T: ::std::fmt::Display,
+    T: fmt::Display,
 {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.inner)
     }
 }
 
-impl<T> ::std::fmt::Debug for Loc<T>
+impl<T> fmt::Debug for Loc<T>
 where
-    T: ::std::fmt::Debug,
+    T: fmt::Debug,
 {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<{:?}@{:?}>", self.inner, self.span)
     }
 }

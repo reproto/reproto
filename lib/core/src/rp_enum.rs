@@ -37,6 +37,7 @@ where
             ident: self.ident,
             comment: self.comment,
             decls: self.decls.translate(diag, translator)?,
+            decl_idents: self.decl_idents,
             enum_type,
             variants: self.variants.translate(diag, translator)?,
             codes: self.codes,

@@ -77,7 +77,7 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
         ) {
             Err(e) => {
                 if reporter.is_empty() {
-                    output.handle_error(&e)?;
+                    output.handle_error(&e, None)?;
                 } else {
                     output.handle_context(&reporter)?;
                 }

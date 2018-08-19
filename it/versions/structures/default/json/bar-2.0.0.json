@@ -15,6 +15,7 @@
       "ident": "Other",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [
         {
           "required": true,
@@ -27,5 +28,8 @@
       ],
       "codes": []
     }
-  ]
+  ],
+  "decl_idents": {
+    "Other": 0
+  }
 }

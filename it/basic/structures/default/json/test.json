@@ -14,6 +14,7 @@
       "ident": "Entry",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [
         {
           "required": false,
@@ -49,6 +50,7 @@
       "ident": "Foo",
       "comment": [],
       "decls": [],
+      "decl_idents": {},
       "fields": [
         {
           "required": true,
@@ -90,6 +92,7 @@
           "ident": "Inner",
           "comment": [],
           "decls": [],
+          "decl_idents": {},
           "fields": [
             {
               "required": true,
@@ -105,6 +108,9 @@
           "codes": []
         }
       ],
+      "decl_idents": {
+        "Inner": 0
+      },
       "fields": [
         {
           "required": true,
@@ -128,5 +134,10 @@
       ],
       "codes": []
     }
-  ]
+  ],
+  "decl_idents": {
+    "Entry": 0,
+    "Foo": 1,
+    "Bar": 2
+  }
 }
