@@ -1142,6 +1142,9 @@ impl<'a> Project<'a> {
         let mut runners: Vec<Box<Runner>> = Vec::new();
 
         let default_instances = vec![Instance::new("default")];
+        let target_dir = root.join("target");
+        let target_workdir = target_dir.join("workdir");
+        let target_structures = target_dir.join("structures");
 
         for suite in &self.suites {
             let current_dir = suite
@@ -1241,8 +1244,7 @@ impl<'a> Project<'a> {
                         && self.project_languages.contains(language)
                     {
                         let source_workdir = language.source_workdir(root);
-                        let target_workdir =
-                            language.path(root, &["target", "workdir", suite.test, name]);
+                        let target_workdir = language.path(&target_workdir, &[suite.test, name]);
 
                         runners.push(Box::new(ProjectRunner {
                             test: suite.test,
@@ -1260,10 +1262,9 @@ impl<'a> Project<'a> {
                     }
 
                     if self.do_structures {
-                        let expected_struct =
-                            language.path(root, &[suite.test, "structures", name]);
-                        let target_struct =
-                            language.path(root, &["target", "structures", suite.test, name]);
+                        let suite_structures = root.join(suite.test).join("structures");
+                        let expected_struct = language.path(&suite_structures, &[name]);
+                        let target_struct = language.path(&target_structures, &[suite.test, name]);
 
                         runners.push(Box::new(StructureRunner {
                             test: suite.test,
