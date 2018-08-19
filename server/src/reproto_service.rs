@@ -6,9 +6,9 @@ use hyper::header::{self, HeaderMap, HeaderValue};
 use hyper::rt::{Future, Stream};
 use hyper::service::Service;
 use hyper::{self, Body, Method, Request, Response, StatusCode};
-use reproto_repository::{to_checksum, Checksum, FileObjects, Objects};
+use reproto_repository::{to_checksum, Checksum, Objects, Index};
 use std::io::{Cursor, Read, Seek, SeekFrom};
-use std::sync::Arc;
+use std::sync::{Mutex, Arc};
 use tokio_fs;
 use tokio_io;
 
@@ -19,7 +19,8 @@ type BoxFut = Box<Future<Item = Response<Body>, Error = Error> + Send>;
 pub struct ReprotoService {
     pub max_file_size: u64,
     pub pool: Arc<CpuPool>,
-    pub objects: FileObjects,
+    pub objects: Arc<Mutex<Box<Objects>>>,
+    pub index: Arc<Mutex<Box<Index>>>,
 }
 
 type EncodingFn = fn(&Cursor<Vec<u8>>) -> Box<Read>;
@@ -43,12 +44,32 @@ impl ReprotoService {
         Self::no_encoding
     }
 
+    fn build_index(&self, m: &mut String) -> Result<(), Error> {
+        use std::fmt::Write;
+
+        writeln!(m, "<html>")?;
+        writeln!(m, "<head>")?;
+        writeln!(m, "<title>Reproto Repository</title>")?;
+        writeln!(m, "</head>")?;
+        writeln!(m, "<body>")?;
+        writeln!(m, "</body>")?;
+        writeln!(m, "</html>")?;
+
+        Ok(())
+    }
+
     fn get_index(&self) -> BoxFut {
-        let m = "<html></html>";
+        let mut m = String::new();
+
+        if let Err(e) = self.build_index(&mut m) {
+            return Box::new(err(e.into()));
+        }
+
         let response = Response::new(Body::from(m));
         Box::new(ok(response))
     }
 
+    /// Get an object from an object repository.
     fn get_objects(&self, id: &str) -> BoxFut {
         let checksum = match Checksum::from_str(id) {
             Ok(checksum) => checksum,
@@ -59,9 +80,22 @@ impl ReprotoService {
             }
         };
 
-        let path = match self.objects.get_path(&checksum) {
-            Ok(path) => path,
+        let mut objects = match self.objects.lock() {
+            Ok(objects) => objects,
+            Err(_) => return Box::new(err(Error::InternalServerError("lock poisoned".into()))),
+        };
+
+        let object = match objects.get_object(&checksum) {
+            Ok(object) => object,
             Err(e) => return Box::new(err(e.into())),
+        };
+
+        let path = match object {
+            Some(object) => match object.path() {
+                Some(path) => path.to_owned(),
+                None => return Box::new(err(Error::InternalServerError("object does not have a path".into()))),
+            },
+            None => return Box::new(err(Error::NotFound)),
         };
 
         let fut = tokio_fs::file::File::open(path).or_else(|_| Box::new(err(Error::NotFound)));
@@ -87,7 +121,7 @@ impl ReprotoService {
         encoding: EncodingFn,
     ) -> BoxFut {
         let pool = self.pool.clone();
-        let mut objects = self.objects.clone();
+        let objects = self.objects.clone();
 
         let upload = body.and_then(move |mut tmp| {
             pool.spawn_fn(move || {
@@ -114,6 +148,11 @@ impl ReprotoService {
                 }
 
                 let mut read = encoding(&tmp);
+
+                let mut objects = match objects.lock() {
+                    Ok(objects) => objects,
+                    Err(_) => return Box::new(err(Error::InternalServerError("lock poisoned".into()))),
+                };
 
                 if let Err(e) = objects.put_object(&checksum, &mut read, false) {
                     return Box::new(err(e.into()));

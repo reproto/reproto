@@ -86,9 +86,7 @@ fn load_objects(
             .canonicalize()
             .map_err(|e| format!("objects: bad path: {}: {}", e, objects_path.display()))?;
 
-        return objects_from_path(objects_path)
-            .map(|o| Box::new(o) as Box<Objects>)
-            .map_err(Into::into);
+        return objects_from_path(objects_path);
     }
 
     match url::Url::parse(objects_url) {

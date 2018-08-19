@@ -6,13 +6,13 @@ use core::Source;
 use git::GitRepo;
 use objects::{FileObjects, Objects};
 use std::io::Read;
-use std::rc::Rc;
+use std::sync::Arc;
 use update::Update;
 use url::Url;
 
 pub struct GitObjects {
     url: Url,
-    git_repo: Rc<GitRepo>,
+    git_repo: Arc<GitRepo>,
     file_objects: FileObjects,
     publishing: bool,
 }
@@ -20,7 +20,7 @@ pub struct GitObjects {
 impl GitObjects {
     pub fn new(
         url: Url,
-        git_repo: Rc<GitRepo>,
+        git_repo: Arc<GitRepo>,
         file_objects: FileObjects,
         publishing: bool,
     ) -> GitObjects {

@@ -4,13 +4,13 @@ use core::{Range, RelativePath, RpPackage, Version};
 use git::GitRepo;
 use index::{file_index, Deployment, Index};
 use objects::{FileObjects, GitObjects, Objects};
-use std::rc::Rc;
+use std::sync::Arc;
 use update::Update;
 use url::Url;
 
 pub struct GitIndex {
     url: Url,
-    git_repo: Rc<GitRepo>,
+    git_repo: Arc<GitRepo>,
     file_index: file_index::FileIndex,
     publishing: bool,
 }
@@ -18,7 +18,7 @@ pub struct GitIndex {
 impl GitIndex {
     pub fn new(
         url: Url,
-        git_repo: Rc<GitRepo>,
+        git_repo: Arc<GitRepo>,
         file_index: file_index::FileIndex,
         publishing: bool,
     ) -> GitIndex {
