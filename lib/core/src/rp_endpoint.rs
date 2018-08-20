@@ -33,7 +33,7 @@ impl RpHttpMethod {
     }
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 pub enum RpAccept {
     #[serde(rename = "json")]
     Json,
@@ -161,7 +161,7 @@ where
     pub comment: Vec<String>,
     /// Attributes associated with the endpoint.
     pub attributes: Attributes,
-    /// Request type that this endpoint expects.
+    /// Arguments that this endpoint accepts.
     pub arguments: Vec<RpEndpointArgument<F>>,
     /// Request type that this endpoint accepts with.
     #[serde(skip_serializing_if = "Option::is_none")]

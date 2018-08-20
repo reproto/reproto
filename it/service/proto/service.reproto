@@ -25,13 +25,13 @@ service MyService {
 
 #[http(url = "http://example.com")]
 service HttpService {
-    #[http(path = "/simple")]
-    get_simple() -> c::Entry;
+    #[http(path = "/simple/{id}")]
+    get_simple(id: string) -> c::Entry;
 
     #[http(path = "/simple", method = "POST")]
-    post_simple();
+    post_simple(entry: Entry);
 
-    /// Endpoint to get a really complicated entity called `Entry` for some reason.
+    /// # Endpoint to get a really complicated entity called `Entry` for some reason.
     ///
     /// The entity has a ton of optional fields.
     #[http(path = "/entry")]
@@ -41,13 +41,17 @@ service HttpService {
     #[http(path = "/state")]
     get_state() -> State;
 
+    /// Endpoint to get the error code of the service
+    #[http(path = "/error-code")]
+    get_error_code() -> ErrorCode;
+
     /// Endpoint to retrieve a single point.
     #[http(path = "/point")]
     get_point() -> Point;
 
-    // /// Endpoint to retrieve a single tagged interface.
-    // #[http(path = "/tagged")]
-    // get_tagged() -> Tagged;
+    /// Endpoint to retrieve a single tagged interface.
+    #[http(path = "/tagged")]
+    get_tagged() -> Tagged;
 
     /// Endpoint to retrieve a single untagged interface.
     #[http(path = "/untagged")]
@@ -81,6 +85,15 @@ enum State as string {
   Closed as "closed";
 }
 
+/// A numeric thing.
+enum ErrorCode as u32 {
+  /// The error was caused by the user.
+  User as 400;
+
+  /// The error was caused by the server.
+  Server as 500;
+}
+
 /// A single point in time with a value associated with it.
 tuple Point {
   /// When the thing was measured.
@@ -103,6 +116,7 @@ interface Tagged {
   Baz;
 }
 
+/// An untagged interface.
 #[type_info(strategy = "untagged")]
 interface Untagged {
   shared: string;

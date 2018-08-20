@@ -225,6 +225,14 @@ fn try_main() -> Result<()> {
         i
     });
 
+    project.add(Language::OpenApi, { Instance::new("yaml") });
+
+    project.add(Language::OpenApi, {
+        let mut i = Instance::new("json");
+        i.args(&["-m", "json"]);
+        i
+    });
+
     it::entry(&mut project);
 
     let before = Instant::now();

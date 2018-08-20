@@ -1,6 +1,9 @@
 use chrono;
 use chrono::offset;
+use serde;
+use serde::de;
 use serde_json as json;
+use std::fmt;
 
 /// A bizarre entry with many different optional fields.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -60,6 +63,71 @@ impl State {
   }
 }
 
+/// A numeric thing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ErrorCode {
+  /// The error was caused by the user.
+  User,
+  /// The error was caused by the server.
+  Server,
+}
+
+impl ErrorCode {
+  pub fn value(&self) -> u32 {
+    use self::ErrorCode::*;
+    match *self {
+      User => 400,
+      Server => 500,
+    }
+  }
+}
+
+impl serde::Serialize for ErrorCode {
+  fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where S: serde::Serializer
+  {
+  use self::ErrorCode::*;
+    let o = match *self {
+      User => 400u32,
+      Server => 500u32,
+    };
+    s.serialize_u32(o)
+  }
+}
+
+impl<'de> serde::Deserialize<'de> for ErrorCode {
+  fn deserialize<D>(d: D) -> Result<ErrorCode, D::Error>
+    where D: serde::Deserializer<'de>
+  {
+    struct Visitor;
+    impl<'de> de::Visitor<'de> for Visitor {
+      type Value = ErrorCode;
+
+      fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str("ErrorCode, one of: 400, 500")
+      }
+
+      fn visit_u32<E>(self, value: u32) -> Result<ErrorCode, E>
+        where E: de::Error
+      {
+        match value {
+          400u32 => Ok(ErrorCode::User),
+          500u32 => Ok(ErrorCode::Server),
+          value => Err(E::custom(format!("ErrorCode: unknown value: {}", value))),
+        }
+      }
+
+      fn visit_u64<E>(self, value: u64) -> Result<ErrorCode, E>
+        where E: de::Error
+      {
+        self.visit_u32(value as u32)
+      }
+    }
+
+    d.deserialize_u32(Visitor)
+  }
+}
+
 /// A single point in time with a value associated with it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Point(pub u64, pub f64);
@@ -83,6 +151,7 @@ pub enum Tagged {
   },
 }
 
+/// An untagged interface.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Untagged {

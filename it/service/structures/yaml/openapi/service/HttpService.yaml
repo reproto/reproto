@@ -2,25 +2,38 @@
 openapi: 3.0.0
 info: {}
 servers:
-  - "http://example.com"
+  - url: "http://example.com"
 paths:
-  /simple:
+  "/simple/{id}":
     get:
       operationId: get_simple
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
       responses:
         "200":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Entry"
+  /simple:
     post:
       operationId: post_simple
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceEntry"
       responses:
         "200": {}
   /entry:
     get:
-      description: "Endpoint to get a really complicated entity called `Entry` for some reason.\n\nThe entity has a ton of optional fields."
       operationId: get_entry
+      description: "# Endpoint to get a really complicated entity called `Entry` for some reason.\n\nThe entity has a ton of optional fields."
       responses:
         "200":
           content:
@@ -29,28 +42,48 @@ paths:
                 $ref: "#/components/schemas/ServiceEntry"
   /state:
     get:
-      description: Endpoint to get the state of the service.
       operationId: get_state
+      description: Endpoint to get the state of the service.
       responses:
         "200":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/State"
+  "/error-code":
+    get:
+      operationId: get_error_code
+      description: Endpoint to get the error code of the service
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorCode"
   /point:
     get:
-      description: Endpoint to retrieve a single point.
       operationId: get_point
+      description: Endpoint to retrieve a single point.
       responses:
         "200":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Point"
+  /tagged:
+    get:
+      operationId: get_tagged
+      description: Endpoint to retrieve a single tagged interface.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tagged"
   /untagged:
     get:
-      description: Endpoint to retrieve a single untagged interface.
       operationId: get_untagged
+      description: Endpoint to retrieve a single untagged interface.
       responses:
         "200":
           content:
@@ -68,6 +101,7 @@ components:
           type: string
     ServiceEntry:
       type: object
+      description: A bizarre entry with many different optional fields.
       properties:
         boolean_type:
           type: boolean
@@ -78,10 +112,10 @@ components:
           format: "date-time"
         unsigned_32:
           type: integer
-          format: int32
+          format: uint32
         unsigned_64:
           type: integer
-          format: int64
+          format: uint64
         signed_32:
           type: integer
           format: int32
@@ -104,6 +138,12 @@ components:
       enum:
         - open
         - closed
+    ErrorCode:
+      type: integer
+      format: uint32
+      enum:
+        - 400
+        - 500
     Point:
       type: array
       format: tuple
@@ -113,13 +153,28 @@ components:
       properties:
         0:
           type: integer
-          format: int64
+          format: uint64
         1:
           type: integer
           format: double
+    Tagged:
+      oneOf:
+        - $ref: "#/components/schemas/TaggedA"
+        - $ref: "#/components/schemas/TaggedB"
+        - $ref: "#/components/schemas/TaggedBar"
+        - $ref: "#/components/schemas/TaggedBaz"
+      discriminator:
+        propertyName: "@type"
+        mapping:
+          foo: "#/components/schemas/TaggedA"
+          b: "#/components/schemas/TaggedB"
+          Bar: "#/components/schemas/TaggedBar"
+          Baz: "#/components/schemas/TaggedBaz"
     Untagged:
+      description: An untagged interface.
       oneOf:
         - type: object
+          description: "Special case: fields shared with other sub-types.\nNOTE: due to rust support through untagged, the types are matched in-order."
           required:
             - shared
             - a
@@ -162,3 +217,43 @@ components:
             ignore:
               type: string
     Any: {}
+    TaggedA:
+      type: object
+      required:
+        - "@type"
+        - shared
+      properties:
+        "@type":
+          type: string
+        shared:
+          type: string
+    TaggedB:
+      type: object
+      required:
+        - "@type"
+        - shared
+      properties:
+        "@type":
+          type: string
+        shared:
+          type: string
+    TaggedBar:
+      type: object
+      required:
+        - "@type"
+        - shared
+      properties:
+        "@type":
+          type: string
+        shared:
+          type: string
+    TaggedBaz:
+      type: object
+      required:
+        - "@type"
+        - shared
+      properties:
+        "@type":
+          type: string
+        shared:
+          type: string

@@ -52,8 +52,8 @@ where
     let mut http = RpEndpointHttp::default();
 
     let selection = match attributes.take_selection("http") {
-        None => return Ok(http),
         Some(selection) => selection,
+        None => return Ok(http),
     };
 
     let (mut selection, _pos) = Loc::take_pair(selection);
@@ -99,8 +99,8 @@ where
     // Assert that all arguments are used somehow.
     if !args.is_empty() {
         for arg in args.values() {
-            if let Some(ref mut request) = request.as_mut() {
-                if arg.ident == request.ident {
+            if let Some(ref request) = *request {
+                if arg.ident() == request.ident() {
                     continue;
                 }
             }

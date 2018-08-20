@@ -27,11 +27,11 @@ public interface HttpService {
       .setResponseMarshaller(new JsonMarshaller(new TypeReference<Entry>(){}))
       .build();
 
-  public static final MethodDescriptor<Void, Void> METHOD_POST_SIMPLE = 
-    MethodDescriptor.<Void, Void>newBuilder()
+  public static final MethodDescriptor<Entry, Void> METHOD_POST_SIMPLE = 
+    MethodDescriptor.<Entry, Void>newBuilder()
       .setType(MethodDescriptor.MethodType.UNKNOWN)
       .setFullMethodName(MethodDescriptor.generateFullMethodName("service.HttpService", "post_simple"))
-      .setRequestMarshaller(new VoidMarshaller())
+      .setRequestMarshaller(new JsonMarshaller(new TypeReference<Entry>(){}))
       .setResponseMarshaller(new VoidMarshaller())
       .build();
 
@@ -51,12 +51,28 @@ public interface HttpService {
       .setResponseMarshaller(new JsonMarshaller(new TypeReference<State>(){}))
       .build();
 
+  public static final MethodDescriptor<Void, ErrorCode> METHOD_GET_ERROR_CODE = 
+    MethodDescriptor.<Void, ErrorCode>newBuilder()
+      .setType(MethodDescriptor.MethodType.UNKNOWN)
+      .setFullMethodName(MethodDescriptor.generateFullMethodName("service.HttpService", "get_error_code"))
+      .setRequestMarshaller(new VoidMarshaller())
+      .setResponseMarshaller(new JsonMarshaller(new TypeReference<ErrorCode>(){}))
+      .build();
+
   public static final MethodDescriptor<Void, Point> METHOD_GET_POINT = 
     MethodDescriptor.<Void, Point>newBuilder()
       .setType(MethodDescriptor.MethodType.UNKNOWN)
       .setFullMethodName(MethodDescriptor.generateFullMethodName("service.HttpService", "get_point"))
       .setRequestMarshaller(new VoidMarshaller())
       .setResponseMarshaller(new JsonMarshaller(new TypeReference<Point>(){}))
+      .build();
+
+  public static final MethodDescriptor<Void, Tagged> METHOD_GET_TAGGED = 
+    MethodDescriptor.<Void, Tagged>newBuilder()
+      .setType(MethodDescriptor.MethodType.UNKNOWN)
+      .setFullMethodName(MethodDescriptor.generateFullMethodName("service.HttpService", "get_tagged"))
+      .setRequestMarshaller(new VoidMarshaller())
+      .setResponseMarshaller(new JsonMarshaller(new TypeReference<Tagged>(){}))
       .build();
 
   public static final MethodDescriptor<Void, Untagged> METHOD_GET_UNTAGGED = 
@@ -91,13 +107,13 @@ public interface HttpService {
       return ClientCalls.asyncBidiStreamingCall(getChannel().newCall(METHOD_GET_SIMPLE, getCallOptions()), observer);
     }
 
-    public StreamObserver<Void> postSimple(final StreamObserver<Void> observer) {
+    public StreamObserver<Entry> postSimple(final StreamObserver<Void> observer) {
       return ClientCalls.asyncBidiStreamingCall(getChannel().newCall(METHOD_POST_SIMPLE, getCallOptions()), observer);
     }
 
     /**
      * <pre>
-     * Endpoint to get a really complicated entity called `Entry` for some reason.
+     * # Endpoint to get a really complicated entity called `Entry` for some reason.
      * 
      * The entity has a ton of optional fields.
      * </pre>
@@ -117,11 +133,29 @@ public interface HttpService {
 
     /**
      * <pre>
+     * Endpoint to get the error code of the service
+     * </pre>
+     */
+    public StreamObserver<Void> getErrorCode(final StreamObserver<ErrorCode> observer) {
+      return ClientCalls.asyncBidiStreamingCall(getChannel().newCall(METHOD_GET_ERROR_CODE, getCallOptions()), observer);
+    }
+
+    /**
+     * <pre>
      * Endpoint to retrieve a single point.
      * </pre>
      */
     public StreamObserver<Void> getPoint(final StreamObserver<Point> observer) {
       return ClientCalls.asyncBidiStreamingCall(getChannel().newCall(METHOD_GET_POINT, getCallOptions()), observer);
+    }
+
+    /**
+     * <pre>
+     * Endpoint to retrieve a single tagged interface.
+     * </pre>
+     */
+    public StreamObserver<Void> getTagged(final StreamObserver<Tagged> observer) {
+      return ClientCalls.asyncBidiStreamingCall(getChannel().newCall(METHOD_GET_TAGGED, getCallOptions()), observer);
     }
 
     /**
@@ -140,13 +174,13 @@ public interface HttpService {
       return ServerCalls.asyncUnimplementedStreamingCall(METHOD_GET_SIMPLE, observer);
     }
 
-    public StreamObserver<Void> postSimple(final StreamObserver<Void> observer) {
+    public StreamObserver<Entry> postSimple(final StreamObserver<Void> observer) {
       return ServerCalls.asyncUnimplementedStreamingCall(METHOD_POST_SIMPLE, observer);
     }
 
     /**
      * <pre>
-     * Endpoint to get a really complicated entity called `Entry` for some reason.
+     * # Endpoint to get a really complicated entity called `Entry` for some reason.
      * 
      * The entity has a ton of optional fields.
      * </pre>
@@ -166,11 +200,29 @@ public interface HttpService {
 
     /**
      * <pre>
+     * Endpoint to get the error code of the service
+     * </pre>
+     */
+    public StreamObserver<Void> getErrorCode(final StreamObserver<ErrorCode> observer) {
+      return ServerCalls.asyncUnimplementedStreamingCall(METHOD_GET_ERROR_CODE, observer);
+    }
+
+    /**
+     * <pre>
      * Endpoint to retrieve a single point.
      * </pre>
      */
     public StreamObserver<Void> getPoint(final StreamObserver<Point> observer) {
       return ServerCalls.asyncUnimplementedStreamingCall(METHOD_GET_POINT, observer);
+    }
+
+    /**
+     * <pre>
+     * Endpoint to retrieve a single tagged interface.
+     * </pre>
+     */
+    public StreamObserver<Void> getTagged(final StreamObserver<Tagged> observer) {
+      return ServerCalls.asyncUnimplementedStreamingCall(METHOD_GET_TAGGED, observer);
     }
 
     /**
@@ -190,7 +242,9 @@ public interface HttpService {
         .addMethod(METHOD_POST_SIMPLE, ServerCalls.asyncBidiStreamingCall(this::postSimple))
         .addMethod(METHOD_GET_ENTRY, ServerCalls.asyncBidiStreamingCall(this::getEntry))
         .addMethod(METHOD_GET_STATE, ServerCalls.asyncBidiStreamingCall(this::getState))
+        .addMethod(METHOD_GET_ERROR_CODE, ServerCalls.asyncBidiStreamingCall(this::getErrorCode))
         .addMethod(METHOD_GET_POINT, ServerCalls.asyncBidiStreamingCall(this::getPoint))
+        .addMethod(METHOD_GET_TAGGED, ServerCalls.asyncBidiStreamingCall(this::getTagged))
         .addMethod(METHOD_GET_UNTAGGED, ServerCalls.asyncBidiStreamingCall(this::getUntagged))
         .build();
     }

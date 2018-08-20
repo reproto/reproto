@@ -12,22 +12,40 @@ extern crate serde;
 extern crate serde_derive;
 extern crate linked_hash_map;
 extern crate reproto_naming as naming;
+extern crate serde_json as json;
 extern crate serde_yaml as yaml;
 extern crate toml;
 
+mod spec;
+
 const OPENAPI_VERSION: &str = "3.0.0";
 
+/// A number rule to set up an enum for a given numeric type.
+macro_rules! number_rule {
+    ($variants:ident, $name:ident, $convert:ident) => {{
+        let mut __number = spec::$name::default();
+
+        for n in $variants {
+            let n = n.value.$convert().ok_or_else(|| "not a legal number")?;
+            __number.enum_.push(n);
+        }
+
+        spec::Schema::from(__number)
+    }};
+}
+
+use self::spec::*;
 use core::errors::*;
 use core::flavored::{
-    RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody, RpType, RpTypeBody,
-    RpVersionedPackage,
+    RpChannel, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody, RpType,
+    RpTypeBody, RpVersionedPackage,
 };
-use core::{CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod, Version};
+use core::{CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod};
 use linked_hash_map::LinkedHashMap;
-use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::cell::RefCell;
-use std::collections::{hash_map, BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::path::Path;
 use trans::{Environment, Translated};
 
@@ -39,299 +57,60 @@ impl Lang for OpenApiLang {
 }
 
 #[derive(Debug)]
-pub enum OpenApiModule {}
+pub enum OpenApiModule {
+    Json,
+}
 
 impl TryFromToml for OpenApiModule {
     fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
-        NoModule::illegal(path, id, value)
+        use self::OpenApiModule::*;
+
+        let result = match id {
+            "json" => Json,
+            _ => return NoModule::illegal(path, id, value),
+        };
+
+        Ok(result)
     }
 
     fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
-        NoModule::illegal(path, id, value)
+        use self::OpenApiModule::*;
+
+        let result = match id {
+            "json" => Json,
+            _ => return NoModule::illegal(path, id, value),
+        };
+
+        Ok(result)
     }
 }
 
-struct Ref(String);
-
-impl<'a> From<Ref> for Schema<'a> {
-    fn from(reference: Ref) -> Self {
-        Schema {
-            reference: Some(reference.0),
-            ..Schema::default()
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-struct SchemaBoolean {}
-
-impl<'a> From<SchemaBoolean> for Schema<'a> {
-    fn from(_: SchemaBoolean) -> Self {
-        Schema {
-            ty: Some("boolean"),
-            ..Schema::default()
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-struct SchemaAny;
-
-impl<'a> From<SchemaAny> for Schema<'a> {
-    fn from(_: SchemaAny) -> Self {
-        Schema::default()
-    }
-}
-
-#[derive(Debug, Default)]
-struct Integer {
-    format: Option<Format>,
-}
-
-impl<'a> From<Integer> for Schema<'a> {
-    fn from(integer: Integer) -> Self {
-        Schema {
-            ty: Some("integer"),
-            format: integer.format,
-            ..Schema::default()
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-struct SchemaString<'a> {
-    enum_: Vec<&'a str>,
-    format: Option<Format>,
-}
-
-impl<'a> From<SchemaString<'a>> for Schema<'a> {
-    fn from(string: SchemaString<'a>) -> Self {
-        Schema {
-            ty: Some("string"),
-            enum_: string.enum_,
-            format: string.format,
-            ..Schema::default()
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Object<'a> {
-    required: Vec<&'a str>,
-    properties: LinkedHashMap<&'a str, Schema<'a>>,
-    additional_properties: Option<Box<Schema<'a>>>,
-    title: Option<&'a str>,
-}
-
-impl<'a> From<Object<'a>> for Schema<'a> {
-    fn from(object: Object<'a>) -> Self {
-        Schema {
-            ty: Some("object"),
-            string_required: object.required,
-            string_properties: object.properties,
-            additional_properties: object.additional_properties,
-            title: object.title,
-            ..Schema::default()
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-struct SchemaArray<'a> {
-    items: Option<Box<Schema<'a>>>,
-    format: Option<Format>,
-    required: Vec<usize>,
-    /// For tuples, map each position to a type.
-    properties: BTreeMap<usize, Schema<'a>>,
-}
-
-impl<'a> From<SchemaArray<'a>> for Schema<'a> {
-    fn from(array: SchemaArray<'a>) -> Self {
-        Schema {
-            ty: Some("array"),
-            items: array.items,
-            format: array.format,
-            usize_required: array.required,
-            usize_properties: array.properties,
-            ..Schema::default()
-        }
-    }
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Default, Debug, Serialize)]
-struct Info<'a> {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    version: Option<&'a Version>,
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Debug, Serialize)]
-enum ParameterIn {
-    #[serde(rename = "path")]
-    Path,
-}
-
-impl Default for ParameterIn {
-    fn default() -> Self {
-        ParameterIn::Path
-    }
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Default, Debug, Serialize)]
-struct Parameter<'a> {
-    name: &'a str,
-    required: bool,
-    in_: ParameterIn,
-}
-
-#[derive(Debug, Serialize)]
-enum Format {
-    #[serde(rename = "int32")]
-    Int32,
-    #[serde(rename = "int64")]
-    Int64,
-    #[serde(rename = "float")]
-    Float,
-    #[serde(rename = "double")]
-    Double,
-    #[serde(rename = "date-time")]
-    DateTime,
-    #[serde(rename = "byte")]
-    Byte,
-    #[serde(rename = "tuple")]
-    Tuple,
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Debug, Default, Serialize)]
-struct Schema<'a> {
-    #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
-    reference: Option<String>,
-
-    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    ty: Option<&'static str>,
-
-    /// How arrays specify inner item type.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    items: Option<Box<Schema<'a>>>,
-
-    /// Available enumerations of a string.
-    #[serde(rename = "enum", skip_serializing_if = "Vec::is_empty")]
-    enum_: Vec<&'a str>,
-
-    /// Format acts as extra specification of the type when needed.
-    /// Also extensible.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    format: Option<Format>,
-
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    one_of: Vec<Schema<'a>>,
-
-    #[serde(rename = "required", skip_serializing_if = "Vec::is_empty")]
-    string_required: Vec<&'a str>,
-
-    #[serde(
-        rename = "properties",
-        skip_serializing_if = "LinkedHashMap::is_empty"
-    )]
-    string_properties: LinkedHashMap<&'a str, Schema<'a>>,
-
-    #[serde(rename = "required", skip_serializing_if = "Vec::is_empty")]
-    usize_required: Vec<usize>,
-
-    #[serde(
-        rename = "properties",
-        skip_serializing_if = "BTreeMap::is_empty"
-    )]
-    usize_properties: BTreeMap<usize, Schema<'a>>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    title: Option<&'a str>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    additional_properties: Option<Box<Schema<'a>>>,
-}
-
-struct OneOf<'a>(Vec<Schema<'a>>);
-
-impl<'a> From<OneOf<'a>> for Schema<'a> {
-    fn from(value: OneOf<'a>) -> Self {
-        Schema {
-            one_of: value.0,
-            ..Schema::default()
-        }
-    }
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Debug, Serialize)]
-struct Content<'a> {
-    schema: Schema<'a>,
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Default, Debug, Serialize)]
-struct Response<'a> {
-    #[serde(skip_serializing_if = "LinkedHashMap::is_empty")]
-    content: LinkedHashMap<String, Content<'a>>,
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Default, Debug, Serialize)]
-struct Method<'a> {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    summary: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    operation_id: Option<&'a str>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    parameters: Vec<Parameter<'a>>,
-    #[serde(skip_serializing_if = "LinkedHashMap::is_empty")]
-    responses: LinkedHashMap<String, Response<'a>>,
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Default, Debug, Serialize)]
-struct SpecPath<'a> {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    get: Option<Method<'a>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    head: Option<Method<'a>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    post: Option<Method<'a>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    put: Option<Method<'a>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    delete: Option<Method<'a>>,
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Debug, Default, Serialize)]
-struct Components<'a> {
-    #[serde(skip_serializing_if = "LinkedHashMap::is_empty")]
-    schemas: LinkedHashMap<String, Schema<'a>>,
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Debug, Serialize)]
-struct Spec<'a> {
-    openapi: &'static str,
-    info: Info<'a>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    servers: Vec<&'a str>,
-    #[serde(skip_serializing_if = "LinkedHashMap::is_empty")]
-    paths: LinkedHashMap<String, SpecPath<'a>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    components: Option<Components<'a>>,
-}
-
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, _manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let env = env.translate_default()?;
-    let compiler = Compiler::new(handle, env);
+
+    let modules = checked_modules(manifest.modules)?;
+
+    let mut compiler = Compiler::new(handle, env);
+    compiler.load_options(modules)?;
     compiler.compile()
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum OutputFormat {
+    Yaml,
+    Json,
+}
+
+impl OutputFormat {
+    /// Get the file extension to use.
+    fn ext(&self) -> &'static str {
+        use self::OutputFormat::*;
+
+        match *self {
+            Yaml => "yaml",
+            Json => "json",
+        }
+    }
 }
 
 struct Compiler<'handle> {
@@ -339,6 +118,7 @@ struct Compiler<'handle> {
     handle: &'handle Handle,
     env: Translated<CoreFlavor>,
     any_type: RpName,
+    output_format: OutputFormat,
 }
 
 impl<'handle> Compiler<'handle> {
@@ -348,7 +128,23 @@ impl<'handle> Compiler<'handle> {
             handle,
             env,
             any_type: RpName::new(None, RpVersionedPackage::empty(), vec!["Any".to_string()]),
+            output_format: OutputFormat::Yaml,
         }
+    }
+
+    /// Load options from the given modules.
+    fn load_options(&mut self, modules: Vec<OpenApiModule>) -> Result<()> {
+        use self::OpenApiModule::*;
+
+        for module in &modules {
+            match *module {
+                Json => {
+                    self.output_format = OutputFormat::Json;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn compile(self) -> Result<()> {
@@ -375,12 +171,19 @@ impl<'handle> Compiler<'handle> {
                     all_names: RefCell::new(HashSet::new()),
                     name_counters: RefCell::new(HashMap::new()),
                     any_type: &self.any_type,
+                    output_format: self.output_format,
                 };
 
                 let (spec, path) = builder.build(&dir, package, service)?;
 
                 debug!("+file: {}", path.display());
-                writeln!(self.handle.create(&path)?, "{}", yaml::to_string(&spec)?)?;
+
+                let out = self.handle.create(&path)?;
+
+                match self.output_format {
+                    OutputFormat::Yaml => yaml::to_writer(out, &spec)?,
+                    OutputFormat::Json => json::to_writer_pretty(out, &spec)?,
+                }
             }
         }
 
@@ -389,8 +192,10 @@ impl<'handle> Compiler<'handle> {
 }
 
 /// Queued up things that will be processed.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Queued<'a> {
+    /// Create an entity for the given sub-type.
+    TaggedSubType(&'a str, &'a RpName, usize),
     Named(&'a RpName),
     Any,
 }
@@ -411,6 +216,8 @@ struct SpecBuilder<'builder> {
     name_counters: RefCell<HashMap<String, usize>>,
     /// Special any type that needs to be constructed.
     any_type: &'builder RpName,
+    /// Format to write output as.
+    output_format: OutputFormat,
 }
 
 impl<'builder> SpecBuilder<'builder> {
@@ -423,10 +230,12 @@ impl<'builder> SpecBuilder<'builder> {
     ) -> Result<(Spec<'builder>, RelativePathBuf)> {
         let mut queue = VecDeque::new();
 
+        let ext = self.output_format.ext();
+
         let ident = if let Some(version) = package.version.as_ref() {
-            format!("{}-{}.yaml", service.ident, version)
+            format!("{}-{}.{}", service.ident, version, ext)
         } else {
-            format!("{}.yaml", service.ident)
+            format!("{}.{}", service.ident, ext)
         };
 
         let path = dir.join(ident);
@@ -444,7 +253,7 @@ impl<'builder> SpecBuilder<'builder> {
         }
 
         if let Some(ref url) = service.http.url {
-            spec.servers.push(url);
+            spec.servers.push(Server { url });
         }
 
         // NB: we need to group each path.
@@ -471,36 +280,47 @@ impl<'builder> SpecBuilder<'builder> {
                 RpHttpMethod::Post => &mut p.post,
                 RpHttpMethod::Put => &mut p.put,
                 RpHttpMethod::Delete => &mut p.delete,
-                m => return Err(format!("method `{:?}` is not supported", m).into()),
+                RpHttpMethod::Update => &mut p.update,
+                RpHttpMethod::Patch => &mut p.patch,
             };
 
             let method = method.get_or_insert_with(Method::default);
+
+            for v in path.vars() {
+                let schema = self.type_to_schema(&mut queue, v.channel.ty())?;
+
+                let mut param = spec::Parameter {
+                    name: v.safe_ident(),
+                    required: true,
+                    in_: ParameterIn::Path,
+                    description: None,
+                    schema: schema,
+                };
+
+                method.parameters.push(param);
+            }
+
             method.operation_id = Some(e.safe_ident());
 
             if !e.comment.is_empty() {
                 method.description = Some(e.comment.join("\n"));
             }
 
-            if let Some(returns) = e.response.as_ref() {
-                let mut response = Response::default();
-
-                let schema = self.type_to_schema(&mut queue, returns.ty())?;
-
-                let content = Content { schema };
-
-                response
-                    .content
-                    .insert("application/json".to_string(), content);
-                method.responses.insert("200".to_string(), response);
-
-                if let core::RpType::Name { ref name } = *returns.ty() {
-                    queue.push_back(Queued::Named(Loc::borrow(name)));
-                }
-            } else {
-                // empty 200 by default
-                let mut response = Response::default();
-                method.responses.insert("200".to_string(), response);
+            if let Some(req) = e.request.as_ref() {
+                let mut request =
+                    self.channel_to_content(&mut queue, core::RpAccept::Json, &req.channel)?;
+                request.required = true;
+                method.request_body = Some(request);
             }
+
+            let response = if let Some(res) = e.response.as_ref() {
+                self.channel_to_content(&mut queue, e.http.accept, res)?
+            } else {
+                // empty by default
+                Payload::default()
+            };
+
+            method.responses.insert("200", response);
         }
 
         self.process_components(queue, &mut spec)?;
@@ -515,11 +335,37 @@ impl<'builder> SpecBuilder<'builder> {
         Ok((spec, path))
     }
 
+    /// Convert a channel into request/response payload.
+    fn channel_to_content(
+        &self,
+        queue: &mut VecDeque<Queued<'builder>>,
+        accept: core::RpAccept,
+        channel: &'builder RpChannel,
+    ) -> Result<Payload<'builder>> {
+        let schema = self.type_to_schema(queue, channel.ty())?;
+
+        let content_type = match accept {
+            core::RpAccept::Text => "text/plain",
+            core::RpAccept::Json => "application/json",
+        };
+
+        if let core::RpType::Name { ref name } = *channel.ty() {
+            queue.push_back(Queued::Named(Loc::borrow(name)));
+        }
+
+        let mut payload = Payload::default();
+        payload.content.insert(content_type, Content { schema });
+        Ok(payload)
+    }
+
+    /// Process a queue of components.
     fn process_components(
         &self,
         mut queue: VecDeque<Queued<'builder>>,
         spec: &mut Spec<'builder>,
     ) -> Result<()> {
+        use self::Queued::*;
+
         // components that have been processed.
         let mut processed = HashSet::new();
 
@@ -529,7 +375,8 @@ impl<'builder> SpecBuilder<'builder> {
             }
 
             let (ref_, schema) = match item {
-                Queued::Named(name) => {
+                // A named type that was referenced by another type.
+                Named(name) => {
                     let ref_ = self.name_to_ref(name)?;
                     let decl = self.env.lookup_decl(name)?;
 
@@ -551,9 +398,13 @@ impl<'builder> SpecBuilder<'builder> {
 
                     (ref_, schema)
                 }
-                Queued::Any => {
+                // Sub-type being referenced needs a body created for it.
+                TaggedSubType(tag, name, index) => {
+                    self.process_tagged_sub_type(&mut queue, tag, name, index)?
+                }
+                Any => {
                     let ref_ = self.name_to_ref(self.any_type)?;
-                    (ref_, Schema::from(SchemaAny))
+                    (ref_, spec::Schema::from(spec::SchemaAny))
                 }
             };
 
@@ -564,15 +415,62 @@ impl<'builder> SpecBuilder<'builder> {
         Ok(())
     }
 
+    /// Process a single sub-type, creating a component that can be referenced.
+    fn process_tagged_sub_type(
+        &self,
+        queue: &mut VecDeque<Queued<'builder>>,
+        tag: &'builder str,
+        name: &RpName,
+        index: usize,
+    ) -> Result<(String, spec::Schema<'builder>)> {
+        let decl = self.env.lookup_decl(name)?;
+
+        let (body, sub_type) = match *decl {
+            core::RpDecl::Interface(ref body) => match body.sub_types.get(index) {
+                Some(sub_type) => (body, sub_type),
+                None => return Err("bad sub-type index".into()),
+            },
+            _ => return Err("name does not refer to an interface".into()),
+        };
+
+        let ref_ = self.name_to_ref(&sub_type.name)?;
+
+        // add the discriminator field
+        let schema = self.type_to_schema(queue, &core::RpType::String)?;
+
+        let mut object = spec::Object::default();
+
+        object.required.push(tag);
+        object.properties.insert(tag, schema);
+
+        let mut fields = Vec::new();
+        fields.extend(body.fields());
+
+        let mut fields = fields.clone();
+        fields.extend(sub_type.fields());
+
+        if !sub_type.comment.is_empty() {
+            object.description = Some(sub_type.comment.join("\n"));
+        }
+
+        self.populate_properties(queue, &mut object, fields)?;
+        Ok((ref_, spec::Schema::from(object)))
+    }
+
     /// Convert a declaration into a set of properties.
     fn decl_type_to_schema(
         &self,
         queue: &mut VecDeque<Queued<'builder>>,
         body: &'builder RpTypeBody,
-    ) -> Result<Schema<'builder>> {
-        let mut object = Object::default();
+    ) -> Result<spec::Schema<'builder>> {
+        let mut object = spec::Object::default();
+
+        if !body.comment.is_empty() {
+            object.description = Some(body.comment.join("\n"));
+        }
+
         self.populate_properties(queue, &mut object, body.fields())?;
-        Ok(Schema::from(object))
+        Ok(spec::Schema::from(object))
     }
 
     /// Convert a declaration into a set of properties.
@@ -580,29 +478,54 @@ impl<'builder> SpecBuilder<'builder> {
         &self,
         queue: &mut VecDeque<Queued<'builder>>,
         body: &'builder RpInterfaceBody,
-    ) -> Result<Schema<'builder>> {
-        let mut fields = Vec::new();
-        fields.extend(body.fields());
+    ) -> Result<spec::Schema<'builder>> {
+        let mut schema = spec::Schema::default();
+
+        if !body.comment.is_empty() {
+            schema.description = Some(body.comment.join("\n"));
+        }
 
         match body.sub_type_strategy {
             core::RpSubTypeStrategy::Untagged => {
-                let mut one_of = Vec::new();
+                let mut fields = Vec::new();
+                fields.extend(body.fields());
 
                 for sub_type in &body.sub_types {
                     let mut fields = fields.clone();
                     fields.extend(sub_type.fields());
 
-                    let mut object = Object::default();
+                    let mut object = spec::Object::default();
+
+                    if !sub_type.comment.is_empty() {
+                        object.description = Some(sub_type.comment.join("\n"));
+                    }
+
                     self.populate_properties(queue, &mut object, fields)?;
-                    one_of.push(Schema::from(object));
+                    schema.one_of.push(spec::Schema::from(object));
+                }
+            }
+            core::RpSubTypeStrategy::Tagged { ref tag } => {
+                let mut discriminator = spec::Discriminator::default();
+
+                discriminator.property_name = Some(tag);
+
+                for (index, sub_type) in body.sub_types.iter().enumerate() {
+                    let ref_ = self.name_to_ref(&sub_type.name)?;
+                    let ref_ = format!("#/components/schemas/{}", ref_);
+
+                    schema
+                        .one_of
+                        .push(spec::Schema::from(spec::Ref(ref_.to_string())));
+                    queue.push_back(Queued::TaggedSubType(tag, &body.name, index));
+
+                    discriminator.mapping.insert(sub_type.name(), ref_);
                 }
 
-                Ok(Schema::from(OneOf(one_of)))
-            }
-            _ => {
-                return Err("unsupported sub-type strategy".into());
+                schema.discriminator = Some(discriminator);
             }
         }
+
+        Ok(schema)
     }
 
     /// Convert a declaration into a tuple.
@@ -610,9 +533,9 @@ impl<'builder> SpecBuilder<'builder> {
         &self,
         queue: &mut VecDeque<Queued<'builder>>,
         body: &'builder RpTupleBody,
-    ) -> Result<Schema<'builder>> {
-        let mut array = SchemaArray::default();
-        array.format = Some(Format::Tuple);
+    ) -> Result<spec::Schema<'builder>> {
+        let mut array = spec::SchemaArray::default();
+        array.format = Some(spec::Format::Tuple);
 
         for (index, field) in body.fields().enumerate() {
             let schema = self.type_to_schema(queue, field.ty())?;
@@ -625,23 +548,29 @@ impl<'builder> SpecBuilder<'builder> {
             }
         }
 
-        Ok(Schema::from(array))
+        Ok(spec::Schema::from(array))
     }
 
     /// Convert a declaration into a set of properties.
-    fn decl_enum_to_schema(&self, body: &'builder RpEnumBody) -> Result<Schema<'builder>> {
+    fn decl_enum_to_schema(&self, body: &'builder RpEnumBody) -> Result<spec::Schema<'builder>> {
         let out = match body.variants {
             core::RpVariants::String { ref variants } => {
-                let mut string = SchemaString::default();
+                let mut string = spec::SchemaString::default();
 
                 for v in variants {
                     string.enum_.push(v.value.as_str());
                 }
 
-                Schema::from(string)
+                spec::Schema::from(string)
             }
             // TODO: are numeric variants supported?
-            core::RpVariants::Number { .. } => Schema::from(SchemaString::default()),
+            core::RpVariants::Number { ref variants } => match body.enum_type {
+                core::RpEnumType::U32 => number_rule!(variants, U32, to_u32),
+                core::RpEnumType::U64 => number_rule!(variants, U64, to_u64),
+                core::RpEnumType::I32 => number_rule!(variants, I32, to_i32),
+                core::RpEnumType::I64 => number_rule!(variants, I64, to_i64),
+                _ => return Err("unexpected enum type".into()),
+            },
         };
 
         Ok(out)
@@ -735,53 +664,47 @@ impl<'builder> SpecBuilder<'builder> {
         &self,
         queue: &mut VecDeque<Queued<'builder>>,
         ty: &'builder RpType,
-    ) -> Result<Schema<'builder>> {
+    ) -> Result<spec::Schema<'builder>> {
         use core::RpType::*;
 
         let out = match *ty {
             Name { ref name } => {
                 let ref_ = self.name_to_ref(name)?;
-                Schema::from(Ref(format!("#/components/schemas/{}", ref_)))
+                spec::Schema::from(Ref(format!("#/components/schemas/{}", ref_)))
             }
             // NB: only string keys are supported right now.
             Map { ref value, .. } => {
-                let mut object = Object::default();
+                let mut object = spec::Object::default();
                 object.additional_properties = Some(Box::new(self.type_to_schema(queue, value)?));
-                Schema::from(object)
+                spec::Schema::from(object)
             }
             Array { ref inner } => {
-                let mut array = SchemaArray::default();
+                let mut array = spec::SchemaArray::default();
                 array.items = Some(Box::new(self.type_to_schema(queue, inner)?));
-                Schema::from(array)
+                spec::Schema::from(array)
             }
-            String => Schema::from(SchemaString::default()),
-            Signed { size: 32 } | Unsigned { size: 32 } => Schema::from(Integer {
-                format: Some(Format::Int32),
-            }),
-            Signed { size: 64 } | Unsigned { size: 64 } => Schema::from(Integer {
-                format: Some(Format::Int64),
-            }),
-            Float => Schema::from(Integer {
-                format: Some(Format::Float),
-            }),
-            Double => Schema::from(Integer {
-                format: Some(Format::Double),
-            }),
-            Boolean => Schema::from(SchemaBoolean::default()),
+            String => spec::Schema::from(spec::SchemaString::default()),
+            Signed { size: 32 } => spec::Schema::from(spec::I32::default()),
+            Signed { size: 64 } => spec::Schema::from(spec::I64::default()),
+            Unsigned { size: 32 } => spec::Schema::from(spec::U32::default()),
+            Unsigned { size: 64 } => spec::Schema::from(spec::U64::default()),
+            Float => spec::Schema::from(spec::Float::default()),
+            Double => spec::Schema::from(spec::Double::default()),
+            Boolean => spec::Schema::from(spec::SchemaBoolean::default()),
             DateTime => {
-                let mut string = SchemaString::default();
-                string.format = Some(Format::DateTime);
-                Schema::from(string)
+                let mut string = spec::SchemaString::default();
+                string.format = Some(spec::Format::DateTime);
+                spec::Schema::from(string)
             }
             Bytes => {
-                let mut string = SchemaString::default();
-                string.format = Some(Format::Byte);
-                Schema::from(string)
+                let mut string = spec::SchemaString::default();
+                string.format = Some(spec::Format::Byte);
+                spec::Schema::from(string)
             }
             Any => {
                 queue.push_back(Queued::Any);
                 let ref_ = self.name_to_ref(&self.any_type)?;
-                Schema::from(Ref(format!("#/components/schemas/{}", ref_)))
+                spec::Schema::from(Ref(format!("#/components/schemas/{}", ref_)))
             }
             ref ty => return Err(format!("unsupported type: {}", ty).into()),
         };
@@ -793,7 +716,7 @@ impl<'builder> SpecBuilder<'builder> {
     fn populate_properties(
         &self,
         queue: &mut VecDeque<Queued<'builder>>,
-        object: &mut Object<'builder>,
+        object: &mut spec::Object<'builder>,
         fields: impl IntoIterator<Item = &'builder Loc<RpField>>,
     ) -> Result<()> {
         for field in fields {
