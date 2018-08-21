@@ -14,6 +14,7 @@ extern crate reproto_backend_json as json;
 extern crate reproto_backend_python as python;
 extern crate reproto_backend_reproto as reproto;
 extern crate reproto_backend_rust as rust;
+extern crate reproto_backend_openapi as openapi;
 extern crate reproto_backend_swift as swift;
 extern crate reproto_compile as compile;
 extern crate reproto_core as core;
@@ -52,6 +53,8 @@ pub enum Output {
     Python,
     #[serde(rename = "rust")]
     Rust,
+    #[serde(rename = "openapi")]
+    OpenApi,
     #[serde(rename = "js")]
     JavaScript,
     #[serde(rename = "json")]
@@ -118,6 +121,13 @@ impl Output {
 
                 Box::new(rust::RustLang)
             }
+            Output::OpenApi => {
+                if settings.openapi.json {
+                    modules.push(Box::new(openapi::OpenApiModule::Json));
+                }
+
+                Box::new(openapi::OpenApiLang)
+            }
             Output::JavaScript => Box::new(js::JsLang),
             Output::Json => Box::new(json::JsonLang),
         }
@@ -158,11 +168,17 @@ pub struct RustSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenApiSettings {
+    json: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     java: JavaSettings,
     python: PythonSettings,
     swift: SwiftSettings,
     rust: RustSettings,
+    openapi: OpenApiSettings,
     csharp: CsharpSettings,
     go: GoSettings,
 }

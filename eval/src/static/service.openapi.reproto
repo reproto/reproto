@@ -1,32 +1,9 @@
-use common as c;
-
-service MyService {
-    /// UNKNOWN
-    unknown();
-
-    /// UNKNOWN
-    unknown_return() -> c::Entry;
-
-    /// UNKNOWN
-    unknown_argument(request: c::Entry);
-
-    /// UNARY
-    unary(request: c::Entry) -> c::Entry;
-
-    /// SERVER_STREMAING
-    server_streaming(request: c::Entry) -> stream c::Entry;
-
-    /// CLIENT_STREAMING
-    client_streaming(request: stream c::Entry) -> c::Entry;
-
-    /// BIDI_STREAMING
-    bidi_streaming(request: stream c::Entry) -> stream c::Entry;
-}
+//! Example service showcasing most OpenAPI features.
 
 #[http(url = "http://example.com")]
 service HttpService {
     #[http(path = "/simple/{id}")]
-    get_simple(id: string) -> c::Entry;
+    get_simple(id: string) -> Entry;
 
     #[http(path = "/simple", method = "POST")]
     post_simple(entry: Entry);

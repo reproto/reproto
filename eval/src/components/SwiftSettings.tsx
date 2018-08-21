@@ -1,5 +1,4 @@
 import * as React from 'react';
-import AceEditor from 'react-ace';
 
 export interface SwiftSettings {
   codable: boolean;

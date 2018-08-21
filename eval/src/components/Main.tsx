@@ -6,6 +6,7 @@ import {PythonSettings, PythonSettingsForm} from "./PythonSettings";
 import {CsharpSettings, CsharpSettingsForm} from "./CsharpSettings";
 import {GoSettings, GoSettingsForm} from "./GoSettings";
 import {RustSettings, RustSettingsForm} from "./RustSettings";
+import {OpenApiSettings, OpenApiSettingsForm} from "./OpenApiSettings";
 import {SwiftSettings, SwiftSettingsForm} from "./SwiftSettings";
 import * as WebAssembly from "webassembly";
 import {Annotation, Marker as AceMarker} from 'react-ace';
@@ -15,7 +16,7 @@ import * as wasm from '../wasm';
 
 const deepEqual = require("deep-equal");
 
-const languages = [
+const ace_languages = [
   "csharp",
   "golang",
   "java",
@@ -41,6 +42,7 @@ const FORMAT_LANGUAGE_MAP: {[key: string]: string} = {
   python: "python",
   reproto: "reproto",
   rust: "rust",
+  openapi: "yaml",
   swift: "swift",
   yaml: "yaml",
 };
@@ -48,7 +50,7 @@ const FORMAT_LANGUAGE_MAP: {[key: string]: string} = {
 // modes in local_modules
 require("brace/mode/reproto.js")
 
-languages.forEach((lang) => {
+ace_languages.forEach((lang) => {
   require(`brace/mode/${lang}`)
   require(`brace/snippets/${lang}`)
 })
@@ -67,6 +69,7 @@ const TUPLE_REPROTO: string = require("raw-loader!../static/tuple.reproto");
 const INTERFACE_REPROTO: string = require("raw-loader!../static/interface.reproto");
 const UNTAGGED_REPROTO: string = require("raw-loader!../static/untagged.reproto");
 const SERVICE_REPROTO: string = require("raw-loader!../static/service.reproto");
+const SERVICE_OPENAPI_REPROTO: string = require("raw-loader!../static/service.openapi.reproto");
 const DEFAULT_NEW_FILE_REPROTO: string = require("raw-loader!../static/default-new.reproto");
 const logo = require("../static/logo.256.png");
 
@@ -115,15 +118,16 @@ enum Format {
 }
 
 enum Output {
-  Reproto = "reproto",
-  Java = "java",
   Csharp = "csharp",
   Go = "go",
-  Swift = "swift",
-  Rust = "rust",
-  Python = "python",
+  Java = "java",
   JavaScript = "js",
   Json = "json",
+  OpenApi = "openapi",
+  Python = "python",
+  Reproto = "reproto",
+  Rust = "rust",
+  Swift = "swift",
 }
 
 export interface MainProps {
@@ -145,6 +149,7 @@ interface Settings {
   csharp: CsharpSettings;
   go: GoSettings;
   rust: RustSettings;
+  openapi: OpenApiSettings;
   swift: SwiftSettings;
 }
 
@@ -200,6 +205,10 @@ export class Main extends React.Component<MainProps, MainState> {
           content: SERVICE_REPROTO,
         },
         {
+          package: "example.service.openapi",
+          content: SERVICE_OPENAPI_REPROTO,
+        },
+        {
           package: "example.tuple",
           content: TUPLE_REPROTO,
         },
@@ -231,6 +240,9 @@ export class Main extends React.Component<MainProps, MainState> {
         rust: {
           chrono: true,
           reqwest: true,
+        },
+        openapi: {
+          json: false,
         },
         csharp: {
           json_net: true,
@@ -521,6 +533,9 @@ export class Main extends React.Component<MainProps, MainState> {
       case "rust":
         output = "rust" as Output;
         break;
+      case "openapi":
+        output = "openapi" as Output;
+        break;
       case "js":
         output = "js" as Output;
         break;
@@ -571,6 +586,15 @@ export class Main extends React.Component<MainProps, MainState> {
       let settings = {...state.settings};
       settings.rust = {...settings.rust};
       cb(settings.rust);
+      return {settings: settings};
+    }, () => this.recompile());
+  }
+
+  updateOpenApi(cb: (settings: OpenApiSettings) => void) {
+    this.setState((state: MainState, props: MainProps) => {
+      let settings = {...state.settings};
+      settings.openapi = {...settings.openapi};
+      cb(settings.openapi);
       return {settings: settings};
     }, () => this.recompile());
   }
@@ -826,6 +850,11 @@ export class Main extends React.Component<MainProps, MainState> {
             onReqwest={update => this.updateRust(rust => rust.reqwest = update)}
             />;
           break;
+        case "openapi":
+          settingsForm = <OpenApiSettingsForm settings={settings.openapi}
+            onJson={update => this.updateOpenApi(openapi => openapi.json = update)}
+            />;
+          break;
         case "csharp":
           settingsForm = <CsharpSettingsForm settings={settings.csharp}
             onJsonNet={update => this.updateCsharp(csharp => csharp.json_net = update)}
@@ -945,6 +974,7 @@ export class Main extends React.Component<MainProps, MainState> {
                         <option value="python">Python</option>
                         <option value="reproto">Reproto</option>
                         <option value="rust">Rust</option>
+                        <option value="openapi">OpenAPI</option>
                         <option value="swift">Swift</option>
                       </select>
                     </div>
