@@ -3,6 +3,7 @@ use chrono::offset;
 use serde;
 use serde::de;
 use serde_json as json;
+use std::collections;
 use std::fmt;
 
 /// A bizarre entry with many different optional fields.
@@ -40,6 +41,15 @@ pub struct Entry {
 
   #[serde(skip_serializing_if="Option::is_none")]
   pub any_type: Option<json::Value>,
+
+  #[serde(skip_serializing_if="Option::is_none")]
+  pub array_type: Option<Vec<Entry>>,
+
+  #[serde(skip_serializing_if="Option::is_none")]
+  pub array_of_array_type: Option<Vec<Vec<Entry>>>,
+
+  #[serde(skip_serializing_if="Option::is_none")]
+  pub map_type: Option<collections::HashMap<String, Entry>>,
 }
 
 /// The state of a thing.

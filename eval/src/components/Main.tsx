@@ -47,8 +47,10 @@ const FORMAT_LANGUAGE_MAP: {[key: string]: string} = {
   yaml: "yaml",
 };
 
-// modes in local_modules
+// modes in local_modules.
 require("brace/mode/reproto.js")
+// support searching ace editor.
+require('brace/ext/searchbox');
 
 ace_languages.forEach((lang) => {
   require(`brace/mode/${lang}`)

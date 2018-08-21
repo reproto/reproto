@@ -133,6 +133,20 @@ components:
           format: byte
         any_type:
           $ref: "#/components/schemas/Any"
+        array_type:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceEntry"
+        array_of_array_type:
+          type: array
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ServiceEntry"
+        map_type:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ServiceEntry"
     State:
       type: string
       enum:

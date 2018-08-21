@@ -721,7 +721,6 @@ impl<'builder> SpecBuilder<'builder> {
     ) -> Result<()> {
         for field in fields {
             let mut schema = self.type_to_schema(queue, field.ty())?;
-            object.properties.insert(field.safe_ident(), schema);
 
             if field.is_required() {
                 object.required.push(field.safe_ident());
@@ -730,6 +729,12 @@ impl<'builder> SpecBuilder<'builder> {
             if field.name() != field.safe_ident() {
                 schema.title = Some(field.safe_ident());
             }
+
+            if !field.comment.is_empty() {
+                schema.description = Some(field.comment.join("\n"));
+            }
+
+            object.properties.insert(field.safe_ident(), schema);
 
             // reference to external type, so add to queue.
             if let core::RpType::Name { ref name } = *field.ty() {

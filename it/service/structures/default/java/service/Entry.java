@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.nio.ByteBuffer;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -32,6 +34,12 @@ public class Entry {
   private final Optional<ByteBuffer> bytesType;
   @JsonProperty("any_type")
   private final Optional<Object> anyType;
+  @JsonProperty("array_type")
+  private final Optional<List<Entry>> arrayType;
+  @JsonProperty("array_of_array_type")
+  private final Optional<List<List<Entry>>> arrayOfArrayType;
+  @JsonProperty("map_type")
+  private final Optional<Map<String, Entry>> mapType;
 
   @JsonCreator
   public Entry(
@@ -45,7 +53,10 @@ public class Entry {
     @JsonProperty("float_type") final Optional<Float> floatType,
     @JsonProperty("double_type") final Optional<Double> doubleType,
     @JsonProperty("bytes_type") final Optional<ByteBuffer> bytesType,
-    @JsonProperty("any_type") final Optional<Object> anyType
+    @JsonProperty("any_type") final Optional<Object> anyType,
+    @JsonProperty("array_type") final Optional<List<Entry>> arrayType,
+    @JsonProperty("array_of_array_type") final Optional<List<List<Entry>>> arrayOfArrayType,
+    @JsonProperty("map_type") final Optional<Map<String, Entry>> mapType
   ) {
     Objects.requireNonNull(booleanType, "boolean_type");
     this.booleanType = booleanType;
@@ -69,6 +80,12 @@ public class Entry {
     this.bytesType = bytesType;
     Objects.requireNonNull(anyType, "any_type");
     this.anyType = anyType;
+    Objects.requireNonNull(arrayType, "array_type");
+    this.arrayType = arrayType;
+    Objects.requireNonNull(arrayOfArrayType, "array_of_array_type");
+    this.arrayOfArrayType = arrayOfArrayType;
+    Objects.requireNonNull(mapType, "map_type");
+    this.mapType = mapType;
   }
 
   @JsonProperty("boolean_type")
@@ -126,6 +143,21 @@ public class Entry {
     return this.anyType;
   }
 
+  @JsonProperty("array_type")
+  public Optional<List<Entry>> getArrayType() {
+    return this.arrayType;
+  }
+
+  @JsonProperty("array_of_array_type")
+  public Optional<List<List<Entry>>> getArrayOfArrayType() {
+    return this.arrayOfArrayType;
+  }
+
+  @JsonProperty("map_type")
+  public Optional<Map<String, Entry>> getMapType() {
+    return this.mapType;
+  }
+
   @Override
   public int hashCode() {
     int result = 1;
@@ -140,6 +172,9 @@ public class Entry {
     result = result * 31 + this.doubleType.hashCode();
     result = result * 31 + this.bytesType.hashCode();
     result = result * 31 + this.anyType.hashCode();
+    result = result * 31 + this.arrayType.hashCode();
+    result = result * 31 + this.arrayOfArrayType.hashCode();
+    result = result * 31 + this.mapType.hashCode();
     return result;
   }
 
@@ -200,6 +235,18 @@ public class Entry {
       return false;
     }
 
+    if (!this.arrayType.equals(o.arrayType)) {
+      return false;
+    }
+
+    if (!this.arrayOfArrayType.equals(o.arrayOfArrayType)) {
+      return false;
+    }
+
+    if (!this.mapType.equals(o.mapType)) {
+      return false;
+    }
+
     return true;
   }
 
@@ -241,6 +288,15 @@ public class Entry {
     b.append(", ");
     b.append("any_type=");
     b.append(this.anyType.toString());
+    b.append(", ");
+    b.append("array_type=");
+    b.append(this.arrayType.toString());
+    b.append(", ");
+    b.append("array_of_array_type=");
+    b.append(this.arrayOfArrayType.toString());
+    b.append(", ");
+    b.append("map_type=");
+    b.append(this.mapType.toString());
     b.append(")");
 
     return b.toString();
@@ -258,6 +314,9 @@ public class Entry {
     private Optional<Double> doubleType = Optional.empty();
     private Optional<ByteBuffer> bytesType = Optional.empty();
     private Optional<Object> anyType = Optional.empty();
+    private Optional<List<Entry>> arrayType = Optional.empty();
+    private Optional<List<List<Entry>>> arrayOfArrayType = Optional.empty();
+    private Optional<Map<String, Entry>> mapType = Optional.empty();
 
     public Builder booleanType(final boolean booleanType) {
       this.booleanType = Optional.of(booleanType);
@@ -314,6 +373,21 @@ public class Entry {
       return this;
     }
 
+    public Builder arrayType(final List<Entry> arrayType) {
+      this.arrayType = Optional.of(arrayType);
+      return this;
+    }
+
+    public Builder arrayOfArrayType(final List<List<Entry>> arrayOfArrayType) {
+      this.arrayOfArrayType = Optional.of(arrayOfArrayType);
+      return this;
+    }
+
+    public Builder mapType(final Map<String, Entry> mapType) {
+      this.mapType = Optional.of(mapType);
+      return this;
+    }
+
     public Entry build() {
       final Optional<Boolean> booleanType = this.booleanType;
       final Optional<String> stringType = this.stringType;
@@ -326,8 +400,11 @@ public class Entry {
       final Optional<Double> doubleType = this.doubleType;
       final Optional<ByteBuffer> bytesType = this.bytesType;
       final Optional<Object> anyType = this.anyType;
+      final Optional<List<Entry>> arrayType = this.arrayType;
+      final Optional<List<List<Entry>>> arrayOfArrayType = this.arrayOfArrayType;
+      final Optional<Map<String, Entry>> mapType = this.mapType;
 
-      return new Entry(booleanType, stringType, datetimeType, unsigned32, unsigned64, signed32, signed64, floatType, doubleType, bytesType, anyType);
+      return new Entry(booleanType, stringType, datetimeType, unsigned32, unsigned64, signed32, signed64, floatType, doubleType, bytesType, anyType, arrayType, arrayOfArrayType, mapType);
     }
   }
 }

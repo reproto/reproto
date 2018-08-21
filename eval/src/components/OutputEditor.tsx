@@ -10,13 +10,14 @@ export class OutputEditor extends React.Component<OutputEditorProps, {}> {
   render() {
     return (
       <AceEditor
+        name="output-editor"
         showGutter={true}
         mode={this.props.mode}
-        readOnly={true}
         theme="github"
         width="100%"
         maxLines={Infinity}
         value={this.props.value}
+        setOptions={{autoScrollEditorIntoView: true}}
         editorProps={{$blockScrolling: false}}
         />
     );
