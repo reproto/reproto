@@ -919,6 +919,11 @@ impl<'a> StructureRunner<'a> {
                 self.reproto.build(self.manifest(&self.expected_struct))?;
             }
             Action::Verify => {
+                // expect nothing
+                if !self.expected_struct.is_dir() {
+                    return Ok(());
+                }
+
                 if self.target_struct.is_dir() {
                     // Remove existing directory, and re-recreate it.
                     fs::remove_dir_all(&self.target_struct)?;
