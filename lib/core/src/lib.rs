@@ -60,7 +60,9 @@ pub mod utils;
 mod with_span;
 
 pub use self::attributes::{Attributes, Selection};
-pub use self::diagnostics::{Diagnostic, Diagnostics, SymbolKind};
+pub use self::diagnostics::{
+    Diagnostic, Diagnostics, SourceDiagnostic, SourceDiagnostics, SymbolKind,
+};
 pub use self::flavor::{AsPackage, CoreFlavor, Flavor, FlavorField};
 pub use self::fs::{CapturingFilesystem, Filesystem, Handle, RealFilesystem};
 pub use self::import::Import;
@@ -69,7 +71,7 @@ pub use self::mime::Mime;
 pub use self::option_entry::OptionEntry;
 pub use self::options::Options;
 pub use self::relative_path::{RelativePath, RelativePathBuf};
-pub use self::reporter::Reporter;
+pub use self::reporter::{Reported, Reporter};
 pub use self::resolver::{EmptyResolver, Resolved, ResolvedByPrefix, Resolver};
 pub use self::ropey::Rope;
 pub use self::rp_channel::RpChannel;

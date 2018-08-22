@@ -3,7 +3,7 @@
 use ast;
 use core::errors::{Error, Result};
 use core::{
-    self, Diagnostics, Encoding, Filesystem, Handle, Loc, Resolved, Resolver, RpPackage,
+    self, Encoding, Filesystem, Handle, Loc, Reported, Resolved, Resolver, RpPackage,
     RpRequiredPackage, RpVersionedPackage, Source,
 };
 use env;
@@ -38,7 +38,7 @@ pub struct Workspace {
     /// Files which are currently being edited.
     pub open_files: HashMap<Url, Source>,
     /// Context where to populate compiler errors.
-    pub reporter: Vec<Diagnostics>,
+    pub reporter: Vec<Reported>,
     /// All reverse dependencies, which packages that depends on _this_ package.
     pub rev_dep: HashMap<RpVersionedPackage, HashSet<RpVersionedPackage>>,
     /// Sources queued up to build.

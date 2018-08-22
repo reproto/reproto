@@ -7,7 +7,7 @@ pub use self::json::Json;
 pub use self::non_colored::NonColored;
 use core::errors::*;
 use core::flavored::RpName;
-use core::{self, Diagnostic, Diagnostics};
+use core::{self, Diagnostic, Reported, Source};
 use log;
 use std::io::{self, Write};
 
@@ -41,26 +41,45 @@ impl LockableWrite for io::Stdout {
 pub trait Output {
     fn lock<'a>(&'a self) -> Box<Write + 'a>;
 
-    fn handle_context(&self, diagnostics: &[Diagnostics]) -> Result<()> {
-        for diagnostics in diagnostics.iter() {
-            let source = &diagnostics.source;
-
-            for item in diagnostics.items() {
-                match *item {
-                    Diagnostic::Info(ref span, ref message) => {
-                        self.print_info(source, span, message.as_str())?;
-                    }
-                    Diagnostic::Error(ref span, ref message) => {
-                        self.print_error(source, span, message.as_str())?;
-                    }
-                    Diagnostic::Symbol {
-                        ref kind,
-                        ref span,
-                        ref name,
-                    } => {
-                        self.print_symbol(source, *kind, span, name)?;
+    fn handle_context(&self, diagnostics: &[Reported]) -> Result<()> {
+        for d in diagnostics {
+            match *d {
+                Reported::Diagnostics(ref diagnostics) => {
+                    for d in diagnostics.items() {
+                        self.report_diagnostic(&diagnostics.source, d)?;
                     }
                 }
+                Reported::SourceDiagnostics(ref diagnostics) => {
+                    for d in diagnostics.items() {
+                        self.report_diagnostic(&d.0, &d.1)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn report_diagnostic(&self, source: &Source, item: &Diagnostic) -> Result<()> {
+        match *item {
+            Diagnostic::Info {
+                ref span,
+                ref message,
+            } => {
+                self.print_info(source, span, message.as_str())?;
+            }
+            Diagnostic::Error {
+                ref span,
+                ref message,
+            } => {
+                self.print_error(source, span, message.as_str())?;
+            }
+            Diagnostic::Symbol {
+                ref kind,
+                ref span,
+                ref name,
+            } => {
+                self.print_symbol(source, *kind, span, name)?;
             }
         }
 

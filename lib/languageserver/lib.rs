@@ -27,7 +27,7 @@ use self::models::{Completion, Jump, Range, RenameResult};
 use self::workspace::Workspace;
 use self::ContentType::*;
 use core::errors::Result;
-use core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Rope, Source};
+use core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Reported, Rope, Source};
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, Bound, HashMap};
@@ -932,20 +932,38 @@ where
 
             self.send_manifest_diagnostics(&workspace)?;
 
-            let mut by_url = HashMap::new();
+            let mut by_url: HashMap<Url, Vec<(&Source, &Diagnostic)>> = HashMap::new();
 
             for diagnostics in &workspace.reporter {
-                if let Some(url) = diagnostics.source.url() {
-                    by_url.insert(url, diagnostics.clone());
+                match *diagnostics {
+                    Reported::Diagnostics(ref diagnostics) => {
+                        if let Some(url) = diagnostics.source.url() {
+                            let items = by_url.entry(url.clone()).or_insert_with(Vec::new);
+
+                            for d in diagnostics.items() {
+                                items.push((&diagnostics.source, d));
+                            }
+                        }
+                    }
+                    Reported::SourceDiagnostics(ref diagnostics) => {
+                        for d in diagnostics.items() {
+                            if let Some(url) = d.0.url() {
+                                by_url
+                                    .entry(url)
+                                    .or_insert_with(Vec::new)
+                                    .push((&d.0, &d.1));
+                            }
+                        }
+                    }
                 }
             }
 
             for file in workspace.files() {
                 let by_url = by_url.remove(&file.url);
-                let by_url_chain = by_url.iter().flat_map(|d| d.items());
+                let by_url_chain = by_url.into_iter().flat_map(|d| d.into_iter()).map(|d| d.1);
 
                 self.send_diagnostics(
-                    file.url.clone(),
+                    &file.url,
                     &file.diag.source,
                     file.diag.items().chain(by_url_chain),
                 )?;
@@ -953,7 +971,9 @@ where
 
             // diagnostics about other random files
             for (url, diag) in by_url {
-                self.send_diagnostics(url, &diag.source, diag.items())?;
+                for (source, d) in diag {
+                    self.send_diagnostics(&url, source, ::std::iter::once(d))?;
+                }
             }
         }
 
@@ -986,7 +1006,7 @@ where
     }
 
     /// Send diagnostics for a single URL.
-    fn send_diagnostics<'a, I>(&self, url: Url, source: &Source, diagnostics: I) -> Result<()>
+    fn send_diagnostics<'a, I>(&self, url: &Url, source: &Source, diagnostics: I) -> Result<()>
     where
         I: IntoIterator<Item = &'a Diagnostic>,
     {
@@ -994,26 +1014,32 @@ where
 
         for d in diagnostics.into_iter() {
             match *d {
-                core::Diagnostic::Error(ref span, ref m) => {
+                core::Diagnostic::Error {
+                    ref span,
+                    ref message,
+                } => {
                     let (start, end) = source.span_to_range(*span, Encoding::Utf16)?;
                     let range = convert_range((start, end));
 
                     let d = ty::Diagnostic {
                         range: range,
-                        message: m.to_string(),
+                        message: message.to_string(),
                         severity: Some(ty::DiagnosticSeverity::Error),
                         ..ty::Diagnostic::default()
                     };
 
                     out.push(d);
                 }
-                core::Diagnostic::Info(ref span, ref m) => {
+                core::Diagnostic::Info {
+                    ref span,
+                    ref message,
+                } => {
                     let (start, end) = source.span_to_range(*span, Encoding::Utf16)?;
                     let range = convert_range((start, end));
 
                     let d = ty::Diagnostic {
                         range: range,
-                        message: m.to_string(),
+                        message: message.to_string(),
                         severity: Some(ty::DiagnosticSeverity::Information),
                         ..ty::Diagnostic::default()
                     };

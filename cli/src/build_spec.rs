@@ -1,8 +1,8 @@
 use clap::ArgMatches;
 use core::errors::{Error, Result, ResultExt};
 use core::{
-    CoreFlavor, Diagnostics, Flavor, Reporter, Resolved, ResolvedByPrefix, Resolver, RpChannel,
-    RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source, Version,
+    CoreFlavor, Flavor, Reporter, Resolved, ResolvedByPrefix, Resolver, RpChannel, RpPackage,
+    RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source, SourceDiagnostics, Version,
 };
 use env;
 use manifest::{self, Lang, Language, Manifest, Publish};
@@ -303,89 +303,105 @@ pub fn semck_check(
                 violations.len()
             )));
 
-            let mut current = Diagnostics::new(current);
-            let mut next = Diagnostics::new(next.clone());
+            let mut diag = SourceDiagnostics::new();
 
             for v in violations {
-                handle_violation(&mut current, &mut next, v)?;
+                handle_violation(&mut diag, &current, next, v)?;
             }
 
-            env.reporter.diagnostics(current);
-            env.reporter.diagnostics(next);
+            env.reporter.source_diagnostics(diag);
         }
     }
 
     return Ok(());
 
     fn handle_violation(
-        current: &mut Diagnostics,
-        next: &mut Diagnostics,
+        diag: &mut SourceDiagnostics,
+        current: &Source,
+        next: &Source,
         violation: semck::Violation,
     ) -> Result<()> {
         use semck::Violation::*;
 
         match violation {
             DeclRemoved(c, reg) => {
-                current.err(reg, format!("{}: declaration removed", c.describe()));
+                diag.err(
+                    current,
+                    reg,
+                    format!("{}: declaration removed", c.describe()),
+                );
             }
             DeclAdded(c, reg) => {
-                next.err(reg, format!("{}: declaration added", c.describe()));
+                diag.err(next, reg, format!("{}: declaration added", c.describe()));
             }
             RemoveField(c, field) => {
-                current.err(field, format!("{}: field removed", c.describe()));
+                diag.err(current, field, format!("{}: field removed", c.describe()));
             }
             RemoveVariant(c, field) => {
-                current.err(field, format!("{}: variant removed", c.describe()));
+                diag.err(current, field, format!("{}: variant removed", c.describe()));
             }
             AddField(c, field) => {
-                next.err(field, format!("{}: field added", c.describe()));
+                diag.err(next, field, format!("{}: field added", c.describe()));
             }
             AddVariant(c, field) => {
-                next.err(field, format!("{}: variant added", c.describe()));
+                diag.err(next, field, format!("{}: variant added", c.describe()));
             }
             FieldTypeChange(c, from_type, from, to_type, to) => {
-                next.err(
+                diag.err(
+                    next,
                     to,
                     format!("{}: type changed to `{}`", c.describe(), to_type),
                 );
-                current.info(from, format!("from `{}`", from_type));
+                diag.info(current, from, format!("from `{}`", from_type));
             }
             FieldNameChange(c, from_name, from, to_name, to) => {
-                next.err(
+                diag.err(
+                    next,
                     to,
                     format!("{}: name changed to `{}`", c.describe(), to_name),
                 );
-                current.info(from, format!("from `{}`", from_name));
+                diag.info(current, from, format!("from `{}`", from_name));
             }
             VariantOrdinalChange(c, from_ordinal, from, to_ordinal, to) => {
-                next.err(
+                diag.err(
+                    next,
                     to,
                     format!("{}: ordinal changed to `{}`", c.describe(), to_ordinal),
                 );
-                current.info(from, format!("from `{}`", from_ordinal));
+                diag.info(current, from, format!("from `{}`", from_ordinal));
             }
             FieldRequiredChange(c, from, to) => {
-                next.err(
+                diag.err(
+                    next,
                     to,
                     format!("{}: field changed to be required`", c.describe(),),
                 );
-                current.info(from, "from here");
+                diag.info(current, from, "from here");
             }
             AddRequiredField(c, field) => {
-                next.err(field, format!("{}: required field added", c.describe()));
+                diag.err(
+                    next,
+                    field,
+                    format!("{}: required field added", c.describe()),
+                );
             }
             FieldModifierChange(c, from, to) => {
-                next.err(to, format!("{}: field modifier changed", c.describe()));
-                current.info(from, "from here");
+                diag.err(
+                    next,
+                    to,
+                    format!("{}: field modifier changed", c.describe()),
+                );
+                diag.info(current, from, "from here");
             }
             AddEndpoint(c, span) => {
-                next.err(span, format!("{}: endpoint added", c.describe()));
+                diag.err(next, span, format!("{}: endpoint added", c.describe()));
             }
             RemoveEndpoint(c, span) => {
-                current.err(span, format!("{}: endpoint removed", c.describe()));
+                diag.err(current, span, format!("{}: endpoint removed", c.describe()));
             }
             EndpointRequestChange(c, from_channel, from, to_channel, to) => {
-                next.err(
+                diag.err(
+                    next,
                     to,
                     format!(
                         "{}: request type changed to `{}`",
@@ -393,13 +409,15 @@ pub fn semck_check(
                         FmtChannel(to_channel.as_ref())
                     ),
                 );
-                current.info(
+                diag.info(
+                    current,
                     from,
                     format!("from `{}`", FmtChannel(from_channel.as_ref())),
                 );
             }
             EndpointResponseChange(c, from_channel, from, to_channel, to) => {
-                next.err(
+                diag.err(
+                    next,
                     to,
                     format!(
                         "{}: response type changed to `{}`",
@@ -407,7 +425,8 @@ pub fn semck_check(
                         FmtChannel(to_channel.as_ref())
                     ),
                 );
-                current.err(
+                diag.err(
+                    current,
                     from,
                     format!("from `{}`", FmtChannel(from_channel.as_ref())),
                 );
