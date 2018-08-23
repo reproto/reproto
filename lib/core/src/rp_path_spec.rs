@@ -42,7 +42,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpPathPart<T::Target>;
 
     /// Translate into different flavor.
@@ -88,7 +87,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpPathStep<T::Target>;
 
     /// Translate into different flavor.
@@ -168,7 +166,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpPathSpec<T::Target>;
 
     /// Translate into different flavor.

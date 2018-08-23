@@ -1,6 +1,7 @@
 //! Model for endpoints
 
 use errors::Result;
+use serde::Serialize;
 use std::default;
 use std::rc::Rc;
 use {Attributes, Diagnostics, Flavor, Loc, RpChannel, RpPathSpec, Translate, Translator};
@@ -48,7 +49,7 @@ impl default::Default for RpAccept {
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
-#[serde(bound = "F: ::serde::Serialize, F::Type: ::serde::Serialize")]
+#[serde(bound = "F: Serialize, F::Type: Serialize")]
 pub struct RpEndpointHttp<F: 'static>
 where
     F: Flavor,
@@ -71,7 +72,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpEndpointHttp<T::Target>;
 
     /// Translate into different flavor.
@@ -91,7 +91,7 @@ where
 
 /// An argument to an endpont.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(bound = "F::Type: ::serde::Serialize")]
+#[serde(bound = "F::Type: Serialize")]
 pub struct RpEndpointArgument<F: 'static>
 where
     F: Flavor,
@@ -109,7 +109,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpEndpointArgument<T::Target>;
 
     /// Translate into different flavor.
@@ -144,7 +143,7 @@ where
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F: ::serde::Serialize, F::Type: ::serde::Serialize")]
+#[serde(bound = "F: Serialize, F::Type: Serialize, F::Package: Serialize")]
 pub struct RpEndpoint<F: 'static>
 where
     F: Flavor,
@@ -160,7 +159,7 @@ where
     /// Comments for documentation.
     pub comment: Vec<String>,
     /// Attributes associated with the endpoint.
-    pub attributes: Attributes,
+    pub attributes: Attributes<F>,
     /// Arguments that this endpoint accepts.
     pub arguments: Vec<RpEndpointArgument<F>>,
     /// Request type that this endpoint accepts with.
@@ -220,7 +219,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpEndpoint<T::Target>;
 
     /// Translate into different flavor.
@@ -230,7 +228,7 @@ where
             safe_ident: self.safe_ident,
             name: self.name,
             comment: self.comment,
-            attributes: self.attributes,
+            attributes: self.attributes.translate(diag, translator)?,
             arguments: self.arguments.translate(diag, translator)?,
             request: self.request.translate(diag, translator)?,
             response: self.response.translate(diag, translator)?,

@@ -3,6 +3,7 @@
 use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use Flavor;
 use {
@@ -208,55 +209,72 @@ pub trait Translator {
 /// A translated type.
 pub trait Translate<T>
 where
-    T: Translator<Source = Self::Source>,
+    T: Translator,
 {
-    type Source: 'static + Flavor;
     type Out;
 
     /// Translate into different flavor.
     fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Self::Out>;
 }
 
-impl<T, I> Translate<T> for Loc<I>
+impl<T, V> Translate<T> for Loc<V>
 where
-    I: Translate<T>,
-    T: Translator<Source = I::Source>,
+    V: Translate<T>,
+    T: Translator,
 {
-    type Source = I::Source;
-    type Out = Loc<I::Out>;
+    type Out = Loc<V::Out>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Loc<I::Out>> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Loc<V::Out>> {
         Loc::and_then(self, |s| s.translate(diag, translator))
     }
 }
 
-impl<T, I> Translate<T> for Vec<I>
+impl<T, K, V> Translate<T> for HashMap<K, V>
 where
-    I: Translate<T>,
-    T: Translator<Source = I::Source>,
+    K: ::std::cmp::Eq + ::std::hash::Hash,
+    V: Translate<T>,
+    T: Translator,
 {
-    type Source = I::Source;
-    type Out = Vec<I::Out>;
+    type Out = HashMap<K, V::Out>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Vec<I::Out>> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<HashMap<K, V::Out>> {
+        let mut out = HashMap::new();
+
+        for (k, v) in self {
+            let v = v.translate(diag, translator)?;
+            out.insert(k, v);
+        }
+
+        Ok(out)
+    }
+}
+
+impl<T, V> Translate<T> for Vec<V>
+where
+    V: Translate<T>,
+    T: Translator,
+{
+    type Out = Vec<V::Out>;
+
+    /// Translate into different flavor.
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Vec<V::Out>> {
         self.into_iter()
             .map(|v| v.translate(diag, translator))
             .collect::<Result<Vec<_>>>()
     }
 }
 
-impl<T, I> Translate<T> for Option<I>
+impl<T, V> Translate<T> for Option<V>
 where
-    I: Translate<T>,
-    T: Translator<Source = I::Source>,
+    V: Translate<T>,
+    T: Translator,
 {
-    type Source = I::Source;
-    type Out = Option<I::Out>;
+    type Out = Option<V::Out>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Option<I::Out>> {
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Option<V::Out>> {
         let out = match self {
             Some(inner) => Some(inner.translate(diag, translator)?),
             None => None,
@@ -266,14 +284,43 @@ where
     }
 }
 
-pub struct Fields<F>(pub Vec<Loc<F>>);
+impl<T> Translate<T> for String
+where
+    T: Translator,
+{
+    type Out = String;
+
+    fn translate(self, _diag: &mut Diagnostics, _translator: &T) -> Result<String> {
+        Ok(self)
+    }
+}
+
+impl<T, A, B> Translate<T> for (A, B)
+where
+    A: Translate<T>,
+    B: Translate<T>,
+    T: Translator,
+{
+    type Out = (A::Out, B::Out);
+
+    /// Translate into different flavor.
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<(A::Out, B::Out)> {
+        let (a, b) = self;
+
+        let a = a.translate(diag, translator)?;
+        let b = b.translate(diag, translator)?;
+
+        Ok((a, b))
+    }
+}
+
+pub struct Fields<T>(pub Vec<Loc<T>>);
 
 impl<T, F: 'static> Translate<T> for Fields<F::Field>
 where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = Vec<Loc<<T::Target as Flavor>::Field>>;
 
     /// Translate into different flavor.

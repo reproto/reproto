@@ -4,10 +4,7 @@ use ast::*;
 use attributes;
 use core::errors::Error;
 use core::flavored::*;
-use core::{
-    self, Attributes, BigInt, Diagnostics, Import, Loc, Range, Selection, Span, SymbolKind,
-    WithSpan,
-};
+use core::{self, BigInt, Diagnostics, Import, Loc, Range, Span, SymbolKind, WithSpan};
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
 use scope::Scope;
@@ -1715,6 +1712,7 @@ impl<'input> IntoModel for Value<'input> {
             Number(number) => core::RpValue::Number(number),
             Identifier(identifier) => core::RpValue::Identifier(identifier.to_string()),
             Array(inner) => core::RpValue::Array(inner.into_model(diag, scope)?),
+            Name(name) => core::RpValue::Name(name.into_model(diag, scope)?),
         };
 
         Ok(out)

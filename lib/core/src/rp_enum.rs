@@ -22,7 +22,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpEnumBody<T::Target>;
 
     /// Translate into different flavor.
@@ -147,7 +146,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpVariant<T::Target, V>;
 
     /// Translate into different flavor.
@@ -176,7 +174,10 @@ pub enum RpEnumType {
 }
 
 impl RpEnumType {
-    pub fn is_assignable_from(&self, value: &RpValue) -> bool {
+    pub fn is_assignable_from<F: 'static>(&self, value: &RpValue<F>) -> bool
+    where
+        F: Flavor,
+    {
         use self::RpEnumType::*;
 
         match (self, value) {
@@ -310,7 +311,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpVariants<T::Target>;
 
     /// Translate into different flavor.

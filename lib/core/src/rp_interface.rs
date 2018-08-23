@@ -94,7 +94,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpInterfaceBody<T::Target>;
 
     /// Translate into different flavor.
@@ -179,7 +178,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpSubType<T::Target>;
 
     /// Translate into different flavor.

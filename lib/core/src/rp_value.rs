@@ -1,19 +1,32 @@
 //! Value of models
 
 use errors::Result;
+use serde::Serialize;
 use std::fmt;
-use {Loc, RpNumber};
+use {Diagnostics, Flavor, Loc, RpName, RpNumber, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", content = "value", rename_all = "snake_case")]
-pub enum RpValue {
+#[serde(
+    tag = "type",
+    content = "value",
+    rename_all = "snake_case",
+    bound = "F::Package: Serialize"
+)]
+pub enum RpValue<F: 'static>
+where
+    F: Flavor,
+{
     String(String),
     Number(RpNumber),
     Identifier(String),
-    Array(Vec<Loc<RpValue>>),
+    Array(Vec<Loc<RpValue<F>>>),
+    Name(Loc<RpName<F>>),
 }
 
-impl RpValue {
+impl<F: 'static> RpValue<F>
+where
+    F: Flavor,
+{
     /// Treat as a string.
     pub fn as_str(&self) -> Result<&str> {
         use self::RpValue::*;
@@ -83,7 +96,10 @@ impl RpValue {
     }
 }
 
-impl fmt::Display for RpValue {
+impl<F: 'static> fmt::Display for RpValue<F>
+where
+    F: Flavor,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             RpValue::String(ref string) => write!(f, "\"{}\"", string),
@@ -105,6 +121,29 @@ impl fmt::Display for RpValue {
                 write!(f, "]")?;
                 Ok(())
             }
+            RpValue::Name(ref name) => name.fmt(f),
         }
+    }
+}
+
+impl<F: 'static, T> Translate<T> for RpValue<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Out = RpValue<T::Target>;
+
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpValue<T::Target>> {
+        use self::RpValue::*;
+
+        let out = match self {
+            String(string) => String(string),
+            Number(number) => Number(number),
+            Identifier(string) => Identifier(string),
+            Array(array) => Array(array.translate(diag, translator)?),
+            Name(name) => Name(name.translate(diag, translator)?),
+        };
+
+        Ok(out)
     }
 }

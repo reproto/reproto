@@ -129,7 +129,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpName<T::Target>;
 
     /// Translate into different flavor.

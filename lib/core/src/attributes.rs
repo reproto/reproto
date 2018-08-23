@@ -2,12 +2,14 @@
 //!
 //! These structures are all map-like.
 
+use errors::Result;
+use serde::Serialize;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::mem;
 use std::vec;
-use {Loc, RpValue, Span};
+use {Diagnostics, Flavor, Loc, RpValue, Span, Translate, Translator};
 
 /// Iterator over unused positions.
 pub struct Unused {
@@ -23,18 +25,25 @@ impl Iterator for Unused {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Selection {
+#[serde(bound = "F::Package: Serialize")]
+pub struct Selection<F: 'static>
+where
+    F: Flavor,
+{
     /// Storing words and their locations.
-    words: Vec<Loc<RpValue>>,
+    words: Vec<Loc<RpValue<F>>>,
     /// Storing values and their locations.
-    values: HashMap<String, (Loc<String>, Loc<RpValue>)>,
+    values: HashMap<String, (Loc<String>, Loc<RpValue<F>>)>,
 }
 
-impl Selection {
+impl<F: 'static> Selection<F>
+where
+    F: Flavor,
+{
     pub fn new(
-        words: Vec<Loc<RpValue>>,
-        values: HashMap<String, (Loc<String>, Loc<RpValue>)>,
-    ) -> Selection {
+        words: Vec<Loc<RpValue<F>>>,
+        values: HashMap<String, (Loc<String>, Loc<RpValue<F>>)>,
+    ) -> Selection<F> {
         Selection {
             words: words,
             values: values,
@@ -42,7 +51,7 @@ impl Selection {
     }
 
     /// Take the given value, removing it in the process.
-    pub fn take<Q: ?Sized>(&mut self, key: &Q) -> Option<Loc<RpValue>>
+    pub fn take<Q: ?Sized>(&mut self, key: &Q) -> Option<Loc<RpValue<F>>>
     where
         String: Borrow<Q>,
         Q: Hash + Eq,
@@ -51,12 +60,12 @@ impl Selection {
     }
 
     /// Take the given value, removing it in the process.
-    pub fn take_words(&mut self) -> Vec<Loc<RpValue>> {
+    pub fn take_words(&mut self) -> Vec<Loc<RpValue<F>>> {
         mem::replace(&mut self.words, vec![])
     }
 
     /// Take a single word.
-    pub fn take_word(&mut self) -> Option<Loc<RpValue>> {
+    pub fn take_word(&mut self) -> Option<Loc<RpValue<F>>> {
         self.words.pop()
     }
 
@@ -71,17 +80,39 @@ impl Selection {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct Attributes {
-    words: HashMap<String, Span>,
-    selections: HashMap<String, Loc<Selection>>,
+impl<F: 'static, T> Translate<T> for Selection<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Out = Selection<T::Target>;
+
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Selection<T::Target>> {
+        Ok(Selection {
+            words: self.words.translate(diag, translator)?,
+            values: self.values.translate(diag, translator)?,
+        })
+    }
 }
 
-impl Attributes {
+#[derive(Debug, Clone, Serialize)]
+#[serde(bound = "F::Package: Serialize")]
+pub struct Attributes<F: 'static>
+where
+    F: Flavor,
+{
+    words: HashMap<String, Span>,
+    selections: HashMap<String, Loc<Selection<F>>>,
+}
+
+impl<F: 'static> Attributes<F>
+where
+    F: Flavor,
+{
     pub fn new(
         words: HashMap<String, Span>,
-        selections: HashMap<String, Loc<Selection>>,
-    ) -> Attributes {
+        selections: HashMap<String, Loc<Selection<F>>>,
+    ) -> Attributes<F> {
         Attributes {
             words: words,
             selections: selections,
@@ -98,7 +129,7 @@ impl Attributes {
     }
 
     /// Take the given selection, removing it in the process.
-    pub fn take_selection<Q: ?Sized>(&mut self, key: &Q) -> Option<Loc<Selection>>
+    pub fn take_selection<Q: ?Sized>(&mut self, key: &Q) -> Option<Loc<Selection<F>>>
     where
         String: Borrow<Q>,
         Q: Hash + Eq,
@@ -114,5 +145,21 @@ impl Attributes {
         Unused {
             iter: positions.into_iter(),
         }
+    }
+}
+
+impl<F: 'static, T> Translate<T> for Attributes<F>
+where
+    F: Flavor,
+    T: Translator<Source = F>,
+{
+    type Out = Attributes<T::Target>;
+
+    /// Translate into different flavor.
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Attributes<T::Target>> {
+        Ok(Attributes {
+            words: self.words,
+            selections: self.selections.translate(diag, translator)?,
+        })
     }
 }

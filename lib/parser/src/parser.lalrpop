@@ -214,6 +214,7 @@ pub Value: Value<'input> = {
     <string:"string"> => Value::String(string),
     <number:number> => Value::Number(number),
     <id:Ident> => Value::Identifier(id),
+    <name:Loc<Name>> => Value::Name(name),
 };
 
 pub Type: Type<'input> = {

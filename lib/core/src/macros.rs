@@ -48,10 +48,12 @@ macro_rules! decl_flavor {
         pub type RpServiceBodyHttp = $source::RpServiceBodyHttp;
         pub type RpSubTypeStrategy = $source::RpSubTypeStrategy;
         pub type RpType = $source::RpType<$flavor>;
-        pub type RpValue = $source::RpValue;
+        pub type RpValue = $source::RpValue<$flavor>;
         pub type RpVariant<V> = $source::RpVariant<$flavor, V>;
         pub type RpVariantRef<'a> = $source::RpVariantRef<'a, $flavor>;
         pub type RpVersionedPackage = $source::RpVersionedPackage;
+        pub type Attributes = $source::Attributes<$flavor>;
+        pub type Selection = $source::Selection<$flavor>;
     };
 }
 

@@ -557,6 +557,7 @@ pub enum Value<'input> {
     Number(RpNumber),
     Identifier(Cow<'input, str>),
     Array(Vec<Loc<Value<'input>>>),
+    Name(Loc<Name<'input>>),
 }
 
 /// A part of a step.

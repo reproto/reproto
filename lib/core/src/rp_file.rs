@@ -91,7 +91,6 @@ where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Source = F;
     type Out = RpFile<T::Target>;
 
     /// Translate into different flavor.
