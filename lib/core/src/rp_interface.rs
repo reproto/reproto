@@ -3,8 +3,6 @@
 use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
-use std::slice;
-use std::vec;
 use translator;
 use {Diagnostics, Flavor, FlavorField, Loc, RpCode, RpDecl, RpReg, Translate, Translator};
 
@@ -37,55 +35,12 @@ decl_body!(pub struct RpInterfaceBody<F> {
     pub sub_type_strategy: RpSubTypeStrategy,
 });
 
-/// Iterator over fields.
-pub struct Fields<'a, F: 'static>
-where
-    F: Flavor,
-{
-    iter: slice::Iter<'a, Loc<F::Field>>,
-}
-
-impl<'a, F: 'static> Iterator for Fields<'a, F>
-where
-    F: Flavor,
-{
-    type Item = &'a Loc<F::Field>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
-/// Iterator over discriminating sub-type fields.
-///
-/// Discriminating fields are ones which makes this sub-type unique, and are used to distinguish
-/// between different untagged sub-types.
-pub struct DiscriminatingFields<'a, F: 'static>
-where
-    F: Flavor,
-{
-    iter: vec::IntoIter<&'a Loc<F::Field>>,
-}
-
-impl<'a, F: 'static> Iterator for DiscriminatingFields<'a, F>
-where
-    F: Flavor,
-{
-    type Item = &'a Loc<F::Field>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
 impl<F: 'static> RpInterfaceBody<F>
 where
     F: Flavor,
 {
-    pub fn fields(&self) -> Fields<F> {
-        Fields {
-            iter: self.fields.iter(),
-        }
+    pub fn fields<'a>(&'a self) -> impl Iterator<Item = &'a Loc<F::Field>> {
+        self.fields.iter()
     }
 }
 
@@ -153,23 +108,19 @@ where
     }
 
     /// Access all fields of the sub type.
-    pub fn fields(&self) -> Fields<F> {
-        Fields {
-            iter: self.fields.iter(),
-        }
+    pub fn fields<'a>(&'a self) -> impl Iterator<Item = &'a Loc<F::Field>> {
+        self.fields.iter()
     }
 
     /// Access the set of fields which are used to make this sub-type unique.
-    pub fn discriminating_fields(&self) -> DiscriminatingFields<F> {
+    pub fn discriminating_fields<'a>(&'a self) -> impl Iterator<Item = &'a Loc<F::Field>> {
         let fields = self
             .fields
             .iter()
             .filter(|f| f.is_discriminating())
             .collect::<Vec<_>>();
 
-        DiscriminatingFields {
-            iter: fields.into_iter(),
-        }
+        fields.into_iter()
     }
 }
 

@@ -4,7 +4,6 @@ extern crate reproto_lexer as lexer;
 use core::{Loc, RpNumber, Span};
 use std::borrow::Cow;
 use std::ops;
-use std::vec;
 
 /// Items can be commented and have attributes.
 ///
@@ -127,7 +126,7 @@ impl<'input> Decl<'input> {
     }
 
     /// Get all the sub-declarations of this declaraiton.
-    pub fn decls(&self) -> Decls {
+    pub fn decls(&self) -> impl Iterator<Item = &Decl<'input>> {
         use self::Decl::*;
 
         let decls = match *self {
@@ -138,9 +137,7 @@ impl<'input> Decl<'input> {
             Service(ref body) => body.decls(),
         };
 
-        Decls {
-            iter: decls.into_iter(),
-        }
+        decls.into_iter()
     }
 
     /// Comment.
@@ -154,18 +151,6 @@ impl<'input> Decl<'input> {
             Enum(ref body) => &body.comment,
             Service(ref body) => &body.comment,
         }
-    }
-}
-
-pub struct Decls<'a, 'input: 'a> {
-    iter: vec::IntoIter<&'a Decl<'input>>,
-}
-
-impl<'a, 'input: 'a> Iterator for Decls<'a, 'input> {
-    type Item = &'a Decl<'input>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
     }
 }
 

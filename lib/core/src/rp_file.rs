@@ -3,7 +3,7 @@
 use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
-use std::collections::LinkedList;
+use std::collections::VecDeque;
 use {Diagnostics, Flavor, RpDecl, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
@@ -28,7 +28,7 @@ pub struct ForEachDecl<'a, F: 'static>
 where
     F: Flavor,
 {
-    queue: LinkedList<&'a RpDecl<F>>,
+    queue: VecDeque<&'a RpDecl<F>>,
 }
 
 impl<'a, F: 'static> Iterator for ForEachDecl<'a, F>
@@ -53,7 +53,7 @@ where
 {
     /// Iterate over all declarations in file.
     pub fn for_each_decl(&self) -> ForEachDecl<F> {
-        let mut queue = LinkedList::new();
+        let mut queue = VecDeque::new();
         queue.extend(self.decls.iter());
         ForEachDecl { queue: queue }
     }

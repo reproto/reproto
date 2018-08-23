@@ -8,21 +8,7 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::mem;
-use std::vec;
 use {Diagnostics, Flavor, Loc, RpValue, Span, Translate, Translator};
-
-/// Iterator over unused positions.
-pub struct Unused {
-    iter: vec::IntoIter<Span>,
-}
-
-impl Iterator for Unused {
-    type Item = Span;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F::Package: Serialize")]
@@ -70,13 +56,11 @@ where
     }
 
     /// Get an iterator over unused positions.
-    pub fn unused(&self) -> Unused {
+    pub fn unused(&self) -> impl Iterator<Item = Span> {
         let mut positions = Vec::new();
         positions.extend(self.words.iter().map(|v| Loc::span(v)));
         positions.extend(self.values.values().map(|v| Loc::span(&v.0)));
-        Unused {
-            iter: positions.into_iter(),
-        }
+        positions.into_iter()
     }
 }
 
@@ -138,13 +122,11 @@ where
     }
 
     /// Get an iterator over unused positions.
-    pub fn unused(&self) -> Unused {
+    pub fn unused(&self) -> impl Iterator<Item = Span> {
         let mut positions = Vec::new();
         positions.extend(self.words.values());
         positions.extend(self.selections.values().map(Loc::span));
-        Unused {
-            iter: positions.into_iter(),
-        }
+        positions.into_iter()
     }
 }
 

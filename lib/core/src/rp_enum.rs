@@ -269,7 +269,9 @@ where
     F: Flavor,
 {
     /// Iterate over all variants in a type-erasured manner.
-    pub fn iter(&self) -> RpVariantsIter<F> {
+    ///
+    /// Each variant being iterator over has a value which is reflected by the `RpVariantValue` enum.
+    pub fn iter<'a>(&'a self) -> RpVariantsIter<'a, F> {
         use self::RpVariants::*;
 
         macro_rules! variants {

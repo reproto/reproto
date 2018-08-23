@@ -1,7 +1,6 @@
 //! Reporter for spanned diagnostics.
 use flavored::RpName;
 use std::fmt;
-use std::slice;
 use {Source, Span};
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -83,10 +82,8 @@ impl Diagnostics {
     }
 
     /// Iterate over all reporter items.
-    pub fn items(&self) -> Items {
-        Items {
-            iter: self.items.iter(),
-        }
+    pub fn items(&self) -> impl Iterator<Item = &Diagnostic> {
+        self.items.iter()
     }
 }
 
@@ -175,39 +172,7 @@ impl SourceDiagnostics {
     }
 
     /// Iterate over all reporter items.
-    pub fn items(&self) -> SourceItems {
-        SourceItems {
-            iter: self.items.iter(),
-        }
-    }
-}
-
-/// Iterator over items.
-///
-/// Created using `Diagnostics::items`.
-pub struct Items<'a> {
-    iter: slice::Iter<'a, Diagnostic>,
-}
-
-impl<'a> Iterator for Items<'a> {
-    type Item = <slice::Iter<'a, Diagnostic> as Iterator>::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
-/// Iterator over source items.
-///
-/// Created using `SourceDiagnostics::items`.
-pub struct SourceItems<'a> {
-    iter: slice::Iter<'a, (Source, Diagnostic)>,
-}
-
-impl<'a> Iterator for SourceItems<'a> {
-    type Item = <slice::Iter<'a, (Source, Diagnostic)> as Iterator>::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+    pub fn items(&self) -> impl Iterator<Item = &(Source, Diagnostic)> {
+        self.items.iter()
     }
 }

@@ -3,30 +3,10 @@
 use errors::Result;
 use serde::Serialize;
 use std::fmt;
-use std::vec;
 use {
     Diagnostics, Flavor, Loc, RpEnumBody, RpInterfaceBody, RpReg, RpServiceBody, RpSubType,
     RpTupleBody, RpTypeBody, RpVariantRef, Span, Translate, Translator,
 };
-
-/// Iterator over declarations.
-pub struct Decls<'a, F: 'static>
-where
-    F: Flavor,
-{
-    iter: vec::IntoIter<&'a RpDecl<F>>,
-}
-
-impl<'a, F: 'static> Iterator for Decls<'a, F>
-where
-    F: Flavor,
-{
-    type Item = &'a RpDecl<F>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
 
 #[derive(Debug, Clone)]
 pub enum RpNamed<'a, F: 'static>
@@ -99,22 +79,22 @@ where
     F: Flavor,
 {
     /// Access all declarations as an iterator.
-    pub fn decls(&self) -> Decls<F> {
+    pub fn decls(&self) -> impl Iterator<Item = &RpDecl<F>> {
         use self::RpDecl::*;
 
-        let iter = match *self {
-            Type(ref body) => body.decls.iter().collect::<Vec<_>>().into_iter(),
+        let decls = match *self {
+            Type(ref body) => body.decls.iter().collect::<Vec<_>>(),
             Interface(ref body) => {
                 let mut decls = body.decls.iter().collect::<Vec<_>>();
                 decls.extend(body.sub_types.iter().flat_map(|s| s.decls.iter()));
-                decls.into_iter()
+                decls
             }
-            Enum(ref body) => body.decls.iter().collect::<Vec<_>>().into_iter(),
-            Tuple(ref body) => body.decls.iter().collect::<Vec<_>>().into_iter(),
-            Service(ref body) => body.decls.iter().collect::<Vec<_>>().into_iter(),
+            Enum(ref body) => body.decls.iter().collect::<Vec<_>>(),
+            Tuple(ref body) => body.decls.iter().collect::<Vec<_>>(),
+            Service(ref body) => body.decls.iter().collect::<Vec<_>>(),
         };
 
-        Decls { iter: iter }
+        decls.into_iter()
     }
 
     /// Get the identifier of the declaration.

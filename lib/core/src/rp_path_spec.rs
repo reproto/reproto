@@ -2,7 +2,6 @@
 
 use errors::Result;
 use std::fmt;
-use std::vec;
 use {Diagnostics, Flavor, RpEndpointArgument, Translate, Translator};
 
 /// A part of a step.
@@ -107,44 +106,22 @@ where
     pub steps: Vec<RpPathStep<F>>,
 }
 
-#[derive(Debug)]
-pub struct Vars<'a, F: 'static>
-where
-    F: Flavor,
-{
-    iter: vec::IntoIter<&'a RpEndpointArgument<F>>,
-}
-
-impl<'a, F: 'static> Iterator for Vars<'a, F>
-where
-    F: Flavor,
-{
-    type Item = &'a RpEndpointArgument<F>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
 impl<F: 'static> RpPathSpec<F>
 where
     F: Flavor,
 {
     /// List all variables in the path spec.
-    pub fn vars(&self) -> Vars<F> {
-        let mut vars = Vec::new();
-
-        for step in &self.steps {
-            for part in &step.parts {
-                if let RpPathPart::Variable(ref var) = *part {
-                    vars.push(var);
-                }
-            }
-        }
-
-        Vars {
-            iter: vars.into_iter(),
-        }
+    pub fn vars<'a>(&'a self) -> impl Iterator<Item = &'a RpEndpointArgument<F>> {
+        self.steps
+            .iter()
+            .flat_map(|s| s.parts.iter())
+            .flat_map(|p| {
+                if let RpPathPart::Variable(ref var) = *p {
+                    Some(var)
+                } else {
+                    None
+                }.into_iter()
+            })
     }
 }
 

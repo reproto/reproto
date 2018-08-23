@@ -1,70 +1,7 @@
 use core::errors::Result;
 use core::{Flavor, RpDecl, RpFile, RpName, RpReg};
 use linked_hash_map::LinkedHashMap;
-use std::collections::{btree_map, BTreeMap, LinkedList};
-use std::vec;
-
-/// Iterate over all files in the environment.
-pub struct ForEachFile<'a, F: 'static>
-where
-    F: Flavor,
-{
-    iter: btree_map::Iter<'a, F::Package, RpFile<F>>,
-}
-
-impl<'a, F: 'static> Iterator for ForEachFile<'a, F>
-where
-    F: Flavor,
-{
-    type Item = (&'a F::Package, &'a RpFile<F>);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
-/// Iterator over all toplevel declarations.
-pub struct ToplevelDeclIter<'a, F: 'static>
-where
-    F: Flavor,
-{
-    it: vec::IntoIter<&'a RpDecl<F>>,
-}
-
-impl<'a, F: 'static> Iterator for ToplevelDeclIter<'a, F>
-where
-    F: Flavor,
-{
-    type Item = &'a RpDecl<F>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.it.next()
-    }
-}
-
-/// Iterator over all declarations in a file.
-pub struct DeclIter<'a, F: 'static>
-where
-    F: Flavor,
-{
-    queue: LinkedList<&'a RpDecl<F>>,
-}
-
-impl<'a, F: 'static> Iterator for DeclIter<'a, F>
-where
-    F: Flavor,
-{
-    type Item = &'a RpDecl<F>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(decl) = self.queue.pop_front() {
-            self.queue.extend(decl.decls());
-            Some(decl)
-        } else {
-            None
-        }
-    }
-}
+use std::collections::{BTreeMap, LinkedList};
 
 /// An environment that has been translated into a target environment.
 pub struct Translated<F: 'static>
@@ -115,23 +52,19 @@ where
     }
 
     /// Iterate over all files.
-    pub fn for_each_file(&self) -> ForEachFile<F> {
-        ForEachFile {
-            iter: self.files.iter(),
-        }
+    pub fn for_each_file<'a>(&'a self) -> impl Iterator<Item = (&'a F::Package, &'a RpFile<F>)> {
+        self.files.iter()
     }
 
     /// Iterate over top level declarations of all registered objects.
-    pub fn toplevel_decl_iter(&self) -> ToplevelDeclIter<F> {
+    pub fn toplevel_decl_iter<'a>(&'a self) -> impl Iterator<Item = &'a RpDecl<F>> {
         let values = self
             .files
             .values()
             .flat_map(|f| f.decls.iter())
             .collect::<Vec<_>>();
 
-        ToplevelDeclIter {
-            it: values.into_iter(),
-        }
+        values.into_iter()
     }
 
     /// Walks the entire tree of declarations recursively of all registered objects.
@@ -139,5 +72,29 @@ where
         let mut queue = LinkedList::new();
         queue.extend(self.files.values().flat_map(|f| f.decls.iter()));
         DeclIter { queue: queue }
+    }
+}
+
+/// Iterator over all declarations in a file.
+pub struct DeclIter<'a, F: 'static>
+where
+    F: Flavor,
+{
+    queue: LinkedList<&'a RpDecl<F>>,
+}
+
+impl<'a, F: 'static> Iterator for DeclIter<'a, F>
+where
+    F: Flavor,
+{
+    type Item = &'a RpDecl<F>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(decl) = self.queue.pop_front() {
+            self.queue.extend(decl.decls());
+            Some(decl)
+        } else {
+            None
+        }
     }
 }

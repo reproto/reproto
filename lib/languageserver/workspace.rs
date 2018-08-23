@@ -68,10 +68,8 @@ impl Workspace {
     }
 
     /// Access all files in the workspace.
-    pub fn files<'a>(&'a self) -> Files<'a> {
-        Files {
-            files: self.files.values(),
-        }
+    pub fn files<'a>(&'a self) -> impl Iterator<Item = &LoadedFile> {
+        self.files.values()
     }
 
     /// Access the loaded file with the given Url.
@@ -1009,19 +1007,6 @@ impl Workspace {
             .map_err(|_| format!("cannot convert to url: {}", self.manifest_path.display()))?;
 
         Ok(url)
-    }
-}
-
-/// Iterator over all files.
-pub struct Files<'a> {
-    files: hash_map::Values<'a, Url, LoadedFile>,
-}
-
-impl<'a> Iterator for Files<'a> {
-    type Item = &'a LoadedFile;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.files.next()
     }
 }
 

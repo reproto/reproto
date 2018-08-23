@@ -28,6 +28,7 @@ impl<'a> DoubleEndedIterator for Parts<'a> {
 }
 
 impl<'a> Parts<'a> {
+    /// Treat the remaining iterator as a slice.
     pub fn as_slice(&self) -> &'a [String] {
         self.iter.as_slice()
     }
