@@ -85,6 +85,16 @@ where
         }
     }
 
+    /// Convert into identifier.
+    pub fn into_identifier(self) -> Result<String> {
+        use self::RpValue::*;
+
+        match self {
+            Identifier(string) => Ok(string),
+            _ => Err("expected identifier".into()),
+        }
+    }
+
     /// Is this value a string.
     pub fn is_string(&self) -> bool {
         use self::RpValue::*;

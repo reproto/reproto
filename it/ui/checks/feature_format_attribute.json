@@ -1,0 +1,26 @@
+{
+  "status": false,
+  "stdout": [
+    "error when building",
+    "suppressed: error in environment",
+    "it/ui/proto/feature_format_attribute.reproto:6:19-27:",
+    "  6:   datetime_field: datetime;",
+    "                       ^^^^^^^^ - type not supported since feature `format_attribute` is active",
+    "it/ui/proto/feature_format_attribute.reproto:2:12-28:",
+    "  2: #![feature(format_attribute)]",
+    "                ^^^^^^^^^^^^^^^^ - feature activated here",
+    "it/ui/proto/feature_format_attribute.reproto:6:19-27:",
+    "  6:   datetime_field: datetime;",
+    "                       ^^^^^^^^ - HINT: use #[format(\"datetime\")] attribute on a `string` field instead",
+    "it/ui/proto/feature_format_attribute.reproto:9:16-21:",
+    "  9:   bytes_field: bytes;",
+    "                    ^^^^^ - type not supported since feature `format_attribute` is active",
+    "it/ui/proto/feature_format_attribute.reproto:2:12-28:",
+    "  2: #![feature(format_attribute)]",
+    "                ^^^^^^^^^^^^^^^^ - feature activated here",
+    "it/ui/proto/feature_format_attribute.reproto:9:16-21:",
+    "  9:   bytes_field: bytes;",
+    "                    ^^^^^ - HINT: use #[format(\"bytes\")] attribute on a `string` field instead"
+  ],
+  "stderr": []
+}

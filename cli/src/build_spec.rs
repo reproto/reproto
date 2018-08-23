@@ -1,8 +1,9 @@
 use clap::ArgMatches;
 use core::errors::{Error, Result, ResultExt};
 use core::{
-    CoreFlavor, Flavor, Reporter, Resolved, ResolvedByPrefix, Resolver, RpChannel, RpPackage,
-    RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source, SourceDiagnostics, Version,
+    CoreFlavor, Flavor, Reporter, Resolved, ResolvedByPrefix, Resolver, RpChannel, RpFile,
+    RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source, SourceDiagnostics,
+    Version,
 };
 use env;
 use manifest::{self, Lang, Language, Manifest, Publish};
@@ -144,7 +145,7 @@ where
     let package_prefix = manifest.package_prefix.clone();
 
     let mut env = lang
-        .into_env(package_prefix, reporter, resolver)
+        .into_env(package_prefix, reporter, resolver)?
         .with_path_hook(path_hook);
 
     let mut errors: Vec<Error> = Vec::new();
@@ -186,7 +187,11 @@ where
 }
 
 /// Argument match.
-pub struct Match(pub Version, pub Source, pub RpPackage);
+pub struct Match {
+    pub version: Version,
+    pub source: Source,
+    pub package: RpPackage,
+}
 
 /// Setup matches from a publish manifest.
 pub fn publish_matches<'a, I>(
@@ -217,7 +222,11 @@ where
             }
 
             let version = version_override.unwrap_or(&publish.version).clone();
-            results.push(Match(version, source, package.package));
+            results.push(Match {
+                version,
+                source,
+                package: package.package,
+            });
         }
     }
 
@@ -259,7 +268,11 @@ where
             .or(version)
             .ok_or_else(|| format!("no version for package: {}", package.package))?;
 
-        results.push(Match(version, source, package.package.clone()));
+        results.push(Match {
+            version,
+            source,
+            package: package.package.clone(),
+        });
     }
 
     Ok(results)
@@ -269,33 +282,32 @@ pub fn semck_check(
     errors: &mut Vec<Error>,
     repository: &mut Repository,
     env: &mut Environment<CoreFlavor>,
-    m: &Match,
+    version_to: &Version,
+    source_to: &Source,
+    package_to: &RpVersionedPackage,
+    file_to: &RpFile<CoreFlavor>,
 ) -> Result<()> {
-    let Match(ref version, ref next, ref package) = *m;
-
     // perform semck verification
     if let Some(d) = repository
-        .all(package)?
+        .all(&package_to.package)?
         .into_iter()
-        .filter(|d| d.version <= *version && !d.version.is_prerelease())
+        .filter(|d| d.version <= *version_to && !d.version.is_prerelease())
         .last()
     {
-        debug!("Checking semantics of {} -> {}", d.version, version);
+        debug!("Checking semantics of {} -> {}", d.version, version_to);
 
         let current = repository
             .get_object(&d)?
             .ok_or_else(|| format!("No object found for deployment: {:?}", d))?;
 
-        let name = RpPackageFormat(package, Some(&d.version)).to_string();
+        let name = RpPackageFormat(&package_to.package, Some(&d.version)).to_string();
         let current = current.with_name(name);
 
-        let package_from = RpVersionedPackage::new(package.clone(), Some(d.version.clone()));
+        let package_from =
+            RpVersionedPackage::new(package_to.package.clone(), Some(d.version.clone()));
         let file_from = env.load_source(current.clone(), &package_from)?;
 
-        let package_to = RpVersionedPackage::new(package.clone(), Some(version.clone()));
-        let file_to = env.load_source(next.clone(), &package_to)?;
-
-        let violations = semck::check((&d.version, &file_from), (&version, &file_to))?;
+        let violations = semck::check((&d.version, &file_from), (&version_to, file_to))?;
 
         if !violations.is_empty() {
             errors.push(Error::new(format!(
@@ -306,7 +318,7 @@ pub fn semck_check(
             let mut diag = SourceDiagnostics::new();
 
             for v in violations {
-                handle_violation(&mut diag, &current, next, v)?;
+                handle_violation(&mut diag, &current, source_to, v)?;
             }
 
             env.reporter.source_diagnostics(diag);
@@ -318,7 +330,7 @@ pub fn semck_check(
     fn handle_violation(
         diag: &mut SourceDiagnostics,
         current: &Source,
-        next: &Source,
+        source_to: &Source,
         violation: semck::Violation,
     ) -> Result<()> {
         use semck::Violation::*;
@@ -332,7 +344,11 @@ pub fn semck_check(
                 );
             }
             DeclAdded(c, reg) => {
-                diag.err(next, reg, format!("{}: declaration added", c.describe()));
+                diag.err(
+                    source_to,
+                    reg,
+                    format!("{}: declaration added", c.describe()),
+                );
             }
             RemoveField(c, field) => {
                 diag.err(current, field, format!("{}: field removed", c.describe()));
@@ -341,14 +357,14 @@ pub fn semck_check(
                 diag.err(current, field, format!("{}: variant removed", c.describe()));
             }
             AddField(c, field) => {
-                diag.err(next, field, format!("{}: field added", c.describe()));
+                diag.err(source_to, field, format!("{}: field added", c.describe()));
             }
             AddVariant(c, field) => {
-                diag.err(next, field, format!("{}: variant added", c.describe()));
+                diag.err(source_to, field, format!("{}: variant added", c.describe()));
             }
             FieldTypeChange(c, from_type, from, to_type, to) => {
                 diag.err(
-                    next,
+                    source_to,
                     to,
                     format!("{}: type changed to `{}`", c.describe(), to_type),
                 );
@@ -356,7 +372,7 @@ pub fn semck_check(
             }
             FieldNameChange(c, from_name, from, to_name, to) => {
                 diag.err(
-                    next,
+                    source_to,
                     to,
                     format!("{}: name changed to `{}`", c.describe(), to_name),
                 );
@@ -364,7 +380,7 @@ pub fn semck_check(
             }
             VariantOrdinalChange(c, from_ordinal, from, to_ordinal, to) => {
                 diag.err(
-                    next,
+                    source_to,
                     to,
                     format!("{}: ordinal changed to `{}`", c.describe(), to_ordinal),
                 );
@@ -372,7 +388,7 @@ pub fn semck_check(
             }
             FieldRequiredChange(c, from, to) => {
                 diag.err(
-                    next,
+                    source_to,
                     to,
                     format!("{}: field changed to be required`", c.describe(),),
                 );
@@ -380,28 +396,28 @@ pub fn semck_check(
             }
             AddRequiredField(c, field) => {
                 diag.err(
-                    next,
+                    source_to,
                     field,
                     format!("{}: required field added", c.describe()),
                 );
             }
             FieldModifierChange(c, from, to) => {
                 diag.err(
-                    next,
+                    source_to,
                     to,
                     format!("{}: field modifier changed", c.describe()),
                 );
                 diag.info(current, from, "from here");
             }
             AddEndpoint(c, span) => {
-                diag.err(next, span, format!("{}: endpoint added", c.describe()));
+                diag.err(source_to, span, format!("{}: endpoint added", c.describe()));
             }
             RemoveEndpoint(c, span) => {
                 diag.err(current, span, format!("{}: endpoint removed", c.describe()));
             }
             EndpointRequestChange(c, from_channel, from, to_channel, to) => {
                 diag.err(
-                    next,
+                    source_to,
                     to,
                     format!(
                         "{}: request type changed to `{}`",
@@ -417,7 +433,7 @@ pub fn semck_check(
             }
             EndpointResponseChange(c, from_channel, from, to_channel, to) => {
                 diag.err(
-                    next,
+                    source_to,
                     to,
                     format!(
                         "{}: response type changed to `{}`",

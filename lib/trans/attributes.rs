@@ -1,14 +1,95 @@
 //! Handle parsing of attributes.
 
+use core::errors::Error;
 use core::flavored::{
     Attributes, RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp, RpHttpMethod, RpPathSpec,
     RpValue,
 };
-use core::{self, Diagnostics, Import, Loc, Span, WithSpan};
+use core::{self, Diagnostics, Import, Loc, Span, Version, WithSpan};
+use features::Feature;
 use into_model::IntoModel;
 use path_parser;
 use scope::Scope;
 use std::collections::HashMap;
+
+/// `#![feature(..)]` attributes.
+pub fn features<'s, I>(
+    scope: &'s Scope<I>,
+    diag: &mut Diagnostics,
+    attributes: &mut Attributes,
+) -> Result<Vec<Loc<&'s Feature>>, ()>
+where
+    I: Import,
+{
+    let selection = match attributes.take_selection("feature") {
+        Some(selection) => selection,
+        None => return Ok(vec![]),
+    };
+
+    let mut out = Vec::new();
+
+    let (mut selection, _) = Loc::take_pair(selection);
+
+    for feature in selection.take_words() {
+        let (feature, span) = Loc::take_pair(feature);
+
+        let feature = match feature.into_identifier() {
+            Ok(feature) => feature,
+            Err(e) => {
+                diag.err(span, e.display());
+                continue;
+            }
+        };
+
+        let feature = match scope.features.get(&feature) {
+            Some(feature) => feature,
+            None => {
+                diag.err(span, "no such feature");
+                continue;
+            }
+        };
+
+        out.push(Loc::new(feature, span));
+    }
+
+    check_selection!(diag, selection);
+
+    if diag.has_errors() {
+        return Err(());
+    }
+
+    Ok(out)
+}
+
+#[derive(Debug, Default)]
+pub struct Reproto {
+    pub version: Option<Version>,
+}
+
+/// `#![reproto(..)]` attribute.
+pub fn reproto(diag: &mut Diagnostics, attributes: &mut Attributes) -> Result<Reproto, ()> {
+    let mut reproto = Reproto::default();
+
+    let mut selection = match attributes.take_selection("reproto") {
+        Some(selection) => selection,
+        None => return Ok(reproto),
+    };
+
+    if let Some(version) = selection.take("version") {
+        let (mut version, span) = Loc::take_pair(version);
+
+        let v = version
+            .as_string()
+            .map_err(|_| Error::from("expected string"))
+            .and_then(|v| Version::parse(v).map_err(|e| format!("bad version: {}", e).into()))
+            .with_span(diag, &span)?;
+
+        reproto.version = Some(v);
+    };
+
+    check_selection!(diag, selection);
+    Ok(reproto)
+}
 
 /// `#[reserved(..)]` attribute.
 pub fn reserved(
@@ -217,4 +298,53 @@ pub fn import(diag: &mut Diagnostics, attributes: &mut Attributes) -> Result<Vec
     }
 
     Ok(out)
+}
+
+pub enum StringFormat {
+    DateTime,
+    Bytes,
+}
+
+/// `#[format(..)]` attributes on string fields.
+pub fn string_format(
+    diag: &mut Diagnostics,
+    attributes: &mut Attributes,
+) -> Result<Option<Loc<StringFormat>>, ()> {
+    let selection = match attributes.take_selection("format") {
+        Some(selection) => selection,
+        None => return Ok(None),
+    };
+
+    let (mut selection, attribute_span) = Loc::take_pair(selection);
+
+    let format = match selection.take_word() {
+        Some(format) => format,
+        None => {
+            diag.err(attribute_span, "expected argument");
+            return Err(());
+        }
+    };
+
+    let (format, span) = Loc::take_pair(format);
+
+    let format = match format.into_string() {
+        Ok(format) => format,
+        Err(e) => {
+            diag.err(span, e.display());
+            return Err(());
+        }
+    };
+
+    let format = match format.as_str() {
+        "datetime" => StringFormat::DateTime,
+        "bytes" => StringFormat::Bytes,
+        _ => {
+            diag.err(span, "unexpected format");
+            diag.info(span, "HINT: expected one of `datetime` or `bytes`");
+            return Err(());
+        }
+    };
+
+    check_selection!(diag, selection);
+    Ok(Some(Loc::new(format, attribute_span)))
 }

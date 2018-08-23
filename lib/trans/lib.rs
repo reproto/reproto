@@ -35,6 +35,7 @@ macro_rules! check_selection {
 
 mod attributes;
 pub mod environment;
+mod features;
 mod into_model;
 mod scope;
 pub mod translated;

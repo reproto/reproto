@@ -4,7 +4,9 @@ use ast::*;
 use attributes;
 use core::errors::Error;
 use core::flavored::*;
-use core::{self, BigInt, Diagnostics, Import, Loc, Range, Span, SymbolKind, WithSpan};
+use core::{
+    self, BigInt, Diagnostics, EnabledFeature, Import, Loc, Range, Span, SymbolKind, WithSpan,
+};
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
 use scope::Scope;
@@ -567,7 +569,7 @@ where
 fn build_safe_ident<I, N>(scope: &mut Scope<I>, ident: &str, naming: N) -> Option<String>
 where
     I: Import,
-    N: FnOnce(&Scope<I>) -> Option<&Naming>,
+    N: for<'a> FnOnce(&'a Scope<I>) -> Option<&'a Naming>,
 {
     if let Some(ident_naming) = naming(scope) {
         let converted = ident_naming.convert(ident);
@@ -591,8 +593,8 @@ fn build_item_name<I, A, B>(
     default_ident_naming: B,
 ) -> (String, Option<String>, Option<String>)
 where
-    A: FnOnce(&Scope<I>) -> Option<&Naming>,
-    B: FnOnce(&Scope<I>) -> Option<&Naming>,
+    A: for<'a> FnOnce(&'a Scope<I>) -> Option<&'a Naming>,
+    B: for<'a> FnOnce(&'a Scope<I>) -> Option<&'a Naming>,
     I: Import,
 {
     let safe_ident = build_safe_ident(scope, ident, default_ident_naming);
@@ -644,20 +646,91 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
             Scope::field_ident_naming,
         );
 
-        let attributes = attributes.into_model(diag, scope)?;
+        let mut attributes = attributes.into_model(diag, scope)?;
+
+        let ty = handle_format_attribute(diag, scope, &mut attributes, item.ty)?;
+
         check_attributes!(diag, attributes);
 
-        Ok(Loc::new(
+        return Ok(Loc::new(
             RpField {
                 required: item.required,
                 safe_ident: safe_ident,
                 ident: ident,
                 comment: Comment(&comment).into_model(diag, scope)?,
-                ty: item.ty.into_model(diag, scope)?,
+                ty: ty.into_model(diag, scope)?,
                 field_as: field_as,
             },
             span,
-        ))
+        ));
+
+        fn handle_format_attribute<'input, I>(
+            diag: &mut Diagnostics,
+            scope: &mut Scope<I>,
+            attributes: &mut Attributes,
+            ty: Loc<Type<'input>>,
+        ) -> Result<Loc<Type<'input>>>
+        where
+            I: Import,
+        {
+            let format = attributes::string_format(diag, attributes)?;
+
+            // TODO: convert String into a richer type instead of just punting it.
+            let feature = match scope.feature("format_attribute") {
+                None => {
+                    // not allowed unless feature is active.
+                    if let Some(span) = format.as_ref().map(Loc::span) {
+                        diag.err(span, "attribute not supported");
+                        diag.info(span, "HINT: use #![feature(format_attribute)] to enable");
+                        return Err(());
+                    }
+
+                    return Ok(ty);
+                }
+                Some(feature) => feature,
+            };
+
+            let (ty, span) = Loc::take_pair(ty);
+
+            // report error on types that should be declared using a format attribute.
+            let ty = match ty {
+                Type::Bytes => {
+                    scope.feature_err(diag, feature, span, "type not supported");
+
+                    diag.info(
+                        span,
+                        "HINT: use #[format(\"bytes\")] attribute on a `string` field instead",
+                    );
+                    return Err(());
+                }
+                Type::DateTime => {
+                    scope.feature_err(diag, feature, span, "type not supported");
+
+                    diag.info(
+                        span,
+                        "HINT: use #[format(\"datetime\")] attribute on a `string` field instead",
+                    );
+                    return Err(());
+                }
+                Type::String => {
+                    if let Some(format) = format.map(Loc::take) {
+                        match format {
+                            attributes::StringFormat::DateTime => Type::DateTime,
+                            attributes::StringFormat::Bytes => Type::Bytes,
+                        }
+                    } else {
+                        Type::String
+                    }
+                }
+                ty => ty,
+            };
+
+            if diag.has_errors() {
+                return Err(());
+            }
+
+            Ok(Loc::new(ty, span))
+        }
     }
 }
 
@@ -761,6 +834,26 @@ impl<'input> IntoModel for File<'input> {
 
         let mut attributes = self.attributes.into_model(diag, scope)?;
 
+        let reproto = attributes::reproto(diag, &mut attributes)?;
+        scope.declared_version = reproto.version;
+
+        let mut features = LinkedHashMap::new();
+        let mut activated_features = HashMap::new();
+
+        for feature in attributes::features(scope, diag, &mut attributes)? {
+            let (feature, span) = Loc::borrow_pair(&feature);
+
+            if let Some(e) = features.insert(feature.name, EnabledFeature { span }) {
+                diag.err(span, "feature already activated");
+                diag.info(e.span, "already activated here");
+                return Err(());
+            }
+
+            activated_features.insert(feature.name, span);
+        }
+
+        scope.activated_features = activated_features;
+
         if let Some(endpoint_naming) = attributes.take_selection("endpoint_naming") {
             let (mut endpoint_naming, span) = Loc::take_pair(endpoint_naming);
 
@@ -808,6 +901,8 @@ impl<'input> IntoModel for File<'input> {
 
         return Ok(RpFile {
             comment: Comment(&self.comment).into_model(diag, scope)?,
+            version: scope.version().clone(),
+            features,
             decls,
             decl_idents,
         });

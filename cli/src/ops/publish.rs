@@ -1,7 +1,7 @@
 use build_spec::{load_manifest, matches, publish_matches, semck_check, simple_config, Match};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::errors::*;
-use core::{Reporter, RpRequiredPackage, Version};
+use core::{Diagnostics, Reporter, RpRequiredPackage, RpVersionedPackage, Version};
 use env;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
@@ -84,31 +84,65 @@ pub fn entry(reporter: &mut Reporter, m: &ArgMatches) -> Result<()> {
 
     // errors that would prevent publishing
     let mut semck_errors = Vec::new();
+    let mut feature_ok = true;
 
     for m in &results {
-        semck_check(&mut semck_errors, &mut repository, &mut env, &m)?;
-    }
+        let Match {
+            ref version,
+            ref source,
+            ref package,
+        } = m;
 
-    if semck_errors.len() > 0 {
-        if !no_semck {
-            semck_errors.push("Hint: Use `--no-semck` to disable semantic checking".into());
-            return Err(Error::new("Validation errors").with_suppressed(semck_errors));
-        } else {
-            warn!("{} errors skipped (--no-semck)", semck_errors.len());
+        let package = RpVersionedPackage::new(package.clone(), Some(version.clone()));
+        let file = env.load_source(source.clone(), &package)?;
+
+        semck_check(
+            &mut semck_errors,
+            &mut repository,
+            &mut env,
+            version,
+            source,
+            &package,
+            &file,
+        )?;
+
+        if !file.features.is_empty() {
+            let mut diag = Diagnostics::new(source.clone());
+
+            for enabled in file.features.values() {
+                diag.err(enabled.span, "cannot publish schema with enabled features");
+            }
+
+            env.reporter.diagnostics(diag);
+            feature_ok = false;
         }
     }
 
+    let semck_ok = !no_semck || semck_errors.is_empty();
+
+    if !semck_ok && !feature_ok {
+        if !no_semck {
+            semck_errors.push("Hint: Use `--no-semck` to disable semantic checking".into());
+        }
+
+        return Err(Error::new("Validation errors").with_suppressed(semck_errors));
+    }
+
     for m in results {
-        let Match(version, object, package) = m;
+        let Match {
+            version,
+            source,
+            package,
+        } = m;
 
         if pretend {
             info!(
                 "(pretend) publishing: {}@{} (from {})",
-                package, version, object
+                package, version, source
             );
         } else {
-            info!("publishing: {}@{} (from {})", package, version, object);
-            repository.publish(&object, &package, &version, force)?;
+            info!("publishing: {}@{} (from {})", package, version, source);
+            repository.publish(&source, &package, &version, force)?;
         }
     }
 

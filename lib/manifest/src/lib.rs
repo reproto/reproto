@@ -109,14 +109,14 @@ pub trait Lang: fmt::Debug {
         package_prefix: Option<core::RpPackage>,
         reporter: &'a mut core::Reporter,
         resolver: &'a mut core::Resolver,
-    ) -> trans::Environment<'a, CoreFlavor> {
+    ) -> Result<trans::Environment<'a, CoreFlavor>> {
         let keywords = self
             .keywords()
             .into_iter()
             .map(|(f, t)| (f.to_string(), t.to_string()))
             .collect();
 
-        let e = trans::Environment::new(package_prefix.clone(), reporter, resolver)
+        let e = trans::Environment::new(package_prefix.clone(), reporter, resolver)?
             .with_keywords(keywords)
             .with_safe_packages(self.safe_packages());
 
@@ -138,7 +138,7 @@ pub trait Lang: fmt::Debug {
             e
         };
 
-        e
+        Ok(e)
     }
 
     /// Rename packages according to the given naming convention.

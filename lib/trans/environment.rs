@@ -5,6 +5,7 @@ use core::{
     Reporter, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
     RpVersionedPackage, Source, Translate, Translator, Version,
 };
+use features::Features;
 use into_model::IntoModel;
 use linked_hash_map::LinkedHashMap;
 use naming::Naming;
@@ -51,6 +52,10 @@ pub struct Environment<'a, F: 'static>
 where
     F: Flavor,
 {
+    /// The version that an undeclared scope uses.
+    undeclared_version: Rc<Version>,
+    /// Available transformation features.
+    features: Rc<Features>,
     /// Global package prefix.
     package_prefix: Option<RpPackage>,
     /// Global reporter for collecting diagnostics.
@@ -89,8 +94,12 @@ where
         package_prefix: Option<RpPackage>,
         reporter: &'a mut Reporter,
         resolver: &'a mut Resolver,
-    ) -> Environment<'a, F> {
-        Environment {
+    ) -> Result<Environment<'a, F>> {
+        let features = Rc::new(Features::new()?);
+
+        Ok(Environment {
+            undeclared_version: Rc::new(Version::new(0, 0, 0)),
+            features,
             package_prefix,
             reporter,
             resolver,
@@ -104,7 +113,7 @@ where
             field_ident_naming: None,
             endpoint_ident_naming: None,
             path_hook: None,
-        }
+        })
     }
 
     /// Setup a new path hook for this environment.
@@ -472,6 +481,8 @@ impl<'a> Environment<'a, CoreFlavor> {
         package: &RpVersionedPackage,
     ) -> result::Result<RpFile<CoreFlavor>, ()> {
         let mut scope = Scope::new(
+            Rc::clone(&self.undeclared_version),
+            Rc::clone(&self.features),
             package.clone(),
             self.keywords.clone(),
             self.field_ident_naming.as_ref().map(|n| n.copy()),

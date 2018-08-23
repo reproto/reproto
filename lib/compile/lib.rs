@@ -82,7 +82,7 @@ where
 
     let handle = fs.open_root(manifest.output.as_ref().map(AsRef::as_ref))?;
 
-    let mut env = lang.into_env(package_prefix, reporter, resolver);
+    let mut env = lang.into_env(package_prefix, reporter, resolver)?;
 
     match input {
         Input::File(file, package) => {

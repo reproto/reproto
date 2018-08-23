@@ -1,0 +1,15 @@
+#![reproto(version = "0.0.0")]
+
+type Example {
+  /// No longer valid.
+  datetime_field: datetime;
+
+  /// No longer valid.
+  bytes_field: bytes;
+
+  #[format("datetime")]
+  datetime_field: string;
+
+  #[format("bytes")]
+  bytes_field: string;
+}

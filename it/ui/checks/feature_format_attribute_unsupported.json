@@ -1,0 +1,14 @@
+{
+  "status": false,
+  "stdout": [
+    "error when building",
+    "suppressed: error in environment",
+    "it/ui/proto/feature_format_attribute_unsupported.reproto:10:3-24:",
+    " 10:   #[format(\"datetime\")]",
+    "       ^^^^^^^^^^^^^^^^^^^^^ - attribute not supported",
+    "it/ui/proto/feature_format_attribute_unsupported.reproto:10:3-24:",
+    " 10:   #[format(\"datetime\")]",
+    "       ^^^^^^^^^^^^^^^^^^^^^ - HINT: use #![feature(format_attribute)] to enable"
+  ],
+  "stderr": []
+}

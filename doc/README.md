@@ -41,4 +41,7 @@ The documentation is composed of the following sections:
  * [How to configure reproto](config.md).
  * [How the compiler works](compiler.md), this section is written towards people interested in
    working with the reproto compiler.
+ * [Schema Versioning](schema_versioning.md), how breaking changes are introduced into the schema
+   language.
  * [Setting up a repository](usage/setting-up-a-repository.md).
+ * [Feature Flags](features/)

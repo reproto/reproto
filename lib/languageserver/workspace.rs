@@ -305,7 +305,7 @@ impl Workspace {
         let package_prefix = manifest.package_prefix.clone();
 
         self.reporter.clear();
-        let mut env = lang.into_env(package_prefix, &mut self.reporter, resolver);
+        let mut env = lang.into_env(package_prefix, &mut self.reporter, resolver)?;
 
         for s in &sources {
             let manifest::Source {

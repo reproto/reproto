@@ -4,7 +4,13 @@ use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
 use std::collections::VecDeque;
-use {Diagnostics, Flavor, RpDecl, Translate, Translator};
+use {Diagnostics, Flavor, RpDecl, Span, Translate, Translator, Version};
+
+/// Information about an enabled feature.
+#[derive(Debug, Clone, Serialize)]
+pub struct EnabledFeature {
+    pub span: Span,
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(
@@ -15,7 +21,12 @@ pub struct RpFile<F: 'static>
 where
     F: Flavor,
 {
+    /// File-level comments.
     pub comment: Vec<String>,
+    /// The schema version in use.
+    pub version: Version,
+    /// Features enabled and where they are enabled.
+    pub features: LinkedHashMap<&'static str, EnabledFeature>,
     /// All nested declarations.
     pub decls: Vec<RpDecl<F>>,
     /// references to the local idents of the declarations.
@@ -97,6 +108,8 @@ where
     fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpFile<T::Target>> {
         Ok(RpFile {
             comment: self.comment,
+            version: self.version,
+            features: self.features,
             decls: self.decls.translate(diag, translator)?,
             decl_idents: self.decl_idents,
         })

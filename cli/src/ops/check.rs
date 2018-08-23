@@ -1,7 +1,7 @@
 use build_spec as build;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::errors::*;
-use core::{Reporter, RpRequiredPackage, Version};
+use core::{Reporter, RpRequiredPackage, RpVersionedPackage, Version};
 use env;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
@@ -59,7 +59,24 @@ pub fn entry(reporter: &mut Reporter, matches: &ArgMatches) -> Result<()> {
     let mut errors = Vec::new();
 
     for m in results {
-        build::semck_check(&mut errors, &mut repository, &mut env, &m)?;
+        let build::Match {
+            ref version,
+            ref source,
+            ref package,
+        } = m;
+
+        let package = RpVersionedPackage::new(package.clone(), Some(version.clone()));
+        let file = env.load_source(source.clone(), &package)?;
+
+        build::semck_check(
+            &mut errors,
+            &mut repository,
+            &mut env,
+            version,
+            source,
+            &package,
+            &file,
+        )?;
     }
 
     if errors.len() > 0 {
