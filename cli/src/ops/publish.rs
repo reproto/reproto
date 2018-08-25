@@ -1,8 +1,8 @@
-use build_spec::{load_manifest, matches, publish_matches, semck_check, simple_config, Match};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::errors::*;
 use core::{Diagnostics, Reporter, RpRequiredPackage, RpVersionedPackage, Version};
 use env;
+use utils::{load_manifest, matches, publish_matches, semck_check, simple_config, Match};
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("publish").about("Publish specifications");

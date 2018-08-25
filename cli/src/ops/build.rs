@@ -1,10 +1,10 @@
 //! build command
 
-use build_spec::{environment, load_manifest};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use core::errors::Result;
 use core::{Filesystem, Reporter};
 use env;
+use utils::{environment, load_manifest};
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("build").about("Build specifications");

@@ -34,7 +34,6 @@ pub fn entry(_: Rc<Context>, _: &mut Reporter, _: &ArgMatches, _: &Output) -> Re
 
 #[cfg(feature = "notify")]
 pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<()> {
-    use build_spec::{environment_with_hook, load_manifest};
     use notify::{RecommendedWatcher, RecursiveMode, Watcher};
     use std::cell::RefCell;
     use std::collections::HashSet;
@@ -43,6 +42,7 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
     use std::sync::mpsc;
     use std::thread;
     use std::time::Duration;
+    use utils::{environment_with_hook, load_manifest};
 
     // files discovered by the environment
     let paths: Rc<RefCell<HashSet<PathBuf>>> = Rc::new(RefCell::new(HashSet::new()));

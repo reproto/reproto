@@ -15,17 +15,17 @@ use std::path::Path;
 use trans::Environment;
 
 /// Load the manifest based on commandline arguments.
-pub fn load_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
+pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
     let mut manifest = manifest::Manifest::default();
 
-    let path = matches
+    let path = m
         .value_of("manifest-path")
         .map::<Result<&Path>, _>(|p| Ok(Path::new(p)))
         .unwrap_or_else(|| Ok(Path::new(env::MANIFEST_NAME)))?;
 
     manifest.path = Some(path.to_owned());
 
-    if let Some(lang) = matches.value_of("lang") {
+    if let Some(lang) = m.value_of("lang") {
         let lang =
             Language::parse(lang).ok_or_else(|| format!("not a valid language: {}", lang))?;
         manifest.lang = Some(env::convert_lang(lang));
@@ -36,21 +36,20 @@ pub fn load_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
         manifest.from_yaml(File::open(&path)?, env::convert_lang)?;
     }
 
-    matches_to_manifest(&mut manifest, matches)?;
+    matches_to_manifest(&mut manifest, m)?;
     return Ok(manifest);
 
     /// Populate manifest with overrides and extensions from the command line.
-    fn matches_to_manifest(manifest: &mut Manifest, matches: &ArgMatches) -> Result<()> {
+    fn matches_to_manifest(manifest: &mut Manifest, m: &ArgMatches) -> Result<()> {
         manifest.paths.extend(
-            matches
-                .values_of("path")
+            m.values_of("path")
                 .into_iter()
                 .flat_map(|it| it)
                 .map(Path::new)
                 .map(ToOwned::to_owned),
         );
 
-        if let Some(files) = matches.values_of("file") {
+        if let Some(files) = m.values_of("file") {
             for file in files {
                 match file {
                     // read from stdin
@@ -64,17 +63,17 @@ pub fn load_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
             }
         }
 
-        // TODO: we want to be able to load modules, when we have paths.
+        // TODO: we want to be able to load modules, even when we don't have a path.
         if let Some(path) = manifest.path.as_ref() {
             if let Some(lang) = manifest.lang.as_ref() {
-                for module in matches.values_of("module").into_iter().flat_map(|it| it) {
+                for module in m.values_of("module").into_iter().flat_map(|it| it) {
                     let module = lang.string_spec(path, module)?;
                     manifest.modules.get_or_insert_with(Vec::new).push(module);
                 }
             }
         }
 
-        for package in matches.values_of("package").into_iter().flat_map(|it| it) {
+        for package in m.values_of("package").into_iter().flat_map(|it| it) {
             let parsed = RpRequiredPackage::parse(package);
 
             let parsed =
@@ -83,42 +82,38 @@ pub fn load_manifest<'a>(matches: &ArgMatches<'a>) -> Result<Manifest> {
             manifest.packages.get_or_insert_with(Vec::new).push(parsed);
         }
 
-        if let Some(package_prefix) = matches.value_of("package-prefix").map(RpPackage::parse) {
+        if let Some(package_prefix) = m.value_of("package-prefix").map(RpPackage::parse) {
             manifest.package_prefix = Some(package_prefix);
         }
 
-        if let Some(id_converter) = matches.value_of("id-converter") {
+        if let Some(id_converter) = m.value_of("id-converter") {
             manifest.id_converter = Some(id_converter.to_string());
         }
 
         // override output path
-        if let Some(out) = matches.value_of("out").map(Path::new) {
+        if let Some(out) = m.value_of("out").map(Path::new) {
             manifest.output = Some(out.to_owned());
         }
 
-        matches_to_repository(&mut manifest.repository, matches)?;
+        matches_to_repository(&mut manifest.repository, m)?;
         return Ok(());
+    }
 
-        /// Populate the repository structure from CLI arguments.
-        ///
-        /// CLI arguments take precedence.
-        fn matches_to_repository(
-            repository: &mut manifest::Repository,
-            matches: &ArgMatches,
-        ) -> Result<()> {
-            repository.no_repository =
-                repository.no_repository || matches.is_present("no-repository");
+    /// Populate the repository structure from CLI arguments.
+    ///
+    /// CLI arguments take precedence.
+    fn matches_to_repository(repository: &mut manifest::Repository, m: &ArgMatches) -> Result<()> {
+        repository.no_repository = repository.no_repository || m.is_present("no-repository");
 
-            if let Some(objects) = matches.value_of("objects").map(ToOwned::to_owned) {
-                repository.objects = Some(objects);
-            }
-
-            if let Some(index) = matches.value_of("index").map(ToOwned::to_owned) {
-                repository.index = Some(index);
-            }
-
-            Ok(())
+        if let Some(objects) = m.value_of("objects").map(ToOwned::to_owned) {
+            repository.objects = Some(objects);
         }
+
+        if let Some(index) = m.value_of("index").map(ToOwned::to_owned) {
+            repository.index = Some(index);
+        }
+
+        Ok(())
     }
 }
 

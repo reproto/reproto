@@ -1,10 +1,10 @@
 //! Action to build documentation.
 
-use build_spec::{load_manifest, simple_config};
 use clap::{App, ArgMatches, SubCommand};
 use core::errors::*;
 use core::Reporter;
 use env;
+use utils::{load_manifest, simple_config};
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     ::doc::shared_options(SubCommand::with_name("doc").about("Generate documentation"))
