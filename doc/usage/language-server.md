@@ -28,7 +28,7 @@ you can fix them.
 
 ![diagnostics](ls-diagnostics.gif?raw=true "diagnostics in vscode")
 
-[one of these]: https://www.youtube.com/watch?v=m9EXEpjSDEw
+[one of these people]: https://www.youtube.com/watch?v=m9EXEpjSDEw
 
 ## Jump to definitions (`CTRL+Click`)
 
