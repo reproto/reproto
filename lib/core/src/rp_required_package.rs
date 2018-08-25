@@ -12,15 +12,12 @@ pub struct RpRequiredPackage {
 
 impl RpRequiredPackage {
     pub fn new(package: RpPackage, range: Range) -> RpRequiredPackage {
-        RpRequiredPackage {
-            package: package,
-            range: range,
-        }
+        RpRequiredPackage { package, range }
     }
 
     /// Parse the package requirement from a string.
     pub fn parse(input: &str) -> Result<RpRequiredPackage> {
-        let mut it = input.splitn(2, '@').into_iter();
+        let mut it = input.splitn(2, '@');
 
         let package = it
             .next()

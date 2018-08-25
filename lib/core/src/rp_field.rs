@@ -44,7 +44,7 @@ where
             safe_ident: None,
             ident: ident.as_ref().to_string(),
             comment: Vec::new(),
-            ty: ty,
+            ty,
             field_as: None,
         }
     }

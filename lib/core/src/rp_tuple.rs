@@ -13,7 +13,7 @@ impl<F: 'static> RpTupleBody<F>
 where
     F: Flavor,
 {
-    pub fn fields<'a>(&'a self) -> impl Iterator<Item = &'a Loc<F::Field>> {
+    pub fn fields(&self) -> impl Iterator<Item = &Loc<F::Field>> {
         self.fields.iter()
     }
 }
@@ -30,14 +30,16 @@ where
         translator.visit(diag, &self.name)?;
 
         let name = translator.translate_local_name(diag, RpReg::Tuple, self.name)?;
+        let decls = self.decls.translate(diag, translator)?;
+        let fields = translator::Fields(self.fields).translate(diag, translator)?;
 
         Ok(RpTupleBody {
-            name: name,
+            name,
             ident: self.ident,
             comment: self.comment,
-            decls: self.decls.translate(diag, translator)?,
+            decls,
             decl_idents: self.decl_idents,
-            fields: translator::Fields(self.fields).translate(diag, translator)?,
+            fields,
             codes: self.codes,
         })
     }

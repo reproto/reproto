@@ -51,12 +51,17 @@ impl AsPackage for RpPackage {
 
 impl RpPackage {
     pub fn new(parts: Vec<String>) -> RpPackage {
-        RpPackage { parts: parts }
+        RpPackage { parts }
     }
 
     /// Get length of package.
     pub fn len(&self) -> usize {
         self.parts.len()
+    }
+
+    /// Check if package is empty.
+    pub fn is_empty(&self) -> bool {
+        self.parts.is_empty()
     }
 
     /// Parse a package from a string.
@@ -117,7 +122,7 @@ impl RpPackage {
 
     /// Replace all keyword components in this package.
     pub fn with_replacements(mut self, keywords: &HashMap<String, String>) -> Self {
-        for p in self.parts.iter_mut() {
+        for p in &mut self.parts {
             if let Some(keyword) = keywords.get(p.as_str()) {
                 mem::replace(p, keyword.to_string());
             }
@@ -131,7 +136,7 @@ impl RpPackage {
     where
         N: Fn(&str) -> String,
     {
-        for p in self.parts.iter_mut() {
+        for p in &mut self.parts {
             let new_name = naming(p);
             mem::replace(p, new_name);
         }

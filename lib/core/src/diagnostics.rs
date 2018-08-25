@@ -112,7 +112,7 @@ pub enum SourceDiagnostic {
 }
 
 /// A collection of diagnostics emitted by the compiler.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SourceDiagnostics {
     pub items: Vec<(Source, Diagnostic)>,
 }

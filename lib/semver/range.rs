@@ -406,14 +406,12 @@ impl fmt::Display for Predicate {
             _ => {
                 try!(write!(fmt, "{}{}", self.op, self.major));
 
-                match self.minor {
-                    Some(v) => try!(write!(fmt, ".{}", v)),
-                    None => (),
+                if let Some(v) = self.minor {
+                    try!(write!(fmt, ".{}", v));
                 }
 
-                match self.patch {
-                    Some(v) => try!(write!(fmt, ".{}", v)),
-                    None => (),
+                if let Some(v) = self.patch {
+                    try!(write!(fmt, ".{}", v));
                 }
 
                 if !self.pre.is_empty() {

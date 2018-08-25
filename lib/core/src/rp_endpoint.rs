@@ -188,7 +188,7 @@ where
         self.name
             .as_ref()
             .map(|s| s.as_str())
-            .unwrap_or(self.ident())
+            .unwrap_or_else(|| self.ident())
     }
 
     /// Safe identifier of the endpoint.
@@ -196,7 +196,7 @@ where
         self.safe_ident
             .as_ref()
             .map(|s| s.as_str())
-            .unwrap_or(self.ident.as_str())
+            .unwrap_or_else(|| self.ident.as_str())
     }
 
     /// Get the identifier of the endpoint.
@@ -206,11 +206,7 @@ where
 
     /// If endpoint has metadata for HTTP.
     pub fn has_http_support(&self) -> bool {
-        if !self.http.path.is_some() {
-            return false;
-        }
-
-        true
+        self.http.path.is_some()
     }
 }
 
@@ -283,11 +279,11 @@ where
             .cloned()
             .unwrap_or(RpHttpMethod::Get);
 
-        return Some(RpEndpointHttp1 {
-            request: request,
-            response: response,
-            path: path,
-            method: method,
-        });
+        Some(RpEndpointHttp1 {
+            request,
+            response,
+            path,
+            method,
+        })
     }
 }

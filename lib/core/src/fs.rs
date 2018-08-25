@@ -30,7 +30,7 @@ pub trait Filesystem {
 }
 
 /// Real filesystem implementation.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct RealFilesystem;
 
 impl RealFilesystem {
@@ -46,7 +46,7 @@ impl Filesystem for RealFilesystem {
                 "Missing root directory, specify using `--out`, or `output` key in manifest"
             })?.to_owned();
 
-        return Ok(Box::new(RealHandle { root: root }));
+        return Ok(Box::new(RealHandle { root }));
 
         struct RealHandle {
             root: PathBuf,
@@ -63,7 +63,8 @@ impl Filesystem for RealFilesystem {
 
             fn create_dir_all(&self, path: &RelativePath) -> Result<()> {
                 let path = path.to_path(&self.root);
-                Ok(fs::create_dir_all(&path)?)
+                fs::create_dir_all(&path)?;
+                Ok(())
             }
 
             fn create(&self, path: &RelativePath) -> Result<Box<io::Write>> {
@@ -77,6 +78,7 @@ impl Filesystem for RealFilesystem {
 /// Capture all filesystem operations in-memory.
 ///
 /// Used (among other things) for rendering output in WASM.
+#[derive(Default)]
 pub struct CapturingFilesystem {
     files: Rc<RefCell<LinkedHashMap<RelativePathBuf, Vec<u8>>>>,
 }
@@ -103,9 +105,9 @@ impl CapturingFilesystem {
 
 impl Filesystem for CapturingFilesystem {
     fn open_root(&self, _root: Option<&Path>) -> Result<Box<Handle>> {
-        return Ok(Box::new(CapturingHandle {
+        Ok(Box::new(CapturingHandle {
             files: self.files.clone(),
-        }));
+        }))
     }
 }
 

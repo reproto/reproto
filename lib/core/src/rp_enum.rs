@@ -30,15 +30,17 @@ where
 
         let name = translator.translate_local_name(diag, RpReg::Enum, self.name)?;
         let enum_type = translator.translate_enum_type(diag, self.enum_type)?;
+        let decls = self.decls.translate(diag, translator)?;
+        let variants = self.variants.translate(diag, translator)?;
 
         Ok(RpEnumBody {
-            name: name,
+            name,
             ident: self.ident,
             comment: self.comment,
-            decls: self.decls.translate(diag, translator)?,
+            decls,
             decl_idents: self.decl_idents,
             enum_type,
-            variants: self.variants.translate(diag, translator)?,
+            variants,
             codes: self.codes,
         })
     }
@@ -155,7 +157,7 @@ where
         let name = translator.translate_local_name(diag, RpReg::EnumVariant, self.name)?;
 
         Ok(RpVariant {
-            name: name,
+            name,
             ident: self.ident,
             comment: self.comment,
             value: self.value,
@@ -193,8 +195,8 @@ impl RpEnumType {
     /// Validate that the given number doesn't violate expected numeric bounds.
     pub fn validate_number(&self, number: &RpNumber) -> Result<()> {
         // max contiguous whole number that can be represented with a double: 2^53 - 1
-        const MAX_SAFE_INTEGER: i64 = 9007199254740991i64;
-        const MIN_SAFE_INTEGER: i64 = -9007199254740991i64;
+        const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991i64;
+        const MIN_SAFE_INTEGER: i64 = -9_007_199_254_740_991i64;
 
         use self::RpEnumType::*;
 
@@ -209,11 +211,11 @@ impl RpEnumType {
         let n = number.to_bigint().ok_or_else(|| "not a whole number")?;
 
         // withing bounds
-        if &mn <= n && n <= &mx {
+        if mn <= *n && *n <= mx {
             return Ok(());
         }
 
-        return Err(format!("number is not within {} to {} (inclusive)", mn, mx).into());
+        Err(format!("number is not within {} to {} (inclusive)", mn, mx).into())
     }
 }
 
@@ -271,7 +273,7 @@ where
     /// Iterate over all variants in a type-erasured manner.
     ///
     /// Each variant being iterator over has a value which is reflected by the `RpVariantValue` enum.
-    pub fn iter<'a>(&'a self) -> RpVariantsIter<'a, F> {
+    pub fn iter(&self) -> RpVariantsIter<F> {
         use self::RpVariants::*;
 
         macro_rules! variants {

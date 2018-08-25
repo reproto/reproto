@@ -147,7 +147,7 @@ where
                 out.push((&ty.name, Loc::span(ty), RpReg::Type));
             }
             Interface(ref interface) => {
-                for sub_type in interface.sub_types.iter() {
+                for sub_type in &interface.sub_types {
                     out.push((&sub_type.name, Loc::span(sub_type), RpReg::SubType));
                 }
 
@@ -183,7 +183,7 @@ where
                 out.push(RpNamed::Type(ty));
             }
             Interface(ref interface) => {
-                for sub_type in interface.sub_types.iter() {
+                for sub_type in &interface.sub_types {
                     out.push(RpNamed::SubType(sub_type));
                 }
 
@@ -298,6 +298,6 @@ where
     F: Flavor,
 {
     fn from(value: &'a RpDecl<F>) -> Self {
-        value.span().clone()
+        value.span()
     }
 }

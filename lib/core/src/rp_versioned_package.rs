@@ -27,10 +27,7 @@ impl AsPackage for RpVersionedPackage {
 
 impl RpVersionedPackage {
     pub fn new(package: RpPackage, version: Option<Version>) -> Self {
-        Self {
-            package: package,
-            version: version,
-        }
+        Self { package, version }
     }
 
     /// Create an empty versioned package.

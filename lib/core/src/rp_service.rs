@@ -34,14 +34,16 @@ where
             .map(|e| Loc::and_then(e, |e| translator.translate_endpoint(diag, e)))
             .collect::<Result<Vec<_>>>()?;
 
+        let decls = self.decls.translate(diag, translator)?;
+
         Ok(RpServiceBody {
-            name: name,
+            name,
             ident: self.ident,
             comment: self.comment,
-            decls: self.decls.translate(diag, translator)?,
+            decls,
             decl_idents: self.decl_idents,
             http: self.http,
-            endpoints: endpoints,
+            endpoints,
         })
     }
 }

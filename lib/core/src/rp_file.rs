@@ -66,7 +66,7 @@ where
     pub fn for_each_decl(&self) -> ForEachDecl<F> {
         let mut queue = VecDeque::new();
         queue.extend(self.decls.iter());
-        ForEachDecl { queue: queue }
+        ForEachDecl { queue }
     }
 
     /// Lookup a single declaration from its path.
@@ -84,7 +84,7 @@ where
             None => None,
         };
 
-        while let Some(step) = path.next() {
+        for step in path {
             let next = match decl.as_ref() {
                 Some(decl) => decl.decl_by_ident(step),
                 None => return None,

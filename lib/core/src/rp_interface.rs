@@ -39,7 +39,7 @@ impl<F: 'static> RpInterfaceBody<F>
 where
     F: Flavor,
 {
-    pub fn fields<'a>(&'a self) -> impl Iterator<Item = &'a Loc<F::Field>> {
+    pub fn fields(&self) -> impl Iterator<Item = &Loc<F::Field>> {
         self.fields.iter()
     }
 }
@@ -60,16 +60,19 @@ where
         translator.visit(diag, &self.name)?;
 
         let name = translator.translate_local_name(diag, RpReg::Interface, self.name)?;
+        let decls = self.decls.translate(diag, translator)?;
+        let fields = translator::Fields(self.fields).translate(diag, translator)?;
+        let sub_types = self.sub_types.translate(diag, translator)?;
 
         Ok(RpInterfaceBody {
-            name: name,
+            name,
             ident: self.ident,
             comment: self.comment,
-            decls: self.decls.translate(diag, translator)?,
+            decls,
             decl_idents: self.decl_idents,
-            fields: translator::Fields(self.fields).translate(diag, translator)?,
+            fields,
             codes: self.codes,
-            sub_types: self.sub_types.translate(diag, translator)?,
+            sub_types,
             sub_type_strategy: self.sub_type_strategy,
         })
     }
@@ -108,12 +111,12 @@ where
     }
 
     /// Access all fields of the sub type.
-    pub fn fields<'a>(&'a self) -> impl Iterator<Item = &'a Loc<F::Field>> {
+    pub fn fields(&self) -> impl Iterator<Item = &Loc<F::Field>> {
         self.fields.iter()
     }
 
     /// Access the set of fields which are used to make this sub-type unique.
-    pub fn discriminating_fields<'a>(&'a self) -> impl Iterator<Item = &'a Loc<F::Field>> {
+    pub fn discriminating_fields(&self) -> impl Iterator<Item = &Loc<F::Field>> {
         let fields = self
             .fields
             .iter()
@@ -136,14 +139,16 @@ where
         translator.visit(diag, &self.name)?;
 
         let name = translator.translate_local_name(diag, RpReg::SubType, self.name)?;
+        let decls = self.decls.translate(diag, translator)?;
+        let fields = translator::Fields(self.fields).translate(diag, translator)?;
 
         Ok(RpSubType {
-            name: name,
+            name,
             ident: self.ident,
             comment: self.comment,
-            decls: self.decls.translate(diag, translator)?,
+            decls,
             decl_idents: self.decl_idents,
-            fields: translator::Fields(self.fields).translate(diag, translator)?,
+            fields,
             codes: self.codes,
             sub_type_name: self.sub_type_name,
         })

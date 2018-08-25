@@ -3,7 +3,9 @@
 use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
+use std::cmp;
 use std::collections::HashMap;
+use std::hash;
 use std::rc::Rc;
 use Flavor;
 use {
@@ -230,11 +232,12 @@ where
     }
 }
 
-impl<T, K, V> Translate<T> for HashMap<K, V>
+impl<T, K, V, S> Translate<T> for HashMap<K, V, S>
 where
-    K: ::std::cmp::Eq + ::std::hash::Hash,
+    K: cmp::Eq + hash::Hash,
     V: Translate<T>,
     T: Translator,
+    S: hash::BuildHasher,
 {
     type Out = HashMap<K, V::Out>;
 
@@ -360,9 +363,8 @@ where
         let decls = self.decls.as_ref().ok_or_else(|| "no declarations")?;
         let mut decls = decls.try_borrow_mut()?;
 
-        match decls.get(&key) {
-            Some(reg) => return Ok(reg.clone()),
-            None => {}
+        if let Some(reg) = decls.get(&key) {
+            return Ok(reg.clone());
         }
 
         let reg = match self.types.get(&key) {
@@ -374,7 +376,7 @@ where
         };
 
         let reg = decls.entry(key).or_insert(reg);
-        return Ok(reg.clone());
+        Ok(reg.clone())
     }
 }
 

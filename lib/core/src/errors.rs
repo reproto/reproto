@@ -144,7 +144,7 @@ impl Error {
             _ => {}
         }
 
-        return Some(Backtrace::new());
+        Some(Backtrace::new())
     }
 
     /// Set the position for this error.

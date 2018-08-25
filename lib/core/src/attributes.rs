@@ -30,10 +30,7 @@ where
         words: Vec<Loc<RpValue<F>>>,
         values: HashMap<String, (Loc<String>, Loc<RpValue<F>>)>,
     ) -> Selection<F> {
-        Selection {
-            words: words,
-            values: values,
-        }
+        Selection { words, values }
     }
 
     /// Take the given value, removing it in the process.
@@ -97,10 +94,7 @@ where
         words: HashMap<String, Span>,
         selections: HashMap<String, Loc<Selection<F>>>,
     ) -> Attributes<F> {
-        Attributes {
-            words: words,
-            selections: selections,
-        }
+        Attributes { words, selections }
     }
 
     /// Take the given selection, removing it in the process.

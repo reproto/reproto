@@ -165,15 +165,6 @@ impl Operator for ToUpperSnake {
     }
 }
 
-#[derive(Clone)]
-pub struct AnyCase(());
-
-impl AnyCase {
-    pub fn new() -> AnyCase {
-        AnyCase(())
-    }
-}
-
 /// A source for camel-cased strings.
 fn operate<O>(input: &str) -> String
 where
@@ -181,12 +172,10 @@ where
 {
     let mut buf = String::new();
 
-    let mut it = input.chars();
-
     let mut open_section = true;
     let mut first = true;
 
-    while let Some(c) = it.next() {
+    for c in input.chars() {
         match c {
             '_' if first => buf.push('_'),
             '_' => open_section = true,

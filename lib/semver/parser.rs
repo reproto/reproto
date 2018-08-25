@@ -136,10 +136,7 @@ impl<'input> Parser<'input> {
             None
         };
 
-        Ok(Parser {
-            lexer: lexer,
-            c1: c1,
-        })
+        Ok(Parser { lexer, c1 })
     }
 
     /// Pop one token.
@@ -351,11 +348,11 @@ impl<'input> Parser<'input> {
         self.plus_build_metadata()?;
 
         Ok(Some(Predicate {
-            op: op,
-            major: major,
-            minor: minor,
-            patch: patch,
-            pre: pre,
+            op,
+            major,
+            minor,
+            patch,
+            pre,
         }))
     }
 
@@ -373,9 +370,7 @@ impl<'input> Parser<'input> {
             }
         }
 
-        Ok(Range {
-            predicates: predicates,
-        })
+        Ok(Range { predicates })
     }
 
     /// Parse a version.
@@ -393,16 +388,16 @@ impl<'input> Parser<'input> {
         self.skip_whitespace()?;
 
         Ok(Version {
-            major: major,
-            minor: minor,
-            patch: patch,
-            pre: pre,
-            build: build,
+            major,
+            minor,
+            patch,
+            pre,
+            build,
         })
     }
 
     /// Check if we have reached the end of input.
-    pub fn is_eof(&mut self) -> bool {
+    pub fn is_eof(&self) -> bool {
         self.c1.is_none()
     }
 

@@ -161,10 +161,10 @@ impl<'input> Lexer<'input> {
         let c2 = chars.next();
 
         Lexer {
-            input: input,
-            chars: chars,
-            c1: c1,
-            c2: c2,
+            input,
+            chars,
+            c1,
+            c2,
         }
     }
 
@@ -227,52 +227,50 @@ impl<'input> Iterator for Lexer<'input> {
     type Item = Result<Token<'input>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            // two subsequent char tokens.
-            if let Some((_, a, b)) = self.two() {
-                let two = match (a, b) {
-                    ('<', '=') => Some(LtEq),
-                    ('>', '=') => Some(GtEq),
-                    ('|', '|') => Some(Or),
-                    _ => None,
-                };
-
-                if let Some(two) = two {
-                    self.step_n(2);
-                    return Some(Ok(two));
-                }
-            }
-
-            // single char and start of numeric tokens.
-            if let Some((start, c)) = self.one() {
-                let tok = match c {
-                    ' ' | '\t' | '\n' | '\r' => {
-                        self.step();
-                        return Some(self.whitespace(start));
-                    }
-                    '=' => Eq,
-                    '>' => Gt,
-                    '<' => Lt,
-                    '^' => Caret,
-                    '~' => Tilde,
-                    '*' => Star,
-                    '.' => Dot,
-                    ',' => Comma,
-                    '-' => Hyphen,
-                    '+' => Plus,
-                    '0'...'9' | 'a'...'z' | 'A'...'Z' => {
-                        self.step();
-                        return Some(self.component(start));
-                    }
-                    c => return Some(Err(UnexpectedChar(c))),
-                };
-
-                self.step();
-                return Some(Ok(tok));
+        // two subsequent char tokens.
+        if let Some((_, a, b)) = self.two() {
+            let two = match (a, b) {
+                ('<', '=') => Some(LtEq),
+                ('>', '=') => Some(GtEq),
+                ('|', '|') => Some(Or),
+                _ => None,
             };
 
-            return None;
+            if let Some(two) = two {
+                self.step_n(2);
+                return Some(Ok(two));
+            }
         }
+
+        // single char and start of numeric tokens.
+        if let Some((start, c)) = self.one() {
+            let tok = match c {
+                ' ' | '\t' | '\n' | '\r' => {
+                    self.step();
+                    return Some(self.whitespace(start));
+                }
+                '=' => Eq,
+                '>' => Gt,
+                '<' => Lt,
+                '^' => Caret,
+                '~' => Tilde,
+                '*' => Star,
+                '.' => Dot,
+                ',' => Comma,
+                '-' => Hyphen,
+                '+' => Plus,
+                '0'...'9' | 'a'...'z' | 'A'...'Z' => {
+                    self.step();
+                    return Some(self.component(start));
+                }
+                c => return Some(Err(UnexpectedChar(c))),
+            };
+
+            self.step();
+            return Some(Ok(tok));
+        };
+
+        None
     }
 }
 

@@ -36,7 +36,7 @@ impl RpNumber {
 
         for _ in 0..self.decimal {
             let ten: BigInt = 10.into();
-            multiple = multiple * ten;
+            multiple *= ten;
         }
 
         multiple

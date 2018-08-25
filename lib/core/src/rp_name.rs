@@ -72,15 +72,12 @@ where
     }
 
     pub fn with_package(self, package: F::Package) -> Self {
-        Self {
-            package: package,
-            ..self
-        }
+        Self { package, ..self }
     }
 
     /// Build a new name out if the given paths.
     pub fn with_parts(self, path: Vec<String>) -> Self {
-        Self { path: path, ..self }
+        Self { path, ..self }
     }
 
     /// Check that two names are the same, by comparing the fully qualified location.

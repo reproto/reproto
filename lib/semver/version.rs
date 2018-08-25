@@ -153,9 +153,9 @@ impl Version {
     /// Contructs the simple case without pre or build.
     pub fn new(major: u64, minor: u64, patch: u64) -> Version {
         Version {
-            major: major,
-            minor: minor,
-            patch: patch,
+            major,
+            minor,
+            patch,
             pre: Vec::new(),
             build: Vec::new(),
         }

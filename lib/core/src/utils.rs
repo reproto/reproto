@@ -2,8 +2,8 @@ use errors::Result;
 use std::io::Read;
 use Span;
 
-const NL: u8 = '\n' as u8;
-const CR: u8 = '\r' as u8;
+const NL: u8 = b'\n';
+const CR: u8 = b'\r';
 
 /// A position withing a source.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -26,10 +26,9 @@ pub fn find_line<'a, R: AsMut<Read + 'a>>(
     let start = span.0;
     let end = span.1;
 
-    let mut it = r.bytes().peekable();
     let mut read = 0usize;
 
-    while let Some(b) = it.next() {
+    for b in r.bytes() {
         let b = b?;
         read += 1;
 
@@ -136,10 +135,10 @@ pub enum Encoding {
 
 impl Encoding {
     /// Calculate the column, which depends on the encoding.
-    pub fn column(&self, buffer: &[u8], col: usize) -> Result<usize> {
+    pub fn column(self, buffer: &[u8], col: usize) -> Result<usize> {
         use self::Encoding::*;
 
-        match *self {
+        match self {
             Raw => Ok(col),
             Utf8 => Ok(::std::str::from_utf8(&buffer[..col])?.chars().count()),
             Utf16 => Ok(::std::str::from_utf8(&buffer[..col])?
@@ -150,13 +149,13 @@ impl Encoding {
 
     /// Calculate the column in either number of characters (`Raw`), number of bytes (`Utf8`), or
     /// number of code units (`Utf16`) from an iterator.
-    pub fn column_iter<I>(&self, iter: I, col: usize) -> usize
+    pub fn column_iter<I>(self, iter: I, col: usize) -> usize
     where
         I: IntoIterator<Item = char>,
     {
         use self::Encoding::*;
 
-        match *self {
+        match self {
             Raw => iter.into_iter().take(col).count(),
             Utf8 => iter.into_iter().take(col).map(|c| c.len_utf8()).sum(),
             Utf16 => iter.into_iter().take(col).map(|c| c.len_utf16()).sum(),

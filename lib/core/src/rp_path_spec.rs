@@ -111,7 +111,7 @@ where
     F: Flavor,
 {
     /// List all variables in the path spec.
-    pub fn vars<'a>(&'a self) -> impl Iterator<Item = &'a RpEndpointArgument<F>> {
+    pub fn vars(&self) -> impl Iterator<Item = &RpEndpointArgument<F>> {
         self.steps
             .iter()
             .flat_map(|s| s.parts.iter())

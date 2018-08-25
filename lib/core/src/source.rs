@@ -187,9 +187,8 @@ impl Source {
                 Err(_) => return None,
             };
 
-            match Url::parse(&format!("file://{}", path.display())) {
-                Ok(url) => return Some(url),
-                Err(_) => {}
+            if let Ok(url) = Url::parse(&format!("file://{}", path.display())) {
+                return Some(url);
             }
         }
 
@@ -235,7 +234,7 @@ impl Source {
     }
 
     pub fn span_to_range(&self, span: Span, encoding: Encoding) -> Result<(Position, Position)> {
-        return find_range(self.read()?, span, encoding);
+        find_range(self.read()?, span, encoding)
     }
 }
 

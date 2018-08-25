@@ -7,10 +7,69 @@ use std::ops;
 use std::result;
 use Span;
 
+/// Loc is a value and a span combined.
+///
+/// The span indicates a byte range where the value was extracted from.
 #[derive(Clone)]
 pub struct Loc<T> {
     inner: T,
     span: Span,
+}
+
+impl<T> Loc<T> {
+    /// Create a new spanned item.
+    pub fn new<P: Into<Span>>(inner: T, span: P) -> Loc<T> {
+        Loc {
+            inner,
+            span: span.into(),
+        }
+    }
+
+    /// Access the span of the item.
+    pub fn span(loc: &Loc<T>) -> Span {
+        loc.span
+    }
+
+    /// Consume the loc and take the value of it.
+    pub fn take(loc: Loc<T>) -> T {
+        loc.inner
+    }
+
+    /// Consume the loc and take the value and the span.
+    pub fn take_pair(loc: Loc<T>) -> (T, Span) {
+        (loc.inner, loc.span)
+    }
+
+    /// Borrow the value from a loc.
+    pub fn borrow(loc: &Loc<T>) -> &T {
+        &loc.inner
+    }
+
+    /// Borrow a value and the span from a loc.
+    pub fn borrow_pair(loc: &Loc<T>) -> (&T, Span) {
+        (&loc.inner, loc.span)
+    }
+
+    /// Map the loc.
+    pub fn map<U, O>(loc: Loc<T>, op: O) -> Loc<U>
+    where
+        O: FnOnce(T) -> U,
+    {
+        Loc::new(op(loc.inner), loc.span)
+    }
+
+    /// Convert a reference to a loc, into a loc of a reference.
+    pub fn as_ref(loc: &Loc<T>) -> Loc<&T> {
+        Loc::new(&loc.inner, loc.span)
+    }
+
+    /// Apply the fallible operation over the given location.
+    pub fn and_then<U, O, E>(Loc { inner, span }: Loc<T>, op: O) -> result::Result<Loc<U>, E>
+    where
+        O: FnOnce(T) -> result::Result<U, E>,
+    {
+        op(inner).map(|value| Loc::new(value, span))
+    }
 }
 
 impl<T: serde::Serialize> serde::Serialize for Loc<T> {
@@ -19,54 +78,6 @@ impl<T: serde::Serialize> serde::Serialize for Loc<T> {
         S: serde::Serializer,
     {
         self.inner.serialize(serializer)
-    }
-}
-
-impl<T> Loc<T> {
-    pub fn new<P: Into<Span>>(inner: T, span: P) -> Loc<T> {
-        Loc {
-            inner: inner,
-            span: span.into(),
-        }
-    }
-
-    pub fn span(loc: &Loc<T>) -> Span {
-        loc.span
-    }
-
-    pub fn take(loc: Loc<T>) -> T {
-        loc.inner
-    }
-
-    pub fn take_pair(loc: Loc<T>) -> (T, Span) {
-        (loc.inner, loc.span)
-    }
-
-    pub fn borrow(loc: &Loc<T>) -> &T {
-        &loc.inner
-    }
-
-    pub fn borrow_pair(loc: &Loc<T>) -> (&T, Span) {
-        (&loc.inner, loc.span)
-    }
-
-    pub fn map<U, O>(loc: Loc<T>, op: O) -> Loc<U>
-    where
-        O: FnOnce(T) -> U,
-    {
-        Loc::new(op(loc.inner), loc.span.clone())
-    }
-
-    pub fn as_ref(loc: &Loc<T>) -> Loc<&T> {
-        Loc::new(&loc.inner, loc.span.clone())
-    }
-
-    /// Apply the fallible operation over the given location.
-    pub fn and_then<U, O, E>(Loc { inner, span }: Loc<T>, op: O) -> result::Result<Loc<U>, E>
-    where
-        O: FnOnce(T) -> result::Result<U, E>,
-    {
-        op(inner).map(|value| Loc::new(value, span.clone()))
     }
 }
 
@@ -157,6 +168,6 @@ where
 
 impl<'a, T> From<&'a Loc<T>> for Span {
     fn from(value: &'a Loc<T>) -> Self {
-        Loc::span(value).clone()
+        Loc::span(value)
     }
 }
