@@ -5,8 +5,8 @@
 use backend::package_processor;
 use core::errors::Result;
 use core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-    Translator,
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberType,
+    RpStringType, Translate, Translator,
 };
 use genco::js::{self, JavaScript};
 use genco::{Cons, Element, IntoTokens, Tokens};
@@ -162,19 +162,7 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
 
     translator_defaults!(Self, field, endpoint, enum_type);
 
-    fn translate_i32(&self) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
-    }
-
-    fn translate_i64(&self) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
-    }
-
-    fn translate_u32(&self) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
-    }
-
-    fn translate_u64(&self) -> Result<JavaScriptType<'static>> {
+    fn translate_number(&self, number: RpNumberType) -> Result<JavaScriptType<'static>> {
         Ok(JavaScriptType::Native)
     }
 
@@ -190,7 +178,7 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
         Ok(JavaScriptType::Native)
     }
 
-    fn translate_string(&self) -> Result<JavaScriptType<'static>> {
+    fn translate_string(&self, _: RpStringType) -> Result<JavaScriptType<'static>> {
         Ok(JavaScriptType::Native)
     }
 

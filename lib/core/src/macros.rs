@@ -113,20 +113,8 @@ macro_rules! translator_defaults {
     };
 
     (@internal $slf:ident, rp_type $($rest:tt)*) => {
-        fn translate_i32(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Signed { size: 32 })
-        }
-
-        fn translate_i64(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Signed { size: 64 })
-        }
-
-        fn translate_u32(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Unsigned { size: 32 })
-        }
-
-        fn translate_u64(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Unsigned { size: 64 })
+        fn translate_number(&self, number: RpNumberType) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::Number(number))
         }
 
         fn translate_float(&self) -> Result<RpType<$slf::Target>> {
@@ -141,8 +129,8 @@ macro_rules! translator_defaults {
             Ok(RpType::Boolean)
         }
 
-        fn translate_string(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::String)
+        fn translate_string(&self, string: RpStringType) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::String(string))
         }
 
         fn translate_datetime(&self) -> Result<RpType<$slf::Target>> {

@@ -40,7 +40,7 @@ use core::flavored::{
     RpChannel, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody, RpType,
     RpTypeBody, RpVersionedPackage,
 };
-use core::{CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod};
+use core::{CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind};
 use linked_hash_map::LinkedHashMap;
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -436,7 +436,7 @@ impl<'builder> SpecBuilder<'builder> {
         let ref_ = self.name_to_ref(&sub_type.name)?;
 
         // add the discriminator field
-        let schema = self.type_to_schema(queue, &core::RpType::String)?;
+        let schema = spec::Schema::from(spec::SchemaString::default());
 
         let mut object = spec::Object::default();
 
@@ -565,10 +565,12 @@ impl<'builder> SpecBuilder<'builder> {
             }
             // TODO: are numeric variants supported?
             core::RpVariants::Number { ref variants } => match body.enum_type {
-                core::RpEnumType::U32 => number_rule!(variants, U32, to_u32),
-                core::RpEnumType::U64 => number_rule!(variants, U64, to_u64),
-                core::RpEnumType::I32 => number_rule!(variants, I32, to_i32),
-                core::RpEnumType::I64 => number_rule!(variants, I64, to_i64),
+                core::RpEnumType::Number(ref number) => match number.kind {
+                    RpNumberKind::U32 => number_rule!(variants, U32, to_u32),
+                    RpNumberKind::U64 => number_rule!(variants, U64, to_u64),
+                    RpNumberKind::I32 => number_rule!(variants, I32, to_i32),
+                    RpNumberKind::I64 => number_rule!(variants, I64, to_i64),
+                },
                 _ => return Err("unexpected enum type".into()),
             },
         };
@@ -683,11 +685,13 @@ impl<'builder> SpecBuilder<'builder> {
                 array.items = Some(Box::new(self.type_to_schema(queue, inner)?));
                 spec::Schema::from(array)
             }
-            String => spec::Schema::from(spec::SchemaString::default()),
-            Signed { size: 32 } => spec::Schema::from(spec::I32::default()),
-            Signed { size: 64 } => spec::Schema::from(spec::I64::default()),
-            Unsigned { size: 32 } => spec::Schema::from(spec::U32::default()),
-            Unsigned { size: 64 } => spec::Schema::from(spec::U64::default()),
+            String(..) => spec::Schema::from(spec::SchemaString::default()),
+            Number(ref number) => match number.kind {
+                RpNumberKind::I32 => spec::Schema::from(spec::I32::default()),
+                RpNumberKind::I64 => spec::Schema::from(spec::I64::default()),
+                RpNumberKind::U32 => spec::Schema::from(spec::U32::default()),
+                RpNumberKind::U64 => spec::Schema::from(spec::U64::default()),
+            },
             Float => spec::Schema::from(spec::Float::default()),
             Double => spec::Schema::from(spec::Double::default()),
             Boolean => spec::Schema::from(spec::SchemaBoolean::default()),
@@ -706,7 +710,6 @@ impl<'builder> SpecBuilder<'builder> {
                 let ref_ = self.name_to_ref(&self.any_type)?;
                 spec::Schema::from(Ref(format!("#/components/schemas/{}", ref_)))
             }
-            ref ty => return Err(format!("unsupported type: {}", ty).into()),
         };
 
         Ok(out)

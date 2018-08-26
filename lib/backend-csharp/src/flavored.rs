@@ -4,8 +4,8 @@
 
 use core::errors::Result;
 use core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-    Translator,
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
+    RpNumberType, RpNumberValidate, RpStringType, Translate, Translator,
 };
 use genco::csharp::{self, array, struct_, using};
 use genco::{Cons, Csharp};
@@ -60,20 +60,13 @@ impl FlavorTranslator for CsharpFlavorTranslator {
 
     translator_defaults!(Self, local_name, field, endpoint);
 
-    fn translate_i32(&self) -> Result<Csharp<'static>> {
-        Ok(csharp::INT32.into())
-    }
-
-    fn translate_i64(&self) -> Result<Csharp<'static>> {
-        Ok(csharp::INT64.into())
-    }
-
-    fn translate_u32(&self) -> Result<Csharp<'static>> {
-        Ok(csharp::UINT32.into())
-    }
-
-    fn translate_u64(&self) -> Result<Csharp<'static>> {
-        Ok(csharp::UINT64.into())
+    fn translate_number(&self, number: RpNumberType) -> Result<Csharp<'static>> {
+        match number.kind {
+            RpNumberKind::I32 => Ok(csharp::INT32.into()),
+            RpNumberKind::I64 => Ok(csharp::INT64.into()),
+            RpNumberKind::U32 => Ok(csharp::UINT32.into()),
+            RpNumberKind::U64 => Ok(csharp::UINT64.into()),
+        }
     }
 
     fn translate_float(&self) -> Result<Csharp<'static>> {
@@ -88,7 +81,7 @@ impl FlavorTranslator for CsharpFlavorTranslator {
         Ok(csharp::BOOLEAN.into())
     }
 
-    fn translate_string(&self) -> Result<Csharp<'static>> {
+    fn translate_string(&self, _: RpStringType) -> Result<Csharp<'static>> {
         Ok(self.string.clone())
     }
 
@@ -145,11 +138,8 @@ impl FlavorTranslator for CsharpFlavorTranslator {
         use core::RpEnumType::*;
 
         match enum_type {
-            String => self.translate_string(),
-            U32 => self.translate_u32(),
-            U64 => self.translate_u64(),
-            I32 => self.translate_i32(),
-            I64 => self.translate_i64(),
+            String(string) => self.translate_string(string),
+            Number(number) => self.translate_number(number),
         }
     }
 }

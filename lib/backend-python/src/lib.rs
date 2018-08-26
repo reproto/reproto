@@ -26,7 +26,8 @@ use codegen::ServiceCodegen;
 use compiler::Compiler;
 use core::errors::Result;
 use core::{
-    CoreFlavor, Diagnostics, Handle, Loc, RpField, RpPackage, RpType, Source, Span, Translate,
+    CoreFlavor, Diagnostics, Handle, Loc, RpField, RpPackage, RpStringType, RpType, Source, Span,
+    Translate,
 };
 use genco::{Cons, Python, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -191,8 +192,11 @@ fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) ->
 
     // NOTE: avoid doing translation.
     let mut diag = Diagnostics::new(Source::empty("no diagnostics"));
-    let variant_field = Loc::new(RpField::new("ordinal", RpType::String), Span::empty())
-        .translate(&mut diag, &translator)?;
+
+    let variant_field = Loc::new(
+        RpField::new("ordinal", RpType::String(RpStringType::default())),
+        Span::empty(),
+    ).translate(&mut diag, &translator)?;
 
     let env = env.translate(translator)?;
 

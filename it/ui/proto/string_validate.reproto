@@ -1,0 +1,11 @@
+#![reproto(version = "0.0.0")]
+
+type Example {
+  /// Bad regular expression.
+  #[validate(pattern = "[a-z")]
+  a: string;
+
+  /// Bad regular expression.
+  #[validate(pattern = "[a-z]+")]
+  b: string;
+}

@@ -6,7 +6,7 @@ use backend::package_processor;
 use core::errors::Result;
 use core::{
     self, CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, Loc, PackageTranslator,
-    Translate, Translator,
+    RpNumberKind, RpNumberType, RpStringType, Translate, Translator,
 };
 use genco::java::{
     self, Argument, Field, Method, Modifier, BOOLEAN, DOUBLE, FLOAT, INTEGER, LONG, VOID,
@@ -176,20 +176,14 @@ impl FlavorTranslator for JavaFlavorTranslator {
 
     translator_defaults!(Self);
 
-    fn translate_i32(&self) -> Result<Java<'static>> {
-        Ok(INTEGER.into())
-    }
+    fn translate_number(&self, number: RpNumberType) -> Result<Java<'static>> {
+        let out = match number.kind {
+            RpNumberKind::U32 | RpNumberKind::I32 => INTEGER.into(),
+            RpNumberKind::U64 | RpNumberKind::I64 => LONG.into(),
+            ty => return Err(format!("unsupported number type: {}", ty).into()),
+        };
 
-    fn translate_i64(&self) -> Result<Java<'static>> {
-        Ok(LONG.into())
-    }
-
-    fn translate_u32(&self) -> Result<Java<'static>> {
-        Ok(INTEGER.into())
-    }
-
-    fn translate_u64(&self) -> Result<Java<'static>> {
-        Ok(LONG.into())
+        Ok(out)
     }
 
     fn translate_float(&self) -> Result<Java<'static>> {
@@ -204,7 +198,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
         Ok(BOOLEAN.into())
     }
 
-    fn translate_string(&self) -> Result<Java<'static>> {
+    fn translate_string(&self, _: RpStringType) -> Result<Java<'static>> {
         Ok(self.string.clone().into())
     }
 
@@ -344,11 +338,8 @@ impl FlavorTranslator for JavaFlavorTranslator {
         use core::RpEnumType::*;
 
         match enum_type {
-            String => self.translate_string(),
-            U32 => self.translate_u32(),
-            U64 => self.translate_u64(),
-            I32 => self.translate_i32(),
-            I64 => self.translate_i64(),
+            String(string) => self.translate_string(string),
+            Number(number) => self.translate_number(number),
         }
     }
 }

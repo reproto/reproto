@@ -1,0 +1,56 @@
+// vim: ft=rust
+use core::regex::*;
+use regex_lexer::{self, RegexToken};
+
+grammar();
+
+pub Regex: Regex = {
+    <parts:Item*> => Regex {
+        parts,
+    },
+};
+
+Item: Item = {
+    <item:Item> "*" => Item::ZeroOrMore {
+        item: Box::new(item),
+    },
+    <item:Item> "+" => Item::OneOrMore {
+        item: Box::new(item),
+    },
+    <item:Item> "?" => Item::Optional {
+        item: Box::new(item),
+    },
+    "[" <constraints:CharacterConstraint*> "]" => Item::CharacterClass {
+        character_class: CharacterClass {
+            constraints,
+        },
+    },
+    <character:char> => Item::Character {
+        character,
+    },
+};
+
+CharacterConstraint: CharacterConstraint = {
+    <start:char> "-" <end:char> => CharacterConstraint::Range {
+        start,
+        end,
+    },
+    <character:char> => CharacterConstraint::Character {
+        character
+    },
+};
+
+extern {
+    type Location = usize;
+    type Error = regex_lexer::Error;
+
+    enum RegexToken {
+        char => RegexToken::Character(<char>),
+        "-" => RegexToken::Dash,
+        "[" => RegexToken::LeftBracket,
+        "]" => RegexToken::RightBracket,
+        "+" => RegexToken::Plus,
+        "*" => RegexToken::Star,
+        "?" => RegexToken::QuestionMark,
+    }
+}

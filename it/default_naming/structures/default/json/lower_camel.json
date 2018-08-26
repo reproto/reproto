@@ -23,7 +23,8 @@
           "ident": "foo_bar",
           "comment": [],
           "type": {
-            "type": "string"
+            "type": "string",
+            "validate": {}
           },
           "field_as": "fooBar"
         }

@@ -4,8 +4,8 @@
 
 use core::errors::Result;
 use core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-    Translator,
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
+    RpNumberType, RpStringType, Translate, Translator,
 };
 use genco::rust;
 use genco::{Cons, Rust};
@@ -66,20 +66,15 @@ impl FlavorTranslator for RustFlavorTranslator {
 
     translator_defaults!(Self, local_name, field);
 
-    fn translate_i32(&self) -> Result<Rust<'static>> {
-        Ok(rust::local("i32"))
-    }
+    fn translate_number(&self, number: RpNumberType) -> Result<Rust<'static>> {
+        let out = match number.kind {
+            RpNumberKind::U32 => rust::local("u32"),
+            RpNumberKind::U64 => rust::local("u64"),
+            RpNumberKind::I32 => rust::local("i32"),
+            RpNumberKind::I64 => rust::local("i64"),
+        };
 
-    fn translate_i64(&self) -> Result<Rust<'static>> {
-        Ok(rust::local("i64"))
-    }
-
-    fn translate_u32(&self) -> Result<Rust<'static>> {
-        Ok(rust::local("u32"))
-    }
-
-    fn translate_u64(&self) -> Result<Rust<'static>> {
-        Ok(rust::local("u64"))
+        Ok(out)
     }
 
     fn translate_float(&self) -> Result<Rust<'static>> {
@@ -94,7 +89,7 @@ impl FlavorTranslator for RustFlavorTranslator {
         Ok(rust::local("bool"))
     }
 
-    fn translate_string(&self) -> Result<Rust<'static>> {
+    fn translate_string(&self, _: RpStringType) -> Result<Rust<'static>> {
         Ok(rust::local("String"))
     }
 
@@ -164,11 +159,8 @@ impl FlavorTranslator for RustFlavorTranslator {
         use core::RpEnumType::*;
 
         match enum_type {
-            String => Ok(rust::local("str").reference(rust::StaticRef)),
-            U32 => self.translate_u32(),
-            U64 => self.translate_u64(),
-            I32 => self.translate_i32(),
-            I64 => self.translate_i64(),
+            String(_) => Ok(rust::local("str").reference(rust::StaticRef)),
+            Number(number) => self.translate_number(number),
         }
     }
 }

@@ -1,0 +1,11 @@
+{
+  "status": false,
+  "stdout": [
+    "error when building",
+    "suppressed: error in environment",
+    "it/ui/proto/string_validate.reproto:5:24-30:",
+    "  5:   #[validate(pattern = \"[a-z\")]",
+    "                            ^^^^^^ - bad regex: syntax error"
+  ],
+  "stderr": []
+}

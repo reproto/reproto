@@ -5,7 +5,8 @@ use attributes;
 use core::errors::Error;
 use core::flavored::*;
 use core::{
-    self, BigInt, Diagnostics, EnabledFeature, Import, Loc, Range, Span, SymbolKind, WithSpan,
+    self, BigInt, Diagnostics, EnabledFeature, Import, Loc, Range, RpNumberKind, RpNumberType,
+    RpStringType, RpStringValidate, Span, SymbolKind, WithSpan,
 };
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
@@ -255,17 +256,50 @@ impl<'input> IntoModel for Loc<Type<'input>> {
     where
         I: Import,
     {
+        (None, self).into_model(diag, scope)
+    }
+}
+
+impl<'input> IntoModel for (Option<&'input mut Attributes>, Loc<Type<'input>>) {
+    type Output = RpType;
+
+    fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
+    where
+        I: Import,
+    {
         use self::Type::*;
 
-        let (ty, span) = Loc::take_pair(self);
+        let (attributes, ty) = self;
+        let (ty, span) = Loc::take_pair(ty);
 
         let out = match ty {
             Double => core::RpType::Double,
             Float => core::RpType::Float,
-            Signed { size } => core::RpType::Signed { size: size },
-            Unsigned { size } => core::RpType::Unsigned { size: size },
+            Unsigned { size: 32 } => core::RpType::Number(RpNumberType {
+                kind: RpNumberKind::U32,
+                validate: None,
+            }),
+            Unsigned { size: 64 } => core::RpType::Number(RpNumberType {
+                kind: RpNumberKind::U64,
+                validate: None,
+            }),
+            Signed { size: 32 } => core::RpType::Number(RpNumberType {
+                kind: RpNumberKind::I32,
+                validate: None,
+            }),
+            Signed { size: 64 } => core::RpType::Number(RpNumberType {
+                kind: RpNumberKind::I64,
+                validate: None,
+            }),
             Boolean => core::RpType::Boolean,
-            String => core::RpType::String,
+            String => {
+                let validate = match attributes {
+                    Some(attributes) => attributes::string_validate(diag, attributes)?,
+                    None => RpStringValidate::default(),
+                };
+
+                core::RpType::String(RpStringType { validate })
+            }
             DateTime => core::RpType::DateTime,
             Name { name } => core::RpType::Name {
                 name: name.into_model(diag, scope)?,
@@ -281,6 +315,10 @@ impl<'input> IntoModel for Loc<Type<'input>> {
             Bytes => core::RpType::Bytes,
             Error { .. } => {
                 diag.err(span, "expected type, like: `string`, `u32`, or `MyType`");
+                return Err(());
+            }
+            _ => {
+                diag.err(span, "unsupported type");
                 return Err(());
             }
         };
@@ -323,17 +361,17 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
     {
         macro_rules! variants {
             (
-                $diag:expr, $enum_type:expr, $variants:expr,
-                $(($ty:ident, $out:ident, $default:expr)),*
+                $diag:expr, $enum_type:expr, $variants:expr, $type_field:ident,
+                $(($ty:ident, $out:ident, $default:ident)),*
             ) => {
             match $enum_type {
                 $(
-                core::RpEnumType::$ty => {
+                core::RpEnumType::$ty(ref $type_field) => {
                     let mut out = Vec::new();
 
                     let mut idents = HashMap::new();
                     let mut values = HashMap::new();
-                    let mut default = $default;
+                    let mut default = $default::new($type_field);
 
                     for v in $variants {
                         let v = try_loop!((v, &mut default).into_model(diag, scope));
@@ -397,27 +435,9 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             diag,
             enum_type,
             item.variants,
+            ty,
             (String, String, StringDefaultVariant),
-            (
-                U32,
-                Number,
-                NumberDefaultVariant::new(core::RpEnumType::U32)
-            ),
-            (
-                U64,
-                Number,
-                NumberDefaultVariant::new(core::RpEnumType::U64)
-            ),
-            (
-                I32,
-                Number,
-                NumberDefaultVariant::new(core::RpEnumType::I32)
-            ),
-            (
-                I64,
-                Number,
-                NumberDefaultVariant::new(core::RpEnumType::I64)
-            )
+            (Number, Number, NumberDefaultVariant)
         );
 
         let attributes = attributes.into_model(diag, scope)?;
@@ -437,28 +457,28 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             span,
         ));
 
-        struct NumberDefaultVariant {
+        struct NumberDefaultVariant<'a> {
             state: BigInt,
-            enum_type: core::RpEnumType,
+            number_type: &'a RpNumberType,
         }
 
-        impl NumberDefaultVariant {
-            fn new(enum_type: core::RpEnumType) -> Self {
+        impl<'a> NumberDefaultVariant<'a> {
+            fn new(number_type: &'a RpNumberType) -> Self {
                 Self {
                     state: 0.into(),
-                    enum_type,
+                    number_type,
                 }
             }
         }
 
-        impl DefaultVariant for NumberDefaultVariant {
+        impl<'a> DefaultVariant for NumberDefaultVariant<'a> {
             type Type = RpNumber;
 
             fn next<'input>(&mut self, _: &EnumVariant<'input>) -> result::Result<RpNumber, Error> {
                 let next = self.state.clone();
                 self.state = self.state.clone() + BigInt::from(1);
                 let number = RpNumber::from(next);
-                self.enum_type.validate_number(&number)?;
+                self.number_type.validate_number(&number)?;
                 Ok(number)
             }
 
@@ -473,12 +493,18 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                     self.state = value.clone();
                 }
 
-                self.enum_type.validate_number(&number)?;
+                self.number_type.validate_number(&number)?;
                 Ok(number)
             }
         }
 
         struct StringDefaultVariant;
+
+        impl StringDefaultVariant {
+            pub fn new<'a>(_: &'a RpStringType) -> Self {
+                StringDefaultVariant
+            }
+        }
 
         impl DefaultVariant for StringDefaultVariant {
             type Type = String;
@@ -650,6 +676,8 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
 
         let ty = handle_format_attribute(diag, scope, &mut attributes, item.ty)?;
 
+        let ty = (Some(&mut attributes), ty).into_model(diag, scope)?;
+
         check_attributes!(diag, attributes);
 
         return Ok(Loc::new(
@@ -658,7 +686,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
                 safe_ident: safe_ident,
                 ident: ident,
                 comment: Comment(&comment).into_model(diag, scope)?,
-                ty: ty.into_model(diag, scope)?,
+                ty,
                 field_as: field_as,
             },
             span,

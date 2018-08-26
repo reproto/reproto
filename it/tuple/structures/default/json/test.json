@@ -75,7 +75,8 @@
           "ident": "a",
           "comment": [],
           "type": {
-            "type": "string"
+            "type": "string",
+            "validate": {}
           }
         },
         {
@@ -83,8 +84,8 @@
           "ident": "b",
           "comment": [],
           "type": {
-            "type": "unsigned",
-            "size": 64
+            "type": "number",
+            "kind": "u64"
           }
         }
       ],
@@ -112,7 +113,8 @@
           "ident": "a",
           "comment": [],
           "type": {
-            "type": "string"
+            "type": "string",
+            "validate": {}
           }
         },
         {
@@ -156,7 +158,8 @@
           "ident": "a",
           "comment": [],
           "type": {
-            "type": "string"
+            "type": "string",
+            "validate": {}
           }
         }
       ],

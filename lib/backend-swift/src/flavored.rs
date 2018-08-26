@@ -5,8 +5,8 @@
 use backend::package_processor;
 use core::errors::Result;
 use core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-    Translator,
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
+    RpNumberType, RpStringType, Translate, Translator,
 };
 use genco::swift::{self, Swift};
 use genco::{Cons, Element, IntoTokens, Tokens};
@@ -125,20 +125,16 @@ impl FlavorTranslator for SwiftFlavorTranslator {
 
     translator_defaults!(Self, field, endpoint);
 
-    fn translate_i32(&self) -> Result<SwiftType<'static>> {
-        Ok(SwiftType::from_type(swift::local("Int32")))
-    }
+    fn translate_number(&self, number: RpNumberType) -> Result<SwiftType<'static>> {
+        let out = match number.kind {
+            RpNumberKind::U32 => swift::local("UInt32"),
+            RpNumberKind::U64 => swift::local("UInt64"),
+            RpNumberKind::I32 => swift::local("Int32"),
+            RpNumberKind::I64 => swift::local("Int64"),
+            ty => return Err(format!("unsupported number type: {}", ty).into()),
+        };
 
-    fn translate_i64(&self) -> Result<SwiftType<'static>> {
-        Ok(SwiftType::from_type(swift::local("Int64")))
-    }
-
-    fn translate_u32(&self) -> Result<SwiftType<'static>> {
-        Ok(SwiftType::from_type(swift::local("UInt32")))
-    }
-
-    fn translate_u64(&self) -> Result<SwiftType<'static>> {
-        Ok(SwiftType::from_type(swift::local("UInt64")))
+        Ok(SwiftType::from_type(out))
     }
 
     fn translate_float(&self) -> Result<SwiftType<'static>> {
@@ -153,7 +149,7 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         Ok(SwiftType::from_type(swift::local("Bool")))
     }
 
-    fn translate_string(&self) -> Result<SwiftType<'static>> {
+    fn translate_string(&self, _: RpStringType) -> Result<SwiftType<'static>> {
         Ok(SwiftType::from_type(swift::local("String")))
     }
 
@@ -253,11 +249,8 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         use core::RpEnumType::*;
 
         match enum_type {
-            String => self.translate_string(),
-            U32 => self.translate_u32(),
-            U64 => self.translate_u64(),
-            I32 => self.translate_i32(),
-            I64 => self.translate_i64(),
+            String(string) => self.translate_string(string),
+            Number(number) => self.translate_number(number),
         }
     }
 }

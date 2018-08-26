@@ -61,7 +61,8 @@
             "The field."
           ],
           "type": {
-            "type": "string"
+            "type": "string",
+            "validate": {}
           }
         }
       ],
@@ -103,7 +104,8 @@
                 "The field."
               ],
               "type": {
-                "type": "string"
+                "type": "string",
+                "validate": {}
               }
             }
           ],

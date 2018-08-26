@@ -24,7 +24,8 @@
           "ident": "name2",
           "comment": [],
           "type": {
-            "type": "string"
+            "type": "string",
+            "validate": {}
           }
         }
       ],

@@ -133,7 +133,10 @@
       ],
       "decls": [],
       "decl_idents": {},
-      "enum_type": "String",
+      "enum_type": {
+        "type": "string",
+        "validate": {}
+      },
       "variants": {
         "type": "string",
         "variants": [
@@ -185,7 +188,10 @@
       ],
       "decls": [],
       "decl_idents": {},
-      "enum_type": "String",
+      "enum_type": {
+        "type": "string",
+        "validate": {}
+      },
       "variants": {
         "type": "string",
         "variants": [
@@ -237,7 +243,10 @@
       ],
       "decls": [],
       "decl_idents": {},
-      "enum_type": "String",
+      "enum_type": {
+        "type": "string",
+        "validate": {}
+      },
       "variants": {
         "type": "string",
         "variants": [
@@ -287,7 +296,10 @@
       "comment": [],
       "decls": [],
       "decl_idents": {},
-      "enum_type": "U32",
+      "enum_type": {
+        "type": "number",
+        "kind": "u32"
+      },
       "variants": {
         "type": "number",
         "variants": [
@@ -337,7 +349,10 @@
       "comment": [],
       "decls": [],
       "decl_idents": {},
-      "enum_type": "U64",
+      "enum_type": {
+        "type": "number",
+        "kind": "u64"
+      },
       "variants": {
         "type": "number",
         "variants": [
@@ -387,7 +402,10 @@
       "comment": [],
       "decls": [],
       "decl_idents": {},
-      "enum_type": "I32",
+      "enum_type": {
+        "type": "number",
+        "kind": "i32"
+      },
       "variants": {
         "type": "number",
         "variants": [
@@ -465,7 +483,10 @@
       "comment": [],
       "decls": [],
       "decl_idents": {},
-      "enum_type": "I64",
+      "enum_type": {
+        "type": "number",
+        "kind": "i64"
+      },
       "variants": {
         "type": "number",
         "variants": [

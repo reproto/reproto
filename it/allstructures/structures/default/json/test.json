@@ -131,7 +131,10 @@
           "comment": [],
           "decls": [],
           "decl_idents": {},
-          "enum_type": "String",
+          "enum_type": {
+            "type": "string",
+            "validate": {}
+          },
           "variants": {
             "type": "string",
             "variants": [
@@ -378,7 +381,10 @@
               "comment": [],
               "decls": [],
               "decl_idents": {},
-              "enum_type": "String",
+              "enum_type": {
+                "type": "string",
+                "validate": {}
+              },
               "variants": {
                 "type": "string",
                 "variants": [
@@ -517,7 +523,10 @@
       "comment": [],
       "decls": [],
       "decl_idents": {},
-      "enum_type": "String",
+      "enum_type": {
+        "type": "string",
+        "validate": {}
+      },
       "variants": {
         "type": "string",
         "variants": [
@@ -650,7 +659,10 @@
           "comment": [],
           "decls": [],
           "decl_idents": {},
-          "enum_type": "String",
+          "enum_type": {
+            "type": "string",
+            "validate": {}
+          },
           "variants": {
             "type": "string",
             "variants": [
@@ -875,7 +887,10 @@
           "comment": [],
           "decls": [],
           "decl_idents": {},
-          "enum_type": "String",
+          "enum_type": {
+            "type": "string",
+            "validate": {}
+          },
           "variants": {
             "type": "string",
             "variants": [

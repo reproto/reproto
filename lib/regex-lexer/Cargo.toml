@@ -1,0 +1,15 @@
+[package]
+name = "reproto-regex-lexer"
+version = "0.3.39"
+authors = ["John-John Tedro <udoprog@tedro.se>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/reproto/reproto"
+homepage = "https://github.com/reproto/reproto"
+documentation = "https://docs.rs/reproto-lexer"
+description = """
+regex lexer used with the reproto parser
+"""
+
+[lib]
+path = "lib.rs"
