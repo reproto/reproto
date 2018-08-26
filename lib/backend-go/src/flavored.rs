@@ -5,8 +5,8 @@
 use backend::package_processor;
 use core::errors::Result;
 use core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-    Translator,
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
+    RpNumberType, RpStringType, Translate, Translator,
 };
 use genco::go::{array, imported, interface, local, map, Go};
 use genco::{Cons, Element};
@@ -70,20 +70,13 @@ impl FlavorTranslator for GoFlavorTranslator {
 
     translator_defaults!(Self, field, endpoint);
 
-    fn translate_i32(&self) -> Result<Go<'static>> {
-        Ok(local("int32"))
-    }
-
-    fn translate_i64(&self) -> Result<Go<'static>> {
-        Ok(local("int64"))
-    }
-
-    fn translate_u32(&self) -> Result<Go<'static>> {
-        Ok(local("uint32"))
-    }
-
-    fn translate_u64(&self) -> Result<Go<'static>> {
-        Ok(local("uint64"))
+    fn translate_number(&self, number: RpNumberType) -> Result<Go<'static>> {
+        match number.kind {
+            RpNumberKind::U32 => Ok(local("uint32")),
+            RpNumberKind::U64 => Ok(local("uint64")),
+            RpNumberKind::I32 => Ok(local("int32")),
+            RpNumberKind::I64 => Ok(local("int64")),
+        }
     }
 
     fn translate_float(&self) -> Result<Go<'static>> {
@@ -98,7 +91,7 @@ impl FlavorTranslator for GoFlavorTranslator {
         Ok(local("bool"))
     }
 
-    fn translate_string(&self) -> Result<Go<'static>> {
+    fn translate_string(&self, _: RpStringType) -> Result<Go<'static>> {
         Ok(local("string"))
     }
 
@@ -175,11 +168,8 @@ impl FlavorTranslator for GoFlavorTranslator {
         use core::RpEnumType::*;
 
         match enum_type {
-            String => self.translate_string(),
-            U32 => self.translate_u32(),
-            U64 => self.translate_u64(),
-            I32 => self.translate_i32(),
-            I64 => self.translate_i64(),
+            String(string) => self.translate_string(string),
+            Number(number) => self.translate_number(number),
         }
     }
 }

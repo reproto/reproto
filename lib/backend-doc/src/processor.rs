@@ -114,12 +114,11 @@ pub trait Processor<'env> {
             Double => self.primitive("double")?,
             Float => self.primitive("float")?,
             Boolean => self.primitive("boolean")?,
-            String => self.primitive("string")?,
+            String(..) => self.primitive("string")?,
             DateTime => self.primitive("datetime")?,
             Bytes => self.primitive("bytes")?,
             Any => self.primitive("any")?,
-            Signed { ref size } => self.primitive(format!("i{}", size).as_str())?,
-            Unsigned { ref size } => self.primitive(format!("u{}", size).as_str())?,
+            Number(ref number) => self.primitive(number.to_string().as_str())?,
             Name { ref name } => {
                 html!(self, span {class => "type-rp-name"} => {
                     self.full_name_without_package(name)?;

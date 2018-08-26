@@ -5,10 +5,11 @@ use core::flavored::{
     Attributes, RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp, RpHttpMethod, RpPathSpec,
     RpValue,
 };
-use core::{self, Diagnostics, Import, Loc, Span, Version, WithSpan};
+use core::{self, Diagnostics, Import, Loc, RpStringValidate, Span, Version, WithSpan};
 use features::Feature;
 use into_model::IntoModel;
 use path_parser;
+use regex_parser;
 use scope::Scope;
 use std::collections::HashMap;
 
@@ -267,7 +268,7 @@ where
             // Can handle complex data types.
             ref accept if *accept == core::RpAccept::Json => return Ok(()),
             _ => {
-                if *response.ty() == core::RpType::String {
+                if let core::RpType::String(..) = *response.ty() {
                     return Ok(());
                 }
 
@@ -347,4 +348,35 @@ pub fn string_format(
 
     check_selection!(diag, selection);
     Ok(Some(Loc::new(format, attribute_span)))
+}
+
+/// `#[validate(pattern = "[a-z]+")]` attributes on string fields.
+pub fn string_validate(
+    diag: &mut Diagnostics,
+    attributes: &mut Attributes,
+) -> Result<RpStringValidate, ()> {
+    let mut out = RpStringValidate::default();
+
+    let mut validate = match attributes.take_selection("validate") {
+        Some(validate) => validate,
+        None => return Ok(out),
+    };
+
+    if let Some(pattern) = validate.take("pattern") {
+        let (pattern, span) = Loc::take_pair(pattern);
+        let pattern = pattern.as_string().with_span(diag, span)?;
+
+        let regex = match regex_parser::parse(pattern) {
+            Ok(regex) => regex,
+            Err(e) => {
+                diag.err(span, format!("bad regex: {}", e.display()));
+                return Err(());
+            }
+        };
+
+        out.pattern = Some(regex);
+    }
+
+    check_selection!(diag, validate);
+    Ok(out)
 }

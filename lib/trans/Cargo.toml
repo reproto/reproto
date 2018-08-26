@@ -18,6 +18,7 @@ reproto-core = {path = "../core", version = "0.3"}
 reproto-ast = {path = "../ast", version = "0.3"}
 reproto-parser = {path = "../parser", version = "0.3"}
 reproto-path-parser = {path = "../path-parser", version = "0.3"}
+reproto-regex-parser = {path = "../regex-parser", version = "0.3"}
 reproto-naming = {path = "../naming", version = "0.3"}
 
 log = "0.4.4"

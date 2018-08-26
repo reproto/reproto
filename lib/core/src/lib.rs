@@ -30,6 +30,7 @@ mod loc;
 mod mime;
 mod option_entry;
 mod options;
+pub mod regex;
 mod reporter;
 mod resolver;
 mod rp_channel;
@@ -95,7 +96,9 @@ pub use self::rp_reg::RpReg;
 pub use self::rp_required_package::RpRequiredPackage;
 pub use self::rp_service::{RpServiceBody, RpServiceBodyHttp};
 pub use self::rp_tuple::RpTupleBody;
-pub use self::rp_type::RpType;
+pub use self::rp_type::{
+    RpNumberKind, RpNumberType, RpNumberValidate, RpStringType, RpStringValidate, RpType,
+};
 pub use self::rp_type_model::RpTypeBody;
 pub use self::rp_value::RpValue;
 pub use self::rp_versioned_package::RpVersionedPackage;

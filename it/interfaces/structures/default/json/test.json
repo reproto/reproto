@@ -73,7 +73,8 @@
           "ident": "shared",
           "comment": [],
           "type": {
-            "type": "string"
+            "type": "string",
+            "validate": {}
           }
         }
       ],
@@ -175,7 +176,8 @@
           "ident": "shared",
           "comment": [],
           "type": {
-            "type": "string"
+            "type": "string",
+            "validate": {}
           }
         },
         {
@@ -183,7 +185,8 @@
           "ident": "shared_ignore",
           "comment": [],
           "type": {
-            "type": "string"
+            "type": "string",
+            "validate": {}
           }
         }
       ],
@@ -212,7 +215,8 @@
               "ident": "a",
               "comment": [],
               "type": {
-                "type": "string"
+                "type": "string",
+                "validate": {}
               }
             },
             {
@@ -220,7 +224,8 @@
               "ident": "b",
               "comment": [],
               "type": {
-                "type": "string"
+                "type": "string",
+                "validate": {}
               }
             },
             {
@@ -228,7 +233,8 @@
               "ident": "ignore",
               "comment": [],
               "type": {
-                "type": "string"
+                "type": "string",
+                "validate": {}
               }
             }
           ],
@@ -254,7 +260,8 @@
               "ident": "a",
               "comment": [],
               "type": {
-                "type": "string"
+                "type": "string",
+                "validate": {}
               }
             },
             {
@@ -262,7 +269,8 @@
               "ident": "ignore",
               "comment": [],
               "type": {
-                "type": "string"
+                "type": "string",
+                "validate": {}
               }
             }
           ],
@@ -288,7 +296,8 @@
               "ident": "b",
               "comment": [],
               "type": {
-                "type": "string"
+                "type": "string",
+                "validate": {}
               }
             },
             {
@@ -296,7 +305,8 @@
               "ident": "ignore",
               "comment": [],
               "type": {
-                "type": "string"
+                "type": "string",
+                "validate": {}
               }
             }
           ],

@@ -5,8 +5,8 @@
 use backend::package_processor;
 use core::errors::Result;
 use core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, Translate,
-    Translator,
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberType,
+    RpStringType, Translate, Translator,
 };
 use genco::python::{self, Python};
 use genco::{Cons, Element, IntoTokens, Tokens};
@@ -264,19 +264,7 @@ impl FlavorTranslator for PythonFlavorTranslator {
 
     translator_defaults!(Self, field, endpoint, enum_type);
 
-    fn translate_i32(&self) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::Integer))
-    }
-
-    fn translate_i64(&self) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::Integer))
-    }
-
-    fn translate_u32(&self) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::Integer))
-    }
-
-    fn translate_u64(&self) -> Result<PythonType<'static>> {
+    fn translate_number(&self, _: RpNumberType) -> Result<PythonType<'static>> {
         Ok(self.ty(PythonKind::Integer))
     }
 
@@ -292,7 +280,7 @@ impl FlavorTranslator for PythonFlavorTranslator {
         Ok(self.ty(PythonKind::Boolean))
     }
 
-    fn translate_string(&self) -> Result<PythonType<'static>> {
+    fn translate_string(&self, _: RpStringType) -> Result<PythonType<'static>> {
         Ok(self.ty(PythonKind::String))
     }
 

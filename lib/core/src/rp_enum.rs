@@ -5,7 +5,8 @@ use serde::Serialize;
 use std::fmt;
 use std::vec;
 use {
-    BigInt, Diagnostics, Flavor, Loc, RpCode, RpNumber, RpReg, RpValue, Span, Translate, Translator,
+    Diagnostics, Flavor, Loc, RpCode, RpNumber, RpNumberType, RpReg, RpStringType, RpValue, Span,
+    Translate, Translator,
 };
 
 decl_body!(pub struct RpEnumBody<F> {
@@ -167,12 +168,10 @@ where
 
 /// Model for enum types
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpEnumType {
-    String,
-    U32,
-    U64,
-    I32,
-    I64,
+    String(RpStringType),
+    Number(RpNumberType),
 }
 
 impl RpEnumType {
@@ -183,39 +182,10 @@ impl RpEnumType {
         use self::RpEnumType::*;
 
         match (self, value) {
-            (&String, &RpValue::String(_)) => true,
-            (&U32, &RpValue::Number(_)) => true,
-            (&U64, &RpValue::Number(_)) => true,
-            (&I32, &RpValue::Number(_)) => true,
-            (&I64, &RpValue::Number(_)) => true,
+            (&String(..), &RpValue::String(_)) => true,
+            (&Number(..), &RpValue::Number(_)) => true,
             _ => false,
         }
-    }
-
-    /// Validate that the given number doesn't violate expected numeric bounds.
-    pub fn validate_number(&self, number: &RpNumber) -> Result<()> {
-        // max contiguous whole number that can be represented with a double: 2^53 - 1
-        const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991i64;
-        const MIN_SAFE_INTEGER: i64 = -9_007_199_254_740_991i64;
-
-        use self::RpEnumType::*;
-
-        let (mn, mx): (BigInt, BigInt) = match *self {
-            String => return Err("expected number, got `string`".into()),
-            U32 => (0u32.into(), i32::max_value().into()),
-            U64 => (0u64.into(), MAX_SAFE_INTEGER.into()),
-            I32 => (i32::min_value().into(), i32::max_value().into()),
-            I64 => (MIN_SAFE_INTEGER.into(), MAX_SAFE_INTEGER.into()),
-        };
-
-        let n = number.to_bigint().ok_or_else(|| "not a whole number")?;
-
-        // withing bounds
-        if mn <= *n && *n <= mx {
-            return Ok(());
-        }
-
-        Err(format!("number is not within {} to {} (inclusive)", mn, mx).into())
     }
 }
 
@@ -224,11 +194,8 @@ impl fmt::Display for RpEnumType {
         use self::RpEnumType::*;
 
         match *self {
-            String => "string".fmt(fmt),
-            U32 => "u32".fmt(fmt),
-            U64 => "u64".fmt(fmt),
-            I32 => "i32".fmt(fmt),
-            I64 => "i64".fmt(fmt),
+            String(..) => "string".fmt(fmt),
+            Number(ref number) => number.fmt(fmt),
         }
     }
 }

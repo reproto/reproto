@@ -23,6 +23,8 @@ members = [
   "lib/parser",
   "lib/path-lexer",
   "lib/path-parser",
+  "lib/regex-lexer",
+  "lib/regex-parser",
   "lib/repository",
   "lib/repository-http",
   "lib/semck",

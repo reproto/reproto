@@ -1,8 +1,99 @@
 //! Type of a model.
 
+use errors::Result;
+use regex::Regex;
 use serde::Serialize;
 use std::fmt;
-use {CoreFlavor, Flavor, Loc, RpEnumType, RpName};
+use {BigInt, CoreFlavor, Flavor, Loc, RpEnumType, RpName, RpNumber};
+
+/// Describes number validation.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct RpNumberValidate {
+    pub min: Option<RpNumber>,
+    pub max: Option<RpNumber>,
+}
+
+/// Describes string validation.
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+pub struct RpStringValidate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<Regex>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_length: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_length: Option<usize>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+pub enum RpNumberKind {
+    #[serde(rename = "u32")]
+    U32,
+    #[serde(rename = "u64")]
+    U64,
+    #[serde(rename = "i32")]
+    I32,
+    #[serde(rename = "i64")]
+    I64,
+}
+
+impl fmt::Display for RpNumberKind {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use self::RpNumberKind::*;
+
+        match *self {
+            U32 => "u32".fmt(fmt),
+            U64 => "u64".fmt(fmt),
+            I32 => "i32".fmt(fmt),
+            I64 => "i64".fmt(fmt),
+        }
+    }
+}
+
+/// A number type.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct RpNumberType {
+    pub kind: RpNumberKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validate: Option<RpNumberValidate>,
+}
+
+impl RpNumberType {
+    /// Validate that the given number doesn't violate expected numeric bounds.
+    pub fn validate_number(&self, number: &RpNumber) -> Result<()> {
+        // max contiguous whole number that can be represented with a double: 2^53 - 1
+        const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991i64;
+        const MIN_SAFE_INTEGER: i64 = -9_007_199_254_740_991i64;
+
+        // TODO: calculate numeric bounds instead of switching over a couple of well-known ones.
+        let (mn, mx): (BigInt, BigInt) = match self.kind {
+            RpNumberKind::U32 => (0u32.into(), i32::max_value().into()),
+            RpNumberKind::U64 => (0u64.into(), MAX_SAFE_INTEGER.into()),
+            RpNumberKind::I32 => (i32::min_value().into(), i32::max_value().into()),
+            RpNumberKind::I64 => (MIN_SAFE_INTEGER.into(), MAX_SAFE_INTEGER.into()),
+        };
+
+        let n = number.to_bigint().ok_or_else(|| "not a whole number")?;
+
+        // withing bounds
+        if mn <= *n && *n <= mx {
+            return Ok(());
+        }
+
+        Err(format!("number is not within {} to {} (inclusive)", mn, mx).into())
+    }
+}
+
+impl fmt::Display for RpNumberType {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.kind.fmt(fmt)
+    }
+}
+
+/// Describes a string type.
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+pub struct RpStringType {
+    pub validate: RpStringValidate,
+}
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(bound = "F::Package: Serialize")]
@@ -13,14 +104,9 @@ where
 {
     Double,
     Float,
-    Signed {
-        size: usize,
-    },
-    Unsigned {
-        size: usize,
-    },
+    Number(RpNumberType),
     Boolean,
-    String,
+    String(RpStringType),
     /// ISO-8601 datetime
     DateTime,
     Bytes,
@@ -46,11 +132,8 @@ where
         use self::RpType::*;
 
         match *self {
-            String => Some(RpEnumType::String),
-            Unsigned { size: 32 } => Some(RpEnumType::U32),
-            Unsigned { size: 64 } => Some(RpEnumType::U64),
-            Signed { size: 32 } => Some(RpEnumType::I32),
-            Signed { size: 64 } => Some(RpEnumType::I64),
+            String(ref string) => Some(RpEnumType::String(string.clone())),
+            Number(ref number) => Some(RpEnumType::Number(number.clone())),
             _ => None,
         }
     }
@@ -102,10 +185,9 @@ where
         match *self {
             Double => write!(f, "double"),
             Float => write!(f, "float"),
-            Signed { ref size } => write!(f, "i{}", size),
-            Unsigned { ref size } => write!(f, "u{}", size),
+            Number(ref number) => write!(f, "{}", number),
             Boolean => write!(f, "boolean"),
-            String => write!(f, "string"),
+            String(..) => write!(f, "string"),
             DateTime => write!(f, "datetime"),
             Name { ref name } => write!(f, "{}", name),
             Array { ref inner } => write!(f, "[{}]", inner),

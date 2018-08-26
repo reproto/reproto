@@ -9,8 +9,8 @@ use std::hash;
 use std::rc::Rc;
 use Flavor;
 use {
-    CoreFlavor, Diagnostics, Loc, RpEndpoint, RpEnumType, RpField, RpName, RpReg, RpType,
-    RpVersionedPackage,
+    CoreFlavor, Diagnostics, Loc, RpEndpoint, RpEnumType, RpField, RpName, RpNumberType, RpReg,
+    RpStringType, RpType, RpVersionedPackage,
 };
 
 /// Method for translating package.
@@ -23,13 +23,7 @@ pub trait FlavorTranslator {
     type Source: 'static + Clone + Flavor;
     type Target: 'static + Clone + Flavor;
 
-    fn translate_i32(&self) -> Result<<Self::Target as Flavor>::Type>;
-
-    fn translate_i64(&self) -> Result<<Self::Target as Flavor>::Type>;
-
-    fn translate_u32(&self) -> Result<<Self::Target as Flavor>::Type>;
-
-    fn translate_u64(&self) -> Result<<Self::Target as Flavor>::Type>;
+    fn translate_number(&self, number: RpNumberType) -> Result<<Self::Target as Flavor>::Type>;
 
     fn translate_float(&self) -> Result<<Self::Target as Flavor>::Type>;
 
@@ -37,7 +31,7 @@ pub trait FlavorTranslator {
 
     fn translate_boolean(&self) -> Result<<Self::Target as Flavor>::Type>;
 
-    fn translate_string(&self) -> Result<<Self::Target as Flavor>::Type>;
+    fn translate_string(&self, string: RpStringType) -> Result<<Self::Target as Flavor>::Type>;
 
     fn translate_datetime(&self) -> Result<<Self::Target as Flavor>::Type>;
 
@@ -408,13 +402,10 @@ where
         use self::RpType::*;
 
         let out = match source {
-            String => self.flavor.translate_string()?,
+            String(string) => self.flavor.translate_string(string)?,
             DateTime => self.flavor.translate_datetime()?,
             Bytes => self.flavor.translate_bytes()?,
-            Signed { size: 32 } => self.flavor.translate_i32()?,
-            Signed { size: 64 } => self.flavor.translate_i64()?,
-            Unsigned { size: 32 } => self.flavor.translate_u32()?,
-            Unsigned { size: 64 } => self.flavor.translate_u64()?,
+            Number(number) => self.flavor.translate_number(number)?,
             Float => self.flavor.translate_float()?,
             Double => self.flavor.translate_double()?,
             Boolean => self.flavor.translate_boolean()?,
@@ -433,7 +424,6 @@ where
                 self.flavor.translate_map(key, value)?
             }
             Any => self.flavor.translate_any()?,
-            ty => return Err(format!("unsupported type: {}", ty).into()),
         };
 
         Ok(out)
