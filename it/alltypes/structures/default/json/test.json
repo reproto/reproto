@@ -31,8 +31,7 @@
           "ident": "string_type",
           "comment": [],
           "type": {
-            "type": "string",
-            "validate": {}
+            "type": "string"
           }
         },
         {
@@ -159,8 +158,7 @@
           "type": {
             "type": "map",
             "key": {
-              "type": "string",
-              "validate": {}
+              "type": "string"
             },
             "value": {
               "type": "name",

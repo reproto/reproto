@@ -75,8 +75,7 @@
           "ident": "a",
           "comment": [],
           "type": {
-            "type": "string",
-            "validate": {}
+            "type": "string"
           }
         },
         {
@@ -113,8 +112,7 @@
           "ident": "a",
           "comment": [],
           "type": {
-            "type": "string",
-            "validate": {}
+            "type": "string"
           }
         },
         {
@@ -158,8 +156,7 @@
           "ident": "a",
           "comment": [],
           "type": {
-            "type": "string",
-            "validate": {}
+            "type": "string"
           }
         }
       ],

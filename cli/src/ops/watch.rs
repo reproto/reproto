@@ -42,7 +42,7 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
     use std::sync::mpsc;
     use std::thread;
     use std::time::Duration;
-    use utils::{session_with_hook, load_manifest};
+    use utils::{load_manifest, session_with_hook};
 
     // files discovered by the environment
     let paths: Rc<RefCell<HashSet<PathBuf>>> = Rc::new(RefCell::new(HashSet::new()));

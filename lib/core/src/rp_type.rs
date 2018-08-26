@@ -7,10 +7,17 @@ use std::fmt;
 use {BigInt, CoreFlavor, Flavor, Loc, RpEnumType, RpName, RpNumber};
 
 /// Describes number validation.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 pub struct RpNumberValidate {
     pub min: Option<RpNumber>,
     pub max: Option<RpNumber>,
+}
+
+impl RpNumberValidate {
+    /// Check if the validation rules are empty.
+    pub fn is_empty(&self) -> bool {
+        self.min.is_none() && self.max.is_none()
+    }
 }
 
 /// Describes string validation.
@@ -22,6 +29,13 @@ pub struct RpStringValidate {
     pub min_length: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_length: Option<usize>,
+}
+
+impl RpStringValidate {
+    /// Check if the validation rules are empty.
+    pub fn is_empty(&self) -> bool {
+        self.pattern.is_none() && self.min_length.is_none() && self.max_length.is_none()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -53,8 +67,8 @@ impl fmt::Display for RpNumberKind {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct RpNumberType {
     pub kind: RpNumberKind,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub validate: Option<RpNumberValidate>,
+    #[serde(skip_serializing_if = "RpNumberValidate::is_empty")]
+    pub validate: RpNumberValidate,
 }
 
 impl RpNumberType {
@@ -92,6 +106,7 @@ impl fmt::Display for RpNumberType {
 /// Describes a string type.
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 pub struct RpStringType {
+    #[serde(skip_serializing_if = "RpStringValidate::is_empty")]
     pub validate: RpStringValidate,
 }
 

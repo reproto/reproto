@@ -4,7 +4,7 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use core::errors::Result;
 use core::{Filesystem, Reporter};
 use env;
-use utils::{session, load_manifest};
+use utils::{load_manifest, session};
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("build").about("Build specifications");

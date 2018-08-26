@@ -33,7 +33,7 @@ use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
-use trans::{Session, Packages};
+use trans::{Packages, Session};
 
 const LIB: &str = "lib";
 const MOD: &str = "mod";

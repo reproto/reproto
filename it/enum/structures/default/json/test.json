@@ -134,8 +134,7 @@
       "decls": [],
       "decl_idents": {},
       "enum_type": {
-        "type": "string",
-        "validate": {}
+        "type": "string"
       },
       "variants": {
         "type": "string",
@@ -189,8 +188,7 @@
       "decls": [],
       "decl_idents": {},
       "enum_type": {
-        "type": "string",
-        "validate": {}
+        "type": "string"
       },
       "variants": {
         "type": "string",
@@ -244,8 +242,7 @@
       "decls": [],
       "decl_idents": {},
       "enum_type": {
-        "type": "string",
-        "validate": {}
+        "type": "string"
       },
       "variants": {
         "type": "string",

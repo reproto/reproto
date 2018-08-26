@@ -6,7 +6,7 @@ use core::errors::Error;
 use core::flavored::*;
 use core::{
     self, BigInt, Diagnostics, EnabledFeature, Import, Loc, Range, RpNumberKind, RpNumberType,
-    RpStringType, RpStringValidate, Span, SymbolKind, WithSpan,
+    RpNumberValidate, RpStringType, RpStringValidate, Span, SymbolKind, WithSpan,
 };
 use linked_hash_map::LinkedHashMap;
 use naming::{self, Naming};
@@ -277,19 +277,19 @@ impl<'input> IntoModel for (Option<&'input mut Attributes>, Loc<Type<'input>>) {
             Float => core::RpType::Float,
             Unsigned { size: 32 } => core::RpType::Number(RpNumberType {
                 kind: RpNumberKind::U32,
-                validate: None,
+                validate: RpNumberValidate::default(),
             }),
             Unsigned { size: 64 } => core::RpType::Number(RpNumberType {
                 kind: RpNumberKind::U64,
-                validate: None,
+                validate: RpNumberValidate::default(),
             }),
             Signed { size: 32 } => core::RpType::Number(RpNumberType {
                 kind: RpNumberKind::I32,
-                validate: None,
+                validate: RpNumberValidate::default(),
             }),
             Signed { size: 64 } => core::RpType::Number(RpNumberType {
                 kind: RpNumberKind::I64,
-                validate: None,
+                validate: RpNumberValidate::default(),
             }),
             Boolean => core::RpType::Boolean,
             String => {

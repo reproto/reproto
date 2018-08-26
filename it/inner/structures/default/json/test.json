@@ -88,8 +88,7 @@
               "ident": "field",
               "comment": [],
               "type": {
-                "type": "string",
-                "validate": {}
+                "type": "string"
               }
             }
           ],

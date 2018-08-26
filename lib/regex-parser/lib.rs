@@ -21,9 +21,7 @@ pub fn parse(input: &str) -> Result<Regex> {
             InvalidToken { location } => {
                 Err(Error::new(format!("invalid token at char #{}", location)))
             }
-            UnrecognizedToken { .. } => {
-                Err(format!("syntax error").into())
-            },
+            UnrecognizedToken { .. } => Err(format!("syntax error").into()),
             User { error } => match error {
                 Unexpected { pos } => {
                     return Err(Error::new(format!("unexpected input at char #{}", pos)));
