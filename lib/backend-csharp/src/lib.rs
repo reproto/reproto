@@ -35,7 +35,7 @@ use options::Options;
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
-use trans::Environment;
+use trans::Session;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct CsharpLang;
@@ -185,17 +185,17 @@ fn setup_options<'a>(modules: Vec<CsharpModule>) -> Options {
     options
 }
 
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let packages = env.packages()?;
+fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let packages = session.packages()?;
 
-    let translator = env.translator(flavored::CsharpFlavorTranslator::new(packages))?;
+    let translator = session.translator(flavored::CsharpFlavorTranslator::new(packages))?;
 
-    let env = env.translate(translator)?;
-    let env = Rc::new(env);
+    let session = session.translate(translator)?;
+    let session = Rc::new(session);
 
     let modules = checked_modules(manifest.modules)?;
     let options = setup_options(modules);
-    let compiler = Compiler::new(env.clone(), options);
+    let compiler = Compiler::new(session.clone(), options);
 
     compiler.compile(handle)
 }

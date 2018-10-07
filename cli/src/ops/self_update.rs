@@ -69,8 +69,8 @@ mod internal {
     const DEFAULT_URL: &str = "https://storage.googleapis.com/reproto-releases/";
 
     pub fn entry(m: &ArgMatches) -> Result<()> {
-        let config = env::ConfigEnv::new()?
-            .ok_or_else(|| format!("could not setup the reproto environment"))?;
+        let config = env::ConfigEnvironment::new()?
+            .ok_or_else(|| format!("could not setup the reproto session"))?;
 
         check_path(&config)?;
 
@@ -162,7 +162,7 @@ mod internal {
         return Ok(());
 
         /// Checks that bin_home is in PATH, or warns otherwise.
-        fn check_path(config: &env::ConfigEnv) -> Result<()> {
+        fn check_path(config: &env::ConfigEnvironment) -> Result<()> {
             let mut bin_in_path = false;
 
             if config.bin_home.is_dir() {

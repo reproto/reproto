@@ -30,7 +30,7 @@ use genco::{JavaScript, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
-use trans::Environment;
+use trans::Session;
 
 const TYPE_SEP: &str = "_";
 const EXT: &str = "js";
@@ -160,7 +160,7 @@ impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
     }
 }
 
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, env: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = env.packages()?;
 
     let translator = env.translator(flavored::JavaScriptFlavorTranslator::new(packages))?;

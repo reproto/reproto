@@ -25,7 +25,7 @@ mod config;
 mod config_env;
 mod initialize;
 
-pub use self::config_env::ConfigEnv;
+pub use self::config_env::ConfigEnvironment;
 pub use self::initialize::initialize;
 use core::errors::Result;
 use core::{RelativePath, Resolver};
@@ -129,7 +129,7 @@ pub fn repository(manifest: &Manifest) -> Result<Repository> {
     let mut index = repository.index.clone();
     let mut objects = repository.objects.clone();
 
-    if let Some(config_env) = ConfigEnv::new()? {
+    if let Some(config_env) = ConfigEnvironment::new()? {
         repo_dir = Some(config_env.repo_dir);
         cache_home = Some(config_env.cache_home);
         index = index.or(config_env.index.clone());

@@ -45,7 +45,7 @@ mod unix {
 
 use self::unix::*;
 
-pub struct ConfigEnv {
+pub struct ConfigEnvironment {
     pub config: PathBuf,
     pub repo_dir: PathBuf,
     pub cache_home: PathBuf,
@@ -55,8 +55,8 @@ pub struct ConfigEnv {
     pub objects: Option<String>,
 }
 
-impl ConfigEnv {
-    pub fn new() -> Result<Option<ConfigEnv>> {
+impl ConfigEnvironment {
+    pub fn new() -> Result<Option<ConfigEnvironment>> {
         let home = env::home_dir();
 
         let config_dir = match config_dir(home.as_ref())? {
@@ -105,7 +105,7 @@ impl ConfigEnv {
 
         let releases_dir = data_home.join("releases");
 
-        return Ok(Some(ConfigEnv {
+        return Ok(Some(ConfigEnvironment {
             config,
             repo_dir,
             cache_home,

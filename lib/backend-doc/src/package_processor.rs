@@ -36,7 +36,7 @@ macro_rules! types_section {
     };
 }
 
-define_processor!(PackageProcessor, Data<'env>, self,
+define_processor!(PackageProcessor, Data<'session>, self,
     process => {
         use core::RpDecl::*;
 
@@ -80,4 +80,4 @@ define_processor!(PackageProcessor, Data<'env>, self,
     current_package => &self.body.package;
 );
 
-impl<'env> PackageProcessor<'env> {}
+impl<'session> PackageProcessor<'session> {}

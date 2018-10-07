@@ -2,7 +2,7 @@
 
 The compiler works in the following phases:
 
-The [`Environment`] ([`lib/trans`]) is responsible for module resolution and is generally
+The [`Session`] ([`lib/trans`]) is responsible for module resolution and is generally
 considered the driver of the compiler.
 
 A simple example of this can be found in [`lib/compile`], which showcases a simplified compilation
@@ -10,7 +10,7 @@ through this module.
 This module exists to support the [WASM-based compiler], and the one provided through the
 [`reproto derive` command]
 
-The [`Environment`] requires a target for compilation, either through immediately importing a file,
+The [`Session`] requires a target for compilation, either through immediately importing a file,
 or another package (through a [`resolver`]).
 
 Once this has been provided, the content of the specification will be parsed using [`lib/parser`],
@@ -32,7 +32,7 @@ All of this happens in [`lib/trans`], or more specifically: [`into_model.rs`].
 [`lib/lexer`]: /lib/lexer
 [`lib/ast`]: /lib/ast
 [`lib/core`]: /lib/core
-[`Environment`]: /lib/trans/environment.rs
+[`Session`]: /lib/trans/session.rs
 [WASM-based compiler]: /eval/reproto_wasm.rs
 [`reproto derive` command]: /cli/src/ops/derive.rs
 [`resolver`]: /lib/core/src/resolver.rs
@@ -60,12 +60,12 @@ This is a non-comprehensive list of what happens when translating `AST` to `RpIR
 RpIR can be flavored (default being `CoreFlavor`).
 
 A flavor defines which types are used to store certain types of information.
-RpIR can be translated from one flavor to another using `Environment::translate`.
+RpIR can be translated from one flavor to another using `Session::translate`.
 
 This process requires that one implements and provides the necessary `*Translator` traits which
 decide how one flavor (e.g. `CoreFlavor`) is translated to another flavor.
 
-If a backend wants to use `CoreFlavor`, `Environment::translate_default` is available which does
+If a backend wants to use `CoreFlavor`, `Session::translate_default` is available which does
 the minimal amount of processing (referential integrity) but retains the original flavor.
 
 [parsed specification]: /doc/spec.md

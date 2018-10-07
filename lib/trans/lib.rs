@@ -35,11 +35,11 @@ macro_rules! check_selection {
 }
 
 mod attributes;
-pub mod environment;
+pub mod session;
 mod features;
 mod into_model;
 mod scope;
 pub mod translated;
 
-pub use self::environment::{Environment, Packages};
+pub use self::session::{Session, Packages};
 pub use self::translated::Translated;

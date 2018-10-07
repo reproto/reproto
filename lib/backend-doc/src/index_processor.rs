@@ -11,7 +11,7 @@ pub struct Data<'a> {
     pub entries: Vec<(&'a RpVersionedPackage, &'a RpFile)>,
 }
 
-define_processor!(IndexProcessor, Data<'env>, self,
+define_processor!(IndexProcessor, Data<'session>, self,
     process => {
         self.write_doc(|| {
             html!(self, section {class => "section-content"} => {
@@ -41,4 +41,4 @@ define_processor!(IndexProcessor, Data<'env>, self,
     };
 );
 
-impl<'env> IndexProcessor<'env> {}
+impl<'session> IndexProcessor<'session> {}

@@ -305,7 +305,7 @@ impl Workspace {
         let package_prefix = manifest.package_prefix.clone();
 
         self.reporter.clear();
-        let mut env = lang.into_env(package_prefix, &mut self.reporter, resolver)?;
+        let mut session = lang.into_session(package_prefix, &mut self.reporter, resolver)?;
 
         for s in &sources {
             let manifest::Source {
@@ -313,7 +313,7 @@ impl Workspace {
                 ref source,
             } = *s;
 
-            if let Err(e) = env.import_source(source.clone(), Some(package.clone())) {
+            if let Err(e) = session.import_source(source.clone(), Some(package.clone())) {
                 debug!(
                     "failed to import: {} from {}: {}",
                     package,
@@ -331,7 +331,7 @@ impl Workspace {
             .filesystem
             .open_root(manifest.output.as_ref().map(AsRef::as_ref))?;
 
-        if let Err(e) = lang.compile(handle.as_ref(), env, manifest) {
+        if let Err(e) = lang.compile(handle.as_ref(), session, manifest) {
             // ignore and just go off diagnostics?
             debug!("compile error: {}", e.display());
 

@@ -42,7 +42,7 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
     use std::sync::mpsc;
     use std::thread;
     use std::time::Duration;
-    use utils::{environment_with_hook, load_manifest};
+    use utils::{session_with_hook, load_manifest};
 
     // files discovered by the environment
     let paths: Rc<RefCell<HashSet<PathBuf>>> = Rc::new(RefCell::new(HashSet::new()));
@@ -277,7 +277,7 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
         let manifest = load_manifest(matches)?;
         let mut resolver = env::resolver(&manifest)?;
 
-        let env = environment_with_hook(
+        let session = session_with_hook(
             lang.copy(),
             &manifest,
             reporter,
@@ -293,7 +293,7 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
         )?;
 
         let handle = fs.open_root(manifest.output.as_ref().map(AsRef::as_ref))?;
-        lang.compile(handle.as_ref(), env, manifest)?;
+        lang.compile(handle.as_ref(), session, manifest)?;
         Ok(())
     }
 }

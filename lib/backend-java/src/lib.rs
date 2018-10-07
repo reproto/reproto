@@ -33,7 +33,7 @@ use options::Options;
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
-use trans::Environment;
+use trans::Session;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct JavaLang;
@@ -204,17 +204,17 @@ fn setup_options<'a>(modules: Vec<JavaModule>) -> Result<Options> {
     Ok(options)
 }
 
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let packages = env.packages()?;
-    let translator = env.translator(flavored::JavaFlavorTranslator::new(packages.clone()))?;
+fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let packages = session.packages()?;
+    let translator = session.translator(flavored::JavaFlavorTranslator::new(packages.clone()))?;
 
-    let env = env.translate(translator)?;
+    let session = session.translate(translator)?;
 
-    let env = Rc::new(env);
+    let session = Rc::new(session);
     let modules = checked_modules(manifest.modules)?;
     let options = setup_options(modules)?;
 
-    let compiler = Compiler::new(&env, options);
+    let compiler = Compiler::new(&session, options);
 
     compiler.compile(&packages, handle)
 }
