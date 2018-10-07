@@ -13,29 +13,29 @@ use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
 use trans::Translated;
 
-pub trait Processor<'env> {
+pub trait Processor<'session> {
     /// Access the current builder.
-    fn out(&self) -> ::std::cell::RefMut<DocBuilder<'env>>;
+    fn out(&self) -> ::std::cell::RefMut<DocBuilder<'session>>;
 
-    /// Access the current environment.
-    fn env(&self) -> &'env Translated<CoreFlavor>;
+    /// Access the current session.
+    fn session(&self) -> &'session Translated<CoreFlavor>;
 
     /// Path to root.
-    fn root(&self) -> &'env str;
+    fn root(&self) -> &'session str;
 
     /// Process the given request.
     fn process(self) -> Result<()>;
 
     /// Syntax theme.
-    fn syntax(&self) -> (&'env Theme, &'env SyntaxSet);
+    fn syntax(&self) -> (&'session Theme, &'session SyntaxSet);
 
-    fn current_package(&self) -> Option<&'env RpVersionedPackage> {
+    fn current_package(&self) -> Option<&'session RpVersionedPackage> {
         None
     }
 
     /// Generate a type URL.
     fn type_url(&self, name: &RpName) -> Result<String> {
-        let reg = self.env().lookup(name)?;
+        let reg = self.session().lookup(name)?;
 
         let (fragment, path) = match *reg {
             core::RpReg::EnumVariant | core::RpReg::SubType => {

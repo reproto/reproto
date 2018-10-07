@@ -34,7 +34,7 @@ use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
-use trans::Environment;
+use trans::Session;
 use utils::VersionHelper;
 
 const TYPE_SEP: &str = "_";
@@ -181,14 +181,14 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     Ok(options)
 }
 
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = setup_options(modules)?;
 
-    let packages = env.packages()?;
+    let packages = session.packages()?;
 
     let helper = options.version_helper.clone();
-    let translator = env.translator(flavored::PythonFlavorTranslator::new(packages, helper))?;
+    let translator = session.translator(flavored::PythonFlavorTranslator::new(packages, helper))?;
 
     // NOTE: avoid doing translation.
     let mut diag = Diagnostics::new(Source::empty("no diagnostics"));
@@ -198,7 +198,7 @@ fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) ->
         Span::empty(),
     ).translate(&mut diag, &translator)?;
 
-    let env = env.translate(translator)?;
+    let session = session.translate(translator)?;
 
-    Compiler::new(&env, &variant_field, options, handle).compile()
+    Compiler::new(&session, &variant_field, options, handle).compile()
 }

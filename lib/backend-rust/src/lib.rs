@@ -33,7 +33,7 @@ use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
-use trans::{Environment, Packages};
+use trans::{Session, Packages};
 
 const LIB: &str = "lib";
 const MOD: &str = "mod";
@@ -196,16 +196,16 @@ fn options(modules: Vec<RustModule>, packages: Rc<Packages>) -> Result<Options> 
     Ok(options)
 }
 
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
-    let packages = env.packages()?;
+    let packages = session.packages()?;
     let options = options(modules, packages.clone())?;
 
-    let translator = env.translator(flavored::RustFlavorTranslator::new(
+    let translator = session.translator(flavored::RustFlavorTranslator::new(
         packages.clone(),
         options.datetime.clone(),
     ))?;
-    let env = env.translate(translator)?;
+    let session = session.translate(translator)?;
 
-    Compiler::new(&env, options, handle).compile()
+    Compiler::new(&session, options, handle).compile()
 }

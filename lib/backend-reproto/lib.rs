@@ -21,7 +21,7 @@ use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::fmt::{self, Write};
 use std::path::Path;
-use trans::Environment;
+use trans::Session;
 
 pub struct Comments<'el, S: 'el>(&'el [S]);
 
@@ -100,7 +100,7 @@ impl Custom for Reproto {
 }
 
 /// Compile to a reproto manifest.
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, _manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, env: Session<CoreFlavor>, _manifest: Manifest) -> Result<()> {
     let env = env.translate_default()?;
 
     let root = RelativePathBuf::from(".");

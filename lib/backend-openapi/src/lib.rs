@@ -47,7 +47,7 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::path::Path;
-use trans::{Environment, Translated};
+use trans::{Session, Translated};
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct OpenApiLang;
@@ -85,7 +85,7 @@ impl TryFromToml for OpenApiModule {
     }
 }
 
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, env: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let env = env.translate_default()?;
 
     let modules = checked_modules(manifest.modules)?;

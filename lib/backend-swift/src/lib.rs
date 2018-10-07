@@ -30,7 +30,7 @@ use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
-use trans::Environment;
+use trans::Session;
 
 const EXT: &str = "swift";
 const TYPE_SEP: &'static str = "_";
@@ -312,17 +312,17 @@ pub struct PackageAdded<'a, 'el: 'a> {
 
 codegen!(PackageCodegen, PackageAdded);
 
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
 
-    let packages = env.packages()?;
+    let packages = session.packages()?;
 
     let translator = flavored::SwiftFlavorTranslator::new(packages.clone(), &options)?;
 
-    let translator = env.translator(translator)?;
+    let translator = session.translator(translator)?;
 
-    let env = env.translate(translator)?;
+    let session = session.translate(translator)?;
 
-    Compiler::new(&env, options, handle)?.compile(&packages)
+    Compiler::new(&session, options, handle)?.compile(&packages)
 }

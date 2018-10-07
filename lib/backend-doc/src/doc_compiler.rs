@@ -26,7 +26,7 @@ use type_processor::TypeProcessor;
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
 pub struct DocCompiler<'a> {
-    pub env: Translated<CoreFlavor>,
+    pub session: Translated<CoreFlavor>,
     pub out_path: PathBuf,
     pub skip_static: bool,
     pub theme_css: &'a [u8],
@@ -37,15 +37,15 @@ pub struct DocCompiler<'a> {
 impl<'a> DocCompiler<'a> {
     /// Do the compilation.
     pub fn compile(&self) -> Result<()> {
-        for (_, file) in self.env.for_each_file() {
+        for (_, file) in self.session.for_each_file() {
             for decl in file.for_each_decl() {
                 self.process_decl(decl)?;
             }
         }
 
-        self.write_index(self.env.for_each_file())?;
+        self.write_index(self.session.for_each_file())?;
 
-        for (package, file) in self.env.for_each_file() {
+        for (package, file) in self.session.for_each_file() {
             self.write_package(package, file)?;
         }
 
@@ -90,35 +90,35 @@ impl<'a> DocCompiler<'a> {
         match *decl {
             Interface(ref body) => InterfaceProcessor {
                 out: out,
-                env: &self.env,
+                session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
                 body: body,
             }.process(),
             Type(ref body) => TypeProcessor {
                 out: out,
-                env: &self.env,
+                session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
                 body: body,
             }.process(),
             Tuple(ref body) => TupleProcessor {
                 out: out,
-                env: &self.env,
+                session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
                 body: body,
             }.process(),
             Enum(ref body) => EnumProcessor {
                 out: out,
-                env: &self.env,
+                session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
                 body: body,
             }.process(),
             Service(ref body) => ServiceProcessor {
                 out: out,
-                env: &self.env,
+                session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
                 body: body,
@@ -164,7 +164,7 @@ impl<'a> DocCompiler<'a> {
 
         PackageProcessor {
             out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
-            env: &self.env,
+            session: &self.session,
             syntax: (self.syntax_theme, self.syntax_set),
             root: &root.join("/"),
             body: &PackageData {
@@ -189,7 +189,7 @@ impl<'a> DocCompiler<'a> {
 
         IndexProcessor {
             out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
-            env: &self.env,
+            session: &self.session,
             syntax: (self.syntax_theme, self.syntax_set),
             root: &".",
             body: &IndexData { entries: entries },

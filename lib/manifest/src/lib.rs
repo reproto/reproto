@@ -46,7 +46,7 @@ macro_rules! lang_base {
         fn compile(
             &self,
             handle: &core::Handle,
-            env: $crate::trans::Environment<$crate::core::CoreFlavor>,
+            env: $crate::trans::Session<$crate::core::CoreFlavor>,
             manifest: $crate::Manifest
         ) -> Result<()> {
             $compile(handle, env, manifest)
@@ -84,7 +84,7 @@ pub trait Lang: fmt::Debug {
     fn compile(
         &self,
         handle: &core::Handle,
-        env: trans::Environment<CoreFlavor>,
+        env: trans::Session<CoreFlavor>,
         manifest: Manifest,
     ) -> Result<()>;
 
@@ -103,42 +103,42 @@ pub trait Lang: fmt::Debug {
         false
     }
 
-    /// Helper to convert into environment.
-    fn into_env<'a>(
+    /// Helper to convert into session.
+    fn into_session<'a>(
         &self,
         package_prefix: Option<core::RpPackage>,
         reporter: &'a mut core::Reporter,
         resolver: &'a mut core::Resolver,
-    ) -> Result<trans::Environment<'a, CoreFlavor>> {
+    ) -> Result<trans::Session<'a, CoreFlavor>> {
         let keywords = self
             .keywords()
             .into_iter()
             .map(|(f, t)| (f.to_string(), t.to_string()))
             .collect();
 
-        let e = trans::Environment::new(package_prefix.clone(), reporter, resolver)?
+        let session = trans::Session::new(package_prefix.clone(), reporter, resolver)?
             .with_keywords(keywords)
             .with_safe_packages(self.safe_packages());
 
-        let e = if let Some(package_naming) = self.package_naming() {
-            e.with_package_naming(package_naming)
+        let session = if let Some(package_naming) = self.package_naming() {
+            session.with_package_naming(package_naming)
         } else {
-            e
+            session
         };
 
-        let e = if let Some(field_ident_naming) = self.field_ident_naming() {
-            e.with_field_ident_naming(field_ident_naming)
+        let session = if let Some(field_ident_naming) = self.field_ident_naming() {
+            session.with_field_ident_naming(field_ident_naming)
         } else {
-            e
+            session
         };
 
-        let e = if let Some(endpoint_ident_naming) = self.endpoint_ident_naming() {
-            e.with_endpoint_ident_naming(endpoint_ident_naming)
+        let session = if let Some(endpoint_ident_naming) = self.endpoint_ident_naming() {
+            session.with_endpoint_ident_naming(endpoint_ident_naming)
         } else {
-            e
+            session
         };
 
-        Ok(e)
+        Ok(session)
     }
 
     /// Rename packages according to the given naming convention.
@@ -186,7 +186,7 @@ impl Lang for NoLang {
 
 fn no_compile(
     _handle: &core::Handle,
-    _env: trans::Environment<CoreFlavor>,
+    _env: trans::Session<CoreFlavor>,
     _manifest: Manifest,
 ) -> Result<()> {
     Ok(())

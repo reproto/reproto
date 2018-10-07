@@ -38,30 +38,30 @@ impl FormatAttribute for String {
 #[macro_export]
 macro_rules! define_processor {
     ($name:ident, $body:ty, $slf:ident, $($tail:tt)*) => (
-        pub struct $name<'env> {
-            pub out: ::std::cell::RefCell<DocBuilder<'env>>,
-            pub env: &'env $crate::trans::Translated<$crate::core::CoreFlavor>,
-            pub syntax: (&'env ::syntect::highlighting::Theme, &'env ::syntect::parsing::SyntaxSet),
-            pub root: &'env str,
-            pub body: &'env $body,
+        pub struct $name<'session> {
+            pub out: ::std::cell::RefCell<DocBuilder<'session>>,
+            pub session: &'session $crate::trans::Translated<$crate::core::CoreFlavor>,
+            pub syntax: (&'session ::syntect::highlighting::Theme, &'session ::syntect::parsing::SyntaxSet),
+            pub root: &'session str,
+            pub body: &'session $body,
         }
 
-        impl<'env> Processor<'env> for $name<'env> {
-            fn env(&self) -> &'env $crate::trans::Translated<$crate::core::CoreFlavor> {
-                self.env
+        impl<'session> Processor<'session> for $name<'session> {
+            fn session(&self) -> &'session $crate::trans::Translated<$crate::core::CoreFlavor> {
+                self.session
             }
 
-            fn out(&self) -> ::std::cell::RefMut<DocBuilder<'env>> {
+            fn out(&self) -> ::std::cell::RefMut<DocBuilder<'session>> {
                 self.out.borrow_mut()
             }
 
-            fn root(&self) -> &'env str {
+            fn root(&self) -> &'session str {
                 self.root
             }
 
             fn syntax(&self) -> (
-                &'env ::syntect::highlighting::Theme,
-                &'env ::syntect::parsing::SyntaxSet,
+                &'session ::syntect::highlighting::Theme,
+                &'session ::syntect::parsing::SyntaxSet,
             ) {
                 self.syntax
             }
@@ -77,13 +77,13 @@ macro_rules! define_processor {
     );
 
     (@tail $slf:ident current_package => $body:block; $($tail:tt)*) => (
-        fn current_package(&$slf) -> Option<&'env ::core::RpVersionedPackage> $body
+        fn current_package(&$slf) -> Option<&'session ::core::RpVersionedPackage> $body
 
         define_processor!(@tail $slf $($tail)*);
     );
 
     (@tail $slf:ident current_package => $expr:expr; $($tail:tt)*) => (
-        fn current_package(&$slf) -> Option<&'env ::core::RpVersionedPackage> { Some($expr) }
+        fn current_package(&$slf) -> Option<&'session ::core::RpVersionedPackage> { Some($expr) }
 
         define_processor!(@tail $slf $($tail)*);
     );

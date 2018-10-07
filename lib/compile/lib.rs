@@ -82,18 +82,18 @@ where
 
     let handle = fs.open_root(manifest.output.as_ref().map(AsRef::as_ref))?;
 
-    let mut env = lang.into_env(package_prefix, reporter, resolver)?;
+    let mut session = lang.into_session(package_prefix, reporter, resolver)?;
 
     match input {
         Input::File(file, package) => {
-            env.import_file(file, package)?;
+            session.import_file(file, package)?;
         }
         Input::Source(source, package) => {
-            env.import_source(source, package)?;
+            session.import_source(source, package)?;
         }
     }
 
-    lang.compile(handle.as_ref(), env, manifest)?;
+    lang.compile(handle.as_ref(), session, manifest)?;
 
     let borrowed = capturing.files().try_borrow()?;
 

@@ -4,7 +4,7 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use core::errors::Result;
 use core::{Filesystem, Reporter};
 use env;
-use utils::{environment, load_manifest};
+use utils::{session, load_manifest};
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("build").about("Build specifications");
@@ -27,7 +27,7 @@ pub fn entry(fs: &Filesystem, reporter: &mut Reporter, matches: &ArgMatches) -> 
 
     let mut resolver = env::resolver(&manifest)?;
     let handle = fs.open_root(manifest.output.as_ref().map(AsRef::as_ref))?;
-    let env = environment(lang.copy(), &manifest, reporter, resolver.as_mut())?;
-    lang.compile(handle.as_ref(), env, manifest)?;
+    let session = session(lang.copy(), &manifest, reporter, resolver.as_mut())?;
+    lang.compile(handle.as_ref(), session, manifest)?;
     Ok(())
 }

@@ -16,7 +16,7 @@ use core::{CoreFlavor, Handle, RelativePathBuf};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
-use trans::Environment;
+use trans::Session;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct JsonLang;
@@ -38,12 +38,12 @@ impl TryFromToml for JsonModule {
     }
 }
 
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, _manifest: Manifest) -> Result<()> {
-    let env = env.translate_default()?;
+fn compile(handle: &Handle, session: Session<CoreFlavor>, _manifest: Manifest) -> Result<()> {
+    let session = session.translate_default()?;
 
     let root = RelativePathBuf::from(".");
 
-    for (package, file) in env.for_each_file() {
+    for (package, file) in session.for_each_file() {
         let mut path = package
             .package
             .parts()

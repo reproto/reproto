@@ -32,7 +32,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
-use trans::Environment;
+use trans::Session;
 
 const TYPE_SEP: &str = "_";
 const EXT: &str = "go";
@@ -270,13 +270,13 @@ impl<'el> IntoTokens<'el, Go<'el>> for Tags {
     }
 }
 
-fn compile(handle: &Handle, env: Environment<CoreFlavor>, manifest: Manifest) -> Result<()> {
-    let packages = env.packages()?;
+fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+    let packages = session.packages()?;
 
-    let translator = env.translator(flavored::GoFlavorTranslator::new(packages))?;
-    let env = env.translate(translator)?;
+    let translator = session.translator(flavored::GoFlavorTranslator::new(packages))?;
+    let session = session.translate(translator)?;
 
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
-    Compiler::new(&env, options, handle)?.compile()
+    Compiler::new(&session, options, handle)?.compile()
 }

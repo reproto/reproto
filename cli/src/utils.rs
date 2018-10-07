@@ -12,7 +12,7 @@ use semck;
 use std::fmt;
 use std::fs::File;
 use std::path::Path;
-use trans::Environment;
+use trans::Session;
 
 /// Load the manifest based on commandline arguments.
 pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
@@ -117,30 +117,30 @@ pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
     }
 }
 
-pub fn environment<'a>(
+pub fn session<'a>(
     lang: Box<Lang>,
     manifest: &Manifest,
     reporter: &'a mut Reporter,
     resolver: &'a mut Resolver,
-) -> Result<Environment<'a, CoreFlavor>> {
-    environment_with_hook(lang, manifest, reporter, resolver, |_| Ok(()))
+) -> Result<Session<'a, CoreFlavor>> {
+    session_with_hook(lang, manifest, reporter, resolver, |_| Ok(()))
 }
 
-/// Setup environment.
-pub fn environment_with_hook<'a, F: 'static>(
+/// Setup session.
+pub fn session_with_hook<'a, F: 'static>(
     lang: Box<Lang>,
     manifest: &Manifest,
     reporter: &'a mut Reporter,
     resolver: &'a mut Resolver,
     path_hook: F,
-) -> Result<Environment<'a, CoreFlavor>>
+) -> Result<Session<'a, CoreFlavor>>
 where
     F: Fn(&Path) -> Result<()>,
 {
     let package_prefix = manifest.package_prefix.clone();
 
-    let mut env = lang
-        .into_env(package_prefix, reporter, resolver)?
+    let mut session = lang
+        .into_session(package_prefix, reporter, resolver)?
         .with_path_hook(path_hook);
 
     let mut errors: Vec<Error> = Vec::new();
@@ -151,10 +151,10 @@ where
         stdin = true;
     }
 
-    for s in manifest.resolve(env.resolver)? {
+    for s in manifest.resolve(session.resolver)? {
         let manifest::Source { package, source } = s;
 
-        match env.import_source(source.clone(), Some(package.clone())) {
+        match session.import_source(source.clone(), Some(package.clone())) {
             Err(e) => errors.push(e.into()),
             _ => {}
         }
@@ -165,12 +165,12 @@ where
 
         let source = Source::stdin();
 
-        if let Err(e) = env.import_source(source, None) {
+        if let Err(e) = session.import_source(source, None) {
             errors.push(e.into());
         }
     }
 
-    if let Err(e) = env.verify() {
+    if let Err(e) = session.verify() {
         errors.push(e.into());
     }
 
@@ -178,7 +178,7 @@ where
         return Err(Error::new("error when building").with_suppressed(errors));
     }
 
-    Ok(env)
+    Ok(session)
 }
 
 /// Argument match.
@@ -276,7 +276,7 @@ where
 pub fn semck_check(
     errors: &mut Vec<Error>,
     repository: &mut Repository,
-    env: &mut Environment<CoreFlavor>,
+    session: &mut Session<CoreFlavor>,
     version_to: &Version,
     source_to: &Source,
     package_to: &RpVersionedPackage,
@@ -300,7 +300,7 @@ pub fn semck_check(
 
         let package_from =
             RpVersionedPackage::new(package_to.package.clone(), Some(d.version.clone()));
-        let file_from = env.load_source(current.clone(), &package_from)?;
+        let file_from = session.load_source(current.clone(), &package_from)?;
 
         let violations = semck::check((&d.version, &file_from), (&version_to, file_to))?;
 
@@ -316,7 +316,7 @@ pub fn semck_check(
                 handle_violation(&mut diag, &current, source_to, v)?;
             }
 
-            env.reporter.source_diagnostics(diag);
+            session.reporter.source_diagnostics(diag);
         }
     }
 
@@ -465,13 +465,13 @@ pub fn semck_check(
     }
 }
 
-/// Setup a basic environment falling back to `NoLang` unless one is specified.
+/// Setup a basic session falling back to `NoLang` unless one is specified.
 pub fn simple_config<'a>(
     manifest: &Manifest,
     reporter: &'a mut Reporter,
     resolver: &'a mut Resolver,
-) -> Result<Environment<'a, CoreFlavor>> {
+) -> Result<Session<'a, CoreFlavor>> {
     let lang = manifest.lang_or_nolang();
-    let env = environment(lang, &manifest, reporter, resolver)?;
-    Ok(env)
+    let session = session(lang, &manifest, reporter, resolver)?;
+    Ok(session)
 }

@@ -47,8 +47,8 @@ where
     source: Source,
 }
 
-/// Scoped environment for evaluating reproto IDLs.
-pub struct Environment<'a, F: 'static>
+/// Scoped session for evaluating reproto IDLs.
+pub struct Session<'a, F: 'static>
 where
     F: Flavor,
 {
@@ -85,7 +85,7 @@ where
 }
 
 /// Environment containing all loaded declarations.
-impl<'a, F: 'static> Environment<'a, F>
+impl<'a, F: 'static> Session<'a, F>
 where
     F: Flavor,
 {
@@ -94,10 +94,10 @@ where
         package_prefix: Option<RpPackage>,
         reporter: &'a mut Reporter,
         resolver: &'a mut Resolver,
-    ) -> Result<Environment<'a, F>> {
+    ) -> Result<Session<'a, F>> {
         let features = Rc::new(Features::new()?);
 
-        Ok(Environment {
+        Ok(Session {
             undeclared_version: Rc::new(Version::new(0, 0, 0)),
             features,
             package_prefix,
@@ -116,7 +116,7 @@ where
         })
     }
 
-    /// Setup a new path hook for this environment.
+    /// Setup a new path hook for this session.
     pub fn with_path_hook<H: 'static>(self, path_hook: H) -> Self
     where
         H: Fn(&Path) -> Result<()>,
@@ -127,7 +127,7 @@ where
         }
     }
 
-    /// Configure a new environment on how to use safe packages or not.
+    /// Configure a new session on how to use safe packages or not.
     pub fn with_safe_packages(self, safe_packages: bool) -> Self {
         Self {
             safe_packages,
@@ -135,7 +135,7 @@ where
         }
     }
 
-    /// Build the environment with the given keywords.
+    /// Build the session with the given keywords.
     pub fn with_keywords(self, keywords: HashMap<String, String>) -> Self {
         Self {
             keywords: Rc::new(keywords),
@@ -228,7 +228,7 @@ where
     }
 }
 
-impl<'a> Environment<'a, CoreFlavor> {
+impl<'a> Session<'a, CoreFlavor> {
     /// Build a new translator.
     pub fn translator<T: 'static>(&self, flavor: T) -> Result<translator::Context<T>>
     where
@@ -241,9 +241,9 @@ impl<'a> Environment<'a, CoreFlavor> {
         })
     }
 
-    /// Translate the current environment into another.
+    /// Translate the current session into another.
     ///
-    /// This is the final step of the compilation, the environment is consumed by this.
+    /// This is the final step of the compilation, the session is consumed by this.
     pub fn translate<T>(self, mut ctx: translator::Context<T>) -> Result<Translated<T::Target>>
     where
         T: FlavorTranslator<Source = CoreFlavor>,
@@ -346,7 +346,7 @@ impl<'a> Environment<'a, CoreFlavor> {
         self.translate(ctx)
     }
 
-    /// Import a path into the environment.
+    /// Import a path into the session.
     pub fn import_path<P: AsRef<Path>>(
         &mut self,
         path: P,
@@ -355,7 +355,7 @@ impl<'a> Environment<'a, CoreFlavor> {
         self.import_source(Source::from_path(path), package)
     }
 
-    /// Import a source into the environment.
+    /// Import a source into the session.
     pub fn import_source(
         &mut self,
         source: Source,
@@ -493,7 +493,7 @@ impl<'a> Environment<'a, CoreFlavor> {
         file.into_model(diag, &mut scope)
     }
 
-    /// Process a single file, populating the environment.
+    /// Process a single file, populating the session.
     fn process_file(
         &mut self,
         diag: &mut Diagnostics,
@@ -547,7 +547,7 @@ impl<'a> Environment<'a, CoreFlavor> {
     }
 }
 
-impl<'e> Import for Environment<'e, CoreFlavor> {
+impl<'e> Import for Session<'e, CoreFlavor> {
     /// Import a package based on a package and version criteria.
     fn import(&mut self, required: &RpRequiredPackage) -> Result<Option<RpVersionedPackage>> {
         debug!("import: {}", required);
@@ -589,8 +589,8 @@ impl<'e> Import for Environment<'e, CoreFlavor> {
     }
 }
 
-/// Forward implementation for a mutable reference to the environment.
-impl<'a, 'e: 'a> Import for &'a mut Environment<'e, CoreFlavor> {
+/// Forward implementation for a mutable reference to the session.
+impl<'a, 'e: 'a> Import for &'a mut Session<'e, CoreFlavor> {
     fn import(&mut self, required: &RpRequiredPackage) -> Result<Option<RpVersionedPackage>> {
         (*self).import(required)
     }

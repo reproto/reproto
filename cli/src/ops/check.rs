@@ -22,7 +22,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 pub fn entry(reporter: &mut Reporter, m: &ArgMatches) -> Result<()> {
     let manifest = load_manifest(m)?;
     let mut resolver = env::resolver(&manifest)?;
-    let mut env = simple_config(&manifest, reporter, resolver.as_mut())?;
+    let mut session = simple_config(&manifest, reporter, resolver.as_mut())?;
 
     let mut manifest_resolver =
         env::path_resolver(&manifest)?.ok_or_else(|| "could not setup manifest resolver")?;
@@ -66,12 +66,12 @@ pub fn entry(reporter: &mut Reporter, m: &ArgMatches) -> Result<()> {
         } = m;
 
         let package = RpVersionedPackage::new(package.clone(), Some(version.clone()));
-        let file = env.load_source(source.clone(), &package)?;
+        let file = session.load_source(source.clone(), &package)?;
 
         semck_check(
             &mut errors,
             &mut repository,
-            &mut env,
+            &mut session,
             version,
             source,
             &package,

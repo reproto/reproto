@@ -13,6 +13,6 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 pub fn entry(reporter: &mut Reporter, matches: &ArgMatches) -> Result<()> {
     let manifest = load_manifest(matches)?;
     let mut resolver = env::resolver(&manifest)?;
-    let env = simple_config(&manifest, reporter, resolver.as_mut())?;
-    ::doc::compile(env, matches, manifest).map_err(Into::into)
+    let session = simple_config(&manifest, reporter, resolver.as_mut())?;
+    ::doc::compile(session, matches, manifest).map_err(Into::into)
 }

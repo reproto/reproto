@@ -41,7 +41,7 @@ use std::collections::HashMap;
 use syntect::dumps::from_binary;
 use syntect::highlighting::{Theme, ThemeSet};
 use syntect::parsing::SyntaxSet;
-use trans::Environment;
+use trans::Session;
 
 include!(concat!(env!("OUT_DIR"), "/themes.rs"));
 
@@ -201,11 +201,11 @@ fn list_syntax_themes() -> Result<()> {
 }
 
 pub fn compile(
-    env: Environment<CoreFlavor>,
+    session: Session<CoreFlavor>,
     matches: &ArgMatches,
     manifest: Manifest,
 ) -> Result<()> {
-    let env = env.translate_default()?;
+    let session = session.translate_default()?;
 
     let themes = build_themes();
 
@@ -239,7 +239,7 @@ pub fn compile(
         &themes,
         |syntax_theme, syntax_set, theme_css| {
             let compiler = DocCompiler {
-                env: env,
+                session: session,
                 out_path: out.clone(),
                 skip_static: skip_static,
                 theme_css: theme_css,
