@@ -417,6 +417,7 @@ impl Language {
             Rust => RelativePath::new("src"),
             Swift => RelativePath::new("Sources/Models"),
             Go => RelativePath::new("models"),
+            Dart => RelativePath::new("lib"),
             _ => RelativePath::new("."),
         }
     }

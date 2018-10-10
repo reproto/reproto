@@ -7,8 +7,8 @@ extern crate reproto_backend as backend;
 extern crate reproto_core as core;
 #[macro_use]
 extern crate reproto_manifest as manifest;
-extern crate reproto_trans as trans;
 extern crate reproto_naming as naming;
+extern crate reproto_trans as trans;
 extern crate serde;
 #[allow(unused)]
 #[macro_use]
