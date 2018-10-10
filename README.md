@@ -89,16 +89,18 @@ Also make sure to [join our Gitter channel].
 
 ## Language Support
 
-| Language     | JSON | [gRPC] | HTTP/1.1*                  |
-|--------------|------|--------|----------------------------|
-| [Java]       | ✔️    | ✔️      | ✔️  [test][java-http]       |
-| [Python]     | ✔️    | ✖️      | ✔️  [test][python-requests] |
-| [C#]         | ✔️    | ✖️      | ✖️                          |
-| [Rust]       | ✔️    | ✖️      | ✔️  [test][rust-reqwest]    |
-| [JavaScript] | ✔️    | ✖️      | ✖️                          |
-| [Swift]      | ✔️    | ✖️      | ✖️                          |
-| [Go]         | ✔️    | ✖️      | ✖️                          |
+| Language     | Tracking Issue | JSON | [gRPC] | HTTP/1.1*                  |
+|--------------|----------------|------|--------|----------------------------|
+| [Java]       |                | ✔️    | ✔️      | ✔️  [test][java-http]       |
+| [Python]     |                | ✔️    | ✖️      | ✔️  [test][python-requests] |
+| [C#]         |                | ✔️    | ✖️      | ✖️                          |
+| [Rust]       |                | ✔️    | ✖️      | ✔️  [test][rust-reqwest]    |
+| [JavaScript] |                | ✔️    | ✖️      | ✖️                          |
+| [Swift]      |                | ✔️    | ✖️      | ✖️                          |
+| [Go]         |                | ✔️    | ✖️      | ✖️                          |
+| Dart         | [#61]          | ✖️    | ✖️      | ✖️                          |
 
+[#61]: https://github.com/reproto/reproto/issues/61
 *: HTTP/1.1 support is actively being outlined in [#2](https://github.com/reproto/reproto/issues/2)
 
 [Java]: /doc/usage/language-support.md#java
