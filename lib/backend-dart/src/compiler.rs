@@ -8,7 +8,7 @@ use flavored::{
     DartFlavor, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody,
     RpTupleBody, RpTypeBody,
 };
-use genco::{Dart, IntoTokens, Quoted, Tokens};
+use genco::{dart, Dart, IntoTokens, Quoted, Tokens};
 use std::rc::Rc;
 use trans::{self, Translated};
 use utils::Comments;
@@ -17,11 +17,18 @@ use {EXT, TYPE_SEP};
 pub struct Compiler<'el> {
     pub env: &'el Translated<DartFlavor>,
     handle: &'el Handle,
+    map_of_strings: Dart<'el>,
+    list_of_dynamic: Dart<'el>,
 }
 
 impl<'el> Compiler<'el> {
     pub fn new(env: &'el Translated<DartFlavor>, handle: &'el Handle) -> Compiler<'el> {
-        Compiler { env, handle }
+        let string = dart::imported("dart:core").name("String");
+        let map = dart::imported("dart:core").name("Map");
+        let list = dart::imported("dart:core").name("list");
+        let map_of_strings = map.with_arguments(vec![string, Dart::Dynamic]);
+        let list_of_dynamic = list.with_arguments(vec![Dart::Dynamic]);
+        Compiler { env, handle, map_of_strings, list_of_dynamic }
     }
 
     /// Build an implementation of the given name and body.
@@ -42,34 +49,7 @@ impl<'el> Compiler<'el> {
 
     /// Convert field into type.
     fn into_type<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Dart<'a>>> {
-        let stmt = toks![field.ty.clone()];
-
-        if field.is_optional() {
-            return Ok(toks!["Option<", stmt, ">"]);
-        }
-
-        Ok(stmt)
-    }
-
-    fn enum_value_fn<'a>(
-        &self,
-        body: &'a RpEnumBody,
-        name: Rc<String>,
-        match_body: Tokens<'a, Dart<'a>>,
-    ) -> Tokens<'a, Dart<'a>> {
-        let mut value_fn = Tokens::new();
-        let mut match_decl = Tokens::new();
-
-        match_decl.push("match *self {");
-        match_decl.nested(match_body);
-        match_decl.push("}");
-
-        push!(value_fn, "pub fn value(&self) -> ", body.enum_type, " {");
-        value_fn.nested(toks!["use self::", name, "::*;"]);
-        value_fn.nested(match_decl);
-        value_fn.push("}");
-
-        value_fn
+        Ok(toks!(field.ty.clone()))
     }
 
     // Build the corresponding element out of a field declaration.
@@ -89,6 +69,22 @@ impl<'el> Compiler<'el> {
     pub fn compile(&self) -> Result<()> {
         let files = self.populate_files()?;
         self.write_files(files)
+    }
+
+    /// Build field declarations for the given fields.
+    pub fn type_fields(&self, fields: impl IntoIterator<Item = &'el Loc<RpField>>) -> Result<Tokens<'el, Dart<'el>>> {
+        let mut t = Tokens::new();
+
+        for field in fields {
+            t.push({
+                let mut t = Tokens::new();
+                t.push_unless_empty(Comments(&field.comment));
+                t.push(self.field_element(field)?);
+                t
+            });
+        }
+
+        Ok(t)
     }
 }
 
@@ -115,10 +111,49 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
         let name = self.convert_type_name(&body.name);
 
+        let decode_fn = {
+            let mut t = Tokens::new();
+            push!(t, "static ", name, " decode(dynamic data) {");
+
+            t.nested({
+                let mut t = Tokens::new();
+
+                t.push({
+                    let mut t = Tokens::new();
+                    push!(t, "if (!(data is ", self.list_of_dynamic, ")) {");
+                    nested!(t, "throw 'expected ", self.list_of_dynamic, ", but got: $data';");
+                    push!(t, "}");
+                    t
+                });
+
+                t.push({
+                    let mut t = Tokens::new();
+
+                    for _field in &body.fields {
+                        // TODO: decode each field.
+                    }
+
+                    t
+                });
+
+                t.join_line_spacing()
+            });
+
+            push!(t, "}");
+            t
+        };
+
         let mut t = Tokens::new();
 
         t.push_unless_empty(Comments(&body.comment));
-        t.push(toks!["class ", name, "{", "}"]);
+        t.push(toks!("class ", name, "{"));
+        t.nested({
+            let mut t = Tokens::new();
+            t.push(self.type_fields(&body.fields)?);
+            t.push(decode_fn);
+            t.join_line_spacing()
+        });
+        t.push(toks!("}"));
 
         out.0.push(t);
         Ok(())
@@ -128,48 +163,95 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
         let name = self.convert_type_name(&body.name);
 
         // variant declarations
-        let mut vars = Tokens::new();
-        // body of value function
-        let mut match_body = Tokens::new();
+        let mut fields = Tokens::new();
 
         for v in body.variants.iter() {
-            vars.push_unless_empty(Comments(&v.comment));
+            fields.push_unless_empty(Comments(&v.comment));
+            let field = toks!("static const ", v.ident());
 
             match v.value {
                 core::RpVariantValue::String(string) => {
-                    push!(vars, v.ident(), ",");
-                    push!(match_body, v.ident(), " => ", string.quoted(), ",");
+                    push!(fields, field, " = const ", name, "._new(", string.quoted(), ");");
                 }
                 core::RpVariantValue::Number(number) => {
-                    push!(vars, v.ident(), ",");
-                    push!(match_body, v.ident(), " => ", number.to_string(), ",");
+                    push!(fields, field, " = const ", name, "._new(", number.to_string(), ");");
                 }
             }
         }
+
+        let f = "_value";
+
+        let decode_fn = {
+            let mut t = Tokens::new();
+            push!(t, "static ", name, " decode(dynamic data) {");
+
+            t.nested({
+                let mut t = Tokens::new();
+
+                t.push({
+                    let mut t = Tokens::new();
+                    push!(t, "if (!(data is ", body.enum_type, ")) {");
+                    nested!(t, "throw 'expected ", body.enum_type, ", but got: $data';");
+                    push!(t, "}");
+                    t
+                });
+
+                t.push({
+                    let mut t = Tokens::new();
+
+                    push!(t, "switch (data as ", body.enum_type, ") {");
+
+                    for v in body.variants.iter() {
+                        let m = match v.value {
+                            core::RpVariantValue::String(string) => toks!(string.quoted()),
+                            core::RpVariantValue::Number(number) => toks!(number.to_string()),
+                        };
+                        push!(t, "case ", m, ":");
+                        nested!(t, "return ", name, ".", v.ident(), ";");
+                    }
+
+                    push!(t, "default:");
+                    nested!(t, "throw 'unexpected ", name, " value: $data';");
+
+                    push!(t, "}");
+
+                    t
+                });
+
+                t.join_line_spacing()
+            });
+
+            push!(t, "}");
+            t
+        };
+
+        let encode_fn = {
+            let mut t = Tokens::new();
+            push!(t, "dynamic encode() {");
+            nested!(t, "return ", f, ";");
+            push!(t, "}");
+            t
+        };
 
         out.0.push({
             let mut t = Tokens::new();
 
             t.push_unless_empty(Comments(&body.comment));
-            t.push(toks!["pub enum ", name.clone(), " {"]);
-            t.nested(vars);
-            t.push("}");
-
-            t
-        });
-
-        out.0.push({
-            let mut t = Tokens::new();
-
-            t.push(toks!["impl ", name.clone(), " {"]);
-
+            t.push(toks!["class ", name.clone(), " {"]);
             t.nested({
                 let mut t = Tokens::new();
-                t.push(self.enum_value_fn(body, name.clone(), match_body));
-                t.push_unless_empty(code!(&body.codes, core::RpContext::Dart));
-                t
+                t.push({
+                    let mut t = Tokens::new();
+                    push!(t, "final ", f, ";");
+                    push!(t, "const ", name, "._new(this.", f, ");");
+                    push!(t, "toString() => '", name, ".$", f, "';");
+                    t
+                });
+                t.push(fields);
+                t.push(decode_fn);
+                t.push(encode_fn);
+                t.join_line_spacing()
             });
-
             t.push("}");
 
             t
@@ -180,6 +262,39 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
         let name = self.convert_type_name(&body.name);
+
+        let decode_fn = {
+            let mut t = Tokens::new();
+            push!(t, "static ", name, " decode(dynamic data) {");
+
+            t.nested({
+                let mut t = Tokens::new();
+
+                t.push({
+                    let mut t = Tokens::new();
+                    push!(t, "if (!(data is ", self.map_of_strings, ")) {");
+                    nested!(t, "throw 'expected ", self.map_of_strings, ", but got: $data';");
+                    push!(t, "}");
+                    t
+                });
+
+                t.push({
+                    let mut t = Tokens::new();
+
+                    for _field in &body.fields {
+                        // TODO: decode each field.
+                    }
+
+                    t
+                });
+
+                t.join_line_spacing()
+            });
+
+            push!(t, "}");
+            t
+        };
+
         let mut t = Tokens::new();
 
         t.push_unless_empty(Comments(&body.comment));
@@ -188,16 +303,8 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
         // fields
         t.nested({
             let mut t = Tokens::new();
-
-            for field in &body.fields {
-                t.push({
-                    let mut t = Tokens::new();
-                    t.push_unless_empty(Comments(&field.comment));
-                    t.push(self.field_element(field)?);
-                    t
-                });
-            }
-
+            t.push(self.type_fields(&body.fields)?);
+            t.push(decode_fn);
             t.join_line_spacing()
         });
 
@@ -241,16 +348,7 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
 
                 t.push({
                     let mut t = Tokens::new();
-
-                    for field in body.fields.iter().chain(s.fields.iter()) {
-                        t.nested({
-                            let mut t = Tokens::new();
-                            t.push_unless_empty(Comments(&field.comment));
-                            t.push(self.field_element(field)?);
-                            t
-                        });
-                    }
-
+                    t.nested(self.type_fields(body.fields.iter().chain(s.fields.iter()))?);
                     t.join_line_spacing()
                 });
 

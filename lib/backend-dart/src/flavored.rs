@@ -158,7 +158,7 @@ impl FlavorTranslator for DartFlavorTranslator {
         use core::RpEnumType::*;
 
         match enum_type {
-            String(_) => Ok(dart::local("String")),
+            String(_) => Ok(self.string.clone()),
             Number(number) => self.translate_number(number),
         }
     }
