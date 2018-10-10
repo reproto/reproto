@@ -27,8 +27,9 @@ impl<'el> Compiler<'el> {
         let string = core.name("String");
         let map = core.name("Map");
         let list = core.name("list");
-        let map_of_strings = map.with_arguments(vec![string, Dart::Dynamic]);
+        let map_of_strings = map.with_arguments(vec![string.clone(), Dart::Dynamic]);
         let list_of_dynamic = list.with_arguments(vec![Dart::Dynamic]);
+
         Compiler {
             env,
             handle,
@@ -53,23 +54,9 @@ impl<'el> Compiler<'el> {
         Rc::new(name.join(TYPE_SEP))
     }
 
-    /// Convert field into type.
-    fn into_type<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Dart<'a>>> {
-        Ok(toks!(field.ty.clone()))
-    }
-
     // Build the corresponding element out of a field declaration.
     fn field_element<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Dart<'a>>> {
-        let mut t = Tokens::new();
-
-        let ident = field.safe_ident();
-        let type_spec = self.into_type(field)?;
-
-        t.push_into(|t| {
-            t.append(toks![type_spec, " ", ident, ";"]);
-        });
-
-        Ok(t.into())
+        Ok(toks![field.ty.ty(), " ", field.safe_ident(), ";"])
     }
 
     pub fn compile(&self) -> Result<()> {
@@ -139,27 +126,22 @@ impl<'el> Compiler<'el> {
                         if field.is_optional() {
                             t.push({
                                 let mut t = Tokens::new();
-                                push!(t, field.ty, " ", id, " = null;");
+                                push!(t, field.ty.ty(), " ", id, " = null;");
                                 push!(t, "if (", tid, " != null) {");
+
                                 t.nested({
-                                    if !field.ty.is_core() {
-                                        toks!(id, " = ", &field.ty, ".decode(", tid.clone(), ");")
-                                    } else {
-                                        let mut t = Tokens::new();
-                                        push!(t, "if (!(", tid, " is ", field.ty, ")) {");
-                                        nested!(
-                                            t,
-                                            "throw 'expected ",
-                                            field.ty,
-                                            ", but was: $",
-                                            tid,
-                                            "';"
-                                        );
-                                        push!(t, "}");
-                                        push!(t, id, " = ", tid, ";");
-                                        t
+                                    let mut t = toks!();
+
+                                    let (d, e) = field.ty.decode(tid)?;
+
+                                    if let Some(e) = e {
+                                        t.push(e);
                                     }
+
+                                    push!(t, id, " = ", d, ";");
+                                    t
                                 });
+
                                 t.push("}");
                                 t
                             });
@@ -175,25 +157,13 @@ impl<'el> Compiler<'el> {
                                 );
                                 push!(t, "}");
 
-                                t.push({
-                                    if !field.ty.is_core() {
-                                        toks!(id, " = ", &field.ty, ".decode(", tid.clone(), ");")
-                                    } else {
-                                        let mut t = Tokens::new();
-                                        push!(t, "if (!(", tid, " is ", field.ty, ")) {");
-                                        nested!(
-                                            t,
-                                            "throw 'expected ",
-                                            field.ty,
-                                            ", but was: $",
-                                            tid,
-                                            "';"
-                                        );
-                                        push!(t, "}");
-                                        push!(t, "final ", field.ty, " ", id, " = ", tid, ";");
-                                        t
-                                    }
-                                });
+                                let (d, e) = field.ty.decode(tid)?;
+
+                                if let Some(e) = e {
+                                    t.push(e);
+                                }
+
+                                push!(t, "final ", field.ty.ty(), " ", id, " = ", d, ";");
 
                                 t
                             });
@@ -219,7 +189,6 @@ impl<'el> Compiler<'el> {
     /// Build an encode function.
     fn encode_fn(
         &self,
-        name: Cons<'el>,
         fields: impl IntoIterator<Item = &'el Loc<RpField>>,
     ) -> Result<Tokens<'el, Dart<'el>>> {
         let mut t = Tokens::new();
@@ -231,30 +200,19 @@ impl<'el> Compiler<'el> {
             push!(t, self.map_of_strings, " _data = Map();");
 
             for field in fields {
-                let id = toks!("this.", field.safe_ident());
+                let id = Cons::from(format!("this.{}", field.safe_ident()));
+                let encoded = field.ty.encode(toks!(id.clone()))?;
 
                 if field.is_optional() {
                     t.push({
                         let mut t = Tokens::new();
-
                         push!(t, "if (", id, " != null) {");
-
-                        if field.ty.is_core() {
-                            nested!(t, "_data[", field.name().quoted(), "] = ", id);
-                        } else {
-                            nested!(t, "_data[", field.name().quoted(), "] = ", id, ".encode();");
-                        }
-
+                        t.nested(toks!("_data[", field.name().quoted(), "] = ", encoded, ";"));
                         push!(t, "}");
-
                         t
                     });
                 } else {
-                    if field.ty.is_core() {
-                        push!(t, "_data[", field.name().quoted(), "] = ", id);
-                    } else {
-                        push!(t, "_data[", field.name().quoted(), "] = ", id, ".encode();");
-                    }
+                    t.push(toks!("_data[", field.name().quoted(), "] = ", encoded, ";"));
                 }
             }
 
@@ -409,13 +367,15 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
             let mut t = Tokens::new();
             push!(t, "static ", name, " decode(dynamic data) {");
 
+            let ty = body.enum_type.ty();
+
             t.nested({
                 let mut t = Tokens::new();
 
                 t.push({
                     let mut t = Tokens::new();
-                    push!(t, "if (!(data is ", body.enum_type, ")) {");
-                    nested!(t, "throw 'expected ", body.enum_type, ", but got: $data';");
+                    push!(t, "if (!(data is ", ty, ")) {");
+                    nested!(t, "throw 'expected ", ty, ", but got: $data';");
                     push!(t, "}");
                     t
                 });
@@ -423,7 +383,7 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
                 t.push({
                     let mut t = Tokens::new();
 
-                    push!(t, "switch (data as ", body.enum_type, ") {");
+                    push!(t, "switch (data as ", ty, ") {");
 
                     for v in body.variants.iter() {
                         let m = match v.value {
@@ -498,7 +458,7 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
             t.push(self.type_fields(&body.fields)?);
             t.push_unless_empty(self.constructor(name.clone(), &body.fields)?);
             t.push(self.decode_fn(name.clone(), &body.fields)?);
-            t.push(self.encode_fn(name.clone(), &body.fields)?);
+            t.push(self.encode_fn(&body.fields)?);
             t.join_line_spacing()
         });
 
