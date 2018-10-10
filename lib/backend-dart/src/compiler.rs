@@ -5,10 +5,10 @@ use core::errors::*;
 use core::{self, Handle, Loc};
 use dart_file_spec::DartFileSpec;
 use flavored::{
-    DartFlavor, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody,
-    RpTupleBody, RpTypeBody,
+    DartFlavor, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody,
+    RpTypeBody,
 };
-use genco::{dart, Dart, IntoTokens, Quoted, Tokens};
+use genco::{dart, Cons, Dart, Element, IntoTokens, Quoted, Tokens};
 use std::rc::Rc;
 use trans::{self, Translated};
 use utils::Comments;
@@ -23,19 +23,25 @@ pub struct Compiler<'el> {
 
 impl<'el> Compiler<'el> {
     pub fn new(env: &'el Translated<DartFlavor>, handle: &'el Handle) -> Compiler<'el> {
-        let string = dart::imported("dart:core").name("String");
-        let map = dart::imported("dart:core").name("Map");
-        let list = dart::imported("dart:core").name("list");
+        let core = dart::imported(dart::DART_CORE);
+        let string = core.name("String");
+        let map = core.name("Map");
+        let list = core.name("list");
         let map_of_strings = map.with_arguments(vec![string, Dart::Dynamic]);
         let list_of_dynamic = list.with_arguments(vec![Dart::Dynamic]);
-        Compiler { env, handle, map_of_strings, list_of_dynamic }
+        Compiler {
+            env,
+            handle,
+            map_of_strings,
+            list_of_dynamic,
+        }
     }
 
     /// Build an implementation of the given name and body.
-    fn build_impl(&self, name: Rc<String>, body: Tokens<'el, Dart<'el>>) -> Tokens<'el, Dart<'el>> {
+    fn build_impl(&self, name: Cons<'el>, body: Tokens<'el, Dart<'el>>) -> Tokens<'el, Dart<'el>> {
         let mut out_impl = Tokens::new();
 
-        out_impl.push(toks!["impl ", name.clone(), " {"]);
+        out_impl.push(toks!["impl ", name, " {"]);
         out_impl.nested(body);
         out_impl.push("}");
 
@@ -72,7 +78,10 @@ impl<'el> Compiler<'el> {
     }
 
     /// Build field declarations for the given fields.
-    pub fn type_fields(&self, fields: impl IntoIterator<Item = &'el Loc<RpField>>) -> Result<Tokens<'el, Dart<'el>>> {
+    fn type_fields(
+        &self,
+        fields: impl IntoIterator<Item = &'el Loc<RpField>>,
+    ) -> Result<Tokens<'el, Dart<'el>>> {
         let mut t = Tokens::new();
 
         for field in fields {
@@ -82,6 +91,200 @@ impl<'el> Compiler<'el> {
                 t.push(self.field_element(field)?);
                 t
             });
+        }
+
+        Ok(t)
+    }
+
+    /// Build a decode function.
+    fn decode_fn(
+        &self,
+        name: Cons<'el>,
+        fields: impl IntoIterator<Item = &'el Loc<RpField>>,
+    ) -> Result<Tokens<'el, Dart<'el>>> {
+        let mut t = Tokens::new();
+        push!(t, "static ", name, " decode(dynamic _data_dyn) {");
+
+        t.nested({
+            let mut t = Tokens::new();
+
+            t.push({
+                let mut t = Tokens::new();
+                push!(t, "if (!(_data_dyn is ", self.map_of_strings, ")) {");
+                nested!(
+                    t,
+                    "throw 'expected ",
+                    self.map_of_strings,
+                    ", but got: $_data_dyn';"
+                );
+                push!(t, "}");
+                t
+            });
+
+            push!(t, self.map_of_strings, " _data = _data_dyn;");
+
+            t.push({
+                let mut t = Tokens::new();
+                let mut vars = toks!();
+
+                for field in fields {
+                    let id = field.safe_ident();
+                    let tid = Cons::from(Rc::new(format!("{}_dyn", field.safe_ident())));
+
+                    t.push({
+                        let mut t = Tokens::new();
+
+                        push!(t, "var ", tid, " = _data[", field.name().quoted(), "];");
+
+                        if field.is_optional() {
+                            t.push({
+                                let mut t = Tokens::new();
+                                push!(t, field.ty, " ", id, " = null;");
+                                push!(t, "if (", tid, " != null) {");
+                                t.nested({
+                                    if !field.ty.is_core() {
+                                        toks!(id, " = ", &field.ty, ".decode(", tid.clone(), ");")
+                                    } else {
+                                        let mut t = Tokens::new();
+                                        push!(t, "if (!(", tid, " is ", field.ty, ")) {");
+                                        nested!(
+                                            t,
+                                            "throw 'expected ",
+                                            field.ty,
+                                            ", but was: $",
+                                            tid,
+                                            "';"
+                                        );
+                                        push!(t, "}");
+                                        push!(t, id, " = ", tid, ";");
+                                        t
+                                    }
+                                });
+                                t.push("}");
+                                t
+                            });
+                        } else {
+                            t.push({
+                                let mut t = Tokens::new();
+                                push!(t, "if (", tid, " == null) {");
+                                nested!(
+                                    t,
+                                    "throw ",
+                                    "expected value for required field".quoted(),
+                                    ";"
+                                );
+                                push!(t, "}");
+
+                                t.push({
+                                    if !field.ty.is_core() {
+                                        toks!(id, " = ", &field.ty, ".decode(", tid.clone(), ");")
+                                    } else {
+                                        let mut t = Tokens::new();
+                                        push!(t, "if (!(", tid, " is ", field.ty, ")) {");
+                                        nested!(
+                                            t,
+                                            "throw 'expected ",
+                                            field.ty,
+                                            ", but was: $",
+                                            tid,
+                                            "';"
+                                        );
+                                        push!(t, "}");
+                                        push!(t, "final ", field.ty, " ", id, " = ", tid, ";");
+                                        t
+                                    }
+                                });
+
+                                t
+                            });
+                        }
+
+                        t
+                    });
+
+                    vars.append(id);
+                }
+
+                push!(t, "return ", name, "(", vars.join(", "), ");");
+                t.join_line_spacing()
+            });
+
+            t.join_line_spacing()
+        });
+
+        push!(t, "}");
+        Ok(t)
+    }
+
+    /// Build an encode function.
+    fn encode_fn(
+        &self,
+        name: Cons<'el>,
+        fields: impl IntoIterator<Item = &'el Loc<RpField>>,
+    ) -> Result<Tokens<'el, Dart<'el>>> {
+        let mut t = Tokens::new();
+        push!(t, "dynamic encode() {");
+
+        t.nested({
+            let mut t = Tokens::new();
+
+            push!(t, self.map_of_strings, " _data = Map();");
+
+            for field in fields {
+                let id = toks!("this.", field.safe_ident());
+
+                if field.is_optional() {
+                    t.push({
+                        let mut t = Tokens::new();
+
+                        push!(t, "if (", id, " != null) {");
+
+                        if field.ty.is_core() {
+                            nested!(t, "_data[", field.name().quoted(), "] = ", id);
+                        } else {
+                            nested!(t, "_data[", field.name().quoted(), "] = ", id, ".encode();");
+                        }
+
+                        push!(t, "}");
+
+                        t
+                    });
+                } else {
+                    if field.ty.is_core() {
+                        push!(t, "_data[", field.name().quoted(), "] = ", id);
+                    } else {
+                        push!(t, "_data[", field.name().quoted(), "] = ", id, ".encode();");
+                    }
+                }
+            }
+
+            t.push("return _data;");
+
+            t.join_line_spacing()
+        });
+
+        push!(t, "}");
+        Ok(t)
+    }
+
+    /// Setup a constructor based on the number of fields.
+    fn constructor(
+        &self,
+        name: Cons<'el>,
+        fields: impl IntoIterator<Item = &'el Loc<RpField>>,
+    ) -> Result<Tokens<'el, Dart<'el>>> {
+        let mut args = toks!();
+
+        for field in fields {
+            args.append(toks!("this.", field.safe_ident()));
+        }
+
+        let mut t = Tokens::new();
+
+        if !args.is_empty() {
+            push!(t, name.clone(), "(");
+            nested!(t, args.join(toks!(",", Element::PushSpacing)));
+            push!(t, ");");
         }
 
         Ok(t)
@@ -121,7 +324,12 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
                 t.push({
                     let mut t = Tokens::new();
                     push!(t, "if (!(data is ", self.list_of_dynamic, ")) {");
-                    nested!(t, "throw 'expected ", self.list_of_dynamic, ", but got: $data';");
+                    nested!(
+                        t,
+                        "throw 'expected ",
+                        self.list_of_dynamic,
+                        ", but got: $data';"
+                    );
                     push!(t, "}");
                     t
                 });
@@ -171,10 +379,26 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
 
             match v.value {
                 core::RpVariantValue::String(string) => {
-                    push!(fields, field, " = const ", name, "._new(", string.quoted(), ");");
+                    push!(
+                        fields,
+                        field,
+                        " = const ",
+                        name,
+                        "._new(",
+                        string.quoted(),
+                        ");"
+                    );
                 }
                 core::RpVariantValue::Number(number) => {
-                    push!(fields, field, " = const ", name, "._new(", number.to_string(), ");");
+                    push!(
+                        fields,
+                        field,
+                        " = const ",
+                        name,
+                        "._new(",
+                        number.to_string(),
+                        ");"
+                    );
                 }
             }
         }
@@ -261,39 +485,7 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
     }
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        let name = self.convert_type_name(&body.name);
-
-        let decode_fn = {
-            let mut t = Tokens::new();
-            push!(t, "static ", name, " decode(dynamic data) {");
-
-            t.nested({
-                let mut t = Tokens::new();
-
-                t.push({
-                    let mut t = Tokens::new();
-                    push!(t, "if (!(data is ", self.map_of_strings, ")) {");
-                    nested!(t, "throw 'expected ", self.map_of_strings, ", but got: $data';");
-                    push!(t, "}");
-                    t
-                });
-
-                t.push({
-                    let mut t = Tokens::new();
-
-                    for _field in &body.fields {
-                        // TODO: decode each field.
-                    }
-
-                    t
-                });
-
-                t.join_line_spacing()
-            });
-
-            push!(t, "}");
-            t
-        };
+        let name = Cons::from(self.convert_type_name(&body.name));
 
         let mut t = Tokens::new();
 
@@ -304,7 +496,9 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
         t.nested({
             let mut t = Tokens::new();
             t.push(self.type_fields(&body.fields)?);
-            t.push(decode_fn);
+            t.push_unless_empty(self.constructor(name.clone(), &body.fields)?);
+            t.push(self.decode_fn(name.clone(), &body.fields)?);
+            t.push(self.encode_fn(name.clone(), &body.fields)?);
             t.join_line_spacing()
         });
 
@@ -323,17 +517,15 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
     }
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
-        let name = self.convert_type_name(&body.name);
+        let name = Cons::from(self.convert_type_name(&body.name));
 
         let mut t = Tokens::new();
 
         t.push_unless_empty(Comments(&body.comment));
 
         match body.sub_type_strategy {
-            core::RpSubTypeStrategy::Tagged { .. } => {
-            }
-            core::RpSubTypeStrategy::Untagged => {
-            }
+            core::RpSubTypeStrategy::Tagged { .. } => {}
+            core::RpSubTypeStrategy::Untagged => {}
         }
 
         t.push(toks!["pub enum ", name.clone(), " {"]);

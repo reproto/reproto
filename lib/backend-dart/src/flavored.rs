@@ -51,7 +51,7 @@ pub struct DartFlavorTranslator {
 
 impl DartFlavorTranslator {
     pub fn new(packages: Rc<Packages>) -> Self {
-        let core = dart::imported("dart:core");
+        let core = dart::imported(dart::DART_CORE);
 
         Self {
             packages,
