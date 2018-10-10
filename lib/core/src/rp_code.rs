@@ -18,6 +18,7 @@ pub enum RpContext {
     Reproto {},
     Rust {},
     Swift {},
+    Dart {},
 }
 
 #[derive(Debug, Clone, Serialize)]
