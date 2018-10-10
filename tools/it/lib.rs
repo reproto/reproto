@@ -341,6 +341,7 @@ impl Reproto {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Language {
     Csharp,
+    Dart,
     Go,
     Java,
     JavaScript,
@@ -370,6 +371,7 @@ impl Language {
 
         match *self {
             Csharp => "csharp",
+            Dart => "dart",
             Go => "go",
             Java => "java",
             JavaScript => "js",
@@ -389,6 +391,7 @@ impl Language {
 
         match *self {
             Csharp => "csharp",
+            Dart => "dart",
             Go => "go",
             Java => "java",
             JavaScript => "js",

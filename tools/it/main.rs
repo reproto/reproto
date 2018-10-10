@@ -77,6 +77,12 @@ fn detect() -> HashSet<Language> {
         println!("WARN: `go version` failed, not building Go projects");
     }
 
+    if test("dart", &["--version"]) {
+        out.insert(Language::Dart);
+    } else {
+        println!("WARN: `dart --version` failed, not building dart projects");
+    }
+
     out
 }
 
@@ -136,6 +142,7 @@ fn print_differences(source: &Path, target: &Path, errors: &[it::utils::Diff]) {
 fn try_main() -> Result<()> {
     let all_languages = vec![
         it::Language::Csharp,
+        it::Language::Dart,
         it::Language::Go,
         it::Language::Java,
         it::Language::JavaScript,

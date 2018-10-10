@@ -286,6 +286,7 @@ impl TryFromToml for RpRequiredPackage {
 #[serde(rename_all = "lowercase")]
 pub enum Language {
     Csharp,
+    Dart,
     Go,
     Java,
     Js,
@@ -303,6 +304,7 @@ impl Language {
 
         let language = match input {
             "csharp" => Csharp,
+            "dart" => Dart,
             "go" => Go,
             "java" => Java,
             "js" => Js,

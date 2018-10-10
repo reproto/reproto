@@ -29,6 +29,7 @@ reproto-backend-python = {path = "../backend-python", version = "0.3"}
 reproto-backend-reproto = {path = "../backend-reproto", version = "0.3"}
 reproto-backend-rust = {path = "../backend-rust", version = "0.3"}
 reproto-backend-swift = {path = "../backend-swift", version = "0.3"}
+reproto-backend-dart = {path = "../backend-dart", version = "0.3"}
 
 toml = "0.4.6"
 log = "0.4.4"
