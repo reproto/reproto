@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use trans::Packages;
-use {SCOPE_SEP, TYPE_SEP};
+use TYPE_SEP;
 
 #[derive(Debug, Clone)]
 pub struct DartEndpoint {
@@ -45,13 +45,19 @@ impl Flavor for DartFlavor {
 pub struct DartFlavorTranslator {
     packages: Rc<Packages>,
     map: Dart<'static>,
+    list: Dart<'static>,
+    string: Dart<'static>,
 }
 
 impl DartFlavorTranslator {
     pub fn new(packages: Rc<Packages>) -> Self {
+        let core = dart::imported("dart:core");
+
         Self {
             packages,
-            map: dart::imported("dart:core").name("HashMap"),
+            map: core.name("Map"),
+            list: core.name("List"),
+            string: core.name("String"),
         }
     }
 }
@@ -64,37 +70,36 @@ impl FlavorTranslator for DartFlavorTranslator {
 
     fn translate_number(&self, number: RpNumberType) -> Result<Dart<'static>> {
         let out = match number.kind {
-            RpNumberKind::U32 => dart::local("u32"),
-            RpNumberKind::U64 => dart::local("u64"),
-            RpNumberKind::I32 => dart::local("i32"),
-            RpNumberKind::I64 => dart::local("i64"),
+            RpNumberKind::U32 | RpNumberKind::U64 | RpNumberKind::I32 | RpNumberKind::I64 => {
+                dart::INT
+            }
         };
 
         Ok(out)
     }
 
     fn translate_float(&self) -> Result<Dart<'static>> {
-        Ok(dart::local("f32"))
+        Ok(dart::DOUBLE)
     }
 
     fn translate_double(&self) -> Result<Dart<'static>> {
-        Ok(dart::local("f64"))
+        Ok(dart::DOUBLE)
     }
 
     fn translate_boolean(&self) -> Result<Dart<'static>> {
-        Ok(dart::local("bool"))
+        Ok(dart::BOOL)
     }
 
     fn translate_string(&self, _: RpStringType) -> Result<Dart<'static>> {
-        Ok(dart::local("String"))
+        Ok(self.string.clone())
     }
 
     fn translate_datetime(&self) -> Result<Dart<'static>> {
-        Ok(dart::local("String"))
+        Ok(self.string.clone())
     }
 
     fn translate_array(&self, argument: Dart<'static>) -> Result<Dart<'static>> {
-        Ok(dart::local("Vec").with_arguments(vec![argument]))
+        Ok(self.list.with_arguments(vec![argument]))
     }
 
     fn translate_map(&self, key: Dart<'static>, value: Dart<'static>) -> Result<Dart<'static>> {
@@ -106,15 +111,17 @@ impl FlavorTranslator for DartFlavorTranslator {
     }
 
     fn translate_bytes(&self) -> Result<Dart<'static>> {
-        Ok(dart::local("String"))
+        Ok(self.string.clone())
     }
 
     fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<Dart<'static>> {
-        let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
+        let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(ref prefix) = name.prefix {
             let package_name = name.package.join("/");
-            return Ok(dart::imported(package_name).name(ident).alias(prefix.to_string()));
+            return Ok(dart::imported(package_name)
+                .name(ident)
+                .alias(prefix.to_string()));
         }
 
         Ok(dart::local(ident))

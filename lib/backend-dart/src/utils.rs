@@ -1,4 +1,4 @@
-use genco::{IntoTokens, Dart, Tokens};
+use genco::{Dart, IntoTokens, Tokens};
 
 /// Documentation comments.
 pub struct Comments<'el, S: 'el>(pub &'el [S]);

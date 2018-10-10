@@ -1,4 +1,5 @@
 extern crate reproto_backend_csharp as csharp;
+extern crate reproto_backend_dart as dart;
 extern crate reproto_backend_doc as doc;
 extern crate reproto_backend_go as go;
 extern crate reproto_backend_java as java;
@@ -9,7 +10,6 @@ extern crate reproto_backend_python as python;
 extern crate reproto_backend_reproto as reproto;
 extern crate reproto_backend_rust as rust;
 extern crate reproto_backend_swift as swift;
-extern crate reproto_backend_dart as dart;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 extern crate reproto_repository as repository;
