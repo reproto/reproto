@@ -8,6 +8,7 @@ extern crate reproto_core as core;
 #[macro_use]
 extern crate reproto_manifest as manifest;
 extern crate reproto_trans as trans;
+extern crate reproto_naming as naming;
 extern crate serde;
 #[allow(unused)]
 #[macro_use]
@@ -39,6 +40,10 @@ impl Lang for DartLang {
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("// {}", input))
+    }
+
+    fn field_ident_naming(&self) -> Option<Box<naming::Naming>> {
+        Some(Box::new(naming::to_lower_camel()))
     }
 
     fn keywords(&self) -> Vec<(&'static str, &'static str)> {
