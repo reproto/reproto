@@ -1,10 +1,10 @@
 class Entry {
-  static Entry decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Entry decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return Entry();
   }
@@ -17,12 +17,12 @@ class Entry {
 }
 
 class RootType {
-  static RootType decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootType decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootType();
   }
@@ -35,11 +35,11 @@ class RootType {
 }
 
 abstract class RootInterface {
-  static RootInterface decode(dynamic _data_dyn) {
-  if (!(_data_dyn is Map<String, dynamic>)) {
-    throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootInterface decode(dynamic _dataDyn) {
+  if (!(_dataDyn is Map<String, dynamic>)) {
+    throw 'expected Map<String, dynamic>, but got: $_dataDyn';
   }
-  Map<String, dynamic> _data = _data_dyn;
+  Map<String, dynamic> _data = _dataDyn;
 
   var tag = _data["type"];
 
@@ -55,12 +55,12 @@ abstract class RootInterface {
 }
 
 class RootInterface_Foo extends RootInterface {
-  static RootInterface_Foo decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootInterface_Foo decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootInterface_Foo();
   }
@@ -100,12 +100,12 @@ class RootEnum {
 }
 
 class RootTuple{
-  static RootTuple decode(dynamic _data_dyn) {
-    if (!(_data_dyn is List<dynamic>)) {
-      throw 'expected List<dynamic>, but got: $_data_dyn';
+  static RootTuple decode(dynamic _dataDyn) {
+    if (!(_dataDyn is List<dynamic>)) {
+      throw 'expected List<dynamic>, but got: $_dataDyn';
     }
 
-    List<dynamic> _data = _data_dyn;
+    List<dynamic> _data = _dataDyn;
 
     if (_data.length != 0) {
       throw 'expected array of length 0, but was $_data.length';
@@ -122,12 +122,12 @@ class RootTuple{
 }
 
 class RootType_NestedType {
-  static RootType_NestedType decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootType_NestedType decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootType_NestedType();
   }
@@ -140,11 +140,11 @@ class RootType_NestedType {
 }
 
 abstract class RootType_NestedInterface {
-  static RootType_NestedInterface decode(dynamic _data_dyn) {
-  if (!(_data_dyn is Map<String, dynamic>)) {
-    throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootType_NestedInterface decode(dynamic _dataDyn) {
+  if (!(_dataDyn is Map<String, dynamic>)) {
+    throw 'expected Map<String, dynamic>, but got: $_dataDyn';
   }
-  Map<String, dynamic> _data = _data_dyn;
+  Map<String, dynamic> _data = _dataDyn;
 
   var tag = _data["type"];
 
@@ -160,12 +160,12 @@ abstract class RootType_NestedInterface {
 }
 
 class RootType_NestedInterface_Foo extends RootType_NestedInterface {
-  static RootType_NestedInterface_Foo decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootType_NestedInterface_Foo decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootType_NestedInterface_Foo();
   }
@@ -205,12 +205,12 @@ class RootType_NestedEnum {
 }
 
 class RootType_NestedTuple{
-  static RootType_NestedTuple decode(dynamic _data_dyn) {
-    if (!(_data_dyn is List<dynamic>)) {
-      throw 'expected List<dynamic>, but got: $_data_dyn';
+  static RootType_NestedTuple decode(dynamic _dataDyn) {
+    if (!(_dataDyn is List<dynamic>)) {
+      throw 'expected List<dynamic>, but got: $_dataDyn';
     }
 
-    List<dynamic> _data = _data_dyn;
+    List<dynamic> _data = _dataDyn;
 
     if (_data.length != 0) {
       throw 'expected array of length 0, but was $_data.length';
@@ -227,12 +227,12 @@ class RootType_NestedTuple{
 }
 
 class RootInterface_Foo_NestedType {
-  static RootInterface_Foo_NestedType decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootInterface_Foo_NestedType decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootInterface_Foo_NestedType();
   }
@@ -245,11 +245,11 @@ class RootInterface_Foo_NestedType {
 }
 
 abstract class RootInterface_Foo_NestedInterface {
-  static RootInterface_Foo_NestedInterface decode(dynamic _data_dyn) {
-  if (!(_data_dyn is Map<String, dynamic>)) {
-    throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootInterface_Foo_NestedInterface decode(dynamic _dataDyn) {
+  if (!(_dataDyn is Map<String, dynamic>)) {
+    throw 'expected Map<String, dynamic>, but got: $_dataDyn';
   }
-  Map<String, dynamic> _data = _data_dyn;
+  Map<String, dynamic> _data = _dataDyn;
 
   var tag = _data["type"];
 
@@ -265,12 +265,12 @@ abstract class RootInterface_Foo_NestedInterface {
 }
 
 class RootInterface_Foo_NestedInterface_NestedFoo extends RootInterface_Foo_NestedInterface {
-  static RootInterface_Foo_NestedInterface_NestedFoo decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootInterface_Foo_NestedInterface_NestedFoo decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootInterface_Foo_NestedInterface_NestedFoo();
   }
@@ -310,12 +310,12 @@ class RootInterface_Foo_NestedEnum {
 }
 
 class RootInterface_Foo_NestedTuple{
-  static RootInterface_Foo_NestedTuple decode(dynamic _data_dyn) {
-    if (!(_data_dyn is List<dynamic>)) {
-      throw 'expected List<dynamic>, but got: $_data_dyn';
+  static RootInterface_Foo_NestedTuple decode(dynamic _dataDyn) {
+    if (!(_dataDyn is List<dynamic>)) {
+      throw 'expected List<dynamic>, but got: $_dataDyn';
     }
 
-    List<dynamic> _data = _data_dyn;
+    List<dynamic> _data = _dataDyn;
 
     if (_data.length != 0) {
       throw 'expected array of length 0, but was $_data.length';
@@ -332,12 +332,12 @@ class RootInterface_Foo_NestedTuple{
 }
 
 class RootTuple_NestedType {
-  static RootTuple_NestedType decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootTuple_NestedType decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootTuple_NestedType();
   }
@@ -350,11 +350,11 @@ class RootTuple_NestedType {
 }
 
 abstract class RootTuple_NestedInterface {
-  static RootTuple_NestedInterface decode(dynamic _data_dyn) {
-  if (!(_data_dyn is Map<String, dynamic>)) {
-    throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootTuple_NestedInterface decode(dynamic _dataDyn) {
+  if (!(_dataDyn is Map<String, dynamic>)) {
+    throw 'expected Map<String, dynamic>, but got: $_dataDyn';
   }
-  Map<String, dynamic> _data = _data_dyn;
+  Map<String, dynamic> _data = _dataDyn;
 
   var tag = _data["type"];
 
@@ -370,12 +370,12 @@ abstract class RootTuple_NestedInterface {
 }
 
 class RootTuple_NestedInterface_Foo extends RootTuple_NestedInterface {
-  static RootTuple_NestedInterface_Foo decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootTuple_NestedInterface_Foo decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootTuple_NestedInterface_Foo();
   }
@@ -415,12 +415,12 @@ class RootTuple_NestedEnum {
 }
 
 class RootTuple_NestedTuple{
-  static RootTuple_NestedTuple decode(dynamic _data_dyn) {
-    if (!(_data_dyn is List<dynamic>)) {
-      throw 'expected List<dynamic>, but got: $_data_dyn';
+  static RootTuple_NestedTuple decode(dynamic _dataDyn) {
+    if (!(_dataDyn is List<dynamic>)) {
+      throw 'expected List<dynamic>, but got: $_dataDyn';
     }
 
-    List<dynamic> _data = _data_dyn;
+    List<dynamic> _data = _dataDyn;
 
     if (_data.length != 0) {
       throw 'expected array of length 0, but was $_data.length';
@@ -437,12 +437,12 @@ class RootTuple_NestedTuple{
 }
 
 class RootService_NestedType {
-  static RootService_NestedType decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootService_NestedType decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootService_NestedType();
   }
@@ -455,11 +455,11 @@ class RootService_NestedType {
 }
 
 abstract class RootService_NestedInterface {
-  static RootService_NestedInterface decode(dynamic _data_dyn) {
-  if (!(_data_dyn is Map<String, dynamic>)) {
-    throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootService_NestedInterface decode(dynamic _dataDyn) {
+  if (!(_dataDyn is Map<String, dynamic>)) {
+    throw 'expected Map<String, dynamic>, but got: $_dataDyn';
   }
-  Map<String, dynamic> _data = _data_dyn;
+  Map<String, dynamic> _data = _dataDyn;
 
   var tag = _data["type"];
 
@@ -475,12 +475,12 @@ abstract class RootService_NestedInterface {
 }
 
 class RootService_NestedInterface_Foo extends RootService_NestedInterface {
-  static RootService_NestedInterface_Foo decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootService_NestedInterface_Foo decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootService_NestedInterface_Foo();
   }
@@ -520,12 +520,12 @@ class RootService_NestedEnum {
 }
 
 class RootService_NestedTuple{
-  static RootService_NestedTuple decode(dynamic _data_dyn) {
-    if (!(_data_dyn is List<dynamic>)) {
-      throw 'expected List<dynamic>, but got: $_data_dyn';
+  static RootService_NestedTuple decode(dynamic _dataDyn) {
+    if (!(_dataDyn is List<dynamic>)) {
+      throw 'expected List<dynamic>, but got: $_dataDyn';
     }
 
-    List<dynamic> _data = _data_dyn;
+    List<dynamic> _data = _dataDyn;
 
     if (_data.length != 0) {
       throw 'expected array of length 0, but was $_data.length';
@@ -542,12 +542,12 @@ class RootService_NestedTuple{
 }
 
 class RootType_NestedInterface_Foo_Nested {
-  static RootType_NestedInterface_Foo_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootType_NestedInterface_Foo_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootType_NestedInterface_Foo_Nested();
   }
@@ -560,12 +560,12 @@ class RootType_NestedInterface_Foo_Nested {
 }
 
 class RootType_NestedTuple_Nested {
-  static RootType_NestedTuple_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootType_NestedTuple_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootType_NestedTuple_Nested();
   }
@@ -578,12 +578,12 @@ class RootType_NestedTuple_Nested {
 }
 
 class RootType_NestedService_Nested {
-  static RootType_NestedService_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootType_NestedService_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootType_NestedService_Nested();
   }
@@ -596,12 +596,12 @@ class RootType_NestedService_Nested {
 }
 
 class RootInterface_Foo_NestedInterface_NestedFoo_Nested {
-  static RootInterface_Foo_NestedInterface_NestedFoo_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootInterface_Foo_NestedInterface_NestedFoo_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootInterface_Foo_NestedInterface_NestedFoo_Nested();
   }
@@ -614,12 +614,12 @@ class RootInterface_Foo_NestedInterface_NestedFoo_Nested {
 }
 
 class RootInterface_Foo_NestedTuple_Nested {
-  static RootInterface_Foo_NestedTuple_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootInterface_Foo_NestedTuple_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootInterface_Foo_NestedTuple_Nested();
   }
@@ -632,12 +632,12 @@ class RootInterface_Foo_NestedTuple_Nested {
 }
 
 class RootInterface_Foo_NestedService_Nested {
-  static RootInterface_Foo_NestedService_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootInterface_Foo_NestedService_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootInterface_Foo_NestedService_Nested();
   }
@@ -650,12 +650,12 @@ class RootInterface_Foo_NestedService_Nested {
 }
 
 class RootTuple_NestedInterface_Foo_Nested {
-  static RootTuple_NestedInterface_Foo_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootTuple_NestedInterface_Foo_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootTuple_NestedInterface_Foo_Nested();
   }
@@ -668,12 +668,12 @@ class RootTuple_NestedInterface_Foo_Nested {
 }
 
 class RootTuple_NestedTuple_Nested {
-  static RootTuple_NestedTuple_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootTuple_NestedTuple_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootTuple_NestedTuple_Nested();
   }
@@ -686,12 +686,12 @@ class RootTuple_NestedTuple_Nested {
 }
 
 class RootTuple_NestedService_Nested {
-  static RootTuple_NestedService_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootTuple_NestedService_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootTuple_NestedService_Nested();
   }
@@ -704,12 +704,12 @@ class RootTuple_NestedService_Nested {
 }
 
 class RootService_NestedInterface_Foo_Nested {
-  static RootService_NestedInterface_Foo_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootService_NestedInterface_Foo_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootService_NestedInterface_Foo_Nested();
   }
@@ -722,12 +722,12 @@ class RootService_NestedInterface_Foo_Nested {
 }
 
 class RootService_NestedTuple_Nested {
-  static RootService_NestedTuple_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootService_NestedTuple_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootService_NestedTuple_Nested();
   }
@@ -740,12 +740,12 @@ class RootService_NestedTuple_Nested {
 }
 
 class RootService_NestedService_Nested {
-  static RootService_NestedService_Nested decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static RootService_NestedService_Nested decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return RootService_NestedService_Nested();
   }

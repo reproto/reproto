@@ -7,12 +7,12 @@ class Entry {
     this.thing
   );
 
-  static Entry decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Entry decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var thing_dyn = _data["thing"];
     foo.Thing thing = null;

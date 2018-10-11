@@ -15,12 +15,12 @@ class Thing {
     this.other21
   );
 
-  static Thing decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Thing decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var name_dyn = _data["name"];
     String name = null;

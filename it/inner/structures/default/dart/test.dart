@@ -7,12 +7,12 @@ class Entry {
     this.b
   );
 
-  static Entry decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Entry decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var a_dyn = _data["a"];
     A a = null;
@@ -51,12 +51,12 @@ class A {
     this.b
   );
 
-  static A decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static A decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var b_dyn = _data["b"];
     if (b_dyn == null) {
@@ -83,12 +83,12 @@ class A_B {
     this.field
   );
 
-  static A_B decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static A_B decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var field_dyn = _data["field"];
     if (field_dyn == null) {
