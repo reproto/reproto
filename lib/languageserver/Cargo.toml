@@ -26,7 +26,7 @@ serde = "1.0.79"
 serde_derive = "1.0.79"
 url = "1.7.1"
 url_serde = "0.2.0"
-log = "0.4.5"
+log = { version = "0.4.5", features = ["std"] }
 linked-hash-map = { version = "0.5.1", features = ["serde"] }
 
 [lib]
