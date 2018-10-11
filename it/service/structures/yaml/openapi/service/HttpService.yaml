@@ -50,7 +50,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/State"
-  "/error-code":
+  /error-code:
     get:
       operationId: get_error_code
       description: Endpoint to get the error code of the service
@@ -109,7 +109,7 @@ components:
           type: string
         datetime_type:
           type: string
-          format: "date-time"
+          format: date-time
         unsigned_32:
           type: integer
           format: uint32
