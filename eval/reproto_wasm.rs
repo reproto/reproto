@@ -16,6 +16,7 @@ extern crate reproto_backend_reproto as reproto;
 extern crate reproto_backend_rust as rust;
 extern crate reproto_backend_openapi as openapi;
 extern crate reproto_backend_swift as swift;
+extern crate reproto_backend_dart as dart;
 extern crate reproto_compile as compile;
 extern crate reproto_core as core;
 extern crate reproto_derive as derive;
@@ -49,6 +50,8 @@ pub enum Output {
     Go,
     #[serde(rename = "swift")]
     Swift,
+    #[serde(rename = "dart")]
+    Dart,
     #[serde(rename = "python")]
     Python,
     #[serde(rename = "rust")]
@@ -101,6 +104,9 @@ impl Output {
                 }
 
                 Box::new(swift::SwiftLang)
+            }
+            Output::Dart => {
+                Box::new(dart::DartLang)
             }
             Output::Python => {
                 if settings.python.requests {
@@ -162,6 +168,10 @@ pub struct SwiftSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DartSettings {
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RustSettings {
     chrono: bool,
     reqwest: bool,
@@ -177,6 +187,7 @@ pub struct Settings {
     java: JavaSettings,
     python: PythonSettings,
     swift: SwiftSettings,
+    dart: DartSettings,
     rust: RustSettings,
     openapi: OpenApiSettings,
     csharp: CsharpSettings,
