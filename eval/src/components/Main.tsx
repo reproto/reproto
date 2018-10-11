@@ -8,6 +8,7 @@ import {GoSettings, GoSettingsForm} from "./GoSettings";
 import {RustSettings, RustSettingsForm} from "./RustSettings";
 import {OpenApiSettings, OpenApiSettingsForm} from "./OpenApiSettings";
 import {SwiftSettings, SwiftSettingsForm} from "./SwiftSettings";
+import {DartSettings, DartSettingsForm} from "./DartSettings";
 import * as WebAssembly from "webassembly";
 import {Annotation, Marker as AceMarker} from 'react-ace';
 import AceEditor from 'react-ace';
@@ -25,6 +26,7 @@ const ace_languages = [
   "python",
   "rust",
   "swift",
+  "dart",
   "yaml",
 ]
 
@@ -44,6 +46,7 @@ const FORMAT_LANGUAGE_MAP: {[key: string]: string} = {
   rust: "rust",
   openapi: "yaml",
   swift: "swift",
+  dart: "dart",
   yaml: "yaml",
 };
 
@@ -130,6 +133,7 @@ enum Output {
   Reproto = "reproto",
   Rust = "rust",
   Swift = "swift",
+  Dart = "dart",
 }
 
 export interface MainProps {
@@ -153,6 +157,7 @@ interface Settings {
   rust: RustSettings;
   openapi: OpenApiSettings;
   swift: SwiftSettings;
+  dart: DartSettings;
 }
 
 export interface MainState {
@@ -255,6 +260,8 @@ export class Main extends React.Component<MainProps, MainState> {
         swift: {
           codable: true,
           simple: false,
+        },
+        dart: {
         },
       },
       root_name: "Generated",
@@ -529,6 +536,9 @@ export class Main extends React.Component<MainProps, MainState> {
       case "swift":
         output = "swift" as Output;
         break;
+      case "dart":
+        output = "dart" as Output;
+        break;
       case "python":
         output = "python" as Output;
         break;
@@ -606,6 +616,15 @@ export class Main extends React.Component<MainProps, MainState> {
       let settings = {...state.settings};
       settings.swift = {...settings.swift};
       cb(settings.swift);
+      return {settings: settings};
+    }, () => this.recompile());
+  }
+
+  updateDart(cb: (settings: DartSettings) => void) {
+    this.setState((state: MainState, props: MainProps) => {
+      let settings = {...state.settings};
+      settings.dart = {...settings.dart};
+      cb(settings.dart);
       return {settings: settings};
     }, () => this.recompile());
   }
@@ -873,6 +892,10 @@ export class Main extends React.Component<MainProps, MainState> {
             onSimple={update => this.updateSwift(swift => swift.simple = update)}
             />;
           break;
+        case "dart":
+          settingsForm = <DartSettingsForm settings={settings.dart}
+            />;
+          break;
         default:
           break;
       }
@@ -978,6 +1001,7 @@ export class Main extends React.Component<MainProps, MainState> {
                         <option value="rust">Rust</option>
                         <option value="openapi">OpenAPI</option>
                         <option value="swift">Swift</option>
+                        <option value="dart">Dart</option>
                       </select>
                     </div>
                   </div>

@@ -30,10 +30,11 @@ reproto-backend-reproto = {path = "../lib/backend-reproto", version = "0.3"}
 reproto-backend-rust = {path = "../lib/backend-rust", version = "0.3"}
 reproto-backend-openapi = {path = "../lib/backend-openapi", version = "0.3"}
 reproto-backend-swift = {path = "../lib/backend-swift", version = "0.3"}
+reproto-backend-dart = {path = "../lib/backend-dart", version = "0.3"}
 
-wasm-bindgen = {version = "0.2", features = ["serde-serialize"]}
-serde = "1"
-serde_derive = "1"
+wasm-bindgen = { version = "0.2.25", features = ["serde-serialize"] }
+serde = "1.0.79"
+serde_derive = "1.0.79"
 
 [lib]
 crate-type = ["cdylib"]
