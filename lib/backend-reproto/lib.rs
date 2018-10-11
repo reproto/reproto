@@ -70,7 +70,7 @@ impl TryFromToml for ReprotoModule {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub enum Reproto {}
 
 impl Custom for Reproto {

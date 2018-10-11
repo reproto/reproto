@@ -61,9 +61,7 @@ static THEME_DUMP: &'static [u8] =
     include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/dumps/themedump"));
 
 fn load_syntax_set() -> SyntaxSet {
-    let mut ss: SyntaxSet = from_binary(SYNTAX_DUMP);
-    ss.link_syntaxes();
-    ss
+    from_binary(SYNTAX_DUMP)
 }
 
 fn load_theme_set() -> ThemeSet {

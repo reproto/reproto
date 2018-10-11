@@ -18,8 +18,8 @@ path = "lib.rs"
 reproto-core = {path = "../core", version = "0.3"}
 reproto-regex-lexer = {path = "../regex-lexer", version = "0.3"}
 
-lalrpop-util = "0.15.2"
+lalrpop-util = "0.16.0"
 error-chain = "0.12.0"
 
 [build-dependencies]
-lalrpop = "0.15.2"
+lalrpop = "0.16.0"

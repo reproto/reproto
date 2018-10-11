@@ -5,7 +5,7 @@ use pulldown_cmark as cmark;
 use std::borrow::Cow::{Borrowed, Owned};
 use syntect::easy::HighlightLines;
 use syntect::highlighting::Theme;
-use syntect::html::{start_coloured_html_snippet, styles_to_coloured_html, IncludeBackground};
+use syntect::html::{start_highlighted_html_snippet, styled_line_to_highlighted_html, IncludeBackground};
 use syntect::parsing::SyntaxSet;
 
 pub fn markdown_to_html(
@@ -23,8 +23,8 @@ pub fn markdown_to_html(
     let parser = Parser::new_ext(content, opts).map(|event| match event {
         Event::Text(text) => {
             if let Some(ref mut highlighter) = highlighter {
-                let highlighted = &highlighter.highlight(&text);
-                let html = styles_to_coloured_html(highlighted, IncludeBackground::Yes);
+                let highlighted = &highlighter.highlight(&text, syntax_set);
+                let html = styled_line_to_highlighted_html(highlighted, IncludeBackground::Yes);
                 return Event::Html(Owned(html));
             }
 
@@ -39,7 +39,7 @@ pub fn markdown_to_html(
 
             highlighter = Some(HighlightLines::new(syntax, theme));
 
-            let snippet = start_coloured_html_snippet(theme);
+            let (snippet, _) = start_highlighted_html_snippet(theme);
             Event::Html(Owned(format!("<div class=\"code\">{}", snippet)))
         }
         Event::End(Tag::CodeBlock(_)) => {

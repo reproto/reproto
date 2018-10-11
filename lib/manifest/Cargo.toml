@@ -16,9 +16,9 @@ reproto-core = {path = "../core", version = "0.3"}
 reproto-trans = {path = "../trans", version = "0.3"}
 reproto-naming = {path = "../naming", version = "0.3"}
 
-relative-path = { version = "0.3.7", features = ["serde"] }
+relative-path = { version = "0.4.0", features = ["serde"] }
 semver = { version = "0.9.0", features = ["serde"] }
-serde = "1.0.71"
-serde_derive = "1.0.71"
-toml = "0.4.6"
-log = "0.4.4"
+serde = "1.0.79"
+serde_derive = "1.0.79"
+toml = "0.4.8"
+log = "0.4.5"
