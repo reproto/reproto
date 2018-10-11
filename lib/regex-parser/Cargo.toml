@@ -11,9 +11,6 @@ description = """
 reproto regex parser
 """
 
-[lib]
-path = "lib.rs"
-
 [dependencies]
 reproto-core = {path = "../core", version = "0.3"}
 reproto-regex-lexer = {path = "../regex-lexer", version = "0.3"}
