@@ -79,13 +79,13 @@ impl<'el> Compiler<'el> {
         fields: impl IntoIterator<Item = &'el Loc<RpField>>,
     ) -> Result<Tokens<'el, Dart<'el>>> {
         let mut t = Tokens::new();
-        push!(t, "static ", name, " decode(dynamic _data_dyn) {");
+        push!(t, "static ", name, " decode(dynamic _dataDyn) {");
 
         t.nested({
             let mut t = Tokens::new();
 
-            t.push(AssertType(self.map_of_strings.clone(), "_data_dyn"));
-            push!(t, self.map_of_strings, " _data = _data_dyn;");
+            t.push(AssertType(self.map_of_strings.clone(), "_dataDyn"));
+            push!(t, self.map_of_strings, " _data = _dataDyn;");
 
             t.push({
                 let mut t = Tokens::new();
@@ -153,13 +153,13 @@ impl<'el> Compiler<'el> {
         fields: impl Clone + IntoIterator<Item = &'el Loc<RpField>>,
     ) -> Result<Tokens<'el, Dart<'el>>> {
         let mut t = Tokens::new();
-        push!(t, "static ", name, " decode(dynamic _data_dyn) {");
+        push!(t, "static ", name, " decode(dynamic _dataDyn) {");
 
         t.nested({
             let mut t = Tokens::new();
 
-            t.push(AssertType(self.list_of_dynamic.clone(), "_data_dyn"));
-            push!(t, self.list_of_dynamic, " _data = _data_dyn;");
+            t.push(AssertType(self.list_of_dynamic.clone(), "_dataDyn"));
+            push!(t, self.list_of_dynamic, " _data = _dataDyn;");
 
             t.push({
                 let mut t = Tokens::new();
@@ -243,15 +243,15 @@ impl<'el> Compiler<'el> {
     ) -> Result<Tokens<'el, Dart<'el>>> {
         let mut t = toks!();
 
-        push!(t, "static ", name, " decode(dynamic _data_dyn) {");
+        push!(t, "static ", name, " decode(dynamic _dataDyn) {");
 
         t.push({
             let mut t = toks!();
 
             t.push({
                 let mut t = toks!();
-                t.push(AssertType(self.map_of_strings.clone(), "_data_dyn"));
-                push!(t, self.map_of_strings, " _data = _data_dyn;");
+                t.push(AssertType(self.map_of_strings.clone(), "_dataDyn"));
+                push!(t, self.map_of_strings, " _data = _dataDyn;");
                 t
             });
 
