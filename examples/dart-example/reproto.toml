@@ -1,0 +1,6 @@
+paths = ["proto"]
+language = "dart"
+output = "generated"
+
+[packages]
+"io.reproto.example" = "*"

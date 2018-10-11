@@ -1,0 +1,7 @@
+/// A person.
+type Person {
+  /// The name of the person.
+  name: string;
+  /// The age of the person.
+  age: u32;
+}
