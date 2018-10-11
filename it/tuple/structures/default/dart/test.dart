@@ -7,12 +7,12 @@ class Entry {
     this.tuple2
   );
 
-  static Entry decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Entry decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var tuple1_dyn = _data["tuple1"];
     Tuple1 tuple1 = null;
@@ -54,12 +54,12 @@ class Tuple1{
     this.b
   );
 
-  static Tuple1 decode(dynamic _data_dyn) {
-    if (!(_data_dyn is List<dynamic>)) {
-      throw 'expected List<dynamic>, but got: $_data_dyn';
+  static Tuple1 decode(dynamic _dataDyn) {
+    if (!(_dataDyn is List<dynamic>)) {
+      throw 'expected List<dynamic>, but got: $_dataDyn';
     }
 
-    List<dynamic> _data = _data_dyn;
+    List<dynamic> _data = _dataDyn;
 
     if (_data.length != 2) {
       throw 'expected array of length 2, but was $_data.length';
@@ -107,12 +107,12 @@ class Tuple2{
     this.b
   );
 
-  static Tuple2 decode(dynamic _data_dyn) {
-    if (!(_data_dyn is List<dynamic>)) {
-      throw 'expected List<dynamic>, but got: $_data_dyn';
+  static Tuple2 decode(dynamic _dataDyn) {
+    if (!(_dataDyn is List<dynamic>)) {
+      throw 'expected List<dynamic>, but got: $_dataDyn';
     }
 
-    List<dynamic> _data = _data_dyn;
+    List<dynamic> _data = _dataDyn;
 
     if (_data.length != 2) {
       throw 'expected array of length 2, but was $_data.length';
@@ -155,12 +155,12 @@ class Other {
     this.a
   );
 
-  static Other decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Other decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var a_dyn = _data["a"];
     if (a_dyn == null) {

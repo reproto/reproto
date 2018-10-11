@@ -1,10 +1,10 @@
 class Entry {
-  static Entry decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Entry decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return Entry();
   }
@@ -17,12 +17,12 @@ class Entry {
 }
 
 class Type {
-  static Type decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Type decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return Type();
   }
@@ -35,11 +35,11 @@ class Type {
 }
 
 abstract class Interface {
-  static Interface decode(dynamic _data_dyn) {
-  if (!(_data_dyn is Map<String, dynamic>)) {
-    throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Interface decode(dynamic _dataDyn) {
+  if (!(_dataDyn is Map<String, dynamic>)) {
+    throw 'expected Map<String, dynamic>, but got: $_dataDyn';
   }
-  Map<String, dynamic> _data = _data_dyn;
+  Map<String, dynamic> _data = _dataDyn;
 
   var tag = _data["type"];
 
@@ -55,12 +55,12 @@ abstract class Interface {
 }
 
 class Interface_SubType extends Interface {
-  static Interface_SubType decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Interface_SubType decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     return Interface_SubType();
   }
@@ -100,12 +100,12 @@ class Enum {
 }
 
 class Tuple{
-  static Tuple decode(dynamic _data_dyn) {
-    if (!(_data_dyn is List<dynamic>)) {
-      throw 'expected List<dynamic>, but got: $_data_dyn';
+  static Tuple decode(dynamic _dataDyn) {
+    if (!(_dataDyn is List<dynamic>)) {
+      throw 'expected List<dynamic>, but got: $_dataDyn';
     }
 
-    List<dynamic> _data = _data_dyn;
+    List<dynamic> _data = _dataDyn;
 
     if (_data.length != 0) {
       throw 'expected array of length 0, but was $_data.length';

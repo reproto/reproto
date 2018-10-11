@@ -7,12 +7,12 @@ class Entry {
     this.untagged
   );
 
-  static Entry decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Entry decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var tagged_dyn = _data["tagged"];
     Tagged tagged = null;
@@ -45,11 +45,11 @@ class Entry {
 }
 
 abstract class Tagged {
-  static Tagged decode(dynamic _data_dyn) {
-  if (!(_data_dyn is Map<String, dynamic>)) {
-    throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Tagged decode(dynamic _dataDyn) {
+  if (!(_dataDyn is Map<String, dynamic>)) {
+    throw 'expected Map<String, dynamic>, but got: $_dataDyn';
   }
-  Map<String, dynamic> _data = _data_dyn;
+  Map<String, dynamic> _data = _dataDyn;
 
   var tag = _data["@type"];
 
@@ -77,12 +77,12 @@ class Tagged_A extends Tagged {
     this.shared
   );
 
-  static Tagged_A decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Tagged_A decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var shared_dyn = _data["shared"];
     if (shared_dyn == null) {
@@ -114,12 +114,12 @@ class Tagged_B extends Tagged {
     this.shared
   );
 
-  static Tagged_B decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Tagged_B decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var shared_dyn = _data["shared"];
     if (shared_dyn == null) {
@@ -151,12 +151,12 @@ class Tagged_Bar extends Tagged {
     this.shared
   );
 
-  static Tagged_Bar decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Tagged_Bar decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var shared_dyn = _data["shared"];
     if (shared_dyn == null) {
@@ -188,12 +188,12 @@ class Tagged_Baz extends Tagged {
     this.shared
   );
 
-  static Tagged_Baz decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Tagged_Baz decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var shared_dyn = _data["shared"];
     if (shared_dyn == null) {
@@ -219,11 +219,11 @@ class Tagged_Baz extends Tagged {
 }
 
 abstract class Untagged {
-  static Untagged decode(dynamic _data_dyn) {
-  if (!(_data_dyn is Map<String, dynamic>)) {
-    throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Untagged decode(dynamic _dataDyn) {
+  if (!(_dataDyn is Map<String, dynamic>)) {
+    throw 'expected Map<String, dynamic>, but got: $_dataDyn';
   }
-  Map<String, dynamic> _data = _data_dyn;
+  Map<String, dynamic> _data = _dataDyn;
 
   var keys = Set.of(_data.keys);
 
@@ -260,12 +260,12 @@ class Untagged_A extends Untagged {
     this.ignore
   );
 
-  static Untagged_A decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Untagged_A decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var shared_dyn = _data["shared"];
     if (shared_dyn == null) {
@@ -349,12 +349,12 @@ class Untagged_B extends Untagged {
     this.ignore
   );
 
-  static Untagged_B decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Untagged_B decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var shared_dyn = _data["shared"];
     if (shared_dyn == null) {
@@ -427,12 +427,12 @@ class Untagged_C extends Untagged {
     this.ignore
   );
 
-  static Untagged_C decode(dynamic _data_dyn) {
-    if (!(_data_dyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_data_dyn';
+  static Untagged_C decode(dynamic _dataDyn) {
+    if (!(_dataDyn is Map<String, dynamic>)) {
+      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
     }
 
-    Map<String, dynamic> _data = _data_dyn;
+    Map<String, dynamic> _data = _dataDyn;
 
     var shared_dyn = _data["shared"];
     if (shared_dyn == null) {
