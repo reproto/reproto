@@ -22,10 +22,7 @@ mod flavored;
 use backend::IntoBytes;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{
-    CoreFlavor, Diagnostics, Handle, Loc, RpField, RpPackage, RpStringType, RpType, Source, Span,
-    Translate,
-};
+use core::{CoreFlavor, Handle, Loc, RpField, RpPackage, Span};
 use genco::{JavaScript, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -163,16 +160,12 @@ impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
 fn compile(handle: &Handle, env: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = env.packages()?;
 
-    let translator = env.translator(flavored::JavaScriptFlavorTranslator::new(packages))?;
-
-    // TODO: remove this
-    let mut diag = Diagnostics::new(Source::empty("bad diagnostics"));
     let variant_field = Loc::new(
-        RpField::new("value", RpType::String(RpStringType::default())),
+        RpField::new("value", flavored::JavaScriptType::Native),
         Span::empty(),
-    ).translate(&mut diag, &translator)?;
+    );
 
-    let env = env.translate(translator)?;
+    let env = env.translate(flavored::JavaScriptFlavorTranslator::new(packages))?;
 
     let _modules: Vec<JsModule> = manifest::checked_modules(manifest.modules)?;
     let options = Options::new();

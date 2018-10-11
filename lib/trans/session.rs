@@ -3,7 +3,7 @@ use core::errors::{Error, Result};
 use core::{
     translator, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, Loc, PackageTranslator,
     Reporter, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
-    RpVersionedPackage, Source, Translate, Translator, Version,
+    RpVersionedPackage, Source, Translate, Version,
 };
 use features::Features;
 use into_model::IntoModel;
@@ -229,22 +229,10 @@ where
 }
 
 impl<'a> Session<'a, CoreFlavor> {
-    /// Build a new translator.
-    pub fn translator<T: 'static>(&self, flavor: T) -> Result<translator::Context<T>>
-    where
-        T: FlavorTranslator<Source = CoreFlavor>,
-    {
-        Ok(translator::Context {
-            flavor: flavor,
-            types: Rc::clone(&self.types),
-            decls: Some(RefCell::new(LinkedHashMap::new())),
-        })
-    }
-
-    /// Translate the current session into another.
+    /// Translate the current session into another flavor.
     ///
     /// This is the final step of the compilation, the session is consumed by this.
-    pub fn translate<T>(self, mut ctx: translator::Context<T>) -> Result<Translated<T::Target>>
+    pub fn translate<T: 'static>(self, flavor: T) -> Result<Translated<T::Target>>
     where
         T: FlavorTranslator<Source = CoreFlavor>,
     {
@@ -254,16 +242,27 @@ impl<'a> Session<'a, CoreFlavor> {
         }
 
         let mut files = BTreeMap::new();
+        let collected = Rc::new(RefCell::new(LinkedHashMap::new()));
 
         for (package, file) in self.files {
-            let package = ctx.translate_package(package)?;
-            let mut diag = Diagnostics::new(file.source.clone());
+            let package = flavor.translate_package(package)?;
 
-            let file = match file.file.translate(&mut diag, &ctx) {
-                Ok(file) => file,
-                Err(e) => {
-                    self.reporter.diagnostics(diag);
-                    return Err(e);
+            let file = {
+                let ctx = translator::Context {
+                    from: &package,
+                    flavor: &flavor,
+                    types: Rc::clone(&self.types),
+                    decls: Some(collected.clone()),
+                };
+
+                let mut diag = Diagnostics::new(file.source.clone());
+
+                match file.file.translate(&mut diag, &ctx) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        self.reporter.diagnostics(diag);
+                        return Err(e);
+                    }
                 }
             };
 
@@ -272,16 +271,26 @@ impl<'a> Session<'a, CoreFlavor> {
 
         let mut decls = LinkedHashMap::new();
 
-        if let Some(d) = ctx.decls.take() {
-            // NOTE: we do not know which source to associate this diagnostics with.
-            let mut diag = Diagnostics::new(Source::empty("no diagnostics"));
+        // NOTE: we do not know which source to associate this diagnostics with.
+        let mut diag = Diagnostics::new(Source::empty("no diagnostics"));
 
-            for (name, reg) in d.into_inner() {
-                // NB: it must always be possible to translate name without declarations until all
-                // backends to translation.
-                let name = name.translate(&mut diag, &ctx)?;
-                decls.insert(name, reg);
-            }
+        let collected = Rc::try_unwrap(collected)
+            .map_err(|_| Error::from("no access to collected declarations"))?;
+
+        for (name, reg) in collected.into_inner() {
+            let package = flavor.translate_package(name.package.clone())?;
+
+            let ctx = translator::Context {
+                from: &package,
+                flavor: &flavor,
+                types: Rc::clone(&self.types),
+                decls: None,
+            };
+
+            // NB: it must always be possible to translate name without declarations until all
+            // backends to translation.
+            let name = name.translate(&mut diag, &ctx)?;
+            decls.insert(name, reg);
         }
 
         Ok(Translated::new(decls, files))
@@ -342,8 +351,7 @@ impl<'a> Session<'a, CoreFlavor> {
 
     /// Translate without changing the flavor.
     pub fn translate_default(self) -> Result<Translated<CoreFlavor>> {
-        let ctx = self.translator(translator::CoreFlavorTranslator::<_, CoreFlavor>::new(()))?;
-        self.translate(ctx)
+        self.translate(translator::CoreFlavorTranslator::<_, CoreFlavor>::new(()))
     }
 
     /// Import a path into the session.

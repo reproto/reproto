@@ -318,11 +318,10 @@ fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) ->
 
     let packages = session.packages()?;
 
-    let translator = flavored::SwiftFlavorTranslator::new(packages.clone(), &options)?;
-
-    let translator = session.translator(translator)?;
-
-    let session = session.translate(translator)?;
+    let session = session.translate(flavored::SwiftFlavorTranslator::new(
+        packages.clone(),
+        &options,
+    )?)?;
 
     Compiler::new(&session, options, handle)?.compile(&packages)
 }

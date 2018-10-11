@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::fmt;
 use {AsPackage, RpPackage, RpPackageFormat, Version};
 
-#[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpVersionedPackage {
     pub package: RpPackage,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -59,6 +59,7 @@ pub trait FlavorTranslator {
     /// Translate the given name.
     fn translate_name(
         &self,
+        from: &<Self::Target as Flavor>::Package,
         reg: RpReg,
         name: Loc<RpName<Self::Target>>,
     ) -> Result<<Self::Target as Flavor>::Type>;
@@ -333,19 +334,20 @@ where
 }
 
 /// Context used when translating.
-pub struct Context<T>
+pub struct Context<'a, T: 'static>
 where
     T: FlavorTranslator<Source = CoreFlavor>,
 {
+    pub from: &'a <T::Target as Flavor>::Package,
     /// Type used to translate types.
-    pub flavor: T,
+    pub flavor: &'a T,
     /// Registered declarations of the source type.
     pub types: Rc<LinkedHashMap<RpName<T::Source>, Loc<RpReg>>>,
     /// Cached and translated registered declarations.
-    pub decls: Option<RefCell<LinkedHashMap<RpName<T::Source>, RpReg>>>,
+    pub decls: Option<Rc<RefCell<LinkedHashMap<RpName<T::Source>, RpReg>>>>,
 }
 
-impl<T> Context<T>
+impl<'a, T: 'static> Context<'a, T>
 where
     T: FlavorTranslator<Source = CoreFlavor>,
 {
@@ -374,7 +376,7 @@ where
     }
 }
 
-impl<T> Translator for Context<T>
+impl<'a, T: 'static> Translator for Context<'a, T>
 where
     T: FlavorTranslator<Source = CoreFlavor>,
 {
@@ -416,7 +418,7 @@ where
             Name { name } => {
                 let reg = self.lookup(diag, &name)?;
                 let name = name.translate(diag, self)?;
-                self.flavor.translate_name(reg, name)?
+                self.flavor.translate_name(&self.from, reg, name)?
             }
             Map { key, value } => {
                 let key = self.translate_type(diag, *key)?;

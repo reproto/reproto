@@ -164,6 +164,7 @@ macro_rules! translator_defaults {
 
         fn translate_name(
             &self,
+            _from: &<$slf::Target as Flavor>::Package,
             _reg: RpReg,
             name: Loc<RpName<$slf::Target>>,
         ) -> Result<<$slf::Target as Flavor>::Type> {

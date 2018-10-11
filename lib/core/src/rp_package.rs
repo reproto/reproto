@@ -9,6 +9,7 @@ use std::slice;
 use {AsPackage, RpVersionedPackage};
 
 /// Iterator over parts in a package.
+#[derive(Debug, Clone)]
 pub struct Parts<'a> {
     iter: slice::Iter<'a, String>,
 }
@@ -34,7 +35,7 @@ impl<'a> Parts<'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpPackage {
     parts: Vec<String>,
 }

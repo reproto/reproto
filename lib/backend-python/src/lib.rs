@@ -25,10 +25,7 @@ use backend::{Initializer, IntoBytes};
 use codegen::ServiceCodegen;
 use compiler::Compiler;
 use core::errors::Result;
-use core::{
-    CoreFlavor, Diagnostics, Handle, Loc, RpField, RpPackage, RpStringType, RpType, Source, Span,
-    Translate,
-};
+use core::{CoreFlavor, Handle, Loc, RpField, RpPackage, Span};
 use genco::{Cons, Python, Tokens};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -188,17 +185,18 @@ fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) ->
     let packages = session.packages()?;
 
     let helper = options.version_helper.clone();
-    let translator = session.translator(flavored::PythonFlavorTranslator::new(packages, helper))?;
-
-    // NOTE: avoid doing translation.
-    let mut diag = Diagnostics::new(Source::empty("no diagnostics"));
+    let session = session.translate(flavored::PythonFlavorTranslator::new(
+        packages,
+        helper.clone(),
+    ))?;
 
     let variant_field = Loc::new(
-        RpField::new("ordinal", RpType::String(RpStringType::default())),
+        RpField::new(
+            "ordinal",
+            flavored::PythonType::new(helper, flavored::PythonKind::String),
+        ),
         Span::empty(),
-    ).translate(&mut diag, &translator)?;
-
-    let session = session.translate(translator)?;
+    );
 
     Compiler::new(&session, &variant_field, options, handle).compile()
 }

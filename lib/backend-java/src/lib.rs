@@ -206,9 +206,7 @@ fn setup_options<'a>(modules: Vec<JavaModule>) -> Result<Options> {
 
 fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = session.packages()?;
-    let translator = session.translator(flavored::JavaFlavorTranslator::new(packages.clone()))?;
-
-    let session = session.translate(translator)?;
+    let session = session.translate(flavored::JavaFlavorTranslator::new(packages.clone()))?;
 
     let session = Rc::new(session);
     let modules = checked_modules(manifest.modules)?;

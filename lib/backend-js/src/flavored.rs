@@ -214,7 +214,12 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
         Ok(JavaScriptType::Native)
     }
 
-    fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<JavaScriptType<'static>> {
+    fn translate_name(
+        &self,
+        _from: &RpPackage,
+        reg: RpReg,
+        name: Loc<RpName>,
+    ) -> Result<JavaScriptType<'static>> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(ref used) = name.prefix {

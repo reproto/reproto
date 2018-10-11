@@ -273,8 +273,7 @@ impl<'el> IntoTokens<'el, Go<'el>> for Tags {
 fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = session.packages()?;
 
-    let translator = session.translator(flavored::GoFlavorTranslator::new(packages))?;
-    let session = session.translate(translator)?;
+    let session = session.translate(flavored::GoFlavorTranslator::new(packages))?;
 
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
