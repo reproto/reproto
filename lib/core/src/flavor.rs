@@ -34,7 +34,7 @@ pub trait Flavor: fmt::Debug + Clone + cmp::Eq + hash::Hash {
     /// The endpoint that this flavor serializes to.
     type Endpoint: fmt::Debug + Clone;
     /// The package type.
-    type Package: fmt::Debug + Clone + cmp::Eq + cmp::Ord + hash::Hash + AsPackage;
+    type Package: fmt::Debug + Clone + cmp::Eq + cmp::Ord + hash::Hash + Default + AsPackage;
     /// Enum type.
     type EnumType: fmt::Debug + Clone + cmp::Eq;
 }

@@ -8,10 +8,10 @@ use flavored::{
     DartFlavor, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody,
     RpTypeBody,
 };
-use genco::{dart, Cons, Dart, Element, IntoTokens, Quoted, Tokens};
+use genco::{dart, Cons, Dart, Element, Quoted, Tokens};
 use std::rc::Rc;
 use trans::{self, Translated};
-use utils::Comments;
+use utils::{AssertNotNull, AssertType, Comments};
 use {EXT, TYPE_SEP};
 
 pub struct Compiler<'el> {
@@ -26,7 +26,7 @@ impl<'el> Compiler<'el> {
         let core = dart::imported(dart::DART_CORE);
         let string = core.name("String");
         let map = core.name("Map");
-        let list = core.name("list");
+        let list = core.name("List");
         let map_of_strings = map.with_arguments(vec![string.clone(), Dart::Dynamic]);
         let list_of_dynamic = list.with_arguments(vec![Dart::Dynamic]);
 
@@ -38,20 +38,9 @@ impl<'el> Compiler<'el> {
         }
     }
 
-    /// Build an implementation of the given name and body.
-    fn build_impl(&self, name: Cons<'el>, body: Tokens<'el, Dart<'el>>) -> Tokens<'el, Dart<'el>> {
-        let mut out_impl = Tokens::new();
-
-        out_impl.push(toks!["impl ", name, " {"]);
-        out_impl.nested(body);
-        out_impl.push("}");
-
-        out_impl
-    }
-
     /// Convert the type name
-    fn convert_type_name(&self, name: &RpName) -> Rc<String> {
-        Rc::new(name.join(TYPE_SEP))
+    fn convert_type_name(&self, name: &RpName) -> Cons<'static> {
+        Cons::from(name.join(TYPE_SEP))
     }
 
     // Build the corresponding element out of a field declaration.
@@ -95,19 +84,7 @@ impl<'el> Compiler<'el> {
         t.nested({
             let mut t = Tokens::new();
 
-            t.push({
-                let mut t = Tokens::new();
-                push!(t, "if (!(_data_dyn is ", self.map_of_strings, ")) {");
-                nested!(
-                    t,
-                    "throw 'expected ",
-                    self.map_of_strings,
-                    ", but got: $_data_dyn';"
-                );
-                push!(t, "}");
-                t
-            });
-
+            t.push(AssertType(self.map_of_strings.clone(), "_data_dyn"));
             push!(t, self.map_of_strings, " _data = _data_dyn;");
 
             t.push({
@@ -116,28 +93,24 @@ impl<'el> Compiler<'el> {
 
                 for field in fields {
                     let id = field.safe_ident();
-                    let tid = Cons::from(Rc::new(format!("{}_dyn", field.safe_ident())));
+                    let id_dyn = Cons::from(Rc::new(format!("{}_dyn", field.safe_ident())));
 
                     t.push({
                         let mut t = Tokens::new();
 
-                        push!(t, "var ", tid, " = _data[", field.name().quoted(), "];");
+                        push!(t, "var ", id_dyn, " = _data[", field.name().quoted(), "];");
 
                         if field.is_optional() {
                             t.push({
                                 let mut t = Tokens::new();
                                 push!(t, field.ty.ty(), " ", id, " = null;");
-                                push!(t, "if (", tid, " != null) {");
+                                push!(t, "if (", id_dyn, " != null) {");
 
                                 t.nested({
                                     let mut t = toks!();
 
-                                    let (d, e) = field.ty.decode(tid)?;
-
-                                    if let Some(e) = e {
-                                        t.push(e);
-                                    }
-
+                                    let (d, e) = field.ty.decode(id_dyn)?;
+                                    t.push_unless_empty(e);
                                     push!(t, id, " = ", d, ";");
                                     t
                                 });
@@ -147,24 +120,11 @@ impl<'el> Compiler<'el> {
                             });
                         } else {
                             t.push({
-                                let mut t = Tokens::new();
-                                push!(t, "if (", tid, " == null) {");
-                                nested!(
-                                    t,
-                                    "throw ",
-                                    "expected value for required field".quoted(),
-                                    ";"
-                                );
-                                push!(t, "}");
-
-                                let (d, e) = field.ty.decode(tid)?;
-
-                                if let Some(e) = e {
-                                    t.push(e);
-                                }
-
+                                let (d, e) = field.ty.decode(id_dyn.clone())?;
+                                let mut t = toks!();
+                                t.push(AssertNotNull(id_dyn));
+                                t.push_unless_empty(e);
                                 push!(t, "final ", field.ty.ty(), " ", id, " = ", d, ";");
-
                                 t
                             });
                         }
@@ -186,18 +146,183 @@ impl<'el> Compiler<'el> {
         Ok(t)
     }
 
+    /// Build a tuple decode function.
+    fn decode_tuple_fn(
+        &self,
+        name: Cons<'el>,
+        fields: impl Clone + IntoIterator<Item = &'el Loc<RpField>>,
+    ) -> Result<Tokens<'el, Dart<'el>>> {
+        let mut t = Tokens::new();
+        push!(t, "static ", name, " decode(dynamic _data_dyn) {");
+
+        t.nested({
+            let mut t = Tokens::new();
+
+            t.push(AssertType(self.list_of_dynamic.clone(), "_data_dyn"));
+            push!(t, self.list_of_dynamic, " _data = _data_dyn;");
+
+            t.push({
+                let mut t = Tokens::new();
+                let mut vars = toks!();
+                let len = Cons::from(fields.clone().into_iter().count().to_string());
+
+                t.push({
+                    let mut t = toks!();
+                    push!(t, "if (_data.length != ", len, ") {");
+                    nested!(
+                        t,
+                        "throw 'expected array of length ",
+                        len,
+                        ", but was $_data.length';"
+                    );
+                    push!(t, "}");
+                    t
+                });
+
+                for (i, field) in fields.into_iter().enumerate() {
+                    let id = field.safe_ident();
+                    let id_dyn = Cons::from(Rc::new(format!("{}_dyn", field.safe_ident())));
+                    let i = i.to_string();
+
+                    t.push({
+                        let mut t = Tokens::new();
+
+                        push!(t, "var ", id_dyn, " = _data[", i, "];");
+
+                        if field.is_optional() {
+                            t.push({
+                                let mut t = Tokens::new();
+                                push!(t, field.ty.ty(), " ", id, " = null;");
+                                push!(t, "if (", id_dyn, " != null) {");
+
+                                t.nested({
+                                    let mut t = toks!();
+
+                                    let (d, e) = field.ty.decode(id_dyn)?;
+                                    t.push_unless_empty(e);
+                                    push!(t, id, " = ", d, ";");
+                                    t
+                                });
+
+                                t.push("}");
+                                t
+                            });
+                        } else {
+                            t.push({
+                                let (d, e) = field.ty.decode(id_dyn.clone())?;
+                                let mut t = toks!();
+                                t.push(AssertNotNull(id_dyn));
+                                t.push_unless_empty(e);
+                                push!(t, "final ", field.ty.ty(), " ", id, " = ", d, ";");
+                                t
+                            });
+                        }
+
+                        t
+                    });
+
+                    vars.append(id);
+                }
+
+                push!(t, "return ", name, "(", vars.join(", "), ");");
+                t.join_line_spacing()
+            });
+
+            t.join_line_spacing()
+        });
+
+        push!(t, "}");
+        Ok(t)
+    }
+
+    /// Build a decode function for an interface.
+    fn decode_interface_fn(
+        &self,
+        name: Cons<'el>,
+        body: &'el RpInterfaceBody,
+    ) -> Result<Tokens<'el, Dart<'el>>> {
+        let mut t = toks!();
+
+        push!(t, "static ", name, " decode(dynamic _data_dyn) {");
+
+        t.push({
+            let mut t = toks!();
+
+            t.push({
+                let mut t = toks!();
+                t.push(AssertType(self.map_of_strings.clone(), "_data_dyn"));
+                push!(t, self.map_of_strings, " _data = _data_dyn;");
+                t
+            });
+
+            match body.sub_type_strategy {
+                core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                    push!(t, "var tag = _data[", tag.as_str().quoted(), "];");
+
+                    t.push({
+                        let mut t = toks!();
+                        push!(t, "switch (tag) {");
+
+                        for s in &body.sub_types {
+                            let name = self.convert_type_name(&s.name);
+                            push!(t, "case ", s.name().quoted(), ":");
+                            nested!(t, "return ", name, ".decode(_data);");
+                        }
+
+                        push!(t, "default:");
+                        nested!(t, "throw 'bad tag: $tag';");
+
+                        push!(t, "}");
+                        t
+                    });
+                }
+                core::RpSubTypeStrategy::Untagged => {
+                    push!(t, "var keys = Set.of(_data.keys);");
+
+                    for s in &body.sub_types {
+                        let name = self.convert_type_name(&s.name);
+                        let test: Tokens<'el, Dart<'el>> = s
+                            .discriminating_fields()
+                            .map(|f| f.name().quoted())
+                            .collect();
+                        let test = test.join(", ");
+
+                        t.push({
+                            let mut t = Tokens::new();
+                            push!(t, "if (keys.containsAll(<String>[", test, "])) {");
+                            nested!(t, "return ", name, ".decode(_data);");
+                            push!(t, "}");
+                            t
+                        });
+                    }
+                }
+            }
+
+            t.join_line_spacing()
+        });
+
+        push!(t, "}");
+        Ok(t)
+    }
+
     /// Build an encode function.
     fn encode_fn(
         &self,
+        name: Cons<'el>,
         fields: impl IntoIterator<Item = &'el Loc<RpField>>,
+        tag: Option<&'el str>,
     ) -> Result<Tokens<'el, Dart<'el>>> {
         let mut t = Tokens::new();
-        push!(t, "dynamic encode() {");
+        push!(t, self.map_of_strings, " encode() {");
 
         t.nested({
             let mut t = Tokens::new();
 
             push!(t, self.map_of_strings, " _data = Map();");
+
+            if let Some(tag) = tag {
+                push!(t, "_data[", tag.quoted(), "] = ", name.quoted(), ";");
+            }
 
             for field in fields {
                 let id = Cons::from(format!("this.{}", field.safe_ident()));
@@ -214,6 +339,33 @@ impl<'el> Compiler<'el> {
                 } else {
                     t.push(toks!("_data[", field.name().quoted(), "] = ", encoded, ";"));
                 }
+            }
+
+            t.push("return _data;");
+
+            t.join_line_spacing()
+        });
+
+        push!(t, "}");
+        Ok(t)
+    }
+
+    /// Build an encode function to encode tuples.
+    fn encode_tuple_fn(
+        &self,
+        fields: impl IntoIterator<Item = &'el Loc<RpField>>,
+    ) -> Result<Tokens<'el, Dart<'el>>> {
+        let mut t = Tokens::new();
+        push!(t, self.list_of_dynamic, " encode() {");
+
+        t.nested({
+            let mut t = Tokens::new();
+
+            push!(t, self.list_of_dynamic, " _data = List();");
+
+            for field in fields {
+                let e = field.ty.encode(toks!("this.", field.safe_ident()))?;
+                push!(t, "_data.add(", e, ");");
             }
 
             t.push("return _data;");
@@ -272,51 +424,16 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
         let name = self.convert_type_name(&body.name);
 
-        let decode_fn = {
-            let mut t = Tokens::new();
-            push!(t, "static ", name, " decode(dynamic data) {");
-
-            t.nested({
-                let mut t = Tokens::new();
-
-                t.push({
-                    let mut t = Tokens::new();
-                    push!(t, "if (!(data is ", self.list_of_dynamic, ")) {");
-                    nested!(
-                        t,
-                        "throw 'expected ",
-                        self.list_of_dynamic,
-                        ", but got: $data';"
-                    );
-                    push!(t, "}");
-                    t
-                });
-
-                t.push({
-                    let mut t = Tokens::new();
-
-                    for _field in &body.fields {
-                        // TODO: decode each field.
-                    }
-
-                    t
-                });
-
-                t.join_line_spacing()
-            });
-
-            push!(t, "}");
-            t
-        };
-
         let mut t = Tokens::new();
 
         t.push_unless_empty(Comments(&body.comment));
-        t.push(toks!("class ", name, "{"));
+        push!(t, "class ", name, "{");
         t.nested({
             let mut t = Tokens::new();
-            t.push(self.type_fields(&body.fields)?);
-            t.push(decode_fn);
+            t.push_unless_empty(self.type_fields(&body.fields)?);
+            t.push_unless_empty(self.constructor(name.clone(), &body.fields)?);
+            t.push(self.decode_tuple_fn(name.clone(), &body.fields)?);
+            t.push(self.encode_tuple_fn(&body.fields)?);
             t.join_line_spacing()
         });
         t.push(toks!("}"));
@@ -372,13 +489,7 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
             t.nested({
                 let mut t = Tokens::new();
 
-                t.push({
-                    let mut t = Tokens::new();
-                    push!(t, "if (!(data is ", ty, ")) {");
-                    nested!(t, "throw 'expected ", ty, ", but got: $data';");
-                    push!(t, "}");
-                    t
-                });
+                t.push(AssertType(ty.clone(), "data"));
 
                 t.push({
                     let mut t = Tokens::new();
@@ -411,7 +522,7 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
 
         let encode_fn = {
             let mut t = Tokens::new();
-            push!(t, "dynamic encode() {");
+            push!(t, body.enum_type.ty(), " encode() {");
             nested!(t, "return ", f, ";");
             push!(t, "}");
             t
@@ -445,7 +556,7 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
     }
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        let name = Cons::from(self.convert_type_name(&body.name));
+        let name = self.convert_type_name(&body.name);
 
         let mut t = Tokens::new();
 
@@ -455,10 +566,10 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
         // fields
         t.nested({
             let mut t = Tokens::new();
-            t.push(self.type_fields(&body.fields)?);
+            t.push_unless_empty(self.type_fields(&body.fields)?);
             t.push_unless_empty(self.constructor(name.clone(), &body.fields)?);
             t.push(self.decode_fn(name.clone(), &body.fields)?);
-            t.push(self.encode_fn(&body.fields)?);
+            t.push(self.encode_fn(name.clone(), &body.fields, None)?);
             t.join_line_spacing()
         });
 
@@ -466,60 +577,73 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
 
         out.0.push(t);
 
-        // if custom code is present, punt it into an impl.
-        let impl_body = code!(&body.codes, core::RpContext::Dart).into_tokens();
-
-        if !impl_body.is_empty() {
-            out.0.push(self.build_impl(name.clone(), impl_body));
-        }
-
         Ok(())
     }
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
-        let name = Cons::from(self.convert_type_name(&body.name));
+        let name = self.convert_type_name(&body.name);
 
         let mut t = Tokens::new();
 
         t.push_unless_empty(Comments(&body.comment));
 
-        match body.sub_type_strategy {
-            core::RpSubTypeStrategy::Tagged { .. } => {}
-            core::RpSubTypeStrategy::Untagged => {}
-        }
+        t.push({
+            let mut t = toks!();
+            t.push(toks!["abstract class ", name.clone(), " {"]);
+            t.nested({
+                let mut t = toks!();
+                t.push(self.decode_interface_fn(name.clone(), body)?);
+                push!(t, self.map_of_strings, " encode();");
+                t.push_unless_empty(code!(&body.codes, core::RpContext::Dart));
+                t.join_line_spacing()
+            });
+            t.push("}");
+            t
+        });
 
-        t.push(toks!["pub enum ", name.clone(), " {"]);
+        let sup = name;
 
         for s in &body.sub_types {
-            t.nested({
+            let name = self.convert_type_name(&s.name);
+            let fields = body.fields.iter().chain(s.fields.iter());
+
+            t.push({
                 let mut t = Tokens::new();
 
                 t.push_unless_empty(Comments(&s.comment));
 
-                t.push(toks![s.ident.as_str(), " {"]);
+                push!(t, "class ", name, " extends ", sup, " {");
 
-                t.push({
+                t.nested({
                     let mut t = Tokens::new();
-                    t.nested(self.type_fields(body.fields.iter().chain(s.fields.iter()))?);
+                    t.push_unless_empty(self.type_fields(fields.clone())?);
+                    t.push_unless_empty(self.constructor(name.clone(), fields.clone())?);
+                    t.push(self.decode_fn(name.clone(), fields.clone())?);
+
+                    match body.sub_type_strategy {
+                        core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
+                            t.push(self.encode_fn(
+                                s.name().into(),
+                                fields.clone(),
+                                Some(tag.as_str()),
+                            )?);
+                        }
+                        core::RpSubTypeStrategy::Untagged => {
+                            t.push(self.encode_fn(s.name().into(), fields.clone(), None)?);
+                        }
+                    }
+
+                    t.push_unless_empty(code!(&s.codes, core::RpContext::Dart));
                     t.join_line_spacing()
                 });
 
-                t.push("},");
+                t.push("}");
 
                 t
             });
         }
 
-        t.push("}");
-
-        out.0.push(t);
-
-        let impl_body = code!(&body.codes, core::RpContext::Dart).into_tokens();
-
-        if !impl_body.is_empty() {
-            out.0.push(self.build_impl(name.clone(), impl_body));
-        }
-
+        out.0.push(t.join_line_spacing());
         Ok(())
     }
 

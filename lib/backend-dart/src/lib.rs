@@ -128,9 +128,7 @@ impl TryFromToml for DartModule {
 fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let _: Vec<DartModule> = manifest::checked_modules(manifest.modules)?;
     let packages = session.packages()?;
-
-    let translator = session.translator(flavored::DartFlavorTranslator::new(packages.clone()))?;
-    let session = session.translate(translator)?;
+    let session = session.translate(flavored::DartFlavorTranslator::new(packages.clone()))?;
 
     Compiler::new(&session, handle).compile()
 }

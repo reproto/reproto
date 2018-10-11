@@ -222,7 +222,12 @@ impl FlavorTranslator for JavaFlavorTranslator {
         Ok(self.byte_buffer.clone())
     }
 
-    fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<Java<'static>> {
+    fn translate_name(
+        &self,
+        _from: &RpPackage,
+        reg: RpReg,
+        name: Loc<RpName>,
+    ) -> Result<Java<'static>> {
         let ident = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
         let package = name.package.join(".");
         Ok(java::imported(package, ident))

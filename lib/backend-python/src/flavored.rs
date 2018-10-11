@@ -60,6 +60,13 @@ pub struct PythonType<'el> {
     kind: PythonKind<'el>,
 }
 
+impl<'el> PythonType<'el> {
+    /// Create a new python type instance.
+    pub fn new(helper: Rc<Box<VersionHelper>>, kind: PythonKind<'el>) -> Self {
+        PythonType { helper, kind }
+    }
+}
+
 impl<'el> cmp::PartialEq for PythonType<'el> {
     fn eq(&self, other: &PythonType<'el>) -> bool {
         self.kind.eq(&other.kind)
@@ -313,7 +320,12 @@ impl FlavorTranslator for PythonFlavorTranslator {
         Ok(self.ty(PythonKind::String))
     }
 
-    fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<PythonType<'static>> {
+    fn translate_name(
+        &self,
+        _from: &RpPackage,
+        reg: RpReg,
+        name: Loc<RpName>,
+    ) -> Result<PythonType<'static>> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |v| v.join(TYPE_SEP));
 
         if let Some(ref used) = name.prefix {

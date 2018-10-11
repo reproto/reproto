@@ -109,7 +109,12 @@ impl FlavorTranslator for CsharpFlavorTranslator {
         Ok(array(csharp::BYTE))
     }
 
-    fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<Csharp<'static>> {
+    fn translate_name(
+        &self,
+        _from: &RpPackage,
+        reg: RpReg,
+        name: Loc<RpName>,
+    ) -> Result<Csharp<'static>> {
         let package_name = Rc::new(name.package.join("."));
         let name = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
 

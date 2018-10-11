@@ -201,11 +201,10 @@ fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) ->
     let packages = session.packages()?;
     let options = options(modules, packages.clone())?;
 
-    let translator = session.translator(flavored::RustFlavorTranslator::new(
+    let session = session.translate(flavored::RustFlavorTranslator::new(
         packages.clone(),
         options.datetime.clone(),
     ))?;
-    let session = session.translate(translator)?;
 
     Compiler::new(&session, options, handle).compile()
 }

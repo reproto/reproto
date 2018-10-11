@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use trans::Packages;
-use TYPE_SEP;
+use {EXT, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DartType<'el> {
@@ -46,12 +46,16 @@ impl<'el> DartType<'el> {
             DartType::String => dart::imported(dart::DART_CORE).name("String"),
             DartType::Array { ref argument } => {
                 let argument = argument.ty();
-                dart::imported(dart::DART_CORE).name("List").with_arguments(vec![argument])
+                dart::imported(dart::DART_CORE)
+                    .name("List")
+                    .with_arguments(vec![argument])
             }
             DartType::Map { ref key, ref value } => {
                 let key = key.ty();
                 let value = value.ty();
-                dart::imported(dart::DART_CORE).name("Map").with_arguments(vec![key, value])
+                dart::imported(dart::DART_CORE)
+                    .name("Map")
+                    .with_arguments(vec![key, value])
             }
         }
     }
@@ -61,7 +65,7 @@ impl<'el> DartType<'el> {
         let _ = match *self {
             DartType::Native { ref dart } => {
                 return Ok(toks!(i, ".encode()"));
-            },
+            }
             DartType::Dynamic => Dart::Dynamic,
             DartType::Int => dart::INT,
             DartType::Double => dart::DOUBLE,
@@ -69,7 +73,13 @@ impl<'el> DartType<'el> {
             DartType::String => dart::imported(dart::DART_CORE).name("String"),
             DartType::Map { ref key, ref value } => {
                 let d = value.encode(toks!("e.value"))?;
-                return Ok(toks!("Map.fromEntries(", i, ".entries.map((e) => MapEntry(e.key, ", d, ")))"));
+                return Ok(toks!(
+                    "Map.fromEntries(",
+                    i,
+                    ".entries.map((e) => MapEntry(e.key, ",
+                    d,
+                    ")))"
+                ));
             }
             DartType::Array { ref argument } => {
                 let d = argument.encode(toks!("e"))?;
@@ -83,16 +93,16 @@ impl<'el> DartType<'el> {
     /// Create a decode function appropriate for this type.
     /// The first tuple element returned is the decoding procedure of the argument.
     /// The second optional tuple element is extra validation that needs to be evaluated.
-    pub fn decode(&self, i: impl Into<Cons<'el>>) -> Result<(
-        Tokens<'el, Dart<'el>>,
-        Option<Tokens<'el, Dart<'el>>>
-    )> {
+    pub fn decode(
+        &self,
+        i: impl Into<Cons<'el>>,
+    ) -> Result<(Tokens<'el, Dart<'el>>, Tokens<'el, Dart<'el>>)> {
         let i = i.into();
 
         let ty = match *self {
             DartType::Native { ref dart } => {
-                return Ok((toks!(dart.clone(), ".decode(", i.clone(), ")"), None));
-            },
+                return Ok((toks!(dart.clone(), ".decode(", i.clone(), ")"), toks!()));
+            }
             DartType::Dynamic => Dart::Dynamic,
             DartType::Int => dart::INT,
             DartType::Double => dart::DOUBLE,
@@ -102,20 +112,27 @@ impl<'el> DartType<'el> {
                 let (d, e) = value.decode("e.value")?;
 
                 let core = dart::imported(dart::DART_CORE);
-                let dyn_ty = core.name("Map").with_arguments(vec![key.ty(), Dart::Dynamic]);
-                // let ty = core.name("Map").with_arguments(vec![key.ty(), value.ty()]);
+                let dyn_ty = core
+                    .name("Map")
+                    .with_arguments(vec![key.ty(), Dart::Dynamic]);
 
                 let entries = toks!("(", i.clone(), " as ", dyn_ty.clone(), ").entries");
 
-                let t = if let Some(e) = e {
+                let t = if e.is_empty() {
+                    toks!(
+                        "Map.fromEntries(",
+                        entries,
+                        ".map((e) => MapEntry(e.key, ",
+                        d,
+                        ")))"
+                    )
+                } else {
                     let mut t = Tokens::new();
                     t.append(toks!("Map.fromEntries(", entries, ".map((e) {"));
                     t.nested(e);
                     nested!(t, "return MapEntry(e.key, ", d, ");");
                     push!(t, "}));");
                     t
-                } else {
-                    toks!("Map.fromEntries(", entries, ".map((e) => MapEntry(e.key, ", d, ")))")
                 };
 
                 // check that value is a map.
@@ -124,7 +141,7 @@ impl<'el> DartType<'el> {
                 nested!(e, "throw 'expected ", dyn_ty, ", but was: $", i, "';");
                 push!(e, "}");
 
-                return Ok((t, Some(e)));
+                return Ok((t, e));
             }
             DartType::Array { ref argument } => {
                 let (d, e) = argument.decode("e")?;
@@ -135,15 +152,15 @@ impl<'el> DartType<'el> {
 
                 let entries = toks!("(", i.clone(), " as ", dyn_ty.clone(), ")");
 
-                let t = if let Some(e) = e {
+                let t = if e.is_empty() {
+                    toks!("List.of(", entries, ".map((e) => ", d, "))")
+                } else {
                     let mut t = Tokens::new();
                     t.append(toks!("List.of(", entries, ".map((e) {"));
                     t.nested(e);
                     nested!(t, "return ", d, ";");
                     push!(t, "}))");
                     t
-                } else {
-                    toks!("List.of(", entries, ".map((e) => ", d, "))")
                 };
 
                 // check that value is a list.
@@ -152,7 +169,7 @@ impl<'el> DartType<'el> {
                 nested!(e, "throw 'expected ", dyn_ty, ", but was: $", i, "';");
                 push!(e, "}");
 
-                return Ok((t, Some(e)));
+                return Ok((t, e));
             }
         };
 
@@ -160,7 +177,7 @@ impl<'el> DartType<'el> {
         push!(e, "if (!(", i, " is ", ty, ")) {");
         nested!(e, "throw 'expected ", ty, ", but was: $", i, "';");
         push!(e, "}");
-        Ok((toks!(i), Some(e)))
+        Ok((toks!(i), e))
     }
 }
 
@@ -247,7 +264,11 @@ impl FlavorTranslator for DartFlavorTranslator {
         })
     }
 
-    fn translate_map(&self, key: DartType<'static>, value: DartType<'static>) -> Result<DartType<'static>> {
+    fn translate_map(
+        &self,
+        key: DartType<'static>,
+        value: DartType<'static>,
+    ) -> Result<DartType<'static>> {
         Ok(DartType::Map {
             key: Box::new(key),
             value: Box::new(value),
@@ -262,20 +283,25 @@ impl FlavorTranslator for DartFlavorTranslator {
         Ok(DartType::String)
     }
 
-    fn translate_name(&self, reg: RpReg, name: Loc<RpName>) -> Result<DartType<'static>> {
+    fn translate_name(
+        &self,
+        from: &RpPackage,
+        reg: RpReg,
+        name: Loc<RpName>,
+    ) -> Result<DartType<'static>> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(ref prefix) = name.prefix {
-            let package_name = name.package.join("/");
-            let dart = dart::imported(package_name)
-                .name(ident)
-                .alias(prefix.to_string());
+            let path = relative_path(from.parts().map(|s| s.as_str()), name.package.parts().map(|s| s.as_str()));
+            let path = format!("{}.{}", path.join("/"), EXT);
+
+            let dart = dart::imported(path).name(ident).alias(prefix.to_string());
             return Ok(DartType::Native { dart });
         }
 
-        Ok(DartType::Native {
+        return Ok(DartType::Native {
             dart: dart::local(ident),
-        })
+        });
     }
 
     fn translate_endpoint<T>(
@@ -316,3 +342,85 @@ impl FlavorTranslator for DartFlavorTranslator {
 }
 
 decl_flavor!(DartFlavor, core);
+
+/// Takes two iterators as a path, strips common prefix, and makes the two paths relative to each
+/// other.
+fn relative_path<'a>(
+    mut a: impl Clone + Iterator<Item = &'a str>,
+    mut b: impl Clone + Iterator<Item = &'a str>,
+) -> Vec<&'a str> {
+    // strip common prefix.
+    while let Some((sa, sb)) = take_pair(&mut a.clone(), &mut b.clone()) {
+        if sa != sb {
+            break;
+        }
+
+        a.next();
+        b.next();
+    }
+
+    let out: Vec<_> = a.skip(1).map(|_| "..").chain(b).collect();
+
+    if out.is_empty() {
+        return vec!["."];
+    }
+
+    out
+}
+
+/// Take a pair from two iterators.
+fn take_pair<'a>(
+    a: &mut impl Iterator<Item = &'a str>,
+    b: &mut impl Iterator<Item = &'a str>,
+) -> Option<(&'a str, &'a str)> {
+    let a = match a.next() {
+        Some(a) => a,
+        None => return None,
+    };
+
+    let b = match b.next() {
+        Some(b) => b,
+        None => return None,
+    };
+
+    Some((a, b))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::relative_path;
+
+    #[test]
+    fn test_relative_path() {
+        assert_eq!(
+            vec!["bar"],
+            relative_path(vec!["foo"].into_iter(), vec!["bar"].into_iter())
+        );
+
+        // NB: this might not be legal, since the from package is the empty package.
+        assert_eq!(
+            vec!["bar"],
+            relative_path(vec![].into_iter(), vec!["bar"].into_iter())
+        );
+
+        assert_eq!(
+            vec!["biz"],
+            relative_path(vec!["foo", "baz"].into_iter(), vec!["foo", "biz"].into_iter())
+        );
+
+        assert_eq!(
+            vec!["..", "bar"],
+            relative_path(vec!["foo", "baz"].into_iter(), vec!["bar"].into_iter())
+        );
+
+        assert_eq!(
+            vec!["."],
+            relative_path(vec!["foo", "baz"].into_iter(), vec!["foo"].into_iter())
+        );
+
+        assert_eq!(
+            vec!["."],
+            relative_path(vec![].into_iter(), vec![].into_iter())
+        );
+    }
+}

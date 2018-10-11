@@ -188,9 +188,7 @@ fn setup_options<'a>(modules: Vec<CsharpModule>) -> Options {
 fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = session.packages()?;
 
-    let translator = session.translator(flavored::CsharpFlavorTranslator::new(packages))?;
-
-    let session = session.translate(translator)?;
+    let session = session.translate(flavored::CsharpFlavorTranslator::new(packages))?;
     let session = Rc::new(session);
 
     let modules = checked_modules(manifest.modules)?;
