@@ -12,7 +12,7 @@ Utility application to pack subleme themes and syntaxes for reproto.
 """
 
 [dependencies]
-syntect = "2.1.0"
+syntect = "3.0.0"
 clap = "2.32.0"
 
 [[bin]]

@@ -6,7 +6,7 @@ use std::env;
 use std::path::Path;
 use syntect::dumps::dump_to_file;
 use syntect::highlighting::ThemeSet;
-use syntect::parsing::SyntaxSet;
+use syntect::parsing::SyntaxSetBuilder;
 
 fn main() {
     let app = App::new("reproto-pack")
@@ -51,9 +51,11 @@ fn main() {
     }
 
     if let Some(path) = matches.value_of("build-syntax").map(Path::new) {
-        let mut ss = SyntaxSet::new();
-        ss.load_plain_text_syntax();
-        ss.load_syntaxes(syntaxes, true).expect("syntaxes to load");
+        let mut ss = SyntaxSetBuilder::new();
+        ss.add_plain_text_syntax();
+        ss.add_from_folder(syntaxes, true).expect("syntaxes to load");
+
+        let ss = ss.build();
         println!("building: {}", path.display());
         dump_to_file(&ss, path).expect("syntaxes to pack");
     }

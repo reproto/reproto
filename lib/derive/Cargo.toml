@@ -19,9 +19,9 @@ reproto-ast = {path = "../ast", version = "0.3"}
 
 Inflector = "0.11.3"
 linked-hash-map = "0.5.1"
-serde = "1.0.71"
-serde_json = { version = "1.0.26", features = ["preserve_order"] }
-serde_yaml = "0.7.5"
+serde = "1.0.79"
+serde_json = { version = "1.0.32", features = ["preserve_order"] }
+serde_yaml = "0.8.5"
 
 [lib]
 path = "lib.rs"

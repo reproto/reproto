@@ -21,7 +21,7 @@ reproto-path-parser = {path = "../path-parser", version = "0.3"}
 reproto-regex-parser = {path = "../regex-parser", version = "0.3"}
 reproto-naming = {path = "../naming", version = "0.3"}
 
-log = "0.4.4"
+log = "0.4.5"
 linked-hash-map = { version = "0.5.1", features = ["serde"] }
 
 [lib]

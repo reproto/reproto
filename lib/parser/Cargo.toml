@@ -20,8 +20,8 @@ reproto-core = {path = "../core", version = "0.3"}
 reproto-ast = {path = "../ast", version = "0.3"}
 reproto-lexer = {path = "../lexer", version = "0.3"}
 
-lalrpop-util = "0.15.2"
+lalrpop-util = "0.16.0"
 num-bigint = { version = "0.2.0", default_features = false, features = ["std"] }
 
 [build-dependencies]
-lalrpop = "0.15.2"
+lalrpop = "0.16.0"

@@ -748,7 +748,7 @@ where
                     ..ty::CompletionOptions::default()
                 }),
                 definition_provider: Some(true),
-                rename_provider: Some(true),
+                rename_provider: Some(ty::RenameProviderCapability::Simple(true)),
                 document_symbol_provider: Some(true),
                 workspace_symbol_provider: Some(true),
                 references_provider: Some(true),
@@ -852,6 +852,7 @@ where
                     kind: ty::SymbolKind::Class,
                     location: location,
                     container_name: Some(file.package.to_string()),
+                    deprecated: None,
                 });
             }
         }
@@ -1483,7 +1484,7 @@ where
                     }
 
                     edit = Some(ty::WorkspaceEdit {
-                        document_changes: Some(changes),
+                        document_changes: Some(ty::DocumentChanges::Edits(changes)),
                         ..ty::WorkspaceEdit::default()
                     });
                 }
@@ -1532,7 +1533,7 @@ where
             }];
 
             ty::WorkspaceEdit {
-                document_changes: Some(changes),
+                document_changes: Some(ty::DocumentChanges::Edits(changes)),
                 ..ty::WorkspaceEdit::default()
             }
         }

@@ -15,7 +15,7 @@ lexer used with the reproto parser
 reproto-core = {path = "../core", version = "0.3"}
 
 num-bigint = { version = "0.2.0", default_features = false, features = ["std"] }
-num-traits = { version = "0.2.5", default_features = false, features = ["std"] }
+num-traits = { version = "0.2.6", default_features = false, features = ["std"] }
 
 [lib]
 path = "lib.rs"
