@@ -20,6 +20,7 @@
 * [Go](#go)
   * [Interfaces in Go](#interfaces-in-go)
   * [`encoding/json` module](#modulesencodingjson)
+* [Dart](#dart)
 
 This section details the how each language behaves, and which modules and options are available to
 tweak this behavior.
@@ -203,7 +204,7 @@ type Foo {
 Would generate:
 
 ```java
-package io.reproto.examples;
+package io.reproto.example;
 
 public class Foo {
   // skipped
@@ -936,3 +937,36 @@ Tuples are also structs, but have custom marshal/unmarshal implementations.
 Enums are encoded as type aliases with a number of constants corresponding to the variants.
 
 [`encoding/json`]: https://golang.org/pkg/encoding/json/
+
+## Dart
+
+Note: full code available in [dart-example](../../examples/dart-example).
+
+```toml
+# File: reproto.toml
+
+language = "dart"
+paths = ["proto"]
+output = "generated"
+
+[packages]
+"io.reproto.example" = "*"
+```
+
+In Dart, each type generated have two methods: `dynamic encode()` and `static Type decode(dynamic
+_dataDyn)`.
+
+These can be used with `dart:convert` to handle JSON:
+
+```dart
+import '../generated/io/reproto/example.dart';
+import 'dart:convert';
+
+void main() {
+    var data = jsonDecode('{"name": "John Smith", "age": 42}');
+    var person = Person.decode(data);
+    print(person.name);
+    print(person.age);
+    print(jsonEncode(person.encode()));
+}
+```

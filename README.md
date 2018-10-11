@@ -98,7 +98,7 @@ Also make sure to [join our Gitter channel].
 | [JavaScript] |                | ✔️    | ✖️      | ✖️                          |
 | [Swift]      |                | ✔️    | ✖️      | ✖️                          |
 | [Go]         |                | ✔️    | ✖️      | ✖️                          |
-| Dart         | [#61]          | ✔️    | ✖️      | ✖️                          |
+| [Dart]       | [#61]          | ✔️    | ✖️      | ✖️                          |
 
 [#61]: https://github.com/reproto/reproto/issues/61
 *: HTTP/1.1 support is actively being outlined in [#2](https://github.com/reproto/reproto/issues/2)
@@ -110,6 +110,7 @@ Also make sure to [join our Gitter channel].
 [JavaScript]: /doc/usage/language-support.md#javascript
 [Swift]: /doc/usage/language-support.md#swift
 [Go]: /doc/usage/language-support.md#go
+[Dart]: /doc/usage/language-support.md#dart
 [gRPC]: https://grpc.io
 [java-http]: /it/java_okhttp2/proto/test.reproto
 [python-requests]: /it/python_requests/proto/test.reproto
