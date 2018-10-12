@@ -1,5 +1,3 @@
-#![feature(use_extern_macros)]
-
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -307,7 +305,7 @@ pub fn derive(derive: &JsValue) -> JsValue {
     fn try_derive(derive: &JsValue) -> Result<DeriveResult, String> {
         let derive: Derive = derive.into_serde().map_err(|e| e.to_string())?;
 
-        let mut reporter: Vec<core::Diagnostics> = Vec::new();
+        let mut reporter: Vec<core::Reported> = Vec::new();
 
         let (source, package) = content_source(&derive).map_err(|e| e.display().to_string())?;
 
@@ -322,23 +320,25 @@ pub fn derive(derive: &JsValue) -> JsValue {
                 let mut error_markers = Vec::new();
                 let mut info_markers = Vec::new();
 
-                for d in reporter.iter().flat_map(|d| d.items()) {
-                    match *d {
-                        core::Diagnostic::Error(ref p, ref message) => {
-                            error_markers.push(Marker::try_from_error_fb(
-                                &source,
-                                p,
-                                message.as_str(),
-                            ));
+                for r in reporter {
+                    for (source, d) in r.diagnostics_with_sources() {
+                        match *d {
+                            core::Diagnostic::Error {ref span, ref message } => {
+                                error_markers.push(Marker::try_from_error_fb(
+                                    source,
+                                    span,
+                                    message.as_str(),
+                                ));
+                            }
+                            core::Diagnostic::Info { ref span, ref message } => {
+                                info_markers.push(Marker::try_from_error_fb(
+                                    source,
+                                    span,
+                                    message.as_str(),
+                                ));
+                            }
+                            _ => {}
                         }
-                        core::Diagnostic::Info(ref p, ref message) => {
-                            info_markers.push(Marker::try_from_error_fb(
-                                &source,
-                                p,
-                                message.as_str(),
-                            ));
-                        }
-                        _ => {}
                     }
                 }
 
