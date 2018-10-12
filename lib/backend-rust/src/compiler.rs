@@ -91,13 +91,11 @@ impl<'el> Compiler<'el> {
 
     /// Build an implementation of the given name and body.
     fn build_impl(&self, name: Rc<String>, body: Tokens<'el, Rust<'el>>) -> Tokens<'el, Rust<'el>> {
-        let mut out_impl = Tokens::new();
-
-        out_impl.push(toks!["impl ", name.clone(), " {"]);
-        out_impl.nested(body);
-        out_impl.push("}");
-
-        out_impl
+        let mut t = Tokens::new();
+        push!(t, "impl ", name, " {");
+        t.nested(body);
+        push!(t, "}");
+        t
     }
 
     /// Convert the type name
@@ -146,7 +144,7 @@ impl<'el> Compiler<'el> {
     }
 
     // Build the corresponding element out of a field declaration.
-    fn field_element<'a>(&self, field: &'a RpField, is_pub: bool) -> Result<Tokens<'a, Rust<'a>>> {
+    fn field_element<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
         let mut t = Tokens::new();
 
         let ident = field.safe_ident();
@@ -160,14 +158,7 @@ impl<'el> Compiler<'el> {
             t.push(Rename(field.name()));
         }
 
-        t.push_into(|t| {
-            if is_pub {
-                t.append("pub ");
-            }
-
-            t.append(toks![ident, ": ", type_spec, ","]);
-        });
-
+        push!(t, "pub ", ident, ": ", type_spec, ",");
         Ok(t.into())
     }
 
@@ -326,22 +317,16 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
             }
         }
 
-        out.0.push({
-            let mut t = Tokens::new();
-
+        push!(out.0, |t| {
             t.push_unless_empty(Comments(&body.comment));
             t.push_unless_empty(attributes);
-            t.push(toks!["pub enum ", name.clone(), " {"]);
+            push!(t, "pub enum ", name, " {");
             t.nested(vars);
             t.push("}");
-
-            t
         });
 
-        out.0.push({
-            let mut t = Tokens::new();
-
-            t.push(toks!["impl ", name.clone(), " {"]);
+        push!(out.0, |t| {
+            push!(t, "impl ", name, " {");
 
             t.nested({
                 let mut t = Tokens::new();
@@ -351,8 +336,6 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
             });
 
             t.push("}");
-
-            t
         });
 
         // Serialize impl for numerics.
@@ -383,13 +366,13 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
             let result = "Result<S::Ok, S::Error>";
             let f = toks!["serialize_", body.enum_type.clone()];
 
-            t.nested_into(|t| {
+            nested!(t, |t| {
                 push!(t, "fn serialize<S>(&self, s: S) -> ", result);
                 nested!(t, "where S: ", serializer);
                 push!(t, "{");
                 push!(t, "use self::", *name, "::*;");
 
-                t.nested_into(|t| {
+                nested!(t, |t| {
                     push!(t, "let o = match *self {");
 
                     for v in variants {
@@ -424,7 +407,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
 
             push!(t, "impl<'de> ", des, "<'de> for ", *name, " {");
 
-            t.nested_into(|t| {
+            nested!(t, |t| {
                 push!(
                     t,
                     "fn deserialize<D>(d: D) -> Result<",
@@ -541,7 +524,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
             nested!(t, "where E: ", err);
             push!(t, "{");
 
-            t.nested_into(|t| {
+            nested!(t, |t| {
                 push!(t, "match value {");
 
                 for v in variants {
@@ -574,7 +557,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
             let err = rust::imported("serde::de", "Error");
             let res = toks!["Result<", parent.clone(), ", E>"];
 
-            let mut t = Tokens::new();
+            let mut t = toks!();
 
             push!(t, "fn visit_", *ty, "<E>(self, value: ", *ty, ") -> ", res);
             nested!(t, "where E: ", err);
@@ -588,32 +571,29 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
-        let mut t = Tokens::new();
 
-        t.push_unless_empty(Comments(&body.comment));
-        t.push_unless_empty(attributes);
-        t.push(Derives);
-        t.push(toks!["pub struct ", name.clone(), " {"]);
+        push!(out.0, |t| {
+            t.push_unless_empty(Comments(&body.comment));
+            t.push_unless_empty(attributes);
+            t.push(Derives);
+            push!(t, "pub struct ", name, " {");
 
-        // fields
-        t.nested({
-            let mut t = Tokens::new();
+            // fields
+            t.nested({
+                let mut t = toks!();
 
-            for field in &body.fields {
-                t.push({
-                    let mut t = Tokens::new();
-                    t.push_unless_empty(Comments(&field.comment));
-                    t.push(self.field_element(field, true)?);
-                    t
-                });
-            }
+                for field in &body.fields {
+                    push!(t, |t| {
+                        t.push_unless_empty(Comments(&field.comment));
+                        t.push(self.field_element(field)?);
+                    });
+                }
 
-            t.join_line_spacing()
+                t.join_line_spacing()
+            });
+
+            t.push("}");
         });
-
-        t.push("}");
-
-        out.0.push(t);
 
         // if custom code is present, punt it into an impl.
         let impl_body = code!(&body.codes, core::RpContext::Rust).into_tokens();
@@ -628,37 +608,42 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
 
-        let mut t = Tokens::new();
+        let mut sup = Tokens::new();
+        let mut sub = Tokens::new();
 
-        t.push_unless_empty(Comments(&body.comment));
-        t.push_unless_empty(attributes);
-        t.push(Derives);
+        sup.push_unless_empty(Comments(&body.comment));
+        sup.push_unless_empty(attributes);
+        sup.push(Derives);
 
         match body.sub_type_strategy {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                t.push(Tag(tag.as_str()));
+                sup.push(Tag(tag.as_str()));
             }
             core::RpSubTypeStrategy::Untagged => {
-                t.push(Untagged);
+                sup.push(Untagged);
             }
         }
 
-        t.push(toks!["pub enum ", name.clone(), " {"]);
+        push!(sup, "pub enum ", name, " {");
 
         for s in &body.sub_types {
-            t.nested({
-                let mut t = Tokens::new();
+            let (sub_name, attributes) = self.convert_type_name(&s.name);
 
-                t.push_unless_empty(Comments(&s.comment));
-
-                // TODO: clone should not be needed
+            nested!(sup, |t| {
                 if let Some(ref name) = s.sub_type_name {
                     if name.as_str() != s.ident.as_str() {
                         t.push(Rename(name));
                     }
                 }
 
-                t.push(toks![s.ident.as_str(), " {"]);
+                push!(t, s.ident.as_str(), "(", sub_name, "),");
+            });
+
+            push!(sub, |t| {
+                t.push_unless_empty(Comments(&s.comment));
+                t.push(Derives);
+                t.push_unless_empty(attributes);
+                push!(t, "pub struct ", sub_name, " {");
 
                 t.push({
                     let mut t = Tokens::new();
@@ -667,7 +652,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
                         t.nested({
                             let mut t = Tokens::new();
                             t.push_unless_empty(Comments(&field.comment));
-                            t.push(self.field_element(field, false)?);
+                            t.push(self.field_element(field)?);
                             t
                         });
                     }
@@ -675,21 +660,20 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
                     t.join_line_spacing()
                 });
 
-                t.push("},");
-
-                t
+                t.push("}");
             });
         }
 
-        t.push("}");
-
-        out.0.push(t);
+        sup.push("}");
+        out.0.push(sup);
 
         let impl_body = code!(&body.codes, core::RpContext::Rust).into_tokens();
 
         if !impl_body.is_empty() {
             out.0.push(self.build_impl(name.clone(), impl_body));
         }
+
+        out.0.push_unless_empty(sub.join_line_spacing());
 
         Ok(())
     }
