@@ -37,6 +37,7 @@ url = "1.7.1"
 url_serde = "0.2.0"
 serde = "1.0.79"
 serde_derive = "1.0.79"
+dirs = "1.0.4"
 
 [lib]
 path = "lib.rs"

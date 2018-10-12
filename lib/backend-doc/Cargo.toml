@@ -20,7 +20,7 @@ reproto-manifest = {path = "../manifest", version = "0.3"}
 
 log = "0.4.5"
 pulldown-cmark = "0.1.2"
-genco = "0.3.28"
+genco = "0.3.29"
 clap = "2.32.0"
 syntect = "3.0.0"
 

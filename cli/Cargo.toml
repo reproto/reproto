@@ -44,7 +44,7 @@ serde = "1.0.79"
 serde_json = "1.0.32"
 serde_derive = "1.0.79"
 toml = "0.4.8"
-genco = "0.3.28"
+genco = "0.3.29"
 notify = { version = "4.0.6", optional = true }
 
 # for self-updates

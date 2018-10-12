@@ -21,6 +21,7 @@ extern crate url;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
+extern crate dirs;
 
 mod config;
 mod config_env;
