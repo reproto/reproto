@@ -335,6 +335,7 @@ impl<'a, 'input: 'a> TypeRefiner<'a, 'input> {
         let mut body = TypeBody {
             name: Loc::new(self.ctx.ident()?.to_string().into(), Span::empty()),
             members: Vec::new(),
+            type_args: Vec::new(),
         };
 
         self.init(&mut body, object)?;
