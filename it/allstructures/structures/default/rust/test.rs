@@ -9,8 +9,12 @@ pub struct RootType {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum RootInterface {
-  Foo {
-  },
+  Foo(RootInterface_Foo),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct RootInterface_Foo {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -39,8 +43,12 @@ pub struct RootType_NestedType {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum RootType_NestedInterface {
-  Foo {
-  },
+  Foo(RootType_NestedInterface_Foo),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct RootType_NestedInterface_Foo {
 }
 
 #[allow(non_camel_case_types)]
@@ -71,8 +79,12 @@ pub struct RootInterface_Foo_NestedType {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum RootInterface_Foo_NestedInterface {
-  NestedFoo {
-  },
+  NestedFoo(RootInterface_Foo_NestedInterface_NestedFoo),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct RootInterface_Foo_NestedInterface_NestedFoo {
 }
 
 #[allow(non_camel_case_types)]
@@ -103,8 +115,12 @@ pub struct RootTuple_NestedType {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum RootTuple_NestedInterface {
-  Foo {
-  },
+  Foo(RootTuple_NestedInterface_Foo),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct RootTuple_NestedInterface_Foo {
 }
 
 #[allow(non_camel_case_types)]
@@ -135,8 +151,12 @@ pub struct RootService_NestedType {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum RootService_NestedInterface {
-  Foo {
-  },
+  Foo(RootService_NestedInterface_Foo),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct RootService_NestedInterface_Foo {
 }
 
 #[allow(non_camel_case_types)]

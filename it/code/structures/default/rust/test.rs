@@ -14,13 +14,17 @@ impl Type {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Interface {
-  SubType {
-  },
+  SubType(Interface_SubType),
 }
 
 impl Interface {
   pub fn interface_method(&self) {
   }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct Interface_SubType {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

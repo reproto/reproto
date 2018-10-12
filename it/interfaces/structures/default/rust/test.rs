@@ -11,59 +11,87 @@ pub struct Entry {
 #[serde(tag = "@type")]
 pub enum Tagged {
   #[serde(rename = "foo")]
-  A {
-    shared: String,
-  },
+  A(Tagged_A),
   #[serde(rename = "b")]
-  B {
-    shared: String,
-  },
-  Bar {
-    shared: String,
-  },
-  Baz {
-    shared: String,
-  },
+  B(Tagged_B),
+  Bar(Tagged_Bar),
+  Baz(Tagged_Baz),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct Tagged_A {
+  pub shared: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct Tagged_B {
+  pub shared: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct Tagged_Bar {
+  pub shared: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct Tagged_Baz {
+  pub shared: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Untagged {
-  /// Special case: fields shared with other sub-types.
-  /// NOTE: due to rust support through untagged, the types are matched in-order.
-  A {
-    shared: String,
+  A(Untagged_A),
+  B(Untagged_B),
+  C(Untagged_C),
+}
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    shared_ignore: Option<String>,
+/// Special case: fields shared with other sub-types.
+/// NOTE: due to rust support through untagged, the types are matched in-order.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct Untagged_A {
+  pub shared: String,
 
-    a: String,
+  #[serde(skip_serializing_if="Option::is_none")]
+  pub shared_ignore: Option<String>,
 
-    b: String,
+  pub a: String,
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    ignore: Option<String>,
-  },
-  B {
-    shared: String,
+  pub b: String,
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    shared_ignore: Option<String>,
+  #[serde(skip_serializing_if="Option::is_none")]
+  pub ignore: Option<String>,
+}
 
-    a: String,
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct Untagged_B {
+  pub shared: String,
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    ignore: Option<String>,
-  },
-  C {
-    shared: String,
+  #[serde(skip_serializing_if="Option::is_none")]
+  pub shared_ignore: Option<String>,
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    shared_ignore: Option<String>,
+  pub a: String,
 
-    b: String,
+  #[serde(skip_serializing_if="Option::is_none")]
+  pub ignore: Option<String>,
+}
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    ignore: Option<String>,
-  },
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+pub struct Untagged_C {
+  pub shared: String,
+
+  #[serde(skip_serializing_if="Option::is_none")]
+  pub shared_ignore: Option<String>,
+
+  pub b: String,
+
+  #[serde(skip_serializing_if="Option::is_none")]
+  pub ignore: Option<String>,
 }
