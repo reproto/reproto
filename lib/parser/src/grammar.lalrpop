@@ -76,13 +76,17 @@ InterfaceBody: InterfaceBody<'input> =
     };
 
 TypeBody: TypeBody<'input> =
-    "type" <name:Loc<TypeIdent>> "{"
+    "type" <name:Loc<TypeIdent>> <type_args:TypeArgs?> "{"
         <members:TypeMember*>
     "}" =>
     TypeBody {
         name: name,
         members: members,
+        type_args: type_args.unwrap_or_else(Vec::new),
     };
+
+TypeArgs: Vec<Loc<Cow<'input, str>>> =
+    "<" <args:OneOrMore<",", Loc<TypeIdent>>> ">" => args;
 
 TupleBody: TupleBody<'input> =
     "tuple" <name:Loc<TypeIdent>> "{"
@@ -344,6 +348,8 @@ extern {
         "string" => Token::QuotedString(<String>),
         "[" => Token::LeftBracket,
         "]" => Token::RightBracket,
+        "<" => Token::LeftAngleBracket,
+        ">" => Token::RightAngleBracket,
         ";" => Token::SemiColon,
         ":" => Token::Colon,
         "?" => Token::QuestionMark,

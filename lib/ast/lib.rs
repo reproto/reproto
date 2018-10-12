@@ -114,7 +114,7 @@ impl<'input> Decl<'input> {
     pub fn name(&self) -> Loc<&str> {
         use self::Decl::*;
 
-        let name: &Loc<Cow<str>> = match *self {
+        let name = match *self {
             Type(ref body) => &body.name,
             Tuple(ref body) => &body.name,
             Interface(ref body) => &body.name,
@@ -129,19 +129,19 @@ impl<'input> Decl<'input> {
     pub fn decls(&self) -> impl Iterator<Item = &Decl<'input>> {
         use self::Decl::*;
 
-        let decls = match *self {
-            Type(ref body) => body.decls(),
-            Tuple(ref body) => body.decls(),
-            Interface(ref body) => body.decls(),
-            Enum(ref body) => body.decls(),
-            Service(ref body) => body.decls(),
+        let out: Vec<_> = match *self {
+            Type(ref body) => body.decls().collect(),
+            Tuple(ref body) => body.decls().collect(),
+            Interface(ref body) => body.decls().collect(),
+            Enum(_) => vec![],
+            Service(ref body) => body.decls().collect(),
         };
 
-        decls.into_iter()
+        out.into_iter()
     }
 
     /// Comment.
-    pub fn comment(&self) -> &Vec<Cow<'input, str>> {
+    pub fn comment(&self) -> &[Cow<'input, str>] {
         use self::Decl::*;
 
         match *self {
@@ -171,13 +171,6 @@ pub struct EnumBody<'input> {
     pub ty: Loc<Type<'input>>,
     pub variants: Vec<Item<'input, EnumVariant<'input>>>,
     pub members: Vec<EnumMember<'input>>,
-}
-
-impl<'input> EnumBody<'input> {
-    /// Access all inner declarations.
-    fn decls(&self) -> Vec<&Decl<'input>> {
-        Vec::new()
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -274,29 +267,19 @@ pub struct InterfaceBody<'input> {
 
 impl<'input> InterfaceBody<'input> {
     /// Access all inner declarations.
-    fn decls(&self) -> Vec<&Decl<'input>> {
-        let mut out = Vec::new();
-
-        for m in &self.members {
-            if let TypeMember::InnerDecl(ref decl) = *m {
-                out.push(decl);
-            }
-        }
-
-        out
+    fn decls<'a>(&'a self) -> impl Iterator<Item = &'a Decl<'input>> {
+        self.members.iter().flat_map(|m| match *m {
+            TypeMember::InnerDecl(ref decl) => Some(decl),
+            _ => None,
+        })
     }
 
     /// Access all fields.
-    pub fn fields(&self) -> Vec<&Field<'input>> {
-        let mut out = Vec::new();
-
-        for m in &self.members {
-            if let TypeMember::Field(ref field) = *m {
-                out.push(Loc::borrow(&field.item));
-            }
-        }
-
-        out
+    pub fn fields<'a>(&'a self) -> impl Iterator<Item = &'a Field<'input>> {
+        self.members.iter().flat_map(|m| match *m {
+            TypeMember::Field(ref field) => Some(Loc::borrow(&field.item)),
+            _ => None,
+        })
     }
 }
 
@@ -331,16 +314,11 @@ pub struct ServiceBody<'input> {
 
 impl<'input> ServiceBody<'input> {
     /// Access all inner declarations.
-    fn decls(&self) -> Vec<&Decl<'input>> {
-        let mut out = Vec::new();
-
-        for m in &self.members {
-            if let ServiceMember::InnerDecl(ref decl) = *m {
-                out.push(decl);
-            }
-        }
-
-        out
+    fn decls<'a>(&'a self) -> impl Iterator<Item = &'a Decl<'input>> {
+        self.members.iter().flat_map(|m| match *m {
+            ServiceMember::InnerDecl(ref decl) => Some(decl),
+            _ => None,
+        })
     }
 
     /// Access all endpoints.
@@ -442,36 +420,26 @@ pub struct TupleBody<'input> {
 
 impl<'input> TupleBody<'input> {
     /// Access all inner declarations.
-    fn decls(&self) -> Vec<&Decl<'input>> {
-        let mut out = Vec::new();
-
-        for m in &self.members {
-            if let TypeMember::InnerDecl(ref decl) = *m {
-                out.push(decl);
-            }
-        }
-
-        out
+    fn decls<'a>(&'a self) -> impl Iterator<Item = &'a Decl<'input>> {
+        self.members.iter().flat_map(|m| match *m {
+            TypeMember::InnerDecl(ref decl) => Some(decl),
+            _ => None,
+        })
     }
 
     /// Access all fields.
-    pub fn fields(&self) -> Vec<&Field<'input>> {
-        let mut out = Vec::new();
-
-        for m in &self.members {
-            if let TypeMember::Field(ref field) = *m {
-                out.push(Loc::borrow(&field.item));
-            }
-        }
-
-        out
+    pub fn fields<'a>(&'a self) -> impl Iterator<Item = &'a Field<'input>> {
+        self.members.iter().flat_map(|m| match *m {
+            TypeMember::Field(ref field) => Some(Loc::borrow(&field.item)),
+            _ => None,
+        })
     }
 }
 
 /// The body of a type
 ///
 /// ```ignore
-/// type <name> {
+/// "type" <name> ("<" <type_args> ">")? {
 ///     <members>
 /// }
 /// ```
@@ -479,33 +447,24 @@ impl<'input> TupleBody<'input> {
 pub struct TypeBody<'input> {
     pub name: Loc<Cow<'input, str>>,
     pub members: Vec<TypeMember<'input>>,
+    pub type_args: Vec<Loc<Cow<'input, str>>>,
 }
 
 impl<'input> TypeBody<'input> {
     /// Access all inner declarations.
-    fn decls(&self) -> Vec<&Decl<'input>> {
-        let mut out = Vec::new();
-
-        for m in &self.members {
-            if let TypeMember::InnerDecl(ref decl) = *m {
-                out.push(decl);
-            }
-        }
-
-        out
+    fn decls<'a>(&'a self) -> impl Iterator<Item = &'a Decl<'input>> {
+        self.members.iter().flat_map(|m| match *m {
+            TypeMember::InnerDecl(ref decl) => Some(decl),
+            _ => None,
+        })
     }
 
     /// Access all fields.
-    pub fn fields(&self) -> Vec<&Field<'input>> {
-        let mut out = Vec::new();
-
-        for m in &self.members {
-            if let TypeMember::Field(ref field) = *m {
-                out.push(Loc::borrow(&field.item));
-            }
-        }
-
-        out
+    pub fn fields<'a>(&'a self) -> impl Iterator<Item = &'a Field<'input>> {
+        self.members.iter().flat_map(|m| match *m {
+            TypeMember::Field(ref field) => Some(Loc::borrow(&field.item)),
+            _ => None,
+        })
     }
 }
 

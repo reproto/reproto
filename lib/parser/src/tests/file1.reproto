@@ -86,3 +86,7 @@ service Foo {
   #[deny(everything)]
   bidi_streaming(request: stream Foo) -> stream Foo;
 }
+
+/// Test parsing a generic type.
+type Generic<A, B> {
+}

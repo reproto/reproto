@@ -447,6 +447,8 @@ impl<'input> Lexer<'input> {
                     '}' => Token::RightCurly,
                     '[' => Token::LeftBracket,
                     ']' => Token::RightBracket,
+                    '<' => Token::LeftAngleBracket,
+                    '>' => Token::RightAngleBracket,
                     '(' => Token::LeftParen,
                     ')' => Token::RightParen,
                     ';' => Token::SemiColon,

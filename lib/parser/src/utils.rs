@@ -43,13 +43,14 @@ pub fn strip_code_block<'a>(input: Cow<'a, str>) -> Vec<Cow<'a, str>> {
             }
 
             if let Some(indent) = indent {
-                return it.map(|line| {
-                    if line.len() >= indent {
-                        Cow::Borrowed(&line[indent..])
-                    } else {
-                        Cow::Borrowed(line)
-                    }
-                }).collect();
+                return it
+                    .map(|line| {
+                        if line.len() >= indent {
+                            Cow::Borrowed(&line[indent..])
+                        } else {
+                            Cow::Borrowed(line)
+                        }
+                    }).collect();
             }
 
             return it.map(Cow::Borrowed).collect();
@@ -68,13 +69,14 @@ pub fn strip_code_block<'a>(input: Cow<'a, str>) -> Vec<Cow<'a, str>> {
             }
 
             if let Some(indent) = indent {
-                return it.map(|line| {
-                    if line.len() >= indent {
-                        Cow::Owned(line[indent..].to_string())
-                    } else {
-                        Cow::Owned(line.to_string())
-                    }
-                }).collect();
+                return it
+                    .map(|line| {
+                        if line.len() >= indent {
+                            Cow::Owned(line[indent..].to_string())
+                        } else {
+                            Cow::Owned(line.to_string())
+                        }
+                    }).collect();
             }
 
             return it.map(|s| Cow::Owned(s.to_string())).collect();

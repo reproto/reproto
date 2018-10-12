@@ -8,10 +8,18 @@ pub enum Token<'input> {
     PackageDocComment(Vec<Cow<'input, str>>),
     DocComment(Vec<Cow<'input, str>>),
     Number(RpNumber),
+    // {
     LeftCurly,
+    // }
     RightCurly,
+    // [
     LeftBracket,
+    // ]
     RightBracket,
+    // <
+    LeftAngleBracket,
+    // >
+    RightAngleBracket,
     LeftParen,
     RightParen,
     SemiColon,
