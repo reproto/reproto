@@ -1,6 +1,6 @@
 type Entry {
-    tuple1?: Tuple1;
-    tuple2?: Tuple2;
+    tuple1?: ::Tuple1;
+    tuple2?: ::Tuple2;
 }
 
 /// Tuple containing primitive.
@@ -12,7 +12,7 @@ tuple Tuple1 {
 /// Tuple containing object.
 tuple Tuple2 {
     a: string;
-    b: Other;
+    b: ::Other;
 }
 
 /// Complex object.
