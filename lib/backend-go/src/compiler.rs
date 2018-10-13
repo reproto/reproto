@@ -66,9 +66,9 @@ impl<'el> Compiler<'el> {
 
             for f in fields.into_iter() {
                 let ty = if f.is_optional() {
-                    toks!["*", f.ty.clone()]
+                    toks!["*", Loc::borrow(&f.ty).clone()]
                 } else {
-                    toks![f.ty.clone()]
+                    toks![Loc::borrow(&f.ty).clone()]
                 };
 
                 let mut tags = Tags::new();
@@ -141,16 +141,16 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
         out.0.try_push_into::<Error, _>(|t| {
             t.push(Comments(&body.comment));
-            t.push(toks!["type ", &body.name, " struct {"]);
+            t.push(toks!["type ", Loc::borrow(&body.name), " struct {"]);
 
             t.nested({
                 let mut t = Tokens::new();
 
                 for f in &body.fields {
                     let ty = if f.is_optional() {
-                        toks!["*", f.ty.clone()]
+                        toks!["*", Loc::borrow(&f.ty).clone()]
                     } else {
-                        toks![f.ty.clone()]
+                        toks![Loc::borrow(&f.ty).clone()]
                     };
 
                     let mut tags = Tags::new();
@@ -188,7 +188,7 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
 
             t.push_into(|t| {
                 t.push(Comments(&body.comment));
-                t.push(toks!["type ", &body.name, " int"])
+                t.push(toks!["type ", Loc::borrow(&body.name), " int"])
             });
 
             t.push_into(|t| {
@@ -198,17 +198,17 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
 
                     if let Some(v) = it.next() {
                         t.push(toks![
-                            &body.name,
+                            Loc::borrow(&body.name),
                             "_",
                             v.ident.as_str(),
                             " ",
-                            &body.name,
+                            Loc::borrow(&body.name),
                             " = iota",
                         ]);
                     }
 
                     while let Some(v) = it.next() {
-                        t.push(toks![&body.name, "_", v.ident.as_str(),]);
+                        push!(t, Loc::borrow(&body.name), "_", v.ident.as_str());
                     }
                 });
                 t.push(")");
@@ -234,11 +234,11 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
 
             t.try_push_into::<Error, _>(|t| {
                 t.push_unless_empty(Comments(&body.comment));
-                push!(t, "type ", &body.name, " struct {");
+                push!(t, "type ", Loc::borrow(&body.name), " struct {");
 
                 t.nested_into(|t| {
                     push!(t, "Value interface {");
-                    nested!(t, "Is", &body.name, "()");
+                    nested!(t, "Is", Loc::borrow(&body.name), "()");
                     push!(t, "}");
                 });
 
@@ -262,7 +262,14 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
                     );
 
                     t.push_into(|t| {
-                        push!(t, "func (this ", &sub_type.name, ") Is", &body.name, "() {");
+                        push!(
+                            t,
+                            "func (this ",
+                            Loc::borrow(&sub_type.name),
+                            ") Is",
+                            Loc::borrow(&body.name),
+                            "() {"
+                        );
                         push!(t, "}");
                     });
                 }
@@ -276,7 +283,7 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
         for g in &self.options.interface_gens {
             g.generate(InterfaceAdded {
                 container: &mut out.0,
-                name: &body.name,
+                name: Loc::borrow(&body.name),
                 body: body,
             })?;
         }

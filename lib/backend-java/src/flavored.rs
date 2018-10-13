@@ -177,49 +177,56 @@ impl FlavorTranslator for JavaFlavorTranslator {
 
     translator_defaults!(Self);
 
-    fn translate_number(&self, number: RpNumberType) -> Java<'static> {
+    fn translate_number(&self, number: RpNumberType) -> Result<Java<'static>> {
         let out = match number.kind {
             RpNumberKind::U32 | RpNumberKind::I32 => INTEGER.into(),
             RpNumberKind::U64 | RpNumberKind::I64 => LONG.into(),
+            ty => return Err(format!("unsupported number type: {}", ty).into()),
         };
 
-        out
+        Ok(out)
     }
 
-    fn translate_float(&self) -> Java<'static> {
-        FLOAT.into()
+    fn translate_float(&self) -> Result<Java<'static>> {
+        Ok(FLOAT.into())
     }
 
-    fn translate_double(&self) -> Java<'static> {
-        DOUBLE.into()
+    fn translate_double(&self) -> Result<Java<'static>> {
+        Ok(DOUBLE.into())
     }
 
-    fn translate_boolean(&self) -> Java<'static> {
-        BOOLEAN.into()
+    fn translate_boolean(&self) -> Result<Java<'static>> {
+        Ok(BOOLEAN.into())
     }
 
-    fn translate_string(&self, _: RpStringType) -> Java<'static> {
-        self.string.clone().into()
+    fn translate_string(&self, _: RpStringType) -> Result<Java<'static>> {
+        Ok(self.string.clone().into())
     }
 
-    fn translate_datetime(&self) -> Java<'static> {
-        self.instant.clone().into()
+    fn translate_datetime(&self) -> Result<Java<'static>> {
+        Ok(self.instant.clone().into())
     }
 
-    fn translate_array(&self, argument: Java<'static>) -> Java<'static> {
-        self.list.with_arguments(vec![argument])
+    fn translate_array(&self, argument: Loc<Java<'static>>) -> Result<Java<'static>> {
+        Ok(self.list.with_arguments(vec![Loc::take(argument)]))
     }
 
-    fn translate_map(&self, key: Java<'static>, value: Java<'static>) -> Java<'static> {
-        self.map.with_arguments(vec![key, value])
+    fn translate_map(
+        &self,
+        key: Loc<Java<'static>>,
+        value: Loc<Java<'static>>,
+    ) -> Result<Java<'static>> {
+        Ok(self
+            .map
+            .with_arguments(vec![Loc::take(key), Loc::take(value)]))
     }
 
-    fn translate_any(&self) -> Java<'static> {
-        self.object.clone()
+    fn translate_any(&self) -> Result<Java<'static>> {
+        Ok(self.object.clone())
     }
 
-    fn translate_bytes(&self) -> Java<'static> {
-        self.byte_buffer.clone()
+    fn translate_bytes(&self) -> Result<Java<'static>> {
+        Ok(self.byte_buffer.clone())
     }
 
     fn translate_name(
@@ -246,13 +253,14 @@ impl FlavorTranslator for JavaFlavorTranslator {
 
         let field_accessor = Rc::new(self.to_upper_camel.convert(field.ident()));
 
-        let java_type = if field.is_optional() {
-            java::optional(
-                field.ty.clone(),
-                self.optional.with_arguments(vec![field.ty.clone()]),
-            )
-        } else {
-            field.ty.clone()
+        let java_type = {
+            let ty = Loc::borrow(&field.ty);
+
+            if field.is_optional() {
+                java::optional(ty.clone(), self.optional.with_arguments(vec![ty.clone()]))
+            } else {
+                ty.clone()
+            }
         };
 
         let mut spec = Field::new(java_type, field.safe_ident().to_string());
@@ -342,15 +350,15 @@ impl FlavorTranslator for JavaFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         enum_type: core::RpEnumType,
-    ) -> result::Result<Java<'static>, ()>
+    ) -> Result<Java<'static>>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
         use core::RpEnumType::*;
 
         match enum_type {
-            String(string) => Ok(self.translate_string(string)),
-            Number(number) => Ok(self.translate_number(number)),
+            String(string) => self.translate_string(string),
+            Number(number) => self.translate_number(number),
         }
     }
 }

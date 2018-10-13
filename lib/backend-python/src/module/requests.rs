@@ -2,8 +2,8 @@
 
 use backend::Initializer;
 use codegen::{ServiceAdded, ServiceCodegen};
-use core;
 use core::errors::Result;
+use core::{self, Loc};
 use genco::python::imported;
 use genco::{Python, Quoted, Tokens};
 use utils::{BlockComment, IfNoneRaise, IfNoneThen};
@@ -42,7 +42,7 @@ impl ServiceCodegen for RequestsServiceCodegen {
             body, type_body, ..
         }: ServiceAdded,
     ) -> Result<()> {
-        type_body.push(toks!["class ", &body.name, "_Requests:"]);
+        type_body.push(toks!["class ", Loc::borrow(&body.name), "_Requests:"]);
         type_body.nested({
             let mut t = Tokens::new();
 

@@ -40,7 +40,9 @@ use core::flavored::{
     RpChannel, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody, RpType,
     RpTypeBody, RpVersionedPackage,
 };
-use core::{CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind};
+use core::{
+    CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind, Span,
+};
 use linked_hash_map::LinkedHashMap;
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -127,7 +129,11 @@ impl<'handle> Compiler<'handle> {
             upper_camel: naming::to_upper_camel(),
             handle,
             env,
-            any_type: RpName::new(None, RpVersionedPackage::empty(), vec!["Any".to_string()]),
+            any_type: RpName::new(
+                None,
+                Loc::new(RpVersionedPackage::empty(), Span::empty()),
+                vec!["Any".to_string()],
+            ),
             output_format: OutputFormat::Yaml,
         }
     }
@@ -564,7 +570,7 @@ impl<'builder> SpecBuilder<'builder> {
                 spec::Schema::from(string)
             }
             // TODO: are numeric variants supported?
-            core::RpVariants::Number { ref variants } => match body.enum_type {
+            core::RpVariants::Number { ref variants } => match *body.enum_type {
                 core::RpEnumType::Number(ref number) => match number.kind {
                     RpNumberKind::U32 => number_rule!(variants, U32, to_u32),
                     RpNumberKind::U64 => number_rule!(variants, U64, to_u64),

@@ -2,7 +2,7 @@
 
 use std::fmt;
 use std::result;
-use {Diagnostics, Flavor, Translate, Translator};
+use {Diagnostics, Flavor, Loc, Translate, Translator};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(bound = "F::Type: ::serde::Serialize")]
@@ -11,9 +11,9 @@ where
     F: Flavor,
 {
     /// Single send.
-    Unary { ty: F::Type },
+    Unary { ty: Loc<F::Type> },
     /// Multiple sends.
-    Streaming { ty: F::Type },
+    Streaming { ty: Loc<F::Type> },
 }
 
 impl<F: 'static> RpChannel<F>
@@ -69,12 +69,18 @@ where
         use self::RpChannel::*;
 
         let out = match self {
-            Unary { ty } => Unary {
-                ty: translator.translate_type(diag, ty)?,
-            },
-            Streaming { ty } => Streaming {
-                ty: translator.translate_type(diag, ty)?,
-            },
+            Unary { ty } => {
+                let (ty, span) = Loc::take_pair(ty);
+                let ty = try_diag!(diag, span, translator.translate_type(diag, ty));
+                let ty = Loc::new(ty, span);
+                Unary { ty }
+            }
+            Streaming { ty } => {
+                let (ty, span) = Loc::take_pair(ty);
+                let ty = try_diag!(diag, span, translator.translate_type(diag, ty));
+                let ty = Loc::new(ty, span);
+                Streaming { ty }
+            }
         };
 
         Ok(out)

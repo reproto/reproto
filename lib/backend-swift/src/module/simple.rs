@@ -972,7 +972,11 @@ impl InterfaceCodegen for Codegen {
                         t.nested({
                             let mut t = Tokens::new();
                             t.push(toks!["case ", sub_type.name().quoted(), ":"]);
-                            t.nested(toks!["let v = try ", &sub_type.name, ".decode(json: json)"]);
+                            t.nested(toks![
+                                "let v = try ",
+                                Loc::borrow(&sub_type.name),
+                                ".decode(json: json)"
+                            ]);
                             t.nested(toks!["return ", name, ".", ident, "(v)"]);
                             t
                         });
@@ -1077,7 +1081,8 @@ impl InterfaceCodegen for Codegen {
                         );
 
                         t.push_into(|t| {
-                            let d = toks!["try ", &sub_type.name, ".decode(json: json)"];
+                            let d =
+                                toks!["try ", Loc::borrow(&sub_type.name), ".decode(json: json)"];
 
                             push!(t, "if ", keys, ".subtracting(", tags, ") == ", req, " {");
                             nested!(t, "return ", name, ".", ident, "(", d, ")");

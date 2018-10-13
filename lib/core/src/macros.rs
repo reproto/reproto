@@ -126,53 +126,53 @@ macro_rules! translator_defaults {
     };
 
     (@internal $slf:ident, rp_type $($rest:tt)*) => {
-        fn translate_number(&self, number: RpNumberType) -> RpType<$slf::Target> {
-            RpType::Number(number)
+        fn translate_number(&self, number: RpNumberType) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::Number(number))
         }
 
-        fn translate_float(&self) -> RpType<$slf::Target> {
-            RpType::Float
+        fn translate_float(&self) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::Float)
         }
 
-        fn translate_double(&self) -> RpType<$slf::Target> {
-            RpType::Double
+        fn translate_double(&self) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::Double)
         }
 
-        fn translate_boolean(&self) -> RpType<$slf::Target> {
-            RpType::Boolean
+        fn translate_boolean(&self) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::Boolean)
         }
 
-        fn translate_string(&self, string: RpStringType) -> RpType<$slf::Target> {
-            RpType::String(string)
+        fn translate_string(&self, string: RpStringType) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::String(string))
         }
 
-        fn translate_datetime(&self) -> RpType<$slf::Target> {
-            RpType::DateTime
+        fn translate_datetime(&self) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::DateTime)
         }
 
-        fn translate_array(&self, inner: RpType<$slf::Target>) -> RpType<$slf::Target> {
-            RpType::Array {
+        fn translate_array(&self, inner: Loc<RpType<$slf::Target>>) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::Array {
                 inner: Box::new(inner),
-            }
+            })
         }
 
         fn translate_map(
             &self,
-            key: RpType<$slf::Target>,
-            value: RpType<$slf::Target>,
-        ) -> RpType<$slf::Target> {
-            RpType::Map {
+            key: Loc<RpType<$slf::Target>>,
+            value: Loc<RpType<$slf::Target>>,
+        ) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::Map {
                 key: Box::new(key),
                 value: Box::new(value),
-            }
+            })
         }
 
-        fn translate_any(&self) -> RpType<$slf::Target> {
-            RpType::Any
+        fn translate_any(&self) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::Any)
         }
 
-        fn translate_bytes(&self) -> RpType<$slf::Target> {
-            RpType::Bytes
+        fn translate_bytes(&self) -> Result<RpType<$slf::Target>> {
+            Ok(RpType::Bytes)
         }
 
         fn translate_name(
@@ -193,7 +193,7 @@ macro_rules! translator_defaults {
             _: &T,
             _: &mut $crate::Diagnostics,
             enum_type: $crate::RpEnumType,
-        ) -> ::std::result::Result<<$slf::Target as Flavor>::EnumType, ()>
+        ) -> Result<<$slf::Target as Flavor>::EnumType>
         where
             T: Translator<Source = $slf::Source, Target = $slf::Target>,
         {

@@ -401,7 +401,7 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, DartFlavor, RpName> for Compiler<'el> {
     type Out = DartFileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, DartFlavor>;
 
@@ -417,7 +417,7 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
         self.handle
     }
 
-    fn default_process(&self, _out: &mut Self::Out, _: &Loc<RpName>) -> Result<()> {
+    fn default_process(&self, _out: &mut Self::Out, _: &RpName) -> Result<()> {
         Ok(())
     }
 

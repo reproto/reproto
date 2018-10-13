@@ -12,6 +12,7 @@ use genco::{Cons, Dart, Tokens};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::result;
 use trans::Packages;
 use {EXT, TYPE_SEP};
 
@@ -200,7 +201,7 @@ pub struct DartFlavor;
 
 impl Flavor for DartFlavor {
     type Type = DartType<'static>;
-    type Name = Loc<RpName>;
+    type Name = RpName;
     type Field = core::RpField<DartFlavor>;
     type Endpoint = DartEndpoint;
     type Package = core::RpPackage;
@@ -258,20 +259,20 @@ impl FlavorTranslator for DartFlavorTranslator {
         Ok(DartType::String)
     }
 
-    fn translate_array(&self, argument: DartType<'static>) -> Result<DartType<'static>> {
+    fn translate_array(&self, argument: Loc<DartType<'static>>) -> Result<DartType<'static>> {
         Ok(DartType::Array {
-            argument: Box::new(argument),
+            argument: Box::new(Loc::take(argument)),
         })
     }
 
     fn translate_map(
         &self,
-        key: DartType<'static>,
-        value: DartType<'static>,
+        key: Loc<DartType<'static>>,
+        value: Loc<DartType<'static>>,
     ) -> Result<DartType<'static>> {
         Ok(DartType::Map {
-            key: Box::new(key),
-            value: Box::new(value),
+            key: Box::new(Loc::take(key)),
+            value: Box::new(Loc::take(value)),
         })
     }
 
@@ -312,7 +313,7 @@ impl FlavorTranslator for DartFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         endpoint: core::RpEndpoint<CoreFlavor>,
-    ) -> Result<DartEndpoint>
+    ) -> result::Result<DartEndpoint, ()>
     where
         T: Translator<Source = CoreFlavor, Target = DartFlavor>,
     {

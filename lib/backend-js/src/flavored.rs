@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::result;
 use trans::Packages;
 use {Options, TYPE_SEP};
 
@@ -188,21 +189,21 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
 
     fn translate_array(
         &self,
-        argument: JavaScriptType<'static>,
+        argument: Loc<JavaScriptType<'static>>,
     ) -> Result<JavaScriptType<'static>> {
         Ok(JavaScriptType::Array {
-            argument: Box::new(argument),
+            argument: Box::new(Loc::take(argument)),
         })
     }
 
     fn translate_map(
         &self,
-        key: JavaScriptType<'static>,
-        value: JavaScriptType<'static>,
+        key: Loc<JavaScriptType<'static>>,
+        value: Loc<JavaScriptType<'static>>,
     ) -> Result<JavaScriptType<'static>> {
         Ok(JavaScriptType::Map {
-            key: Box::new(key),
-            value: Box::new(value),
+            key: Box::new(Loc::take(key)),
+            value: Box::new(Loc::take(value)),
         })
     }
 
@@ -243,15 +244,20 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         reg: RpReg,
-        name: Loc<core::RpName<CoreFlavor>>,
-    ) -> Result<JavaScriptName>
+        name: core::RpName<CoreFlavor>,
+    ) -> result::Result<JavaScriptName, ()>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        let (name, _) = Loc::take_pair(name);
-
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |v| v.join(TYPE_SEP));
-        let package = self.translate_package(name.package)?;
+        let (package, span) = Loc::take_pair(name.package);
+        let package = match self.translate_package(package) {
+            Ok(package) => package,
+            Err(e) => {
+                diag.err(span, e.display());
+                return Err(());
+            }
+        };
 
         Ok(JavaScriptName {
             name: js::local(ident),

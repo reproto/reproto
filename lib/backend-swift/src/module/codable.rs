@@ -1,8 +1,8 @@
 //! gRPC module for Rust.
 
 use backend::Initializer;
-use core;
 use core::errors::{Error, Result};
+use core::{self, Loc};
 use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
 use genco::swift::{local, Swift};
 use genco::{Quoted, Tokens};
@@ -1026,7 +1026,7 @@ impl InterfaceCodegen for Codegen {
 
                                 let n = sub_type.ident.as_str();
 
-                                let d = toks![&sub_type.name, "(from: decoder)"];
+                                let d = toks![Loc::borrow(&sub_type.name), "(from: decoder)"];
                                 let d = toks![".", n, "(", d, ")"];
 
                                 t.push(toks!["case ", sub_type.name().quoted(), ":"]);
@@ -1083,7 +1083,7 @@ impl InterfaceCodegen for Codegen {
 
                         t.push_into(|t| {
                             let n = sub_type.ident.as_str();
-                            let d = toks![&sub_type.name, "(from: decoder)"];
+                            let d = toks![Loc::borrow(&sub_type.name), "(from: decoder)"];
                             let d = toks![".", n, "(", d, ")"];
 
                             let mut expected = Tokens::new();

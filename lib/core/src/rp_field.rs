@@ -1,7 +1,7 @@
 //! Data Models for fields
 
 use std::result;
-use {Diagnostics, Flavor, FlavorField, Translate, Translator};
+use {Diagnostics, Flavor, FlavorField, Loc, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(bound = "F::Type: ::serde::Serialize")]
@@ -19,7 +19,7 @@ where
     /// Field comments.
     pub comment: Vec<String>,
     #[serde(rename = "type")]
-    pub ty: F::Type,
+    pub ty: Loc<F::Type>,
     /// Alias of field in JSON.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field_as: Option<String>,
@@ -38,7 +38,7 @@ impl<F: 'static> RpField<F>
 where
     F: Flavor,
 {
-    pub fn new<S: AsRef<str>>(ident: S, ty: F::Type) -> Self {
+    pub fn new<S: AsRef<str>>(ident: S, ty: Loc<F::Type>) -> Self {
         RpField {
             required: true,
             safe_ident: None,
@@ -108,12 +108,16 @@ where
         diag: &mut Diagnostics,
         translator: &T,
     ) -> result::Result<RpField<T::Target>, ()> {
+        let (ty, span) = Loc::take_pair(self.ty);
+        let ty = try_diag!(diag, span, translator.translate_type(diag, ty));
+        let ty = Loc::new(ty, span);
+
         Ok(RpField {
             required: self.required,
             safe_ident: self.safe_ident,
             ident: self.ident,
             comment: self.comment,
-            ty: translator.translate_type(diag, self.ty)?,
+            ty,
             field_as: self.field_as,
         })
     }

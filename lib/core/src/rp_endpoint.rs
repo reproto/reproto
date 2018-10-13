@@ -243,8 +243,8 @@ pub struct RpEndpointHttp1<F: 'static>
 where
     F: Flavor,
 {
-    pub request: Option<F::Type>,
-    pub response: Option<F::Type>,
+    pub request: Option<Loc<F::Type>>,
+    pub response: Option<Loc<F::Type>>,
     pub path: RpPathSpec<F>,
     pub method: RpHttpMethod,
 }

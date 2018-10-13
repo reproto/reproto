@@ -193,7 +193,10 @@ fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) ->
     let variant_field = Loc::new(
         RpField::new(
             "ordinal",
-            flavored::PythonType::new(helper, flavored::PythonKind::String),
+            Loc::new(
+                flavored::PythonType::new(helper, flavored::PythonKind::String),
+                Span::empty(),
+            ),
         ),
         Span::empty(),
     );

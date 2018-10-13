@@ -20,7 +20,7 @@ pub struct CsharpFlavor;
 
 impl Flavor for CsharpFlavor {
     type Type = Csharp<'static>;
-    type Name = Loc<RpName>;
+    type Name = RpName;
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = core::RpPackage;
@@ -89,16 +89,19 @@ impl FlavorTranslator for CsharpFlavorTranslator {
         Ok(self.date_time.clone())
     }
 
-    fn translate_array(&self, inner: Csharp<'static>) -> Result<Csharp<'static>> {
-        Ok(self.list.with_arguments(vec![inner]).into())
+    fn translate_array(&self, inner: Loc<Csharp<'static>>) -> Result<Csharp<'static>> {
+        Ok(self.list.with_arguments(vec![Loc::take(inner)]).into())
     }
 
     fn translate_map(
         &self,
-        key: Csharp<'static>,
-        value: Csharp<'static>,
+        key: Loc<Csharp<'static>>,
+        value: Loc<Csharp<'static>>,
     ) -> Result<Csharp<'static>> {
-        Ok(self.dictionary.with_arguments(vec![key, value]).into())
+        Ok(self
+            .dictionary
+            .with_arguments(vec![Loc::take(key), Loc::take(value)])
+            .into())
     }
 
     fn translate_any(&self) -> Result<Csharp<'static>> {

@@ -161,7 +161,10 @@ fn compile(handle: &Handle, env: Session<CoreFlavor>, manifest: Manifest) -> Res
     let packages = env.packages()?;
 
     let variant_field = Loc::new(
-        RpField::new("value", flavored::JavaScriptType::Native),
+        RpField::new(
+            "value",
+            Loc::new(flavored::JavaScriptType::Native, Span::empty()),
+        ),
         Span::empty(),
     );
 

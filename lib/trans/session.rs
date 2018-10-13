@@ -69,7 +69,7 @@ where
     /// Files and associated declarations.
     files: BTreeMap<RpVersionedPackage, File<F>>,
     /// Registered types.
-    types: Rc<LinkedHashMap<RpName<F>, Loc<RpReg>>>,
+    types: Rc<LinkedHashMap<RpName<F>, (Source, Loc<RpReg>)>>,
     /// Keywords that need to be translated.
     keywords: Rc<HashMap<String, String>>,
     /// Whether to use safe packages or not.
@@ -551,13 +551,14 @@ impl<'a> Session<'a, CoreFlavor> {
             };
 
             match types.entry(key.clone()) {
-                Vacant(entry) => entry.insert(Loc::new(t, span)),
+                Vacant(entry) => entry.insert((file.source.clone(), Loc::new(t, span))),
                 Occupied(entry) => {
                     diag.err(
                         span,
                         format!("`{}` conflicts with existing declaration", key),
                     );
-                    diag.info(Loc::span(entry.get()), "existing declaration here");
+                    let (_, reg) = entry.get();
+                    diag.info(Loc::span(reg), "existing declaration here");
                     continue;
                 }
             };

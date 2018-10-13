@@ -133,11 +133,11 @@ where
         name: Loc<RpName<F>>,
     },
     Array {
-        inner: Box<RpType<F>>,
+        inner: Box<Loc<RpType<F>>>,
     },
     Map {
-        key: Box<RpType<F>>,
-        value: Box<RpType<F>>,
+        key: Box<Loc<RpType<F>>>,
+        value: Box<Loc<RpType<F>>>,
     },
 }
 
@@ -159,7 +159,7 @@ where
     /// Modify any name components with the given operation.
     fn with_name<M>(self, f: M) -> Self
     where
-        M: Clone + Fn(RpName<F>) -> RpName<F>,
+        M: Copy + Fn(RpName<F>) -> RpName<F>,
     {
         use self::RpType::*;
 
@@ -167,13 +167,24 @@ where
             Name { name } => Name {
                 name: Loc::map(name, f),
             },
-            Array { inner } => Array {
-                inner: Box::new(inner.with_name(f)),
-            },
-            Map { key, value } => Map {
-                key: Box::new(key.with_name(f.clone())),
-                value: Box::new(value.with_name(f.clone())),
-            },
+            Array { inner } => {
+                let (inner, span) = Loc::take_pair(*inner);
+                let inner = inner.with_name(f);
+                let inner = Box::new(Loc::new(inner, span));
+
+                Array { inner }
+            }
+            Map { key, value } => {
+                let (key, span) = Loc::take_pair(*key);
+                let key = key.with_name(f);
+                let key = Box::new(Loc::new(key, span));
+
+                let (value, span) = Loc::take_pair(*value);
+                let value = value.with_name(f);
+                let value = Box::new(Loc::new(value, span));
+
+                Map { key, value }
+            }
             ty => ty,
         }
     }

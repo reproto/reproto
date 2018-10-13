@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::result;
 use trans::Packages;
 use utils::{Exception, VersionHelper};
 use {Options, TYPE_SEP};
@@ -295,20 +296,20 @@ impl FlavorTranslator for PythonFlavorTranslator {
         Ok(self.ty(PythonKind::String))
     }
 
-    fn translate_array(&self, argument: PythonType<'static>) -> Result<PythonType<'static>> {
+    fn translate_array(&self, argument: Loc<PythonType<'static>>) -> Result<PythonType<'static>> {
         Ok(self.ty(PythonKind::Array {
-            argument: Box::new(argument),
+            argument: Box::new(Loc::take(argument)),
         }))
     }
 
     fn translate_map(
         &self,
-        key: PythonType<'static>,
-        value: PythonType<'static>,
+        key: Loc<PythonType<'static>>,
+        value: Loc<PythonType<'static>>,
     ) -> Result<PythonType<'static>> {
         Ok(self.ty(PythonKind::Map {
-            key: Box::new(key),
-            value: Box::new(value),
+            key: Box::new(Loc::take(key)),
+            value: Box::new(Loc::take(value)),
         }))
     }
 
@@ -353,15 +354,20 @@ impl FlavorTranslator for PythonFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         reg: RpReg,
-        name: Loc<core::RpName<CoreFlavor>>,
-    ) -> Result<PythonName>
+        name: core::RpName<CoreFlavor>,
+    ) -> result::Result<PythonName, ()>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        let (name, span) = Loc::take_pair(name);
-
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |v| v.join(TYPE_SEP));
-        let package = self.translate_package(name.package)?;
+        let (package, span) = Loc::take_pair(name.package);
+        let package = match self.translate_package(package) {
+            Ok(package) => package,
+            Err(e) => {
+                diag.err(span, e.display());
+                return Err(());
+            }
+        };
 
         Ok(PythonName {
             name: python::local(ident),

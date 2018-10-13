@@ -354,7 +354,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
 
         let mut class = Tokens::new();
 
-        class.push(toks!["export class ", &body.name, " {"]);
+        class.push(toks!["export class ", Loc::borrow(&body.name), " {"]);
         class.nested(class_body.join_line_spacing());
         class.push("}");
 
@@ -386,8 +386,8 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
                 }
             }
 
-            let args = js![new & body.name, args];
-            let member = toks![&body.name, ".", v.ident()];
+            let args = js![new & *body.name, args];
+            let member = toks![Loc::borrow(&body.name), ".", v.ident()];
 
             values.push(js![= member.clone(), args]);
             members.append(member);
@@ -399,7 +399,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
 
         let mut class = Tokens::new();
 
-        class.push(toks!["export class ", &body.name, " {"]);
+        class.push(toks!["export class ", Loc::borrow(&body.name), " {"]);
         class.nested(class_body.join_line_spacing());
         class.push("}");
 
@@ -410,7 +410,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
         elements.push(values);
 
         // push members field
-        let members_key = toks![&body.name, ".", self.values.clone()];
+        let members_key = toks![Loc::borrow(&body.name), ".", self.values.clone()];
         elements.push(js![= members_key, js!([members])]);
 
         out.0.push(elements.join_line_spacing());
@@ -436,7 +436,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
 
         let mut class = Tokens::new();
 
-        class.push(toks!["export class ", &body.name, " {"]);
+        class.push(toks!["export class ", Loc::borrow(&body.name), " {"]);
         class.nested(class_body.join_line_spacing());
         class.push("}");
 
@@ -464,7 +464,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
         classes.push({
             let mut tokens = Tokens::new();
 
-            tokens.push(toks!["export class ", &body.name, " {"]);
+            tokens.push(toks!["export class ", Loc::borrow(&body.name), " {"]);
             tokens.nested(interface_body.join_line_spacing());
             tokens.push("}");
 
@@ -512,7 +512,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
             classes.push({
                 let mut tokens = Tokens::new();
 
-                tokens.push(toks!["export class ", &sub_type.name, " {"]);
+                tokens.push(toks!["export class ", Loc::borrow(&sub_type.name), " {"]);
                 tokens.nested(class_body.join_line_spacing());
                 tokens.push("}");
 
@@ -537,7 +537,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
             for sub_type in body.sub_types.iter() {
                 t.push_into(|t| {
                     let cond = toks![f_tag, " === ", sub_type.name().quoted()];
-                    t.push(js![if cond, js![return &sub_type.name, ".decode(", data, ")"]]);
+                    t.push(js![if cond, js![return Loc::borrow(&sub_type.name), ".decode(", data, ")"]]);
                 });
             }
 
@@ -577,7 +577,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
 
                 t.push_into(|t| {
                     let cond = required.join(" && ");
-                    t.push(js![if cond, js![return &sub_type.name, ".decode(", data, ")"]]);
+                    t.push(js![if cond, js![return Loc::borrow(&sub_type.name), ".decode(", data, ")"]]);
                 });
             }
 

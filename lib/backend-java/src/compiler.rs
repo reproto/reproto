@@ -528,7 +528,7 @@ impl<'el> Compiler<'el> {
             core::RpVariants::Number { ref variants } => for variant in variants {
                 let name = self.variant_naming.convert(variant.ident());
 
-                let value = match body.enum_type {
+                let value = match *body.enum_type {
                     java::LONG => format!("{}L", variant.value),
                     _ => variant.value.to_string(),
                 };
@@ -540,7 +540,7 @@ impl<'el> Compiler<'el> {
         spec.constructors
             .push(self.build_enum_constructor(&spec.fields));
 
-        let variant_field = java::Field::new(body.enum_type.clone(), "value");
+        let variant_field = java::Field::new((*body.enum_type).clone(), "value");
 
         let mut from_value = self.enum_from_value_method(spec.name(), &variant_field);
         let mut to_value = self.enum_to_value_method(&variant_field);

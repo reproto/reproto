@@ -113,7 +113,7 @@ impl<'el> Compiler<'el> {
     }
 
     fn into_type<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
-        let stmt = toks![field.ty.clone()];
+        let stmt = toks![Loc::borrow(&field.ty).clone()];
 
         if field.is_optional() {
             return Ok(toks!["Option<", stmt, ">"]);
@@ -135,7 +135,12 @@ impl<'el> Compiler<'el> {
         match_decl.nested(match_body);
         match_decl.push("}");
 
-        push!(value_fn, "pub fn value(&self) -> ", body.enum_type, " {");
+        push!(
+            value_fn,
+            "pub fn value(&self) -> ",
+            Loc::borrow(&body.enum_type),
+            " {"
+        );
         value_fn.nested(toks!["use self::", name, "::*;"]);
         value_fn.nested(match_decl);
         value_fn.push("}");
@@ -241,7 +246,7 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, RustFlavor, RpName> for Compiler<'el> {
     type Out = RustFileSpec<'el>;
     type DeclIter = trans::translated::DeclIter<'el, RustFlavor>;
 
@@ -257,7 +262,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
         self.handle
     }
 
-    fn default_process(&self, _out: &mut Self::Out, _: &Loc<RpName>) -> Result<()> {
+    fn default_process(&self, _out: &mut Self::Out, _: &RpName) -> Result<()> {
         Ok(())
     }
 
@@ -359,12 +364,12 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
 
             let ser = rust::imported("serde", "Serialize");
             let serializer = rust::imported("serde", "Serializer");
-            let ty = &body.enum_type;
+            let ty = Loc::borrow(&body.enum_type);
 
             push!(t, "impl ", ser, " for ", *name, " {");
 
             let result = "Result<S::Ok, S::Error>";
-            let f = toks!["serialize_", body.enum_type.clone()];
+            let f = toks!["serialize_", Loc::borrow(&body.enum_type).clone()];
 
             nested!(t, |t| {
                 push!(t, "fn serialize<S>(&self, s: S) -> ", result);
@@ -421,7 +426,12 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
                     let mut t = Tokens::new();
 
                     t.push(numeric_visitor_deserialize(body, name, variants, "Visitor"));
-                    push!(t, "d.deserialize_", body.enum_type, "(Visitor)");
+                    push!(
+                        t,
+                        "d.deserialize_",
+                        Loc::borrow(&body.enum_type),
+                        "(Visitor)"
+                    );
 
                     t.join_line_spacing()
                 });
@@ -460,16 +470,16 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
                 t.push(numeric_expecting(parent, variants));
                 t.push(numeric_visit(&body.enum_type, parent, variants));
 
-                if body.enum_type == rust::local("i32") {
+                if *body.enum_type == rust::local("i32") {
                     t.push(forward(&rust::local("i64"), &body.enum_type, parent));
                     t.push(forward(&rust::local("u64"), &body.enum_type, parent));
                 }
 
-                if body.enum_type == rust::local("i64") {
+                if *body.enum_type == rust::local("i64") {
                     t.push(forward(&rust::local("u64"), &body.enum_type, parent));
                 }
 
-                if body.enum_type == rust::local("u32") {
+                if *body.enum_type == rust::local("u32") {
                     t.push(forward(&rust::local("u64"), &body.enum_type, parent));
                 }
 

@@ -429,7 +429,7 @@ impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
         let args = args.join(", ");
 
         let res = if let Some(ref res) = http.response {
-            toks![result.clone(), "<", res, ">"]
+            toks![result.clone(), "<", Loc::borrow(res), ">"]
         } else {
             toks![result.clone(), "<()>"]
         };

@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::result;
 use trans::Packages;
 use TYPE_SEP;
 
@@ -99,12 +100,12 @@ impl FlavorTranslator for GoFlavorTranslator {
         Ok(local("string"))
     }
 
-    fn translate_array(&self, argument: Go<'static>) -> Result<Go<'static>> {
-        Ok(array(argument))
+    fn translate_array(&self, argument: Loc<Go<'static>>) -> Result<Go<'static>> {
+        Ok(array(Loc::take(argument)))
     }
 
-    fn translate_map(&self, key: Go<'static>, value: Go<'static>) -> Result<Go<'static>> {
-        Ok(map(key, value))
+    fn translate_map(&self, key: Loc<Go<'static>>, value: Loc<Go<'static>>) -> Result<Go<'static>> {
+        Ok(map(Loc::take(key), Loc::take(value)))
     }
 
     fn translate_any(&self) -> Result<Go<'static>> {
@@ -140,15 +141,21 @@ impl FlavorTranslator for GoFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         reg: RpReg,
-        name: Loc<core::RpName<CoreFlavor>>,
-    ) -> Result<GoName>
+        name: core::RpName<CoreFlavor>,
+    ) -> result::Result<GoName, ()>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        let (name, _) = Loc::take_pair(name);
-
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
-        let package = self.translate_package(name.package)?;
+
+        let (package, span) = Loc::take_pair(name.package);
+        let package = match self.translate_package(package) {
+            Ok(package) => package,
+            Err(e) => {
+                diag.err(span, e.display());
+                return Err(());
+            }
+        };
 
         // same package
         return Ok(GoName {

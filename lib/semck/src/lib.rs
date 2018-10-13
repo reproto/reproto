@@ -240,12 +240,14 @@ fn common_check_field(
     from_field: &Loc<RpField>,
     to_field: &Loc<RpField>,
 ) -> Result<()> {
-    if to_field.ty.clone().localize() != from_field.ty.clone().localize() {
+    if Loc::borrow(&to_field.ty).clone().localize()
+        != Loc::borrow(&from_field.ty).clone().localize()
+    {
         violations.push(FieldTypeChange(
             component.clone(),
-            from_field.ty.clone(),
+            Loc::borrow(&from_field.ty).clone(),
             Loc::span(from_field).into(),
-            to_field.ty.clone(),
+            Loc::borrow(&to_field.ty).clone(),
             Loc::span(to_field).into(),
         ));
     }

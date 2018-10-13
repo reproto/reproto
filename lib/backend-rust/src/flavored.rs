@@ -12,6 +12,7 @@ use genco::{Cons, Rust};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::result;
 use trans::Packages;
 use {SCOPE_SEP, TYPE_SEP};
 
@@ -34,7 +35,7 @@ pub struct RustFlavor;
 
 impl Flavor for RustFlavor {
     type Type = Rust<'static>;
-    type Name = Loc<RpName>;
+    type Name = RpName;
     type Field = core::RpField<RustFlavor>;
     type Endpoint = RustEndpoint;
     type Package = core::RpPackage;
@@ -101,12 +102,19 @@ impl FlavorTranslator for RustFlavorTranslator {
         Err("Missing implementation for `datetime`, try: -m chrono".into())
     }
 
-    fn translate_array(&self, argument: Rust<'static>) -> Result<Rust<'static>> {
-        Ok(rust::local("Vec").with_arguments(vec![argument]))
+    fn translate_array(&self, argument: Loc<Rust<'static>>) -> Result<Rust<'static>> {
+        Ok(rust::local("Vec").with_arguments(vec![Loc::take(argument)]))
     }
 
-    fn translate_map(&self, key: Rust<'static>, value: Rust<'static>) -> Result<Rust<'static>> {
-        Ok(self.map.clone().with_arguments(vec![key, value]))
+    fn translate_map(
+        &self,
+        key: Loc<Rust<'static>>,
+        value: Loc<Rust<'static>>,
+    ) -> Result<Rust<'static>> {
+        Ok(self
+            .map
+            .clone()
+            .with_arguments(vec![Loc::take(key), Loc::take(value)]))
     }
 
     fn translate_any(&self) -> Result<Rust<'static>> {
@@ -138,7 +146,7 @@ impl FlavorTranslator for RustFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         endpoint: core::RpEndpoint<CoreFlavor>,
-    ) -> Result<RustEndpoint>
+    ) -> result::Result<RustEndpoint, ()>
     where
         T: Translator<Source = CoreFlavor, Target = RustFlavor>,
     {

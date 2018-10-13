@@ -250,7 +250,7 @@ impl<C: IntoIterator<Item = S>, S: AsRef<str>> IntoModel for Comment<C> {
 }
 
 impl<'input> IntoModel for Loc<Type<'input>> {
-    type Output = RpType;
+    type Output = Loc<RpType>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -261,7 +261,7 @@ impl<'input> IntoModel for Loc<Type<'input>> {
 }
 
 impl<'input> IntoModel for (Option<&'input mut Attributes>, Loc<Type<'input>>) {
-    type Output = RpType;
+    type Output = Loc<RpType>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -326,7 +326,7 @@ impl<'input> IntoModel for (Option<&'input mut Attributes>, Loc<Type<'input>>) {
             }
         };
 
-        Ok(out)
+        Ok(Loc::new(out, span))
     }
 }
 
@@ -367,7 +367,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 $diag:expr, $enum_type:expr, $variants:expr, $type_field:ident,
                 $(($ty:ident, $out:ident, $default:ident)),*
             ) => {
-            match $enum_type {
+            match *$enum_type {
                 $(
                 core::RpEnumType::$ty(ref $type_field) => {
                     let mut out = Vec::new();
@@ -419,11 +419,10 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
         }
 
         let enum_type = {
-            let span = Loc::span(&item.ty);
             let enum_type = item.ty.into_model(diag, scope)?;
 
             match enum_type.as_enum_type() {
-                Some(enum_type) => enum_type,
+                Some(enum_type) => Loc::new(enum_type, span),
                 None => {
                     diag.err(
                         span,
@@ -453,7 +452,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                 comment: Comment(&comment).into_model(diag, scope)?,
                 decls: vec![],
                 decl_idents: LinkedHashMap::new(),
-                enum_type: enum_type,
+                enum_type,
                 variants: variants,
                 codes: codes,
             },
@@ -678,7 +677,6 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
         let mut attributes = attributes.into_model(diag, scope)?;
 
         let ty = handle_format_attribute(diag, scope, &mut attributes, item.ty)?;
-
         let ty = (Some(&mut attributes), ty).into_model(diag, scope)?;
 
         check_attributes!(diag, attributes);

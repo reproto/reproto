@@ -1,8 +1,8 @@
 //! encoding/json module for Go
 
 use backend::Initializer;
-use core;
 use core::errors::{Error, Result};
+use core::{self, Loc};
 use flavored::{GoName, RpEnumBody, RpInterfaceBody, RpSubType, RpTupleBody};
 use genco::go::{imported, Go};
 use genco::{Quoted, Tokens};
@@ -91,7 +91,7 @@ impl EnumCodegen for Codegen {
             t.nested({
                 let mut t = Tokens::new();
 
-                push!(t, "var s ", body.enum_type);
+                push!(t, "var s ", Loc::borrow(&body.enum_type));
 
                 t.push_into(|t| {
                     push!(t, "if err := ", c.unmarshal, "(b, &s); err != nil {");
@@ -147,7 +147,7 @@ impl EnumCodegen for Codegen {
             t.nested({
                 let mut t = Tokens::new();
 
-                push!(t, "var s ", body.enum_type);
+                push!(t, "var s ", Loc::borrow(&body.enum_type));
 
                 t.push_into(|t| {
                     t.push("switch this {");
@@ -245,7 +245,12 @@ impl TupleCodegen for Codegen {
                                 let mut t = Tokens::new();
 
                                 t.push_into(|t| {
-                                    t.push(toks!["var ", var.clone(), " ", f.ty.clone()]);
+                                    t.push(toks![
+                                        "var ",
+                                        var.clone(),
+                                        " ",
+                                        Loc::borrow(&f.ty).clone()
+                                    ]);
 
                                     t.push_into(|t| {
                                         t.push(toks![
@@ -382,7 +387,7 @@ impl InterfaceCodegen for Codegen {
             ) -> Tokens<'el, Go<'el>> {
                 let mut t = Tokens::new();
 
-                push!(t, "sub := ", &sub_type.name, "{}");
+                push!(t, "sub := ", Loc::borrow(&sub_type.name), "{}");
 
                 t.push_into(|t| {
                     push!(t, "if err = ", c.unmarshal, "(b, &sub); err != nil {");
@@ -597,7 +602,7 @@ impl InterfaceCodegen for Codegen {
                         push!(t, "switch v := this.Value.(type) {");
 
                         for sub_type in &body.sub_types {
-                            push!(t, "case *", &sub_type.name, ":");
+                            push!(t, "case *", Loc::borrow(&sub_type.name), ":");
                             nested!(t, "return ", c.marshal, "(v)");
                         }
 
@@ -625,7 +630,7 @@ impl InterfaceCodegen for Codegen {
             ) -> Tokens<'el, Go<'el>> {
                 let mut t = Tokens::new();
 
-                push!(t, "case *", &sub_type.name, ":");
+                push!(t, "case *", Loc::borrow(&sub_type.name), ":");
 
                 t.nested({
                     let mut t = Tokens::new();

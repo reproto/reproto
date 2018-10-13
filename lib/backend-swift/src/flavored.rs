@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::result;
 use trans::Packages;
 use {Options, TYPE_SEP};
 
@@ -160,26 +161,26 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         })
     }
 
-    fn translate_array(&self, argument: SwiftType<'static>) -> Result<SwiftType<'static>> {
+    fn translate_array(&self, argument: Loc<SwiftType<'static>>) -> Result<SwiftType<'static>> {
         Ok(SwiftType {
             simple: Simple::Array {
                 argument: Box::new(argument.simple.clone()),
             },
-            ty: swift::array(argument.ty),
+            ty: swift::array(argument.ty.clone()),
         })
     }
 
     fn translate_map(
         &self,
-        key: SwiftType<'static>,
-        value: SwiftType<'static>,
+        key: Loc<SwiftType<'static>>,
+        value: Loc<SwiftType<'static>>,
     ) -> Result<SwiftType<'static>> {
         Ok(SwiftType {
             simple: Simple::Map {
                 key: Box::new(key.simple.clone()),
                 value: Box::new(value.simple.clone()),
             },
-            ty: swift::map(key.ty, value.ty),
+            ty: swift::map(key.ty.clone(), value.ty.clone()),
         })
     }
 
@@ -224,21 +225,22 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         reg: RpReg,
-        name: Loc<core::RpName<CoreFlavor>>,
-    ) -> Result<SwiftName>
+        name: core::RpName<CoreFlavor>,
+    ) -> result::Result<SwiftName, ()>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
         let name = name.translate(diag, translator)?;
-        let (name, _) = Loc::take_pair(name);
-
-        let package_name = name.package.join("_");
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
+
+        let (package, span) = Loc::take_pair(name.package);
+        let package_name = package.join("_");
+
         let ident = format!("{}_{}", package_name, ident);
 
         Ok(SwiftName {
             name: Rc::new(ident),
-            package: name.package,
+            package: package,
         })
     }
 

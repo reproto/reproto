@@ -1,7 +1,7 @@
 use core::errors::*;
 use core::{
-    Flavor, Handle, Loc, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
-    RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody,
+    Flavor, Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody, RpName,
+    RpPackage, RpServiceBody, RpTupleBody, RpTypeBody,
 };
 use std::cmp;
 use std::collections::BTreeMap;
@@ -18,7 +18,7 @@ where
 }
 
 /// Implementation for default name translation.
-impl<F> Name<F> for Loc<RpName<F>>
+impl<F> Name<F> for RpName<F>
 where
     F: Flavor,
 {

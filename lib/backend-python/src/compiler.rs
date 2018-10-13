@@ -320,7 +320,7 @@ impl<'el> Compiler<'el> {
         }
 
         Ok(toks![
-            &body.name,
+            Loc::borrow(&body.name),
             " = ",
             self.enum_enum.clone(),
             "(",
@@ -328,7 +328,7 @@ impl<'el> Compiler<'el> {
             ", [",
             args.join(", "),
             "], type=",
-            &body.name,
+            Loc::borrow(&body.name),
             ")",
         ])
     }
@@ -557,7 +557,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
             for sub_type in body.sub_types.iter() {
                 t.push_into(|t| {
                     push!(t, "if ", f_tag, " == ", sub_type.name().quoted(), ":");
-                    nested!(t, "return ", &sub_type.name, ".decode(data)");
+                    nested!(t, "return ", Loc::borrow(&sub_type.name), ".decode(data)");
                 });
             }
 
@@ -595,7 +595,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
 
                 t.push_into(|t| {
                     push!(t, "if ", keys, " >= ", discriminating, ":");
-                    nested!(t, "return ", &sub_type.name, ".decode(data)");
+                    nested!(t, "return ", Loc::borrow(&sub_type.name), ".decode(data)");
                 });
             }
 

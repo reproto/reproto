@@ -11,7 +11,7 @@ use {
 
 decl_body!(pub struct RpEnumBody<F> {
     /// The type of the variant.
-    pub enum_type: F::EnumType,
+    pub enum_type: Loc<F::EnumType>,
     /// Variants in the enum.
     pub variants: RpVariants<F>,
     /// Custom code blocks in the enum.
@@ -38,7 +38,10 @@ where
             span,
         );
 
-        let enum_type = translator.translate_enum_type(diag, self.enum_type)?;
+        let (enum_type, span) = Loc::take_pair(self.enum_type);
+        let enum_type = try_diag!(diag, span, translator.translate_enum_type(diag, enum_type));
+        let enum_type = Loc::new(enum_type, span);
+
         let decls = self.decls.translate(diag, translator)?;
         let variants = self.variants.translate(diag, translator)?;
 

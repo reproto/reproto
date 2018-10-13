@@ -270,7 +270,7 @@ impl Compiler {
 
         let mut names = None;
 
-        match body.enum_type {
+        match *body.enum_type {
             csharp::INT64 | csharp::UINT64 => {
                 spec.implements.push(csharp::local("long"));
             }
@@ -292,7 +292,7 @@ impl Compiler {
             core::RpVariants::Number { ref variants } => for v in variants {
                 let name = Rc::new(self.variant_naming.convert(v.ident()));
 
-                let value = match body.enum_type {
+                let value = match *body.enum_type {
                     csharp::INT64 | csharp::UINT64 => format!("{}L", v.value),
                     _ => v.value.to_string(),
                 };
@@ -546,9 +546,9 @@ impl Compiler {
     /// Convert a single field to `CsharpField`, without comments.
     fn field<'el>(&self, field: &RpField) -> Result<CsharpField<'el>> {
         let csharp_ty = if field.is_optional() {
-            optional(field.ty.clone())
+            optional(Loc::borrow(&field.ty).clone())
         } else {
-            field.ty.clone().into()
+            Loc::borrow(&field.ty).clone().into()
         };
 
         let ident = Rc::new(self.to_lower_camel.convert(field.safe_ident()));
