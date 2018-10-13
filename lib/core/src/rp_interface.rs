@@ -1,8 +1,8 @@
 //! Model for tuples.
 
-use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
+use std::result;
 use translator;
 use {Diagnostics, Flavor, FlavorField, Loc, RpCode, RpDecl, RpReg, Translate, Translator};
 
@@ -56,10 +56,14 @@ where
         self,
         diag: &mut Diagnostics,
         translator: &T,
-    ) -> Result<RpInterfaceBody<T::Target>> {
-        translator.visit(diag, &self.name)?;
+    ) -> result::Result<RpInterfaceBody<T::Target>, ()> {
+        let (name, span) = Loc::take_pair(self.name);
+        try_diag!(diag, span, translator.visit(diag, &name));
+        let name = Loc::new(
+            translator.translate_local_name(diag, RpReg::Interface, name)?,
+            span,
+        );
 
-        let name = translator.translate_local_name(diag, RpReg::Interface, self.name)?;
         let decls = self.decls.translate(diag, translator)?;
         let fields = translator::Fields(self.fields).translate(diag, translator)?;
         let sub_types = self.sub_types.translate(diag, translator)?;
@@ -87,7 +91,7 @@ pub struct RpSubType<F: 'static>
 where
     F: Flavor,
 {
-    pub name: F::Name,
+    pub name: Loc<F::Name>,
     pub ident: String,
     pub comment: Vec<String>,
     /// Inner declarations.
@@ -135,10 +139,18 @@ where
     type Out = RpSubType<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpSubType<T::Target>> {
-        translator.visit(diag, &self.name)?;
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpSubType<T::Target>, ()> {
+        let (name, span) = Loc::take_pair(self.name);
+        try_diag!(diag, span, translator.visit(diag, &name));
+        let name = Loc::new(
+            translator.translate_local_name(diag, RpReg::SubType, name)?,
+            span,
+        );
 
-        let name = translator.translate_local_name(diag, RpReg::SubType, self.name)?;
         let decls = self.decls.translate(diag, translator)?;
         let fields = translator::Fields(self.fields).translate(diag, translator)?;
 

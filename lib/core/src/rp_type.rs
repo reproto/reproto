@@ -126,6 +126,9 @@ where
     DateTime,
     Bytes,
     Any,
+    Argument {
+        argument: Loc<String>,
+    },
     Name {
         name: Loc<RpName<F>>,
     },
@@ -204,6 +207,7 @@ where
             Boolean => write!(f, "boolean"),
             String(..) => write!(f, "string"),
             DateTime => write!(f, "datetime"),
+            Argument { ref argument } => write!(f, "{}", argument),
             Name { ref name } => write!(f, "{}", name),
             Array { ref inner } => write!(f, "[{}]", inner),
             Map { ref key, ref value } => write!(f, "{{{}: {}}}", key, value),

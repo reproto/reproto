@@ -1,6 +1,6 @@
 //! Data Models for fields
 
-use errors::Result;
+use std::result;
 use {Diagnostics, Flavor, FlavorField, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -103,7 +103,11 @@ where
     type Out = RpField<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpField<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpField<T::Target>, ()> {
         Ok(RpField {
             required: self.required,
             safe_ident: self.safe_ident,

@@ -1,6 +1,6 @@
 //! Model for services.
 
-use errors::Result;
+use std::result;
 use {Diagnostics, Flavor, Loc, RpReg, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -23,16 +23,25 @@ where
     type Out = RpServiceBody<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpServiceBody<T::Target>> {
-        translator.visit(diag, &self.name)?;
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpServiceBody<T::Target>, ()> {
+        let (name, span) = Loc::take_pair(self.name);
+        try_diag!(diag, span, translator.visit(diag, &name));
+        let name = Loc::new(
+            translator.translate_local_name(diag, RpReg::Service, name)?,
+            span,
+        );
 
-        let name = translator.translate_local_name(diag, RpReg::Service, self.name)?;
+        let mut endpoints = Vec::new();
 
-        let endpoints = self
-            .endpoints
-            .into_iter()
-            .map(|e| Loc::and_then(e, |e| translator.translate_endpoint(diag, e)))
-            .collect::<Result<Vec<_>>>()?;
+        for endpoint in self.endpoints {
+            let (endpoint, span) = Loc::take_pair(endpoint);
+            let endpoint = translator.translate_endpoint(diag, endpoint)?;
+            endpoints.push(Loc::new(endpoint, span));
+        }
 
         let decls = self.decls.translate(diag, translator)?;
 

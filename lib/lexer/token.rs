@@ -56,6 +56,7 @@ pub enum Token<'input> {
     U32,
     U64,
     Use,
+    TSelf,
 }
 
 impl<'input> Token<'input> {
@@ -83,6 +84,7 @@ impl<'input> Token<'input> {
             U32 => "_u32",
             U64 => "_u64",
             Use => "_use",
+            TSelf => "_self",
             _ => return None,
         };
 
@@ -112,6 +114,7 @@ impl<'input> Token<'input> {
             Datetime => "datetime",
             Bytes => "bytes",
             Stream => "stream",
+            TSelf => "self",
             Identifier(ref ident) => ident.as_ref(),
             _ => return None,
         };

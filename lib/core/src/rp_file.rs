@@ -1,9 +1,9 @@
 //! File declarations
 
-use errors::Result;
 use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
 use std::collections::VecDeque;
+use std::result;
 use {Diagnostics, Flavor, RpDecl, Span, Translate, Translator, Version};
 
 /// Information about an enabled feature.
@@ -105,7 +105,11 @@ where
     type Out = RpFile<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpFile<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpFile<T::Target>, ()> {
         Ok(RpFile {
             comment: self.comment,
             version: self.version,

@@ -2,12 +2,12 @@
 //!
 //! These structures are all map-like.
 
-use errors::Result;
 use serde::Serialize;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::mem;
+use std::result;
 use {Diagnostics, Flavor, Loc, RpValue, Span, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
@@ -68,7 +68,11 @@ where
 {
     type Out = Selection<T::Target>;
 
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Selection<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<Selection<T::Target>, ()> {
         Ok(Selection {
             words: self.words.translate(diag, translator)?,
             values: self.values.translate(diag, translator)?,
@@ -132,7 +136,11 @@ where
     type Out = Attributes<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Attributes<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<Attributes<T::Target>, ()> {
         Ok(Attributes {
             words: self.words,
             selections: self.selections.translate(diag, translator)?,

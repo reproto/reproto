@@ -76,17 +76,14 @@ InterfaceBody: InterfaceBody<'input> =
     };
 
 TypeBody: TypeBody<'input> =
-    "type" <name:Loc<TypeIdent>> <type_args:TypeArgs?> "{"
+    "type" <name:Loc<TypeIdent>> <type_arguments:TypeArguments<Loc<TypeIdent>>?> "{"
         <members:TypeMember*>
     "}" =>
     TypeBody {
         name: name,
         members: members,
-        type_args: type_args.unwrap_or_else(Vec::new),
+        type_arguments: type_arguments.unwrap_or_else(Vec::new),
     };
-
-TypeArgs: Vec<Loc<Cow<'input, str>>> =
-    "<" <args:OneOrMore<",", Loc<TypeIdent>>> ">" => args;
 
 TupleBody: TupleBody<'input> =
     "tuple" <name:Loc<TypeIdent>> "{"
@@ -233,6 +230,9 @@ pub Type: Type<'input> = {
     string => Type::String,
     datetime => Type::DateTime,
     bytes => Type::Bytes,
+    <argument:Loc<TypeIdent>> => Type::Argument {
+        argument
+    },
     <name:Loc<Name>> => Type::Name {
         name
     },
@@ -247,15 +247,22 @@ pub Type: Type<'input> = {
 };
 
 Name: Name<'input> = {
-    <prefix:(Loc<ident> "::")?> <path:OneOrMore<"::", Loc<TypeIdent>>> => Name::Absolute {
-        prefix: prefix.map(|p| p.0),
+    <prefix:Loc<ident>?> "::" <path:OneOrMore<"::", Loc<TypeReference>>> => Name::Absolute {
+        prefix,
         path,
     },
 
-    "::" <path:OneOrMore<"::", Loc<TypeIdent>>> => Name::Relative {
+    "self" "::" <path:OneOrMore<"::", Loc<TypeReference>>> => Name::Relative {
         path,
     },
 };
+
+TypeReference: TypeReference<'input> =
+    <ident:Loc<TypeIdent>> <type_arguments:TypeArguments<Loc<Type>>?>  =>
+    TypeReference {
+        ident: ident,
+        type_arguments: type_arguments.unwrap_or_else(Vec::new),
+    };
 
 FileAttribute: Attribute<'input> = {
     "#" "!" "[" <id:Loc<Ident>>  "]" => {
@@ -287,6 +294,8 @@ AttributeItem: AttributeItem<'input> = {
         AttributeItem::Word(value)
     },
 };
+
+TypeArguments<T>: Vec<T> = "<" <args:OneOrMore<",", T>> ">" => args;
 
 /// Zero or more matching, separated by a token.
 ZeroOrMore<Sep, T>: Vec<T> =
@@ -374,5 +383,6 @@ extern {
         datetime => Token::Datetime,
         bytes => Token::Bytes,
         stream => Token::Stream,
+        "self" => Token::TSelf,
     }
 }

@@ -1,6 +1,6 @@
 //! Model for tuples.
 
-use errors::Result;
+use std::result;
 use translator;
 use {Diagnostics, Flavor, Loc, RpCode, RpReg, Translate, Translator};
 
@@ -26,10 +26,18 @@ where
     type Out = RpTypeBody<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpTypeBody<T::Target>> {
-        translator.visit(diag, &self.name)?;
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpTypeBody<T::Target>, ()> {
+        let (name, span) = Loc::take_pair(self.name);
+        try_diag!(diag, span, translator.visit(diag, &name));
+        let name = Loc::new(
+            translator.translate_local_name(diag, RpReg::Type, name)?,
+            span,
+        );
 
-        let name = translator.translate_local_name(diag, RpReg::Type, self.name)?;
         let decls = self.decls.translate(diag, translator)?;
         let fields = translator::Fields(self.fields).translate(diag, translator)?;
 

@@ -43,6 +43,7 @@ pub fn match_keyword(content: &str) -> Option<Token> {
         "datetime" => Datetime,
         "bytes" => Bytes,
         "stream" => Stream,
+        "self" => TSelf,
         _ => return None,
     };
 

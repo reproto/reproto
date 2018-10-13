@@ -81,6 +81,8 @@ impl<T: serde::Serialize> serde::Serialize for Loc<T> {
     }
 }
 
+impl<T> Copy for Loc<T> where T: Copy {}
+
 impl<T> cmp::PartialEq for Loc<T>
 where
     T: cmp::PartialEq,

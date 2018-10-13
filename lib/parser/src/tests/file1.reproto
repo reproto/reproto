@@ -89,4 +89,11 @@ service Foo {
 
 /// Test parsing a generic type.
 type Generic<A, B> {
+  a: A;
+  b: B;
+}
+
+/// Test with a field using a generic type.
+type UsingGeneric {
+  generic: ::Generic<int, B>;
 }

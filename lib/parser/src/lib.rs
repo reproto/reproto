@@ -251,12 +251,18 @@ mod tests {
     }
 
     #[test]
-    fn test_type_spec() {
+    fn test_absolute_name() {
         let c = Name::Absolute {
             prefix: None,
             path: vec![
-                Loc::new("Hello".into(), Span::empty()),
-                Loc::new("World".into(), Span::empty()),
+                Loc::new(
+                    TypeReference::from(Loc::new("Hello".into(), Span::empty())),
+                    Span::empty(),
+                ),
+                Loc::new(
+                    TypeReference::from(Loc::new("World".into(), Span::empty())),
+                    Span::empty(),
+                ),
             ],
         };
 
@@ -265,7 +271,31 @@ mod tests {
             Type::Name {
                 name: Loc::new(c, Span::empty())
             },
-            "Hello::World"
+            "::Hello::World"
+        );
+    }
+
+    #[test]
+    fn test_relative_name() {
+        let c = Name::Relative {
+            path: vec![
+                Loc::new(
+                    TypeReference::from(Loc::new("Hello".into(), Span::empty())),
+                    Span::empty(),
+                ),
+                Loc::new(
+                    TypeReference::from(Loc::new("World".into(), Span::empty())),
+                    Span::empty(),
+                ),
+            ],
+        };
+
+        assert_type!(Type::String, "string");
+        assert_type!(
+            Type::Name {
+                name: Loc::new(c, Span::empty())
+            },
+            "self::Hello::World"
         );
     }
 }

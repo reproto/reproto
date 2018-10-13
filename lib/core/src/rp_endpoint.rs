@@ -1,9 +1,9 @@
 //! Model for endpoints
 
-use errors::Result;
 use serde::Serialize;
 use std::default;
 use std::rc::Rc;
+use std::result;
 use {Attributes, Diagnostics, Flavor, Loc, RpChannel, RpPathSpec, Translate, Translator};
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -79,7 +79,7 @@ where
         self,
         diag: &mut Diagnostics,
         translator: &T,
-    ) -> Result<RpEndpointHttp<T::Target>> {
+    ) -> result::Result<RpEndpointHttp<T::Target>, ()> {
         Ok(RpEndpointHttp {
             path: self.path.translate(diag, translator)?,
             body: self.body.translate(diag, translator)?,
@@ -116,7 +116,7 @@ where
         self,
         diag: &mut Diagnostics,
         translator: &T,
-    ) -> Result<RpEndpointArgument<T::Target>> {
+    ) -> result::Result<RpEndpointArgument<T::Target>, ()> {
         Ok(RpEndpointArgument {
             ident: self.ident,
             safe_ident: self.safe_ident,
@@ -218,7 +218,11 @@ where
     type Out = RpEndpoint<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpEndpoint<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpEndpoint<T::Target>, ()> {
         Ok(RpEndpoint {
             ident: self.ident,
             safe_ident: self.safe_ident,

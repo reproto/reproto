@@ -104,7 +104,7 @@ where
                 continue;
             }
 
-            storage.insert(Loc::borrow(named.name()).clone().localize(), named);
+            storage.insert(Loc::take(named.name()).clone().localize(), named);
         }
     }
 
@@ -118,7 +118,7 @@ where
     let mut storage = HashMap::new();
 
     for variant in variants {
-        storage.insert(Loc::borrow(&variant.name).clone().localize(), variant);
+        storage.insert(Loc::take(variant.name).clone().localize(), variant);
     }
 
     storage

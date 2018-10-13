@@ -301,6 +301,9 @@ impl<'input> IntoModel for (Option<&'input mut Attributes>, Loc<Type<'input>>) {
                 core::RpType::String(RpStringType { validate })
             }
             DateTime => core::RpType::DateTime,
+            Argument { argument } => core::RpType::Argument {
+                argument: argument.into_model(diag, scope)?,
+            },
             Name { name } => core::RpType::Name {
                 name: name.into_model(diag, scope)?,
             },
@@ -764,7 +767,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
 
 /// Process use declarations found at the top of each object.
 impl<'input> IntoModel for Vec<Loc<UseDecl<'input>>> {
-    type Output = HashMap<String, RpVersionedPackage>;
+    type Output = HashMap<String, Loc<RpVersionedPackage>>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -825,7 +828,7 @@ impl<'input> IntoModel for Vec<Loc<UseDecl<'input>>> {
                     };
 
                     match prefixes.entry(alias.to_string()) {
-                        Entry::Vacant(entry) => entry.insert(use_package.clone()),
+                        Entry::Vacant(entry) => entry.insert(Loc::new(use_package.clone(), span)),
                         Entry::Occupied(_) => {
                             diag.err(span, format!("alias {} already in use", alias));
                             continue;
@@ -1179,6 +1182,17 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
     }
 }
 
+impl<'input> IntoModel for TypeReference<'input> {
+    type Output = String;
+
+    fn into_model<I>(self, _: &mut Diagnostics, _: &mut Scope<I>) -> Result<Self::Output>
+    where
+        I: Import,
+    {
+        Ok(self.ident.to_string())
+    }
+}
+
 impl<'input> IntoModel for Loc<Name<'input>> {
     type Output = Loc<RpName>;
 
@@ -1220,7 +1234,7 @@ impl<'input> IntoModel for Loc<Name<'input>> {
                             }
                         }
                     }
-                    None => (None, scope.package()),
+                    None => (None, Loc::new(scope.package(), span)),
                 };
 
                 RpName {

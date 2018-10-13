@@ -670,6 +670,9 @@ impl<'builder> SpecBuilder<'builder> {
         use core::RpType::*;
 
         let out = match *ty {
+            Argument { .. } => {
+                return Err("OpenAPI: generic arguments are not supported".into());
+            }
             Name { ref name } => {
                 let ref_ = self.name_to_ref(name)?;
                 spec::Schema::from(Ref(format!("#/components/schemas/{}", ref_)))

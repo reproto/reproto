@@ -29,7 +29,7 @@ pub struct Scope<I> {
     import: I,
     pub endpoint_naming: Option<Box<Naming>>,
     pub field_naming: Option<Box<Naming>>,
-    pub prefixes: HashMap<String, RpVersionedPackage>,
+    pub prefixes: HashMap<String, Loc<RpVersionedPackage>>,
     /// Path of the current scope.
     path: Vec<String>,
 }
@@ -79,7 +79,7 @@ impl<I> Scope<I> {
     }
 
     /// Lookup what package a given prefix belongs to.
-    pub fn lookup_prefix(&self, prefix: &str) -> Option<RpVersionedPackage> {
+    pub fn lookup_prefix(&self, prefix: &str) -> Option<Loc<RpVersionedPackage>> {
         self.prefixes.get(prefix).map(Clone::clone)
     }
 
@@ -93,7 +93,7 @@ impl<I> Scope<I> {
         Loc::new(
             RpName {
                 prefix: None,
-                package: self.package(),
+                package: Loc::new(self.package(), span),
                 path: self.path.clone(),
             },
             span,

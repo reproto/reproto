@@ -1,8 +1,8 @@
 //! Describes a fully qualified name as a model
 
-use errors::Result;
 use serde::Serialize;
 use std::fmt;
+use std::result;
 use {CoreFlavor, Diagnostics, Flavor, Loc, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -15,7 +15,7 @@ where
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prefix: Option<Loc<String>>,
     /// Package that name belongs to.
-    pub package: F::Package,
+    pub package: Loc<F::Package>,
     /// Absolute path of the name, from the root of the package.
     pub path: Vec<String>,
 }
@@ -24,7 +24,7 @@ impl<F: 'static> RpName<F>
 where
     F: Flavor,
 {
-    pub fn new(prefix: Option<Loc<String>>, package: F::Package, path: Vec<String>) -> Self {
+    pub fn new(prefix: Option<Loc<String>>, package: Loc<F::Package>, path: Vec<String>) -> Self {
         Self {
             prefix,
             package,
@@ -71,7 +71,7 @@ where
         }
     }
 
-    pub fn with_package(self, package: F::Package) -> Self {
+    pub fn with_package(self, package: Loc<F::Package>) -> Self {
         Self { package, ..self }
     }
 
@@ -89,9 +89,12 @@ where
 impl RpName<CoreFlavor> {
     /// Convert to a name without a version component.
     pub fn without_version(self) -> Self {
+        let (package, span) = Loc::take_pair(self.package);
+        let package = Loc::new(package.without_version(), span);
+
         Self {
             prefix: self.prefix,
-            package: self.package.without_version(),
+            package,
             path: self.path,
         }
     }
@@ -116,7 +119,7 @@ where
         if let Some(ref prefix) = self.prefix {
             write!(f, "{}::{}", prefix, self.path.join("::"))
         } else {
-            write!(f, "{}", self.path.join("::"))
+            write!(f, "::{}", self.path.join("::"))
         }
     }
 }
@@ -129,10 +132,20 @@ where
     type Out = RpName<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, _: &mut Diagnostics, translator: &T) -> Result<RpName<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpName<T::Target>, ()> {
+        let (package, span) = Loc::take_pair(self.package);
+        let package = Loc::new(
+            try_diag!(diag, span, translator.translate_package(package)),
+            span,
+        );
+
         Ok(RpName {
             prefix: self.prefix,
-            package: translator.translate_package(self.package)?,
+            package,
             path: self.path,
         })
     }

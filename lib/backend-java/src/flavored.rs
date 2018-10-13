@@ -17,6 +17,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::result;
 use trans::Packages;
 
 #[derive(Debug, Clone)]
@@ -176,50 +177,49 @@ impl FlavorTranslator for JavaFlavorTranslator {
 
     translator_defaults!(Self);
 
-    fn translate_number(&self, number: RpNumberType) -> Result<Java<'static>> {
+    fn translate_number(&self, number: RpNumberType) -> Java<'static> {
         let out = match number.kind {
             RpNumberKind::U32 | RpNumberKind::I32 => INTEGER.into(),
             RpNumberKind::U64 | RpNumberKind::I64 => LONG.into(),
-            ty => return Err(format!("unsupported number type: {}", ty).into()),
         };
 
-        Ok(out)
+        out
     }
 
-    fn translate_float(&self) -> Result<Java<'static>> {
-        Ok(FLOAT.into())
+    fn translate_float(&self) -> Java<'static> {
+        FLOAT.into()
     }
 
-    fn translate_double(&self) -> Result<Java<'static>> {
-        Ok(DOUBLE.into())
+    fn translate_double(&self) -> Java<'static> {
+        DOUBLE.into()
     }
 
-    fn translate_boolean(&self) -> Result<Java<'static>> {
-        Ok(BOOLEAN.into())
+    fn translate_boolean(&self) -> Java<'static> {
+        BOOLEAN.into()
     }
 
-    fn translate_string(&self, _: RpStringType) -> Result<Java<'static>> {
-        Ok(self.string.clone().into())
+    fn translate_string(&self, _: RpStringType) -> Java<'static> {
+        self.string.clone().into()
     }
 
-    fn translate_datetime(&self) -> Result<Java<'static>> {
-        Ok(self.instant.clone().into())
+    fn translate_datetime(&self) -> Java<'static> {
+        self.instant.clone().into()
     }
 
-    fn translate_array(&self, argument: Java<'static>) -> Result<Java<'static>> {
-        Ok(self.list.with_arguments(vec![argument]))
+    fn translate_array(&self, argument: Java<'static>) -> Java<'static> {
+        self.list.with_arguments(vec![argument])
     }
 
-    fn translate_map(&self, key: Java<'static>, value: Java<'static>) -> Result<Java<'static>> {
-        Ok(self.map.with_arguments(vec![key, value]))
+    fn translate_map(&self, key: Java<'static>, value: Java<'static>) -> Java<'static> {
+        self.map.with_arguments(vec![key, value])
     }
 
-    fn translate_any(&self) -> Result<Java<'static>> {
-        Ok(self.object.clone())
+    fn translate_any(&self) -> Java<'static> {
+        self.object.clone()
     }
 
-    fn translate_bytes(&self) -> Result<Java<'static>> {
-        Ok(self.byte_buffer.clone())
+    fn translate_bytes(&self) -> Java<'static> {
+        self.byte_buffer.clone()
     }
 
     fn translate_name(
@@ -238,7 +238,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         field: core::RpField<CoreFlavor>,
-    ) -> Result<JavaField<'static>>
+    ) -> result::Result<JavaField<'static>, ()>
     where
         T: Translator<Source = CoreFlavor, Target = JavaFlavor>,
     {
@@ -276,7 +276,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         endpoint: core::RpEndpoint<CoreFlavor>,
-    ) -> Result<JavaEndpoint<'static>>
+    ) -> result::Result<JavaEndpoint<'static>, ()>
     where
         T: Translator<Source = CoreFlavor, Target = JavaFlavor>,
     {
@@ -315,15 +315,21 @@ impl FlavorTranslator for JavaFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         reg: RpReg,
-        name: Loc<core::RpName<CoreFlavor>>,
-    ) -> Result<JavaName>
+        name: core::RpName<CoreFlavor>,
+    ) -> result::Result<JavaName, ()>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        let (name, span) = Loc::take_pair(name);
-
         let ident = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
-        let package = self.translate_package(name.package)?;
+
+        let (package, span) = Loc::take_pair(name.package);
+        let package = match self.translate_package(package) {
+            Ok(package) => package,
+            Err(e) => {
+                diag.err(span, e.display());
+                return Err(());
+            }
+        };
 
         Ok(JavaName {
             name: ident,
@@ -336,15 +342,15 @@ impl FlavorTranslator for JavaFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         enum_type: core::RpEnumType,
-    ) -> Result<Java<'static>>
+    ) -> result::Result<Java<'static>, ()>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
         use core::RpEnumType::*;
 
         match enum_type {
-            String(string) => self.translate_string(string),
-            Number(number) => self.translate_number(number),
+            String(string) => Ok(self.translate_string(string)),
+            Number(number) => Ok(self.translate_number(number)),
         }
     }
 }

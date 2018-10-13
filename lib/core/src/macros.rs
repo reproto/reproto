@@ -1,10 +1,23 @@
+/// Helper macro to try an expression or assign it to diagnostics.
+macro_rules! try_diag {
+    ($diag:expr, $span:expr, $try:expr) => {
+        match $try {
+            Ok(v) => v,
+            Err(e) => {
+                $diag.err($span, e.display());
+                return Err(());
+            }
+        }
+    };
+}
+
 /// Build a declaration body including common fields.
 macro_rules! decl_body {
     (pub struct $name:ident<$f:ident> { $($rest:tt)* }) => {
         #[derive(Debug, Clone, Serialize)]
         #[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: ::serde::Serialize, F::Package: ::serde::Serialize, F::Name: ::serde::Serialize, F::EnumType: ::serde::Serialize")]
         pub struct $name<$f: 'static> where $f: $crate::flavor::Flavor {
-            pub name: $f::Name,
+            pub name: Loc<$f::Name>,
             pub ident: String,
             pub comment: Vec<String>,
             pub decls: Vec<$crate::rp_decl::RpDecl<$f>>,
@@ -69,8 +82,8 @@ macro_rules! translator_defaults {
             translator: &T,
             diag: &mut $crate::Diagnostics,
             _reg: $crate::RpReg,
-            name: $crate::Loc<$crate::RpName<$slf::Source>>,
-        ) -> Result<$crate::Loc<$crate::RpName<$slf::Target>>>
+            name: $crate::RpName<$slf::Source>,
+        ) -> ::std::result::Result<$crate::RpName<$slf::Target>, ()>
         where
             T: Translator<Source = $slf::Source, Target = $slf::Target>,
         {
@@ -86,7 +99,7 @@ macro_rules! translator_defaults {
             translator: &T,
             diag: &mut $crate::Diagnostics,
             field: $crate::RpField<$slf::Source>,
-        ) -> Result<$crate::RpField<$slf::Target>>
+        ) -> ::std::result::Result<$crate::RpField<$slf::Target>, ()>
         where
             T: Translator<Source = $slf::Source, Target = $slf::Target>,
         {
@@ -102,7 +115,7 @@ macro_rules! translator_defaults {
             translator: &T,
             diag: &mut $crate::Diagnostics,
             endpoint: $crate::RpEndpoint<$slf::Source>,
-        ) -> Result<$crate::RpEndpoint<$slf::Target>>
+        ) -> ::std::result::Result<$crate::RpEndpoint<$slf::Target>, ()>
         where
             T: Translator<Source = $slf::Source, Target = $slf::Target>,
         {
@@ -113,53 +126,53 @@ macro_rules! translator_defaults {
     };
 
     (@internal $slf:ident, rp_type $($rest:tt)*) => {
-        fn translate_number(&self, number: RpNumberType) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Number(number))
+        fn translate_number(&self, number: RpNumberType) -> RpType<$slf::Target> {
+            RpType::Number(number)
         }
 
-        fn translate_float(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Float)
+        fn translate_float(&self) -> RpType<$slf::Target> {
+            RpType::Float
         }
 
-        fn translate_double(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Double)
+        fn translate_double(&self) -> RpType<$slf::Target> {
+            RpType::Double
         }
 
-        fn translate_boolean(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Boolean)
+        fn translate_boolean(&self) -> RpType<$slf::Target> {
+            RpType::Boolean
         }
 
-        fn translate_string(&self, string: RpStringType) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::String(string))
+        fn translate_string(&self, string: RpStringType) -> RpType<$slf::Target> {
+            RpType::String(string)
         }
 
-        fn translate_datetime(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::DateTime)
+        fn translate_datetime(&self) -> RpType<$slf::Target> {
+            RpType::DateTime
         }
 
-        fn translate_array(&self, inner: RpType<$slf::Target>) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Array {
+        fn translate_array(&self, inner: RpType<$slf::Target>) -> RpType<$slf::Target> {
+            RpType::Array {
                 inner: Box::new(inner),
-            })
+            }
         }
 
         fn translate_map(
             &self,
             key: RpType<$slf::Target>,
             value: RpType<$slf::Target>,
-        ) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Map {
+        ) -> RpType<$slf::Target> {
+            RpType::Map {
                 key: Box::new(key),
                 value: Box::new(value),
-            })
+            }
         }
 
-        fn translate_any(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Any)
+        fn translate_any(&self) -> RpType<$slf::Target> {
+            RpType::Any
         }
 
-        fn translate_bytes(&self) -> Result<RpType<$slf::Target>> {
-            Ok(RpType::Bytes)
+        fn translate_bytes(&self) -> RpType<$slf::Target> {
+            RpType::Bytes
         }
 
         fn translate_name(
@@ -180,7 +193,7 @@ macro_rules! translator_defaults {
             _: &T,
             _: &mut $crate::Diagnostics,
             enum_type: $crate::RpEnumType,
-        ) -> Result<<$slf::Target as Flavor>::EnumType>
+        ) -> ::std::result::Result<<$slf::Target as Flavor>::EnumType, ()>
         where
             T: Translator<Source = $slf::Source, Target = $slf::Target>,
         {

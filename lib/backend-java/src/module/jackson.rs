@@ -5,7 +5,7 @@ use codegen::{
     GetterCodegen, InterfaceAdded, InterfaceCodegen, TupleAdded, TupleCodegen,
 };
 use core::errors::Result;
-use core::{Handle, RpSubTypeStrategy};
+use core::{Handle, Loc, RpSubTypeStrategy};
 use flavored::{RpInterfaceBody, RpPackage};
 use genco::java::{
     self, Argument, Class, Field, Interface, Method, Modifier, DOUBLE, FLOAT, INTEGER, LONG, SHORT,
@@ -646,7 +646,14 @@ impl InterfaceCodegen for Jackson {
                         let p = toks!["new ", ttparser.clone(), "(object, parser.getCodec())"];
 
                         push!(t, "if (", checks, ") {");
-                        nested!(t, "return ", p, ".readValueAs(", &sub_type.name, ".class);");
+                        nested!(
+                            t,
+                            "return ",
+                            p,
+                            ".readValueAs(",
+                            Loc::borrow(&sub_type.name),
+                            ".class);"
+                        );
                         push!(t, "}");
                     });
                 }

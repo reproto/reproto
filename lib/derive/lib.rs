@@ -17,7 +17,7 @@ pub use self::json::Json;
 pub use self::yaml::Yaml;
 use ast::{
     Attribute, AttributeItem, Decl, Field, InterfaceBody, Item, Name, SubType, TupleBody, Type,
-    TypeBody, TypeMember, Value,
+    TypeBody, TypeMember, TypeReference, Value,
 };
 use core::errors::Result;
 use core::{Loc, RpPackage, Source, Span, DEFAULT_TAG};
@@ -75,8 +75,12 @@ impl Context {
                 .path
                 .clone()
                 .into_iter()
-                .map(|p| Loc::new(Cow::from(p), Span::empty()))
-                .collect(),
+                .map(|p| {
+                    Loc::new(
+                        TypeReference::from(Loc::new(Cow::from(p), Span::empty())),
+                        Span::empty(),
+                    )
+                }).collect(),
         }
     }
 }
@@ -335,7 +339,7 @@ impl<'a, 'input: 'a> TypeRefiner<'a, 'input> {
         let mut body = TypeBody {
             name: Loc::new(self.ctx.ident()?.to_string().into(), Span::empty()),
             members: Vec::new(),
-            type_args: Vec::new(),
+            type_arguments: Vec::new(),
         };
 
         self.init(&mut body, object)?;

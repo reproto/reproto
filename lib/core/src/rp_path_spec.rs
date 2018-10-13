@@ -1,7 +1,7 @@
 //! Path specifications
 
-use errors::Result;
 use std::fmt;
+use std::result;
 use {Diagnostics, Flavor, RpEndpointArgument, Translate, Translator};
 
 /// A part of a step.
@@ -44,7 +44,11 @@ where
     type Out = RpPathPart<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpPathPart<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpPathPart<T::Target>, ()> {
         use self::RpPathPart::*;
 
         let out = match self {
@@ -89,7 +93,11 @@ where
     type Out = RpPathStep<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpPathStep<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpPathStep<T::Target>, ()> {
         Ok(RpPathStep {
             parts: self.parts.translate(diag, translator)?,
         })
@@ -146,7 +154,11 @@ where
     type Out = RpPathSpec<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpPathSpec<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpPathSpec<T::Target>, ()> {
         Ok(RpPathSpec {
             steps: self.steps.translate(diag, translator)?,
         })

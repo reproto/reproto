@@ -100,6 +100,11 @@ pub trait Processor<'session> {
         Ok(())
     }
 
+    fn argument(&self, argument: &str) -> Result<()> {
+        html!(self, span {class => "type-argument"} ~ argument);
+        Ok(())
+    }
+
     fn primitive(&self, name: &str) -> Result<()> {
         html!(self, span {class => format!("type-{} type-primitive", name)} ~ name);
         Ok(())
@@ -119,6 +124,7 @@ pub trait Processor<'session> {
             Bytes => self.primitive("bytes")?,
             Any => self.primitive("any")?,
             Number(ref number) => self.primitive(number.to_string().as_str())?,
+            Argument { ref argument } => self.argument(argument.as_str())?,
             Name { ref name } => {
                 html!(self, span {class => "type-rp-name"} => {
                     self.full_name_without_package(name)?;

@@ -1,8 +1,8 @@
 //! Model for declarations
 
-use errors::Result;
 use serde::Serialize;
 use std::fmt;
+use std::result;
 use {
     Diagnostics, Flavor, Loc, RpEnumBody, RpInterfaceBody, RpReg, RpServiceBody, RpSubType,
     RpTupleBody, RpTypeBody, RpVariantRef, Span, Translate, Translator,
@@ -27,17 +27,17 @@ where
     F: Flavor,
 {
     /// Get the name of the named element.
-    pub fn name(&self) -> &F::Name {
+    pub fn name(&self) -> Loc<&F::Name> {
         use self::RpNamed::*;
 
         match *self {
-            Type(ref body) => &body.name,
-            Tuple(ref tuple) => &tuple.name,
-            Interface(ref interface) => &interface.name,
-            SubType(ref sub_type) => &sub_type.name,
-            Enum(ref en) => &en.name,
+            Type(ref body) => Loc::as_ref(&body.name),
+            Tuple(ref tuple) => Loc::as_ref(&tuple.name),
+            Interface(ref interface) => Loc::as_ref(&interface.name),
+            SubType(ref sub_type) => Loc::as_ref(&sub_type.name),
+            Enum(ref en) => Loc::as_ref(&en.name),
             EnumVariant(ref variant) => variant.name,
-            Service(ref service) => &service.name,
+            Service(ref service) => Loc::as_ref(&service.name),
         }
     }
 
@@ -137,34 +137,46 @@ where
     }
 
     /// Convert a declaration into its registered types.
-    pub fn to_reg(&self) -> Vec<(&F::Name, Span, RpReg)> {
+    pub fn to_reg(&self) -> Vec<(Loc<&F::Name>, Span, RpReg)> {
         use self::RpDecl::*;
 
         let mut out = Vec::new();
 
         match *self {
             Type(ref ty) => {
-                out.push((&ty.name, Loc::span(ty), RpReg::Type));
+                out.push((Loc::as_ref(&ty.name), Loc::span(ty), RpReg::Type));
             }
             Interface(ref interface) => {
                 for sub_type in &interface.sub_types {
-                    out.push((&sub_type.name, Loc::span(sub_type), RpReg::SubType));
+                    out.push((
+                        Loc::as_ref(&sub_type.name),
+                        Loc::span(sub_type),
+                        RpReg::SubType,
+                    ));
                 }
 
-                out.push((&interface.name, Loc::span(interface), RpReg::Interface));
+                out.push((
+                    Loc::as_ref(&interface.name),
+                    Loc::span(interface),
+                    RpReg::Interface,
+                ));
             }
             Enum(ref en) => {
                 for variant in &en.variants {
                     out.push((variant.name, variant.span, RpReg::EnumVariant));
                 }
 
-                out.push((&en.name, Loc::span(en), RpReg::Enum));
+                out.push((Loc::as_ref(&en.name), Loc::span(en), RpReg::Enum));
             }
             Tuple(ref tuple) => {
-                out.push((&tuple.name, Loc::span(tuple), RpReg::Tuple));
+                out.push((Loc::as_ref(&tuple.name), Loc::span(tuple), RpReg::Tuple));
             }
             Service(ref service) => {
-                out.push((&service.name, Loc::span(service), RpReg::Service));
+                out.push((
+                    Loc::as_ref(&service.name),
+                    Loc::span(service),
+                    RpReg::Service,
+                ));
             }
         }
 
@@ -261,7 +273,11 @@ where
     type Out = RpDecl<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpDecl<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpDecl<T::Target>, ()> {
         use self::RpDecl::*;
 
         let out = match self {

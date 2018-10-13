@@ -236,51 +236,55 @@ impl<'a> Session<'a, CoreFlavor> {
     where
         T: FlavorTranslator<Source = CoreFlavor>,
     {
-        // Report all collected errors.
-        if self.reporter.has_diagnostics() {
-            return Err(Error::new("error in context"));
-        }
-
         let mut files = BTreeMap::new();
         let collected = Rc::new(RefCell::new(LinkedHashMap::new()));
 
         for (package, file) in self.files {
+            let source = file.source.clone();
             let package = flavor.translate_package(package)?;
 
             let file = {
                 let ctx = translator::Context {
+                    source: source.clone(),
                     from: &package,
                     flavor: &flavor,
                     types: Rc::clone(&self.types),
                     decls: Some(collected.clone()),
                 };
 
-                let mut diag = Diagnostics::new(file.source.clone());
+                let mut diag = Diagnostics::new(source.clone());
 
                 match file.file.translate(&mut diag, &ctx) {
-                    Ok(file) => file,
-                    Err(e) => {
+                    Err(()) => {
                         self.reporter.diagnostics(diag);
-                        return Err(e);
+                        continue;
                     }
+                    Ok(file) => file,
                 }
             };
 
             files.insert(package, file);
         }
 
-        let mut decls = LinkedHashMap::new();
+        // Report all collected errors.
+        if self.reporter.has_diagnostics() {
+            return Err(Error::new("error in context"));
+        }
 
-        // NOTE: we do not know which source to associate this diagnostics with.
-        let mut diag = Diagnostics::new(Source::empty("no diagnostics"));
+        let mut decls = LinkedHashMap::new();
 
         let collected = Rc::try_unwrap(collected)
             .map_err(|_| Error::from("no access to collected declarations"))?;
 
-        for (name, reg) in collected.into_inner() {
-            let package = flavor.translate_package(name.package.clone())?;
+        for (name, (source, reg)) in collected.into_inner() {
+            let mut diag = Diagnostics::new(source.clone());
+            let package = {
+                let (package, _) = Loc::borrow_pair(&name.package);
+                flavor.translate_package(package.clone())?
+            };
 
             let ctx = translator::Context {
+                source: source.clone(),
                 from: &package,
                 flavor: &flavor,
                 types: Rc::clone(&self.types),
@@ -289,8 +293,20 @@ impl<'a> Session<'a, CoreFlavor> {
 
             // NB: it must always be possible to translate name without declarations until all
             // backends to translation.
-            let name = name.translate(&mut diag, &ctx)?;
+            let name = match name.translate(&mut diag, &ctx) {
+                Ok(name) => name,
+                Err(()) => {
+                    self.reporter.diagnostics(diag);
+                    continue;
+                }
+            };
+
             decls.insert(name, reg);
+        }
+
+        // Report all collected errors.
+        if self.reporter.has_diagnostics() {
+            return Err(Error::new("error in context"));
         }
 
         Ok(Translated::new(decls, files))
@@ -521,7 +537,7 @@ impl<'a> Session<'a, CoreFlavor> {
         };
 
         for (key, _, t) in file.file.decls.iter().flat_map(|d| d.to_reg()) {
-            let (key, span) = Loc::borrow_pair(key);
+            let (key, span) = Loc::take_pair(key);
             let key = key.clone().without_prefix();
 
             debug!("new reg ty: {}", key);

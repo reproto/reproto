@@ -3,6 +3,7 @@
 use errors::Result;
 use serde::Serialize;
 use std::fmt;
+use std::result;
 use {Diagnostics, Flavor, Loc, RpName, RpNumber, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
@@ -143,7 +144,11 @@ where
 {
     type Out = RpValue<T::Target>;
 
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpValue<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpValue<T::Target>, ()> {
         use self::RpValue::*;
 
         let out = match self {

@@ -1,7 +1,7 @@
 //! Data model for request or responses for endpoints
 
-use errors::Result;
 use std::fmt;
+use std::result;
 use {Diagnostics, Flavor, Translate, Translator};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -61,7 +61,11 @@ where
     type Out = RpChannel<T::Target>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<RpChannel<T::Target>> {
+    fn translate(
+        self,
+        diag: &mut Diagnostics,
+        translator: &T,
+    ) -> result::Result<RpChannel<T::Target>, ()> {
         use self::RpChannel::*;
 
         let out = match self {

@@ -3,7 +3,54 @@ extern crate reproto_lexer as lexer;
 
 use core::{Loc, RpNumber, Span};
 use std::borrow::Cow;
+use std::fmt;
 use std::ops;
+
+/// A type reference, if arguments are present it is specialized.
+///
+/// ```ignore
+/// <ident> "<" <arguments> ">"
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeReference<'input> {
+    pub ident: Loc<Cow<'input, str>>,
+    pub type_arguments: Vec<Loc<Type<'input>>>,
+}
+
+impl<'input> From<Loc<Cow<'input, str>>> for TypeReference<'input> {
+    fn from(ident: Loc<Cow<'input, str>>) -> Self {
+        TypeReference {
+            ident,
+            type_arguments: vec![],
+        }
+    }
+}
+
+impl<'input> fmt::Display for TypeReference<'input> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        if self.type_arguments.is_empty() {
+            return self.ident.fmt(fmt);
+        }
+
+        let mut it = self.type_arguments.iter().peekable();
+
+        self.ident.fmt(fmt)?;
+
+        "<".fmt(fmt)?;
+
+        while let Some(argument) = it.next() {
+            argument.fmt(fmt)?;
+
+            if it.peek().is_some() {
+                ", ".fmt(fmt)?;
+            }
+        }
+
+        ">".fmt(fmt)?;
+
+        Ok(())
+    }
+}
 
 /// Items can be commented and have attributes.
 ///
@@ -85,6 +132,10 @@ pub enum Type<'input> {
     Any,
     /// ISO-8601 for date and time.
     DateTime,
+    /// A generic argument, like `T`.
+    Argument {
+        argument: Loc<Cow<'input, str>>,
+    },
     Name {
         name: Loc<Name<'input>>,
     },
@@ -97,6 +148,29 @@ pub enum Type<'input> {
     },
     /// A complete error.
     Error,
+}
+
+impl<'input> fmt::Display for Type<'input> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use self::Type::*;
+
+        match *self {
+            Double => "double".fmt(fmt),
+            Float => "float".fmt(fmt),
+            Signed { ref size } => write!(fmt, "i{}", size),
+            Unsigned { ref size } => write!(fmt, "u{}", size),
+            Boolean => "boolean".fmt(fmt),
+            String => "string".fmt(fmt),
+            Bytes => "bytes".fmt(fmt),
+            Any => "any".fmt(fmt),
+            DateTime => "datetime".fmt(fmt),
+            Argument { ref argument } => argument.fmt(fmt),
+            Name { ref name } => name.fmt(fmt),
+            Array { ref inner } => inner.fmt(fmt),
+            Map { ref key, ref value } => write!(fmt, "{{{}: {}}}", key, value),
+            Error => "*error*".fmt(fmt),
+        }
+    }
 }
 
 /// Any kind of declaration.
@@ -242,12 +316,44 @@ impl<'input> Field<'input> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Name<'input> {
     Relative {
-        path: Vec<Loc<Cow<'input, str>>>,
+        path: Vec<Loc<TypeReference<'input>>>,
     },
     Absolute {
         prefix: Option<Loc<Cow<'input, str>>>,
-        path: Vec<Loc<Cow<'input, str>>>,
+        path: Vec<Loc<TypeReference<'input>>>,
     },
+}
+
+impl<'input> fmt::Display for Name<'input> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use self::Name::*;
+
+        let path = match *self {
+            Relative { ref path } => path,
+            Absolute {
+                ref prefix,
+                ref path,
+            } => {
+                if let Some(ref prefix) = *prefix {
+                    write!(fmt, "{}", prefix)?;
+                }
+
+                path
+            }
+        };
+
+        let mut it = path.iter().peekable();
+
+        while let Some(part) = it.next() {
+            part.fmt(fmt)?;
+
+            if it.peek().is_some() {
+                "::".fmt(fmt)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// The body of an interface declaration
@@ -439,7 +545,7 @@ impl<'input> TupleBody<'input> {
 /// The body of a type
 ///
 /// ```ignore
-/// "type" <name> ("<" <type_args> ">")? {
+/// "type" <name> ("<" <type_arguments> ">")? {
 ///     <members>
 /// }
 /// ```
@@ -447,7 +553,7 @@ impl<'input> TupleBody<'input> {
 pub struct TypeBody<'input> {
     pub name: Loc<Cow<'input, str>>,
     pub members: Vec<TypeMember<'input>>,
-    pub type_args: Vec<Loc<Cow<'input, str>>>,
+    pub type_arguments: Vec<Loc<Cow<'input, str>>>,
 }
 
 impl<'input> TypeBody<'input> {
@@ -521,4 +627,42 @@ pub struct PathStep<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct PathSpec<'input> {
     pub steps: Vec<PathStep<'input>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::{Loc, Span};
+
+    #[test]
+    fn test_type_reference_display() {
+        let type_reference = Loc::new(
+            TypeReference {
+                ident: Loc::new(Cow::from("Foo"), Span::empty()),
+                type_arguments: vec![],
+            },
+            Span::empty(),
+        );
+
+        assert_eq!("Foo", type_reference.to_string().as_str());
+
+        let argument = |a| {
+            Loc::new(
+                Type::Argument {
+                    argument: Loc::new(Cow::from(a), Span::empty()),
+                },
+                Span::empty(),
+            )
+        };
+
+        let type_reference = Loc::new(
+            TypeReference {
+                ident: Loc::new(Cow::from("Foo"), Span::empty()),
+                type_arguments: vec!["A", "B"].into_iter().map(argument).collect(),
+            },
+            Span::empty(),
+        );
+
+        assert_eq!("Foo<A, B>", type_reference.to_string().as_str());
+    }
 }
