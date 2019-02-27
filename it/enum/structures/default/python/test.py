@@ -1,31 +1,37 @@
 import enum
 
 class Entry:
-  def __init__(self, explicit, implicit, enum_u32, enum_u64, enum_i32, enum_i64):
-    self.explicit = explicit
-    self.implicit = implicit
-    self.enum_u32 = enum_u32
-    self.enum_u64 = enum_u64
-    self.enum_i32 = enum_i32
-    self.enum_i64 = enum_i64
+  def __init__(self, _explicit, _implicit, _enum_u32, _enum_u64, _enum_i32, _enum_i64):
+    self._explicit = _explicit
+    self._implicit = _implicit
+    self._enum_u32 = _enum_u32
+    self._enum_u64 = _enum_u64
+    self._enum_i32 = _enum_i32
+    self._enum_i64 = _enum_i64
 
-  def get_explicit(self):
-    return self.explicit
+  @property
+  def explicit(self):
+    return self._explicit
 
-  def get_implicit(self):
-    return self.implicit
+  @property
+  def implicit(self):
+    return self._implicit
 
-  def get_enum_u32(self):
-    return self.enum_u32
+  @property
+  def enum_u32(self):
+    return self._enum_u32
 
-  def get_enum_u64(self):
-    return self.enum_u64
+  @property
+  def enum_u64(self):
+    return self._enum_u64
 
-  def get_enum_i32(self):
-    return self.enum_i32
+  @property
+  def enum_i32(self):
+    return self._enum_i32
 
-  def get_enum_i64(self):
-    return self.enum_i64
+  @property
+  def enum_i64(self):
+    return self._enum_i64
 
   @staticmethod
   def decode(data):
@@ -82,175 +88,182 @@ class Entry:
   def encode(self):
     data = dict()
 
-    if self.explicit is not None:
-      data["explicit"] = self.explicit.encode()
+    if self._explicit is not None:
+      data["explicit"] = self._explicit.encode()
 
-    if self.implicit is not None:
-      data["implicit"] = self.implicit.encode()
+    if self._implicit is not None:
+      data["implicit"] = self._implicit.encode()
 
-    if self.enum_u32 is not None:
-      data["enum_u32"] = self.enum_u32.encode()
+    if self._enum_u32 is not None:
+      data["enum_u32"] = self._enum_u32.encode()
 
-    if self.enum_u64 is not None:
-      data["enum_u64"] = self.enum_u64.encode()
+    if self._enum_u64 is not None:
+      data["enum_u64"] = self._enum_u64.encode()
 
-    if self.enum_i32 is not None:
-      data["enum_i32"] = self.enum_i32.encode()
+    if self._enum_i32 is not None:
+      data["enum_i32"] = self._enum_i32.encode()
 
-    if self.enum_i64 is not None:
-      data["enum_i64"] = self.enum_i64.encode()
+    if self._enum_i64 is not None:
+      data["enum_i64"] = self._enum_i64.encode()
 
     return data
 
   def __repr__(self):
-    return "<Entry explicit:{!r}, implicit:{!r}, enum_u32:{!r}, enum_u64:{!r}, enum_i32:{!r}, enum_i64:{!r}>".format(self.explicit, self.implicit, self.enum_u32, self.enum_u64, self.enum_i32, self.enum_i64)
+    return "<Entry explicit:{!r}, implicit:{!r}, enum_u32:{!r}, enum_u64:{!r}, enum_i32:{!r}, enum_i64:{!r}>".format(self._explicit, self._implicit, self._enum_u32, self._enum_u64, self._enum_i32, self._enum_i64)
 
 class EnumExplicit:
-  def __init__(self, ordinal):
-    self.ordinal = ordinal
+  def __init__(self, _ordinal):
+    self._ordinal = _ordinal
 
-  def get_ordinal(self):
-    return self.ordinal
+  @property
+  def ordinal(self):
+    return self._ordinal
 
   def encode(self):
-    return self.ordinal
+    return self._ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value.ordinal == data:
+      if value._ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumExplicit ordinal:{!r}>".format(self.ordinal)
+    return "<EnumExplicit ordinal:{!r}>".format(self._ordinal)
 
 class EnumImplicit:
-  def __init__(self, ordinal):
-    self.ordinal = ordinal
+  def __init__(self, _ordinal):
+    self._ordinal = _ordinal
 
-  def get_ordinal(self):
-    return self.ordinal
+  @property
+  def ordinal(self):
+    return self._ordinal
 
   def encode(self):
-    return self.ordinal
+    return self._ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value.ordinal == data:
+      if value._ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumImplicit ordinal:{!r}>".format(self.ordinal)
+    return "<EnumImplicit ordinal:{!r}>".format(self._ordinal)
 
 class EnumLongNames:
-  def __init__(self, ordinal):
-    self.ordinal = ordinal
+  def __init__(self, _ordinal):
+    self._ordinal = _ordinal
 
-  def get_ordinal(self):
-    return self.ordinal
+  @property
+  def ordinal(self):
+    return self._ordinal
 
   def encode(self):
-    return self.ordinal
+    return self._ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value.ordinal == data:
+      if value._ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumLongNames ordinal:{!r}>".format(self.ordinal)
+    return "<EnumLongNames ordinal:{!r}>".format(self._ordinal)
 
 class EnumU32:
-  def __init__(self, ordinal):
-    self.ordinal = ordinal
+  def __init__(self, _ordinal):
+    self._ordinal = _ordinal
 
-  def get_ordinal(self):
-    return self.ordinal
+  @property
+  def ordinal(self):
+    return self._ordinal
 
   def encode(self):
-    return self.ordinal
+    return self._ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value.ordinal == data:
+      if value._ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumU32 ordinal:{!r}>".format(self.ordinal)
+    return "<EnumU32 ordinal:{!r}>".format(self._ordinal)
 
 class EnumU64:
-  def __init__(self, ordinal):
-    self.ordinal = ordinal
+  def __init__(self, _ordinal):
+    self._ordinal = _ordinal
 
-  def get_ordinal(self):
-    return self.ordinal
+  @property
+  def ordinal(self):
+    return self._ordinal
 
   def encode(self):
-    return self.ordinal
+    return self._ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value.ordinal == data:
+      if value._ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumU64 ordinal:{!r}>".format(self.ordinal)
+    return "<EnumU64 ordinal:{!r}>".format(self._ordinal)
 
 class EnumI32:
-  def __init__(self, ordinal):
-    self.ordinal = ordinal
+  def __init__(self, _ordinal):
+    self._ordinal = _ordinal
 
-  def get_ordinal(self):
-    return self.ordinal
+  @property
+  def ordinal(self):
+    return self._ordinal
 
   def encode(self):
-    return self.ordinal
+    return self._ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value.ordinal == data:
+      if value._ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumI32 ordinal:{!r}>".format(self.ordinal)
+    return "<EnumI32 ordinal:{!r}>".format(self._ordinal)
 
 class EnumI64:
-  def __init__(self, ordinal):
-    self.ordinal = ordinal
+  def __init__(self, _ordinal):
+    self._ordinal = _ordinal
 
-  def get_ordinal(self):
-    return self.ordinal
+  @property
+  def ordinal(self):
+    return self._ordinal
 
   def encode(self):
-    return self.ordinal
+    return self._ordinal
 
   @classmethod
   def decode(cls, data):
     for value in cls.__members__.values():
-      if value.ordinal == data:
+      if value._ordinal == data:
         return value
 
     raise Exception("data does not match enum")
 
   def __repr__(self):
-    return "<EnumI64 ordinal:{!r}>".format(self.ordinal)
+    return "<EnumI64 ordinal:{!r}>".format(self._ordinal)
 
 EnumExplicit = enum.Enum("EnumExplicit", [("A", "foo"), ("B", "bar")], type=EnumExplicit)
 

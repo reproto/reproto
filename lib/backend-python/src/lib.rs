@@ -194,7 +194,8 @@ fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) ->
         RpField::new(
             "ordinal",
             flavored::PythonType::new(helper, flavored::PythonKind::String),
-        ),
+        )
+        .with_safe_ident("_ordinal"),
         Span::empty(),
     );
 

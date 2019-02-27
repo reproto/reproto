@@ -1,61 +1,75 @@
 class Entry:
-  def __init__(self, boolean_type, string_type, datetime_type, unsigned_32, unsigned_64, signed_32, signed_64, float_type, double_type, bytes_type, any_type, array_type, array_of_array_type, map_type):
-    self.boolean_type = boolean_type
-    self.string_type = string_type
-    self.datetime_type = datetime_type
-    self.unsigned_32 = unsigned_32
-    self.unsigned_64 = unsigned_64
-    self.signed_32 = signed_32
-    self.signed_64 = signed_64
-    self.float_type = float_type
-    self.double_type = double_type
-    self.bytes_type = bytes_type
-    self.any_type = any_type
-    self.array_type = array_type
-    self.array_of_array_type = array_of_array_type
-    self.map_type = map_type
+  def __init__(self, _boolean_type, _string_type, _datetime_type, _unsigned_32, _unsigned_64, _signed_32, _signed_64, _float_type, _double_type, _bytes_type, _any_type, _array_type, _array_of_array_type, _map_type):
+    self._boolean_type = _boolean_type
+    self._string_type = _string_type
+    self._datetime_type = _datetime_type
+    self._unsigned_32 = _unsigned_32
+    self._unsigned_64 = _unsigned_64
+    self._signed_32 = _signed_32
+    self._signed_64 = _signed_64
+    self._float_type = _float_type
+    self._double_type = _double_type
+    self._bytes_type = _bytes_type
+    self._any_type = _any_type
+    self._array_type = _array_type
+    self._array_of_array_type = _array_of_array_type
+    self._map_type = _map_type
 
-  def get_boolean_type(self):
-    return self.boolean_type
+  @property
+  def boolean_type(self):
+    return self._boolean_type
 
-  def get_string_type(self):
-    return self.string_type
+  @property
+  def string_type(self):
+    return self._string_type
 
-  def get_datetime_type(self):
-    return self.datetime_type
+  @property
+  def datetime_type(self):
+    return self._datetime_type
 
-  def get_unsigned_32(self):
-    return self.unsigned_32
+  @property
+  def unsigned_32(self):
+    return self._unsigned_32
 
-  def get_unsigned_64(self):
-    return self.unsigned_64
+  @property
+  def unsigned_64(self):
+    return self._unsigned_64
 
-  def get_signed_32(self):
-    return self.signed_32
+  @property
+  def signed_32(self):
+    return self._signed_32
 
-  def get_signed_64(self):
-    return self.signed_64
+  @property
+  def signed_64(self):
+    return self._signed_64
 
-  def get_float_type(self):
-    return self.float_type
+  @property
+  def float_type(self):
+    return self._float_type
 
-  def get_double_type(self):
-    return self.double_type
+  @property
+  def double_type(self):
+    return self._double_type
 
-  def get_bytes_type(self):
-    return self.bytes_type
+  @property
+  def bytes_type(self):
+    return self._bytes_type
 
-  def get_any_type(self):
-    return self.any_type
+  @property
+  def any_type(self):
+    return self._any_type
 
-  def get_array_type(self):
-    return self.array_type
+  @property
+  def array_type(self):
+    return self._array_type
 
-  def get_array_of_array_type(self):
-    return self.array_of_array_type
+  @property
+  def array_of_array_type(self):
+    return self._array_of_array_type
 
-  def get_map_type(self):
-    return self.map_type
+  @property
+  def map_type(self):
+    return self._map_type
 
   @staticmethod
   def decode(data):
@@ -221,49 +235,49 @@ class Entry:
   def encode(self):
     data = dict()
 
-    if self.boolean_type is not None:
-      data["boolean_type"] = self.boolean_type
+    if self._boolean_type is not None:
+      data["boolean_type"] = self._boolean_type
 
-    if self.string_type is not None:
-      data["string_type"] = self.string_type
+    if self._string_type is not None:
+      data["string_type"] = self._string_type
 
-    if self.datetime_type is not None:
-      data["datetime_type"] = self.datetime_type
+    if self._datetime_type is not None:
+      data["datetime_type"] = self._datetime_type
 
-    if self.unsigned_32 is not None:
-      data["unsigned_32"] = self.unsigned_32
+    if self._unsigned_32 is not None:
+      data["unsigned_32"] = self._unsigned_32
 
-    if self.unsigned_64 is not None:
-      data["unsigned_64"] = self.unsigned_64
+    if self._unsigned_64 is not None:
+      data["unsigned_64"] = self._unsigned_64
 
-    if self.signed_32 is not None:
-      data["signed_32"] = self.signed_32
+    if self._signed_32 is not None:
+      data["signed_32"] = self._signed_32
 
-    if self.signed_64 is not None:
-      data["signed_64"] = self.signed_64
+    if self._signed_64 is not None:
+      data["signed_64"] = self._signed_64
 
-    if self.float_type is not None:
-      data["float_type"] = self.float_type
+    if self._float_type is not None:
+      data["float_type"] = self._float_type
 
-    if self.double_type is not None:
-      data["double_type"] = self.double_type
+    if self._double_type is not None:
+      data["double_type"] = self._double_type
 
-    if self.bytes_type is not None:
-      data["bytes_type"] = self.bytes_type
+    if self._bytes_type is not None:
+      data["bytes_type"] = self._bytes_type
 
-    if self.any_type is not None:
-      data["any_type"] = self.any_type
+    if self._any_type is not None:
+      data["any_type"] = self._any_type
 
-    if self.array_type is not None:
-      data["array_type"] = [v.encode() for v in self.array_type]
+    if self._array_type is not None:
+      data["array_type"] = [v.encode() for v in self._array_type]
 
-    if self.array_of_array_type is not None:
-      data["array_of_array_type"] = [[v.encode() for v in v] for v in self.array_of_array_type]
+    if self._array_of_array_type is not None:
+      data["array_of_array_type"] = [[v.encode() for v in v] for v in self._array_of_array_type]
 
-    if self.map_type is not None:
-      data["map_type"] = dict((k, v.encode()) for (k, v) in self.map_type.items())
+    if self._map_type is not None:
+      data["map_type"] = dict((k, v.encode()) for (k, v) in self._map_type.items())
 
     return data
 
   def __repr__(self):
-    return "<Entry boolean_type:{!r}, string_type:{!r}, datetime_type:{!r}, unsigned_32:{!r}, unsigned_64:{!r}, signed_32:{!r}, signed_64:{!r}, float_type:{!r}, double_type:{!r}, bytes_type:{!r}, any_type:{!r}, array_type:{!r}, array_of_array_type:{!r}, map_type:{!r}>".format(self.boolean_type, self.string_type, self.datetime_type, self.unsigned_32, self.unsigned_64, self.signed_32, self.signed_64, self.float_type, self.double_type, self.bytes_type, self.any_type, self.array_type, self.array_of_array_type, self.map_type)
+    return "<Entry boolean_type:{!r}, string_type:{!r}, datetime_type:{!r}, unsigned_32:{!r}, unsigned_64:{!r}, signed_32:{!r}, signed_64:{!r}, float_type:{!r}, double_type:{!r}, bytes_type:{!r}, any_type:{!r}, array_type:{!r}, array_of_array_type:{!r}, map_type:{!r}>".format(self._boolean_type, self._string_type, self._datetime_type, self._unsigned_32, self._unsigned_64, self._signed_32, self._signed_64, self._float_type, self._double_type, self._bytes_type, self._any_type, self._array_type, self._array_of_array_type, self._map_type)

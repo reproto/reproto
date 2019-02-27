@@ -1,7 +1,7 @@
 import _yield as t
 
 class Entry:
-  def __init__(self, _and, _as, _assert, _break, _class, _continue, _def, _del, _elif, _else, _except, _exec, _finally, _for, _from, _global, _if, _import, imported, _in, _is, _lambda, _nonlocal, _not, _or, _pass, _print, _raise, _return, _try, _while, _with, _yield):
+  def __init__(self, _and, _as, _assert, _break, _class, _continue, _def, _del, _elif, _else, _except, _exec, _finally, _for, _from, _global, _if, _import, _imported, _in, _is, _lambda, _nonlocal, _not, _or, _pass, _print, _raise, _return, _try, _while, _with, _yield):
     self._and = _and
     self._as = _as
     self._assert = _assert
@@ -20,7 +20,7 @@ class Entry:
     self._global = _global
     self._if = _if
     self._import = _import
-    self.imported = imported
+    self._imported = _imported
     self._in = _in
     self._is = _is
     self._lambda = _lambda
@@ -36,267 +36,300 @@ class Entry:
     self._with = _with
     self._yield = _yield
 
-  def get_and(self):
+  @property
+  def and(self):
     return self._and
 
-  def get_as(self):
+  @property
+  def as(self):
     return self._as
 
-  def get_assert(self):
+  @property
+  def assert(self):
     return self._assert
 
-  def get_break(self):
+  @property
+  def break(self):
     return self._break
 
-  def get_class(self):
+  @property
+  def class(self):
     return self._class
 
-  def get_continue(self):
+  @property
+  def continue(self):
     return self._continue
 
-  def get_def(self):
+  @property
+  def def(self):
     return self._def
 
-  def get_del(self):
+  @property
+  def del(self):
     return self._del
 
-  def get_elif(self):
+  @property
+  def elif(self):
     return self._elif
 
-  def get_else(self):
+  @property
+  def else(self):
     return self._else
 
-  def get_except(self):
+  @property
+  def except(self):
     return self._except
 
-  def get_exec(self):
+  @property
+  def exec(self):
     return self._exec
 
-  def get_finally(self):
+  @property
+  def finally(self):
     return self._finally
 
-  def get_for(self):
+  @property
+  def for(self):
     return self._for
 
-  def get_from(self):
+  @property
+  def from(self):
     return self._from
 
-  def get_global(self):
+  @property
+  def global(self):
     return self._global
 
-  def get_if(self):
+  @property
+  def if(self):
     return self._if
 
-  def get_import(self):
+  @property
+  def import(self):
     return self._import
 
-  def get_imported(self):
-    return self.imported
+  @property
+  def imported(self):
+    return self._imported
 
-  def get_in(self):
+  @property
+  def in(self):
     return self._in
 
-  def get_is(self):
+  @property
+  def is(self):
     return self._is
 
-  def get_lambda(self):
+  @property
+  def lambda(self):
     return self._lambda
 
-  def get_nonlocal(self):
+  @property
+  def nonlocal(self):
     return self._nonlocal
 
-  def get_not(self):
+  @property
+  def not(self):
     return self._not
 
-  def get_or(self):
+  @property
+  def or(self):
     return self._or
 
-  def get_pass(self):
+  @property
+  def pass(self):
     return self._pass
 
-  def get_print(self):
+  @property
+  def print(self):
     return self._print
 
-  def get_raise(self):
+  @property
+  def raise(self):
     return self._raise
 
-  def get_return(self):
+  @property
+  def return(self):
     return self._return
 
-  def get_try(self):
+  @property
+  def try(self):
     return self._try
 
-  def get_while(self):
+  @property
+  def while(self):
     return self._while
 
-  def get_with(self):
+  @property
+  def with(self):
     return self._with
 
-  def get_yield(self):
+  @property
+  def yield(self):
     return self._yield
 
   @staticmethod
   def decode(data):
-    f__and = None
+    f_and = None
 
     if "and" in data:
-      f__and = data["and"]
+      f_and = data["and"]
 
-      if f__and is not None:
-        if not isinstance(f__and, unicode):
+      if f_and is not None:
+        if not isinstance(f_and, unicode):
           raise Exception("not a string")
 
-    f__as = None
+    f_as = None
 
     if "as" in data:
-      f__as = data["as"]
+      f_as = data["as"]
 
-      if f__as is not None:
-        if not isinstance(f__as, unicode):
+      if f_as is not None:
+        if not isinstance(f_as, unicode):
           raise Exception("not a string")
 
-    f__assert = None
+    f_assert = None
 
     if "assert" in data:
-      f__assert = data["assert"]
+      f_assert = data["assert"]
 
-      if f__assert is not None:
-        if not isinstance(f__assert, unicode):
+      if f_assert is not None:
+        if not isinstance(f_assert, unicode):
           raise Exception("not a string")
 
-    f__break = None
+    f_break = None
 
     if "break" in data:
-      f__break = data["break"]
+      f_break = data["break"]
 
-      if f__break is not None:
-        if not isinstance(f__break, unicode):
+      if f_break is not None:
+        if not isinstance(f_break, unicode):
           raise Exception("not a string")
 
-    f__class = None
+    f_class = None
 
     if "class" in data:
-      f__class = data["class"]
+      f_class = data["class"]
 
-      if f__class is not None:
-        if not isinstance(f__class, unicode):
+      if f_class is not None:
+        if not isinstance(f_class, unicode):
           raise Exception("not a string")
 
-    f__continue = None
+    f_continue = None
 
     if "continue" in data:
-      f__continue = data["continue"]
+      f_continue = data["continue"]
 
-      if f__continue is not None:
-        if not isinstance(f__continue, unicode):
+      if f_continue is not None:
+        if not isinstance(f_continue, unicode):
           raise Exception("not a string")
 
-    f__def = None
+    f_def = None
 
     if "def" in data:
-      f__def = data["def"]
+      f_def = data["def"]
 
-      if f__def is not None:
-        if not isinstance(f__def, unicode):
+      if f_def is not None:
+        if not isinstance(f_def, unicode):
           raise Exception("not a string")
 
-    f__del = None
+    f_del = None
 
     if "del" in data:
-      f__del = data["del"]
+      f_del = data["del"]
 
-      if f__del is not None:
-        if not isinstance(f__del, unicode):
+      if f_del is not None:
+        if not isinstance(f_del, unicode):
           raise Exception("not a string")
 
-    f__elif = None
+    f_elif = None
 
     if "elif" in data:
-      f__elif = data["elif"]
+      f_elif = data["elif"]
 
-      if f__elif is not None:
-        if not isinstance(f__elif, unicode):
+      if f_elif is not None:
+        if not isinstance(f_elif, unicode):
           raise Exception("not a string")
 
-    f__else = None
+    f_else = None
 
     if "else" in data:
-      f__else = data["else"]
+      f_else = data["else"]
 
-      if f__else is not None:
-        if not isinstance(f__else, unicode):
+      if f_else is not None:
+        if not isinstance(f_else, unicode):
           raise Exception("not a string")
 
-    f__except = None
+    f_except = None
 
     if "except" in data:
-      f__except = data["except"]
+      f_except = data["except"]
 
-      if f__except is not None:
-        if not isinstance(f__except, unicode):
+      if f_except is not None:
+        if not isinstance(f_except, unicode):
           raise Exception("not a string")
 
-    f__exec = None
+    f_exec = None
 
     if "exec" in data:
-      f__exec = data["exec"]
+      f_exec = data["exec"]
 
-      if f__exec is not None:
-        if not isinstance(f__exec, unicode):
+      if f_exec is not None:
+        if not isinstance(f_exec, unicode):
           raise Exception("not a string")
 
-    f__finally = None
+    f_finally = None
 
     if "finally" in data:
-      f__finally = data["finally"]
+      f_finally = data["finally"]
 
-      if f__finally is not None:
-        if not isinstance(f__finally, unicode):
+      if f_finally is not None:
+        if not isinstance(f_finally, unicode):
           raise Exception("not a string")
 
-    f__for = None
+    f_for = None
 
     if "for" in data:
-      f__for = data["for"]
+      f_for = data["for"]
 
-      if f__for is not None:
-        if not isinstance(f__for, unicode):
+      if f_for is not None:
+        if not isinstance(f_for, unicode):
           raise Exception("not a string")
 
-    f__from = None
+    f_from = None
 
     if "from" in data:
-      f__from = data["from"]
+      f_from = data["from"]
 
-      if f__from is not None:
-        if not isinstance(f__from, unicode):
+      if f_from is not None:
+        if not isinstance(f_from, unicode):
           raise Exception("not a string")
 
-    f__global = None
+    f_global = None
 
     if "global" in data:
-      f__global = data["global"]
+      f_global = data["global"]
 
-      if f__global is not None:
-        if not isinstance(f__global, unicode):
+      if f_global is not None:
+        if not isinstance(f_global, unicode):
           raise Exception("not a string")
 
-    f__if = None
+    f_if = None
 
     if "if" in data:
-      f__if = data["if"]
+      f_if = data["if"]
 
-      if f__if is not None:
-        if not isinstance(f__if, unicode):
+      if f_if is not None:
+        if not isinstance(f_if, unicode):
           raise Exception("not a string")
 
-    f__import = None
+    f_import = None
 
     if "import" in data:
-      f__import = data["import"]
+      f_import = data["import"]
 
-      if f__import is not None:
-        if not isinstance(f__import, unicode):
+      if f_import is not None:
+        if not isinstance(f_import, unicode):
           raise Exception("not a string")
 
     f_imported = None
@@ -307,133 +340,133 @@ class Entry:
       if f_imported is not None:
         f_imported = t.Empty.decode(f_imported)
 
-    f__in = None
+    f_in = None
 
     if "in" in data:
-      f__in = data["in"]
+      f_in = data["in"]
 
-      if f__in is not None:
-        if not isinstance(f__in, unicode):
+      if f_in is not None:
+        if not isinstance(f_in, unicode):
           raise Exception("not a string")
 
-    f__is = None
+    f_is = None
 
     if "is" in data:
-      f__is = data["is"]
+      f_is = data["is"]
 
-      if f__is is not None:
-        if not isinstance(f__is, unicode):
+      if f_is is not None:
+        if not isinstance(f_is, unicode):
           raise Exception("not a string")
 
-    f__lambda = None
+    f_lambda = None
 
     if "lambda" in data:
-      f__lambda = data["lambda"]
+      f_lambda = data["lambda"]
 
-      if f__lambda is not None:
-        if not isinstance(f__lambda, unicode):
+      if f_lambda is not None:
+        if not isinstance(f_lambda, unicode):
           raise Exception("not a string")
 
-    f__nonlocal = None
+    f_nonlocal = None
 
     if "nonlocal" in data:
-      f__nonlocal = data["nonlocal"]
+      f_nonlocal = data["nonlocal"]
 
-      if f__nonlocal is not None:
-        if not isinstance(f__nonlocal, unicode):
+      if f_nonlocal is not None:
+        if not isinstance(f_nonlocal, unicode):
           raise Exception("not a string")
 
-    f__not = None
+    f_not = None
 
     if "not" in data:
-      f__not = data["not"]
+      f_not = data["not"]
 
-      if f__not is not None:
-        if not isinstance(f__not, unicode):
+      if f_not is not None:
+        if not isinstance(f_not, unicode):
           raise Exception("not a string")
 
-    f__or = None
+    f_or = None
 
     if "or" in data:
-      f__or = data["or"]
+      f_or = data["or"]
 
-      if f__or is not None:
-        if not isinstance(f__or, unicode):
+      if f_or is not None:
+        if not isinstance(f_or, unicode):
           raise Exception("not a string")
 
-    f__pass = None
+    f_pass = None
 
     if "pass" in data:
-      f__pass = data["pass"]
+      f_pass = data["pass"]
 
-      if f__pass is not None:
-        if not isinstance(f__pass, unicode):
+      if f_pass is not None:
+        if not isinstance(f_pass, unicode):
           raise Exception("not a string")
 
-    f__print = None
+    f_print = None
 
     if "print" in data:
-      f__print = data["print"]
+      f_print = data["print"]
 
-      if f__print is not None:
-        if not isinstance(f__print, unicode):
+      if f_print is not None:
+        if not isinstance(f_print, unicode):
           raise Exception("not a string")
 
-    f__raise = None
+    f_raise = None
 
     if "raise" in data:
-      f__raise = data["raise"]
+      f_raise = data["raise"]
 
-      if f__raise is not None:
-        if not isinstance(f__raise, unicode):
+      if f_raise is not None:
+        if not isinstance(f_raise, unicode):
           raise Exception("not a string")
 
-    f__return = None
+    f_return = None
 
     if "return" in data:
-      f__return = data["return"]
+      f_return = data["return"]
 
-      if f__return is not None:
-        if not isinstance(f__return, unicode):
+      if f_return is not None:
+        if not isinstance(f_return, unicode):
           raise Exception("not a string")
 
-    f__try = None
+    f_try = None
 
     if "try" in data:
-      f__try = data["try"]
+      f_try = data["try"]
 
-      if f__try is not None:
-        if not isinstance(f__try, unicode):
+      if f_try is not None:
+        if not isinstance(f_try, unicode):
           raise Exception("not a string")
 
-    f__while = None
+    f_while = None
 
     if "while" in data:
-      f__while = data["while"]
+      f_while = data["while"]
 
-      if f__while is not None:
-        if not isinstance(f__while, unicode):
+      if f_while is not None:
+        if not isinstance(f_while, unicode):
           raise Exception("not a string")
 
-    f__with = None
+    f_with = None
 
     if "with" in data:
-      f__with = data["with"]
+      f_with = data["with"]
 
-      if f__with is not None:
-        if not isinstance(f__with, unicode):
+      if f_with is not None:
+        if not isinstance(f_with, unicode):
           raise Exception("not a string")
 
-    f__yield = None
+    f_yield = None
 
     if "yield" in data:
-      f__yield = data["yield"]
+      f_yield = data["yield"]
 
-      if f__yield is not None:
-        if not isinstance(f__yield, unicode):
+      if f_yield is not None:
+        if not isinstance(f_yield, unicode):
           raise Exception("not a string")
 
-    return Entry(f__and, f__as, f__assert, f__break, f__class, f__continue, f__def, f__del, f__elif, f__else, f__except, f__exec, f__finally, f__for, f__from, f__global, f__if, f__import, f_imported, f__in, f__is, f__lambda, f__nonlocal, f__not, f__or, f__pass, f__print, f__raise, f__return, f__try, f__while, f__with, f__yield)
+    return Entry(f_and, f_as, f_assert, f_break, f_class, f_continue, f_def, f_del, f_elif, f_else, f_except, f_exec, f_finally, f_for, f_from, f_global, f_if, f_import, f_imported, f_in, f_is, f_lambda, f_nonlocal, f_not, f_or, f_pass, f_print, f_raise, f_return, f_try, f_while, f_with, f_yield)
 
   def encode(self):
     data = dict()
@@ -492,8 +525,8 @@ class Entry:
     if self._import is not None:
       data["import"] = self._import
 
-    if self.imported is not None:
-      data["imported"] = self.imported.encode()
+    if self._imported is not None:
+      data["imported"] = self._imported.encode()
 
     if self._in is not None:
       data["in"] = self._in
@@ -540,4 +573,4 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry and:{!r}, as:{!r}, assert:{!r}, break:{!r}, class:{!r}, continue:{!r}, def:{!r}, del:{!r}, elif:{!r}, else:{!r}, except:{!r}, exec:{!r}, finally:{!r}, for:{!r}, from:{!r}, global:{!r}, if:{!r}, import:{!r}, imported:{!r}, in:{!r}, is:{!r}, lambda:{!r}, nonlocal:{!r}, not:{!r}, or:{!r}, pass:{!r}, print:{!r}, raise:{!r}, return:{!r}, try:{!r}, while:{!r}, with:{!r}, yield:{!r}>".format(self._and, self._as, self._assert, self._break, self._class, self._continue, self._def, self._del, self._elif, self._else, self._except, self._exec, self._finally, self._for, self._from, self._global, self._if, self._import, self.imported, self._in, self._is, self._lambda, self._nonlocal, self._not, self._or, self._pass, self._print, self._raise, self._return, self._try, self._while, self._with, self._yield)
+    return "<Entry and:{!r}, as:{!r}, assert:{!r}, break:{!r}, class:{!r}, continue:{!r}, def:{!r}, del:{!r}, elif:{!r}, else:{!r}, except:{!r}, exec:{!r}, finally:{!r}, for:{!r}, from:{!r}, global:{!r}, if:{!r}, import:{!r}, imported:{!r}, in:{!r}, is:{!r}, lambda:{!r}, nonlocal:{!r}, not:{!r}, or:{!r}, pass:{!r}, print:{!r}, raise:{!r}, return:{!r}, try:{!r}, while:{!r}, with:{!r}, yield:{!r}>".format(self._and, self._as, self._assert, self._break, self._class, self._continue, self._def, self._del, self._elif, self._else, self._except, self._exec, self._finally, self._for, self._from, self._global, self._if, self._import, self._imported, self._in, self._is, self._lambda, self._nonlocal, self._not, self._or, self._pass, self._print, self._raise, self._return, self._try, self._while, self._with, self._yield)

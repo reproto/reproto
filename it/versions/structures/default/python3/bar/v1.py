@@ -1,9 +1,10 @@
 class Other:
-  def __init__(self, name):
-    self.name = name
+  def __init__(self, _name):
+    self._name = _name
 
-  def get_name(self):
-    return self.name
+  @property
+  def name(self):
+    return self._name
 
   @staticmethod
   def decode(data):
@@ -17,12 +18,12 @@ class Other:
   def encode(self):
     data = dict()
 
-    if self.name is None:
+    if self._name is None:
       raise Exception("name: is a required field")
 
-    data["name"] = self.name
+    data["name"] = self._name
 
     return data
 
   def __repr__(self):
-    return "<Other name:{!r}>".format(self.name)
+    return "<Other name:{!r}>".format(self._name)

@@ -4,23 +4,27 @@ import upper_camel as upper_camel
 import upper_snake as upper_snake
 
 class Entry:
-  def __init__(self, lower_camel, lower_snake, upper_camel, upper_snake):
-    self.lower_camel = lower_camel
-    self.lower_snake = lower_snake
-    self.upper_camel = upper_camel
-    self.upper_snake = upper_snake
+  def __init__(self, _lower_camel, _lower_snake, _upper_camel, _upper_snake):
+    self._lower_camel = _lower_camel
+    self._lower_snake = _lower_snake
+    self._upper_camel = _upper_camel
+    self._upper_snake = _upper_snake
 
-  def get_lower_camel(self):
-    return self.lower_camel
+  @property
+  def lower_camel(self):
+    return self._lower_camel
 
-  def get_lower_snake(self):
-    return self.lower_snake
+  @property
+  def lower_snake(self):
+    return self._lower_snake
 
-  def get_upper_camel(self):
-    return self.upper_camel
+  @property
+  def upper_camel(self):
+    return self._upper_camel
 
-  def get_upper_snake(self):
-    return self.upper_snake
+  @property
+  def upper_snake(self):
+    return self._upper_snake
 
   @staticmethod
   def decode(data):
@@ -61,19 +65,19 @@ class Entry:
   def encode(self):
     data = dict()
 
-    if self.lower_camel is not None:
-      data["lower_camel"] = self.lower_camel.encode()
+    if self._lower_camel is not None:
+      data["lower_camel"] = self._lower_camel.encode()
 
-    if self.lower_snake is not None:
-      data["lower_snake"] = self.lower_snake.encode()
+    if self._lower_snake is not None:
+      data["lower_snake"] = self._lower_snake.encode()
 
-    if self.upper_camel is not None:
-      data["upper_camel"] = self.upper_camel.encode()
+    if self._upper_camel is not None:
+      data["upper_camel"] = self._upper_camel.encode()
 
-    if self.upper_snake is not None:
-      data["upper_snake"] = self.upper_snake.encode()
+    if self._upper_snake is not None:
+      data["upper_snake"] = self._upper_snake.encode()
 
     return data
 
   def __repr__(self):
-    return "<Entry lower_camel:{!r}, lower_snake:{!r}, upper_camel:{!r}, upper_snake:{!r}>".format(self.lower_camel, self.lower_snake, self.upper_camel, self.upper_snake)
+    return "<Entry lower_camel:{!r}, lower_snake:{!r}, upper_camel:{!r}, upper_snake:{!r}>".format(self._lower_camel, self._lower_snake, self._upper_camel, self._upper_snake)
