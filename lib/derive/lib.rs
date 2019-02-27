@@ -211,7 +211,8 @@ impl<'a, 'input: 'a> FieldInit<'a, 'input> {
                         span: &self.span,
                         ctx: ctx.clone(),
                         types: self.types,
-                    }.derive(sir)?;
+                    }
+                    .derive(sir)?;
 
                     members.push(TypeMember::InnerDecl(decl));
 
@@ -289,7 +290,8 @@ impl<'a, 'input: 'a> DeclDeriver<'a, 'input> {
                     span: &self.span,
                     ctx: self.ctx,
                     types: self.types,
-                }.derive(array)?;
+                }
+                .derive(array)?;
 
                 Decl::Tuple(tuple)
             }
@@ -298,7 +300,8 @@ impl<'a, 'input: 'a> DeclDeriver<'a, 'input> {
                     span: &self.span,
                     ctx: self.ctx,
                     types: self.types,
-                }.derive(object)?;
+                }
+                .derive(object)?;
 
                 Decl::Type(type_)
             }
@@ -307,7 +310,8 @@ impl<'a, 'input: 'a> DeclDeriver<'a, 'input> {
                     span: &self.span,
                     ctx: self.ctx,
                     types: self.types,
-                }.derive(type_field, sub_types)?;
+                }
+                .derive(type_field, sub_types)?;
 
                 Decl::Interface(interface)
             }
@@ -464,7 +468,8 @@ impl<'a, 'input: 'a> InterfaceRefiner<'a, 'input> {
                 span: self.span,
                 ctx: ctx,
                 types: self.types,
-            }.derive(st)?;
+            }
+            .derive(st)?;
 
             base.sub_types.push(sub_type);
         }
@@ -534,7 +539,8 @@ pub fn derive<'input>(derive: Derive, object: &'input Source) -> Result<Decl<'in
         span: &span,
         ctx: ctx,
         types: &mut types,
-    }.derive(&sir)?;
+    }
+    .derive(&sir)?;
 
     Ok(decl)
 }

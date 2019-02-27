@@ -47,15 +47,7 @@ mod internal {
         pub const EXT: Option<&str> = Some(".exe");
     }
 
-    #[cfg(
-        not(
-            any(
-                target_os = "linux",
-                target_os = "macos",
-                target_os = "windows"
-            )
-        )
-    )]
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     mod os {
         pub const PLATFORM: Option<&str> = None;
         pub const EXT: Option<&str> = None;
@@ -240,15 +232,7 @@ mod internal {
                 // nothing to do on windows.
             }
 
-            #[cfg(
-                not(
-                    any(
-                        target_os = "linux",
-                        target_os = "macos",
-                        target_os = "windows"
-                    )
-                )
-            )]
+            #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
             fn set_executable(_p: &mut fs::Permissions) {
                 warn!("cannot update permissions on this platform");
             }
@@ -367,7 +351,8 @@ mod internal {
                             .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
                                 out.extend(chunk.as_ref());
                                 ok::<_, Error>(out)
-                            }).map(move |body| (body, status))
+                            })
+                            .map(move |body| (body, status))
                             .and_then(|(body, status)| {
                                 if !status.is_success() {
                                     if let Ok(body) = String::from_utf8(body) {
@@ -429,7 +414,8 @@ mod internal {
                     }
 
                     ok(out)
-                }).map_err(move |e| format!("request to `{}` failed: {}", url, e.display()).into());
+                })
+                .map_err(move |e| format!("request to `{}` failed: {}", url, e.display()).into());
 
             Box::new(future)
         }

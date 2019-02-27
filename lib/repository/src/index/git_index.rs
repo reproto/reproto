@@ -55,7 +55,8 @@ impl Index for GitIndex {
             return Err(format!(
                 "index does not support publishing: {}",
                 self.url.to_string()
-            ).into());
+            )
+            .into());
         }
 
         self.file_index

@@ -616,25 +616,33 @@ impl Workspace {
         loaded.register_reference(range, package, current.clone())?;
 
         match *decl {
-            Type(ref ty) => for f in ty.fields() {
-                self.process_ty(current, loaded, content, &f.ty)?;
-            },
-            Tuple(ref tuple) => for f in tuple.fields() {
-                self.process_ty(current, loaded, content, &f.ty)?;
-            },
-            Interface(ref interface) => for f in interface.fields() {
-                self.process_ty(current, loaded, content, &f.ty)?;
-            },
+            Type(ref ty) => {
+                for f in ty.fields() {
+                    self.process_ty(current, loaded, content, &f.ty)?;
+                }
+            }
+            Tuple(ref tuple) => {
+                for f in tuple.fields() {
+                    self.process_ty(current, loaded, content, &f.ty)?;
+                }
+            }
+            Interface(ref interface) => {
+                for f in interface.fields() {
+                    self.process_ty(current, loaded, content, &f.ty)?;
+                }
+            }
             Enum(ref _en) => {}
-            Service(ref service) => for e in service.endpoints() {
-                for a in &e.arguments {
-                    self.process_ty(current, loaded, content, a.channel.ty())?;
-                }
+            Service(ref service) => {
+                for e in service.endpoints() {
+                    for a in &e.arguments {
+                        self.process_ty(current, loaded, content, a.channel.ty())?;
+                    }
 
-                if let Some(response) = e.response.as_ref() {
-                    self.process_ty(current, loaded, content, response.ty())?;
+                    if let Some(response) = e.response.as_ref() {
+                        self.process_ty(current, loaded, content, response.ty())?;
+                    }
                 }
-            },
+            }
         }
 
         Ok(())

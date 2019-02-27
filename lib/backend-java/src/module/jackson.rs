@@ -206,7 +206,8 @@ impl Jackson {
                 value.into_tokens(),
                 jgen.into_tokens(),
                 provider.into_tokens()
-            ].join(", "),
+            ]
+            .join(", "),
             ") throws ",
             self.io_exception.clone(),
             " {",
@@ -724,7 +725,8 @@ impl Codegen for JacksonSupport {
 
             out.push(c);
             Ok(())
-        }).process(handle)?;
+        })
+        .process(handle)?;
 
         return Ok(());
     }

@@ -98,7 +98,8 @@ impl<'el> Compiler<'el> {
             JavaFile::new(package, "Observer", |out| {
                 out.push(Observer);
                 Ok(())
-            }).process(handle)?;
+            })
+            .process(handle)?;
         }
 
         for decl in self.env.toplevel_decl_iter() {
@@ -111,7 +112,8 @@ impl<'el> Compiler<'el> {
     fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
         JavaFile::new(decl.name().package.clone(), decl.ident(), |out| {
             self.process_decl(decl, 0usize, out)
-        }).process(handle)
+        })
+        .process(handle)
     }
 
     fn field_mods(&self) -> Vec<Modifier> {
@@ -515,26 +517,30 @@ impl<'el> Compiler<'el> {
             .push(self.new_field_spec(&body.enum_type, "value"));
 
         match body.variants {
-            core::RpVariants::String { ref variants } => for variant in variants {
-                let name = self.variant_naming.convert(variant.ident());
-                push!(
-                    spec.variants,
-                    name,
-                    "(",
-                    variant.value.clone().quoted(),
-                    ")"
-                );
-            },
-            core::RpVariants::Number { ref variants } => for variant in variants {
-                let name = self.variant_naming.convert(variant.ident());
+            core::RpVariants::String { ref variants } => {
+                for variant in variants {
+                    let name = self.variant_naming.convert(variant.ident());
+                    push!(
+                        spec.variants,
+                        name,
+                        "(",
+                        variant.value.clone().quoted(),
+                        ")"
+                    );
+                }
+            }
+            core::RpVariants::Number { ref variants } => {
+                for variant in variants {
+                    let name = self.variant_naming.convert(variant.ident());
 
-                let value = match body.enum_type {
-                    java::LONG => format!("{}L", variant.value),
-                    _ => variant.value.to_string(),
-                };
+                    let value = match body.enum_type {
+                        java::LONG => format!("{}L", variant.value),
+                        _ => variant.value.to_string(),
+                    };
 
-                push!(spec.variants, name, "(", value, ")");
-            },
+                    push!(spec.variants, name, "(", value, ")");
+                }
+            }
         }
 
         spec.constructors

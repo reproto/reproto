@@ -4,10 +4,12 @@ use errors::Result;
 use translator;
 use {Diagnostics, Flavor, Loc, RpCode, RpReg, Translate, Translator};
 
-decl_body!(pub struct RpTupleBody<F> {
-    pub fields: Vec<Loc<F::Field>>,
-    pub codes: Vec<Loc<RpCode>>,
-});
+decl_body!(
+    pub struct RpTupleBody<F> {
+        pub fields: Vec<Loc<F::Field>>,
+        pub codes: Vec<Loc<RpCode>>,
+    }
+);
 
 impl<F: 'static> RpTupleBody<F>
 where

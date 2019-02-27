@@ -44,7 +44,8 @@ impl Filesystem for RealFilesystem {
         let root = root
             .ok_or_else(|| {
                 "Missing root directory, specify using `--out`, or `output` key in manifest"
-            })?.to_owned();
+            })?
+            .to_owned();
 
         return Ok(Box::new(RealHandle { root }));
 

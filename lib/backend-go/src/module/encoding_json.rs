@@ -103,18 +103,22 @@ impl EnumCodegen for Codegen {
                     t.push("switch s {");
 
                     match body.variants {
-                        core::RpVariants::String { ref variants } => for v in variants {
-                            t.push_into(|t| {
-                                push!(t, "case ", v.value.as_str().quoted(), ":");
-                                nested!(t, "*this = ", name, "_", v.ident.as_str());
-                            });
-                        },
-                        core::RpVariants::Number { ref variants } => for v in variants {
-                            t.push_into(|t| {
-                                push!(t, "case ", v.value.to_string(), ":");
-                                nested!(t, "*this = ", name, "_", v.ident.as_str());
-                            });
-                        },
+                        core::RpVariants::String { ref variants } => {
+                            for v in variants {
+                                t.push_into(|t| {
+                                    push!(t, "case ", v.value.as_str().quoted(), ":");
+                                    nested!(t, "*this = ", name, "_", v.ident.as_str());
+                                });
+                            }
+                        }
+                        core::RpVariants::Number { ref variants } => {
+                            for v in variants {
+                                t.push_into(|t| {
+                                    push!(t, "case ", v.value.to_string(), ":");
+                                    nested!(t, "*this = ", name, "_", v.ident.as_str());
+                                });
+                            }
+                        }
                     }
 
                     t.push_into(|t| {
@@ -153,18 +157,22 @@ impl EnumCodegen for Codegen {
                     t.push("switch this {");
 
                     match body.variants {
-                        core::RpVariants::String { ref variants } => for v in variants {
-                            t.push_into(|t| {
-                                t.push(toks!["case ", name, "_", v.ident.as_str(), ":"]);
-                                t.nested(toks!["s = ", v.value.as_str().quoted()]);
-                            });
-                        },
-                        core::RpVariants::Number { ref variants } => for v in variants {
-                            t.push_into(|t| {
-                                t.push(toks!["case ", name, "_", v.ident.as_str(), ":"]);
-                                t.nested(toks!["s = ", v.value.to_string()]);
-                            });
-                        },
+                        core::RpVariants::String { ref variants } => {
+                            for v in variants {
+                                t.push_into(|t| {
+                                    t.push(toks!["case ", name, "_", v.ident.as_str(), ":"]);
+                                    t.nested(toks!["s = ", v.value.as_str().quoted()]);
+                                });
+                            }
+                        }
+                        core::RpVariants::Number { ref variants } => {
+                            for v in variants {
+                                t.push_into(|t| {
+                                    t.push(toks!["case ", name, "_", v.ident.as_str(), ":"]);
+                                    t.nested(toks!["s = ", v.value.to_string()]);
+                                });
+                            }
+                        }
                     }
 
                     t.push_into(|t| {

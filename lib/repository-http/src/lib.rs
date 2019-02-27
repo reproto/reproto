@@ -54,7 +54,8 @@ impl HttpObjects {
                     .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
                         out.extend(chunk.as_ref());
                         ok::<_, Error>(out)
-                    }).map(move |body| (body, status))
+                    })
+                    .map(move |body| (body, status))
             });
 
         Box::new(body_and_status)

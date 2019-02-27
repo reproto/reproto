@@ -180,5 +180,6 @@ pub fn index_from_url(config: IndexConfig, url: &Url, publishing: bool) -> Resul
             .and_then(|path| index_from_path(&path)),
         "git" => index_from_git(config, scheme, url, publishing),
         scheme => Err(format!("bad scheme: {}", scheme).into()),
-    }.chain_err(|| format!("loading index from URL: {}", url))
+    }
+    .chain_err(|| format!("loading index from URL: {}", url))
 }

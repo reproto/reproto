@@ -1,8 +1,8 @@
 //! Encapsulate home environment
 
-use dirs;
 use config::read_config;
 use core::errors::Result;
+use dirs;
 use std::path::PathBuf;
 
 pub struct ConfigEnvironment {

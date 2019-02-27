@@ -117,5 +117,6 @@ where
             Some(objects) => Ok(objects),
             None => return Err(format!("bad scheme: {}", scheme).into()),
         },
-    }.chain_err(|| format!("load objects from url: {}", url))
+    }
+    .chain_err(|| format!("load objects from url: {}", url))
 }

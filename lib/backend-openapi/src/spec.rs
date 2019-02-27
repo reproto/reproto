@@ -309,16 +309,10 @@ pub struct Schema<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub discriminator: Option<Discriminator<'a>>,
 
-    #[serde(
-        rename = "required",
-        skip_serializing_if = "Required::is_empty"
-    )]
+    #[serde(rename = "required", skip_serializing_if = "Required::is_empty")]
     pub required: Required<'a>,
 
-    #[serde(
-        rename = "properties",
-        skip_serializing_if = "Properties::is_empty"
-    )]
+    #[serde(rename = "properties", skip_serializing_if = "Properties::is_empty")]
     pub properties: Properties<'a>,
 
     #[serde(skip_serializing_if = "Option::is_none")]

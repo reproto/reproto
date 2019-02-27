@@ -1,6 +1,6 @@
 //! Reporter of diagnostics.
 
-use {Diagnostics, SourceDiagnostics, Diagnostic, Source};
+use {Diagnostic, Diagnostics, Source, SourceDiagnostics};
 
 pub trait Reporter {
     /// Report a collection of diagnostics.
@@ -22,7 +22,9 @@ pub enum Reported {
 
 impl Reported {
     /// Iterate over all diagnostics with sources.
-    pub fn diagnostics_with_sources<'a>(&'a self) -> impl Iterator<Item = (&'a Source, &'a Diagnostic)> {
+    pub fn diagnostics_with_sources<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (&'a Source, &'a Diagnostic)> {
         let mut out = Vec::new();
 
         match *self {
@@ -30,12 +32,12 @@ impl Reported {
                 for item in diagnostics.items() {
                     out.push((&diagnostics.source, item));
                 }
-            },
+            }
             Reported::SourceDiagnostics(ref diagnostics) => {
                 for item in diagnostics.items() {
                     out.push((&item.0, &item.1));
                 }
-            },
+            }
         }
 
         out.into_iter()

@@ -76,7 +76,7 @@ impl ReprotoService {
             Err(_) => {
                 return Box::new(err(Error::BadRequest(
                     format!("bad object id: {}", id).into(),
-                )))
+                )));
             }
         };
 
@@ -96,7 +96,7 @@ impl ReprotoService {
                 None => {
                     return Box::new(err(Error::InternalServerError(
                         "object does not have a path".into(),
-                    )))
+                    )));
                 }
             },
             None => return Box::new(err(Error::NotFound)),
@@ -156,7 +156,7 @@ impl ReprotoService {
                 let mut objects = match objects.lock() {
                     Ok(objects) => objects,
                     Err(_) => {
-                        return Box::new(err(Error::InternalServerError("lock poisoned".into())))
+                        return Box::new(err(Error::InternalServerError("lock poisoned".into())));
                     }
                 };
 
@@ -192,7 +192,7 @@ impl ReprotoService {
                 Err(e) => {
                     return Box::new(err(Error::BadRequest(
                         format!("bad content-length: {}", e).into(),
-                    )))
+                    )));
                 }
             };
 

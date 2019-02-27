@@ -100,7 +100,8 @@ impl SwiftFlavorTranslator {
                     return Err(format!(
                         "Any type provided by more than one module: {}, {}",
                         first_mod, second_mod
-                    ).into());
+                    )
+                    .into());
                 }
 
                 any_type.clone()

@@ -251,7 +251,8 @@ impl<'el> IntoTokens<'el, Go<'el>> for Tags {
                         .fold(Tokens::new(), |mut t, v| {
                             t.append(Element::from(v));
                             t
-                        }).join(",");
+                        })
+                        .join(",");
 
                     t.append("\"");
                     t.append(vals);

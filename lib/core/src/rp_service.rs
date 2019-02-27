@@ -10,10 +10,12 @@ pub struct RpServiceBodyHttp {
     pub url: Option<Loc<String>>,
 }
 
-decl_body!(pub struct RpServiceBody<F> {
-    pub http: RpServiceBodyHttp,
-    pub endpoints: Vec<Loc<F::Endpoint>>,
-});
+decl_body!(
+    pub struct RpServiceBody<F> {
+        pub http: RpServiceBodyHttp,
+        pub endpoints: Vec<Loc<F::Endpoint>>,
+    }
+);
 
 impl<F: 'static, T> Translate<T> for RpServiceBody<F>
 where

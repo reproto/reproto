@@ -120,7 +120,8 @@ where
                     Some(var)
                 } else {
                     None
-                }.into_iter()
+                }
+                .into_iter()
             })
     }
 }

@@ -81,7 +81,8 @@ impl Options {
             return Err(format!(
                 "tried to set multiple serializaiton strategies: {} and {}",
                 old, s
-            ).into());
+            )
+            .into());
         }
 
         Ok(())

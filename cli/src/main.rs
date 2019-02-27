@@ -16,11 +16,13 @@ fn setup_opts<'a, 'b>() -> App<'a, 'b> {
             Arg::with_name("color")
                 .long("color")
                 .help("Force colored output."),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("no-color")
                 .long("no-color")
                 .help("Disable colored output."),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("output-format")
                 .long("output-format")
                 .takes_value(true)

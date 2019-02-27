@@ -41,8 +41,7 @@ macro_rules! try_loop {
 /// NOTE: it is critical that `diag.has_errors()` is checked _after_ the loop.
 macro_rules! check_conflict {
     ($diag:expr, $existing:expr, $item:expr, $accessor:expr, $what:expr) => {
-        if let Some(other) = $existing.insert($accessor.to_string(), Span::from(&$item).clone())
-        {
+        if let Some(other) = $existing.insert($accessor.to_string(), Span::from(&$item).clone()) {
             $diag.err(
                 Span::from(&$item),
                 format!(concat!($what, " `{}` is already defined"), $accessor),
@@ -243,7 +242,8 @@ impl<C: IntoIterator<Item = S>, S: AsRef<str>> IntoModel for Comment<C> {
             .map(|s| {
                 let s = s.as_ref();
                 s[usize::min(s.len(), pfx)..].to_string()
-            }).collect();
+            })
+            .collect();
 
         Ok(comment)
     }
@@ -892,7 +892,8 @@ impl<'input> IntoModel for File<'input> {
                     n.as_identifier()
                         .map_err(|_| Error::from("expected identifier"))
                         .and_then(parse_naming)
-                }).with_span(diag, &span)?;
+                })
+                .with_span(diag, &span)?;
 
             check_selection!(diag, endpoint_naming);
         }
@@ -907,7 +908,8 @@ impl<'input> IntoModel for File<'input> {
                     n.as_identifier()
                         .map_err(|_| Error::from("expected identifier"))
                         .and_then(parse_naming)
-                }).with_span(diag, &span)?;
+                })
+                .with_span(diag, &span)?;
 
             check_selection!(diag, field_naming);
         }

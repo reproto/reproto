@@ -9,14 +9,16 @@ use {
     Translate, Translator,
 };
 
-decl_body!(pub struct RpEnumBody<F> {
-    /// The type of the variant.
-    pub enum_type: F::EnumType,
-    /// Variants in the enum.
-    pub variants: RpVariants<F>,
-    /// Custom code blocks in the enum.
-    pub codes: Vec<Loc<RpCode>>,
-});
+decl_body!(
+    pub struct RpEnumBody<F> {
+        /// The type of the variant.
+        pub enum_type: F::EnumType,
+        /// Variants in the enum.
+        pub variants: RpVariants<F>,
+        /// Custom code blocks in the enum.
+        pub codes: Vec<Loc<RpCode>>,
+    }
+);
 
 impl<F: 'static, T> Translate<T> for RpEnumBody<F>
 where

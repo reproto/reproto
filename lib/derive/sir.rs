@@ -195,7 +195,8 @@ impl Sir {
                     .map(|f| FieldSir {
                         optional: false,
                         field: f,
-                    }).collect();
+                    })
+                    .collect();
 
                 return Ok(Sir::Tuple(children));
             }

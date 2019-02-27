@@ -94,35 +94,40 @@ impl<'a> DocCompiler<'a> {
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
                 body: body,
-            }.process(),
+            }
+            .process(),
             Type(ref body) => TypeProcessor {
                 out: out,
                 session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
                 body: body,
-            }.process(),
+            }
+            .process(),
             Tuple(ref body) => TupleProcessor {
                 out: out,
                 session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
                 body: body,
-            }.process(),
+            }
+            .process(),
             Enum(ref body) => EnumProcessor {
                 out: out,
                 session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
                 body: body,
-            }.process(),
+            }
+            .process(),
             Service(ref body) => ServiceProcessor {
                 out: out,
                 session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
                 body: body,
-            }.process(),
+            }
+            .process(),
         }
     }
 
@@ -171,7 +176,8 @@ impl<'a> DocCompiler<'a> {
                 package: package,
                 file: file,
             },
-        }.process()?;
+        }
+        .process()?;
 
         debug!("+file: {}", index_html.display());
         Ok(())
@@ -193,7 +199,8 @@ impl<'a> DocCompiler<'a> {
             syntax: (self.syntax_theme, self.syntax_set),
             root: &".",
             body: &IndexData { entries: entries },
-        }.process()?;
+        }
+        .process()?;
 
         debug!("+file: {}", index_html.display());
         Ok(())

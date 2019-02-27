@@ -20,8 +20,8 @@ extern crate toml;
 extern crate url;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde;
 extern crate dirs;
+extern crate serde;
 
 mod config;
 mod config_env;
@@ -106,7 +106,8 @@ fn load_objects(
                 _ => Ok(None),
             },
             publishing,
-        ).map_err(Into::into),
+        )
+        .map_err(Into::into),
     }
 }
 

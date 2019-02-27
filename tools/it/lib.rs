@@ -576,7 +576,8 @@ impl<'a> CheckRunner<'a> {
                     return Err(Error::CheckFailed {
                         expected: None,
                         actual: actual,
-                    }.into());
+                    }
+                    .into());
                 }
 
                 let f = File::open(&check_path)
@@ -836,9 +837,11 @@ impl<'a> ProjectRunner<'a> {
                     for (key, left) in left {
                         match right.get(key) {
                             None => return false,
-                            Some(right) => if !similar(left, right) {
-                                return false;
-                            },
+                            Some(right) => {
+                                if !similar(left, right) {
+                                    return false;
+                                }
+                            }
                         }
                     }
 
@@ -947,7 +950,8 @@ impl<'a> StructureRunner<'a> {
                     source: self.expected_struct.to_owned(),
                     target: self.target_struct.to_owned(),
                     errors: errors,
-                }.into());
+                }
+                .into());
             }
         }
 

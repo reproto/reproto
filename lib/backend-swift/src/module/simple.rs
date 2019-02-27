@@ -827,18 +827,22 @@ impl EnumCodegen for Codegen {
                     t.push("switch value {");
 
                     match body.variants {
-                        core::RpVariants::String { ref variants } => for v in variants {
-                            t.nested_into(|t| {
-                                push!(t, "case ", v.value.to_string().quoted(), ":");
-                                nested!(t, "return ", name, ".", v.ident());
-                            });
-                        },
-                        core::RpVariants::Number { ref variants } => for v in variants {
-                            t.nested_into(|t| {
-                                push!(t, "case ", v.value.to_string(), ":");
-                                nested!(t, "return ", name, ".", v.ident());
-                            });
-                        },
+                        core::RpVariants::String { ref variants } => {
+                            for v in variants {
+                                t.nested_into(|t| {
+                                    push!(t, "case ", v.value.to_string().quoted(), ":");
+                                    nested!(t, "return ", name, ".", v.ident());
+                                });
+                            }
+                        }
+                        core::RpVariants::Number { ref variants } => {
+                            for v in variants {
+                                t.nested_into(|t| {
+                                    push!(t, "case ", v.value.to_string(), ":");
+                                    nested!(t, "return ", name, ".", v.ident());
+                                });
+                            }
+                        }
                     }
 
                     t.nested({
@@ -871,18 +875,22 @@ impl EnumCodegen for Codegen {
                 t.push("switch self {");
 
                 match body.variants {
-                    core::RpVariants::String { ref variants } => for v in variants {
-                        t.nested_into(|t| {
-                            push!(t, "case .", v.ident(), ":");
-                            nested!(t, "return ", v.value.to_string().quoted());
-                        });
-                    },
-                    core::RpVariants::Number { ref variants } => for v in variants {
-                        t.nested_into(|t| {
-                            push!(t, "case .", v.ident(), ":");
-                            nested!(t, "return ", v.value.to_string());
-                        });
-                    },
+                    core::RpVariants::String { ref variants } => {
+                        for v in variants {
+                            t.nested_into(|t| {
+                                push!(t, "case .", v.ident(), ":");
+                                nested!(t, "return ", v.value.to_string().quoted());
+                            });
+                        }
+                    }
+                    core::RpVariants::Number { ref variants } => {
+                        for v in variants {
+                            t.nested_into(|t| {
+                                push!(t, "case .", v.ident(), ":");
+                                nested!(t, "return ", v.value.to_string());
+                            });
+                        }
+                    }
                 }
 
                 t.push("}");

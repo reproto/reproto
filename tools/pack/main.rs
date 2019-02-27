@@ -18,7 +18,8 @@ fn main() {
                 .long("build-syntax")
                 .help("build syntax")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("build-themes")
                 .long("build-themes")
                 .help("build themes")
@@ -35,7 +36,8 @@ fn main() {
                 .and_then(Path::parent)
                 .and_then(Path::parent)
                 .map(Path::to_owned)
-        }).expect("locating root directory");
+        })
+        .expect("locating root directory");
 
     let matches = app.get_matches();
 
@@ -53,7 +55,8 @@ fn main() {
     if let Some(path) = matches.value_of("build-syntax").map(Path::new) {
         let mut ss = SyntaxSetBuilder::new();
         ss.add_plain_text_syntax();
-        ss.add_from_folder(syntaxes, true).expect("syntaxes to load");
+        ss.add_from_folder(syntaxes, true)
+            .expect("syntaxes to load");
 
         let ss = ss.build();
         println!("building: {}", path.display());

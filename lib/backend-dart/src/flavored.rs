@@ -292,7 +292,10 @@ impl FlavorTranslator for DartFlavorTranslator {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(ref prefix) = name.prefix {
-            let path = relative_path(from.parts().map(|s| s.as_str()), name.package.parts().map(|s| s.as_str()));
+            let path = relative_path(
+                from.parts().map(|s| s.as_str()),
+                name.package.parts().map(|s| s.as_str()),
+            );
             let path = format!("{}.{}", path.join("/"), EXT);
 
             let dart = dart::imported(path).name(ident).alias(prefix.to_string());
@@ -405,7 +408,10 @@ mod tests {
 
         assert_eq!(
             vec!["biz"],
-            relative_path(vec!["foo", "baz"].into_iter(), vec!["foo", "biz"].into_iter())
+            relative_path(
+                vec!["foo", "baz"].into_iter(),
+                vec!["foo", "biz"].into_iter()
+            )
         );
 
         assert_eq!(

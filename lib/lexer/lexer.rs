@@ -277,7 +277,8 @@ impl<'input> Lexer<'input> {
                     message: "unrecognized escape, should be one of: \\\", \\n, \\r, \\t, \\\\, \
                               or \\uXXXX",
                     pos: pos,
-                }.into());
+                }
+                .into());
             }
         };
 

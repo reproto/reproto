@@ -335,7 +335,8 @@ fn parse_file_name<'a>(path: &Path, name: &'a OsStr) -> Result<(&'a str, Option<
                 "`{}` is not a package, `{}` does not have .reproto extension",
                 path.display(),
                 base
-            ).into())
+            )
+            .into());
         }
     };
 

@@ -1333,13 +1333,15 @@ where
         debug!("type completion: {:?}", value);
 
         match *value {
-            Completion::Package { ref results, .. } => for r in results {
-                list.items.push(ty::CompletionItem {
-                    label: r.to_string(),
-                    kind: Some(ty::CompletionItemKind::Module),
-                    ..ty::CompletionItem::default()
-                });
-            },
+            Completion::Package { ref results, .. } => {
+                for r in results {
+                    list.items.push(ty::CompletionItem {
+                        label: r.to_string(),
+                        kind: Some(ty::CompletionItemKind::Module),
+                        ..ty::CompletionItem::default()
+                    });
+                }
+            }
             Completion::Any { ref suffix } => {
                 for (prefix, value) in &file.prefixes {
                     list.items.push(ty::CompletionItem {

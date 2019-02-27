@@ -28,12 +28,14 @@ impl Default for RpSubTypeStrategy {
     }
 }
 
-decl_body!(pub struct RpInterfaceBody<F> {
-    pub fields: Vec<Loc<F::Field>>,
-    pub codes: Vec<Loc<RpCode>>,
-    pub sub_types: Vec<Loc<RpSubType<F>>>,
-    pub sub_type_strategy: RpSubTypeStrategy,
-});
+decl_body!(
+    pub struct RpInterfaceBody<F> {
+        pub fields: Vec<Loc<F::Field>>,
+        pub codes: Vec<Loc<RpCode>>,
+        pub sub_types: Vec<Loc<RpSubType<F>>>,
+        pub sub_type_strategy: RpSubTypeStrategy,
+    }
+);
 
 impl<F: 'static> RpInterfaceBody<F>
 where
