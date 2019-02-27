@@ -1,11 +1,12 @@
 import foo.v4 as foo
 
 class Entry:
-  def __init__(self, thing):
-    self.thing = thing
+  def __init__(self, _thing):
+    self._thing = _thing
 
-  def get_thing(self):
-    return self.thing
+  @property
+  def thing(self):
+    return self._thing
 
   @staticmethod
   def decode(data):
@@ -22,10 +23,10 @@ class Entry:
   def encode(self):
     data = dict()
 
-    if self.thing is not None:
-      data["thing"] = self.thing.encode()
+    if self._thing is not None:
+      data["thing"] = self._thing.encode()
 
     return data
 
   def __repr__(self):
-    return "<Entry thing:{!r}>".format(self.thing)
+    return "<Entry thing:{!r}>".format(self._thing)

@@ -3,23 +3,27 @@ import bar.v2_0 as bar2
 import bar.v2_1 as bar21
 
 class Thing:
-  def __init__(self, name, other, other2, other21):
-    self.name = name
-    self.other = other
-    self.other2 = other2
-    self.other21 = other21
+  def __init__(self, _name, _other, _other2, _other21):
+    self._name = _name
+    self._other = _other
+    self._other2 = _other2
+    self._other21 = _other21
 
-  def get_name(self):
-    return self.name
+  @property
+  def name(self):
+    return self._name
 
-  def get_other(self):
-    return self.other
+  @property
+  def other(self):
+    return self._other
 
-  def get_other2(self):
-    return self.other2
+  @property
+  def other2(self):
+    return self._other2
 
-  def get_other21(self):
-    return self.other21
+  @property
+  def other21(self):
+    return self._other21
 
   @staticmethod
   def decode(data):
@@ -61,19 +65,19 @@ class Thing:
   def encode(self):
     data = dict()
 
-    if self.name is not None:
-      data["name"] = self.name
+    if self._name is not None:
+      data["name"] = self._name
 
-    if self.other is not None:
-      data["other"] = self.other.encode()
+    if self._other is not None:
+      data["other"] = self._other.encode()
 
-    if self.other2 is not None:
-      data["other2"] = self.other2.encode()
+    if self._other2 is not None:
+      data["other2"] = self._other2.encode()
 
-    if self.other21 is not None:
-      data["other21"] = self.other21.encode()
+    if self._other21 is not None:
+      data["other21"] = self._other21.encode()
 
     return data
 
   def __repr__(self):
-    return "<Thing name:{!r}, other:{!r}, other2:{!r}, other21:{!r}>".format(self.name, self.other, self.other2, self.other21)
+    return "<Thing name:{!r}, other:{!r}, other2:{!r}, other21:{!r}>".format(self._name, self._other, self._other2, self._other21)

@@ -1,13 +1,15 @@
 class Entry:
-  def __init__(self, a, b):
-    self.a = a
-    self.b = b
+  def __init__(self, _a, _b):
+    self._a = _a
+    self._b = _b
 
-  def get_a(self):
-    return self.a
+  @property
+  def a(self):
+    return self._a
 
-  def get_b(self):
-    return self.b
+  @property
+  def b(self):
+    return self._b
 
   @staticmethod
   def decode(data):
@@ -32,23 +34,24 @@ class Entry:
   def encode(self):
     data = dict()
 
-    if self.a is not None:
-      data["a"] = self.a.encode()
+    if self._a is not None:
+      data["a"] = self._a.encode()
 
-    if self.b is not None:
-      data["b"] = self.b.encode()
+    if self._b is not None:
+      data["b"] = self._b.encode()
 
     return data
 
   def __repr__(self):
-    return "<Entry a:{!r}, b:{!r}>".format(self.a, self.b)
+    return "<Entry a:{!r}, b:{!r}>".format(self._a, self._b)
 
 class A:
-  def __init__(self, b):
-    self.b = b
+  def __init__(self, _b):
+    self._b = _b
 
-  def get_b(self):
-    return self.b
+  @property
+  def b(self):
+    return self._b
 
   @staticmethod
   def decode(data):
@@ -61,22 +64,23 @@ class A:
   def encode(self):
     data = dict()
 
-    if self.b is None:
+    if self._b is None:
       raise Exception("b: is a required field")
 
-    data["b"] = self.b.encode()
+    data["b"] = self._b.encode()
 
     return data
 
   def __repr__(self):
-    return "<A b:{!r}>".format(self.b)
+    return "<A b:{!r}>".format(self._b)
 
 class A_B:
-  def __init__(self, field):
-    self.field = field
+  def __init__(self, _field):
+    self._field = _field
 
-  def get_field(self):
-    return self.field
+  @property
+  def field(self):
+    return self._field
 
   @staticmethod
   def decode(data):
@@ -90,12 +94,12 @@ class A_B:
   def encode(self):
     data = dict()
 
-    if self.field is None:
+    if self._field is None:
       raise Exception("field: is a required field")
 
-    data["field"] = self.field
+    data["field"] = self._field
 
     return data
 
   def __repr__(self):
-    return "<A_B field:{!r}>".format(self.field)
+    return "<A_B field:{!r}>".format(self._field)

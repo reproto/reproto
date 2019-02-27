@@ -180,7 +180,7 @@ impl<'el> Compiler<'el> {
         let mut args = Tokens::new();
 
         for (i, field) in fields.into_iter().enumerate() {
-            let n = Rc::new(format!("f_{}", field.safe_ident()));
+            let n = Rc::new(format!("f_{}", field.ident));
             let var = variable_fn(i, field);
 
             if field.is_optional() {
@@ -274,7 +274,8 @@ impl<'el> Compiler<'el> {
         for field in fields {
             let name = Rc::new(self.to_lower_snake.convert(field.ident.as_str()));
             let mut body = Tokens::new();
-            body.push(toks!("def get_", name, "(self):"));
+            body.push("@property");
+            body.push(toks!("def ", name, "(self):"));
 
             body.nested({
                 let mut t = Tokens::new();

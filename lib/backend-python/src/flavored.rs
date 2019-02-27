@@ -269,7 +269,20 @@ impl FlavorTranslator for PythonFlavorTranslator {
     type Source = CoreFlavor;
     type Target = PythonFlavor;
 
-    translator_defaults!(Self, field, endpoint, enum_type);
+    translator_defaults!(Self, endpoint, enum_type);
+
+    fn translate_field<T>(
+        &self,
+        translator: &T,
+        diag: &mut Diagnostics,
+        field: core::RpField<Self::Source>,
+    ) -> Result<core::RpField<Self::Target>>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>,
+    {
+        let ident = format!("_{}", field.ident);
+        field.with_safe_ident(ident).translate(diag, translator)
+    }
 
     fn translate_number(&self, _: RpNumberType) -> Result<PythonType<'static>> {
         Ok(self.ty(PythonKind::Integer))
