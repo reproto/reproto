@@ -807,7 +807,7 @@ mod tests {
             ("1.2.3-r100", "1.2.3-R2"),
         ];
 
-        for (i, &SemverTest(left, right, loose)) in input.into_iter().enumerate() {
+        for (i, &SemverTest(left, right, loose)) in input.iter().enumerate() {
             // NOTE: we don't support loose parsing.
             if loose {
                 continue;
